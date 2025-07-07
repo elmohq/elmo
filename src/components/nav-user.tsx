@@ -3,6 +3,7 @@
 import { useUser } from "@auth0/nextjs-auth0"
 import {
   IconDotsVertical,
+  IconExternalLink,
   IconLogout,
   IconUser,
   IconUsers,
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/sidebar"
 
 import Link from "next/link"
+import { WHITE_LABEL_CONFIG } from "@/lib/white-label"
 
 
 export function NavUser() {
@@ -127,6 +129,12 @@ export function NavUser() {
               <DropdownMenuItem>
                 <IconUsers />
                 Organizations
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={WHITE_LABEL_CONFIG.parent_url} target="_blank">
+                  <IconExternalLink />
+                  {WHITE_LABEL_CONFIG.parent_name} Dashboard
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

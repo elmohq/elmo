@@ -18,6 +18,9 @@ export const metadata: Metadata = {
 		template: `%s - ${WHITE_LABEL_CONFIG.name}`,
 		default: `${WHITE_LABEL_CONFIG.name} - Generative AI Optimization`,
 	},
+	icons: {
+		icon: WHITE_LABEL_CONFIG.icon,
+	},
 };
 
 export default function RootLayout({
