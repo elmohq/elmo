@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@auth0/auth0-react':
+        specifier: ^2.3.0
+        version: 2.3.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@auth0/nextjs-auth0':
         specifier: ^4.8.0
         version: 4.8.0(next@15.3.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -44,6 +47,9 @@ importers:
       '@tabler/icons-react':
         specifier: ^3.34.0
         version: 3.34.0(react@19.1.0)
+      auth0:
+        specifier: ^4.27.0
+        version: 4.27.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -124,6 +130,15 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
+
+  '@auth0/auth0-react@2.3.0':
+    resolution: {integrity: sha512-YYTc/DWWigKC9fURufR/79h3+3DAnIzbfEzJLZ8Z4Q0BXE0azru3pKUbU+vYzS4lMAJkclwLuAbUnLjK81vCpA==}
+    peerDependencies:
+      react: ^16.11.0 || ^17 || ^18 || ^19
+      react-dom: ^16.11.0 || ^17 || ^18 || ^19
+
+  '@auth0/auth0-spa-js@2.2.0':
+    resolution: {integrity: sha512-YaHHCxiSQxDb+Ju9gXOqcqgXWq8EkUSpZC4g24D3MoEBUaADKwOosrAnmjDZcslBZpnSFFdrl4dLYedAer3xlQ==}
 
   '@auth0/nextjs-auth0@4.8.0':
     resolution: {integrity: sha512-tgo4f6u1Ac4MqjwiYtllr9DzcNK+ThDoU4VYj6uTTqebwGGSdhXZWAkHFwWgabgWdeYHXpKYZ0xS9dQZv/PNAQ==}
@@ -1267,6 +1282,10 @@ packages:
     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
     engines: {node: '>=10'}
 
+  auth0@4.27.0:
+    resolution: {integrity: sha512-4FGgjzKCH/f7rQLQVR5dM30asjOObeW3PyHa8bQrS4rKkuv22JoNxox26fb1FZ3hI4zEgbVbPm9x7pHrljZzrw==}
+    engines: {node: '>=18'}
+
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
@@ -1531,6 +1550,9 @@ packages:
   jiti@2.4.2:
     resolution: {integrity: sha512-rg9zJN+G4n2nfJl5MW3BMygZX56zKPNVEYYqq7adpmMh4Jn2QNEwhvQlFy6jPVdcod7txZtKHWnyZiA3a0zP7A==}
     hasBin: true
+
+  jose@4.15.9:
+    resolution: {integrity: sha512-1vUQX+IdDMVPj4k8kOxgUqlcK518yluMuGZwqlr44FS1ppZB/5GWh4rZG89erpOBOJjU/OBsnCVFfapsRz6nEA==}
 
   jose@5.10.0:
     resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
@@ -1903,6 +1925,10 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    hasBin: true
+
   victory-vendor@37.3.6:
     resolution: {integrity: sha512-SbPDPdDBYp+5MJHhBCAyI7wKM3d5ivekigc2Dk2s7pgbZ9wIgIBYGVw4zGHBml/qTFbexrofXW6Gu4noGxrOwQ==}
 
@@ -1922,6 +1948,14 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.12
       '@jridgewell/trace-mapping': 0.3.29
+
+  '@auth0/auth0-react@2.3.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@auth0/auth0-spa-js': 2.2.0
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+
+  '@auth0/auth0-spa-js@2.2.0': {}
 
   '@auth0/nextjs-auth0@4.8.0(next@15.3.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
@@ -2832,6 +2866,12 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  auth0@4.27.0:
+    dependencies:
+      jose: 4.15.9
+      undici-types: 6.21.0
+      uuid: 9.0.1
+
   buffer-from@1.1.2: {}
 
   busboy@1.6.0:
@@ -3038,6 +3078,8 @@ snapshots:
     optional: true
 
   jiti@2.4.2: {}
+
+  jose@4.15.9: {}
 
   jose@5.10.0: {}
 
@@ -3380,6 +3422,8 @@ snapshots:
   use-sync-external-store@1.5.0(react@19.1.0):
     dependencies:
       react: 19.1.0
+
+  uuid@9.0.1: {}
 
   victory-vendor@37.3.6:
     dependencies:

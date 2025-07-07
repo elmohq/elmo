@@ -10,6 +10,7 @@
     "format": "biome format --write ."
   },
   "dependencies": {
+    "@auth0/auth0-react": "^2.3.0",
     "@auth0/nextjs-auth0": "^4.8.0",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -22,6 +23,7 @@
     "@radix-ui/react-tabs": "^1.1.12",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tabler/icons-react": "^3.34.0",
+    "auth0": "^4.27.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
