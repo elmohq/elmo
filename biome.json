@@ -7,22 +7,12 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": [
-			".next/**",
-			"node_modules/**",
-			"src/components/ui/**",
-			".git/**",
-			"dist/**",
-			"build/**",
-			"coverage/**",
-			"*.log",
-			".env*",
-			"public/**"
-		]
+		"includes": ["src/**", "!src/components/ui/**"]
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
+		"indentStyle": "tab",
+		"lineWidth": 120
 	},
 	"linter": {
 		"enabled": true,
