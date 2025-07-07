@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@auth0/auth0-react':
-        specifier: ^2.3.0
-        version: 2.3.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@auth0/nextjs-auth0':
         specifier: ^4.8.0
         version: 4.8.0(next@15.3.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -130,15 +127,6 @@ packages:
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
-
-  '@auth0/auth0-react@2.3.0':
-    resolution: {integrity: sha512-YYTc/DWWigKC9fURufR/79h3+3DAnIzbfEzJLZ8Z4Q0BXE0azru3pKUbU+vYzS4lMAJkclwLuAbUnLjK81vCpA==}
-    peerDependencies:
-      react: ^16.11.0 || ^17 || ^18 || ^19
-      react-dom: ^16.11.0 || ^17 || ^18 || ^19
-
-  '@auth0/auth0-spa-js@2.2.0':
-    resolution: {integrity: sha512-YaHHCxiSQxDb+Ju9gXOqcqgXWq8EkUSpZC4g24D3MoEBUaADKwOosrAnmjDZcslBZpnSFFdrl4dLYedAer3xlQ==}
 
   '@auth0/nextjs-auth0@4.8.0':
     resolution: {integrity: sha512-tgo4f6u1Ac4MqjwiYtllr9DzcNK+ThDoU4VYj6uTTqebwGGSdhXZWAkHFwWgabgWdeYHXpKYZ0xS9dQZv/PNAQ==}
@@ -1948,14 +1936,6 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.12
       '@jridgewell/trace-mapping': 0.3.29
-
-  '@auth0/auth0-react@2.3.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
-    dependencies:
-      '@auth0/auth0-spa-js': 2.2.0
-      react: 19.1.0
-      react-dom: 19.1.0(react@19.1.0)
-
-  '@auth0/auth0-spa-js@2.2.0': {}
 
   '@auth0/nextjs-auth0@4.8.0(next@15.3.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:

@@ -10,7 +10,6 @@
     "format": "biome format --write ."
   },
   "dependencies": {
-    "@auth0/auth0-react": "^2.3.0",
     "@auth0/nextjs-auth0": "^4.8.0",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
