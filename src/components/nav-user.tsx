@@ -6,7 +6,7 @@ import {
   IconExternalLink,
   IconLogout,
   IconUser,
-  IconUsers,
+  IconStatusChange,
 } from "@tabler/icons-react"
 
 import {
@@ -127,8 +127,8 @@ export function NavUser() {
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <IconUsers />
-                Organizations
+                <IconStatusChange />
+                Switch Brand
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={WHITE_LABEL_CONFIG.parent_url} target="_blank">
