@@ -1,22 +1,11 @@
-import Profile from "@/components/profile";
-import { auth0 } from "@/lib/auth0";
-import { ManagementClient } from "auth0";
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-
-const management = new ManagementClient({
-	domain: process.env.AUTH0_MGMT_API_DOMAIN!,
-	clientId: process.env.AUTH0_CLIENT_ID!,
-	clientSecret: process.env.AUTH0_CLIENT_SECRET!,
-});
+import { getElmoOrgs } from "@/lib/metadata";
 
 export default async function BrandSwitcherPage() {
-	const session = await auth0.getSession();
-	const userData = await management.users.get({ id: session?.user?.sub!, fields: "app_metadata" });
-	
-	const orgs = userData.data?.app_metadata?.elmo_orgs || [];
+	const orgs = await getElmoOrgs();
 
 	return (
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">

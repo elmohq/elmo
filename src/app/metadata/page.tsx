@@ -1,4 +1,5 @@
 import { auth0 } from "@/lib/auth0";
+import { getElmoOrgs } from "@/lib/metadata";
 
 import { ManagementClient } from "auth0";
 
@@ -19,6 +20,9 @@ export default async function MetadataPage() {
 
 			<h2>Session</h2>
 			<pre>{JSON.stringify(session, null, 2)}</pre>
+
+            <h2>Redis Cached Elmo Orgs</h2>
+            <pre>{JSON.stringify(await getElmoOrgs(), null, 2)}</pre>
 		</div>
 	);
 }

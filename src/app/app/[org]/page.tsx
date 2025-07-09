@@ -1,9 +1,10 @@
 import Profile from "@/components/profile";
 
-export default function AppPage({ params }: { params: { org: string } }) {
+export default async function AppPage({ params }: { params: Promise<{ org: string }> }) {
+	const { org } = await params;
 	return (
 		<div>
-			{params.org} <Profile />
+			{org} <Profile />
 		</div>
 	);
 }
