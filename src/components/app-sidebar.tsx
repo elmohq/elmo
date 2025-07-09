@@ -17,8 +17,8 @@ import {
 	IconSearch,
 	IconSettings,
 	IconUsers,
-    IconAward,
-    IconList
+	IconAward,
+	IconList,
 } from "@tabler/icons-react";
 
 import {

@@ -4,14 +4,14 @@ import { auth0 } from "@/lib/auth0";
 
 export async function middleware(request: NextRequest) {
 	try {
-        const { pathname } = request.nextUrl;
-        const session = await auth0.getSession(request);
-        if (!session && !pathname.startsWith("/auth/")) {
-            return NextResponse.redirect(new URL("/", request.url));
-        } else {
-            return auth0.middleware(request);
-        }
-    } catch (error) {
+		const { pathname } = request.nextUrl;
+		const session = await auth0.getSession(request);
+		if (!session && !pathname.startsWith("/auth/")) {
+			return NextResponse.redirect(new URL("/", request.url));
+		} else {
+			return auth0.middleware(request);
+		}
+	} catch (error) {
 		// Handle JWE decryption errors (corrupted sessions)
 		if (error instanceof Error && error.message?.includes("Invalid Compact JWE")) {
 			console.warn("Session decryption failed, clearing corrupted session:", error.message);
@@ -27,5 +27,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ['/app/:path*', '/auth/:path*']
+	matcher: ["/app/:path*", "/auth/:path*"],
 };
