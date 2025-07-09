@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getElmoOrgs, getBrandFromDb, createBrand, getBrandMetadata } from "@/lib/metadata";
+import { getElmoOrgs, getBrandFromDb, getBrandWithPrompts, createBrand, getBrandMetadata } from "@/lib/metadata";
 import { auth0 } from "@/lib/auth0";
 import { revalidatePath } from "next/cache";
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
 		const brands = await Promise.all(
 			userBrands.map(async (userBrand) => {
-				const dbBrand = await getBrandFromDb(userBrand.id);
+				const dbBrand = await getBrandWithPrompts(userBrand.id);
 				return dbBrand ? {
 					...dbBrand,
 					name: dbBrand.name
@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
 	}
 } 
 
-// URL validation function
 function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: string; error?: string } {
 	if (!url || url.trim() === "") {
 		return { isValid: false, error: "Website URL is required" };

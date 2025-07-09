@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getElmoOrgs, getBrandFromDb, updateBrand } from "@/lib/metadata";
+import { getElmoOrgs, getBrandFromDb, getBrandWithPrompts, updateBrand } from "@/lib/metadata";
 import { auth0 } from "@/lib/auth0";
 import { revalidatePath } from "next/cache";
 
@@ -56,7 +56,7 @@ export async function GET(
 			);
 		}
 
-		const brand = await getBrandFromDb(brandId);
+		const brand = await getBrandWithPrompts(brandId);
 
 		if (!brand) {
 			return NextResponse.json(

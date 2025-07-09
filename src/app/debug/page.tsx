@@ -2,6 +2,7 @@ import { auth0 } from "@/lib/auth0";
 import { getElmoOrgs } from "@/lib/metadata";
 
 import { ManagementClient } from "auth0";
+import BrandsDebug from "./brands-debug";
 
 const management = new ManagementClient({
 	domain: process.env.AUTH0_MGMT_API_DOMAIN!,
@@ -23,6 +24,9 @@ export default async function MetadataPage() {
 
 			<h2>Redis Cached Elmo Orgs</h2>
 			<pre>{JSON.stringify(await getElmoOrgs(), null, 2)}</pre>
+
+			<h2>DB Brands</h2>
+			<BrandsDebug />
 		</div>
 	);
 }

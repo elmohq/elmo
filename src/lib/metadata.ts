@@ -2,7 +2,7 @@ import { ManagementClient } from "auth0";
 import { auth0 } from "./auth0";
 import { redis } from "./redis";
 import { db } from "./db/db";
-import { brands, type Brand, type NewBrand } from "./db/schema";
+import { brands, prompts, type Brand, type NewBrand, type BrandWithPrompts } from "./db/schema";
 import { eq } from "drizzle-orm";
 
 const management = new ManagementClient({
@@ -97,6 +97,64 @@ export async function getBrandFromDb(brandId: string): Promise<Brand | undefined
 	} catch (error) {
 		console.error("Error fetching brand from database:", error);
 		return undefined;
+	}
+}
+
+export async function getBrandWithPrompts(brandId: string): Promise<BrandWithPrompts | undefined> {
+	try {
+		// Get the brand
+		const brand = await db.query.brands.findFirst({
+			where: eq(brands.id, brandId),
+		});
+		
+		if (!brand) {
+			return undefined;
+		}
+
+		// Get the prompts for this brand
+		const brandPrompts = await db.query.prompts.findMany({
+			where: eq(prompts.brandId, brandId),
+		});
+
+		return {
+			...brand,
+			prompts: brandPrompts,
+		};
+	} catch (error) {
+		console.error("Error fetching brand with prompts from database:", error);
+		return undefined;
+	}
+}
+
+export async function getAllBrandsWithPrompts(): Promise<BrandWithPrompts[]> {
+	try {
+		// Get all brands
+		const allBrands = await db.query.brands.findMany();
+		
+		if (allBrands.length === 0) {
+			return [];
+		}
+
+		// Get all prompts
+		const allPrompts = await db.query.prompts.findMany();
+
+		// Group prompts by brandId
+		const promptsByBrand = allPrompts.reduce((acc, prompt) => {
+			if (!acc[prompt.brandId]) {
+				acc[prompt.brandId] = [];
+			}
+			acc[prompt.brandId].push(prompt);
+			return acc;
+		}, {} as Record<string, typeof allPrompts>);
+
+		// Combine brands with their prompts
+		return allBrands.map(brand => ({
+			...brand,
+			prompts: promptsByBrand[brand.id] || [],
+		}));
+	} catch (error) {
+		console.error("Error fetching brands with prompts from database:", error);
+		return [];
 	}
 }
 

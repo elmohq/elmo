@@ -30,3 +30,7 @@ export type NewBrand = typeof brands.$inferInsert;
 
 export type Prompt = typeof prompts.$inferSelect;
 export type NewPrompt = typeof prompts.$inferInsert;
+
+export type BrandWithPrompts = Brand & {
+	prompts: Prompt[];
+};

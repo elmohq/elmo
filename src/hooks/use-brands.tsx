@@ -2,9 +2,9 @@
 
 import useSWR, { mutate as globalMutate } from "swr";
 import { usePathname } from "next/navigation";
-import type { Brand } from "@/lib/db/schema";
+import type { BrandWithPrompts } from "@/lib/db/schema";
 
-const fetcher = async (url: string): Promise<Brand[]> => {
+const fetcher = async (url: string): Promise<BrandWithPrompts[]> => {
 	const response = await fetch(url);
 	
 	if (!response.ok) {
@@ -16,7 +16,7 @@ const fetcher = async (url: string): Promise<Brand[]> => {
 	return response.json();
 };
 
-const singleBrandFetcher = async (url: string): Promise<Brand> => {
+const singleBrandFetcher = async (url: string): Promise<BrandWithPrompts> => {
 	const response = await fetch(url);
 	
 	if (!response.ok) {
@@ -29,7 +29,7 @@ const singleBrandFetcher = async (url: string): Promise<Brand> => {
 };
 
 export function useBrands() {
-	const { data, error, isLoading, mutate } = useSWR<Brand[]>(
+	const { data, error, isLoading, mutate } = useSWR<BrandWithPrompts[]>(
 		"/api/brands",
 		fetcher,
 		{
@@ -55,7 +55,7 @@ export function useBrand(brandId: string | undefined = undefined) {
 		return segments[1] === 'app' && segments[2] ? segments[2] : undefined;
 	})();
 
-	const { data, error, isLoading, mutate } = useSWR<Brand>(
+	const { data, error, isLoading, mutate } = useSWR<BrandWithPrompts>(
 		extractedBrandId ? `/api/brands/${extractedBrandId}` : null,
 		singleBrandFetcher,
 		{
