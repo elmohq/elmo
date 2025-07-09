@@ -10,6 +10,8 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import Link from "next/link";
+import { useBrand } from "@/hooks/use-brands";
 
 export function NavMain({
 	items,
@@ -20,16 +22,20 @@ export function NavMain({
 		icon?: Icon;
 	}[];
 }) {
+    const { brand } = useBrand();
+    
 	return (
 		<SidebarGroup>
 			<SidebarGroupContent>
-				<SidebarGroupLabel>Home</SidebarGroupLabel>
+				<SidebarGroupLabel className="sr-only">Pages</SidebarGroupLabel>
 				<SidebarMenu>
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton tooltip={item.title}>
-								{item.icon && <item.icon />}
-								<span>{item.title}</span>
+							<SidebarMenuButton tooltip={item.title} className="cursor-pointer" asChild>
+								<Link href={`/app/${brand?.id}${item.url}`}>
+                                    {item.icon && <item.icon />}
+                                    <span>{item.title}</span>
+                                </Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					))}

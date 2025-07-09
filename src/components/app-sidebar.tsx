@@ -33,45 +33,34 @@ import {
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
-
-const data = {
-	navMain: [
-		{
-			title: "Dashboard",
-			url: "#",
-			icon: IconDashboard,
-		},
-		{
-			title: "Reputation",
-			url: "#",
-			icon: IconAward,
-		},
-		{
-			title: "Prompts",
-			url: "#",
-			icon: IconListDetails,
-		},
-	],
-	// navSecondary: [
-	// 	{
-	// 		title: "Settings",
-	// 		url: "#",
-	// 		icon: IconSettings,
-	// 	},
-	// 	{
-	// 		title: "Get Help",
-	// 		url: "#",
-	// 		icon: IconHelp,
-	// 	},
-	// 	{
-	// 		title: "Search",
-	// 		url: "#",
-	// 		icon: IconSearch,
-	// 	},
-	// ]
-};
+import { useBrand } from "@/hooks/use-brands";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+    const data = {
+        navMain: [
+            {
+                title: "Dashboard",
+                url: `/`,
+                icon: IconDashboard,
+            },
+            {
+                title: "Reputation",
+                url: "/reputation",
+                icon: IconAward,
+            },
+            {
+                title: "Prompts",
+                url: "/prompts",
+                icon: IconListDetails,
+            },
+            {
+                title: "Settings",
+                url: "/settings",
+                icon: IconSettings,
+             },
+        ]
+    };
+    
 	return (
 		<Sidebar collapsible="none" className="h-auto border-r" {...props}>
 			<SidebarHeader className="border-b">
@@ -88,7 +77,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain items={data.navMain} />
-				{/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />

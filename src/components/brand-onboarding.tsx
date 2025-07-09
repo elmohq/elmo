@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createBrandAction } from "@/lib/actions";
+
 import { useRouter } from "next/navigation";
 import FullPageCard from "@/components/full-page-card";
 
@@ -23,8 +23,18 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 		setError("");
 
 		try {
-			await createBrandAction(formData);
-			// Server action will revalidate the path, so refresh to show Profile
+			const response = await fetch('/api/brands', {
+				method: 'POST',
+				body: formData,
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || 'An error occurred');
+			}
+
+			// API will revalidate the path, so refresh to show Profile
 			router.refresh();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");

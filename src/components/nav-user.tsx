@@ -65,7 +65,7 @@ export function NavUser() {
 					<DropdownMenuTrigger asChild>
 						<SidebarMenuButton
 							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
 						>
 							<Avatar className="h-8 w-8 rounded-lg grayscale">
 								<AvatarImage src={user.picture} alt={user.name} />
@@ -104,17 +104,17 @@ export function NavUser() {
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem>
+							<DropdownMenuItem className="cursor-pointer">
 								<IconUser />
 								Account
 							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
+							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link href="/app">
 									<IconStatusChange />
 									Switch Brand
 								</Link>
 							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
+							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link href={WHITE_LABEL_CONFIG.parent_url} target="_blank">
 									<IconExternalLink />
 									{WHITE_LABEL_CONFIG.parent_name} Dashboard
@@ -122,7 +122,7 @@ export function NavUser() {
 							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem asChild>
+						<DropdownMenuItem asChild className="cursor-pointer">
 							<a href="/auth/logout">
 								<IconLogout />
 								Log out
