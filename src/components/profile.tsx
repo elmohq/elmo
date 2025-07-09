@@ -13,10 +13,6 @@ export default function Profile() {
 		return <p>Loading...</p>;
 	}
 
-	if (!user) {
-		return <a href="/auth/login">Login</a>;
-	}
-
 	if (user) {
 		return (
 			<SidebarProvider
