@@ -17,27 +17,23 @@ export default function BrandSettingsPage() {
 
 	if (isLoading) {
 		return (
-			<div className="container max-w-2xl px-6 pb-8">
 				<div className="space-y-6">
 					<div>
 						<h1 className="text-3xl font-bold">Brand Settings</h1>
 						<p className="text-muted-foreground">Loading...</p>
 					</div>
 				</div>
-			</div>
 		);
 	}
 
 	if (!brand) {
 		return (
-			<div className="container max-w-2xl px-6 pb-8">
 				<div className="space-y-6">
 					<div>
 						<h1 className="text-3xl font-bold">Brand Settings</h1>
 						<p className="text-destructive">Brand not found</p>
 					</div>
 				</div>
-			</div>
 		);
 	}
 
@@ -73,7 +69,6 @@ export default function BrandSettingsPage() {
 	};
 
 	return (
-		<div className="container max-w-2xl px-6 pb-8">
 			<div className="space-y-6">
 				<div>
 					<h1 className="text-3xl font-bold">Brand Settings</h1>
@@ -117,6 +112,5 @@ export default function BrandSettingsPage() {
 							</div>
 						</form>
 			</div>
-		</div>
 	);
 }
