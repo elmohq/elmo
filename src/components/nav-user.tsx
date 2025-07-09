@@ -108,9 +108,11 @@ export function NavUser() {
 								<IconUser />
 								Account
 							</DropdownMenuItem>
-							<DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link href="/app">
 								<IconStatusChange />
-								Switch Brand
+									Switch Brand
+								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link href={WHITE_LABEL_CONFIG.parent_url} target="_blank">
