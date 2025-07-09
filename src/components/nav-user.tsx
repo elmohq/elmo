@@ -104,10 +104,6 @@ export function NavUser() {
 						</DropdownMenuLabel>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem className="cursor-pointer">
-								<IconUser />
-								Account
-							</DropdownMenuItem>
 							<DropdownMenuItem asChild className="cursor-pointer">
 								<Link href="/app">
 									<IconStatusChange />
