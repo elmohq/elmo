@@ -22,9 +22,6 @@ export default async function OrgLayout({
 
 	const brand = await getBrandFromDb(brandId);
 
-	console.log("brandId", brandId);
-	console.log("brand", brand);
-
 	if (!brand) {
 		return <BrandOnboarding brandId={brandId} brandName={brandMetadata.name} />;
 	}
