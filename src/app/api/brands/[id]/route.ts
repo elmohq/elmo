@@ -44,7 +44,7 @@ export async function GET(
 	{ params }: { params: Params }
 ) {
 	try {
-		const { id: brandId } = params;
+		const { id: brandId } = await params;
 
 		const userBrands = await getElmoOrgs();
 		const hasAccess = userBrands.some(brand => brand.id === brandId);
@@ -85,7 +85,7 @@ export async function PUT(
 	{ params }: { params: Params }
 ) {
 	try {
-		const { id: brandId } = params;
+		const { id: brandId } = await params;
 		const body = await request.json();
 
 		const userBrands = await getElmoOrgs();
