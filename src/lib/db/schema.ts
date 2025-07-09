@@ -17,6 +17,7 @@ export const prompts = pgTable("prompts", {
 	brandId: text("brand_id").references(() => brands.id).notNull(),
 	group: text("group"),
 	value: text("value").notNull(),
+	reputation: boolean("reputation").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })

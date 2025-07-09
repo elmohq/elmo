@@ -1,0 +1,1 @@
+ALTER TABLE "prompts" ADD COLUMN "reputation" boolean NOT NULL;
