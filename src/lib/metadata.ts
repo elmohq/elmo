@@ -117,6 +117,20 @@ export async function createBrand(brandData: { id: string; name: string; website
 	}
 }
 
+export async function updateBrand(brandId: string, brandData: Partial<Pick<Brand, 'name' | 'website' | 'enabled'>>): Promise<Brand | null> {
+	try {
+		const result = await db
+			.update(brands)
+			.set({ ...brandData, updatedAt: new Date() })
+			.where(eq(brands.id, brandId))
+			.returning();
+		return result[0] || null;
+	} catch (error) {
+		console.error("Error updating brand in database:", error);
+		return null;
+	}
+}
+
 export async function getBrandMetadata(brandId: string): Promise<undefined | ElmoBrandMetadata> {
 	const orgs = await getElmoOrgs();
 	return orgs.find((org) => org.id === brandId);

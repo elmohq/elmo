@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import { usePathname } from "next/navigation";
 import type { Brand } from "@/lib/db/schema";
 
@@ -65,11 +65,18 @@ export function useBrand(brandId: string | undefined = undefined) {
 		}
 	);
 
+	const revalidate = async () => {
+		// Revalidate the individual brand cache
+		await mutate();
+		// Also revalidate the brands list cache to keep them in sync
+		await globalMutate("/api/brands");
+	};
+
 	return {
 		brand: data,
 		isLoading,
 		isError: error,
-		revalidate: mutate,
+		revalidate,
 	};
 }
 

@@ -5,12 +5,6 @@ import { revalidatePath } from "next/cache";
 
 export async function GET(request: NextRequest) {
 	try {
-		const session = await auth0.getSession();
-		
-		if (!session?.user) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		const userBrands = await getElmoOrgs();
 		
 		if (!userBrands || userBrands.length === 0) {
@@ -39,6 +33,38 @@ export async function GET(request: NextRequest) {
 	}
 } 
 
+// URL validation function
+function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: string; error?: string } {
+	if (!url || url.trim() === "") {
+		return { isValid: false, error: "Website URL is required" };
+	}
+
+	let formattedUrl = url.trim();
+	
+	// Add https:// if no protocol is specified
+	if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
+		formattedUrl = `https://${formattedUrl}`;
+	}
+
+	try {
+		const urlObj = new URL(formattedUrl);
+		
+		// Check if protocol is http or https
+		if (!["http:", "https:"].includes(urlObj.protocol)) {
+			return { isValid: false, error: "Website URL must use http or https protocol" };
+		}
+
+		// Check if hostname exists
+		if (!urlObj.hostname || urlObj.hostname.length === 0) {
+			return { isValid: false, error: "Website URL must have a valid domain name" };
+		}
+
+		return { isValid: true, formattedUrl };
+	} catch (error) {
+		return { isValid: false, error: "Please enter a valid website URL" };
+	}
+}
+
 export async function POST(request: NextRequest) {
 	try {
 		const formData = await request.formData();
@@ -61,10 +87,16 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		let formattedWebsite = website.trim();
-		if (!formattedWebsite.startsWith("http://") && !formattedWebsite.startsWith("https://")) {
-			formattedWebsite = `https://${formattedWebsite}`;
+		// Validate website URL
+		const urlValidation = validateWebsiteUrl(website);
+		if (!urlValidation.isValid) {
+			return NextResponse.json(
+				{ error: urlValidation.error },
+				{ status: 400 }
+			);
 		}
+
+		const formattedWebsite = urlValidation.formattedUrl!
 
 		const result = await createBrand({
 			id: brandId,

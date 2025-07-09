@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getElmoOrgs, getBrandFromDb } from "@/lib/metadata";
+import { getElmoOrgs, getBrandFromDb, updateBrand } from "@/lib/metadata";
 import { auth0 } from "@/lib/auth0";
+import { revalidatePath } from "next/cache";
+
+// URL validation function
+function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: string; error?: string } {
+	if (!url || url.trim() === "") {
+		return { isValid: false, error: "Website URL is required" };
+	}
+
+	let formattedUrl = url.trim();
+	
+	// Add https:// if no protocol is specified
+	if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
+		formattedUrl = `https://${formattedUrl}`;
+	}
+
+	try {
+		const urlObj = new URL(formattedUrl);
+		
+		// Check if protocol is http or https
+		if (!["http:", "https:"].includes(urlObj.protocol)) {
+			return { isValid: false, error: "Website URL must use http or https protocol" };
+		}
+
+		// Check if hostname exists
+		if (!urlObj.hostname || urlObj.hostname.length === 0) {
+			return { isValid: false, error: "Website URL must have a valid domain name" };
+		}
+
+		return { isValid: true, formattedUrl };
+	} catch (error) {
+		return { isValid: false, error: "Please enter a valid website URL" };
+	}
+}
 
 type Params = {
 	id: string;
@@ -11,12 +44,6 @@ export async function GET(
 	{ params }: { params: Params }
 ) {
 	try {
-		const session = await auth0.getSession();
-		
-		if (!session?.user) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
-
 		const { id: brandId } = params;
 
 		const userBrands = await getElmoOrgs();
@@ -46,6 +73,73 @@ export async function GET(
 		});
 	} catch (error) {
 		console.error("Error fetching brand:", error);
+		return NextResponse.json(
+			{ error: "Internal server error" },
+			{ status: 500 }
+		);
+	}
+}
+
+export async function PUT(
+	request: NextRequest,
+	{ params }: { params: Params }
+) {
+	try {
+		const { id: brandId } = params;
+		const body = await request.json();
+
+		const userBrands = await getElmoOrgs();
+		const hasAccess = userBrands.some(brand => brand.id === brandId);
+
+		if (!hasAccess) {
+			return NextResponse.json(
+				{ error: "Access denied to this brand" },
+				{ status: 403 }
+			);
+		}
+
+		const existingBrand = await getBrandFromDb(brandId);
+		if (!existingBrand) {
+			return NextResponse.json(
+				{ error: "Brand not found" },
+				{ status: 404 }
+			);
+		}
+
+		// Validate and format website URL if provided
+		let updateData: { website?: string } = {};
+		if (body.website !== undefined) {
+			// Validate website URL
+			const urlValidation = validateWebsiteUrl(body.website);
+			if (!urlValidation.isValid) {
+				return NextResponse.json(
+					{ error: urlValidation.error },
+					{ status: 400 }
+				);
+			}
+			updateData.website = urlValidation.formattedUrl;
+		}
+
+		const updatedBrand = await updateBrand(brandId, updateData);
+
+		if (!updatedBrand) {
+			return NextResponse.json(
+				{ error: "Failed to update brand" },
+				{ status: 500 }
+			);
+		}
+
+		revalidatePath(`/app/${brandId}`);
+		revalidatePath(`/app/${brandId}/settings`);
+
+		const metadataBrand = userBrands.find(b => b.id === brandId);
+		
+		return NextResponse.json({
+			...updatedBrand,
+			name: updatedBrand.name || metadataBrand?.name || updatedBrand.name
+		});
+	} catch (error) {
+		console.error("Error updating brand:", error);
 		return NextResponse.json(
 			{ error: "Internal server error" },
 			{ status: 500 }
