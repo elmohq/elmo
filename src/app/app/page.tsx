@@ -29,10 +29,10 @@ export default async function BrandSwitcherPage() {
 
 					<div className="flex flex-col space-y-3">
 						{orgs.length > 0 ? (
-							orgs.map((org: string) => (
-								<Button key={org} asChild variant="outline" className="min-w-[200px]">
-									<Link href={`/app/${org}`}>
-										{org}
+							orgs.map((org: { id: string, name: string }) => (
+								<Button key={org.id} asChild variant="outline" className="min-w-[200px]">
+									<Link href={`/app/${org.id}`}>
+										{org.name}
 									</Link>
 								</Button>
 							))
