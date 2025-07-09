@@ -1,7 +1,7 @@
 import { pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const brands = pgTable("brands", {
-	id: uuid("id").primaryKey().notNull(),
+	id: text("id").primaryKey().notNull(),
 	name: text("name").notNull(),
 	website: text("website").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),

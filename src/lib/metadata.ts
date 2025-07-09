@@ -1,6 +1,9 @@
 import { ManagementClient } from 'auth0';
 import { auth0 } from './auth0';
 import { redis } from './redis';
+import { db } from './db/db';
+import { brands, type Brand, type NewBrand } from './db/schema';
+import { eq } from 'drizzle-orm';
 
 const management = new ManagementClient({
 	domain: process.env.AUTH0_MGMT_API_DOMAIN!,
@@ -85,3 +88,36 @@ export async function clearAppMetadataCache(): Promise<void> {
 	}
 }
 
+export async function getBrandFromDb(brandId: string): Promise<Brand | undefined> {
+	try {
+		const result = await db.query.brands.findFirst({
+			where: eq(brands.id, brandId)
+		});
+		return result;
+	} catch (error) {
+		console.error('Error fetching brand from database:', error);
+		return undefined;
+	}
+}
+
+export async function createBrand(brandData: { id: string; name: string; website: string }): Promise<Brand | null> {
+	try {
+		const newBrand: NewBrand = {
+			id: brandData.id,
+			name: brandData.name,
+			website: brandData.website,
+			enabled: true,
+		};
+		
+		const result = await db.insert(brands).values(newBrand).returning();
+		return result[0] || null;
+	} catch (error) {
+		console.error('Error creating brand in database:', error);
+		return null;
+	}
+}
+
+export async function getBrandMetadata(brandId: string): Promise<undefined | ElmoBrandMetadata> {
+	const orgs = await getElmoOrgs();
+	return orgs.find(org => org.id === brandId);
+}
