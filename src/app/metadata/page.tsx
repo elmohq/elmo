@@ -21,8 +21,8 @@ export default async function MetadataPage() {
 			<h2>Session</h2>
 			<pre>{JSON.stringify(session, null, 2)}</pre>
 
-            <h2>Redis Cached Elmo Orgs</h2>
-            <pre>{JSON.stringify(await getElmoOrgs(), null, 2)}</pre>
+			<h2>Redis Cached Elmo Orgs</h2>
+			<pre>{JSON.stringify(await getElmoOrgs(), null, 2)}</pre>
 		</div>
 	);
 }

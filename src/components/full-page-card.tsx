@@ -22,7 +22,7 @@ export default function FullPageCard({
 	showBackButton = false,
 	backButtonHref = "/app",
 	backButtonText = "Go Back",
-	className = "w-md"
+	className = "w-md",
 }: FullPageCardProps) {
 	return (
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
@@ -35,11 +35,7 @@ export default function FullPageCard({
 					{(title || subtitle) && (
 						<CardHeader className="text-center">
 							{title && <CardTitle className="text-xl">{title}</CardTitle>}
-							{subtitle && (
-								<p className="text-sm text-muted-foreground">
-									{subtitle}
-								</p>
-							)}
+							{subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
 						</CardHeader>
 					)}
 					{children && (
@@ -53,18 +49,12 @@ export default function FullPageCard({
 				</Card>
 				{showBackButton && (
 					<div className="flex justify-center">
-						<Button 
-							variant="outline" 
-							size="sm"
-							asChild
-						>
-							<Link href={backButtonHref}>
-								{backButtonText}
-							</Link>
+						<Button variant="outline" size="sm" asChild>
+							<Link href={backButtonHref}>{backButtonText}</Link>
 						</Button>
 					</div>
 				)}
 			</div>
 		</div>
 	);
-} 
+}

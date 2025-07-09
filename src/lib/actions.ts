@@ -37,10 +37,10 @@ export async function createBrandAction(formData: FormData) {
 
 		// Revalidate the page to show the new state
 		revalidatePath(`/app/${brandId}`);
-		
+
 		return { success: true, brand: result };
 	} catch (error) {
 		console.error("Error creating brand:", error);
 		throw new Error("Failed to create brand");
 	}
-} 
+}

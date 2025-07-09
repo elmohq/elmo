@@ -17,11 +17,7 @@ export default function Profile() {
 
 				{WHITE_LABEL_CONFIG.name}
 				<div style={{ textAlign: "center" }}>
-					<img
-						src={user.picture}
-						alt="Profile"
-						style={{ borderRadius: "50%", width: "80px", height: "80px" }}
-					/>
+					<img src={user.picture} alt="Profile" style={{ borderRadius: "50%", width: "80px", height: "80px" }} />
 					<h2>{user.name}</h2>
 					<p>{user.email}</p>
 					<pre>{JSON.stringify(user, null, 2)}</pre>

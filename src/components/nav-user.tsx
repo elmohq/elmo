@@ -110,7 +110,7 @@ export function NavUser() {
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
 								<Link href="/app">
-								<IconStatusChange />
+									<IconStatusChange />
 									Switch Brand
 								</Link>
 							</DropdownMenuItem>

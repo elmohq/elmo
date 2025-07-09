@@ -34,15 +34,11 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 	};
 
 	return (
-		<FullPageCard
-			title={`Setup ${brandName}`}
-			subtitle="Configure your brand to get started"
-			showBackButton={true}
-		>
+		<FullPageCard title={`Setup ${brandName}`} subtitle="Configure your brand to get started" showBackButton={true}>
 			<form action={handleSubmit} className="space-y-4">
 				<input type="hidden" name="brandId" value={brandId} />
 				<input type="hidden" name="brandName" value={brandName} />
-				
+
 				<div className="space-y-2">
 					<Label htmlFor="website">Website URL</Label>
 					<Input
@@ -53,16 +49,10 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 						required
 						disabled={isLoading}
 					/>
-					<p className="text-xs text-muted-foreground">
-						Enter your brand's website URL
-					</p>
+					<p className="text-xs text-muted-foreground">Enter your brand's website URL</p>
 				</div>
 
-				{error && (
-					<p className="text-sm text-destructive">
-						{error}
-					</p>
-				)}
+				{error && <p className="text-sm text-destructive">{error}</p>}
 
 				<Button type="submit" className="w-full" disabled={isLoading}>
 					{isLoading ? "Setting up..." : "Complete Setup"}
@@ -70,4 +60,4 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 			</form>
 		</FullPageCard>
 	);
-} 
+}
