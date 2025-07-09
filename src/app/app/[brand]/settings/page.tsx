@@ -80,14 +80,7 @@ export default function BrandSettingsPage() {
 					<p className="text-muted-foreground">Manage your brand configuration</p>
 				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle>{brand.name}</CardTitle>
-						<CardDescription>
-							Update your brand's website URL and other settings
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
+				
 						<form action={handleSubmit} className="space-y-4">
 							<div className="space-y-2">
 								<Label htmlFor="website">Website URL</Label>
@@ -118,13 +111,11 @@ export default function BrandSettingsPage() {
 							)}
 
 							<div className="flex gap-2">
-								<Button type="submit" disabled={isSubmitting}>
+								<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
 									{isSubmitting ? "Saving..." : "Save Changes"}
 								</Button>
 							</div>
 						</form>
-					</CardContent>
-				</Card>
 			</div>
 		</div>
 	);
