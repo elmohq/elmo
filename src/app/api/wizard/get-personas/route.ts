@@ -14,15 +14,23 @@ export async function POST(request: NextRequest) {
 		}
 
 		const productList = products.join(', ');
-		const prompt = `What are groups of personas or purposes/uses of the products for a company that sells the following types of products would sell to:
-${productList}
+		const prompt = `For a company that sells the following types of products: ${productList}
 
-Be concise and output to a comma separated list contained within <out> xml tags and <group> tags. List up to 3 groups with up to 5 items in each group. Don't include a name for the group in the group.
+Generate strategic categories that would be useful for comparison tracking and market analysis. Think about broad dimensions that matter for business decisions and competitive positioning.
 
-Example format:
-<group><out>fitness enthusiasts,athletes,bodybuilders,gym goers,personal trainers</out></group>
-<group><out>busy professionals,parents,students,seniors,health conscious individuals</out></group>
-<group><out>weight loss seekers,muscle builders,recovery focused,endurance athletes,wellness enthusiasts</out></group>`;
+Create up to 3 strategic category groups with up to 5 items each. Each category should represent a key dimension for comparison (like customer type, use case, business model, company size, role, industry vertical, etc.).
+
+The category names should be broad strategic dimensions that make sense for tracking "best [product] for [dimension]" type comparisons.
+
+Examples for context:
+- For a headless CMS: "Framework" (next, react, vue, nuxt, gatsby), "User Type" (developers, agencies, marketers, enterprise, startups)
+- For ecommerce tools: "Business Model" (dropshipping, wholesale, retail, subscription), "Company Size" (startup, SMB, enterprise, fortune 500)
+- For marketing software: "Industry" (fashion, electronics, food, healthcare, saas), "Role" (founder, marketing manager, developer, analyst)
+
+Format your response as:
+<group name="Strategic Category Name"><out>item1,item2,item3,item4,item5</out></group>
+
+Focus on dimensions that ecommerce brands would find valuable for competitive analysis and market positioning.`;
 
 		const { text } = await generateText({
 			model: anthropic("claude-3-5-sonnet-20241022"),
@@ -30,15 +38,21 @@ Example format:
 			maxTokens: 800,
 		});
 
-		// Extract groups
-		const groupMatches = text.match(/<group><out>([\s\S]*?)<\/out><\/group>/g);
+		// Extract groups with names
+		const groupMatches = text.match(/<group name="([^"]*?)"><out>([\s\S]*?)<\/out><\/group>/g);
 		const personaGroups = groupMatches 
 			? groupMatches.map(groupMatch => {
-					const contentMatch = groupMatch.match(/<group><out>([\s\S]*?)<\/out><\/group>/);
-					return contentMatch 
-						? contentMatch[1].split(',').map(p => p.trim()).filter(p => p.length > 0)
-						: [];
-				}).filter(group => group.length > 0)
+					const fullMatch = groupMatch.match(/<group name="([^"]*?)"><out>([\s\S]*?)<\/out><\/group>/);
+					if (fullMatch) {
+						const groupName = fullMatch[1];
+						const personas = fullMatch[2].split(',').map(p => p.trim()).filter(p => p.length > 0);
+						return {
+							name: groupName,
+							personas: personas
+						};
+					}
+					return null;
+				}).filter(group => group !== null)
 			: [];
 
 		console.log("GET-PERSONAS OUTPUT:", { personaGroups });

@@ -14,7 +14,10 @@ import { TagsInput } from "@/components/ui/tags-input";
 interface WizardData {
 	products: string[];
 	competitors: string[];
-	personaGroups: string[][];
+	personaGroups: Array<{
+		name: string;
+		personas: string[];
+	}>;
 	keywords: Array<{ keyword: string; search_volume: number; difficulty: number }>;
 	reputationTerms: string[];
 }
@@ -83,7 +86,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const handlePersonaGroupChange = useCallback((groupIndex: number, newValues: string[]) => {
 		setWizardData(prev => {
 			const newPersonaGroups = [...prev.personaGroups];
-			newPersonaGroups[groupIndex] = newValues;
+			newPersonaGroups[groupIndex] = {
+				...newPersonaGroups[groupIndex],
+				personas: newValues
+			};
 			return { ...prev, personaGroups: newPersonaGroups };
 		});
 	}, []);
@@ -364,9 +370,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<CardContent className="space-y-6">
 							{wizardData.personaGroups.map((group, groupIndex) => (
 								<div key={groupIndex}>
-									<Label className="text-sm font-medium">Group {groupIndex + 1}</Label>
+									<Label className="text-sm font-medium">{group.name}</Label>
 									<EditableTagsInput
-										items={group}
+										items={group.personas}
 										onValueChange={(newValues) => handlePersonaGroupChange(groupIndex, newValues)}
 										placeholder="Add persona..."
 										maxItems={5}

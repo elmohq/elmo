@@ -61,15 +61,12 @@ export async function POST(request: NextRequest) {
 
 		// Add persona groups
 		if (personaGroups && Array.isArray(personaGroups)) {
-			for (let i = 0; i < personaGroups.length; i++) {
-				const group = personaGroups[i];
-				const groupName = `Persona Group ${i + 1}`;
-				
-				if (Array.isArray(group)) {
-					for (const persona of group) {
+			for (const group of personaGroups) {
+				if (group && group.name && Array.isArray(group.personas)) {
+					for (const persona of group.personas) {
 						promptsToCreate.push({
 							brandId,
-							group: groupName,
+							group: group.name,
 							value: persona,
 							reputation: false,
 							enabled: true,
