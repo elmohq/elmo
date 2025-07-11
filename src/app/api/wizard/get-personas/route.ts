@@ -16,18 +16,22 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Take the first 2-3 product categories for autocomplete queries
-		const topProducts = products.slice(0, 3);
+		const topProducts = products.slice(0, 5);
 		const allSuggestions: string[] = [];
 
 		// Get autocomplete suggestions for each product
 		for (const product of topProducts) {
 			try {
-				const task = new client.SerpGoogleAutocompleteTaskPostRequestInfo();
-				task.keyword = `best ${product} for`;
+				const task = new client.SerpGoogleAutocompleteLiveAdvancedRequestInfo();
+				task.keyword = `best ${product}`;
 				task.location_code = 2840;
 				task.language_code = "en";
 
-				const response = await dfsSerpApi.googleAutocompleteTaskPost([task]);
+				console.log("task.keyword", task.keyword);
+
+				const response = await dfsSerpApi.googleAutocompleteLiveAdvanced([task]);
+
+				console.log("response", response);
 
 				if (response && response.tasks && response.tasks[0] && response.tasks[0].result) {
 					const items = response.tasks[0].result[0]?.items || [];
