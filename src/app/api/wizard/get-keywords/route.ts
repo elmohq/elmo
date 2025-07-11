@@ -2,6 +2,67 @@ import { NextRequest, NextResponse } from "next/server";
 import * as client from 'dataforseo-client'
 import { dfsLabsApi } from "@/lib/dataforseo";
 
+// Helper function to perform stratified random sampling
+function stratifiedSample(keywords: any[], targetSize: number) {
+	if (keywords.length <= targetSize) {
+		return keywords;
+	}
+
+	// Find min/max for search volume and difficulty
+	const searchVolumes = keywords.map(k => k.search_volume);
+	const difficulties = keywords.map(k => k.difficulty);
+	
+	const minVolume = Math.min(...searchVolumes);
+	const maxVolume = Math.max(...searchVolumes);
+	const minDifficulty = Math.min(...difficulties);
+	const maxDifficulty = Math.max(...difficulties);
+
+	// Create 3x3 grid of buckets (9 total)
+	const buckets: any[][] = Array(9).fill(null).map(() => []);
+	
+	// Assign each keyword to a bucket based on its position in the ranges
+	keywords.forEach(keyword => {
+		const volumeIndex = maxVolume === minVolume ? 0 : 
+			Math.min(2, Math.floor((keyword.search_volume - minVolume) / (maxVolume - minVolume) * 3));
+		const difficultyIndex = maxDifficulty === minDifficulty ? 0 : 
+			Math.min(2, Math.floor((keyword.difficulty - minDifficulty) / (maxDifficulty - minDifficulty) * 3));
+		
+		const bucketIndex = volumeIndex * 3 + difficultyIndex;
+		buckets[bucketIndex].push(keyword);
+	});
+
+	// Calculate how many keywords to sample from each bucket
+	const nonEmptyBuckets = buckets.filter(bucket => bucket.length > 0);
+	const samplesPerBucket = Math.floor(targetSize / nonEmptyBuckets.length);
+	let remainingSamples = targetSize - (samplesPerBucket * nonEmptyBuckets.length);
+
+	const sampledKeywords: any[] = [];
+
+	// Sample from each bucket
+	nonEmptyBuckets.forEach(bucket => {
+		let sampleCount = samplesPerBucket;
+		
+		// Distribute remaining samples
+		if (remainingSamples > 0) {
+			sampleCount++;
+			remainingSamples--;
+		}
+
+		// Randomly sample from this bucket
+		const shuffled = [...bucket].sort(() => Math.random() - 0.5);
+		sampledKeywords.push(...shuffled.slice(0, Math.min(sampleCount, bucket.length)));
+	});
+
+	// If we still need more samples (edge case), add random ones
+	if (sampledKeywords.length < targetSize) {
+		const remaining = keywords.filter(k => !sampledKeywords.includes(k));
+		const shuffled = remaining.sort(() => Math.random() - 0.5);
+		sampledKeywords.push(...shuffled.slice(0, targetSize - sampledKeywords.length));
+	}
+
+	return sampledKeywords.slice(0, targetSize);
+}
+
 export async function POST(request: NextRequest) {
 	try {
 		const { domain } = await request.json();
@@ -89,8 +150,15 @@ export async function POST(request: NextRequest) {
 					};
 				});
 
-				console.log("Final processed keywords:", keywords);
-				return NextResponse.json({ keywords });
+				console.log("Total keywords before sampling:", keywords.length);
+				
+				// Apply stratified sampling if we have more than 30 keywords
+				const finalKeywords = stratifiedSample(keywords, 30);
+				
+				console.log("Final keywords after sampling:", finalKeywords.length);
+				console.log("Sample of final keywords:", finalKeywords.slice(0, 5));
+				
+				return NextResponse.json({ keywords: finalKeywords });
 			}
 		}
 		
