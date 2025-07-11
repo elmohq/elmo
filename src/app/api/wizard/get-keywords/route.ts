@@ -88,13 +88,11 @@ export async function POST(request: NextRequest) {
 		requestInfo.include_clickstream_data = false;
 		requestInfo.limit = 200; // Increased from 100 to 200
 		requestInfo.filters = [
-			["keyword_info.competition", ">", 0], // Exclude competition = 0
+			["keyword_info.competition", ">", 0],
 			"and",
-			["keyword_info.competition", "<", 0.6], // Relaxed from 0.4 to 0.6
+			["keyword_info.competition", "<", 0.9],
 			"and",
-			["keyword_info.search_volume", ">", 500], // Lowered from 1000 to 500
-			// "and",
-			// ["search_intent_info.main_intent", "=", "commercial"] // Filter for commercial intent - doesn't quite do what we want
+			["keyword_info.search_volume", ">", 500],
 		];
 
 		console.log("DataForSEO Request Config:", {

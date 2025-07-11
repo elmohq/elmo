@@ -1,15 +1,30 @@
 "use client";
 
-import { useState, useEffect, useCallback, memo } from "react";
+import { useState, useCallback, memo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, X, Sparkles } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Save } from "lucide-react";
 import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@/components/ui/tags-input";
+import { Separator } from "@/components/ui/separator";
+
+// Step status types
+type StepStatus = 'pending' | 'running' | 'completed' | 'error' | 'blocked';
+
+// Step configuration
+interface WizardStep {
+	id: string;
+	title: string;
+	dependencies: string[];
+	status: StepStatus;
+	progress: number;
+	data?: any;
+	error?: string;
+}
 
 interface WizardData {
 	products: string[];
@@ -19,18 +34,11 @@ interface WizardData {
 		personas: string[];
 	}>;
 	keywords: Array<{ keyword: string; search_volume: number; difficulty: number; selected: boolean }>;
-	reputationTerms: string[];
+	customPrompts: string[];
 }
 
 interface PromptWizardProps {
 	onComplete: () => void;
-}
-
-interface EditableTagsInputProps {
-	items: string[];
-	onValueChange: (newValues: string[]) => void;
-	placeholder?: string;
-	maxItems?: number;
 }
 
 const EditableTagsInput = memo(({ 
@@ -38,7 +46,12 @@ const EditableTagsInput = memo(({
 	onValueChange, 
 	placeholder = "Add item...",
 	maxItems = 10 
-}: EditableTagsInputProps) => {
+}: {
+	items: string[];
+	onValueChange: (value: string[]) => void;
+	placeholder?: string;
+	maxItems?: number;
+}) => {
 	return (
 		<div className="space-y-2">
 			<TagsInput
@@ -58,68 +71,144 @@ EditableTagsInput.displayName = "EditableTagsInput";
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand, revalidate } = useBrand();
-	const [currentStep, setCurrentStep] = useState(0);
-	const [loading, setLoading] = useState(false);
-	const [analysisProgress, setAnalysisProgress] = useState(0);
-	const [localProducts, setLocalProducts] = useState<string[]>([]);
+	const [currentPhase, setCurrentPhase] = useState<'idle' | 'processing' | 'review' | 'complete'>('idle');
+	const [isGenerating, setIsGenerating] = useState(false);
 	const [wizardData, setWizardData] = useState<WizardData>({
 		products: [],
 		competitors: [],
 		personaGroups: [],
 		keywords: [],
-		reputationTerms: [],
+		customPrompts: [],
 	});
+	
+	// Track which steps have been started to prevent multiple executions
+	const startedSteps = useRef<Set<string>>(new Set());
+	
+	// Track current progress for each step to ensure monotonic increase
+	const stepProgress = useRef<Record<string, number>>({});
+	
+	// Track completed steps to prevent progress updates after completion
+	const completedSteps = useRef<Set<string>>(new Set());
 
-	// Memoized callback functions to prevent unnecessary re-renders
-	const handleLocalProductsChange = useCallback((newValues: string[]) => {
-		setLocalProducts(newValues);
+	// Initialize wizard steps
+	const [steps, setSteps] = useState<WizardStep[]>([
+		{
+			id: 'get-keywords',
+			title: 'Find SEO Keywords',
+			dependencies: [],
+			status: 'pending',
+			progress: 0,
+		},
+		{
+			id: 'analyze-website',
+			title: 'Analyze Products',
+			dependencies: [],
+			status: 'pending',
+			progress: 0,
+		},
+		{
+			id: 'get-competitors',
+			title: 'Discover Competitors',
+			dependencies: ['analyze-website'],
+			status: 'blocked',
+			progress: 0,
+		},
+		{
+			id: 'analyze-personas',
+			title: 'Generate Personas',
+			dependencies: ['analyze-website'],
+			status: 'blocked',
+			progress: 0,
+		},
+	]);
+
+	// Helper to get step status icon
+	const getStepStatusIcon = (status: StepStatus) => {
+		switch (status) {
+			case 'pending':
+				return <Clock className="h-4 w-4 text-muted-foreground" />;
+			case 'running':
+				return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+			case 'completed':
+				return <CheckCircle className="h-4 w-4 text-green-500" />;
+			case 'error':
+				return <AlertCircle className="h-4 w-4 text-red-500" />;
+			case 'blocked':
+				return <Clock className="h-4 w-4 text-muted-foreground" />;
+			default:
+				return <Clock className="h-4 w-4 text-muted-foreground" />;
+		}
+	};
+
+	// Helper to update step status
+	const updateStepStatus = useCallback((stepId: string, updates: Partial<WizardStep>) => {
+		setSteps(prev => prev.map(step => 
+			step.id === stepId ? { ...step, ...updates } : step
+		));
 	}, []);
 
-	const handleCompetitorsChange = useCallback((newValues: string[]) => {
-		setWizardData(prev => ({ ...prev, competitors: newValues }));
-	}, []);
-
-	const handleReputationTermsChange = useCallback((newValues: string[]) => {
-		setWizardData(prev => ({ ...prev, reputationTerms: newValues }));
-	}, []);
-
-	const handlePersonaGroupChange = useCallback((groupIndex: number, newValues: string[]) => {
-		setWizardData(prev => {
-			const newPersonaGroups = [...prev.personaGroups];
-			newPersonaGroups[groupIndex] = {
-				...newPersonaGroups[groupIndex],
-				personas: newValues
-			};
-			return { ...prev, personaGroups: newPersonaGroups };
+	// Execute a single step
+	const executeStep = useCallback(async (stepId: string, dependencyData?: any) => {
+		// Check if step has already been started
+		if (startedSteps.current.has(stepId)) return;
+		
+		// Add guard to prevent multiple executions
+		setSteps(prev => {
+			const step = prev.find(s => s.id === stepId);
+			if (!step || step.status !== 'pending') return prev;
+			
+			// Mark this step as started
+			startedSteps.current.add(stepId);
+			
+			// Mark as running immediately
+			return prev.map(s => 
+				s.id === stepId ? { ...s, status: 'running' as StepStatus, progress: 0 } : s
+			);
 		});
-	}, []);
 
-	const steps = [
-		"Analyze Website",
-		"Review Products", 
-		"Get Competitors",
-		"Analyze Personas",
-		"SEO Keywords",
-		"Review & Create",
-		"Complete"
-	];
+		try {
+			switch (stepId) {
+				case 'analyze-website':
+					await executeAnalyzeWebsite(stepId);
+					break;
+				case 'get-keywords':
+					await executeGetKeywords(stepId);
+					break;
+				case 'get-competitors':
+					await executeGetCompetitors(stepId, dependencyData);
+					break;
+				case 'analyze-personas':
+					await executeAnalyzePersonas(stepId, dependencyData);
+					break;
+			}
+		} catch (error) {
+			updateStepStatus(stepId, { 
+				status: 'error', 
+				error: error instanceof Error ? error.message : 'Unknown error'
+			});
+		}
+	}, [updateStepStatus, brand]);
 
-	const progress = ((currentStep + 1) / steps.length) * 100;
-
-	const analyzeWebsite = async () => {
-		if (!brand?.website) return;
+	// Individual step implementations
+	const executeAnalyzeWebsite = async (stepId: string) => {
+		if (!brand?.website) throw new Error('No website URL');
 		
-		setLoading(true);
-		setAnalysisProgress(0);
+		// Initialize progress for this step
+		stepProgress.current[stepId] = 0;
+		completedSteps.current.delete(stepId);
 		
-		// Start progress animation (30 seconds)
-		const startTime = Date.now();
+		// Simulate progress with smooth monotonic increase
 		const progressInterval = setInterval(() => {
-			const elapsed = Date.now() - startTime;
-			const progress = Math.min((elapsed / 30000) * 100, 95); // Cap at 95% until API completes
-			setAnalysisProgress(progress);
-		}, 100);
-		
+			// Check if step is completed to prevent updates after completion
+			if (completedSteps.current.has(stepId)) return;
+			
+			const currentProgress = stepProgress.current[stepId] || 0;
+			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
+			const newProgress = Math.min(95, currentProgress + increment);
+			stepProgress.current[stepId] = newProgress;
+			updateStepStatus(stepId, { progress: newProgress });
+		}, 200); // Faster interval for smoother animation
+
 		try {
 			const response = await fetch("/api/wizard/analyze-website", {
 				method: "POST",
@@ -127,75 +216,41 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				body: JSON.stringify({ website: brand.website }),
 			});
 			
-			if (response.ok) {
-				const data = await response.json();
-				setWizardData(prev => ({ ...prev, products: data.products }));
-				setLocalProducts(data.products);
-				
-				// Rush to completion
-				setAnalysisProgress(100);
-				setTimeout(() => {
-					setCurrentStep(1);
-					setAnalysisProgress(0);
-					setLoading(false);
-				}, 300);
-			} else {
-				setLoading(false);
-			}
-		} catch (error) {
-			console.error("Error analyzing website:", error);
-			setLoading(false);
-		} finally {
+			if (!response.ok) throw new Error('Failed to analyze website');
+			
+			const data = await response.json();
+			setWizardData(prev => ({ ...prev, products: data.products }));
+			
+			// Mark step as completed to prevent further progress updates
+			completedSteps.current.add(stepId);
 			clearInterval(progressInterval);
-		}
-	};
-
-	const getCompetitors = async () => {
-		setLoading(true);
-		try {
-			const response = await fetch("/api/wizard/get-competitors", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ products: wizardData.products }),
-			});
-			
-			if (response.ok) {
-				const data = await response.json();
-				setWizardData(prev => ({ ...prev, competitors: data.competitors }));
-				setCurrentStep(3);
-			}
-		} catch (error) {
-			console.error("Error getting competitors:", error);
+			updateStepStatus(stepId, { status: 'completed', progress: 100, data: data.products });
 		} finally {
-			setLoading(false);
+			// Clean up progress tracking after a short delay to prevent flicker
+			setTimeout(() => {
+				delete stepProgress.current[stepId];
+			}, 100);
 		}
 	};
 
-	const getPersonas = async () => {
-		setLoading(true);
-		try {
-			const response = await fetch("/api/wizard/get-personas", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ products: wizardData.products }),
-			});
-			
-			if (response.ok) {
-				const data = await response.json();
-				setWizardData(prev => ({ ...prev, personaGroups: data.personaGroups }));
-				setCurrentStep(4);
-			}
-		} catch (error) {
-			console.error("Error getting personas:", error);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const getKeywords = async () => {
-		if (!brand?.website) return;
+	const executeGetKeywords = async (stepId: string) => {
+		if (!brand?.website) throw new Error('No website URL');
 		
-		setLoading(true);
+		// Initialize progress for this step
+		stepProgress.current[stepId] = 0;
+		completedSteps.current.delete(stepId);
+		
+		const progressInterval = setInterval(() => {
+			// Check if step is completed to prevent updates after completion
+			if (completedSteps.current.has(stepId)) return;
+			
+			const currentProgress = stepProgress.current[stepId] || 0;
+			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
+			const newProgress = Math.min(95, currentProgress + increment);
+			stepProgress.current[stepId] = newProgress;
+			updateStepStatus(stepId, { progress: newProgress });
+		}, 200); // Faster interval for smoother animation
+
 		try {
 			const response = await fetch("/api/wizard/get-keywords", {
 				method: "POST",
@@ -203,68 +258,196 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				body: JSON.stringify({ domain: brand.website }),
 			});
 			
-			if (response.ok) {
-				const data = await response.json();
-				// Add selected property to each keyword (default to false)
-				const keywordsWithSelection = data.keywords.map((kw: any) => ({
-					...kw,
-					selected: false
-				}));
-				setWizardData(prev => ({ ...prev, keywords: keywordsWithSelection }));
-				// Generate reputation terms from products
-				const reputationTerms = wizardData.products.map(product => `best ${product}`);
-				setWizardData(prev => ({ ...prev, reputationTerms }));
-				setCurrentStep(5);
-			}
-		} catch (error) {
-			console.error("Error getting keywords:", error);
+			if (!response.ok) throw new Error('Failed to get keywords');
+			
+			const data = await response.json();
+			const keywordsWithSelection = data.keywords.map((kw: any) => ({
+				...kw,
+				selected: false
+			}));
+			setWizardData(prev => ({ ...prev, keywords: keywordsWithSelection }));
+			
+			// Mark step as completed to prevent further progress updates
+			completedSteps.current.add(stepId);
+			clearInterval(progressInterval);
+			updateStepStatus(stepId, { status: 'completed', progress: 100, data: keywordsWithSelection });
 		} finally {
-			setLoading(false);
+			// Clean up progress tracking after a short delay to prevent flicker
+			setTimeout(() => {
+				delete stepProgress.current[stepId];
+			}, 100);
 		}
 	};
 
-	// Add function to handle keyword selection
-	const handleKeywordSelection = useCallback((index: number, selected: boolean) => {
-		setWizardData(prev => {
-			const currentSelected = prev.keywords.filter(kw => kw.selected).length;
+	const executeGetCompetitors = async (stepId: string, dependencyData?: any) => {
+		// Initialize progress for this step
+		stepProgress.current[stepId] = 0;
+		completedSteps.current.delete(stepId);
+		
+		const progressInterval = setInterval(() => {
+			// Check if step is completed to prevent updates after completion
+			if (completedSteps.current.has(stepId)) return;
 			
-			// If trying to select and already at limit, don't allow
-			if (selected && currentSelected >= 30) {
-				return prev;
+			const currentProgress = stepProgress.current[stepId] || 0;
+			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
+			const newProgress = Math.min(95, currentProgress + increment);
+			stepProgress.current[stepId] = newProgress;
+			updateStepStatus(stepId, { progress: newProgress });
+		}, 200); // Faster interval for smoother animation
+
+		try {
+			// Get current products from dependency data or wizard data
+			const currentProducts = dependencyData?.products || wizardData.products;
+			
+			// Validate that we have products data
+			if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
+				throw new Error('No products data available for competitor analysis');
 			}
 			
-			const newKeywords = [...prev.keywords];
-			newKeywords[index] = { ...newKeywords[index], selected };
-			return { ...prev, keywords: newKeywords };
+			const response = await fetch("/api/wizard/get-competitors", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ products: currentProducts }),
+			});
+			
+			if (!response.ok) throw new Error('Failed to get competitors');
+			
+			const data = await response.json();
+			setWizardData(prev => ({ ...prev, competitors: data.competitors }));
+			
+			// Mark step as completed to prevent further progress updates
+			completedSteps.current.add(stepId);
+			clearInterval(progressInterval);
+			updateStepStatus(stepId, { status: 'completed', progress: 100, data: data.competitors });
+		} finally {
+			// Clean up progress tracking after a short delay to prevent flicker
+			setTimeout(() => {
+				delete stepProgress.current[stepId];
+			}, 100);
+		}
+	};
+
+	const executeAnalyzePersonas = async (stepId: string, dependencyData?: any) => {
+		// Initialize progress for this step
+		stepProgress.current[stepId] = 0;
+		completedSteps.current.delete(stepId);
+		
+		const progressInterval = setInterval(() => {
+			// Check if step is completed to prevent updates after completion
+			if (completedSteps.current.has(stepId)) return;
+			
+			const currentProgress = stepProgress.current[stepId] || 0;
+			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
+			const newProgress = Math.min(95, currentProgress + increment);
+			stepProgress.current[stepId] = newProgress;
+			updateStepStatus(stepId, { progress: newProgress });
+		}, 200); // Faster interval for smoother animation
+
+		try {
+			// Get current products from dependency data or wizard data
+			const currentProducts = dependencyData?.products || wizardData.products;
+			
+			// Validate that we have products data
+			if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
+				throw new Error('No products data available for persona analysis');
+			}
+			
+			const response = await fetch("/api/wizard/get-personas", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ products: currentProducts }),
+			});
+			
+			if (!response.ok) throw new Error('Failed to analyze personas');
+			
+			const data = await response.json();
+			setWizardData(prev => ({ ...prev, personaGroups: data.personaGroups }));
+			
+			// Mark step as completed to prevent further progress updates
+			completedSteps.current.add(stepId);
+			clearInterval(progressInterval);
+			updateStepStatus(stepId, { status: 'completed', progress: 100, data: data.personaGroups });
+		} finally {
+			// Clean up progress tracking after a short delay to prevent flicker
+			setTimeout(() => {
+				delete stepProgress.current[stepId];
+			}, 100);
+		}
+	};
+
+	// Start all parallel processing
+	const startProcessing = async () => {
+		// Set loading state immediately
+		setIsGenerating(true);
+		
+		// Clear started steps tracking
+		startedSteps.current.clear();
+		
+		// Clear progress tracking
+		stepProgress.current = {};
+		
+		// Clear completed steps tracking
+		completedSteps.current.clear();
+		
+		setCurrentPhase('processing');
+		
+		// Start independent steps immediately
+		const independentSteps = steps.filter(step => step.dependencies.length === 0);
+		for (const step of independentSteps) {
+			executeStep(step.id);
+		}
+	};
+
+	// Monitor for dependency completion and start next steps
+	useEffect(() => {
+		if (currentPhase !== 'processing') return;
+		
+		// Update blocked steps to pending if dependencies are met, and start ready steps
+		setSteps(prev => {
+			let hasChanges = false;
+			const updated = prev.map(step => {
+				if (step.status === 'blocked') {
+					const depsCompleted = step.dependencies.every(depId => {
+						const depStep = prev.find(s => s.id === depId);
+						return depStep?.status === 'completed';
+					});
+					if (depsCompleted) {
+						hasChanges = true;
+						// Get dependency data from completed steps
+						const dependencyData = step.dependencies.reduce((acc, depId) => {
+							const depStep = prev.find(s => s.id === depId);
+							if (depStep?.data) {
+								if (depId === 'analyze-website') {
+									acc.products = depStep.data;
+								}
+							}
+							return acc;
+						}, {} as any);
+						
+						// Start the step immediately with dependency data
+						executeStep(step.id, dependencyData);
+						return { ...step, status: 'pending' as StepStatus };
+					}
+				}
+				return step;
+			});
+			return hasChanges ? updated : prev;
 		});
-	}, []);
+	}, [steps, currentPhase, executeStep]);
 
-	// Add function to select all keywords
-	const handleSelectAllKeywords = useCallback(() => {
-		setWizardData(prev => {
-			const keywordsToSelect = prev.keywords.slice(0, 30); // Only select first 30
-			const updatedKeywords = prev.keywords.map((kw, index) => ({
-				...kw,
-				selected: index < 30 ? true : kw.selected
-			}));
-			return { ...prev, keywords: updatedKeywords };
-		});
-	}, []);
+	// Check if all steps are completed
+	useEffect(() => {
+		const allCompleted = steps.every(step => step.status === 'completed');
+		if (allCompleted && currentPhase === 'processing') {
+			setCurrentPhase('review');
+		}
+	}, [steps, currentPhase, wizardData.products]);
 
-	// Add function to deselect all keywords
-	const handleDeselectAllKeywords = useCallback(() => {
-		setWizardData(prev => ({
-			...prev,
-			keywords: prev.keywords.map(kw => ({ ...kw, selected: false }))
-		}));
-	}, []);
-
+	// Create final prompts
 	const createPrompts = async () => {
 		if (!brand?.id) return;
 		
-		setLoading(true);
 		try {
-			// Only send selected keywords
 			const selectedKeywords = wizardData.keywords.filter(kw => kw.selected);
 			
 			const response = await fetch("/api/wizard/create-prompts", {
@@ -272,10 +455,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					brandId: brand.id,
-					reputationTerms: wizardData.reputationTerms,
 					competitors: wizardData.competitors,
 					personaGroups: wizardData.personaGroups,
 					keywords: selectedKeywords,
+					customPrompts: wizardData.customPrompts,
 				}),
 			});
 			
@@ -285,324 +468,267 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			}
 		} catch (error) {
 			console.error("Error creating prompts:", error);
-		} finally {
-			setLoading(false);
 		}
 	};
 
-	const renderStep = () => {
-		switch (currentStep) {
-			case 0:
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								<Sparkles className="h-5 w-5" />
-								Welcome to the Prompt Setup Wizard
-							</CardTitle>
-							<CardDescription>
-								We'll analyze your website and help you create tracking prompts in a few simple steps.
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-4">
-								<div>
-									<Label>Website to analyze</Label>
-									<Input value={brand?.website || ""} disabled />
+	// Render idle phase (initial state)
+	if (currentPhase === 'idle') {
+		return (
+			<div className="max-w-2xl mx-auto space-y-6">
+				<Card>
+					<CardContent className="space-y-4">
+						{steps.map((step) => (
+							<div key={step.id} className="flex items-center gap-4">
+								{/* Left half - Icon and name */}
+								<div className="flex items-center gap-3 flex-1">
+									{getStepStatusIcon(step.status)}
+									<div>
+										<div className="text-sm font-medium">{step.title}</div>
+									</div>
 								</div>
-								<Button 
-									onClick={analyzeWebsite} 
-									disabled={loading} 
-									className="w-full relative overflow-hidden cursor-pointer"
-								>
-									{loading && (
-										<div 
-											className="absolute inset-0 bg-primary/20 transition-all duration-300"
-											style={{
-												width: `${analysisProgress}%`,
-											}}
+
+								{/* Right half - Progress bar placeholder */}
+								<div className="flex-1">
+									<Progress value={0} className="h-2 bg-muted/60 [&>*]:bg-muted-foreground/60" />
+								</div>
+							</div>
+						))}
+					</CardContent>
+				</Card>
+
+				<div className="flex">
+					<Button 
+						onClick={startProcessing} 
+						disabled={isGenerating}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						{isGenerating ? (
+							<Loader2 className="h-4 w-4 animate-spin" />
+						) : (
+							<Play className="h-4 w-4" />
+						)}
+						{isGenerating ? 'Generating...' : 'Generate Prompts'}
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
+	// Render different phases
+	if (currentPhase === 'processing') {
+		return (
+			<div className="max-w-2xl mx-auto space-y-6">
+				<Card>
+					<CardContent className="space-y-4">
+						{steps.map((step) => (
+							<div key={step.id} className="flex items-center gap-4">
+								{/* Left half - Icon and name */}
+								<div className="flex items-center gap-3 flex-1">
+									{getStepStatusIcon(step.status)}
+									<div>
+										<div className="text-sm font-medium">{step.title}</div>
+									</div>
+								</div>
+
+								{/* Right half - Progress bar */}
+								<div className="flex-1">
+									{(step.status === 'running' || step.status === 'completed' || step.status === 'blocked') && (
+										<Progress 
+											value={step.progress} 
+											className="h-2 bg-muted/60 [&>*]:bg-muted-foreground/60"
 										/>
 									)}
-									<span className="relative z-10 flex items-center justify-center">
-										{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-										{loading ? `Analyzing Website... ${Math.round(analysisProgress)}%` : "Start Analysis"}
-									</span>
-								</Button>
-							</div>
-						</CardContent>
-					</Card>
-				);
-
-			case 1:
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle>Review Product Categories</CardTitle>
-							<CardDescription>
-								We found these product types. Remove or add items as needed (up to 10).
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<EditableTagsInput
-								items={localProducts}
-								onValueChange={handleLocalProductsChange}
-								placeholder="Add product category..."
-							/>
-							<Button 
-								onClick={() => {
-									setWizardData(prev => ({ ...prev, products: localProducts }));
-									setCurrentStep(2);
-								}} 
-								className="w-full mt-4 cursor-pointer"
-								disabled={localProducts.length === 0}
-							>
-								Continue
-							</Button>
-						</CardContent>
-					</Card>
-				);
-
-			case 2:
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle>Find Competitors</CardTitle>
-							<CardDescription>
-								Let's identify your competitors based on the product categories.
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<Button onClick={getCompetitors} disabled={loading} className="w-full cursor-pointer">
-								{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-								Analyze Competitors
-							</Button>
-						</CardContent>
-					</Card>
-				);
-
-			case 3:
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle>Review Competitors</CardTitle>
-							<CardDescription>
-								Edit your competitor list (up to 10 competitors).
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<EditableTagsInput
-								items={wizardData.competitors}
-								onValueChange={handleCompetitorsChange}
-								placeholder="Add competitor..."
-							/>
-							<Button onClick={getPersonas} disabled={loading} className="w-full mt-4 cursor-pointer">
-								{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-								Analyze Target Personas
-							</Button>
-						</CardContent>
-					</Card>
-				);
-
-			case 4:
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle>Target Persona Groups</CardTitle>
-							<CardDescription>
-								Review and edit your target audience groups (up to 3 groups, 5 items each).
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							{wizardData.personaGroups.map((group, groupIndex) => (
-								<div key={groupIndex}>
-									<Label className="text-sm font-medium">{group.name}</Label>
-									<EditableTagsInput
-										items={group.personas}
-										onValueChange={(newValues) => handlePersonaGroupChange(groupIndex, newValues)}
-										placeholder="Add persona..."
-										maxItems={5}
-									/>
-								</div>
-							))}
-							<Button onClick={getKeywords} disabled={loading} className="w-full cursor-pointer">
-								{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-								Get SEO Keywords
-							</Button>
-						</CardContent>
-					</Card>
-				);
-
-			case 5:
-				const selectedKeywordsCount = wizardData.keywords.filter(kw => kw.selected).length;
-				const maxKeywords = 30;
-				const canSelectMore = selectedKeywordsCount < maxKeywords;
-				
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle>SEO Keywords</CardTitle>
-							<CardDescription>
-								Select the keywords you want to track. These will be used to create SEO monitoring prompts.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							{wizardData.keywords.length > 0 ? (
-								<div className="space-y-4">
-									<div className="flex items-center justify-between">
-										<div className="text-sm text-muted-foreground">
-											<strong>{selectedKeywordsCount}/{maxKeywords}</strong> {selectedKeywordsCount >= maxKeywords ? " keywords selected. Remove a keyword to add a new one." : "keywords selected."}
+									{step.status === 'error' && step.error && (
+										<div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+											{step.error}
 										</div>
-										<div className="flex gap-2">
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={handleSelectAllKeywords}
-												disabled={selectedKeywordsCount >= Math.min(maxKeywords, wizardData.keywords.length)}
-											>
-												Select All
-											</Button>
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={handleDeselectAllKeywords}
-												disabled={selectedKeywordsCount === 0}
-											>
-												Deselect All
-											</Button>
-										</div>
-									</div>
-									
-									<div className="max-h-64 overflow-y-auto border rounded-lg p-4 space-y-2">
-										{wizardData.keywords.map((kw, index) => {
-											const isDisabled = !kw.selected && !canSelectMore;
-											return (
-												<div
-													key={index}
-													className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-														isDisabled 
-															? 'opacity-50 cursor-not-allowed' 
-															: 'cursor-pointer hover:bg-muted/50'
-													} ${
-														kw.selected ? 'bg-primary/10 border-primary' : 'bg-background'
-													}`}
-													onClick={() => !isDisabled && handleKeywordSelection(index, !kw.selected)}
-												>
-													<div className="flex items-center space-x-3">
-														<input
-															type="checkbox"
-															checked={kw.selected}
-															onChange={(e) => handleKeywordSelection(index, e.target.checked)}
-															className="rounded border-muted-foreground"
-															disabled={isDisabled}
-															onClick={(e) => e.stopPropagation()}
-														/>
-														<span className="font-medium">{kw.keyword}</span>
-													</div>
-													<div className="flex items-center space-x-2 text-sm text-muted-foreground">
-														<Badge variant="secondary" className="text-xs">
-															{kw.search_volume.toLocaleString()} volume
-														</Badge>
-														<Badge variant="outline" className="text-xs">
-															{kw.difficulty}% difficulty
-														</Badge>
-													</div>
-												</div>
-											);
-										})}
-									</div>
-								</div>
-							) : (
-								<div className="text-center py-8 text-muted-foreground">
-									<p>No keywords found for this domain.</p>
-									<p className="text-sm mt-2">This may happen if the domain is new or has limited search visibility.</p>
-								</div>
-							)}
-							
-							<Button 
-								onClick={() => setCurrentStep(6)} 
-								disabled={selectedKeywordsCount === 0} 
-								className="w-full cursor-pointer"
-							>
-								Continue with {selectedKeywordsCount} Keyword{selectedKeywordsCount !== 1 ? 's' : ''}
-							</Button>
-						</CardContent>
-					</Card>
-				);
-
-			case 6:
-				return (
-					<Card>
-						<CardHeader>
-							<CardTitle>Review & Create Prompts</CardTitle>
-							<CardDescription>
-								Final review of all data that will be used to create your tracking prompts.
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							<div>
-								<Label className="text-sm font-medium">Brand Reputation Terms ({wizardData.reputationTerms.length})</Label>
-								<EditableTagsInput
-									items={wizardData.reputationTerms}
-									onValueChange={handleReputationTermsChange}
-									placeholder="Add reputation term..."
-								/>
-							</div>
-							
-							<div>
-								<Label className="text-sm font-medium">
-									Selected SEO Keywords ({wizardData.keywords.filter(kw => kw.selected).length})
-								</Label>
-								<div className="flex flex-wrap gap-2 mt-2">
-									{wizardData.keywords.filter(kw => kw.selected).slice(0, 10).map((kw, index) => (
-										<Badge key={index} variant="outline" className="text-xs">
-											{kw.keyword} ({kw.search_volume} volume, {kw.difficulty}% difficulty)
-										</Badge>
-									))}
-									{wizardData.keywords.filter(kw => kw.selected).length > 10 && (
-										<Badge variant="secondary" className="text-xs">
-											+{wizardData.keywords.filter(kw => kw.selected).length - 10} more
-										</Badge>
 									)}
 								</div>
 							</div>
-
-							<Button onClick={createPrompts} disabled={loading} className="w-full cursor-pointer">
-								{loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-								Create All Prompts
-							</Button>
-						</CardContent>
-					</Card>
-				);
-
-			default:
-				return null;
-		}
-	};
-
-	return (
-		<div className="max-w-2xl mx-auto space-y-6">
-			<div className="space-y-2">
-				<div className="flex items-center justify-between">
-					<h2 className="text-2xl font-bold">Setup Tracking Prompts</h2>
-					<span className="text-sm text-muted-foreground">
-						Step {currentStep + 1} of {steps.length}
-					</span>
-				</div>
-				<Progress value={progress} className="w-full" />
-				<p className="text-sm text-muted-foreground">{steps[currentStep]}</p>
-				
-				{/* Temporary debugging button */}
-				<Button 
-					variant="outline" 
-					size="sm" 
-					onClick={() => setCurrentStep(4)}
-					className="text-xs"
-				>
-					🐛 Debug: Skip to SEO Keywords
-				</Button>
+						))}
+					</CardContent>
+				</Card>
 			</div>
+		);
+	}
 
-			{renderStep()}
-		</div>
-	);
+	if (currentPhase === 'review') {
+		return (
+			<div className="max-w-2xl mx-auto space-y-6">
+				{/* Completed Steps Status */}
+				<Card>
+					<CardContent className="space-y-4">
+						{steps.map((step) => (
+							<div key={step.id} className="flex items-center gap-4">
+								{/* Left half - Icon and name */}
+								<div className="flex items-center gap-3 flex-1">
+									{getStepStatusIcon(step.status)}
+									<div>
+										<div className="text-sm font-medium">{step.title}</div>
+									</div>
+								</div>
+
+								{/* Right half - Progress bar */}
+								<div className="flex-1">
+									<Progress 
+										value={step.progress} 
+										className="h-2 bg-muted/60 [&>*]:bg-muted-foreground/60"
+									/>
+								</div>
+							</div>
+						))}
+					</CardContent>
+				</Card>
+
+				{/* Products Section */}
+				<div className="space-y-2">
+					<h2 className="text-2xl font-bold">Review Product Categories</h2>
+					<p className="text-muted-foreground">
+						What are the main types of products you sell?
+					</p>
+					<EditableTagsInput
+						items={wizardData.products}
+						onValueChange={(products) => setWizardData(prev => ({ ...prev, products }))}
+						placeholder="Add product..."
+					/>
+				</div>
+
+
+				<Separator />
+
+				{/* Competitors Section */}
+				<div className="space-y-2">
+					<h2 className="text-2xl font-bold">Review Competitors</h2>
+					<p className="text-muted-foreground">
+						Who are your primary competitors?
+					</p>
+					<EditableTagsInput
+					items={wizardData.competitors}
+					onValueChange={(competitors) => setWizardData(prev => ({ ...prev, competitors }))}
+					placeholder="Add competitor..."
+				/>
+				</div>
+
+
+				<Separator />
+
+				{/* Persona Groups Section */}
+				<div className="space-y-2">
+					<h2 className="text-2xl font-bold">Review Target Personas</h2>
+					<p className="text-muted-foreground">
+						Review categories of people or use cases you want to track.
+					</p>
+					<div className="space-y-4">
+					{wizardData.personaGroups.map((group, index) => (
+						<div key={index}>
+							<h4 className="font-medium text-sm mb-2">{group.name}</h4>
+							<EditableTagsInput
+								items={group.personas}
+								onValueChange={(personas) => {
+									const newGroups = [...wizardData.personaGroups];
+									newGroups[index] = { ...group, personas };
+									setWizardData(prev => ({ ...prev, personaGroups: newGroups }));
+								}}
+								placeholder="Add persona..."
+								maxItems={5}
+							/>
+						</div>
+					))}
+					</div>
+				</div>
+
+				<Separator />
+
+				{/* Keywords Section */}
+				<div className="space-y-2">
+					<h2 className="text-2xl font-bold">Review SEO Keywords</h2>
+					<p className="text-muted-foreground">
+						What are some relevant SEO keywords for your brand?
+					</p>
+				</div>
+				<div className="space-y-4">
+					<div className="flex gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								const updated = wizardData.keywords.map((kw, i) => ({
+									...kw,
+									selected: i < 30
+								}));
+								setWizardData(prev => ({ ...prev, keywords: updated }));
+							}}
+							className="cursor-pointer"
+						>
+							Select All
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								const updated = wizardData.keywords.map(kw => ({
+									...kw,
+									selected: false
+								}));
+								setWizardData(prev => ({ ...prev, keywords: updated }));
+							}}
+							className="cursor-pointer"
+						>
+							Clear All
+						</Button>
+					</div>
+					<div className="space-y-2">
+						{wizardData.keywords.map((kw, index) => (
+							<Label key={index} className="hover:bg-accent/50 flex items-center gap-3 rounded-lg border p-3 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50 dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950 cursor-pointer">
+								<Checkbox
+									id={`keyword-${index}`}
+									checked={kw.selected}
+									onCheckedChange={(checked) => {
+										const updated = [...wizardData.keywords];
+										updated[index] = { ...kw, selected: checked === true };
+										setWizardData(prev => ({ ...prev, keywords: updated }));
+									}}
+									className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white dark:data-[state=checked]:border-blue-700 dark:data-[state=checked]:bg-blue-700"
+								/>
+								<div className="flex-1 font-normal">
+									<p className="text-sm leading-none font-medium flex justify-between">
+										{kw.keyword}
+										<span className="text-muted-foreground ml-2 font-normal">
+											{new Intl.NumberFormat("en-US", { notation: "compact" }).format(kw.search_volume)}/month ({kw.difficulty < 30 ? 'easy' : kw.difficulty > 70 ? 'hard' : 'medium'})
+										</span>
+									</p>
+								</div>
+							</Label>
+						))}
+					</div>
+				</div>
+
+				<Separator />
+
+				{/* Custom Prompts Section */}
+				<div className="space-y-2">
+					<h2 className="text-2xl font-bold">Add Custom Prompts</h2>
+					<p className="text-muted-foreground">
+						Add any additional prompts you want to track for your brand.
+					</p>
+					<EditableTagsInput
+					items={wizardData.customPrompts}
+					onValueChange={(customPrompts) => setWizardData(prev => ({ ...prev, customPrompts }))}
+					placeholder="Add custom prompt..."
+				/>
+				</div>
+
+				<Separator />
+
+				<div className="space-y-2">
+				<Button onClick={createPrompts} className="flex items-center gap-2 cursor-pointer">
+					<Save className="h-4 w-4" />
+					Start Tracking
+				</Button>
+				</div>
+			</div>
+		);
+	}
+
+	return null;
 } 

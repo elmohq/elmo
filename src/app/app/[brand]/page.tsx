@@ -7,7 +7,6 @@ import { useBrand } from "@/hooks/use-brands";
 
 export default function AppPage({ params }: { params: Promise<{ org: string }> }) {
 	const { brand, isLoading } = useBrand();
-	const [showWizard, setShowWizard] = useState(false);
 
 	if (isLoading) {
 		return (
@@ -22,32 +21,21 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 
 	const hasPrompts = brand?.prompts && brand.prompts.length > 0;
 
-	if (!hasPrompts && !showWizard) {
+	if (!hasPrompts) {
 		return (
-			<div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-4">
-				<h1 className="text-2xl font-bold">No tracking prompts found</h1>
-				<p className="text-muted-foreground max-w-md">
-					Get started by setting up tracking prompts for your brand. 
-					We'll analyze your website and help you create relevant prompts automatically.
-				</p>
-				<button 
-					onClick={() => setShowWizard(true)}
-					className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors cursor-pointer"
-				>
-					Setup Tracking Prompts
-				</button>
+			<div className="space-y-6">
+				<div className="space-y-2">
+					<h2 className="text-2xl font-bold">Research Brand Data</h2>
+					<p className="text-muted-foreground text-balance">
+						We will analyze your website and find the best generative AI prompts to track. This process may take a couple of minutes.
+					</p>
+				</div>
+				<PromptWizard 
+					onComplete={() => {
+						// The wizard will trigger a revalidation, so the page will update automatically
+					}} 
+				/>
 			</div>
-		);
-	}
-
-	if (!hasPrompts && showWizard) {
-		return (
-			<PromptWizard 
-				onComplete={() => {
-					setShowWizard(false);
-					// The wizard will trigger a revalidation, so the page will update automatically
-				}} 
-			/>
 		);
 	}
 

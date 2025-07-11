@@ -70,16 +70,18 @@ ${suffixList}
 Your task is to group these suffixes into 1-3 strategic category groups that would be useful for comparison tracking and market analysis. Each category should represent a key dimension for business decisions and competitive positioning.
 
 Think about broad dimensions that matter for ecommerce brands, such as:
-- Customer type (startups, enterprises, small businesses, etc.)
-- Use case or purpose (marketing, sales, analytics, etc.) 
-- Industry or vertical (healthcare, fashion, technology, etc.)
-- Business model (B2B, B2C, subscription, etc.)
-- Company size or stage (startup, SMB, enterprise, etc.)
+- Customers (startups, enterprises, small businesses, etc.)
+- Purpose (marketing, sales, analytics, etc.) 
+- Industries (healthcare, fashion, technology, etc.)
+- Models (B2B, B2C, subscription, etc.)
+- Sizes (startup, SMB, enterprise, etc.)
 
 Create up to 3 strategic category groups with up to 5 items each. Focus on the most common and strategically valuable groupings from the suffixes provided.
 
+IMPORTANT: Use only ONE WORD for each category group name. Examples: "Customers", "Industries", "Purposes", "Sizes", "Models", "Segments", "Markets", "Types", "Roles", "Stages".
+
 Format your response as:
-<group name="Strategic Category Name"><out>item1,item2,item3,item4,item5</out></group>
+<group name="CategoryName"><out>item1,item2,item3,item4,item5</out></group>
 
 Only include suffixes that clearly fit into strategic categories. Ignore overly specific or unclear terms.`;
 
