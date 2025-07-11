@@ -337,7 +337,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			if (completedSteps.current.has(stepId)) return;
 			
 			const currentProgress = stepProgress.current[stepId] || 0;
-			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
+			const increment = (Math.random() * 0.5 + 0.3) / 2; // 2x slower - Random increment between 0.15-0.4% (smoother)
 			const newProgress = Math.min(95, currentProgress + increment);
 			stepProgress.current[stepId] = newProgress;
 			updateStepStatus(stepId, { progress: newProgress });
@@ -548,6 +548,16 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						))}
 					</CardContent>
 				</Card>
+
+				<div className="flex">
+					<Button 
+						disabled={true}
+						className="flex items-center gap-2"
+					>
+						<Loader2 className="h-4 w-4 animate-spin" />
+						Generating...
+					</Button>
+				</div>
 			</div>
 		);
 	}
