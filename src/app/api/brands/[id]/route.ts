@@ -10,7 +10,7 @@ function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: str
 	}
 
 	let formattedUrl = url.trim();
-	
+
 	// Add https:// if no protocol is specified
 	if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
 		formattedUrl = `https://${formattedUrl}`;
@@ -18,7 +18,7 @@ function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: str
 
 	try {
 		const urlObj = new URL(formattedUrl);
-		
+
 		// Check if protocol is http or https
 		if (!["http:", "https:"].includes(urlObj.protocol)) {
 			return { isValid: false, error: "Website URL must use http or https protocol" };
@@ -39,71 +39,50 @@ type Params = {
 	id: string;
 };
 
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Params }
-) {
+export async function GET(request: NextRequest, { params }: { params: Params }) {
 	try {
 		const { id: brandId } = await params;
 
 		const userBrands = await getElmoOrgs();
-		const hasAccess = userBrands.some(brand => brand.id === brandId);
+		const hasAccess = userBrands.some((brand) => brand.id === brandId);
 
 		if (!hasAccess) {
-			return NextResponse.json(
-				{ error: "Access denied to this brand" },
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
 		const brand = await getBrandWithPrompts(brandId);
 
 		if (!brand) {
-			return NextResponse.json(
-				{ error: "Brand not found" },
-				{ status: 404 }
-			);
+			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
 		}
 
-		const metadataBrand = userBrands.find(b => b.id === brandId);
-		
+		const metadataBrand = userBrands.find((b) => b.id === brandId);
+
 		return NextResponse.json({
 			...brand,
-			name: brand.name || metadataBrand?.name || brand.name
+			name: brand.name || metadataBrand?.name || brand.name,
 		});
 	} catch (error) {
 		console.error("Error fetching brand:", error);
-		return NextResponse.json(
-			{ error: "Internal server error" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }
 
-export async function PUT(
-	request: NextRequest,
-	{ params }: { params: Params }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Params }) {
 	try {
 		const { id: brandId } = await params;
 		const body = await request.json();
 
 		const userBrands = await getElmoOrgs();
-		const hasAccess = userBrands.some(brand => brand.id === brandId);
+		const hasAccess = userBrands.some((brand) => brand.id === brandId);
 
 		if (!hasAccess) {
-			return NextResponse.json(
-				{ error: "Access denied to this brand" },
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
 		const existingBrand = await getBrandFromDb(brandId);
 		if (!existingBrand) {
-			return NextResponse.json(
-				{ error: "Brand not found" },
-				{ status: 404 }
-			);
+			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
 		}
 
 		// Validate and format website URL if provided
@@ -112,10 +91,7 @@ export async function PUT(
 			// Validate website URL
 			const urlValidation = validateWebsiteUrl(body.website);
 			if (!urlValidation.isValid) {
-				return NextResponse.json(
-					{ error: urlValidation.error },
-					{ status: 400 }
-				);
+				return NextResponse.json({ error: urlValidation.error }, { status: 400 });
 			}
 			updateData.website = urlValidation.formattedUrl;
 		}
@@ -123,26 +99,20 @@ export async function PUT(
 		const updatedBrand = await updateBrand(brandId, updateData);
 
 		if (!updatedBrand) {
-			return NextResponse.json(
-				{ error: "Failed to update brand" },
-				{ status: 500 }
-			);
+			return NextResponse.json({ error: "Failed to update brand" }, { status: 500 });
 		}
 
 		revalidatePath(`/app/${brandId}`);
 		revalidatePath(`/app/${brandId}/settings`);
 
-		const metadataBrand = userBrands.find(b => b.id === brandId);
-		
+		const metadataBrand = userBrands.find((b) => b.id === brandId);
+
 		return NextResponse.json({
 			...updatedBrand,
-			name: updatedBrand.name || metadataBrand?.name || updatedBrand.name
+			name: updatedBrand.name || metadataBrand?.name || updatedBrand.name,
 		});
 	} catch (error) {
 		console.error("Error updating brand:", error);
-		return NextResponse.json(
-			{ error: "Internal server error" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }

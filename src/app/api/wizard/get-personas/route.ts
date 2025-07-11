@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
-import * as client from 'dataforseo-client'
+import * as client from "dataforseo-client";
 import { dfsSerpApi } from "@/lib/dataforseo";
 
 export async function POST(request: NextRequest) {
@@ -9,10 +9,7 @@ export async function POST(request: NextRequest) {
 		const { products } = await request.json();
 
 		if (!products || !Array.isArray(products) || products.length === 0) {
-			return NextResponse.json(
-				{ error: "Products array is required" },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: "Products array is required" }, { status: 400 });
 		}
 
 		// Take the first 2-3 product categories for autocomplete queries
@@ -35,11 +32,11 @@ export async function POST(request: NextRequest) {
 
 				if (response && response.tasks && response.tasks[0] && response.tasks[0].result) {
 					const items = response.tasks[0].result[0]?.items || [];
-					
+
 					// Extract suggestions and get the suffixes after "for"
 					items.forEach((item: any) => {
-						if (item.suggestion && item.suggestion.includes(' for ')) {
-							const parts = item.suggestion.split(' for ');
+						if (item.suggestion && item.suggestion.includes(" for ")) {
+							const parts = item.suggestion.split(" for ");
 							if (parts.length > 1) {
 								// Get the part after "for" and clean it up
 								const suffix = parts[1].trim();
@@ -58,9 +55,11 @@ export async function POST(request: NextRequest) {
 
 		// Count occurrences of each suffix
 		const suffixCounts = new Map<string, number>();
-		allSuggestions.filter(s => s && s.length > 0).forEach(suffix => {
-			suffixCounts.set(suffix, (suffixCounts.get(suffix) || 0) + 1);
-		});
+		allSuggestions
+			.filter((s) => s && s.length > 0)
+			.forEach((suffix) => {
+				suffixCounts.set(suffix, (suffixCounts.get(suffix) || 0) + 1);
+			});
 
 		// Sort by count (descending) and get top 20
 		const sortedSuffixes = Array.from(suffixCounts.entries())
@@ -68,15 +67,16 @@ export async function POST(request: NextRequest) {
 			.slice(0, 20)
 			.map(([suffix, count]) => suffix);
 
-		console.log("Top autocomplete suffixes by frequency:", 
+		console.log(
+			"Top autocomplete suffixes by frequency:",
 			Array.from(suffixCounts.entries())
 				.sort((a, b) => b[1] - a[1])
 				.slice(0, 20)
-				.map(([suffix, count]) => `${suffix} (${count})`)
+				.map(([suffix, count]) => `${suffix} (${count})`),
 		);
 
 		// Use Claude to group the suffixes into strategic categories
-		const suffixList = sortedSuffixes.join(', '); // Top 20 by frequency
+		const suffixList = sortedSuffixes.join(", "); // Top 20 by frequency
 		const prompt = `You have collected Google autocomplete suggestions for "best [product] for" queries. Here are the unique suffixes (the parts that come after "for"):
 
 ${suffixList}
@@ -111,19 +111,25 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 
 		// Extract groups with names
 		const groupMatches = text.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/g);
-		const personaGroups = groupMatches 
-			? groupMatches.map(groupMatch => {
-					const fullMatch = groupMatch.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/);
-					if (fullMatch) {
-						const groupName = fullMatch[1];
-						const personas = fullMatch[2].split(',').map(p => p.trim()).filter(p => p.length > 0).slice(0, 4);
-						return {
-							name: groupName,
-							personas: personas
-						};
-					}
-					return null;
-				}).filter(group => group !== null)
+		const personaGroups = groupMatches
+			? groupMatches
+					.map((groupMatch) => {
+						const fullMatch = groupMatch.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/);
+						if (fullMatch) {
+							const groupName = fullMatch[1];
+							const personas = fullMatch[2]
+								.split(",")
+								.map((p) => p.trim())
+								.filter((p) => p.length > 0)
+								.slice(0, 4);
+							return {
+								name: groupName,
+								personas: personas,
+							};
+						}
+						return null;
+					})
+					.filter((group) => group !== null)
 			: [];
 
 		console.log("GET-PERSONAS OUTPUT (DATAFORSEO + CLAUDE):", { personaGroups });
@@ -131,9 +137,6 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 		return NextResponse.json({ personaGroups });
 	} catch (error) {
 		console.error("Error getting personas:", error);
-		return NextResponse.json(
-			{ error: "Failed to get personas" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Failed to get personas" }, { status: 500 });
 	}
-} 
+}

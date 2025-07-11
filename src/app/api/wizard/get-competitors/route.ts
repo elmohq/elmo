@@ -7,13 +7,10 @@ export async function POST(request: NextRequest) {
 		const { products } = await request.json();
 
 		if (!products || !Array.isArray(products) || products.length === 0) {
-			return NextResponse.json(
-				{ error: "Products array is required" },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: "Products array is required" }, { status: 400 });
 		}
 
-		const productList = products.join(', ');
+		const productList = products.join(", ");
 		const prompt = `What are the top 4 competitors of a company that sells the following types of products:
 ${productList}
 
@@ -27,8 +24,12 @@ Be concise and output to a comma separated list contained within <out> xml tags.
 
 		// Extract content between <out> tags
 		const match = text.match(/<out>([\s\S]*?)<\/out>/);
-		const competitors = match 
-			? match[1].split(',').map(c => c.trim()).filter(c => c.length > 0).slice(0, 4)
+		const competitors = match
+			? match[1]
+					.split(",")
+					.map((c) => c.trim())
+					.filter((c) => c.length > 0)
+					.slice(0, 4)
 			: [];
 
 		console.log("GET-COMPETITORS OUTPUT:", { competitors });
@@ -36,9 +37,6 @@ Be concise and output to a comma separated list contained within <out> xml tags.
 		return NextResponse.json({ competitors });
 	} catch (error) {
 		console.error("Error getting competitors:", error);
-		return NextResponse.json(
-			{ error: "Failed to get competitors" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Failed to get competitors" }, { status: 500 });
 	}
-} 
+}

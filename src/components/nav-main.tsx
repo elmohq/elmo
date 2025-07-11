@@ -22,8 +22,8 @@ export function NavMain({
 		icon?: Icon;
 	}[];
 }) {
-    const { brand } = useBrand();
-    
+	const { brand } = useBrand();
+
 	return (
 		<SidebarGroup>
 			<SidebarGroupContent>
@@ -33,9 +33,9 @@ export function NavMain({
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton tooltip={item.title} className="cursor-pointer" asChild>
 								<Link href={`/app/${brand?.id}${item.url}`}>
-                                    {item.icon && <item.icon />}
-                                    <span>{item.title}</span>
-                                </Link>
+									{item.icon && <item.icon />}
+									<span>{item.title}</span>
+								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					))}

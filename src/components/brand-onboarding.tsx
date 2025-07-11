@@ -23,15 +23,15 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 		setError("");
 
 		try {
-			const response = await fetch('/api/brands', {
-				method: 'POST',
+			const response = await fetch("/api/brands", {
+				method: "POST",
 				body: formData,
 			});
 
 			const data = await response.json();
 
 			if (!response.ok) {
-				throw new Error(data.error || 'An error occurred');
+				throw new Error(data.error || "An error occurred");
 			}
 
 			// API will revalidate the path, so refresh to show Profile

@@ -36,31 +36,31 @@ import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 import { useBrand } from "@/hooks/use-brands";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-    const data = {
-        navMain: [
-            {
-                title: "Dashboard",
-                url: `/`,
-                icon: IconDashboard,
-            },
-            {
-                title: "Reputation",
-                url: "/reputation",
-                icon: IconAward,
-            },
-            {
-                title: "Prompts",
-                url: "/prompts",
-                icon: IconListDetails,
-            },
-            {
-                title: "Settings",
-                url: "/settings",
-                icon: IconSettings,
-             },
-        ]
-    };
-    
+	const data = {
+		navMain: [
+			{
+				title: "Dashboard",
+				url: `/`,
+				icon: IconDashboard,
+			},
+			{
+				title: "Reputation",
+				url: "/reputation",
+				icon: IconAward,
+			},
+			{
+				title: "Prompts",
+				url: "/prompts",
+				icon: IconListDetails,
+			},
+			{
+				title: "Settings",
+				url: "/settings",
+				icon: IconSettings,
+			},
+		],
+	};
+
 	return (
 		<Sidebar collapsible="none" className="h-auto border-r" {...props}>
 			<SidebarHeader className="border-b">

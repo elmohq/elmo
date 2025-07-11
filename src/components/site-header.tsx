@@ -7,7 +7,7 @@ import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 
 export function SiteHeader() {
-    const { brand } = useBrand();
+	const { brand } = useBrand();
 
 	return (
 		<header className="bg-background/90 sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">

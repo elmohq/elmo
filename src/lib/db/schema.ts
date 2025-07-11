@@ -14,7 +14,9 @@ export const brands = pgTable("brands", {
 
 export const prompts = pgTable("prompts", {
 	id: uuid("id").defaultRandom().primaryKey().notNull(),
-	brandId: text("brand_id").references(() => brands.id).notNull(),
+	brandId: text("brand_id")
+		.references(() => brands.id)
+		.notNull(),
 	group: text("group"),
 	value: text("value").notNull(),
 	reputation: boolean("reputation").notNull(),

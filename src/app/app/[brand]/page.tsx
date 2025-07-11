@@ -27,13 +27,14 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 				<div className="space-y-2">
 					<h2 className="text-2xl font-bold">Research Brand Data</h2>
 					<p className="text-muted-foreground text-balance">
-						We will analyze your website and find the best generative AI prompts to track. This process may take a couple of minutes.
+						We will analyze your website and find the best generative AI prompts to track. This process may take a
+						couple of minutes.
 					</p>
 				</div>
-				<PromptWizard 
+				<PromptWizard
 					onComplete={() => {
 						// The wizard will trigger a revalidation, so the page will update automatically
-					}} 
+					}}
 				/>
 			</div>
 		);

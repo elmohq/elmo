@@ -106,7 +106,7 @@ export async function getBrandWithPrompts(brandId: string): Promise<BrandWithPro
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
 		});
-		
+
 		if (!brand) {
 			return undefined;
 		}
@@ -130,7 +130,7 @@ export async function getAllBrandsWithPrompts(): Promise<BrandWithPrompts[]> {
 	try {
 		// Get all brands
 		const allBrands = await db.query.brands.findMany();
-		
+
 		if (allBrands.length === 0) {
 			return [];
 		}
@@ -139,16 +139,19 @@ export async function getAllBrandsWithPrompts(): Promise<BrandWithPrompts[]> {
 		const allPrompts = await db.query.prompts.findMany();
 
 		// Group prompts by brandId
-		const promptsByBrand = allPrompts.reduce((acc, prompt) => {
-			if (!acc[prompt.brandId]) {
-				acc[prompt.brandId] = [];
-			}
-			acc[prompt.brandId].push(prompt);
-			return acc;
-		}, {} as Record<string, typeof allPrompts>);
+		const promptsByBrand = allPrompts.reduce(
+			(acc, prompt) => {
+				if (!acc[prompt.brandId]) {
+					acc[prompt.brandId] = [];
+				}
+				acc[prompt.brandId].push(prompt);
+				return acc;
+			},
+			{} as Record<string, typeof allPrompts>,
+		);
 
 		// Combine brands with their prompts
-		return allBrands.map(brand => ({
+		return allBrands.map((brand) => ({
 			...brand,
 			prompts: promptsByBrand[brand.id] || [],
 		}));
@@ -175,7 +178,10 @@ export async function createBrand(brandData: { id: string; name: string; website
 	}
 }
 
-export async function updateBrand(brandId: string, brandData: Partial<Pick<Brand, 'name' | 'website' | 'enabled'>>): Promise<Brand | null> {
+export async function updateBrand(
+	brandId: string,
+	brandData: Partial<Pick<Brand, "name" | "website" | "enabled">>,
+): Promise<Brand | null> {
 	try {
 		const result = await db
 			.update(brands)

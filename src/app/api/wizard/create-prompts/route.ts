@@ -5,30 +5,18 @@ import { getElmoOrgs } from "@/lib/metadata";
 
 export async function POST(request: NextRequest) {
 	try {
-		const { 
-			brandId, 
-			reputationTerms, 
-			competitors, 
-			personaGroups, 
-			keywords 
-		} = await request.json();
+		const { brandId, reputationTerms, competitors, personaGroups, keywords } = await request.json();
 
 		if (!brandId) {
-			return NextResponse.json(
-				{ error: "Brand ID is required" },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: "Brand ID is required" }, { status: 400 });
 		}
 
 		// Verify user has access to this brand
 		const userBrands = await getElmoOrgs();
-		const hasAccess = userBrands.some(brand => brand.id === brandId);
+		const hasAccess = userBrands.some((brand) => brand.id === brandId);
 
 		if (!hasAccess) {
-			return NextResponse.json(
-				{ error: "Access denied to this brand" },
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
 		const promptsToCreate = [];
@@ -94,15 +82,12 @@ export async function POST(request: NextRequest) {
 			await db.insert(prompts).values(promptsToCreate);
 		}
 
-		return NextResponse.json({ 
-			success: true, 
-			promptsCreated: promptsToCreate.length 
+		return NextResponse.json({
+			success: true,
+			promptsCreated: promptsToCreate.length,
 		});
 	} catch (error) {
 		console.error("Error creating prompts:", error);
-		return NextResponse.json(
-			{ error: "Failed to create prompts" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Failed to create prompts" }, { status: 500 });
 	}
-} 
+}

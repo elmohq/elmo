@@ -17,23 +17,23 @@ export default function BrandSettingsPage() {
 
 	if (isLoading) {
 		return (
-				<div className="space-y-6">
-					<div>
-						<h1 className="text-3xl font-bold">Brand Settings</h1>
-						<p className="text-muted-foreground">Loading...</p>
-					</div>
+			<div className="space-y-6">
+				<div>
+					<h1 className="text-3xl font-bold">Brand Settings</h1>
+					<p className="text-muted-foreground">Loading...</p>
 				</div>
+			</div>
 		);
 	}
 
 	if (!brand) {
 		return (
-				<div className="space-y-6">
-					<div>
-						<h1 className="text-3xl font-bold">Brand Settings</h1>
-						<p className="text-destructive">Brand not found</p>
-					</div>
+			<div className="space-y-6">
+				<div>
+					<h1 className="text-3xl font-bold">Brand Settings</h1>
+					<p className="text-destructive">Brand not found</p>
 				</div>
+			</div>
 		);
 	}
 
@@ -46,9 +46,9 @@ export default function BrandSettingsPage() {
 			const website = formData.get("website") as string;
 
 			const response = await fetch(`/api/brands/${brand.id}`, {
-				method: 'PUT',
+				method: "PUT",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({ website }),
 			});
@@ -56,7 +56,7 @@ export default function BrandSettingsPage() {
 			const data = await response.json();
 
 			if (!response.ok) {
-				throw new Error(data.error || 'An error occurred');
+				throw new Error(data.error || "An error occurred");
 			}
 
 			setSuccess("Brand settings updated successfully!");
@@ -69,48 +69,37 @@ export default function BrandSettingsPage() {
 	};
 
 	return (
-			<div className="space-y-6">
-				<div>
-					<h1 className="text-3xl font-bold">Brand Settings</h1>
-					<p className="text-muted-foreground">Manage your brand configuration</p>
+		<div className="space-y-6">
+			<div>
+				<h1 className="text-3xl font-bold">Brand Settings</h1>
+				<p className="text-muted-foreground">Manage your brand configuration</p>
+			</div>
+
+			<form action={handleSubmit} className="space-y-4">
+				<div className="space-y-2">
+					<Label htmlFor="website">Website URL</Label>
+					<Input
+						id="website"
+						name="website"
+						type="url"
+						placeholder="https://example.com"
+						defaultValue={brand.website}
+						required
+						disabled={isSubmitting}
+					/>
+					<p className="text-xs text-muted-foreground">Enter your brand's website URL</p>
 				</div>
 
-				
-						<form action={handleSubmit} className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="website">Website URL</Label>
-								<Input
-									id="website"
-									name="website"
-									type="url"
-									placeholder="https://example.com"
-									defaultValue={brand.website}
-									required
-									disabled={isSubmitting}
-								/>
-								<p className="text-xs text-muted-foreground">
-									Enter your brand's website URL
-								</p>
-							</div>
+				{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 
-							{error && (
-								<div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-									{error}
-								</div>
-							)}
+				{success && <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">{success}</div>}
 
-							{success && (
-								<div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
-									{success}
-								</div>
-							)}
-
-							<div className="flex gap-2">
-								<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-									{isSubmitting ? "Saving..." : "Save Changes"}
-								</Button>
-							</div>
-						</form>
-			</div>
+				<div className="flex gap-2">
+					<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
+						{isSubmitting ? "Saving..." : "Save Changes"}
+					</Button>
+				</div>
+			</form>
+		</div>
 	);
 }
