@@ -110,11 +110,11 @@ const apiCalls = {
 		return response.json();
 	},
 
-	async getCompetitors(products: string[]) {
+	async getCompetitors(products: string[], website: string) {
 		const response = await fetch("/api/wizard/get-competitors", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ products }),
+			body: JSON.stringify({ products, website }),
 		});
 
 		if (!response.ok) throw new Error("Failed to get competitors");
@@ -266,15 +266,15 @@ const useStepManager = (brand: any) => {
 			progress: 0,
 		},
 		{
-			id: "get-competitors",
-			title: "Discover Competitors",
+			id: "analyze-personas",
+			title: "Generate Personas",
 			dependencies: ["analyze-website"],
 			status: "blocked",
 			progress: 0,
 		},
 		{
-			id: "analyze-personas",
-			title: "Generate Personas",
+			id: "get-competitors",
+			title: "Discover Competitors",
 			dependencies: ["analyze-website"],
 			status: "blocked",
 			progress: 0,
@@ -321,12 +321,13 @@ const useStepManager = (brand: any) => {
 							keywords: keywordData.keywords.map((kw: any) => ({ ...kw, selected: false }))
 						};
 
-					case "get-competitors":
-						const currentProducts = dependencyData?.products;
-						if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
-							throw new Error("No products data available for competitor analysis");
-						}
-						return await executor(stepId, () => apiCalls.getCompetitors(currentProducts));
+									case "get-competitors":
+					const currentProducts = dependencyData?.products;
+					if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
+						throw new Error("No products data available for competitor analysis");
+					}
+					if (!brand?.website) throw new Error("No website URL");
+					return await executor(stepId, () => apiCalls.getCompetitors(currentProducts, brand.website), 2); // 2x slower
 
 					case "analyze-personas":
 						const productsForPersonas = dependencyData?.products;
