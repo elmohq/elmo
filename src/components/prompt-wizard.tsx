@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Save } from "lucide-react";
+import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket } from "lucide-react";
 import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@/components/ui/tags-input";
 import { Separator } from "@/components/ui/separator";
@@ -732,7 +732,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 				<div className="space-y-2">
 				<Button onClick={createPrompts} className="flex items-center gap-2 cursor-pointer">
-					<Save className="h-4 w-4" />
+					<Rocket className="h-4 w-4" />
 					Start Tracking
 				</Button>
 				</div>
