@@ -56,18 +56,32 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Remove duplicates and empty strings
-		const uniqueSuffixes = [...new Set(allSuggestions.filter(s => s && s.length > 0))];
+		// Count occurrences of each suffix
+		const suffixCounts = new Map<string, number>();
+		allSuggestions.filter(s => s && s.length > 0).forEach(suffix => {
+			suffixCounts.set(suffix, (suffixCounts.get(suffix) || 0) + 1);
+		});
 
-		console.log("Unique autocomplete suffixes:", uniqueSuffixes);
+		// Sort by count (descending) and get top 20
+		const sortedSuffixes = Array.from(suffixCounts.entries())
+			.sort((a, b) => b[1] - a[1])
+			.slice(0, 20)
+			.map(([suffix, count]) => suffix);
+
+		console.log("Top autocomplete suffixes by frequency:", 
+			Array.from(suffixCounts.entries())
+				.sort((a, b) => b[1] - a[1])
+				.slice(0, 20)
+				.map(([suffix, count]) => `${suffix} (${count})`)
+		);
 
 		// Use Claude to group the suffixes into strategic categories
-		const suffixList = uniqueSuffixes.slice(0, 20).join(', '); // Limit to first 20 to avoid token limits
+		const suffixList = sortedSuffixes.join(', '); // Top 20 by frequency
 		const prompt = `You have collected Google autocomplete suggestions for "best [product] for" queries. Here are the unique suffixes (the parts that come after "for"):
 
 ${suffixList}
 
-Your task is to group these suffixes into 1-3 strategic category groups that would be useful for comparison tracking and market analysis. Each category should represent a key dimension for business decisions and competitive positioning.
+Your task is to group these suffixes into 2-3 strategic category groups that would be useful for comparison tracking and market analysis. Each category should represent a key dimension for business decisions and competitive positioning.
 
 Think about broad dimensions that matter for ecommerce brands, such as:
 - Customers (startups, enterprises, small businesses, etc.)
@@ -78,10 +92,12 @@ Think about broad dimensions that matter for ecommerce brands, such as:
 
 Create up to 3 strategic category groups with up to 4 items each. Focus on the most common and strategically valuable groupings from the suffixes provided.
 
-IMPORTANT: Use only ONE WORD for each category group name. Examples: "Customers", "Industries", "Purposes", "Sizes", "Models", "Segments", "Markets", "Types", "Roles", "Stages".
+IMPORTANT: Use only ONE NON-PLURAL WORD for each category group name. Examples: "Demographic", "Use", "Customer", "Industry", "Purpose", "Segment", "Market", "Type", "Role", "Stage".
 
 Format your response as:
-<group name="CategoryName"><out>item1,item2,item3,item4,item5</out></group>
+<group name="Category1">item1,item2,item3,item4</group>
+<group name="Category2">item1,item2,item3,item4</group>
+<group name="Category3">item1,item2,item3,item4</group>
 
 Only include suffixes that clearly fit into strategic categories. Ignore overly specific or unclear terms.`;
 
@@ -91,14 +107,16 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 			maxTokens: 800,
 		});
 
+		console.log("text", text);
+
 		// Extract groups with names
-		const groupMatches = text.match(/<group name="([^"]*?)"><out>([\s\S]*?)<\/out><\/group>/g);
+		const groupMatches = text.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/g);
 		const personaGroups = groupMatches 
 			? groupMatches.map(groupMatch => {
-					const fullMatch = groupMatch.match(/<group name="([^"]*?)"><out>([\s\S]*?)<\/out><\/group>/);
+					const fullMatch = groupMatch.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/);
 					if (fullMatch) {
 						const groupName = fullMatch[1];
-						const personas = fullMatch[2].split(',').map(p => p.trim()).filter(p => p.length > 0);
+						const personas = fullMatch[2].split(',').map(p => p.trim()).filter(p => p.length > 0).slice(0, 4);
 						return {
 							name: groupName,
 							personas: personas
@@ -107,16 +125,6 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 					return null;
 				}).filter(group => group !== null)
 			: [];
-
-		// If Claude didn't return proper groups, create a fallback
-		if (personaGroups.length === 0) {
-			console.warn("Claude didn't return proper groups, creating fallback from suffixes");
-			const fallbackGroup = {
-				name: "Target Segments",
-				personas: uniqueSuffixes.slice(0, 4) // Take first 5 unique suffixes
-			};
-			personaGroups.push(fallbackGroup);
-		}
 
 		console.log("GET-PERSONAS OUTPUT (DATAFORSEO + CLAUDE):", { personaGroups });
 
