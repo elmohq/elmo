@@ -76,7 +76,7 @@ Think about broad dimensions that matter for ecommerce brands, such as:
 - Models (B2B, B2C, subscription, etc.)
 - Sizes (startup, SMB, enterprise, etc.)
 
-Create up to 3 strategic category groups with up to 5 items each. Focus on the most common and strategically valuable groupings from the suffixes provided.
+Create up to 3 strategic category groups with up to 4 items each. Focus on the most common and strategically valuable groupings from the suffixes provided.
 
 IMPORTANT: Use only ONE WORD for each category group name. Examples: "Customers", "Industries", "Purposes", "Sizes", "Models", "Segments", "Markets", "Types", "Roles", "Stages".
 
@@ -113,7 +113,7 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 			console.warn("Claude didn't return proper groups, creating fallback from suffixes");
 			const fallbackGroup = {
 				name: "Target Segments",
-				personas: uniqueSuffixes.slice(0, 5) // Take first 5 unique suffixes
+				personas: uniqueSuffixes.slice(0, 4) // Take first 5 unique suffixes
 			};
 			personaGroups.push(fallbackGroup);
 		}

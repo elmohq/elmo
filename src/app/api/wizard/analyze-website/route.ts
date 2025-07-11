@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 Use general categories, not branded names. For example, converse.com should return:
 <out>shoes,hi-tops,casual shoes</out>
 
-Be concise and output to a comma separated list contained within <out> xml tags. List up to 10.`;
+Be concise and output to a comma separated list contained within <out> xml tags. List up to 4.`;
 
 		const response = await anthropic.messages.create({
 			model: "claude-sonnet-4-20250514",
@@ -49,7 +49,7 @@ Be concise and output to a comma separated list contained within <out> xml tags.
 		// Extract content between <out> tags
 		const match = allTextContent.match(/<out>([\s\S]*?)<\/out>/);
 		const products = match 
-			? match[1].split(',').map(p => p.trim()).filter(p => p.length > 0)
+			? match[1].split(',').map(p => p.trim()).filter(p => p.length > 0).slice(0, 4)
 			: [];
 
 		console.log("ANALYZE-WEBSITE OUTPUT:", { products });

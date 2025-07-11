@@ -45,7 +45,7 @@ const EditableTagsInput = memo(({
 	items, 
 	onValueChange, 
 	placeholder = "Add item...",
-	maxItems = 10 
+	maxItems = 5 
 }: {
 	items: string[];
 	onValueChange: (value: string[]) => void;
@@ -630,7 +630,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 									setWizardData(prev => ({ ...prev, personaGroups: newGroups }));
 								}}
 								placeholder="Add persona..."
-								maxItems={5}
 							/>
 						</div>
 					))}
@@ -715,6 +714,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					items={wizardData.customPrompts}
 					onValueChange={(customPrompts) => setWizardData(prev => ({ ...prev, customPrompts }))}
 					placeholder="Add custom prompt..."
+					maxItems={10}
 				/>
 				</div>
 
