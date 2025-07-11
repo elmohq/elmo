@@ -1,0 +1,1 @@
+ALTER TABLE "brands" ADD COLUMN "onboarding" boolean DEFAULT false NOT NULL;

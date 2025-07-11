@@ -180,7 +180,7 @@ export async function createBrand(brandData: { id: string; name: string; website
 
 export async function updateBrand(
 	brandId: string,
-	brandData: Partial<Pick<Brand, "name" | "website" | "enabled">>,
+	brandData: Partial<Pick<Brand, "name" | "website" | "enabled" | "onboarded">>,
 ): Promise<Brand | null> {
 	try {
 		const result = await db

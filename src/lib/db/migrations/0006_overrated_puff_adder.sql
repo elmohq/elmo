@@ -1,0 +1,1 @@
+ALTER TABLE "brands" RENAME COLUMN "onboarding" TO "onboarded";

@@ -21,7 +21,7 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 
 	const hasPrompts = brand?.prompts && brand.prompts.length > 0;
 
-	if (!hasPrompts) {
+	if (!hasPrompts && !brand?.onboarded) {
 		return (
 			<div className="space-y-6">
 				<div className="space-y-2">

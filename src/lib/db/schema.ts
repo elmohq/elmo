@@ -5,6 +5,7 @@ export const brands = pgTable("brands", {
 	name: text("name").notNull(),
 	website: text("website").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),
+	onboarded: boolean("onboarded").default(false).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()

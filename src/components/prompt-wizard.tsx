@@ -153,6 +153,16 @@ const apiCalls = {
 		});
 
 		return response.ok;
+	},
+
+	async skipOnboarding(brandId: string) {
+		const response = await fetch("/api/wizard/skip-onboarding", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ brandId }),
+		});
+
+		return response.ok;
 	}
 };
 
@@ -469,6 +479,21 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		}
 	};
 
+	// Skip onboarding
+	const skipOnboarding = async () => {
+		if (!brand?.id) return;
+
+		try {
+			const success = await apiCalls.skipOnboarding(brand.id);
+			if (success) {
+				await revalidate();
+				onComplete();
+			}
+		} catch (error) {
+			console.error("Error skipping onboarding:", error);
+		}
+	};
+
 	// Render idle phase (initial state)
 	if (currentPhase === "idle") {
 		return (
@@ -494,10 +519,13 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					</CardContent>
 				</Card>
 
-				<div className="flex">
+				<div className="flex gap-2">
 					<Button onClick={startProcessing} disabled={isGenerating} className="flex items-center gap-2 cursor-pointer">
 						{isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
 						{isGenerating ? "Generating..." : "Generate Prompts"}
+					</Button>
+					<Button variant="outline" onClick={skipOnboarding} disabled={isGenerating} className="flex items-center gap-2 cursor-pointer">
+						Skip
 					</Button>
 				</div>
 			</div>
@@ -534,10 +562,13 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					</CardContent>
 				</Card>
 
-				<div className="flex">
+				<div className="flex gap-2">
 					<Button disabled={true} className="flex items-center gap-2">
 						<Loader2 className="h-4 w-4 animate-spin" />
 						Generating...
+					</Button>
+					<Button variant="outline" onClick={skipOnboarding} className="flex items-center gap-2 cursor-pointer">
+						Skip
 					</Button>
 				</div>
 			</div>
@@ -746,10 +777,15 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<Separator />
 
 				<div className="space-y-2">
-					<Button onClick={createPrompts} className="flex items-center gap-2 cursor-pointer">
-						<Rocket className="h-4 w-4" />
-						Start Tracking
-					</Button>
+					<div className="flex gap-2">
+						<Button onClick={createPrompts} className="flex items-center gap-2 cursor-pointer">
+							<Rocket className="h-4 w-4" />
+							Start Tracking
+						</Button>
+						<Button variant="outline" onClick={skipOnboarding} className="flex items-center gap-2 cursor-pointer">
+							Cancel
+						</Button>
+					</div>
 				</div>
 			</div>
 		);
