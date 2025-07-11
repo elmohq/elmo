@@ -39,7 +39,7 @@ type Params = {
 	id: string;
 };
 
-export async function GET(request: NextRequest, { params }: { params: Params }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
 	try {
 		const { id: brandId } = await params;
 
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
 	}
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Params }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<Params> }) {
 	try {
 		const { id: brandId } = await params;
 		const body = await request.json();
