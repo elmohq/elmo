@@ -41,6 +41,156 @@ interface PromptWizardProps {
 	onComplete: () => void;
 }
 
+// Progress tracking utility
+class ProgressTracker {
+	private stepProgress: Record<string, number> = {};
+	private completedSteps: Set<string> = new Set();
+	private intervals: Record<string, NodeJS.Timeout> = {};
+
+	startProgress(stepId: string, updateCallback: (progress: number) => void, speedMultiplier: number = 1) {
+		this.stepProgress[stepId] = 0;
+		this.completedSteps.delete(stepId);
+
+		this.intervals[stepId] = setInterval(() => {
+			if (this.completedSteps.has(stepId)) return;
+
+			const currentProgress = this.stepProgress[stepId] || 0;
+			const baseIncrement = Math.random() * 0.5 + 0.3;
+			const increment = baseIncrement / speedMultiplier;
+			const newProgress = Math.min(95, currentProgress + increment);
+			this.stepProgress[stepId] = newProgress;
+			updateCallback(newProgress);
+		}, 200);
+	}
+
+	completeProgress(stepId: string, updateCallback: (progress: number) => void) {
+		this.completedSteps.add(stepId);
+		if (this.intervals[stepId]) {
+			clearInterval(this.intervals[stepId]);
+			delete this.intervals[stepId];
+		}
+		updateCallback(100);
+		
+		// Clean up progress tracking after a short delay
+		setTimeout(() => {
+			delete this.stepProgress[stepId];
+		}, 100);
+	}
+
+	cleanup() {
+		Object.values(this.intervals).forEach(interval => clearInterval(interval));
+		this.intervals = {};
+		this.stepProgress = {};
+		this.completedSteps.clear();
+	}
+}
+
+// API call utilities
+const apiCalls = {
+	async analyzeWebsite(website: string) {
+		const response = await fetch("/api/wizard/analyze-website", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ website }),
+		});
+
+		if (!response.ok) throw new Error("Failed to analyze website");
+		return response.json();
+	},
+
+	async getKeywords(domain: string) {
+		const response = await fetch("/api/wizard/get-keywords", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ domain }),
+		});
+
+		if (!response.ok) throw new Error("Failed to get keywords");
+		return response.json();
+	},
+
+	async getCompetitors(products: string[]) {
+		const response = await fetch("/api/wizard/get-competitors", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ products }),
+		});
+
+		if (!response.ok) throw new Error("Failed to get competitors");
+		return response.json();
+	},
+
+	async getPersonas(products: string[]) {
+		const response = await fetch("/api/wizard/get-personas", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ products }),
+		});
+
+		if (!response.ok) throw new Error("Failed to analyze personas");
+		return response.json();
+	},
+
+	async createPrompts(brandId: string, data: {
+		competitors: string[];
+		personaGroups: Array<{ name: string; personas: string[] }>;
+		keywords: Array<{ keyword: string; search_volume: number; difficulty: number; selected: boolean }>;
+		customPrompts: string[];
+	}) {
+		const selectedKeywords = data.keywords.filter((kw) => kw.selected);
+
+		const response = await fetch("/api/wizard/create-prompts", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				brandId,
+				competitors: data.competitors,
+				personaGroups: data.personaGroups,
+				keywords: selectedKeywords,
+				customPrompts: data.customPrompts,
+			}),
+		});
+
+		return response.ok;
+	}
+};
+
+// Step execution wrapper
+const createStepExecutor = (
+	progressTracker: ProgressTracker,
+	updateStepStatus: (stepId: string, updates: Partial<WizardStep>) => void
+) => {
+	return async (
+		stepId: string,
+		executeFn: () => Promise<any>,
+		speedMultiplier: number = 1
+	) => {
+		progressTracker.startProgress(
+			stepId,
+			(progress) => updateStepStatus(stepId, { progress }),
+			speedMultiplier
+		);
+
+		try {
+			const result = await executeFn();
+			progressTracker.completeProgress(
+				stepId,
+				(progress) => updateStepStatus(stepId, { status: "completed", progress, data: result })
+			);
+			return result;
+		} catch (error) {
+			progressTracker.completeProgress(
+				stepId,
+				() => updateStepStatus(stepId, {
+					status: "error",
+					error: error instanceof Error ? error.message : "Unknown error",
+				})
+			);
+			throw error;
+		}
+	};
+};
+
 const EditableTagsInput = memo(
 	({
 		items,
@@ -69,28 +219,26 @@ const EditableTagsInput = memo(
 
 EditableTagsInput.displayName = "EditableTagsInput";
 
-export default function PromptWizard({ onComplete }: PromptWizardProps) {
-	const { brand, revalidate } = useBrand();
-	const [currentPhase, setCurrentPhase] = useState<"idle" | "processing" | "review" | "complete">("idle");
-	const [isGenerating, setIsGenerating] = useState(false);
-	const [wizardData, setWizardData] = useState<WizardData>({
-		products: [],
-		competitors: [],
-		personaGroups: [],
-		keywords: [],
-		customPrompts: [],
-	});
+// Step status rendering utility
+const getStepStatusIcon = (status: StepStatus) => {
+	switch (status) {
+		case "pending":
+			return <Clock className="h-4 w-4 text-muted-foreground" />;
+		case "running":
+			return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+		case "completed":
+			return <CheckCircle className="h-4 w-4 text-green-500" />;
+		case "error":
+			return <AlertCircle className="h-4 w-4 text-red-500" />;
+		case "blocked":
+			return <Clock className="h-4 w-4 text-muted-foreground" />;
+		default:
+			return <Clock className="h-4 w-4 text-muted-foreground" />;
+	}
+};
 
-	// Track which steps have been started to prevent multiple executions
-	const startedSteps = useRef<Set<string>>(new Set());
-
-	// Track current progress for each step to ensure monotonic increase
-	const stepProgress = useRef<Record<string, number>>({});
-
-	// Track completed steps to prevent progress updates after completion
-	const completedSteps = useRef<Set<string>>(new Set());
-
-	// Initialize wizard steps
+// Custom hook for step management
+const useStepManager = (brand: any) => {
 	const [steps, setSteps] = useState<WizardStep[]>([
 		{
 			id: "get-keywords",
@@ -122,30 +270,13 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		},
 	]);
 
-	// Helper to get step status icon
-	const getStepStatusIcon = (status: StepStatus) => {
-		switch (status) {
-			case "pending":
-				return <Clock className="h-4 w-4 text-muted-foreground" />;
-			case "running":
-				return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-			case "completed":
-				return <CheckCircle className="h-4 w-4 text-green-500" />;
-			case "error":
-				return <AlertCircle className="h-4 w-4 text-red-500" />;
-			case "blocked":
-				return <Clock className="h-4 w-4 text-muted-foreground" />;
-			default:
-				return <Clock className="h-4 w-4 text-muted-foreground" />;
-		}
-	};
+	const startedSteps = useRef<Set<string>>(new Set());
+	const progressTracker = useRef<ProgressTracker>(new ProgressTracker());
 
-	// Helper to update step status
 	const updateStepStatus = useCallback((stepId: string, updates: Partial<WizardStep>) => {
 		setSteps((prev) => prev.map((step) => (step.id === stepId ? { ...step, ...updates } : step)));
 	}, []);
 
-	// Execute a single step
 	const executeStep = useCallback(
 		async (stepId: string, dependencyData?: any) => {
 			// Check if step has already been started
@@ -163,20 +294,35 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				return prev.map((s) => (s.id === stepId ? { ...s, status: "running" as StepStatus, progress: 0 } : s));
 			});
 
+			const executor = createStepExecutor(progressTracker.current, updateStepStatus);
+
 			try {
 				switch (stepId) {
 					case "analyze-website":
-						await executeAnalyzeWebsite(stepId);
-						break;
+						if (!brand?.website) throw new Error("No website URL");
+						return await executor(stepId, () => apiCalls.analyzeWebsite(brand.website));
+
 					case "get-keywords":
-						await executeGetKeywords(stepId);
-						break;
+						if (!brand?.website) throw new Error("No website URL");
+						const keywordData = await executor(stepId, () => apiCalls.getKeywords(brand.website));
+						return {
+							...keywordData,
+							keywords: keywordData.keywords.map((kw: any) => ({ ...kw, selected: false }))
+						};
+
 					case "get-competitors":
-						await executeGetCompetitors(stepId, dependencyData);
-						break;
+						const currentProducts = dependencyData?.products;
+						if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
+							throw new Error("No products data available for competitor analysis");
+						}
+						return await executor(stepId, () => apiCalls.getCompetitors(currentProducts));
+
 					case "analyze-personas":
-						await executeAnalyzePersonas(stepId, dependencyData);
-						break;
+						const productsForPersonas = dependencyData?.products;
+						if (!productsForPersonas || !Array.isArray(productsForPersonas) || productsForPersonas.length === 0) {
+							throw new Error("No products data available for persona analysis");
+						}
+						return await executor(stepId, () => apiCalls.getPersonas(productsForPersonas), 2); // 2x slower
 				}
 			} catch (error) {
 				updateStepStatus(stepId, {
@@ -185,209 +331,41 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				});
 			}
 		},
-		[updateStepStatus, brand],
+		[updateStepStatus, brand]
 	);
 
-	// Individual step implementations
-	const executeAnalyzeWebsite = async (stepId: string) => {
-		if (!brand?.website) throw new Error("No website URL");
+	const resetSteps = useCallback(() => {
+		startedSteps.current.clear();
+		progressTracker.current.cleanup();
+	}, []);
 
-		// Initialize progress for this step
-		stepProgress.current[stepId] = 0;
-		completedSteps.current.delete(stepId);
-
-		// Simulate progress with smooth monotonic increase
-		const progressInterval = setInterval(() => {
-			// Check if step is completed to prevent updates after completion
-			if (completedSteps.current.has(stepId)) return;
-
-			const currentProgress = stepProgress.current[stepId] || 0;
-			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
-			const newProgress = Math.min(95, currentProgress + increment);
-			stepProgress.current[stepId] = newProgress;
-			updateStepStatus(stepId, { progress: newProgress });
-		}, 200); // Faster interval for smoother animation
-
-		try {
-			const response = await fetch("/api/wizard/analyze-website", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ website: brand.website }),
-			});
-
-			if (!response.ok) throw new Error("Failed to analyze website");
-
-			const data = await response.json();
-			setWizardData((prev) => ({ ...prev, products: data.products }));
-
-			// Mark step as completed to prevent further progress updates
-			completedSteps.current.add(stepId);
-			clearInterval(progressInterval);
-			updateStepStatus(stepId, { status: "completed", progress: 100, data: data.products });
-		} finally {
-			// Clean up progress tracking after a short delay to prevent flicker
-			setTimeout(() => {
-				delete stepProgress.current[stepId];
-			}, 100);
-		}
+	return {
+		steps,
+		setSteps,
+		executeStep,
+		resetSteps,
+		updateStepStatus
 	};
+};
 
-	const executeGetKeywords = async (stepId: string) => {
-		if (!brand?.website) throw new Error("No website URL");
+export default function PromptWizard({ onComplete }: PromptWizardProps) {
+	const { brand, revalidate } = useBrand();
+	const [currentPhase, setCurrentPhase] = useState<"idle" | "processing" | "review" | "complete">("idle");
+	const [isGenerating, setIsGenerating] = useState(false);
+	const [wizardData, setWizardData] = useState<WizardData>({
+		products: [],
+		competitors: [],
+		personaGroups: [],
+		keywords: [],
+		customPrompts: [],
+	});
 
-		// Initialize progress for this step
-		stepProgress.current[stepId] = 0;
-		completedSteps.current.delete(stepId);
-
-		const progressInterval = setInterval(() => {
-			// Check if step is completed to prevent updates after completion
-			if (completedSteps.current.has(stepId)) return;
-
-			const currentProgress = stepProgress.current[stepId] || 0;
-			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
-			const newProgress = Math.min(95, currentProgress + increment);
-			stepProgress.current[stepId] = newProgress;
-			updateStepStatus(stepId, { progress: newProgress });
-		}, 200); // Faster interval for smoother animation
-
-		try {
-			const response = await fetch("/api/wizard/get-keywords", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ domain: brand.website }),
-			});
-
-			if (!response.ok) throw new Error("Failed to get keywords");
-
-			const data = await response.json();
-			const keywordsWithSelection = data.keywords.map((kw: any) => ({
-				...kw,
-				selected: false,
-			}));
-			setWizardData((prev) => ({ ...prev, keywords: keywordsWithSelection }));
-
-			// Mark step as completed to prevent further progress updates
-			completedSteps.current.add(stepId);
-			clearInterval(progressInterval);
-			updateStepStatus(stepId, { status: "completed", progress: 100, data: keywordsWithSelection });
-		} finally {
-			// Clean up progress tracking after a short delay to prevent flicker
-			setTimeout(() => {
-				delete stepProgress.current[stepId];
-			}, 100);
-		}
-	};
-
-	const executeGetCompetitors = async (stepId: string, dependencyData?: any) => {
-		// Initialize progress for this step
-		stepProgress.current[stepId] = 0;
-		completedSteps.current.delete(stepId);
-
-		const progressInterval = setInterval(() => {
-			// Check if step is completed to prevent updates after completion
-			if (completedSteps.current.has(stepId)) return;
-
-			const currentProgress = stepProgress.current[stepId] || 0;
-			const increment = Math.random() * 0.5 + 0.3; // Random increment between 0.3-0.8% (smoother)
-			const newProgress = Math.min(95, currentProgress + increment);
-			stepProgress.current[stepId] = newProgress;
-			updateStepStatus(stepId, { progress: newProgress });
-		}, 200); // Faster interval for smoother animation
-
-		try {
-			// Get current products from dependency data or wizard data
-			const currentProducts = dependencyData?.products || wizardData.products;
-
-			// Validate that we have products data
-			if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
-				throw new Error("No products data available for competitor analysis");
-			}
-
-			const response = await fetch("/api/wizard/get-competitors", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ products: currentProducts }),
-			});
-
-			if (!response.ok) throw new Error("Failed to get competitors");
-
-			const data = await response.json();
-			setWizardData((prev) => ({ ...prev, competitors: data.competitors }));
-
-			// Mark step as completed to prevent further progress updates
-			completedSteps.current.add(stepId);
-			clearInterval(progressInterval);
-			updateStepStatus(stepId, { status: "completed", progress: 100, data: data.competitors });
-		} finally {
-			// Clean up progress tracking after a short delay to prevent flicker
-			setTimeout(() => {
-				delete stepProgress.current[stepId];
-			}, 100);
-		}
-	};
-
-	const executeAnalyzePersonas = async (stepId: string, dependencyData?: any) => {
-		// Initialize progress for this step
-		stepProgress.current[stepId] = 0;
-		completedSteps.current.delete(stepId);
-
-		const progressInterval = setInterval(() => {
-			// Check if step is completed to prevent updates after completion
-			if (completedSteps.current.has(stepId)) return;
-
-			const currentProgress = stepProgress.current[stepId] || 0;
-			const increment = (Math.random() * 0.5 + 0.3) / 2; // 2x slower - Random increment between 0.15-0.4% (smoother)
-			const newProgress = Math.min(95, currentProgress + increment);
-			stepProgress.current[stepId] = newProgress;
-			updateStepStatus(stepId, { progress: newProgress });
-		}, 200); // Faster interval for smoother animation
-
-		try {
-			// Get current products from dependency data or wizard data
-			const currentProducts = dependencyData?.products || wizardData.products;
-
-			// Validate that we have products data
-			if (!currentProducts || !Array.isArray(currentProducts) || currentProducts.length === 0) {
-				throw new Error("No products data available for persona analysis");
-			}
-
-			const response = await fetch("/api/wizard/get-personas", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ products: currentProducts }),
-			});
-
-			if (!response.ok) throw new Error("Failed to analyze personas");
-
-			const data = await response.json();
-			setWizardData((prev) => ({ ...prev, personaGroups: data.personaGroups }));
-
-			// Mark step as completed to prevent further progress updates
-			completedSteps.current.add(stepId);
-			clearInterval(progressInterval);
-			updateStepStatus(stepId, { status: "completed", progress: 100, data: data.personaGroups });
-		} finally {
-			// Clean up progress tracking after a short delay to prevent flicker
-			setTimeout(() => {
-				delete stepProgress.current[stepId];
-			}, 100);
-		}
-	};
+	const { steps, setSteps, executeStep, resetSteps } = useStepManager(brand);
 
 	// Start all parallel processing
 	const startProcessing = async () => {
-		// Set loading state immediately
 		setIsGenerating(true);
-
-		// Clear started steps tracking
-		startedSteps.current.clear();
-
-		// Clear progress tracking
-		stepProgress.current = {};
-
-		// Clear completed steps tracking
-		completedSteps.current.clear();
-
+		resetSteps();
 		setCurrentPhase("processing");
 
 		// Start independent steps immediately
@@ -401,7 +379,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	useEffect(() => {
 		if (currentPhase !== "processing") return;
 
-		// Update blocked steps to pending if dependencies are met, and start ready steps
+		// Update blocked steps to pending if dependencies are met
 		setSteps((prev) => {
 			let hasChanges = false;
 			const updated = prev.map((step) => {
@@ -412,19 +390,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					});
 					if (depsCompleted) {
 						hasChanges = true;
-						// Get dependency data from completed steps
-						const dependencyData = step.dependencies.reduce((acc, depId) => {
-							const depStep = prev.find((s) => s.id === depId);
-							if (depStep?.data) {
-								if (depId === "analyze-website") {
-									acc.products = depStep.data;
-								}
-							}
-							return acc;
-						}, {} as any);
-
-						// Start the step immediately with dependency data
-						executeStep(step.id, dependencyData);
 						return { ...step, status: "pending" as StepStatus };
 					}
 				}
@@ -432,36 +397,69 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			});
 			return hasChanges ? updated : prev;
 		});
+	}, [steps, currentPhase, setSteps]);
+
+	// Execute steps that are pending and have their dependencies met
+	useEffect(() => {
+		if (currentPhase !== "processing") return;
+
+		const pendingSteps = steps.filter((step) => step.status === "pending");
+		
+		for (const step of pendingSteps) {
+			// Get dependency data from completed steps
+			const dependencyData = step.dependencies.reduce((acc, depId) => {
+				const depStep = steps.find((s) => s.id === depId);
+				if (depStep?.data) {
+					if (depId === "analyze-website") {
+						acc.products = depStep.data.products;
+					}
+				}
+				return acc;
+			}, {} as any);
+
+			// Execute the step with dependency data
+			executeStep(step.id, dependencyData);
+		}
 	}, [steps, currentPhase, executeStep]);
 
-	// Check if all steps are completed
+	// Check if all steps are completed and update wizard data
 	useEffect(() => {
 		const allCompleted = steps.every((step) => step.status === "completed");
 		if (allCompleted && currentPhase === "processing") {
+			// Update wizard data with results from completed steps
+			const newWizardData = { ...wizardData };
+			
+			steps.forEach((step) => {
+				if (step.data) {
+					switch (step.id) {
+						case "analyze-website":
+							newWizardData.products = step.data.products;
+							break;
+						case "get-keywords":
+							newWizardData.keywords = step.data.keywords;
+							break;
+						case "get-competitors":
+							newWizardData.competitors = step.data.competitors;
+							break;
+						case "analyze-personas":
+							newWizardData.personaGroups = step.data.personaGroups;
+							break;
+					}
+				}
+			});
+
+			setWizardData(newWizardData);
 			setCurrentPhase("review");
 		}
-	}, [steps, currentPhase, wizardData.products]);
+	}, [steps, currentPhase, wizardData]);
 
 	// Create final prompts
 	const createPrompts = async () => {
 		if (!brand?.id) return;
 
 		try {
-			const selectedKeywords = wizardData.keywords.filter((kw) => kw.selected);
-
-			const response = await fetch("/api/wizard/create-prompts", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					brandId: brand.id,
-					competitors: wizardData.competitors,
-					personaGroups: wizardData.personaGroups,
-					keywords: selectedKeywords,
-					customPrompts: wizardData.customPrompts,
-				}),
-			});
-
-			if (response.ok) {
+			const success = await apiCalls.createPrompts(brand.id, wizardData);
+			if (success) {
 				await revalidate();
 				onComplete();
 			}
