@@ -7,7 +7,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket, Plus, X } from "lucide-react";
 import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@/components/ui/tags-input";
 import { Separator } from "@/components/ui/separator";
@@ -596,12 +597,36 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 				{/* Persona Groups Section */}
 				<div className="space-y-2">
-					<h2 className="text-2xl font-bold">Review Target Personas</h2>
+					<h2 className="text-2xl font-bold">Review Targeting Groups</h2>
 					<p className="text-muted-foreground">Review categories of people or use cases you want to track.</p>
 					<div className="space-y-4">
 						{wizardData.personaGroups.map((group, index) => (
-							<div key={index}>
-								<h4 className="font-medium text-sm mb-2">{group.name}</h4>
+							<div key={index} className="space-y-3 p-4 border rounded-lg">
+								<div className="flex items-center gap-2">
+									<Input
+										type="text"
+										value={group.name}
+										onChange={(e) => {
+											const newGroups = [...wizardData.personaGroups];
+											newGroups[index] = { ...group, name: e.target.value };
+											setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
+										}}
+										placeholder="Group name"
+										className="flex-1 cursor-pointer"
+									/>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											const newGroups = [...wizardData.personaGroups];
+											newGroups.splice(index, 1);
+											setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
+										}}
+										className="p-2 cursor-pointer"
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</div>
 								<EditableTagsInput
 									items={group.personas}
 									onValueChange={(personas) => {
@@ -609,10 +634,30 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 										newGroups[index] = { ...group, personas };
 										setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
 									}}
-									placeholder="Add persona..."
+									placeholder="Add item..."
 								/>
 							</div>
 						))}
+						{wizardData.personaGroups.length < 3 && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									setWizardData((prev) => ({
+										...prev,
+										personaGroups: [...prev.personaGroups, { name: "", personas: [] }],
+									}));
+								}}
+								className="flex items-center gap-2 cursor-pointer"
+							>
+								<Plus className="h-4 w-4" /> Add Group
+							</Button>
+						)}
+						{wizardData.personaGroups.length >= 3 && (
+							<p className="text-xs text-muted-foreground">
+								Maximum of 3 groups allowed. Remove a group to add a new one.
+							</p>
+						)}
 					</div>
 				</div>
 
