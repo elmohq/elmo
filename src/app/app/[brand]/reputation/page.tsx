@@ -24,8 +24,8 @@ async function getPrompts(brandId: string) {
 	return brandPrompts;
 }
 
-export default async function ReputationPage({ params }: { params: { brand: string } }) {
-	const brandPrompts = await getPrompts(params.brand);
+export default async function ReputationPage({ params }: { params: Promise<{ brand: string }> }) {
+	const brandPrompts = await getPrompts((await params).brand);
 
 	if (brandPrompts === null) {
 		notFound();
