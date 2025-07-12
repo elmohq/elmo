@@ -133,6 +133,7 @@ const apiCalls = {
 	},
 
 	async createPrompts(brandId: string, data: {
+		products: string[];
 		competitors: string[];
 		personaGroups: Array<{ name: string; personas: string[] }>;
 		keywords: Array<{ keyword: string; search_volume: number; difficulty: number; selected: boolean }>;
@@ -145,6 +146,7 @@ const apiCalls = {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				brandId,
+				products: data.products,
 				competitors: data.competitors,
 				personaGroups: data.personaGroups,
 				keywords: selectedKeywords,

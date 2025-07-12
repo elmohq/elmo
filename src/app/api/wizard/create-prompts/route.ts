@@ -5,7 +5,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 
 export async function POST(request: NextRequest) {
 	try {
-		const { brandId, reputationTerms, competitors, personaGroups, keywords } = await request.json();
+		const { brandId, competitors, personaGroups, keywords, customPrompts, products } = await request.json();
 
 		if (!brandId) {
 			return NextResponse.json({ error: "Brand ID is required" }, { status: 400 });
@@ -21,14 +21,46 @@ export async function POST(request: NextRequest) {
 
 		const promptsToCreate = [];
 
-		// Add reputation terms (prefixed with "best")
-		if (reputationTerms && Array.isArray(reputationTerms)) {
-			for (const term of reputationTerms) {
+		// Add product categories as non-reputation prompts (with "best " prefix)
+		if (products && Array.isArray(products)) {
+			for (const product of products) {
 				promptsToCreate.push({
 					brandId,
-					group: "Brand Reputation",
-					value: term,
-					reputation: true,
+					group: "Product Categories",
+					value: `best ${product}`,
+					reputation: false,
+					enabled: true,
+				});
+			}
+		}
+
+		// Add product categories + personas as reputation prompts (cross-product)
+		if (products && Array.isArray(products) && personaGroups && Array.isArray(personaGroups)) {
+			for (const product of products) {
+				for (const group of personaGroups) {
+					if (group && group.name && Array.isArray(group.personas)) {
+						for (const persona of group.personas) {
+							promptsToCreate.push({
+								brandId,
+								group: group.name,
+								value: `best ${product} for ${persona}`,
+								reputation: true,
+								enabled: true,
+							});
+						}
+					}
+				}
+			}
+		}
+
+		// Add custom prompts (with reputation set to false)
+		if (customPrompts && Array.isArray(customPrompts)) {
+			for (const prompt of customPrompts) {
+				promptsToCreate.push({
+					brandId,
+					group: "Custom Prompts",
+					value: prompt,
+					reputation: false,
 					enabled: true,
 				});
 			}
@@ -47,24 +79,7 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Add persona groups
-		if (personaGroups && Array.isArray(personaGroups)) {
-			for (const group of personaGroups) {
-				if (group && group.name && Array.isArray(group.personas)) {
-					for (const persona of group.personas) {
-						promptsToCreate.push({
-							brandId,
-							group: group.name,
-							value: persona,
-							reputation: false,
-							enabled: true,
-						});
-					}
-				}
-			}
-		}
-
-		// Add keywords from DataForSEO
+		// Add keywords from DataForSEO (no group, non-reputation)
 		if (keywords && Array.isArray(keywords)) {
 			for (const keywordData of keywords) {
 				promptsToCreate.push({
