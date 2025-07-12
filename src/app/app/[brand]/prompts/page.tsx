@@ -32,11 +32,11 @@ export default async function PromptsPage({ params }: { params: { brand: string 
 	}
 
 	// Filter to only non-reputation prompts
-	const nonReputationPrompts = brandPrompts.filter(prompt => !prompt.reputation);
+	const nonReputationPrompts = brandPrompts.filter((prompt) => !prompt.reputation);
 
 	return (
-		<PromptsDisplay 
-			prompts={nonReputationPrompts} 
+		<PromptsDisplay
+			prompts={nonReputationPrompts}
 			pageTitle="Brand Prompts"
 			pageDescription="Manage your brand tracking keywords and prompts"
 		/>

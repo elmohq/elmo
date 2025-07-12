@@ -30,7 +30,7 @@ Please search for current market information to identify real competitors. Be co
 				{
 					role: "user",
 					content: prompt,
-				}
+				},
 			],
 			tools: [
 				{

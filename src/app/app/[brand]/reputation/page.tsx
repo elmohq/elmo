@@ -32,11 +32,11 @@ export default async function ReputationPage({ params }: { params: { brand: stri
 	}
 
 	// Filter to only reputation prompts
-	const reputationPrompts = brandPrompts.filter(prompt => prompt.reputation);
+	const reputationPrompts = brandPrompts.filter((prompt) => prompt.reputation);
 
 	return (
-		<PromptsDisplay 
-			prompts={reputationPrompts} 
+		<PromptsDisplay
+			prompts={reputationPrompts}
 			pageTitle="Brand Reputation"
 			pageDescription="Monitor your brand reputation with targeted prompts"
 		/>

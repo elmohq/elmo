@@ -12,16 +12,12 @@ export function SiteHeader() {
 	const pathname = usePathname();
 
 	// Extract the page segment from the path (e.g., /app/foo/reputation -> reputation)
-	const pathSegments = pathname.split('/');
-	const brandIndex = pathSegments.findIndex(segment => segment === 'app');
-	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] 
-		? pathSegments[brandIndex + 2] 
-		: '';
-	
+	const pathSegments = pathname.split("/");
+	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
+	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] ? pathSegments[brandIndex + 2] : "";
+
 	// Capitalize the page segment or default to Dashboard
-	const pageName = pageSegment 
-		? pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1)
-		: 'Dashboard';
+	const pageName = pageSegment ? pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1) : "Dashboard";
 
 	return (
 		<header className="bg-background/90 sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -34,7 +30,7 @@ export function SiteHeader() {
 					<span className="text-base font-medium text-muted-foreground">{pageName}</span>
 				</div>
 				<div className="ml-auto flex items-center gap-2">
-					{(pageSegment === 'prompts' || pageSegment === 'reputation') && (
+					{(pageSegment === "prompts" || pageSegment === "reputation") && (
 						<Button size="sm" className="hidden h-7 sm:flex">
 							<IconEditCircle />
 							<span>Edit</span>

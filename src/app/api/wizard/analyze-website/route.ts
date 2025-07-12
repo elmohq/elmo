@@ -27,7 +27,7 @@ Be concise and output to a comma separated list contained within <out> xml tags.
 				{
 					role: "user",
 					content: prompt,
-				}
+				},
 			],
 			tools: [
 				{

@@ -1,55 +1,55 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1751910096198,
-      "tag": "0000_ambiguous_iron_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1751934908690,
-      "tag": "0001_broad_silvermane",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1752086822181,
-      "tag": "0002_gifted_scorpion",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1752093046292,
-      "tag": "0003_chilly_captain_cross",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1752094091890,
-      "tag": "0004_next_lord_hawal",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1752276181901,
-      "tag": "0005_lively_red_hulk",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1752276678062,
-      "tag": "0006_overrated_puff_adder",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1751910096198,
+			"tag": "0000_ambiguous_iron_man",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1751934908690,
+			"tag": "0001_broad_silvermane",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1752086822181,
+			"tag": "0002_gifted_scorpion",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1752093046292,
+			"tag": "0003_chilly_captain_cross",
+			"breakpoints": true
+		},
+		{
+			"idx": 4,
+			"version": "7",
+			"when": 1752094091890,
+			"tag": "0004_next_lord_hawal",
+			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "7",
+			"when": 1752276181901,
+			"tag": "0005_lively_red_hulk",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1752276678062,
+			"tag": "0006_overrated_puff_adder",
+			"breakpoints": true
+		}
+	]
 }

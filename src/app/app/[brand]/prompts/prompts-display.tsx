@@ -53,14 +53,17 @@ function getGroupColor(groupName: string) {
 
 export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsDisplayProps) {
 	// Group prompts by category
-	const promptsByGroup = prompts.reduce((acc, prompt) => {
-		const group = prompt.group || "Uncategorized";
-		if (!acc[group]) {
-			acc[group] = [];
-		}
-		acc[group].push(prompt);
-		return acc;
-	}, {} as Record<string, Prompt[]>);
+	const promptsByGroup = prompts.reduce(
+		(acc, prompt) => {
+			const group = prompt.group || "Uncategorized";
+			if (!acc[group]) {
+				acc[group] = [];
+			}
+			acc[group].push(prompt);
+			return acc;
+		},
+		{} as Record<string, Prompt[]>,
+	);
 
 	const groupEntries = Object.entries(promptsByGroup);
 
@@ -99,18 +102,12 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 							<CardContent>
 								<div className="grid gap-2">
 									{groupPrompts.map((prompt) => (
-										<div
-											key={prompt.id}
-											className="flex items-center justify-between p-3 rounded-lg border bg-card"
-										>
+										<div key={prompt.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
 											<div className="flex items-center gap-3">
 												<div className="flex-1">
 													<p className="font-medium">{prompt.value}</p>
 													<div className="flex items-center gap-2 mt-1">
-														<Badge
-															variant="outline"
-															className={`text-xs ${getGroupColor(groupName)}`}
-														>
+														<Badge variant="outline" className={`text-xs ${getGroupColor(groupName)}`}>
 															{groupName}
 														</Badge>
 														{prompt.reputation && (
@@ -141,4 +138,4 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 			)}
 		</div>
 	);
-} 
+}
