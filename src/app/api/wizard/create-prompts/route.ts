@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
 			for (const product of products) {
 				promptsToCreate.push({
 					brandId,
-					group: "Product Categories",
+					groupCategory: "Product Categories",
+					groupPrefix: "best ",
 					value: `best ${product}`,
 					reputation: false,
 					enabled: true,
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
 						for (const persona of group.personas) {
 							promptsToCreate.push({
 								brandId,
-								group: group.name,
+								groupCategory: group.name,
+								groupPrefix: `best ${product} for `,
 								value: `best ${product} for ${persona}`,
 								reputation: true,
 								enabled: true,
@@ -59,7 +61,8 @@ export async function POST(request: NextRequest) {
 			for (const prompt of customPrompts) {
 				promptsToCreate.push({
 					brandId,
-					group: "Custom Prompts",
+					groupCategory: null,
+					groupPrefix: null,
 					value: prompt,
 					reputation: false,
 					enabled: true,
@@ -92,7 +95,8 @@ export async function POST(request: NextRequest) {
 			for (const keywordData of keywords) {
 				promptsToCreate.push({
 					brandId,
-					group: "SEO Keywords",
+					groupCategory: null,
+					groupPrefix: null,
 					value: keywordData.keyword,
 					reputation: false,
 					enabled: true,

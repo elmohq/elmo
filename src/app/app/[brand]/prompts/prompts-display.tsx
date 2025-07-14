@@ -8,7 +8,8 @@ import { Plus, Hash, Users, Search, Target } from "lucide-react";
 interface Prompt {
 	id: string;
 	brandId: string;
-	group: string | null;
+	groupCategory: string | null;
+	groupPrefix: string | null;
 	value: string;
 	reputation: boolean;
 	enabled: boolean;
@@ -55,7 +56,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 	// Group prompts by category
 	const promptsByGroup = prompts.reduce(
 		(acc, prompt) => {
-			const group = prompt.group || "Uncategorized";
+			const group = prompt.groupCategory || "Uncategorized";
 			if (!acc[group]) {
 				acc[group] = [];
 			}
@@ -88,52 +89,65 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 				</div>
 			) : (
 				<div className="space-y-6">
-					{groupEntries.map(([groupName, groupPrompts]) => (
-						<Card key={groupName}>
-							<CardHeader>
-								<CardTitle className="flex items-center gap-2">
-									{getGroupIcon(groupName)}
-									{groupName}
-									<Badge variant="secondary" className="ml-2">
-										{groupPrompts.length} {groupPrompts.length === 1 ? "prompt" : "prompts"}
-									</Badge>
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="grid gap-2">
-									{groupPrompts.map((prompt) => (
-										<div key={prompt.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-											<div className="flex items-center gap-3">
-												<div className="flex-1">
-													<p className="font-medium">{prompt.value}</p>
-													<div className="flex items-center gap-2 mt-1">
-														<Badge variant="outline" className={`text-xs ${getGroupColor(groupName)}`}>
-															{groupName}
-														</Badge>
-														{prompt.reputation && (
-															<Badge variant="outline" className="text-xs">
-																Reputation
+					{groupEntries.map(([groupName, groupPrompts]) => {
+						// Get the group prefix from the first prompt in the group
+						const groupPrefix = groupPrompts[0]?.groupPrefix;
+						
+						return (
+							<Card key={groupName}>
+								<CardHeader>
+									<CardTitle className="flex items-center gap-2">
+										{getGroupIcon(groupName)}
+										{groupPrefix && (
+											<>
+												{groupPrefix}
+												<code className="bg-muted px-2 py-1 rounded text-sm font-mono">
+													{groupName}
+												</code>
+											</>
+										)}
+										{!groupPrefix && groupName}
+										<Badge variant="secondary" className="ml-2">
+											{groupPrompts.length} {groupPrompts.length === 1 ? "prompt" : "prompts"}
+										</Badge>
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="grid gap-2">
+										{groupPrompts.map((prompt) => (
+											<div key={prompt.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+												<div className="flex items-center gap-3">
+													<div className="flex-1">
+														<p className="font-medium">{prompt.value}</p>
+														<div className="flex items-center gap-2 mt-1">
+															<Badge variant="outline" className={`text-xs ${getGroupColor(groupName)}`}>
+																{groupName}
 															</Badge>
-														)}
-														{!prompt.enabled && (
-															<Badge variant="outline" className="text-xs text-muted-foreground">
-																Disabled
-															</Badge>
-														)}
+															{prompt.reputation && (
+																<Badge variant="outline" className="text-xs">
+																	Reputation
+																</Badge>
+															)}
+															{!prompt.enabled && (
+																<Badge variant="outline" className="text-xs text-muted-foreground">
+																	Disabled
+																</Badge>
+															)}
+														</div>
 													</div>
 												</div>
+												<div className="flex items-center gap-2">
+													<Badge variant={prompt.enabled ? "default" : "secondary"}>
+														{prompt.enabled ? "Active" : "Inactive"}
+													</Badge>
+												</div>
 											</div>
-											<div className="flex items-center gap-2">
-												<Badge variant={prompt.enabled ? "default" : "secondary"}>
-													{prompt.enabled ? "Active" : "Inactive"}
-												</Badge>
-											</div>
-										</div>
-									))}
-								</div>
-							</CardContent>
-						</Card>
-					))}
+										))}
+									</div>
+								</CardContent>
+							</Card>
+						);
+					})}
 				</div>
 			)}
 		</div>

@@ -18,7 +18,8 @@ export const prompts = pgTable("prompts", {
 	brandId: text("brand_id")
 		.references(() => brands.id)
 		.notNull(),
-	group: text("group"),
+	groupCategory: text("group_category"),
+	groupPrefix: text("group_prefix"),
 	value: text("value").notNull(),
 	reputation: boolean("reputation").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),

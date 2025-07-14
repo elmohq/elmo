@@ -21,7 +21,7 @@ async function getPrompts(brandId: string) {
 		.select()
 		.from(prompts)
 		.where(eq(prompts.brandId, brandId))
-		.orderBy(prompts.group, prompts.createdAt);
+		.orderBy(prompts.groupCategory, prompts.createdAt);
 
 	return brandPrompts;
 }

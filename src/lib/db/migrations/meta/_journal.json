@@ -57,6 +57,13 @@
       "when": 1752517962391,
       "tag": "0007_eminent_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1752522246151,
+      "tag": "0008_whole_shaman",
+      "breakpoints": true
     }
   ]
 }
