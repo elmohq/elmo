@@ -13,12 +13,33 @@ interface WizardResults {
 	getPersonas?: any;
 }
 
+interface CSVData {
+	run: number;
+	brand: string;
+	brandWebsite: string;
+	productCategories: string;
+	competitors: string;
+	groups: string;
+	seo: string;
+}
+
 export default function WizardDebug() {
 	const [website, setWebsite] = useState("https://example.com");
 	const [analyzeWebsiteData, setAnalyzeWebsiteData] = useState("");
 	const [results, setResults] = useState<WizardResults>({});
 	const [loading, setLoading] = useState<Record<string, boolean>>({});
 	const [copied, setCopied] = useState<Record<string, boolean>>({});
+	const [csvData, setCsvData] = useState<CSVData[]>([]);
+	const [csvLoading, setCsvLoading] = useState(false);
+
+	// Hardcoded brands for CSV generation
+	const brands = [
+		{ name: "Glossier", website: "https://www.glossier.com/" },
+		{ name: "Beam Organics", website: "https://shopbeam.com/" },
+		{ name: "BUFFED energy", website: "https://buffed.energy/" },
+		{ name: "Whitelabel Client Store", website: "https://store.whitelabel-client.com/" },
+		{ name: "U Beauty", website: "https://ubeauty.com/" },
+	];
 
 	const setLoadingState = (key: string, isLoading: boolean) => {
 		setLoading(prev => ({ ...prev, [key]: isLoading }));
@@ -175,6 +196,104 @@ export default function WizardDebug() {
 		}
 	};
 
+	// Helper function to escape CSV content
+	const escapeCSV = (value: string): string => {
+		if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+			return `"${value.replace(/"/g, '""')}"`;
+		}
+		return value;
+	};
+
+	// Helper function to call a single API
+	const callAPI = async (endpoint: string, payload: any): Promise<any> => {
+		const response = await fetch(endpoint, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to call ${endpoint}: ${response.statusText}`);
+		}
+		
+		return await response.json();
+	};
+
+	// Generate CSV data for all brands and runs
+	const generateCSV = async () => {
+		setCsvLoading(true);
+		const csvRows: CSVData[] = [];
+
+		try {
+			// Process each brand sequentially
+			for (const brand of brands) {
+				console.log(`Processing brand: ${brand.name}`);
+				
+				// Run 3 iterations for this brand sequentially
+				for (let run = 1; run <= 3; run++) {
+					console.log(`Starting run ${run} for ${brand.name}`);
+					
+					// Analyze website
+					const analyzeResult = await callAPI("/api/wizard/analyze-website", { website: brand.website });
+					const { products } = analyzeResult;
+					
+					if (!products || !Array.isArray(products) || products.length === 0) {
+						console.error(`No products found for ${brand.name} (run ${run})`);
+						csvRows.push({
+							run,
+							brand: brand.name,
+							brandWebsite: brand.website,
+							productCategories: JSON.stringify({ products: [] }, null, 2),
+							competitors: JSON.stringify({ error: "No products found" }, null, 2),
+							groups: JSON.stringify({ error: "No products found" }, null, 2),
+							seo: JSON.stringify({ error: "No products found" }, null, 2),
+						});
+						continue;
+					}
+
+					// Run competitors, personas, and keywords in parallel
+					const [competitorsResult, personasResult, keywordsResult] = await Promise.all([
+						callAPI("/api/wizard/get-competitors", { products, website: brand.website }),
+						callAPI("/api/wizard/get-personas", { products, website: brand.website }),
+						callAPI("/api/wizard/get-keywords", { domain: brand.website, products }),
+					]);
+
+					csvRows.push({
+						run,
+						brand: brand.name,
+						brandWebsite: brand.website,
+						productCategories: JSON.stringify({ products }, null, 2),
+						competitors: JSON.stringify(competitorsResult, null, 2),
+						groups: JSON.stringify(personasResult, null, 2),
+						seo: JSON.stringify(keywordsResult, null, 2),
+					});
+				}
+			}
+
+			setCsvData(csvRows);
+		} catch (error) {
+			console.error("Error generating CSV:", error);
+			alert("Failed to generate CSV. Check console for details.");
+		} finally {
+			setCsvLoading(false);
+		}
+	};
+
+	// Convert CSV data to string format
+	const csvToString = (data: CSVData[]): string => {
+		return data.map(row => 
+			[
+				row.run.toString(),
+				escapeCSV(row.brand),
+				escapeCSV(row.brandWebsite),
+				escapeCSV(row.productCategories),
+				escapeCSV(row.competitors),
+				escapeCSV(row.groups),
+				escapeCSV(row.seo),
+			].join('\t')
+		).join('\n');
+	};
+
 	return (
 		<div className="space-y-6">
 			<Card>
@@ -242,6 +361,61 @@ export default function WizardDebug() {
 							Get Personas
 						</Button>
 					</div>
+				</CardContent>
+			</Card>
+
+			{/* CSV Generation Section */}
+			<Card>
+				<CardHeader>
+					<CardTitle>CSV Generation</CardTitle>
+					<CardDescription>
+						Generate CSV with data for all brands across 3 runs. Includes: Run, Brand, Brand Website, Product Categories, Competitors, Groups, SEO
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div className="space-y-2">
+						<Label>Brands to process:</Label>
+						<ul className="text-sm text-muted-foreground">
+							{brands.map(brand => (
+								<li key={brand.name}>• {brand.name} ({brand.website})</li>
+							))}
+						</ul>
+					</div>
+
+					<Button
+						onClick={generateCSV}
+						disabled={csvLoading}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						{csvLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+						Generate CSV Data (3 runs × 5 brands)
+					</Button>
+
+					{csvData.length > 0 && (
+						<div className="space-y-4">
+							<div className="flex items-center justify-between">
+								<Label>CSV Preview ({csvData.length} rows)</Label>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => copyToClipboard(csvToString(csvData), 'csv')}
+									className="flex items-center gap-2"
+								>
+									{copied.csv ? (
+										<Check className="h-4 w-4 text-green-600" />
+									) : (
+										<Copy className="h-4 w-4" />
+									)}
+									{copied.csv ? 'Copied!' : 'Copy CSV'}
+								</Button>
+							</div>
+							<div className="border rounded-md p-4 bg-muted max-h-96 overflow-auto">
+								<pre className="text-xs font-mono whitespace-pre-wrap break-words">
+									{csvToString(csvData)}
+								</pre>
+							</div>
+						</div>
+					)}
 				</CardContent>
 			</Card>
 
