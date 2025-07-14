@@ -40,11 +40,18 @@ export async function POST(request: NextRequest) {
 		}
 
 		const productList = products.join(", ");
-		const prompt = `What are 4 direct to consumer competitors of ${website} (which sells ${productList}). 
+		const prompt = `What are up to 4 direct to consumer competitors of ${website} (which sells ${productList}). 
 		
 The competitors should sell similar products in a similar way to a similar audience.
 
-Please search for current market information to identify real direct competitors. For each competitor, provide both the company name and their website domain. Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". Contain the JSON within <out> xml tags. List up to 4 competitors.
+Please search for current market information to identify direct competitors. 
+For each competitor, provide both the company name and their website domain. 
+Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. 
+The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". 
+Contain the JSON within <out> xml tags. List up to 4 competitors.
+
+Do not include competitors that sell similar types of products but would not be considered as direct competitors to ${website}.
+If ${website} is very small, it may not have any direct competitors. In this case, return an empty array.
 
 Example format:
 <out>
