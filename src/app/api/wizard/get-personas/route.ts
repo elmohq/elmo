@@ -115,7 +115,7 @@ Format your response as:
 Only include suffixes that clearly fit into strategic categories. Ignore overly specific or unclear terms.`;
 
 		const { text } = await generateText({
-			model: anthropic("claude-3-5-sonnet-20241022"),
+			model: anthropic("claude-sonnet-4-20250514"),
 			prompt,
 			maxTokens: 800,
 		});
