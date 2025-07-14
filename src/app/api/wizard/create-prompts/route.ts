@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
 			for (const product of products) {
 				promptsToCreate.push({
 					brandId,
-					groupCategory: "Product Categories",
-					groupPrefix: "best ",
+					groupCategory: null,
+					groupPrefix: null,
 					value: `best ${product}`,
 					reputation: false,
 					enabled: true,
