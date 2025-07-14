@@ -23,6 +23,20 @@ export async function POST(request: NextRequest) {
 		const promptsToCreate = [];
 		const competitorsToCreate = [];
 
+		// Add product categories as reputation prompts (with "best " prefix)
+		if (products && Array.isArray(products)) {
+			for (const product of products) {
+				promptsToCreate.push({
+					brandId,
+					groupCategory: null,
+					groupPrefix: null,
+					value: `best ${product}`,
+					reputation: true,
+					enabled: true,
+				});
+			}
+		}
+
 		// Add product categories as non-reputation prompts (with "best " prefix)
 		if (products && Array.isArray(products)) {
 			for (const product of products) {
