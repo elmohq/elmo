@@ -29,7 +29,7 @@ interface WizardStep {
 
 interface WizardData {
 	products: string[];
-	competitors: string[];
+	competitors: Array<{ name: string; domain: string }>;
 	personaGroups: Array<{
 		name: string;
 		personas: string[];
@@ -136,7 +136,7 @@ const apiCalls = {
 		brandId: string,
 		data: {
 			products: string[];
-			competitors: string[];
+			competitors: Array<{ name: string; domain: string }>;
 			personaGroups: Array<{ name: string; personas: string[] }>;
 			keywords: Array<{ keyword: string; search_volume: number; difficulty: number; selected: boolean }>;
 			customPrompts: string[];
@@ -618,11 +618,66 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div className="space-y-2">
 					<h2 className="text-2xl font-bold">Review Competitors</h2>
 					<p className="text-muted-foreground">Who are your primary competitors?</p>
-					<EditableTagsInput
-						items={wizardData.competitors}
-						onValueChange={(competitors) => setWizardData((prev) => ({ ...prev, competitors }))}
-						placeholder="Add competitor..."
-					/>
+					<div className="space-y-4">
+						{wizardData.competitors.map((competitor, index) => (
+							<div key={index} className="flex gap-2 items-center p-3 border rounded-lg">
+								<Input
+									type="text"
+									value={competitor.name}
+									onChange={(e) => {
+										const newCompetitors = [...wizardData.competitors];
+										newCompetitors[index] = { ...competitor, name: e.target.value };
+										setWizardData((prev) => ({ ...prev, competitors: newCompetitors }));
+									}}
+									placeholder="Competitor name"
+									className="flex-1"
+								/>
+								<Input
+									type="text"
+									value={competitor.domain}
+									onChange={(e) => {
+										const newCompetitors = [...wizardData.competitors];
+										newCompetitors[index] = { ...competitor, domain: e.target.value };
+										setWizardData((prev) => ({ ...prev, competitors: newCompetitors }));
+									}}
+									placeholder="domain.com"
+									className="flex-1"
+								/>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => {
+										const newCompetitors = [...wizardData.competitors];
+										newCompetitors.splice(index, 1);
+										setWizardData((prev) => ({ ...prev, competitors: newCompetitors }));
+									}}
+									className="p-2"
+								>
+									<X className="h-4 w-4" />
+								</Button>
+							</div>
+						))}
+						{wizardData.competitors.length < 5 && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									setWizardData((prev) => ({
+										...prev,
+										competitors: [...prev.competitors, { name: '', domain: '' }],
+									}));
+								}}
+								className="flex items-center gap-2"
+							>
+								<Plus className="h-4 w-4" /> Add Competitor
+							</Button>
+						)}
+						{wizardData.competitors.length >= 5 && (
+							<p className="text-xs text-muted-foreground">
+								Maximum of 5 competitors allowed. Remove a competitor to add a new one.
+							</p>
+						)}
+					</div>
 				</div>
 
 				<Separator />

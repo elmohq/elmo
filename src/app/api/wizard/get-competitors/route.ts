@@ -21,7 +21,15 @@ export async function POST(request: NextRequest) {
 		const prompt = `What are the top 4 competitors of a company with website ${website} that sells the following types of products:
 ${productList}
 
-Please search for current market information to identify real competitors. Be concise and output to a comma separated list contained within <out> xml tags. List up to 4.`;
+Please search for current market information to identify real competitors. For each competitor, provide both the company name and their website domain. Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". Contain the JSON within <out> xml tags. List up to 4 competitors.
+
+Example format:
+<out>
+[
+  {"name": "Company Name", "domain": "example.com"},
+  {"name": "Another Company", "domain": "another.com"}
+]
+</out>`;
 
 		const response = await anthropic.messages.create({
 			model: "claude-sonnet-4-20250514",
@@ -49,13 +57,28 @@ Please search for current market information to identify real competitors. Be co
 
 		// Extract content between <out> tags
 		const match = allTextContent.match(/<out>([\s\S]*?)<\/out>/);
-		const competitors = match
-			? match[1]
-					.split(",")
-					.map((c) => c.trim())
-					.filter((c) => c.length > 0)
-					.slice(0, 4)
-			: [];
+		let competitors: Array<{ name: string; domain: string }> = [];
+
+		if (match) {
+			try {
+				// Parse as JSON
+				const parsedCompetitors = JSON.parse(match[1].trim());
+				if (Array.isArray(parsedCompetitors)) {
+					competitors = parsedCompetitors
+						.filter((c) => c && typeof c === 'object' && c.name && c.domain)
+						.map((c) => ({
+							name: c.name.trim(),
+							domain: c.domain.trim()
+						}))
+						.slice(0, 4);
+				}
+			} catch (parseError) {
+				// Log error and return empty list
+				console.error("Failed to parse competitors JSON:", parseError);
+				console.error("Raw content:", match[1]);
+				competitors = [];
+			}
+		}
 
 		console.log("GET-COMPETITORS OUTPUT:", { competitors });
 

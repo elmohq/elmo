@@ -2,7 +2,7 @@ import { ManagementClient } from "auth0";
 import { auth0 } from "./auth0";
 import { redis } from "./redis";
 import { db } from "./db/db";
-import { brands, prompts, type Brand, type NewBrand, type BrandWithPrompts } from "./db/schema";
+import { brands, prompts, competitors, type Brand, type NewBrand, type BrandWithPrompts } from "./db/schema";
 import { eq } from "drizzle-orm";
 
 const management = new ManagementClient({
@@ -116,9 +116,15 @@ export async function getBrandWithPrompts(brandId: string): Promise<BrandWithPro
 			where: eq(prompts.brandId, brandId),
 		});
 
+		// Get the competitors for this brand
+		const brandCompetitors = await db.query.competitors.findMany({
+			where: eq(competitors.brandId, brandId),
+		});
+
 		return {
 			...brand,
 			prompts: brandPrompts,
+			competitors: brandCompetitors,
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts from database:", error);
@@ -138,6 +144,9 @@ export async function getAllBrandsWithPrompts(): Promise<BrandWithPrompts[]> {
 		// Get all prompts
 		const allPrompts = await db.query.prompts.findMany();
 
+		// Get all competitors
+		const allCompetitors = await db.query.competitors.findMany();
+
 		// Group prompts by brandId
 		const promptsByBrand = allPrompts.reduce(
 			(acc, prompt) => {
@@ -150,10 +159,23 @@ export async function getAllBrandsWithPrompts(): Promise<BrandWithPrompts[]> {
 			{} as Record<string, typeof allPrompts>,
 		);
 
-		// Combine brands with their prompts
+		// Group competitors by brandId
+		const competitorsByBrand = allCompetitors.reduce(
+			(acc, competitor) => {
+				if (!acc[competitor.brandId]) {
+					acc[competitor.brandId] = [];
+				}
+				acc[competitor.brandId].push(competitor);
+				return acc;
+			},
+			{} as Record<string, typeof allCompetitors>,
+		);
+
+		// Combine brands with their prompts and competitors
 		return allBrands.map((brand) => ({
 			...brand,
 			prompts: promptsByBrand[brand.id] || [],
+			competitors: competitorsByBrand[brand.id] || [],
 		}));
 	} catch (error) {
 		console.error("Error fetching brands with prompts from database:", error);

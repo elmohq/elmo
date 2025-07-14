@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts } from "@/lib/db/schema";
+import { prompts, competitors } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 
 export async function POST(request: NextRequest) {
 	try {
-		const { brandId, competitors, personaGroups, keywords, customPrompts, products } = await request.json();
+		const { brandId, competitors: competitorData, personaGroups, keywords, customPrompts, products } = await request.json();
 
 		if (!brandId) {
 			return NextResponse.json({ error: "Brand ID is required" }, { status: 400 });
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const promptsToCreate = [];
+		const competitorsToCreate = [];
 
 		// Add product categories as non-reputation prompts (with "best " prefix)
 		if (products && Array.isArray(products)) {
@@ -66,16 +67,23 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Add competitors
-		if (competitors && Array.isArray(competitors)) {
-			for (const competitor of competitors) {
-				promptsToCreate.push({
-					brandId,
-					group: "Competitors",
-					value: competitor,
-					reputation: false,
-					enabled: true,
-				});
+		// Add competitors to competitors table
+		if (competitorData && Array.isArray(competitorData)) {
+			for (const competitor of competitorData) {
+				// Handle both string format (legacy) and object format (new)
+				if (typeof competitor === 'string') {
+					competitorsToCreate.push({
+						brandId,
+						name: competitor,
+						domain: '', // Empty domain for legacy string format
+					});
+				} else if (competitor && typeof competitor === 'object' && competitor.name) {
+					competitorsToCreate.push({
+						brandId,
+						name: competitor.name,
+						domain: competitor.domain || '',
+					});
+				}
 			}
 		}
 
@@ -92,14 +100,24 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Insert all prompts
+		// Insert prompts and competitors
+		let promptsCreated = 0;
+		let competitorsCreated = 0;
+
 		if (promptsToCreate.length > 0) {
 			await db.insert(prompts).values(promptsToCreate);
+			promptsCreated = promptsToCreate.length;
+		}
+
+		if (competitorsToCreate.length > 0) {
+			await db.insert(competitors).values(competitorsToCreate);
+			competitorsCreated = competitorsToCreate.length;
 		}
 
 		return NextResponse.json({
 			success: true,
-			promptsCreated: promptsToCreate.length,
+			promptsCreated,
+			competitorsCreated,
 		});
 	} catch (error) {
 		console.error("Error creating prompts:", error);
