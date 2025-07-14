@@ -5,6 +5,27 @@ const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+function cleanDomain(domain: string): string {
+	if (!domain) return '';
+	
+	try {
+		// Add protocol if missing for URL constructor
+		const urlString = domain.startsWith('http') ? domain : `https://${domain}`;
+		const url = new URL(urlString);
+		
+		// Get hostname and remove www. prefix if present
+		let hostname = url.hostname.toLowerCase();
+		if (hostname.startsWith('www.')) {
+			hostname = hostname.substring(4);
+		}
+		
+		return hostname;
+	} catch (error) {
+		// Fallback for invalid URLs - just clean up basic cases
+		return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase().trim();
+	}
+}
+
 export async function POST(request: NextRequest) {
 	try {
 		const { products, website } = await request.json();
@@ -68,7 +89,7 @@ Example format:
 						.filter((c) => c && typeof c === 'object' && c.name && c.domain)
 						.map((c) => ({
 							name: c.name.trim(),
-							domain: c.domain.trim()
+							domain: cleanDomain(c.domain.trim())
 						}))
 						.slice(0, 4);
 				}
