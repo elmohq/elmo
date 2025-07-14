@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 interface WizardResults {
-	analyzeWebsite?: any;
 	getKeywords?: any;
 	getCompetitors?: any;
 	getPersonas?: any;
@@ -16,6 +15,7 @@ interface WizardResults {
 
 export default function WizardDebug() {
 	const [website, setWebsite] = useState("https://example.com");
+	const [analyzeWebsiteData, setAnalyzeWebsiteData] = useState("");
 	const [results, setResults] = useState<WizardResults>({});
 	const [loading, setLoading] = useState<Record<string, boolean>>({});
 
@@ -39,15 +39,30 @@ export default function WizardDebug() {
 
 			if (!response.ok) throw new Error(`Failed to analyze website: ${response.statusText}`);
 			const data = await response.json();
-			setResults(prev => ({ ...prev, analyzeWebsite: data }));
+			setAnalyzeWebsiteData(JSON.stringify(data, null, 2));
 			return data;
 		} catch (error) {
 			console.error("Error analyzing website:", error);
 			const errorData = { error: error instanceof Error ? error.message : "Unknown error" };
-			setResults(prev => ({ ...prev, analyzeWebsite: errorData }));
+			setAnalyzeWebsiteData(JSON.stringify(errorData, null, 2));
 			return null;
 		} finally {
 			setLoadingState('analyzeWebsite', false);
+		}
+	};
+
+	const getAnalyzeWebsiteData = async () => {
+		if (analyzeWebsiteData.trim()) {
+			// Use existing data from textarea
+			try {
+				return JSON.parse(analyzeWebsiteData);
+			} catch (error) {
+				alert("Invalid JSON in analyze website data. Please fix or clear it to auto-run.");
+				return null;
+			}
+		} else {
+			// Auto-run analyze website
+			return await analyzeWebsite();
 		}
 	};
 
@@ -82,11 +97,8 @@ export default function WizardDebug() {
 			return;
 		}
 
-		// Clear previous results and start fresh
-		setResults(prev => ({ ...prev, analyzeWebsite: undefined, getCompetitors: undefined }));
-
-		// Automatically run analyze website first
-		const websiteData = await analyzeWebsite();
+		// Get analyze website data (either from textarea or by running the API)
+		const websiteData = await getAnalyzeWebsiteData();
 		if (!websiteData?.products || !Array.isArray(websiteData.products) || websiteData.products.length === 0) {
 			alert("Failed to get products data from website analysis");
 			return;
@@ -117,11 +129,8 @@ export default function WizardDebug() {
 			return;
 		}
 
-		// Clear previous results and start fresh
-		setResults(prev => ({ ...prev, analyzeWebsite: undefined, getPersonas: undefined }));
-
-		// Automatically run analyze website first
-		const websiteData = await analyzeWebsite();
+		// Get analyze website data (either from textarea or by running the API)
+		const websiteData = await getAnalyzeWebsiteData();
 		if (!websiteData?.products || !Array.isArray(websiteData.products) || websiteData.products.length === 0) {
 			alert("Failed to get products data from website analysis");
 			return;
@@ -161,7 +170,18 @@ export default function WizardDebug() {
 							type="url"
 							value={website}
 							onChange={(e) => setWebsite(e.target.value)}
-							placeholder="https://example.com"
+							placeholder=""
+						/>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="analyzeData">Analyze Website Data (leave empty to auto-run)</Label>
+						<textarea
+							id="analyzeData"
+							className="w-full h-64 p-3 border rounded-md font-mono text-sm bg-muted"
+							value={analyzeWebsiteData}
+							onChange={(e) => setAnalyzeWebsiteData(e.target.value)}
+							placeholder="JSON data from analyze website will appear here. You can modify it before running other steps."
 						/>
 					</div>
 
