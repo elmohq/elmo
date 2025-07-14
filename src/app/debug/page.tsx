@@ -3,6 +3,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 
 import { ManagementClient } from "auth0";
 import BrandsDebug from "./brands-debug";
+import WizardDebug from "./wizard-debug";
 
 const management = new ManagementClient({
 	domain: process.env.AUTH0_MGMT_API_DOMAIN!,
@@ -15,7 +16,9 @@ export default async function MetadataPage() {
 	const userData = await management.users.get({ id: session?.user?.sub!, fields: "app_metadata" });
 
 	return (
-		<div>
+		<div className="space-y-8 p-4">
+			<WizardDebug />
+
 			<h2>User App Metadata</h2>
 			<pre>{JSON.stringify(userData, null, 2)}</pre>
 
