@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
 
 interface WizardResults {
 	getKeywords?: any;
@@ -18,9 +18,22 @@ export default function WizardDebug() {
 	const [analyzeWebsiteData, setAnalyzeWebsiteData] = useState("");
 	const [results, setResults] = useState<WizardResults>({});
 	const [loading, setLoading] = useState<Record<string, boolean>>({});
+	const [copied, setCopied] = useState<Record<string, boolean>>({});
 
 	const setLoadingState = (key: string, isLoading: boolean) => {
 		setLoading(prev => ({ ...prev, [key]: isLoading }));
+	};
+
+	const copyToClipboard = async (text: string, key: string) => {
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopied(prev => ({ ...prev, [key]: true }));
+			setTimeout(() => {
+				setCopied(prev => ({ ...prev, [key]: false }));
+			}, 2000);
+		} catch (err) {
+			console.error('Failed to copy to clipboard:', err);
+		}
 	};
 
 	const analyzeWebsite = async () => {
@@ -229,7 +242,22 @@ export default function WizardDebug() {
 			{Object.entries(results).map(([key, data]) => (
 				<Card key={key}>
 					<CardHeader>
-						<CardTitle className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
+						<div className="flex items-center justify-between">
+							<CardTitle className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => copyToClipboard(JSON.stringify(data, null, 2), key)}
+								className="flex items-center gap-2"
+							>
+								{copied[key] ? (
+									<Check className="h-4 w-4 text-green-600" />
+								) : (
+									<Copy className="h-4 w-4" />
+								)}
+								{copied[key] ? 'Copied!' : 'Copy'}
+							</Button>
+						</div>
 					</CardHeader>
 					<CardContent>
 						<pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded overflow-auto max-h-96">

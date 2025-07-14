@@ -21,6 +21,7 @@ function cleanDomain(domain: string): string {
 		
 		return hostname;
 	} catch (error) {
+		// todo: actually error here
 		// Fallback for invalid URLs - just clean up basic cases
 		return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase().trim();
 	}
@@ -39,10 +40,11 @@ export async function POST(request: NextRequest) {
 		}
 
 		const productList = products.join(", ");
-		const prompt = `What are the top 4 competitors of a company with website ${website} that sells the following types of products:
-${productList}
+		const prompt = `What are 4 direct to consumer competitors of ${website} (which sells ${productList}). 
+		
+The competitors should sell similar products in a similar way to a similar audience.
 
-Please search for current market information to identify real competitors. For each competitor, provide both the company name and their website domain. Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". Contain the JSON within <out> xml tags. List up to 4 competitors.
+Please search for current market information to identify real direct competitors. For each competitor, provide both the company name and their website domain. Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". Contain the JSON within <out> xml tags. List up to 4 competitors.
 
 Example format:
 <out>
@@ -65,12 +67,20 @@ Example format:
 				{
 					type: "web_search_20250305",
 					name: "web_search",
-					max_uses: 5,
+					max_uses: 2,
 				},
 			],
 		});
 
-		console.log("response", response);
+		// Extract and log search queries used
+		const searchQueries = response.content
+			.filter((block) => block.type === "server_tool_use" && block.name === "web_search")
+			.map((block) => (block as any).input?.query)
+			.filter(Boolean);
+		
+		if (searchQueries.length > 0) {
+			console.log("Search queries used:", searchQueries);
+		}
 
 		// Extract text content from all text blocks in response
 		const textBlocks = response.content.filter((block) => block.type === "text");
