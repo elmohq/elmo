@@ -53,14 +53,17 @@ function getGroupColor(groupName: string) {
 }
 
 export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsDisplayProps) {
-	// Group prompts by category
+	// Group prompts by category + prefix combination
 	const promptsByGroup = prompts.reduce(
 		(acc, prompt) => {
-			const group = prompt.groupCategory || "Uncategorized";
-			if (!acc[group]) {
-				acc[group] = [];
+			const category = prompt.groupCategory || "Uncategorized";
+			const prefix = prompt.groupPrefix || "";
+			// Create a unique key combining category and prefix
+			const groupKey = prefix ? `${category}:${prefix}` : category;
+			if (!acc[groupKey]) {
+				acc[groupKey] = [];
 			}
-			acc[group].push(prompt);
+			acc[groupKey].push(prompt);
 			return acc;
 		},
 		{} as Record<string, Prompt[]>,
@@ -89,24 +92,26 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 				</div>
 			) : (
 				<div className="space-y-6">
-					{groupEntries.map(([groupName, groupPrompts]) => {
-						// Get the group prefix from the first prompt in the group
-						const groupPrefix = groupPrompts[0]?.groupPrefix;
+					{groupEntries.map(([groupKey, groupPrompts]) => {
+						// Extract category and prefix from the groupKey and first prompt
+						const firstPrompt = groupPrompts[0];
+						const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
+						const groupPrefix = firstPrompt?.groupPrefix;
 						
 						return (
-							<Card key={groupName}>
+							<Card key={groupKey}>
 								<CardHeader>
 									<CardTitle className="flex items-center gap-2">
-										{getGroupIcon(groupName)}
+										{getGroupIcon(groupCategory)}
 										{groupPrefix && (
 											<>
 												{groupPrefix}
 												<code className="bg-muted px-2 py-1 rounded text-sm font-mono">
-													{groupName}
+													{groupCategory}
 												</code>
 											</>
 										)}
-										{!groupPrefix && groupName}
+										{!groupPrefix && groupCategory}
 										<Badge variant="secondary" className="ml-2">
 											{groupPrompts.length} {groupPrompts.length === 1 ? "prompt" : "prompts"}
 										</Badge>
@@ -120,8 +125,8 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 													<div className="flex-1">
 														<p className="font-medium">{prompt.value}</p>
 														<div className="flex items-center gap-2 mt-1">
-															<Badge variant="outline" className={`text-xs ${getGroupColor(groupName)}`}>
-																{groupName}
+															<Badge variant="outline" className={`text-xs ${getGroupColor(groupCategory)}`}>
+																{groupCategory}
 															</Badge>
 															{prompt.reputation && (
 																<Badge variant="outline" className="text-xs">
