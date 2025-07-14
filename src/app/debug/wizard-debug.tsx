@@ -154,7 +154,7 @@ export default function WizardDebug() {
 			const response = await fetch("/api/wizard/get-personas", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ products: websiteData.products }),
+				body: JSON.stringify({ products: websiteData.products, website }),
 			});
 
 			if (!response.ok) throw new Error(`Failed to get personas: ${response.statusText}`);

@@ -6,10 +6,14 @@ import { dfsSerpApi } from "@/lib/dataforseo";
 
 export async function POST(request: NextRequest) {
 	try {
-		const { products } = await request.json();
+		const { products, website } = await request.json();
 
 		if (!products || !Array.isArray(products) || products.length === 0) {
 			return NextResponse.json({ error: "Products array is required" }, { status: 400 });
+		}
+
+		if (!website || typeof website !== "string") {
+			return NextResponse.json({ error: "Website URL is required" }, { status: 400 });
 		}
 
 		// Take the first 2-3 product categories for autocomplete queries
@@ -92,7 +96,16 @@ Think about broad dimensions that matter for ecommerce brands, such as:
 
 Create up to 3 strategic category groups with up to 4 items each. Focus on the most common and strategically valuable groupings from the suffixes provided.
 
+The should be a good mix of personas that are relevant to the products for sale (which are ${products.join(", ")}) and the website ${website}.
+
 IMPORTANT: Use only ONE NON-PLURAL WORD for each category group name. Examples: "Demographic", "Use", "Customer", "Industry", "Purpose", "Segment", "Market", "Type", "Role", "Stage".
+
+If you are not confident a group is relevant, do not include it.
+If you are not confident an item in a group is relevant, do not include it.
+If the group or item does not make sense for all of the different products for sale, do not include it.
+If you are not confident a group or item is relevant to the website ${website}, regardless of the products, do not include it.
+If the brand is small and the product categories are very broad, do not include any groups.
+If the groups are not specific to the brand ${website}, do not include them.
 
 Format your response as:
 <group name="Category1">item1,item2,item3,item4</group>

@@ -121,11 +121,11 @@ const apiCalls = {
 		return response.json();
 	},
 
-	async getPersonas(products: string[]) {
+	async getPersonas(products: string[], website: string) {
 		const response = await fetch("/api/wizard/get-personas", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ products }),
+			body: JSON.stringify({ products, website }),
 		});
 
 		if (!response.ok) throw new Error("Failed to analyze personas");
@@ -329,7 +329,8 @@ const useStepManager = (brand: any) => {
 						if (!productsForPersonas || !Array.isArray(productsForPersonas) || productsForPersonas.length === 0) {
 							throw new Error("No products data available for persona analysis");
 						}
-						return await executor(stepId, () => apiCalls.getPersonas(productsForPersonas), 2); // 2x slower
+						if (!brand?.website) throw new Error("No website URL");
+						return await executor(stepId, () => apiCalls.getPersonas(productsForPersonas, brand.website), 2); // 2x slower
 				}
 			} catch (error) {
 				updateStepStatus(stepId, {
