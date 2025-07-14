@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts, competitors } from "@/lib/db/schema";
+import { prompts, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
+import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
 	try {
@@ -117,6 +118,9 @@ export async function POST(request: NextRequest) {
 			await db.insert(competitors).values(competitorsToCreate);
 			competitorsCreated = competitorsToCreate.length;
 		}
+
+		// Mark brand as onboarded after successful prompt creation
+		await db.update(brands).set({ onboarded: true }).where(eq(brands.id, brandId));
 
 		return NextResponse.json({
 			success: true,
