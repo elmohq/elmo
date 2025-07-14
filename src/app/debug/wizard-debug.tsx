@@ -85,12 +85,19 @@ export default function WizardDebug() {
 			return;
 		}
 
+		// Get analyze website data (either from textarea or by running the API)
+		const websiteData = await getAnalyzeWebsiteData();
+		if (!websiteData?.products || !Array.isArray(websiteData.products) || websiteData.products.length === 0) {
+			alert("Failed to get products data from website analysis");
+			return;
+		}
+
 		setLoadingState('getKeywords', true);
 		try {
 			const response = await fetch("/api/wizard/get-keywords", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ domain: website }),
+				body: JSON.stringify({ domain: website, products: websiteData.products }),
 			});
 
 			if (!response.ok) throw new Error(`Failed to get keywords: ${response.statusText}`);

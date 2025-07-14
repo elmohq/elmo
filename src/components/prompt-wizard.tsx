@@ -99,11 +99,11 @@ const apiCalls = {
 		return response.json();
 	},
 
-	async getKeywords(domain: string) {
+	async getKeywords(domain: string, products: string[]) {
 		const response = await fetch("/api/wizard/get-keywords", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ domain }),
+			body: JSON.stringify({ domain, products }),
 		});
 
 		if (!response.ok) throw new Error("Failed to get keywords");
@@ -247,17 +247,17 @@ const getStepStatusIcon = (status: StepStatus) => {
 const useStepManager = (brand: any) => {
 	const [steps, setSteps] = useState<WizardStep[]>([
 		{
-			id: "get-keywords",
-			title: "Find SEO Keywords",
+			id: "analyze-website",
+			title: "Analyze Products",
 			dependencies: [],
 			status: "pending",
 			progress: 0,
 		},
 		{
-			id: "analyze-website",
-			title: "Analyze Products",
-			dependencies: [],
-			status: "pending",
+			id: "get-keywords",
+			title: "Find SEO Keywords",
+			dependencies: ["analyze-website"],
+			status: "blocked",
 			progress: 0,
 		},
 		{
@@ -309,8 +309,12 @@ const useStepManager = (brand: any) => {
 						return await executor(stepId, () => apiCalls.analyzeWebsite(brand.website));
 
 					case "get-keywords":
+						const currentProductsForKeywords = dependencyData?.products;
+						if (!currentProductsForKeywords || !Array.isArray(currentProductsForKeywords) || currentProductsForKeywords.length === 0) {
+							throw new Error("No products data available for keyword analysis");
+						}
 						if (!brand?.website) throw new Error("No website URL");
-						const keywordData = await executor(stepId, () => apiCalls.getKeywords(brand.website));
+						const keywordData = await executor(stepId, () => apiCalls.getKeywords(brand.website, currentProductsForKeywords));
 						return {
 							...keywordData,
 							keywords: keywordData.keywords.map((kw: any) => ({ ...kw, selected: false })),
