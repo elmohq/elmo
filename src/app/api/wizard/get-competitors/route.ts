@@ -7,24 +7,29 @@ const anthropic = new Anthropic({
 });
 
 function cleanDomain(domain: string): string {
-	if (!domain) return '';
-	
+	if (!domain) return "";
+
 	try {
 		// Add protocol if missing for URL constructor
-		const urlString = domain.startsWith('http') ? domain : `https://${domain}`;
+		const urlString = domain.startsWith("http") ? domain : `https://${domain}`;
 		const url = new URL(urlString);
-		
+
 		// Get hostname and remove www. prefix if present
 		let hostname = url.hostname.toLowerCase();
-		if (hostname.startsWith('www.')) {
+		if (hostname.startsWith("www.")) {
 			hostname = hostname.substring(4);
 		}
-		
+
 		return hostname;
 	} catch (error) {
 		// todo: actually error here
 		// Fallback for invalid URLs - just clean up basic cases
-		return domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase().trim();
+		return domain
+			.replace(/^https?:\/\//, "")
+			.replace(/^www\./, "")
+			.split("/")[0]
+			.toLowerCase()
+			.trim();
 	}
 }
 
@@ -41,13 +46,13 @@ export async function POST(request: NextRequest) {
 		}
 
 		const productList = products.join(", ");
-		
+
 		// Get website excerpt for additional context
 		const websiteExcerpt = await getWebsiteExcerpt(website);
-		const excerptContext = websiteExcerpt 
+		const excerptContext = websiteExcerpt
 			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
-			: '\n\n';
-		
+			: "\n\n";
+
 		const prompt = `What are up to 4 direct to consumer competitors of ${website} (which sells ${productList}). 
 		${excerptContext}
 The competitors should sell similar products in a similar way to a similar audience.
@@ -92,7 +97,7 @@ Example format:
 			.filter((block) => block.type === "server_tool_use" && block.name === "web_search")
 			.map((block) => (block as any).input?.query)
 			.filter(Boolean);
-		
+
 		if (searchQueries.length > 0) {
 			console.log("Search queries used:", searchQueries);
 		}
@@ -111,10 +116,10 @@ Example format:
 				const parsedCompetitors = JSON.parse(match[1].trim());
 				if (Array.isArray(parsedCompetitors)) {
 					competitors = parsedCompetitors
-						.filter((c) => c && typeof c === 'object' && c.name && c.domain)
+						.filter((c) => c && typeof c === "object" && c.name && c.domain)
 						.map((c) => ({
 							name: c.name.trim(),
-							domain: cleanDomain(c.domain.trim())
+							domain: cleanDomain(c.domain.trim()),
 						}))
 						.slice(0, 4);
 				}

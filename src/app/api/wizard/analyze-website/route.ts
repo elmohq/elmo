@@ -15,17 +15,17 @@ async function checkDomainTraffic(domain: string): Promise<number> {
 		const cleanDomain = domain
 			.replace(/^https?:\/\//, "")
 			.replace(/^www\./, "")
-			.split('/')[0];
+			.split("/")[0];
 
 		// Create request object for bulk traffic estimation
 		const requestInfo = new client.DataforseoLabsGoogleBulkTrafficEstimationLiveRequestInfo({
 			targets: [cleanDomain],
 			location_code: 2840, // United States
-			language_code: "en"
+			language_code: "en",
 		});
 
 		const response = await dfsLabsApi.googleBulkTrafficEstimationLive([requestInfo]);
-		
+
 		if (!response || !response.tasks || response.tasks.length === 0) {
 			console.error("DataForSEO Labs Bulk Traffic Estimation API Error: No response or tasks");
 			return 0;
@@ -62,17 +62,19 @@ export async function POST(request: NextRequest) {
 		}
 
 		const domainTraffic = await checkDomainTraffic(website);
-		
+
 		const TRAFFIC_THRESHOLD = 250;
-		
+
 		if (domainTraffic < TRAFFIC_THRESHOLD) {
-			console.log(`Domain traffic ${domainTraffic} is below threshold ${TRAFFIC_THRESHOLD}. Skipping detailed analysis.`);
-			
+			console.log(
+				`Domain traffic ${domainTraffic} is below threshold ${TRAFFIC_THRESHOLD}. Skipping detailed analysis.`,
+			);
+
 			// Still try to get basic product categories, but signal that other steps should return empty
 			const websiteExcerpt = await getWebsiteExcerpt(website);
-			const excerptContext = websiteExcerpt 
+			const excerptContext = websiteExcerpt
 				? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
-				: '\n\n';
+				: "\n\n";
 
 			const prompt = `What kinds of products does ${website} sell? 
 ${excerptContext}
@@ -115,18 +117,18 @@ Be concise and output to a comma separated list contained within <out> xml tags.
 
 			console.log("ANALYZE-WEBSITE OUTPUT (low traffic):", { products, domainTraffic, skipDetailedAnalysis: true });
 
-			return NextResponse.json({ 
-				products, 
-				domainTraffic, 
-				skipDetailedAnalysis: true 
+			return NextResponse.json({
+				products,
+				domainTraffic,
+				skipDetailedAnalysis: true,
 			});
 		}
 
 		// Get website excerpt for additional context
 		const websiteExcerpt = await getWebsiteExcerpt(website);
-		const excerptContext = websiteExcerpt 
+		const excerptContext = websiteExcerpt
 			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
-			: '\n\n';
+			: "\n\n";
 
 		const prompt = `What kinds of products does ${website} sell? 
 ${excerptContext}

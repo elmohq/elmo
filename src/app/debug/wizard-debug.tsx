@@ -42,18 +42,18 @@ export default function WizardDebug() {
 	];
 
 	const setLoadingState = (key: string, isLoading: boolean) => {
-		setLoading(prev => ({ ...prev, [key]: isLoading }));
+		setLoading((prev) => ({ ...prev, [key]: isLoading }));
 	};
 
 	const copyToClipboard = async (text: string, key: string) => {
 		try {
 			await navigator.clipboard.writeText(text);
-			setCopied(prev => ({ ...prev, [key]: true }));
+			setCopied((prev) => ({ ...prev, [key]: true }));
 			setTimeout(() => {
-				setCopied(prev => ({ ...prev, [key]: false }));
+				setCopied((prev) => ({ ...prev, [key]: false }));
 			}, 2000);
 		} catch (err) {
-			console.error('Failed to copy to clipboard:', err);
+			console.error("Failed to copy to clipboard:", err);
 		}
 	};
 
@@ -63,7 +63,7 @@ export default function WizardDebug() {
 			return null;
 		}
 
-		setLoadingState('analyzeWebsite', true);
+		setLoadingState("analyzeWebsite", true);
 		try {
 			const response = await fetch("/api/wizard/analyze-website", {
 				method: "POST",
@@ -81,7 +81,7 @@ export default function WizardDebug() {
 			setAnalyzeWebsiteData(JSON.stringify(errorData, null, 2));
 			return null;
 		} finally {
-			setLoadingState('analyzeWebsite', false);
+			setLoadingState("analyzeWebsite", false);
 		}
 	};
 
@@ -115,11 +115,11 @@ export default function WizardDebug() {
 
 		// Check if detailed analysis should be skipped
 		if (websiteData.skipDetailedAnalysis) {
-			setResults(prev => ({ ...prev, getKeywords: { keywords: [], message: "Skipped due to low domain rank" } }));
+			setResults((prev) => ({ ...prev, getKeywords: { keywords: [], message: "Skipped due to low domain rank" } }));
 			return;
 		}
 
-		setLoadingState('getKeywords', true);
+		setLoadingState("getKeywords", true);
 		try {
 			const response = await fetch("/api/wizard/get-keywords", {
 				method: "POST",
@@ -129,12 +129,15 @@ export default function WizardDebug() {
 
 			if (!response.ok) throw new Error(`Failed to get keywords: ${response.statusText}`);
 			const data = await response.json();
-			setResults(prev => ({ ...prev, getKeywords: data }));
+			setResults((prev) => ({ ...prev, getKeywords: data }));
 		} catch (error) {
 			console.error("Error getting keywords:", error);
-			setResults(prev => ({ ...prev, getKeywords: { error: error instanceof Error ? error.message : "Unknown error" } }));
+			setResults((prev) => ({
+				...prev,
+				getKeywords: { error: error instanceof Error ? error.message : "Unknown error" },
+			}));
 		} finally {
-			setLoadingState('getKeywords', false);
+			setLoadingState("getKeywords", false);
 		}
 	};
 
@@ -153,11 +156,14 @@ export default function WizardDebug() {
 
 		// Check if detailed analysis should be skipped
 		if (websiteData.skipDetailedAnalysis) {
-			setResults(prev => ({ ...prev, getCompetitors: { competitors: [], message: "Skipped due to low domain rank" } }));
+			setResults((prev) => ({
+				...prev,
+				getCompetitors: { competitors: [], message: "Skipped due to low domain rank" },
+			}));
 			return;
 		}
 
-		setLoadingState('getCompetitors', true);
+		setLoadingState("getCompetitors", true);
 		try {
 			const response = await fetch("/api/wizard/get-competitors", {
 				method: "POST",
@@ -167,12 +173,15 @@ export default function WizardDebug() {
 
 			if (!response.ok) throw new Error(`Failed to get competitors: ${response.statusText}`);
 			const data = await response.json();
-			setResults(prev => ({ ...prev, getCompetitors: data }));
+			setResults((prev) => ({ ...prev, getCompetitors: data }));
 		} catch (error) {
 			console.error("Error getting competitors:", error);
-			setResults(prev => ({ ...prev, getCompetitors: { error: error instanceof Error ? error.message : "Unknown error" } }));
+			setResults((prev) => ({
+				...prev,
+				getCompetitors: { error: error instanceof Error ? error.message : "Unknown error" },
+			}));
 		} finally {
-			setLoadingState('getCompetitors', false);
+			setLoadingState("getCompetitors", false);
 		}
 	};
 
@@ -191,11 +200,14 @@ export default function WizardDebug() {
 
 		// Check if detailed analysis should be skipped
 		if (websiteData.skipDetailedAnalysis) {
-			setResults(prev => ({ ...prev, getPersonas: { personaGroups: [], message: "Skipped due to low domain rank" } }));
+			setResults((prev) => ({
+				...prev,
+				getPersonas: { personaGroups: [], message: "Skipped due to low domain rank" },
+			}));
 			return;
 		}
 
-		setLoadingState('getPersonas', true);
+		setLoadingState("getPersonas", true);
 		try {
 			const response = await fetch("/api/wizard/get-personas", {
 				method: "POST",
@@ -205,18 +217,21 @@ export default function WizardDebug() {
 
 			if (!response.ok) throw new Error(`Failed to get personas: ${response.statusText}`);
 			const data = await response.json();
-			setResults(prev => ({ ...prev, getPersonas: data }));
+			setResults((prev) => ({ ...prev, getPersonas: data }));
 		} catch (error) {
 			console.error("Error getting personas:", error);
-			setResults(prev => ({ ...prev, getPersonas: { error: error instanceof Error ? error.message : "Unknown error" } }));
+			setResults((prev) => ({
+				...prev,
+				getPersonas: { error: error instanceof Error ? error.message : "Unknown error" },
+			}));
 		} finally {
-			setLoadingState('getPersonas', false);
+			setLoadingState("getPersonas", false);
 		}
 	};
 
 	// Helper function to escape CSV content
 	const escapeCSV = (value: string): string => {
-		if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+		if (value.includes('"') || value.includes(",") || value.includes("\n") || value.includes("\r")) {
 			return `"${value.replace(/"/g, '""')}"`;
 		}
 		return value;
@@ -233,7 +248,7 @@ export default function WizardDebug() {
 		if (!response.ok) {
 			throw new Error(`Failed to call ${endpoint}: ${response.statusText}`);
 		}
-		
+
 		return await response.json();
 	};
 
@@ -246,15 +261,15 @@ export default function WizardDebug() {
 			// Process each brand sequentially
 			for (const brand of brands) {
 				console.log(`Processing brand: ${brand.name}`);
-				
+
 				// Run 3 iterations for this brand sequentially
 				for (let run = 1; run <= 3; run++) {
 					console.log(`Starting run ${run} for ${brand.name}`);
-					
+
 					// Analyze website
 					const analyzeResult = await callAPI("/api/wizard/analyze-website", { website: brand.website });
 					const { products } = analyzeResult;
-					
+
 					if (!products || !Array.isArray(products) || products.length === 0) {
 						console.error(`No products found for ${brand.name} (run ${run})`);
 						csvRows.push({
@@ -299,17 +314,19 @@ export default function WizardDebug() {
 
 	// Convert CSV data to string format
 	const csvToString = (data: CSVData[]): string => {
-		return data.map(row => 
-			[
-				row.run.toString(),
-				escapeCSV(row.brand),
-				escapeCSV(row.brandWebsite),
-				escapeCSV(row.productCategories),
-				escapeCSV(row.competitors),
-				escapeCSV(row.groups),
-				escapeCSV(row.seo),
-			].join('\t')
-		).join('\n');
+		return data
+			.map((row) =>
+				[
+					row.run.toString(),
+					escapeCSV(row.brand),
+					escapeCSV(row.brandWebsite),
+					escapeCSV(row.productCategories),
+					escapeCSV(row.competitors),
+					escapeCSV(row.groups),
+					escapeCSV(row.seo),
+				].join("\t"),
+			)
+			.join("\n");
 	};
 
 	return (
@@ -387,24 +404,23 @@ export default function WizardDebug() {
 				<CardHeader>
 					<CardTitle>CSV Generation</CardTitle>
 					<CardDescription>
-						Generate CSV with data for all brands across 3 runs. Includes: Run, Brand, Brand Website, Product Categories, Competitors, Groups, SEO
+						Generate CSV with data for all brands across 3 runs. Includes: Run, Brand, Brand Website, Product
+						Categories, Competitors, Groups, SEO
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="space-y-2">
 						<Label>Brands to process:</Label>
 						<ul className="text-sm text-muted-foreground">
-							{brands.map(brand => (
-								<li key={brand.name}>• {brand.name} ({brand.website})</li>
+							{brands.map((brand) => (
+								<li key={brand.name}>
+									• {brand.name} ({brand.website})
+								</li>
 							))}
 						</ul>
 					</div>
 
-					<Button
-						onClick={generateCSV}
-						disabled={csvLoading}
-						className="flex items-center gap-2 cursor-pointer"
-					>
+					<Button onClick={generateCSV} disabled={csvLoading} className="flex items-center gap-2 cursor-pointer">
 						{csvLoading && <Loader2 className="h-4 w-4 animate-spin" />}
 						Generate CSV Data (3 runs × 5 brands)
 					</Button>
@@ -416,21 +432,15 @@ export default function WizardDebug() {
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() => copyToClipboard(csvToString(csvData), 'csv')}
+									onClick={() => copyToClipboard(csvToString(csvData), "csv")}
 									className="flex items-center gap-2"
 								>
-									{copied.csv ? (
-										<Check className="h-4 w-4 text-green-600" />
-									) : (
-										<Copy className="h-4 w-4" />
-									)}
-									{copied.csv ? 'Copied!' : 'Copy CSV'}
+									{copied.csv ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+									{copied.csv ? "Copied!" : "Copy CSV"}
 								</Button>
 							</div>
 							<div className="border rounded-md p-4 bg-muted max-h-96 overflow-auto">
-								<pre className="text-xs font-mono whitespace-pre-wrap break-words">
-									{csvToString(csvData)}
-								</pre>
+								<pre className="text-xs font-mono whitespace-pre-wrap break-words">{csvToString(csvData)}</pre>
 							</div>
 						</div>
 					)}
@@ -442,19 +452,15 @@ export default function WizardDebug() {
 				<Card key={key}>
 					<CardHeader>
 						<div className="flex items-center justify-between">
-							<CardTitle className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</CardTitle>
+							<CardTitle className="capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</CardTitle>
 							<Button
 								variant="outline"
 								size="sm"
 								onClick={() => copyToClipboard(JSON.stringify(data, null, 2), key)}
 								className="flex items-center gap-2"
 							>
-								{copied[key] ? (
-									<Check className="h-4 w-4 text-green-600" />
-								) : (
-									<Copy className="h-4 w-4" />
-								)}
-								{copied[key] ? 'Copied!' : 'Copy'}
+								{copied[key] ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+								{copied[key] ? "Copied!" : "Copy"}
 							</Button>
 						</div>
 					</CardHeader>
@@ -467,4 +473,4 @@ export default function WizardDebug() {
 			))}
 		</div>
 	);
-} 
+}

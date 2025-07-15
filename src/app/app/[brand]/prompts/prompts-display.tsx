@@ -97,7 +97,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 						const firstPrompt = groupPrompts[0];
 						const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
 						const groupPrefix = firstPrompt?.groupPrefix;
-						
+
 						return (
 							<Card key={groupKey}>
 								<CardHeader>
@@ -106,9 +106,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 										{groupPrefix && (
 											<>
 												{groupPrefix}
-												<code className="bg-muted px-2 py-1 rounded text-sm font-mono">
-													{groupCategory}
-												</code>
+												<code className="bg-muted px-2 py-1 rounded text-sm font-mono">{groupCategory}</code>
 											</>
 										)}
 										{!groupPrefix && groupCategory}

@@ -101,9 +101,7 @@ function configureDataForSEORequest(requestInfo: any) {
 async function getKeywordIdeas(products: string[]) {
 	console.log("Using DataForSEO Keyword Ideas API with products:", products);
 
-	const requestInfo = configureDataForSEORequest(
-		new client.DataforseoLabsGoogleKeywordIdeasLiveRequestInfo()
-	);
+	const requestInfo = configureDataForSEORequest(new client.DataforseoLabsGoogleKeywordIdeasLiveRequestInfo());
 	requestInfo.keywords = products.slice(0, 200); // Maximum 200 keywords
 
 	console.log("DataForSEO Keyword Ideas Request Config:", {
@@ -146,7 +144,6 @@ async function getKeywordIdeas(products: string[]) {
 
 		console.log("No keyword ideas found or API error:", task.status_code, task.status_message);
 		return [];
-
 	} catch (error) {
 		console.error("Error calling DataForSEO Keyword Ideas API:", error);
 		return [];
@@ -163,9 +160,7 @@ async function getKeywordsForSite(domain: string) {
 		.replace(/^www\./, "")
 		.replaceAll("/", "");
 
-	const requestInfo = configureDataForSEORequest(
-		new client.DataforseoLabsGoogleKeywordsForSiteLiveRequestInfo()
-	);
+	const requestInfo = configureDataForSEORequest(new client.DataforseoLabsGoogleKeywordsForSiteLiveRequestInfo());
 	requestInfo.target = cleanDomain;
 
 	console.log("DataForSEO Keywords for Site Request Config:", {
@@ -208,26 +203,29 @@ async function getKeywordsForSite(domain: string) {
 
 		console.log("No site keywords found or API error:", task.status_code, task.status_message);
 		return [];
-
 	} catch (error) {
 		console.error("Error calling DataForSEO Keywords for Site API:", error);
 		return [];
 	}
 }
 
-async function getRelevantKeywords(allKeywords: any[], domain: string, products: string[]): Promise<{ keyword: string; search_volume: number; difficulty: number }[]> {
+async function getRelevantKeywords(
+	allKeywords: any[],
+	domain: string,
+	products: string[],
+): Promise<{ keyword: string; search_volume: number; difficulty: number }[]> {
 	if (!allKeywords || allKeywords.length === 0) {
 		return [];
 	}
 
 	const productList = products.join(", ");
-	const keywordList = allKeywords.map(k => k.keyword).join("\n");
-	
+	const keywordList = allKeywords.map((k) => k.keyword).join("\n");
+
 	// Get website excerpt for additional context
 	const websiteExcerpt = await getWebsiteExcerpt(domain);
-	const excerptContext = websiteExcerpt 
+	const excerptContext = websiteExcerpt
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${domain}:\n\n${websiteExcerpt}\n\n`
-		: '\n\n';
+		: "\n\n";
 
 	const prompt = `You are a content marketing expert helping to identify relevant keywords for article writing.
 
@@ -291,14 +289,16 @@ Format the output as JSON within <out> xml tags.
 				if (Array.isArray(selectedKeywords)) {
 					// Map selected keywords back to original objects with volume/difficulty
 					relevantKeywords = selectedKeywords
-						.filter((keyword) => typeof keyword === 'string')
+						.filter((keyword) => typeof keyword === "string")
 						.map((keyword) => {
-							const originalKeyword = allKeywords.find(k => k.keyword === keyword.trim());
-							return originalKeyword ? {
-								keyword: originalKeyword.keyword,
-								search_volume: originalKeyword.search_volume,
-								difficulty: originalKeyword.difficulty
-							} : null;
+							const originalKeyword = allKeywords.find((k) => k.keyword === keyword.trim());
+							return originalKeyword
+								? {
+										keyword: originalKeyword.keyword,
+										search_volume: originalKeyword.search_volume,
+										difficulty: originalKeyword.difficulty,
+									}
+								: null;
 						})
 						.filter((k) => k !== null);
 				}
@@ -309,7 +309,10 @@ Format the output as JSON within <out> xml tags.
 			}
 		}
 
-		console.log("GET-RELEVANT-KEYWORDS OUTPUT:", { count: relevantKeywords.length, sample: relevantKeywords.slice(0, 3) });
+		console.log("GET-RELEVANT-KEYWORDS OUTPUT:", {
+			count: relevantKeywords.length,
+			sample: relevantKeywords.slice(0, 3),
+		});
 
 		return relevantKeywords;
 	} catch (error) {
@@ -332,13 +335,14 @@ export async function POST(request: NextRequest) {
 
 		console.log("Getting keyword ideas for domain:", domain, "with products:", products);
 
-		const [keywordIdeas, keywordsForSite] = await Promise.all([
-			getKeywordIdeas(products),
-			getKeywordsForSite(domain)
-		]);
+		const [keywordIdeas, keywordsForSite] = await Promise.all([getKeywordIdeas(products), getKeywordsForSite(domain)]);
 		const allKeywords = [...keywordIdeas, ...keywordsForSite];
-		
-		const keywords: { keyword: string; search_volume: number; difficulty: number }[] = await getRelevantKeywords(allKeywords, domain, products);
+
+		const keywords: { keyword: string; search_volume: number; difficulty: number }[] = await getRelevantKeywords(
+			allKeywords,
+			domain,
+			products,
+		);
 
 		console.log("Total keywords before sampling:", keywords.length);
 

@@ -47,11 +47,8 @@ async function getCompetitors(brandId: string) {
 
 export default async function ReputationPage({ params }: { params: Promise<{ brand: string }> }) {
 	const brandId = (await params).brand;
-	
-	const [brandPrompts, brandCompetitors] = await Promise.all([
-		getPrompts(brandId),
-		getCompetitors(brandId)
-	]);
+
+	const [brandPrompts, brandCompetitors] = await Promise.all([getPrompts(brandId), getCompetitors(brandId)]);
 
 	if (brandPrompts === null || brandCompetitors === null) {
 		notFound();
@@ -64,7 +61,9 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 		<div className="space-y-6">
 			<div>
 				<h1 className="text-3xl font-bold tracking-tight">Brand Reputation</h1>
-				<p className="text-muted-foreground">Monitor your brand reputation with targeted prompts and competitor tracking</p>
+				<p className="text-muted-foreground">
+					Monitor your brand reputation with targeted prompts and competitor tracking
+				</p>
 			</div>
 
 			{/* Competitors Section */}

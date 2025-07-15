@@ -312,11 +312,17 @@ const useStepManager = (brand: any) => {
 
 					case "get-keywords":
 						const currentProductsForKeywords = dependencyData?.products;
-						if (!currentProductsForKeywords || !Array.isArray(currentProductsForKeywords) || currentProductsForKeywords.length === 0) {
+						if (
+							!currentProductsForKeywords ||
+							!Array.isArray(currentProductsForKeywords) ||
+							currentProductsForKeywords.length === 0
+						) {
 							throw new Error("No products data available for keyword analysis");
 						}
 						if (!brand?.website) throw new Error("No website URL");
-						const keywordData = await executor(stepId, () => apiCalls.getKeywords(brand.website, currentProductsForKeywords));
+						const keywordData = await executor(stepId, () =>
+							apiCalls.getKeywords(brand.website, currentProductsForKeywords),
+						);
 						return {
 							...keywordData,
 							keywords: keywordData.keywords.map((kw: any) => ({ ...kw, selected: false })),
@@ -697,7 +703,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								onClick={() => {
 									setWizardData((prev) => ({
 										...prev,
-										competitors: [...prev.competitors, { name: '', domain: '' }],
+										competitors: [...prev.competitors, { name: "", domain: "" }],
 									}));
 								}}
 								className="flex items-center gap-2"

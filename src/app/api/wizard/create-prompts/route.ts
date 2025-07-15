@@ -6,7 +6,14 @@ import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
 	try {
-		const { brandId, competitors: competitorData, personaGroups, keywords, customPrompts, products } = await request.json();
+		const {
+			brandId,
+			competitors: competitorData,
+			personaGroups,
+			keywords,
+			customPrompts,
+			products,
+		} = await request.json();
 
 		if (!brandId) {
 			return NextResponse.json({ error: "Brand ID is required" }, { status: 400 });
@@ -89,17 +96,17 @@ export async function POST(request: NextRequest) {
 		if (competitorData && Array.isArray(competitorData)) {
 			for (const competitor of competitorData) {
 				// Handle both string format (legacy) and object format (new)
-				if (typeof competitor === 'string') {
+				if (typeof competitor === "string") {
 					competitorsToCreate.push({
 						brandId,
 						name: competitor,
-						domain: '', // Empty domain for legacy string format
+						domain: "", // Empty domain for legacy string format
 					});
-				} else if (competitor && typeof competitor === 'object' && competitor.name) {
+				} else if (competitor && typeof competitor === "object" && competitor.name) {
 					competitorsToCreate.push({
 						brandId,
 						name: competitor.name,
-						domain: competitor.domain || '',
+						domain: competitor.domain || "",
 					});
 				}
 			}

@@ -82,13 +82,13 @@ export async function POST(request: NextRequest) {
 
 		// Use Claude to group the suffixes into strategic categories
 		const suffixList = sortedSuffixes.join(", "); // Top 20 by frequency
-		
+
 		// Get website excerpt for additional context
 		const websiteExcerpt = await getWebsiteExcerpt(website);
-		const excerptContext = websiteExcerpt 
+		const excerptContext = websiteExcerpt
 			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
-			: '\n\n';
-		
+			: "\n\n";
+
 		const prompt = `You have collected Google autocomplete suggestions for "best [product] for" queries. Here are the unique suffixes (the parts that come after "for"):
 
 ${suffixList}
