@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getWebsiteExcerpt } from "@/lib/website-excerpt";
 
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
@@ -40,8 +41,15 @@ export async function POST(request: NextRequest) {
 		}
 
 		const productList = products.join(", ");
-		const prompt = `What are up to 4 direct to consumer competitors of ${website} (which sells ${productList}). 
 		
+		// Get website excerpt for additional context
+		const websiteExcerpt = await getWebsiteExcerpt(website);
+		const excerptContext = websiteExcerpt 
+			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
+			: '\n\n';
+		
+		const prompt = `What are up to 4 direct to consumer competitors of ${website} (which sells ${productList}). 
+		${excerptContext}
 The competitors should sell similar products in a similar way to a similar audience.
 
 Please search for current market information to identify direct competitors. 

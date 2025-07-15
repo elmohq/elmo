@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getWebsiteExcerpt } from "@/lib/website-excerpt";
 
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
@@ -13,8 +14,14 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Website URL is required" }, { status: 400 });
 		}
 
-		const prompt = `What kinds of products does ${website} sell? 
+		// Get website excerpt for additional context
+		const websiteExcerpt = await getWebsiteExcerpt(website);
+		const excerptContext = websiteExcerpt 
+			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
+			: '\n\n';
 
+		const prompt = `What kinds of products does ${website} sell? 
+${excerptContext}
 Use general categories, not branded names. For example, converse.com should return:
 <out>shoes,hi-tops,casual shoes</out>
 

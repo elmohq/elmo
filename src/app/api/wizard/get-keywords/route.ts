@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as client from "dataforseo-client";
 import { dfsLabsApi } from "@/lib/dataforseo";
 import Anthropic from "@anthropic-ai/sdk";
+import { getWebsiteExcerpt } from "@/lib/website-excerpt";
 
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
@@ -221,12 +222,19 @@ async function getRelevantKeywords(allKeywords: any[], domain: string, products:
 
 	const productList = products.join(", ");
 	const keywordList = allKeywords.map(k => k.keyword).join("\n");
+	
+	// Get website excerpt for additional context
+	const websiteExcerpt = await getWebsiteExcerpt(domain);
+	const excerptContext = websiteExcerpt 
+		? `\n\nHere is an excerpt of the first 200 lines of text from ${domain}:\n\n${websiteExcerpt}\n\n`
+		: '\n\n';
 
 	const prompt = `You are a content marketing expert helping to identify relevant keywords for article writing.
 
 Given the following information:
 - Website domain: ${domain}
 - Products/services: ${productList}
+${excerptContext}
 - Available keywords:
 
 ${keywordList}

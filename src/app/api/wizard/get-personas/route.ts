@@ -3,6 +3,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import * as client from "dataforseo-client";
 import { dfsSerpApi } from "@/lib/dataforseo";
+import { getWebsiteExcerpt } from "@/lib/website-excerpt";
 
 export async function POST(request: NextRequest) {
 	try {
@@ -81,10 +82,17 @@ export async function POST(request: NextRequest) {
 
 		// Use Claude to group the suffixes into strategic categories
 		const suffixList = sortedSuffixes.join(", "); // Top 20 by frequency
+		
+		// Get website excerpt for additional context
+		const websiteExcerpt = await getWebsiteExcerpt(website);
+		const excerptContext = websiteExcerpt 
+			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
+			: '\n\n';
+		
 		const prompt = `You have collected Google autocomplete suggestions for "best [product] for" queries. Here are the unique suffixes (the parts that come after "for"):
 
 ${suffixList}
-
+${excerptContext}
 Your task is to group these suffixes into 2-3 strategic category groups that would be useful for comparison tracking and market analysis. Each category should represent a key dimension for business decisions and competitive positioning.
 
 Think about broad dimensions that matter for ecommerce brands, such as:
