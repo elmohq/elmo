@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
 		const domainTraffic = await checkDomainTraffic(website);
 
-		const TRAFFIC_THRESHOLD = 250;
+		const TRAFFIC_THRESHOLD = 400;
 
 		if (domainTraffic < TRAFFIC_THRESHOLD) {
 			console.log(
