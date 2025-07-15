@@ -113,6 +113,12 @@ export default function WizardDebug() {
 			return;
 		}
 
+		// Check if detailed analysis should be skipped
+		if (websiteData.skipDetailedAnalysis) {
+			setResults(prev => ({ ...prev, getKeywords: { keywords: [], message: "Skipped due to low domain rank" } }));
+			return;
+		}
+
 		setLoadingState('getKeywords', true);
 		try {
 			const response = await fetch("/api/wizard/get-keywords", {
@@ -145,6 +151,12 @@ export default function WizardDebug() {
 			return;
 		}
 
+		// Check if detailed analysis should be skipped
+		if (websiteData.skipDetailedAnalysis) {
+			setResults(prev => ({ ...prev, getCompetitors: { competitors: [], message: "Skipped due to low domain rank" } }));
+			return;
+		}
+
 		setLoadingState('getCompetitors', true);
 		try {
 			const response = await fetch("/api/wizard/get-competitors", {
@@ -174,6 +186,12 @@ export default function WizardDebug() {
 		const websiteData = await getAnalyzeWebsiteData();
 		if (!websiteData?.products || !Array.isArray(websiteData.products) || websiteData.products.length === 0) {
 			alert("Failed to get products data from website analysis");
+			return;
+		}
+
+		// Check if detailed analysis should be skipped
+		if (websiteData.skipDetailedAnalysis) {
+			setResults(prev => ({ ...prev, getPersonas: { personaGroups: [], message: "Skipped due to low domain rank" } }));
 			return;
 		}
 

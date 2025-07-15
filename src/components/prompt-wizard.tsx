@@ -14,7 +14,7 @@ import { TagsInput } from "@/components/ui/tags-input";
 import { Separator } from "@/components/ui/separator";
 
 // Step status types
-type StepStatus = "pending" | "running" | "completed" | "error" | "blocked";
+type StepStatus = "pending" | "running" | "completed" | "error" | "blocked" | "cancelled";
 
 // Step configuration
 interface WizardStep {
@@ -238,6 +238,8 @@ const getStepStatusIcon = (status: StepStatus) => {
 			return <AlertCircle className="h-4 w-4 text-red-500" />;
 		case "blocked":
 			return <Clock className="h-4 w-4 text-muted-foreground" />;
+		case "cancelled":
+			return <X className="h-4 w-4 text-muted-foreground" />;
 		default:
 			return <Clock className="h-4 w-4 text-muted-foreground" />;
 	}
@@ -390,6 +392,32 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	// Monitor for dependency completion and start next steps
 	useEffect(() => {
 		if (currentPhase !== "processing") return;
+
+		// Check if analyze-website is completed and has skipDetailedAnalysis flag
+		const analyzeStep = steps.find((step) => step.id === "analyze-website");
+		if (analyzeStep?.status === "completed" && analyzeStep.data?.skipDetailedAnalysis) {
+			// Skip detailed analysis - mark other steps as cancelled and go to review
+			setSteps((prev) => {
+				return prev.map((step) => {
+					if (step.id !== "analyze-website" && step.status !== "completed") {
+						return { ...step, status: "cancelled" as StepStatus };
+					}
+					return step;
+				});
+			});
+
+			// Set wizard data with minimal information and go to review
+			const newWizardData = {
+				products: analyzeStep.data.products || [],
+				competitors: [],
+				personaGroups: [],
+				keywords: [],
+				customPrompts: [],
+			};
+			setWizardData(newWizardData);
+			setCurrentPhase("review");
+			return;
+		}
 
 		// Update blocked steps to pending if dependencies are met
 		setSteps((prev) => {

@@ -21,3 +21,4 @@ function createAuthenticatedFetch(username: string, password: string) {
 const authFetch = createAuthenticatedFetch(process.env.DATAFORSEO_LOGIN!, process.env.DATAFORSEO_PASSWORD!);
 export const dfsLabsApi = new client.DataforseoLabsApi("https://api.dataforseo.com", { fetch: authFetch });
 export const dfsSerpApi = new client.SerpApi("https://api.dataforseo.com", { fetch: authFetch });
+export const dfsBacklinksApi = new client.BacklinksApi("https://api.dataforseo.com", { fetch: authFetch });
