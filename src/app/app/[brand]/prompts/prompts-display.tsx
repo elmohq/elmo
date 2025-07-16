@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Hash, Users, Search, Target } from "lucide-react";
+import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
+import { usePromptRuns } from "@/hooks/use-prompt-runs";
 
 interface Prompt {
 	id: string;
@@ -52,7 +56,30 @@ function getGroupColor(groupName: string) {
 	}
 }
 
+type ModelType = "openai" | "anthropic" | "google";
+
+// Mapping of actual model names to our tab categories
+const MODEL_MAPPINGS: Record<string, ModelType> = {
+	"gpt-4": "openai",
+	"claude-3.5-sonnet": "anthropic",
+	"gemini-1.5-flash": "google",
+};
+
+function getModelIcon(modelType: ModelType) {
+	switch (modelType) {
+		case "openai":
+			return <SiOpenai className="size-3" />;
+		case "anthropic":
+			return <SiAnthropic className="size-3" />;
+		case "google":
+			return <SiGoogle className="size-3" />;
+	}
+}
+
 export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsDisplayProps) {
+	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
+	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = usePromptRuns();
+
 	// Group prompts by category + prefix combination
 	const promptsByGroup = prompts.reduce(
 		(acc, prompt) => {
@@ -71,6 +98,21 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 
 	const groupEntries = Object.entries(promptsByGroup);
 
+	// Filter prompt runs by selected model
+	const filteredPromptRuns = promptRuns?.filter(run => {
+		const modelType = MODEL_MAPPINGS[run.model];
+		return modelType === selectedModel;
+	}) || [];
+
+	// Group prompt runs by prompt ID for easier lookup
+	const promptRunsByPromptId = filteredPromptRuns.reduce((acc, run) => {
+		if (!acc[run.promptId]) {
+			acc[run.promptId] = [];
+		}
+		acc[run.promptId].push(run);
+		return acc;
+	}, {} as Record<string, typeof filteredPromptRuns>);
+
 	return (
 		<div className="space-y-6">
 			<div>
@@ -78,81 +120,155 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 				<p className="text-muted-foreground">{pageDescription}</p>
 			</div>
 
-			{groupEntries.length === 0 ? (
-				<div className="text-center py-12">
-					<Hash className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<h2 className="text-2xl font-semibold mb-2">No prompts yet</h2>
-					<p className="text-muted-foreground mb-4">
-						Get started by running the prompt wizard to generate your first tracking prompts.
-					</p>
-					<Button className="cursor-pointer">
-						<Plus className="h-4 w-4 mr-2" />
-						Run Prompt Wizard
-					</Button>
-				</div>
-			) : (
-				<div className="space-y-6">
-					{groupEntries.map(([groupKey, groupPrompts]) => {
-						// Extract category and prefix from the groupKey and first prompt
-						const firstPrompt = groupPrompts[0];
-						const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
-						const groupPrefix = firstPrompt?.groupPrefix;
+			{/* Model Selection Tabs */}
+			<Tabs
+				defaultValue="openai"
+				className="w-fit"
+				value={selectedModel}
+				onValueChange={(value) => setSelectedModel(value as ModelType)}
+			>
+				<TabsList>
+					<TabsTrigger value="openai" className="cursor-pointer">
+						{getModelIcon("openai")} <span>OpenAI</span>
+					</TabsTrigger>
+					<TabsTrigger value="anthropic" className="cursor-pointer">
+						{getModelIcon("anthropic")} <span>Anthropic</span>
+					</TabsTrigger>
+					<TabsTrigger value="google" className="cursor-pointer">
+						{getModelIcon("google")} <span>Google</span>
+					</TabsTrigger>
+				</TabsList>
 
-						return (
-							<Card key={groupKey}>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										{getGroupIcon(groupCategory)}
-										{groupPrefix && (
-											<>
-												{groupPrefix}
-												<code className="bg-muted px-2 py-1 rounded text-sm font-mono">{groupCategory}</code>
-											</>
-										)}
-										{!groupPrefix && groupCategory}
-										<Badge variant="secondary" className="ml-2">
-											{groupPrompts.length} {groupPrompts.length === 1 ? "prompt" : "prompts"}
-										</Badge>
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="grid gap-2">
-										{groupPrompts.map((prompt) => (
-											<div key={prompt.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-												<div className="flex items-center gap-3">
-													<div className="flex-1">
-														<p className="font-medium">{prompt.value}</p>
-														<div className="flex items-center gap-2 mt-1">
-															<Badge variant="outline" className={`text-xs ${getGroupColor(groupCategory)}`}>
-																{groupCategory}
+				<TabsContent value={selectedModel} className="mt-6">
+					{groupEntries.length === 0 ? (
+						<div className="text-center py-12">
+							<Hash className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+							<h2 className="text-2xl font-semibold mb-2">No prompts yet</h2>
+							<p className="text-muted-foreground mb-4">
+								Get started by running the prompt wizard to generate your first tracking prompts.
+							</p>
+							<Button className="cursor-pointer">
+								<Plus className="h-4 w-4 mr-2" />
+								Run Prompt Wizard
+							</Button>
+						</div>
+					) : (
+						<div className="space-y-6">
+							{/* Prompt Runs Summary */}
+							{!isLoadingRuns && (
+								<Card>
+									<CardHeader>
+										<CardTitle className="flex items-center gap-2">
+											{getModelIcon(selectedModel)}
+											Recent Runs ({selectedModel})
+											<Badge variant="secondary" className="ml-2">
+												{filteredPromptRuns.length} runs
+											</Badge>
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										{filteredPromptRuns.length === 0 ? (
+											<p className="text-muted-foreground">No runs yet for this model.</p>
+										) : (
+											<div className="space-y-2">
+												{filteredPromptRuns.slice(0, 5).map((run) => {
+													const prompt = prompts.find(p => p.id === run.promptId);
+													return (
+														<div key={run.id} className="flex items-center justify-between p-2 rounded border">
+															<div>
+																<p className="text-sm font-medium">{prompt?.value || 'Unknown prompt'}</p>
+																<p className="text-xs text-muted-foreground">
+																	{new Date(run.createdAt).toLocaleString()}
+																</p>
+															</div>
+															<Badge variant="outline" className="text-xs">
+																{run.model}
 															</Badge>
-															{prompt.reputation && (
-																<Badge variant="outline" className="text-xs">
-																	Reputation
-																</Badge>
-															)}
-															{!prompt.enabled && (
-																<Badge variant="outline" className="text-xs text-muted-foreground">
-																	Disabled
-																</Badge>
-															)}
 														</div>
-													</div>
-												</div>
-												<div className="flex items-center gap-2">
-													<Badge variant={prompt.enabled ? "default" : "secondary"}>
-														{prompt.enabled ? "Active" : "Inactive"}
-													</Badge>
-												</div>
+													);
+												})}
+												{filteredPromptRuns.length > 5 && (
+													<p className="text-xs text-muted-foreground text-center pt-2">
+														And {filteredPromptRuns.length - 5} more runs...
+													</p>
+												)}
 											</div>
-										))}
-									</div>
-								</CardContent>
-							</Card>
-						);
-					})}
-				</div>
-			)}
+										)}
+									</CardContent>
+								</Card>
+							)}
+
+							{groupEntries.map(([groupKey, groupPrompts]) => {
+								// Extract category and prefix from the groupKey and first prompt
+								const firstPrompt = groupPrompts[0];
+								const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
+								const groupPrefix = firstPrompt?.groupPrefix;
+
+								return (
+									<Card key={groupKey}>
+										<CardHeader>
+											<CardTitle className="flex items-center gap-2">
+												{getGroupIcon(groupCategory)}
+												{groupPrefix && (
+													<>
+														{groupPrefix}
+														<code className="bg-muted px-2 py-1 rounded text-sm font-mono">{groupCategory}</code>
+													</>
+												)}
+												{!groupPrefix && groupCategory}
+												<Badge variant="secondary" className="ml-2">
+													{groupPrompts.length} {groupPrompts.length === 1 ? "prompt" : "prompts"}
+												</Badge>
+											</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="grid gap-2">
+												{groupPrompts.map((prompt) => {
+													const runs = promptRunsByPromptId[prompt.id] || [];
+													return (
+														<div key={prompt.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+															<div className="flex items-center gap-3">
+																<div className="flex-1">
+																	<p className="font-medium">{prompt.value}</p>
+																	<div className="flex items-center gap-2 mt-1">
+																		<Badge variant="outline" className={`text-xs ${getGroupColor(groupCategory)}`}>
+																			{groupCategory}
+																		</Badge>
+																		{prompt.reputation && (
+																			<Badge variant="outline" className="text-xs">
+																				Reputation
+																			</Badge>
+																		)}
+																		{!prompt.enabled && (
+																			<Badge variant="outline" className="text-xs text-muted-foreground">
+																				Disabled
+																			</Badge>
+																		)}
+																		{runs.length > 0 && (
+																			<Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+																				{runs.length} runs
+																			</Badge>
+																		)}
+																	</div>
+																</div>
+															</div>
+															<div className="flex items-center gap-2">
+																<Badge variant={prompt.enabled ? "default" : "secondary"}>
+																	{prompt.enabled ? "Active" : "Inactive"}
+																</Badge>
+															</div>
+														</div>
+													);
+												})}
+											</div>
+										</CardContent>
+									</Card>
+								);
+							})}
+						</div>
+					)}
+				</TabsContent>
+			</Tabs>
 		</div>
 	);
 }
