@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, json } from "drizzle-orm/pg-core";
 
 export const brands = pgTable("brands", {
 	id: text("id").primaryKey().notNull(),
@@ -44,6 +44,20 @@ export const competitors = pgTable("competitors", {
 		.notNull(),
 }).enableRLS();
 
+export const promptRuns = pgTable("prompt_runs", {
+	id: uuid("id").defaultRandom().primaryKey().notNull(),
+	promptId: uuid("prompt_id")
+		.references(() => prompts.id)
+		.notNull(),
+	model: text("model").notNull(),
+	rawOutput: text("raw_output").notNull(),
+	webQueries: text("web_queries").array(),
+	summary: json("summary").$type<{
+		brandMentions: string[];
+	}>(),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}).enableRLS();
+
 export type Brand = typeof brands.$inferSelect;
 export type NewBrand = typeof brands.$inferInsert;
 
@@ -52,6 +66,9 @@ export type NewPrompt = typeof prompts.$inferInsert;
 
 export type Competitor = typeof competitors.$inferSelect;
 export type NewCompetitor = typeof competitors.$inferInsert;
+
+export type PromptRun = typeof promptRuns.$inferSelect;
+export type NewPromptRun = typeof promptRuns.$inferInsert;
 
 export type BrandWithPrompts = Brand & {
 	prompts: Prompt[];
