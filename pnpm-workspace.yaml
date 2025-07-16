@@ -1,5 +1,0 @@
-onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
-  - esbuild
-  - msgpackr-extract
-  - sharp
