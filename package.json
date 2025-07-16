@@ -17,7 +17,8 @@
     "lint": "biome lint",
     "format": "biome format --write .",
     "queuedash": "tsx --env-file=.env src/queuedash/queuedash.ts",
-    "worker": "tsx --env-file=.env src/worker/worker.ts"
+    "worker:dev": "tsx --env-file=.env src/worker/worker.ts",
+    "worker:prod": "tsx src/worker/worker.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
