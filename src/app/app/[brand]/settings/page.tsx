@@ -43,6 +43,7 @@ export default function BrandSettingsPage() {
 		setSuccess("");
 
 		try {
+			const name = formData.get("name") as string;
 			const website = formData.get("website") as string;
 
 			const response = await fetch(`/api/brands/${brand.id}`, {
@@ -50,7 +51,7 @@ export default function BrandSettingsPage() {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ website }),
+				body: JSON.stringify({ name, website }),
 			});
 
 			const data = await response.json();
@@ -69,13 +70,27 @@ export default function BrandSettingsPage() {
 	};
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 max-w-2xl">
 			<div>
 				<h1 className="text-3xl font-bold">Brand Settings</h1>
 				<p className="text-muted-foreground">Manage your brand configuration</p>
 			</div>
 
 			<form action={handleSubmit} className="space-y-4">
+				<div className="space-y-2">
+					<Label htmlFor="name">Brand Name</Label>
+					<Input
+						id="name"
+						name="name"
+						type="text"
+						placeholder="Brand Name"
+						defaultValue={brand.name}
+						required
+						disabled={isSubmitting}
+					/>
+					<p className="text-xs text-muted-foreground">Enter your brand's name</p>
+				</div>
+
 				<div className="space-y-2">
 					<Label htmlFor="website">Website URL</Label>
 					<Input

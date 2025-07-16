@@ -86,7 +86,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		// Validate and format website URL if provided
-		let updateData: { website?: string } = {};
+		let updateData: { website?: string; name?: string } = {};
+		
+		if (body.name !== undefined) {
+			if (typeof body.name !== "string" || !body.name.trim()) {
+				return NextResponse.json({ error: "Brand name must be a non-empty string" }, { status: 400 });
+			}
+			updateData.name = body.name.trim();
+		}
+		
 		if (body.website !== undefined) {
 			// Validate website URL
 			const urlValidation = validateWebsiteUrl(body.website);
