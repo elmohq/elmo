@@ -58,38 +58,11 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 	const reputationPrompts = brandPrompts.filter((prompt) => prompt.reputation);
 
 	return (
-		<div className="space-y-6">
-			{brandCompetitors.length > 0 && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Competitors</CardTitle>
-						<CardDescription>Track your competitive landscape</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{brandCompetitors.map((competitor) => (
-								<div key={competitor.id} className="flex flex-col space-y-2 p-4 border rounded-lg">
-									<h3 className="font-semibold">{competitor.name}</h3>
-									{competitor.domain && (
-										<div className="flex items-center space-x-2">
-											<Badge variant="secondary" className="text-xs">
-												{competitor.domain}
-											</Badge>
-										</div>
-									)}
-								</div>
-							))}
-						</div>
-					</CardContent>
-				</Card>
-			)}
-
-			<PromptsDisplay
-				prompts={reputationPrompts}
-				pageTitle="Reputation Prompts"
-				pageDescription="Monitor your brand reputation with targeted prompts and competitor tracking."
-				editLink={`/app/${brandId}/reputation/edit`}
-			/>
-		</div>
+		<PromptsDisplay
+			prompts={reputationPrompts}
+			pageTitle="Reputation Prompts"
+			pageDescription="Monitor your brand reputation with targeted prompts and competitor tracking."
+			editLink={`/app/${brandId}/reputation/edit`}
+		/>
 	);
 }
