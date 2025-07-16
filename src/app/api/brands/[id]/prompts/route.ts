@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getElmoOrgs } from "@/lib/metadata";
 import { db } from "@/lib/db/db";
 import { prompts } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 type Params = {
 	id: string;
 };
+
+// Maximum limits
+const MAX_REPUTATION_PROMPTS = 100;
+const MAX_NON_REPUTATION_PROMPTS = 50;
 
 // GET all prompts for a brand
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -59,6 +63,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 
 		if (typeof reputation !== "boolean") {
 			return NextResponse.json({ error: "Reputation field is required" }, { status: 400 });
+		}
+
+		// Check current prompt count for this brand and reputation type
+		const currentCountResult = await db
+			.select({ count: count() })
+			.from(prompts)
+			.where(and(eq(prompts.brandId, brandId), eq(prompts.reputation, reputation)));
+
+		const currentCount = currentCountResult[0]?.count || 0;
+		const maxPrompts = reputation ? MAX_REPUTATION_PROMPTS : MAX_NON_REPUTATION_PROMPTS;
+
+		if (currentCount >= maxPrompts) {
+			return NextResponse.json({ 
+				error: `Maximum limit reached. You can only have ${maxPrompts} ${reputation ? 'reputation' : 'non-reputation'} prompts.` 
+			}, { status: 400 });
 		}
 
 		// Create new prompt

@@ -3,7 +3,9 @@ import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { PromptsEditor } from "../../prompts/edit/prompts-editor";
+import { PromptsEditor } from "../../../../../components/prompts-editor";
+import { CompetitorsEditor } from "@/components/competitors-editor";
+import { Separator } from "@/components/ui/separator";
 
 async function getPrompts(brandId: string) {
 	// Verify user has access to this brand
@@ -35,12 +37,16 @@ export default async function ReputationEditPage({ params }: { params: Promise<{
 	const reputationPrompts = brandPrompts.filter((prompt) => prompt.reputation);
 
 	return (
-		<PromptsEditor
-			initialPrompts={reputationPrompts}
-			brandId={(await params).brand}
-			pageTitle="Edit Reputation Tracking"
-			pageDescription="Add, edit, or remove your prompts related to tracking the reputation of your brand on LLMs."
-			reputation={true}
-		/>
+		<div className="space-y-8">
+			<CompetitorsEditor brandId={(await params).brand} />
+			
+			<PromptsEditor
+				initialPrompts={reputationPrompts}
+				brandId={(await params).brand}
+				pageTitle="Edit Reputation Prompts"
+				pageDescription="Add, edit, or remove your prompts related to tracking the reputation of your brand on LLMs."
+				reputation={true}
+			/>
+		</div>
 	);
 } 

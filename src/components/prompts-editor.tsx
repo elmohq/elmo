@@ -32,6 +32,11 @@ interface PromptsEditorProps {
 }
 
 export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, reputation }: PromptsEditorProps) {
+	// Maximum limits
+	const MAX_REPUTATION_PROMPTS = 100;
+	const MAX_NON_REPUTATION_PROMPTS = 50;
+	const maxPrompts = reputation ? MAX_REPUTATION_PROMPTS : MAX_NON_REPUTATION_PROMPTS;
+
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(
 		initialPrompts.map(p => ({
 			value: p.value,
@@ -43,7 +48,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const router = useRouter();
 
 	const addPrompt = () => {
-		setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "" }]);
+		if (prompts.length < maxPrompts) {
+			setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "" }]);
+		}
 	};
 
 	const removePrompt = (index: number) => {
@@ -61,6 +68,13 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		try {
 			// Get valid prompts (non-empty value)
 			const validPrompts = prompts.filter(p => p.value.trim());
+			
+			// Check server-side limits before saving
+			if (validPrompts.length > maxPrompts) {
+				alert(`You can only have a maximum of ${maxPrompts} ${reputation ? 'reputation' : 'non-reputation'} prompts.`);
+				setIsLoading(false);
+				return;
+			}
 			
 			// Delete all existing prompts for this brand/reputation type
 			for (const prompt of initialPrompts) {
@@ -94,6 +108,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			setIsLoading(false);
 		}
 	};
+
+	const validPromptCount = prompts.filter(p => p.value.trim()).length;
+	const isAtLimit = prompts.length >= maxPrompts;
 
 	return (
 		<div className="space-y-6">
@@ -165,7 +182,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						) : (
 							<>
 								<Save className="h-4 w-4" />
-								Save Changes
+								Save Prompts
 							</>
 						)}
 					</Button>
@@ -173,10 +190,21 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						variant="outline"
 						size="sm"
 						onClick={addPrompt}
+						disabled={isAtLimit}
 						className="flex items-center gap-2 cursor-pointer"
 					>
 						<Plus className="h-4 w-4" /> Add Prompt
 					</Button>
+					{isAtLimit && (
+						<p className="text-xs text-muted-foreground">
+							Maximum of {maxPrompts} {reputation ? 'reputation' : 'non-reputation'} prompts allowed. Remove a prompt to add a new one.
+						</p>
+					)}
+				</div>
+				
+				{/* Count information */}
+				<div className="text-xs text-muted-foreground">
+					<strong>{validPromptCount}/{maxPrompts}</strong> {reputation ? 'reputation' : 'non-reputation'} prompts{validPromptCount >= maxPrompts ? ' (maximum reached)' : ''}
 				</div>
 			</div>
 		</div>

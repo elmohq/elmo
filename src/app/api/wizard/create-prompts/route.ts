@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
 import { prompts, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
+
+// Maximum limits
+const MAX_REPUTATION_PROMPTS = 100;
+const MAX_NON_REPUTATION_PROMPTS = 50;
+const MAX_COMPETITORS = 5;
 
 export async function POST(request: NextRequest) {
 	try {
@@ -26,6 +31,23 @@ export async function POST(request: NextRequest) {
 		if (!hasAccess) {
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
+
+		// Check current counts for limits
+		const [currentReputationCountResult, currentNonReputationCountResult, currentCompetitorCountResult] = await Promise.all([
+			db.select({ count: count() })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, brandId), eq(prompts.reputation, true))),
+			db.select({ count: count() })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, brandId), eq(prompts.reputation, false))),
+			db.select({ count: count() })
+				.from(competitors)
+				.where(eq(competitors.brandId, brandId))
+		]);
+
+		const currentReputationCount = currentReputationCountResult[0]?.count || 0;
+		const currentNonReputationCount = currentNonReputationCountResult[0]?.count || 0;
+		const currentCompetitorCount = currentCompetitorCountResult[0]?.count || 0;
 
 		const promptsToCreate = [];
 		const competitorsToCreate = [];
@@ -124,6 +146,29 @@ export async function POST(request: NextRequest) {
 					enabled: true,
 				});
 			}
+		}
+
+		// Count reputation and non-reputation prompts to be created
+		const reputationPromptsToCreate = promptsToCreate.filter(p => p.reputation).length;
+		const nonReputationPromptsToCreate = promptsToCreate.filter(p => !p.reputation).length;
+
+		// Check limits before creating
+		if (currentReputationCount + reputationPromptsToCreate > MAX_REPUTATION_PROMPTS) {
+			return NextResponse.json({ 
+				error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_REPUTATION_PROMPTS} reputation prompts. Current: ${currentReputationCount}, Attempting to create: ${reputationPromptsToCreate}` 
+			}, { status: 400 });
+		}
+
+		if (currentNonReputationCount + nonReputationPromptsToCreate > MAX_NON_REPUTATION_PROMPTS) {
+			return NextResponse.json({ 
+				error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_NON_REPUTATION_PROMPTS} non-reputation prompts. Current: ${currentNonReputationCount}, Attempting to create: ${nonReputationPromptsToCreate}` 
+			}, { status: 400 });
+		}
+
+		if (currentCompetitorCount + competitorsToCreate.length > MAX_COMPETITORS) {
+			return NextResponse.json({ 
+				error: `Cannot create competitors. This would exceed the maximum limit of ${MAX_COMPETITORS} competitors. Current: ${currentCompetitorCount}, Attempting to create: ${competitorsToCreate.length}` 
+			}, { status: 400 });
 		}
 
 		// Insert prompts and competitors

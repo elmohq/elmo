@@ -3,7 +3,7 @@ import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { PromptsEditor } from "./prompts-editor";
+import { PromptsEditor } from "../../../../../components/prompts-editor";
 
 async function getPrompts(brandId: string) {
 	// Verify user has access to this brand
