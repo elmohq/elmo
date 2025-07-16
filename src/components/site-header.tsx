@@ -11,6 +11,9 @@ export function SiteHeader() {
 	const { brand } = useBrand();
 	const pathname = usePathname();
 
+	// Check if we're on an edit page
+	const isEditPage = pathname.endsWith('/edit');
+
 	// Extract the page segment from the path (e.g., /app/foo/reputation -> reputation)
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
@@ -18,6 +21,17 @@ export function SiteHeader() {
 
 	// Capitalize the page segment or default to Dashboard
 	const pageName = pageSegment ? pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1) : "Dashboard";
+
+	// Get the base path without /edit for linking
+	const getBasePath = () => {
+		return pathname.endsWith('/edit') ? pathname.slice(0, -5) : pathname;
+	};
+
+	// Create edit link - remove trailing slashes and add /edit if not already present
+	const getEditLink = () => {
+		const cleanPath = pathname.replace(/\/+$/, '');
+		return cleanPath.endsWith('/edit') ? cleanPath : `${cleanPath}/edit`;
+	};
 
 	return (
 		<header className="bg-background/90 sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
@@ -27,14 +41,26 @@ export function SiteHeader() {
 						<h1 className="text-base font-medium cursor-pointer hover:underline">{brand?.name || "Dashboard"}</h1>
 					</Link>
 					<span className="text-base font-medium text-muted-foreground">/</span>
-					<span className="text-base font-medium text-muted-foreground">{pageName}</span>
+					{isEditPage ? (
+						<>
+							<Link href={getBasePath()}>
+								<span className="text-base font-medium cursor-pointer hover:underline">{pageName}</span>
+							</Link>
+							<span className="text-base font-medium text-muted-foreground">/</span>
+							<span className="text-base font-medium text-muted-foreground">Edit</span>
+						</>
+					) : (
+						<span className="text-base font-medium text-muted-foreground">{pageName}</span>
+					)}
 				</div>
 				<div className="ml-auto flex items-center gap-2">
-					{(pageSegment === "prompts" || pageSegment === "reputation") && (
-						<Button size="sm" className="hidden h-7 sm:flex">
-							<IconEditCircle />
-							<span>Edit</span>
-						</Button>
+					{!isEditPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
+						<Link href={getEditLink()}>
+							<Button size="sm" className="hidden h-7 sm:flex cursor-pointer">
+								<IconEditCircle />
+								<span>Edit</span>
+							</Button>
+						</Link>
 					)}
 				</div>
 			</div>

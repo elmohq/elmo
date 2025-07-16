@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Hash, Users, Search, Target } from "lucide-react";
+import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
+import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
+import Link from "next/link";
 
 interface Prompt {
 	id: string;
@@ -24,6 +26,7 @@ interface PromptsDisplayProps {
 	prompts: Prompt[];
 	pageTitle: string;
 	pageDescription: string;
+	editLink: string;
 }
 
 function getGroupIcon(groupName: string) {
@@ -76,7 +79,7 @@ function getModelIcon(modelType: ModelType) {
 	}
 }
 
-export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsDisplayProps) {
+export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }: PromptsDisplayProps) {
 	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
 	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = usePromptRuns();
 
@@ -120,39 +123,40 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 				<p className="text-muted-foreground">{pageDescription}</p>
 			</div>
 
-			{/* Model Selection Tabs */}
-			<Tabs
-				defaultValue="openai"
-				className="w-fit"
-				value={selectedModel}
-				onValueChange={(value) => setSelectedModel(value as ModelType)}
-			>
-				<TabsList>
-					<TabsTrigger value="openai" className="cursor-pointer">
-						{getModelIcon("openai")} <span>OpenAI</span>
-					</TabsTrigger>
-					<TabsTrigger value="anthropic" className="cursor-pointer">
-						{getModelIcon("anthropic")} <span>Anthropic</span>
-					</TabsTrigger>
-					<TabsTrigger value="google" className="cursor-pointer">
-						{getModelIcon("google")} <span>Google</span>
-					</TabsTrigger>
-				</TabsList>
+			{groupEntries.length === 0 ? (
+				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
+					<div className="text-center py-8 text-muted-foreground">
+						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
+						<p className="mb-4">No prompts yet.</p>
+						<Button asChild size="sm" className="h-7 flex cursor-pointer">
+							<Link href={editLink}>
+								<IconEditCircle />
+								<span>Edit</span>
+							</Link>
+						</Button>
+					</div>
+				</div>
+			) : (
+				/* Model Selection Tabs */
+				<Tabs
+					defaultValue="openai"
+					className="w-full"
+					value={selectedModel}
+					onValueChange={(value) => setSelectedModel(value as ModelType)}
+				>
+					<TabsList>
+						<TabsTrigger value="openai" className="cursor-pointer">
+							{getModelIcon("openai")} <span>OpenAI</span>
+						</TabsTrigger>
+						<TabsTrigger value="anthropic" className="cursor-pointer">
+							{getModelIcon("anthropic")} <span>Anthropic</span>
+						</TabsTrigger>
+						<TabsTrigger value="google" className="cursor-pointer">
+							{getModelIcon("google")} <span>Google</span>
+						</TabsTrigger>
+					</TabsList>
 
-				<TabsContent value={selectedModel} className="mt-6">
-					{groupEntries.length === 0 ? (
-						<div className="text-center py-12">
-							<Hash className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-							<h2 className="text-2xl font-semibold mb-2">No prompts yet</h2>
-							<p className="text-muted-foreground mb-4">
-								Get started by running the prompt wizard to generate your first tracking prompts.
-							</p>
-							<Button className="cursor-pointer">
-								<Plus className="h-4 w-4 mr-2" />
-								Run Prompt Wizard
-							</Button>
-						</div>
-					) : (
+					<TabsContent value={selectedModel} className="mt-6">
 						<div className="space-y-6">
 							{/* Prompt Runs Summary */}
 							{!isLoadingRuns && (
@@ -266,9 +270,9 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription }: PromptsD
 								);
 							})}
 						</div>
-					)}
-				</TabsContent>
-			</Tabs>
+					</TabsContent>
+				</Tabs>
+			)}
 		</div>
 	);
 }

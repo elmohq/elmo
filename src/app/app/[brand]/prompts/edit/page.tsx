@@ -3,7 +3,7 @@ import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { PromptsDisplay } from "./prompts-display";
+import { PromptsEditor } from "./prompts-editor";
 
 async function getPrompts(brandId: string) {
 	// Verify user has access to this brand
@@ -24,9 +24,8 @@ async function getPrompts(brandId: string) {
 	return brandPrompts;
 }
 
-export default async function PromptsPage({ params }: { params: Promise<{ brand: string }> }) {
-	const brandId = (await params).brand;
-	const brandPrompts = await getPrompts(brandId);
+export default async function PromptsEditPage({ params }: { params: Promise<{ brand: string }> }) {
+	const brandPrompts = await getPrompts((await params).brand);
 
 	if (brandPrompts === null) {
 		notFound();
@@ -36,11 +35,12 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 	const nonReputationPrompts = brandPrompts.filter((prompt) => !prompt.reputation);
 
 	return (
-		<PromptsDisplay
-			prompts={nonReputationPrompts}
-			pageTitle="Brand Prompts"
-			pageDescription="Manage your brand tracking keywords and prompts"
-			editLink={`/app/${brandId}/prompts/edit`}
+		<PromptsEditor
+			initialPrompts={nonReputationPrompts}
+			brandId={(await params).brand}
+			pageTitle="Edit Prompt Tracking"
+			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
+			reputation={false}
 		/>
 	);
-}
+} 

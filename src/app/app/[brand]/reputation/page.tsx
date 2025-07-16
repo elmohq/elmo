@@ -59,14 +59,6 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-3xl font-bold tracking-tight">Brand Reputation</h1>
-				<p className="text-muted-foreground">
-					Monitor your brand reputation with targeted prompts and competitor tracking
-				</p>
-			</div>
-
-			{/* Competitors Section */}
 			{brandCompetitors.length > 0 && (
 				<Card>
 					<CardHeader>
@@ -92,11 +84,11 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 				</Card>
 			)}
 
-			{/* Reputation Prompts Section */}
 			<PromptsDisplay
 				prompts={reputationPrompts}
 				pageTitle="Reputation Prompts"
-				pageDescription="Monitor reputation-specific search terms"
+				pageDescription="Monitor your brand reputation with targeted prompts and competitor tracking."
+				editLink={`/app/${brandId}/reputation/edit`}
 			/>
 		</div>
 	);

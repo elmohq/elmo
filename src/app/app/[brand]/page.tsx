@@ -24,18 +24,20 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 	if (!hasPrompts && !brand?.onboarded) {
 		return (
 			<div className="space-y-6">
-				<div className="space-y-2">
+				<div className="space-y-2 max-w-2xl">
 					<h2 className="text-2xl font-bold">Research Brand Data</h2>
 					<p className="text-muted-foreground text-balance">
 						We will analyze your website and find the best generative AI prompts to track. This process may take a
 						couple of minutes.
 					</p>
 				</div>
-				<PromptWizard
-					onComplete={() => {
-						// The wizard will trigger a revalidation, so the page will update automatically
-					}}
-				/>
+				<div className="max-w-2xl">
+					<PromptWizard
+						onComplete={() => {
+							// The wizard will trigger a revalidation, so the page will update automatically
+						}}
+					/>
+				</div>
 			</div>
 		);
 	}
