@@ -71,6 +71,13 @@
       "when": 1752695796819,
       "tag": "0009_narrow_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1752696420775,
+      "tag": "0010_groovy_albert_cleary",
+      "breakpoints": true
     }
   ]
 }

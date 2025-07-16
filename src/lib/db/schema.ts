@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, json, index } from "drizzle-orm/pg-core";
 
 export const brands = pgTable("brands", {
 	id: text("id").primaryKey().notNull(),
@@ -56,7 +56,9 @@ export const promptRuns = pgTable("prompt_runs", {
 		brandMentions: string[];
 	}>(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}).enableRLS();
+}, (table) => ({
+	promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
+})).enableRLS();
 
 export type Brand = typeof brands.$inferSelect;
 export type NewBrand = typeof brands.$inferInsert;
