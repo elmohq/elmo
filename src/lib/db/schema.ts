@@ -1,4 +1,6 @@
-import { pgTable, uuid, text, timestamp, boolean, json, index } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index } from "drizzle-orm/pg-core";
+
+export const modelGroupsEnum = pgEnum("model_groups", ["openai", "anthropic", "google"]);
 
 export const brands = pgTable("brands", {
 	id: text("id").primaryKey().notNull(),
@@ -49,6 +51,7 @@ export const promptRuns = pgTable("prompt_runs", {
 	promptId: uuid("prompt_id")
 		.references(() => prompts.id)
 		.notNull(),
+	modelGroup: modelGroupsEnum().notNull(),
 	model: text("model").notNull(),
 	rawOutput: text("raw_output").notNull(),
 	webQueries: text("web_queries").array(),
