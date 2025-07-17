@@ -49,17 +49,6 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 
 	// Calculate metrics
 	const totalPrompts = brand?.prompts?.length || 0;
-	const reputationPrompts = brand?.prompts?.filter(p => p.reputation)?.length || 0;
-	const searchPrompts = brand?.prompts?.filter(p => !p.reputation)?.length || 0;
-	
-	// Calculate prompts with recent evaluations (last 30 days)
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-	
-	const recentlyEvaluatedPrompts = new Set(
-		promptRuns?.filter(run => new Date(run.createdAt) >= thirtyDaysAgo)
-			.map(run => run.promptId) || []
-	).size;
 
 	// Mock average visibility for now (would be calculated from actual prompt run data)
 	const averageVisibility = 72;
