@@ -2,7 +2,7 @@
 
 import useSWR, { mutate as globalMutate } from "swr";
 import { usePathname } from "next/navigation";
-import type { BrandWithPrompts } from "@/lib/db/schema";
+import type { BrandWithPrompts, Competitor } from "@/lib/db/schema";
 
 const fetcher = async (url: string): Promise<BrandWithPrompts[]> => {
 	const response = await fetch(url);
@@ -21,6 +21,18 @@ const singleBrandFetcher = async (url: string): Promise<BrandWithPrompts> => {
 
 	if (!response.ok) {
 		const error = new Error("Failed to fetch brand");
+		error.message = `${response.status}: ${response.statusText}`;
+		throw error;
+	}
+
+	return response.json();
+};
+
+const competitorsFetcher = async (url: string): Promise<Competitor[]> => {
+	const response = await fetch(url);
+
+	if (!response.ok) {
+		const error = new Error("Failed to fetch competitors");
 		error.message = `${response.status}: ${response.statusText}`;
 		throw error;
 	}
@@ -75,6 +87,34 @@ export function useBrand(brandId: string | undefined = undefined) {
 		isLoading,
 		isError: error,
 		revalidate,
+	};
+}
+
+export function useCompetitors(brandId?: string) {
+	const pathname = usePathname();
+
+	const extractedBrandId =
+		brandId ||
+		(() => {
+			const segments = pathname.split("/");
+			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
+		})();
+
+	const { data, error, isLoading, mutate } = useSWR<Competitor[]>(
+		extractedBrandId ? `/api/brands/${extractedBrandId}/competitors` : null,
+		competitorsFetcher,
+		{
+			revalidateOnFocus: true,
+			revalidateOnReconnect: true,
+			dedupingInterval: 30000, // 30 seconds deduping
+		},
+	);
+
+	return {
+		competitors: data || [],
+		isLoading,
+		isError: error,
+		revalidate: mutate,
 	};
 }
 

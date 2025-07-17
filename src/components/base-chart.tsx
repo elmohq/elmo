@@ -17,22 +17,10 @@ import {
   ChartDataPoint, 
   filterAndCompleteChartData,
   getBadgeVariant,
-  getBadgeClassName
+  getBadgeClassName,
+  Brand,
+  Competitor
 } from "@/lib/chart-utils"
-
-const chartConfig = {
-  visitors: {
-    label: "Visitors",
-  },
-  desktop: {
-    label: "Nike",
-    color: WHITE_LABEL_CONFIG.chart_colors[0],
-  },
-  mobile: {
-    label: "Asics",
-    color: WHITE_LABEL_CONFIG.chart_colors[1],
-  },
-} satisfies ChartConfig
 
 interface BaseChartProps {
   data: ChartDataPoint[];
@@ -41,6 +29,9 @@ interface BaseChartProps {
   visibility?: number | null;
   showTitle?: boolean;
   showBadge?: boolean;
+  brand: Brand;
+  competitors: Competitor[];
+  isAnimationActive?: boolean;
 }
 
 export function BaseChart({ 
@@ -49,9 +40,38 @@ export function BaseChart({
   title, 
   visibility, 
   showTitle = false, 
-  showBadge = false 
+  showBadge = false,
+  brand,
+  competitors,
+  isAnimationActive = false
 }: BaseChartProps) {
   const completeData = filterAndCompleteChartData(data, lookback);
+
+  // Sort competitors alphabetically for consistent ordering
+  const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
+  
+  // Create dynamic chart config based on brand and competitors
+  const chartConfig: ChartConfig = {
+    visitors: {
+      label: "Visibility",
+    },
+    [brand.id]: {
+      label: brand.name,
+      color: WHITE_LABEL_CONFIG.chart_colors[0], // Brand gets first color
+    },
+  };
+
+  // Add competitors to config with subsequent colors
+  sortedCompetitors.forEach((competitor, index) => {
+    const colorIndex = (index + 1) % WHITE_LABEL_CONFIG.chart_colors.length;
+    chartConfig[competitor.id] = {
+      label: competitor.name,
+      color: WHITE_LABEL_CONFIG.chart_colors[colorIndex],
+    };
+  });
+
+  // Get all data keys (brand + competitors) for rendering lines
+  const dataKeys = [brand.id, ...sortedCompetitors.map(c => c.id)];
 
   return (
     <div className="flex-1 space-y-2">
@@ -116,7 +136,7 @@ export function BaseChart({
                 }}
                 indicator="dot"
                 formatter={(value, name, item, index) => {
-                  const indicatorColor = item.payload.fill || item.color;
+                  const indicatorColor = chartConfig[name as string]?.color;
                   return (
                     <>
                       <div
@@ -128,7 +148,7 @@ export function BaseChart({
                       <div className="flex flex-1 justify-between leading-none items-center">
                         <div className="grid gap-1.5">
                           <span className="text-muted-foreground">
-                            {chartConfig[name as keyof typeof chartConfig]?.label || name}
+                            {chartConfig[name as string]?.label || name}
                           </span>
                         </div>
                         {value !== null && value !== undefined && (
@@ -143,22 +163,20 @@ export function BaseChart({
               />
             }
           />
-          <Line
-            dataKey="mobile"
-            type="bump"
-            stroke="var(--color-mobile)"
-            strokeWidth={2}
-            dot={false}
-            connectNulls={false}
-          />
-          <Line
-            dataKey="desktop"
-            type="bump"
-            stroke="var(--color-desktop)"
-            strokeWidth={2}
-            dot={false}
-            connectNulls={false}
-          />
+          {dataKeys.map((key, index) => (
+            <Line
+              key={key}
+              dataKey={key}
+              type="bump"
+              stroke={`var(--color-${key})`}
+              strokeWidth={2}
+              // need dots, otherwise first day of line chart won't show
+              dot={{ fill: `var(--color-${key})`, strokeWidth: 2, r: 2 }}
+              activeDot={{ r: 4, strokeWidth: 2 }}
+              connectNulls={false}
+              isAnimationActive={isAnimationActive}
+            />
+          ))}
           <ChartLegend content={<ChartLegendContent payload={[]} />} />
         </LineChart>
       </ChartContainer>

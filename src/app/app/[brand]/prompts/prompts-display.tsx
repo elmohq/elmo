@@ -9,6 +9,7 @@ import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { usePromptRuns, usePromptRunsWithWebSearch, usePromptRunsWithoutWebSearch, type LookbackPeriod } from "@/hooks/use-prompt-runs";
+import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 import { PromptChart } from "@/components/prompt-chart";
 import { PromptGroupChart } from "@/components/prompt-group-chart";
@@ -101,6 +102,9 @@ function getLookbackLabel(lookback: LookbackPeriod): string {
 export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, webSearchEnabled }: PromptsDisplayProps) {
 	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
+	
+	// Get brand info for display purposes only
+	const { brand } = useBrand();
 	
 	// Use appropriate hook based on webSearchEnabled prop
 	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = webSearchEnabled === true 
@@ -241,7 +245,12 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 						<div className="space-y-6">
 							{/* Individual Prompt Charts for Uncategorized Active Prompts */}
 							{!isLoadingRuns && uncategorizedPrompts.map((prompt) => (
-								<PromptChart key={prompt.id} promptName={prompt.value} lookback={selectedLookback} />
+								<PromptChart 
+									key={prompt.id} 
+									promptName={prompt.value} 
+									promptId={prompt.id}
+									lookback={selectedLookback} 
+								/>
 							))}
 
 							{/* Group Prompt Charts for Grouped Active Prompts */}
@@ -252,7 +261,12 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 								const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
 								
 								return (
-									<PromptGroupChart key={groupKey} groupName={chartName} lookback={selectedLookback} />
+									<PromptGroupChart 
+										key={groupKey} 
+										groupName={chartName} 
+										prompts={groupPrompts}
+										lookback={selectedLookback} 
+									/>
 								);
 							})}
 
