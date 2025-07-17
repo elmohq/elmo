@@ -61,7 +61,7 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 		<PromptsDisplay
 			prompts={reputationPrompts}
 			pageTitle="Reputation Prompts"
-			pageDescription="Monitor your brand reputation with targeted prompts and competitor tracking."
+			pageDescription="See how AI perceives your brand based on its training data."
 			editLink={`/app/${brandId}/reputation/edit`}
 		/>
 	);

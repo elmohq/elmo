@@ -38,8 +38,8 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 	return (
 		<PromptsDisplay
 			prompts={nonReputationPrompts}
-			pageTitle="Brand Prompts"
-			pageDescription="Manage your brand tracking keywords and prompts"
+			pageTitle="Prompts (Using Web Search)"
+			pageDescription="See how LLMs are using the web to respond to prompts related to your brand."
 			editLink={`/app/${brandId}/prompts/edit`}
 		/>
 	);
