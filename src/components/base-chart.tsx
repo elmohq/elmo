@@ -115,7 +115,31 @@ export function BaseChart({
                   })
                 }}
                 indicator="dot"
-                formatter={(value) => [`${value}%`, ""]}
+                formatter={(value, name, item, index) => {
+                  const indicatorColor = item.payload.fill || item.color;
+                  return (
+                    <>
+                      <div
+                        className="shrink-0 rounded-[2px] h-2.5 w-2.5"
+                        style={{
+                          backgroundColor: indicatorColor,
+                        }}
+                      />
+                      <div className="flex flex-1 justify-between leading-none items-center">
+                        <div className="grid gap-1.5">
+                          <span className="text-muted-foreground">
+                            {chartConfig[name as keyof typeof chartConfig]?.label || name}
+                          </span>
+                        </div>
+                        {value !== null && value !== undefined && (
+                          <span className="text-foreground font-mono font-medium tabular-nums">
+                            {value}%
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )
+                }}
               />
             }
           />
