@@ -8,8 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
-import { usePromptRuns } from "@/hooks/use-prompt-runs";
+import { usePromptRuns, type LookbackPeriod } from "@/hooks/use-prompt-runs";
 import Link from "next/link";
+import { PromptChart } from "@/components/prompt-chart";
+import { PromptGroupChart } from "@/components/prompt-group-chart";
 
 interface Prompt {
 	id: string;
@@ -79,8 +81,26 @@ function getModelIcon(modelType: ModelType) {
 	}
 }
 
+function getLookbackLabel(lookback: LookbackPeriod): string {
+	switch (lookback) {
+		case "1w":
+			return "1w";
+		case "1m":
+			return "1mo";
+		case "3m":
+			return "3mo";
+		case "6m":
+			return "6mo";
+		case "1y":
+			return "1yr";
+		case "all":
+			return "all";
+	}
+}
+
 export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }: PromptsDisplayProps) {
 	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
+	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
 	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = usePromptRuns();
 
 	// Group prompts by category + prefix combination
@@ -144,6 +164,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 					value={selectedModel}
 					onValueChange={(value) => setSelectedModel(value as ModelType)}
 				>
+					<div className="flex justify-between items-center">
 					<TabsList>
 						<TabsTrigger value="openai" className="cursor-pointer">
 							{getModelIcon("openai")} <span>OpenAI</span>
@@ -156,10 +177,34 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 						</TabsTrigger>
 					</TabsList>
 
+					<div className="flex items-center gap-2">
+						<div className="flex rounded-md bg-muted p-1">
+							{(["1w", "1m", "3m", "6m", "1y", "all"] as LookbackPeriod[]).map((period) => (
+								<button
+									key={period}
+									onClick={() => setSelectedLookback(period)}
+									className={`px-3 py-1 text-sm rounded cursor-pointer ${
+										selectedLookback === period
+											? "bg-background text-foreground shadow-sm"
+											: "text-muted-foreground hover:text-foreground"
+									}`}
+								>
+									{getLookbackLabel(period)}
+								</button>
+							))}
+						</div>
+					</div>
+					</div>
+
+
+
 					<TabsContent value={selectedModel} className="mt-6">
 						<div className="space-y-6">
 							{/* Prompt Runs Summary */}
 							{!isLoadingRuns && (
+								<>
+								<PromptChart />
+								<PromptGroupChart />
 								<Card>
 									<CardHeader>
 										<CardTitle className="flex items-center gap-2">
@@ -200,6 +245,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 										)}
 									</CardContent>
 								</Card>
+								</>
 							)}
 
 							{groupEntries.map(([groupKey, groupPrompts]) => {
