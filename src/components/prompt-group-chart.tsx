@@ -248,7 +248,7 @@ export function ChartAreaInteractive({ title, visibility, lookback }: { title: s
     )
   }
 
-export function PromptGroupChart({ lookback = "1m" }: { lookback?: LookbackPeriod }) {
+export function PromptGroupChart({ lookback = "1m", groupName }: { lookback?: LookbackPeriod; groupName?: string }) {
     const daysToSubtract = getDaysFromLookback(lookback);
     const referenceDate = new Date();
     const startDate = new Date(referenceDate);

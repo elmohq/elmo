@@ -103,7 +103,40 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
 	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = usePromptRuns();
 
-	// Group prompts by category + prefix combination
+	// Filter to only active prompts
+	const activePrompts = prompts.filter(prompt => prompt.enabled);
+
+	// Separate uncategorized and grouped prompts
+	const uncategorizedPrompts = activePrompts
+		.filter(prompt => !prompt.groupCategory || prompt.groupCategory === "Uncategorized")
+		.sort((a, b) => a.value.localeCompare(b.value));
+
+	// Group active prompts by category + prefix combination (excluding uncategorized)
+	const groupedPrompts = activePrompts
+		.filter(prompt => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
+		.reduce(
+			(acc, prompt) => {
+				const category = prompt.groupCategory!;
+				const prefix = prompt.groupPrefix || "";
+				// Create a unique key combining category and prefix
+				const groupKey = prefix ? `${category}:${prefix}` : category;
+				if (!acc[groupKey]) {
+					acc[groupKey] = [];
+				}
+				acc[groupKey].push(prompt);
+				return acc;
+			},
+			{} as Record<string, Prompt[]>,
+		);
+
+	// Sort grouped prompts by prefix alphabetically
+	const sortedGroupEntries = Object.entries(groupedPrompts).sort(([keyA], [keyB]) => {
+		const prefixA = keyA.includes(':') ? keyA.split(':')[1] : keyA;
+		const prefixB = keyB.includes(':') ? keyB.split(':')[1] : keyB;
+		return prefixA.localeCompare(prefixB);
+	});
+
+	// Group prompts by category + prefix combination (for display purposes)
 	const promptsByGroup = prompts.reduce(
 		(acc, prompt) => {
 			const category = prompt.groupCategory || "Uncategorized";
@@ -200,11 +233,25 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 
 					<TabsContent value={selectedModel} className="mt-6">
 						<div className="space-y-6">
+							{/* Individual Prompt Charts for Uncategorized Active Prompts */}
+							{!isLoadingRuns && uncategorizedPrompts.map((prompt) => (
+								<PromptChart key={prompt.id} promptName={prompt.value} lookback={selectedLookback} />
+							))}
+
+							{/* Group Prompt Charts for Grouped Active Prompts */}
+							{!isLoadingRuns && sortedGroupEntries.map(([groupKey, groupPrompts]) => {
+								const firstPrompt = groupPrompts[0];
+								const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
+								const groupPrefix = firstPrompt?.groupPrefix;
+								const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
+								
+								return (
+									<PromptGroupChart key={groupKey} groupName={chartName} lookback={selectedLookback} />
+								);
+							})}
+
 							{/* Prompt Runs Summary */}
 							{!isLoadingRuns && (
-								<>
-								<PromptChart lookback={selectedLookback} />
-								<PromptGroupChart lookback={selectedLookback} />
 								<Card>
 									<CardHeader>
 										<CardTitle className="flex items-center gap-2">
@@ -245,76 +292,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 										)}
 									</CardContent>
 								</Card>
-								</>
 							)}
-
-							{groupEntries.map(([groupKey, groupPrompts]) => {
-								// Extract category and prefix from the groupKey and first prompt
-								const firstPrompt = groupPrompts[0];
-								const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
-								const groupPrefix = firstPrompt?.groupPrefix;
-
-								return (
-									<Card key={groupKey}>
-										<CardHeader>
-											<CardTitle className="flex items-center gap-2">
-												{getGroupIcon(groupCategory)}
-												{groupPrefix && (
-													<>
-														{groupPrefix}
-														<code className="bg-muted px-2 py-1 rounded text-sm font-mono">{groupCategory}</code>
-													</>
-												)}
-												{!groupPrefix && groupCategory}
-												<Badge variant="secondary" className="ml-2">
-													{groupPrompts.length} {groupPrompts.length === 1 ? "prompt" : "prompts"}
-												</Badge>
-											</CardTitle>
-										</CardHeader>
-										<CardContent>
-											<div className="grid gap-2">
-												{groupPrompts.map((prompt) => {
-													const runs = promptRunsByPromptId[prompt.id] || [];
-													return (
-														<div key={prompt.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-															<div className="flex items-center gap-3">
-																<div className="flex-1">
-																	<p className="font-medium">{prompt.value}</p>
-																	<div className="flex items-center gap-2 mt-1">
-																		<Badge variant="outline" className={`text-xs ${getGroupColor(groupCategory)}`}>
-																			{groupCategory}
-																		</Badge>
-																		{prompt.reputation && (
-																			<Badge variant="outline" className="text-xs">
-																				Reputation
-																			</Badge>
-																		)}
-																		{!prompt.enabled && (
-																			<Badge variant="outline" className="text-xs text-muted-foreground">
-																				Disabled
-																			</Badge>
-																		)}
-																		{runs.length > 0 && (
-																			<Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-																				{runs.length} runs
-																			</Badge>
-																		)}
-																	</div>
-																</div>
-															</div>
-															<div className="flex items-center gap-2">
-																<Badge variant={prompt.enabled ? "default" : "secondary"}>
-																	{prompt.enabled ? "Active" : "Inactive"}
-																</Badge>
-															</div>
-														</div>
-													);
-												})}
-											</div>
-										</CardContent>
-									</Card>
-								);
-							})}
 						</div>
 					</TabsContent>
 				</Tabs>

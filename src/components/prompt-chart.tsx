@@ -204,7 +204,7 @@ export function ChartAreaInteractive({ lookback }: { lookback: LookbackPeriod })
     )
   }
 
-export function PromptChart({ lookback = "1m" }: { lookback?: LookbackPeriod }) {
+export function PromptChart({ lookback = "1m", promptName }: { lookback?: LookbackPeriod; promptName?: string }) {
     const daysToSubtract = getDaysFromLookback(lookback);
     const referenceDate = new Date();
     const startDate = new Date(referenceDate);
