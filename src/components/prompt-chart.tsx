@@ -74,11 +74,11 @@ const chartConfig = {
   },
   desktop: {
     label: "Nike",
-    color: "#2563eb",
+    color: WHITE_LABEL_CONFIG.chart_colors[0],
   },
   mobile: {
     label: "Asics",
-    color: "#ea580c",
+    color: WHITE_LABEL_CONFIG.chart_colors[1],
   },
 } satisfies ChartConfig
 
