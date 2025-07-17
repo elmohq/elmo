@@ -12,7 +12,6 @@ interface Prompt {
 	groupCategory: string | null;
 	groupPrefix: string | null;
 	value: string;
-	reputation: boolean;
 	enabled: boolean;
 	createdAt: Date;
 }
@@ -28,14 +27,11 @@ interface PromptsEditorProps {
 	brandId: string;
 	pageTitle: string;
 	pageDescription: string;
-	reputation: boolean;
 }
 
-export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, reputation }: PromptsEditorProps) {
+export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription }: PromptsEditorProps) {
 	// Maximum limits
-	const MAX_REPUTATION_PROMPTS = 100;
-	const MAX_NON_REPUTATION_PROMPTS = 50;
-	const maxPrompts = reputation ? MAX_REPUTATION_PROMPTS : MAX_NON_REPUTATION_PROMPTS;
+	const MAX_PROMPTS = 150;
 
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(
 		initialPrompts.map(p => ({
@@ -48,7 +44,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const router = useRouter();
 
 	const addPrompt = () => {
-		if (prompts.length < maxPrompts) {
+		if (prompts.length < MAX_PROMPTS) {
 			setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "" }]);
 		}
 	};
@@ -70,13 +66,13 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			const validPrompts = prompts.filter(p => p.value.trim());
 			
 			// Check server-side limits before saving
-			if (validPrompts.length > maxPrompts) {
-				alert(`You can only have a maximum of ${maxPrompts} ${reputation ? 'reputation' : 'non-reputation'} prompts.`);
+			if (validPrompts.length > MAX_PROMPTS) {
+				alert(`You can only have a maximum of ${MAX_PROMPTS} prompts.`);
 				setIsLoading(false);
 				return;
 			}
 			
-			// Delete all existing prompts for this brand/reputation type
+			// Delete all existing prompts for this brand
 			for (const prompt of initialPrompts) {
 				await fetch(`/api/brands/${brandId}/prompts/${prompt.id}`, {
 					method: "DELETE",
@@ -92,7 +88,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					},
 					body: JSON.stringify({
 						value: prompt.value.trim(),
-						reputation,
 						groupCategory: prompt.groupCategory.trim() || null,
 						groupPrefix: prompt.groupPrefix.trim() || null,
 						enabled: true,
@@ -100,7 +95,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				});
 			}
 
-			router.push(`/app/${brandId}/${reputation ? 'reputation' : 'prompts'}`);
+			router.push(`/app/${brandId}/prompts`);
 		} catch (error) {
 			console.error("Error saving prompts:", error);
 			alert("Failed to save prompts");
@@ -110,7 +105,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	};
 
 	const validPromptCount = prompts.filter(p => p.value.trim()).length;
-	const isAtLimit = prompts.length >= maxPrompts;
+	const isAtLimit = prompts.length >= MAX_PROMPTS;
 
 	return (
 		<div className="space-y-6">
@@ -138,7 +133,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							<p>No prompts yet.</p>
 						</div>
 					</div>
-				) : (
+				) :
 					<div className="space-y-4">
 						{/* Prompt rows */}
 						{prompts.map((prompt, index) => (
@@ -172,7 +167,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							</div>
 						))}
 					</div>
-				)}
+				}
 				
 				{/* Buttons - always shown */}
 				<div className="flex gap-2 items-center">
@@ -197,14 +192,14 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 					</Button>
 					{isAtLimit && (
 						<p className="text-xs text-muted-foreground">
-							Maximum of {maxPrompts} {reputation ? 'reputation' : 'non-reputation'} prompts allowed. Remove a prompt to add a new one.
+							Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
 						</p>
 					)}
 				</div>
 				
 				{/* Count information */}
 				<div className="text-xs text-muted-foreground">
-					<strong>{validPromptCount}/{maxPrompts}</strong> {reputation ? 'reputation' : 'non-reputation'} prompts{validPromptCount >= maxPrompts ? ' (maximum reached)' : ''}
+					<strong>{validPromptCount}/{MAX_PROMPTS}</strong> prompts{validPromptCount >= MAX_PROMPTS ? ' (maximum reached)' : ''}
 				</div>
 			</div>
 		</div>

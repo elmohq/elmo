@@ -31,16 +31,12 @@ export default async function PromptsEditPage({ params }: { params: Promise<{ br
 		notFound();
 	}
 
-	// Filter to only non-reputation prompts
-	const nonReputationPrompts = brandPrompts.filter((prompt) => !prompt.reputation);
-
 	return (
 		<PromptsEditor
-			initialPrompts={nonReputationPrompts}
+			initialPrompts={brandPrompts}
 			brandId={(await params).brand}
 			pageTitle="Edit Prompt Tracking"
 			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
-			reputation={false}
 		/>
 	);
 } 

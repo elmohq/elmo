@@ -1,0 +1,1 @@
+ALTER TABLE "prompts" DROP COLUMN "reputation";

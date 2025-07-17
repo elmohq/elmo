@@ -5,8 +5,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, count } from "drizzle-orm";
 
 // Maximum limits
-const MAX_REPUTATION_PROMPTS = 100;
-const MAX_NON_REPUTATION_PROMPTS = 50;
+const MAX_PROMPTS = 150;
 const MAX_COMPETITORS = 3;
 const MAX_PERSONA_GROUP_MEMBERS = 4;
 
@@ -54,26 +53,22 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Check current counts for limits
-		const [currentReputationCountResult, currentNonReputationCountResult, currentCompetitorCountResult] = await Promise.all([
+		const [currentPromptCountResult, currentCompetitorCountResult] = await Promise.all([
 			db.select({ count: count() })
 				.from(prompts)
-				.where(and(eq(prompts.brandId, brandId), eq(prompts.reputation, true))),
-			db.select({ count: count() })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, brandId), eq(prompts.reputation, false))),
+				.where(eq(prompts.brandId, brandId)),
 			db.select({ count: count() })
 				.from(competitors)
 				.where(eq(competitors.brandId, brandId))
 		]);
 
-		const currentReputationCount = currentReputationCountResult[0]?.count || 0;
-		const currentNonReputationCount = currentNonReputationCountResult[0]?.count || 0;
+		const currentPromptCount = currentPromptCountResult[0]?.count || 0;
 		const currentCompetitorCount = currentCompetitorCountResult[0]?.count || 0;
 
 		const promptsToCreate = [];
 		const competitorsToCreate = [];
 
-		// Add product categories as reputation prompts (with "best " prefix)
+		// Add product categories as basic prompts (with "best " prefix)
 		if (products && Array.isArray(products)) {
 			for (const product of products) {
 				promptsToCreate.push({
@@ -81,27 +76,12 @@ export async function POST(request: NextRequest) {
 					groupCategory: null,
 					groupPrefix: null,
 					value: `best ${product}`,
-					reputation: true,
 					enabled: true,
 				});
 			}
 		}
 
-		// Add product categories as non-reputation prompts (with "best " prefix)
-		if (products && Array.isArray(products)) {
-			for (const product of products) {
-				promptsToCreate.push({
-					brandId,
-					groupCategory: null,
-					groupPrefix: null,
-					value: `best ${product}`,
-					reputation: false,
-					enabled: true,
-				});
-			}
-		}
-
-		// Add product categories + personas as reputation prompts (cross-product)
+		// Add product categories + personas as grouped prompts (cross-product)
 		if (products && Array.isArray(products) && personaGroups && Array.isArray(personaGroups)) {
 			for (const product of products) {
 				for (const group of personaGroups) {
@@ -112,7 +92,6 @@ export async function POST(request: NextRequest) {
 								groupCategory: group.name,
 								groupPrefix: `best ${product} for `,
 								value: `best ${product} for ${persona}`,
-								reputation: true,
 								enabled: true,
 							});
 						}
@@ -121,7 +100,7 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Add custom prompts (with reputation set to false)
+		// Add custom prompts
 		if (customPrompts && Array.isArray(customPrompts)) {
 			for (const prompt of customPrompts) {
 				promptsToCreate.push({
@@ -129,7 +108,6 @@ export async function POST(request: NextRequest) {
 					groupCategory: null,
 					groupPrefix: null,
 					value: prompt,
-					reputation: false,
 					enabled: true,
 				});
 			}
@@ -155,7 +133,7 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// Add keywords from DataForSEO (no group, non-reputation)
+		// Add keywords from DataForSEO (no group)
 		if (keywords && Array.isArray(keywords)) {
 			for (const keywordData of keywords) {
 				promptsToCreate.push({
@@ -163,26 +141,15 @@ export async function POST(request: NextRequest) {
 					groupCategory: null,
 					groupPrefix: null,
 					value: keywordData.keyword,
-					reputation: false,
 					enabled: true,
 				});
 			}
 		}
 
-		// Count reputation and non-reputation prompts to be created
-		const reputationPromptsToCreate = promptsToCreate.filter(p => p.reputation).length;
-		const nonReputationPromptsToCreate = promptsToCreate.filter(p => !p.reputation).length;
-
 		// Check limits before creating
-		if (currentReputationCount + reputationPromptsToCreate > MAX_REPUTATION_PROMPTS) {
+		if (currentPromptCount + promptsToCreate.length > MAX_PROMPTS) {
 			return NextResponse.json({ 
-				error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_REPUTATION_PROMPTS} reputation prompts. Current: ${currentReputationCount}, Attempting to create: ${reputationPromptsToCreate}` 
-			}, { status: 400 });
-		}
-
-		if (currentNonReputationCount + nonReputationPromptsToCreate > MAX_NON_REPUTATION_PROMPTS) {
-			return NextResponse.json({ 
-				error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_NON_REPUTATION_PROMPTS} non-reputation prompts. Current: ${currentNonReputationCount}, Attempting to create: ${nonReputationPromptsToCreate}` 
+				error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_PROMPTS} prompts. Current: ${currentPromptCount}, Attempting to create: ${promptsToCreate.length}` 
 			}, { status: 400 });
 		}
 

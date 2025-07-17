@@ -55,7 +55,7 @@ export function SiteHeader() {
 				</div>
 				<div className="ml-auto flex items-center gap-2">
 					{!isEditPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
-						<Link href={getEditLink()}>
+						<Link href={`/app/${brand?.id}/prompts/edit`}>
 							<Button size="sm" className="hidden h-7 sm:flex cursor-pointer">
 								<IconEditCircle />
 								<span>Edit</span>

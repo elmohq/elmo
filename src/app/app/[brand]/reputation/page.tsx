@@ -54,15 +54,13 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 		notFound();
 	}
 
-	// Filter to only reputation prompts
-	const reputationPrompts = brandPrompts.filter((prompt) => prompt.reputation);
-
 	return (
 		<PromptsDisplay
-			prompts={reputationPrompts}
+			prompts={brandPrompts}
 			pageTitle="Reputation Prompts"
 			pageDescription="See how AI perceives your brand based on its training data. Updated weekly."
-			editLink={`/app/${brandId}/reputation/edit`}
+			editLink={`/app/${brandId}/prompts/edit`}
+			webSearchEnabled={false}
 		/>
 	);
 }

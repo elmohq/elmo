@@ -23,7 +23,6 @@ export const prompts = pgTable("prompts", {
 	groupCategory: text("group_category"),
 	groupPrefix: text("group_prefix"),
 	value: text("value").notNull(),
-	reputation: boolean("reputation").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -53,6 +52,7 @@ export const promptRuns = pgTable("prompt_runs", {
 		.notNull(),
 	modelGroup: modelGroupsEnum().notNull(),
 	model: text("model").notNull(),
+	webSearchEnabled: boolean("web_search_enabled").notNull(),
 	rawOutput: text("raw_output").notNull(),
 	webQueries: text("web_queries").array(),
 	brandMentioned: boolean("brand_mentioned").notNull(),

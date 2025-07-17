@@ -25,6 +25,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const fromParam = searchParams.get("from");
 		const toParam = searchParams.get("to");
 		const lookbackParam = searchParams.get("lookback");
+		const webSearchEnabledParam = searchParams.get("webSearchEnabled");
 
 		let fromDate: Date | undefined;
 		let toDate: Date | undefined;
@@ -80,12 +81,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			conditions.push(lte(promptRuns.createdAt, toDate));
 		}
 
+		// Add webSearchEnabled filter if specified
+		if (webSearchEnabledParam !== null) {
+			const webSearchEnabled = webSearchEnabledParam === "true";
+			conditions.push(eq(promptRuns.webSearchEnabled, webSearchEnabled));
+		}
+
 		// Execute query with all conditions
 		const runs = await db
 			.select({
 				id: promptRuns.id,
 				promptId: promptRuns.promptId,
 				model: promptRuns.model,
+				webSearchEnabled: promptRuns.webSearchEnabled,
 				webQueries: promptRuns.webQueries,
 				brandMentioned: promptRuns.brandMentioned,
 				competitorsMentioned: promptRuns.competitorsMentioned,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getElmoOrgs } from "@/lib/metadata";
 import { db } from "@/lib/db/db";
 import { prompts } from "@/lib/db/schema";
+import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
 		}
 
-		const { value, reputation, groupCategory, groupPrefix, enabled } = body;
+		const { value, groupCategory, groupPrefix, enabled } = body;
 
 		// Build update object with only provided fields
 		const updateData: Partial<typeof prompts.$inferInsert> = {};
@@ -77,13 +77,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 				return NextResponse.json({ error: "Prompt value must be a non-empty string" }, { status: 400 });
 			}
 			updateData.value = value.trim();
-		}
-
-		if (reputation !== undefined) {
-			if (typeof reputation !== "boolean") {
-				return NextResponse.json({ error: "Reputation must be a boolean" }, { status: 400 });
-			}
-			updateData.reputation = reputation;
 		}
 
 		if (groupCategory !== undefined) {
@@ -153,7 +146,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		revalidatePath(`/app/${brandId}/prompts`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
-		return NextResponse.json({ success: true, message: "Prompt deleted successfully" });
+		return NextResponse.json({ message: "Prompt deleted successfully" });
 
 	} catch (error) {
 		console.error("Error deleting prompt:", error);

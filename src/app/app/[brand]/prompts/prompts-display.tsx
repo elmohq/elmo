@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
-import { usePromptRuns, type LookbackPeriod } from "@/hooks/use-prompt-runs";
+import { usePromptRuns, usePromptRunsWithWebSearch, usePromptRunsWithoutWebSearch, type LookbackPeriod } from "@/hooks/use-prompt-runs";
 import Link from "next/link";
 import { PromptChart } from "@/components/prompt-chart";
 import { PromptGroupChart } from "@/components/prompt-group-chart";
@@ -19,7 +19,6 @@ interface Prompt {
 	groupCategory: string | null;
 	groupPrefix: string | null;
 	value: string;
-	reputation: boolean;
 	enabled: boolean;
 	createdAt: Date;
 }
@@ -29,6 +28,7 @@ interface PromptsDisplayProps {
 	pageTitle: string;
 	pageDescription: string;
 	editLink: string;
+	webSearchEnabled?: boolean;
 }
 
 function getGroupIcon(groupName: string) {
@@ -98,10 +98,16 @@ function getLookbackLabel(lookback: LookbackPeriod): string {
 	}
 }
 
-export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }: PromptsDisplayProps) {
+export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, webSearchEnabled }: PromptsDisplayProps) {
 	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
-	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = usePromptRuns();
+	
+	// Use appropriate hook based on webSearchEnabled prop
+	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = webSearchEnabled === true 
+		? usePromptRunsWithWebSearch(undefined, { lookback: selectedLookback })
+		: webSearchEnabled === false 
+		? usePromptRunsWithoutWebSearch(undefined, { lookback: selectedLookback })
+		: usePromptRuns(undefined, { lookback: selectedLookback });
 
 	// Filter to only active prompts
 	const activePrompts = prompts.filter(prompt => prompt.enabled);

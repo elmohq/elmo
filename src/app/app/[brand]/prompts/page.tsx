@@ -32,15 +32,13 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 		notFound();
 	}
 
-	// Filter to only non-reputation prompts
-	const nonReputationPrompts = brandPrompts.filter((prompt) => !prompt.reputation);
-
 	return (
 		<PromptsDisplay
-			prompts={nonReputationPrompts}
+			prompts={brandPrompts}
 			pageTitle="Prompts (Using Web Search)"
 			pageDescription="See how LLMs are using the web to respond to prompts related to your brand. Updated daily."
 			editLink={`/app/${brandId}/prompts/edit`}
+			webSearchEnabled={true}
 		/>
 	);
 }

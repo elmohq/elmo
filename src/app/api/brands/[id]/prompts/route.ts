@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getElmoOrgs } from "@/lib/metadata";
 import { db } from "@/lib/db/db";
 import { prompts } from "@/lib/db/schema";
-import { eq, and, count } from "drizzle-orm";
+import { getElmoOrgs } from "@/lib/metadata";
+import { eq, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 type Params = {
@@ -10,8 +10,7 @@ type Params = {
 };
 
 // Maximum limits
-const MAX_REPUTATION_PROMPTS = 100;
-const MAX_NON_REPUTATION_PROMPTS = 50;
+const MAX_PROMPTS = 150;
 
 // GET all prompts for a brand
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -55,28 +54,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
-		const { value, reputation, groupCategory, groupPrefix, enabled = true } = body;
+		const { value, groupCategory, groupPrefix, enabled = true } = body;
 
 		if (!value || typeof value !== "string") {
 			return NextResponse.json({ error: "Prompt value is required" }, { status: 400 });
 		}
 
-		if (typeof reputation !== "boolean") {
-			return NextResponse.json({ error: "Reputation field is required" }, { status: 400 });
-		}
-
-		// Check current prompt count for this brand and reputation type
+		// Check current prompt count for this brand
 		const currentCountResult = await db
 			.select({ count: count() })
 			.from(prompts)
-			.where(and(eq(prompts.brandId, brandId), eq(prompts.reputation, reputation)));
+			.where(eq(prompts.brandId, brandId));
 
 		const currentCount = currentCountResult[0]?.count || 0;
-		const maxPrompts = reputation ? MAX_REPUTATION_PROMPTS : MAX_NON_REPUTATION_PROMPTS;
 
-		if (currentCount >= maxPrompts) {
+		if (currentCount >= MAX_PROMPTS) {
 			return NextResponse.json({ 
-				error: `Maximum limit reached. You can only have ${maxPrompts} ${reputation ? 'reputation' : 'non-reputation'} prompts.` 
+				error: `Maximum limit reached. You can only have ${MAX_PROMPTS} prompts.` 
 			}, { status: 400 });
 		}
 
@@ -84,7 +78,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 		const newPrompt = await db.insert(prompts).values({
 			brandId,
 			value: value.trim(),
-			reputation,
 			groupCategory: groupCategory || null,
 			groupPrefix: groupPrefix || null,
 			enabled,

@@ -10,6 +10,7 @@ export interface PromptRunsFilters {
 	from?: Date;
 	to?: Date;
 	lookback?: LookbackPeriod;
+	webSearchEnabled?: boolean;
 }
 
 const fetcher = async (url: string): Promise<PromptRun[]> => {
@@ -42,6 +43,10 @@ function buildApiUrl(brandId: string, filters?: PromptRunsFilters): string {
 		if (filters.to) {
 			params.append("to", filters.to.toISOString());
 		}
+	}
+
+	if (filters.webSearchEnabled !== undefined) {
+		params.append("webSearchEnabled", filters.webSearchEnabled.toString());
 	}
 
 	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
@@ -106,4 +111,13 @@ export function useAllPromptRuns(brandId?: string) {
 // Hook for custom date ranges
 export function usePromptRunsDateRange(brandId?: string, from?: Date, to?: Date) {
 	return usePromptRuns(brandId, { from, to });
+}
+
+// Hooks for filtering by web search enabled
+export function usePromptRunsWithWebSearch(brandId?: string, filters?: Omit<PromptRunsFilters, 'webSearchEnabled'>) {
+	return usePromptRuns(brandId, { ...filters, webSearchEnabled: true });
+}
+
+export function usePromptRunsWithoutWebSearch(brandId?: string, filters?: Omit<PromptRunsFilters, 'webSearchEnabled'>) {
+	return usePromptRuns(brandId, { ...filters, webSearchEnabled: false });
 } 
