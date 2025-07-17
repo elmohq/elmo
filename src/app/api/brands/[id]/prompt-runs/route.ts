@@ -86,9 +86,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				id: promptRuns.id,
 				promptId: promptRuns.promptId,
 				model: promptRuns.model,
-				rawOutput: promptRuns.rawOutput,
 				webQueries: promptRuns.webQueries,
-				summary: promptRuns.summary,
+				brandMentioned: promptRuns.brandMentioned,
+				competitorsMentioned: promptRuns.competitorsMentioned,
 				createdAt: promptRuns.createdAt,
 			})
 			.from(promptRuns)
