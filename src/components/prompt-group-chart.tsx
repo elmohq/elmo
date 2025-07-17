@@ -12,58 +12,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { BaseChart } from "./base-chart";
+import { 
+  LookbackPeriod, 
+  normalizeToPercentage, 
+  ChartDataPoint,
+  getDaysFromLookback
+} from "@/lib/chart-utils";
 
-import * as React from "react"
-import { Area, AreaChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
-
-function getDaysFromLookback(lookback: LookbackPeriod): number {
-  switch (lookback) {
-    case "1w": return 7;
-    case "1m": return 30;
-    case "3m": return 90;
-    case "6m": return 180;
-    case "1y": return 365;
-    case "all": return 365 * 2; // 2 years for "all"
-  }
-}
-
-function generateDateRange(startDate: Date, endDate: Date): string[] {
-  const dates: string[] = [];
-  const current = new Date(startDate);
-  
-  while (current <= endDate) {
-    dates.push(current.toISOString().split('T')[0]);
-    current.setDate(current.getDate() + 1);
-  }
-  
-  return dates;
-}
-
-// Function to normalize values from 0-500 range to 0-100% and round down to nearest 20%
-const normalizeToPercentage = (value: number): number => {
-  const percentage = (value / 500) * 100;
-  const roundedPercentage = Math.floor(percentage / 20) * 20;
-  return Math.min(roundedPercentage, 100); // Ensure it never exceeds 100%
-};
-
-const chartData = [
+const chartData: ChartDataPoint[] = [
   { date: "2025-04-01", desktop: normalizeToPercentage(222), mobile: normalizeToPercentage(150) },
   { date: "2025-04-02", desktop: normalizeToPercentage(97), mobile: normalizeToPercentage(180) },
   { date: "2025-04-03", desktop: normalizeToPercentage(167), mobile: normalizeToPercentage(120) },
@@ -87,166 +44,6 @@ const chartData = [
   { date: "2025-04-21", desktop: normalizeToPercentage(137), mobile: normalizeToPercentage(200) },
   { date: "2025-04-22", desktop: normalizeToPercentage(224), mobile: normalizeToPercentage(170) },
 ]
-const chartConfig = {
-  visitors: {
-    label: "Visitors",
-  },
-  desktop: {
-    label: "Nike",
-    color: WHITE_LABEL_CONFIG.chart_colors[0],
-  },
-  mobile: {
-    label: "Asics",
-    color: WHITE_LABEL_CONFIG.chart_colors[1],
-  },
-} satisfies ChartConfig
-
-
-export function ChartAreaInteractive({ title, visibility, lookback }: { title: string; visibility: number | null; lookback: LookbackPeriod }) {
-    const daysToSubtract = getDaysFromLookback(lookback);
-    const referenceDate = new Date();
-    const startDate = new Date(referenceDate);
-    startDate.setDate(startDate.getDate() - daysToSubtract);
-    
-    // Generate complete date range for the lookback period
-    const dateRange = generateDateRange(startDate, referenceDate);
-    
-    // Filter existing data
-    const filteredData = chartData.filter((item) => {
-      const date = new Date(item.date);
-      return date >= startDate && date <= referenceDate;
-    });
-    
-    // Create a complete dataset with null values for missing dates
-    const completeData = dateRange.map(date => {
-      const existingData = filteredData.find(item => item.date === date);
-      return existingData || {
-        date,
-        desktop: null,
-        mobile: null
-      };
-    });
-
-    const getBadgeVariant = (value: number) => {
-      if (value > 75) return "default";
-      if (value > 45) return "secondary";
-      return "destructive";
-    };
-
-    return (
-        <div className="flex-1 space-y-2">
-            <div className="flex items-center justify-center gap-2">
-                <h3 className="text-sm font-medium capitalize">
-                    {title}
-                </h3>
-                {visibility !== null && (
-                    <Badge 
-                      variant={getBadgeVariant(visibility)} 
-                      className={`text-xs ${
-                        visibility > 75 ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 
-                        visibility > 45 ? 'bg-amber-500 hover:bg-amber-500 text-white' : 
-                        'bg-rose-500 hover:bg-rose-500 text-white'
-                      }`}
-                    >
-                        {visibility}%
-                    </Badge>
-                )}
-            </div>
-            <ChartContainer
-            config={chartConfig}
-            className="aspect-auto h-[250px] w-full"
-          >
-            <LineChart data={completeData}>
-              <defs>
-                <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-desktop)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-desktop)"
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-                <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-mobile)"
-                    stopOpacity={0.8}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-mobile)"
-                    stopOpacity={0.1}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                minTickGap={32}
-                domain={['dataMin', 'dataMax']}
-                type="category"
-                tickFormatter={(value) => {
-                  const date = new Date(value)
-                  return date.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                }}
-              />
-              <YAxis
-                domain={[0, (dataMax: number) => 100]}
-                type="number"
-                allowDataOverflow={false}
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                tickCount={6}
-                tickFormatter={(value) => `${value}%`}
-              />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(value) => {
-                      return new Date(value).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })
-                    }}
-                    indicator="dot"
-                    formatter={(value) => [`${value}%`, ""]}
-                  />
-                }
-              />
-              <Line
-                dataKey="mobile"
-                type="bump"
-                stroke="var(--color-mobile)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-            />
-            <Line
-                dataKey="desktop"
-                type="bump"
-                stroke="var(--color-desktop)"
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-            />
-              <ChartLegend content={<ChartLegendContent payload={[]} />} />
-            </LineChart>
-          </ChartContainer>
-        </div>
-    )
-  }
 
 export function PromptGroupChart({ lookback = "1m", groupName }: { lookback?: LookbackPeriod; groupName?: string }) {
     const daysToSubtract = getDaysFromLookback(lookback);
@@ -302,8 +99,22 @@ export function PromptGroupChart({ lookback = "1m", groupName }: { lookback?: Lo
             <Separator className="py-0 my-0" />
             <CardContent className="px-3">
                 <div className="flex gap-3">
-                    <ChartAreaInteractive title="men" visibility={menVisibility} lookback={lookback} />
-                    <ChartAreaInteractive title="women" visibility={womenVisibility} lookback={lookback} />
+                    <BaseChart 
+                        data={chartData} 
+                        lookback={lookback} 
+                        title="men" 
+                        visibility={menVisibility} 
+                        showTitle={true} 
+                        showBadge={true} 
+                    />
+                    <BaseChart 
+                        data={chartData} 
+                        lookback={lookback} 
+                        title="women" 
+                        visibility={womenVisibility} 
+                        showTitle={true} 
+                        showBadge={true} 
+                    />
                 </div>
             </CardContent>
         </Card>
