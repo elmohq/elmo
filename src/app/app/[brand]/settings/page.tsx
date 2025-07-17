@@ -54,7 +54,7 @@ export default function BrandSettingsPage() {
 	};
 
 	const addCompetitor = () => {
-		if (competitors.length < 5) {
+		if (competitors.length < 3) {
 			setCompetitors([...competitors, { name: "", domain: "" }]);
 		}
 	};
@@ -228,7 +228,7 @@ export default function BrandSettingsPage() {
 							</div>
 						))}
 						
-						{competitors.length < 5 && (
+						{competitors.length < 3 && (
 							<Button
 								type="button"
 								variant="outline"
@@ -241,14 +241,14 @@ export default function BrandSettingsPage() {
 							</Button>
 						)}
 						
-						{competitors.length >= 5 && (
+						{competitors.length >= 3 && (
 							<p className="text-xs text-muted-foreground">
-								Maximum of 5 competitors allowed. Remove a competitor to add a new one.
+								Maximum of 3 competitors allowed. Remove a competitor to add a new one.
 							</p>
 						)}
 						
 						<p className="text-xs text-muted-foreground">
-							<strong>{competitors.filter(c => c.name.trim() && c.domain.trim()).length}/5</strong> competitors configured
+							<strong>{competitors.filter(c => c.name.trim() && c.domain.trim()).length}/3</strong> competitors configured
 						</p>
 					</div>
 				</div>

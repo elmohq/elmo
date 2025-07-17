@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 			: "\n\n";
 
-		const prompt = `What are up to 4 direct to consumer competitors of ${website} (which sells ${productList}). 
+		const prompt = `What are up to 3 direct to consumer competitors of ${website} (which sells ${productList}). 
 		${excerptContext}
 The competitors should sell similar products in a similar way to a similar audience.
 
@@ -61,7 +61,7 @@ Please search for current market information to identify direct competitors.
 For each competitor, provide both the company name and their website domain. 
 Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. 
 The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". 
-Contain the JSON within <out> xml tags. List up to 4 competitors.
+Contain the JSON within <out> xml tags. List up to 3 competitors.
 
 Do not include competitors that sell similar types of products but would not be considered as direct competitors to ${website}.
 If ${website} is very small, it may not have any direct competitors. In this case, return an empty array.
@@ -121,7 +121,7 @@ Example format:
 							name: c.name.trim(),
 							domain: cleanDomain(c.domain.trim()),
 						}))
-						.slice(0, 4);
+						.slice(0, 3);
 				}
 			} catch (parseError) {
 				// Log error and return empty list

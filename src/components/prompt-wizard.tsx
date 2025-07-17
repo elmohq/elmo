@@ -696,7 +696,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								</Button>
 							</div>
 						))}
-						{wizardData.competitors.length < 5 && (
+						{wizardData.competitors.length < 3 && (
 							<Button
 								variant="outline"
 								size="sm"
@@ -711,9 +711,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								<Plus className="h-4 w-4" /> Add Competitor
 							</Button>
 						)}
-						{wizardData.competitors.length >= 5 && (
+						{wizardData.competitors.length >= 3 && (
 							<p className="text-xs text-muted-foreground">
-								Maximum of 5 competitors allowed. Remove a competitor to add a new one.
+								Maximum of 3 competitors allowed. Remove a competitor to add a new one.
 							</p>
 						)}
 					</div>
@@ -761,6 +761,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 										setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
 									}}
 									placeholder="Add item..."
+									maxItems={4}
 								/>
 							</div>
 						))}

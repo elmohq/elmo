@@ -10,7 +10,7 @@ interface Params {
 }
 
 // Maximum limit (same as wizard)
-const MAX_COMPETITORS = 5;
+const MAX_COMPETITORS = 3;
 
 // GET all competitors for a brand
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {

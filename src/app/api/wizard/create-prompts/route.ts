@@ -7,7 +7,8 @@ import { eq, and, count } from "drizzle-orm";
 // Maximum limits
 const MAX_REPUTATION_PROMPTS = 100;
 const MAX_NON_REPUTATION_PROMPTS = 50;
-const MAX_COMPETITORS = 5;
+const MAX_COMPETITORS = 3;
+const MAX_PERSONA_GROUP_MEMBERS = 4;
 
 export async function POST(request: NextRequest) {
 	try {
@@ -30,6 +31,26 @@ export async function POST(request: NextRequest) {
 
 		if (!hasAccess) {
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
+		}
+
+		// Validate persona groups before processing
+		if (personaGroups && Array.isArray(personaGroups)) {
+			for (const group of personaGroups) {
+				if (group && group.personas && Array.isArray(group.personas)) {
+					if (group.personas.length > MAX_PERSONA_GROUP_MEMBERS) {
+						return NextResponse.json({ 
+							error: `Persona group "${group.name || 'Unnamed'}" has too many members. Maximum allowed: ${MAX_PERSONA_GROUP_MEMBERS}` 
+						}, { status: 400 });
+					}
+				}
+			}
+		}
+
+		// Validate competitors before processing
+		if (competitorData && Array.isArray(competitorData) && competitorData.length > MAX_COMPETITORS) {
+			return NextResponse.json({ 
+				error: `Too many competitors provided. Maximum allowed: ${MAX_COMPETITORS}` 
+			}, { status: 400 });
 		}
 
 		// Check current counts for limits
