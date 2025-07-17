@@ -203,8 +203,8 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink }
 							{/* Prompt Runs Summary */}
 							{!isLoadingRuns && (
 								<>
-								<PromptChart />
-								<PromptGroupChart />
+								<PromptChart lookback={selectedLookback} />
+								<PromptGroupChart lookback={selectedLookback} />
 								<Card>
 									<CardHeader>
 										<CardTitle className="flex items-center gap-2">

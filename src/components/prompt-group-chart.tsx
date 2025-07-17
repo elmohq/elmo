@@ -31,6 +31,31 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+
+function getDaysFromLookback(lookback: LookbackPeriod): number {
+  switch (lookback) {
+    case "1w": return 7;
+    case "1m": return 30;
+    case "3m": return 90;
+    case "6m": return 180;
+    case "1y": return 365;
+    case "all": return 365 * 2; // 2 years for "all"
+  }
+}
+
+function generateDateRange(startDate: Date, endDate: Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return dates;
+}
+
 // Function to normalize values from 0-500 range to 0-100% and round down to nearest 20%
 const normalizeToPercentage = (value: number): number => {
   const percentage = (value / 500) * 100;
@@ -39,28 +64,28 @@ const normalizeToPercentage = (value: number): number => {
 };
 
 const chartData = [
-  { date: "2024-04-01", desktop: normalizeToPercentage(222), mobile: normalizeToPercentage(150) },
-  { date: "2024-04-02", desktop: normalizeToPercentage(97), mobile: normalizeToPercentage(180) },
-  { date: "2024-04-03", desktop: normalizeToPercentage(167), mobile: normalizeToPercentage(120) },
-  { date: "2024-04-04", desktop: normalizeToPercentage(242), mobile: normalizeToPercentage(260) },
-  { date: "2024-04-05", desktop: normalizeToPercentage(373), mobile: normalizeToPercentage(290) },
-  { date: "2024-04-06", desktop: normalizeToPercentage(301), mobile: normalizeToPercentage(340) },
-  { date: "2024-04-07", desktop: normalizeToPercentage(245), mobile: normalizeToPercentage(180) },
-  { date: "2024-04-08", desktop: normalizeToPercentage(409), mobile: normalizeToPercentage(320) },
-  { date: "2024-04-09", desktop: normalizeToPercentage(59), mobile: normalizeToPercentage(110) },
-  { date: "2024-04-10", desktop: normalizeToPercentage(261), mobile: normalizeToPercentage(190) },
-  { date: "2024-04-11", desktop: normalizeToPercentage(327), mobile: normalizeToPercentage(350) },
-  { date: "2024-04-12", desktop: normalizeToPercentage(292), mobile: normalizeToPercentage(210) },
-  { date: "2024-04-13", desktop: normalizeToPercentage(342), mobile: normalizeToPercentage(380) },
-  { date: "2024-04-14", desktop: normalizeToPercentage(137), mobile: normalizeToPercentage(220) },
-  { date: "2024-04-15", desktop: normalizeToPercentage(120), mobile: normalizeToPercentage(170) },
-  { date: "2024-04-16", desktop: normalizeToPercentage(138), mobile: normalizeToPercentage(190) },
-  { date: "2024-04-17", desktop: normalizeToPercentage(446), mobile: normalizeToPercentage(360) },
-  { date: "2024-04-18", desktop: normalizeToPercentage(364), mobile: normalizeToPercentage(410) },
-  { date: "2024-04-19", desktop: normalizeToPercentage(243), mobile: normalizeToPercentage(180) },
-  { date: "2024-04-20", desktop: normalizeToPercentage(89), mobile: normalizeToPercentage(150) },
-  { date: "2024-04-21", desktop: normalizeToPercentage(137), mobile: normalizeToPercentage(200) },
-  { date: "2024-04-22", desktop: normalizeToPercentage(224), mobile: normalizeToPercentage(170) },
+  { date: "2025-04-01", desktop: normalizeToPercentage(222), mobile: normalizeToPercentage(150) },
+  { date: "2025-04-02", desktop: normalizeToPercentage(97), mobile: normalizeToPercentage(180) },
+  { date: "2025-04-03", desktop: normalizeToPercentage(167), mobile: normalizeToPercentage(120) },
+  { date: "2025-04-04", desktop: normalizeToPercentage(242), mobile: normalizeToPercentage(260) },
+  { date: "2025-04-05", desktop: normalizeToPercentage(373), mobile: normalizeToPercentage(290) },
+  { date: "2025-04-06", desktop: normalizeToPercentage(301), mobile: normalizeToPercentage(340) },
+  { date: "2025-04-07", desktop: normalizeToPercentage(245), mobile: normalizeToPercentage(180) },
+  { date: "2025-04-08", desktop: normalizeToPercentage(409), mobile: normalizeToPercentage(320) },
+  { date: "2025-04-09", desktop: normalizeToPercentage(59), mobile: normalizeToPercentage(110) },
+  { date: "2025-04-10", desktop: normalizeToPercentage(261), mobile: normalizeToPercentage(190) },
+  { date: "2025-04-11", desktop: normalizeToPercentage(327), mobile: normalizeToPercentage(350) },
+  { date: "2025-04-12", desktop: normalizeToPercentage(292), mobile: normalizeToPercentage(210) },
+  { date: "2025-04-13", desktop: normalizeToPercentage(342), mobile: normalizeToPercentage(380) },
+  { date: "2025-04-14", desktop: normalizeToPercentage(137), mobile: normalizeToPercentage(220) },
+  { date: "2025-04-15", desktop: normalizeToPercentage(120), mobile: normalizeToPercentage(170) },
+  { date: "2025-04-16", desktop: normalizeToPercentage(138), mobile: normalizeToPercentage(190) },
+  { date: "2025-04-17", desktop: normalizeToPercentage(446), mobile: normalizeToPercentage(360) },
+  { date: "2025-04-18", desktop: normalizeToPercentage(364), mobile: normalizeToPercentage(410) },
+  { date: "2025-04-19", desktop: normalizeToPercentage(243), mobile: normalizeToPercentage(180) },
+  { date: "2025-04-20", desktop: normalizeToPercentage(89), mobile: normalizeToPercentage(150) },
+  { date: "2025-04-21", desktop: normalizeToPercentage(137), mobile: normalizeToPercentage(200) },
+  { date: "2025-04-22", desktop: normalizeToPercentage(224), mobile: normalizeToPercentage(170) },
 ]
 const chartConfig = {
   visitors: {
@@ -77,21 +102,30 @@ const chartConfig = {
 } satisfies ChartConfig
 
 
-export function ChartAreaInteractive({ title, visibility }: { title: string; visibility: number }) {
-    const [timeRange, setTimeRange] = React.useState("90d")
+export function ChartAreaInteractive({ title, visibility, lookback }: { title: string; visibility: number | null; lookback: LookbackPeriod }) {
+    const daysToSubtract = getDaysFromLookback(lookback);
+    const referenceDate = new Date();
+    const startDate = new Date(referenceDate);
+    startDate.setDate(startDate.getDate() - daysToSubtract);
+    
+    // Generate complete date range for the lookback period
+    const dateRange = generateDateRange(startDate, referenceDate);
+    
+    // Filter existing data
     const filteredData = chartData.filter((item) => {
-      const date = new Date(item.date)
-      const referenceDate = new Date("2024-06-30")
-      let daysToSubtract = 90
-      if (timeRange === "30d") {
-        daysToSubtract = 30
-      } else if (timeRange === "7d") {
-        daysToSubtract = 7
-      }
-      const startDate = new Date(referenceDate)
-      startDate.setDate(startDate.getDate() - daysToSubtract)
-      return date >= startDate
-    })
+      const date = new Date(item.date);
+      return date >= startDate && date <= referenceDate;
+    });
+    
+    // Create a complete dataset with null values for missing dates
+    const completeData = dateRange.map(date => {
+      const existingData = filteredData.find(item => item.date === date);
+      return existingData || {
+        date,
+        desktop: null,
+        mobile: null
+      };
+    });
 
     const getBadgeVariant = (value: number) => {
       if (value > 75) return "default";
@@ -105,22 +139,24 @@ export function ChartAreaInteractive({ title, visibility }: { title: string; vis
                 <h3 className="text-sm font-medium capitalize">
                     {title}
                 </h3>
-                <Badge 
-                  variant={getBadgeVariant(visibility)} 
-                  className={`text-xs ${
-                    visibility > 75 ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 
-                    visibility > 45 ? 'bg-amber-500 hover:bg-amber-500 text-white' : 
-                    'bg-rose-500 hover:bg-rose-500 text-white'
-                  }`}
-                >
-                    {visibility}%
-                </Badge>
+                {visibility !== null && (
+                    <Badge 
+                      variant={getBadgeVariant(visibility)} 
+                      className={`text-xs ${
+                        visibility > 75 ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 
+                        visibility > 45 ? 'bg-amber-500 hover:bg-amber-500 text-white' : 
+                        'bg-rose-500 hover:bg-rose-500 text-white'
+                      }`}
+                    >
+                        {visibility}%
+                    </Badge>
+                )}
             </div>
             <ChartContainer
             config={chartConfig}
             className="aspect-auto h-[250px] w-full"
           >
-            <LineChart data={filteredData}>
+            <LineChart data={completeData}>
               <defs>
                 <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
                   <stop
@@ -154,6 +190,8 @@ export function ChartAreaInteractive({ title, visibility }: { title: string; vis
                 axisLine={false}
                 tickMargin={8}
                 minTickGap={32}
+                domain={['dataMin', 'dataMax']}
+                type="category"
                 tickFormatter={(value) => {
                   const date = new Date(value)
                   return date.toLocaleDateString("en-US", {
@@ -193,6 +231,7 @@ export function ChartAreaInteractive({ title, visibility }: { title: string; vis
                 stroke="var(--color-mobile)"
                 strokeWidth={2}
                 dot={false}
+                connectNulls={false}
             />
             <Line
                 dataKey="desktop"
@@ -200,6 +239,7 @@ export function ChartAreaInteractive({ title, visibility }: { title: string; vis
                 stroke="var(--color-desktop)"
                 strokeWidth={2}
                 dot={false}
+                connectNulls={false}
             />
               <ChartLegend content={<ChartLegendContent payload={[]} />} />
             </LineChart>
@@ -208,20 +248,23 @@ export function ChartAreaInteractive({ title, visibility }: { title: string; vis
     )
   }
 
-export function PromptGroupChart() {
-    // Calculate visibility scores for each demographic from latest data point
-    const filteredData = chartData.filter((item) => {
-      const date = new Date(item.date)
-      const referenceDate = new Date("2024-06-30")
-      const daysToSubtract = 90
-      const startDate = new Date(referenceDate)
-      startDate.setDate(startDate.getDate() - daysToSubtract)
-      return date >= startDate
-    })
+export function PromptGroupChart({ lookback = "1m" }: { lookback?: LookbackPeriod }) {
+    const daysToSubtract = getDaysFromLookback(lookback);
+    const referenceDate = new Date();
+    const startDate = new Date(referenceDate);
+    startDate.setDate(startDate.getDate() - daysToSubtract);
     
-    const lastDataPoint = filteredData[filteredData.length - 1];
-    const menVisibility = lastDataPoint?.desktop || 0; // Desktop represents men
-    const womenVisibility = lastDataPoint?.mobile || 0; // Mobile represents women
+    // Filter data for the lookback period
+    const filteredData = chartData.filter((item) => {
+      const date = new Date(item.date);
+      return date >= startDate && date <= referenceDate;
+    });
+    
+    // Check if there's any actual data (not null values) in the filtered period
+    const hasDataInPeriod = filteredData.some(item => item.desktop !== null && item.mobile !== null);
+    const lastDataPoint = hasDataInPeriod ? filteredData[filteredData.length - 1] : null;
+    const menVisibility = lastDataPoint?.desktop || null; // Desktop represents men
+    const womenVisibility = lastDataPoint?.mobile || null; // Mobile represents women
 
 	return (
         <Card className="py-3 gap-3">
@@ -259,8 +302,8 @@ export function PromptGroupChart() {
             <Separator className="py-0 my-0" />
             <CardContent className="px-3">
                 <div className="flex gap-3">
-                    <ChartAreaInteractive title="men" visibility={menVisibility} />
-                    <ChartAreaInteractive title="women" visibility={womenVisibility} />
+                    <ChartAreaInteractive title="men" visibility={menVisibility} lookback={lookback} />
+                    <ChartAreaInteractive title="women" visibility={womenVisibility} lookback={lookback} />
                 </div>
             </CardContent>
         </Card>
