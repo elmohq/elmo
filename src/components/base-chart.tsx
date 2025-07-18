@@ -135,12 +135,12 @@ export function BaseChart({
 													backgroundColor: indicatorColor,
 												}}
 											/>
-											<div className="flex flex-1 justify-between leading-none items-center">
+											<div className="flex flex-1 justify-between gap-4 leading-none items-center">
 												<div className="grid gap-1.5">
 													<span className="text-muted-foreground">{chartConfig[name as string]?.label || name}</span>
 												</div>
 												{value !== null && value !== undefined && (
-													<span className="text-foreground font-mono font-medium tabular-nums">{value}%</span>
+													<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
 												)}
 											</div>
 										</>
