@@ -106,6 +106,30 @@ async function runWithOpenAI(promptValue: string): Promise<{
   }
 }
 
+// Function to run prompt with OpenAI without web search
+async function runWithOpenAINoWebSearch(promptValue: string): Promise<{
+  rawOutput: any;
+  webQueries: string[];
+  textContent: string;
+}> {
+  try {
+    // Generate text without web search using OpenAI
+    const result = await generateText({
+      model: openai(AI_MODELS.OPENAI.MODEL),
+      prompt: promptValue,
+    });
+
+    return { 
+      rawOutput: result, // Store the full result object as JSON
+      webQueries: [], // No web search queries
+      textContent: result.text // Extract text content for mention analysis
+    };
+  } catch (error) {
+    console.error("Error running OpenAI prompt without web search:", error);
+    throw error;
+  }
+}
+
 // Function to run prompt with Anthropic
 async function runWithAnthropic(promptValue: string): Promise<{
   rawOutput: any;
@@ -148,6 +172,39 @@ async function runWithAnthropic(promptValue: string): Promise<{
     };
   } catch (error) {
     console.error("Error running Anthropic prompt:", error);
+    throw error;
+  }
+}
+
+// Function to run prompt with Anthropic without web search
+async function runWithAnthropicNoWebSearch(promptValue: string): Promise<{
+  rawOutput: any;
+  webQueries: string[];
+  textContent: string;
+}> {
+  try {
+    const response = await anthropic.messages.create({
+      model: AI_MODELS.ANTHROPIC.MODEL,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "user",
+          content: promptValue,
+        },
+      ],
+    });
+
+    // Extract text content from response
+    const textBlocks = response.content.filter((block) => block.type === "text");
+    const textContent = textBlocks.map((block) => block.text).join("\n");
+
+    return { 
+      rawOutput: response, // Store the full response object as JSON
+      webQueries: [], // No web search queries
+      textContent // Extract text content for mention analysis
+    };
+  } catch (error) {
+    console.error("Error running Anthropic prompt without web search:", error);
     throw error;
   }
 }
@@ -282,7 +339,8 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     job.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
     // Run all AI models in parallel for better performance
-    const totalRuns = RUNS_PER_PROMPT * 3;
+    // RUNS_PER_PROMPT * 3 (with web search) + 5 OpenAI + 5 Anthropic (without web search)
+    const totalRuns = RUNS_PER_PROMPT * 3 + 10;
     let completedRuns = 0;
 
     // Progress tracking function
@@ -295,12 +353,14 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     const openaiPromises = [];
     const anthropicPromises = [];
     const dataforSeoPromises = [];
+    const openaiNoWebPromises = [];
+    const anthropicNoWebPromises = [];
 
-    // Create OpenAI promises
+    // Create OpenAI promises (with web search)
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
       openaiPromises.push(
         runWithOpenAI(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed OpenAI iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+          job.log(`Completed OpenAI with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
           const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
           
           await savePromptRun(
@@ -319,11 +379,34 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
       );
     }
 
-    // Create Anthropic promises
+    // Create OpenAI promises (without web search)
+    for (let i = 0; i < 5; i++) {
+      openaiNoWebPromises.push(
+        runWithOpenAINoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+          job.log(`Completed OpenAI without web search iteration ${i + 1}/5`);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+          
+          await savePromptRun(
+            promptId,
+            AI_MODELS.OPENAI.GROUP,
+            AI_MODELS.OPENAI.MODEL,
+            false,
+            rawOutput,
+            webQueries,
+            brandMentioned,
+            competitorsMentioned
+          );
+          
+          updateProgress();
+        })
+      );
+    }
+
+    // Create Anthropic promises (with web search)
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
       anthropicPromises.push(
         runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed Anthropic iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+          job.log(`Completed Anthropic with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
           const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
           
           await savePromptRun(
@@ -342,7 +425,30 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
       );
     }
 
-    // Create DataForSEO promises
+    // Create Anthropic promises (without web search)
+    for (let i = 0; i < 5; i++) {
+      anthropicNoWebPromises.push(
+        runWithAnthropicNoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+          job.log(`Completed Anthropic without web search iteration ${i + 1}/5`);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+          
+          await savePromptRun(
+            promptId,
+            AI_MODELS.ANTHROPIC.GROUP,
+            AI_MODELS.ANTHROPIC.MODEL,
+            false,
+            rawOutput,
+            webQueries,
+            brandMentioned,
+            competitorsMentioned
+          );
+          
+          updateProgress();
+        })
+      );
+    }
+
+    // Create DataForSEO promises (with web search)
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
       dataforSeoPromises.push(
         runWithDataForSEO(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
@@ -368,7 +474,9 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     // Execute all promises in parallel
     await Promise.all([
       ...openaiPromises,
+      ...openaiNoWebPromises,
       ...anthropicPromises,
+      ...anthropicNoWebPromises,
       ...dataforSeoPromises,
     ]);
 
