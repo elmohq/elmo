@@ -1,28 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface JobResult {
+type JobResult = {
 	success: boolean;
 	jobId?: string;
 	jobName?: string;
+	data?: any;
 	queue?: string;
+	brandId?: string;
 	error?: string;
-}
+};
 
-interface PromptJobResult {
+type PromptJobResult = {
 	success: boolean;
 	jobId?: string;
 	promptId?: string;
 	promptValue?: string;
 	message?: string;
 	error?: string;
-}
+};
 
 export default function QueueDebug() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +33,7 @@ export default function QueueDebug() {
 	const [message, setMessage] = useState("Hello from debug page!");
 	const [delay, setDelay] = useState(0);
 	const [selectedQueue, setSelectedQueue] = useState("auto");
+	const [brandId, setBrandId] = useState("whitelabel-client"); // Default brand ID for testing
 
 	// New state for prompt queue runs
 	const [isSubmittingPrompt, setIsSubmittingPrompt] = useState(false);
@@ -59,6 +62,7 @@ export default function QueueDebug() {
 					},
 					delay: delay * 1000, // Convert seconds to milliseconds
 					queue: selectedQueue === "auto" ? undefined : selectedQueue,
+					brandId, // Include brandId for authorization
 				}),
 			});
 
@@ -136,6 +140,7 @@ export default function QueueDebug() {
 				body: JSON.stringify({
 					...presets[preset as keyof typeof presets],
 					queue: selectedQueue === "auto" ? undefined : selectedQueue,
+					brandId, // Include brandId for authorization
 				}),
 			});
 
@@ -158,6 +163,23 @@ export default function QueueDebug() {
 				<CardDescription>Submit test jobs to the BullMQ queue for testing</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-6">
+				{/* Brand ID Configuration */}
+				<div className="space-y-4">
+					<h3 className="text-lg font-semibold">Authorization</h3>
+					<div className="space-y-2">
+						<Label htmlFor="brand-id">Brand ID</Label>
+						<Input
+							id="brand-id"
+							value={brandId}
+							onChange={(e) => setBrandId(e.target.value)}
+							placeholder="Enter brand ID"
+						/>
+						<p className="text-xs text-muted-foreground">
+							Required for authorization. Use a brand ID you have access to.
+						</p>
+					</div>
+				</div>
+
 				{/* Prompt Processing Section */}
 				<div className="space-y-4">
 					<h3 className="text-lg font-semibold">Process Prompt</h3>
@@ -299,6 +321,7 @@ export default function QueueDebug() {
 									<p className="text-sm text-green-700">Job ID: {jobResult.jobId}</p>
 									<p className="text-sm text-green-700">Job Name: {jobResult.jobName}</p>
 									<p className="text-sm text-green-700">Queue: {jobResult.queue}</p>
+									<p className="text-sm text-green-700">Brand ID: {jobResult.brandId}</p>
 								</div>
 							) : (
 								<div>
@@ -312,15 +335,14 @@ export default function QueueDebug() {
 
 				{/* Instructions */}
 				<div className="space-y-2">
-					<h3 className="text-lg font-semibold">Monitor Jobs</h3>
-					<p className="text-sm text-gray-600">
-						To monitor job processing, run <code className="bg-gray-100 px-2 py-1 rounded">pnpm worker</code> in
-						your terminal to start the worker, and <code className="bg-gray-100 px-2 py-1 rounded">pnpm queuedash</code> to open the queue dashboard.
-					</p>
-					<p className="text-sm text-gray-600">
-						<strong>Queue Selection:</strong> Choose "Auto" to use environment-based queue selection, 
-						or explicitly select "Dev" or "Prod" to target specific queues regardless of environment.
-					</p>
+					<h3 className="text-lg font-semibold">Instructions</h3>
+					<div className="text-sm text-gray-600 space-y-1">
+						<p>• Jobs are submitted to BullMQ for background processing</p>
+						<p>• You can monitor job progress and results through the queue dashboard</p>
+						<p>• Delayed jobs will be processed after the specified delay</p>
+						<p>• All jobs now require a valid Brand ID for authorization</p>
+						<p>• You can only submit jobs for brands you have access to</p>
+					</div>
 				</div>
 			</CardContent>
 		</Card>
