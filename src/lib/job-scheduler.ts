@@ -9,7 +9,7 @@ export async function createPromptJobScheduler(promptId: string): Promise<boolea
 		await promptQueue.upsertJobScheduler(
 			`repeater-${promptId}`,
 			{
-				every: 60 * 1000, // Every 60 seconds
+				every: 24 * 60 * 60 * 1000, // every day
 			},
 			{
 				name: `prompt-${promptId}`, // Unique job name per prompt
