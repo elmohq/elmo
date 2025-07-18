@@ -75,17 +75,6 @@ export function PromptGroupChart({
   // Create web query mapping for optimization URLs
   const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
 
-  // Calculate dynamic grid columns based on number of variants and screen size
-  const numVariants = groupVisibilityData.length;
-  const getGridColsClass = () => {
-    if (numVariants === 0) return "grid-cols-1";
-    if (numVariants === 1) return "grid-cols-1";
-    if (numVariants === 2) return "grid-cols-1 sm:grid-cols-2";
-    if (numVariants === 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
-    // For 4 or more variants, use full responsive layout
-    return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
-  };
-
   if (isLoading || !brand) {
     return (
       <Card className="py-3 gap-3">
@@ -186,7 +175,7 @@ export function PromptGroupChart({
       </CardHeader>
       <Separator className="py-0 my-0" />
       <CardContent className="pl-0 pr-6">
-        <div className={`grid ${getGridColsClass()} gap-3`}>
+        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-3`}>
           {groupVisibilityData.map((promptData) => (
             <BaseChart 
               key={promptData.promptId}
