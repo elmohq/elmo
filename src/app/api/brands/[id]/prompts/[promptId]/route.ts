@@ -4,6 +4,7 @@ import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 
 type Params = {
 	id: string;
@@ -101,11 +102,37 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			.where(and(eq(prompts.id, promptId), eq(prompts.brandId, brandId)))
 			.returning();
 
+		// Handle job scheduler changes if enabled status was updated
+		let jobSchedulerResult: { action: string; success: boolean } | null = null;
+		if (enabled !== undefined && updatedPrompt[0]) {
+			const wasEnabled = existingPrompt[0].enabled;
+			const isNowEnabled = enabled;
+
+			if (!wasEnabled && isNowEnabled) {
+				// Prompt was disabled, now enabled - create job scheduler
+				const success = await createPromptJobScheduler(promptId);
+				jobSchedulerResult = { action: 'created', success };
+				if (!success) {
+					console.warn(`Failed to create job scheduler for prompt ${promptId}`);
+				}
+			} else if (wasEnabled && !isNowEnabled) {
+				// Prompt was enabled, now disabled - remove job scheduler
+				const success = await removePromptJobScheduler(promptId);
+				jobSchedulerResult = { action: 'removed', success };
+				if (!success) {
+					console.warn(`Failed to remove job scheduler for prompt ${promptId}`);
+				}
+			}
+		}
+
 		// Revalidate related pages
 		revalidatePath(`/app/${brandId}/prompts`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
-		return NextResponse.json(updatedPrompt[0]);
+		return NextResponse.json({
+			...updatedPrompt[0],
+			...(jobSchedulerResult ? { jobScheduler: jobSchedulerResult } : {}),
+		});
 
 	} catch (error) {
 		console.error("Error updating prompt:", error);
@@ -137,16 +164,28 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 			return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
 		}
 
-		// Delete the prompt
-		await db
-			.delete(prompts)
-			.where(and(eq(prompts.id, promptId), eq(prompts.brandId, brandId)));
+		// Remove job scheduler before disabling the prompt
+		const jobSchedulerRemoved = await removePromptJobScheduler(promptId);
+		if (!jobSchedulerRemoved) {
+			console.warn(`Failed to remove job scheduler for prompt ${promptId} during soft deletion`);
+		}
+
+		// Soft delete the prompt by disabling it
+		const updatedPrompt = await db
+			.update(prompts)
+			.set({ enabled: false })
+			.where(and(eq(prompts.id, promptId), eq(prompts.brandId, brandId)))
+			.returning();
 
 		// Revalidate related pages
 		revalidatePath(`/app/${brandId}/prompts`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
-		return NextResponse.json({ message: "Prompt deleted successfully" });
+		return NextResponse.json({ 
+			message: "Prompt disabled successfully",
+			jobSchedulerRemoved,
+			prompt: updatedPrompt[0],
+		});
 
 	} catch (error) {
 		console.error("Error deleting prompt:", error);

@@ -3,6 +3,7 @@ import { db } from "@/lib/db/db";
 import { prompts, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, count } from "drizzle-orm";
+import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 // Maximum limits
 const MAX_PROMPTS = 150;
@@ -162,15 +163,31 @@ export async function POST(request: NextRequest) {
 		// Insert prompts and competitors
 		let promptsCreated = 0;
 		let competitorsCreated = 0;
+		let jobSchedulersCreated = 0;
+		const createdPromptIds: string[] = [];
 
 		if (promptsToCreate.length > 0) {
-			await db.insert(prompts).values(promptsToCreate);
-			promptsCreated = promptsToCreate.length;
+			const insertedPrompts = await db.insert(prompts).values(promptsToCreate).returning({ id: prompts.id });
+			promptsCreated = insertedPrompts.length;
+			createdPromptIds.push(...insertedPrompts.map(p => p.id));
 		}
 
 		if (competitorsToCreate.length > 0) {
 			await db.insert(competitors).values(competitorsToCreate);
 			competitorsCreated = competitorsToCreate.length;
+		}
+
+		// Create job schedulers for enabled prompts
+		if (createdPromptIds.length > 0) {
+			const jobSchedulerResults = await createMultiplePromptJobSchedulers(createdPromptIds);
+			jobSchedulersCreated = jobSchedulerResults.filter(Boolean).length;
+			
+			// Log any failures
+			jobSchedulerResults.forEach((success, index) => {
+				if (!success) {
+					console.warn(`Failed to create job scheduler for prompt ${createdPromptIds[index]}`);
+				}
+			});
 		}
 
 		// Mark brand as onboarded after successful prompt creation
@@ -180,6 +197,7 @@ export async function POST(request: NextRequest) {
 			success: true,
 			promptsCreated,
 			competitorsCreated,
+			jobSchedulersCreated,
 		});
 	} catch (error) {
 		console.error("Error creating prompts:", error);

@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
           delay: 2000,
         },
         // Add job options for better tracking
-        removeOnComplete: 10, // Keep last 10 completed jobs
-        removeOnFail: 5, // Keep last 5 failed jobs
+        removeOnComplete: 5000, // Keep last 5000 completed jobs
+        removeOnFail: 5000, // Keep last 5000 failed jobs
       }
     );
 

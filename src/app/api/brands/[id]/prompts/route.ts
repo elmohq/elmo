@@ -4,6 +4,7 @@ import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { createPromptJobScheduler } from "@/lib/job-scheduler";
 
 type Params = {
 	id: string;
@@ -83,11 +84,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			enabled,
 		}).returning();
 
+		// Create job scheduler if prompt is enabled
+		let jobSchedulerCreated = false;
+		if (enabled && newPrompt[0]) {
+			jobSchedulerCreated = await createPromptJobScheduler(newPrompt[0].id);
+			if (!jobSchedulerCreated) {
+				console.warn(`Failed to create job scheduler for prompt ${newPrompt[0].id}`);
+			}
+		}
+
 		// Revalidate related pages
 		revalidatePath(`/app/${brandId}/prompts`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
-		return NextResponse.json(newPrompt[0], { status: 201 });
+		return NextResponse.json({
+			...newPrompt[0],
+			jobSchedulerCreated,
+		}, { status: 201 });
 
 	} catch (error) {
 		console.error("Error creating prompt:", error);

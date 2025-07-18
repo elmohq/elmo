@@ -1,7 +1,7 @@
 import { db } from "@/lib/db/db";
 import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PromptsEditor } from "../../../../../components/prompts-editor";
 
@@ -14,12 +14,12 @@ async function getPrompts(brandId: string) {
 		return null;
 	}
 
-	// Fetch prompts for this brand
+	// Fetch all prompts for this brand (including disabled ones for editing)
 	const brandPrompts = await db
 		.select()
 		.from(prompts)
 		.where(eq(prompts.brandId, brandId))
-		.orderBy(prompts.groupCategory, prompts.createdAt);
+		.orderBy(desc(prompts.enabled), prompts.groupCategory, prompts.createdAt);
 
 	return brandPrompts;
 }
