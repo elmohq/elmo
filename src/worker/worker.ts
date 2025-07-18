@@ -96,7 +96,7 @@ async function runWithOpenAI(promptValue: string): Promise<{
     }
 
     return { 
-      rawOutput: result, // Store the full result object as JSON
+      rawOutput: responseBody,
       webQueries,
       textContent: result.text // Extract text content for mention analysis
     };
@@ -120,7 +120,7 @@ async function runWithOpenAINoWebSearch(promptValue: string): Promise<{
     });
 
     return { 
-      rawOutput: result, // Store the full result object as JSON
+      rawOutput: result.response?.body || result, // Store only the response body, fallback to full result if body not available
       webQueries: [], // No web search queries
       textContent: result.text // Extract text content for mention analysis
     };
