@@ -11,6 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
+function getVisibilityTextColor(value: number): string {
+  if (value > 75) return 'text-emerald-600';
+  if (value > 45) return 'text-amber-500';
+  return 'text-rose-500';
+}
+
 export default function AppPage({ params }: { params: Promise<{ org: string }> }) {
 	const { brand, isLoading } = useBrand();
 	const { promptRuns, isLoading: isLoadingRuns } = usePromptRuns();
@@ -50,7 +56,7 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 	// Calculate metrics
 	const totalPrompts = brand?.prompts?.length || 0;
 
-	// Mock average visibility for now (would be calculated from actual prompt run data)
+	// todo: use actual visibility
 	const averageVisibility = 72;
 
 	return (
@@ -89,7 +95,7 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Average AI Visibility</CardDescription>
 						<div className="flex items-center gap-2">
-							<CardTitle className="font-semibold text-5xl">{averageVisibility}%</CardTitle>
+							<CardTitle className={`font-semibold text-5xl ${getVisibilityTextColor(averageVisibility)}`}>{averageVisibility}%</CardTitle>
 						</div>
 					</CardHeader>
 				</Card>
