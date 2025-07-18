@@ -244,8 +244,20 @@ async function savePromptRun(
 
 const queueEvents = new QueueEvents(promptQueue.name, { connection: queueConnectionConfig });
 
+// Track running prompt jobs to prevent overlaps
+const runningPromptJobs = new Set<string>();
+
 const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
   const { promptId } = job.data;
+  
+  // Check if this prompt is already being processed
+  if (runningPromptJobs.has(promptId)) {
+    job.log(`Skipping job for prompt ${promptId} - already running`);
+    return { success: false, reason: 'Job already running for this prompt' };
+  }
+  
+  // Mark this prompt as running
+  runningPromptJobs.add(promptId);
   job.log(`Processing prompt ID: ${promptId}`);
 
   try {
@@ -258,75 +270,96 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     const { prompt, brand, competitors } = context;
     job.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
-    // Run prompt RUNS_PER_PROMPT times for each model
+    // Run all AI models in parallel for better performance
     const totalRuns = RUNS_PER_PROMPT * 3;
     let completedRuns = 0;
 
-    // Run with OpenAI (web search enabled)
-    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-      job.log(`Running OpenAI iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-      
-      const { rawOutput, webQueries } = await runWithOpenAI(prompt.value);
-      const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
-      
-      await savePromptRun(
-        promptId,
-        AI_MODELS.OPENAI.GROUP,
-        AI_MODELS.OPENAI.MODEL,
-        true, // web search enabled
-        rawOutput,
-        webQueries,
-        brandMentioned,
-        competitorsMentioned
-      );
-
+    // Progress tracking function
+    const updateProgress = () => {
       completedRuns++;
-      await job.updateProgress((completedRuns / totalRuns) * 100);
+      job.updateProgress((completedRuns / totalRuns) * 100);
+    };
+
+    // Create arrays of promises for parallel execution
+    const openaiPromises = [];
+    const anthropicPromises = [];
+    const dataforSeoPromises = [];
+
+    // Create OpenAI promises
+    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+      openaiPromises.push(
+        runWithOpenAI(prompt.value).then(async ({ rawOutput, webQueries }) => {
+          job.log(`Completed OpenAI iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+          
+          await savePromptRun(
+            promptId,
+            AI_MODELS.OPENAI.GROUP,
+            AI_MODELS.OPENAI.MODEL,
+            true,
+            rawOutput,
+            webQueries,
+            brandMentioned,
+            competitorsMentioned
+          );
+          
+          updateProgress();
+        })
+      );
     }
 
-    // Run with Anthropic (web search enabled)
+    // Create Anthropic promises
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-      job.log(`Running Anthropic iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-      
-      const { rawOutput, webQueries } = await runWithAnthropic(prompt.value);
-      const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
-      
-      await savePromptRun(
-        promptId,
-        AI_MODELS.ANTHROPIC.GROUP,
-        AI_MODELS.ANTHROPIC.MODEL,
-        true, // web search enabled
-        rawOutput,
-        webQueries,
-        brandMentioned,
-        competitorsMentioned
+      anthropicPromises.push(
+        runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries }) => {
+          job.log(`Completed Anthropic iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+          
+          await savePromptRun(
+            promptId,
+            AI_MODELS.ANTHROPIC.GROUP,
+            AI_MODELS.ANTHROPIC.MODEL,
+            true,
+            rawOutput,
+            webQueries,
+            brandMentioned,
+            competitorsMentioned
+          );
+          
+          updateProgress();
+        })
       );
-
-      completedRuns++;
-      await job.updateProgress((completedRuns / totalRuns) * 100);
     }
 
-    // Run with DataForSEO
+    // Create DataForSEO promises
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-      job.log(`Running DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-      
-      const { rawOutput, webQueries } = await runWithDataForSEO(prompt.value);
-      const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
-      
-      await savePromptRun(
-        promptId,
-        "google", // Using "google" for DataForSEO since it's Google search
-        "dataforseo",
-        true, // web search enabled (it's a search API)
-        rawOutput,
-        webQueries,
-        brandMentioned,
-        competitorsMentioned
+      dataforSeoPromises.push(
+        runWithDataForSEO(prompt.value).then(async ({ rawOutput, webQueries }) => {
+          job.log(`Completed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+          
+          await savePromptRun(
+            promptId,
+            "google",
+            "dataforseo",
+            true,
+            rawOutput,
+            webQueries,
+            brandMentioned,
+            competitorsMentioned
+          );
+          
+          updateProgress();
+        })
       );
-
-      completedRuns++;
-      await job.updateProgress((completedRuns / totalRuns) * 100);
     }
+
+    // Execute all promises in parallel
+    await Promise.all([
+      ...openaiPromises,
+      ...anthropicPromises,
+      ...dataforSeoPromises,
+    ]);
 
     job.log(`Successfully completed all ${totalRuns} runs for prompt ${promptId}`);
     return { success: true, totalRuns: completedRuns };
@@ -334,6 +367,9 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
   } catch (error) {
     job.log(`Error processing prompt ${promptId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
+  } finally {
+    // Always remove from running set when job completes (success or failure)
+    runningPromptJobs.delete(promptId);
   }
 }, { connection: queueConnectionConfig, concurrency: 5 });
 

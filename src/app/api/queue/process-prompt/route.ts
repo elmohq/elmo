@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     // Submit job to queue
     const job = await promptQueue.add(
-      "process-prompt",
+      `manual-prompt-${promptId}`, // Use unique job name pattern
       { promptId },
       {
         attempts: 3,

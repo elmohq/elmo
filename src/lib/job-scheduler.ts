@@ -12,7 +12,7 @@ export async function createPromptJobScheduler(promptId: string): Promise<boolea
 				every: 60 * 1000, // Every 60 seconds
 			},
 			{
-				name: 'process-prompt',
+				name: `prompt-${promptId}`, // Unique job name per prompt
 				data: { promptId },
 				opts: {
 					attempts: 3,

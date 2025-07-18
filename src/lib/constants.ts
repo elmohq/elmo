@@ -1,5 +1,5 @@
 // Constants for prompt processing
-export const RUNS_PER_PROMPT = 1;
+export const RUNS_PER_PROMPT = 5;
 
 // Model configurations
 export const AI_MODELS = {
