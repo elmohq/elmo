@@ -385,28 +385,28 @@ const worker = new Worker(
 				);
 			}
 
-			// Create OpenAI promises (without web search)
-			for (let i = 0; i < 5; i++) {
-				openaiNoWebPromises.push(
-					runWithOpenAINoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-						job.log(`Completed OpenAI without web search iteration ${i + 1}/5`);
-						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+			// // Create OpenAI promises (without web search)
+			// for (let i = 0; i < 5; i++) {
+			// 	openaiNoWebPromises.push(
+			// 		runWithOpenAINoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+			// 			job.log(`Completed OpenAI without web search iteration ${i + 1}/5`);
+			// 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						await savePromptRun(
-							promptId,
-							AI_MODELS.OPENAI.GROUP,
-							AI_MODELS.OPENAI.MODEL,
-							false,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-						);
+			// 			await savePromptRun(
+			// 				promptId,
+			// 				AI_MODELS.OPENAI.GROUP,
+			// 				AI_MODELS.OPENAI.MODEL,
+			// 				false,
+			// 				rawOutput,
+			// 				webQueries,
+			// 				brandMentioned,
+			// 				competitorsMentioned,
+			// 			);
 
-						updateProgress();
-					}),
-				);
-			}
+			// 			updateProgress();
+			// 		}),
+			// 	);
+			// }
 
 			// Create Anthropic promises (with web search)
 			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
@@ -431,28 +431,28 @@ const worker = new Worker(
 				);
 			}
 
-			// Create Anthropic promises (without web search)
-			for (let i = 0; i < 5; i++) {
-				anthropicNoWebPromises.push(
-					runWithAnthropicNoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-						job.log(`Completed Anthropic without web search iteration ${i + 1}/5`);
-						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+			// // Create Anthropic promises (without web search)
+			// for (let i = 0; i < 5; i++) {
+			// 	anthropicNoWebPromises.push(
+			// 		runWithAnthropicNoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+			// 			job.log(`Completed Anthropic without web search iteration ${i + 1}/5`);
+			// 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						await savePromptRun(
-							promptId,
-							AI_MODELS.ANTHROPIC.GROUP,
-							AI_MODELS.ANTHROPIC.MODEL,
-							false,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-						);
+			// 			await savePromptRun(
+			// 				promptId,
+			// 				AI_MODELS.ANTHROPIC.GROUP,
+			// 				AI_MODELS.ANTHROPIC.MODEL,
+			// 				false,
+			// 				rawOutput,
+			// 				webQueries,
+			// 				brandMentioned,
+			// 				competitorsMentioned,
+			// 			);
 
-						updateProgress();
-					}),
-				);
-			}
+			// 			updateProgress();
+			// 		}),
+			// 	);
+			// }
 
 			// Create DataForSEO promises (with web search)
 			for (let i = 0; i < RUNS_PER_PROMPT; i++) {

@@ -48,11 +48,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				url: "/prompts",
 				icon: IconListDetails,
 			},
-			{
-				title: "Reputation",
-				url: "/reputation",
-				icon: IconAward,
-			},
+			// {
+			// 	title: "Reputation",
+			// 	url: "/reputation",
+			// 	icon: IconAward,
+			// },
 			{
 				title: "Settings",
 				url: "/settings",
