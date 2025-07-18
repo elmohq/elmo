@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { calculateAverageVisibility } from "@/lib/utils";
 
 function getVisibilityTextColor(value: number): string {
   if (value > 75) return 'text-emerald-600';
@@ -19,7 +20,7 @@ function getVisibilityTextColor(value: number): string {
 
 export default function AppPage({ params }: { params: Promise<{ org: string }> }) {
 	const { brand, isLoading } = useBrand();
-	const { promptRuns, isLoading: isLoadingRuns } = usePromptRuns();
+	const { promptRuns: allPromptRuns, isLoading: isLoadingRuns } = usePromptRuns(brand?.id, { lookback: "all" });
 
 	if (isLoading) {
 		return (
@@ -56,8 +57,10 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 	// Calculate metrics
 	const totalPrompts = brand?.prompts?.length || 0;
 
-	// todo: use actual visibility
-	const averageVisibility = 72;
+	// Calculate actual average visibility from prompt runs
+	const averageVisibility = !isLoadingRuns && brand?.prompts && allPromptRuns 
+		? calculateAverageVisibility(brand.prompts, allPromptRuns)
+		: 0;
 
 	return (
 		<div className="space-y-8">
@@ -87,13 +90,13 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Total Prompt Evaluations</CardDescription>
-						<CardTitle className="font-semibold text-5xl">{promptRuns?.length || 0}</CardTitle>
+						<CardTitle className="font-semibold text-5xl">{allPromptRuns?.length || 0}</CardTitle>
 					</CardHeader>
 				</Card>
 
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
-						<CardDescription>Average AI Visibility</CardDescription>
+						<CardDescription>Average AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
 							<CardTitle className={`font-semibold text-5xl ${getVisibilityTextColor(averageVisibility)}`}>{averageVisibility}%</CardTitle>
 						</div>
