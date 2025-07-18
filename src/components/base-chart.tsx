@@ -17,10 +17,9 @@ import {
   ChartDataPoint, 
   filterAndCompleteChartData,
   getBadgeVariant,
-  getBadgeClassName,
-  Brand,
-  Competitor
+  getBadgeClassName
 } from "@/lib/chart-utils"
+import type { Brand, Competitor } from "@/lib/db/schema"
 
 interface BaseChartProps {
   data: ChartDataPoint[];
