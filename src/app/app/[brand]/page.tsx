@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconAward, IconTrendingUp, IconEdit, IconChevronRight } from "@tabler/icons-react";
 import PromptWizard from "@/components/prompt-wizard";
@@ -18,9 +18,15 @@ function getVisibilityTextColor(value: number): string {
   return 'text-rose-500';
 }
 
-export default function AppPage({ params }: { params: Promise<{ org: string }> }) {
+export default function AppPage({ params }: { params: Promise<{ brand: string }> }) {
+	const [brandId, setBrandId] = useState<string>("");
 	const { brand, isLoading } = useBrand();
-	const { promptRuns: allPromptRuns, isLoading: isLoadingRuns } = usePromptRuns(brand?.id, { lookback: "all" });
+	const { promptRuns: allPromptRuns, isLoading: isLoadingRuns } = usePromptRuns(brand?.id, { lookback: "1m" });
+
+	// Get the brand ID from params
+	useEffect(() => {
+		params.then(({ brand }) => setBrandId(brand));
+	}, [params]);
 
 	if (isLoading) {
 		return (
@@ -82,21 +88,21 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
-						<CardDescription>Total Prompts Tracked</CardDescription>
+						<CardDescription>Prompts Tracked</CardDescription>
 						<CardTitle className="font-semibold text-5xl">{totalPrompts}</CardTitle>
 					</CardHeader>
 				</Card>
 
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
-						<CardDescription>Total Prompt Evaluations</CardDescription>
+						<CardDescription>Prompt Evals (30d)</CardDescription>
 						<CardTitle className="font-semibold text-5xl">{allPromptRuns?.length || 0}</CardTitle>
 					</CardHeader>
 				</Card>
 
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
-						<CardDescription>Average AI Visibility (30d)</CardDescription>
+						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
 							<CardTitle className={`font-semibold text-5xl ${getVisibilityTextColor(averageVisibility)}`}>{averageVisibility}%</CardTitle>
 						</div>
@@ -107,7 +113,7 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 			{/* Navigation Cards */}
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 
-			<Link href="./prompts">
+			<Link href={`/app/${brandId}/prompts`}>
 				<Card className="gap-3 py-6 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]">
 						<div className="flex items-center justify-between w-full">
@@ -128,7 +134,7 @@ export default function AppPage({ params }: { params: Promise<{ org: string }> }
 				</Card>
 				</Link>
 
-				<Link href="./reputation">
+				<Link href={`/app/${brandId}/reputation`}>
 				<Card className="gap-3 py-6 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]">
 						<div className="flex items-center justify-between w-full">
