@@ -132,19 +132,72 @@ export function PromptsDisplay({
 	// Filter to only active prompts
 	const activePrompts = prompts.filter((prompt) => prompt.enabled);
 
-	// Separate uncategorized and grouped prompts
-	const uncategorizedPrompts = activePrompts
-		.filter((prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized")
-		.sort((a, b) => a.value.localeCompare(b.value));
+	// Group prompt runs by prompt ID for easier lookup
+	const promptRunsByPromptId = (promptRuns || []).reduce(
+		(acc, run) => {
+			if (!acc[run.promptId]) {
+				acc[run.promptId] = [];
+			}
+			acc[run.promptId].push(run);
+			return acc;
+		},
+		{} as Record<string, NonNullable<typeof promptRuns>[number][]>,
+	);
 
-	// Group active prompts by category + prefix combination (excluding uncategorized)
+	// Calculate brand/competitor mention percentage for a single prompt
+	const calculateMentionPercentage = (promptId: string): number => {
+		const runs = promptRunsByPromptId[promptId] || [];
+		if (runs.length === 0) return 0;
+		
+		const totalMentions = runs.reduce((total, run) => {
+			let mentions = 0;
+			// Count brand mention (weighted 2x)
+			if (run.brandMentioned) mentions += 2;
+			// Count each competitor mention separately (weighted 1x)
+			if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
+				mentions += run.competitorsMentioned.length;
+			}
+			return total + mentions;
+		}, 0);
+		
+		return totalMentions / runs.length; // Average weighted mentions per run
+	};
+
+	// Calculate brand/competitor mention percentage for a group of prompts
+	const calculateGroupMentionPercentage = (groupPrompts: Prompt[]): number => {
+		const allRunsForGroup = groupPrompts.flatMap(prompt => promptRunsByPromptId[prompt.id] || []);
+		if (allRunsForGroup.length === 0) return 0;
+		
+		const totalMentions = allRunsForGroup.reduce((total, run) => {
+			let mentions = 0;
+			// Count brand mention (weighted 2x)
+			if (run.brandMentioned) mentions += 2;
+			// Count each competitor mention separately (weighted 1x)
+			if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
+				mentions += run.competitorsMentioned.length;
+			}
+			return total + mentions;
+		}, 0);
+		
+		return totalMentions / allRunsForGroup.length; // Average weighted mentions per run
+	};
+
+	// Create unified list of prompts and groups with their mention percentages
+	type DisplayItem = {
+		type: 'individual' | 'group';
+		mentionPercentage: number;
+		data: Prompt | { groupKey: string; prompts: Prompt[] };
+	};
+
+	const uncategorizedPrompts = activePrompts
+		.filter((prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized");
+
 	const groupedPrompts = activePrompts
 		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
 		.reduce(
 			(acc, prompt) => {
 				const category = prompt.groupCategory!;
 				const prefix = prompt.groupPrefix || "";
-				// Create a unique key combining category and prefix
 				const groupKey = prefix ? `${category}:${prefix}` : category;
 				if (!acc[groupKey]) {
 					acc[groupKey] = [];
@@ -155,11 +208,43 @@ export function PromptsDisplay({
 			{} as Record<string, Prompt[]>,
 		);
 
-	// Sort grouped prompts by prefix alphabetically
-	const sortedGroupEntries = Object.entries(groupedPrompts).sort(([keyA], [keyB]) => {
-		const prefixA = keyA.includes(":") ? keyA.split(":")[1] : keyA;
-		const prefixB = keyB.includes(":") ? keyB.split(":")[1] : keyB;
-		return prefixA.localeCompare(prefixB);
+	// Create display items for individual prompts
+	const individualItems: DisplayItem[] = uncategorizedPrompts.map(prompt => ({
+		type: 'individual' as const,
+		mentionPercentage: calculateMentionPercentage(prompt.id),
+		data: prompt
+	}));
+
+	// Create display items for groups
+	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => ({
+		type: 'group' as const,
+		mentionPercentage: calculateGroupMentionPercentage(groupPrompts),
+		data: { groupKey, prompts: groupPrompts }
+	}));
+
+	// Combine and sort all items by mention percentage, then alphabetically
+	const allDisplayItems = [...individualItems, ...groupItems].sort((a, b) => {
+		// First sort by mention percentage (descending)
+		if (a.mentionPercentage !== b.mentionPercentage) {
+			return b.mentionPercentage - a.mentionPercentage;
+		}
+		
+		// Then sort alphabetically
+		const nameA = a.type === 'individual' 
+			? (a.data as Prompt).value
+			: (() => {
+				const { groupKey } = a.data as { groupKey: string; prompts: Prompt[] };
+				return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+			})();
+		
+		const nameB = b.type === 'individual' 
+			? (b.data as Prompt).value
+			: (() => {
+				const { groupKey } = b.data as { groupKey: string; prompts: Prompt[] };
+				return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+			})();
+		
+		return nameA.localeCompare(nameB);
 	});
 
 	// Group prompts by category + prefix combination (for display purposes)
@@ -179,18 +264,6 @@ export function PromptsDisplay({
 	);
 
 	const groupEntries = Object.entries(promptsByGroup);
-
-	// Group prompt runs by prompt ID for easier lookup
-	const promptRunsByPromptId = (promptRuns || []).reduce(
-		(acc, run) => {
-			if (!acc[run.promptId]) {
-				acc[run.promptId] = [];
-			}
-			acc[run.promptId].push(run);
-			return acc;
-		},
-		{} as Record<string, NonNullable<typeof promptRuns>[number][]>,
-	);
 
 	return (
 		<div className="space-y-6">
@@ -260,37 +333,39 @@ export function PromptsDisplay({
 
 					<TabsContent value={selectedModel} className="mt-6">
 						<div className="space-y-6">
-							{/* Individual Prompt Charts for Uncategorized Active Prompts */}
+							{/* Display all items (both individual and group prompts) sorted by mention percentage */}
 							{!isLoadingRuns &&
-								uncategorizedPrompts.map((prompt) => (
-									<PromptChart
-										key={prompt.id}
-										promptName={prompt.value}
-										promptId={prompt.id}
-										lookback={selectedLookback}
-										promptRuns={promptRuns}
-										webSearchEnabled={webSearchEnabled}
-									/>
-								))}
+								allDisplayItems.map((item) => {
+									if (item.type === 'individual') {
+										const prompt = item.data as Prompt;
+										return (
+											<PromptChart
+												key={prompt.id}
+												promptName={prompt.value}
+												promptId={prompt.id}
+												lookback={selectedLookback}
+												promptRuns={promptRuns}
+												webSearchEnabled={webSearchEnabled}
+											/>
+										);
+									} else {
+										const group = item.data as { groupKey: string; prompts: Prompt[] };
+										const firstPrompt = group.prompts[0];
+										const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
+										const groupPrefix = firstPrompt?.groupPrefix;
+										const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
 
-							{/* Group Prompt Charts for Grouped Active Prompts */}
-							{!isLoadingRuns &&
-								sortedGroupEntries.map(([groupKey, groupPrompts]) => {
-									const firstPrompt = groupPrompts[0];
-									const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
-									const groupPrefix = firstPrompt?.groupPrefix;
-									const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
-
-									return (
-										<PromptGroupChart
-											key={groupKey}
-											groupName={chartName}
-											prompts={groupPrompts}
-											lookback={selectedLookback}
-											promptRuns={promptRuns}
-											webSearchEnabled={webSearchEnabled}
-										/>
-									);
+										return (
+											<PromptGroupChart
+												key={group.groupKey}
+												groupName={chartName}
+												prompts={group.prompts}
+												lookback={selectedLookback}
+												promptRuns={promptRuns}
+												webSearchEnabled={webSearchEnabled}
+											/>
+										);
+									}
 								})}
 
 							{/* Prompt Runs Summary */}
