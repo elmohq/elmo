@@ -359,8 +359,8 @@ const worker = new Worker(
 			const openaiPromises = [];
 			const anthropicPromises = [];
 			const dataforSeoPromises = [];
-			const openaiNoWebPromises = [];
-			const anthropicNoWebPromises = [];
+			// const openaiNoWebPromises = [];
+			// const anthropicNoWebPromises = [];
 
 			// Create OpenAI promises (with web search)
 			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
@@ -480,9 +480,9 @@ const worker = new Worker(
 			// Execute all promises in parallel
 			await Promise.all([
 				...openaiPromises,
-				...openaiNoWebPromises,
+				// ...openaiNoWebPromises,
 				...anthropicPromises,
-				...anthropicNoWebPromises,
+				// ...anthropicNoWebPromises,
 				...dataforSeoPromises,
 			]);
 
