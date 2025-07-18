@@ -69,8 +69,9 @@ export function BaseChart({
     };
   });
 
-  // Get all data keys (brand + competitors) for rendering lines
-  const dataKeys = [brand.id, ...sortedCompetitors.map(c => c.id)];
+  // Get all data keys (competitors + brand) for rendering lines
+  // Brand comes last so it renders on top when dots overlap
+  const dataKeys = [...sortedCompetitors.map(c => c.id), brand.id];
 
   return (
     <div className="flex-1 space-y-2">
