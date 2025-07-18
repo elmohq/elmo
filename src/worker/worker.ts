@@ -335,7 +335,7 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     job.log(`Error processing prompt ${promptId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
-}, { connection: queueConnectionConfig });
+}, { connection: queueConnectionConfig, concurrency: 5 });
 
 queueEvents.on('completed', ({ jobId }) => {
     console.log('Completed job:', jobId);
