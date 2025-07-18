@@ -30,6 +30,7 @@ interface PromptsDisplayProps {
 	pageDescription: string;
 	editLink: string;
 	webSearchEnabled?: boolean;
+	excludeModels?: ModelType[];
 }
 
 function getGroupIcon(groupName: string) {
@@ -92,8 +93,15 @@ function getLookbackLabel(lookback: LookbackPeriod): string {
 	}
 }
 
-export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, webSearchEnabled }: PromptsDisplayProps) {
-	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
+export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, webSearchEnabled, excludeModels = [] }: PromptsDisplayProps) {
+	// Filter available models based on excludeModels prop
+	const availableModels: ModelType[] = (["openai", "anthropic", "google"] as ModelType[]).filter(
+		model => !excludeModels.includes(model)
+	);
+	
+	// Ensure default model is not excluded
+	const defaultModel = availableModels.includes("openai") ? "openai" : availableModels[0];
+	const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
 	
 	const { brand } = useBrand();
@@ -188,22 +196,28 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 			) : (
 				/* Model Selection Tabs */
 				<Tabs
-					defaultValue="openai"
+					defaultValue={defaultModel}
 					className="w-full"
 					value={selectedModel}
 					onValueChange={(value) => setSelectedModel(value as ModelType)}
 				>
 					<div className="flex justify-between items-center">
 					<TabsList>
-						<TabsTrigger value="openai" className="cursor-pointer">
-							{getModelIcon("openai")} <span>OpenAI</span>
-						</TabsTrigger>
-						<TabsTrigger value="anthropic" className="cursor-pointer">
-							{getModelIcon("anthropic")} <span>Anthropic</span>
-						</TabsTrigger>
-						<TabsTrigger value="google" className="cursor-pointer">
-							{getModelIcon("google")} <span>Google</span>
-						</TabsTrigger>
+						{availableModels.includes("openai") && (
+							<TabsTrigger value="openai" className="cursor-pointer">
+								{getModelIcon("openai")} <span>OpenAI</span>
+							</TabsTrigger>
+						)}
+						{availableModels.includes("anthropic") && (
+							<TabsTrigger value="anthropic" className="cursor-pointer">
+								{getModelIcon("anthropic")} <span>Anthropic</span>
+							</TabsTrigger>
+						)}
+						{availableModels.includes("google") && (
+							<TabsTrigger value="google" className="cursor-pointer">
+								{getModelIcon("google")} <span>Google</span>
+							</TabsTrigger>
+						)}
 					</TabsList>
 
 					<div className="flex items-center gap-2">

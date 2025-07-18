@@ -61,6 +61,7 @@ export default async function ReputationPage({ params }: { params: Promise<{ bra
 			pageDescription="See how AI perceives your brand based on its training data. Updated weekly."
 			editLink={`/app/${brandId}/prompts/edit`}
 			webSearchEnabled={false}
+			excludeModels={["google"]}
 		/>
 	);
 }
