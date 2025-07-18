@@ -18,7 +18,9 @@ import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
 import { 
   LookbackPeriod, 
-  calculateGroupVisibilityData
+  calculateGroupVisibilityData,
+  createPromptToWebQueryMapping,
+  generateOptimizationUrl
 } from "@/lib/chart-utils";
 
 interface Prompt {
@@ -37,6 +39,7 @@ interface PromptGroupChartProps {
   prompts: Prompt[];
   brandId?: string;
   promptRuns?: PromptRun[];
+  webSearchEnabled?: boolean;
 }
 
 export function PromptGroupChart({ 
@@ -44,7 +47,8 @@ export function PromptGroupChart({
   groupName, 
   prompts = [],
   brandId,
-  promptRuns: propPromptRuns
+  promptRuns: propPromptRuns,
+  webSearchEnabled
 }: PromptGroupChartProps) {
   const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
   const { brand, isLoading: brandLoading } = useBrand(brandId);
@@ -67,6 +71,9 @@ export function PromptGroupChart({
     competitors,
     lookback
   );
+
+  // Create web query mapping for optimization URLs
+  const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
 
   // Calculate dynamic grid columns based on number of variants and screen size
   const numVariants = groupVisibilityData.length;
@@ -137,25 +144,40 @@ export function PromptGroupChart({
                 <IconChevronDown size={12} className="size-3 ml-0.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {groupVisibilityData.map((promptData) => (
-                <DropdownMenuItem key={promptData.promptId} className="cursor-pointer">
-                  <div className="flex items-center justify-between w-full text-xs">
-                    <span>
-                      optimize <span className="text-muted-foreground">{promptData.promptTitle}</span>
-                    </span>
-                    <IconExternalLink size={12} className="size-3 ml-2" />
-                  </div>
-                </DropdownMenuItem>
-              ))}
+            <DropdownMenuContent align="end" className="w-100">
+              {groupVisibilityData.map((promptData) => {
+                const prompt = prompts.find(p => p.id === promptData.promptId);
+                const oldestWebQuery = webQueryMapping[promptData.promptId];
+                const optimizationUrl = brand?.id && prompt ? generateOptimizationUrl(
+                  prompt.value,
+                  brand.id,
+                  webSearchEnabled,
+                  oldestWebQuery
+                ) : "#";
+                
+                return (
+                  <DropdownMenuItem key={promptData.promptId} className="cursor-pointer" asChild>
+                    <a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
+                      <div className="flex items-center justify-between w-full text-xs">
+                        <span>
+                          optimize <span className="text-muted-foreground">{prompts[0]?.groupPrefix} {promptData.promptTitle}</span>
+                        </span>
+                        <IconExternalLink size={12} className="size-3 ml-2" />
+                      </div>
+                    </a>
+                  </DropdownMenuItem>
+                );
+              })}
               {groupVisibilityData.length === 0 && (
-                <DropdownMenuItem className="cursor-pointer">
-                  <div className="flex items-center justify-between w-full text-xs">
-                    <span>
-                      optimize <span className="text-muted-foreground">{groupName}</span>
-                    </span>
-                    <IconExternalLink size={12} className="size-3 ml-2" />
-                  </div>
+                <DropdownMenuItem className="cursor-pointer" asChild>
+                  <a href="#" target="_blank" rel="noopener noreferrer">
+                    <div className="flex items-center justify-between w-full text-xs">
+                      <span>
+                        optimize <span className="text-muted-foreground">{groupName}</span>
+                      </span>
+                      <IconExternalLink size={12} className="size-3 ml-2" />
+                    </div>
+                  </a>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

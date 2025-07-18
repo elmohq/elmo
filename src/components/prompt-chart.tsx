@@ -15,7 +15,9 @@ import {
   LookbackPeriod, 
   getBadgeVariant,
   getBadgeClassName,
-  calculateVisibilityPercentages
+  calculateVisibilityPercentages,
+  createPromptToWebQueryMapping,
+  generateOptimizationUrl
 } from "@/lib/chart-utils";
 
 interface PromptChartProps {
@@ -24,6 +26,7 @@ interface PromptChartProps {
   promptId: string;
   brandId?: string;
   promptRuns?: PromptRun[];
+  webSearchEnabled?: boolean;
 }
 
 export function PromptChart({ 
@@ -31,7 +34,8 @@ export function PromptChart({
   promptName, 
   promptId, 
   brandId,
-  promptRuns: propPromptRuns
+  promptRuns: propPromptRuns,
+  webSearchEnabled
 }: PromptChartProps) {
   const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
   const { brand, isLoading: brandLoading } = useBrand(brandId);
@@ -58,6 +62,16 @@ export function PromptChart({
   // Get the last visibility value for the badge (brand visibility)
   const lastDataPoint = chartData.filter(point => brand && point[brand.id] !== null).pop();
   const lastBrandVisibility = (lastDataPoint && brand) ? lastDataPoint[brand.id] as number : null;
+
+  // Create web query mapping and generate optimization URL
+  const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
+  const oldestWebQuery = webQueryMapping[promptId];
+  const optimizationUrl = brand?.id ? generateOptimizationUrl(
+    promptName,
+    brand.id,
+    webSearchEnabled,
+    oldestWebQuery
+  ) : "#";
 
   if (isLoading || !brand) {
     return (
@@ -112,9 +126,11 @@ export function PromptChart({
               {lastBrandVisibility}% Visibility
             </Badge>
           )}
-          <Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-            Optimize with {WHITE_LABEL_CONFIG.parent_name}
-            <IconExternalLink size={12} className="size-3 ml-0.5" />
+          <Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" asChild>
+            <a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
+              Optimize with {WHITE_LABEL_CONFIG.parent_name}
+              <IconExternalLink size={12} className="size-3 ml-0.5" />
+            </a>
           </Button>
         </div>
       </CardHeader>

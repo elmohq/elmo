@@ -251,6 +251,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 									promptId={prompt.id}
 									lookback={selectedLookback}
 									promptRuns={promptRuns}
+									webSearchEnabled={webSearchEnabled}
 								/>
 							))}
 
@@ -268,6 +269,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 										prompts={groupPrompts}
 										lookback={selectedLookback}
 										promptRuns={promptRuns}
+										webSearchEnabled={webSearchEnabled}
 									/>
 								);
 							})}

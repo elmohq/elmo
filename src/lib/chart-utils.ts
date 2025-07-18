@@ -238,3 +238,78 @@ export function filterAndCompleteChartData(
     };
   });
 } 
+
+/**
+ * Create a mapping from prompt IDs to their oldest web query (first alphabetically if multiple from same time)
+ */
+export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<string, string> {
+  const promptToWebQuery: Record<string, string> = {};
+  
+  // Group prompt runs by prompt ID
+  const promptRunsByPromptId = promptRuns.reduce((acc, run) => {
+    if (!acc[run.promptId]) {
+      acc[run.promptId] = [];
+    }
+    acc[run.promptId].push(run);
+    return acc;
+  }, {} as Record<string, PromptRun[]>);
+  
+  // For each prompt, find the oldest web query
+  Object.entries(promptRunsByPromptId).forEach(([promptId, runs]) => {
+    // Filter runs that have web queries
+    const runsWithWebQueries = runs.filter(run => run.webQueries && run.webQueries.length > 0);
+    
+    if (runsWithWebQueries.length === 0) return;
+    
+    // Sort by creation date (oldest first)
+    runsWithWebQueries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+    // Group by creation date to handle ties
+    const oldestDate = runsWithWebQueries[0].createdAt;
+    const oldestRuns = runsWithWebQueries.filter(run => 
+      new Date(run.createdAt).getTime() === new Date(oldestDate).getTime()
+    );
+    
+    // Get all web queries from the oldest runs and find first alphabetically
+    const allWebQueries: string[] = [];
+    oldestRuns.forEach(run => {
+      if (run.webQueries) {
+        allWebQueries.push(...run.webQueries);
+      }
+    });
+    
+    if (allWebQueries.length > 0) {
+      // Sort alphabetically and take the first
+      allWebQueries.sort();
+      promptToWebQuery[promptId] = allWebQueries[0];
+    }
+  });
+  
+  return promptToWebQuery;
+}
+
+/**
+ * Generate optimization URL for a prompt
+ */
+export function generateOptimizationUrl(
+  promptValue: string,
+  orgId: string,
+  webSearchEnabled?: boolean,
+  oldestWebQuery?: string
+): string {
+  const baseUrl = "https://app.whitelabel-client.com/search/create-aeo-funnel";
+  
+  // Determine which prompt to use
+  let promptToEncode: string;
+  if (webSearchEnabled && oldestWebQuery) {
+    promptToEncode = oldestWebQuery;
+  } else {
+    promptToEncode = promptValue;
+  }
+  
+  // URL encode the prompt
+  const encodedPrompt = encodeURIComponent(promptToEncode);
+  const encodedOrgId = encodeURIComponent(orgId);
+  
+  return `${baseUrl}?prompt=${encodedPrompt}&org_id=${encodedOrgId}`;
+} 
