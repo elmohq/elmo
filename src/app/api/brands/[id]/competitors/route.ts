@@ -33,7 +33,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.orderBy(competitors.name);
 
 		return NextResponse.json(brandCompetitors);
-
 	} catch (error) {
 		console.error("Error fetching competitors:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -73,23 +72,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 		const currentCount = currentCountResult[0]?.count || 0;
 
 		if (currentCount >= MAX_COMPETITORS) {
-			return NextResponse.json({ 
-				error: `Maximum limit reached. You can only have ${MAX_COMPETITORS} competitors.` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `Maximum limit reached. You can only have ${MAX_COMPETITORS} competitors.`,
+				},
+				{ status: 400 },
+			);
 		}
 
 		// Create new competitor
-		const newCompetitor = await db.insert(competitors).values({
-			brandId,
-			name: name.trim(),
-			domain: domain.trim(),
-		}).returning();
+		const newCompetitor = await db
+			.insert(competitors)
+			.values({
+				brandId,
+				name: name.trim(),
+				domain: domain.trim(),
+			})
+			.returning();
 
 		// Revalidate related pages
 		revalidatePath(`/app/${brandId}/reputation`);
 
 		return NextResponse.json(newCompetitor[0], { status: 201 });
-
 	} catch (error) {
 		console.error("Error creating competitor:", error);
 		return NextResponse.json({ error: "Failed to create competitor" }, { status: 500 });
@@ -117,9 +121,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		if (competitorList.length > MAX_COMPETITORS) {
-			return NextResponse.json({ 
-				error: `Maximum limit exceeded. You can only have ${MAX_COMPETITORS} competitors.` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `Maximum limit exceeded. You can only have ${MAX_COMPETITORS} competitors.`,
+				},
+				{ status: 400 },
+			);
 		}
 
 		// Validate competitor data
@@ -150,13 +157,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 		revalidatePath(`/app/${brandId}/reputation`);
 		revalidatePath(`/app/${brandId}/settings`);
 
-		return NextResponse.json({ 
+		return NextResponse.json({
 			message: "Competitors updated successfully",
-			count: competitorList.length
+			count: competitorList.length,
 		});
-
 	} catch (error) {
 		console.error("Error updating competitors:", error);
 		return NextResponse.json({ error: "Failed to update competitors" }, { status: 500 });
 	}
-} 
+}

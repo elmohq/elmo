@@ -28,13 +28,13 @@ const fetcher = async (url: string): Promise<PromptRun[]> => {
 
 function buildApiUrl(brandId: string, filters?: PromptRunsFilters): string {
 	const baseUrl = `/api/brands/${brandId}/prompt-runs`;
-	
+
 	if (!filters) {
 		return baseUrl;
 	}
 
 	const params = new URLSearchParams();
-	
+
 	if (filters.lookback) {
 		params.append("lookback", filters.lookback);
 	} else {
@@ -69,16 +69,12 @@ export function usePromptRuns(brandId?: string, filters?: PromptRunsFilters) {
 
 	const apiUrl = extractedBrandId ? buildApiUrl(extractedBrandId, filters) : null;
 
-	const { data, error, isLoading, mutate } = useSWR<PromptRun[]>(
-		apiUrl,
-		fetcher,
-		{
-			revalidateOnFocus: true,
-			revalidateOnReconnect: true,
-			refreshInterval: 30000, // Refresh every 30 seconds
-			dedupingInterval: 10000, // 10 seconds deduping
-		},
-	);
+	const { data, error, isLoading, mutate } = useSWR<PromptRun[]>(apiUrl, fetcher, {
+		revalidateOnFocus: true,
+		revalidateOnReconnect: true,
+		refreshInterval: 30000, // Refresh every 30 seconds
+		dedupingInterval: 10000, // 10 seconds deduping
+	});
 
 	return {
 		promptRuns: data,
@@ -119,10 +115,10 @@ export function usePromptRunsDateRange(brandId?: string, from?: Date, to?: Date)
 }
 
 // Hooks for filtering by web search enabled
-export function usePromptRunsWithWebSearch(brandId?: string, filters?: Omit<PromptRunsFilters, 'webSearchEnabled'>) {
+export function usePromptRunsWithWebSearch(brandId?: string, filters?: Omit<PromptRunsFilters, "webSearchEnabled">) {
 	return usePromptRuns(brandId, { ...filters, webSearchEnabled: true });
 }
 
-export function usePromptRunsWithoutWebSearch(brandId?: string, filters?: Omit<PromptRunsFilters, 'webSearchEnabled'>) {
+export function usePromptRunsWithoutWebSearch(brandId?: string, filters?: Omit<PromptRunsFilters, "webSearchEnabled">) {
 	return usePromptRuns(brandId, { ...filters, webSearchEnabled: false });
-} 
+}

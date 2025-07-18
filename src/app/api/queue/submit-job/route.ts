@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
-		if (jobData && typeof jobData === 'object' && 'promptId' in jobData) {
+		if (jobData && typeof jobData === "object" && "promptId" in jobData) {
 			const promptId = jobData.promptId;
-			
-			if (typeof promptId === 'string') {
+
+			if (typeof promptId === "string") {
 				const prompt = await db.query.prompts.findFirst({
 					where: eq(prompts.id, promptId),
 				});
@@ -35,7 +35,10 @@ export async function POST(request: NextRequest) {
 				}
 
 				if (prompt.brandId !== brandId) {
-					return NextResponse.json({ error: "Access denied: prompt does not belong to specified brand" }, { status: 403 });
+					return NextResponse.json(
+						{ error: "Access denied: prompt does not belong to specified brand" },
+						{ status: 403 },
+					);
 				}
 			}
 		}
@@ -43,10 +46,10 @@ export async function POST(request: NextRequest) {
 		// Select queue based on parameter, defaulting to environment-based selection
 		let selectedQueue;
 		switch (queue) {
-			case 'dev':
+			case "dev":
 				selectedQueue = devPromptQueue;
 				break;
-			case 'prod':
+			case "prod":
 				selectedQueue = prodPromptQueue;
 				break;
 			default:
@@ -58,22 +61,18 @@ export async function POST(request: NextRequest) {
 			message: "Test job submitted from debug page",
 			timestamp: new Date().toISOString(),
 			brandId, // Include brandId in job data for tracking
-			...jobData
+			...jobData,
 		};
 
 		// Submit job to queue
-		const job = await selectedQueue.add(
-			jobName || "test-job", 
-			defaultJobData,
-			{
-				delay: delay || 0, // delay in milliseconds
-				attempts: 3,
-				backoff: {
-					type: 'exponential',
-					delay: 2000,
-				},
-			}
-		);
+		const job = await selectedQueue.add(jobName || "test-job", defaultJobData, {
+			delay: delay || 0, // delay in milliseconds
+			attempts: 3,
+			backoff: {
+				type: "exponential",
+				delay: 2000,
+			},
+		});
 
 		return NextResponse.json({
 			success: true,
@@ -85,9 +84,6 @@ export async function POST(request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("Error submitting job to queue:", error);
-		return NextResponse.json(
-			{ error: "Failed to submit job to queue" }, 
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Failed to submit job to queue" }, { status: 500 });
 	}
-} 
+}

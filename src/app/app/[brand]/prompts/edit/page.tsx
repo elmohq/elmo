@@ -39,4 +39,4 @@ export default async function PromptsEditPage({ params }: { params: Promise<{ br
 			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
 		/>
 	);
-} 
+}

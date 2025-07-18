@@ -35,7 +35,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		return NextResponse.json(competitor[0]);
-
 	} catch (error) {
 		console.error("Error fetching competitor:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -71,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Build update object with only provided fields
 		const updateData: Partial<typeof competitors.$inferInsert> = {};
-		
+
 		if (name !== undefined) {
 			if (typeof name !== "string" || !name.trim()) {
 				return NextResponse.json({ error: "Competitor name must be a non-empty string" }, { status: 400 });
@@ -97,7 +96,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 		revalidatePath(`/app/${brandId}/reputation`);
 
 		return NextResponse.json(updatedCompetitor[0]);
-
 	} catch (error) {
 		console.error("Error updating competitor:", error);
 		return NextResponse.json({ error: "Failed to update competitor" }, { status: 500 });
@@ -129,17 +127,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		}
 
 		// Delete the competitor
-		await db
-			.delete(competitors)
-			.where(and(eq(competitors.id, competitorId), eq(competitors.brandId, brandId)));
+		await db.delete(competitors).where(and(eq(competitors.id, competitorId), eq(competitors.brandId, brandId)));
 
 		// Revalidate related pages
 		revalidatePath(`/app/${brandId}/reputation`);
 
 		return NextResponse.json({ success: true, message: "Competitor deleted successfully" });
-
 	} catch (error) {
 		console.error("Error deleting competitor:", error);
 		return NextResponse.json({ error: "Failed to delete competitor" }, { status: 500 });
 	}
-} 
+}

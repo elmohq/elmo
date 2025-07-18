@@ -21,11 +21,11 @@ export default async function MetadataPage() {
 	return (
 		<div className="space-y-8 p-4">
 			<PromptRunsDebug />
-			
+
 			<QueueDebug />
-			
+
 			<ChartDebug />
-			
+
 			<WizardDebug />
 
 			<h2>User App Metadata</h2>

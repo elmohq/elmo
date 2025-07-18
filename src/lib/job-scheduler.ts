@@ -17,13 +17,13 @@ export async function createPromptJobScheduler(promptId: string): Promise<boolea
 				opts: {
 					attempts: 3,
 					backoff: {
-						type: 'exponential',
+						type: "exponential",
 						delay: 2000,
 					},
 					removeOnComplete: 5000,
 					removeOnFail: 5000,
 				},
-			}
+			},
 		);
 		return true;
 	} catch (error) {
@@ -50,13 +50,9 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
  * Returns an array of results indicating success/failure for each prompt
  */
 export async function createMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map(promptId => createPromptJobScheduler(promptId))
-	);
-	
-	return results.map(result => 
-		result.status === 'fulfilled' ? result.value : false
-	);
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId)));
+
+	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
 
 /**
@@ -64,11 +60,7 @@ export async function createMultiplePromptJobSchedulers(promptIds: string[]): Pr
  * Returns an array of results indicating success/failure for each prompt
  */
 export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map(promptId => removePromptJobScheduler(promptId))
-	);
-	
-	return results.map(result => 
-		result.status === 'fulfilled' ? result.value : false
-	);
-} 
+	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId)));
+
+	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
+}

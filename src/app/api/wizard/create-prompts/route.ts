@@ -38,9 +38,12 @@ export async function POST(request: NextRequest) {
 			for (const group of personaGroups) {
 				if (group && group.personas && Array.isArray(group.personas)) {
 					if (group.personas.length > MAX_PERSONA_GROUP_MEMBERS) {
-						return NextResponse.json({ 
-							error: `Persona group "${group.name || 'Unnamed'}" has too many members. Maximum allowed: ${MAX_PERSONA_GROUP_MEMBERS}` 
-						}, { status: 400 });
+						return NextResponse.json(
+							{
+								error: `Persona group "${group.name || "Unnamed"}" has too many members. Maximum allowed: ${MAX_PERSONA_GROUP_MEMBERS}`,
+							},
+							{ status: 400 },
+						);
 					}
 				}
 			}
@@ -48,19 +51,18 @@ export async function POST(request: NextRequest) {
 
 		// Validate competitors before processing
 		if (competitorData && Array.isArray(competitorData) && competitorData.length > MAX_COMPETITORS) {
-			return NextResponse.json({ 
-				error: `Too many competitors provided. Maximum allowed: ${MAX_COMPETITORS}` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `Too many competitors provided. Maximum allowed: ${MAX_COMPETITORS}`,
+				},
+				{ status: 400 },
+			);
 		}
 
 		// Check current counts for limits
 		const [currentPromptCountResult, currentCompetitorCountResult] = await Promise.all([
-			db.select({ count: count() })
-				.from(prompts)
-				.where(eq(prompts.brandId, brandId)),
-			db.select({ count: count() })
-				.from(competitors)
-				.where(eq(competitors.brandId, brandId))
+			db.select({ count: count() }).from(prompts).where(eq(prompts.brandId, brandId)),
+			db.select({ count: count() }).from(competitors).where(eq(competitors.brandId, brandId)),
 		]);
 
 		const currentPromptCount = currentPromptCountResult[0]?.count || 0;
@@ -149,15 +151,21 @@ export async function POST(request: NextRequest) {
 
 		// Check limits before creating
 		if (currentPromptCount + promptsToCreate.length > MAX_PROMPTS) {
-			return NextResponse.json({ 
-				error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_PROMPTS} prompts. Current: ${currentPromptCount}, Attempting to create: ${promptsToCreate.length}` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_PROMPTS} prompts. Current: ${currentPromptCount}, Attempting to create: ${promptsToCreate.length}`,
+				},
+				{ status: 400 },
+			);
 		}
 
 		if (currentCompetitorCount + competitorsToCreate.length > MAX_COMPETITORS) {
-			return NextResponse.json({ 
-				error: `Cannot create competitors. This would exceed the maximum limit of ${MAX_COMPETITORS} competitors. Current: ${currentCompetitorCount}, Attempting to create: ${competitorsToCreate.length}` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `Cannot create competitors. This would exceed the maximum limit of ${MAX_COMPETITORS} competitors. Current: ${currentCompetitorCount}, Attempting to create: ${competitorsToCreate.length}`,
+				},
+				{ status: 400 },
+			);
 		}
 
 		// Insert prompts and competitors
@@ -169,7 +177,7 @@ export async function POST(request: NextRequest) {
 		if (promptsToCreate.length > 0) {
 			const insertedPrompts = await db.insert(prompts).values(promptsToCreate).returning({ id: prompts.id });
 			promptsCreated = insertedPrompts.length;
-			createdPromptIds.push(...insertedPrompts.map(p => p.id));
+			createdPromptIds.push(...insertedPrompts.map((p) => p.id));
 		}
 
 		if (competitorsToCreate.length > 0) {
@@ -181,7 +189,7 @@ export async function POST(request: NextRequest) {
 		if (createdPromptIds.length > 0) {
 			const jobSchedulerResults = await createMultiplePromptJobSchedulers(createdPromptIds);
 			jobSchedulersCreated = jobSchedulerResults.filter(Boolean).length;
-			
+
 			// Log any failures
 			jobSchedulerResults.forEach((success, index) => {
 				if (!success) {

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		if (lookbackParam && lookbackParam !== "all") {
 			toDate = new Date();
 			fromDate = new Date();
-			
+
 			switch (lookbackParam) {
 				case "1w":
 					fromDate.setDate(fromDate.getDate() - 7);
@@ -53,7 +53,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 					fromDate.setFullYear(fromDate.getFullYear() - 1);
 					break;
 				default:
-					return NextResponse.json({ error: "Invalid lookback period. Use: 1w, 1m, 3m, 6m, 1y, or all" }, { status: 400 });
+					return NextResponse.json(
+						{ error: "Invalid lookback period. Use: 1w, 1m, 3m, 6m, 1y, or all" },
+						{ status: 400 },
+					);
 			}
 		} else if (fromParam || toParam) {
 			// Handle explicit date range
@@ -117,9 +120,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.execute();
 
 		return NextResponse.json(runs);
-
 	} catch (error) {
 		console.error("Error fetching prompt runs:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
-} 
+}

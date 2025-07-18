@@ -36,7 +36,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		return NextResponse.json(prompt[0]);
-
 	} catch (error) {
 		console.error("Error fetching prompt:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -72,7 +71,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Build update object with only provided fields
 		const updateData: Partial<typeof prompts.$inferInsert> = {};
-		
+
 		if (value !== undefined) {
 			if (typeof value !== "string" || !value.trim()) {
 				return NextResponse.json({ error: "Prompt value must be a non-empty string" }, { status: 400 });
@@ -111,14 +110,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			if (!wasEnabled && isNowEnabled) {
 				// Prompt was disabled, now enabled - create job scheduler
 				const success = await createPromptJobScheduler(promptId);
-				jobSchedulerResult = { action: 'created', success };
+				jobSchedulerResult = { action: "created", success };
 				if (!success) {
 					console.warn(`Failed to create job scheduler for prompt ${promptId}`);
 				}
 			} else if (wasEnabled && !isNowEnabled) {
 				// Prompt was enabled, now disabled - remove job scheduler
 				const success = await removePromptJobScheduler(promptId);
-				jobSchedulerResult = { action: 'removed', success };
+				jobSchedulerResult = { action: "removed", success };
 				if (!success) {
 					console.warn(`Failed to remove job scheduler for prompt ${promptId}`);
 				}
@@ -133,7 +132,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			...updatedPrompt[0],
 			...(jobSchedulerResult ? { jobScheduler: jobSchedulerResult } : {}),
 		});
-
 	} catch (error) {
 		console.error("Error updating prompt:", error);
 		return NextResponse.json({ error: "Failed to update prompt" }, { status: 500 });
@@ -181,14 +179,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		revalidatePath(`/app/${brandId}/prompts`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
-		return NextResponse.json({ 
+		return NextResponse.json({
 			message: "Prompt disabled successfully",
 			jobSchedulerRemoved,
 			prompt: updatedPrompt[0],
 		});
-
 	} catch (error) {
 		console.error("Error deleting prompt:", error);
 		return NextResponse.json({ error: "Failed to delete prompt" }, { status: 500 });
 	}
-} 
+}

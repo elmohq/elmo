@@ -37,13 +37,13 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const MAX_PROMPTS = 150;
 
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(
-		initialPrompts.map(p => ({
+		initialPrompts.map((p) => ({
 			id: p.id,
 			value: p.value,
 			groupCategory: p.groupCategory || "",
 			groupPrefix: p.groupPrefix || "",
-			enabled: p.enabled
-		}))
+			enabled: p.enabled,
+		})),
 	);
 	const [isLoading, setIsLoading] = useState(false);
 	const saveInProgress = useRef(false);
@@ -51,13 +51,11 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 	const addPrompt = () => {
 		// Count only enabled prompts for the limit
-		const enabledCount = prompts.filter(p => p.enabled).length;
+		const enabledCount = prompts.filter((p) => p.enabled).length;
 		if (enabledCount < MAX_PROMPTS) {
 			setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "", enabled: true }]);
 		}
 	};
-
-
 
 	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean) => {
 		const updated = [...prompts];
@@ -76,23 +74,23 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		setIsLoading(true);
 		try {
 			// Get valid prompts (non-empty value)
-			const validPrompts = prompts.filter(p => p.value.trim());
-			
+			const validPrompts = prompts.filter((p) => p.value.trim());
+
 			// Check server-side limits before saving (only count enabled prompts)
-			const enabledValidPrompts = validPrompts.filter(p => p.enabled);
+			const enabledValidPrompts = validPrompts.filter((p) => p.enabled);
 			if (enabledValidPrompts.length > MAX_PROMPTS) {
 				alert(`You can only have a maximum of ${MAX_PROMPTS} enabled prompts.`);
 				setIsLoading(false);
 				return;
 			}
-			
+
 			// Separate existing prompts vs new prompts
-			const existingPrompts = validPrompts.filter(p => p.id);
-			const newPrompts = validPrompts.filter(p => !p.id);
+			const existingPrompts = validPrompts.filter((p) => p.id);
+			const newPrompts = validPrompts.filter((p) => !p.id);
 
 			// Find prompts that were removed (exist in initialPrompts but not in current validPrompts)
-			const currentIds = new Set(existingPrompts.map(p => p.id));
-			const removedPrompts = initialPrompts.filter(p => !currentIds.has(p.id));
+			const currentIds = new Set(existingPrompts.map((p) => p.id));
+			const removedPrompts = initialPrompts.filter((p) => !currentIds.has(p.id));
 
 			const allPromises = [];
 
@@ -110,12 +108,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							groupPrefix: prompt.groupPrefix.trim() || null,
 							enabled: prompt.enabled,
 						}),
-					}).then(response => {
+					}).then((response) => {
 						if (!response.ok) {
 							throw new Error(`Failed to update prompt "${prompt.value}": ${response.statusText}`);
 						}
 						return response;
-					})
+					}),
 				);
 			}
 
@@ -133,12 +131,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							groupPrefix: prompt.groupPrefix.trim() || null,
 							enabled: prompt.enabled,
 						}),
-					}).then(response => {
+					}).then((response) => {
 						if (!response.ok) {
 							throw new Error(`Failed to create prompt "${prompt.value}": ${response.statusText}`);
 						}
 						return response;
-					})
+					}),
 				);
 			}
 
@@ -153,12 +151,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						body: JSON.stringify({
 							enabled: false,
 						}),
-					}).then(response => {
+					}).then((response) => {
 						if (!response.ok) {
 							throw new Error(`Failed to disable removed prompt ${prompt.id}: ${response.statusText}`);
 						}
 						return response;
-					})
+					}),
 				);
 			}
 
@@ -175,8 +173,8 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		}
 	};
 
-	const validPromptCount = prompts.filter(p => p.value.trim()).length;
-	const enabledPromptCount = prompts.filter(p => p.value.trim() && p.enabled).length;
+	const validPromptCount = prompts.filter((p) => p.value.trim()).length;
+	const enabledPromptCount = prompts.filter((p) => p.value.trim() && p.enabled).length;
 	const isAtLimit = enabledPromptCount >= MAX_PROMPTS;
 
 	return (
@@ -205,11 +203,14 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							<p>No prompts yet.</p>
 						</div>
 					</div>
-				) :
+				) : (
 					<div className="space-y-4">
 						{/* Prompt rows */}
 						{prompts.map((prompt, index) => (
-							<div key={index} className={`grid grid-cols-11 gap-2 items-center ${!prompt.enabled ? 'opacity-60' : ''}`}>
+							<div
+								key={index}
+								className={`grid grid-cols-11 gap-2 items-center ${!prompt.enabled ? "opacity-60" : ""}`}
+							>
 								<div className="col-span-1 flex justify-center">
 									<Checkbox
 										checked={prompt.enabled}
@@ -237,11 +238,16 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							</div>
 						))}
 					</div>
-				}
-				
+				)}
+
 				{/* Buttons - always shown */}
 				<div className="flex gap-2 items-center">
-					<Button onClick={savePrompts} disabled={isLoading} size="sm" className="flex items-center gap-2 cursor-pointer">
+					<Button
+						onClick={savePrompts}
+						disabled={isLoading}
+						size="sm"
+						className="flex items-center gap-2 cursor-pointer"
+					>
 						{isLoading ? (
 							<>Saving...</>
 						) : (
@@ -266,10 +272,13 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						</p>
 					)}
 				</div>
-				
+
 				{/* Count information */}
 				<div className="text-xs text-muted-foreground">
-					<strong>{enabledPromptCount}/{MAX_PROMPTS}</strong> enabled prompts{enabledPromptCount >= MAX_PROMPTS ? ' (maximum reached)' : ''}
+					<strong>
+						{enabledPromptCount}/{MAX_PROMPTS}
+					</strong>{" "}
+					enabled prompts{enabledPromptCount >= MAX_PROMPTS ? " (maximum reached)" : ""}
 					{validPromptCount !== enabledPromptCount && (
 						<span className="ml-2">• {validPromptCount - enabledPromptCount} disabled</span>
 					)}
@@ -277,4 +286,4 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			</div>
 		</div>
 	);
-} 
+}

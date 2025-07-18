@@ -103,7 +103,7 @@ export default function PromptRunsDebug() {
 						return rawOutput.text;
 					}
 					break;
-				
+
 				case "anthropic":
 					// Anthropic uses response.content with text blocks
 					if (rawOutput && Array.isArray(rawOutput.content)) {
@@ -111,7 +111,7 @@ export default function PromptRunsDebug() {
 						return textBlocks.map((block: any) => block.text).join("\n");
 					}
 					break;
-				
+
 				case "google":
 					// DataForSEO uses AI overview markdown
 					if (rawOutput && rawOutput.tasks && rawOutput.tasks.length > 0) {
@@ -119,15 +119,15 @@ export default function PromptRunsDebug() {
 						if (task.result && task.result.length > 0) {
 							const result = task.result[0];
 							const items = result.items || [];
-							const aiOverviewItems = items.filter((item: any) => item.type === 'ai_overview');
-							
+							const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
+
 							if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
 								return aiOverviewItems[0].markdown;
 							}
 						}
 					}
 					return "No AI overview content found.";
-				
+
 				default:
 					return "Unknown model group - cannot extract text content.";
 			}
@@ -135,7 +135,7 @@ export default function PromptRunsDebug() {
 			console.error("Error extracting text content:", error);
 			return "Error extracting text content.";
 		}
-		
+
 		return "No text content found.";
 	};
 
@@ -174,17 +174,9 @@ export default function PromptRunsDebug() {
 							</Select>
 						</div>
 
-						{error && (
-							<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-								{error}
-							</div>
-						)}
+						{error && <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">{error}</div>}
 
-						{loading && (
-							<div className="text-blue-600 text-sm">
-								Loading prompt runs...
-							</div>
-						)}
+						{loading && <div className="text-blue-600 text-sm">Loading prompt runs...</div>}
 					</div>
 				</CardContent>
 			</Card>
@@ -197,10 +189,18 @@ export default function PromptRunsDebug() {
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-2">
-								<p><strong>ID:</strong> {promptRuns.prompt.id}</p>
-								<p><strong>Brand ID:</strong> {promptRuns.prompt.brandId}</p>
-								<p><strong>Value:</strong> {promptRuns.prompt.value}</p>
-								<p><strong>Total Runs:</strong> {promptRuns.runs.length}</p>
+								<p>
+									<strong>ID:</strong> {promptRuns.prompt.id}
+								</p>
+								<p>
+									<strong>Brand ID:</strong> {promptRuns.prompt.brandId}
+								</p>
+								<p>
+									<strong>Value:</strong> {promptRuns.prompt.value}
+								</p>
+								<p>
+									<strong>Total Runs:</strong> {promptRuns.runs.length}
+								</p>
 							</div>
 						</CardContent>
 					</Card>
@@ -288,4 +288,4 @@ export default function PromptRunsDebug() {
 			)}
 		</div>
 	);
-} 
+}

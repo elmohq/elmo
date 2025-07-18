@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 export default function ClarityAnalytics() {
 	useEffect(() => {
 		// Import and initialize Microsoft Clarity
-		import('@microsoft/clarity').then((clarity) => {
-			clarity.default.init('sh0kibwp8u');
+		import("@microsoft/clarity").then((clarity) => {
+			clarity.default.init("sh0kibwp8u");
 		});
 	}, []);
 

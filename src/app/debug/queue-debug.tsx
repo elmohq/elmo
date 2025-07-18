@@ -195,7 +195,7 @@ export default function QueueDebug() {
 					<Button onClick={submitPromptJob} disabled={isSubmittingPrompt} className="w-full">
 						{isSubmittingPrompt ? "Processing..." : "Run Prompt Analysis"}
 					</Button>
-					
+
 					{/* Prompt Job Result */}
 					{promptJobResult && (
 						<div
@@ -282,25 +282,13 @@ export default function QueueDebug() {
 						</span>
 					</div>
 					<div className="grid grid-cols-3 gap-2">
-						<Button
-							variant="outline"
-							onClick={() => submitPresetJob("quick-test")}
-							disabled={isSubmitting}
-						>
+						<Button variant="outline" onClick={() => submitPresetJob("quick-test")} disabled={isSubmitting}>
 							Quick Test
 						</Button>
-						<Button
-							variant="outline"
-							onClick={() => submitPresetJob("delayed-job")}
-							disabled={isSubmitting}
-						>
+						<Button variant="outline" onClick={() => submitPresetJob("delayed-job")} disabled={isSubmitting}>
 							Delayed Job (10s)
 						</Button>
-						<Button
-							variant="outline"
-							onClick={() => submitPresetJob("data-processing")}
-							disabled={isSubmitting}
-						>
+						<Button variant="outline" onClick={() => submitPresetJob("data-processing")} disabled={isSubmitting}>
 							Data Processing
 						</Button>
 					</div>
@@ -347,4 +335,4 @@ export default function QueueDebug() {
 			</CardContent>
 		</Card>
 	);
-} 
+}

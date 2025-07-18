@@ -12,302 +12,306 @@ import * as client from "dataforseo-client";
 
 // Initialize Anthropic client for direct API calls (for tool usage)
 const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
+	apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
 interface JobData {
-  promptId: string;
+	promptId: string;
 }
 
 interface PromptContext {
-  prompt: Prompt;
-  brand: Brand;
-  competitors: Competitor[];
+	prompt: Prompt;
+	brand: Brand;
+	competitors: Competitor[];
 }
 
 // Function to fetch prompt context from database
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
-  try {
-    // Get the prompt
-    const prompt = await db.query.prompts.findFirst({
-      where: eq(prompts.id, promptId),
-    });
+	try {
+		// Get the prompt
+		const prompt = await db.query.prompts.findFirst({
+			where: eq(prompts.id, promptId),
+		});
 
-    if (!prompt) {
-      console.error(`Prompt not found: ${promptId}`);
-      return null;
-    }
+		if (!prompt) {
+			console.error(`Prompt not found: ${promptId}`);
+			return null;
+		}
 
-    // Get the brand
-    const brand = await db.query.brands.findFirst({
-      where: eq(brands.id, prompt.brandId),
-    });
+		// Get the brand
+		const brand = await db.query.brands.findFirst({
+			where: eq(brands.id, prompt.brandId),
+		});
 
-    if (!brand) {
-      console.error(`Brand not found: ${prompt.brandId}`);
-      return null;
-    }
+		if (!brand) {
+			console.error(`Brand not found: ${prompt.brandId}`);
+			return null;
+		}
 
-    // Get competitors for this brand
-    const brandCompetitors = await db.query.competitors.findMany({
-      where: eq(competitors.brandId, prompt.brandId),
-    });
+		// Get competitors for this brand
+		const brandCompetitors = await db.query.competitors.findMany({
+			where: eq(competitors.brandId, prompt.brandId),
+		});
 
-    return {
-      prompt,
-      brand,
-      competitors: brandCompetitors,
-    };
-  } catch (error) {
-    console.error("Error fetching prompt context:", error);
-    return null;
-  }
+		return {
+			prompt,
+			brand,
+			competitors: brandCompetitors,
+		};
+	} catch (error) {
+		console.error("Error fetching prompt context:", error);
+		return null;
+	}
 }
 
 // Function to run prompt with OpenAI using Vercel AI SDK with web search
 async function runWithOpenAI(promptValue: string): Promise<{
-  rawOutput: any;
-  webQueries: string[];
-  textContent: string;
+	rawOutput: any;
+	webQueries: string[];
+	textContent: string;
 }> {
-  try {
-    // Generate text with web search using OpenAI Responses API
-    const result = await generateText({
-      model: openai.responses(AI_MODELS.OPENAI.MODEL),
-      prompt: promptValue,
-      toolChoice: 'required',
-      tools: {
-        web_search_preview: openai.tools.webSearchPreview({
-          searchContextSize: 'low',
-        }),
-      },
-    });
+	try {
+		// Generate text with web search using OpenAI Responses API
+		const result = await generateText({
+			model: openai.responses(AI_MODELS.OPENAI.MODEL),
+			prompt: promptValue,
+			toolChoice: "required",
+			tools: {
+				web_search_preview: openai.tools.webSearchPreview({
+					searchContextSize: "low",
+				}),
+			},
+		});
 
-    // Extract web search queries from OpenAI Responses API output
-    const webQueries: string[] = [];
-    
-    const responseBody = result.response?.body as any;
-    if (responseBody?.output) {
-      for (const outputItem of responseBody.output) {
-        if (outputItem.type === 'web_search_call' && outputItem.action?.query) {
-          webQueries.push(outputItem.action.query);
-        }
-      }
-    }
+		// Extract web search queries from OpenAI Responses API output
+		const webQueries: string[] = [];
 
-    return { 
-      rawOutput: responseBody,
-      webQueries,
-      textContent: result.text // Extract text content for mention analysis
-    };
-  } catch (error) {
-    console.error("Error running OpenAI prompt:", error);
-    throw error;
-  }
+		const responseBody = result.response?.body as any;
+		if (responseBody?.output) {
+			for (const outputItem of responseBody.output) {
+				if (outputItem.type === "web_search_call" && outputItem.action?.query) {
+					webQueries.push(outputItem.action.query);
+				}
+			}
+		}
+
+		return {
+			rawOutput: responseBody,
+			webQueries,
+			textContent: result.text, // Extract text content for mention analysis
+		};
+	} catch (error) {
+		console.error("Error running OpenAI prompt:", error);
+		throw error;
+	}
 }
 
 // Function to run prompt with OpenAI without web search
 async function runWithOpenAINoWebSearch(promptValue: string): Promise<{
-  rawOutput: any;
-  webQueries: string[];
-  textContent: string;
+	rawOutput: any;
+	webQueries: string[];
+	textContent: string;
 }> {
-  try {
-    // Generate text without web search using OpenAI
-    const result = await generateText({
-      model: openai(AI_MODELS.OPENAI.MODEL),
-      prompt: promptValue,
-    });
+	try {
+		// Generate text without web search using OpenAI
+		const result = await generateText({
+			model: openai(AI_MODELS.OPENAI.MODEL),
+			prompt: promptValue,
+		});
 
-    return { 
-      rawOutput: result.response?.body || result, // Store only the response body, fallback to full result if body not available
-      webQueries: [], // No web search queries
-      textContent: result.text // Extract text content for mention analysis
-    };
-  } catch (error) {
-    console.error("Error running OpenAI prompt without web search:", error);
-    throw error;
-  }
+		return {
+			rawOutput: result.response?.body || result, // Store only the response body, fallback to full result if body not available
+			webQueries: [], // No web search queries
+			textContent: result.text, // Extract text content for mention analysis
+		};
+	} catch (error) {
+		console.error("Error running OpenAI prompt without web search:", error);
+		throw error;
+	}
 }
 
 // Function to run prompt with Anthropic
 async function runWithAnthropic(promptValue: string): Promise<{
-  rawOutput: any;
-  webQueries: string[];
-  textContent: string;
+	rawOutput: any;
+	webQueries: string[];
+	textContent: string;
 }> {
-  try {
-    const response = await anthropic.messages.create({
-      model: AI_MODELS.ANTHROPIC.MODEL,
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: promptValue,
-        },
-      ],
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 10,
-        },
-      ],
-    });
+	try {
+		const response = await anthropic.messages.create({
+			model: AI_MODELS.ANTHROPIC.MODEL,
+			max_tokens: 4000,
+			messages: [
+				{
+					role: "user",
+					content: promptValue,
+				},
+			],
+			tools: [
+				{
+					type: "web_search_20250305",
+					name: "web_search",
+					max_uses: 10,
+				},
+			],
+		});
 
-    // Extract text content from response
-    const textBlocks = response.content.filter((block) => block.type === "text");
-    const textContent = textBlocks.map((block) => block.text).join("\n");
+		// Extract text content from response
+		const textBlocks = response.content.filter((block) => block.type === "text");
+		const textContent = textBlocks.map((block) => block.text).join("\n");
 
-    // Extract web search queries
-    const webQueries = response.content
-      .filter((block) => block.type === "server_tool_use" && block.name === "web_search")
-      .map((block) => (block as any).input?.query)
-      .filter(Boolean);
+		// Extract web search queries
+		const webQueries = response.content
+			.filter((block) => block.type === "server_tool_use" && block.name === "web_search")
+			.map((block) => (block as any).input?.query)
+			.filter(Boolean);
 
-    return { 
-      rawOutput: response, // Store the full response object as JSON
-      webQueries, 
-      textContent // Extract text content for mention analysis
-    };
-  } catch (error) {
-    console.error("Error running Anthropic prompt:", error);
-    throw error;
-  }
+		return {
+			rawOutput: response, // Store the full response object as JSON
+			webQueries,
+			textContent, // Extract text content for mention analysis
+		};
+	} catch (error) {
+		console.error("Error running Anthropic prompt:", error);
+		throw error;
+	}
 }
 
 // Function to run prompt with Anthropic without web search
 async function runWithAnthropicNoWebSearch(promptValue: string): Promise<{
-  rawOutput: any;
-  webQueries: string[];
-  textContent: string;
+	rawOutput: any;
+	webQueries: string[];
+	textContent: string;
 }> {
-  try {
-    const response = await anthropic.messages.create({
-      model: AI_MODELS.ANTHROPIC.MODEL,
-      max_tokens: 4000,
-      messages: [
-        {
-          role: "user",
-          content: promptValue,
-        },
-      ],
-    });
+	try {
+		const response = await anthropic.messages.create({
+			model: AI_MODELS.ANTHROPIC.MODEL,
+			max_tokens: 4000,
+			messages: [
+				{
+					role: "user",
+					content: promptValue,
+				},
+			],
+		});
 
-    // Extract text content from response
-    const textBlocks = response.content.filter((block) => block.type === "text");
-    const textContent = textBlocks.map((block) => block.text).join("\n");
+		// Extract text content from response
+		const textBlocks = response.content.filter((block) => block.type === "text");
+		const textContent = textBlocks.map((block) => block.text).join("\n");
 
-    return { 
-      rawOutput: response, // Store the full response object as JSON
-      webQueries: [], // No web search queries
-      textContent // Extract text content for mention analysis
-    };
-  } catch (error) {
-    console.error("Error running Anthropic prompt without web search:", error);
-    throw error;
-  }
+		return {
+			rawOutput: response, // Store the full response object as JSON
+			webQueries: [], // No web search queries
+			textContent, // Extract text content for mention analysis
+		};
+	} catch (error) {
+		console.error("Error running Anthropic prompt without web search:", error);
+		throw error;
+	}
 }
 
 // Function to run prompt with DataForSEO (simulating a search query)
 async function runWithDataForSEO(promptValue: string): Promise<{
-  rawOutput: any;
-  webQueries: string[];
-  textContent: string;
+	rawOutput: any;
+	webQueries: string[];
+	textContent: string;
 }> {
-  try {
-    // Use DataForSEO AI Mode Live Advanced endpoint to get AI-powered search results
-    const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
-      keyword: promptValue,
-      location_code: 2840, // United States
-      language_code: "en",
-      depth: 10,
-    });
+	try {
+		// Use DataForSEO AI Mode Live Advanced endpoint to get AI-powered search results
+		const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
+			keyword: promptValue,
+			location_code: 2840, // United States
+			language_code: "en",
+			depth: 10,
+		});
 
-    const response = await dfsSerpApi.googleAiModeLiveAdvanced([requestInfo]);
+		const response = await dfsSerpApi.googleAiModeLiveAdvanced([requestInfo]);
 
-    console.log("response", JSON.stringify(response, null, 2));
+		console.log("response", JSON.stringify(response, null, 2));
 
-    if (!response || !response.tasks || response.tasks.length === 0) {
-      throw new Error("DataForSEO API Error: No response or tasks");
-    }
+		if (!response || !response.tasks || response.tasks.length === 0) {
+			throw new Error("DataForSEO API Error: No response or tasks");
+		}
 
-    const task = response.tasks[0];
-    if (task.status_code !== 20000 || !task.result || task.result.length === 0) {
-      throw new Error(`DataForSEO API Error: ${task.status_message}`);
-    }
+		const task = response.tasks[0];
+		if (task.status_code !== 20000 || !task.result || task.result.length === 0) {
+			throw new Error(`DataForSEO API Error: ${task.status_message}`);
+		}
 
-    const result = task.result[0];
-    const items = result.items || [];
+		const result = task.result[0];
+		const items = result.items || [];
 
-    // Extract AI overview markdown content from the AI Mode response
-    const aiOverviewItems = items.filter((item: any) => item.type === 'ai_overview');
-    
-    let textContent = "";
-    if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
-      textContent = aiOverviewItems[0].markdown;
-    } else {
-      textContent = `No AI overview content found for "${promptValue}".`;
-    }
+		// Extract AI overview markdown content from the AI Mode response
+		const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
 
-    const webQueries = [promptValue]; // The original prompt was the web query
+		let textContent = "";
+		if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
+			textContent = aiOverviewItems[0].markdown;
+		} else {
+			textContent = `No AI overview content found for "${promptValue}".`;
+		}
 
-    return { 
-      rawOutput: response, // Store the full response object as JSON
-      webQueries, 
-      textContent // Extract text content for mention analysis
-    };
-  } catch (error) {
-    console.error("Error running DataForSEO search:", error);
-    throw error;
-  }
+		const webQueries = [promptValue]; // The original prompt was the web query
+
+		return {
+			rawOutput: response, // Store the full response object as JSON
+			webQueries,
+			textContent, // Extract text content for mention analysis
+		};
+	} catch (error) {
+		console.error("Error running DataForSEO search:", error);
+		throw error;
+	}
 }
 
 // Function to check for brand and competitor mentions
-function analyzeMentions(content: string, brand: Brand, competitors: Competitor[]): {
-  brandMentioned: boolean;
-  competitorsMentioned: string[];
+function analyzeMentions(
+	content: string,
+	brand: Brand,
+	competitors: Competitor[],
+): {
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
 } {
-  const contentLower = content.toLowerCase();
-  const brandName = brand.name.toLowerCase();
-  
-  // Check for brand mention
-  const brandMentioned = contentLower.includes(brandName);
-  
-  // Check for competitor mentions
-  const competitorsMentioned = competitors
-    .filter(competitor => contentLower.includes(competitor.name.toLowerCase()))
-    .map(competitor => competitor.name);
+	const contentLower = content.toLowerCase();
+	const brandName = brand.name.toLowerCase();
 
-  return { brandMentioned, competitorsMentioned };
+	// Check for brand mention
+	const brandMentioned = contentLower.includes(brandName);
+
+	// Check for competitor mentions
+	const competitorsMentioned = competitors
+		.filter((competitor) => contentLower.includes(competitor.name.toLowerCase()))
+		.map((competitor) => competitor.name);
+
+	return { brandMentioned, competitorsMentioned };
 }
 
 // Function to save prompt run to database
 async function savePromptRun(
-  promptId: string,
-  modelGroup: "openai" | "anthropic" | "google",
-  model: string,
-  webSearchEnabled: boolean,
-  rawOutput: any,
-  webQueries: string[],
-  brandMentioned: boolean,
-  competitorsMentioned: string[]
+	promptId: string,
+	modelGroup: "openai" | "anthropic" | "google",
+	model: string,
+	webSearchEnabled: boolean,
+	rawOutput: any,
+	webQueries: string[],
+	brandMentioned: boolean,
+	competitorsMentioned: string[],
 ): Promise<void> {
-  try {
-    await db.insert(promptRuns).values({
-      promptId,
-      modelGroup,
-      model,
-      webSearchEnabled,
-      rawOutput,
-      webQueries,
-      brandMentioned,
-      competitorsMentioned,
-    });
-  } catch (error) {
-    console.error("Error saving prompt run:", error);
-    throw error;
-  }
+	try {
+		await db.insert(promptRuns).values({
+			promptId,
+			modelGroup,
+			model,
+			webSearchEnabled,
+			rawOutput,
+			webQueries,
+			brandMentioned,
+			competitorsMentioned,
+		});
+	} catch (error) {
+		console.error("Error saving prompt run:", error);
+		throw error;
+	}
 }
 
 const queueEvents = new QueueEvents(promptQueue.name, { connection: queueConnectionConfig });
@@ -315,197 +319,200 @@ const queueEvents = new QueueEvents(promptQueue.name, { connection: queueConnect
 // Track running prompt jobs to prevent overlaps
 const runningPromptJobs = new Set<string>();
 
-const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
-  const { promptId } = job.data;
-  
-  // Check if this prompt is already being processed
-  if (runningPromptJobs.has(promptId)) {
-    job.log(`Skipping job for prompt ${promptId} - already running`);
-    return { success: false, reason: 'Job already running for this prompt' };
-  }
-  
-  // Mark this prompt as running
-  runningPromptJobs.add(promptId);
-  job.log(`Processing prompt ID: ${promptId}`);
+const worker = new Worker(
+	promptQueue.name,
+	async (job: Job<JobData>) => {
+		const { promptId } = job.data;
 
-  try {
-    // Get prompt context from database
-    const context = await getPromptContext(promptId);
-    if (!context) {
-      throw new Error(`Failed to fetch context for prompt ID: ${promptId}`);
-    }
+		// Check if this prompt is already being processed
+		if (runningPromptJobs.has(promptId)) {
+			job.log(`Skipping job for prompt ${promptId} - already running`);
+			return { success: false, reason: "Job already running for this prompt" };
+		}
 
-    const { prompt, brand, competitors } = context;
-    job.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
+		// Mark this prompt as running
+		runningPromptJobs.add(promptId);
+		job.log(`Processing prompt ID: ${promptId}`);
 
-    // Run all AI models in parallel for better performance
-    // RUNS_PER_PROMPT * 3 (with web search) + 5 OpenAI + 5 Anthropic (without web search)
-    const totalRuns = RUNS_PER_PROMPT * 3 + 10;
-    let completedRuns = 0;
+		try {
+			// Get prompt context from database
+			const context = await getPromptContext(promptId);
+			if (!context) {
+				throw new Error(`Failed to fetch context for prompt ID: ${promptId}`);
+			}
 
-    // Progress tracking function
-    const updateProgress = () => {
-      completedRuns++;
-      job.updateProgress((completedRuns / totalRuns) * 100);
-    };
+			const { prompt, brand, competitors } = context;
+			job.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
-    // Create arrays of promises for parallel execution
-    const openaiPromises = [];
-    const anthropicPromises = [];
-    const dataforSeoPromises = [];
-    const openaiNoWebPromises = [];
-    const anthropicNoWebPromises = [];
+			// Run all AI models in parallel for better performance
+			// RUNS_PER_PROMPT * 3 (with web search) + 5 OpenAI + 5 Anthropic (without web search)
+			const totalRuns = RUNS_PER_PROMPT * 3 + 10;
+			let completedRuns = 0;
 
-    // Create OpenAI promises (with web search)
-    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-      openaiPromises.push(
-        runWithOpenAI(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed OpenAI with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
-          
-          await savePromptRun(
-            promptId,
-            AI_MODELS.OPENAI.GROUP,
-            AI_MODELS.OPENAI.MODEL,
-            true,
-            rawOutput,
-            webQueries,
-            brandMentioned,
-            competitorsMentioned
-          );
-          
-          updateProgress();
-        })
-      );
-    }
+			// Progress tracking function
+			const updateProgress = () => {
+				completedRuns++;
+				job.updateProgress((completedRuns / totalRuns) * 100);
+			};
 
-    // Create OpenAI promises (without web search)
-    for (let i = 0; i < 5; i++) {
-      openaiNoWebPromises.push(
-        runWithOpenAINoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed OpenAI without web search iteration ${i + 1}/5`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
-          
-          await savePromptRun(
-            promptId,
-            AI_MODELS.OPENAI.GROUP,
-            AI_MODELS.OPENAI.MODEL,
-            false,
-            rawOutput,
-            webQueries,
-            brandMentioned,
-            competitorsMentioned
-          );
-          
-          updateProgress();
-        })
-      );
-    }
+			// Create arrays of promises for parallel execution
+			const openaiPromises = [];
+			const anthropicPromises = [];
+			const dataforSeoPromises = [];
+			const openaiNoWebPromises = [];
+			const anthropicNoWebPromises = [];
 
-    // Create Anthropic promises (with web search)
-    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-      anthropicPromises.push(
-        runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed Anthropic with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
-          
-          await savePromptRun(
-            promptId,
-            AI_MODELS.ANTHROPIC.GROUP,
-            AI_MODELS.ANTHROPIC.MODEL,
-            true,
-            rawOutput,
-            webQueries,
-            brandMentioned,
-            competitorsMentioned
-          );
-          
-          updateProgress();
-        })
-      );
-    }
+			// Create OpenAI promises (with web search)
+			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+				openaiPromises.push(
+					runWithOpenAI(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+						job.log(`Completed OpenAI with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-    // Create Anthropic promises (without web search)
-    for (let i = 0; i < 5; i++) {
-      anthropicNoWebPromises.push(
-        runWithAnthropicNoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed Anthropic without web search iteration ${i + 1}/5`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
-          
-          await savePromptRun(
-            promptId,
-            AI_MODELS.ANTHROPIC.GROUP,
-            AI_MODELS.ANTHROPIC.MODEL,
-            false,
-            rawOutput,
-            webQueries,
-            brandMentioned,
-            competitorsMentioned
-          );
-          
-          updateProgress();
-        })
-      );
-    }
+						await savePromptRun(
+							promptId,
+							AI_MODELS.OPENAI.GROUP,
+							AI_MODELS.OPENAI.MODEL,
+							true,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+						);
 
-    // Create DataForSEO promises (with web search)
-    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-      dataforSeoPromises.push(
-        runWithDataForSEO(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-          job.log(`Completed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
-          
-          await savePromptRun(
-            promptId,
-            "google",
-            "dataforseo",
-            true,
-            rawOutput,
-            webQueries,
-            brandMentioned,
-            competitorsMentioned
-          );
-          
-          updateProgress();
-        })
-      );
-    }
+						updateProgress();
+					}),
+				);
+			}
 
-    // Execute all promises in parallel
-    await Promise.all([
-      ...openaiPromises,
-      ...openaiNoWebPromises,
-      ...anthropicPromises,
-      ...anthropicNoWebPromises,
-      ...dataforSeoPromises,
-    ]);
+			// Create OpenAI promises (without web search)
+			for (let i = 0; i < 5; i++) {
+				openaiNoWebPromises.push(
+					runWithOpenAINoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+						job.log(`Completed OpenAI without web search iteration ${i + 1}/5`);
+						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-    job.log(`Successfully completed all ${totalRuns} runs for prompt ${promptId}`);
-    return { success: true, totalRuns: completedRuns };
+						await savePromptRun(
+							promptId,
+							AI_MODELS.OPENAI.GROUP,
+							AI_MODELS.OPENAI.MODEL,
+							false,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+						);
 
-  } catch (error) {
-    job.log(`Error processing prompt ${promptId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    throw error;
-  } finally {
-    // Always remove from running set when job completes (success or failure)
-    runningPromptJobs.delete(promptId);
-  }
-}, { connection: queueConnectionConfig, concurrency: 5 });
+						updateProgress();
+					}),
+				);
+			}
 
-queueEvents.on('completed', ({ jobId }) => {
-    console.log('Completed job:', jobId);
+			// Create Anthropic promises (with web search)
+			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+				anthropicPromises.push(
+					runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+						job.log(`Completed Anthropic with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+
+						await savePromptRun(
+							promptId,
+							AI_MODELS.ANTHROPIC.GROUP,
+							AI_MODELS.ANTHROPIC.MODEL,
+							true,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+						);
+
+						updateProgress();
+					}),
+				);
+			}
+
+			// Create Anthropic promises (without web search)
+			for (let i = 0; i < 5; i++) {
+				anthropicNoWebPromises.push(
+					runWithAnthropicNoWebSearch(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+						job.log(`Completed Anthropic without web search iteration ${i + 1}/5`);
+						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+
+						await savePromptRun(
+							promptId,
+							AI_MODELS.ANTHROPIC.GROUP,
+							AI_MODELS.ANTHROPIC.MODEL,
+							false,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+						);
+
+						updateProgress();
+					}),
+				);
+			}
+
+			// Create DataForSEO promises (with web search)
+			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+				dataforSeoPromises.push(
+					runWithDataForSEO(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
+						job.log(`Completed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
+
+						await savePromptRun(
+							promptId,
+							"google",
+							"dataforseo",
+							true,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+						);
+
+						updateProgress();
+					}),
+				);
+			}
+
+			// Execute all promises in parallel
+			await Promise.all([
+				...openaiPromises,
+				...openaiNoWebPromises,
+				...anthropicPromises,
+				...anthropicNoWebPromises,
+				...dataforSeoPromises,
+			]);
+
+			job.log(`Successfully completed all ${totalRuns} runs for prompt ${promptId}`);
+			return { success: true, totalRuns: completedRuns };
+		} catch (error) {
+			job.log(`Error processing prompt ${promptId}: ${error instanceof Error ? error.message : "Unknown error"}`);
+			throw error;
+		} finally {
+			// Always remove from running set when job completes (success or failure)
+			runningPromptJobs.delete(promptId);
+		}
+	},
+	{ connection: queueConnectionConfig, concurrency: 5 },
+);
+
+queueEvents.on("completed", ({ jobId }) => {
+	console.log("Completed job:", jobId);
 });
 
-queueEvents.on('failed',({ jobId, failedReason }: { jobId: string; failedReason: string }) => {
-    console.error('Job failed:', jobId, 'Reason:', failedReason);
+queueEvents.on("failed", ({ jobId, failedReason }: { jobId: string; failedReason: string }) => {
+	console.error("Job failed:", jobId, "Reason:", failedReason);
 });
 
 const gracefulShutdown = async (signal: string) => {
-    console.log(`Received ${signal}, closing server...`);
-    await worker.close();
-    // Other asynchronous closings
-    process.exit(0);
-  }
-  
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));  
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+	console.log(`Received ${signal}, closing server...`);
+	await worker.close();
+	// Other asynchronous closings
+	process.exit(0);
+};
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));

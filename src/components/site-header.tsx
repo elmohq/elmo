@@ -12,7 +12,7 @@ export function SiteHeader() {
 	const pathname = usePathname();
 
 	// Check if we're on an edit page
-	const isEditPage = pathname.endsWith('/edit');
+	const isEditPage = pathname.endsWith("/edit");
 
 	// Extract the page segment from the path (e.g., /app/foo/reputation -> reputation)
 	const pathSegments = pathname.split("/");
@@ -24,13 +24,13 @@ export function SiteHeader() {
 
 	// Get the base path without /edit for linking
 	const getBasePath = () => {
-		return pathname.endsWith('/edit') ? pathname.slice(0, -5) : pathname;
+		return pathname.endsWith("/edit") ? pathname.slice(0, -5) : pathname;
 	};
 
 	// Create edit link - remove trailing slashes and add /edit if not already present
 	const getEditLink = () => {
-		const cleanPath = pathname.replace(/\/+$/, '');
-		return cleanPath.endsWith('/edit') ? cleanPath : `${cleanPath}/edit`;
+		const cleanPath = pathname.replace(/\/+$/, "");
+		return cleanPath.endsWith("/edit") ? cleanPath : `${cleanPath}/edit`;
 	};
 
 	return (

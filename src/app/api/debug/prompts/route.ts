@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 	try {
 		// Check access control - get all user brands
 		const userBrands = await getElmoOrgs();
-		
+
 		if (!userBrands || userBrands.length === 0) {
 			return NextResponse.json([]);
 		}
@@ -33,9 +33,8 @@ export async function GET(request: NextRequest) {
 			.orderBy(prompts.createdAt);
 
 		return NextResponse.json(allPrompts);
-
 	} catch (error) {
 		console.error("Error fetching all prompts:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
-} 
+}

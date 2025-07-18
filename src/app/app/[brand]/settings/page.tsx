@@ -35,16 +35,18 @@ export default function BrandSettingsPage() {
 
 	const fetchCompetitors = async () => {
 		if (!brand?.id) return;
-		
+
 		setCompetitorsLoading(true);
 		try {
 			const response = await fetch(`/api/brands/${brand.id}/competitors`);
 			if (response.ok) {
 				const data = await response.json();
-				setCompetitors(data.map((c: any) => ({
-					name: c.name,
-					domain: c.domain
-				})));
+				setCompetitors(
+					data.map((c: any) => ({
+						name: c.name,
+						domain: c.domain,
+					})),
+				);
 			}
 		} catch (error) {
 			console.error("Error fetching competitors:", error);
@@ -116,8 +118,8 @@ export default function BrandSettingsPage() {
 			}
 
 			// Update competitors
-			const validCompetitors = competitors.filter(c => c.name.trim() && c.domain.trim());
-			
+			const validCompetitors = competitors.filter((c) => c.name.trim() && c.domain.trim());
+
 			// Delete all existing competitors and create new ones
 			const competitorsResponse = await fetch(`/api/brands/${brand.id}/competitors`, {
 				method: "PUT",
@@ -152,7 +154,7 @@ export default function BrandSettingsPage() {
 				{/* Brand Details Section */}
 				<div className="space-y-4">
 					<h2 className="text-xl font-semibold">Brand Details</h2>
-					
+
 					<div className="space-y-2">
 						<Label htmlFor="name">Brand Name</Label>
 						<Input
@@ -195,7 +197,7 @@ export default function BrandSettingsPage() {
 							Updating competitors will only apply to future prompt evaluations.
 						</AlertDescription>
 					</Alert>
-					
+
 					<div className="space-y-4">
 						{competitors.map((competitor, index) => (
 							<div key={index} className="flex gap-2 items-center p-3 border rounded-lg">
@@ -227,7 +229,7 @@ export default function BrandSettingsPage() {
 								</Button>
 							</div>
 						))}
-						
+
 						{competitors.length < 3 && (
 							<Button
 								type="button"
@@ -240,15 +242,16 @@ export default function BrandSettingsPage() {
 								<Plus className="h-4 w-4" /> Add Competitor
 							</Button>
 						)}
-						
+
 						{competitors.length >= 3 && (
 							<p className="text-xs text-muted-foreground">
 								Maximum of 3 competitors allowed. Remove a competitor to add a new one.
 							</p>
 						)}
-						
+
 						<p className="text-xs text-muted-foreground">
-							<strong>{competitors.filter(c => c.name.trim() && c.domain.trim()).length}/3</strong> competitors configured
+							<strong>{competitors.filter((c) => c.name.trim() && c.domain.trim()).length}/3</strong> competitors
+							configured
 						</p>
 					</div>
 				</div>

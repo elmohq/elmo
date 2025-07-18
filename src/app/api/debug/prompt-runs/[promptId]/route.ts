@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Check access control - get all user brands
 		const userBrands = await getElmoOrgs();
-		
+
 		if (!userBrands || userBrands.length === 0) {
 			return NextResponse.json({ error: "No accessible brands" }, { status: 403 });
 		}
@@ -63,9 +63,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			prompt: prompt[0],
 			runs,
 		});
-
 	} catch (error) {
 		console.error("Error fetching prompt runs:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
-} 
+}

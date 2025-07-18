@@ -8,7 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
-import { usePromptRuns, usePromptRunsWithWebSearch, usePromptRunsWithoutWebSearch, type LookbackPeriod } from "@/hooks/use-prompt-runs";
+import {
+	usePromptRuns,
+	usePromptRunsWithWebSearch,
+	usePromptRunsWithoutWebSearch,
+	type LookbackPeriod,
+} from "@/hooks/use-prompt-runs";
 import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 import { PromptChart } from "@/components/prompt-chart";
@@ -93,37 +98,48 @@ function getLookbackLabel(lookback: LookbackPeriod): string {
 	}
 }
 
-export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, webSearchEnabled, excludeModels = [] }: PromptsDisplayProps) {
+export function PromptsDisplay({
+	prompts,
+	pageTitle,
+	pageDescription,
+	editLink,
+	webSearchEnabled,
+	excludeModels = [],
+}: PromptsDisplayProps) {
 	// Filter available models based on excludeModels prop
 	const availableModels: ModelType[] = (["openai", "anthropic", "google"] as ModelType[]).filter(
-		model => !excludeModels.includes(model)
+		(model) => !excludeModels.includes(model),
 	);
-	
+
 	// Ensure default model is not excluded
 	const defaultModel = availableModels.includes("openai") ? "openai" : availableModels[0];
 	const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
-	
+
 	const { brand } = useBrand();
-	
+
 	// Use appropriate hook based on webSearchEnabled prop
-	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = webSearchEnabled === true 
+	const {
+		promptRuns,
+		isLoading: isLoadingRuns,
+		isError: runsError,
+	} = webSearchEnabled === true
 		? usePromptRunsWithWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
-		: webSearchEnabled === false 
-		? usePromptRunsWithoutWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
-		: usePromptRuns(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel });
+		: webSearchEnabled === false
+			? usePromptRunsWithoutWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
+			: usePromptRuns(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel });
 
 	// Filter to only active prompts
-	const activePrompts = prompts.filter(prompt => prompt.enabled);
+	const activePrompts = prompts.filter((prompt) => prompt.enabled);
 
 	// Separate uncategorized and grouped prompts
 	const uncategorizedPrompts = activePrompts
-		.filter(prompt => !prompt.groupCategory || prompt.groupCategory === "Uncategorized")
+		.filter((prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized")
 		.sort((a, b) => a.value.localeCompare(b.value));
 
 	// Group active prompts by category + prefix combination (excluding uncategorized)
 	const groupedPrompts = activePrompts
-		.filter(prompt => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
+		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
 		.reduce(
 			(acc, prompt) => {
 				const category = prompt.groupCategory!;
@@ -141,8 +157,8 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 
 	// Sort grouped prompts by prefix alphabetically
 	const sortedGroupEntries = Object.entries(groupedPrompts).sort(([keyA], [keyB]) => {
-		const prefixA = keyA.includes(':') ? keyA.split(':')[1] : keyA;
-		const prefixB = keyB.includes(':') ? keyB.split(':')[1] : keyB;
+		const prefixA = keyA.includes(":") ? keyA.split(":")[1] : keyA;
+		const prefixB = keyB.includes(":") ? keyB.split(":")[1] : keyB;
 		return prefixA.localeCompare(prefixB);
 	});
 
@@ -165,13 +181,16 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 	const groupEntries = Object.entries(promptsByGroup);
 
 	// Group prompt runs by prompt ID for easier lookup
-	const promptRunsByPromptId = (promptRuns || []).reduce((acc, run) => {
-		if (!acc[run.promptId]) {
-			acc[run.promptId] = [];
-		}
-		acc[run.promptId].push(run);
-		return acc;
-	}, {} as Record<string, NonNullable<typeof promptRuns>[number][]>);
+	const promptRunsByPromptId = (promptRuns || []).reduce(
+		(acc, run) => {
+			if (!acc[run.promptId]) {
+				acc[run.promptId] = [];
+			}
+			acc[run.promptId].push(run);
+			return acc;
+		},
+		{} as Record<string, NonNullable<typeof promptRuns>[number][]>,
+	);
 
 	return (
 		<div className="space-y-6">
@@ -202,77 +221,77 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 					onValueChange={(value) => setSelectedModel(value as ModelType)}
 				>
 					<div className="flex justify-between items-center">
-					<TabsList>
-						{availableModels.includes("openai") && (
-							<TabsTrigger value="openai" className="cursor-pointer">
-								{getModelIcon("openai")} <span>OpenAI</span>
-							</TabsTrigger>
-						)}
-						{availableModels.includes("anthropic") && (
-							<TabsTrigger value="anthropic" className="cursor-pointer">
-								{getModelIcon("anthropic")} <span>Anthropic</span>
-							</TabsTrigger>
-						)}
-						{availableModels.includes("google") && (
-							<TabsTrigger value="google" className="cursor-pointer">
-								{getModelIcon("google")} <span>Google</span>
-							</TabsTrigger>
-						)}
-					</TabsList>
+						<TabsList>
+							{availableModels.includes("openai") && (
+								<TabsTrigger value="openai" className="cursor-pointer">
+									{getModelIcon("openai")} <span>OpenAI</span>
+								</TabsTrigger>
+							)}
+							{availableModels.includes("anthropic") && (
+								<TabsTrigger value="anthropic" className="cursor-pointer">
+									{getModelIcon("anthropic")} <span>Anthropic</span>
+								</TabsTrigger>
+							)}
+							{availableModels.includes("google") && (
+								<TabsTrigger value="google" className="cursor-pointer">
+									{getModelIcon("google")} <span>Google</span>
+								</TabsTrigger>
+							)}
+						</TabsList>
 
-					<div className="flex items-center gap-2">
-						<div className="flex rounded-md bg-muted p-1">
-							{(["1w", "1m", "3m", "6m", "1y", "all"] as LookbackPeriod[]).map((period) => (
-								<button
-									key={period}
-									onClick={() => setSelectedLookback(period)}
-									className={`px-3 py-1 text-sm rounded cursor-pointer ${
-										selectedLookback === period
-											? "bg-background text-foreground shadow-sm"
-											: "text-muted-foreground hover:text-foreground"
-									}`}
-								>
-									{getLookbackLabel(period)}
-								</button>
-							))}
+						<div className="flex items-center gap-2">
+							<div className="flex rounded-md bg-muted p-1">
+								{(["1w", "1m", "3m", "6m", "1y", "all"] as LookbackPeriod[]).map((period) => (
+									<button
+										key={period}
+										onClick={() => setSelectedLookback(period)}
+										className={`px-3 py-1 text-sm rounded cursor-pointer ${
+											selectedLookback === period
+												? "bg-background text-foreground shadow-sm"
+												: "text-muted-foreground hover:text-foreground"
+										}`}
+									>
+										{getLookbackLabel(period)}
+									</button>
+								))}
+							</div>
 						</div>
 					</div>
-					</div>
-
-
 
 					<TabsContent value={selectedModel} className="mt-6">
 						<div className="space-y-6">
 							{/* Individual Prompt Charts for Uncategorized Active Prompts */}
-							{!isLoadingRuns && uncategorizedPrompts.map((prompt) => (
-								<PromptChart 
-									key={prompt.id} 
-									promptName={prompt.value} 
-									promptId={prompt.id}
-									lookback={selectedLookback}
-									promptRuns={promptRuns}
-									webSearchEnabled={webSearchEnabled}
-								/>
-							))}
-
-							{/* Group Prompt Charts for Grouped Active Prompts */}
-							{!isLoadingRuns && sortedGroupEntries.map(([groupKey, groupPrompts]) => {
-								const firstPrompt = groupPrompts[0];
-								const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
-								const groupPrefix = firstPrompt?.groupPrefix;
-								const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
-								
-								return (
-									<PromptGroupChart 
-										key={groupKey} 
-										groupName={chartName} 
-										prompts={groupPrompts}
+							{!isLoadingRuns &&
+								uncategorizedPrompts.map((prompt) => (
+									<PromptChart
+										key={prompt.id}
+										promptName={prompt.value}
+										promptId={prompt.id}
 										lookback={selectedLookback}
 										promptRuns={promptRuns}
 										webSearchEnabled={webSearchEnabled}
 									/>
-								);
-							})}
+								))}
+
+							{/* Group Prompt Charts for Grouped Active Prompts */}
+							{!isLoadingRuns &&
+								sortedGroupEntries.map(([groupKey, groupPrompts]) => {
+									const firstPrompt = groupPrompts[0];
+									const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
+									const groupPrefix = firstPrompt?.groupPrefix;
+									const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
+
+									return (
+										<PromptGroupChart
+											key={groupKey}
+											groupName={chartName}
+											prompts={groupPrompts}
+											lookback={selectedLookback}
+											promptRuns={promptRuns}
+											webSearchEnabled={webSearchEnabled}
+										/>
+									);
+								})}
 
 							{/* Prompt Runs Summary */}
 							{/* {!isLoadingRuns && (

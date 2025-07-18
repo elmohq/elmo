@@ -34,7 +34,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.orderBy(prompts.groupCategory, prompts.createdAt);
 
 		return NextResponse.json(brandPrompts);
-
 	} catch (error) {
 		console.error("Error fetching prompts:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -62,27 +61,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 		}
 
 		// Check current prompt count for this brand
-		const currentCountResult = await db
-			.select({ count: count() })
-			.from(prompts)
-			.where(eq(prompts.brandId, brandId));
+		const currentCountResult = await db.select({ count: count() }).from(prompts).where(eq(prompts.brandId, brandId));
 
 		const currentCount = currentCountResult[0]?.count || 0;
 
 		if (currentCount >= MAX_PROMPTS) {
-			return NextResponse.json({ 
-				error: `Maximum limit reached. You can only have ${MAX_PROMPTS} prompts.` 
-			}, { status: 400 });
+			return NextResponse.json(
+				{
+					error: `Maximum limit reached. You can only have ${MAX_PROMPTS} prompts.`,
+				},
+				{ status: 400 },
+			);
 		}
 
 		// Create new prompt
-		const newPrompt = await db.insert(prompts).values({
-			brandId,
-			value: value.trim(),
-			groupCategory: groupCategory || null,
-			groupPrefix: groupPrefix || null,
-			enabled,
-		}).returning();
+		const newPrompt = await db
+			.insert(prompts)
+			.values({
+				brandId,
+				value: value.trim(),
+				groupCategory: groupCategory || null,
+				groupPrefix: groupPrefix || null,
+				enabled,
+			})
+			.returning();
 
 		// Create job scheduler if prompt is enabled
 		let jobSchedulerCreated = false;
@@ -97,13 +99,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 		revalidatePath(`/app/${brandId}/prompts`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
-		return NextResponse.json({
-			...newPrompt[0],
-			jobSchedulerCreated,
-		}, { status: 201 });
-
+		return NextResponse.json(
+			{
+				...newPrompt[0],
+				jobSchedulerCreated,
+			},
+			{ status: 201 },
+		);
 	} catch (error) {
 		console.error("Error creating prompt:", error);
 		return NextResponse.json({ error: "Failed to create prompt" }, { status: 500 });
 	}
-} 
+}

@@ -18,23 +18,22 @@ export function calculateAverageVisibility(prompts: Prompt[], promptRuns: Prompt
 	}
 
 	// Filter to only enabled prompts
-	const enabledPrompts = prompts.filter(prompt => prompt.enabled);
-	
+	const enabledPrompts = prompts.filter((prompt) => prompt.enabled);
+
 	if (enabledPrompts.length === 0) {
 		return 0;
 	}
 
 	// Get enabled prompt IDs for filtering
-	const enabledPromptIds = new Set(enabledPrompts.map(prompt => prompt.id));
+	const enabledPromptIds = new Set(enabledPrompts.map((prompt) => prompt.id));
 
 	// Calculate date 30 days ago
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 	// Filter prompt runs to only those from last 30 days and for enabled prompts
-	const recentRuns = promptRuns.filter(run => 
-		enabledPromptIds.has(run.promptId) && 
-		new Date(run.createdAt) >= thirtyDaysAgo
+	const recentRuns = promptRuns.filter(
+		(run) => enabledPromptIds.has(run.promptId) && new Date(run.createdAt) >= thirtyDaysAgo,
 	);
 
 	if (recentRuns.length === 0) {
@@ -42,7 +41,7 @@ export function calculateAverageVisibility(prompts: Prompt[], promptRuns: Prompt
 	}
 
 	// Count how many runs have brandMentioned = true
-	const mentionedCount = recentRuns.filter(run => run.brandMentioned).length;
+	const mentionedCount = recentRuns.filter((run) => run.brandMentioned).length;
 
 	// Return percentage
 	return Math.round((mentionedCount / recentRuns.length) * 100);
