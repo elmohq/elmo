@@ -64,13 +64,6 @@ function getGroupColor(groupName: string) {
 
 type ModelType = "openai" | "anthropic" | "google";
 
-// Mapping of actual model names to our tab categories
-const MODEL_MAPPINGS: Record<string, ModelType> = {
-	"gpt-4": "openai",
-	"claude-3.5-sonnet": "anthropic",
-	"gemini-1.5-flash": "google",
-};
-
 function getModelIcon(modelType: ModelType) {
 	switch (modelType) {
 		case "openai":
@@ -103,15 +96,14 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 	const [selectedModel, setSelectedModel] = useState<ModelType>("openai");
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
 	
-	// Get brand info for display purposes only
 	const { brand } = useBrand();
 	
 	// Use appropriate hook based on webSearchEnabled prop
 	const { promptRuns, isLoading: isLoadingRuns, isError: runsError } = webSearchEnabled === true 
-		? usePromptRunsWithWebSearch(undefined, { lookback: selectedLookback })
+		? usePromptRunsWithWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
 		: webSearchEnabled === false 
-		? usePromptRunsWithoutWebSearch(undefined, { lookback: selectedLookback })
-		: usePromptRuns(undefined, { lookback: selectedLookback });
+		? usePromptRunsWithoutWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
+		: usePromptRuns(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel });
 
 	// Filter to only active prompts
 	const activePrompts = prompts.filter(prompt => prompt.enabled);
@@ -164,20 +156,14 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 
 	const groupEntries = Object.entries(promptsByGroup);
 
-	// Filter prompt runs by selected model
-	const filteredPromptRuns = promptRuns?.filter(run => {
-		const modelType = MODEL_MAPPINGS[run.model];
-		return modelType === selectedModel;
-	}) || [];
-
 	// Group prompt runs by prompt ID for easier lookup
-	const promptRunsByPromptId = filteredPromptRuns.reduce((acc, run) => {
+	const promptRunsByPromptId = (promptRuns || []).reduce((acc, run) => {
 		if (!acc[run.promptId]) {
 			acc[run.promptId] = [];
 		}
 		acc[run.promptId].push(run);
 		return acc;
-	}, {} as Record<string, typeof filteredPromptRuns>);
+	}, {} as Record<string, NonNullable<typeof promptRuns>[number][]>);
 
 	return (
 		<div className="space-y-6">
@@ -249,7 +235,8 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 									key={prompt.id} 
 									promptName={prompt.value} 
 									promptId={prompt.id}
-									lookback={selectedLookback} 
+									lookback={selectedLookback}
+									promptRuns={promptRuns}
 								/>
 							))}
 
@@ -265,7 +252,8 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 										key={groupKey} 
 										groupName={chartName} 
 										prompts={groupPrompts}
-										lookback={selectedLookback} 
+										lookback={selectedLookback}
+										promptRuns={promptRuns}
 									/>
 								);
 							})}
@@ -276,18 +264,18 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 									<CardHeader>
 										<CardTitle className="flex items-center gap-2">
 											{getModelIcon(selectedModel)}
-											Recent Runs ({selectedModel})
-											<Badge variant="secondary" className="ml-2">
-												{filteredPromptRuns.length} runs
-											</Badge>
-										</CardTitle>
-									</CardHeader>
-									<CardContent>
-										{filteredPromptRuns.length === 0 ? (
-											<p className="text-muted-foreground">No runs yet for this model.</p>
-										) : (
-											<div className="space-y-2">
-												{filteredPromptRuns.slice(0, 5).map((run) => {
+																				Recent Runs ({selectedModel})
+									<Badge variant="secondary" className="ml-2">
+										{(promptRuns || []).length} runs
+									</Badge>
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								{(promptRuns || []).length === 0 ? (
+									<p className="text-muted-foreground">No runs yet for this model.</p>
+								) : (
+									<div className="space-y-2">
+										{(promptRuns || []).slice(0, 5).map((run) => {
 													const prompt = prompts.find(p => p.id === run.promptId);
 													return (
 														<div key={run.id} className="flex items-center justify-between p-2 rounded border">
@@ -303,9 +291,9 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 														</div>
 													);
 												})}
-												{filteredPromptRuns.length > 5 && (
+												{(promptRuns || []).length > 5 && (
 													<p className="text-xs text-muted-foreground text-center pt-2">
-														And {filteredPromptRuns.length - 5} more runs...
+														And {(promptRuns || []).length - 5} more runs...
 													</p>
 												)}
 											</div>

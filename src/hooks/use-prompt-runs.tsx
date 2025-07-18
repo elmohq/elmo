@@ -11,6 +11,7 @@ export interface PromptRunsFilters {
 	to?: Date;
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
+	modelGroup?: "openai" | "anthropic" | "google";
 }
 
 const fetcher = async (url: string): Promise<PromptRun[]> => {
@@ -47,6 +48,10 @@ function buildApiUrl(brandId: string, filters?: PromptRunsFilters): string {
 
 	if (filters.webSearchEnabled !== undefined) {
 		params.append("webSearchEnabled", filters.webSearchEnabled.toString());
+	}
+
+	if (filters.modelGroup) {
+		params.append("modelGroup", filters.modelGroup);
 	}
 
 	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;

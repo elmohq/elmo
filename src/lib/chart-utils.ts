@@ -47,35 +47,7 @@ export interface ChartDataPoint {
   [key: string]: number | string | null; // Dynamic keys for brand/competitor IDs
 }
 
-export interface PromptRun {
-  id: string;
-  promptId: string;
-  model: string;
-  webSearchEnabled: boolean;
-  webQueries: string[] | null;
-  brandMentioned: boolean;
-  competitorsMentioned: string[] | null;
-  createdAt: Date;
-}
-
-export interface Competitor {
-  id: string;
-  brandId: string;
-  name: string;
-  domain: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Brand {
-  id: string;
-  name: string;
-  website: string;
-  enabled: boolean;
-  onboarded: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { PromptRun, Brand, Competitor } from "@/lib/db/schema";
 
 /**
  * Calculate visibility percentages for brand vs competitors from prompt runs

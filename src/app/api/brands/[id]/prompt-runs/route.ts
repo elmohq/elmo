@@ -26,6 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const toParam = searchParams.get("to");
 		const lookbackParam = searchParams.get("lookback");
 		const webSearchEnabledParam = searchParams.get("webSearchEnabled");
+		const modelGroupParam = searchParams.get("modelGroup");
 
 		let fromDate: Date | undefined;
 		let toDate: Date | undefined;
@@ -87,11 +88,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			conditions.push(eq(promptRuns.webSearchEnabled, webSearchEnabled));
 		}
 
+		// Add modelGroup filter if specified
+		if (modelGroupParam) {
+			const validModelGroups = ["openai", "anthropic", "google"];
+			if (!validModelGroups.includes(modelGroupParam)) {
+				return NextResponse.json({ error: "Invalid model group. Use: openai, anthropic, or google" }, { status: 400 });
+			}
+			conditions.push(eq(promptRuns.modelGroup, modelGroupParam as "openai" | "anthropic" | "google"));
+		}
+
 		// Execute query with all conditions
 		const runs = await db
 			.select({
 				id: promptRuns.id,
 				promptId: promptRuns.promptId,
+				modelGroup: promptRuns.modelGroup,
 				model: promptRuns.model,
 				webSearchEnabled: promptRuns.webSearchEnabled,
 				webQueries: promptRuns.webQueries,

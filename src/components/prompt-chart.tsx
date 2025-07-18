@@ -10,6 +10,7 @@ import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
+import type { PromptRun } from "@/lib/db/schema";
 import { 
   LookbackPeriod, 
   getBadgeVariant,
@@ -22,19 +23,23 @@ interface PromptChartProps {
   promptName: string;
   promptId: string;
   brandId?: string;
+  promptRuns?: PromptRun[];
 }
 
 export function PromptChart({ 
   lookback = "1m", 
   promptName, 
   promptId, 
-  brandId 
+  brandId,
+  promptRuns: propPromptRuns
 }: PromptChartProps) {
   const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
   const { brand, isLoading: brandLoading } = useBrand(brandId);
-  const { promptRuns, isLoading: runsLoading } = usePromptRuns(brandId, { lookback });
+  const { promptRuns: hookPromptRuns, isLoading: runsLoading } = usePromptRuns(brandId, { lookback });
   
-  const isLoading = competitorsLoading || runsLoading || brandLoading;
+  // Use prop promptRuns if provided, otherwise fall back to hook
+  const promptRuns = propPromptRuns || hookPromptRuns;
+  const isLoading = competitorsLoading || brandLoading || (!propPromptRuns && runsLoading);
   
   // Filter prompt runs for this specific prompt
   const promptSpecificRuns = promptRuns?.filter(run => run.promptId === promptId) || [];

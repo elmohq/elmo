@@ -15,6 +15,7 @@ import {
 import { BaseChart } from "./base-chart";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
+import type { PromptRun } from "@/lib/db/schema";
 import { 
   LookbackPeriod, 
   calculateGroupVisibilityData
@@ -35,19 +36,23 @@ interface PromptGroupChartProps {
   groupName: string;
   prompts: Prompt[];
   brandId?: string;
+  promptRuns?: PromptRun[];
 }
 
 export function PromptGroupChart({ 
   lookback = "1m", 
   groupName, 
   prompts = [],
-  brandId 
+  brandId,
+  promptRuns: propPromptRuns
 }: PromptGroupChartProps) {
   const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
   const { brand, isLoading: brandLoading } = useBrand(brandId);
-  const { promptRuns, isLoading: runsLoading } = usePromptRuns(brandId, { lookback });
+  const { promptRuns: hookPromptRuns, isLoading: runsLoading } = usePromptRuns(brandId, { lookback });
   
-  const isLoading = competitorsLoading || runsLoading || brandLoading;
+  // Use prop promptRuns if provided, otherwise fall back to hook
+  const promptRuns = propPromptRuns || hookPromptRuns;
+  const isLoading = competitorsLoading || brandLoading || (!propPromptRuns && runsLoading);
   
   // Check if we have no prompt runs for any prompts in this group after loading is complete
   const promptIds = prompts.map(p => p.id);
