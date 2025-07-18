@@ -175,7 +175,7 @@ export function calculateGroupVisibilityData(
     
     // Get last visibility value for the brand
     const lastDataPoint = chartData.filter(point => point[brand.id] !== null).pop();
-    const lastVisibility = lastDataPoint?.[brand.id] as number | null || null;
+    const lastVisibility = lastDataPoint?.[brand.id] as number | null ?? null;
     
     return {
       promptId: prompt.id,
