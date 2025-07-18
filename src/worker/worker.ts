@@ -1,12 +1,341 @@
 import { promptQueue, queueConnectionConfig } from "./queues";
 import { Job, QueueEvents, Worker } from "bullmq";
+import { db } from "../lib/db/db";
+import { prompts, brands, competitors, promptRuns, type Prompt, type Brand, type Competitor } from "../lib/db/schema";
+import { eq } from "drizzle-orm";
+import { RUNS_PER_PROMPT, AI_MODELS } from "../lib/constants";
+import Anthropic from "@anthropic-ai/sdk";
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
+import { dfsSerpApi } from "../lib/dataforseo";
+import * as client from "dataforseo-client";
+
+// Initialize Anthropic client for direct API calls (for tool usage)
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
+
+interface JobData {
+  promptId: string;
+}
+
+interface PromptContext {
+  prompt: Prompt;
+  brand: Brand;
+  competitors: Competitor[];
+}
+
+// Function to fetch prompt context from database
+async function getPromptContext(promptId: string): Promise<PromptContext | null> {
+  try {
+    // Get the prompt
+    const prompt = await db.query.prompts.findFirst({
+      where: eq(prompts.id, promptId),
+    });
+
+    if (!prompt) {
+      console.error(`Prompt not found: ${promptId}`);
+      return null;
+    }
+
+    // Get the brand
+    const brand = await db.query.brands.findFirst({
+      where: eq(brands.id, prompt.brandId),
+    });
+
+    if (!brand) {
+      console.error(`Brand not found: ${prompt.brandId}`);
+      return null;
+    }
+
+    // Get competitors for this brand
+    const brandCompetitors = await db.query.competitors.findMany({
+      where: eq(competitors.brandId, prompt.brandId),
+    });
+
+    return {
+      prompt,
+      brand,
+      competitors: brandCompetitors,
+    };
+  } catch (error) {
+    console.error("Error fetching prompt context:", error);
+    return null;
+  }
+}
+
+// Function to run prompt with OpenAI using Vercel AI SDK with web search
+async function runWithOpenAI(promptValue: string): Promise<{
+  rawOutput: string;
+  webQueries: string[];
+}> {
+  try {
+    // Generate text with web search using OpenAI Responses API
+    const result = await generateText({
+      model: openai.responses(AI_MODELS.OPENAI.MODEL),
+      prompt: promptValue,
+      toolChoice: 'required',
+      tools: {
+        web_search_preview: openai.tools.webSearchPreview({
+          searchContextSize: 'low',
+        }),
+      },
+    });
+
+    // Extract web search queries from OpenAI Responses API output
+    const webQueries: string[] = [];
+    
+    const responseBody = result.response?.body as any;
+    if (responseBody?.output) {
+      for (const outputItem of responseBody.output) {
+        if (outputItem.type === 'web_search_call' && outputItem.action?.query) {
+          webQueries.push(outputItem.action.query);
+        }
+      }
+    }
+
+
+    return { 
+      rawOutput: result.text, 
+      webQueries 
+    };
+  } catch (error) {
+    console.error("Error running OpenAI prompt:", error);
+    throw error;
+  }
+}
+
+// Function to run prompt with Anthropic
+async function runWithAnthropic(promptValue: string): Promise<{
+  rawOutput: string;
+  webQueries: string[];
+}> {
+  try {
+    const response = await anthropic.messages.create({
+      model: AI_MODELS.ANTHROPIC.MODEL,
+      max_tokens: 4000,
+      messages: [
+        {
+          role: "user",
+          content: promptValue,
+        },
+      ],
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search",
+          max_uses: 10,
+        },
+      ],
+    });
+
+    // Extract text content from response
+    const textBlocks = response.content.filter((block) => block.type === "text");
+    const rawOutput = textBlocks.map((block) => block.text).join("\n");
+
+    // Extract web search queries
+    const webQueries = response.content
+      .filter((block) => block.type === "server_tool_use" && block.name === "web_search")
+      .map((block) => (block as any).input?.query)
+      .filter(Boolean);
+
+    return { rawOutput, webQueries };
+  } catch (error) {
+    console.error("Error running Anthropic prompt:", error);
+    throw error;
+  }
+}
+
+// Function to run prompt with DataForSEO (simulating a search query)
+async function runWithDataForSEO(promptValue: string): Promise<{
+  rawOutput: string;
+  webQueries: string[];
+}> {
+  try {
+    // Use DataForSEO AI Mode Live Advanced endpoint to get AI-powered search results
+    const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
+      keyword: promptValue,
+      location_code: 2840, // United States
+      language_code: "en",
+      depth: 10,
+    });
+
+    const response = await dfsSerpApi.googleAiModeLiveAdvanced([requestInfo]);
+
+    console.log("response", JSON.stringify(response, null, 2));
+
+    if (!response || !response.tasks || response.tasks.length === 0) {
+      throw new Error("DataForSEO API Error: No response or tasks");
+    }
+
+    const task = response.tasks[0];
+    if (task.status_code !== 20000 || !task.result || task.result.length === 0) {
+      throw new Error(`DataForSEO API Error: ${task.status_message}`);
+    }
+
+    const result = task.result[0];
+    const items = result.items || [];
+
+    // Extract AI overview markdown content from the AI Mode response
+    const aiOverviewItems = items.filter((item: any) => item.type === 'ai_overview');
+    
+    let rawOutput = "";
+    if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
+      rawOutput = aiOverviewItems[0].markdown;
+    } else {
+      rawOutput = `No AI overview content found for "${promptValue}".`;
+    }
+
+    const webQueries = [promptValue]; // The original prompt was the web query
+
+    return { rawOutput, webQueries };
+  } catch (error) {
+    console.error("Error running DataForSEO search:", error);
+    throw error;
+  }
+}
+
+// Function to check for brand and competitor mentions
+function analyzeMentions(content: string, brand: Brand, competitors: Competitor[]): {
+  brandMentioned: boolean;
+  competitorsMentioned: string[];
+} {
+  const contentLower = content.toLowerCase();
+  const brandName = brand.name.toLowerCase();
+  
+  // Check for brand mention
+  const brandMentioned = contentLower.includes(brandName);
+  
+  // Check for competitor mentions
+  const competitorsMentioned = competitors
+    .filter(competitor => contentLower.includes(competitor.name.toLowerCase()))
+    .map(competitor => competitor.name);
+
+  return { brandMentioned, competitorsMentioned };
+}
+
+// Function to save prompt run to database
+async function savePromptRun(
+  promptId: string,
+  modelGroup: "openai" | "anthropic" | "google",
+  model: string,
+  webSearchEnabled: boolean,
+  rawOutput: string,
+  webQueries: string[],
+  brandMentioned: boolean,
+  competitorsMentioned: string[]
+): Promise<void> {
+  try {
+    await db.insert(promptRuns).values({
+      promptId,
+      modelGroup,
+      model,
+      webSearchEnabled,
+      rawOutput,
+      webQueries,
+      brandMentioned,
+      competitorsMentioned,
+    });
+  } catch (error) {
+    console.error("Error saving prompt run:", error);
+    throw error;
+  }
+}
 
 const queueEvents = new QueueEvents(promptQueue.name, { connection: queueConnectionConfig });
 
-const worker = new Worker(promptQueue.name, async (job: Job) => {
-    job.log(`Processing job ${job.id}`);
-}, { connection: queueConnectionConfig });   
+const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
+  const { promptId } = job.data;
+  job.log(`Processing prompt ID: ${promptId}`);
 
+  try {
+    // Get prompt context from database
+    const context = await getPromptContext(promptId);
+    if (!context) {
+      throw new Error(`Failed to fetch context for prompt ID: ${promptId}`);
+    }
+
+    const { prompt, brand, competitors } = context;
+    job.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
+
+    // Run prompt RUNS_PER_PROMPT times for each model
+    const totalRuns = RUNS_PER_PROMPT * 3;
+    let completedRuns = 0;
+
+    // Run with OpenAI (web search enabled)
+    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+      job.log(`Running OpenAI iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+      
+      const { rawOutput, webQueries } = await runWithOpenAI(prompt.value);
+      const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+      
+      await savePromptRun(
+        promptId,
+        AI_MODELS.OPENAI.GROUP,
+        AI_MODELS.OPENAI.MODEL,
+        true, // web search enabled
+        rawOutput,
+        webQueries,
+        brandMentioned,
+        competitorsMentioned
+      );
+
+      completedRuns++;
+      await job.updateProgress((completedRuns / totalRuns) * 100);
+    }
+
+    // Run with Anthropic (web search enabled)
+    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+      job.log(`Running Anthropic iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+      
+      const { rawOutput, webQueries } = await runWithAnthropic(prompt.value);
+      const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+      
+      await savePromptRun(
+        promptId,
+        AI_MODELS.ANTHROPIC.GROUP,
+        AI_MODELS.ANTHROPIC.MODEL,
+        true, // web search enabled
+        rawOutput,
+        webQueries,
+        brandMentioned,
+        competitorsMentioned
+      );
+
+      completedRuns++;
+      await job.updateProgress((completedRuns / totalRuns) * 100);
+    }
+
+    // Run with DataForSEO
+    for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+      job.log(`Running DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+      
+      const { rawOutput, webQueries } = await runWithDataForSEO(prompt.value);
+      const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+      
+      await savePromptRun(
+        promptId,
+        "google", // Using "google" for DataForSEO since it's Google search
+        "dataforseo",
+        true, // web search enabled (it's a search API)
+        rawOutput,
+        webQueries,
+        brandMentioned,
+        competitorsMentioned
+      );
+
+      completedRuns++;
+      await job.updateProgress((completedRuns / totalRuns) * 100);
+    }
+
+    job.log(`Successfully completed all ${totalRuns} runs for prompt ${promptId}`);
+    return { success: true, totalRuns: completedRuns };
+
+  } catch (error) {
+    job.log(`Error processing prompt ${promptId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw error;
+  }
+}, { connection: queueConnectionConfig });
 
 queueEvents.on('completed', ({ jobId }) => {
     console.log('Completed job:', jobId);
