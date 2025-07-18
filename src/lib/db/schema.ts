@@ -54,9 +54,9 @@ export const promptRuns = pgTable("prompt_runs", {
 	model: text("model").notNull(),
 	webSearchEnabled: boolean("web_search_enabled").notNull(),
 	rawOutput: text("raw_output").notNull(),
-	webQueries: text("web_queries").array(),
+	webQueries: text("web_queries").array().notNull().default([]),
 	brandMentioned: boolean("brand_mentioned").notNull(),
-	competitorsMentioned: text("competitors_mentioned").array(),
+	competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
 	promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
