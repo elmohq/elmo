@@ -275,7 +275,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 							})}
 
 							{/* Prompt Runs Summary */}
-							{!isLoadingRuns && (
+							{/* {!isLoadingRuns && (
 								<Card>
 									<CardHeader>
 										<CardTitle className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export function PromptsDisplay({ prompts, pageTitle, pageDescription, editLink, 
 										)}
 									</CardContent>
 								</Card>
-							)}
+							)} */}
 						</div>
 					</TabsContent>
 				</Tabs>

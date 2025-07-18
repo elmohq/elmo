@@ -66,8 +66,9 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 
 // Function to run prompt with OpenAI using Vercel AI SDK with web search
 async function runWithOpenAI(promptValue: string): Promise<{
-  rawOutput: string;
+  rawOutput: any;
   webQueries: string[];
+  textContent: string;
 }> {
   try {
     // Generate text with web search using OpenAI Responses API
@@ -94,10 +95,10 @@ async function runWithOpenAI(promptValue: string): Promise<{
       }
     }
 
-
     return { 
-      rawOutput: result.text, 
-      webQueries 
+      rawOutput: result, // Store the full result object as JSON
+      webQueries,
+      textContent: result.text // Extract text content for mention analysis
     };
   } catch (error) {
     console.error("Error running OpenAI prompt:", error);
@@ -107,8 +108,9 @@ async function runWithOpenAI(promptValue: string): Promise<{
 
 // Function to run prompt with Anthropic
 async function runWithAnthropic(promptValue: string): Promise<{
-  rawOutput: string;
+  rawOutput: any;
   webQueries: string[];
+  textContent: string;
 }> {
   try {
     const response = await anthropic.messages.create({
@@ -131,7 +133,7 @@ async function runWithAnthropic(promptValue: string): Promise<{
 
     // Extract text content from response
     const textBlocks = response.content.filter((block) => block.type === "text");
-    const rawOutput = textBlocks.map((block) => block.text).join("\n");
+    const textContent = textBlocks.map((block) => block.text).join("\n");
 
     // Extract web search queries
     const webQueries = response.content
@@ -139,7 +141,11 @@ async function runWithAnthropic(promptValue: string): Promise<{
       .map((block) => (block as any).input?.query)
       .filter(Boolean);
 
-    return { rawOutput, webQueries };
+    return { 
+      rawOutput: response, // Store the full response object as JSON
+      webQueries, 
+      textContent // Extract text content for mention analysis
+    };
   } catch (error) {
     console.error("Error running Anthropic prompt:", error);
     throw error;
@@ -148,8 +154,9 @@ async function runWithAnthropic(promptValue: string): Promise<{
 
 // Function to run prompt with DataForSEO (simulating a search query)
 async function runWithDataForSEO(promptValue: string): Promise<{
-  rawOutput: string;
+  rawOutput: any;
   webQueries: string[];
+  textContent: string;
 }> {
   try {
     // Use DataForSEO AI Mode Live Advanced endpoint to get AI-powered search results
@@ -179,16 +186,20 @@ async function runWithDataForSEO(promptValue: string): Promise<{
     // Extract AI overview markdown content from the AI Mode response
     const aiOverviewItems = items.filter((item: any) => item.type === 'ai_overview');
     
-    let rawOutput = "";
+    let textContent = "";
     if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
-      rawOutput = aiOverviewItems[0].markdown;
+      textContent = aiOverviewItems[0].markdown;
     } else {
-      rawOutput = `No AI overview content found for "${promptValue}".`;
+      textContent = `No AI overview content found for "${promptValue}".`;
     }
 
     const webQueries = [promptValue]; // The original prompt was the web query
 
-    return { rawOutput, webQueries };
+    return { 
+      rawOutput: response, // Store the full response object as JSON
+      webQueries, 
+      textContent // Extract text content for mention analysis
+    };
   } catch (error) {
     console.error("Error running DataForSEO search:", error);
     throw error;
@@ -220,7 +231,7 @@ async function savePromptRun(
   modelGroup: "openai" | "anthropic" | "google",
   model: string,
   webSearchEnabled: boolean,
-  rawOutput: string,
+  rawOutput: any,
   webQueries: string[],
   brandMentioned: boolean,
   competitorsMentioned: string[]
@@ -288,9 +299,9 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     // Create OpenAI promises
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
       openaiPromises.push(
-        runWithOpenAI(prompt.value).then(async ({ rawOutput, webQueries }) => {
+        runWithOpenAI(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
           job.log(`Completed OpenAI iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
           
           await savePromptRun(
             promptId,
@@ -311,9 +322,9 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     // Create Anthropic promises
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
       anthropicPromises.push(
-        runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries }) => {
+        runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
           job.log(`Completed Anthropic iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
           
           await savePromptRun(
             promptId,
@@ -334,9 +345,9 @@ const worker = new Worker(promptQueue.name, async (job: Job<JobData>) => {
     // Create DataForSEO promises
     for (let i = 0; i < RUNS_PER_PROMPT; i++) {
       dataforSeoPromises.push(
-        runWithDataForSEO(prompt.value).then(async ({ rawOutput, webQueries }) => {
+        runWithDataForSEO(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
           job.log(`Completed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
-          const { brandMentioned, competitorsMentioned } = analyzeMentions(rawOutput, brand, competitors);
+          const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
           
           await savePromptRun(
             promptId,
