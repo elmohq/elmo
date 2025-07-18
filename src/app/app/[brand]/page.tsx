@@ -104,7 +104,11 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
-							<CardTitle className={`font-semibold text-5xl ${getVisibilityTextColor(averageVisibility)}`}>{averageVisibility}%</CardTitle>
+							{!allPromptRuns?.length ? (
+								<CardTitle className="font-semibold text-5xl text-muted-foreground">TBD</CardTitle>
+							) : (
+								<CardTitle className={`font-semibold text-5xl ${getVisibilityTextColor(averageVisibility)}`}>{averageVisibility}%</CardTitle>
+							)}
 						</div>
 					</CardHeader>
 				</Card>
