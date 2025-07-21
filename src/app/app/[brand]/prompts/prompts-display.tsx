@@ -360,6 +360,8 @@ export function PromptsDisplay({
 												lookback={selectedLookback}
 												promptRuns={promptRuns}
 												webSearchEnabled={webSearchEnabled}
+												selectedModel={selectedModel}
+												availableModels={availableIndividualModels}
 											/>
 										);
 									} else {
@@ -377,6 +379,8 @@ export function PromptsDisplay({
 												lookback={selectedLookback}
 												promptRuns={promptRuns}
 												webSearchEnabled={webSearchEnabled}
+												selectedModel={selectedModel}
+												availableModels={availableIndividualModels}
 											/>
 										);
 									}

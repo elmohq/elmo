@@ -1,13 +1,10 @@
 "use client";
 
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
-import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
-import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { BaseChart } from "./base-chart";
+import { OptimizeButton } from "./optimize-button";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
@@ -15,7 +12,6 @@ import {
 	LookbackPeriod,
 	calculateGroupVisibilityData,
 	createPromptToWebQueryMapping,
-	generateOptimizationUrl,
 } from "@/lib/chart-utils";
 
 interface Prompt {
@@ -28,6 +24,8 @@ interface Prompt {
 	createdAt: Date;
 }
 
+type ModelType = "openai" | "anthropic" | "google" | "all";
+
 interface PromptGroupChartProps {
 	lookback: LookbackPeriod;
 	groupName: string;
@@ -35,6 +33,8 @@ interface PromptGroupChartProps {
 	brandId?: string;
 	promptRuns?: PromptRun[];
 	webSearchEnabled?: boolean;
+	selectedModel?: ModelType;
+	availableModels?: ("openai" | "anthropic" | "google")[];
 }
 
 export function PromptGroupChart({
@@ -44,6 +44,8 @@ export function PromptGroupChart({
 	brandId,
 	promptRuns: propPromptRuns,
 	webSearchEnabled,
+	selectedModel = "all",
+	availableModels = ["openai", "anthropic", "google"],
 }: PromptGroupChartProps) {
 	const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
 	const { brand, isLoading: brandLoading } = useBrand(brandId);
@@ -77,6 +79,15 @@ export function PromptGroupChart({
 	// Create web query mapping for optimization URLs
 	const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
 
+	// Create model-specific web query mappings for the dropdown
+	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
+	if (promptRuns && selectedModel === "all") {
+		availableModels.forEach(model => {
+			const modelPromptRuns = promptRuns.filter(run => run.modelGroup === model);
+			modelWebQueryMappings[model] = createPromptToWebQueryMapping(modelPromptRuns);
+		});
+	}
+
 	// Determine chart type based on lookback period
 	const chartType = lookback === "1w" ? "bar" : "line";
 
@@ -93,9 +104,7 @@ export function PromptGroupChart({
 						</span>
 					</CardTitle>
 					<div className="flex items-center gap-2">
-						<Button variant="secondary" size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-							Loading...
-						</Button>
+						<Skeleton className="h-6 w-20" />
 					</div>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
@@ -146,51 +155,17 @@ export function PromptGroupChart({
 						</span>
 					</CardTitle>
 					<div className="flex items-center gap-2">
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-									Optimize with {WHITE_LABEL_CONFIG.parent_name}
-									<IconChevronDown size={12} className="size-3 ml-0.5" />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-100">
-								{prompts.map((prompt) => {
-									const oldestWebQuery = webQueryMapping[prompt.id];
-									const optimizationUrl =
-										brand?.id
-											? generateOptimizationUrl(prompt.value, brand.id, webSearchEnabled, oldestWebQuery)
-											: "#";
-
-									return (
-										<DropdownMenuItem key={prompt.id} className="cursor-pointer" asChild>
-											<a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
-												<div className="flex items-center justify-between w-full text-xs">
-													<span>
-														optimize{" "}
-														<span className="text-muted-foreground">
-															{prompts[0]?.groupPrefix} {prompt.value}
-														</span>
-													</span>
-													<IconExternalLink size={12} className="size-3 ml-2" />
-												</div>
-											</a>
-										</DropdownMenuItem>
-									);
-								})}
-								{prompts.length === 0 && (
-									<DropdownMenuItem className="cursor-pointer" asChild>
-										<a href="#" target="_blank" rel="noopener noreferrer">
-											<div className="flex items-center justify-between w-full text-xs">
-												<span>
-													optimize <span className="text-muted-foreground">{groupName}</span>
-												</span>
-												<IconExternalLink size={12} className="size-3 ml-2" />
-											</div>
-										</a>
-									</DropdownMenuItem>
-								)}
-							</DropdownMenuContent>
-						</DropdownMenu>
+						<OptimizeButton
+							brandId={brand?.id}
+							groupName={groupName}
+							groupPrefix={prompts[0]?.groupPrefix || undefined}
+							webSearchEnabled={webSearchEnabled}
+							selectedModel={selectedModel}
+							availableModels={availableModels}
+							prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+							webQueryMapping={webQueryMapping}
+							modelWebQueryMappings={modelWebQueryMappings}
+						/>
 					</div>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
@@ -217,52 +192,17 @@ export function PromptGroupChart({
 					</span>
 				</CardTitle>
 				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-								Optimize with {WHITE_LABEL_CONFIG.parent_name}
-								<IconChevronDown size={12} className="size-3 ml-0.5" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-100">
-							{groupVisibilityData.map((promptData) => {
-								const prompt = prompts.find((p) => p.id === promptData.promptId);
-								const oldestWebQuery = webQueryMapping[promptData.promptId];
-								const optimizationUrl =
-									brand?.id && prompt
-										? generateOptimizationUrl(prompt.value, brand.id, webSearchEnabled, oldestWebQuery)
-										: "#";
-
-								return (
-									<DropdownMenuItem key={promptData.promptId} className="cursor-pointer" asChild>
-										<a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
-											<div className="flex items-center justify-between w-full text-xs">
-												<span>
-													optimize{" "}
-													<span className="text-muted-foreground">
-														{prompts[0]?.groupPrefix} {promptData.promptTitle}
-													</span>
-												</span>
-												<IconExternalLink size={12} className="size-3 ml-2" />
-											</div>
-										</a>
-									</DropdownMenuItem>
-								);
-							})}
-							{groupVisibilityData.length === 0 && (
-								<DropdownMenuItem className="cursor-pointer" asChild>
-									<a href="#" target="_blank" rel="noopener noreferrer">
-										<div className="flex items-center justify-between w-full text-xs">
-											<span>
-												optimize <span className="text-muted-foreground">{groupName}</span>
-											</span>
-											<IconExternalLink size={12} className="size-3 ml-2" />
-										</div>
-									</a>
-								</DropdownMenuItem>
-							)}
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<OptimizeButton
+						brandId={brand?.id}
+						groupName={groupName}
+						groupPrefix={prompts[0]?.groupPrefix || undefined}
+						webSearchEnabled={webSearchEnabled}
+						selectedModel={selectedModel}
+						availableModels={availableModels}
+						prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+						webQueryMapping={webQueryMapping}
+						modelWebQueryMappings={modelWebQueryMappings}
+					/>
 				</div>
 			</CardHeader>
 			<Separator className="py-0 my-0" />

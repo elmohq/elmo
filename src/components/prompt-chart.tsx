@@ -1,13 +1,10 @@
 "use client";
-
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
-import { IconExternalLink } from "@tabler/icons-react";
-import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
+import { OptimizeButton } from "./optimize-button";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
@@ -17,8 +14,9 @@ import {
 	getBadgeClassName,
 	calculateVisibilityPercentages,
 	createPromptToWebQueryMapping,
-	generateOptimizationUrl,
 } from "@/lib/chart-utils";
+
+type ModelType = "openai" | "anthropic" | "google" | "all";
 
 interface PromptChartProps {
 	lookback: LookbackPeriod;
@@ -27,6 +25,8 @@ interface PromptChartProps {
 	brandId?: string;
 	promptRuns?: PromptRun[];
 	webSearchEnabled?: boolean;
+	selectedModel?: ModelType;
+	availableModels?: ("openai" | "anthropic" | "google")[];
 }
 
 export function PromptChart({
@@ -36,6 +36,8 @@ export function PromptChart({
 	brandId,
 	promptRuns: propPromptRuns,
 	webSearchEnabled,
+	selectedModel = "all",
+	availableModels = ["openai", "anthropic", "google"],
 }: PromptChartProps) {
 	const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
 	const { brand, isLoading: brandLoading } = useBrand(brandId);
@@ -69,12 +71,17 @@ export function PromptChart({
 	const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
 	const lastBrandVisibility = lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
 
-	// Create web query mapping and generate optimization URL
+	// Create web query mapping for optimization URLs
 	const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
-	const oldestWebQuery = webQueryMapping[promptId];
-	const optimizationUrl = brand?.id
-		? generateOptimizationUrl(promptName, brand.id, webSearchEnabled, oldestWebQuery)
-		: "#";
+
+	// Create model-specific web query mappings for the dropdown
+	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
+	if (promptRuns && selectedModel === "all") {
+		availableModels.forEach(model => {
+			const modelPromptRuns = promptRuns.filter(run => run.modelGroup === model);
+			modelWebQueryMappings[model] = createPromptToWebQueryMapping(modelPromptRuns);
+		});
+	}
 
 	// Determine chart type based on lookback period
 	const chartType = lookback === "1w" ? "bar" : "line";
@@ -124,12 +131,16 @@ export function PromptChart({
 				<CardHeader className="flex justify-between items-center px-3">
 					<CardTitle className="text-sm">{promptName}</CardTitle>
 					<div className="flex items-center gap-2">
-						<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" asChild>
-							<a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
-								Optimize with {WHITE_LABEL_CONFIG.parent_name}
-								<IconExternalLink size={12} className="size-3 ml-0.5" />
-							</a>
-						</Button>
+						<OptimizeButton
+							promptName={promptName}
+							promptId={promptId}
+							brandId={brand?.id}
+							webSearchEnabled={webSearchEnabled}
+							selectedModel={selectedModel}
+							availableModels={availableModels}
+							webQueryMapping={webQueryMapping}
+							modelWebQueryMappings={modelWebQueryMappings}
+						/>
 					</div>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
@@ -154,12 +165,16 @@ export function PromptChart({
 							{lastBrandVisibility}% Visibility
 						</Badge>
 					)}
-					<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" asChild>
-						<a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
-							Optimize with {WHITE_LABEL_CONFIG.parent_name}
-							<IconExternalLink size={12} className="size-3 ml-0.5" />
-						</a>
-					</Button>
+					<OptimizeButton
+						promptName={promptName}
+						promptId={promptId}
+						brandId={brand?.id}
+						webSearchEnabled={webSearchEnabled}
+						selectedModel={selectedModel}
+						availableModels={availableModels}
+						webQueryMapping={webQueryMapping}
+						modelWebQueryMappings={modelWebQueryMappings}
+					/>
 				</div>
 			</CardHeader>
 			<Separator className="py-0 my-0" />
