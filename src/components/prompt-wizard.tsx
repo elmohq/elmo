@@ -370,6 +370,16 @@ const useStepManager = (brand: any) => {
 	};
 };
 
+// Generate a unique ID that works across all browsers
+const generateId = () => {
+	// Use crypto.randomUUID() if available, otherwise fallback to a custom implementation
+	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+		return crypto.randomUUID();
+	}
+	// Fallback for browsers that don't support crypto.randomUUID()
+	return 'id-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
+};
+
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand, revalidate } = useBrand();
 	const [currentPhase, setCurrentPhase] = useState<"idle" | "processing" | "review" | "complete">("idle");
@@ -384,6 +394,109 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	});
 
 	const { steps, setSteps, executeStep, resetSteps } = useStepManager(brand);
+
+	// Memoized callback for updating persona group names
+	const updatePersonaGroupName = useCallback((groupId: string, name: string) => {
+		setWizardData((prev) => ({
+			...prev,
+			personaGroups: prev.personaGroups.map(g => 
+				g.id === groupId ? { ...g, name } : g
+			)
+		}));
+	}, []);
+
+	// Memoized callback for updating persona group personas
+	const updatePersonaGroupPersonas = useCallback((groupId: string, personas: string[]) => {
+		setWizardData((prev) => ({
+			...prev,
+			personaGroups: prev.personaGroups.map(g => 
+				g.id === groupId ? { ...g, personas } : g
+			)
+		}));
+	}, []);
+
+	// Memoized callback for removing persona groups
+	const removePersonaGroup = useCallback((groupId: string) => {
+		setWizardData((prev) => ({
+			...prev,
+			personaGroups: prev.personaGroups.filter(g => g.id !== groupId)
+		}));
+	}, []);
+
+	// Memoized callback for adding persona groups
+	const addPersonaGroup = useCallback(() => {
+		setWizardData((prev) => ({
+			...prev,
+			personaGroups: [...prev.personaGroups, { id: generateId(), name: "", personas: [] }],
+		}));
+	}, []);
+
+	// Memoized callback for updating competitor names
+	const updateCompetitorName = useCallback((competitorId: string, name: string) => {
+		setWizardData((prev) => ({
+			...prev,
+			competitors: prev.competitors.map(c => 
+				c.id === competitorId ? { ...c, name } : c
+			)
+		}));
+	}, []);
+
+	// Memoized callback for updating competitor domains
+	const updateCompetitorDomain = useCallback((competitorId: string, domain: string) => {
+		setWizardData((prev) => ({
+			...prev,
+			competitors: prev.competitors.map(c => 
+				c.id === competitorId ? { ...c, domain } : c
+			)
+		}));
+	}, []);
+
+	// Memoized callback for removing competitors
+	const removeCompetitor = useCallback((competitorId: string) => {
+		setWizardData((prev) => ({
+			...prev,
+			competitors: prev.competitors.filter(c => c.id !== competitorId)
+		}));
+	}, []);
+
+	// Memoized callback for adding competitors
+	const addCompetitor = useCallback(() => {
+		setWizardData((prev) => ({
+			...prev,
+			competitors: [...prev.competitors, { id: generateId(), name: "", domain: "" }],
+		}));
+	}, []);
+
+	// Memoized callback for updating keyword selection
+	const updateKeywordSelection = useCallback((keyword: string, selected: boolean) => {
+		setWizardData((prev) => ({
+			...prev,
+			keywords: prev.keywords.map(kw => 
+				kw.keyword === keyword ? { ...kw, selected } : kw
+			)
+		}));
+	}, []);
+
+	// Memoized callback for updating all keyword selection
+	const updateAllKeywordSelection = useCallback((selected: boolean, limit?: number) => {
+		setWizardData((prev) => ({
+			...prev,
+			keywords: prev.keywords.map((kw, i) => ({
+				...kw,
+				selected: limit ? (selected && i < limit) : selected,
+			}))
+		}));
+	}, []);
+
+	// Memoized callback for updating products
+	const updateProducts = useCallback((products: string[]) => {
+		setWizardData((prev) => ({ ...prev, products }));
+	}, []);
+
+	// Memoized callback for updating custom prompts
+	const updateCustomPrompts = useCallback((customPrompts: string[]) => {
+		setWizardData((prev) => ({ ...prev, customPrompts }));
+	}, []);
 
 	// Start all parallel processing
 	const startProcessing = async () => {
@@ -490,13 +603,13 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						case "get-competitors":
 							newWizardData.competitors = step.data.competitors.map((competitor: any) => ({
 								...competitor,
-								id: crypto.randomUUID()
+								id: generateId()
 							}));
 							break;
 						case "analyze-personas":
 							newWizardData.personaGroups = step.data.personaGroups.map((group: any) => ({
 								...group,
-								id: crypto.randomUUID()
+								id: generateId()
 							}));
 							break;
 					}
@@ -666,7 +779,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					<p className="text-muted-foreground">What are the main types of products you sell?</p>
 					<EditableTagsInput
 						items={wizardData.products}
-						onValueChange={(products) => setWizardData((prev) => ({ ...prev, products }))}
+						onValueChange={updateProducts}
 						placeholder="Add product..."
 					/>
 				</div>
@@ -683,40 +796,21 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								<Input
 									type="text"
 									value={competitor.name}
-									onChange={(e) => {
-										setWizardData((prev) => ({
-											...prev,
-											competitors: prev.competitors.map(c => 
-												c.id === competitor.id ? { ...c, name: e.target.value } : c
-											)
-										}));
-									}}
+									onChange={(e) => updateCompetitorName(competitor.id, e.target.value)}
 									placeholder="Competitor name"
 									className="flex-1"
 								/>
 								<Input
 									type="text"
 									value={competitor.domain}
-									onChange={(e) => {
-										setWizardData((prev) => ({
-											...prev,
-											competitors: prev.competitors.map(c => 
-												c.id === competitor.id ? { ...c, domain: e.target.value } : c
-											)
-										}));
-									}}
+									onChange={(e) => updateCompetitorDomain(competitor.id, e.target.value)}
 									placeholder="domain.com"
 									className="flex-1"
 								/>
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() => {
-										setWizardData((prev) => ({
-											...prev,
-											competitors: prev.competitors.filter(c => c.id !== competitor.id)
-										}));
-									}}
+									onClick={() => removeCompetitor(competitor.id)}
 									className="p-2"
 								>
 									<X className="h-4 w-4" />
@@ -727,12 +821,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={() => {
-									setWizardData((prev) => ({
-										...prev,
-										competitors: [...prev.competitors, { id: crypto.randomUUID(), name: "", domain: "" }],
-									}));
-								}}
+								onClick={addCompetitor}
 								className="flex items-center gap-2"
 							>
 								<Plus className="h-4 w-4" /> Add Competitor
@@ -759,26 +848,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 									<Input
 										type="text"
 										value={group.name}
-										onChange={(e) => {
-											setWizardData((prev) => ({
-												...prev,
-												personaGroups: prev.personaGroups.map(g => 
-													g.id === group.id ? { ...g, name: e.target.value } : g
-												)
-											}));
-										}}
+										onChange={(e) => updatePersonaGroupName(group.id, e.target.value)}
 										placeholder="Group name"
 										className="flex-1 cursor-pointer"
 									/>
 									<Button
 										variant="outline"
 										size="sm"
-										onClick={() => {
-											setWizardData((prev) => ({
-												...prev,
-												personaGroups: prev.personaGroups.filter(g => g.id !== group.id)
-											}));
-										}}
+										onClick={() => removePersonaGroup(group.id)}
 										className="p-2 cursor-pointer"
 									>
 										<X className="h-4 w-4" />
@@ -786,14 +863,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								</div>
 								<EditableTagsInput
 									items={group.personas}
-									onValueChange={(personas) => {
-										setWizardData((prev) => ({
-											...prev,
-											personaGroups: prev.personaGroups.map(g => 
-												g.id === group.id ? { ...g, personas } : g
-											)
-										}));
-									}}
+									onValueChange={(personas) => updatePersonaGroupPersonas(group.id, personas)}
 									placeholder="Add item..."
 									maxItems={4}
 								/>
@@ -803,12 +873,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							<Button
 								variant="outline"
 								size="sm"
-								onClick={() => {
-									setWizardData((prev) => ({
-										...prev,
-										personaGroups: [...prev.personaGroups, { id: crypto.randomUUID(), name: "", personas: [] }],
-									}));
-								}}
+								onClick={addPersonaGroup}
 								className="flex items-center gap-2 cursor-pointer"
 							>
 								<Plus className="h-4 w-4" /> Add Group
@@ -834,13 +899,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => {
-								const updated = wizardData.keywords.map((kw, i) => ({
-									...kw,
-									selected: i < 30,
-								}));
-								setWizardData((prev) => ({ ...prev, keywords: updated }));
-							}}
+							onClick={() => updateAllKeywordSelection(true, 30)}
 							className="cursor-pointer"
 						>
 							Select All
@@ -848,13 +907,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => {
-								const updated = wizardData.keywords.map((kw) => ({
-									...kw,
-									selected: false,
-								}));
-								setWizardData((prev) => ({ ...prev, keywords: updated }));
-							}}
+							onClick={() => updateAllKeywordSelection(false)}
 							className="cursor-pointer"
 						>
 							Clear All
@@ -869,14 +922,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								<Checkbox
 									id={`keyword-${kw.keyword.replace(/\s+/g, '-')}`}
 									checked={kw.selected}
-									onCheckedChange={(checked) => {
-										setWizardData((prev) => ({
-											...prev,
-											keywords: prev.keywords.map(k => 
-												k.keyword === kw.keyword ? { ...k, selected: checked === true } : k
-											)
-										}));
-									}}
+									onCheckedChange={(checked) => updateKeywordSelection(kw.keyword, checked === true)}
 									className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white dark:data-[state=checked]:border-blue-700 dark:data-[state=checked]:bg-blue-700"
 								/>
 								<div className="flex-1 font-normal">
@@ -901,7 +947,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					<p className="text-muted-foreground">Add any additional prompts you want to track for your brand.</p>
 					<EditableTagsInput
 						items={wizardData.customPrompts}
-						onValueChange={(customPrompts) => setWizardData((prev) => ({ ...prev, customPrompts }))}
+						onValueChange={updateCustomPrompts}
 						placeholder="Add custom prompt..."
 						maxItems={10}
 					/>
