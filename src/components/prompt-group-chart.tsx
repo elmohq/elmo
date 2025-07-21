@@ -130,11 +130,10 @@ export function PromptGroupChart({
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div className="relative">
-						<Skeleton className="h-[250px] w-full" />
-						<div className="absolute inset-0 flex items-center justify-center">
-							<span className="text-sm text-muted-foreground">Evaluating prompt for the first time...</span>
-						</div>
+					<div>
+						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+							Evaluating for the first time...
+						</span>
 					</div>
 				</CardContent>
 			</Card>
