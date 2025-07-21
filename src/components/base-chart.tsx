@@ -33,6 +33,50 @@ interface BaseChartProps {
 	isAnimationActive?: boolean;
 }
 
+// Helper function to calculate average visibility for a competitor
+function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string): number {
+	const validValues = data
+		.map(point => point[competitorId] as number | null)
+		.filter(value => value !== null && value !== undefined) as number[];
+	
+	if (validValues.length === 0) return 0;
+	return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
+}
+
+// Helper function to select top competitors to display
+function selectCompetitorsToDisplay(
+	competitors: Competitor[], 
+	data: ChartDataPoint[], 
+	maxCompetitors: number = 3
+): Competitor[] {
+	// Calculate average visibility for each competitor
+	const competitorsWithAvgVisibility = competitors.map(competitor => ({
+		competitor,
+		avgVisibility: calculateAverageVisibility(data, competitor.id)
+	}));
+
+	// Sort by highest average visibility
+	const sortedByVisibility = competitorsWithAvgVisibility
+		.sort((a, b) => b.avgVisibility - a.avgVisibility);
+
+	// Take top competitors by visibility
+	const topCompetitors = sortedByVisibility
+		.slice(0, maxCompetitors)
+		.map(item => item.competitor);
+
+	// If we have fewer than maxCompetitors, fill from the front of the original competitors list (not sorted)
+	if (topCompetitors.length < maxCompetitors) {
+		const selectedIds = new Set(topCompetitors.map(c => c.id));
+		const remaining = competitors
+			.filter(c => !selectedIds.has(c.id))
+			.slice(0, maxCompetitors - topCompetitors.length);
+		
+		topCompetitors.push(...remaining);
+	}
+
+	return topCompetitors;
+}
+
 export function BaseChart({
 	data,
 	lookback,
@@ -46,10 +90,16 @@ export function BaseChart({
 }: BaseChartProps) {
 	const completeData = filterAndCompleteChartData(data, lookback);
 
-	// Sort competitors alphabetically for consistent ordering
-	const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
+	// Sort all competitors alphabetically for consistent color assignment
+	const sortedAllCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
+	
+	// Select top competitors to display (max 3)
+	const selectedCompetitors = selectCompetitorsToDisplay(competitors, completeData, 3);
+	
+	// Sort selected competitors alphabetically to maintain consistent ordering
+	const sortedSelectedCompetitors = [...selectedCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
-	// Create dynamic chart config based on brand and competitors
+	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",
@@ -60,8 +110,8 @@ export function BaseChart({
 		},
 	};
 
-	// Add competitors to config with subsequent colors
-	sortedCompetitors.forEach((competitor, index) => {
+	// Add ALL competitors to config with consistent colors based on their position in the full sorted list
+	sortedAllCompetitors.forEach((competitor, index) => {
 		const colorIndex = (index + 1) % WHITE_LABEL_CONFIG.chart_colors.length;
 		chartConfig[competitor.id] = {
 			label: competitor.name,
@@ -69,9 +119,9 @@ export function BaseChart({
 		};
 	});
 
-	// Get all data keys (competitors + brand) for rendering lines
+	// Get data keys for rendering lines (only selected competitors + brand)
 	// Brand comes last so it renders on top when dots overlap
-	const dataKeys = [...sortedCompetitors.map((c) => c.id), brand.id];
+	const dataKeys = [...sortedSelectedCompetitors.map((c) => c.id), brand.id];
 
 	return (
 		<div className="flex-1 space-y-2">

@@ -30,8 +30,9 @@ interface WizardStep {
 
 interface WizardData {
 	products: string[];
-	competitors: Array<{ name: string; domain: string }>;
+	competitors: Array<{ id: string; name: string; domain: string }>;
 	personaGroups: Array<{
+		id: string;
 		name: string;
 		personas: string[];
 	}>;
@@ -486,10 +487,16 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							newWizardData.keywords = step.data.keywords;
 							break;
 						case "get-competitors":
-							newWizardData.competitors = step.data.competitors;
+							newWizardData.competitors = step.data.competitors.map((competitor: any) => ({
+								...competitor,
+								id: crypto.randomUUID()
+							}));
 							break;
 						case "analyze-personas":
-							newWizardData.personaGroups = step.data.personaGroups;
+							newWizardData.personaGroups = step.data.personaGroups.map((group: any) => ({
+								...group,
+								id: crypto.randomUUID()
+							}));
 							break;
 					}
 				}
@@ -659,15 +666,18 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					<h2 className="text-2xl font-bold">Review Competitors</h2>
 					<p className="text-muted-foreground">Who are your primary competitors?</p>
 					<div className="space-y-4">
-						{wizardData.competitors.map((competitor, index) => (
-							<div key={index} className="flex gap-2 items-center p-3 border rounded-lg">
+						{wizardData.competitors.map((competitor) => (
+							<div key={competitor.id} className="flex gap-2 items-center p-3 border rounded-lg">
 								<Input
 									type="text"
 									value={competitor.name}
 									onChange={(e) => {
-										const newCompetitors = [...wizardData.competitors];
-										newCompetitors[index] = { ...competitor, name: e.target.value };
-										setWizardData((prev) => ({ ...prev, competitors: newCompetitors }));
+										setWizardData((prev) => ({
+											...prev,
+											competitors: prev.competitors.map(c => 
+												c.id === competitor.id ? { ...c, name: e.target.value } : c
+											)
+										}));
 									}}
 									placeholder="Competitor name"
 									className="flex-1"
@@ -676,9 +686,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 									type="text"
 									value={competitor.domain}
 									onChange={(e) => {
-										const newCompetitors = [...wizardData.competitors];
-										newCompetitors[index] = { ...competitor, domain: e.target.value };
-										setWizardData((prev) => ({ ...prev, competitors: newCompetitors }));
+										setWizardData((prev) => ({
+											...prev,
+											competitors: prev.competitors.map(c => 
+												c.id === competitor.id ? { ...c, domain: e.target.value } : c
+											)
+										}));
 									}}
 									placeholder="domain.com"
 									className="flex-1"
@@ -687,9 +700,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 									variant="outline"
 									size="sm"
 									onClick={() => {
-										const newCompetitors = [...wizardData.competitors];
-										newCompetitors.splice(index, 1);
-										setWizardData((prev) => ({ ...prev, competitors: newCompetitors }));
+										setWizardData((prev) => ({
+											...prev,
+											competitors: prev.competitors.filter(c => c.id !== competitor.id)
+										}));
 									}}
 									className="p-2"
 								>
@@ -704,7 +718,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								onClick={() => {
 									setWizardData((prev) => ({
 										...prev,
-										competitors: [...prev.competitors, { name: "", domain: "" }],
+										competitors: [...prev.competitors, { id: crypto.randomUUID(), name: "", domain: "" }],
 									}));
 								}}
 								className="flex items-center gap-2"
@@ -727,16 +741,19 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					<h2 className="text-2xl font-bold">Review Targeting Groups</h2>
 					<p className="text-muted-foreground">Review categories of people or use cases you want to track.</p>
 					<div className="space-y-4">
-						{wizardData.personaGroups.map((group, index) => (
-							<div key={index} className="space-y-3 p-4 border rounded-lg">
+						{wizardData.personaGroups.map((group) => (
+							<div key={group.id} className="space-y-3 p-4 border rounded-lg">
 								<div className="flex items-center gap-2">
 									<Input
 										type="text"
 										value={group.name}
 										onChange={(e) => {
-											const newGroups = [...wizardData.personaGroups];
-											newGroups[index] = { ...group, name: e.target.value };
-											setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
+											setWizardData((prev) => ({
+												...prev,
+												personaGroups: prev.personaGroups.map(g => 
+													g.id === group.id ? { ...g, name: e.target.value } : g
+												)
+											}));
 										}}
 										placeholder="Group name"
 										className="flex-1 cursor-pointer"
@@ -745,9 +762,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 										variant="outline"
 										size="sm"
 										onClick={() => {
-											const newGroups = [...wizardData.personaGroups];
-											newGroups.splice(index, 1);
-											setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
+											setWizardData((prev) => ({
+												...prev,
+												personaGroups: prev.personaGroups.filter(g => g.id !== group.id)
+											}));
 										}}
 										className="p-2 cursor-pointer"
 									>
@@ -757,9 +775,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								<EditableTagsInput
 									items={group.personas}
 									onValueChange={(personas) => {
-										const newGroups = [...wizardData.personaGroups];
-										newGroups[index] = { ...group, personas };
-										setWizardData((prev) => ({ ...prev, personaGroups: newGroups }));
+										setWizardData((prev) => ({
+											...prev,
+											personaGroups: prev.personaGroups.map(g => 
+												g.id === group.id ? { ...g, personas } : g
+											)
+										}));
 									}}
 									placeholder="Add item..."
 									maxItems={4}
@@ -773,7 +794,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								onClick={() => {
 									setWizardData((prev) => ({
 										...prev,
-										personaGroups: [...prev.personaGroups, { name: "", personas: [] }],
+										personaGroups: [...prev.personaGroups, { id: crypto.randomUUID(), name: "", personas: [] }],
 									}));
 								}}
 								className="flex items-center gap-2 cursor-pointer"
@@ -828,18 +849,21 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						</Button>
 					</div>
 					<div className="space-y-2">
-						{wizardData.keywords.map((kw, index) => (
+						{wizardData.keywords.map((kw) => (
 							<Label
-								key={index}
+								key={kw.keyword}
 								className="hover:bg-accent/50 flex items-center gap-3 rounded-lg border p-3 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50 dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950 cursor-pointer"
 							>
 								<Checkbox
-									id={`keyword-${index}`}
+									id={`keyword-${kw.keyword.replace(/\s+/g, '-')}`}
 									checked={kw.selected}
 									onCheckedChange={(checked) => {
-										const updated = [...wizardData.keywords];
-										updated[index] = { ...kw, selected: checked === true };
-										setWizardData((prev) => ({ ...prev, keywords: updated }));
+										setWizardData((prev) => ({
+											...prev,
+											keywords: prev.keywords.map(k => 
+												k.keyword === kw.keyword ? { ...k, selected: checked === true } : k
+											)
+										}));
 									}}
 									className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white dark:data-[state=checked]:border-blue-700 dark:data-[state=checked]:bg-blue-700"
 								/>
