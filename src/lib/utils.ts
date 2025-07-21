@@ -7,6 +7,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Get the display name for a model with proper capitalization
+ * @param model - The model identifier string
+ * @returns Formatted model name (e.g., "openai" -> "OpenAI")
+ */
+export function getModelDisplayName(model: string): string {
+	switch (model) {
+		case "openai": return "OpenAI";
+		case "anthropic": return "Anthropic"; 
+		case "google": return "Google";
+		default: return model;
+	}
+}
+
+/**
  * Calculate the average AI visibility across all runs from the last 30 days for enabled prompts
  * Only includes prompts that have at least one brand or competitor mention in the period
  * @param prompts - Array of prompts for the brand

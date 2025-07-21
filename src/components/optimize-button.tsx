@@ -5,6 +5,7 @@ import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "./ui/dropdown-menu";
 import { generateOptimizationUrl } from "@/lib/chart-utils";
+import { getModelDisplayName } from "@/lib/utils";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
 
@@ -48,14 +49,6 @@ export function OptimizeButton({
 	modelWebQueryMappings = {},
 }: OptimizeButtonProps) {
 	// Helper functions
-	const getModelName = (model: string) => {
-		switch (model) {
-			case "openai": return "OpenAI";
-			case "anthropic": return "Anthropic"; 
-			case "google": return "Google";
-			default: return model;
-		}
-	};
 
 	const createOptimizationUrl = (promptName: string, promptId: string, model?: string) => {
 		if (!brandId) return "#";
@@ -120,7 +113,7 @@ export function OptimizeButton({
 	const isMultiMode = prompts.length > 0;
 
 	const renderModelSection = (model: string, modelIndex: number, isAllModelsMode: boolean = false) => {
-		const modelName = getModelName(model);
+		const modelName = getModelDisplayName(model);
 		const items = [];
 
 		if (modelIndex > 0) {

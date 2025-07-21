@@ -18,6 +18,13 @@ export function SiteHeader() {
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
 	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] ? pathSegments[brandIndex + 2] : "";
+	
+	// Check if we're on a specific prompt detail page (e.g., /app/foo/prompts/uuid)
+	const isPromptDetailPage = pageSegment === "prompts" && 
+		pathSegments[brandIndex + 3] && 
+		pathSegments[brandIndex + 3] !== "edit" &&
+		// Basic UUID pattern check (8-4-4-4-12 characters)
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathSegments[brandIndex + 3]);
 
 	// Capitalize the page segment or default to Dashboard
 	const pageName = pageSegment ? pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1) : "Dashboard";
@@ -41,7 +48,15 @@ export function SiteHeader() {
 						<h1 className="text-base font-medium cursor-pointer hover:underline">{brand?.name || "Dashboard"}</h1>
 					</Link>
 					<span className="text-base font-medium text-muted-foreground">/</span>
-					{isEditPage ? (
+					{isPromptDetailPage ? (
+						<>
+							<Link href={`/app/${brand?.id}/prompts`}>
+								<span className="text-base font-medium cursor-pointer hover:underline">Prompts</span>
+							</Link>
+							<span className="text-base font-medium text-muted-foreground">/</span>
+							<span className="text-base font-medium text-muted-foreground">Prompt History</span>
+						</>
+					) : isEditPage ? (
 						<>
 							<Link href={getBasePath()}>
 								<span className="text-base font-medium cursor-pointer hover:underline">{pageName}</span>
@@ -54,7 +69,7 @@ export function SiteHeader() {
 					)}
 				</div>
 				<div className="ml-auto flex items-center gap-2">
-					{!isEditPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
+					{!isEditPage && !isPromptDetailPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
 						<Link href={`/app/${brand?.id}/prompts/edit`}>
 							<Button size="sm" className="hidden h-7 sm:flex cursor-pointer">
 								<IconEditCircle />

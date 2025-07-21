@@ -5,6 +5,7 @@ import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
 import { OptimizeButton } from "./optimize-button";
+import { HistoryButton } from "./history-button";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
@@ -127,8 +128,15 @@ export function PromptChart({
 	if (!hasVisibilityData) {
 		return (
 			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<CardTitle className="text-sm">{promptName}</CardTitle>
+								<CardHeader className="flex justify-between items-center px-3">
+					<div className="flex items-center gap-2">
+						<HistoryButton
+							promptName={promptName}
+							promptId={promptId}
+							brandId={brand?.id}
+						/>
+						<CardTitle className="text-sm">{promptName}</CardTitle>
+					</div>
 					<div className="flex items-center gap-2">
 						<OptimizeButton
 							promptName={promptName}
@@ -156,8 +164,15 @@ export function PromptChart({
 
 	return (
 		<Card className="py-3 gap-3">
-			<CardHeader className="flex justify-between items-center px-3">
-				<CardTitle className="text-sm">{promptName}</CardTitle>
+						<CardHeader className="flex justify-between items-center px-3">
+				<div className="flex items-center gap-2">
+					<HistoryButton
+						promptName={promptName}
+						promptId={promptId}
+						brandId={brand?.id}
+					/>
+					<CardTitle className="text-sm">{promptName}</CardTitle>
+				</div>
 				<div className="flex items-center gap-2">
 					{lastBrandVisibility !== null && (
 						<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>

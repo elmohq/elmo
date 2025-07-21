@@ -5,6 +5,7 @@ import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
 import { OptimizeButton } from "./optimize-button";
+import { HistoryButton } from "./history-button";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
@@ -144,15 +145,23 @@ export function PromptGroupChart({
 	if (!hasVisibilityData) {
 		return (
 			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<CardTitle className="text-sm">
-						{prompts[0]?.groupPrefix}{" "}
-						<span className="text-muted-foreground">
-							{`<`}
-							{prompts[0]?.groupCategory?.toLowerCase()}
-							{`>`}
-						</span>
-					</CardTitle>
+								<CardHeader className="flex justify-between items-center px-3">
+					<div className="flex items-center gap-2">
+						<HistoryButton
+							brandId={brand?.id}
+							groupName={groupName}
+							groupPrefix={prompts[0]?.groupPrefix || undefined}
+							prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+						/>
+						<CardTitle className="text-sm">
+							{prompts[0]?.groupPrefix}{" "}
+							<span className="text-muted-foreground">
+								{`<`}
+								{prompts[0]?.groupCategory?.toLowerCase()}
+								{`>`}
+							</span>
+						</CardTitle>
+					</div>
 					<div className="flex items-center gap-2">
 						<OptimizeButton
 							brandId={brand?.id}
@@ -182,14 +191,22 @@ export function PromptGroupChart({
 	return (
 		<Card className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
-				<CardTitle className="text-sm">
-					{prompts[0]?.groupPrefix}{" "}
-					<span className="text-muted-foreground">
-						{`<`}
-						{prompts[0]?.groupCategory?.toLowerCase()}
-						{`>`}
-					</span>
-				</CardTitle>
+				<div className="flex items-center gap-2">
+					<HistoryButton
+						brandId={brand?.id}
+						groupName={groupName}
+						groupPrefix={prompts[0]?.groupPrefix || undefined}
+						prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+					/>
+					<CardTitle className="text-sm">
+						{prompts[0]?.groupPrefix}{" "}
+						<span className="text-muted-foreground">
+							{`<`}
+							{prompts[0]?.groupCategory?.toLowerCase()}
+							{`>`}
+						</span>
+					</CardTitle>
+				</div>
 				<div className="flex items-center gap-2">
 					<OptimizeButton
 						brandId={brand?.id}

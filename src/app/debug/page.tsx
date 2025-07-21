@@ -6,8 +6,6 @@ import BrandsDebug from "./brands-debug";
 import WizardDebug from "./wizard-debug";
 import ChartDebug from "./chart-debug";
 import QueueDebug from "./queue-debug";
-import PromptRunsDebug from "./prompt-runs-debug";
-
 const management = new ManagementClient({
 	domain: process.env.AUTH0_MGMT_API_DOMAIN!,
 	clientId: process.env.AUTH0_CLIENT_ID!,
@@ -20,8 +18,6 @@ export default async function MetadataPage() {
 
 	return (
 		<div className="space-y-8 p-4">
-			<PromptRunsDebug />
-
 			<QueueDebug />
 
 			<ChartDebug />
