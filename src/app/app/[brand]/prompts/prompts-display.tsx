@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
+import { MdSelectAll } from "react-icons/md";
 import {
 	usePromptRuns,
 	usePromptRunsWithWebSearch,
@@ -68,7 +69,7 @@ function getGroupColor(groupName: string) {
 	}
 }
 
-type ModelType = "openai" | "anthropic" | "google";
+type ModelType = "openai" | "anthropic" | "google" | "all";
 
 function getModelIcon(modelType: ModelType) {
 	switch (modelType) {
@@ -78,6 +79,8 @@ function getModelIcon(modelType: ModelType) {
 			return <SiAnthropic className="size-3" />;
 		case "google":
 			return <SiGoogle className="size-3" />;
+		case "all":
+			return <MdSelectAll className="size-3" />;
 	}
 }
 
@@ -107,27 +110,33 @@ export function PromptsDisplay({
 	excludeModels = [],
 }: PromptsDisplayProps) {
 	// Filter available models based on excludeModels prop
-	const availableModels: ModelType[] = (["openai", "anthropic", "google"] as ModelType[]).filter(
+	const availableIndividualModels: ("openai" | "anthropic" | "google")[] = (["openai", "anthropic", "google"] as const).filter(
 		(model) => !excludeModels.includes(model),
 	);
+	
+	// Add "all" option if there are multiple models available
+	const availableModels: ModelType[] = availableIndividualModels.length > 1 
+		? ["all", ...availableIndividualModels]
+		: availableIndividualModels;
 
-	// Ensure default model is not excluded
-	const defaultModel = availableModels.includes("openai") ? "openai" : availableModels[0];
+	// Set default model - prefer "all" if available, otherwise use first available
+	const defaultModel = availableModels.includes("all") ? "all" : availableModels[0];
 	const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
-	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1m");
+	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1w");
 
 	const { brand } = useBrand();
 
 	// Use appropriate hook based on webSearchEnabled prop
+	const modelGroupParam = selectedModel === "all" ? undefined : selectedModel;
 	const {
 		promptRuns,
 		isLoading: isLoadingRuns,
 		isError: runsError,
 	} = webSearchEnabled === true
-		? usePromptRunsWithWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
+		? usePromptRunsWithWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: modelGroupParam })
 		: webSearchEnabled === false
-			? usePromptRunsWithoutWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel })
-			: usePromptRuns(brand?.id, { lookback: selectedLookback, modelGroup: selectedModel });
+			? usePromptRunsWithoutWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: modelGroupParam })
+			: usePromptRuns(brand?.id, { lookback: selectedLookback, modelGroup: modelGroupParam });
 
 	// Filter to only active prompts
 	const activePrompts = prompts.filter((prompt) => prompt.enabled);
@@ -295,6 +304,11 @@ export function PromptsDisplay({
 				>
 					<div className="sticky top-[var(--header-height)] z-10 bg-background pt-6 pb-6 -mx-6 px-6 flex justify-between items-center">
 						<TabsList>
+							{availableModels.includes("all") && (
+								<TabsTrigger value="all" className="cursor-pointer">
+									{getModelIcon("all")} <span>All LLMs</span>
+								</TabsTrigger>
+							)}
 							{availableModels.includes("openai") && (
 								<TabsTrigger value="openai" className="cursor-pointer">
 									{getModelIcon("openai")} <span>OpenAI</span>
