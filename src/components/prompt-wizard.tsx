@@ -374,6 +374,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand, revalidate } = useBrand();
 	const [currentPhase, setCurrentPhase] = useState<"idle" | "processing" | "review" | "complete">("idle");
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [isCreatingPrompts, setIsCreatingPrompts] = useState(false);
 	const [wizardData, setWizardData] = useState<WizardData>({
 		products: [],
 		competitors: [],
@@ -511,14 +512,20 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const createPrompts = async () => {
 		if (!brand?.id) return;
 
+		setIsCreatingPrompts(true);
 		try {
 			const success = await apiCalls.createPrompts(brand.id, wizardData);
 			if (success) {
 				await revalidate();
 				onComplete();
+			} else {
+				// Handle API failure
+				console.error("Failed to create prompts");
 			}
 		} catch (error) {
 			console.error("Error creating prompts:", error);
+		} finally {
+			setIsCreatingPrompts(false);
 		}
 	};
 
@@ -526,14 +533,19 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const skipOnboarding = async () => {
 		if (!brand?.id) return;
 
+		setIsCreatingPrompts(true);
 		try {
 			const success = await apiCalls.skipOnboarding(brand.id);
 			if (success) {
 				await revalidate();
 				onComplete();
+			} else {
+				console.error("Failed to skip onboarding");
 			}
 		} catch (error) {
 			console.error("Error skipping onboarding:", error);
+		} finally {
+			setIsCreatingPrompts(false);
 		}
 	};
 
@@ -570,7 +582,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					<Button
 						variant="outline"
 						onClick={skipOnboarding}
-						disabled={isGenerating}
+						disabled={isGenerating || isCreatingPrompts}
 						className="flex items-center gap-2 cursor-pointer"
 					>
 						Skip
@@ -615,7 +627,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<Loader2 className="h-4 w-4 animate-spin" />
 						Generating...
 					</Button>
-					<Button variant="outline" onClick={skipOnboarding} className="flex items-center gap-2 cursor-pointer">
+					<Button variant="outline" onClick={skipOnboarding} disabled={isCreatingPrompts} className="flex items-center gap-2 cursor-pointer">
 						Skip
 					</Button>
 				</div>
@@ -899,11 +911,20 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 				<div className="space-y-2">
 					<div className="flex gap-2">
-						<Button onClick={createPrompts} className="flex items-center gap-2 cursor-pointer">
-							<Rocket className="h-4 w-4" />
-							Start Tracking
+						<Button onClick={createPrompts} disabled={isCreatingPrompts} className="flex items-center gap-2 cursor-pointer">
+							{isCreatingPrompts ? (
+								<>
+									<Loader2 className="h-4 w-4 animate-spin" />
+									Processing...
+								</>
+							) : (
+								<>
+									<Rocket className="h-4 w-4" />
+									Start Tracking
+								</>
+							)}
 						</Button>
-						<Button variant="outline" onClick={skipOnboarding} className="flex items-center gap-2 cursor-pointer">
+						<Button variant="outline" onClick={skipOnboarding} disabled={isCreatingPrompts} className="flex items-center gap-2 cursor-pointer">
 							Cancel
 						</Button>
 					</div>
