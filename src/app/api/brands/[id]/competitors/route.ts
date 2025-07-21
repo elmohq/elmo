@@ -4,13 +4,11 @@ import { competitors } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { MAX_COMPETITORS } from "@/lib/constants";
 
 interface Params {
 	id: string;
 }
-
-// Maximum limit (same as wizard)
-const MAX_COMPETITORS = 3;
 
 // GET all competitors for a brand
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {

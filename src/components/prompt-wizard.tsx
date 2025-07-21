@@ -12,6 +12,7 @@ import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket, Plus, X 
 import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@/components/ui/tags-input";
 import { Separator } from "@/components/ui/separator";
+import { MAX_COMPETITORS } from "@/lib/constants";
 
 // Step status types
 type StepStatus = "pending" | "running" | "completed" | "error" | "blocked" | "cancelled";
@@ -696,7 +697,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								</Button>
 							</div>
 						))}
-						{wizardData.competitors.length < 3 && (
+						{wizardData.competitors.length < MAX_COMPETITORS && (
 							<Button
 								variant="outline"
 								size="sm"
@@ -711,9 +712,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								<Plus className="h-4 w-4" /> Add Competitor
 							</Button>
 						)}
-						{wizardData.competitors.length >= 3 && (
+						{wizardData.competitors.length >= MAX_COMPETITORS && (
 							<p className="text-xs text-muted-foreground">
-								Maximum of 3 competitors allowed. Remove a competitor to add a new one.
+								Maximum of {MAX_COMPETITORS} competitors allowed. Remove a competitor to add a new one.
 							</p>
 						)}
 					</div>

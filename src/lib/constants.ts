@@ -1,6 +1,9 @@
 // Constants for prompt processing
 export const RUNS_PER_PROMPT = 5;
 
+// Maximum limits for brand resources
+export const MAX_COMPETITORS = 50;
+
 // Model configurations
 export const AI_MODELS = {
 	OPENAI: {

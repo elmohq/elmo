@@ -11,6 +11,7 @@ import { Plus, X } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { MAX_COMPETITORS } from "@/lib/constants";
 
 interface Competitor {
 	name: string;
@@ -56,7 +57,7 @@ export default function BrandSettingsPage() {
 	};
 
 	const addCompetitor = () => {
-		if (competitors.length < 3) {
+		if (competitors.length < MAX_COMPETITORS) {
 			setCompetitors([...competitors, { name: "", domain: "" }]);
 		}
 	};
@@ -230,7 +231,7 @@ export default function BrandSettingsPage() {
 							</div>
 						))}
 
-						{competitors.length < 3 && (
+						{competitors.length < MAX_COMPETITORS && (
 							<Button
 								type="button"
 								variant="outline"
@@ -243,14 +244,14 @@ export default function BrandSettingsPage() {
 							</Button>
 						)}
 
-						{competitors.length >= 3 && (
+						{competitors.length >= MAX_COMPETITORS && (
 							<p className="text-xs text-muted-foreground">
-								Maximum of 3 competitors allowed. Remove a competitor to add a new one.
+								Maximum of {MAX_COMPETITORS} competitors allowed. Remove a competitor to add a new one.
 							</p>
 						)}
 
 						<p className="text-xs text-muted-foreground">
-							<strong>{competitors.filter((c) => c.name.trim() && c.domain.trim()).length}/3</strong> competitors
+							<strong>{competitors.filter((c) => c.name.trim() && c.domain.trim()).length}/{MAX_COMPETITORS}</strong> competitors
 							configured
 						</p>
 					</div>

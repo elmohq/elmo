@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getWebsiteExcerpt } from "@/lib/website-excerpt";
+import { MAX_COMPETITORS } from "@/lib/constants";
 
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 			? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 			: "\n\n";
 
-		const prompt = `What are up to 3 direct to consumer competitors of ${website} (which sells ${productList}). 
+		const prompt = `What are up to ${MAX_COMPETITORS} direct to consumer competitors of ${website} (which sells ${productList}). 
 		${excerptContext}
 The competitors should sell similar products in a similar way to a similar audience.
 
@@ -61,7 +62,7 @@ Please search for current market information to identify direct competitors.
 For each competitor, provide both the company name and their website domain. 
 Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. 
 The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". 
-Contain the JSON within <out> xml tags. List up to 3 competitors.
+Contain the JSON within <out> xml tags. List up to ${MAX_COMPETITORS} competitors.
 
 Do not include competitors that sell similar types of products but would not be considered as direct competitors to ${website}.
 If ${website} is very small, it may not have any direct competitors. In this case, return an empty array.
@@ -76,7 +77,7 @@ Example format:
 
 		const response = await anthropic.messages.create({
 			model: "claude-sonnet-4-20250514",
-			max_tokens: 1000,
+			max_tokens: 10000,
 			messages: [
 				{
 					role: "user",
@@ -106,6 +107,8 @@ Example format:
 		const textBlocks = response.content.filter((block) => block.type === "text");
 		const allTextContent = textBlocks.map((block) => block.text).join("\n");
 
+		console.log("ALL TEXT CONTENT:", allTextContent);
+
 		// Extract content between <out> tags
 		const match = allTextContent.match(/<out>([\s\S]*?)<\/out>/);
 		let competitors: Array<{ name: string; domain: string }> = [];
@@ -121,7 +124,7 @@ Example format:
 							name: c.name.trim(),
 							domain: cleanDomain(c.domain.trim()),
 						}))
-						.slice(0, 3);
+						.slice(0, MAX_COMPETITORS);
 				}
 			} catch (parseError) {
 				// Log error and return empty list

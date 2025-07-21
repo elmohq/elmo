@@ -4,10 +4,10 @@ import { prompts, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, count } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { MAX_COMPETITORS } from "@/lib/constants";
 
 // Maximum limits
 const MAX_PROMPTS = 150;
-const MAX_COMPETITORS = 3;
 const MAX_PERSONA_GROUP_MEMBERS = 4;
 
 export async function POST(request: NextRequest) {
