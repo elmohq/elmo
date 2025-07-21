@@ -66,7 +66,10 @@ export async function getAppMetadata(): Promise<AppMetadata> {
 	}
 }
 
-export async function getElmoOrgs(): Promise<ElmoBrandMetadata[]> {
+export async function getElmoOrgs(forceRefresh = false): Promise<ElmoBrandMetadata[]> {
+	if (forceRefresh) {
+		await clearAppMetadataCache();
+	}
 	const appMetadata = await getAppMetadata();
 	return appMetadata.elmo_orgs || [];
 }

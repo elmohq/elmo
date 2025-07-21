@@ -4,7 +4,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 import FullPageCard from "@/components/full-page-card";
 
 export default async function BrandSwitcherPage() {
-	const orgs = await getElmoOrgs();
+	const orgs = await getElmoOrgs(true);
 
 	return (
 		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
