@@ -64,7 +64,10 @@ export function OptimizeButton({
 			? modelWebQueryMappings[model]?.[promptId] 
 			: webQueryMapping[promptId];
 		
-		return generateOptimizationUrl(promptName, brandId, webSearchEnabled, webQuery);
+		// Fall back to prompt's value if no web query is found
+		const finalWebQuery = webQuery || promptName;
+		
+		return generateOptimizationUrl(promptName, brandId, webSearchEnabled, finalWebQuery);
 	};
 
 	const createSimpleButton = (promptName: string, promptId: string, model?: string) => (

@@ -75,7 +75,8 @@ async function runWithOpenAI(promptValue: string): Promise<{
 		const result = await generateText({
 			model: openai.responses(AI_MODELS.OPENAI.MODEL),
 			prompt: promptValue,
-			toolChoice: "required",
+            // if tool choice is required, it always just uses the input prompt instead of generating a relevant query
+			toolChoice: "auto",
 			tools: {
 				web_search_preview: openai.tools.webSearchPreview({
 					searchContextSize: "low",
@@ -150,7 +151,7 @@ async function runWithAnthropic(promptValue: string): Promise<{
 				{
 					type: "web_search_20250305",
 					name: "web_search",
-					max_uses: 10,
+					max_uses: 1,
 				},
 			],
 		});
