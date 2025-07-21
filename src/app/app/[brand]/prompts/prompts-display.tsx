@@ -293,7 +293,7 @@ export function PromptsDisplay({
 					value={selectedModel}
 					onValueChange={(value) => setSelectedModel(value as ModelType)}
 				>
-					<div className="sticky top-[var(--header-height)] z-10 bg-background pt-6 pb-4 -mx-6 px-6 flex justify-between items-center">
+					<div className="sticky top-[var(--header-height)] z-10 bg-background pt-6 pb-6 -mx-6 px-6 flex justify-between items-center">
 						<TabsList>
 							{availableModels.includes("openai") && (
 								<TabsTrigger value="openai" className="cursor-pointer">
