@@ -8,7 +8,7 @@ export const MAX_COMPETITORS = 50;
 export const AI_MODELS = {
 	OPENAI: {
 		GROUP: "openai" as const,
-		MODEL: "gpt-4o-mini",
+		MODEL: "gpt-4.1-mini",
 	},
 	ANTHROPIC: {
 		GROUP: "anthropic" as const,
