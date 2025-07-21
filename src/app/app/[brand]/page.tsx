@@ -81,21 +81,21 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]">
 						<CardDescription>Brand</CardDescription>
-						<CardTitle className="font-semibold text-5xl">{brand?.name}</CardTitle>
+						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">{brand?.name}</CardTitle>
 					</CardHeader>
 				</Card>
 
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Prompts Tracked</CardDescription>
-						<CardTitle className="font-semibold text-5xl">{totalPrompts}</CardTitle>
+						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">{totalPrompts}</CardTitle>
 					</CardHeader>
 				</Card>
 
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Prompt Evals (30d)</CardDescription>
-						<CardTitle className="font-semibold text-5xl">{allPromptRuns?.length || 0}</CardTitle>
+						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">{allPromptRuns?.length || 0}</CardTitle>
 					</CardHeader>
 				</Card>
 
@@ -104,9 +104,9 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
 							{!allPromptRuns?.length ? (
-								<CardTitle className="font-semibold text-5xl text-muted-foreground">TBD</CardTitle>
+								<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">TBD</CardTitle>
 							) : (
-								<CardTitle className={`font-semibold text-5xl ${getVisibilityTextColor(averageVisibility)}`}>
+								<CardTitle className={`font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl ${getVisibilityTextColor(averageVisibility)}`}>
 									{averageVisibility}%
 								</CardTitle>
 							)}
@@ -116,7 +116,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 			</div>
 
 			{/* Navigation Cards */}
-			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+			<div className="w-full">
 				<Link href={`/app/${brandId}/prompts`}>
 					<Card className="gap-3 py-6 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors">
 						<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]">
@@ -133,27 +133,6 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 								Monitor what search queries AI models use when answering questions about your brand. These prompts use
 								underlying web search technology to fetch current information, giving you visibility into which search
 								results can be optimized to improve your brand's representation.
-							</p>
-						</CardContent>
-					</Card>
-				</Link>
-
-				<Link href={`/app/${brandId}/reputation`}>
-					<Card className="gap-3 py-6 shadow-sm cursor-pointer hover:bg-muted/50 transition-colors">
-						<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]">
-							<div className="flex items-center justify-between w-full">
-								<CardTitle className="font-semibold text-lg">Brand Reputation</CardTitle>
-								<Button variant="ghost" size="icon" asChild>
-									<IconChevronRight className="h-4 w-4" />
-								</Button>
-							</div>
-						</CardHeader>
-						<Separator />
-						<CardContent className="px-6 pb-0 pt-3">
-							<p className="text-sm text-muted-foreground">
-								Understand what preconceptions about your brand are built into AI models during training. This
-								represents an aggregate of data found on the web at the time each model version was created, showing how
-								your brand is represented in the model's pre-trained knowledge without real-time search.
 							</p>
 						</CardContent>
 					</Card>
