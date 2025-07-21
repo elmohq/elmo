@@ -293,7 +293,7 @@ export function PromptsDisplay({
 					value={selectedModel}
 					onValueChange={(value) => setSelectedModel(value as ModelType)}
 				>
-					<div className="flex justify-between items-center">
+					<div className="sticky top-[var(--header-height)] z-10 bg-background pt-6 pb-4 -mx-6 px-6 flex justify-between items-center">
 						<TabsList>
 							{availableModels.includes("openai") && (
 								<TabsTrigger value="openai" className="cursor-pointer">
@@ -331,7 +331,7 @@ export function PromptsDisplay({
 						</div>
 					</div>
 
-					<TabsContent value={selectedModel} className="mt-6">
+					<TabsContent value={selectedModel} className="mt-0">
 						<div className="space-y-6">
 							{/* Display all items (both individual and group prompts) sorted by mention percentage */}
 							{!isLoadingRuns &&
