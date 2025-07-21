@@ -37,7 +37,7 @@ export default async function OrgLayout({
 			}
 		>
 			<AppSidebar variant="sidebar" />
-			<SidebarInset>
+			<SidebarInset className="ml-[var(--sidebar-width)]">
 				<SiteHeader />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">
