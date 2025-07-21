@@ -62,6 +62,18 @@ export function PromptGroupChart({
 	const groupVisibilityData =
 		isLoading || !brand ? [] : calculateGroupVisibilityData(promptRuns || [], prompts, brand, competitors, lookback);
 
+	// Check if there's any non-zero visibility data across all brands and competitors for any prompt in the group
+	const hasVisibilityData = groupVisibilityData.some(promptData => {
+		return promptData.chartData.some(dataPoint => {
+			// Check if any brand (main brand or competitors) has non-zero visibility
+			const allBrandIds = [brand?.id, ...(competitors?.map(c => c.id) || [])].filter(Boolean);
+			return allBrandIds.some(brandId => {
+				const visibility = dataPoint[brandId as string];
+				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
+			});
+		});
+	});
+
 	// Create web query mapping for optimization URLs
 	const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
 
@@ -111,6 +123,79 @@ export function PromptGroupChart({
 						<div className="absolute inset-0 flex items-center justify-center">
 							<span className="text-sm text-muted-foreground">Evaluating prompt for the first time...</span>
 						</div>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	// Show "No brands found" message when there's no visibility data for any prompts in the group
+	if (!hasVisibilityData) {
+		return (
+			<Card className="py-3 gap-3">
+				<CardHeader className="flex justify-between items-center px-3">
+					<CardTitle className="text-sm">
+						{prompts[0]?.groupPrefix}{" "}
+						<span className="text-muted-foreground">
+							{`<`}
+							{prompts[0]?.groupCategory?.toLowerCase()}
+							{`>`}
+						</span>
+					</CardTitle>
+					<div className="flex items-center gap-2">
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
+									Optimize with {WHITE_LABEL_CONFIG.parent_name}
+									<IconChevronDown size={12} className="size-3 ml-0.5" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-100">
+								{prompts.map((prompt) => {
+									const oldestWebQuery = webQueryMapping[prompt.id];
+									const optimizationUrl =
+										brand?.id
+											? generateOptimizationUrl(prompt.value, brand.id, webSearchEnabled, oldestWebQuery)
+											: "#";
+
+									return (
+										<DropdownMenuItem key={prompt.id} className="cursor-pointer" asChild>
+											<a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
+												<div className="flex items-center justify-between w-full text-xs">
+													<span>
+														optimize{" "}
+														<span className="text-muted-foreground">
+															{prompts[0]?.groupPrefix} {prompt.value}
+														</span>
+													</span>
+													<IconExternalLink size={12} className="size-3 ml-2" />
+												</div>
+											</a>
+										</DropdownMenuItem>
+									);
+								})}
+								{prompts.length === 0 && (
+									<DropdownMenuItem className="cursor-pointer" asChild>
+										<a href="#" target="_blank" rel="noopener noreferrer">
+											<div className="flex items-center justify-between w-full text-xs">
+												<span>
+													optimize <span className="text-muted-foreground">{groupName}</span>
+												</span>
+												<IconExternalLink size={12} className="size-3 ml-2" />
+											</div>
+										</a>
+									</DropdownMenuItem>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+				</CardHeader>
+				<Separator className="py-0 my-0" />
+				<CardContent className="px-3">
+					<div>
+						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+							No brands found.
+						</span>
 					</div>
 				</CardContent>
 			</Card>

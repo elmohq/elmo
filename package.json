@@ -7,7 +7,8 @@
       "@tailwindcss/oxide",
       "esbuild",
       "msgpackr-extract",
-      "sharp"
+      "sharp",
+      "unrs-resolver"
     ]
   },
   "scripts": {
@@ -16,6 +17,8 @@
     "start": "next start",
     "lint": "biome lint",
     "format": "biome format --write .",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "queuedash": "tsx --env-file=.env src/queuedash/queuedash.ts",
     "worker:dev": "tsx --env-file=.env src/worker/worker.ts",
     "worker:prod": "tsx src/worker/worker.ts"
@@ -70,12 +73,15 @@
     "@biomejs/biome": "2.0.6",
     "@tailwindcss/postcss": "^4",
     "@types/express": "^5.0.3",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.15.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.4",
+    "jest": "^30.0.4",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.0",
     "tsx": "^4.20.3",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"

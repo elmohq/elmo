@@ -55,6 +55,16 @@ export function PromptChart({
 	const chartData =
 		isLoading || !brand ? [] : calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
 
+	// Check if there's any non-zero visibility data across all brands and competitors
+	const hasVisibilityData = chartData.some(dataPoint => {
+		// Check if any brand (main brand or competitors) has non-zero visibility
+		const allBrandIds = [brand?.id, ...(competitors?.map(c => c.id) || [])].filter(Boolean);
+		return allBrandIds.some(brandId => {
+			const visibility = dataPoint[brandId as string];
+			return visibility !== null && visibility !== undefined && Number(visibility) > 0;
+		});
+	});
+
 	// Get the last visibility value for the badge (brand visibility)
 	const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
 	const lastBrandVisibility = lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
@@ -98,6 +108,33 @@ export function PromptChart({
 						<div className="absolute inset-0 flex items-center justify-center">
 							<span className="text-sm text-muted-foreground">Evaluating prompt for the first time...</span>
 						</div>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	// Show "No brands found" message when there's no visibility data
+	if (!hasVisibilityData) {
+		return (
+			<Card className="py-3 gap-3">
+				<CardHeader className="flex justify-between items-center px-3">
+					<CardTitle className="text-sm">{promptName}</CardTitle>
+					<div className="flex items-center gap-2">
+						<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" asChild>
+							<a href={optimizationUrl} target="_blank" rel="noopener noreferrer">
+								Optimize with {WHITE_LABEL_CONFIG.parent_name}
+								<IconExternalLink size={12} className="size-3 ml-0.5" />
+							</a>
+						</Button>
+					</div>
+				</CardHeader>
+				<Separator className="py-0 my-0" />
+				<CardContent className="px-3">
+					<div>
+						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+							No brands found.
+						</span>
 					</div>
 				</CardContent>
 			</Card>

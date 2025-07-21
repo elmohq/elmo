@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconAward, IconTrendingUp, IconEdit, IconChevronRight } from "@tabler/icons-react";
 import PromptWizard from "@/components/prompt-wizard";
-import { useBrand } from "@/hooks/use-brands";
+import { useBrand, useCompetitors } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ function getVisibilityTextColor(value: number): string {
 export default function AppPage({ params }: { params: Promise<{ brand: string }> }) {
 	const [brandId, setBrandId] = useState<string>("");
 	const { brand, isLoading } = useBrand();
+	const { competitors, isLoading: competitorsLoading } = useCompetitors(brand?.id);
 	const { promptRuns: allPromptRuns, isLoading: isLoadingRuns } = usePromptRuns(brand?.id, { lookback: "1m" });
 
 	// Get the brand ID from params
@@ -63,9 +64,11 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 	// Calculate metrics
 	const totalPrompts = brand?.prompts?.length || 0;
 
-	// Calculate actual average visibility from prompt runs
+	// Calculate actual average visibility from prompt runs, excluding prompts with no non-zero visibility
 	const averageVisibility =
-		!isLoadingRuns && brand?.prompts && allPromptRuns ? calculateAverageVisibility(brand.prompts, allPromptRuns) : 0;
+		!isLoadingRuns && !competitorsLoading && brand?.prompts && allPromptRuns && competitors
+			? calculateAverageVisibility(brand.prompts, allPromptRuns, brand, competitors)
+			: 0;
 
 	return (
 		<div className="space-y-8">
@@ -103,7 +106,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
-							{!allPromptRuns?.length ? (
+							{!allPromptRuns?.length || competitorsLoading ? (
 								<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">TBD</CardTitle>
 							) : (
 								<CardTitle className={`font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl ${getVisibilityTextColor(averageVisibility)}`}>
