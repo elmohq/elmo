@@ -15,10 +15,11 @@ import {
 	usePromptRunsWithoutWebSearch,
 	type LookbackPeriod,
 } from "@/hooks/use-prompt-runs";
-import { useBrand } from "@/hooks/use-brands";
+import { useBrand, useCompetitors } from "@/hooks/use-brands";
 import Link from "next/link";
 import { PromptChart } from "@/components/prompt-chart";
 import { PromptGroupChart } from "@/components/prompt-group-chart";
+import { calculateVisibilityPercentages } from "@/lib/chart-utils";
 
 interface Prompt {
 	id: string;
@@ -125,6 +126,7 @@ export function PromptsDisplay({
 	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1w");
 
 	const { brand } = useBrand();
+	const { competitors } = useCompetitors(brand?.id);
 
 	// Use appropriate hook based on webSearchEnabled prop
 	const modelGroupParam = selectedModel === "all" ? undefined : selectedModel;
@@ -191,10 +193,34 @@ export function PromptsDisplay({
 		return totalMentions / allRunsForGroup.length; // Average weighted mentions per run
 	};
 
+	// Check if a prompt has visibility data
+	const hasPromptVisibilityData = (promptId: string): boolean => {
+		if (!brand || !competitors) return false;
+		
+		const runs = promptRunsByPromptId[promptId] || [];
+		if (runs.length === 0) return false;
+		
+		const chartData = calculateVisibilityPercentages(runs, brand, competitors, selectedLookback);
+		return chartData.some(dataPoint => {
+			const allBrandIds = [brand.id, ...competitors.map(c => c.id)];
+			return allBrandIds.some(brandId => {
+				const visibility = dataPoint[brandId];
+				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
+			});
+		});
+	};
+
+	// Check if a group has visibility data
+	const hasGroupVisibilityData = (groupPrompts: Prompt[]): boolean => {
+		return groupPrompts.some(prompt => hasPromptVisibilityData(prompt.id));
+	};
+
 	// Create unified list of prompts and groups with their mention percentages
 	type DisplayItem = {
 		type: 'individual' | 'group';
 		mentionPercentage: number;
+		hasRuns: boolean;
+		hasVisibilityData: boolean;
 		data: Prompt | { groupKey: string; prompts: Prompt[] };
 	};
 
@@ -218,23 +244,54 @@ export function PromptsDisplay({
 		);
 
 	// Create display items for individual prompts
-	const individualItems: DisplayItem[] = uncategorizedPrompts.map(prompt => ({
-		type: 'individual' as const,
-		mentionPercentage: calculateMentionPercentage(prompt.id),
-		data: prompt
-	}));
+	const individualItems: DisplayItem[] = uncategorizedPrompts.map(prompt => {
+		const runs = promptRunsByPromptId[prompt.id] || [];
+		const hasRuns = runs.length > 0;
+		const hasVisibilityData = hasPromptVisibilityData(prompt.id);
+		
+		return {
+			type: 'individual' as const,
+			mentionPercentage: calculateMentionPercentage(prompt.id),
+			hasRuns,
+			hasVisibilityData,
+			data: prompt
+		};
+	});
 
 	// Create display items for groups
-	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => ({
-		type: 'group' as const,
-		mentionPercentage: calculateGroupMentionPercentage(groupPrompts),
-		data: { groupKey, prompts: groupPrompts }
-	}));
+	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => {
+		const allRunsForGroup = groupPrompts.flatMap(prompt => promptRunsByPromptId[prompt.id] || []);
+		const hasRuns = allRunsForGroup.length > 0;
+		const hasVisibilityData = hasGroupVisibilityData(groupPrompts);
+		
+		return {
+			type: 'group' as const,
+			mentionPercentage: calculateGroupMentionPercentage(groupPrompts),
+			hasRuns,
+			hasVisibilityData,
+			data: { groupKey, prompts: groupPrompts }
+		};
+	});
 
-	// Combine and sort all items by mention percentage, then alphabetically
+	// Combine and sort all items by state priority, then by mention percentage, then alphabetically
 	const allDisplayItems = [...individualItems, ...groupItems].sort((a, b) => {
-		// First sort by mention percentage (descending)
-		if (a.mentionPercentage !== b.mentionPercentage) {
+		// Define priority order: 1 = has visibility data, 2 = awaiting first data, 3 = no brands found
+		const getPriority = (item: DisplayItem): number => {
+			if (item.hasVisibilityData) return 1; // Has visibility data - show first
+			if (!item.hasRuns) return 2; // Awaiting first data - show second
+			return 3; // Has runs but no visibility data (no brands found) - show last
+		};
+		
+		const priorityA = getPriority(a);
+		const priorityB = getPriority(b);
+		
+		// First sort by priority
+		if (priorityA !== priorityB) {
+			return priorityA - priorityB;
+		}
+		
+		// Within same priority, sort by mention percentage (descending) for items with visibility data
+		if (priorityA === 1 && a.mentionPercentage !== b.mentionPercentage) {
 			return b.mentionPercentage - a.mentionPercentage;
 		}
 		
