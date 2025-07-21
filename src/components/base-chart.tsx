@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Line, LineChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
 	ChartConfig,
 	ChartContainer,
@@ -31,6 +31,7 @@ interface BaseChartProps {
 	brand: Brand;
 	competitors: Competitor[];
 	isAnimationActive?: boolean;
+	chartType?: "bar" | "line";
 }
 
 // Helper function to calculate average visibility for a competitor
@@ -87,6 +88,7 @@ export function BaseChart({
 	brand,
 	competitors,
 	isAnimationActive = false,
+	chartType = "line",
 }: BaseChartProps) {
 	const completeData = filterAndCompleteChartData(data, lookback);
 
@@ -135,87 +137,166 @@ export function BaseChart({
 					)}
 				</div>
 			)}
-			<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-				<LineChart data={completeData}>
-					<CartesianGrid vertical={false} />
-					<XAxis
-						dataKey="date"
-						tickLine={false}
-						axisLine={false}
-						tickMargin={8}
-						minTickGap={32}
-						domain={["dataMin", "dataMax"]}
-						type="category"
-						tickFormatter={(value) => {
-							const date = new Date(value);
-							return date.toLocaleDateString("en-US", {
-								month: "short",
-								day: "numeric",
-							});
-						}}
-					/>
-					<YAxis
-						domain={[0, (dataMax: number) => 100]}
-						type="number"
-						allowDataOverflow={false}
-						tickLine={false}
-						axisLine={false}
-						tickMargin={8}
-						tickCount={6}
-						tickFormatter={(value) => `${value}%`}
-					/>
-					<ChartTooltip
-						cursor={false}
-						content={
-							<ChartTooltipContent
-								labelFormatter={(value) => {
-									return new Date(value).toLocaleDateString("en-US", {
-										month: "short",
-										day: "numeric",
-									});
-								}}
-								indicator="dot"
-								formatter={(value, name, item, index) => {
-									const indicatorColor = chartConfig[name as string]?.color;
-									return (
-										<>
-											<div
-												className="shrink-0 rounded-[2px] h-2.5 w-2.5"
-												style={{
-													backgroundColor: indicatorColor,
-												}}
-											/>
-											<div className="flex flex-1 justify-between gap-4 leading-none items-center">
-												<div className="grid gap-1.5">
-													<span className="text-muted-foreground">{chartConfig[name as string]?.label || name}</span>
-												</div>
-												{value !== null && value !== undefined && (
-													<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
-												)}
-											</div>
-										</>
-									);
-								}}
-							/>
-						}
-					/>
-					{dataKeys.map((key, index) => (
-						<Line
-							key={key}
-							dataKey={key}
-							type="bump"
-							stroke={`var(--color-${key})`}
-							strokeWidth={2}
-							// need dots, otherwise first day of line chart won't show
-							dot={{ fill: `var(--color-${key})`, strokeWidth: 2, r: 2 }}
-							activeDot={{ r: 4, strokeWidth: 2 }}
-							connectNulls={false}
-							isAnimationActive={isAnimationActive}
+			{chartType === "bar" ? (
+				<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+					<BarChart data={completeData}>
+						<CartesianGrid vertical={false} />
+						<XAxis
+							dataKey="date"
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							minTickGap={32}
+							domain={["dataMin", "dataMax"]}
+							type="category"
+							tickFormatter={(value) => {
+								const date = new Date(value);
+								return date.toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+								});
+							}}
 						/>
-					))}
-					<ChartLegend content={<ChartLegendContent payload={[]} />} />
-				</LineChart>
-			</ChartContainer>
+						<YAxis
+							domain={[0, (dataMax: number) => 100]}
+							type="number"
+							allowDataOverflow={false}
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							tickCount={6}
+							tickFormatter={(value) => `${value}%`}
+						/>
+						<ChartTooltip
+							cursor={false}
+							content={
+								<ChartTooltipContent
+									labelFormatter={(value) => {
+										return new Date(value).toLocaleDateString("en-US", {
+											month: "short",
+											day: "numeric",
+										});
+									}}
+									indicator="dot"
+									formatter={(value, name, item, index) => {
+										const indicatorColor = chartConfig[name as string]?.color;
+										return (
+											<>
+												<div
+													className="shrink-0 rounded-[2px] h-2.5 w-2.5"
+													style={{
+														backgroundColor: indicatorColor,
+													}}
+												/>
+												<div className="flex flex-1 justify-between gap-4 leading-none items-center">
+													<div className="grid gap-1.5">
+														<span className="text-muted-foreground">{chartConfig[name as string]?.label || name}</span>
+													</div>
+													{value !== null && value !== undefined && (
+														<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
+													)}
+												</div>
+											</>
+										);
+									}}
+								/>
+							}
+						/>
+						{dataKeys.map((key, index) => (
+							<Bar
+								key={key}
+								dataKey={key}
+								fill={`var(--color-${key})`}
+                minPointSize={2}
+								radius={2}
+							/>
+						))}
+						<ChartLegend content={<ChartLegendContent payload={[]} />} />
+					</BarChart>
+				</ChartContainer>
+			) : (
+				<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+					<LineChart data={completeData}>
+						<CartesianGrid vertical={false} />
+						<XAxis
+							dataKey="date"
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							minTickGap={32}
+							domain={["dataMin", "dataMax"]}
+							type="category"
+							tickFormatter={(value) => {
+								const date = new Date(value);
+								return date.toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+								});
+							}}
+						/>
+						<YAxis
+							domain={[0, (dataMax: number) => 100]}
+							type="number"
+							allowDataOverflow={false}
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							tickCount={6}
+							tickFormatter={(value) => `${value}%`}
+						/>
+						<ChartTooltip
+							cursor={false}
+							content={
+								<ChartTooltipContent
+									labelFormatter={(value) => {
+										return new Date(value).toLocaleDateString("en-US", {
+											month: "short",
+											day: "numeric",
+										});
+									}}
+									indicator="dot"
+									formatter={(value, name, item, index) => {
+										const indicatorColor = chartConfig[name as string]?.color;
+										return (
+											<>
+												<div
+													className="shrink-0 rounded-[2px] h-2.5 w-2.5"
+													style={{
+														backgroundColor: indicatorColor,
+													}}
+												/>
+												<div className="flex flex-1 justify-between gap-4 leading-none items-center">
+													<div className="grid gap-1.5">
+														<span className="text-muted-foreground">{chartConfig[name as string]?.label || name}</span>
+													</div>
+													{value !== null && value !== undefined && (
+														<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
+													)}
+												</div>
+											</>
+										);
+									}}
+								/>
+							}
+						/>
+						{dataKeys.map((key, index) => (
+							<Line
+								key={key}
+								dataKey={key}
+								type="bump"
+								stroke={`var(--color-${key})`}
+								strokeWidth={2}
+								// need dots, otherwise first day of line chart won't show
+								dot={{ fill: `var(--color-${key})`, strokeWidth: 2, r: 2 }}
+								activeDot={{ r: 4, strokeWidth: 2 }}
+								connectNulls={false}
+								isAnimationActive={isAnimationActive}
+							/>
+						))}
+						<ChartLegend content={<ChartLegendContent payload={[]} />} />
+					</LineChart>
+				</ChartContainer>
+			)}
 		</div>
 	);
 }

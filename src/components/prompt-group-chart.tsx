@@ -77,6 +77,9 @@ export function PromptGroupChart({
 	// Create web query mapping for optimization URLs
 	const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
 
+	// Determine chart type based on lookback period
+	const chartType = lookback === "1w" ? "bar" : "line";
+
 	if (isLoading || !brand) {
 		return (
 			<Card className="py-3 gap-3">
@@ -277,6 +280,7 @@ export function PromptGroupChart({
 							brand={brand}
 							competitors={competitors}
 							isAnimationActive={false}
+							chartType={chartType}
 						/>
 					))}
 				</div>

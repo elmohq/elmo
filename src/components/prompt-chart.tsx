@@ -76,6 +76,9 @@ export function PromptChart({
 		? generateOptimizationUrl(promptName, brand.id, webSearchEnabled, oldestWebQuery)
 		: "#";
 
+	// Determine chart type based on lookback period
+	const chartType = lookback === "1w" ? "bar" : "line";
+
 	if (isLoading || !brand) {
 		return (
 			<Card className="py-3 gap-3">
@@ -167,6 +170,7 @@ export function PromptChart({
 					brand={brand}
 					competitors={competitors}
 					isAnimationActive={false}
+					chartType={chartType}
 				/>
 			</CardContent>
 		</Card>
