@@ -306,7 +306,7 @@ export function PromptsDisplay({
 						<TabsList>
 							{availableModels.includes("all") && (
 								<TabsTrigger value="all" className="cursor-pointer">
-									{getModelIcon("all")} <span>All LLMs</span>
+									{getModelIcon("all")} <span>All</span>
 								</TabsTrigger>
 							)}
 							{availableModels.includes("openai") && (
