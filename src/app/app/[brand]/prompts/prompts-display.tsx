@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,9 @@ function getGroupColor(groupName: string) {
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
 
+const modelParser = parseAsStringLiteral(["openai", "anthropic", "google", "all"] as const);
+const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
+
 function getModelIcon(modelType: ModelType) {
 	switch (modelType) {
 		case "openai":
@@ -122,8 +125,8 @@ export function PromptsDisplay({
 
 	// Set default model - prefer "all" if available, otherwise use first available
 	const defaultModel = availableModels.includes("all") ? "all" : availableModels[0];
-	const [selectedModel, setSelectedModel] = useState<ModelType>(defaultModel);
-	const [selectedLookback, setSelectedLookback] = useState<LookbackPeriod>("1w");
+	const [selectedModel, setSelectedModel] = useQueryState("model", modelParser.withDefault(defaultModel));
+	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault("1w"));
 
 	const { brand } = useBrand();
 	const { competitors } = useCompetitors(brand?.id);
