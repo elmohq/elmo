@@ -130,6 +130,7 @@ const HorizontalBarChart = ({
 
 import { useBrand, useCompetitors } from "@/hooks/use-brands";
 import { Separator } from "@/components/ui/separator";
+import { extractTextContent } from "@/lib/text-extraction";
 
 type PromptRun = {
 	id: string;
@@ -204,50 +205,7 @@ export default function PromptHistoryPage() {
 		return JSON.stringify(rawOutput, null, 2);
 	};
 
-	const extractTextContent = (rawOutput: any, modelGroup: string): string => {
-		try {
-			switch (modelGroup) {
-				case "openai":
-					// OpenAI uses result.text from generateText
-					if (rawOutput && typeof rawOutput.text === "string") {
-						return rawOutput.text;
-					}
-					break;
 
-				case "anthropic":
-					// Anthropic uses response.content with text blocks
-					if (rawOutput && Array.isArray(rawOutput.content)) {
-						const textBlocks = rawOutput.content.filter((block: any) => block.type === "text");
-						return textBlocks.map((block: any) => block.text).join("\n");
-					}
-					break;
-
-				case "google":
-					// DataForSEO uses AI overview markdown
-					if (rawOutput && rawOutput.tasks && rawOutput.tasks.length > 0) {
-						const task = rawOutput.tasks[0];
-						if (task.result && task.result.length > 0) {
-							const result = task.result[0];
-							const items = result.items || [];
-							const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
-
-							if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
-								return aiOverviewItems[0].markdown;
-							}
-						}
-					}
-					return "No AI overview content found.";
-
-				default:
-					return "Unknown model group - cannot extract text content.";
-			}
-		} catch (error) {
-			console.error("Error extracting text content:", error);
-			return "Error extracting text content.";
-		}
-
-		return "No text content found.";
-	};
 
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleString();

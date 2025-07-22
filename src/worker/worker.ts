@@ -9,6 +9,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { dfsSerpApi } from "../lib/dataforseo";
 import * as client from "dataforseo-client";
+import { extractTextContent } from "../lib/text-extraction";
 
 // Initialize Anthropic client for direct API calls (for tool usage)
 const anthropic = new Anthropic({
@@ -99,34 +100,10 @@ async function runWithOpenAI(promptValue: string): Promise<{
 		return {
 			rawOutput: responseBody,
 			webQueries,
-			textContent: result.text, // Extract text content for mention analysis
+			textContent: extractTextContent(responseBody, "openai"), // Extract text content for mention analysis
 		};
 	} catch (error) {
 		console.error("Error running OpenAI prompt:", error);
-		throw error;
-	}
-}
-
-// Function to run prompt with OpenAI without web search
-async function runWithOpenAINoWebSearch(promptValue: string): Promise<{
-	rawOutput: any;
-	webQueries: string[];
-	textContent: string;
-}> {
-	try {
-		// Generate text without web search using OpenAI
-		const result = await generateText({
-			model: openai(AI_MODELS.OPENAI.MODEL),
-			prompt: promptValue,
-		});
-
-		return {
-			rawOutput: result.response?.body || result, // Store only the response body, fallback to full result if body not available
-			webQueries: [], // No web search queries
-			textContent: result.text, // Extract text content for mention analysis
-		};
-	} catch (error) {
-		console.error("Error running OpenAI prompt without web search:", error);
 		throw error;
 	}
 }
@@ -156,9 +133,8 @@ async function runWithAnthropic(promptValue: string): Promise<{
 			],
 		});
 
-		// Extract text content from response
-		const textBlocks = response.content.filter((block) => block.type === "text");
-		const textContent = textBlocks.map((block) => block.text).join("\n");
+		// Extract text content from response using helper
+		const textContent = extractTextContent(response, "anthropic");
 
 		// Extract web search queries
 		const webQueries = response.content
@@ -167,45 +143,12 @@ async function runWithAnthropic(promptValue: string): Promise<{
 			.filter(Boolean);
 
 		return {
-			rawOutput: response, // Store the full response object as JSON
+			rawOutput: response,
 			webQueries,
-			textContent, // Extract text content for mention analysis
+			textContent,
 		};
 	} catch (error) {
 		console.error("Error running Anthropic prompt:", error);
-		throw error;
-	}
-}
-
-// Function to run prompt with Anthropic without web search
-async function runWithAnthropicNoWebSearch(promptValue: string): Promise<{
-	rawOutput: any;
-	webQueries: string[];
-	textContent: string;
-}> {
-	try {
-		const response = await anthropic.messages.create({
-			model: AI_MODELS.ANTHROPIC.MODEL,
-			max_tokens: 4000,
-			messages: [
-				{
-					role: "user",
-					content: promptValue,
-				},
-			],
-		});
-
-		// Extract text content from response
-		const textBlocks = response.content.filter((block) => block.type === "text");
-		const textContent = textBlocks.map((block) => block.text).join("\n");
-
-		return {
-			rawOutput: response, // Store the full response object as JSON
-			webQueries: [], // No web search queries
-			textContent, // Extract text content for mention analysis
-		};
-	} catch (error) {
-		console.error("Error running Anthropic prompt without web search:", error);
 		throw error;
 	}
 }
@@ -238,25 +181,15 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 			throw new Error(`DataForSEO API Error: ${task.status_message}`);
 		}
 
-		const result = task.result[0];
-		const items = result.items || [];
+		const textContent = extractTextContent(response, "google");
 
-		// Extract AI overview markdown content from the AI Mode response
-		const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
-
-		let textContent = "";
-		if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
-			textContent = aiOverviewItems[0].markdown;
-		} else {
-			textContent = `No AI overview content found for "${promptValue}".`;
-		}
-
-		const webQueries = [promptValue]; // The original prompt was the web query
+		// There aren't separate web queries for Google AI Mode
+		const webQueries = [promptValue];
 
 		return {
-			rawOutput: response, // Store the full response object as JSON
+			rawOutput: response,
 			webQueries,
-			textContent, // Extract text content for mention analysis
+			textContent,
 		};
 	} catch (error) {
 		console.error("Error running DataForSEO search:", error);
