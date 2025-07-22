@@ -208,7 +208,9 @@ export default function PromptHistoryPage() {
 
 
 	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleString();
+		return new Date(dateString).toLocaleString(undefined, {
+			timeZoneName: 'short'
+		});
 	};
 
 	// Calculate mention statistics by brand/competitor name
