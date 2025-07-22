@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar } from "lucide-react";
+import { GoStack } from "react-icons/go";
 import { Button } from "./ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "./ui/dropdown-menu";
 
@@ -41,7 +41,7 @@ export function HistoryButton({
 	const createSimpleButton = (promptId: string) => (
 		<Button size="sm" variant="secondary" className="text-xs cursor-pointer p-0 m-0 size-6" asChild>
 			<a href={createHistoryUrl(promptId)}>
-				<Calendar size={12} className="size-3" />
+				<GoStack size={12} className="size-3" />
 				<span className="sr-only">History</span>
 			</a>
 		</Button>
@@ -59,7 +59,7 @@ export function HistoryButton({
 					<span className={displayText ? "text-muted-foreground" : ""}>
 						{displayText || promptName}
 					</span>
-					<Calendar size={12} className="size-3 ml-2" />
+					<GoStack size={12} className="size-3 ml-2" />
 				</div>
 			</a>
 		</DropdownMenuItem>
@@ -70,7 +70,7 @@ export function HistoryButton({
 			<a href="#" target="_blank" rel="noopener noreferrer">
 				<div className="flex items-center justify-between w-full text-xs">
 					<span className="text-muted-foreground">{text}</span>
-					<Calendar size={12} className="size-3 ml-2" />
+					<GoStack size={12} className="size-3 ml-2" />
 				</div>
 			</a>
 		</DropdownMenuItem>
@@ -90,7 +90,7 @@ export function HistoryButton({
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button size="sm" variant="secondary" className="text-xs cursor-pointer p-0 m-0 size-6">
-					<Calendar size={12} className="size-3" />
+					<GoStack size={12} className="size-3" />
 					<span className="sr-only">History</span>
 				</Button>
 			</DropdownMenuTrigger>
