@@ -172,6 +172,17 @@ export default function PromptHistoryPage() {
 		return BrandTick(props, brand?.name);
 	};
 
+	// Filter runs to last 7 days
+	const filterRunsToLast7Days = (runs: PromptRun[]) => {
+		const sevenDaysAgo = new Date();
+		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+		
+		return runs.filter(run => {
+			const runDate = new Date(run.createdAt);
+			return runDate >= sevenDaysAgo;
+		});
+	};
+
 	// Fetch prompt runs when component mounts
 	useEffect(() => {
 		const fetchPromptRuns = async () => {
@@ -186,7 +197,14 @@ export default function PromptHistoryPage() {
 					throw new Error("Failed to fetch prompt runs");
 				}
 				const data = await response.json();
-				setPromptRuns(data);
+				
+				// Filter runs to last 7 days
+				const filteredData = {
+					...data,
+					runs: filterRunsToLast7Days(data.runs || [])
+				};
+				
+				setPromptRuns(filteredData);
 			} catch (err) {
 				console.error("Error fetching prompt runs:", err);
 				setError("Failed to load prompt runs");
@@ -380,7 +398,7 @@ export default function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-6">
-			<h1 className="text-3xl font-bold">{promptRuns.prompt.value}</h1>
+			<h1 className="text-3xl font-bold">{promptRuns.prompt.value} <span className="text-muted-foreground font-normal">(past week)</span></h1>
 			
 			{/* Mention Statistics */}
 			{!loading && promptRuns && (
