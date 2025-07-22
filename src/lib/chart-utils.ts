@@ -79,31 +79,36 @@ export function calculateVisibilityPercentages(
 		startDate = new Date(firstRun.createdAt);
 		endDate = new Date(lastRun.createdAt);
 
-		// Convert to date-only (remove time component) in user's timezone
+		// Convert to date-only (remove time component) in user's timezone, then back to UTC Date objects
 		const startDateString = startDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		const endDateString = endDate.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		startDate = new Date(startDateString);
 		endDate = new Date(endDateString);
 	} else {
-		// For other lookback periods, use the existing logic
+		// For other lookback periods, use timezone-aware date range
 		const daysToSubtract = getDaysFromLookback(lookback);
-		const referenceDate = new Date();
-		startDate = new Date(referenceDate);
-		startDate.setDate(startDate.getDate() - daysToSubtract);
-		endDate = referenceDate;
+		
+		// Get current date in user's timezone (not UTC) to avoid including "tomorrow"
+		const now = new Date();
+		const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
+		endDate = new Date(currentDateInTimezone);
+		
+		// Calculate start date from the timezone-aware end date
+		startDate = new Date(endDate);
+		startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
 	}
 
-	// Generate complete date range for the lookback period
+	// Generate complete UTC date range for the lookback period
 	const dateRange = generateDateRange(startDate, endDate);
 
 	// Sort competitors alphabetically by name for consistent color assignment
 	const sortedCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
 
-	// Group prompt runs by date (in user's timezone)
+	// Group prompt runs by date (in user's timezone) - this is the key bucketing step
 	const runsByDate = promptRuns.reduce(
 		(acc, run) => {
 			const runDate = new Date(run.createdAt);
-			// Convert to user's timezone and get date string
+			// Convert to user's timezone and get date string - this buckets events by local date
 			const dateKey = runDate.toLocaleDateString("en-CA", { timeZone: userTimezone }); // YYYY-MM-DD format
 
 			if (!acc[dateKey]) {
@@ -115,7 +120,7 @@ export function calculateVisibilityPercentages(
 		{} as Record<string, PromptRun[]>,
 	);
 
-	// Calculate visibility percentages for each date
+	// Calculate visibility percentages for each date in the UTC range
 	return dateRange.map((date) => {
 		const runsForDate = runsByDate[date] || [];
 		const totalRuns = runsForDate.length;
@@ -218,9 +223,15 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 	}
 
 	const daysToSubtract = getDaysFromLookback(lookback);
-	const referenceDate = new Date();
+	
+	// Use timezone-aware date range to be consistent with calculateVisibilityPercentages
+	const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const now = new Date();
+	const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
+	const referenceDate = new Date(currentDateInTimezone);
+	
 	const startDate = new Date(referenceDate);
-	startDate.setDate(startDate.getDate() - daysToSubtract);
+	startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
 
 	// Generate complete date range for the lookback period
 	const dateRange = generateDateRange(startDate, referenceDate);

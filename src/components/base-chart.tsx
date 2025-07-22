@@ -150,7 +150,10 @@ export function BaseChart({
 							domain={["dataMin", "dataMax"]}
 							type="category"
 							tickFormatter={(value) => {
-								const date = new Date(value);
+								// Fix: Parse date string directly to avoid double timezone conversion
+								// value is already a properly bucketed date string like "2025-07-21"
+								const [year, month, day] = value.split('-').map(Number);
+								const date = new Date(year, month - 1, day); // Create local date
 								return date.toLocaleDateString("en-US", {
 									month: "short",
 									day: "numeric",
@@ -172,7 +175,10 @@ export function BaseChart({
 							content={
 								<ChartTooltipContent
 									labelFormatter={(value) => {
-										return new Date(value).toLocaleDateString("en-US", {
+										// Fix: Parse date string directly to avoid double timezone conversion
+										const [year, month, day] = value.split('-').map(Number);
+										const date = new Date(year, month - 1, day);
+										return date.toLocaleDateString("en-US", {
 											month: "short",
 											day: "numeric",
 										});
@@ -227,7 +233,10 @@ export function BaseChart({
 							domain={["dataMin", "dataMax"]}
 							type="category"
 							tickFormatter={(value) => {
-								const date = new Date(value);
+								// Fix: Parse date string directly to avoid double timezone conversion
+								// value is already a properly bucketed date string like "2025-07-21"
+								const [year, month, day] = value.split('-').map(Number);
+								const date = new Date(year, month - 1, day); // Create local date
 								return date.toLocaleDateString("en-US", {
 									month: "short",
 									day: "numeric",
@@ -249,7 +258,10 @@ export function BaseChart({
 							content={
 								<ChartTooltipContent
 									labelFormatter={(value) => {
-										return new Date(value).toLocaleDateString("en-US", {
+										// Fix: Parse date string directly to avoid double timezone conversion
+										const [year, month, day] = value.split('-').map(Number);
+										const date = new Date(year, month - 1, day);
+										return date.toLocaleDateString("en-US", {
 											month: "short",
 											day: "numeric",
 										});
