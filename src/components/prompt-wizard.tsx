@@ -373,11 +373,11 @@ const useStepManager = (brand: any) => {
 // Generate a unique ID that works across all browsers
 const generateId = () => {
 	// Use crypto.randomUUID() if available, otherwise fallback to a custom implementation
-	if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+	if (typeof crypto !== "undefined" && crypto.randomUUID) {
 		return crypto.randomUUID();
 	}
 	// Fallback for browsers that don't support crypto.randomUUID()
-	return 'id-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
+	return "id-" + Math.random().toString(36).substr(2, 9) + "-" + Date.now().toString(36);
 };
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
@@ -399,9 +399,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updatePersonaGroupName = useCallback((groupId: string, name: string) => {
 		setWizardData((prev) => ({
 			...prev,
-			personaGroups: prev.personaGroups.map(g => 
-				g.id === groupId ? { ...g, name } : g
-			)
+			personaGroups: prev.personaGroups.map((g) => (g.id === groupId ? { ...g, name } : g)),
 		}));
 	}, []);
 
@@ -409,9 +407,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updatePersonaGroupPersonas = useCallback((groupId: string, personas: string[]) => {
 		setWizardData((prev) => ({
 			...prev,
-			personaGroups: prev.personaGroups.map(g => 
-				g.id === groupId ? { ...g, personas } : g
-			)
+			personaGroups: prev.personaGroups.map((g) => (g.id === groupId ? { ...g, personas } : g)),
 		}));
 	}, []);
 
@@ -419,7 +415,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const removePersonaGroup = useCallback((groupId: string) => {
 		setWizardData((prev) => ({
 			...prev,
-			personaGroups: prev.personaGroups.filter(g => g.id !== groupId)
+			personaGroups: prev.personaGroups.filter((g) => g.id !== groupId),
 		}));
 	}, []);
 
@@ -435,9 +431,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updateCompetitorName = useCallback((competitorId: string, name: string) => {
 		setWizardData((prev) => ({
 			...prev,
-			competitors: prev.competitors.map(c => 
-				c.id === competitorId ? { ...c, name } : c
-			)
+			competitors: prev.competitors.map((c) => (c.id === competitorId ? { ...c, name } : c)),
 		}));
 	}, []);
 
@@ -445,9 +439,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updateCompetitorDomain = useCallback((competitorId: string, domain: string) => {
 		setWizardData((prev) => ({
 			...prev,
-			competitors: prev.competitors.map(c => 
-				c.id === competitorId ? { ...c, domain } : c
-			)
+			competitors: prev.competitors.map((c) => (c.id === competitorId ? { ...c, domain } : c)),
 		}));
 	}, []);
 
@@ -455,7 +447,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const removeCompetitor = useCallback((competitorId: string) => {
 		setWizardData((prev) => ({
 			...prev,
-			competitors: prev.competitors.filter(c => c.id !== competitorId)
+			competitors: prev.competitors.filter((c) => c.id !== competitorId),
 		}));
 	}, []);
 
@@ -471,9 +463,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const updateKeywordSelection = useCallback((keyword: string, selected: boolean) => {
 		setWizardData((prev) => ({
 			...prev,
-			keywords: prev.keywords.map(kw => 
-				kw.keyword === keyword ? { ...kw, selected } : kw
-			)
+			keywords: prev.keywords.map((kw) => (kw.keyword === keyword ? { ...kw, selected } : kw)),
 		}));
 	}, []);
 
@@ -483,8 +473,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			...prev,
 			keywords: prev.keywords.map((kw, i) => ({
 				...kw,
-				selected: limit ? (selected && i < limit) : selected,
-			}))
+				selected: limit ? selected && i < limit : selected,
+			})),
 		}));
 	}, []);
 
@@ -603,13 +593,13 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						case "get-competitors":
 							newWizardData.competitors = step.data.competitors.map((competitor: any) => ({
 								...competitor,
-								id: generateId()
+								id: generateId(),
 							}));
 							break;
 						case "analyze-personas":
 							newWizardData.personaGroups = step.data.personaGroups.map((group: any) => ({
 								...group,
-								id: generateId()
+								id: generateId(),
 							}));
 							break;
 					}
@@ -740,7 +730,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<Loader2 className="h-4 w-4 animate-spin" />
 						Generating...
 					</Button>
-					<Button variant="outline" onClick={skipOnboarding} disabled={isCreatingPrompts} className="flex items-center gap-2 cursor-pointer">
+					<Button
+						variant="outline"
+						onClick={skipOnboarding}
+						disabled={isCreatingPrompts}
+						className="flex items-center gap-2 cursor-pointer"
+					>
 						Skip
 					</Button>
 				</div>
@@ -777,11 +772,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div className="space-y-2">
 					<h2 className="text-2xl font-bold">Review Product Categories</h2>
 					<p className="text-muted-foreground">What are the main types of products you sell?</p>
-					<EditableTagsInput
-						items={wizardData.products}
-						onValueChange={updateProducts}
-						placeholder="Add product..."
-					/>
+					<EditableTagsInput items={wizardData.products} onValueChange={updateProducts} placeholder="Add product..." />
 				</div>
 
 				<Separator />
@@ -807,23 +798,13 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 									placeholder="domain.com"
 									className="flex-1"
 								/>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => removeCompetitor(competitor.id)}
-									className="p-2"
-								>
+								<Button variant="outline" size="sm" onClick={() => removeCompetitor(competitor.id)} className="p-2">
 									<X className="h-4 w-4" />
 								</Button>
 							</div>
 						))}
 						{wizardData.competitors.length < MAX_COMPETITORS && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={addCompetitor}
-								className="flex items-center gap-2"
-							>
+							<Button variant="outline" size="sm" onClick={addCompetitor} className="flex items-center gap-2">
 								<Plus className="h-4 w-4" /> Add Competitor
 							</Button>
 						)}
@@ -920,7 +901,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								className="hover:bg-accent/50 flex items-center gap-3 rounded-lg border p-3 has-[[aria-checked=true]]:border-blue-600 has-[[aria-checked=true]]:bg-blue-50 dark:has-[[aria-checked=true]]:border-blue-900 dark:has-[[aria-checked=true]]:bg-blue-950 cursor-pointer"
 							>
 								<Checkbox
-									id={`keyword-${kw.keyword.replace(/\s+/g, '-')}`}
+									id={`keyword-${kw.keyword.replace(/\s+/g, "-")}`}
 									checked={kw.selected}
 									onCheckedChange={(checked) => updateKeywordSelection(kw.keyword, checked === true)}
 									className="data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600 data-[state=checked]:text-white dark:data-[state=checked]:border-blue-700 dark:data-[state=checked]:bg-blue-700"
@@ -957,7 +938,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 				<div className="space-y-2">
 					<div className="flex gap-2">
-						<Button onClick={createPrompts} disabled={isCreatingPrompts} className="flex items-center gap-2 cursor-pointer">
+						<Button
+							onClick={createPrompts}
+							disabled={isCreatingPrompts}
+							className="flex items-center gap-2 cursor-pointer"
+						>
 							{isCreatingPrompts ? (
 								<>
 									<Loader2 className="h-4 w-4 animate-spin" />
@@ -970,7 +955,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 								</>
 							)}
 						</Button>
-						<Button variant="outline" onClick={skipOnboarding} disabled={isCreatingPrompts} className="flex items-center gap-2 cursor-pointer">
+						<Button
+							variant="outline"
+							onClick={skipOnboarding}
+							disabled={isCreatingPrompts}
+							className="flex items-center gap-2 cursor-pointer"
+						>
 							Cancel
 						</Button>
 					</div>

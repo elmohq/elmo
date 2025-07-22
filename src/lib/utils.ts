@@ -13,10 +13,14 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function getModelDisplayName(model: string): string {
 	switch (model) {
-		case "openai": return "OpenAI";
-		case "anthropic": return "Anthropic"; 
-		case "google": return "Google";
-		default: return model;
+		case "openai":
+			return "OpenAI";
+		case "anthropic":
+			return "Anthropic";
+		case "google":
+			return "Google";
+		default:
+			return model;
 	}
 }
 
@@ -30,10 +34,10 @@ export function getModelDisplayName(model: string): string {
  * @returns Percentage (0-100) representing average visibility
  */
 export function calculateAverageVisibility(
-	prompts: Prompt[], 
-	promptRuns: PromptRun[], 
-	brand?: Brand, 
-	competitors?: Competitor[]
+	prompts: Prompt[],
+	promptRuns: PromptRun[],
+	brand?: Brand,
+	competitors?: Competitor[],
 ): number {
 	if (!prompts || prompts.length === 0) {
 		return 0;
@@ -71,10 +75,10 @@ export function calculateAverageVisibility(
 	// Filter out prompts that have no brand or competitor mentions in this period
 	const qualifyingRuns: PromptRun[] = [];
 	for (const [promptId, runs] of runsByPrompt) {
-		const hasAnyMentions = runs.some(run => 
-			run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0)
+		const hasAnyMentions = runs.some(
+			(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
 		);
-		
+
 		if (hasAnyMentions) {
 			qualifyingRuns.push(...runs);
 		}

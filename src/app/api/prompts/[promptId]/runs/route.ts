@@ -67,4 +67,4 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		console.error("Error fetching prompt runs:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
-} 
+}

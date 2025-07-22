@@ -9,11 +9,7 @@ import { HistoryButton } from "./history-button";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
-import {
-	LookbackPeriod,
-	calculateGroupVisibilityData,
-	createPromptToWebQueryMapping,
-} from "@/lib/chart-utils";
+import { LookbackPeriod, calculateGroupVisibilityData, createPromptToWebQueryMapping } from "@/lib/chart-utils";
 
 interface Prompt {
 	id: string;
@@ -66,11 +62,11 @@ export function PromptGroupChart({
 		isLoading || !brand ? [] : calculateGroupVisibilityData(promptRuns || [], prompts, brand, competitors, lookback);
 
 	// Check if there's any non-zero visibility data across all brands and competitors for any prompt in the group
-	const hasVisibilityData = groupVisibilityData.some(promptData => {
-		return promptData.chartData.some(dataPoint => {
+	const hasVisibilityData = groupVisibilityData.some((promptData) => {
+		return promptData.chartData.some((dataPoint) => {
 			// Check if any brand (main brand or competitors) has non-zero visibility
-			const allBrandIds = [brand?.id, ...(competitors?.map(c => c.id) || [])].filter(Boolean);
-			return allBrandIds.some(brandId => {
+			const allBrandIds = [brand?.id, ...(competitors?.map((c) => c.id) || [])].filter(Boolean);
+			return allBrandIds.some((brandId) => {
 				const visibility = dataPoint[brandId as string];
 				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 			});
@@ -83,8 +79,8 @@ export function PromptGroupChart({
 	// Create model-specific web query mappings for the dropdown
 	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
 	if (promptRuns && selectedModel === "all") {
-		availableModels.forEach(model => {
-			const modelPromptRuns = promptRuns.filter(run => run.modelGroup === model);
+		availableModels.forEach((model) => {
+			const modelPromptRuns = promptRuns.filter((run) => run.modelGroup === model);
 			modelWebQueryMappings[model] = createPromptToWebQueryMapping(modelPromptRuns);
 		});
 	}
@@ -145,13 +141,13 @@ export function PromptGroupChart({
 	if (!hasVisibilityData) {
 		return (
 			<Card className="py-3 gap-3">
-								<CardHeader className="flex justify-between items-center px-3">
+				<CardHeader className="flex justify-between items-center px-3">
 					<div className="flex items-center gap-2">
 						<HistoryButton
 							brandId={brand?.id}
 							groupName={groupName}
 							groupPrefix={prompts[0]?.groupPrefix || undefined}
-							prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+							prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
 						/>
 						<CardTitle className="text-sm">
 							{prompts[0]?.groupPrefix}{" "}
@@ -170,7 +166,7 @@ export function PromptGroupChart({
 							webSearchEnabled={webSearchEnabled}
 							selectedModel={selectedModel}
 							availableModels={availableModels}
-							prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+							prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
 							webQueryMapping={webQueryMapping}
 							modelWebQueryMappings={modelWebQueryMappings}
 						/>
@@ -196,7 +192,7 @@ export function PromptGroupChart({
 						brandId={brand?.id}
 						groupName={groupName}
 						groupPrefix={prompts[0]?.groupPrefix || undefined}
-						prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+						prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
 					/>
 					<CardTitle className="text-sm">
 						{prompts[0]?.groupPrefix}{" "}
@@ -215,7 +211,7 @@ export function PromptGroupChart({
 						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						prompts={prompts.map(p => ({ id: p.id, value: p.value }))}
+						prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
 						webQueryMapping={webQueryMapping}
 						modelWebQueryMappings={modelWebQueryMappings}
 					/>

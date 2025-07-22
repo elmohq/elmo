@@ -13,15 +13,7 @@ const CustomTick = (props: any) => {
 	const { x, y, payload } = props;
 	return (
 		<g transform={`translate(${x},${y})`}>
-			<text 
-				x={0} 
-				y={0} 
-				dy={4} 
-				textAnchor="end" 
-				fill="#666" 
-				fontSize="12"
-				style={{ maxWidth: '220px' }}
-			>
+			<text x={0} y={0} dy={4} textAnchor="end" fill="#666" fontSize="12" style={{ maxWidth: "220px" }}>
 				{payload.value}
 			</text>
 		</g>
@@ -32,18 +24,18 @@ const CustomTick = (props: any) => {
 const BrandTick = (props: any, currentBrandName?: string) => {
 	const { x, y, payload } = props;
 	const isBrand = payload.value === currentBrandName;
-	
+
 	return (
 		<g transform={`translate(${x},${y})`}>
-			<text 
-				x={-5} 
-				y={0} 
-				dy={4} 
-				textAnchor="end" 
-				fill={isBrand ? "#1f2937" : "#666"} 
+			<text
+				x={-5}
+				y={0}
+				dy={4}
+				textAnchor="end"
+				fill={isBrand ? "#1f2937" : "#666"}
 				fontSize="12"
 				fontWeight={isBrand ? "bold" : "normal"}
-				style={{ maxWidth: '220px' }}
+				style={{ maxWidth: "220px" }}
 			>
 				{payload.value}
 			</text>
@@ -61,18 +53,20 @@ interface HorizontalBarChartProps {
 	maxValue?: number;
 }
 
-const HorizontalBarChart = ({ 
-	data, 
-	color, 
-	tooltipLabel, 
-	highlightValue, 
+const HorizontalBarChart = ({
+	data,
+	color,
+	tooltipLabel,
+	highlightValue,
 	tickComponent: TickComponent = CustomTick,
-	maxValue 
+	maxValue,
 }: HorizontalBarChartProps) => {
 	// Helper function to get max count safely
 	const getMaxCount = (chartData: { count: number }[]) => {
 		if (!chartData || chartData.length === 0) return 1;
-		const validCounts = chartData.map(d => d.count).filter(count => typeof count === 'number' && !isNaN(count) && count >= 0);
+		const validCounts = chartData
+			.map((d) => d.count)
+			.filter((count) => typeof count === "number" && !isNaN(count) && count >= 0);
 		if (validCounts.length === 0) return 1;
 		const max = Math.max(...validCounts);
 		return isNaN(max) ? 1 : Math.max(max, 1);
@@ -81,12 +75,13 @@ const HorizontalBarChart = ({
 	// Helper function to validate chart data
 	const isValidChartData = (chartData: { name: string; count: number }[]) => {
 		if (!chartData || !Array.isArray(chartData) || chartData.length === 0) return false;
-		return chartData.every(item => 
-			item && 
-			typeof item.name === 'string' && 
-			typeof item.count === 'number' && 
-			!isNaN(item.count) && 
-			item.count >= 0
+		return chartData.every(
+			(item) =>
+				item &&
+				typeof item.name === "string" &&
+				typeof item.count === "number" &&
+				!isNaN(item.count) &&
+				item.count >= 0,
 		);
 	};
 
@@ -97,24 +92,16 @@ const HorizontalBarChart = ({
 	};
 
 	if (!isValidChartData(data)) {
-		return (
-			<div className="text-muted-foreground text-center py-8">
-				No data available
-			</div>
-		);
+		return <div className="text-muted-foreground text-center py-8">No data available</div>;
 	}
 
 	return (
 		<div style={{ height: calculateChartHeight(data.length) }}>
 			<ResponsiveContainer width="100%" height="100%">
-				<BarChart
-					data={data}
-					layout="vertical"
-					margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-				>
+				<BarChart data={data} layout="vertical" margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
 					<CartesianGrid strokeDasharray="3 3" />
-					<XAxis 
-						type="number" 
+					<XAxis
+						type="number"
 						domain={[0, maxValue || getMaxCount(data)]}
 						tickCount={Math.min(10, (maxValue || getMaxCount(data)) + 1)}
 						allowDecimals={false}
@@ -176,8 +163,8 @@ export default function PromptHistoryPage() {
 	const filterRunsToLast7Days = (runs: PromptRun[]) => {
 		const sevenDaysAgo = new Date();
 		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-		
-		return runs.filter(run => {
+
+		return runs.filter((run) => {
 			const runDate = new Date(run.createdAt);
 			return runDate >= sevenDaysAgo;
 		});
@@ -197,13 +184,13 @@ export default function PromptHistoryPage() {
 					throw new Error("Failed to fetch prompt runs");
 				}
 				const data = await response.json();
-				
+
 				// Filter runs to last 7 days
 				const filteredData = {
 					...data,
-					runs: filterRunsToLast7Days(data.runs || [])
+					runs: filterRunsToLast7Days(data.runs || []),
 				};
-				
+
 				setPromptRuns(filteredData);
 			} catch (err) {
 				console.error("Error fetching prompt runs:", err);
@@ -223,11 +210,9 @@ export default function PromptHistoryPage() {
 		return JSON.stringify(rawOutput, null, 2);
 	};
 
-
-
 	const formatDate = (dateString: string) => {
 		return new Date(dateString).toLocaleString(undefined, {
-			timeZoneName: 'short'
+			timeZoneName: "short",
 		});
 	};
 
@@ -277,9 +262,9 @@ export default function PromptHistoryPage() {
 		// Convert to array and sort by count (highest to lowest)
 		const result = Object.entries(mentionCounts)
 			.map(([name, count]) => ({ name, count }))
-			.filter(item => typeof item.count === 'number' && !isNaN(item.count)) // Filter out invalid data
+			.filter((item) => typeof item.count === "number" && !isNaN(item.count)) // Filter out invalid data
 			.sort((a, b) => b.count - a.count);
-		
+
 		return result;
 	};
 
@@ -303,7 +288,7 @@ export default function PromptHistoryPage() {
 				run.webQueries.forEach((query) => {
 					// Overall counts
 					overallQueryCounts[query] = (overallQueryCounts[query] || 0) + 1;
-					
+
 					// Model-specific counts
 					modelQueryCounts[modelGroup][query] = (modelQueryCounts[modelGroup][query] || 0) + 1;
 				});
@@ -313,39 +298,43 @@ export default function PromptHistoryPage() {
 		// Convert overall to sorted array
 		const overall = Object.entries(overallQueryCounts)
 			.map(([query, count]) => ({ name: query, count }))
-			.filter(item => typeof item.count === 'number' && !isNaN(item.count))
+			.filter((item) => typeof item.count === "number" && !isNaN(item.count))
 			.sort((a, b) => b.count - a.count)
 			.slice(0, 20); // Limit to top 20 queries
 
 		// Convert model stats to sorted arrays
-		const byModel = Object.entries(modelQueryCounts).reduce((acc, [model, queries]) => {
-			acc[model] = Object.entries(queries)
-				.map(([query, count]) => ({ name: query, count }))
-				.filter(item => typeof item.count === 'number' && !isNaN(item.count))
-				.sort((a, b) => b.count - a.count)
-				.slice(0, 15); // Limit to top 15 per model
-			return acc;
-		}, {} as Record<string, { name: string; count: number }[]>);
+		const byModel = Object.entries(modelQueryCounts).reduce(
+			(acc, [model, queries]) => {
+				acc[model] = Object.entries(queries)
+					.map(([query, count]) => ({ name: query, count }))
+					.filter((item) => typeof item.count === "number" && !isNaN(item.count))
+					.sort((a, b) => b.count - a.count)
+					.slice(0, 15); // Limit to top 15 per model
+				return acc;
+			},
+			{} as Record<string, { name: string; count: number }[]>,
+		);
 
 		return { overall, byModel };
 	};
 
 	// Only calculate stats when we have data and aren't loading
-	const mentionStats = (!loading && promptRuns) ? calculateMentionStats() : [];
-	const webQueryStats = (!loading && promptRuns) ? calculateWebQueryStats() : { overall: [], byModel: {} };
+	const mentionStats = !loading && promptRuns ? calculateMentionStats() : [];
+	const webQueryStats = !loading && promptRuns ? calculateWebQueryStats() : { overall: [], byModel: {} };
 
 	// Calculate web search usage summary
 	const calculateWebSearchSummary = () => {
 		if (!promptRuns?.runs) return { enabled: 0, disabled: 0, percentage: 0 };
-		
-		const enabled = promptRuns.runs.filter(run => run.webSearchEnabled).length;
+
+		const enabled = promptRuns.runs.filter((run) => run.webSearchEnabled).length;
 		const disabled = promptRuns.runs.length - enabled;
 		const percentage = promptRuns.runs.length > 0 ? Math.round((enabled / promptRuns.runs.length) * 100) : 0;
-		
+
 		return { enabled, disabled, percentage };
 	};
 
-	const webSearchSummary = (!loading && promptRuns) ? calculateWebSearchSummary() : { enabled: 0, disabled: 0, percentage: 0 };
+	const webSearchSummary =
+		!loading && promptRuns ? calculateWebSearchSummary() : { enabled: 0, disabled: 0, percentage: 0 };
 
 	if (loading) {
 		return (
@@ -398,19 +387,26 @@ export default function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-6">
-			<h1 className="text-3xl font-bold">{promptRuns.prompt.value} <span className="text-muted-foreground font-normal">(past week)</span></h1>
-			
+			<h1 className="text-3xl font-bold">
+				{promptRuns.prompt.value} <span className="text-muted-foreground font-normal">(past week)</span>
+			</h1>
+
 			{/* Mention Statistics */}
 			{!loading && promptRuns && (
 				<Card>
 					<CardHeader>
 						<CardTitle>Mentions</CardTitle>
 						<CardDescription>
-									{brand?.name} was mentioned in{' '}
-									<strong>
-										{Math.round((mentionStats.find(stat => stat.name === brand?.name)?.count || 0) / (promptRuns?.runs?.length || 1) * 100)}%
-									</strong>{' '}
-									of prompt evaluations.
+							{brand?.name} was mentioned in{" "}
+							<strong>
+								{Math.round(
+									((mentionStats.find((stat) => stat.name === brand?.name)?.count || 0) /
+										(promptRuns?.runs?.length || 1)) *
+										100,
+								)}
+								%
+							</strong>{" "}
+							of prompt evaluations.
 						</CardDescription>
 					</CardHeader>
 					<Separator />
@@ -432,10 +428,12 @@ export default function PromptHistoryPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Web Queries</CardTitle>
-						<CardDescription>These are the underlying queries used by the LLMs to search for information relevant to the prompt.</CardDescription>
+						<CardDescription>
+							These are the underlying queries used by the LLMs to search for information relevant to the prompt.
+						</CardDescription>
 					</CardHeader>
 					<Separator />
-					
+
 					{/* Overall Web Queries */}
 					{webQueryStats.overall.length > 0 && (
 						<CardContent className="pb-0">
@@ -452,38 +450,35 @@ export default function PromptHistoryPage() {
 					)}
 
 					{/* Separator between overall and model-specific queries */}
-					{webQueryStats.overall.length > 0 && 
-					 webQueryStats.byModel && 
-					 Object.entries(webQueryStats.byModel).filter(([model, queries]) => queries.length > 0).length > 0 && (
-						<Separator />
-					)}
+					{webQueryStats.overall.length > 0 &&
+						webQueryStats.byModel &&
+						Object.entries(webQueryStats.byModel).filter(([model, queries]) => queries.length > 0).length > 0 && (
+							<Separator />
+						)}
 
 					{/* Web Queries by Model */}
-					{webQueryStats.byModel && Object.entries(webQueryStats.byModel)
-						.filter(([model, queries]) => queries.length > 0)
-						.map(([model, queries], index, filteredEntries) => (
-							<div key={model}>
-								<CardContent className="pb-0">
-									<h4 className="text-sm font-medium mb-3">
-										{getModelDisplayName(model)}
-									</h4>
-									<HorizontalBarChart
-										data={queries}
-										color="#8b5cf6"
-										tooltipLabel="Uses"
-										maxValue={promptRuns.runs.length}
-									/>
-								</CardContent>
-								{/* Separator between model sections (not after the last one) */}
-								{index < filteredEntries.length - 1 && <Separator className="mt-6" />}
-							</div>
-						))}
+					{webQueryStats.byModel &&
+						Object.entries(webQueryStats.byModel)
+							.filter(([model, queries]) => queries.length > 0)
+							.map(([model, queries], index, filteredEntries) => (
+								<div key={model}>
+									<CardContent className="pb-0">
+										<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
+										<HorizontalBarChart
+											data={queries}
+											color="#8b5cf6"
+											tooltipLabel="Uses"
+											maxValue={promptRuns.runs.length}
+										/>
+									</CardContent>
+									{/* Separator between model sections (not after the last one) */}
+									{index < filteredEntries.length - 1 && <Separator className="mt-6" />}
+								</div>
+							))}
 
 					{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
 						<CardContent>
-							<div className="text-muted-foreground text-center py-8">
-								No web queries found in the prompt runs
-							</div>
+							<div className="text-muted-foreground text-center py-8">No web queries found in the prompt runs</div>
 						</CardContent>
 					)}
 				</Card>
@@ -491,88 +486,83 @@ export default function PromptHistoryPage() {
 
 			<h2 className="text-2xl font-bold">Prompt Runs ({promptRuns.runs.length})</h2>
 
-	
-					{promptRuns.runs.length === 0 ? (
-						<p className="text-muted-foreground">No prompt runs found for this prompt.</p>
-					) : (
-						<div className="space-y-6">
-							{promptRuns.runs.map((run, index) => (
-								<Card key={run.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-									<CardHeader className="pb-0 gap-y-0">
-									<div className="grid grid-cols-3 gap-x-4">
-											<div>
-												<strong className="text-sm text-gray-700 block">Model Group</strong> 
-												<span className="text-sm text-gray-600">{getModelDisplayName(run.modelGroup)}</span>
-											</div>
-											<div>
-												<strong className="text-sm text-gray-700 block">Model</strong> 
-												<span className="text-sm text-gray-600">{run.model}</span>
-											</div>
-											<div>
-												<strong className="text-sm text-gray-700 block">Evaluated</strong> 
-												<span className="text-sm text-gray-600">{formatDate(run.createdAt)}</span>
-											</div>
+			{promptRuns.runs.length === 0 ? (
+				<p className="text-muted-foreground">No prompt runs found for this prompt.</p>
+			) : (
+				<div className="space-y-6">
+					{promptRuns.runs.map((run, index) => (
+						<Card key={run.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+							<CardHeader className="pb-0 gap-y-0">
+								<div className="grid grid-cols-3 gap-x-4">
+									<div>
+										<strong className="text-sm text-gray-700 block">Model Group</strong>
+										<span className="text-sm text-gray-600">{getModelDisplayName(run.modelGroup)}</span>
+									</div>
+									<div>
+										<strong className="text-sm text-gray-700 block">Model</strong>
+										<span className="text-sm text-gray-600">{run.model}</span>
+									</div>
+									<div>
+										<strong className="text-sm text-gray-700 block">Evaluated</strong>
+										<span className="text-sm text-gray-600">{formatDate(run.createdAt)}</span>
+									</div>
+								</div>
+							</CardHeader>
+							<Separator />
+							<CardContent className="space-y-6">
+								{run.webQueries && run.webQueries.length > 0 && (
+									<div>
+										<strong className="text-sm text-gray-700 block mb-2">Web Queries</strong>
+										<div className="flex flex-wrap gap-2">
+											{run.webQueries.map((query, qIndex) => (
+												<Badge key={qIndex} variant="outline" className="text-xs">
+													{query}
+												</Badge>
+											))}
 										</div>
-									</CardHeader>
-									<Separator />
-									<CardContent className="space-y-6">
-									
-										{run.webQueries && run.webQueries.length > 0 && (
-											<div>
-												<strong className="text-sm text-gray-700 block mb-2">Web Queries</strong>
-												<div className="flex flex-wrap gap-2">
-													{run.webQueries.map((query, qIndex) => (
-														<Badge key={qIndex} variant="outline" className="text-xs">
-															{query}
-														</Badge>
-													))}
-												</div>
-											</div>
+									</div>
+								)}
+
+								<div>
+									<strong className="text-sm text-gray-700 block mb-2">Brands Mentioned</strong>
+									<div className="flex flex-wrap gap-2">
+										{run.brandMentioned && brand?.name && <Badge className="text-xs">{brand.name}</Badge>}
+										{run.competitorsMentioned &&
+											run.competitorsMentioned.map((competitor, cIndex) => (
+												<Badge key={cIndex} variant="outline" className="text-xs">
+													{competitor}
+												</Badge>
+											))}
+										{!run.brandMentioned && (!run.competitorsMentioned || run.competitorsMentioned.length === 0) && (
+											<Badge variant="secondary" className="text-xs">
+												None
+											</Badge>
 										)}
+									</div>
+								</div>
 
-										<div>
-											<strong className="text-sm text-gray-700 block mb-2">Brands Mentioned</strong>
-											<div className="flex flex-wrap gap-2">
-												{run.brandMentioned && brand?.name && (
-													<Badge className="text-xs">
-														{brand.name}
-													</Badge>
-												)}
-												{run.competitorsMentioned && run.competitorsMentioned.map((competitor, cIndex) => (
-													<Badge key={cIndex} variant="outline" className="text-xs">
-														{competitor}
-													</Badge>
-												))}
-												{!run.brandMentioned && (!run.competitorsMentioned || run.competitorsMentioned.length === 0) && (
-													<Badge variant="secondary" className="text-xs">
-														None
-													</Badge>
-												)}
-											</div>
-										</div>
+								<div>
+									<strong className="text-sm text-gray-700 block mb-2">Generated Text</strong>
+									<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-64 overflow-auto">
+										<pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
+											{extractTextContent(run.rawOutput, run.modelGroup)}
+										</pre>
+									</div>
+								</div>
 
-										<div>
-											<strong className="text-sm text-gray-700 block mb-2">Generated Text</strong>
-											<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-h-64 overflow-auto">
-												<pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">
-													{extractTextContent(run.rawOutput, run.modelGroup)}
-												</pre>
-											</div>
-										</div>
-
-										<div>
-											<strong className="text-sm text-gray-700 block mb-2">Raw LLM Output</strong>
-											<div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-96 overflow-auto">
-												<pre className="text-xs text-gray-700 font-mono leading-relaxed">
-													{formatRawOutput(run.rawOutput)}
-												</pre>
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-							))}
-						</div>
-					)}
+								<div>
+									<strong className="text-sm text-gray-700 block mb-2">Raw LLM Output</strong>
+									<div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-96 overflow-auto">
+										<pre className="text-xs text-gray-700 font-mono leading-relaxed">
+											{formatRawOutput(run.rawOutput)}
+										</pre>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			)}
 		</div>
 	);
-} 
+}

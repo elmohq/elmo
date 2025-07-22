@@ -3,7 +3,14 @@
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
 import { Button } from "./ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "./ui/dropdown-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+} from "./ui/dropdown-menu";
 import { generateOptimizationUrl } from "@/lib/chart-utils";
 import { getModelDisplayName } from "@/lib/utils";
 
@@ -20,16 +27,16 @@ interface OptimizeButtonProps {
 	webSearchEnabled?: boolean;
 	selectedModel?: ModelType;
 	availableModels?: ("openai" | "anthropic" | "google")[];
-	
+
 	// Single prompt mode (if promptName is provided)
 	promptName?: string;
 	promptId?: string;
-	
+
 	// Multi-prompt mode (if prompts array is provided)
 	prompts?: PromptData[];
 	groupName?: string;
 	groupPrefix?: string;
-	
+
 	// Web query mappings for generating optimization URLs
 	webQueryMapping?: Record<string, string>;
 	modelWebQueryMappings?: Record<string, Record<string, string>>;
@@ -52,14 +59,12 @@ export function OptimizeButton({
 
 	const createOptimizationUrl = (promptName: string, promptId: string, model?: string) => {
 		if (!brandId) return "#";
-		
-		const webQuery = model 
-			? modelWebQueryMappings[model]?.[promptId] 
-			: webQueryMapping[promptId];
-		
+
+		const webQuery = model ? modelWebQueryMappings[model]?.[promptId] : webQueryMapping[promptId];
+
 		// Fall back to prompt's value if no web query is found
 		const finalWebQuery = webQuery || promptName;
-		
+
 		return generateOptimizationUrl(promptName, brandId, webSearchEnabled, finalWebQuery);
 	};
 
@@ -73,18 +78,16 @@ export function OptimizeButton({
 	);
 
 	const createDropdownItem = (
-		key: string, 
-		promptName: string, 
-		promptId: string, 
+		key: string,
+		promptName: string,
+		promptId: string,
 		model?: string,
-		displayText?: string
+		displayText?: string,
 	) => (
 		<DropdownMenuItem key={key} className="cursor-pointer" asChild>
 			<a href={createOptimizationUrl(promptName, promptId, model)} target="_blank" rel="noopener noreferrer">
 				<div className="flex items-center justify-between w-full text-xs">
-					<span className={displayText ? "text-muted-foreground" : ""}>
-						{displayText || promptName}
-					</span>
+					<span className={displayText ? "text-muted-foreground" : ""}>{displayText || promptName}</span>
 					<IconExternalLink size={12} className="size-3 ml-2" />
 				</div>
 			</a>
@@ -97,7 +100,9 @@ export function OptimizeButton({
 				<div className="flex items-center justify-between w-full text-xs">
 					<span>
 						{showOptimizePrefix ? (
-							<>optimize <span className="text-muted-foreground">{text}</span></>
+							<>
+								optimize <span className="text-muted-foreground">{text}</span>
+							</>
 						) : (
 							<span className="text-muted-foreground">{text}</span>
 						)}
@@ -119,12 +124,8 @@ export function OptimizeButton({
 		if (modelIndex > 0) {
 			items.push(<DropdownMenuSeparator key={`sep-${model}`} />);
 		}
-		
-		items.push(
-			<DropdownMenuLabel key={`label-${model}`}>
-				Optimize for {modelName}
-			</DropdownMenuLabel>
-		);
+
+		items.push(<DropdownMenuLabel key={`label-${model}`}>Optimize for {modelName}</DropdownMenuLabel>);
 
 		if (isSingleMode) {
 			items.push(createDropdownItem(`${model}-${promptId}`, promptName!, promptId!, model));
@@ -160,14 +161,12 @@ export function OptimizeButton({
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className={isMultiMode ? "w-100" : "w-48"}>
-				{selectedModel === "all" ? (
-					// Show all model sections
-					availableModels.flatMap((model, index) => renderModelSection(model, index, true))
-				) : (
-					// Show single model section
-					renderModelSection(selectedModel, 0, false)
-				)}
+				{selectedModel === "all"
+					? // Show all model sections
+						availableModels.flatMap((model, index) => renderModelSection(model, index, true))
+					: // Show single model section
+						renderModelSection(selectedModel, 0, false)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-} 
+}

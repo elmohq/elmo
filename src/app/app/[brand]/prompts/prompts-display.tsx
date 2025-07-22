@@ -114,14 +114,13 @@ export function PromptsDisplay({
 	excludeModels = [],
 }: PromptsDisplayProps) {
 	// Filter available models based on excludeModels prop
-	const availableIndividualModels: ("openai" | "anthropic" | "google")[] = (["openai", "anthropic", "google"] as const).filter(
-		(model) => !excludeModels.includes(model),
-	);
-	
+	const availableIndividualModels: ("openai" | "anthropic" | "google")[] = (
+		["openai", "anthropic", "google"] as const
+	).filter((model) => !excludeModels.includes(model));
+
 	// Add "all" option if there are multiple models available
-	const availableModels: ModelType[] = availableIndividualModels.length > 1 
-		? ["all", ...availableIndividualModels]
-		: availableIndividualModels;
+	const availableModels: ModelType[] =
+		availableIndividualModels.length > 1 ? ["all", ...availableIndividualModels] : availableIndividualModels;
 
 	// Set default model - prefer "all" if available, otherwise use first available
 	const defaultModel = availableModels.includes("all") ? "all" : availableModels[0];
@@ -162,7 +161,7 @@ export function PromptsDisplay({
 	const calculateMentionPercentage = (promptId: string): number => {
 		const runs = promptRunsByPromptId[promptId] || [];
 		if (runs.length === 0) return 0;
-		
+
 		const totalMentions = runs.reduce((total, run) => {
 			let mentions = 0;
 			// Count brand mention (weighted 2x)
@@ -173,15 +172,15 @@ export function PromptsDisplay({
 			}
 			return total + mentions;
 		}, 0);
-		
+
 		return totalMentions / runs.length; // Average weighted mentions per run
 	};
 
 	// Calculate brand/competitor mention percentage for a group of prompts
 	const calculateGroupMentionPercentage = (groupPrompts: Prompt[]): number => {
-		const allRunsForGroup = groupPrompts.flatMap(prompt => promptRunsByPromptId[prompt.id] || []);
+		const allRunsForGroup = groupPrompts.flatMap((prompt) => promptRunsByPromptId[prompt.id] || []);
 		if (allRunsForGroup.length === 0) return 0;
-		
+
 		const totalMentions = allRunsForGroup.reduce((total, run) => {
 			let mentions = 0;
 			// Count brand mention (weighted 2x)
@@ -192,21 +191,21 @@ export function PromptsDisplay({
 			}
 			return total + mentions;
 		}, 0);
-		
+
 		return totalMentions / allRunsForGroup.length; // Average weighted mentions per run
 	};
 
 	// Check if a prompt has visibility data
 	const hasPromptVisibilityData = (promptId: string): boolean => {
 		if (!brand || !competitors) return false;
-		
+
 		const runs = promptRunsByPromptId[promptId] || [];
 		if (runs.length === 0) return false;
-		
+
 		const chartData = calculateVisibilityPercentages(runs, brand, competitors, selectedLookback);
-		return chartData.some(dataPoint => {
-			const allBrandIds = [brand.id, ...competitors.map(c => c.id)];
-			return allBrandIds.some(brandId => {
+		return chartData.some((dataPoint) => {
+			const allBrandIds = [brand.id, ...competitors.map((c) => c.id)];
+			return allBrandIds.some((brandId) => {
 				const visibility = dataPoint[brandId];
 				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 			});
@@ -215,20 +214,21 @@ export function PromptsDisplay({
 
 	// Check if a group has visibility data
 	const hasGroupVisibilityData = (groupPrompts: Prompt[]): boolean => {
-		return groupPrompts.some(prompt => hasPromptVisibilityData(prompt.id));
+		return groupPrompts.some((prompt) => hasPromptVisibilityData(prompt.id));
 	};
 
 	// Create unified list of prompts and groups with their mention percentages
 	type DisplayItem = {
-		type: 'individual' | 'group';
+		type: "individual" | "group";
 		mentionPercentage: number;
 		hasRuns: boolean;
 		hasVisibilityData: boolean;
 		data: Prompt | { groupKey: string; prompts: Prompt[] };
 	};
 
-	const uncategorizedPrompts = activePrompts
-		.filter((prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized");
+	const uncategorizedPrompts = activePrompts.filter(
+		(prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized",
+	);
 
 	const groupedPrompts = activePrompts
 		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
@@ -247,32 +247,32 @@ export function PromptsDisplay({
 		);
 
 	// Create display items for individual prompts
-	const individualItems: DisplayItem[] = uncategorizedPrompts.map(prompt => {
+	const individualItems: DisplayItem[] = uncategorizedPrompts.map((prompt) => {
 		const runs = promptRunsByPromptId[prompt.id] || [];
 		const hasRuns = runs.length > 0;
 		const hasVisibilityData = hasPromptVisibilityData(prompt.id);
-		
+
 		return {
-			type: 'individual' as const,
+			type: "individual" as const,
 			mentionPercentage: calculateMentionPercentage(prompt.id),
 			hasRuns,
 			hasVisibilityData,
-			data: prompt
+			data: prompt,
 		};
 	});
 
 	// Create display items for groups
 	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => {
-		const allRunsForGroup = groupPrompts.flatMap(prompt => promptRunsByPromptId[prompt.id] || []);
+		const allRunsForGroup = groupPrompts.flatMap((prompt) => promptRunsByPromptId[prompt.id] || []);
 		const hasRuns = allRunsForGroup.length > 0;
 		const hasVisibilityData = hasGroupVisibilityData(groupPrompts);
-		
+
 		return {
-			type: 'group' as const,
+			type: "group" as const,
 			mentionPercentage: calculateGroupMentionPercentage(groupPrompts),
 			hasRuns,
 			hasVisibilityData,
-			data: { groupKey, prompts: groupPrompts }
+			data: { groupKey, prompts: groupPrompts },
 		};
 	});
 
@@ -284,35 +284,37 @@ export function PromptsDisplay({
 			if (!item.hasRuns) return 2; // Awaiting first data - show second
 			return 3; // Has runs but no visibility data (no brands found) - show last
 		};
-		
+
 		const priorityA = getPriority(a);
 		const priorityB = getPriority(b);
-		
+
 		// First sort by priority
 		if (priorityA !== priorityB) {
 			return priorityA - priorityB;
 		}
-		
+
 		// Within same priority, sort by mention percentage (descending) for items with visibility data
 		if (priorityA === 1 && a.mentionPercentage !== b.mentionPercentage) {
 			return b.mentionPercentage - a.mentionPercentage;
 		}
-		
+
 		// Then sort alphabetically
-		const nameA = a.type === 'individual' 
-			? (a.data as Prompt).value
-			: (() => {
-				const { groupKey } = a.data as { groupKey: string; prompts: Prompt[] };
-				return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-			})();
-		
-		const nameB = b.type === 'individual' 
-			? (b.data as Prompt).value
-			: (() => {
-				const { groupKey } = b.data as { groupKey: string; prompts: Prompt[] };
-				return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-			})();
-		
+		const nameA =
+			a.type === "individual"
+				? (a.data as Prompt).value
+				: (() => {
+						const { groupKey } = a.data as { groupKey: string; prompts: Prompt[] };
+						return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+					})();
+
+		const nameB =
+			b.type === "individual"
+				? (b.data as Prompt).value
+				: (() => {
+						const { groupKey } = b.data as { groupKey: string; prompts: Prompt[] };
+						return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+					})();
+
 		return nameA.localeCompare(nameB);
 	});
 
@@ -410,7 +412,7 @@ export function PromptsDisplay({
 							{/* Display all items (both individual and group prompts) sorted by mention percentage */}
 							{!isLoadingRuns &&
 								allDisplayItems.map((item) => {
-									if (item.type === 'individual') {
+									if (item.type === "individual") {
 										const prompt = item.data as Prompt;
 										return (
 											<PromptChart

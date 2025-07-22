@@ -87,12 +87,12 @@ export function calculateVisibilityPercentages(
 	} else {
 		// For other lookback periods, use timezone-aware date range
 		const daysToSubtract = getDaysFromLookback(lookback);
-		
+
 		// Get current date in user's timezone (not UTC) to avoid including "tomorrow"
 		const now = new Date();
 		const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
 		endDate = new Date(currentDateInTimezone);
-		
+
 		// Calculate start date from the timezone-aware end date
 		startDate = new Date(endDate);
 		startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
@@ -223,13 +223,13 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 	}
 
 	const daysToSubtract = getDaysFromLookback(lookback);
-	
+
 	// Use timezone-aware date range to be consistent with calculateVisibilityPercentages
 	const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	const now = new Date();
 	const currentDateInTimezone = now.toLocaleDateString("en-CA", { timeZone: userTimezone });
 	const referenceDate = new Date(currentDateInTimezone);
-	
+
 	const startDate = new Date(referenceDate);
 	startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
 

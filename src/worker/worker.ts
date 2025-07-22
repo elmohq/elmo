@@ -76,7 +76,7 @@ async function runWithOpenAI(promptValue: string): Promise<{
 		const result = await generateText({
 			model: openai.responses(AI_MODELS.OPENAI.MODEL),
 			prompt: promptValue,
-            // if tool choice is required, it always just uses the input prompt instead of generating a relevant query
+			// if tool choice is required, it always just uses the input prompt instead of generating a relevant query
 			toolChoice: "auto",
 			tools: {
 				web_search_preview: openai.tools.webSearchPreview({

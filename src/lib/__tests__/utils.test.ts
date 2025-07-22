@@ -35,10 +35,10 @@ describe("calculateAverageVisibility", () => {
 	});
 
 	const createMockPromptRun = (
-		promptId: string, 
-		brandMentioned = false, 
-		competitorsMentioned: string[] = [], 
-		daysAgo = 0
+		promptId: string,
+		brandMentioned = false,
+		competitorsMentioned: string[] = [],
+		daysAgo = 0,
 	): PromptRun => ({
 		id: `run-${promptId}-${daysAgo}`,
 		promptId,
@@ -56,9 +56,9 @@ describe("calculateAverageVisibility", () => {
 		it("should calculate percentage of runs with brand mentions for qualifying prompts", () => {
 			const prompts = [createMockPrompt("prompt-1")];
 			const promptRuns = [
-				createMockPromptRun("prompt-1", true, [], 5),   // brand mentioned
+				createMockPromptRun("prompt-1", true, [], 5), // brand mentioned
 				createMockPromptRun("prompt-1", false, ["comp-1"], 6), // competitor mentioned
-				createMockPromptRun("prompt-1", false, [], 7),  // no mentions
+				createMockPromptRun("prompt-1", false, [], 7), // no mentions
 			];
 
 			const result = calculateAverageVisibility(prompts, promptRuns, mockBrand, mockCompetitors);
@@ -106,8 +106,8 @@ describe("calculateAverageVisibility", () => {
 		it("should handle prompts with only brand mentions", () => {
 			const prompts = [createMockPrompt("prompt-1")];
 			const promptRuns = [
-				createMockPromptRun("prompt-1", true, [], 5),  // only brand
-				createMockPromptRun("prompt-1", true, [], 6),  // only brand
+				createMockPromptRun("prompt-1", true, [], 5), // only brand
+				createMockPromptRun("prompt-1", true, [], 6), // only brand
 			];
 
 			const result = calculateAverageVisibility(prompts, promptRuns, mockBrand, mockCompetitors);
@@ -121,7 +121,7 @@ describe("calculateAverageVisibility", () => {
 	describe("Filtering", () => {
 		it("should only include enabled prompts", () => {
 			const prompts = [
-				createMockPrompt("prompt-1", true),  // enabled
+				createMockPrompt("prompt-1", true), // enabled
 				createMockPrompt("prompt-2", false), // disabled
 			];
 			const promptRuns = [
@@ -138,9 +138,9 @@ describe("calculateAverageVisibility", () => {
 		it("should only include runs from last 30 days", () => {
 			const prompts = [createMockPrompt("prompt-1")];
 			const promptRuns = [
-				createMockPromptRun("prompt-1", true, [], 5),   // recent
-				createMockPromptRun("prompt-1", false, ["comp-1"], 10),  // recent
-				createMockPromptRun("prompt-1", true, [], 35),  // too old
+				createMockPromptRun("prompt-1", true, [], 5), // recent
+				createMockPromptRun("prompt-1", false, ["comp-1"], 10), // recent
+				createMockPromptRun("prompt-1", true, [], 35), // too old
 			];
 
 			const result = calculateAverageVisibility(prompts, promptRuns, mockBrand, mockCompetitors);
@@ -173,10 +173,7 @@ describe("calculateAverageVisibility", () => {
 		});
 
 		it("should return 0 when no prompts have any mentions", () => {
-			const prompts = [
-				createMockPrompt("prompt-1"),
-				createMockPrompt("prompt-2"),
-			];
+			const prompts = [createMockPrompt("prompt-1"), createMockPrompt("prompt-2")];
 			const promptRuns = [
 				createMockPromptRun("prompt-1", false, [], 5), // no mentions
 				createMockPromptRun("prompt-2", false, [], 5), // no mentions
@@ -199,4 +196,4 @@ describe("calculateAverageVisibility", () => {
 			expect(result).toBe(50);
 		});
 	});
-}); 
+});

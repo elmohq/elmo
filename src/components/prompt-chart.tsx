@@ -59,10 +59,10 @@ export function PromptChart({
 		isLoading || !brand ? [] : calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
 
 	// Check if there's any non-zero visibility data across all brands and competitors
-	const hasVisibilityData = chartData.some(dataPoint => {
+	const hasVisibilityData = chartData.some((dataPoint) => {
 		// Check if any brand (main brand or competitors) has non-zero visibility
-		const allBrandIds = [brand?.id, ...(competitors?.map(c => c.id) || [])].filter(Boolean);
-		return allBrandIds.some(brandId => {
+		const allBrandIds = [brand?.id, ...(competitors?.map((c) => c.id) || [])].filter(Boolean);
+		return allBrandIds.some((brandId) => {
 			const visibility = dataPoint[brandId as string];
 			return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 		});
@@ -78,8 +78,8 @@ export function PromptChart({
 	// Create model-specific web query mappings for the dropdown
 	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
 	if (promptRuns && selectedModel === "all") {
-		availableModels.forEach(model => {
-			const modelPromptRuns = promptRuns.filter(run => run.modelGroup === model);
+		availableModels.forEach((model) => {
+			const modelPromptRuns = promptRuns.filter((run) => run.modelGroup === model);
 			modelWebQueryMappings[model] = createPromptToWebQueryMapping(modelPromptRuns);
 		});
 	}
@@ -128,13 +128,9 @@ export function PromptChart({
 	if (!hasVisibilityData) {
 		return (
 			<Card className="py-3 gap-3">
-								<CardHeader className="flex justify-between items-center px-3">
+				<CardHeader className="flex justify-between items-center px-3">
 					<div className="flex items-center gap-2">
-						<HistoryButton
-							promptName={promptName}
-							promptId={promptId}
-							brandId={brand?.id}
-						/>
+						<HistoryButton promptName={promptName} promptId={promptId} brandId={brand?.id} />
 						<CardTitle className="text-sm">{promptName}</CardTitle>
 					</div>
 					<div className="flex items-center gap-2">
@@ -164,13 +160,9 @@ export function PromptChart({
 
 	return (
 		<Card className="py-3 gap-3">
-						<CardHeader className="flex justify-between items-center px-3">
+			<CardHeader className="flex justify-between items-center px-3">
 				<div className="flex items-center gap-2">
-					<HistoryButton
-						promptName={promptName}
-						promptId={promptId}
-						brandId={brand?.id}
-					/>
+					<HistoryButton promptName={promptName} promptId={promptId} brandId={brand?.id} />
 					<CardTitle className="text-sm">{promptName}</CardTitle>
 				</div>
 				<div className="flex items-center gap-2">

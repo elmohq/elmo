@@ -3,8 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 import ClarityAnalytics from "@/components/clarity-analytics";
-import PlausibleProvider from 'next-plausible';
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import PlausibleProvider from "next-plausible";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -36,12 +36,10 @@ export default function RootLayout({
 			<head>
 				<PlausibleProvider domain="aeo.whitelabel-client.com" />
 			</head>
-					<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-			<ClarityAnalytics />
-			<NuqsAdapter>
-				{children}
-			</NuqsAdapter>
-		</body>
+			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+				<ClarityAnalytics />
+				<NuqsAdapter>{children}</NuqsAdapter>
+			</body>
 		</html>
 	);
 }

@@ -2,7 +2,14 @@
 
 import { GoStack } from "react-icons/go";
 import { Button } from "./ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "./ui/dropdown-menu";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+} from "./ui/dropdown-menu";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
 
@@ -14,11 +21,11 @@ interface PromptData {
 interface HistoryButtonProps {
 	// Basic configuration
 	brandId?: string;
-	
+
 	// Single prompt mode (if promptName is provided)
 	promptName?: string;
 	promptId?: string;
-	
+
 	// Multi-prompt mode (if prompts array is provided)
 	prompts?: PromptData[];
 	groupName?: string;
@@ -47,18 +54,11 @@ export function HistoryButton({
 		</Button>
 	);
 
-	const createDropdownItem = (
-		key: string, 
-		promptName: string, 
-		promptId: string, 
-		displayText?: string
-	) => (
+	const createDropdownItem = (key: string, promptName: string, promptId: string, displayText?: string) => (
 		<DropdownMenuItem key={key} className="cursor-pointer" asChild>
 			<a href={createHistoryUrl(promptId)}>
 				<div className="flex items-center justify-between w-full text-xs">
-					<span className={displayText ? "text-muted-foreground" : ""}>
-						{displayText || promptName}
-					</span>
+					<span className={displayText ? "text-muted-foreground" : ""}>{displayText || promptName}</span>
 					<GoStack size={12} className="size-3 ml-2" />
 				</div>
 			</a>
@@ -99,17 +99,15 @@ export function HistoryButton({
 				{isMultiMode && (
 					<>
 						<DropdownMenuSeparator />
-						{prompts.length > 0 ? (
-							prompts.map((prompt) => {
-								const displayText = `${groupPrefix} ${prompt.value}`;
-								return createDropdownItem(`${prompt.id}`, prompt.value, prompt.id, displayText);
-							})
-						) : (
-							createFallbackDropdownItem("fallback", groupName || "")
-						)}
+						{prompts.length > 0
+							? prompts.map((prompt) => {
+									const displayText = `${groupPrefix} ${prompt.value}`;
+									return createDropdownItem(`${prompt.id}`, prompt.value, prompt.id, displayText);
+								})
+							: createFallbackDropdownItem("fallback", groupName || "")}
 					</>
 				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
-} 
+}

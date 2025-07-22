@@ -251,8 +251,10 @@ export default function BrandSettingsPage() {
 						)}
 
 						<p className="text-xs text-muted-foreground">
-							<strong>{competitors.filter((c) => c.name.trim() && c.domain.trim()).length}/{MAX_COMPETITORS}</strong> competitors
-							configured
+							<strong>
+								{competitors.filter((c) => c.name.trim() && c.domain.trim()).length}/{MAX_COMPETITORS}
+							</strong>{" "}
+							competitors configured
 						</p>
 					</div>
 				</div>

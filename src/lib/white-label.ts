@@ -87,6 +87,6 @@ export const WHITE_LABEL_CONFIG = {
 		"#e53e3e",
 		"#38a169",
 		"#68d391",
-		"#9c4221"
+		"#9c4221",
 	],
 };

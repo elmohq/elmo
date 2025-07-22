@@ -18,10 +18,11 @@ export function SiteHeader() {
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
 	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] ? pathSegments[brandIndex + 2] : "";
-	
+
 	// Check if we're on a specific prompt detail page (e.g., /app/foo/prompts/uuid)
-	const isPromptDetailPage = pageSegment === "prompts" && 
-		pathSegments[brandIndex + 3] && 
+	const isPromptDetailPage =
+		pageSegment === "prompts" &&
+		pathSegments[brandIndex + 3] &&
 		pathSegments[brandIndex + 3] !== "edit" &&
 		// Basic UUID pattern check (8-4-4-4-12 characters)
 		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathSegments[brandIndex + 3]);

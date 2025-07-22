@@ -98,7 +98,9 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Prompt Evals (30d)</CardDescription>
-						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">{allPromptRuns?.length || 0}</CardTitle>
+						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">
+							{allPromptRuns?.length || 0}
+						</CardTitle>
 					</CardHeader>
 				</Card>
 
@@ -107,9 +109,13 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
 							{!allPromptRuns?.length || competitorsLoading ? (
-								<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">TBD</CardTitle>
+								<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+									TBD
+								</CardTitle>
 							) : (
-								<CardTitle className={`font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl ${getVisibilityTextColor(averageVisibility)}`}>
+								<CardTitle
+									className={`font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl ${getVisibilityTextColor(averageVisibility)}`}
+								>
 									{averageVisibility}%
 								</CardTitle>
 							)}

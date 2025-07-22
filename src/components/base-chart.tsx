@@ -37,41 +37,38 @@ interface BaseChartProps {
 // Helper function to calculate average visibility for a competitor
 function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string): number {
 	const validValues = data
-		.map(point => point[competitorId] as number | null)
-		.filter(value => value !== null && value !== undefined) as number[];
-	
+		.map((point) => point[competitorId] as number | null)
+		.filter((value) => value !== null && value !== undefined) as number[];
+
 	if (validValues.length === 0) return 0;
 	return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
 }
 
 // Helper function to select top competitors to display
 function selectCompetitorsToDisplay(
-	competitors: Competitor[], 
-	data: ChartDataPoint[], 
-	maxCompetitors: number = 3
+	competitors: Competitor[],
+	data: ChartDataPoint[],
+	maxCompetitors: number = 3,
 ): Competitor[] {
 	// Calculate average visibility for each competitor
-	const competitorsWithAvgVisibility = competitors.map(competitor => ({
+	const competitorsWithAvgVisibility = competitors.map((competitor) => ({
 		competitor,
-		avgVisibility: calculateAverageVisibility(data, competitor.id)
+		avgVisibility: calculateAverageVisibility(data, competitor.id),
 	}));
 
 	// Sort by highest average visibility
-	const sortedByVisibility = competitorsWithAvgVisibility
-		.sort((a, b) => b.avgVisibility - a.avgVisibility);
+	const sortedByVisibility = competitorsWithAvgVisibility.sort((a, b) => b.avgVisibility - a.avgVisibility);
 
 	// Take top competitors by visibility
-	const topCompetitors = sortedByVisibility
-		.slice(0, maxCompetitors)
-		.map(item => item.competitor);
+	const topCompetitors = sortedByVisibility.slice(0, maxCompetitors).map((item) => item.competitor);
 
 	// If we have fewer than maxCompetitors, fill from the front of the original competitors list (not sorted)
 	if (topCompetitors.length < maxCompetitors) {
-		const selectedIds = new Set(topCompetitors.map(c => c.id));
+		const selectedIds = new Set(topCompetitors.map((c) => c.id));
 		const remaining = competitors
-			.filter(c => !selectedIds.has(c.id))
+			.filter((c) => !selectedIds.has(c.id))
 			.slice(0, maxCompetitors - topCompetitors.length);
-		
+
 		topCompetitors.push(...remaining);
 	}
 
@@ -94,10 +91,10 @@ export function BaseChart({
 
 	// Sort all competitors alphabetically for consistent color assignment
 	const sortedAllCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
-	
+
 	// Select top competitors to display (max 3)
 	const selectedCompetitors = selectCompetitorsToDisplay(competitors, completeData, 3);
-	
+
 	// Sort selected competitors alphabetically to maintain consistent ordering
 	const sortedSelectedCompetitors = [...selectedCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -152,7 +149,7 @@ export function BaseChart({
 							tickFormatter={(value) => {
 								// Fix: Parse date string directly to avoid double timezone conversion
 								// value is already a properly bucketed date string like "2025-07-21"
-								const [year, month, day] = value.split('-').map(Number);
+								const [year, month, day] = value.split("-").map(Number);
 								const date = new Date(year, month - 1, day); // Create local date
 								return date.toLocaleDateString("en-US", {
 									month: "short",
@@ -176,7 +173,7 @@ export function BaseChart({
 								<ChartTooltipContent
 									labelFormatter={(value) => {
 										// Fix: Parse date string directly to avoid double timezone conversion
-										const [year, month, day] = value.split('-').map(Number);
+										const [year, month, day] = value.split("-").map(Number);
 										const date = new Date(year, month - 1, day);
 										return date.toLocaleDateString("en-US", {
 											month: "short",
@@ -209,13 +206,7 @@ export function BaseChart({
 							}
 						/>
 						{dataKeys.map((key, index) => (
-							<Bar
-								key={key}
-								dataKey={key}
-								fill={`var(--color-${key})`}
-                minPointSize={2}
-								radius={2}
-							/>
+							<Bar key={key} dataKey={key} fill={`var(--color-${key})`} minPointSize={2} radius={2} />
 						))}
 						<ChartLegend content={<ChartLegendContent payload={[]} />} />
 					</BarChart>
@@ -235,7 +226,7 @@ export function BaseChart({
 							tickFormatter={(value) => {
 								// Fix: Parse date string directly to avoid double timezone conversion
 								// value is already a properly bucketed date string like "2025-07-21"
-								const [year, month, day] = value.split('-').map(Number);
+								const [year, month, day] = value.split("-").map(Number);
 								const date = new Date(year, month - 1, day); // Create local date
 								return date.toLocaleDateString("en-US", {
 									month: "short",
@@ -259,7 +250,7 @@ export function BaseChart({
 								<ChartTooltipContent
 									labelFormatter={(value) => {
 										// Fix: Parse date string directly to avoid double timezone conversion
-										const [year, month, day] = value.split('-').map(Number);
+										const [year, month, day] = value.split("-").map(Number);
 										const date = new Date(year, month - 1, day);
 										return date.toLocaleDateString("en-US", {
 											month: "short",
