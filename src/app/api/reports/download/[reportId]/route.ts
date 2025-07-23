@@ -80,7 +80,7 @@ export async function GET(
 		const content = reportData.rawOutput;
 		
 		// Split content into lines that fit the page width
-		const lines = doc.splitTextToSize(content, maxLineWidth);
+		const lines = doc.splitTextToSize(content || "null", maxLineWidth);
 		
 		let yPosition = margin + 50;
 		
