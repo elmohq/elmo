@@ -63,7 +63,7 @@ export default function ReportPage() {
 				throw new Error(data.error || "Failed to create report");
 			}
 
-			setSuccess("Report created successfully!");
+			setSuccess("Report request submitted successfully!");
 			setFormData({ brandName: "", brandWebsite: "" });
 			// Trigger immediate revalidation of the reports list
 			mutate("/api/reports");

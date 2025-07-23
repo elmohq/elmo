@@ -1,0 +1,1 @@
+ALTER TABLE "reports" ALTER COLUMN "raw_output" SET DATA TYPE json;

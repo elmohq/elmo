@@ -5,6 +5,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, count } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { MAX_COMPETITORS } from "@/lib/constants";
+import { createPromptsData } from "@/lib/wizard-helpers";
 
 // Maximum limits
 const MAX_PROMPTS = 150;
@@ -68,85 +69,24 @@ export async function POST(request: NextRequest) {
 		const currentPromptCount = currentPromptCountResult[0]?.count || 0;
 		const currentCompetitorCount = currentCompetitorCountResult[0]?.count || 0;
 
-		const promptsToCreate = [];
+		// Use helper function to create prompts data
+		const { prompts: promptsToCreate, competitors: competitorsFromHelper } = createPromptsData({
+			brandId,
+			products: products || [],
+			competitors: competitorData || [],
+			personaGroups: personaGroups || [],
+			keywords: keywords || [],
+			customPrompts: customPrompts || [],
+		});
+
+		// Create competitors to insert into database
 		const competitorsToCreate = [];
-
-		// Add product categories as basic prompts (with "best " prefix)
-		if (products && Array.isArray(products)) {
-			for (const product of products) {
-				promptsToCreate.push({
-					brandId,
-					groupCategory: null,
-					groupPrefix: null,
-					value: `best ${product}`,
-					enabled: true,
-				});
-			}
-		}
-
-		// Add product categories + personas as grouped prompts (cross-product)
-		if (products && Array.isArray(products) && personaGroups && Array.isArray(personaGroups)) {
-			for (const product of products) {
-				for (const group of personaGroups) {
-					if (group && group.name && Array.isArray(group.personas)) {
-						for (const persona of group.personas) {
-							promptsToCreate.push({
-								brandId,
-								groupCategory: group.name,
-								groupPrefix: `best ${product} for `,
-								value: `best ${product} for ${persona}`,
-								enabled: true,
-							});
-						}
-					}
-				}
-			}
-		}
-
-		// Add custom prompts
-		if (customPrompts && Array.isArray(customPrompts)) {
-			for (const prompt of customPrompts) {
-				promptsToCreate.push({
-					brandId,
-					groupCategory: null,
-					groupPrefix: null,
-					value: prompt,
-					enabled: true,
-				});
-			}
-		}
-
-		// Add competitors to competitors table
-		if (competitorData && Array.isArray(competitorData)) {
-			for (const competitor of competitorData) {
-				// Handle both string format (legacy) and object format (new)
-				if (typeof competitor === "string") {
-					competitorsToCreate.push({
-						brandId,
-						name: competitor,
-						domain: "", // Empty domain for legacy string format
-					});
-				} else if (competitor && typeof competitor === "object" && competitor.name) {
-					competitorsToCreate.push({
-						brandId,
-						name: competitor.name,
-						domain: competitor.domain || "",
-					});
-				}
-			}
-		}
-
-		// Add keywords from DataForSEO (no group)
-		if (keywords && Array.isArray(keywords)) {
-			for (const keywordData of keywords) {
-				promptsToCreate.push({
-					brandId,
-					groupCategory: null,
-					groupPrefix: null,
-					value: keywordData.keyword,
-					enabled: true,
-				});
-			}
+		for (const competitor of competitorsFromHelper) {
+			competitorsToCreate.push({
+				brandId,
+				name: competitor.name,
+				domain: competitor.domain || "",
+			});
 		}
 
 		// Check limits before creating

@@ -82,6 +82,8 @@ export async function POST(request: NextRequest) {
 						type: "exponential",
 						delay: 5000,
 					},
+					removeOnComplete: 100,
+					removeOnFail: 100, 
 				}
 			);
 

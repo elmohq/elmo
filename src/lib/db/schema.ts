@@ -56,7 +56,7 @@ export const promptRuns = pgTable(
 		modelGroup: modelGroupsEnum().notNull(),
 		model: text("model").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
-		rawOutput: text("raw_output").notNull(),
+		rawOutput: json("raw_output").notNull(),
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
@@ -72,7 +72,7 @@ export const reports = pgTable("reports", {
 	brandName: text("brand_name").notNull(),
 	brandWebsite: text("brand_website").notNull(),
 	status: reportStatusEnum().notNull().default("pending"),
-	rawOutput: text("raw_output"),
+	rawOutput: json("raw_output"),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	completedAt: timestamp("completed_at", { withTimezone: true }),
 	updatedAt: timestamp("updated_at", { withTimezone: true })

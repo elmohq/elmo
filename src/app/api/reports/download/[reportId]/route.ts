@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 
 export async function GET(
 	request: NextRequest,
-	{ params }: { params: { reportId: string } }
+	{ params }: { params: Promise<{ reportId: string }> }
 ) {
 	try {
 		// Check if user has report generator access
@@ -19,7 +19,7 @@ export async function GET(
 			);
 		}
 
-		const { reportId } = params;
+		const { reportId } = await params;
 
 		// Validate reportId
 		if (!reportId || typeof reportId !== "string") {
