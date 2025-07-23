@@ -1,7 +1,7 @@
-import { promptQueue, queueConnectionConfig } from "./queues";
+import { promptQueue, reportQueue, queueConnectionConfig } from "./queues";
 import { Job, QueueEvents, Worker } from "bullmq";
 import { db } from "../lib/db/db";
-import { prompts, brands, competitors, promptRuns, type Prompt, type Brand, type Competitor } from "../lib/db/schema";
+import { prompts, brands, competitors, promptRuns, reports, type Prompt, type Brand, type Competitor } from "../lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT, AI_MODELS } from "../lib/constants";
 import Anthropic from "@anthropic-ai/sdk";
@@ -18,6 +18,12 @@ const anthropic = new Anthropic({
 
 interface JobData {
 	promptId: string;
+}
+
+interface ReportJobData {
+	reportId: string;
+	brandName: string;
+	brandWebsite: string;
 }
 
 interface PromptContext {
@@ -441,9 +447,79 @@ queueEvents.on("failed", ({ jobId, failedReason }: { jobId: string; failedReason
 	console.error("Job failed:", jobId, "Reason:", failedReason);
 });
 
+// Report worker
+const reportQueueEvents = new QueueEvents(reportQueue.name, { connection: queueConnectionConfig });
+
+const reportWorker = new Worker(
+	reportQueue.name,
+	async (job: Job<ReportJobData>) => {
+		const { reportId, brandName, brandWebsite } = job.data;
+
+		job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
+
+		try {
+			// Update report status to processing
+			await db
+				.update(reports)
+				.set({ status: "processing", updatedAt: new Date() })
+				.where(eq(reports.id, reportId));
+
+			job.log(`Report ${reportId} marked as processing`);
+			job.updateProgress(25);
+
+			// Simulate report generation work
+			// TODO: Replace with actual report generation logic
+			job.log(`Analyzing website: ${brandWebsite}`);
+			await new Promise(resolve => setTimeout(resolve, 5000)); // Simulate 5 seconds of work
+			job.updateProgress(50);
+
+			job.log(`Gathering brand data for: ${brandName}`);
+			await new Promise(resolve => setTimeout(resolve, 5000)); // Simulate 5 seconds of work
+			job.updateProgress(75);
+
+			job.log(`Generating final report for: ${brandName}`);
+			await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate 3 seconds of work
+			job.updateProgress(100);
+
+			// Update report status to completed
+			await db
+				.update(reports)
+				.set({ 
+					status: "completed", 
+					completedAt: new Date(),
+					updatedAt: new Date() 
+				})
+				.where(eq(reports.id, reportId));
+
+			job.log(`Successfully completed report ${reportId}`);
+			return { success: true, reportId };
+		} catch (error) {
+			job.log(`Error processing report ${reportId}: ${error instanceof Error ? error.message : "Unknown error"}`);
+			
+			// Update report status to failed
+			await db
+				.update(reports)
+				.set({ status: "failed", updatedAt: new Date() })
+				.where(eq(reports.id, reportId));
+
+			throw error;
+		}
+	},
+	{ connection: queueConnectionConfig, concurrency: 2 }
+);
+
+reportQueueEvents.on("completed", ({ jobId }) => {
+	console.log("Completed report job:", jobId);
+});
+
+reportQueueEvents.on("failed", ({ jobId, failedReason }: { jobId: string; failedReason: string }) => {
+	console.error("Report job failed:", jobId, "Reason:", failedReason);
+});
+
 const gracefulShutdown = async (signal: string) => {
 	console.log(`Received ${signal}, closing server...`);
 	await worker.close();
+	await reportWorker.close();
 	// Other asynchronous closings
 	process.exit(0);
 };

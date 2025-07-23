@@ -18,6 +18,7 @@ export type ElmoBrandMetadata = {
 
 export type AppMetadata = {
 	elmo_orgs?: ElmoBrandMetadata[];
+	elmo_report_generator_access?: boolean;
 };
 
 const CACHE_TTL = 60 * 5;
@@ -223,4 +224,9 @@ export async function updateBrand(
 export async function getBrandMetadata(brandId: string): Promise<undefined | ElmoBrandMetadata> {
 	const orgs = await getElmoOrgs();
 	return orgs.find((org) => org.id === brandId);
+}
+
+export async function hasReportGeneratorAccess(): Promise<boolean> {
+	const appMetadata = await getAppMetadata();
+	return appMetadata.elmo_report_generator_access === true;
 }

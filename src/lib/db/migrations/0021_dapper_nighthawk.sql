@@ -1,0 +1,1 @@
+ALTER TABLE "reports" ALTER COLUMN "raw_output" DROP NOT NULL;

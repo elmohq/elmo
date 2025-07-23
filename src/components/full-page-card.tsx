@@ -12,6 +12,7 @@ interface FullPageCardProps {
 	showBackButton?: boolean;
 	backButtonHref?: string;
 	backButtonText?: string;
+	customBackButton?: ReactNode;
 	className?: string;
 }
 
@@ -22,6 +23,7 @@ export default function FullPageCard({
 	showBackButton = false,
 	backButtonHref = "/app",
 	backButtonText = "Go Back",
+	customBackButton,
 	className = "w-md",
 }: FullPageCardProps) {
 	return (
@@ -47,13 +49,17 @@ export default function FullPageCard({
 						</>
 					)}
 				</Card>
-				{showBackButton && (
+				{customBackButton ? (
+					<div className="flex justify-center">
+						{customBackButton}
+					</div>
+				) : showBackButton ? (
 					<div className="flex justify-center">
 						<Button variant="outline" size="sm" asChild>
 							<Link href={backButtonHref}>{backButtonText}</Link>
 						</Button>
 					</div>
-				)}
+				) : null}
 			</div>
 		</div>
 	);

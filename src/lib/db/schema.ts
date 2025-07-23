@@ -1,6 +1,7 @@
 import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index } from "drizzle-orm/pg-core";
 
 export const modelGroupsEnum = pgEnum("model_groups", ["openai", "anthropic", "google"]);
+export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
 export const brands = pgTable("brands", {
 	id: text("id").primaryKey().notNull(),
@@ -55,7 +56,7 @@ export const promptRuns = pgTable(
 		modelGroup: modelGroupsEnum().notNull(),
 		model: text("model").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
-		rawOutput: json("raw_output").notNull(),
+		rawOutput: text("raw_output").notNull(),
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
@@ -65,6 +66,20 @@ export const promptRuns = pgTable(
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 	}),
 ).enableRLS();
+
+export const reports = pgTable("reports", {
+	id: uuid("id").defaultRandom().primaryKey().notNull(),
+	brandName: text("brand_name").notNull(),
+	brandWebsite: text("brand_website").notNull(),
+	status: reportStatusEnum().notNull().default("pending"),
+	rawOutput: text("raw_output"),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	completedAt: timestamp("completed_at", { withTimezone: true }),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
 
 export type Brand = typeof brands.$inferSelect;
 export type NewBrand = typeof brands.$inferInsert;
@@ -82,3 +97,6 @@ export type BrandWithPrompts = Brand & {
 	prompts: Prompt[];
 	competitors: Competitor[];
 };
+
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;

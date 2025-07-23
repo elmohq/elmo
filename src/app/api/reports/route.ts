@@ -1,0 +1,105 @@
+import { NextRequest, NextResponse } from "next/server";
+import { hasReportGeneratorAccess } from "@/lib/metadata";
+import { db } from "@/lib/db/db";
+import { reports, type NewReport } from "@/lib/db/schema";
+import { desc, eq } from "drizzle-orm";
+import { reportQueue } from "@/worker/queues";
+
+export async function GET() {
+	try {
+		// Check if user has report generator access
+		const hasAccess = await hasReportGeneratorAccess();
+		if (!hasAccess) {
+			return NextResponse.json({ error: "Access denied. Report generator access required." }, { status: 403 });
+		}
+
+		// Fetch all reports ordered by creation date (newest first)
+		const allReports = await db
+			.select()
+			.from(reports)
+			.orderBy(desc(reports.createdAt));
+
+		return NextResponse.json(allReports);
+	} catch (error) {
+		console.error("Error fetching reports:", error);
+		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+	}
+}
+
+export async function POST(request: NextRequest) {
+	try {
+		// Check if user has report generator access
+		const hasAccess = await hasReportGeneratorAccess();
+		if (!hasAccess) {
+			return NextResponse.json({ error: "Access denied. Report generator access required." }, { status: 403 });
+		}
+
+		const body = await request.json();
+		const { brandName, brandWebsite } = body;
+
+		// Validate required fields
+		if (!brandName || typeof brandName !== "string" || !brandName.trim()) {
+			return NextResponse.json({ error: "Brand name is required" }, { status: 400 });
+		}
+
+		if (!brandWebsite || typeof brandWebsite !== "string" || !brandWebsite.trim()) {
+			return NextResponse.json({ error: "Brand website is required" }, { status: 400 });
+		}
+
+		// Validate website URL format
+		try {
+			new URL(brandWebsite);
+		} catch {
+			return NextResponse.json({ error: "Invalid website URL format" }, { status: 400 });
+		}
+
+		// Create new report record
+		const newReport: NewReport = {
+			brandName: brandName.trim(),
+			brandWebsite: brandWebsite.trim(),
+			status: "pending",
+		};
+
+		const result = await db.insert(reports).values(newReport).returning();
+		const createdReport = result[0];
+
+		if (!createdReport) {
+			return NextResponse.json({ error: "Failed to create report" }, { status: 500 });
+		}
+
+		// Add job to the report queue
+		try {
+			await reportQueue.add(
+				"generate-report",
+				{
+					reportId: createdReport.id,
+					brandName: createdReport.brandName,
+					brandWebsite: createdReport.brandWebsite,
+				},
+				{
+					attempts: 3,
+					backoff: {
+						type: "exponential",
+						delay: 5000,
+					},
+				}
+			);
+
+			console.log(`Report job queued for report ID: ${createdReport.id}`);
+		} catch (queueError) {
+			console.error("Error adding report to queue:", queueError);
+			// Update report status to failed if queue addition fails
+			await db
+				.update(reports)
+				.set({ status: "failed", updatedAt: new Date() })
+				.where(eq(reports.id, createdReport.id));
+			
+			return NextResponse.json({ error: "Failed to queue report generation" }, { status: 500 });
+		}
+
+		return NextResponse.json(createdReport, { status: 201 });
+	} catch (error) {
+		console.error("Error creating report:", error);
+		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+	}
+} 
