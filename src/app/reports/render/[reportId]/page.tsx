@@ -7,6 +7,7 @@ import { PromptChartPrint } from "@/components/prompt-chart-print";
 import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
 import { Badge } from "@/components/ui/badge";
 import { notFound } from "next/navigation";
+import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 
 // Types matching the report worker output
 interface ReportData {
@@ -392,8 +393,14 @@ export default async function ReportRenderPage({
 
 	return (
 		<div className="max-w-4xl mx-auto p-8">
-			{/* Header */}
-			<h1 className="text-4xl font-bold text-gray-900 mb-6">AI Visibility Report</h1>
+			{/* Header with White Label Branding */}
+			<div className="flex items-center justify-between mb-6">
+				<h1 className="text-4xl font-bold text-gray-900">AI Visibility Report</h1>
+				<div className="flex items-center space-x-3">
+					<img src={WHITE_LABEL_CONFIG.icon} alt="Logo" className="!size-8" />
+					<span className="text-lg font-semibold">{WHITE_LABEL_CONFIG.name}</span>
+				</div>
+			</div>
 
 			{/* Metrics Grid */}
 			<div className="grid grid-cols-2 gap-6 mb-8">
@@ -412,6 +419,49 @@ export default async function ReportRenderPage({
 					</CardHeader>
 				</Card>
 			</div>
+
+			{/* What is AEO Section */}
+			<Card className="print:shadow-none mb-8">
+				<CardContent className="space-y-4">
+					<p className="text-gray-700 leading-relaxed">
+						<strong>Answer Engine Optimization (AEO)</strong>, also known as Generative Engine Optimization (GEO), is the practice of optimizing content to be discovered and cited by AI-powered search engines and chatbots like ChatGPT, Claude, Perplexity, and Google's AI Overviews.
+					</p>
+					<p className="text-gray-700 leading-relaxed">
+						Unlike traditional SEO which focuses on ranking websites in search results, AEO aims to have your brand mentioned directly in AI-generated responses. When users ask questions, AI engines synthesize information from the web and provide conversational answers. AEO ensures your brand is part of those answers.
+					</p>
+					<div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+						<p className="text-blue-800 font-medium">
+							Only around 12% of sources cited by ChatGPT overlap with traditional Google search results, meaning most traditional SEO strategies may not translate to AI visibility.
+						</p>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* AI Visibility Section */}
+			<Card className="print:shadow-none mb-8">
+				<CardContent className="space-y-4">
+					<p className="text-gray-700 leading-relaxed">
+						<strong>AI Visibility</strong> measures how often your brand appears in AI-generated responses. It's calculated by running relevant prompts through major AI engines and tracking brand mentions.
+					</p>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+						<div className="text-center p-4 bg-emerald-50 rounded-lg">
+							<div className="text-2xl font-bold text-emerald-600 mb-2">75%+</div>
+							<div className="text-sm text-emerald-700 font-semibold">Excellent Visibility</div>
+							<div className="text-sm text-emerald-700">AI finds your brand.</div>
+						</div>
+						<div className="text-center p-4 bg-amber-50 rounded-lg">
+							<div className="text-2xl font-bold text-amber-600 mb-2">45-75%</div>
+							<div className="text-sm text-amber-700 font-semibold">Good Visibility</div>
+							<div className="text-sm text-amber-700">Room for improvement.</div>
+						</div>
+						<div className="text-center p-4 bg-rose-50 rounded-lg">
+							<div className="text-2xl font-bold text-rose-600 mb-2">&lt;45%</div>
+							<div className="text-sm text-rose-700 font-semibold">Low Visibility</div>
+							<div className="text-sm text-rose-700">Optimization needed.</div>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Charts */}
 			{topDisplayItems.length === 0 ? (
@@ -451,7 +501,7 @@ export default async function ReportRenderPage({
 											groupName={chartName}
 											prompts={group.prompts}
 											brand={mockBrand}
-											competitors={mockCompetitors.slice(0, 5)} // Limit to top 5 competitors
+											competitors={mockCompetitors.slice(0, 4)} // Limit to top 4 competitors
 											promptRuns={fullPromptRuns}
 										/>
 									);
@@ -498,6 +548,41 @@ export default async function ReportRenderPage({
 					</Card>
 				</div>
 			)}
+
+			{/* Call to Action Section */}
+			<Card className="print:shadow-none mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+				<CardHeader className="text-center">
+					<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>
+					<CardDescription className="text-slate-700 text-base">
+						Take your brand's AI presence to the next level with {WHITE_LABEL_CONFIG.name}
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-6">
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<div className="text-center p-4">
+							<div className="text-3xl mb-2">🎯</div>
+							<h3 className="font-semibold text-slate-800 mb-2">Strategic Optimization</h3>
+							<p className="text-sm text-slate-700">Develop content strategies that increase your brand mentions in AI responses</p>
+						</div>
+						<div className="text-center p-4">
+							<div className="text-3xl mb-2">📊</div>
+							<h3 className="font-semibold text-slate-800 mb-2">Continuous Monitoring</h3>
+							<p className="text-sm text-slate-700">Track your AI visibility across hundreds of relevant prompts and topics</p>
+						</div>
+						<div className="text-center p-4">
+							<div className="text-3xl mb-2">🚀</div>
+							<h3 className="font-semibold text-slate-800 mb-2">Competitive Advantage</h3>
+							<p className="text-sm text-slate-700">Stay ahead of competitors in the rapidly evolving AI search landscape</p>
+						</div>
+					</div>
+					<div className="text-center pt-4 border-t border-blue-200">
+						<p className="text-slate-800 font-medium mb-2">Get started with {WHITE_LABEL_CONFIG.name} today</p>
+						<p className="text-slate-700 text-sm">
+							Visit <strong>{WHITE_LABEL_CONFIG.url}</strong> to learn more about our AEO platform and services.
+						</p>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 } 
