@@ -1,0 +1,503 @@
+import { hasReportGeneratorAccess } from "@/lib/metadata";
+import { db } from "@/lib/db/db";
+import { reports } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PromptChartPrint } from "@/components/prompt-chart-print";
+import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
+import { Badge } from "@/components/ui/badge";
+import { notFound } from "next/navigation";
+
+// Types matching the report worker output
+interface ReportData {
+	websiteAnalysis: any;
+	competitors: CompetitorResult[];
+	keywords: any[];
+	personaGroups: any[];
+	prompts: PromptData[];
+	promptRuns: PromptRunResult[];
+}
+
+interface CompetitorResult {
+	name: string;
+	domain: string;
+}
+
+interface PromptData {
+	value: string;
+	groupCategory: string | null;
+	groupPrefix: string | null;
+}
+
+interface PromptRunResult {
+	promptValue: string;
+	runs: Array<{
+		modelGroup: "openai" | "anthropic" | "google";
+		model: string;
+		webSearchEnabled: boolean;
+		rawOutput: any;
+		webQueries: string[];
+		textContent: string;
+		brandMentioned: boolean;
+		competitorsMentioned: string[];
+	}>;
+}
+
+// Mock structures to match frontend types
+interface MockPrompt {
+	id: string;
+	brandId: string;
+	value: string;
+	enabled: boolean;
+	groupCategory: string | null;
+	groupPrefix: string | null;
+	createdAt: Date;
+}
+
+interface MockPromptRun {
+	id: string;
+	promptId: string;
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	createdAt: Date;
+}
+
+// Calculate average AI visibility
+function calculateAverageVisibility(
+	prompts: MockPrompt[],
+	promptRuns: MockPromptRun[],
+	brandName: string,
+	competitors: CompetitorResult[]
+): number {
+	if (!prompts || prompts.length === 0) {
+		return 0;
+	}
+
+	// Filter to only enabled prompts
+	const enabledPrompts = prompts.filter((prompt) => prompt.enabled);
+	if (enabledPrompts.length === 0) {
+		return 0;
+	}
+
+	// Get recent runs (all of them since report data is recent)
+	const enabledPromptIds = new Set(enabledPrompts.map((prompt) => prompt.id));
+	const recentRuns = promptRuns.filter((run) => enabledPromptIds.has(run.promptId));
+
+	if (recentRuns.length === 0) {
+		return 0;
+	}
+
+	// Group runs by promptId
+	const runsByPrompt = new Map<string, MockPromptRun[]>();
+	for (const run of recentRuns) {
+		if (!runsByPrompt.has(run.promptId)) {
+			runsByPrompt.set(run.promptId, []);
+		}
+		runsByPrompt.get(run.promptId)!.push(run);
+	}
+
+	// Filter out prompts that have no brand or competitor mentions
+	const qualifyingRuns: MockPromptRun[] = [];
+	for (const [promptId, runs] of runsByPrompt) {
+		const hasAnyMentions = runs.some(
+			(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0)
+		);
+
+		if (hasAnyMentions) {
+			qualifyingRuns.push(...runs);
+		}
+	}
+
+	if (qualifyingRuns.length === 0) {
+		return 0;
+	}
+
+	// Calculate the percentage of runs with brand mentions
+	const brandMentionedCount = qualifyingRuns.filter((run) => run.brandMentioned).length;
+	return Math.round((brandMentionedCount / qualifyingRuns.length) * 100);
+}
+
+// Calculate weighted mention score for a single prompt (matches prompts-display logic)
+function calculatePromptMentionScore(promptId: string, promptRuns: MockPromptRun[]): number {
+	const runs = promptRuns.filter(run => run.promptId === promptId);
+	if (runs.length === 0) return 0;
+
+	const totalMentions = runs.reduce((total, run) => {
+		let mentions = 0;
+		// Count brand mention (weighted 2x)
+		if (run.brandMentioned) mentions += 2;
+		// Count each competitor mention separately (weighted 1x)
+		if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
+			mentions += run.competitorsMentioned.length;
+		}
+		return total + mentions;
+	}, 0);
+
+	return totalMentions / runs.length; // Average weighted mentions per run
+}
+
+// Calculate weighted mention score for a group of prompts (matches prompts-display logic)
+function calculateGroupMentionScore(groupPrompts: MockPrompt[], promptRuns: MockPromptRun[]): number {
+	const allRunsForGroup = groupPrompts.flatMap(prompt => 
+		promptRuns.filter(run => run.promptId === prompt.id)
+	);
+	
+	if (allRunsForGroup.length === 0) return 0;
+
+	const totalMentions = allRunsForGroup.reduce((total, run) => {
+		let mentions = 0;
+		// Count brand mention (weighted 2x)
+		if (run.brandMentioned) mentions += 2;
+		// Count each competitor mention separately (weighted 1x)
+		if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
+			mentions += run.competitorsMentioned.length;
+		}
+		return total + mentions;
+	}, 0);
+
+	return totalMentions / allRunsForGroup.length; // Average weighted mentions per run
+}
+
+// Calculate brand visibility percentage for a single prompt
+function calculatePromptBrandVisibility(promptId: string, promptRuns: MockPromptRun[]): number {
+	const runs = promptRuns.filter(run => run.promptId === promptId);
+	if (runs.length === 0) return 0;
+
+	const brandMentionedCount = runs.filter(run => run.brandMentioned).length;
+	return Math.round((brandMentionedCount / runs.length) * 100);
+}
+
+// Calculate brand visibility percentage for a group of prompts
+function calculateGroupBrandVisibility(groupPrompts: MockPrompt[], promptRuns: MockPromptRun[]): number {
+	const allRunsForGroup = groupPrompts.flatMap(prompt => 
+		promptRuns.filter(run => run.promptId === prompt.id)
+	);
+	
+	if (allRunsForGroup.length === 0) return 0;
+
+	const brandMentionedCount = allRunsForGroup.filter(run => run.brandMentioned).length;
+	return Math.round((brandMentionedCount / allRunsForGroup.length) * 100);
+}
+
+function getVisibilityTextColor(value: number): string {
+	if (value > 75) return "text-emerald-600";
+	if (value > 45) return "text-amber-500";
+	return "text-rose-500";
+}
+
+// Types for display items
+type DisplayItem = {
+	type: "individual" | "group";
+	mentionScore: number;
+	brandVisibility: number;
+	hasRuns: boolean;
+	data: MockPrompt | { groupKey: string; prompts: MockPrompt[] };
+};
+
+export default async function ReportRenderPage({
+	params,
+}: {
+	params: Promise<{ reportId: string }>;
+}) {
+	// Check if user has report generator access
+	const hasAccess = await hasReportGeneratorAccess();
+	if (!hasAccess) {
+		notFound();
+	}
+
+	const { reportId } = await params;
+
+	// Validate reportId
+	if (!reportId || typeof reportId !== "string") {
+		notFound();
+	}
+
+	// Fetch the report from database
+	const report = await db
+		.select()
+		.from(reports)
+		.where(eq(reports.id, reportId))
+		.limit(1)
+		.then((res) => res[0]);
+
+	if (!report) {
+		notFound();
+	}
+
+	// Check if report is completed
+	if (report.status !== "completed") {
+		return (
+			<div className="max-w-4xl mx-auto p-8">
+				<Card>
+					<CardContent className="py-8 text-center">
+						<p className="text-muted-foreground">Report is not completed yet. Status: {report.status}</p>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
+	const parsedReportData: ReportData = report.rawOutput as ReportData;
+
+	// Transform data to match frontend types
+	const mockBrand = {
+		id: "brand-1",
+		name: report.brandName,
+		website: report.brandWebsite,
+		enabled: true,
+		onboarded: true,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
+
+	const mockCompetitors = parsedReportData.competitors.map((comp, index) => ({
+		id: `comp-${index + 1}`,
+		name: comp.name,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+		brandId: mockBrand.id,
+		domain: comp.domain,
+	}));
+
+	const mockPrompts: MockPrompt[] = parsedReportData.prompts.map((prompt, index) => ({
+		id: `prompt-${index + 1}`,
+		brandId: mockBrand.id,
+		value: prompt.value,
+		enabled: true,
+		groupCategory: prompt.groupCategory,
+		groupPrefix: prompt.groupPrefix,
+		createdAt: new Date(),
+	}));
+
+	// Create prompt runs from report data  
+	const mockPromptRuns: MockPromptRun[] = [];
+	const fullPromptRuns: any[] = [];
+	
+	parsedReportData.promptRuns.forEach((promptRunResult, promptIndex) => {
+		(promptRunResult.runs as any[]).forEach((run, runIndex) => {
+			const promptRunData = {
+				id: `run-${promptIndex}-${runIndex}`,
+				promptId: `prompt-${promptIndex + 1}`,
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+				createdAt: new Date(),
+			};
+			
+			const fullPromptRunData = {
+				...promptRunData,
+				modelGroup: run.modelGroup,
+				model: run.model,
+				webSearchEnabled: run.webSearchEnabled,
+				rawOutput: run.rawOutput,
+				webQueries: run.webQueries,
+			};
+			
+			mockPromptRuns.push(promptRunData);
+			fullPromptRuns.push(fullPromptRunData);
+		});
+	});
+
+	// Calculate overall AI visibility
+	const averageVisibility = calculateAverageVisibility(
+		mockPrompts,
+		mockPromptRuns,
+		report.brandName,
+		parsedReportData.competitors
+	);
+
+	// Group prompts similar to prompts-display
+	const uncategorizedPrompts = mockPrompts.filter(
+		(prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized",
+	);
+
+	const groupedPrompts = mockPrompts
+		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
+		.reduce(
+			(acc, prompt) => {
+				const category = prompt.groupCategory!;
+				const prefix = prompt.groupPrefix || "";
+				const groupKey = prefix ? `${category}:${prefix}` : category;
+				if (!acc[groupKey]) {
+					acc[groupKey] = [];
+				}
+				acc[groupKey].push(prompt);
+				return acc;
+			},
+			{} as Record<string, MockPrompt[]>,
+		);
+
+	// Create display items for individual prompts
+	const individualItems: DisplayItem[] = uncategorizedPrompts.map((prompt) => {
+		const runs = mockPromptRuns.filter(run => run.promptId === prompt.id);
+		const hasRuns = runs.length > 0;
+		const mentionScore = calculatePromptMentionScore(prompt.id, mockPromptRuns);
+		const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+
+		return {
+			type: "individual" as const,
+			mentionScore,
+			brandVisibility,
+			hasRuns,
+			data: prompt,
+		};
+	});
+
+	// Create display items for groups
+	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => {
+		const allRunsForGroup = groupPrompts.flatMap(prompt => 
+			mockPromptRuns.filter(run => run.promptId === prompt.id)
+		);
+		const hasRuns = allRunsForGroup.length > 0;
+		const mentionScore = calculateGroupMentionScore(groupPrompts, mockPromptRuns);
+		const brandVisibility = calculateGroupBrandVisibility(groupPrompts, mockPromptRuns);
+
+		return {
+			type: "group" as const,
+			mentionScore,
+			brandVisibility,
+			hasRuns,
+			data: { groupKey, prompts: groupPrompts },
+		};
+	});
+
+	// Combine and sort all items by mention score (descending), then alphabetically  
+	const allDisplayItems = [...individualItems, ...groupItems].sort((a, b) => {
+		// First sort by mention score (descending)
+		if (a.mentionScore !== b.mentionScore) {
+			return b.mentionScore - a.mentionScore;
+		}
+
+		// Then sort alphabetically
+		const nameA = a.type === "individual" 
+			? (a.data as MockPrompt).value
+			: (() => {
+				const { groupKey } = a.data as { groupKey: string; prompts: MockPrompt[] };
+				return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+			})();
+
+		const nameB = b.type === "individual"
+			? (b.data as MockPrompt).value
+			: (() => {
+				const { groupKey } = b.data as { groupKey: string; prompts: MockPrompt[] };
+				return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+			})();
+
+		return nameA.localeCompare(nameB);
+	});
+
+	// Filter items with mention score data and limit to top 10
+	const itemsWithMentions = allDisplayItems.filter(item => item.mentionScore > 0);
+	const topDisplayItems = itemsWithMentions.slice(0, 10);
+	const remainingItems = itemsWithMentions.slice(10);
+
+	return (
+		<div className="max-w-4xl mx-auto p-8">
+			{/* Header */}
+			<h1 className="text-4xl font-bold text-gray-900 mb-6">AI Visibility Report</h1>
+
+			{/* Metrics Grid */}
+			<div className="grid grid-cols-2 gap-6 mb-8">
+				<Card className="print:shadow-none">
+					<CardHeader>
+						<CardDescription>Brand</CardDescription>
+						<CardTitle className="text-3xl">{report.brandName}</CardTitle>
+					</CardHeader>
+				</Card>
+				<Card className="print:shadow-none">
+					<CardHeader>
+						<CardDescription>AI Visibility</CardDescription>
+						<CardTitle className="text-3xl"><span className={`font-bold ${getVisibilityTextColor(averageVisibility)}`}>
+							{averageVisibility}%
+						</span></CardTitle>
+					</CardHeader>
+				</Card>
+			</div>
+
+			{/* Charts */}
+			{topDisplayItems.length === 0 ? (
+				<Card className="print:shadow-none">
+					<CardContent className="py-8 text-center">
+						<p className="text-muted-foreground">No prompts with visibility data found.</p>
+					</CardContent>
+				</Card>
+			) : (
+				<div className="space-y-6">
+					<h2 className="text-2xl font-bold text-gray-900">
+						Top Prompt Visibility Charts
+					</h2>
+
+					{topDisplayItems.map((item, index) => (
+						<div key={index}>
+							{item.type === "individual" ? (
+								<PromptChartPrint
+									lookback="1m"
+									promptName={(item.data as MockPrompt).value}
+									promptId={(item.data as MockPrompt).id}
+									brand={mockBrand}
+									competitors={mockCompetitors.slice(0, 5)} // Limit to top 5 competitors
+									promptRuns={fullPromptRuns}
+								/>
+							) : (
+								(() => {
+									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+									const firstPrompt = group.prompts[0];
+									const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
+									const groupPrefix = firstPrompt?.groupPrefix;
+									const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
+
+									return (
+										<PromptGroupChartPrint
+											lookback="1m"
+											groupName={chartName}
+											prompts={group.prompts}
+											brand={mockBrand}
+											competitors={mockCompetitors.slice(0, 5)} // Limit to top 5 competitors
+											promptRuns={fullPromptRuns}
+										/>
+									);
+								})()
+							)}
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* Remaining Prompts */}
+			{remainingItems.length > 0 && (
+				<div className="mt-8">
+					<Card className="print:shadow-none">
+						<CardHeader>
+							<CardTitle className="text-lg">Additional Prompts</CardTitle>
+							<CardDescription>
+								Here is a small sample of additional prompts tracked and the AI visibility score for {report.brandName}.
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+								{remainingItems.map((item, index) => {
+									const promptName = item.type === "individual" 
+										? (item.data as MockPrompt).value
+										: (() => {
+											const { groupKey } = item.data as { groupKey: string; prompts: MockPrompt[] };
+											return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
+										})();
+									
+									return (
+										<div key={index} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-sm">
+											<span className="truncate">
+												{promptName}
+											</span>
+											<Badge variant="outline" className={getVisibilityTextColor(item.brandVisibility)}>
+												{item.brandVisibility}%
+											</Badge>
+										</div>
+									);
+								})}
+							</div>
+						</CardContent>
+					</Card>
+				</div>
+			)}
+		</div>
+	);
+} 

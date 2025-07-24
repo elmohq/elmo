@@ -3,7 +3,50 @@ import { hasReportGeneratorAccess } from "@/lib/metadata";
 import { db } from "@/lib/db/db";
 import { reports } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import jsPDF from "jspdf";
+
+// Dynamic import for puppeteer-core and chromium to avoid bundling issues
+let puppeteer: any;
+let chromium: any;
+
+// Initialize browser dependencies
+async function initBrowser() {
+	if (!puppeteer) {
+		if (process.env.NODE_ENV === "development") {
+			// Development: use regular puppeteer with local Chrome
+			puppeteer = (await import("puppeteer")).default;
+		} else {
+			// Production: use puppeteer-core + serverless chromium
+			puppeteer = (await import("puppeteer-core")).default;
+			chromium = (await import("@sparticuz/chromium")).default;
+		}
+	}
+}
+
+// Launch browser instance
+async function getBrowser() {
+	await initBrowser();
+	
+	if (process.env.NODE_ENV === "development") {
+		// Development: use regular puppeteer with local Chrome/Chromium
+		return await puppeteer.launch({
+			headless: true,
+			args: ["--no-sandbox", "--disable-setuid-sandbox"],
+		});
+	} else {
+		// Production: use minimal chromium for Vercel serverless compatibility
+		return await puppeteer.launch({
+			args: [...chromium.args, "--hide-scrollbars", "--disable-web-security"],
+			defaultViewport: chromium.defaultViewport,
+			executablePath: await chromium.executablePath(),
+			headless: chromium.headless,
+			ignoreHTTPSErrors: true,
+		});
+	}
+}
+
+
+
+
 
 export async function GET(
 	request: NextRequest,
@@ -53,50 +96,29 @@ export async function GET(
 			);
 		}
 
-		// Generate PDF
-		const doc = new jsPDF();
-		const pageWidth = doc.internal.pageSize.getWidth();
-		const pageHeight = doc.internal.pageSize.getHeight();
-		const margin = 20;
-		const maxLineWidth = pageWidth - 2 * margin;
-		const lineHeight = 7;
-		
-		// Add title
-		doc.setFontSize(16);
-		doc.setFont("helvetica", "bold");
-		doc.text(`Report for ${reportData.brandName}`, margin, margin + 10);
-		
-		// Add website
-		doc.setFontSize(12);
-		doc.setFont("helvetica", "normal");
-		doc.text(`Website: ${reportData.brandWebsite}`, margin, margin + 25);
-		
-		// Add creation date
-		const createdDate = new Date(reportData.createdAt).toLocaleDateString();
-		doc.text(`Created: ${createdDate}`, margin, margin + 35);
-		
-		// Add content
-		doc.setFontSize(10);
-		const content = reportData.rawOutput;
-		
-		// Split content into lines that fit the page width
-		const lines = doc.splitTextToSize(JSON.stringify(content), maxLineWidth);
-		
-		let yPosition = margin + 50;
-		
-		for (const line of lines) {
-			// Check if we need a new page
-			if (yPosition + lineHeight > pageHeight - margin) {
-				doc.addPage();
-				yPosition = margin;
-			}
-			
-			doc.text(line, margin, yPosition);
-			yPosition += lineHeight;
-		}
+		// Use the new render route that bypasses all layouts
+		const renderUrl = `${request.nextUrl.origin}/reports/render/${reportId}`;
 
-		// Generate PDF buffer
-		const pdfBuffer = doc.output("arraybuffer");
+		// Launch browser and generate PDF
+		const browser = await getBrowser();
+		const page = await browser.newPage();
+		
+		// Navigate to the render page and wait for it to load
+		await page.goto(renderUrl, { waitUntil: "networkidle0" });
+		
+		// Generate PDF with print-optimized settings
+		const pdfBuffer = await page.pdf({
+			format: "A4",
+			printBackground: true,
+			margin: {
+				top: "20px",
+				right: "20px",
+				bottom: "20px",
+				left: "20px",
+			},
+		});
+		
+		await browser.close();
 
 		// Create response with PDF
 		return new NextResponse(pdfBuffer, {

@@ -9,6 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Save } from "lucide-react";
 import type { Report } from "@/lib/db/schema";
+import FullPageCard from "@/components/full-page-card";
+import { NavUserNoSidebar } from "@/components/nav-user-no-sidebar";
 
 interface ReportFormData {
 	brandName: string;
@@ -132,6 +134,11 @@ export default function ReportPage() {
 	};
 
 	return (
+		<FullPageCard
+			title="Reports"
+			subtitle="Generate one-time brand reports."
+			customBackButton={<NavUserNoSidebar />}
+		>
 		<div className="space-y-6 max-w-4xl">
 
 			{/* Report Creation Form */}
@@ -246,5 +253,6 @@ export default function ReportPage() {
 				)}
 			</div>
 		</div>
+		</FullPageCard>
 	);
 } 

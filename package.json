@@ -8,6 +8,7 @@
       "core-js",
       "esbuild",
       "msgpackr-extract",
+      "puppeteer",
       "sharp",
       "unrs-resolver"
     ]
@@ -44,6 +45,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tabs": "^1.1.12",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@sparticuz/chromium": "^138.0.2",
     "@tabler/icons-react": "^3.34.0",
     "@upstash/redis": "^1.35.1",
     "ai": "^4.3.17",
@@ -62,6 +64,7 @@
     "next-plausible": "^3.12.4",
     "nuqs": "^2.4.3",
     "pg": "^8.16.3",
+    "puppeteer-core": "^24.15.0",
     "react": "^19.0.0",
     "react-day-picker": "^9.8.0",
     "react-dom": "^19.0.0",
@@ -83,6 +86,7 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.4",
     "jest": "^30.0.4",
+    "puppeteer": "^24.15.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.0",
     "tsx": "^4.20.3",

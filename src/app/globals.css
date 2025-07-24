@@ -1,4 +1,30 @@
 @import "tailwindcss";
+
+/* Print styles for reports */
+@media print {
+  @page {
+    size: A4;
+    margin: 20px;
+  }
+  
+  /* Hide interactive elements in print */
+  button,
+  .cursor-pointer,
+  [role="button"] {
+    display: none !important;
+  }
+  
+  /* Ensure charts are visible in print */
+  .recharts-responsive-container {
+    position: static !important;
+  }
+  
+  /* Page break controls */
+  .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+}
+
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));

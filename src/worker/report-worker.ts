@@ -394,7 +394,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		let completedPromptRuns = 0;
 
 		// Run prompts in smaller batches to avoid overwhelming the APIs
-		const batchSize = 3;
+		const batchSize = 6;
 		for (let i = 0; i < prompts.length; i += batchSize) {
 			const batch = prompts.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (prompt) => {
