@@ -607,7 +607,7 @@ export default async function ReportRenderPage({
 											};
 										});
 									}
-								}).map((promptItem) => (
+								}).slice(0, 36).map((promptItem) => (
 									<div key={promptItem.key} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-xs">
 										<span className="text-ellipsis w-3/4">
 											{promptItem.name}
