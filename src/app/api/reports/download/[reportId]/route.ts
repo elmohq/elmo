@@ -110,7 +110,7 @@ export async function GET(
 		});
 		
 		// Additional wait to ensure all content is rendered
-		await page.waitForTimeout(2000);
+		await page.waitForDelay(2000);
 		
 		// Wait for any images to load (like logos)
 		await page.evaluate(() => {
