@@ -607,21 +607,168 @@ export default async function ReportRenderPage({
 											};
 										});
 									}
-								}).slice(0, 36).map((promptItem) => (
+																}).slice(0, 36).map((promptItem) => (
 									<div key={promptItem.key} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-xs">
-										<span className="text-ellipsis w-3/4">
+										<span className="text-ellipsis w-3/4 text-gray-700">
 											{promptItem.name}
 										</span>
-										<Badge variant="outline" className={getVisibilityTextColor(promptItem.visibility)}>
+										<span className="text-gray-700">
 											{promptItem.visibility}%
-										</Badge>
+										</span>
 									</div>
-								))}
+								))}			
 							</div>
 						</CardContent>
 					</Card>
 				</div>
 			)}
+
+			{/* Optimization Opportunities Section */}
+			<div className="mt-8 print:break-before">
+				<Card className="print:shadow-none">
+					<CardHeader>
+						<CardTitle className="text-xl text-slate-800">Top Optimization Opportunities</CardTitle>
+						<CardDescription className="text-slate-700">
+							Prompts where competitors are outperforming {report.brandName} are your biggest opportunities for improvement
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{(() => {
+							// Get all individual prompts (expand groups)
+							const allIndividualPrompts = [
+								...uncategorizedPrompts,
+								...Object.values(groupedPrompts).flat()
+							];
+
+							// Calculate competitive analysis for each prompt
+							const competitiveAnalysis = allIndividualPrompts.map(prompt => {
+								const promptRuns = mockPromptRuns.filter(run => run.promptId === prompt.id);
+								if (promptRuns.length === 0) return null;
+
+								// Calculate brand visibility
+								const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+
+								// Calculate competitor visibilities
+								const competitorVisibilities = parsedReportData.competitors.map(competitor => {
+									const competitorMentions = promptRuns.filter(run => 
+										run.competitorsMentioned && run.competitorsMentioned.includes(competitor.name)
+									).length;
+									return Math.round((competitorMentions / promptRuns.length) * 100);
+								});
+
+								// Find competitors with higher visibility than brand
+								const higherCompetitorVisibilities = competitorVisibilities.filter(vis => vis > brandVisibility);
+								
+								if (higherCompetitorVisibilities.length === 0) return null;
+
+								// Calculate average of higher-performing competitors
+								const avgCompetitorVisibility = Math.round(
+									higherCompetitorVisibilities.reduce((sum, vis) => sum + vis, 0) / higherCompetitorVisibilities.length
+								);
+
+								// Calculate gap (how much better competitors are)
+								const visibilityGap = avgCompetitorVisibility - brandVisibility;
+
+								// Calculate goal visibility (5-15% higher than competitor average, capped at 100%)
+								const goalIncrease = Math.floor(Math.random() * 11) + 5; // 5-15%
+								const goalVisibility = Math.min(100, avgCompetitorVisibility + goalIncrease);
+
+								// Determine difficulty based on current brand visibility
+								let difficulty: "Easy" | "Medium" | "Hard";
+								if (brandVisibility <= 20) difficulty = "Hard";
+								else if (brandVisibility <= 60) difficulty = "Medium";
+								else difficulty = "Easy";
+
+								return {
+									prompt: prompt.value,
+									brandVisibility,
+									avgCompetitorVisibility,
+									goalVisibility,
+									difficulty,
+									visibilityGap
+								};
+							}).filter(Boolean) as Array<{
+								prompt: string;
+								brandVisibility: number;
+								avgCompetitorVisibility: number;
+								goalVisibility: number;
+								difficulty: "Easy" | "Medium" | "Hard";
+								visibilityGap: number;
+							}>;
+
+							// Sort by visibility gap (biggest opportunities first), prioritizing non-zero brand visibility
+							const topOpportunities = competitiveAnalysis
+								.sort((a, b) => {
+									// First prioritize prompts with non-zero brand visibility
+									if (a.brandVisibility > 0 && b.brandVisibility === 0) return -1;
+									if (a.brandVisibility === 0 && b.brandVisibility > 0) return 1;
+									// Then sort by visibility gap (biggest opportunities first)
+									return b.visibilityGap - a.visibilityGap;
+								})
+								.slice(0, 5);
+
+							if (topOpportunities.length === 0) {
+								return (
+									<div className="text-center py-8">
+										<p className="text-muted-foreground">No competitive optimization opportunities found.</p>
+									</div>
+								);
+							}
+
+							return (
+								<div className="overflow-x-auto">
+									<table className="w-full text-sm">
+										<thead>
+											<tr className="border-b">
+												<th className="text-left py-3 px-2 font-semibold">Prompt</th>
+												<th className="text-center py-3 px-2 font-semibold">Current Visibility</th>
+												<th className="text-center py-3 px-2 font-semibold">Competitor Visibility</th>
+												<th className="text-center py-3 px-2 font-semibold">Goal Visibility</th>
+												<th className="text-center py-3 px-2 font-semibold">Difficulty</th>
+												<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
+											</tr>
+										</thead>
+										<tbody>
+											{topOpportunities.map((opportunity, index) => (
+												<tr key={index} className="border-b border-gray-100">
+													<td className="py-3 px-2 max-w-xs">
+														<div className="text-xs text-gray-700 break-words">
+															{opportunity.prompt}
+														</div>
+													</td>
+													<td className="text-center py-3 px-2">
+														<span className="text-xs text-gray-700">
+															{opportunity.brandVisibility}%
+														</span>
+													</td>
+													<td className="text-center py-3 px-2">
+														<span className="text-xs text-gray-700">
+															{opportunity.avgCompetitorVisibility}%
+														</span>
+													</td>
+													<td className="text-center py-3 px-2">
+														<span className="text-xs text-gray-700">
+															{opportunity.goalVisibility}%
+														</span>
+													</td>
+													<td className="text-center py-3 px-2">
+														<span className="text-xs text-gray-700">
+															{opportunity.difficulty}
+														</span>
+													</td>
+													<td className="py-3 px-2 text-xs text-gray-700">
+														Create LLM-optimized articles on "{opportunity.prompt}"
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							);
+						})()}
+					</CardContent>
+				</Card>
+			</div>
 
 			{/* Call to Action Section */}
 			<div className="mt-8 print:break-before">
