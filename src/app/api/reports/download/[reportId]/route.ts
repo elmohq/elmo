@@ -125,7 +125,7 @@ export async function GET(
 		
 		// Generate PDF with print-optimized settings
 		const pdfBuffer = await page.pdf({
-			format: "A4",
+			format: "Letter",
 			printBackground: true,
 			margin: {
 				top: "20px",
