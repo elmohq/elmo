@@ -134,7 +134,7 @@ export function PromptGroupChartPrint({
 			</CardHeader>
 			<Separator className="py-0 my-0" />
 			<CardContent className="pl-0 pr-6 print:pr-3">
-				<div className={`grid grid-cols-1 lg:grid-cols-2 gap-3 print:grid-cols-1 print:gap-2`}>
+				<div className={`grid grid-cols-1 lg:grid-cols-2 gap-3 print:grid-cols-2 print:gap-2`}>
 					{groupVisibilityData.map((promptData) => (
 						<BaseChartPrint
 							key={promptData.promptId}

@@ -3,8 +3,8 @@
 /* Print styles for reports */
 @media print {
   @page {
-    size: A4;
-    margin: 20px;
+    size: letter;
+    margin: 0.5in;
   }
   
   /* Hide interactive elements in print */
@@ -22,6 +22,83 @@
   /* Page break controls */
   .print-break-inside-avoid {
     break-inside: avoid;
+  }
+  
+  .print-break-before {
+    break-before: page;
+  }
+  
+  .print-page-center {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* Fix grid and flex layouts for print */
+  .grid {
+    display: grid !important;
+  }
+  
+  .grid-cols-1 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  /* Force responsive grid columns to work in print */
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+  
+  /* Ensure flex layouts work */
+  .flex {
+    display: flex !important;
+  }
+  
+  .justify-between {
+    justify-content: space-between !important;
+  }
+  
+  .items-center {
+    align-items: center !important;
+  }
+  
+  /* Ensure gaps work properly */
+  .gap-2 {
+    gap: 0.5rem !important;
+  }
+  
+  .gap-4 {
+    gap: 1rem !important;
+  }
+  
+  .gap-6 {
+    gap: 1.5rem !important;
+  }
+  
+  /* Ensure spacing works */
+  .space-x-3 > * + * {
+    margin-left: 0.75rem !important;
+  }
+  
+  .space-y-3 > * + * {
+    margin-top: 0.75rem !important;
+  }
+  
+  .space-y-6 > * + * {
+    margin-top: 1.5rem !important;
   }
 }
 

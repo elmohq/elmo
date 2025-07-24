@@ -8,6 +8,8 @@ import { eq } from "drizzle-orm";
 let puppeteer: any;
 let chromium: any;
 
+export const maxDuration = 300;
+
 // Initialize browser dependencies
 async function initBrowser() {
 	if (!puppeteer) {
@@ -43,10 +45,6 @@ async function getBrowser() {
 		});
 	}
 }
-
-
-
-
 
 export async function GET(
 	request: NextRequest,
@@ -136,4 +134,4 @@ export async function GET(
 			{ status: 500 }
 		);
 	}
-} 
+}

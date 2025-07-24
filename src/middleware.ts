@@ -5,6 +5,12 @@ import { auth0 } from "@/lib/auth0";
 export async function middleware(request: NextRequest) {
 	try {
 		const { pathname } = request.nextUrl;
+		
+		// Allow /reports/render/* routes without authentication
+		if (pathname.startsWith("/reports/render/")) {
+			return NextResponse.next();
+		}
+		
 		const session = await auth0.getSession(request);
 		if (!session) {
 			if (pathname.startsWith("/auth")) {
