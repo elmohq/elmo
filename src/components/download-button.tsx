@@ -1,14 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 
 interface DownloadButtonProps {
 	reportId: string;
 }
 
 export function DownloadButton({ reportId }: DownloadButtonProps) {
+	const [isDownloading, setIsDownloading] = useState(false);
+
 	const handleDownload = async () => {
+		if (isDownloading) return;
+		
+		setIsDownloading(true);
 		try {
 			const response = await fetch(`/api/reports/download/${reportId}`);
 			if (response.ok) {
@@ -27,13 +33,23 @@ export function DownloadButton({ reportId }: DownloadButtonProps) {
 			}
 		} catch (error) {
 			console.error('Download error:', error);
+		} finally {
+			setIsDownloading(false);
 		}
 	};
 
 	return (
-		<Button onClick={handleDownload} className="flex items-center gap-2">
-			<Download className="h-4 w-4" />
-			Download PDF
+		<Button 
+			onClick={handleDownload} 
+			className="flex items-center gap-2"
+			disabled={isDownloading}
+		>
+			{isDownloading ? (
+				<Loader2 className="h-4 w-4 animate-spin" />
+			) : (
+				<Download className="h-4 w-4" />
+			)}
+			{isDownloading ? "Rendering..." : "Download"}
 		</Button>
 	);
-} 
+}

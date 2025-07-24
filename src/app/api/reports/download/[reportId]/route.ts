@@ -110,7 +110,7 @@ export async function GET(
 		});
 		
 		// Additional wait to ensure all content is rendered
-		await page.waitForDelay(2000);
+		await new Promise(resolve => setTimeout(resolve, 4000));
 		
 		// Wait for any images to load (like logos)
 		await page.evaluate(() => {

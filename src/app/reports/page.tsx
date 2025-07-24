@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Save } from "lucide-react";
+import { Save, Loader2 } from "lucide-react";
 import type { Report } from "@/lib/db/schema";
 import FullPageCard from "@/components/full-page-card";
 import { NavUserNoSidebar } from "@/components/nav-user-no-sidebar";
@@ -39,6 +39,7 @@ export default function ReportPage() {
 	const [submitError, setSubmitError] = useState("");
 	const [success, setSuccess] = useState("");
 	const [downloadError, setDownloadError] = useState("");
+	const [downloadingReportIds, setDownloadingReportIds] = useState<Set<string>>(new Set());
 	const [formData, setFormData] = useState<ReportFormData>({
 		brandName: "",
 		brandWebsite: "",
@@ -77,6 +78,9 @@ export default function ReportPage() {
 	};
 
 	const handleDownloadPDF = async (reportId: string, brandName: string) => {
+		if (downloadingReportIds.has(reportId)) return; // Prevent duplicate downloads of same report
+		
+		setDownloadingReportIds(prev => new Set([...prev, reportId]));
 		try {
 			setDownloadError("");
 			const response = await fetch(`/api/reports/download/${reportId}`, {
@@ -109,6 +113,12 @@ export default function ReportPage() {
 			window.URL.revokeObjectURL(url);
 		} catch (err) {
 			setDownloadError("Failed to download report");
+		} finally {
+			setDownloadingReportIds(prev => {
+				const newSet = new Set(prev);
+				newSet.delete(reportId);
+				return newSet;
+			});
 		}
 	};
 
@@ -236,9 +246,19 @@ export default function ReportPage() {
 												size="sm"
 												onClick={() => handleDownloadPDF(report.id, report.brandName)}
 												className="cursor-pointer h-6 px-2 text-xs"
+												disabled={downloadingReportIds.has(report.id)}
 											>
-												<Save className="w-3 h-3 mr-1" />
-												Download
+												{downloadingReportIds.has(report.id) ? (
+													<>
+														<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+														Generating...
+													</>
+												) : (
+													<>
+														<Save className="w-3 h-3 mr-1" />
+														Download
+													</>
+												)}
 											</Button>
 										) : (
 											<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
