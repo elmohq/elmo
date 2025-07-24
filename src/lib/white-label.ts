@@ -1,8 +1,8 @@
 export const WHITE_LABEL_CONFIG = {
-	name: "Fermàt AEO",
+	name: "WHITELABEL-CLIENT AEO",
 	icon: "/brands/whitelabel-client/icon.png",
 	url: "https://aeo.whitelabel-client.com/",
-	parent_name: "Fermàt",
+	parent_name: "WHITELABEL-CLIENT",
 	parent_url: "https://app.whitelabel-client.com/",
 	chart_colors: [
 		"#3182ce",
