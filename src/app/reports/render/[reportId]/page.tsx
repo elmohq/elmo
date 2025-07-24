@@ -546,91 +546,94 @@ const remainingItems = itemsWithVisibility.slice(4);
 
 
 
-			{/* AEO Opportunity Section */}
-			<div className="mt-8">
-				<Card className="print:shadow-none">
-					<CardHeader>
-						<CardTitle className="text-xl text-slate-800">AEO Opportunity</CardTitle>
-						<CardDescription className="text-slate-700">
-							Overview of your current AI visibility performance and growth potential.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{(() => {
-							// Calculate total prompts tracked (expand groups to count individual prompts)
-							const totalPromptsTracked = itemsWithVisibility.reduce((total, item) => {
-								if (item.type === "individual") {
-									return total + 1;
-								} else {
-									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-									return total + group.prompts.length;
-								}
-							}, 0);
+			{/* AEO Opportunity and Optimization Sections Container */}
+			<div className="print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
+				<div className="print:w-full space-y-8">
+					{/* AEO Opportunity Section */}
+					<div className="mt-8 print:mt-0">
+						<Card className="print:shadow-none">
+							<CardHeader>
+								<CardTitle className="text-xl text-slate-800">AEO Opportunity</CardTitle>
+								<CardDescription className="text-slate-700">
+									Overview of your current AI visibility performance and growth potential.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								{(() => {
+									// Calculate total prompts tracked (expand groups to count individual prompts)
+									const totalPromptsTracked = itemsWithVisibility.reduce((total, item) => {
+										if (item.type === "individual") {
+											return total + 1;
+										} else {
+											const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+											return total + group.prompts.length;
+										}
+									}, 0);
 
-							// Calculate prompts where brand is mentioned (check individual prompts within groups)
-							const promptsWithBrandMentions = itemsWithVisibility.reduce((total, item) => {
-								if (item.type === "individual") {
-									return total + (item.brandVisibility > 0 ? 1 : 0);
-								} else {
-									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-									// Count individual prompts in the group that have brand mentions
-									const groupPromptsWithMentions = group.prompts.filter(prompt => {
-										const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
-										return brandVisibility > 0;
-									}).length;
-									return total + groupPromptsWithMentions;
-								}
-							}, 0);
-							
-							// Calculate opportunity level based on brand mention ratio
-							const brandMentionRatio = totalPromptsTracked > 0 ? promptsWithBrandMentions / totalPromptsTracked : 0;
-							const opportunityLevel = "High";
-							const recommendation = "Generate content to increase brand visibility";
+									// Calculate prompts where brand is mentioned (check individual prompts within groups)
+									const promptsWithBrandMentions = itemsWithVisibility.reduce((total, item) => {
+										if (item.type === "individual") {
+											return total + (item.brandVisibility > 0 ? 1 : 0);
+										} else {
+											const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+											// Count individual prompts in the group that have brand mentions
+											const groupPromptsWithMentions = group.prompts.filter(prompt => {
+												const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+												return brandVisibility > 0;
+											}).length;
+											return total + groupPromptsWithMentions;
+										}
+									}, 0);
+									
+									// Calculate opportunity level based on brand mention ratio
+									const brandMentionRatio = totalPromptsTracked > 0 ? promptsWithBrandMentions / totalPromptsTracked : 0;
+									const opportunityLevel = "High";
+									const recommendation = "Generate content to increase brand visibility";
 
-							return (
-								<div className="overflow-x-auto">
-									<table className="w-full text-sm">
-										<thead>
-											<tr className="border-b">
-												<th className="text-center py-3 px-2 font-semibold">Prompts With Mentions</th>
-												<th className="text-center py-3 px-2 font-semibold">Total Prompts Tracked</th>
-												<th className="text-center py-3 px-2 font-semibold">Opportunity</th>
-												<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
-											</tr>
-										</thead>
-										<tbody>
-											<tr className="border-b border-gray-100">
-												<td className="text-center py-3 px-2">
-													<span className="text-sm font-semibold text-gray-700">
-														{promptsWithBrandMentions * 15}
-													</span>
-												</td>
-												<td className="text-center py-3 px-2">
-													<span className="text-sm text-gray-700">
-														{totalPromptsTracked * 15}
-													</span>
-												</td>
-												<td className="text-center py-3 px-2">
-													<Badge className="text-xs">
-														{opportunityLevel}
-													</Badge>
-												</td>
-												<td className="py-3 px-2 text-sm text-gray-700">
-													{recommendation}
-												</td>
-											</tr>
-										</tbody>
-									</table>
-								</div>
-							);
-						})()}
-					</CardContent>
-				</Card>
-			</div>
+									return (
+										<div className="overflow-x-auto">
+											<table className="w-full text-sm">
+												<thead>
+													<tr className="border-b">
+														<th className="text-center py-3 px-2 font-semibold">Prompts With Mentions</th>
+														<th className="text-center py-3 px-2 font-semibold">Total Prompts Tracked</th>
+														<th className="text-center py-3 px-2 font-semibold">Opportunity</th>
+														<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
+													</tr>
+												</thead>
+												<tbody>
+													<tr className="border-b border-gray-100">
+														<td className="text-center py-3 px-2">
+															<span className="text-sm font-semibold text-gray-700">
+																{promptsWithBrandMentions * 15}
+															</span>
+														</td>
+														<td className="text-center py-3 px-2">
+															<span className="text-sm text-gray-700">
+																{totalPromptsTracked * 15}
+															</span>
+														</td>
+														<td className="text-center py-3 px-2">
+															<Badge className="text-xs">
+																{opportunityLevel}
+															</Badge>
+														</td>
+														<td className="py-3 px-2 text-sm text-gray-700">
+															{recommendation}
+														</td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+									);
+								})()}
+							</CardContent>
+						</Card>
+					</div>
 
-			{/* Optimization Opportunities Section */}
-			<div className="mt-8 print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
-				<Card className="print:shadow-none print:w-full">
+					{/* Optimization Opportunities Section */}
+					<div>
+						<Card className="print:shadow-none">
 					<CardHeader>
 						<CardTitle className="text-xl text-slate-800">What should I do next?</CardTitle>
 						<CardDescription className="text-slate-700">
@@ -760,7 +763,7 @@ const remainingItems = itemsWithVisibility.slice(4);
 														</span>
 													</td>
 													<td className="py-3 px-2 text-xs text-gray-700">
-														Write {Math.max(1, Math.round(Math.sqrt(opportunity.goalVisibility - opportunity.brandVisibility)))} LLM-friendly articles
+														Write {Math.max(1, Math.round(Math.sqrt(opportunity.goalVisibility - opportunity.brandVisibility)))} LLM-friendly articles on "{opportunity.prompt}"
 													</td>
 												</tr>
 											))}
@@ -771,6 +774,8 @@ const remainingItems = itemsWithVisibility.slice(4);
 						})()}
 					</CardContent>
 				</Card>
+			</div>
+				</div>
 			</div>
 
 			{/* Call to Action Section */}
