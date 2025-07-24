@@ -449,10 +449,10 @@ export default async function ReportRenderPage({
 		}
 	};
 
-	// Filter items with visibility data and limit to top 10
+	// Filter items with visibility data and limit to top 4
 	const itemsWithVisibility = allDisplayItems.filter(hasVisibilityData);
-	const topDisplayItems = itemsWithVisibility.slice(0, 10);
-	const remainingItems = itemsWithVisibility.slice(10);
+	const topDisplayItems = itemsWithVisibility.slice(0, 4);
+	const remainingItems = itemsWithVisibility.slice(4);
 
 	return (
 		<div className="max-w-4xl mx-auto p-6 print:pt-8">
@@ -582,30 +582,41 @@ export default async function ReportRenderPage({
 						<CardHeader>
 							<CardTitle className="text-lg">Additional Prompts</CardTitle>
 													<CardDescription>
-								Here is a small sample of the additional prompts to track for {report.brandName}.
+								Here are some additional prompts to track for {report.brandName}.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-								{remainingItems.map((item, index) => {
-									const promptName = item.type === "individual" 
-										? (item.data as MockPrompt).value
-										: (() => {
-											const { groupKey } = item.data as { groupKey: string; prompts: MockPrompt[] };
-											return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-										})();
-									
-									return (
-										<div key={index} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-xs">
-											<span className="text-ellipsis w-3/4">
-												{promptName}
-											</span>
-											<Badge variant="outline" className={getVisibilityTextColor(item.brandVisibility)}>
-												{item.brandVisibility}%
-											</Badge>
-										</div>
-									);
-								})}
+								{remainingItems.flatMap((item, groupIndex) => {
+									if (item.type === "individual") {
+										const prompt = item.data as MockPrompt;
+										return [{
+											key: `individual-${groupIndex}`,
+											name: prompt.value,
+											visibility: item.brandVisibility
+										}];
+									} else {
+										// Expand group into individual prompts
+										const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+										return group.prompts.map((prompt, promptIndex) => {
+											const individualVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+											return {
+												key: `group-${groupIndex}-prompt-${promptIndex}`,
+												name: prompt.value,
+												visibility: individualVisibility
+											};
+										});
+									}
+								}).map((promptItem) => (
+									<div key={promptItem.key} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-xs">
+										<span className="text-ellipsis w-3/4">
+											{promptItem.name}
+										</span>
+										<Badge variant="outline" className={getVisibilityTextColor(promptItem.visibility)}>
+											{promptItem.visibility}%
+										</Badge>
+									</div>
+								))}
 							</div>
 						</CardContent>
 					</Card>
