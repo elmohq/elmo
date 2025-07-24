@@ -104,6 +104,25 @@ export async function GET(
 		// Navigate to the render page and wait for it to load
 		await page.goto(renderUrl, { waitUntil: "networkidle0" });
 		
+		// Wait for fonts to load completely
+		await page.evaluateHandle(() => {
+			return document.fonts.ready;
+		});
+		
+		// Additional wait to ensure all content is rendered
+		await page.waitForTimeout(2000);
+		
+		// Wait for any images to load (like logos)
+		await page.evaluate(() => {
+			return Promise.all(
+				Array.from(document.images)
+					.filter(img => !img.complete)
+					.map(img => new Promise(resolve => {
+						img.onload = img.onerror = resolve;
+					}))
+			);
+		});
+		
 		// Generate PDF with print-optimized settings
 		const pdfBuffer = await page.pdf({
 			format: "A4",

@@ -581,8 +581,8 @@ export default async function ReportRenderPage({
 						<CardHeader>
 							<CardTitle className="text-lg">Additional Prompts</CardTitle>
 													<CardDescription>
-							Here is a small sample of the additional prompts to track for {report.brandName}.
-						</CardDescription>
+								Here is a small sample of the additional prompts to track for {report.brandName}.
+							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
