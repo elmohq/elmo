@@ -750,7 +750,7 @@ const remainingItems = itemsWithVisibility.slice(4);
 			</div>
 
 			{/* Call to Action Section */}
-			<div className="mt-8 print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
+			<div className="mt-8 print:mt-0 print:break-before-page print:flex print:items-center print:justify-center print:py-48">
 				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:w-full">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>

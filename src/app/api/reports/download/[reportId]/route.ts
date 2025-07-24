@@ -133,6 +133,7 @@ export async function GET(
 				bottom: "20px",
 				left: "10px",
 			},
+			waitForFonts: true
 		});
 		
 		await browser.close();
