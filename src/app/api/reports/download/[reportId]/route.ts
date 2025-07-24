@@ -129,9 +129,9 @@ export async function GET(
 			printBackground: true,
 			margin: {
 				top: "20px",
-				right: "20px",
+				right: "10px",
 				bottom: "20px",
-				left: "20px",
+				left: "10px",
 			},
 		});
 		

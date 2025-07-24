@@ -394,71 +394,34 @@ export default async function ReportRenderPage({
 		return nameA.localeCompare(nameB);
 	});
 
-	// Filter items that would show "No brands found" - use the same logic as the chart components
-	const hasVisibilityData = (item: DisplayItem): boolean => {
+	// Simple check for whether an item has any visibility data (without expensive chart calculations)
+	const hasSimpleVisibilityData = (item: DisplayItem): boolean => {
 		if (item.type === "individual") {
 			const prompt = item.data as MockPrompt;
-			const promptSpecificRuns = fullPromptRuns.filter(run => run.promptId === prompt.id);
+			const promptRuns = mockPromptRuns.filter(run => run.promptId === prompt.id);
 			
-			// Calculate chart data first 
-			const chartData = calculateVisibilityPercentages(promptSpecificRuns, mockBrand, mockCompetitors, "1m");
-			
-			// Select top competitors by visibility, filling with alphabetical order if needed
-			const selectedCompetitors = selectCompetitorsToDisplay(mockCompetitors, chartData, 5);
-			
-			// Check if there's any non-zero visibility data for brand or selected competitors
-			const hasData = chartData.some((dataPoint) => {
-				// Check brand visibility
-				const brandVisibility = dataPoint[mockBrand.id] as number;
-				if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
-					return true;
-				}
-				
-				// Check selected competitor visibility
-				return selectedCompetitors.some(competitor => {
-					const visibility = dataPoint[competitor.id] as number;
-					return visibility !== null && visibility !== undefined && Number(visibility) > 0;
-				});
-			});
-			
-			return hasData;
+			// Simple check: any runs with brand or competitor mentions
+			return promptRuns.some(run => 
+				run.brandMentioned || 
+				(run.competitorsMentioned && run.competitorsMentioned.length > 0)
+			);
 		} else {
 			const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-			
-			// Get all runs for prompts in this group
 			const groupPromptIds = group.prompts.map(p => p.id);
-			const groupPromptRuns = fullPromptRuns.filter(run => groupPromptIds.includes(run.promptId));
+			const groupRuns = mockPromptRuns.filter(run => groupPromptIds.includes(run.promptId));
 			
-			// Calculate group visibility data first
-			const groupVisibilityData = calculateGroupVisibilityData(fullPromptRuns, group.prompts, mockBrand, mockCompetitors, "1m");
-			
-			// Select top competitors by visibility, filling with alphabetical order if needed
-			const allChartData = groupVisibilityData.flatMap(promptData => promptData.chartData);
-			const selectedCompetitors = selectCompetitorsToDisplay(mockCompetitors, allChartData, 4);
-			
-			// Check if there's any non-zero visibility data for brand or selected competitors
-			return groupVisibilityData.some((promptData) => {
-				return promptData.chartData.some((dataPoint) => {
-					// Check brand visibility
-					const brandVisibility = dataPoint[mockBrand.id] as number;
-					if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
-						return true;
-					}
-					
-					// Check selected competitor visibility
-					return selectedCompetitors.some(competitor => {
-						const visibility = dataPoint[competitor.id] as number;
-						return visibility !== null && visibility !== undefined && Number(visibility) > 0;
-					});
-				});
-			});
+			// Simple check: any runs with brand or competitor mentions  
+			return groupRuns.some(run => 
+				run.brandMentioned || 
+				(run.competitorsMentioned && run.competitorsMentioned.length > 0)
+			);
 		}
 	};
 
 	// Filter items with visibility data and limit to top 4
-	const itemsWithVisibility = allDisplayItems.filter(hasVisibilityData);
+	const itemsWithVisibility = allDisplayItems.filter(hasSimpleVisibilityData);
 	const topDisplayItems = itemsWithVisibility.slice(0, 4);
-	const remainingItems = itemsWithVisibility.slice(4);
+const remainingItems = itemsWithVisibility.slice(4);
 
 	return (
 		<div className="max-w-4xl mx-auto p-6 print:pt-8">
@@ -583,7 +546,7 @@ export default async function ReportRenderPage({
 
 			{/* Remaining Prompts */}
 			{remainingItems.length > 0 && (
-				<div className="mt-8 print-break-before print-page-center">
+				<div className="mt-8 print:break-before-page">
 					<Card className="print:shadow-none">
 						<CardHeader>
 							<CardTitle className="text-lg">Additional Prompts</CardTitle>
@@ -602,16 +565,14 @@ export default async function ReportRenderPage({
 											visibility: item.brandVisibility
 										}];
 									} else {
-										// Expand group into individual prompts
+										// For groups, just show the group summary instead of expanding
 										const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-										return group.prompts.map((prompt, promptIndex) => {
-											const individualVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
-											return {
-												key: `group-${groupIndex}-prompt-${promptIndex}`,
-												name: prompt.value,
-												visibility: individualVisibility
-											};
-										});
+										const groupName = group.groupKey.includes(":") ? group.groupKey.split(":")[1] : group.groupKey;
+										return [{
+											key: `group-${groupIndex}`,
+											name: `${groupName} (${group.prompts.length} prompts)`,
+											visibility: item.brandVisibility
+										}];
 									}
 																}).slice(0, 36).map((promptItem) => (
 									<div key={promptItem.key} className={`flex justify-between items-center py-2 px-3 rounded text-xs ${promptItem.visibility > 0 ? getVisibilityBackgroundColor(promptItem.visibility) : "bg-gray-50"}`}>
@@ -630,7 +591,7 @@ export default async function ReportRenderPage({
 			)}
 
 			{/* Optimization Opportunities Section */}
-			<div className="mt-8 print:break-before print:h-screen print:flex print:items-center print:justify-center">
+			<div className="mt-8 print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
 				<Card className="print:shadow-none print:w-full">
 					<CardHeader>
 						<CardTitle className="text-xl text-slate-800">What should I do next?</CardTitle>
@@ -640,27 +601,39 @@ export default async function ReportRenderPage({
 					</CardHeader>
 					<CardContent>
 						{(() => {
-							// Get all individual prompts (expand groups)
-							const allIndividualPrompts = [
-								...uncategorizedPrompts,
-								...Object.values(groupedPrompts).flat()
-							];
+							// Get a subset of prompts for performance (top 20 by mention score)
+							const topPromptsSubset = itemsWithVisibility.slice(0, 20);
 
-							// Calculate competitive analysis for each prompt
-							const competitiveAnalysis = allIndividualPrompts.map(prompt => {
-								const promptRuns = mockPromptRuns.filter(run => run.promptId === prompt.id);
+							// Calculate competitive analysis only for subset
+							const competitiveAnalysis = topPromptsSubset.map(item => {
+								let prompt: MockPrompt;
+								let promptRuns: MockPromptRun[];
+								
+								if (item.type === "individual") {
+									prompt = item.data as MockPrompt;
+									promptRuns = mockPromptRuns.filter(run => run.promptId === prompt.id);
+								} else {
+									// For groups, take the first prompt as representative
+									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+									prompt = group.prompts[0];
+									promptRuns = mockPromptRuns.filter(run => 
+										group.prompts.some(p => p.id === run.promptId)
+									);
+								}
+								
 								if (promptRuns.length === 0) return null;
 
-								// Calculate brand visibility
-								const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+								// Use pre-calculated values from item
+								const brandVisibility = item.brandVisibility;
 
-								// Calculate competitor visibilities
-								const competitorVisibilities = parsedReportData.competitors.map(competitor => {
+								// Calculate competitor visibilities efficiently
+								const competitorVisibilities: number[] = [];
+								for (const competitor of parsedReportData.competitors) {
 									const competitorMentions = promptRuns.filter(run => 
 										run.competitorsMentioned && run.competitorsMentioned.includes(competitor.name)
 									).length;
-									return Math.round((competitorMentions / promptRuns.length) * 100);
-								});
+									competitorVisibilities.push(Math.round((competitorMentions / promptRuns.length) * 100));
+								}
 
 								// Find competitors with higher visibility than brand
 								const higherCompetitorVisibilities = competitorVisibilities.filter(vis => vis > brandVisibility);
@@ -711,7 +684,7 @@ export default async function ReportRenderPage({
 									// Then sort by visibility gap (biggest opportunities first)
 									return b.visibilityGap - a.visibilityGap;
 								})
-								.slice(0, 10);
+								.slice(0, 7);
 
 							if (topOpportunities.length === 0) {
 								return (
@@ -777,7 +750,7 @@ export default async function ReportRenderPage({
 			</div>
 
 			{/* Call to Action Section */}
-			<div className="mt-8 print:break-before print:h-screen print:flex print:items-center print:justify-center">
+			<div className="mt-8 print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
 				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:w-full">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>
