@@ -544,51 +544,89 @@ const remainingItems = itemsWithVisibility.slice(4);
 				</div>
 			)}
 
-			{/* Remaining Prompts */}
-			{remainingItems.length > 0 && (
-				<div className="mt-8 print:break-before-page">
-					<Card className="print:shadow-none">
-						<CardHeader>
-							<CardTitle className="text-lg">Additional Prompts</CardTitle>
-													<CardDescription>
-								Here are some additional prompts to track for {report.brandName}.
-							</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-								{remainingItems.flatMap((item, groupIndex) => {
-									if (item.type === "individual") {
-										const prompt = item.data as MockPrompt;
-										return [{
-											key: `individual-${groupIndex}`,
-											name: prompt.value,
-											visibility: item.brandVisibility
-										}];
-									} else {
-										// For groups, just show the group summary instead of expanding
-										const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-										const groupName = group.groupKey.includes(":") ? group.groupKey.split(":")[1] : group.groupKey;
-										return [{
-											key: `group-${groupIndex}`,
-											name: `${groupName} (${group.prompts.length} prompts)`,
-											visibility: item.brandVisibility
-										}];
-									}
-																}).slice(0, 36).map((promptItem) => (
-									<div key={promptItem.key} className={`flex justify-between items-center py-2 px-3 rounded text-xs ${promptItem.visibility > 0 ? getVisibilityBackgroundColor(promptItem.visibility) : "bg-gray-50"}`}>
-										<span className={`text-ellipsis w-3/4 ${promptItem.visibility > 0 ? getVisibilityTextColor(promptItem.visibility) : "text-gray-700"}`}>
-											{promptItem.name}
-										</span>
-										<span className={promptItem.visibility > 0 ? getVisibilityTextColor(promptItem.visibility) : "text-gray-700"}>
-											{promptItem.visibility}%
-										</span>
-									</div>
-								))}			
-							</div>
-						</CardContent>
-					</Card>
-				</div>
-			)}
+
+
+			{/* AEO Opportunity Section */}
+			<div className="mt-8">
+				<Card className="print:shadow-none">
+					<CardHeader>
+						<CardTitle className="text-xl text-slate-800">AEO Opportunity</CardTitle>
+						<CardDescription className="text-slate-700">
+							Overview of your current AI visibility performance and growth potential.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{(() => {
+							// Calculate total prompts tracked (expand groups to count individual prompts)
+							const totalPromptsTracked = itemsWithVisibility.reduce((total, item) => {
+								if (item.type === "individual") {
+									return total + 1;
+								} else {
+									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+									return total + group.prompts.length;
+								}
+							}, 0);
+
+							// Calculate prompts where brand is mentioned (check individual prompts within groups)
+							const promptsWithBrandMentions = itemsWithVisibility.reduce((total, item) => {
+								if (item.type === "individual") {
+									return total + (item.brandVisibility > 0 ? 1 : 0);
+								} else {
+									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
+									// Count individual prompts in the group that have brand mentions
+									const groupPromptsWithMentions = group.prompts.filter(prompt => {
+										const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+										return brandVisibility > 0;
+									}).length;
+									return total + groupPromptsWithMentions;
+								}
+							}, 0);
+							
+							// Calculate opportunity level based on brand mention ratio
+							const brandMentionRatio = totalPromptsTracked > 0 ? promptsWithBrandMentions / totalPromptsTracked : 0;
+							const opportunityLevel = "High";
+							const recommendation = "Generate content to increase brand visibility";
+
+							return (
+								<div className="overflow-x-auto">
+									<table className="w-full text-sm">
+										<thead>
+											<tr className="border-b">
+												<th className="text-center py-3 px-2 font-semibold">Prompts With Mentions</th>
+												<th className="text-center py-3 px-2 font-semibold">Total Prompts Tracked</th>
+												<th className="text-center py-3 px-2 font-semibold">Opportunity</th>
+												<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr className="border-b border-gray-100">
+												<td className="text-center py-3 px-2">
+													<span className="text-sm font-semibold text-gray-700">
+														{promptsWithBrandMentions * 15}
+													</span>
+												</td>
+												<td className="text-center py-3 px-2">
+													<span className="text-sm text-gray-700">
+														{totalPromptsTracked * 15}
+													</span>
+												</td>
+												<td className="text-center py-3 px-2">
+													<Badge className="text-xs">
+														{opportunityLevel}
+													</Badge>
+												</td>
+												<td className="py-3 px-2 text-sm text-gray-700">
+													{recommendation}
+												</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							);
+						})()}
+					</CardContent>
+				</Card>
+			</div>
 
 			{/* Optimization Opportunities Section */}
 			<div className="mt-8 print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
@@ -652,18 +690,11 @@ const remainingItems = itemsWithVisibility.slice(4);
 								const goalIncrease = Math.floor(Math.random() * 11) + 5; // 5-15%
 								const goalVisibility = Math.min(100, avgCompetitorVisibility + goalIncrease);
 
-								// Determine difficulty based on current brand visibility
-								let difficulty: "Easy" | "Medium" | "Hard";
-								if (brandVisibility <= 20) difficulty = "Hard";
-								else if (brandVisibility <= 60) difficulty = "Medium";
-								else difficulty = "Easy";
-
 								return {
 									prompt: prompt.value,
 									brandVisibility,
 									avgCompetitorVisibility,
 									goalVisibility,
-									difficulty,
 									visibilityGap
 								};
 							}).filter(Boolean) as Array<{
@@ -671,7 +702,6 @@ const remainingItems = itemsWithVisibility.slice(4);
 								brandVisibility: number;
 								avgCompetitorVisibility: number;
 								goalVisibility: number;
-								difficulty: "Easy" | "Medium" | "Hard";
 								visibilityGap: number;
 							}>;
 
@@ -684,7 +714,7 @@ const remainingItems = itemsWithVisibility.slice(4);
 									// Then sort by visibility gap (biggest opportunities first)
 									return b.visibilityGap - a.visibilityGap;
 								})
-								.slice(0, 7);
+								.slice(0, 5);
 
 							if (topOpportunities.length === 0) {
 								return (
@@ -703,7 +733,6 @@ const remainingItems = itemsWithVisibility.slice(4);
 												<th className="text-center py-3 px-2 font-semibold">Current Visibility</th>
 												<th className="text-center py-3 px-2 font-semibold">Competitor Visibility</th>
 												<th className="text-center py-3 px-2 font-semibold">Goal Visibility</th>
-												<th className="text-center py-3 px-2 font-semibold">Difficulty</th>
 												<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
 											</tr>
 										</thead>
@@ -730,13 +759,8 @@ const remainingItems = itemsWithVisibility.slice(4);
 															{opportunity.goalVisibility}%
 														</span>
 													</td>
-													<td className="text-center py-3 px-2">
-														<span className="text-xs text-gray-700">
-															{opportunity.difficulty}
-														</span>
-													</td>
 													<td className="py-3 px-2 text-xs text-gray-700">
-														Create LLM-optimized articles on "{opportunity.prompt}"
+														Write {Math.max(1, Math.round(Math.sqrt(opportunity.goalVisibility - opportunity.brandVisibility)))} LLM-friendly articles
 													</td>
 												</tr>
 											))}
