@@ -194,6 +194,12 @@ function getVisibilityTextColor(value: number): string {
 	return "text-rose-500";
 }
 
+function getVisibilityBackgroundColor(value: number): string {
+	if (value > 75) return "bg-emerald-50";
+	if (value > 45) return "bg-amber-50";
+	return "bg-rose-50";
+}
+
 // Types for display items
 type DisplayItem = {
 	type: "individual" | "group";
@@ -608,11 +614,11 @@ export default async function ReportRenderPage({
 										});
 									}
 																}).slice(0, 36).map((promptItem) => (
-									<div key={promptItem.key} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-xs">
-										<span className="text-ellipsis w-3/4 text-gray-700">
+									<div key={promptItem.key} className={`flex justify-between items-center py-2 px-3 rounded text-xs ${promptItem.visibility > 0 ? getVisibilityBackgroundColor(promptItem.visibility) : "bg-gray-50"}`}>
+										<span className={`text-ellipsis w-3/4 ${promptItem.visibility > 0 ? getVisibilityTextColor(promptItem.visibility) : "text-gray-700"}`}>
 											{promptItem.name}
 										</span>
-										<span className="text-gray-700">
+										<span className={promptItem.visibility > 0 ? getVisibilityTextColor(promptItem.visibility) : "text-gray-700"}>
 											{promptItem.visibility}%
 										</span>
 									</div>
@@ -624,8 +630,8 @@ export default async function ReportRenderPage({
 			)}
 
 			{/* Optimization Opportunities Section */}
-			<div className="mt-8 print:break-before">
-				<Card className="print:shadow-none">
+			<div className="mt-8 print:break-before print:h-screen print:flex print:items-center print:justify-center">
+				<Card className="print:shadow-none print:w-full">
 					<CardHeader>
 						<CardTitle className="text-xl text-slate-800">What should I do next?</CardTitle>
 						<CardDescription className="text-slate-700">
@@ -705,7 +711,7 @@ export default async function ReportRenderPage({
 									// Then sort by visibility gap (biggest opportunities first)
 									return b.visibilityGap - a.visibilityGap;
 								})
-								.slice(0, 5);
+								.slice(0, 10);
 
 							if (topOpportunities.length === 0) {
 								return (
@@ -771,8 +777,8 @@ export default async function ReportRenderPage({
 			</div>
 
 			{/* Call to Action Section */}
-			<div className="mt-8 print:break-before">
-				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+			<div className="mt-8 print:break-before print:h-screen print:flex print:items-center print:justify-center">
+				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:w-full">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>
 						<CardDescription className="text-slate-700 text-base">
