@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { notFound } from "next/navigation";
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 import { calculateVisibilityPercentages, calculateGroupVisibilityData, selectCompetitorsToDisplay } from "@/lib/chart-utils";
+import { Target, BarChart3, Rocket } from "lucide-react";
 
 // Types matching the report worker output
 interface ReportData {
@@ -623,17 +624,23 @@ export default async function ReportRenderPage({
 					<CardContent className="space-y-6">
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 							<div className="text-center p-4">
-								<div className="text-3xl mb-2">🎯</div>
+								<div className="flex justify-center mb-2">
+									<Target className="h-8 w-8 text-slate-600" />
+								</div>
 								<h3 className="font-semibold text-slate-800 mb-2">Strategic Optimization</h3>
 								<p className="text-sm text-slate-700">Develop content strategies that increase your brand mentions in AI responses</p>
 							</div>
 							<div className="text-center p-4">
-								<div className="text-3xl mb-2">📊</div>
+								<div className="flex justify-center mb-2">
+									<BarChart3 className="h-8 w-8 text-slate-600" />
+								</div>
 								<h3 className="font-semibold text-slate-800 mb-2">Continuous Monitoring</h3>
 								<p className="text-sm text-slate-700">Track your AI visibility across hundreds of relevant prompts and topics</p>
 							</div>
 							<div className="text-center p-4">
-								<div className="text-3xl mb-2">🚀</div>
+								<div className="flex justify-center mb-2">
+									<Rocket className="h-8 w-8 text-slate-600" />
+								</div>
 								<h3 className="font-semibold text-slate-800 mb-2">Competitive Advantage</h3>
 								<p className="text-sm text-slate-700">Stay ahead of competitors in the rapidly evolving AI search landscape</p>
 							</div>
