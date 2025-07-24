@@ -627,9 +627,9 @@ export default async function ReportRenderPage({
 			<div className="mt-8 print:break-before">
 				<Card className="print:shadow-none">
 					<CardHeader>
-						<CardTitle className="text-xl text-slate-800">Top Optimization Opportunities</CardTitle>
+						<CardTitle className="text-xl text-slate-800">What should I do next?</CardTitle>
 						<CardDescription className="text-slate-700">
-							Prompts where competitors are outperforming {report.brandName} are your biggest opportunities for improvement
+							Prompts where competitors are outperforming {report.brandName} are your biggest opportunities for improvement.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
