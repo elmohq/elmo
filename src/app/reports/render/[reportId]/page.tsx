@@ -8,6 +8,7 @@ import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
 import { Badge } from "@/components/ui/badge";
 import { notFound } from "next/navigation";
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { calculateVisibilityPercentages, calculateGroupVisibilityData, selectCompetitorsToDisplay } from "@/lib/chart-utils";
 
 // Types matching the report worker output
 interface ReportData {
@@ -119,7 +120,7 @@ function calculateAverageVisibility(
 }
 
 // Calculate weighted mention score for a single prompt (matches prompts-display logic)
-function calculatePromptMentionScore(promptId: string, promptRuns: MockPromptRun[]): number {
+function calculatePromptMentionScore(promptId: string, promptRuns: MockPromptRun[], competitors: CompetitorResult[]): number {
 	const runs = promptRuns.filter(run => run.promptId === promptId);
 	if (runs.length === 0) return 0;
 
@@ -127,9 +128,12 @@ function calculatePromptMentionScore(promptId: string, promptRuns: MockPromptRun
 		let mentions = 0;
 		// Count brand mention (weighted 2x)
 		if (run.brandMentioned) mentions += 2;
-		// Count each competitor mention separately (weighted 1x)
+		// Count each competitor mention separately (weighted 1x) - only if name matches exactly
 		if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-			mentions += run.competitorsMentioned.length;
+			const matchingCompetitorMentions = run.competitorsMentioned.filter(mentionedName =>
+				competitors.some(competitor => competitor.name === mentionedName)
+			);
+			mentions += matchingCompetitorMentions.length;
 		}
 		return total + mentions;
 	}, 0);
@@ -138,7 +142,7 @@ function calculatePromptMentionScore(promptId: string, promptRuns: MockPromptRun
 }
 
 // Calculate weighted mention score for a group of prompts (matches prompts-display logic)
-function calculateGroupMentionScore(groupPrompts: MockPrompt[], promptRuns: MockPromptRun[]): number {
+function calculateGroupMentionScore(groupPrompts: MockPrompt[], promptRuns: MockPromptRun[], competitors: CompetitorResult[]): number {
 	const allRunsForGroup = groupPrompts.flatMap(prompt => 
 		promptRuns.filter(run => run.promptId === prompt.id)
 	);
@@ -149,9 +153,12 @@ function calculateGroupMentionScore(groupPrompts: MockPrompt[], promptRuns: Mock
 		let mentions = 0;
 		// Count brand mention (weighted 2x)
 		if (run.brandMentioned) mentions += 2;
-		// Count each competitor mention separately (weighted 1x)
+		// Count each competitor mention separately (weighted 1x) - only if name matches exactly
 		if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-			mentions += run.competitorsMentioned.length;
+			const matchingCompetitorMentions = run.competitorsMentioned.filter(mentionedName =>
+				competitors.some(competitor => competitor.name === mentionedName)
+			);
+			mentions += matchingCompetitorMentions.length;
 		}
 		return total + mentions;
 	}, 0);
@@ -325,7 +332,7 @@ export default async function ReportRenderPage({
 	const individualItems: DisplayItem[] = uncategorizedPrompts.map((prompt) => {
 		const runs = mockPromptRuns.filter(run => run.promptId === prompt.id);
 		const hasRuns = runs.length > 0;
-		const mentionScore = calculatePromptMentionScore(prompt.id, mockPromptRuns);
+		const mentionScore = calculatePromptMentionScore(prompt.id, mockPromptRuns, parsedReportData.competitors);
 		const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
 
 		return {
@@ -343,7 +350,7 @@ export default async function ReportRenderPage({
 			mockPromptRuns.filter(run => run.promptId === prompt.id)
 		);
 		const hasRuns = allRunsForGroup.length > 0;
-		const mentionScore = calculateGroupMentionScore(groupPrompts, mockPromptRuns);
+		const mentionScore = calculateGroupMentionScore(groupPrompts, mockPromptRuns, parsedReportData.competitors);
 		const brandVisibility = calculateGroupBrandVisibility(groupPrompts, mockPromptRuns);
 
 		return {
@@ -380,18 +387,64 @@ export default async function ReportRenderPage({
 		return nameA.localeCompare(nameB);
 	});
 
-	// Filter items that would show "No brands found" - keep only items with runs that have brand mentions or competitor mentions
+	// Filter items that would show "No brands found" - use the same logic as the chart components
 	const hasVisibilityData = (item: DisplayItem): boolean => {
 		if (item.type === "individual") {
 			const prompt = item.data as MockPrompt;
-			const runs = mockPromptRuns.filter(run => run.promptId === prompt.id);
-			return runs.some(run => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0));
+			const promptSpecificRuns = fullPromptRuns.filter(run => run.promptId === prompt.id);
+			
+			// Calculate chart data first 
+			const chartData = calculateVisibilityPercentages(promptSpecificRuns, mockBrand, mockCompetitors, "1m");
+			
+			// Select top competitors by visibility, filling with alphabetical order if needed
+			const selectedCompetitors = selectCompetitorsToDisplay(mockCompetitors, chartData, 5);
+			
+			// Check if there's any non-zero visibility data for brand or selected competitors
+			const hasData = chartData.some((dataPoint) => {
+				// Check brand visibility
+				const brandVisibility = dataPoint[mockBrand.id] as number;
+				if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
+					return true;
+				}
+				
+				// Check selected competitor visibility
+				return selectedCompetitors.some(competitor => {
+					const visibility = dataPoint[competitor.id] as number;
+					return visibility !== null && visibility !== undefined && Number(visibility) > 0;
+				});
+			});
+			
+			return hasData;
 		} else {
 			const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-			const allRunsForGroup = group.prompts.flatMap(prompt => 
-				mockPromptRuns.filter(run => run.promptId === prompt.id)
-			);
-			return allRunsForGroup.some(run => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0));
+			
+			// Get all runs for prompts in this group
+			const groupPromptIds = group.prompts.map(p => p.id);
+			const groupPromptRuns = fullPromptRuns.filter(run => groupPromptIds.includes(run.promptId));
+			
+			// Calculate group visibility data first
+			const groupVisibilityData = calculateGroupVisibilityData(fullPromptRuns, group.prompts, mockBrand, mockCompetitors, "1m");
+			
+			// Select top competitors by visibility, filling with alphabetical order if needed
+			const allChartData = groupVisibilityData.flatMap(promptData => promptData.chartData);
+			const selectedCompetitors = selectCompetitorsToDisplay(mockCompetitors, allChartData, 4);
+			
+			// Check if there's any non-zero visibility data for brand or selected competitors
+			return groupVisibilityData.some((promptData) => {
+				return promptData.chartData.some((dataPoint) => {
+					// Check brand visibility
+					const brandVisibility = dataPoint[mockBrand.id] as number;
+					if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
+						return true;
+					}
+					
+					// Check selected competitor visibility
+					return selectedCompetitors.some(competitor => {
+						const visibility = dataPoint[competitor.id] as number;
+						return visibility !== null && visibility !== undefined && Number(visibility) > 0;
+					});
+				});
+			});
 		}
 	};
 
@@ -403,8 +456,8 @@ export default async function ReportRenderPage({
 	return (
 		<div className="max-w-4xl mx-auto p-6 print:pt-8">
 			{/* Header with White Label Branding */}
-			<div className="flex items-center justify-between mb-6">
-				<h1 className="text-3xl font-bold text-gray-900 mb-12">AI Visibility Report</h1>
+			<div className="flex items-center justify-between mb-32">
+				<h1 className="text-3xl font-bold text-gray-900">AI Visibility Report</h1>
 				<div className="flex items-center space-x-3">
 					<img src={WHITE_LABEL_CONFIG.icon} alt="Logo" className="!size-6" />
 					<span className="text-base font-semibold">{WHITE_LABEL_CONFIG.name}</span>
@@ -486,14 +539,14 @@ export default async function ReportRenderPage({
 					</h2>
 
 					{topDisplayItems.map((item, index) => (
-						<div key={index}>
+						<div key={index} className="print:break-inside-avoid">
 							{item.type === "individual" ? (
 								<PromptChartPrint
 									lookback="1m"
 									promptName={(item.data as MockPrompt).value}
 									promptId={(item.data as MockPrompt).id}
 									brand={mockBrand}
-									competitors={mockCompetitors.slice(0, 5)} // Limit to top 5 competitors
+									competitors={mockCompetitors}
 									promptRuns={fullPromptRuns}
 								/>
 							) : (
@@ -510,7 +563,7 @@ export default async function ReportRenderPage({
 											groupName={chartName}
 											prompts={group.prompts}
 											brand={mockBrand}
-											competitors={mockCompetitors.slice(0, 4)} // Limit to top 4 competitors
+											competitors={mockCompetitors}
 											promptRuns={fullPromptRuns}
 										/>
 									);
@@ -527,9 +580,9 @@ export default async function ReportRenderPage({
 					<Card className="print:shadow-none">
 						<CardHeader>
 							<CardTitle className="text-lg">Additional Prompts</CardTitle>
-							<CardDescription>
-								Here is a small sample of the hundreds of additional prompts to track for {report.brandName}.
-							</CardDescription>
+													<CardDescription>
+							Here is a small sample of the additional prompts to track for {report.brandName}.
+						</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -542,8 +595,8 @@ export default async function ReportRenderPage({
 										})();
 									
 									return (
-										<div key={index} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-sm">
-											<span className="truncate">
+										<div key={index} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded text-xs">
+											<span className="text-ellipsis w-3/4">
 												{promptName}
 											</span>
 											<Badge variant="outline" className={getVisibilityTextColor(item.brandVisibility)}>
@@ -559,7 +612,7 @@ export default async function ReportRenderPage({
 			)}
 
 			{/* Call to Action Section */}
-			<div className="mt-8 print-break-before">
+			<div className="mt-8 print:break-before">
 				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>

@@ -10,6 +10,7 @@ import {
 	getBadgeVariant,
 	getBadgeClassName,
 	calculateVisibilityPercentages,
+	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
 
 interface PromptRunData {
@@ -51,12 +52,20 @@ export function PromptChartPrint({
 	// Calculate chart data from real prompt runs
 	const chartData = calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
 
-	// Check if there's any non-zero visibility data across all brands and competitors
+	// Select top competitors by visibility, filling with alphabetical order if needed
+	const selectedCompetitors = selectCompetitorsToDisplay(competitors, chartData, 5);
+
+	// Check if there's any non-zero visibility data for brand or selected competitors
 	const hasVisibilityData = chartData.some((dataPoint) => {
-		// Check if any brand (main brand or competitors) has non-zero visibility
-		const allBrandIds = [brand?.id, ...(competitors?.map((c) => c.id) || [])].filter(Boolean);
-		return allBrandIds.some((brandId) => {
-			const visibility = dataPoint[brandId as string];
+		// Check brand visibility
+		const brandVisibility = dataPoint[brand.id] as number;
+		if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
+			return true;
+		}
+		
+		// Check selected competitor visibility
+		return selectedCompetitors.some(competitor => {
+			const visibility = dataPoint[competitor.id] as number;
 			return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 		});
 	});
@@ -122,7 +131,7 @@ export function PromptChartPrint({
 				<BaseChartPrint
 					data={chartData}
 					brand={brand}
-					competitors={competitors}
+					competitors={selectedCompetitors}
 				/>
 			</CardContent>
 		</Card>

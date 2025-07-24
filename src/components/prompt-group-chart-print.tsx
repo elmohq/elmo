@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { BaseChartPrint } from "./base-chart-print";
 import type { Brand, Competitor } from "@/lib/db/schema";
-import { LookbackPeriod, calculateGroupVisibilityData } from "@/lib/chart-utils";
+import { LookbackPeriod, calculateGroupVisibilityData, selectCompetitorsToDisplay } from "@/lib/chart-utils";
 
 interface Prompt {
 	id: string;
@@ -54,13 +54,22 @@ export function PromptGroupChartPrint({
 	// Calculate visibility data for all prompts in the group
 	const groupVisibilityData = calculateGroupVisibilityData(promptRuns || [], prompts, brand, competitors, lookback);
 
-	// Check if there's any non-zero visibility data across all brands and competitors for any prompt in the group
+	// Select top competitors by visibility, filling with alphabetical order if needed
+	const allChartData = groupVisibilityData.flatMap(promptData => promptData.chartData);
+	const selectedCompetitors = selectCompetitorsToDisplay(competitors, allChartData, 4);
+
+	// Check if there's any non-zero visibility data for brand or selected competitors for any prompt in the group
 	const hasVisibilityData = groupVisibilityData.some((promptData) => {
 		return promptData.chartData.some((dataPoint) => {
-			// Check if any brand (main brand or competitors) has non-zero visibility
-			const allBrandIds = [brand?.id, ...(competitors?.map((c) => c.id) || [])].filter(Boolean);
-			return allBrandIds.some((brandId) => {
-				const visibility = dataPoint[brandId as string];
+			// Check brand visibility
+			const brandVisibility = dataPoint[brand.id] as number;
+			if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
+				return true;
+			}
+			
+			// Check selected competitor visibility
+			return selectedCompetitors.some(competitor => {
+				const visibility = dataPoint[competitor.id] as number;
 				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 			});
 		});
@@ -134,7 +143,7 @@ export function PromptGroupChartPrint({
 			</CardHeader>
 			<Separator className="py-0 my-0" />
 			<CardContent className="pl-0 pr-6 print:pr-3">
-				<div className={`grid grid-cols-1 lg:grid-cols-2 gap-3 print:grid-cols-2 print:gap-2`}>
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-3 print:!grid-cols-2 print:!gap-2">
 					{groupVisibilityData.map((promptData) => (
 						<BaseChartPrint
 							key={promptData.promptId}
@@ -144,7 +153,7 @@ export function PromptGroupChartPrint({
 							showTitle={true}
 							showBadge={true}
 							brand={brand}
-							competitors={competitors}
+							competitors={selectedCompetitors}
 						/>
 					))}
 				</div>

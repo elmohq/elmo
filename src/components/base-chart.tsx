@@ -18,6 +18,7 @@ import {
 	filterAndCompleteChartData,
 	getBadgeVariant,
 	getBadgeClassName,
+	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@/lib/db/schema";
 
@@ -34,46 +35,7 @@ interface BaseChartProps {
 	chartType?: "bar" | "line";
 }
 
-// Helper function to calculate average visibility for a competitor
-function calculateAverageVisibility(data: ChartDataPoint[], competitorId: string): number {
-	const validValues = data
-		.map((point) => point[competitorId] as number | null)
-		.filter((value) => value !== null && value !== undefined) as number[];
 
-	if (validValues.length === 0) return 0;
-	return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
-}
-
-// Helper function to select top competitors to display
-function selectCompetitorsToDisplay(
-	competitors: Competitor[],
-	data: ChartDataPoint[],
-	maxCompetitors: number = 3,
-): Competitor[] {
-	// Calculate average visibility for each competitor
-	const competitorsWithAvgVisibility = competitors.map((competitor) => ({
-		competitor,
-		avgVisibility: calculateAverageVisibility(data, competitor.id),
-	}));
-
-	// Sort by highest average visibility
-	const sortedByVisibility = competitorsWithAvgVisibility.sort((a, b) => b.avgVisibility - a.avgVisibility);
-
-	// Take top competitors by visibility
-	const topCompetitors = sortedByVisibility.slice(0, maxCompetitors).map((item) => item.competitor);
-
-	// If we have fewer than maxCompetitors, fill from the front of the original competitors list (not sorted)
-	if (topCompetitors.length < maxCompetitors) {
-		const selectedIds = new Set(topCompetitors.map((c) => c.id));
-		const remaining = competitors
-			.filter((c) => !selectedIds.has(c.id))
-			.slice(0, maxCompetitors - topCompetitors.length);
-
-		topCompetitors.push(...remaining);
-	}
-
-	return topCompetitors;
-}
 
 export function BaseChart({
 	data,

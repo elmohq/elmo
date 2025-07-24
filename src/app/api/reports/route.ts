@@ -14,8 +14,17 @@ export async function GET() {
 		}
 
 		// Fetch all reports ordered by creation date (newest first)
+		// Exclude rawOutput to improve performance
 		const allReports = await db
-			.select()
+			.select({
+				id: reports.id,
+				brandName: reports.brandName,
+				brandWebsite: reports.brandWebsite,
+				status: reports.status,
+				createdAt: reports.createdAt,
+				completedAt: reports.completedAt,
+				updatedAt: reports.updatedAt,
+			})
 			.from(reports)
 			.orderBy(desc(reports.createdAt));
 
