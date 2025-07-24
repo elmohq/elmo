@@ -469,7 +469,7 @@ export default async function ReportRenderPage({
 						<CardHeader>
 							<CardTitle className="text-lg">Additional Prompts</CardTitle>
 							<CardDescription>
-								Here is a small sample of additional prompts tracked and the AI visibility score for {report.brandName}.
+								Here is a small sample of the hundreds of additional prompts to track for {report.brandName}.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
