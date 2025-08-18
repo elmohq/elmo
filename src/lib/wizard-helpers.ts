@@ -698,8 +698,7 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 
 	const { text } = await generateText({
 		model: anthropic("claude-sonnet-4-20250514"),
-		prompt,
-		maxTokens: 800,
+		prompt
 	});
 
 	console.log("text", text);
