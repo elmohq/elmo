@@ -318,10 +318,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 
 	try {
 		// Update report status to processing
-		await db
-			.update(reports)
-			.set({ status: "processing", updatedAt: new Date() })
-			.where(eq(reports.id, reportId));
+		await db.update(reports).set({ status: "processing", updatedAt: new Date() }).where(eq(reports.id, reportId));
 
 		job.log(`Report ${reportId} marked as processing`);
 		job.updateProgress(5);
@@ -334,7 +331,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		// Check if we should skip detailed analysis
 		if (websiteAnalysis.skipDetailedAnalysis) {
 			job.log(`Skipping detailed analysis for low-traffic website`);
-			
+
 			// Create minimal report data
 			const reportData: ReportData = {
 				websiteAnalysis,
@@ -348,8 +345,8 @@ export async function processReportJob(job: Job<ReportJobData>) {
 			// Update report with completed status and minimal data
 			await db
 				.update(reports)
-				.set({ 
-					status: "completed", 
+				.set({
+					status: "completed",
 					completedAt: new Date(),
 					updatedAt: new Date(),
 					rawOutput: JSON.stringify(reportData),
@@ -365,7 +362,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		const competitors = await getCompetitors(websiteAnalysis.products, brandWebsite);
 		job.updateProgress(25);
 
-		// Step 3: Get keywords  
+		// Step 3: Get keywords
 		job.log(`Getting keywords for domain and products`);
 		const keywords = await getKeywords(brandWebsite, websiteAnalysis.products);
 		job.updateProgress(35);
@@ -401,13 +398,15 @@ export async function processReportJob(job: Job<ReportJobData>) {
 				try {
 					const result = await runPrompt(prompt.value, brandName, competitors, job);
 					completedPromptRuns++;
-					const progress = 50 + ((completedPromptRuns / totalPromptRuns) * 45); // 50-95% for prompt runs
+					const progress = 50 + (completedPromptRuns / totalPromptRuns) * 45; // 50-95% for prompt runs
 					job.updateProgress(progress);
 					return result;
 				} catch (error) {
-					job.log(`Error running prompt "${prompt.value}": ${error instanceof Error ? error.message : "Unknown error"}`);
+					job.log(
+						`Error running prompt "${prompt.value}": ${error instanceof Error ? error.message : "Unknown error"}`,
+					);
 					completedPromptRuns++;
-					const progress = 50 + ((completedPromptRuns / totalPromptRuns) * 45);
+					const progress = 50 + (completedPromptRuns / totalPromptRuns) * 45;
 					job.updateProgress(progress);
 					// Return empty result for failed prompts
 					return {
@@ -422,7 +421,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 
 			// Small delay between batches to be respectful to APIs
 			if (i + batchSize < prompts.length) {
-				await new Promise(resolve => setTimeout(resolve, 1000));
+				await new Promise((resolve) => setTimeout(resolve, 1000));
 			}
 		}
 
@@ -443,8 +442,8 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		// Update report status to completed
 		await db
 			.update(reports)
-			.set({ 
-				status: "completed", 
+			.set({
+				status: "completed",
 				completedAt: new Date(),
 				updatedAt: new Date(),
 				rawOutput: JSON.stringify(reportData),
@@ -456,13 +455,10 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		return { success: true, reportId };
 	} catch (error) {
 		job.log(`Error processing report ${reportId}: ${error instanceof Error ? error.message : "Unknown error"}`);
-		
+
 		// Update report status to failed
-		await db
-			.update(reports)
-			.set({ status: "failed", updatedAt: new Date() })
-			.where(eq(reports.id, reportId));
+		await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, reportId));
 
 		throw error;
 	}
-} 
+}

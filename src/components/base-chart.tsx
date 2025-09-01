@@ -35,8 +35,6 @@ interface BaseChartProps {
 	chartType?: "bar" | "line";
 }
 
-
-
 export function BaseChart({
 	data,
 	lookback,

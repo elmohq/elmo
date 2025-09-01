@@ -20,16 +20,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 					error: "Validation Error",
 					message: "Invalid prompt ID format",
 				},
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
 		// Check if prompt exists
-		const existingPrompt = await db
-			.select()
-			.from(prompts)
-			.where(eq(prompts.id, promptId))
-			.limit(1);
+		const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 
 		if (existingPrompt.length === 0) {
 			return NextResponse.json(
@@ -37,7 +33,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 					error: "Not Found",
 					message: `Prompt with ID '${promptId}' not found`,
 				},
-				{ status: 404 }
+				{ status: 404 },
 			);
 		}
 
@@ -56,10 +52,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 				.returning({ id: promptRuns.id });
 
 			// Delete the prompt
-			const deletedPrompt = await tx
-				.delete(prompts)
-				.where(eq(prompts.id, promptId))
-				.returning();
+			const deletedPrompt = await tx.delete(prompts).where(eq(prompts.id, promptId)).returning();
 
 			return { deletedRuns, deletedPrompt };
 		});
@@ -74,9 +67,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 		});
 	} catch (error) {
 		console.error("Error deleting prompt:", error);
-		return NextResponse.json(
-			{ error: "Internal Server Error", message: "Failed to delete prompt" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Internal Server Error", message: "Failed to delete prompt" }, { status: 500 });
 	}
 }

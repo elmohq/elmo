@@ -141,9 +141,7 @@ export async function analyzeWebsite(website: string): Promise<AnalyzeWebsiteRes
 	const TRAFFIC_THRESHOLD = 400;
 
 	if (domainTraffic < TRAFFIC_THRESHOLD) {
-		console.log(
-			`Domain traffic ${domainTraffic} is below threshold ${TRAFFIC_THRESHOLD}. Skipping detailed analysis.`,
-		);
+		console.log(`Domain traffic ${domainTraffic} is below threshold ${TRAFFIC_THRESHOLD}. Skipping detailed analysis.`);
 
 		const products = await extractProducts(website);
 
@@ -457,11 +455,7 @@ async function getKeywordsForSite(domain: string) {
 }
 
 // Get relevant keywords using AI filtering
-async function getRelevantKeywords(
-	allKeywords: any[],
-	domain: string,
-	products: string[],
-): Promise<KeywordResult[]> {
+async function getRelevantKeywords(allKeywords: any[], domain: string, products: string[]): Promise<KeywordResult[]> {
 	if (!allKeywords || allKeywords.length === 0) {
 		return [];
 	}
@@ -698,7 +692,7 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 
 	const { text } = await generateText({
 		model: anthropic("claude-sonnet-4-20250514"),
-		prompt
+		prompt,
 	});
 
 	console.log("text", text);
@@ -805,4 +799,4 @@ export function createPromptsData(data: {
 		prompts: promptsToCreate,
 		competitors: competitors || [],
 	};
-} 
+}

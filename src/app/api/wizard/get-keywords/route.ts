@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getKeywords } from "@/lib/wizard-helpers";
 
-
-
 export async function POST(request: NextRequest) {
 	try {
 		const { domain, products } = await request.json();

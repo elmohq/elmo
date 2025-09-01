@@ -5,6 +5,6 @@ export async function GET() {
 	return NextResponse.json(openApiSpec, {
 		headers: {
 			"Content-Type": "application/json",
-		}
+		},
 	});
 }

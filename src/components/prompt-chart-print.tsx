@@ -62,9 +62,9 @@ export function PromptChartPrint({
 		if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
 			return true;
 		}
-		
+
 		// Check selected competitor visibility
-		return selectedCompetitors.some(competitor => {
+		return selectedCompetitors.some((competitor) => {
 			const visibility = dataPoint[competitor.id] as number;
 			return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 		});
@@ -120,7 +120,10 @@ export function PromptChartPrint({
 				<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
 				<div className="flex items-center gap-2">
 					{lastBrandVisibility !== null && (
-						<Badge variant={getBadgeVariant(lastBrandVisibility)} className={`${getBadgeClassName(lastBrandVisibility)} print:text-xs`}>
+						<Badge
+							variant={getBadgeVariant(lastBrandVisibility)}
+							className={`${getBadgeClassName(lastBrandVisibility)} print:text-xs`}
+						>
 							{lastBrandVisibility}% Visibility
 						</Badge>
 					)}
@@ -128,12 +131,8 @@ export function PromptChartPrint({
 			</CardHeader>
 			<Separator className="py-0 my-0" />
 			<CardContent className="p-0">
-				<BaseChartPrint
-					data={chartData}
-					brand={brand}
-					competitors={selectedCompetitors}
-				/>
+				<BaseChartPrint data={chartData} brand={brand} competitors={selectedCompetitors} />
 			</CardContent>
 		</Card>
 	);
-} 
+}

@@ -50,9 +50,7 @@ export default function FullPageCard({
 					)}
 				</Card>
 				{customBackButton ? (
-					<div className="flex justify-center">
-						{customBackButton}
-					</div>
+					<div className="flex justify-center">{customBackButton}</div>
 				) : showBackButton ? (
 					<div className="flex justify-center">
 						<Button variant="outline" size="sm" asChild>

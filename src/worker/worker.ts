@@ -1,7 +1,16 @@
 import { promptQueue, reportQueue, queueConnectionConfig } from "./queues";
 import { Job, QueueEvents, Worker } from "bullmq";
 import { db } from "../lib/db/db";
-import { prompts, brands, competitors, promptRuns, reports, type Prompt, type Brand, type Competitor } from "../lib/db/schema";
+import {
+	prompts,
+	brands,
+	competitors,
+	promptRuns,
+	reports,
+	type Prompt,
+	type Brand,
+	type Competitor,
+} from "../lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT, AI_MODELS } from "../lib/constants";
 import Anthropic from "@anthropic-ai/sdk";
@@ -19,8 +28,6 @@ const anthropic = new Anthropic({
 interface JobData {
 	promptId: string;
 }
-
-
 
 interface PromptContext {
 	prompt: Prompt;
@@ -448,11 +455,10 @@ import { processReportJob, type ReportJobData } from "./report-worker";
 
 const reportQueueEvents = new QueueEvents(reportQueue.name, { connection: queueConnectionConfig });
 
-const reportWorker = new Worker(
-	reportQueue.name,
-	processReportJob,
-	{ connection: queueConnectionConfig, concurrency: 2 }
-);
+const reportWorker = new Worker(reportQueue.name, processReportJob, {
+	connection: queueConnectionConfig,
+	concurrency: 2,
+});
 
 reportQueueEvents.on("completed", ({ jobId }) => {
 	console.log("Completed report job:", jobId);

@@ -55,7 +55,7 @@ export function PromptGroupChartPrint({
 	const groupVisibilityData = calculateGroupVisibilityData(promptRuns || [], prompts, brand, competitors, lookback);
 
 	// Select top competitors by visibility, filling with alphabetical order if needed
-	const allChartData = groupVisibilityData.flatMap(promptData => promptData.chartData);
+	const allChartData = groupVisibilityData.flatMap((promptData) => promptData.chartData);
 	const selectedCompetitors = selectCompetitorsToDisplay(competitors, allChartData, 4);
 
 	// Check if there's any non-zero visibility data for brand or selected competitors for any prompt in the group
@@ -66,9 +66,9 @@ export function PromptGroupChartPrint({
 			if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
 				return true;
 			}
-			
+
 			// Check selected competitor visibility
-			return selectedCompetitors.some(competitor => {
+			return selectedCompetitors.some((competitor) => {
 				const visibility = dataPoint[competitor.id] as number;
 				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 			});
@@ -160,4 +160,4 @@ export function PromptGroupChartPrint({
 			</CardContent>
 		</Card>
 	);
-} 
+}

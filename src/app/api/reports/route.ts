@@ -92,19 +92,16 @@ export async function POST(request: NextRequest) {
 						delay: 5000,
 					},
 					removeOnComplete: 100,
-					removeOnFail: 100, 
-				}
+					removeOnFail: 100,
+				},
 			);
 
 			console.log(`Report job queued for report ID: ${createdReport.id}`);
 		} catch (queueError) {
 			console.error("Error adding report to queue:", queueError);
 			// Update report status to failed if queue addition fails
-			await db
-				.update(reports)
-				.set({ status: "failed", updatedAt: new Date() })
-				.where(eq(reports.id, createdReport.id));
-			
+			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, createdReport.id));
+
 			return NextResponse.json({ error: "Failed to queue report generation" }, { status: 500 });
 		}
 
@@ -113,4 +110,4 @@ export async function POST(request: NextRequest) {
 		console.error("Error creating report:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
-} 
+}

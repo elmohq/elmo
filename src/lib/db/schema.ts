@@ -16,21 +16,27 @@ export const brands = pgTable("brands", {
 		.notNull(),
 }).enableRLS();
 
-export const prompts = pgTable("prompts", {
-	id: uuid("id").defaultRandom().primaryKey().notNull(),
-	brandId: text("brand_id")
-		.references(() => brands.id)
-		.notNull(),
-	groupCategory: text("group_category"),
-	groupPrefix: text("group_prefix"),
-	value: text("value").notNull(),
-	enabled: boolean("enabled").default(true).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
+export const prompts = pgTable(
+	"prompts",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
+		groupCategory: text("group_category"),
+		groupPrefix: text("group_prefix"),
+		value: text("value").notNull(),
+		enabled: boolean("enabled").default(true).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
+	}),
+).enableRLS();
 
 export const competitors = pgTable("competitors", {
 	id: uuid("id").defaultRandom().primaryKey().notNull(),
@@ -64,22 +70,30 @@ export const promptRuns = pgTable(
 	},
 	(table) => ({
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
+		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
+		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
 	}),
 ).enableRLS();
 
-export const reports = pgTable("reports", {
-	id: uuid("id").defaultRandom().primaryKey().notNull(),
-	brandName: text("brand_name").notNull(),
-	brandWebsite: text("brand_website").notNull(),
-	status: reportStatusEnum().notNull().default("pending"),
-	rawOutput: json("raw_output"),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	completedAt: timestamp("completed_at", { withTimezone: true }),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
+export const reports = pgTable(
+	"reports",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandName: text("brand_name").notNull(),
+		brandWebsite: text("brand_website").notNull(),
+		status: reportStatusEnum().notNull().default("pending"),
+		rawOutput: json("raw_output"),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => ({
+		createdAtIdx: index("reports_created_at_idx").on(table.createdAt),
+	}),
+).enableRLS();
 
 export type Brand = typeof brands.$inferSelect;
 export type NewBrand = typeof brands.$inferInsert;

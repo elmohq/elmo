@@ -24,9 +24,9 @@ export function NavUserNoSidebar() {
 	if (isLoading) {
 		return (
 			<div className="w-fit">
-				<Button 
-					variant="ghost" 
-					size="lg" 
+				<Button
+					variant="ghost"
+					size="lg"
 					disabled
 					className="w-full justify-start px-2 py-2 h-14 border border-muted-foreground/20"
 				>
@@ -44,9 +44,9 @@ export function NavUserNoSidebar() {
 	if (!user) {
 		return (
 			<div className="w-fit">
-				<Button 
-					variant="ghost" 
-					size="lg" 
+				<Button
+					variant="ghost"
+					size="lg"
 					asChild
 					className="w-full justify-start px-2 py-2 h-14 border border-muted-foreground/20"
 				>

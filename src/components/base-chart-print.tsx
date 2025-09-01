@@ -4,11 +4,7 @@ import * as React from "react";
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "./ui/badge";
 import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
-import {
-	ChartDataPoint,
-	getBadgeVariant,
-	getBadgeClassName,
-} from "@/lib/chart-utils";
+import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@/lib/db/schema";
 
 interface BaseChartPrintProps {
@@ -39,10 +35,10 @@ export function BaseChartPrint({
 }: BaseChartPrintProps) {
 	// Get the most recent data point that has actual data
 	const latestDataPoint = data
-		.filter(point => {
+		.filter((point) => {
 			// Check if any brand or competitor has non-null data
-			const allIds = [brand.id, ...competitors.map(c => c.id)];
-			return allIds.some(id => point[id] !== null && point[id] !== undefined);
+			const allIds = [brand.id, ...competitors.map((c) => c.id)];
+			return allIds.some((id) => point[id] !== null && point[id] !== undefined);
 		})
 		.pop();
 
@@ -96,7 +92,7 @@ export function BaseChartPrint({
 	const CustomXAxisTick = (props: any) => {
 		const { x, y, payload } = props;
 		const isCurrentBrand = payload.value === brand.name;
-		
+
 		return (
 			<g transform={`translate(${x},${y})`}>
 				<text
@@ -120,7 +116,10 @@ export function BaseChartPrint({
 				<div className="flex items-center justify-center gap-2">
 					{title && <h3 className="text-sm font-medium capitalize print:text-xs">{title}</h3>}
 					{showBadge && visibility !== null && (
-						<Badge variant={getBadgeVariant(visibility!)} className={`text-xs ${getBadgeClassName(visibility!)} print:text-xs`}>
+						<Badge
+							variant={getBadgeVariant(visibility!)}
+							className={`text-xs ${getBadgeClassName(visibility!)} print:text-xs`}
+						>
 							{visibility}%
 						</Badge>
 					)}
@@ -128,11 +127,7 @@ export function BaseChartPrint({
 			)}
 			<div className="h-[300px] print:h-[250px] w-full">
 				<ResponsiveContainer width="100%" height="100%">
-					<BarChart
-						data={sortedEntities}
-						margin={{ top: 20, right: 0, left: 20, bottom: 0 }}
-						barCategoryGap="20%"
-					>
+					<BarChart data={sortedEntities} margin={{ top: 20, right: 0, left: 20, bottom: 0 }} barCategoryGap="20%">
 						<XAxis
 							dataKey="name"
 							axisLine={false}
@@ -148,7 +143,7 @@ export function BaseChartPrint({
 							tickLine={false}
 							tick={{
 								fontSize: 10,
-								fill: '#6B7280',
+								fill: "#6B7280",
 							}}
 							tickFormatter={(value) => `${value}%`}
 							width={40}
@@ -158,11 +153,11 @@ export function BaseChartPrint({
 							radius={[4, 4, 0, 0]}
 							minPointSize={2}
 							label={{
-								position: 'top',
+								position: "top",
 								fontSize: 11,
-								fontWeight: 'bold',
-								fill: '#374151',
-								formatter: (value: number) => `${value}%`
+								fontWeight: "bold",
+								fill: "#374151",
+								formatter: (value: number) => `${value}%`,
 							}}
 						>
 							{sortedEntities.map((entry, index) => (
@@ -174,4 +169,4 @@ export function BaseChartPrint({
 			</div>
 		</div>
 	);
-} 
+}

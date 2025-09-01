@@ -27,7 +27,7 @@ async function initBrowser() {
 // Launch browser instance
 async function getBrowser() {
 	await initBrowser();
-	
+
 	if (process.env.NODE_ENV === "development") {
 		// Development: use regular puppeteer with local Chrome/Chromium
 		return await puppeteer.launch({
@@ -46,52 +46,33 @@ async function getBrowser() {
 	}
 }
 
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ reportId: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ reportId: string }> }) {
 	try {
 		// Check if user has report generator access
 		const hasAccess = await hasReportGeneratorAccess();
 		if (!hasAccess) {
-			return NextResponse.json(
-				{ error: "Access denied. Report generator access required." },
-				{ status: 403 }
-			);
+			return NextResponse.json({ error: "Access denied. Report generator access required." }, { status: 403 });
 		}
 
 		const { reportId } = await params;
 
 		// Validate reportId
 		if (!reportId || typeof reportId !== "string") {
-			return NextResponse.json(
-				{ error: "Invalid report ID" },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
 		}
 
 		// Fetch the report from database
-		const report = await db
-			.select()
-			.from(reports)
-			.where(eq(reports.id, reportId))
-			.limit(1);
+		const report = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
 
 		if (!report || report.length === 0) {
-			return NextResponse.json(
-				{ error: "Report not found" },
-				{ status: 404 }
-			);
+			return NextResponse.json({ error: "Report not found" }, { status: 404 });
 		}
 
 		const reportData = report[0];
 
 		// Check if report is completed
 		if (reportData.status !== "completed") {
-			return NextResponse.json(
-				{ error: "Report is not completed yet" },
-				{ status: 400 }
-			);
+			return NextResponse.json({ error: "Report is not completed yet" }, { status: 400 });
 		}
 
 		// Use the new render route that bypasses all layouts
@@ -100,29 +81,32 @@ export async function GET(
 		// Launch browser and generate PDF
 		const browser = await getBrowser();
 		const page = await browser.newPage();
-		
+
 		// Navigate to the render page and wait for it to load
 		await page.goto(renderUrl, { waitUntil: "networkidle0", timeout: 60000 });
-		
+
 		// Wait for fonts to load completely
 		await page.evaluateHandle(() => {
 			return document.fonts.ready;
 		});
-		
+
 		// Additional wait to ensure all content is rendered
-		await new Promise(resolve => setTimeout(resolve, 4000));
-		
+		await new Promise((resolve) => setTimeout(resolve, 4000));
+
 		// Wait for any images to load (like logos)
 		await page.evaluate(() => {
 			return Promise.all(
 				Array.from(document.images)
-					.filter(img => !img.complete)
-					.map(img => new Promise(resolve => {
-						img.onload = img.onerror = resolve;
-					}))
+					.filter((img) => !img.complete)
+					.map(
+						(img) =>
+							new Promise((resolve) => {
+								img.onload = img.onerror = resolve;
+							}),
+					),
 			);
 		});
-		
+
 		// Generate PDF with print-optimized settings
 		const pdfBuffer = await page.pdf({
 			format: "Letter",
@@ -133,9 +117,9 @@ export async function GET(
 				bottom: "20px",
 				left: "10px",
 			},
-			waitForFonts: true
+			waitForFonts: true,
 		});
-		
+
 		await browser.close();
 
 		// Create response with PDF
@@ -149,9 +133,6 @@ export async function GET(
 		});
 	} catch (error) {
 		console.error("Error generating PDF:", error);
-		return NextResponse.json(
-			{ error: "Internal server error" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }

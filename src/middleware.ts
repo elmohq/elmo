@@ -6,24 +6,24 @@ import { requireAdminAuth } from "@/lib/admin-auth";
 export async function middleware(request: NextRequest) {
 	try {
 		const { pathname } = request.nextUrl;
-		
+
 		// Allow /reports/render/* routes without authentication
 		if (pathname.startsWith("/reports/render/")) {
 			return NextResponse.next();
 		}
-		
+
 		// Allow public access to API documentation
 		if (pathname.startsWith("/api/v1/docs") || pathname.startsWith("/api/v1/openapi.json")) {
 			return NextResponse.next();
 		}
-		
+
 		// Handle /api/v1/* routes with API key authentication
 		if (pathname.startsWith("/api/v1/")) {
 			const authError = requireAdminAuth(request);
 			if (authError) return authError;
 			return NextResponse.next();
 		}
-		
+
 		const session = await auth0.getSession(request);
 		if (!session) {
 			if (pathname.startsWith("/auth")) {

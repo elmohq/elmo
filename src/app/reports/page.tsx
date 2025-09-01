@@ -29,7 +29,11 @@ const fetcher = async (url: string) => {
 };
 
 export default function ReportPage() {
-	const { data: reports = [], error, isLoading } = useSWR<Report[]>("/api/reports", fetcher, {
+	const {
+		data: reports = [],
+		error,
+		isLoading,
+	} = useSWR<Report[]>("/api/reports", fetcher, {
 		refreshInterval: 5000, // Auto-refresh every 5 seconds
 		revalidateOnFocus: true,
 		revalidateOnReconnect: true,
@@ -79,8 +83,8 @@ export default function ReportPage() {
 
 	const handleDownloadPDF = async (reportId: string, brandName: string) => {
 		if (downloadingReportIds.has(reportId)) return; // Prevent duplicate downloads of same report
-		
-		setDownloadingReportIds(prev => new Set([...prev, reportId]));
+
+		setDownloadingReportIds((prev) => new Set([...prev, reportId]));
 		try {
 			setDownloadError("");
 			const response = await fetch(`/api/reports/download/${reportId}`, {
@@ -100,21 +104,21 @@ export default function ReportPage() {
 			// Create blob from response
 			const blob = await response.blob();
 			const url = window.URL.createObjectURL(blob);
-			
+
 			// Create temporary download link
 			const link = document.createElement("a");
 			link.href = url;
 			link.download = `${brandName.replace(/[^a-zA-Z0-9]/g, "_")}_report.pdf`;
 			document.body.appendChild(link);
 			link.click();
-			
+
 			// Cleanup
 			document.body.removeChild(link);
 			window.URL.revokeObjectURL(url);
 		} catch (err) {
 			setDownloadError("Failed to download report");
 		} finally {
-			setDownloadingReportIds(prev => {
+			setDownloadingReportIds((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(reportId);
 				return newSet;
@@ -137,142 +141,136 @@ export default function ReportPage() {
 
 	const extractDomain = (url: string) => {
 		try {
-			return new URL(url).hostname.replace('www.', '');
+			return new URL(url).hostname.replace("www.", "");
 		} catch {
 			return url;
 		}
 	};
 
 	return (
-		<FullPageCard
-			title="Reports"
-			subtitle="Generate one-time brand reports."
-			customBackButton={<NavUserNoSidebar />}
-		>
-		<div className="space-y-6 max-w-4xl">
+		<FullPageCard title="Reports" subtitle="Generate one-time brand reports." customBackButton={<NavUserNoSidebar />}>
+			<div className="space-y-6 max-w-4xl">
+				{/* Report Creation Form */}
+				<div className="space-y-4">
+					<h2 className="text-2xl font-semibold">Create New Report</h2>
 
-			{/* Report Creation Form */}
-			<div className="space-y-4">
-				<h2 className="text-2xl font-semibold">Create New Report</h2>
-				
-				<form onSubmit={handleSubmit} className="space-y-4">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-						<div className="space-y-2">
-							<Label htmlFor="brandName">Brand Name</Label>
-							<Input
-								id="brandName"
-								type="text"
-								placeholder="Enter brand name"
-								value={formData.brandName}
-								onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
-								required
-								disabled={isSubmitting}
-							/>
-						</div>
-						<div className="space-y-2">
-							<Label htmlFor="brandWebsite">Brand Website</Label>
-							<Input
-								id="brandWebsite"
-								type="url"
-								placeholder="https://example.com"
-								value={formData.brandWebsite}
-								onChange={(e) => setFormData({ ...formData, brandWebsite: e.target.value })}
-								required
-								disabled={isSubmitting}
-							/>
-						</div>
-					</div>
-
-					{submitError && <p className="text-sm text-destructive">{submitError}</p>}
-					{success && <p className="text-sm text-green-600">{success}</p>}
-
-					<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
-						{isSubmitting ? "Creating Report..." : "Create Report"}
-					</Button>
-				</form>
-			</div>
-
-			{/* Reports List */}
-			<div className="space-y-4">
-				<h2 className="text-2xl font-semibold">Report History</h2>
-
-				{/* Display fetch errors */}
-				{error && (
-					<Card>
-						<CardContent className="py-8 text-center">
-							<p className="text-destructive">{error.message}</p>
-						</CardContent>
-					</Card>
-				)}
-
-				{/* Display download errors */}
-				{downloadError && (
-					<div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-						<p className="text-sm text-destructive">{downloadError}</p>
-					</div>
-				)}
-
-				{isLoading ? (
-					<div className="flex items-center justify-center py-8">
-						<div className="flex items-center space-x-2">
-							<div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-							<span>Loading reports...</span>
-						</div>
-					</div>
-				) : !error && reports.length === 0 ? (
-					<Card>
-						<CardContent className="py-8 text-center">
-							<p className="text-muted-foreground">No reports found.</p>
-						</CardContent>
-					</Card>
-				) : !error && (
-					<div className="space-y-3">
-						{reports.map((report) => (
-							<div 
-								key={report.id} 
-								className="bg-gray-50 border border-gray-200 rounded-lg p-4"
-							>
-								<div className="flex items-center justify-between">
-									<div className="flex-1 min-w-0">
-										<h3 className="font-semibold text-lg">
-											{report.brandName}{" "}
-											<span className="text-gray-600 font-normal">({extractDomain(report.brandWebsite)})</span>
-										</h3>
-									</div>
-									<div className="ml-4">
-										{report.status === "completed" ? (
-											<Button
-												variant="default"
-												size="sm"
-												onClick={() => handleDownloadPDF(report.id, report.brandName)}
-												className="cursor-pointer h-6 px-2 text-xs"
-												disabled={downloadingReportIds.has(report.id)}
-											>
-												{downloadingReportIds.has(report.id) ? (
-													<>
-														<Loader2 className="w-3 h-3 mr-1 animate-spin" />
-														Generating...
-													</>
-												) : (
-													<>
-														<Save className="w-3 h-3 mr-1" />
-														Download
-													</>
-												)}
-											</Button>
-										) : (
-											<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
-												{report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-											</Badge>
-										)}
-									</div>
-								</div>
+					<form onSubmit={handleSubmit} className="space-y-4">
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div className="space-y-2">
+								<Label htmlFor="brandName">Brand Name</Label>
+								<Input
+									id="brandName"
+									type="text"
+									placeholder="Enter brand name"
+									value={formData.brandName}
+									onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
+									required
+									disabled={isSubmitting}
+								/>
 							</div>
-						))}
-					</div>
-				)}
+							<div className="space-y-2">
+								<Label htmlFor="brandWebsite">Brand Website</Label>
+								<Input
+									id="brandWebsite"
+									type="url"
+									placeholder="https://example.com"
+									value={formData.brandWebsite}
+									onChange={(e) => setFormData({ ...formData, brandWebsite: e.target.value })}
+									required
+									disabled={isSubmitting}
+								/>
+							</div>
+						</div>
+
+						{submitError && <p className="text-sm text-destructive">{submitError}</p>}
+						{success && <p className="text-sm text-green-600">{success}</p>}
+
+						<Button type="submit" disabled={isSubmitting} className="cursor-pointer">
+							{isSubmitting ? "Creating Report..." : "Create Report"}
+						</Button>
+					</form>
+				</div>
+
+				{/* Reports List */}
+				<div className="space-y-4">
+					<h2 className="text-2xl font-semibold">Report History</h2>
+
+					{/* Display fetch errors */}
+					{error && (
+						<Card>
+							<CardContent className="py-8 text-center">
+								<p className="text-destructive">{error.message}</p>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Display download errors */}
+					{downloadError && (
+						<div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+							<p className="text-sm text-destructive">{downloadError}</p>
+						</div>
+					)}
+
+					{isLoading ? (
+						<div className="flex items-center justify-center py-8">
+							<div className="flex items-center space-x-2">
+								<div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+								<span>Loading reports...</span>
+							</div>
+						</div>
+					) : !error && reports.length === 0 ? (
+						<Card>
+							<CardContent className="py-8 text-center">
+								<p className="text-muted-foreground">No reports found.</p>
+							</CardContent>
+						</Card>
+					) : (
+						!error && (
+							<div className="space-y-3">
+								{reports.map((report) => (
+									<div key={report.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+										<div className="flex items-center justify-between">
+											<div className="flex-1 min-w-0">
+												<h3 className="font-semibold text-lg">
+													{report.brandName}{" "}
+													<span className="text-gray-600 font-normal">({extractDomain(report.brandWebsite)})</span>
+												</h3>
+											</div>
+											<div className="ml-4">
+												{report.status === "completed" ? (
+													<Button
+														variant="default"
+														size="sm"
+														onClick={() => handleDownloadPDF(report.id, report.brandName)}
+														className="cursor-pointer h-6 px-2 text-xs"
+														disabled={downloadingReportIds.has(report.id)}
+													>
+														{downloadingReportIds.has(report.id) ? (
+															<>
+																<Loader2 className="w-3 h-3 mr-1 animate-spin" />
+																Generating...
+															</>
+														) : (
+															<>
+																<Save className="w-3 h-3 mr-1" />
+																Download
+															</>
+														)}
+													</Button>
+												) : (
+													<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
+														{report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+													</Badge>
+												)}
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						)
+					)}
+				</div>
 			</div>
-		</div>
 		</FullPageCard>
 	);
-} 
+}

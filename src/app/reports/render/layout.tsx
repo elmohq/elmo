@@ -5,14 +5,14 @@ import "@/app/globals.css";
 const geistSans = Geist({
 	variable: "--font-geist-sans",
 	subsets: ["latin"],
-	display: 'swap',
+	display: "swap",
 	preload: true,
 });
 
 const geistMono = Geist_Mono({
 	variable: "--font-geist-mono",
 	subsets: ["latin"],
-	display: 'swap',
+	display: "swap",
 	preload: true,
 });
 
@@ -67,13 +67,11 @@ export default function RenderLayout({
 							h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, textarea, select {
 								font-family: inherit;
 							}
-						`
+						`,
 					}}
 				/>
 			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
-				{children}
-			</body>
+			<body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>{children}</body>
 		</html>
 	);
-} 
+}

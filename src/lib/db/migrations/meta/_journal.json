@@ -176,6 +176,13 @@
       "when": 1753310063129,
       "tag": "0024_clean_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1756762024898,
+      "tag": "0025_sticky_layla_miller",
+      "breakpoints": true
     }
   ]
 }

@@ -8,13 +8,13 @@ export async function GET(request: NextRequest) {
 	try {
 		const { searchParams } = new URL(request.url);
 		const brandId = searchParams.get("brandId");
-		
+
 		// Parse and validate page parameter
 		const pageParam = parseInt(searchParams.get("page") || "1");
 		if (pageParam < 1) {
 			return NextResponse.json(
 				{ error: "Validation Error", message: "Page must be a positive integer" },
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 		const page = pageParam;
@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
 		if (limitParam < 1) {
 			return NextResponse.json(
 				{ error: "Validation Error", message: "Limit must be a positive integer" },
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 		const limit = limitParam;
-		
+
 		const offset = (page - 1) * limit;
 
 		// Build query conditions
@@ -60,16 +60,10 @@ export async function GET(request: NextRequest) {
 			})
 			.from(prompts);
 
-		const promptsList = whereConditions.length > 0
-			? await baseQuery
-				.where(whereConditions[0])
-				.orderBy(desc(prompts.createdAt))
-				.limit(limit)
-				.offset(offset)
-			: await baseQuery
-				.orderBy(desc(prompts.createdAt))
-				.limit(limit)
-				.offset(offset);
+		const promptsList =
+			whereConditions.length > 0
+				? await baseQuery.where(whereConditions[0]).orderBy(desc(prompts.createdAt)).limit(limit).offset(offset)
+				: await baseQuery.orderBy(desc(prompts.createdAt)).limit(limit).offset(offset);
 
 		return NextResponse.json({
 			prompts: promptsList,
@@ -82,10 +76,7 @@ export async function GET(request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("Error fetching prompts:", error);
-		return NextResponse.json(
-			{ error: "Internal Server Error", message: "Failed to fetch prompts" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Internal Server Error", message: "Failed to fetch prompts" }, { status: 500 });
 	}
 }
 
@@ -101,7 +92,7 @@ export async function POST(request: NextRequest) {
 					error: "Validation Error",
 					message: "brandId and value are required fields",
 				},
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
@@ -111,16 +102,12 @@ export async function POST(request: NextRequest) {
 					error: "Validation Error",
 					message: "value must be a non-empty string",
 				},
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
 		// Verify brand exists
-		const brandExists = await db
-			.select({ id: brands.id })
-			.from(brands)
-			.where(eq(brands.id, brandId))
-			.limit(1);
+		const brandExists = await db.select({ id: brands.id }).from(brands).where(eq(brands.id, brandId)).limit(1);
 
 		if (brandExists.length === 0) {
 			return NextResponse.json(
@@ -128,7 +115,7 @@ export async function POST(request: NextRequest) {
 					error: "Validation Error",
 					message: `Brand with ID '${brandId}' not found`,
 				},
-				{ status: 400 }
+				{ status: 400 },
 			);
 		}
 
@@ -153,9 +140,6 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(newPrompt, { status: 201 });
 	} catch (error) {
 		console.error("Error creating prompt:", error);
-		return NextResponse.json(
-			{ error: "Internal Server Error", message: "Failed to create prompt" },
-			{ status: 500 }
-		);
+		return NextResponse.json({ error: "Internal Server Error", message: "Failed to create prompt" }, { status: 500 });
 	}
 }

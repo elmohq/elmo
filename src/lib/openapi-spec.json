@@ -1,342 +1,342 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "API",
-    "description": "API for managing prompts.",
-    "version": "1.0.0",
-    "contact": {
-      "name": "API Support"
-    }
-  },
-  "servers": [
-    {
-      "url": "/api/v1",
-      "description": "API"
-    }
-  ],
-  "security": [
-    {
-      "BearerAuth": []
-    }
-  ],
-  "components": {
-    "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Bearer API token for access"
-      }
-    },
-    "schemas": {
-      "Prompt": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "Unique identifier for the prompt"
-          },
-          "brandId": {
-            "type": "string",
-            "description": "Brand identifier this prompt belongs to"
-          },
-          "groupCategory": {
-            "type": "string",
-            "nullable": true,
-            "description": "Category group for organizing prompts"
-          },
-          "groupPrefix": {
-            "type": "string",
-            "nullable": true,
-            "description": "Prefix for prompt grouping"
-          },
-          "value": {
-            "type": "string",
-            "description": "The actual prompt text"
-          },
-          "enabled": {
-            "type": "boolean",
-            "description": "Whether the prompt is currently enabled"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the prompt was created"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp when the prompt was last updated"
-          }
-        },
-        "required": ["id", "brandId", "value", "enabled", "createdAt", "updatedAt"]
-      },
-      "CreatePromptRequest": {
-        "type": "object",
-        "properties": {
-          "brandId": {
-            "type": "string",
-            "description": "Brand identifier this prompt belongs to"
-          },
-          "value": {
-            "type": "string",
-            "description": "The prompt text",
-            "minLength": 1
-          },
-          "groupCategory": {
-            "type": "string",
-            "nullable": true,
-            "description": "Category group for organizing prompts"
-          },
-          "groupPrefix": {
-            "type": "string",
-            "nullable": true,
-            "description": "Prefix for prompt grouping"
-          }
-        },
-        "required": ["brandId", "value"]
-      },
-      "Error": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "description": "Error type"
-          },
-          "message": {
-            "type": "string",
-            "description": "Detailed error message"
-          }
-        },
-        "required": ["error"]
-      },
-      "SuccessMessage": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "description": "Success message"
-          },
-          "data": {
-            "type": "object",
-            "description": "Additional response data"
-          }
-        },
-        "required": ["message"]
-      }
-    },
-    "responses": {
-      "UnauthorizedError": {
-        "description": "Authentication required",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "NotFoundError": {
-        "description": "Resource not found",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "ValidationError": {
-        "description": "Invalid request data",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      },
-      "InternalServerError": {
-        "description": "Internal server error",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/Error"
-            }
-          }
-        }
-      }
-    }
-  },
-  "paths": {
-    "/prompts": {
-      "get": {
-        "summary": "List all prompts",
-        "description": "Retrieve a paginated list of all prompts across all brands",
-        "operationId": "listPrompts",
-        "tags": ["Prompts"],
-        "parameters": [
-          {
-            "name": "brandId",
-            "in": "query",
-            "description": "Filter prompts by brand ID",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number for pagination (1-based)",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Number of items per page",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100,
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of prompts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "prompts": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Prompt"
-                      }
-                    },
-                    "pagination": {
-                      "type": "object",
-                      "properties": {
-                        "page": {
-                          "type": "integer"
-                        },
-                        "limit": {
-                          "type": "integer"
-                        },
-                        "total": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        }
-      },
-      "post": {
-        "summary": "Create a new prompt",
-        "description": "Create a new prompt for a brand. This will automatically schedule the prompt for execution.",
-        "operationId": "createPrompt",
-        "tags": ["Prompts"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePromptRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Prompt created successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Prompt"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/ValidationError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        }
-      }
-    },
-    "/prompts/{promptId}": {
-      "delete": {
-        "summary": "Delete a prompt",
-        "description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
-        "operationId": "deletePrompt",
-        "tags": ["Prompts"],
-        "parameters": [
-          {
-            "name": "promptId",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the prompt to delete",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Prompt deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
-          }
-        }
-      }
-    }
-  },
-  "tags": [
-    {
-      "name": "Prompts",
-      "description": "Manage brand prompts"
-    }
-  ]
+	"openapi": "3.0.3",
+	"info": {
+		"title": "API",
+		"description": "API for managing prompts.",
+		"version": "1.0.0",
+		"contact": {
+			"name": "API Support"
+		}
+	},
+	"servers": [
+		{
+			"url": "/api/v1",
+			"description": "API"
+		}
+	],
+	"security": [
+		{
+			"BearerAuth": []
+		}
+	],
+	"components": {
+		"securitySchemes": {
+			"BearerAuth": {
+				"type": "http",
+				"scheme": "bearer",
+				"description": "Bearer API token for access"
+			}
+		},
+		"schemas": {
+			"Prompt": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier for the prompt"
+					},
+					"brandId": {
+						"type": "string",
+						"description": "Brand identifier this prompt belongs to"
+					},
+					"groupCategory": {
+						"type": "string",
+						"nullable": true,
+						"description": "Category group for organizing prompts"
+					},
+					"groupPrefix": {
+						"type": "string",
+						"nullable": true,
+						"description": "Prefix for prompt grouping"
+					},
+					"value": {
+						"type": "string",
+						"description": "The actual prompt text"
+					},
+					"enabled": {
+						"type": "boolean",
+						"description": "Whether the prompt is currently enabled"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the prompt was created"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the prompt was last updated"
+					}
+				},
+				"required": ["id", "brandId", "value", "enabled", "createdAt", "updatedAt"]
+			},
+			"CreatePromptRequest": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string",
+						"description": "Brand identifier this prompt belongs to"
+					},
+					"value": {
+						"type": "string",
+						"description": "The prompt text",
+						"minLength": 1
+					},
+					"groupCategory": {
+						"type": "string",
+						"nullable": true,
+						"description": "Category group for organizing prompts"
+					},
+					"groupPrefix": {
+						"type": "string",
+						"nullable": true,
+						"description": "Prefix for prompt grouping"
+					}
+				},
+				"required": ["brandId", "value"]
+			},
+			"Error": {
+				"type": "object",
+				"properties": {
+					"error": {
+						"type": "string",
+						"description": "Error type"
+					},
+					"message": {
+						"type": "string",
+						"description": "Detailed error message"
+					}
+				},
+				"required": ["error"]
+			},
+			"SuccessMessage": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string",
+						"description": "Success message"
+					},
+					"data": {
+						"type": "object",
+						"description": "Additional response data"
+					}
+				},
+				"required": ["message"]
+			}
+		},
+		"responses": {
+			"UnauthorizedError": {
+				"description": "Authentication required",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
+			"NotFoundError": {
+				"description": "Resource not found",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
+			"ValidationError": {
+				"description": "Invalid request data",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
+			"InternalServerError": {
+				"description": "Internal server error",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			}
+		}
+	},
+	"paths": {
+		"/prompts": {
+			"get": {
+				"summary": "List all prompts",
+				"description": "Retrieve a paginated list of all prompts across all brands",
+				"operationId": "listPrompts",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "query",
+						"description": "Filter prompts by brand ID",
+						"required": false,
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "page",
+						"in": "query",
+						"description": "Page number for pagination (1-based)",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"description": "Number of items per page",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 20
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "List of prompts",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"prompts": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/Prompt"
+											}
+										},
+										"pagination": {
+											"type": "object",
+											"properties": {
+												"page": {
+													"type": "integer"
+												},
+												"limit": {
+													"type": "integer"
+												},
+												"total": {
+													"type": "integer"
+												},
+												"totalPages": {
+													"type": "integer"
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			},
+			"post": {
+				"summary": "Create a new prompt",
+				"description": "Create a new prompt for a brand. This will automatically schedule the prompt for execution.",
+				"operationId": "createPrompt",
+				"tags": ["Prompts"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreatePromptRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Prompt created successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Prompt"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/prompts/{promptId}": {
+			"delete": {
+				"summary": "Delete a prompt",
+				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
+				"operationId": "deletePrompt",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt to delete",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Prompt deleted successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SuccessMessage"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		}
+	},
+	"tags": [
+		{
+			"name": "Prompts",
+			"description": "Manage brand prompts"
+		}
+	]
 }
