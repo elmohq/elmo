@@ -1,4 +1,4 @@
-import type { AuthAdapter, User, Organization } from './types';
+import type { AuthAdapter, AuthProvider, User, Organization } from './types';
 
 export class NoAuthAdapter implements AuthAdapter {
   async getCurrentUser(): Promise<User | null> {
@@ -29,4 +29,24 @@ export class NoAuthAdapter implements AuthAdapter {
   async signOut(): Promise<void> {
     // No-op in open source
   }
+
+  async requireAuthInRoute(): Promise<User> {
+    const user = await this.getCurrentUser();
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+    return user;
+  }
 }
+
+export const NoAuthProvider: AuthProvider = {
+  Provider: ({ children }) => children,
+  useAuth: () => ({
+    user: {
+      id: 'demo-user',
+      email: 'demo@example.com',
+      name: 'Demo User',
+    },
+    isLoaded: true,
+  }),
+};

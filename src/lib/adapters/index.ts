@@ -1,4 +1,4 @@
-import { NoAuthAdapter } from './no-auth';
+import { NoAuthAdapter, NoAuthProvider } from './no-auth';
 import type { AppConfig } from './types';
 
 export function getAppConfig(): AppConfig {
@@ -10,6 +10,9 @@ export function getAppConfig(): AppConfig {
     },
     adapters: {
       auth: new NoAuthAdapter(),
+    },
+    providers: {
+      auth: NoAuthProvider,
     },
   };
 }

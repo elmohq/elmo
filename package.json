@@ -2,8 +2,18 @@
   "name": "elmo",
   "version": "0.1.0",
   "private": true,
+  "main": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./lib/adapters/types": "./src/lib/adapters/types.ts",
+    "./lib/adapters": "./src/lib/adapters/index.ts",
+    "./lib/utils": "./src/lib/utils.ts",
+    "./components/dashboard-page": "./src/components/dashboard-page.tsx",
+    "./components/status-page": "./src/components/status-page.tsx",
+    "./components/ui/*": "./src/components/ui/*.tsx"
+  },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack --port 4000",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "biome check",
