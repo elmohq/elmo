@@ -1,9 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { getAppConfig } from '@/lib/adapters';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getAppConfig } from "@/lib/adapters";
 
 const config = getAppConfig();
 
@@ -34,17 +40,17 @@ export function StatusPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/status');
-      
+      const response = await fetch("/api/status");
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `HTTP ${response.status}`);
       }
-      
+
       const data = await response.json();
       setStatusData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch status');
+      setError(err instanceof Error ? err.message : "Failed to fetch status");
     } finally {
       setLoading(false);
     }
@@ -58,25 +64,26 @@ export function StatusPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">System Status</h1>
+          <h1 className="font-bold text-3xl tracking-tight">System Status</h1>
           <p className="text-muted-foreground">
-            Monitor the health and status of your {config.features.auth ? 'Elmo Cloud' : 'Elmo OSS'} instance
+            Monitor the health and status of your{" "}
+            {config.features.auth ? "Elmo Cloud" : "Elmo OSS"} instance
           </p>
         </div>
-        
+
         <div className="flex gap-2">
-          <Button onClick={fetchStatus} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh'}
+          <Button disabled={loading} onClick={fetchStatus}>
+            {loading ? "Refreshing..." : "Refresh"}
           </Button>
           {config.features.auth && config.providers.auth.UserButton && (
             <config.providers.auth.UserButton />
@@ -91,8 +98,8 @@ export function StatusPage() {
           </CardHeader>
           <CardContent>
             <p className="text-red-600">{error}</p>
-            {error.includes('Authentication required') && (
-              <p className="text-sm text-red-500 mt-2">
+            {error.includes("Authentication required") && (
+              <p className="mt-2 text-red-500 text-sm">
                 Please sign in to view system status.
               </p>
             )}
@@ -109,21 +116,26 @@ export function StatusPage() {
           <CardContent>
             {loading ? (
               <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="mb-2 h-4 w-3/4 rounded bg-gray-200" />
+                <div className="h-3 w-1/2 rounded bg-gray-200" />
               </div>
             ) : statusData ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span 
-                    className={`w-3 h-3 rounded-full ${
-                      statusData.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'
-                    }`} 
+                  <span
+                    className={`h-3 w-3 rounded-full ${
+                      statusData.status === "healthy"
+                        ? "bg-green-500"
+                        : "bg-red-500"
+                    }`}
                   />
-                  <span className="font-medium capitalize">{statusData.status}</span>
+                  <span className="font-medium capitalize">
+                    {statusData.status}
+                  </span>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Last updated: {new Date(statusData.timestamp).toLocaleString()}
+                <p className="text-muted-foreground text-sm">
+                  Last updated:{" "}
+                  {new Date(statusData.timestamp).toLocaleString()}
                 </p>
               </div>
             ) : (
@@ -140,14 +152,14 @@ export function StatusPage() {
           <CardContent>
             {loading ? (
               <div className="animate-pulse space-y-2">
-                <div className="h-3 bg-gray-200 rounded w-full"></div>
-                <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                <div className="h-3 w-full rounded bg-gray-200" />
+                <div className="h-3 w-2/3 rounded bg-gray-200" />
               </div>
             ) : statusData ? (
               <div className="space-y-2 text-sm">
                 <div>Version: {statusData.version}</div>
                 <div>Environment: {statusData.environment}</div>
-                <div>Type: {config.features.auth ? 'Cloud' : 'OSS'}</div>
+                <div>Type: {config.features.auth ? "Cloud" : "OSS"}</div>
               </div>
             ) : (
               <p className="text-muted-foreground">No data available</p>
@@ -163,8 +175,8 @@ export function StatusPage() {
           <CardContent>
             {loading ? (
               <div className="animate-pulse space-y-2">
-                <div className="h-3 bg-gray-200 rounded w-full"></div>
-                <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-3 w-full rounded bg-gray-200" />
+                <div className="h-3 w-3/4 rounded bg-gray-200" />
               </div>
             ) : user ? (
               <div className="space-y-2 text-sm">
@@ -181,45 +193,55 @@ export function StatusPage() {
         <Card className="md:col-span-2 lg:col-span-3">
           <CardHeader>
             <CardTitle>Features</CardTitle>
-            <CardDescription>Available features in this deployment</CardDescription>
+            <CardDescription>
+              Available features in this deployment
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="animate-pulse">
                 <div className="grid grid-cols-3 gap-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                    <div className="h-16 rounded bg-gray-200" key={i} />
                   ))}
                 </div>
               </div>
             ) : statusData ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-3 border rounded-lg">
-                  <span className={`w-3 h-3 rounded-full ${statusData.features.auth ? 'bg-green-500' : 'bg-gray-300'}`} />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <span
+                    className={`h-3 w-3 rounded-full ${statusData.features.auth ? "bg-green-500" : "bg-gray-300"}`}
+                  />
                   <div>
                     <div className="font-medium">Authentication</div>
-                    <div className="text-sm text-muted-foreground">
-                      {statusData.features.auth ? 'Enabled' : 'Disabled'}
+                    <div className="text-muted-foreground text-sm">
+                      {statusData.features.auth ? "Enabled" : "Disabled"}
                     </div>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-3 p-3 border rounded-lg">
-                  <span className={`w-3 h-3 rounded-full ${statusData.features.billing ? 'bg-green-500' : 'bg-gray-300'}`} />
+
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <span
+                    className={`h-3 w-3 rounded-full ${statusData.features.billing ? "bg-green-500" : "bg-gray-300"}`}
+                  />
                   <div>
                     <div className="font-medium">Billing</div>
-                    <div className="text-sm text-muted-foreground">
-                      {statusData.features.billing ? 'Enabled' : 'Disabled'}
+                    <div className="text-muted-foreground text-sm">
+                      {statusData.features.billing ? "Enabled" : "Disabled"}
                     </div>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-3 p-3 border rounded-lg">
-                  <span className={`w-3 h-3 rounded-full ${statusData.features.organizations ? 'bg-green-500' : 'bg-gray-300'}`} />
+
+                <div className="flex items-center gap-3 rounded-lg border p-3">
+                  <span
+                    className={`h-3 w-3 rounded-full ${statusData.features.organizations ? "bg-green-500" : "bg-gray-300"}`}
+                  />
                   <div>
                     <div className="font-medium">Organizations</div>
-                    <div className="text-sm text-muted-foreground">
-                      {statusData.features.organizations ? 'Enabled' : 'Disabled'}
+                    <div className="text-muted-foreground text-sm">
+                      {statusData.features.organizations
+                        ? "Enabled"
+                        : "Disabled"}
                     </div>
                   </div>
                 </div>
