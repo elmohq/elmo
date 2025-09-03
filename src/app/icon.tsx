@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 
+// Image metadata
 export const size = {
   width: 32,
   height: 32,
@@ -21,6 +22,7 @@ async function loadGoogleFont(font: string, text: string) {
   throw new Error('failed to load font data')
 }
 
+// Image generation
 export default async function Icon() {
   const text = 'e'
 
@@ -28,42 +30,20 @@ export default async function Icon() {
     (
       <div
         style={{
+          fontSize: 42,
+          fontFamily: 'Titan One',
+          fontWeight: '400',
           background: 'transparent',
           width: '100%',
           height: '100%',
+          marginTop: "-14%",
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          position: 'relative',
+          color: '#93c5fd', // blue-300 color
         }}
       >
-        {/* Background rounded shape */}
-        <div
-          style={{
-            position: 'absolute',
-            background: '#f3f4f6', // light gray background
-            width: '32px',
-            height: '32px',
-            borderRadius: '8px', // rounded corners
-          }}
-        />
-        {/* Letter on top */}
-        <div
-          style={{
-            fontSize: 42,
-            fontFamily: 'Titan One',
-            fontWeight: '400',
-            top: "-14%",
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#2563eb', // blue-600 color
-            position: 'relative',
-            zIndex: 1,
-          }}
-        >
-          {text}
-        </div>
+        {text}
       </div>
     ),
     // ImageResponse options
