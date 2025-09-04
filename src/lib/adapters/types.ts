@@ -15,6 +15,18 @@ export interface Organization {
   imageUrl?: string;
 }
 
+export interface OrganizationAdapter {
+  getCurrentOrganization(): Promise<Organization | null>;
+  getOrganizations(): Promise<Organization[]>;
+  switchOrganization(orgId: string): Promise<void>;
+  hasOrganizations(): Promise<boolean>;
+  isLoaded(): boolean;
+  canManageOrganization(): Promise<boolean>;
+  createOrganization?(name: string): Promise<Organization>;
+  openOrganizationProfile?(): void;
+  openCreateOrganization?(): void;
+}
+
 export interface AuthAdapter {
   getCurrentUser(): Promise<User | null>;
   getOrganization(id?: string): Promise<Organization | null>;
@@ -44,14 +56,25 @@ export interface PaymentAdapter {
   getSubscription(orgId: string): Promise<any>;
 }
 
+export interface NavigationLink {
+  title: string;
+  url: string;
+  external?: boolean;
+}
+
 export interface AppConfig {
   features: {
     auth: boolean;
     billing: boolean;
     organizations: boolean;
   };
+  navigation: {
+    showLinks: boolean;
+    links: NavigationLink[];
+  };
   adapters: {
     auth: AuthAdapter;
+    organization: OrganizationAdapter;
     payment?: PaymentAdapter;
   };
   providers: {
