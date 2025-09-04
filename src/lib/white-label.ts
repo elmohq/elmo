@@ -1,5 +1,5 @@
 export const WHITE_LABEL_CONFIG = {
-	name: "WHITELABEL-CLIENT AEO",
+	name: "WHITELABEL-CLIENT AI Search",
 	icon: "/brands/whitelabel-client/icon.png",
 	url: "https://aeo.whitelabel-client.com/",
 	parent_name: "WHITELABEL-CLIENT",
