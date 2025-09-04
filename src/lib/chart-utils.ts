@@ -360,17 +360,18 @@ export function generateOptimizationUrl(
 ): string {
 	const baseUrl = "https://app.whitelabel-client.com/search/create-aeo-funnel";
 
-	// Determine which prompt to use
-	let promptToEncode: string;
-	if (webSearchEnabled && oldestWebQuery) {
-		promptToEncode = oldestWebQuery;
-	} else {
-		promptToEncode = promptValue;
-	}
-
-	// URL encode the prompt
-	const encodedPrompt = encodeURIComponent(promptToEncode);
+	// URL encode the prompt value (always use promptValue as the prompt parameter)
+	const encodedPrompt = encodeURIComponent(promptValue);
 	const encodedOrgId = encodeURIComponent(orgId);
 
-	return `${baseUrl}?prompt=${encodedPrompt}&org_id=${encodedOrgId}`;
+	// Build the URL with prompt and org_id
+	let url = `${baseUrl}?prompt=${encodedPrompt}&org_id=${encodedOrgId}`;
+
+	// Add web_query parameter if web search is enabled and web query is present
+	if (webSearchEnabled && oldestWebQuery) {
+		const encodedWebQuery = encodeURIComponent(oldestWebQuery);
+		url += `&web_query=${encodedWebQuery}`;
+	}
+
+	return url;
 }
