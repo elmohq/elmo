@@ -1,7 +1,7 @@
 export const WHITE_LABEL_CONFIG = {
 	name: "WHITELABEL-CLIENT AI Search",
 	icon: "/brands/whitelabel-client/icon.png",
-	url: "https://aeo.whitelabel-client.com/",
+	url: "https://ai.whitelabel-client.com/",
 	parent_name: "WHITELABEL-CLIENT",
 	parent_url: "https://app.whitelabel-client.com/",
 	chart_colors: [
