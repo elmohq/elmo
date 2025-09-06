@@ -1,19 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Titan_One } from "next/font/google";
+import { Titan_One } from "next/font/google";
 import { getAppConfig } from "@/lib/adapters";
 import { AppLayout } from '@/components/app-layout';
 import "@elmo/ui/globals.css"
-
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 const titan = Titan_One({
   subsets: ['latin'],
@@ -39,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${titan.variable} antialiased`}
+        className={`${titan.variable} antialiased`}
       >
         <providers.auth.Provider>
           <AppLayout>{children}</AppLayout>
