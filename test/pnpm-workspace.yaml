@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  - "!**/dist/**"
+  - "!**/.next/**"
+  - "!**/build/**"

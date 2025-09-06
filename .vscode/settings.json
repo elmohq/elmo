@@ -1,4 +1,5 @@
 {
+  "tailwindCSS.experimental.configFile": "packages/ui/src/styles/globals.css",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
