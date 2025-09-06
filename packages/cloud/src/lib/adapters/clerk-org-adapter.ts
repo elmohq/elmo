@@ -4,24 +4,25 @@ import type {
 } from "@elmo/shared/lib/adapters/types";
 
 export class ClerkOrgAdapter implements OrganizationAdapter {
-  async getCurrentOrganization(): Promise<Organization | null> {
+  getCurrentOrganization(): Promise<Organization | null> {
     // In the cloud version, organization state is managed by Clerk hooks
     // This adapter is mainly for server-side operations
-    return null;
+    return Promise.resolve(null);
   }
 
-  async getOrganizations(): Promise<Organization[]> {
+  getOrganizations(): Promise<Organization[]> {
     // Organizations are managed client-side by Clerk hooks
-    return [];
+    return Promise.resolve([]);
   }
 
-  async switchOrganization(_orgId: string): Promise<void> {
+  switchOrganization(_orgId: string): Promise<void> {
     // Organization switching is handled client-side by Clerk hooks
+    return Promise.resolve();
   }
 
-  async hasOrganizations(): Promise<boolean> {
+  hasOrganizations(): Promise<boolean> {
     // This is determined client-side by Clerk hooks
-    return true;
+    return Promise.resolve(true);
   }
 
   isLoaded(): boolean {
@@ -29,9 +30,9 @@ export class ClerkOrgAdapter implements OrganizationAdapter {
     return true;
   }
 
-  async canManageOrganization(): Promise<boolean> {
+  canManageOrganization(): Promise<boolean> {
     // Permission checking is done client-side by Clerk hooks
-    return false;
+    return Promise.resolve(false);
   }
 
   openOrganizationProfile(): void {

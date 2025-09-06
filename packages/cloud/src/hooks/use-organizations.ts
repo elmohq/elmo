@@ -3,7 +3,7 @@
 import type { Organization } from "@elmo/shared/lib/adapters/types";
 import { useClerkOrganizations } from "../lib/adapters/clerk-org";
 
-interface UseOrganizationsReturn {
+type UseOrganizationsReturn = {
   currentOrganization: Organization | null;
   organizations: Organization[];
   hasOrganizations: boolean;
@@ -13,7 +13,7 @@ interface UseOrganizationsReturn {
   switchOrganization: (orgId: string) => Promise<void>;
   openOrganizationProfile?: () => void;
   openCreateOrganization?: () => void;
-}
+};
 
 export function useOrganizations(): UseOrganizationsReturn {
   const {

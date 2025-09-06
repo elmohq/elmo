@@ -14,9 +14,15 @@ import React from "react";
 // Helper function to format breadcrumb labels
 function formatBreadcrumbLabel(segment: string): string {
   // Handle special cases
-  if (segment === "default") return "Dashboard";
-  if (segment === "organization-members") return "Members";
-  if (segment === "organization-billing") return "Billing";
+  if (segment === "default") {
+    return "Dashboard";
+  }
+  if (segment === "organization-members") {
+    return "Members";
+  }
+  if (segment === "organization-billing") {
+    return "Billing";
+  }
 
   // Convert kebab-case or snake_case to Title Case
   return segment
@@ -25,13 +31,9 @@ function formatBreadcrumbLabel(segment: string): string {
 }
 
 // Helper function to build breadcrumb items
-function buildBreadcrumbItems(
-  pathname: string,
-  listName?: string,
-  userName?: string
-) {
+function buildBreadcrumbItems(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
-  const items = [];
+  const items: Array<{ label: string; href: string; isCurrent: boolean }> = [];
 
   // Build path segments
   let currentPath = "";
@@ -41,10 +43,8 @@ function buildBreadcrumbItems(
     currentPath += `/${segment}`;
     const isLast = i === segments.length - 1;
 
-    let label: string;
+    const label = formatBreadcrumbLabel(segment || "");
     const href = currentPath;
-
-    label = formatBreadcrumbLabel(segment || "");
 
     items.push({
       label,

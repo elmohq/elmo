@@ -13,8 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@elmo/ui/components/sidebar";
-import { FileText, LogOut, Shield, User } from "lucide-react";
-import Link from "next/link";
+import { LogOut, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAppConfig } from "@/lib/adapters";
 

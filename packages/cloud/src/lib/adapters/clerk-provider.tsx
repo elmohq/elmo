@@ -11,7 +11,7 @@ import type { AuthProvider } from "@elmo/shared/lib/adapters/types";
 import type React from "react";
 
 function useAuthHook() {
-  const { isLoaded, userId } = useClerkAuth();
+  const { isLoaded } = useClerkAuth();
   const { user: clerkUser } = useUser();
 
   const user = clerkUser

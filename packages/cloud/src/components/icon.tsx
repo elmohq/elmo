@@ -1,4 +1,7 @@
+import { constants } from "node:http2";
 import { ImageResponse } from "next/og";
+
+const matcher = /src: url\((.+)\) format\('(opentype|truetype)'\)/;
 
 // Image metadata
 export const size = {
@@ -10,13 +13,11 @@ export const contentType = "image/png";
 async function loadGoogleFont(font: string, text: string) {
   const url = `https://fonts.googleapis.com/css2?family=${font}&text=${encodeURIComponent(text)}`;
   const css = await (await fetch(url)).text();
-  const resource = css.match(
-    /src: url\((.+)\) format\('(opentype|truetype)'\)/
-  );
+  const resource = css.match(matcher);
 
-  if (resource && resource[1]) {
+  if (resource?.[1]) {
     const response = await fetch(resource[1]);
-    if (response.status === 200) {
+    if (response.status === constants.HTTP_STATUS_OK) {
       return await response.arrayBuffer();
     }
   }

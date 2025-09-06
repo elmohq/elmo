@@ -6,21 +6,21 @@ import type {
 } from "@elmo/shared/lib/adapters/types";
 
 export class NoAuthAdapter implements AuthAdapter {
-  async getCurrentUser(): Promise<User | null> {
+  getCurrentUser(): Promise<User | null> {
     // In open source version, return a mock user or null
-    return {
+    return Promise.resolve({
       id: "demo-user",
       email: "demo@example.com",
       name: "Demo User",
-    };
+    });
   }
 
-  async getOrganization(): Promise<Organization | null> {
-    return {
+  getOrganization(): Promise<Organization | null> {
+    return Promise.resolve({
       id: "demo-org",
       name: "Demo Organization",
       slug: "demo-org",
-    };
+    });
   }
 
   async requireAuth(): Promise<User> {
@@ -31,8 +31,9 @@ export class NoAuthAdapter implements AuthAdapter {
     return user;
   }
 
-  async signOut(): Promise<void> {
+  signOut(): Promise<void> {
     // No-op in open source
+    return Promise.resolve();
   }
 
   async requireAuthInRoute(): Promise<User> {

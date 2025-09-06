@@ -14,7 +14,6 @@ import {
   SidebarMenuItem,
 } from "@elmo/ui/components/sidebar";
 import { FileText, LogOut, Shield, User } from "lucide-react";
-import Link from "next/link";
 
 export function NavAccount() {
   const { user } = useUser();

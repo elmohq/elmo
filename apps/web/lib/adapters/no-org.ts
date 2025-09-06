@@ -4,34 +4,35 @@ import type {
 } from "@elmo/shared/lib/adapters/types";
 
 export class NoOrgAdapter implements OrganizationAdapter {
-  private defaultOrg: Organization = {
+  private readonly defaultOrg: Organization = {
     id: "default",
     name: "Dashboard",
     slug: "default",
     imageUrl: undefined,
   };
 
-  async getCurrentOrganization(): Promise<Organization | null> {
-    return this.defaultOrg;
+  getCurrentOrganization(): Promise<Organization | null> {
+    return Promise.resolve(this.defaultOrg);
   }
 
-  async getOrganizations(): Promise<Organization[]> {
-    return [this.defaultOrg];
+  getOrganizations(): Promise<Organization[]> {
+    return Promise.resolve([this.defaultOrg]);
   }
 
-  async switchOrganization(_orgId: string): Promise<void> {
+  switchOrganization(_orgId: string): Promise<void> {
     // No-op in open source - only one organization
+    return Promise.resolve();
   }
 
-  async hasOrganizations(): Promise<boolean> {
-    return true; // Always has the default organization
+  hasOrganizations(): Promise<boolean> {
+    return Promise.resolve(true); // Always has the default organization
   }
 
   isLoaded(): boolean {
     return true; // Always loaded in open source
   }
 
-  async canManageOrganization(): Promise<boolean> {
-    return false; // No management UI in open source
+  canManageOrganization(): Promise<boolean> {
+    return Promise.resolve(false); // No management UI in open source
   }
 }

@@ -1,21 +1,21 @@
 import type React from "react";
 import type { ReactNode } from "react";
 
-export interface User {
+export type User = {
   id: string;
   email: string;
   name: string;
   imageUrl?: string;
-}
+};
 
-export interface Organization {
+export type Organization = {
   id: string;
   name: string;
   slug: string;
   imageUrl?: string;
-}
+};
 
-export interface OrganizationAdapter {
+export type OrganizationAdapter = {
   getCurrentOrganization(): Promise<Organization | null>;
   getOrganizations(): Promise<Organization[]>;
   switchOrganization(orgId: string): Promise<void>;
@@ -25,18 +25,18 @@ export interface OrganizationAdapter {
   createOrganization?(name: string): Promise<Organization>;
   openOrganizationProfile?(): void;
   openCreateOrganization?(): void;
-}
+};
 
-export interface AuthAdapter {
+export type AuthAdapter = {
   getCurrentUser(): Promise<User | null>;
   getOrganization(id?: string): Promise<Organization | null>;
   requireAuth(): Promise<User>;
   signOut(): Promise<void>;
   // For API routes
   requireAuthInRoute(): Promise<User>;
-}
+};
 
-export interface AuthProvider {
+export type AuthProvider = {
   // React component that wraps the app
   Provider: React.ComponentType<{ children: ReactNode }>;
   // Hook for checking auth status in components
@@ -45,24 +45,29 @@ export interface AuthProvider {
   SignIn?: React.ComponentType;
   // Component for user button/menu
   UserButton?: React.ComponentType;
-}
+};
 
-export interface PaymentAdapter {
+export type PaymentAdapter = {
   createCheckoutSession(params: {
     priceId: string;
     orgId: string;
   }): Promise<{ url: string }>;
   createPortalSession(orgId: string): Promise<{ url: string }>;
-  getSubscription(orgId: string): Promise<any>;
-}
+  getSubscription(orgId: string): Promise<{
+    id: string;
+    status: string;
+    priceId: string;
+    currentPeriodEnd: number;
+  } | null>;
+};
 
-export interface NavigationLink {
+export type NavigationLink = {
   title: string;
   url: string;
   external?: boolean;
-}
+};
 
-export interface AppConfig {
+export type AppConfig = {
   features: {
     auth: boolean;
     billing: boolean;
@@ -80,4 +85,4 @@ export interface AppConfig {
   providers: {
     auth: AuthProvider;
   };
-}
+};

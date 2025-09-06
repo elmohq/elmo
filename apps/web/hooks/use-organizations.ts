@@ -4,7 +4,7 @@ import type { Organization } from "@elmo/shared/lib/adapters/types";
 import { useEffect, useState } from "react";
 import { getAppConfig } from "@/lib/adapters";
 
-interface UseOrganizationsReturn {
+type UseOrganizationsReturn = {
   currentOrganization: Organization | null;
   organizations: Organization[];
   hasOrganizations: boolean;
@@ -14,7 +14,7 @@ interface UseOrganizationsReturn {
   switchOrganization: (orgId: string) => Promise<void>;
   openOrganizationProfile?: () => void;
   openCreateOrganization?: () => void;
-}
+};
 
 export function useOrganizations(): UseOrganizationsReturn {
   const [currentOrganization, setCurrentOrganization] =
@@ -41,8 +41,7 @@ export function useOrganizations(): UseOrganizationsReturn {
         setHasOrganizations(hasOrgs);
         setCanManageOrganization(canManage);
         setIsLoaded(adapters.organization.isLoaded());
-      } catch (error) {
-        console.error("Failed to load organizations:", error);
+      } catch (_error) {
         setIsLoaded(true);
       }
     };

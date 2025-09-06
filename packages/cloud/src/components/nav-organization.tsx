@@ -33,9 +33,7 @@ export function NavOrganization() {
   };
 
   const switchOrganization =
-    setActive === undefined ? (
-      <></>
-    ) : (
+    setActive === undefined ? null : (
       <SidebarMenuItem>
         <SidebarMenuButton onClick={() => setActive({ organization: null })}>
           <div className="flex w-full cursor-pointer items-center gap-2">
@@ -47,9 +45,7 @@ export function NavOrganization() {
     );
 
   const switchOrganizationWarning =
-    setActive === undefined ? (
-      <></>
-    ) : (
+    setActive === undefined ? null : (
       <>
         <Separator className="my-2" />
         <button
@@ -83,7 +79,7 @@ export function NavOrganization() {
 
   return (
     <Protect
-      condition={(has: any) =>
+      condition={(has) =>
         has({ role: "org:admin" }) || has({ feature: "paid" })
       }
       fallback={warning}

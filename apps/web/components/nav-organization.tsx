@@ -9,14 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@elmo/ui/components/sidebar";
-import {
-  AlertTriangle,
-  CircleDollarSign,
-  Repeat,
-  Settings,
-  Users,
-} from "lucide-react";
-import Link from "next/link";
+import { CircleDollarSign, Repeat, Settings, Users } from "lucide-react";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { getAppConfig } from "@/lib/adapters";
 
@@ -24,7 +17,6 @@ export function NavOrganization() {
   const { features } = getAppConfig();
   const {
     canManageOrganization,
-    switchOrganization,
     organizations,
     openOrganizationProfile,
     openCreateOrganization,

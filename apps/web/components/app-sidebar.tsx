@@ -5,9 +5,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@elmo/ui/components/sidebar";
 import {
   IconDashboard,

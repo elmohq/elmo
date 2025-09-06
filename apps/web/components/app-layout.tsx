@@ -11,16 +11,15 @@ import { DynamicBreadcrumbs } from "@/components/dynamic-breadcrumbs";
 import { useOrganizations } from "@/hooks/use-organizations";
 import { getAppConfig } from "@/lib/adapters";
 
-interface AppLayoutProps {
+type AppLayoutProps = {
   children: React.ReactNode;
-}
+};
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { features } = getAppConfig();
 
   // Always call hooks at the top level - never conditionally
-  const { hasOrganizations, isLoaded, currentOrganization } =
-    useOrganizations();
+  const { hasOrganizations, isLoaded } = useOrganizations();
 
   // Only use organization logic if organizations are enabled
   if (features.organizations) {

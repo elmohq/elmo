@@ -8,37 +8,28 @@ import type {
 } from "@elmo/shared/lib/adapters/types";
 
 export class ClerkOrgAdapter implements OrganizationAdapter {
-  private useOrganizationHook: typeof useOrganization;
-  private useOrganizationListHook: typeof useOrganizationList;
-  private useClerkHook: typeof useClerk;
-
-  constructor() {
-    this.useOrganizationHook = useOrganization;
-    this.useOrganizationListHook = useOrganizationList;
-    this.useClerkHook = useClerk;
-  }
-
-  async getCurrentOrganization(): Promise<Organization | null> {
+  getCurrentOrganization(): Promise<Organization | null> {
     // This is a client-side adapter, so we need to use hooks
     // This method won't work directly - we need to use the hook in a component
-    return null;
+    return Promise.resolve(null);
   }
 
-  async getOrganizations(): Promise<Organization[]> {
+  getOrganizations(): Promise<Organization[]> {
     // This is a client-side adapter, so we need to use hooks
     // This method won't work directly - we need to use the hook in a component
-    return [];
+    return Promise.resolve([]);
   }
 
-  async switchOrganization(orgId: string): Promise<void> {
+  switchOrganization(_orgId: string): Promise<void> {
     // This is a client-side adapter, so we need to use hooks
     // This method won't work directly - we need to use the hook in a component
+    return Promise.resolve();
   }
 
-  async hasOrganizations(): Promise<boolean> {
+  hasOrganizations(): Promise<boolean> {
     // This is a client-side adapter, so we need to use hooks
     // This method won't work directly - we need to use the hook in a component
-    return false;
+    return Promise.resolve(false);
   }
 
   isLoaded(): boolean {
@@ -47,10 +38,10 @@ export class ClerkOrgAdapter implements OrganizationAdapter {
     return false;
   }
 
-  async canManageOrganization(): Promise<boolean> {
+  canManageOrganization(): Promise<boolean> {
     // This is a client-side adapter, so we need to use hooks
     // This method won't work directly - we need to use the hook in a component
-    return false;
+    return Promise.resolve(false);
   }
 
   openOrganizationProfile(): void {
@@ -91,11 +82,11 @@ export function useClerkOrganizations(): {
     : null;
 
   const organizations: Organization[] =
-    userMemberships?.data?.map((membership: any) => ({
+    userMemberships?.data?.map((membership) => ({
       id: membership.organization.id,
       name: membership.organization.name,
-      slug: membership.organization.slug || membership.organization.id,
-      imageUrl: membership.organization.imageUrl,
+      slug: membership.organization.slug ?? membership.organization.id,
+      imageUrl: membership.organization.imageUrl ?? undefined,
     })) || [];
 
   const hasOrganizations = organizations.length > 0 || !!currentOrganization;
@@ -103,7 +94,8 @@ export function useClerkOrganizations(): {
 
   const switchOrganization = async (orgId: string) => {
     const targetMembership = userMemberships?.data?.find(
-      (membership: any) => membership.organization.id === orgId
+      (membership: { organization: { id: string } }) =>
+        membership.organization.id === orgId
     );
     if (targetMembership && setActive) {
       await setActive({ organization: targetMembership.organization });
@@ -111,7 +103,8 @@ export function useClerkOrganizations(): {
   };
 
   const currentMembership = userMemberships?.data?.find(
-    (membership: any) => membership.organization.id === organization?.id
+    (membership: { organization: { id: string }; role: string }) =>
+      membership.organization.id === organization?.id
   );
   const canManageOrganization = currentMembership?.role === "org:admin";
 

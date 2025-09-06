@@ -9,7 +9,9 @@ import type {
 export class ClerkAuthAdapter implements AuthAdapter {
   async getCurrentUser(): Promise<User | null> {
     const user = await currentUser();
-    if (!user) return null;
+    if (!user) {
+      return null;
+    }
 
     return {
       id: user.id,
@@ -19,9 +21,9 @@ export class ClerkAuthAdapter implements AuthAdapter {
     };
   }
 
-  async getOrganization(): Promise<Organization | null> {
+  getOrganization(): Promise<Organization | null> {
     // For now, return null. Can be extended later for org support
-    return null;
+    return Promise.resolve(null);
   }
 
   async requireAuth(): Promise<User> {
@@ -51,9 +53,9 @@ export class ClerkAuthAdapter implements AuthAdapter {
     };
   }
 
-  async signOut(): Promise<void> {
+  signOut(): Promise<void> {
     // Clerk handles sign out through their components
     // This would typically redirect to sign out
-    throw new Error("Use Clerk UserButton for sign out");
+    return Promise.reject(new Error("Use Clerk UserButton for sign out"));
   }
 }
