@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useClerkOrganizations } from '../lib/adapters/clerk-org';
-import type { Organization } from '@elmo/shared/lib/adapters/types';
+import type { Organization } from "@elmo/shared/lib/adapters/types";
+import { useClerkOrganizations } from "../lib/adapters/clerk-org";
 
 interface UseOrganizationsReturn {
   currentOrganization: Organization | null;

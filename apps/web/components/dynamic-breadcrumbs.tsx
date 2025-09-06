@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Breadcrumb,
@@ -7,28 +7,34 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@elmo/ui/components/breadcrumb';
-import { usePathname } from 'next/navigation';
-import React from 'react';
+} from "@elmo/ui/components/breadcrumb";
+import { usePathname } from "next/navigation";
+import React from "react";
 
 // Helper function to format breadcrumb labels
 function formatBreadcrumbLabel(segment: string): string {
   // Handle special cases
-  if (segment === 'default') return 'Dashboard';
-  if (segment === 'organization-members') return 'Members';
-  if (segment === 'organization-billing') return 'Billing';
+  if (segment === "default") return "Dashboard";
+  if (segment === "organization-members") return "Members";
+  if (segment === "organization-billing") return "Billing";
 
   // Convert kebab-case or snake_case to Title Case
-  return segment.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  return segment
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 // Helper function to build breadcrumb items
-function buildBreadcrumbItems(pathname: string, listName?: string, userName?: string) {
-  const segments = pathname.split('/').filter(Boolean);
+function buildBreadcrumbItems(
+  pathname: string,
+  listName?: string,
+  userName?: string
+) {
+  const segments = pathname.split("/").filter(Boolean);
   const items = [];
 
   // Build path segments
-  let currentPath = '';
+  let currentPath = "";
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
 
@@ -36,9 +42,9 @@ function buildBreadcrumbItems(pathname: string, listName?: string, userName?: st
     const isLast = i === segments.length - 1;
 
     let label: string;
-    let href = currentPath;
+    const href = currentPath;
 
-    label = formatBreadcrumbLabel(segment || '');
+    label = formatBreadcrumbLabel(segment || "");
 
     items.push({
       label,

@@ -1,13 +1,12 @@
-import type { LucideIcon } from 'lucide-react';
-import type * as React from 'react';
-
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@elmo/ui/components/sidebar';
+} from "@elmo/ui/components/sidebar";
+import type { LucideIcon } from "lucide-react";
+import type * as React from "react";
 
 export function NavSecondary({
   items,

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@elmo/ui/components/button";
 import {
   Card,
@@ -9,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@elmo/ui/components/card";
+import Link from "next/link";
 import { getAppConfig } from "@/lib/adapters";
 
 const config = getAppConfig();

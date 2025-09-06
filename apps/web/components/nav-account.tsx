@@ -1,19 +1,22 @@
-'use client';
+"use client";
 
-import { User, LogOut, FileText, Shield } from 'lucide-react';
-import Link from 'next/link';
-import { getAppConfig } from '@/lib/adapters';
-import { useState, useEffect } from 'react';
-import type { User as UserType } from '@elmo/shared/lib/adapters/types';
-
+import type { User as UserType } from "@elmo/shared/lib/adapters/types";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@elmo/ui/components/avatar";
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@elmo/ui/components/sidebar';
-import { Avatar, AvatarImage, AvatarFallback } from '@elmo/ui/components/avatar';
+} from "@elmo/ui/components/sidebar";
+import { FileText, LogOut, Shield, User } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { getAppConfig } from "@/lib/adapters";
 
 export function NavAccount() {
   const { features, adapters } = getAppConfig();
@@ -45,7 +48,7 @@ export function NavAccount() {
     return null;
   }
 
-  const userEmail = user?.email || 'Loading...';
+  const userEmail = user?.email || "Loading...";
   const userImageUrl = user?.imageUrl;
 
   return (
@@ -54,9 +57,9 @@ export function NavAccount() {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton onClick={handleUserProfileClick}>
-            <div className="flex items-center gap-2 w-full cursor-pointer">
+            <div className="flex w-full cursor-pointer items-center gap-2">
               <Avatar className="size-4">
-                <AvatarImage src={userImageUrl} alt={userEmail} />
+                <AvatarImage alt={userEmail} src={userImageUrl} />
                 <AvatarFallback className="text-xs">
                   <User />
                 </AvatarFallback>
@@ -68,7 +71,7 @@ export function NavAccount() {
         {/* Terms and Privacy links are only shown in cloud version */}
         <SidebarMenuItem>
           <SidebarMenuButton onClick={handleSignOutClick}>
-            <div className="flex items-center gap-2 w-full cursor-pointer">
+            <div className="flex w-full cursor-pointer items-center gap-2">
               <LogOut className="size-4" />
               <span>Sign Out</span>
             </div>

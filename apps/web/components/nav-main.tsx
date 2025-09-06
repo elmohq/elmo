@@ -1,7 +1,4 @@
-'use client';
-
-import { type TablerIcon } from '@tabler/icons-react';
-import Link from 'next/link';
+"use client";
 
 import {
   SidebarGroup,
@@ -9,7 +6,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@elmo/ui/components/sidebar';
+} from "@elmo/ui/components/sidebar";
+import type { TablerIcon } from "@tabler/icons-react";
+import Link from "next/link";
 
 export function NavMain({
   items,
@@ -26,7 +25,11 @@ export function NavMain({
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton asChild tooltip={item.title} className="cursor-pointer">
+            <SidebarMenuButton
+              asChild
+              className="cursor-pointer"
+              tooltip={item.title}
+            >
               <Link href={item.url}>
                 <item.icon />
                 <span>{item.title}</span>

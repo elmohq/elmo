@@ -1,7 +1,7 @@
 import type { AppConfig } from "@elmo/shared/lib/adapters/types";
 import { ClerkAuthAdapter } from "./clerk-auth";
-import { ClerkAuthProvider } from "./clerk-provider";
 import { ClerkOrgAdapter } from "./clerk-org-adapter";
+import { ClerkAuthProvider } from "./clerk-provider";
 
 export function getAppConfig(): AppConfig {
   return {

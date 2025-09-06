@@ -1,6 +1,6 @@
+import type { AppConfig } from "@elmo/shared/lib/adapters/types";
 import { NoAuthAdapter, NoAuthProvider } from "./no-auth";
 import { NoOrgAdapter } from "./no-org";
-import type { AppConfig } from "@elmo/shared/lib/adapters/types";
 
 // Create singleton instances to prevent infinite re-renders
 const authAdapter = new NoAuthAdapter();
@@ -17,13 +17,13 @@ export function getAppConfig(): AppConfig {
       showLinks: true,
       links: [
         {
-          title: 'Docs',
-          url: 'https://docs.elmohq.com',
+          title: "Docs",
+          url: "https://docs.elmohq.com",
           external: true,
         },
         {
-          title: 'GitHub',
-          url: 'https://github.com/elmohq/elmo',
+          title: "GitHub",
+          url: "https://github.com/elmohq/elmo",
           external: true,
         },
       ],

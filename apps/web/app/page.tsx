@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { getAppConfig } from '@/lib/adapters';
-import { useOrganizations } from '@/hooks/use-organizations';
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Logo } from "@/components/logo";
+import { useOrganizations } from "@/hooks/use-organizations";
+import { getAppConfig } from "@/lib/adapters";
 
 export default function Home() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function Home() {
   // Show loading or fallback while redirecting
   if (!features.organizations) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <Logo />
       </div>
     );
@@ -28,6 +28,9 @@ export default function Home() {
 
   // If organizations are enabled, show the original home page content
   return (
-    <div><Logo /><p>todo implement page contents</p></div>
+    <div>
+      <Logo />
+      <p>todo implement page contents</p>
+    </div>
   );
 }

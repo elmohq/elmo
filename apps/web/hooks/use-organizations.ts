@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { getAppConfig } from '@/lib/adapters';
-import type { Organization } from '@elmo/shared/lib/adapters/types';
+import type { Organization } from "@elmo/shared/lib/adapters/types";
+import { useEffect, useState } from "react";
+import { getAppConfig } from "@/lib/adapters";
 
 interface UseOrganizationsReturn {
   currentOrganization: Organization | null;
@@ -17,7 +17,8 @@ interface UseOrganizationsReturn {
 }
 
 export function useOrganizations(): UseOrganizationsReturn {
-  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
+  const [currentOrganization, setCurrentOrganization] =
+    useState<Organization | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [hasOrganizations, setHasOrganizations] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -41,7 +42,7 @@ export function useOrganizations(): UseOrganizationsReturn {
         setCanManageOrganization(canManage);
         setIsLoaded(adapters.organization.isLoaded());
       } catch (error) {
-        console.error('Failed to load organizations:', error);
+        console.error("Failed to load organizations:", error);
         setIsLoaded(true);
       }
     };

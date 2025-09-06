@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { ExternalLink, FileText, Github } from 'lucide-react';
-import { getAppConfig } from '@/lib/adapters';
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@elmo/ui/components/sidebar';
+} from "@elmo/ui/components/sidebar";
+import { ExternalLink, FileText, Github } from "lucide-react";
+import { getAppConfig } from "@/lib/adapters";
 
 export function NavLinks() {
   const { navigation } = getAppConfig();
@@ -20,9 +20,9 @@ export function NavLinks() {
 
   const getIcon = (title: string) => {
     switch (title.toLowerCase()) {
-      case 'docs':
+      case "docs":
         return FileText;
-      case 'github':
+      case "github":
         return Github;
       default:
         return ExternalLink;
@@ -35,15 +35,15 @@ export function NavLinks() {
       <SidebarMenu>
         {navigation.links.map((link) => {
           const Icon = getIcon(link.title);
-          
+
           return (
             <SidebarMenuItem key={link.title}>
               <SidebarMenuButton asChild>
-                <a 
+                <a
+                  className="flex w-full cursor-pointer items-center gap-2"
                   href={link.url}
-                  target={link.external ? "_blank" : "_self"}
                   rel={link.external ? "noopener noreferrer" : undefined}
-                  className="flex items-center gap-2 w-full cursor-pointer"
+                  target={link.external ? "_blank" : "_self"}
                 >
                   <Icon className="size-4" />
                   <span>{link.title}</span>

@@ -1,4 +1,7 @@
-import type { Organization, OrganizationAdapter } from "@elmo/shared/lib/adapters/types";
+import type {
+  Organization,
+  OrganizationAdapter,
+} from "@elmo/shared/lib/adapters/types";
 
 export class ClerkOrgAdapter implements OrganizationAdapter {
   async getCurrentOrganization(): Promise<Organization | null> {

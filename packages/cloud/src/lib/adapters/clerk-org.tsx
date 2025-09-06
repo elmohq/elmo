@@ -1,8 +1,11 @@
 // Client-side organization adapter for Clerk
-'use client';
+"use client";
 
-import { useOrganization, useOrganizationList, useClerk } from '@clerk/nextjs';
-import type { Organization, OrganizationAdapter } from "@elmo/shared/lib/adapters/types";
+import { useClerk, useOrganization, useOrganizationList } from "@clerk/nextjs";
+import type {
+  Organization,
+  OrganizationAdapter,
+} from "@elmo/shared/lib/adapters/types";
 
 export class ClerkOrgAdapter implements OrganizationAdapter {
   private useOrganizationHook: typeof useOrganization;
@@ -71,41 +74,46 @@ export function useClerkOrganizations(): {
   openCreateOrganization: (() => void) | undefined;
 } {
   const { organization, isLoaded: orgLoaded } = useOrganization();
-  const { 
-    userMemberships, 
-    isLoaded: listLoaded, 
-    setActive 
+  const {
+    userMemberships,
+    isLoaded: listLoaded,
+    setActive,
   } = useOrganizationList();
   const { openOrganizationProfile, openCreateOrganization } = useClerk();
 
-  const currentOrganization: Organization | null = organization ? {
-    id: organization.id,
-    name: organization.name,
-    slug: organization.slug || organization.id,
-    imageUrl: organization.imageUrl,
-  } : null;
+  const currentOrganization: Organization | null = organization
+    ? {
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug || organization.id,
+        imageUrl: organization.imageUrl,
+      }
+    : null;
 
-  const organizations: Organization[] = userMemberships?.data?.map((membership: any) => ({
-    id: membership.organization.id,
-    name: membership.organization.name,
-    slug: membership.organization.slug || membership.organization.id,
-    imageUrl: membership.organization.imageUrl,
-  })) || [];
+  const organizations: Organization[] =
+    userMemberships?.data?.map((membership: any) => ({
+      id: membership.organization.id,
+      name: membership.organization.name,
+      slug: membership.organization.slug || membership.organization.id,
+      imageUrl: membership.organization.imageUrl,
+    })) || [];
 
   const hasOrganizations = organizations.length > 0 || !!currentOrganization;
   const isLoaded = orgLoaded && listLoaded;
 
   const switchOrganization = async (orgId: string) => {
-    const targetMembership = userMemberships?.data?.find((membership: any) => membership.organization.id === orgId);
+    const targetMembership = userMemberships?.data?.find(
+      (membership: any) => membership.organization.id === orgId
+    );
     if (targetMembership && setActive) {
       await setActive({ organization: targetMembership.organization });
     }
   };
 
-  const currentMembership = userMemberships?.data?.find((membership: any) => 
-    membership.organization.id === organization?.id
+  const currentMembership = userMemberships?.data?.find(
+    (membership: any) => membership.organization.id === organization?.id
   );
-  const canManageOrganization = currentMembership?.role === 'org:admin';
+  const canManageOrganization = currentMembership?.role === "org:admin";
 
   return {
     currentOrganization,

@@ -1,4 +1,9 @@
-import type { AuthAdapter, AuthProvider, Organization, User } from "@elmo/shared/lib/adapters/types";
+import type {
+  AuthAdapter,
+  AuthProvider,
+  Organization,
+  User,
+} from "@elmo/shared/lib/adapters/types";
 
 export class NoAuthAdapter implements AuthAdapter {
   async getCurrentUser(): Promise<User | null> {

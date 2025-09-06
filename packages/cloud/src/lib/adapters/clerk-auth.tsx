@@ -1,6 +1,10 @@
 // Server-side auth adapter
 import { auth, currentUser } from "@clerk/nextjs/server";
-import type { AuthAdapter, Organization, User } from "@elmo/shared/lib/adapters/types";
+import type {
+  AuthAdapter,
+  Organization,
+  User,
+} from "@elmo/shared/lib/adapters/types";
 
 export class ClerkAuthAdapter implements AuthAdapter {
   async getCurrentUser(): Promise<User | null> {
