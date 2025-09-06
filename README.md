@@ -2,7 +2,7 @@
 
 **Optimize your brand's perception in LLMs and _drive sales_.**
 
-Elmo is a web app that helps you track how different LLMs and AI Search perceive your brand. You may have heard this referred to as AIO, AEO, GEO, or LLMO (Elmo!).
+Elmo is a web app that helps you track how different LLMs and AI Search perceive your brand. You may have heard this referred to as AIO, AEO, GEO, or LLMO (Elmo).
 
 ## Quick Start
 ```
