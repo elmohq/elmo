@@ -12,8 +12,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@workspace/ui/components/sidebar';
-import { Avatar, AvatarImage, AvatarFallback } from '@workspace/ui/components/avatar';
+} from '@elmo/ui/components/sidebar';
+import { Avatar, AvatarImage, AvatarFallback } from '@elmo/ui/components/avatar';
 
 export function NavAccount() {
   const { features, adapters } = getAppConfig();

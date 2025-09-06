@@ -10,9 +10,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@workspace/ui/components/sidebar';
-import { Alert, AlertDescription } from '@workspace/ui/components/alert';
-import { Separator } from '@workspace/ui/components/separator';
+} from '@elmo/ui/components/sidebar';
+import { Alert, AlertDescription } from '@elmo/ui/components/alert';
+import { Separator } from '@elmo/ui/components/separator';
 
 export function NavOrganization() {
   const { features } = getAppConfig();

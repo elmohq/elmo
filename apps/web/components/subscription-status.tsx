@@ -1,7 +1,7 @@
 'use client';
 
 import { getAppConfig } from '@/lib/adapters';
-import { SidebarGroup } from '@workspace/ui/components/sidebar';
+import { SidebarGroup } from '@elmo/ui/components/sidebar';
 
 export function SubscriptionStatus() {
   const { features } = getAppConfig();

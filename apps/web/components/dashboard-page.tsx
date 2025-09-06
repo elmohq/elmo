@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@workspace/ui/components/button";
+import { Button } from "@elmo/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@workspace/ui/components/card";
+} from "@elmo/ui/components/card";
 import { getAppConfig } from "@/lib/adapters";
 
 const config = getAppConfig();

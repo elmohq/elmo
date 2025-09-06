@@ -9,7 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@workspace/ui/components/sidebar';
+} from '@elmo/ui/components/sidebar';
 
 export function NavMain({
   items,

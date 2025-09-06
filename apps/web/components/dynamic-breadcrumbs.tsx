@@ -7,7 +7,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@workspace/ui/components/breadcrumb';
+} from '@elmo/ui/components/breadcrumb';
 import { usePathname } from 'next/navigation';
 import React from 'react';
 
