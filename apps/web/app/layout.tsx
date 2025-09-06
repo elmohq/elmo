@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Titan_One } from "next/font/google";
 import { getAppConfig } from "@/lib/adapters";
 import { AppLayout } from '@/components/app-layout';
+import "@elmo/ui/globals.css"
 
 
 const geistSans = Geist({
