@@ -11,7 +11,7 @@ importers:
       '@biomejs/biome':
         specifier: 2.2.2
         version: 2.2.2
-      '@workspace/typescript-config':
+      '@elmo/typescript-config':
         specifier: workspace:*
         version: link:packages/typescript-config
       prettier:
@@ -32,7 +32,7 @@ importers:
       '@tabler/icons-react':
         specifier: ^3.34.1
         version: 3.34.1(react@19.1.1)
-      '@workspace/ui':
+      '@elmo/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       clsx:
@@ -66,7 +66,7 @@ importers:
       '@vitest/ui':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4)
-      '@workspace/typescript-config':
+      '@elmo/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       typescript:
@@ -147,7 +147,7 @@ importers:
       '@types/react-dom':
         specifier: ^19.1.7
         version: 19.1.7(@types/react@19.1.9)
-      '@workspace/typescript-config':
+      '@elmo/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       tailwindcss:

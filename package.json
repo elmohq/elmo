@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
-    "@workspace/typescript-config": "workspace:*",
+    "@elmo/typescript-config": "workspace:*",
     "prettier": "^3.6.2",
     "turbo": "^2.5.6",
     "typescript": "5.7.3",

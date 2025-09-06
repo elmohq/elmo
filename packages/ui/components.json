@@ -11,10 +11,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@workspace/ui/components",
-    "utils": "@workspace/ui/lib/utils",
-    "hooks": "@workspace/ui/hooks",
-    "lib": "@workspace/ui/lib",
-    "ui": "@workspace/ui/components"
+    "components": "@elmo/ui/components",
+    "utils": "@elmo/ui/lib/utils",
+    "hooks": "@elmo/ui/hooks",
+    "lib": "@elmo/ui/lib",
+    "ui": "@elmo/ui/components"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "extends": "@workspace/typescript-config/base.json",
+  "extends": "@elmo/typescript-config/base.json",
   "compilerOptions": {
     "strictNullChecks": true
   }
