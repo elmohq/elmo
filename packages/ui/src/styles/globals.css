@@ -79,6 +79,7 @@
 }
 
 @theme inline {
+  --font-titan: var(--font-titan);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
