@@ -4,7 +4,7 @@ import { User, LogOut, FileText, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { getAppConfig } from '@/lib/adapters';
 import { useState, useEffect } from 'react';
-import type { User as UserType } from '@/lib/adapters/types';
+import type { User as UserType } from '@elmo/shared/lib/adapters/types';
 
 import {
   SidebarGroup,

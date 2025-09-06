@@ -1,6 +1,6 @@
 import { NoAuthAdapter, NoAuthProvider } from "./no-auth";
 import { NoOrgAdapter } from "./no-org";
-import type { AppConfig } from "./types";
+import type { AppConfig } from "@elmo/shared/lib/adapters/types";
 
 // Create singleton instances to prevent infinite re-renders
 const authAdapter = new NoAuthAdapter();
@@ -37,5 +37,3 @@ export function getAppConfig(): AppConfig {
     },
   };
 }
-
-export * from "./types";

@@ -1,4 +1,4 @@
-import type { Organization, OrganizationAdapter } from "./types";
+import type { Organization, OrganizationAdapter } from "@elmo/shared/lib/adapters/types";
 
 export class NoOrgAdapter implements OrganizationAdapter {
   private defaultOrg: Organization = {

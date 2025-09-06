@@ -17,6 +17,8 @@
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",
     "@elmo/ui": "workspace:*",
+    "@elmo/shared": "workspace:*",
+    "@elmo/cloud": "workspace:*",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
     "next": "^15.4.5",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getAppConfig } from '@/lib/adapters';
-import type { Organization } from '@/lib/adapters/types';
+import type { Organization } from '@elmo/shared/lib/adapters/types';
 
 interface UseOrganizationsReturn {
   currentOrganization: Organization | null;
