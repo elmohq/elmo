@@ -12,8 +12,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+} from '@workspace/ui/components/sidebar';
+import { Avatar, AvatarImage, AvatarFallback } from '@workspace/ui/components/avatar';
 
 export function NavAccount() {
   const { features, adapters } = getAppConfig();

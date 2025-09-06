@@ -10,9 +10,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from './ui/separator';
+} from '@workspace/ui/components/sidebar';
+import { Alert, AlertDescription } from '@workspace/ui/components/alert';
+import { Separator } from '@workspace/ui/components/separator';
 
 export function NavOrganization() {
   const { features } = getAppConfig();

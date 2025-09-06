@@ -2,8 +2,8 @@
 
 import { AppSidebar } from '@/components/app-sidebar';
 import { DynamicBreadcrumbs } from '@/components/dynamic-breadcrumbs';
-import { Separator } from '@/components/ui/separator';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@workspace/ui/components/separator';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@workspace/ui/components/sidebar';
 import { useOrganizations } from '@/hooks/use-organizations';
 import { getAppConfig } from '@/lib/adapters';
 

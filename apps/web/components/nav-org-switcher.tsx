@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "./ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useOrganizations } from "../hooks/use-organizations";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@workspace/ui/components/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
+import { useOrganizations } from "@/hooks/use-organizations";
 import { getAppConfig } from "@/lib/adapters";
 
 export function NavOrgSwitcher() {

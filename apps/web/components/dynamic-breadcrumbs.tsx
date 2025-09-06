@@ -7,7 +7,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+} from '@workspace/ui/components/breadcrumb';
 import { usePathname } from 'next/navigation';
 import React from 'react';
 
@@ -38,7 +38,7 @@ function buildBreadcrumbItems(pathname: string, listName?: string, userName?: st
     let label: string;
     let href = currentPath;
 
-    label = formatBreadcrumbLabel(segment);
+    label = formatBreadcrumbLabel(segment || '');
 
     items.push({
       label,

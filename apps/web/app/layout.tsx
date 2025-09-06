@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Titan_One } from "next/font/google";
 import { getAppConfig } from "@/lib/adapters";
-import "./globals.css";
 import { AppLayout } from '@/components/app-layout';
 
 
