@@ -49,9 +49,6 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Lint
-        run: pnpm lint
-
       - name: Format check
         run: pnpm ultracite check
 
