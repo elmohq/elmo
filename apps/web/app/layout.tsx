@@ -1,30 +1,50 @@
-import { Geist, Geist_Mono } from "next/font/google"
+import type { Metadata } from "next";
+import { Geist, Geist_Mono, Titan_One } from "next/font/google";
+import { getAppConfig } from "@/lib/adapters";
+import "./globals.css";
+import { AppLayout } from '@/components/app-layout';
 
-import "@workspace/ui/globals.css"
-import { Providers } from "@/components/providers"
 
-const fontSans = Geist({
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  variable: "--font-sans",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const titan = Titan_One({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: '400',
+  variable: '--font-titan',
 })
 
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
+export const metadata: Metadata = {
+	title: {
+		template: `%s - Elmo`,
+		default: `Elmo - LLM Optimization`,
+	}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
+  const { providers } = getAppConfig();
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
-        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
+        className={`${geistSans.variable} ${geistMono.variable} ${titan.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <providers.auth.Provider>
+          <AppLayout>{children}</AppLayout>
+        </providers.auth.Provider>
       </body>
     </html>
-  )
+  );
 }

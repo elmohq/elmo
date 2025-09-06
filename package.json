@@ -10,7 +10,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "prettier": "^3.6.2",
     "turbo": "^2.5.6",
