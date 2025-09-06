@@ -1,0 +1,15 @@
+{
+  "extends": "@elmo/typescript-config/react-library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@elmo/cloud/*": ["./src/*"]
+    },
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": false,
+    "skipLibCheck": true
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}
