@@ -2,7 +2,6 @@
 
 import useSWR from "swr";
 import { usePathname } from "next/navigation";
-import type { PromptChartDataResponse } from "@/app/api/brands/[id]/prompts/[promptId]/chart-data/route";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -12,8 +11,31 @@ export interface PromptChartDataFilters {
 	modelGroup?: "openai" | "anthropic" | "google";
 }
 
+export interface PromptChartDataResponse {
+	prompt: {
+		id: string;
+		value: string;
+		groupCategory: string | null;
+		groupPrefix: string | null;
+	};
+	chartData: Array<{
+		date: string;
+		[key: string]: number | string | null;
+	}>;
+	brand: any;
+	competitors: any[];
+	totalRuns: number;
+	hasVisibilityData: boolean;
+	lastBrandVisibility: number | null;
+}
+
 const fetcher = async (url: string): Promise<PromptChartDataResponse> => {
-	const response = await fetch(url);
+	const response = await fetch(url, {
+		// Add cache headers for better performance
+		headers: {
+			'Cache-Control': 'public, max-age=300', // 5 minutes browser cache
+		}
+	});
 
 	if (!response.ok) {
 		const error = new Error("Failed to fetch prompt chart data");
@@ -25,6 +47,7 @@ const fetcher = async (url: string): Promise<PromptChartDataResponse> => {
 };
 
 function buildApiUrl(brandId: string, promptId: string, filters?: PromptChartDataFilters): string {
+	// Use the optimized endpoint for better performance
 	const baseUrl = `/api/brands/${brandId}/prompts/${promptId}/chart-data`;
 
 	if (!filters) {
@@ -66,10 +89,15 @@ export function usePromptChartData(
 	const apiUrl = extractedBrandId && enabled ? buildApiUrl(extractedBrandId, promptId, filters) : null;
 
 	const { data, error, isLoading, mutate } = useSWR<PromptChartDataResponse>(apiUrl, fetcher, {
-		revalidateOnFocus: false, // Don't refetch when window gains focus (too expensive)
+		revalidateOnFocus: false, // Don't refetch when window gains focus
 		revalidateOnReconnect: true,
-		refreshInterval: 0, // Don't auto-refresh individual charts (user can manually refresh)
-		dedupingInterval: 60000, // 60 seconds deduping
+		refreshInterval: 0, // Don't auto-refresh
+		dedupingInterval: 60000, // 1 minute deduping
+		// Add error retry with exponential backoff
+		errorRetryCount: 3,
+		errorRetryInterval: 1000,
+		// Faster timeout for better UX
+		timeout: 10000, // 10 second timeout
 	});
 
 	return {

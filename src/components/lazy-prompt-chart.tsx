@@ -16,6 +16,8 @@ interface LazyPromptChartProps {
 	// Intersection observer options
 	rootMargin?: string;
 	threshold?: number;
+	// Priority for intelligent loading
+	priority?: "high" | "normal" | "low";
 }
 
 export function LazyPromptChart({
@@ -26,8 +28,9 @@ export function LazyPromptChart({
 	webSearchEnabled,
 	selectedModel,
 	availableModels,
-	rootMargin = "100px", // Start loading when 100px away from viewport
+	rootMargin = "200px", // Increased margin for faster loading
 	threshold = 0,
+	priority = "normal",
 }: LazyPromptChartProps) {
 	const [isVisible, setIsVisible] = useState(false);
 	const [hasBeenVisible, setHasBeenVisible] = useState(false);
@@ -63,6 +66,9 @@ export function LazyPromptChart({
 		};
 	}, [rootMargin, threshold, hasBeenVisible]);
 
+	// For high priority items, load immediately
+	const shouldLoad = priority === "high" || hasBeenVisible;
+
 	return (
 		<div ref={ref}>
 			<PromptChartOptimized
@@ -73,9 +79,8 @@ export function LazyPromptChart({
 				webSearchEnabled={webSearchEnabled}
 				selectedModel={selectedModel}
 				availableModels={availableModels}
-				// Only enable data fetching once the component has been visible
-				// Keep it enabled once loaded to maintain state when scrolling
-				enabled={hasBeenVisible}
+				enabled={shouldLoad}
+				priority={priority}
 			/>
 		</div>
 	);

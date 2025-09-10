@@ -11,7 +11,6 @@ import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import {
 	getBadgeVariant,
 	getBadgeClassName,
-	createPromptToWebQueryMapping,
 } from "@/lib/chart-utils";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
@@ -24,8 +23,8 @@ interface PromptChartOptimizedProps {
 	webSearchEnabled?: boolean;
 	selectedModel?: ModelType;
 	availableModels?: ("openai" | "anthropic" | "google")[];
-	// Allow lazy loading by enabling/disabling the data fetch
 	enabled?: boolean;
+	priority?: "high" | "normal" | "low"; // For intelligent loading
 }
 
 export function PromptChartOptimized({
@@ -37,8 +36,9 @@ export function PromptChartOptimized({
 	selectedModel = "all",
 	availableModels = ["openai", "anthropic", "google"],
 	enabled = true,
+	priority = "normal",
 }: PromptChartOptimizedProps) {
-	// Use the new optimized hook
+	// Use the optimized hook
 	const { chartData, isLoading, isError } = usePromptChartData(
 		brandId,
 		promptId,
@@ -47,13 +47,13 @@ export function PromptChartOptimized({
 			webSearchEnabled,
 			modelGroup: selectedModel === "all" ? undefined : selectedModel,
 		},
-		enabled,
+		enabled
 	);
 
 	// Determine chart type based on lookback period
 	const chartType = lookback === "1w" ? "bar" : "line";
 
-	// Loading state with skeleton
+	// Ultra-fast loading skeleton (simplified)
 	if (isLoading || !enabled) {
 		return (
 			<Card className="py-3 gap-3">
@@ -69,13 +69,13 @@ export function PromptChartOptimized({
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div className="h-[250px] flex items-center justify-center">
+					<div className="h-[200px] flex items-center justify-center">
 						<div className="space-y-2">
 							<Skeleton className="h-4 w-32 mx-auto" />
 							<div className="flex justify-center space-x-2">
-								<Skeleton className="h-2 w-2 rounded-full animate-pulse" />
-								<Skeleton className="h-2 w-2 rounded-full animate-pulse [animation-delay:0.2s]" />
-								<Skeleton className="h-2 w-2 rounded-full animate-pulse [animation-delay:0.4s]" />
+								<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse" />
+								<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse [animation-delay:0.2s]" />
+								<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse [animation-delay:0.4s]" />
 							</div>
 						</div>
 					</div>
@@ -84,22 +84,22 @@ export function PromptChartOptimized({
 		);
 	}
 
-	// Error state
+	// Fast error state
 	if (isError) {
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
 					<CardTitle className="text-sm">{promptName}</CardTitle>
 					<Badge variant="destructive" className="text-xs">
-						Error loading
+						Failed to load
 					</Badge>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div className="h-[250px] flex items-center justify-center text-muted-foreground">
+					<div className="h-[200px] flex items-center justify-center text-muted-foreground">
 						<div className="text-center">
-							<p className="text-sm">Failed to load chart data</p>
-							<p className="text-xs mt-1">Try refreshing the page</p>
+							<p className="text-sm">Unable to load chart</p>
+							<p className="text-xs mt-1">Try refreshing</p>
 						</div>
 					</div>
 				</CardContent>
@@ -107,21 +107,8 @@ export function PromptChartOptimized({
 		);
 	}
 
-	// No data loaded yet (should not happen with enabled=false, but safety check)
 	if (!chartData) {
-		return (
-			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<CardTitle className="text-sm">{promptName}</CardTitle>
-				</CardHeader>
-				<Separator className="py-0 my-0" />
-				<CardContent className="px-3">
-					<div className="h-[250px] flex items-center justify-center text-muted-foreground">
-						<span className="text-sm">No data available</span>
-					</div>
-				</CardContent>
-			</Card>
-		);
+		return null;
 	}
 
 	const { prompt, chartData: data, brand, competitors, totalRuns, hasVisibilityData, lastBrandVisibility } = chartData;
@@ -136,7 +123,7 @@ export function PromptChartOptimized({
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
 					<div>
-						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+						<span className="font-semibold text-xl text-muted-foreground">
 							Evaluating for the first time...
 						</span>
 					</div>
@@ -147,11 +134,6 @@ export function PromptChartOptimized({
 
 	// No visibility data state
 	if (!hasVisibilityData) {
-		// Create dummy prompt runs for web query mapping (we need this for the optimize button)
-		const dummyPromptRuns: any[] = []; // We could fetch this separately if needed, but for now optimize button will work without it
-		const webQueryMapping = createPromptToWebQueryMapping(dummyPromptRuns);
-		const modelWebQueryMappings: Record<string, Record<string, string>> = {};
-
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
@@ -167,15 +149,15 @@ export function PromptChartOptimized({
 							webSearchEnabled={webSearchEnabled}
 							selectedModel={selectedModel}
 							availableModels={availableModels}
-							webQueryMapping={webQueryMapping}
-							modelWebQueryMappings={modelWebQueryMappings}
+							webQueryMapping={{}} // Simplified for speed
+							modelWebQueryMappings={{}}
 						/>
 					</div>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
 					<div>
-						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+						<span className="font-semibold text-xl text-muted-foreground">
 							No brands found.
 						</span>
 					</div>
@@ -185,11 +167,6 @@ export function PromptChartOptimized({
 	}
 
 	// Success state with chart
-	// Create dummy prompt runs for web query mapping (we could optimize this further by including it in the API response)
-	const dummyPromptRuns: any[] = [];
-	const webQueryMapping = createPromptToWebQueryMapping(dummyPromptRuns);
-	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
-
 	return (
 		<Card className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
@@ -210,8 +187,8 @@ export function PromptChartOptimized({
 						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={webQueryMapping}
-						modelWebQueryMappings={modelWebQueryMappings}
+						webQueryMapping={{}} // Simplified for speed
+						modelWebQueryMappings={{}}
 					/>
 				</div>
 			</CardHeader>

@@ -12,7 +12,7 @@ import { MdSelectAll } from "react-icons/md";
 import { usePromptsSummary, type LookbackPeriod } from "@/hooks/use-prompts-summary";
 import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
-import { LazyPromptChartFast } from "@/components/lazy-prompt-chart-fast";
+import { LazyPromptChart } from "@/components/lazy-prompt-chart";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Prompt {
@@ -332,7 +332,7 @@ export function PromptsDisplayOptimized({
 									const priority = index < 3 ? "high" : index < 10 ? "normal" : "low";
 									
 									return (
-										<LazyPromptChartFast
+										<LazyPromptChart
 											key={prompt.id}
 											promptName={prompt.value}
 											promptId={prompt.id}
@@ -355,7 +355,7 @@ export function PromptsDisplayOptimized({
 												const priority = index < 3 && promptIndex === 0 ? "high" : "low";
 												
 												return (
-													<LazyPromptChartFast
+													<LazyPromptChart
 														key={prompt.id}
 														promptName={prompt.value}
 														promptId={prompt.id}
