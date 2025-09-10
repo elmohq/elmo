@@ -115,9 +115,13 @@ const HorizontalBarChart = ({
 	);
 };
 
-import { useBrand, useCompetitors } from "@/hooks/use-brands";
+import { useBrand } from "@/hooks/use-brands";
+import { usePromptStats } from "@/hooks/use-prompt-stats";
+import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { extractTextContent } from "@/lib/text-extraction";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
 type PromptRun = {
 	id: string;
@@ -146,62 +150,42 @@ export default function PromptHistoryPage() {
 	const brandId = params.brand as string;
 	const promptId = params.promptId as string;
 
-	const [promptRuns, setPromptRuns] = useState<PromptRunsResponse | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	// Pagination state
+	const [currentPage, setCurrentPage] = useState(1);
+	const [daysFilter, setDaysFilter] = useState(7);
 
-	// Get brand and competitor data
+	// Get brand data
 	const { brand } = useBrand(brandId);
-	const { competitors } = useCompetitors(brandId);
+
+	// Get stats (only reload when days filter changes)
+	const { data: statsData, isLoading: isStatsLoading, isError: isStatsError, prompt, aggregations } = usePromptStats(promptId, {
+		days: daysFilter
+	});
+
+	// Get paginated runs (reload when page or days filter changes)
+	const { runs, pagination, isLoading: isRunsLoading, isError: isRunsError } = usePromptRunsOnly(promptId, {
+		page: currentPage,
+		limit: 15,
+		days: daysFilter
+	});
 
 	// Create custom tick component with brand name
 	const BrandYAxisTick = (props: any) => {
 		return BrandTick(props, brand?.name);
 	};
 
-	// Filter runs to last 7 days
-	const filterRunsToLast7Days = (runs: PromptRun[]) => {
-		const sevenDaysAgo = new Date();
-		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-		return runs.filter((run) => {
-			const runDate = new Date(run.createdAt);
-			return runDate >= sevenDaysAgo;
-		});
+	// Handle pagination
+	const handlePageChange = (newPage: number) => {
+		if (newPage >= 1 && newPage <= (pagination?.totalPages || 1)) {
+			setCurrentPage(newPage);
+		}
 	};
 
-	// Fetch prompt runs when component mounts
-	useEffect(() => {
-		const fetchPromptRuns = async () => {
-			if (!promptId) return;
-
-			setLoading(true);
-			setError(null);
-
-			try {
-				const response = await fetch(`/api/prompts/${promptId}/runs`);
-				if (!response.ok) {
-					throw new Error("Failed to fetch prompt runs");
-				}
-				const data = await response.json();
-
-				// Filter runs to last 7 days
-				const filteredData = {
-					...data,
-					runs: filterRunsToLast7Days(data.runs || []),
-				};
-
-				setPromptRuns(filteredData);
-			} catch (err) {
-				console.error("Error fetching prompt runs:", err);
-				setError("Failed to load prompt runs");
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchPromptRuns();
-	}, [promptId]);
+	// Handle days filter change
+	const handleDaysFilterChange = (days: number) => {
+		setDaysFilter(days);
+		setCurrentPage(1); // Reset to first page when filter changes
+	};
 
 	const formatRawOutput = (rawOutput: any) => {
 		if (typeof rawOutput === "string") {
@@ -216,127 +200,12 @@ export default function PromptHistoryPage() {
 		});
 	};
 
-	// Calculate mention statistics by brand/competitor name
-	const calculateMentionStats = () => {
-		if (!promptRuns?.runs || !brand) return [];
+	// Get aggregated data from server (already calculated)
+	const mentionStats = aggregations?.mentionStats || [];
+	const webQueryStats = aggregations?.webQueryStats || { overall: [], byModel: {} };
+	const webSearchSummary = aggregations?.webSearchSummary || { enabled: 0, disabled: 0, percentage: 0 };
 
-		const mentionCounts: Record<string, number> = {};
-
-		// Initialize counts
-		if (brand.name) {
-			mentionCounts[brand.name] = 0;
-		}
-		competitors?.forEach((competitor) => {
-			if (competitor.name) {
-				mentionCounts[competitor.name] = 0;
-			}
-		});
-		mentionCounts["(no brand mentions)"] = 0;
-
-		// Count mentions in each run
-		promptRuns.runs.forEach((run) => {
-			let foundMention = false;
-
-			// Count brand mentions
-			if (run.brandMentioned && brand.name) {
-				mentionCounts[brand.name]++;
-				foundMention = true;
-			}
-
-			// Count competitor mentions
-			if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-				run.competitorsMentioned.forEach((competitorName) => {
-					if (mentionCounts.hasOwnProperty(competitorName)) {
-						mentionCounts[competitorName]++;
-						foundMention = true;
-					}
-				});
-			}
-
-			// Count no mentions
-			if (!foundMention) {
-				mentionCounts["(no brand mentions)"]++;
-			}
-		});
-
-		// Convert to array and sort by count (highest to lowest)
-		const result = Object.entries(mentionCounts)
-			.map(([name, count]) => ({ name, count }))
-			.filter((item) => typeof item.count === "number" && !isNaN(item.count)) // Filter out invalid data
-			.sort((a, b) => b.count - a.count);
-
-		return result;
-	};
-
-	// Calculate web query statistics
-	const calculateWebQueryStats = () => {
-		if (!promptRuns?.runs) return { overall: [], byModel: {} };
-
-		const overallQueryCounts: Record<string, number> = {};
-		const modelQueryCounts: Record<string, Record<string, number>> = {};
-
-		// Count all web queries
-		promptRuns.runs.forEach((run) => {
-			if (run.webQueries && run.webQueries.length > 0) {
-				const modelGroup = run.modelGroup;
-
-				// Initialize model group if not exists
-				if (!modelQueryCounts[modelGroup]) {
-					modelQueryCounts[modelGroup] = {};
-				}
-
-				run.webQueries.forEach((query) => {
-					// Overall counts
-					overallQueryCounts[query] = (overallQueryCounts[query] || 0) + 1;
-
-					// Model-specific counts
-					modelQueryCounts[modelGroup][query] = (modelQueryCounts[modelGroup][query] || 0) + 1;
-				});
-			}
-		});
-
-		// Convert overall to sorted array
-		const overall = Object.entries(overallQueryCounts)
-			.map(([query, count]) => ({ name: query, count }))
-			.filter((item) => typeof item.count === "number" && !isNaN(item.count))
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 20); // Limit to top 20 queries
-
-		// Convert model stats to sorted arrays
-		const byModel = Object.entries(modelQueryCounts).reduce(
-			(acc, [model, queries]) => {
-				acc[model] = Object.entries(queries)
-					.map(([query, count]) => ({ name: query, count }))
-					.filter((item) => typeof item.count === "number" && !isNaN(item.count))
-					.sort((a, b) => b.count - a.count)
-					.slice(0, 15); // Limit to top 15 per model
-				return acc;
-			},
-			{} as Record<string, { name: string; count: number }[]>,
-		);
-
-		return { overall, byModel };
-	};
-
-	// Only calculate stats when we have data and aren't loading
-	const mentionStats = !loading && promptRuns ? calculateMentionStats() : [];
-	const webQueryStats = !loading && promptRuns ? calculateWebQueryStats() : { overall: [], byModel: {} };
-
-	// Calculate web search usage summary
-	const calculateWebSearchSummary = () => {
-		if (!promptRuns?.runs) return { enabled: 0, disabled: 0, percentage: 0 };
-
-		const enabled = promptRuns.runs.filter((run) => run.webSearchEnabled).length;
-		const disabled = promptRuns.runs.length - enabled;
-		const percentage = promptRuns.runs.length > 0 ? Math.round((enabled / promptRuns.runs.length) * 100) : 0;
-
-		return { enabled, disabled, percentage };
-	};
-
-	const webSearchSummary =
-		!loading && promptRuns ? calculateWebSearchSummary() : { enabled: 0, disabled: 0, percentage: 0 };
-
-	if (loading) {
+	if (isStatsLoading && isRunsLoading) {
 		return (
 			<div className="container mx-auto p-6 space-y-6">
 				<Card>
@@ -355,7 +224,7 @@ export default function PromptHistoryPage() {
 		);
 	}
 
-	if (error) {
+	if (isStatsError || isRunsError) {
 		return (
 			<div className="container mx-auto p-6 space-y-6">
 				<Card>
@@ -363,14 +232,16 @@ export default function PromptHistoryPage() {
 						<CardTitle>Prompt History</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">{error}</div>
+						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+							Failed to load prompt runs. Please try again.
+						</div>
 					</CardContent>
 				</Card>
 			</div>
 		);
 	}
 
-	if (!promptRuns) {
+	if (!prompt) {
 		return (
 			<div className="container mx-auto p-6 space-y-6">
 				<Card>
@@ -387,12 +258,29 @@ export default function PromptHistoryPage() {
 
 	return (
 		<div className="space-y-6">
-			<h1 className="text-3xl font-bold">
-				{promptRuns.prompt.value} <span className="text-muted-foreground font-normal">(past week)</span>
-			</h1>
+			<div className="flex justify-between items-start">
+				<h1 className="text-3xl font-bold">
+					{prompt.value} <span className="text-muted-foreground font-normal">(past {daysFilter} days)</span>
+				</h1>
+				
+				{/* Days Filter */}
+				<div className="flex gap-2">
+					{[7, 14, 30].map((days) => (
+						<Button
+							key={days}
+							variant={daysFilter === days ? "default" : "outline"}
+							size="sm"
+							onClick={() => handleDaysFilterChange(days)}
+							className="cursor-pointer"
+						>
+							{days}d
+						</Button>
+					))}
+				</div>
+			</div>
 
 			{/* Mention Statistics */}
-			{!loading && promptRuns && (
+			{mentionStats.length > 0 && (
 				<Card>
 					<CardHeader>
 						<CardTitle>Mentions</CardTitle>
@@ -401,7 +289,7 @@ export default function PromptHistoryPage() {
 							<strong>
 								{Math.round(
 									((mentionStats.find((stat) => stat.name === brand?.name)?.count || 0) /
-										(promptRuns?.runs?.length || 1)) *
+										(aggregations?.totalRuns || 1)) *
 										100,
 								)}
 								%
@@ -417,14 +305,14 @@ export default function PromptHistoryPage() {
 							tooltipLabel="Mentions"
 							highlightValue={brand?.name}
 							tickComponent={BrandYAxisTick}
-							maxValue={promptRuns.runs.length}
+							maxValue={aggregations?.totalRuns || 1}
 						/>
 					</CardContent>
 				</Card>
 			)}
 
 			{/* Web Query Statistics */}
-			{!loading && promptRuns && (
+			{(webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) && (
 				<Card>
 					<CardHeader>
 						<CardTitle>Web Queries</CardTitle>
@@ -443,7 +331,7 @@ export default function PromptHistoryPage() {
 									data={webQueryStats.overall}
 									color="#10b981"
 									tooltipLabel="Uses"
-									maxValue={promptRuns.runs.length}
+									maxValue={aggregations?.totalRuns || 1}
 								/>
 							</div>
 						</CardContent>
@@ -468,7 +356,7 @@ export default function PromptHistoryPage() {
 											data={queries}
 											color="#8b5cf6"
 											tooltipLabel="Uses"
-											maxValue={promptRuns.runs.length}
+											maxValue={aggregations?.totalRuns || 1}
 										/>
 									</CardContent>
 									{/* Separator between model sections (not after the last one) */}
@@ -484,13 +372,77 @@ export default function PromptHistoryPage() {
 				</Card>
 			)}
 
-			<h2 className="text-2xl font-bold">Prompt Runs ({promptRuns.runs.length})</h2>
+			<div className="flex justify-between items-center">
+				<h2 className="text-2xl font-bold">
+					Prompt Runs ({pagination?.total || 0})
+				</h2>
+				
+				{/* Pagination Controls */}
+				{!isRunsLoading && pagination && pagination.totalPages > 1 && (
+					<div className="flex items-center gap-2">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => handlePageChange(currentPage - 1)}
+							disabled={!pagination.hasPrev || isRunsLoading}
+							className="cursor-pointer disabled:cursor-not-allowed"
+						>
+							<IconChevronLeft className="h-4 w-4" />
+							Previous
+						</Button>
+						
+						<span className="text-sm text-muted-foreground">
+							Page {pagination.page} of {pagination.totalPages}
+						</span>
+						
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => handlePageChange(currentPage + 1)}
+							disabled={!pagination.hasNext || isRunsLoading}
+							className="cursor-pointer disabled:cursor-not-allowed"
+						>
+							Next
+							<IconChevronRight className="h-4 w-4" />
+						</Button>
+					</div>
+				)}
+			</div>
 
-			{promptRuns.runs.length === 0 ? (
+			{isRunsLoading ? (
+				<div className="space-y-6">
+					{/* Loading skeletons for runs */}
+					{Array.from({ length: 3 }).map((_, index) => (
+						<Card key={index} className="border border-gray-200 shadow-sm">
+							<CardHeader className="pb-0 gap-y-0">
+								<div className="grid grid-cols-3 gap-x-4">
+									<div>
+										<Skeleton className="h-4 w-20 mb-1" />
+										<Skeleton className="h-4 w-16" />
+									</div>
+									<div>
+										<Skeleton className="h-4 w-16 mb-1" />
+										<Skeleton className="h-4 w-24" />
+									</div>
+									<div>
+										<Skeleton className="h-4 w-20 mb-1" />
+										<Skeleton className="h-4 w-32" />
+									</div>
+								</div>
+							</CardHeader>
+							<Separator />
+							<CardContent className="space-y-4">
+								<Skeleton className="h-20 w-full" />
+								<Skeleton className="h-16 w-full" />
+							</CardContent>
+						</Card>
+					))}
+				</div>
+			) : runs.length === 0 ? (
 				<p className="text-muted-foreground">No prompt runs found for this prompt.</p>
 			) : (
 				<div className="space-y-6">
-					{promptRuns.runs.map((run, index) => (
+					{runs.map((run, index) => (
 						<Card key={run.id} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
 							<CardHeader className="pb-0 gap-y-0">
 								<div className="grid grid-cols-3 gap-x-4">
@@ -561,6 +513,37 @@ export default function PromptHistoryPage() {
 							</CardContent>
 						</Card>
 					))}
+					
+					{/* Bottom Pagination Controls */}
+					{!isRunsLoading && pagination && pagination.totalPages > 1 && (
+						<div className="flex justify-center items-center gap-2 pt-4">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => handlePageChange(currentPage - 1)}
+								disabled={!pagination.hasPrev || isRunsLoading}
+								className="cursor-pointer disabled:cursor-not-allowed"
+							>
+								<IconChevronLeft className="h-4 w-4" />
+								Previous
+							</Button>
+							
+							<span className="text-sm text-muted-foreground">
+								Page {pagination.page} of {pagination.totalPages}
+							</span>
+							
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => handlePageChange(currentPage + 1)}
+								disabled={!pagination.hasNext || isRunsLoading}
+								className="cursor-pointer disabled:cursor-not-allowed"
+							>
+								Next
+								<IconChevronRight className="h-4 w-4" />
+							</Button>
+						</div>
+					)}
 				</div>
 			)}
 		</div>
