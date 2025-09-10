@@ -98,7 +98,10 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					</CardHeader>
 				</Card>
 
-				<Card className="gap-6 py-6 shadow-sm">
+				<Card 
+					className="gap-6 py-6 shadow-sm" 
+					title="Precentage of prompt evaluations that mention your brand (out of all prompt evaluations that mention at least one brand)."
+				>
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">

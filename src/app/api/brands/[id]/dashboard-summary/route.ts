@@ -79,23 +79,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				.from(prompts)
 				.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true))),
 
-			// Get total runs count
+			// Get total runs count (for enabled prompts only)
 			db
 				.select({ count: count() })
 				.from(promptRuns)
 				.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-				.where(and(eq(prompts.brandId, brandId), ...runConditions)),
+				.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true), ...runConditions)),
 
-			// Get visibility statistics
+			// Get all runs from enabled prompts (we'll filter for qualifying prompts later)
+			// This matches the original calculateAverageVisibility logic
 			db
 				.select({
-					totalRuns: count(),
-					brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
-					competitorMentions: sql<number>`SUM(CASE WHEN array_length(${promptRuns.competitorsMentioned}, 1) > 0 THEN 1 ELSE 0 END)`,
+					promptId: promptRuns.promptId,
+					brandMentioned: promptRuns.brandMentioned,
+					competitorsMentioned: promptRuns.competitorsMentioned,
 				})
 				.from(promptRuns)
 				.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-				.where(and(eq(prompts.brandId, brandId), ...runConditions)),
+				.where(and(
+					eq(prompts.brandId, brandId), 
+					eq(prompts.enabled, true),
+					...runConditions
+				)),
 
 			// Get recent activity (last 7 days)
 			db
@@ -118,20 +123,37 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const totalPrompts = totalPromptsResult[0]?.count || 0;
 		const totalRuns = totalRunsResult[0]?.count || 0;
 		
-		// Calculate average visibility
-		const visibilityStats = visibilityStatsResult[0];
+		// Calculate average visibility using the original logic
+		// This matches the calculateAverageVisibility function from utils.ts
 		let averageVisibility = 0;
 		
-		if (visibilityStats && Number(visibilityStats.totalRuns) > 0) {
-			const totalRunsForVisibility = Number(visibilityStats.totalRuns);
-			const brandMentions = Number(visibilityStats.brandMentions);
-			const competitorMentions = Number(visibilityStats.competitorMentions);
-			
-			// Calculate weighted average (brand mentions count more)
-			const weightedMentions = (brandMentions * 2) + competitorMentions;
-			const totalPossibleMentions = totalRunsForVisibility * 3; // Max possible weighted score
-			
-			averageVisibility = Math.round((weightedMentions / totalPossibleMentions) * 100);
+		if (visibilityStatsResult.length > 0) {
+			// Group runs by promptId to filter out prompts with no mentions
+			const runsByPrompt = new Map<string, typeof visibilityStatsResult>();
+			for (const run of visibilityStatsResult) {
+				if (!runsByPrompt.has(run.promptId)) {
+					runsByPrompt.set(run.promptId, []);
+				}
+				runsByPrompt.get(run.promptId)!.push(run);
+			}
+
+			// Filter out prompts that have no brand or competitor mentions
+			const qualifyingRuns: typeof visibilityStatsResult = [];
+			for (const [promptId, runs] of runsByPrompt) {
+				const hasAnyMentions = runs.some(
+					(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
+				);
+
+				if (hasAnyMentions) {
+					qualifyingRuns.push(...runs);
+				}
+			}
+
+			if (qualifyingRuns.length > 0) {
+				// Calculate the percentage of runs with brand mentions (original logic)
+				const brandMentionedCount = qualifyingRuns.filter((run) => run.brandMentioned).length;
+				averageVisibility = Math.round((brandMentionedCount / qualifyingRuns.length) * 100);
+			}
 		}
 
 		// Process recent activity
