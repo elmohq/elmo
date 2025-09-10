@@ -96,8 +96,6 @@ export function usePromptChartData(
 		// Add error retry with exponential backoff
 		errorRetryCount: 3,
 		errorRetryInterval: 1000,
-		// Faster timeout for better UX
-		timeout: 10000, // 10 second timeout
 	});
 
 	return {
