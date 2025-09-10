@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { PromptChartOptimized } from "./prompt-chart-optimized";
+import { PromptChart } from "./prompt-chart";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
@@ -71,7 +71,7 @@ export function LazyPromptChart({
 
 	return (
 		<div ref={ref}>
-			<PromptChartOptimized
+			<PromptChart
 				lookback={lookback}
 				promptName={promptName}
 				promptId={promptId}

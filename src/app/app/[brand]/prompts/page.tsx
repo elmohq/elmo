@@ -3,7 +3,7 @@ import { prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
-import { PromptsDisplayOptimized } from "./prompts-display-optimized";
+import { PromptsDisplay } from "./prompts-display";
 
 async function getPrompts(brandId: string) {
 	// Verify user has access to this brand
@@ -33,7 +33,7 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 	}
 
 	return (
-		<PromptsDisplayOptimized
+		<PromptsDisplay
 			prompts={brandPrompts}
 			pageTitle="Prompts (Using Web Search)"
 			pageDescription="See how LLMs are using the web to respond to prompts related to your brand. Updated daily."

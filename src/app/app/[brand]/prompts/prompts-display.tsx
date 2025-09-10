@@ -25,7 +25,7 @@ interface Prompt {
 	createdAt: Date;
 }
 
-interface PromptsDisplayOptimizedProps {
+interface PromptsDisplayProps {
 	prompts: Prompt[];
 	pageTitle: string;
 	pageDescription: string;
@@ -156,14 +156,14 @@ function SummaryLoadingSkeleton() {
 	);
 }
 
-export function PromptsDisplayOptimized({
+export function PromptsDisplay({
 	prompts,
 	pageTitle,
 	pageDescription,
 	editLink,
 	webSearchEnabled,
 	excludeModels = [],
-}: PromptsDisplayOptimizedProps) {
+}: PromptsDisplayProps) {
 	// Filter available models based on excludeModels prop
 	const availableIndividualModels: ("openai" | "anthropic" | "google")[] = (
 		["openai", "anthropic", "google"] as const

@@ -6,15 +6,11 @@ import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
 import { OptimizeButton } from "./optimize-button";
 import { HistoryButton } from "./history-button";
-import { useCompetitors, useBrand } from "@/hooks/use-brands";
-import { usePromptRuns } from "@/hooks/use-prompt-runs";
-import type { PromptRun } from "@/lib/db/schema";
+import { usePromptChartData } from "@/hooks/use-prompt-chart-data";
+import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import {
-	LookbackPeriod,
 	getBadgeVariant,
 	getBadgeClassName,
-	calculateVisibilityPercentages,
-	createPromptToWebQueryMapping,
 } from "@/lib/chart-utils";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
@@ -23,11 +19,12 @@ interface PromptChartProps {
 	lookback: LookbackPeriod;
 	promptName: string;
 	promptId: string;
-	brandId?: string;
-	promptRuns?: PromptRun[];
+	brandId: string;
 	webSearchEnabled?: boolean;
 	selectedModel?: ModelType;
 	availableModels?: ("openai" | "anthropic" | "google")[];
+	enabled?: boolean;
+	priority?: "high" | "normal" | "low"; // For intelligent loading
 }
 
 export function PromptChart({
@@ -35,78 +32,89 @@ export function PromptChart({
 	promptName,
 	promptId,
 	brandId,
-	promptRuns: propPromptRuns,
 	webSearchEnabled,
 	selectedModel = "all",
 	availableModels = ["openai", "anthropic", "google"],
+	enabled = true,
+	priority = "normal",
 }: PromptChartProps) {
-	const { competitors, isLoading: competitorsLoading } = useCompetitors(brandId);
-	const { brand, isLoading: brandLoading } = useBrand(brandId);
-	const { promptRuns: hookPromptRuns, isLoading: runsLoading } = usePromptRuns(brandId, { lookback });
-
-	// Use prop promptRuns if provided, otherwise fall back to hook
-	const promptRuns = propPromptRuns || hookPromptRuns;
-	const isLoading = competitorsLoading || brandLoading || (!propPromptRuns && runsLoading);
-
-	// Filter prompt runs for this specific prompt
-	const promptSpecificRuns = promptRuns?.filter((run) => run.promptId === promptId) || [];
-
-	// Check if we have no prompt runs after loading is complete
-	const hasNoRuns = !isLoading && promptSpecificRuns.length === 0;
-
-	// Calculate chart data from real prompt runs
-	const chartData =
-		isLoading || !brand ? [] : calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
-
-	// Check if there's any non-zero visibility data across all brands and competitors
-	const hasVisibilityData = chartData.some((dataPoint) => {
-		// Check if any brand (main brand or competitors) has non-zero visibility
-		const allBrandIds = [brand?.id, ...(competitors?.map((c) => c.id) || [])].filter(Boolean);
-		return allBrandIds.some((brandId) => {
-			const visibility = dataPoint[brandId as string];
-			return visibility !== null && visibility !== undefined && Number(visibility) > 0;
-		});
-	});
-
-	// Get the last visibility value for the badge (brand visibility)
-	const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
-	const lastBrandVisibility = lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
-
-	// Create web query mapping for optimization URLs
-	const webQueryMapping = promptRuns ? createPromptToWebQueryMapping(promptRuns) : {};
-
-	// Create model-specific web query mappings for the dropdown
-	const modelWebQueryMappings: Record<string, Record<string, string>> = {};
-	if (promptRuns && selectedModel === "all") {
-		availableModels.forEach((model) => {
-			const modelPromptRuns = promptRuns.filter((run) => run.modelGroup === model);
-			modelWebQueryMappings[model] = createPromptToWebQueryMapping(modelPromptRuns);
-		});
-	}
+	// Use the optimized hook
+	const { chartData, isLoading, isError } = usePromptChartData(
+		brandId,
+		promptId,
+		{
+			lookback,
+			webSearchEnabled,
+			modelGroup: selectedModel === "all" ? undefined : selectedModel,
+		},
+		enabled
+	);
 
 	// Determine chart type based on lookback period
 	const chartType = lookback === "1w" ? "bar" : "line";
 
-	if (isLoading || !brand) {
+	// Ultra-fast loading skeleton (simplified)
+	if (isLoading || !enabled) {
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<CardTitle className="text-sm">{promptName}</CardTitle>
 					<div className="flex items-center gap-2">
-						<Badge variant="secondary" className="text-xs">
-							Loading...
-						</Badge>
+						<Skeleton className="h-4 w-4 rounded" />
+						<Skeleton className="h-4 w-48" />
+					</div>
+					<div className="flex items-center gap-2">
+						<Skeleton className="h-6 w-20 rounded-full" />
+						<Skeleton className="h-8 w-8 rounded" />
 					</div>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
-				<CardContent className="pl-0 pr-6">
-					<div className="h-[250px] flex items-center justify-center text-muted-foreground">Loading chart data...</div>
+				<CardContent className="px-3">
+					<div className="h-[200px] flex items-center justify-center">
+						<div className="space-y-2">
+							<Skeleton className="h-4 w-32 mx-auto" />
+							<div className="flex justify-center space-x-2">
+								<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse" />
+								<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse [animation-delay:0.2s]" />
+								<div className="h-2 w-2 bg-primary/20 rounded-full animate-pulse [animation-delay:0.4s]" />
+							</div>
+						</div>
+					</div>
 				</CardContent>
 			</Card>
 		);
 	}
 
-	if (hasNoRuns) {
+	// Fast error state
+	if (isError) {
+		return (
+			<Card className="py-3 gap-3">
+				<CardHeader className="flex justify-between items-center px-3">
+					<CardTitle className="text-sm">{promptName}</CardTitle>
+					<Badge variant="destructive" className="text-xs">
+						Failed to load
+					</Badge>
+				</CardHeader>
+				<Separator className="py-0 my-0" />
+				<CardContent className="px-3">
+					<div className="h-[200px] flex items-center justify-center text-muted-foreground">
+						<div className="text-center">
+							<p className="text-sm">Unable to load chart</p>
+							<p className="text-xs mt-1">Try refreshing</p>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (!chartData) {
+		return null;
+	}
+
+	const { prompt, chartData: data, brand, competitors, totalRuns, hasVisibilityData, lastBrandVisibility } = chartData;
+
+	// No runs state
+	if (totalRuns === 0) {
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
@@ -115,7 +123,7 @@ export function PromptChart({
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
 					<div>
-						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+						<span className="font-semibold text-xl text-muted-foreground">
 							Evaluating for the first time...
 						</span>
 					</div>
@@ -124,32 +132,32 @@ export function PromptChart({
 		);
 	}
 
-	// Show "No brands found" message when there's no visibility data
+	// No visibility data state
 	if (!hasVisibilityData) {
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
 					<div className="flex items-center gap-2">
-						<HistoryButton promptName={promptName} promptId={promptId} brandId={brand?.id} />
+						<HistoryButton promptName={promptName} promptId={promptId} brandId={brandId} />
 						<CardTitle className="text-sm">{promptName}</CardTitle>
 					</div>
 					<div className="flex items-center gap-2">
 						<OptimizeButton
 							promptName={promptName}
 							promptId={promptId}
-							brandId={brand?.id}
+							brandId={brandId}
 							webSearchEnabled={webSearchEnabled}
 							selectedModel={selectedModel}
 							availableModels={availableModels}
-							webQueryMapping={webQueryMapping}
-							modelWebQueryMappings={modelWebQueryMappings}
+							webQueryMapping={{}} // Simplified for speed
+							modelWebQueryMappings={{}}
 						/>
 					</div>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
 					<div>
-						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
+						<span className="font-semibold text-xl text-muted-foreground">
 							No brands found.
 						</span>
 					</div>
@@ -158,11 +166,12 @@ export function PromptChart({
 		);
 	}
 
+	// Success state with chart
 	return (
 		<Card className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
 				<div className="flex items-center gap-2">
-					<HistoryButton promptName={promptName} promptId={promptId} brandId={brand?.id} />
+					<HistoryButton promptName={promptName} promptId={promptId} brandId={brandId} />
 					<CardTitle className="text-sm">{promptName}</CardTitle>
 				</div>
 				<div className="flex items-center gap-2">
@@ -174,19 +183,19 @@ export function PromptChart({
 					<OptimizeButton
 						promptName={promptName}
 						promptId={promptId}
-						brandId={brand?.id}
+						brandId={brandId}
 						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={webQueryMapping}
-						modelWebQueryMappings={modelWebQueryMappings}
+						webQueryMapping={{}} // Simplified for speed
+						modelWebQueryMappings={{}}
 					/>
 				</div>
 			</CardHeader>
 			<Separator className="py-0 my-0" />
 			<CardContent className="pl-0 pr-6">
 				<BaseChart
-					data={chartData}
+					data={data}
 					lookback={lookback}
 					brand={brand}
 					competitors={competitors}
