@@ -344,25 +344,29 @@ export default function PromptHistoryPage() {
 							<Separator />
 						)}
 
-					{/* Web Queries by Model */}
-					{webQueryStats.byModel &&
-						Object.entries(webQueryStats.byModel)
-							.filter(([model, queries]) => queries.length > 0)
-							.map(([model, queries], index, filteredEntries) => (
-								<div key={model}>
-									<CardContent className="pb-0">
-										<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
-										<HorizontalBarChart
-											data={queries}
-											color="#8b5cf6"
-											tooltipLabel="Uses"
-											maxValue={aggregations?.totalRuns || 1}
-										/>
-									</CardContent>
-									{/* Separator between model sections (not after the last one) */}
-									{index < filteredEntries.length - 1 && <Separator className="mt-6" />}
-								</div>
-							))}
+					{/* Web Queries by Model - in specific order */}
+					{webQueryStats.byModel && (() => {
+						const modelOrder = ['openai', 'anthropic', 'google'];
+						const filteredModels = modelOrder.filter(model => 
+							webQueryStats.byModel[model] && webQueryStats.byModel[model].length > 0
+						);
+						
+						return filteredModels.map((model, index) => (
+							<div key={model}>
+								<CardContent className="pb-0">
+									<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
+									<HorizontalBarChart
+										data={webQueryStats.byModel[model]}
+										color="#8b5cf6"
+										tooltipLabel="Uses"
+										maxValue={aggregations?.totalRuns || 1}
+									/>
+								</CardContent>
+								{/* Separator between model sections (not after the last one) */}
+								{index < filteredModels.length - 1 && <Separator className="mt-6" />}
+							</div>
+						));
+					})()}
 
 					{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
 						<CardContent>

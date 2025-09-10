@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { promptRuns, prompts, brands } from "@/lib/db/schema";
+import { promptRuns, prompts, brands, competitors } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, gte, sql, count, and } from "drizzle-orm";
 
@@ -117,12 +117,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const mentionStats: { name: string; count: number }[] = [];
 		
 		if (mentionData) {
-			// Get brand info for proper naming
-			const brand = await db
-				.select({ name: brands.name })
-				.from(brands)
-				.where(eq(brands.id, prompt[0].brandId))
-				.limit(1);
+			// Get brand info and all competitors for proper naming
+			const [brand, allCompetitors] = await Promise.all([
+				db
+					.select({ name: brands.name })
+					.from(brands)
+					.where(eq(brands.id, prompt[0].brandId))
+					.limit(1),
+				db
+					.select({ name: competitors.name })
+					.from(competitors)
+					.where(eq(competitors.brandId, prompt[0].brandId))
+			]);
 
 			const brandName = brand[0]?.name;
 			const totalRunsCount = Number(mentionData.totalRuns);
@@ -133,32 +139,57 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				mentionStats.push({ name: brandName, count: brandMentionsCount });
 			}
 
-			// Process competitor mentions from separate query
+			// Initialize all competitors with 0 counts
 			const competitorCounts: Record<string, number> = {};
+			allCompetitors.forEach(competitor => {
+				competitorCounts[competitor.name] = 0;
+			});
 			
+			// Process competitor mentions from separate query
 			competitorMentionsResult.forEach((row: any) => {
-				const competitors = row.competitorsMentioned || [];
-				competitors.forEach((competitor: string) => {
+				const mentionedCompetitors = row.competitorsMentioned || [];
+				mentionedCompetitors.forEach((competitor: string) => {
 					if (competitor && competitor.trim()) {
-						competitorCounts[competitor] = (competitorCounts[competitor] || 0) + 1;
+						// Only count if this is a known competitor
+						if (competitorCounts.hasOwnProperty(competitor)) {
+							competitorCounts[competitor] = (competitorCounts[competitor] || 0) + 1;
+						}
 					}
 				});
 			});
 
+			// Add all competitors (including those with 0 mentions)
 			Object.entries(competitorCounts).forEach(([name, count]) => {
 				mentionStats.push({ name, count });
 			});
 
-			// Add "no mentions" category
-			const mentionedRuns = brandMentionsCount + Object.values(competitorCounts).reduce((sum, count) => sum + count, 0);
-			const noMentionRuns = totalRunsCount - mentionedRuns;
-			if (noMentionRuns > 0) {
-				mentionStats.push({ name: "(no brand mentions)", count: noMentionRuns });
+			// Calculate "no mentions" category properly
+			// We need to count runs that have neither brand mentions nor any competitor mentions
+			const noMentionRuns = await db
+				.select({ count: count() })
+				.from(promptRuns)
+				.where(and(
+					eq(promptRuns.promptId, promptId),
+					timeCondition,
+					eq(promptRuns.brandMentioned, false),
+					sql`array_length(${promptRuns.competitorsMentioned}, 1) IS NULL OR array_length(${promptRuns.competitorsMentioned}, 1) = 0`
+				));
+
+			const noMentionCount = Number(noMentionRuns[0]?.count || 0);
+			if (noMentionCount > 0) {
+				mentionStats.push({ name: "(no brand mentions)", count: noMentionCount });
 			}
 		}
 
-		// Sort mention stats by count
-		mentionStats.sort((a, b) => b.count - a.count);
+		// Sort mention stats by count (highest to lowest), but competitors with 0 values in alphabetical order
+		mentionStats.sort((a, b) => {
+			// If both have the same count, sort alphabetically
+			if (a.count === b.count) {
+				return a.name.localeCompare(b.name);
+			}
+			// Otherwise sort by count (highest to lowest)
+			return b.count - a.count;
+		});
 
 		// Process web query stats
 		const webQueryStats = {
@@ -187,12 +218,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			});
 		});
 
-		// Convert to final format
-		Object.entries(modelQueries).forEach(([modelGroup, queries]) => {
-			webQueryStats.byModel[modelGroup] = Object.entries(queries)
-				.map(([name, count]) => ({ name, count }))
-				.sort((a, b) => b.count - a.count)
-				.slice(0, 15);
+		// Convert to final format with specific order: openai, anthropic, google
+		const modelOrder = ['openai', 'anthropic', 'google'];
+		modelOrder.forEach(modelGroup => {
+			if (modelQueries[modelGroup]) {
+				webQueryStats.byModel[modelGroup] = Object.entries(modelQueries[modelGroup])
+					.map(([name, count]) => ({ name, count }))
+					.sort((a, b) => b.count - a.count)
+					.slice(0, 15);
+			}
 		});
 
 		// Convert overall queries to array and sort
