@@ -9,17 +9,11 @@ import { Plus, Hash, Users, Search, Target, Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
-import {
-	usePromptRuns,
-	usePromptRunsWithWebSearch,
-	usePromptRunsWithoutWebSearch,
-	type LookbackPeriod,
-} from "@/hooks/use-prompt-runs";
-import { useBrand, useCompetitors } from "@/hooks/use-brands";
+import { usePromptsSummary, type LookbackPeriod } from "@/hooks/use-prompts-summary";
+import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
-import { PromptChart } from "@/components/prompt-chart";
-import { PromptGroupChart } from "@/components/prompt-group-chart";
-import { calculateVisibilityPercentages } from "@/lib/chart-utils";
+import { LazyPromptChart } from "@/components/lazy-prompt-chart";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Prompt {
 	id: string;
@@ -105,6 +99,63 @@ function getLookbackLabel(lookback: LookbackPeriod): string {
 	}
 }
 
+// Loading skeleton for the summary
+function SummaryLoadingSkeleton() {
+	return (
+		<div className="space-y-6">
+			{/* Header skeleton */}
+			<div className="space-y-2">
+				<Skeleton className="h-8 w-64" />
+				<Skeleton className="h-4 w-96" />
+			</div>
+
+			{/* Tabs skeleton */}
+			<div className="sticky top-[var(--header-height)] z-10 bg-background pt-6 pb-6 -mx-6 px-6">
+				<div className="flex justify-between items-center">
+					<div className="flex space-x-1 bg-muted rounded-md p-1">
+						<Skeleton className="h-8 w-16" />
+						<Skeleton className="h-8 w-16" />
+						<Skeleton className="h-8 w-16" />
+						<Skeleton className="h-8 w-16" />
+					</div>
+					<div className="flex space-x-1 bg-muted rounded-md p-1">
+						<Skeleton className="h-8 w-12" />
+						<Skeleton className="h-8 w-12" />
+						<Skeleton className="h-8 w-12" />
+						<Skeleton className="h-8 w-12" />
+						<Skeleton className="h-8 w-12" />
+						<Skeleton className="h-8 w-12" />
+					</div>
+				</div>
+			</div>
+
+			{/* Chart skeletons */}
+			<div className="space-y-6">
+				{[...Array(6)].map((_, i) => (
+					<Card key={i} className="py-3 gap-3">
+						<CardHeader className="flex justify-between items-center px-3">
+							<div className="flex items-center gap-2">
+								<Skeleton className="h-4 w-4 rounded" />
+								<Skeleton className="h-4 w-48" />
+							</div>
+							<div className="flex items-center gap-2">
+								<Skeleton className="h-6 w-20 rounded-full" />
+								<Skeleton className="h-8 w-8 rounded" />
+							</div>
+						</CardHeader>
+						<div className="px-3">
+							<Skeleton className="h-px w-full" />
+						</div>
+						<CardContent className="px-3">
+							<Skeleton className="h-[250px] w-full" />
+						</CardContent>
+					</Card>
+				))}
+			</div>
+		</div>
+	);
+}
+
 export function PromptsDisplay({
 	prompts,
 	pageTitle,
@@ -128,109 +179,50 @@ export function PromptsDisplay({
 	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault("1w"));
 
 	const { brand } = useBrand();
-	const { competitors } = useCompetitors(brand?.id);
 
-	// Use appropriate hook based on webSearchEnabled prop
+	// Use the new optimized summary hook instead of fetching all prompt runs
 	const modelGroupParam = selectedModel === "all" ? undefined : selectedModel;
 	const {
-		promptRuns,
-		isLoading: isLoadingRuns,
-		isError: runsError,
-	} = webSearchEnabled === true
-		? usePromptRunsWithWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: modelGroupParam })
-		: webSearchEnabled === false
-			? usePromptRunsWithoutWebSearch(brand?.id, { lookback: selectedLookback, modelGroup: modelGroupParam })
-			: usePromptRuns(brand?.id, { lookback: selectedLookback, modelGroup: modelGroupParam });
+		promptsSummary,
+		isLoading: isLoadingSummary,
+		isError: summaryError,
+	} = usePromptsSummary(brand?.id, {
+		lookback: selectedLookback,
+		webSearchEnabled,
+		modelGroup: modelGroupParam,
+	});
 
-	// Filter to only active prompts
-	const activePrompts = prompts.filter((prompt) => prompt.enabled);
+	// Show loading skeleton while summary is loading
+	if (isLoadingSummary || !promptsSummary) {
+		return <SummaryLoadingSkeleton />;
+	}
 
-	// Group prompt runs by prompt ID for easier lookup
-	const promptRunsByPromptId = (promptRuns || []).reduce(
-		(acc, run) => {
-			if (!acc[run.promptId]) {
-				acc[run.promptId] = [];
-			}
-			acc[run.promptId].push(run);
-			return acc;
-		},
-		{} as Record<string, NonNullable<typeof promptRuns>[number][]>,
-	);
+	// Error state
+	if (summaryError) {
+		return (
+			<div className="space-y-6">
+				<div>
+					<h1 className="text-3xl font-bold">{pageTitle}</h1>
+					<p className="text-muted-foreground">{pageDescription}</p>
+				</div>
+				<Card className="p-6">
+					<div className="text-center text-muted-foreground">
+						<p className="mb-2">Failed to load prompts data</p>
+						<p className="text-sm">Try refreshing the page</p>
+					</div>
+				</Card>
+			</div>
+		);
+	}
 
-	// Calculate brand/competitor mention percentage for a single prompt
-	const calculateMentionPercentage = (promptId: string): number => {
-		const runs = promptRunsByPromptId[promptId] || [];
-		if (runs.length === 0) return 0;
+	const { prompts: sortedPrompts } = promptsSummary;
 
-		const totalMentions = runs.reduce((total, run) => {
-			let mentions = 0;
-			// Count brand mention (weighted 2x)
-			if (run.brandMentioned) mentions += 2;
-			// Count each competitor mention separately (weighted 1x)
-			if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-				mentions += run.competitorsMentioned.length;
-			}
-			return total + mentions;
-		}, 0);
-
-		return totalMentions / runs.length; // Average weighted mentions per run
-	};
-
-	// Calculate brand/competitor mention percentage for a group of prompts
-	const calculateGroupMentionPercentage = (groupPrompts: Prompt[]): number => {
-		const allRunsForGroup = groupPrompts.flatMap((prompt) => promptRunsByPromptId[prompt.id] || []);
-		if (allRunsForGroup.length === 0) return 0;
-
-		const totalMentions = allRunsForGroup.reduce((total, run) => {
-			let mentions = 0;
-			// Count brand mention (weighted 2x)
-			if (run.brandMentioned) mentions += 2;
-			// Count each competitor mention separately (weighted 1x)
-			if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-				mentions += run.competitorsMentioned.length;
-			}
-			return total + mentions;
-		}, 0);
-
-		return totalMentions / allRunsForGroup.length; // Average weighted mentions per run
-	};
-
-	// Check if a prompt has visibility data
-	const hasPromptVisibilityData = (promptId: string): boolean => {
-		if (!brand || !competitors) return false;
-
-		const runs = promptRunsByPromptId[promptId] || [];
-		if (runs.length === 0) return false;
-
-		const chartData = calculateVisibilityPercentages(runs, brand, competitors, selectedLookback);
-		return chartData.some((dataPoint) => {
-			const allBrandIds = [brand.id, ...competitors.map((c) => c.id)];
-			return allBrandIds.some((brandId) => {
-				const visibility = dataPoint[brandId];
-				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
-			});
-		});
-	};
-
-	// Check if a group has visibility data
-	const hasGroupVisibilityData = (groupPrompts: Prompt[]): boolean => {
-		return groupPrompts.some((prompt) => hasPromptVisibilityData(prompt.id));
-	};
-
-	// Create unified list of prompts and groups with their mention percentages
-	type DisplayItem = {
-		type: "individual" | "group";
-		mentionPercentage: number;
-		hasRuns: boolean;
-		hasVisibilityData: boolean;
-		data: Prompt | { groupKey: string; prompts: Prompt[] };
-	};
-
-	const uncategorizedPrompts = activePrompts.filter(
+	// Group prompts for display
+	const uncategorizedPrompts = sortedPrompts.filter(
 		(prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized",
 	);
 
-	const groupedPrompts = activePrompts
+	const groupedPrompts = sortedPrompts
 		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
 		.reduce(
 			(acc, prompt) => {
@@ -243,98 +235,21 @@ export function PromptsDisplay({
 				acc[groupKey].push(prompt);
 				return acc;
 			},
-			{} as Record<string, Prompt[]>,
+			{} as Record<string, typeof sortedPrompts>,
 		);
 
-	// Create display items for individual prompts
-	const individualItems: DisplayItem[] = uncategorizedPrompts.map((prompt) => {
-		const runs = promptRunsByPromptId[prompt.id] || [];
-		const hasRuns = runs.length > 0;
-		const hasVisibilityData = hasPromptVisibilityData(prompt.id);
+	// Create display items - individual prompts and groups
+	const individualItems = uncategorizedPrompts.map((prompt) => ({
+		type: "individual" as const,
+		data: prompt,
+	}));
 
-		return {
-			type: "individual" as const,
-			mentionPercentage: calculateMentionPercentage(prompt.id),
-			hasRuns,
-			hasVisibilityData,
-			data: prompt,
-		};
-	});
+	const groupItems = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => ({
+		type: "group" as const,
+		data: { groupKey, prompts: groupPrompts },
+	}));
 
-	// Create display items for groups
-	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => {
-		const allRunsForGroup = groupPrompts.flatMap((prompt) => promptRunsByPromptId[prompt.id] || []);
-		const hasRuns = allRunsForGroup.length > 0;
-		const hasVisibilityData = hasGroupVisibilityData(groupPrompts);
-
-		return {
-			type: "group" as const,
-			mentionPercentage: calculateGroupMentionPercentage(groupPrompts),
-			hasRuns,
-			hasVisibilityData,
-			data: { groupKey, prompts: groupPrompts },
-		};
-	});
-
-	// Combine and sort all items by state priority, then by mention percentage, then alphabetically
-	const allDisplayItems = [...individualItems, ...groupItems].sort((a, b) => {
-		// Define priority order: 1 = has visibility data, 2 = awaiting first data, 3 = no brands found
-		const getPriority = (item: DisplayItem): number => {
-			if (item.hasVisibilityData) return 1; // Has visibility data - show first
-			if (!item.hasRuns) return 2; // Awaiting first data - show second
-			return 3; // Has runs but no visibility data (no brands found) - show last
-		};
-
-		const priorityA = getPriority(a);
-		const priorityB = getPriority(b);
-
-		// First sort by priority
-		if (priorityA !== priorityB) {
-			return priorityA - priorityB;
-		}
-
-		// Within same priority, sort by mention percentage (descending) for items with visibility data
-		if (priorityA === 1 && a.mentionPercentage !== b.mentionPercentage) {
-			return b.mentionPercentage - a.mentionPercentage;
-		}
-
-		// Then sort alphabetically
-		const nameA =
-			a.type === "individual"
-				? (a.data as Prompt).value
-				: (() => {
-						const { groupKey } = a.data as { groupKey: string; prompts: Prompt[] };
-						return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-					})();
-
-		const nameB =
-			b.type === "individual"
-				? (b.data as Prompt).value
-				: (() => {
-						const { groupKey } = b.data as { groupKey: string; prompts: Prompt[] };
-						return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-					})();
-
-		return nameA.localeCompare(nameB);
-	});
-
-	// Group prompts by category + prefix combination (for display purposes)
-	const promptsByGroup = prompts.reduce(
-		(acc, prompt) => {
-			const category = prompt.groupCategory || "Uncategorized";
-			const prefix = prompt.groupPrefix || "";
-			// Create a unique key combining category and prefix
-			const groupKey = prefix ? `${category}:${prefix}` : category;
-			if (!acc[groupKey]) {
-				acc[groupKey] = [];
-			}
-			acc[groupKey].push(prompt);
-			return acc;
-		},
-		{} as Record<string, Prompt[]>,
-	);
-
-	const groupEntries = Object.entries(promptsByGroup);
+	const allDisplayItems = [...individualItems, ...groupItems];
 
 	return (
 		<div className="space-y-6">
@@ -343,7 +258,7 @@ export function PromptsDisplay({
 				<p className="text-muted-foreground">{pageDescription}</p>
 			</div>
 
-			{groupEntries.length === 0 ? (
+			{sortedPrompts.length === 0 ? (
 				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
 					<div className="text-center py-8 text-muted-foreground">
 						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -409,88 +324,54 @@ export function PromptsDisplay({
 
 					<TabsContent value={selectedModel} className="mt-0">
 						<div className="space-y-6">
-							{/* Display all items (both individual and group prompts) sorted by mention percentage */}
-							{!isLoadingRuns &&
-								allDisplayItems.map((item) => {
-									if (item.type === "individual") {
-										const prompt = item.data as Prompt;
-										return (
-											<PromptChart
-												key={prompt.id}
-												promptName={prompt.value}
-												promptId={prompt.id}
-												lookback={selectedLookback}
-												promptRuns={promptRuns}
-												webSearchEnabled={webSearchEnabled}
-												selectedModel={selectedModel}
-												availableModels={availableIndividualModels}
-											/>
-										);
-									} else {
-										const group = item.data as { groupKey: string; prompts: Prompt[] };
-										const firstPrompt = group.prompts[0];
-										const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
-										const groupPrefix = firstPrompt?.groupPrefix;
-										const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
-
-										return (
-											<PromptGroupChart
-												key={group.groupKey}
-												groupName={chartName}
-												prompts={group.prompts}
-												lookback={selectedLookback}
-												promptRuns={promptRuns}
-												webSearchEnabled={webSearchEnabled}
-												selectedModel={selectedModel}
-												availableModels={availableIndividualModels}
-											/>
-										);
-									}
-								})}
-
-							{/* Prompt Runs Summary */}
-							{/* {!isLoadingRuns && (
-								<Card>
-									<CardHeader>
-										<CardTitle className="flex items-center gap-2">
-											{getModelIcon(selectedModel)}
-																				Recent Runs ({selectedModel})
-									<Badge variant="secondary" className="ml-2">
-										{(promptRuns || []).length} runs
-									</Badge>
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								{(promptRuns || []).length === 0 ? (
-									<p className="text-muted-foreground">No runs yet for this model.</p>
-								) : (
-									<div className="space-y-2">
-										{(promptRuns || []).slice(0, 5).map((run) => {
-													const prompt = prompts.find(p => p.id === run.promptId);
-													return (
-														<div key={run.id} className="flex items-center justify-between p-2 rounded border">
-															<div>
-																<p className="text-sm font-medium">{prompt?.value || 'Unknown prompt'}</p>
-																<p className="text-xs text-muted-foreground">
-																	{new Date(run.createdAt).toLocaleString()}
-																</p>
-															</div>
-															<Badge variant="outline" className="text-xs">
-																{run.model}
-															</Badge>
-														</div>
-													);
-												})}
-												{(promptRuns || []).length > 5 && (
-													<p className="text-xs text-muted-foreground text-center pt-2">
-														And {(promptRuns || []).length - 5} more runs...
-													</p>
-												)}
-											</div>
-										)}
-									</CardContent>
-								</Card>
-							)} */}
+							{/* Display all items (both individual and group prompts) with lazy loading */}
+							{allDisplayItems.map((item, index) => {
+								if (item.type === "individual") {
+									const prompt = item.data;
+									// First 3 charts get high priority for immediate loading
+									const priority = index < 3 ? "high" : index < 10 ? "normal" : "low";
+									
+									return (
+										<LazyPromptChart
+											key={prompt.id}
+											promptName={prompt.value}
+											promptId={prompt.id}
+											brandId={brand?.id || ""}
+											lookback={selectedLookback}
+											webSearchEnabled={webSearchEnabled}
+											selectedModel={selectedModel}
+											availableModels={availableIndividualModels}
+											priority={priority}
+										/>
+									);
+								} else {
+									// For groups, we'll render individual charts for each prompt in the group
+									// This maintains the same functionality but with lazy loading
+									const group = item.data as { groupKey: string; prompts: typeof sortedPrompts };
+									return (
+										<div key={group.groupKey} className="space-y-4">
+											{group.prompts.map((prompt, promptIndex) => {
+												// Group items get lower priority
+												const priority = index < 3 && promptIndex === 0 ? "high" : "low";
+												
+												return (
+													<LazyPromptChart
+														key={prompt.id}
+														promptName={prompt.value}
+														promptId={prompt.id}
+														brandId={brand?.id || ""}
+														lookback={selectedLookback}
+														webSearchEnabled={webSearchEnabled}
+														selectedModel={selectedModel}
+														availableModels={availableIndividualModels}
+														priority={priority}
+													/>
+												);
+											})}
+										</div>
+									);
+								}
+							})}
 						</div>
 					</TabsContent>
 				</Tabs>

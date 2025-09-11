@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { IconSearch, IconAward, IconTrendingUp, IconEdit, IconChevronRight } from "@tabler/icons-react";
 import PromptWizard from "@/components/prompt-wizard";
-import { useBrand, useCompetitors } from "@/hooks/use-brands";
-import { usePromptRuns } from "@/hooks/use-prompt-runs";
+import { useBrand } from "@/hooks/use-brands";
+import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { calculateAverageVisibility } from "@/lib/utils";
 
 function getVisibilityTextColor(value: number): string {
 	if (value > 75) return "text-emerald-600";
@@ -21,8 +20,7 @@ function getVisibilityTextColor(value: number): string {
 export default function AppPage({ params }: { params: Promise<{ brand: string }> }) {
 	const [brandId, setBrandId] = useState<string>("");
 	const { brand, isLoading } = useBrand();
-	const { competitors, isLoading: competitorsLoading } = useCompetitors(brand?.id);
-	const { promptRuns: allPromptRuns, isLoading: isLoadingRuns } = usePromptRuns(brand?.id, { lookback: "1m" });
+	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
 
 	// Get the brand ID from params
 	useEffect(() => {
@@ -61,14 +59,10 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 		);
 	}
 
-	// Calculate metrics
-	const totalPrompts = brand?.prompts?.length || 0;
-
-	// Calculate actual average visibility from prompt runs, excluding prompts with no non-zero visibility
-	const averageVisibility =
-		!isLoadingRuns && !competitorsLoading && brand?.prompts && allPromptRuns && competitors
-			? calculateAverageVisibility(brand.prompts, allPromptRuns, brand, competitors)
-			: 0;
+	// Get metrics from optimized summary
+	const totalPrompts = dashboardSummary?.totalPrompts || 0;
+	const totalRuns = dashboardSummary?.totalRuns || 0;
+	const averageVisibility = dashboardSummary?.averageVisibility || 0;
 
 	return (
 		<div className="space-y-8">
@@ -91,7 +85,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 				<Card className="gap-6 py-6 shadow-sm">
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Prompts Tracked</CardDescription>
-						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">{totalPrompts}</CardTitle>
+						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">{totalPrompts.toLocaleString()}</CardTitle>
 					</CardHeader>
 				</Card>
 
@@ -99,16 +93,19 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>Prompt Evals (30d)</CardDescription>
 						<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl">
-							{allPromptRuns?.length || 0}
+							{totalRuns.toLocaleString()}
 						</CardTitle>
 					</CardHeader>
 				</Card>
 
-				<Card className="gap-6 py-6 shadow-sm">
+				<Card 
+					className="gap-6 py-6 shadow-sm" 
+					title="Precentage of prompt evaluations that mention your brand (out of all prompt evaluations that mention at least one brand)."
+				>
 					<CardHeader className="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6">
 						<CardDescription>AI Visibility (30d)</CardDescription>
 						<div className="flex items-center gap-2">
-							{!allPromptRuns?.length || competitorsLoading ? (
+							{isLoadingSummary || !totalRuns ? (
 								<CardTitle className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground">
 									TBD
 								</CardTitle>
