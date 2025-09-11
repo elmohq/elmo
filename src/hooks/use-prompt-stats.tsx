@@ -34,7 +34,7 @@ export function usePromptStats(promptId: string, options: UsePromptStatsOptions 
 	const { data, error, isLoading, mutate } = useSWR<PromptStatsResponse>(apiUrl, fetcher, {
 		revalidateOnFocus: false,
 		revalidateOnReconnect: true,
-		refreshInterval: 0, // Don't auto-refresh
+		refreshInterval: 60000, // Refresh every 60 seconds 
 		dedupingInterval: 60000, // 1 minute deduping - stats don't change often
 	});
 
