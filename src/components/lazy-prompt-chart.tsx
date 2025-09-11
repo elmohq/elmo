@@ -28,7 +28,7 @@ export function LazyPromptChart({
 	webSearchEnabled,
 	selectedModel,
 	availableModels,
-	rootMargin = "200px", // Increased margin for faster loading
+	rootMargin = "200px",
 	threshold = 0,
 	priority = "normal",
 }: LazyPromptChartProps) {
