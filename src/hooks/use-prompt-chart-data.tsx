@@ -30,12 +30,7 @@ export interface PromptChartDataResponse {
 }
 
 const fetcher = async (url: string): Promise<PromptChartDataResponse> => {
-	const response = await fetch(url, {
-		// Add cache headers for better performance
-		headers: {
-			'Cache-Control': 'public, max-age=300', // 5 minutes browser cache
-		}
-	});
+	const response = await fetch(url);
 
 	if (!response.ok) {
 		const error = new Error("Failed to fetch prompt chart data");
