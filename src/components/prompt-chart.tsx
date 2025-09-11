@@ -111,7 +111,17 @@ export function PromptChart({
 		return null;
 	}
 
-	const { prompt, chartData: data, brand, competitors, totalRuns, hasVisibilityData, lastBrandVisibility } = chartData;
+	const { 
+		prompt, 
+		chartData: data, 
+		brand, 
+		competitors, 
+		totalRuns, 
+		hasVisibilityData, 
+		lastBrandVisibility,
+		webQueryMapping,
+		modelWebQueryMappings 
+	} = chartData;
 
 	// No runs state
 	if (totalRuns === 0) {
@@ -187,8 +197,8 @@ export function PromptChart({
 						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={{}} // Simplified for speed
-						modelWebQueryMappings={{}}
+						webQueryMapping={webQueryMapping || {}}
+						modelWebQueryMappings={modelWebQueryMappings || {}}
 					/>
 				</div>
 			</CardHeader>

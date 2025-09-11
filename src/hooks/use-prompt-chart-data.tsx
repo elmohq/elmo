@@ -27,6 +27,9 @@ export interface PromptChartDataResponse {
 	totalRuns: number;
 	hasVisibilityData: boolean;
 	lastBrandVisibility: number | null;
+	// Web query mappings for optimize button
+	webQueryMapping: Record<string, string>;
+	modelWebQueryMappings: Record<string, Record<string, string>>;
 }
 
 const fetcher = async (url: string): Promise<PromptChartDataResponse> => {

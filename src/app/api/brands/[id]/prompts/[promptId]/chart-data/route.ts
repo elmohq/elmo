@@ -28,6 +28,9 @@ export interface PromptChartDataResponse {
 	totalRuns: number;
 	hasVisibilityData: boolean;
 	lastBrandVisibility: number | null;
+	// Web query mappings for optimize button
+	webQueryMapping: Record<string, string>;
+	modelWebQueryMappings: Record<string, Record<string, string>>;
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -163,6 +166,71 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const lastDataPoint = chartData.filter(point => point[brand.id] !== null).pop();
 		const lastBrandVisibility = lastDataPoint ? (lastDataPoint[brand.id] as number) : null;
 
+		// Generate web query mappings for optimize button (following chart-utils logic)
+		const webQueryMapping: Record<string, string> = {};
+		const modelWebQueryMappings: Record<string, Record<string, string>> = {};
+
+		// Filter runs that have web queries
+		const runsWithWebQueries = runs.filter((run: any) => run.webQueries && run.webQueries.length > 0);
+
+		if (runsWithWebQueries.length > 0) {
+			// Overall mapping - find oldest web query (first alphabetically if tie)
+			// Sort by creation date (oldest first)
+			runsWithWebQueries.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+			
+			// Get oldest date
+			const oldestDate = runsWithWebQueries[0].createdAt;
+			const oldestRuns = runsWithWebQueries.filter(
+				(run: any) => new Date(run.createdAt).getTime() === new Date(oldestDate).getTime()
+			);
+
+			// Get all web queries from the oldest runs and find first alphabetically
+			const allWebQueries: string[] = [];
+			oldestRuns.forEach((run: any) => {
+				if (run.webQueries) {
+					allWebQueries.push(...run.webQueries);
+				}
+			});
+
+			if (allWebQueries.length > 0) {
+				// Sort alphabetically and take the first
+				allWebQueries.sort();
+				webQueryMapping[promptId] = allWebQueries[0];
+			}
+
+			// Model-specific mappings - same logic per model
+			['openai', 'anthropic', 'google'].forEach(modelGroup => {
+				const modelRuns = runsWithWebQueries.filter((run: any) => run.modelGroup === modelGroup);
+				if (modelRuns.length > 0) {
+					// Sort by creation date (oldest first) for this model
+					modelRuns.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+					
+					// Get oldest date for this model
+					const oldestModelDate = modelRuns[0].createdAt;
+					const oldestModelRuns = modelRuns.filter(
+						(run: any) => new Date(run.createdAt).getTime() === new Date(oldestModelDate).getTime()
+					);
+
+					// Get all web queries from the oldest runs for this model
+					const modelWebQueries: string[] = [];
+					oldestModelRuns.forEach((run: any) => {
+						if (run.webQueries) {
+							modelWebQueries.push(...run.webQueries);
+						}
+					});
+
+					if (modelWebQueries.length > 0) {
+						// Sort alphabetically and take the first
+						modelWebQueries.sort();
+						if (!modelWebQueryMappings[modelGroup]) {
+							modelWebQueryMappings[modelGroup] = {};
+						}
+						modelWebQueryMappings[modelGroup][promptId] = modelWebQueries[0];
+					}
+				}
+			});
+		}
+
 		const response: PromptChartDataResponse = {
 			prompt: {
 				id: prompt.id,
@@ -176,6 +244,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			totalRuns,
 			hasVisibilityData,
 			lastBrandVisibility,
+			webQueryMapping,
+			modelWebQueryMappings,
 		};
 
 		return NextResponse.json(response);
