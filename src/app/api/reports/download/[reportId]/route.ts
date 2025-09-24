@@ -83,7 +83,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 		const page = await browser.newPage();
 
 		// Navigate to the render page and wait for it to load
-		await page.goto(renderUrl, { waitUntil: "networkidle0", timeout: 60000 });
+		await page.goto(renderUrl, { waitUntil: "networkidle0", timeout: 120000 });
 
 		// Wait for fonts to load completely
 		await page.evaluateHandle(() => {
