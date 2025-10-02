@@ -352,18 +352,18 @@ const worker = new Worker(
 			// 	);
 			// }
 
-			// Create Anthropic promises (with web search)
+			// Create Anthropic promises (without web search)
 			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
 				anthropicPromises.push(
 					runWithAnthropic(prompt.value).then(async ({ rawOutput, webQueries, textContent }) => {
-						job.log(`Completed Anthropic with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
+						job.log(`Completed Anthropic without web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
 						await savePromptRun(
 							promptId,
 							AI_MODELS.ANTHROPIC.GROUP,
 							AI_MODELS.ANTHROPIC.MODEL,
-							true,
+							false,
 							rawOutput,
 							webQueries,
 							brandMentioned,
