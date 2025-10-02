@@ -2,14 +2,13 @@ import { promptQueue } from "@/worker/queues";
 
 /**
  * Creates or updates a repeatable job scheduler for a prompt
- * This will schedule the prompt to run every 60 seconds
  */
 export async function createPromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		await promptQueue.upsertJobScheduler(
 			`repeater-${promptId}`,
 			{
-				every: 24 * 60 * 60 * 1000, // every day
+				every: 3 * 24 * 60 * 60 * 1000, // every 3 days
 			},
 			{
 				name: `prompt-${promptId}`, // Unique job name per prompt
