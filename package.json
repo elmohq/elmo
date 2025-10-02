@@ -30,7 +30,8 @@
     "test:watch": "jest --watch",
     "queuedash": "tsx --env-file=.env src/queuedash/queuedash.ts",
     "worker:dev": "tsx --env-file=.env src/worker/worker.ts",
-    "worker:prod": "tsx src/worker/worker.ts"
+    "worker:prod": "tsx src/worker/worker.ts",
+    "update-job-schedules:prod": "ENVIRONMENT=prod tsx --env-file=.env scripts/update-job-schedules.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.4",
@@ -57,7 +58,7 @@
     "@upstash/redis": "^1.35.1",
     "ai": "^5.0.15",
     "auth0": "^4.27.0",
-    "bullmq": "^5.56.4",
+    "bullmq": "^5.59.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

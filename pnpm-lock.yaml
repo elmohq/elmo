@@ -81,8 +81,8 @@ importers:
         specifier: ^4.27.0
         version: 4.27.0
       bullmq:
-        specifier: ^5.56.4
-        version: 5.56.4
+        specifier: ^5.59.0
+        version: 5.59.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2127,8 +2127,8 @@ packages:
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
-  bullmq@5.56.4:
-    resolution: {integrity: sha512-5wSHd0oXs2jS6P+6tay/01Iz0cWRK8iYcscKtpS/GewEq0bJZwbkMZc77GJVOT9SP+UQuXA2y+pQTdCQJel7kQ==}
+  bullmq@5.59.0:
+    resolution: {integrity: sha512-RmqUIvNKWQ5bTBnMo4ttCNqWs+IzTHfkRbPS95r8Ba2uCZQKe/xXbZbIiwx5FAMhckab03slIKKAYHto/M223Q==}
 
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
@@ -4029,6 +4029,10 @@ packages:
 
   utrie@1.0.2:
     resolution: {integrity: sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw==}
+
+  uuid@11.1.0:
+    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
+    hasBin: true
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
@@ -5954,7 +5958,7 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  bullmq@5.56.4:
+  bullmq@5.59.0:
     dependencies:
       cron-parser: 4.9.0
       ioredis: 5.6.1
@@ -5962,7 +5966,7 @@ snapshots:
       node-abort-controller: 3.1.1
       semver: 7.7.2
       tslib: 2.8.1
-      uuid: 9.0.1
+      uuid: 11.1.0
     transitivePeerDependencies:
       - supports-color
 
@@ -8023,6 +8027,8 @@ snapshots:
     dependencies:
       base64-arraybuffer: 1.0.2
     optional: true
+
+  uuid@11.1.0: {}
 
   uuid@9.0.1: {}
 
