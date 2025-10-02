@@ -219,12 +219,25 @@ function analyzeMentions(
 	const contentLower = content.toLowerCase();
 	const brandName = brand.name.toLowerCase();
 
-	// Check for brand mention
-	const brandMentioned = contentLower.includes(brandName);
+	// Extract domain from brand website using URL constructor
+	const url = new URL(brand.website.startsWith('http') ? brand.website : `https://${brand.website}`);
+	const domain = url.hostname.replace(/^www\./, '').toLowerCase();
 
-	// Check for competitor mentions
+	// Check for brand mention (brand name or domain)
+	const brandMentioned = contentLower.includes(brandName) || contentLower.includes(domain);
+
+	// Check for competitor mentions (by name or domain)
 	const competitorsMentioned = competitors
-		.filter((competitor) => contentLower.includes(competitor.name.toLowerCase()))
+		.filter((competitor) => {
+			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
+			
+			// Extract domain from competitor website
+			const competitorUrl = new URL(competitor.domain.startsWith('http') ? competitor.domain : `https://${competitor.domain}`);
+			const competitorDomain = competitorUrl.hostname.replace(/^www\./, '').toLowerCase();
+			
+			const domainMatch = contentLower.includes(competitorDomain);
+			return nameMatch || domainMatch;
+		})
 		.map((competitor) => competitor.name);
 
 	return { brandMentioned, competitorsMentioned };
