@@ -189,6 +189,7 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 function analyzeMentions(
 	content: string,
 	brandName: string,
+	brandWebsite: string,
 	competitors: CompetitorResult[],
 ): {
 	brandMentioned: boolean;
@@ -197,12 +198,25 @@ function analyzeMentions(
 	const contentLower = content.toLowerCase();
 	const brandNameLower = brandName.toLowerCase();
 
-	// Check for brand mention
-	const brandMentioned = contentLower.includes(brandNameLower);
+	// Extract domain from brandWebsite using URL constructor
+	const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
+	const domain = url.hostname.replace(/^www\./, '').toLowerCase();
 
-	// Check for competitor mentions
+	// Check for brand mention (brand name or domain)
+	const brandMentioned = contentLower.includes(brandNameLower) || contentLower.includes(domain);
+
+	// Check for competitor mentions (by name or domain)
 	const competitorsMentioned = competitors
-		.filter((competitor) => contentLower.includes(competitor.name.toLowerCase()))
+		.filter((competitor) => {
+			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
+			
+			// Extract domain from competitor website
+			const competitorUrl = new URL(competitor.domain.startsWith('http') ? competitor.domain : `https://${competitor.domain}`);
+			const competitorDomain = competitorUrl.hostname.replace(/^www\./, '').toLowerCase();
+			
+			const domainMatch = contentLower.includes(competitorDomain);
+			return nameMatch || domainMatch;
+		})
 		.map((competitor) => competitor.name);
 
 	return { brandMentioned, competitorsMentioned };
@@ -212,6 +226,7 @@ function analyzeMentions(
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
+	brandWebsite: string,
 	competitors: CompetitorResult[],
 	job: Job,
 ): Promise<PromptRunResult> {
@@ -230,7 +245,7 @@ async function runPrompt(
 	const runPromises = [
 		// 2 OpenAI runs
 		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, competitors);
+			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
 				modelGroup: AI_MODELS.OPENAI.GROUP as "openai",
 				model: AI_MODELS.OPENAI.MODEL,
@@ -243,7 +258,7 @@ async function runPrompt(
 			};
 		}),
 		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, competitors);
+			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
 				modelGroup: AI_MODELS.OPENAI.GROUP as "openai",
 				model: AI_MODELS.OPENAI.MODEL,
@@ -257,7 +272,7 @@ async function runPrompt(
 		}),
 		// 2 Anthropic runs
 		runWithAnthropic(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, competitors);
+			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
 				modelGroup: AI_MODELS.ANTHROPIC.GROUP as "anthropic",
 				model: AI_MODELS.ANTHROPIC.MODEL,
@@ -270,7 +285,7 @@ async function runPrompt(
 			};
 		}),
 		runWithAnthropic(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, competitors);
+			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
 				modelGroup: AI_MODELS.ANTHROPIC.GROUP as "anthropic",
 				model: AI_MODELS.ANTHROPIC.MODEL,
@@ -284,7 +299,7 @@ async function runPrompt(
 		}),
 		// 1 Google run
 		runWithDataForSEO(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, competitors);
+			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
 				modelGroup: "google" as "google",
 				model: "dataforseo",
@@ -396,7 +411,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 			const batch = prompts.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (prompt) => {
 				try {
-					const result = await runPrompt(prompt.value, brandName, competitors, job);
+					const result = await runPrompt(prompt.value, brandName, brandWebsite, competitors, job);
 					completedPromptRuns++;
 					const progress = 50 + (completedPromptRuns / totalPromptRuns) * 45; // 50-95% for prompt runs
 					job.updateProgress(progress);
