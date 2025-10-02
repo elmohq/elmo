@@ -133,13 +133,14 @@ async function runWithAnthropic(promptValue: string): Promise<{
 					content: promptValue,
 				},
 			],
-			tools: [
-				{
-					type: "web_search_20250305",
-					name: "web_search",
-					max_uses: 1,
-				},
-			],
+			// disabled web search for cost savings
+			// tools: [
+			// 	{
+			// 		type: "web_search_20250305",
+			// 		name: "web_search",
+			// 		max_uses: 1,
+			// 	},
+			// ],
 		});
 
 		// Extract text content from response using helper
