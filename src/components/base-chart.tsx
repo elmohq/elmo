@@ -82,6 +82,18 @@ export function BaseChart({
 	// Brand comes last so it renders on top when dots overlap
 	const dataKeys = [...sortedSelectedCompetitors.map((c) => c.id), brand.id];
 
+	// For bar charts, filter out days where ALL entities have null values
+	// For line charts, keep all days to maintain proper time-based spacing on x-axis
+	const chartData = chartType === "bar" 
+		? completeData.filter(point => {
+				// Keep the data point if ANY tracked entity has a non-null value
+				return dataKeys.some(key => {
+					const value = point[key];
+					return value !== null && value !== undefined;
+				});
+			})
+		: completeData;
+
 	return (
 		<div className="flex-1 space-y-2">
 			{showTitle && (
@@ -94,9 +106,9 @@ export function BaseChart({
 					)}
 				</div>
 			)}
-			{chartType === "bar" ? (
-				<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-					<BarChart data={completeData}>
+		{chartType === "bar" ? (
+			<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+				<BarChart data={chartData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
 							dataKey="date"
@@ -171,9 +183,9 @@ export function BaseChart({
 						<ChartLegend content={<ChartLegendContent payload={[]} />} />
 					</BarChart>
 				</ChartContainer>
-			) : (
-				<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-					<LineChart data={completeData}>
+		) : (
+			<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+				<LineChart data={chartData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
 							dataKey="date"
@@ -242,20 +254,20 @@ export function BaseChart({
 								/>
 							}
 						/>
-						{dataKeys.map((key, index) => (
-							<Line
-								key={key}
-								dataKey={key}
-								type="bump"
-								stroke={`var(--color-${key})`}
-								strokeWidth={2}
-								// need dots, otherwise first day of line chart won't show
-								dot={{ fill: `var(--color-${key})`, strokeWidth: 2, r: 2 }}
-								activeDot={{ r: 4, strokeWidth: 2 }}
-								connectNulls={false}
-								isAnimationActive={isAnimationActive}
-							/>
-						))}
+					{dataKeys.map((key, index) => (
+						<Line
+							key={key}
+							dataKey={key}
+							type="bump"
+							stroke={`var(--color-${key})`}
+							strokeWidth={2}
+							// need dots, otherwise first day of line chart won't show
+							dot={{ fill: `var(--color-${key})`, strokeWidth: 2, r: 2 }}
+							activeDot={{ r: 4, strokeWidth: 2 }}
+							connectNulls={true}
+							isAnimationActive={isAnimationActive}
+						/>
+					))}
 						<ChartLegend content={<ChartLegendContent payload={[]} />} />
 					</LineChart>
 				</ChartContainer>
