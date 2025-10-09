@@ -19,6 +19,7 @@ export type ElmoBrandMetadata = {
 export type AppMetadata = {
 	elmo_orgs?: ElmoBrandMetadata[];
 	elmo_report_generator_access?: boolean;
+	elmo_admin?: boolean;
 };
 
 const CACHE_TTL = 60 * 5;
@@ -206,7 +207,7 @@ export async function createBrand(brandData: { id: string; name: string; website
 
 export async function updateBrand(
 	brandId: string,
-	brandData: Partial<Pick<Brand, "name" | "website" | "enabled" | "onboarded">>,
+	brandData: Partial<Pick<Brand, "name" | "website" | "enabled" | "onboarded" | "delayOverrideMs">>,
 ): Promise<Brand | null> {
 	try {
 		const result = await db
@@ -229,4 +230,13 @@ export async function getBrandMetadata(brandId: string): Promise<undefined | Elm
 export async function hasReportGeneratorAccess(): Promise<boolean> {
 	const appMetadata = await getAppMetadata();
 	return appMetadata.elmo_report_generator_access === true;
+}
+
+export async function isAdmin(): Promise<boolean> {
+	const appMetadata = await getAppMetadata();
+	if (appMetadata.elmo_admin === true) {
+		return true;
+	} else {
+		return false;
+	}
 }

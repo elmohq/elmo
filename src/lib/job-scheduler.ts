@@ -1,14 +1,59 @@
 import { promptQueue } from "@/worker/queues";
+import { db } from "./db/db";
+import { prompts, brands } from "./db/schema";
+import { eq } from "drizzle-orm";
+
+const DEFAULT_DELAY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+/**
+ * Gets the delay for a prompt based on its brand's delay override or the default
+ */
+async function getPromptDelay(promptId: string): Promise<number> {
+	try {
+		// Get the prompt to find its brand
+		const prompt = await db.query.prompts.findFirst({
+			where: eq(prompts.id, promptId),
+		});
+		
+		if (!prompt) {
+			console.warn(`Prompt ${promptId} not found, using default delay`);
+			return DEFAULT_DELAY_MS;
+		}
+		
+		// Get the brand to check for delay override
+		const brand = await db.query.brands.findFirst({
+			where: eq(brands.id, prompt.brandId),
+		});
+		
+		if (!brand) {
+			console.warn(`Brand ${prompt.brandId} not found, using default delay`);
+			return DEFAULT_DELAY_MS;
+		}
+		
+		// Use override if set, otherwise use default
+		if (brand.delayOverrideMs !== null) {
+			console.log(`Using custom delay for brand ${brand.name}: ${brand.delayOverrideMs}ms`);
+			return brand.delayOverrideMs;
+		}
+		
+		return DEFAULT_DELAY_MS;
+	} catch (error) {
+		console.error(`Error fetching delay for prompt ${promptId}:`, error);
+		return DEFAULT_DELAY_MS;
+	}
+}
 
 /**
  * Creates or updates a repeatable job scheduler for a prompt
  */
 export async function createPromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
+		const delay = await getPromptDelay(promptId);
+		
 		await promptQueue.upsertJobScheduler(
 			`repeater-${promptId}`,
 			{
-				every: 3 * 24 * 60 * 60 * 1000, // every 3 days
+				every: delay,
 			},
 			{
 				name: `prompt-${promptId}`, // Unique job name per prompt
