@@ -570,8 +570,9 @@ export default function AdminPage() {
 											const reversedPayload = [...props.payload].reverse();
 											return (
 												<ChartTooltipContent 
-													{...props}
+													active={props.active}
 													payload={reversedPayload}
+													label={props.label}
 													labelFormatter={(value) => {
 														const date = new Date(value);
 														return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });

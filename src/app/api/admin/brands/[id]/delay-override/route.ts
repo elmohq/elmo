@@ -11,7 +11,7 @@ interface UpdateDelayOverrideRequest {
 	delayOverrideMs: number | null; // null to remove override
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		// Check if user is admin
 		const adminStatus = await isAdmin();
@@ -19,7 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 			return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 		}
 
-		const { id: brandId } = params;
+		const { id: brandId } = await params;
 		const body: UpdateDelayOverrideRequest = await request.json();
 
 		// Validate the delay override

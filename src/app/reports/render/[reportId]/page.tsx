@@ -259,6 +259,7 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		website: report.brandWebsite,
 		enabled: true,
 		onboarded: true,
+		delayOverrideMs: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
