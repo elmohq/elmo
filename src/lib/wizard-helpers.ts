@@ -40,48 +40,75 @@ export interface PromptData {
 	enabled: boolean;
 }
 
-// Function to check domain traffic using DataForSEO Labs Bulk Traffic Estimation API
-async function checkDomainTraffic(domain: string): Promise<number> {
-	try {
-		// Clean domain (remove protocol and www)
-		const cleanDomain = domain
-			.replace(/^https?:\/\//, "")
-			.replace(/^www\./, "")
-			.split("/")[0];
-
-		// Create request object for bulk traffic estimation
-		const requestInfo = new client.DataforseoLabsGoogleBulkTrafficEstimationLiveRequestInfo({
-			targets: [cleanDomain],
-			location_code: 2840, // United States
-			language_code: "en",
-		});
-
-		const response = await dfsLabsApi.googleBulkTrafficEstimationLive([requestInfo]);
-
-		if (!response || !response.tasks || response.tasks.length === 0) {
-			console.error("DataForSEO Labs Bulk Traffic Estimation API Error: No response or tasks");
-			return 0;
-		}
-
-		const task = response.tasks[0];
-		console.log("Task Status:", task.status_code, task.status_message);
-
-		if (task.status_code === 20000 && task.result && task.result.length > 0) {
-			const result = task.result[0];
-			if (result.items && result.items.length > 0) {
-				const item = result.items[0];
-				// Use organic estimated traffic volume as the metric
-				const trafficVolume = item.metrics?.organic?.etv || 0;
-				console.log(`Domain organic traffic volume for ${cleanDomain}: ${trafficVolume}`);
-				return trafficVolume;
+// Helper function to retry async operations with exponential backoff
+async function retryWithBackoff<T>(
+	fn: () => Promise<T>,
+	maxRetries: number = 3,
+	initialDelayMs: number = 1000,
+): Promise<T> {
+	let lastError: any;
+	
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		try {
+			return await fn();
+		} catch (error) {
+			lastError = error;
+			
+			if (attempt < maxRetries - 1) {
+				const delayMs = initialDelayMs * Math.pow(2, attempt);
+				console.log(`Attempt ${attempt + 1} failed, retrying in ${delayMs}ms...`);
+				await new Promise(resolve => setTimeout(resolve, delayMs));
 			}
 		}
+	}
+	
+	throw lastError;
+}
 
-		console.log("No traffic data found for domain:", cleanDomain);
-		return 0;
+// Function to check domain traffic using DataForSEO Labs Bulk Traffic Estimation API
+export async function checkDomainTraffic(domain: string): Promise<number> {
+	try {
+		return await retryWithBackoff(async () => {
+			// Clean domain (remove protocol and www)
+			const cleanDomain = domain
+				.replace(/^https?:\/\//, "")
+				.replace(/^www\./, "")
+				.split("/")[0];
+
+			// Create request object for bulk traffic estimation
+			const requestInfo = new client.DataforseoLabsGoogleBulkTrafficEstimationLiveRequestInfo({
+				targets: [cleanDomain],
+				location_code: 2840, // United States
+				language_code: "en",
+			});
+
+			const response = await dfsLabsApi.googleBulkTrafficEstimationLive([requestInfo]);
+
+			if (!response || !response.tasks || response.tasks.length === 0) {
+				console.error("DataForSEO Labs Bulk Traffic Estimation API Error: No response or tasks");
+				return 0;
+			}
+
+			const task = response.tasks[0];
+			console.log("Task Status:", task.status_code, task.status_message);
+
+			if (task.status_code === 20000 && task.result && task.result.length > 0) {
+				const result = task.result[0];
+				if (result.items && result.items.length > 0) {
+					const item = result.items[0];
+					// Use organic estimated traffic volume as the metric
+					const trafficVolume = item.metrics?.organic?.etv || 0;
+					console.log(`Domain organic traffic volume for ${cleanDomain}: ${trafficVolume}`);
+					return trafficVolume;
+				}
+			}
+
+			console.log("No traffic data found for domain:", cleanDomain);
+			return 0;
+		}, 3, 1000);
 	} catch (error) {
-		console.error("Error checking domain traffic:", error);
-		return 0; // Default to 0 if there's an error
+		console.error("Error checking domain traffic after retries:", error);
+		return 0; // Default to 0 if there's an error after all retries
 	}
 }
 
