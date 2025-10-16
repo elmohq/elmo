@@ -858,7 +858,7 @@ export function createPromptsDataForReports(data: {
 
 	// Add top 3 competitors as "alternative" prompts
 	if (competitors && Array.isArray(competitors)) {
-		const topCompetitors = competitors.slice(0, 4);
+		const topCompetitors = competitors.slice(0, 2);
 		for (const competitor of topCompetitors) {
 			promptsToCreate.push({
 				brandId,
