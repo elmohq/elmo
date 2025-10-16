@@ -827,3 +827,51 @@ export function createPromptsData(data: {
 		competitors: competitors || [],
 	};
 }
+
+// Create prompts from wizard data for reports (includes additional report-specific prompts)
+export function createPromptsDataForReports(data: {
+	brandId: string;
+	products: string[];
+	competitors: CompetitorResult[];
+	personaGroups: PersonaGroup[];
+	keywords: KeywordResult[];
+	customPrompts: string[];
+}): { prompts: PromptData[]; competitors: CompetitorResult[] } {
+	const { brandId, products, competitors } = data;
+	
+	// First, get all the standard prompts
+	const result = createPromptsData(data);
+	const promptsToCreate = [...result.prompts];
+
+	// Add "where to buy" prompts for each product
+	if (products && Array.isArray(products)) {
+		for (const product of products) {
+			promptsToCreate.push({
+				brandId,
+				groupCategory: null,
+				groupPrefix: null,
+				value: `where to buy ${product}`,
+				enabled: true,
+			});
+		}
+	}
+
+	// Add top 3 competitors as "alternative" prompts
+	if (competitors && Array.isArray(competitors)) {
+		const topCompetitors = competitors.slice(0, 4);
+		for (const competitor of topCompetitors) {
+			promptsToCreate.push({
+				brandId,
+				groupCategory: null,
+				groupPrefix: null,
+				value: `best ${competitor.name} alternative`,
+				enabled: true,
+			});
+		}
+	}
+
+	return {
+		prompts: promptsToCreate,
+		competitors: result.competitors,
+	};
+}

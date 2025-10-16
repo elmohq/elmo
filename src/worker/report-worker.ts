@@ -14,7 +14,7 @@ import {
 	getCompetitors,
 	getKeywords,
 	getPersonas,
-	createPromptsData,
+	createPromptsDataForReports,
 	type AnalyzeWebsiteResult,
 	type CompetitorResult,
 	type KeywordResult,
@@ -389,7 +389,7 @@ export async function processReportJob(job: Job<ReportJobData>) {
 
 		// Step 5: Create prompt data
 		job.log(`Creating prompts from wizard data`);
-		const { prompts } = createPromptsData({
+		const { prompts } = createPromptsDataForReports({
 			brandId: reportId, // Use reportId as temporary brandId for data structure
 			products: websiteAnalysis.products,
 			competitors,
