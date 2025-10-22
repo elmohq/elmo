@@ -100,6 +100,57 @@
 	.space-y-6 > * + * {
 		margin-top: 1.5rem !important;
 	}
+
+	/* Force background colors to print */
+	* {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+		color-adjust: exact !important;
+	}
+
+	/* Ensure badge backgrounds print */
+	[data-slot="badge"] {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Ensure visibility indicator backgrounds print */
+	.bg-emerald-50,
+	.bg-amber-50,
+	.bg-rose-50,
+	.bg-blue-50,
+	.bg-indigo-50 {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Ensure gradient backgrounds print */
+	.bg-gradient-to-r {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Ensure all colored text prints */
+	.text-emerald-600,
+	.text-emerald-700,
+	.text-amber-600,
+	.text-amber-700,
+	.text-amber-500,
+	.text-rose-600,
+	.text-rose-700,
+	.text-rose-500,
+	.text-blue-800 {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
+
+	/* Ensure borders print with color */
+	.border-blue-200,
+	.border-blue-400,
+	.border-l-4 {
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+	}
 }
 
 @import "tw-animate-css";
