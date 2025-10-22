@@ -799,18 +799,31 @@ ${brandName.toLowerCase()} best products,95,60`;
 			],
 		});
 
-		// Extract text content from all text blocks in response
-		const textBlocks = response.content.filter((block) => block.type === "text");
-		const allTextContent = textBlocks.map((block) => block.text).join("\n");
+	// Extract text content from all text blocks in response
+	const textBlocks = response.content.filter((block) => block.type === "text");
+	const allTextContent = textBlocks.map((block) => block.text).join("\n");
 
-		// Parse CSV output
-		const lines = allTextContent.split("\n").filter((line) => line.trim().length > 0);
-		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = [];
+	// Extract CSV from markdown code blocks if present
+	let csvContent = allTextContent;
+	const codeBlockMatch = allTextContent.match(/```(?:csv)?\s*\n([\s\S]*?)\n```/);
+	if (codeBlockMatch) {
+		csvContent = codeBlockMatch[1];
+	}
 
-		// Helper to check if a prompt is branded
-		const checkIfBranded = (promptText: string): boolean => {
-			const promptLower = promptText.toLowerCase();
-			const brandNameLower = brandName.toLowerCase();
+	// Parse CSV output
+	const lines = csvContent
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => {
+			// Filter out empty lines and any remaining markdown artifacts
+			return line.length > 0 && !line.match(/^```/);
+		});
+	const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = [];
+
+	// Helper to check if a prompt is branded
+	const checkIfBranded = (promptText: string): boolean => {
+		const promptLower = promptText.toLowerCase();
+		const brandNameLower = brandName.toLowerCase();
 			
 			try {
 				const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
@@ -823,34 +836,40 @@ ${brandName.toLowerCase()} best products,95,60`;
 			}
 		};
 
-		// Skip header row and parse each line
-		for (let i = 1; i < lines.length; i++) {
-			const line = lines[i].trim();
-			if (!line) continue;
+	// Skip header row and parse each line
+	for (let i = 1; i < lines.length; i++) {
+		const line = lines[i];
+		if (!line) continue;
 
-			// Simple CSV parsing (handles basic cases)
-			const parts = line.split(",");
-			if (parts.length >= 1) {
-				const promptText = parts[0].trim();
+		// Simple CSV parsing (handles basic cases)
+		const parts = line.split(",");
+		if (parts.length >= 1) {
+			const promptText = parts[0].trim();
 
-				if (promptText && promptText !== "prompt") {
-					candidatePrompts.push({
-						prompt: promptText,
-						brandedPrompt: checkIfBranded(promptText),
-					});
-				}
+			// Validate prompt text - must have content and not be a header or markdown artifact
+			if (
+				promptText && 
+				promptText.length > 0 &&
+				promptText !== "prompt" &&
+				!promptText.match(/^```/)
+			) {
+				candidatePrompts.push({
+					prompt: promptText,
+					brandedPrompt: checkIfBranded(promptText),
+				});
 			}
 		}
+	}
 
-		if (candidatePrompts.length === 0) {
-			throw new Error("Failed to generate any candidate prompts from Claude response");
-		}
+	if (candidatePrompts.length === 0) {
+		throw new Error("Failed to generate any candidate prompts from Claude response");
+	}
 
-		console.log(
-			`Generated ${candidatePrompts.length} candidate prompts (${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
-		);
+	console.log(
+		`Generated ${candidatePrompts.length} candidate prompts (${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
+	);
 
-		return candidatePrompts;
+	return candidatePrompts;
 	} catch (error) {
 		console.error("Error generating candidate prompts:", error);
 		throw error; // Re-throw to propagate the error
