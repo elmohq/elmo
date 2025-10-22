@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
-import { OptimizeButton } from "./optimize-button";
-import { HistoryButton } from "./history-button";
+import { ChartActionsFooter } from "./chart-actions-footer";
+import { useChartDownload } from "@/hooks/use-chart-download";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
 import type { PromptRun } from "@/lib/db/schema";
@@ -51,6 +51,12 @@ export function PromptGroupChart({
 	// Use prop promptRuns if provided, otherwise fall back to hook
 	const promptRuns = propPromptRuns || hookPromptRuns;
 	const isLoading = competitorsLoading || brandLoading || (!propPromptRuns && runsLoading);
+
+	// Setup download functionality
+	const fileName = brand 
+		? `${brand.name}-${groupName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`
+		: `chart-${groupName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
+	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
 
 	// Check if we have no prompt runs for any prompts in this group after loading is complete
 	const promptIds = prompts.map((p) => p.id);
@@ -142,35 +148,14 @@ export function PromptGroupChart({
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<div className="flex items-center gap-2">
-						<HistoryButton
-							brandId={brand?.id}
-							groupName={groupName}
-							groupPrefix={prompts[0]?.groupPrefix || undefined}
-							prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
-						/>
-						<CardTitle className="text-sm">
-							{prompts[0]?.groupPrefix}{" "}
-							<span className="text-muted-foreground">
-								{`<`}
-								{prompts[0]?.groupCategory?.toLowerCase()}
-								{`>`}
-							</span>
-						</CardTitle>
-					</div>
-					<div className="flex items-center gap-2">
-						<OptimizeButton
-							brandId={brand?.id}
-							groupName={groupName}
-							groupPrefix={prompts[0]?.groupPrefix || undefined}
-							webSearchEnabled={webSearchEnabled}
-							selectedModel={selectedModel}
-							availableModels={availableModels}
-							prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
-							webQueryMapping={webQueryMapping}
-							modelWebQueryMappings={modelWebQueryMappings}
-						/>
-					</div>
+					<CardTitle className="text-sm">
+						{prompts[0]?.groupPrefix}{" "}
+						<span className="text-muted-foreground">
+							{`<`}
+							{prompts[0]?.groupCategory?.toLowerCase()}
+							{`>`}
+						</span>
+					</CardTitle>
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
@@ -180,42 +165,35 @@ export function PromptGroupChart({
 						</span>
 					</div>
 				</CardContent>
+				<ChartActionsFooter 
+					brandId={brand?.id}
+					brandName={brand?.name}
+					prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
+					groupPrefix={prompts[0]?.groupPrefix || undefined}
+					groupName={groupName}
+					onDownload={handleDownload}
+					isDownloading={isDownloading}
+					webSearchEnabled={webSearchEnabled}
+					selectedModel={selectedModel}
+					availableModels={availableModels}
+					webQueryMapping={webQueryMapping}
+					modelWebQueryMappings={modelWebQueryMappings}
+				/>
 			</Card>
 		);
 	}
 
 	return (
-		<Card className="py-3 gap-3">
+		<Card ref={chartRef} className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
-				<div className="flex items-center gap-2">
-					<HistoryButton
-						brandId={brand?.id}
-						groupName={groupName}
-						groupPrefix={prompts[0]?.groupPrefix || undefined}
-						prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
-					/>
-					<CardTitle className="text-sm">
-						{prompts[0]?.groupPrefix}{" "}
-						<span className="text-muted-foreground">
-							{`<`}
-							{prompts[0]?.groupCategory?.toLowerCase()}
-							{`>`}
-						</span>
-					</CardTitle>
-				</div>
-				<div className="flex items-center gap-2">
-					<OptimizeButton
-						brandId={brand?.id}
-						groupName={groupName}
-						groupPrefix={prompts[0]?.groupPrefix || undefined}
-						webSearchEnabled={webSearchEnabled}
-						selectedModel={selectedModel}
-						availableModels={availableModels}
-						prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
-						webQueryMapping={webQueryMapping}
-						modelWebQueryMappings={modelWebQueryMappings}
-					/>
-				</div>
+				<CardTitle className="text-sm">
+					{prompts[0]?.groupPrefix}{" "}
+					<span className="text-muted-foreground">
+						{`<`}
+						{prompts[0]?.groupCategory?.toLowerCase()}
+						{`>`}
+					</span>
+				</CardTitle>
 			</CardHeader>
 			<Separator className="py-0 my-0" />
 			<CardContent className="pl-0 pr-6">
@@ -237,6 +215,22 @@ export function PromptGroupChart({
 					))}
 				</div>
 			</CardContent>
+			<div className="print:hidden">
+				<ChartActionsFooter 
+					brandId={brand?.id}
+					brandName={brand?.name}
+					prompts={prompts.map((p) => ({ id: p.id, value: p.value }))}
+					groupPrefix={prompts[0]?.groupPrefix || undefined}
+					groupName={groupName}
+					onDownload={handleDownload}
+					isDownloading={isDownloading}
+					webSearchEnabled={webSearchEnabled}
+					selectedModel={selectedModel}
+					availableModels={availableModels}
+					webQueryMapping={webQueryMapping}
+					modelWebQueryMappings={modelWebQueryMappings}
+				/>
+			</div>
 		</Card>
 	);
 }

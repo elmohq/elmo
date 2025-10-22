@@ -4,8 +4,8 @@ import { Separator } from "./ui/separator";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
-import { OptimizeButton } from "./optimize-button";
-import { HistoryButton } from "./history-button";
+import { ChartActionsFooter } from "./chart-actions-footer";
+import { useChartDownload } from "@/hooks/use-chart-download";
 import { usePromptChartData } from "@/hooks/use-prompt-chart-data";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import {
@@ -49,6 +49,12 @@ export function PromptChart({
 		},
 		enabled
 	);
+
+	// Setup download functionality
+	const fileName = chartData?.brand 
+		? `${chartData.brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`
+		: `chart-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
+	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
 
 	// Determine chart type based on lookback period
 	const chartType = lookback === "1w" ? "bar" : "line";
@@ -146,24 +152,9 @@ export function PromptChart({
 	if (!hasVisibilityData) {
 		return (
 			<Card className="py-3 gap-3">
-				<CardHeader className="flex justify-between items-center px-3">
-					<div className="flex items-center gap-2">
-						<HistoryButton promptName={promptName} promptId={promptId} brandId={brandId} />
-						<CardTitle className="text-sm">{promptName}</CardTitle>
-					</div>
-					<div className="flex items-center gap-2">
-						<OptimizeButton
-							promptName={promptName}
-							promptId={promptId}
-							brandId={brandId}
-							webSearchEnabled={webSearchEnabled}
-							selectedModel={selectedModel}
-							availableModels={availableModels}
-							webQueryMapping={{}} // Simplified for speed
-							modelWebQueryMappings={{}}
-						/>
-					</div>
-				</CardHeader>
+			<CardHeader className="flex justify-between items-center px-3">
+				<CardTitle className="text-sm">{promptName}</CardTitle>
+			</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
 					<div>
@@ -172,35 +163,35 @@ export function PromptChart({
 						</span>
 					</div>
 				</CardContent>
+				<div className="print:hidden">
+					<ChartActionsFooter 
+						promptId={promptId} 
+						brandId={brandId}
+						promptName={promptName}
+						brandName={brand?.name}
+						onDownload={handleDownload}
+						isDownloading={isDownloading}
+						webSearchEnabled={webSearchEnabled}
+						selectedModel={selectedModel}
+						availableModels={availableModels}
+						webQueryMapping={{}}
+						modelWebQueryMappings={{}}
+					/>
+				</div>
 			</Card>
 		);
 	}
 
 	// Success state with chart
 	return (
-		<Card className="py-3 gap-3">
+		<Card ref={chartRef} className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
-				<div className="flex items-center gap-2">
-					<HistoryButton promptName={promptName} promptId={promptId} brandId={brandId} />
-					<CardTitle className="text-sm">{promptName}</CardTitle>
-				</div>
-				<div className="flex items-center gap-2">
-					{lastBrandVisibility !== null && (
-						<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
-							{lastBrandVisibility}% Visibility
-						</Badge>
-					)}
-					<OptimizeButton
-						promptName={promptName}
-						promptId={promptId}
-						brandId={brandId}
-						webSearchEnabled={webSearchEnabled}
-						selectedModel={selectedModel}
-						availableModels={availableModels}
-						webQueryMapping={webQueryMapping || {}}
-						modelWebQueryMappings={modelWebQueryMappings || {}}
-					/>
-				</div>
+				<CardTitle className="text-sm">{promptName}</CardTitle>
+				{lastBrandVisibility !== null && (
+					<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
+						{lastBrandVisibility}% Visibility
+					</Badge>
+				)}
 			</CardHeader>
 			<Separator className="py-0 my-0" />
 			<CardContent className="pl-0 pr-6">
@@ -213,6 +204,21 @@ export function PromptChart({
 					chartType={chartType}
 				/>
 			</CardContent>
+			<div className="print:hidden">
+				<ChartActionsFooter 
+					promptId={promptId} 
+					brandId={brandId}
+					promptName={promptName}
+					brandName={brand?.name}
+					onDownload={handleDownload}
+					isDownloading={isDownloading}
+					webSearchEnabled={webSearchEnabled}
+					selectedModel={selectedModel}
+					availableModels={availableModels}
+					webQueryMapping={webQueryMapping || {}}
+					modelWebQueryMappings={modelWebQueryMappings || {}}
+				/>
+			</div>
 		</Card>
 	);
 }

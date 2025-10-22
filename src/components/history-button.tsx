@@ -46,10 +46,10 @@ export function HistoryButton({
 	};
 
 	const createSimpleButton = (promptId: string) => (
-		<Button size="sm" variant="secondary" className="text-xs cursor-pointer p-0 m-0 size-6" asChild>
+		<Button size="sm" variant="secondary" className="text-xs cursor-pointer h-6 flex items-center px-2" asChild>
 			<a href={createHistoryUrl(promptId)}>
-				<GoStack size={12} className="size-3" />
-				<span className="sr-only">History</span>
+				<GoStack className="size-3 mr-0.5" />
+				<span className="text-xs font-normal">View Details</span>
 			</a>
 		</Button>
 	);
@@ -89,9 +89,9 @@ export function HistoryButton({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button size="sm" variant="secondary" className="text-xs cursor-pointer p-0 m-0 size-6">
-					<GoStack size={12} className="size-3" />
-					<span className="sr-only">History</span>
+				<Button size="sm" variant="secondary" className="text-xs cursor-pointer h-6 flex items-center px-2">
+					<GoStack className="size-3 mr-1" />
+					<span className="text-xs font-normal">View Details</span>
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className={isMultiMode ? "w-100" : "w-48"}>

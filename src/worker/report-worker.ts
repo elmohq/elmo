@@ -14,7 +14,7 @@ import {
 	getCompetitors,
 	getKeywords,
 	getPersonas,
-	createPromptsDataForReports,
+	generateCandidatePromptsForReports,
 	type AnalyzeWebsiteResult,
 	type CompetitorResult,
 	type KeywordResult,
@@ -26,6 +26,11 @@ import {
 const anthropic = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY!,
 });
+
+// Report constants
+const TARGET_PROMPTS_COUNT = 70;
+const MIN_BRAND_MENTIONS = 14;
+const MAX_BRAND_MENTIONS = 28;
 
 export interface ReportJobData {
 	reportId: string;
@@ -183,6 +188,110 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 		console.error("Error running DataForSEO search:", error);
 		throw error;
 	}
+}
+
+// Function to check if a prompt contains the brand name or domain directly
+function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
+	const promptLower = promptValue.toLowerCase();
+	const brandNameLower = brandName.toLowerCase();
+	
+	// Extract domain from brandWebsite
+	try {
+		const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
+		const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+		const domainWithoutTld = domain.split('.')[0];
+		
+		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
+	} catch (error) {
+		return promptLower.includes(brandNameLower);
+	}
+}
+
+// Function to select optimal prompts from candidates based on test results
+function selectOptimalPrompts(
+	candidateResults: Array<{
+		promptValue: string;
+		brandedPrompt: boolean;
+		runs: Array<{
+			brandMentioned: boolean;
+			competitorsMentioned: string[];
+		}>;
+	}>,
+	brandName: string,
+	brandWebsite: string,
+): string[] {
+	// Calculate metrics for each candidate
+	const scoredCandidates = candidateResults.map((candidate) => {
+		const totalRuns = candidate.runs.length;
+		const brandMentionCount = candidate.runs.filter((r) => r.brandMentioned).length;
+		const competitorMentionCount = candidate.runs.filter((r) => r.competitorsMentioned.length > 0).length;
+		
+		const brandMentionRate = totalRuns > 0 ? brandMentionCount / totalRuns : 0;
+		const competitorMentionRate = totalRuns > 0 ? competitorMentionCount / totalRuns : 0;
+		
+		// Check if prompt is actually branded (contains brand name/domain)
+		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite);
+		
+		return {
+			promptValue: candidate.promptValue,
+			brandedPrompt: candidate.brandedPrompt || isActuallyBranded,
+			brandMentionRate,
+			competitorMentionRate,
+			hasBrandMention: brandMentionCount > 0,
+			hasCompetitorMention: competitorMentionCount > 0,
+		};
+	});
+	
+	// Separate branded and non-branded prompts
+	const nonBrandedPrompts = scoredCandidates.filter((c) => !c.brandedPrompt);
+	const brandedPrompts = scoredCandidates.filter((c) => c.brandedPrompt);
+	
+	// Sort non-branded by: 1) has brand mention, 2) competitor mention rate, 3) brand mention rate
+	nonBrandedPrompts.sort((a, b) => {
+		if (a.hasBrandMention !== b.hasBrandMention) {
+			return a.hasBrandMention ? -1 : 1;
+		}
+		if (Math.abs(a.competitorMentionRate - b.competitorMentionRate) > 0.1) {
+			return b.competitorMentionRate - a.competitorMentionRate;
+		}
+		return b.brandMentionRate - a.brandMentionRate;
+	});
+	
+	// Sort branded by: 1) brand mention rate, 2) competitor mention rate
+	brandedPrompts.sort((a, b) => {
+		if (Math.abs(a.brandMentionRate - b.brandMentionRate) > 0.1) {
+			return b.brandMentionRate - a.brandMentionRate;
+		}
+		return b.competitorMentionRate - a.competitorMentionRate;
+	});
+	
+	// Select prompts to meet brand mention requirements
+	const selectedPrompts: string[] = [];
+	let currentBrandMentions = 0;
+	
+	// First, add non-branded prompts with brand mentions
+	for (const prompt of nonBrandedPrompts) {
+		if (selectedPrompts.length >= TARGET_PROMPTS_COUNT) break;
+		
+		selectedPrompts.push(prompt.promptValue);
+		if (prompt.hasBrandMention) {
+			currentBrandMentions++;
+		}
+	}
+	
+	// If we need more prompts or more brand mentions, add branded prompts
+	while (selectedPrompts.length < TARGET_PROMPTS_COUNT && brandedPrompts.length > 0) {
+		const prompt = brandedPrompts.shift()!;
+		selectedPrompts.push(prompt.promptValue);
+		if (prompt.hasBrandMention) {
+			currentBrandMentions++;
+		}
+	}
+	
+	// Log selection summary
+	console.log(`Selected ${selectedPrompts.length} prompts with estimated ${currentBrandMentions} brand mentions`);
+	
+	return selectedPrompts;
 }
 
 // Function to check for brand and competitor mentions
@@ -382,65 +491,126 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		const keywords = await getKeywords(brandWebsite, websiteAnalysis.products);
 		job.updateProgress(35);
 
-		// Step 4: Get personas
+		// Step 4: Get personas (not used directly for prompt generation anymore, but kept for compatibility)
 		job.log(`Getting personas for products and website`);
 		const personaGroups = await getPersonas(websiteAnalysis.products, brandWebsite);
-		job.updateProgress(45);
+		job.updateProgress(35);
 
-		// Step 5: Create prompt data
-		job.log(`Creating prompts from wizard data`);
-		const { prompts } = createPromptsDataForReports({
-			brandId: reportId, // Use reportId as temporary brandId for data structure
-			products: websiteAnalysis.products,
+		// Step 5: Generate candidate prompts using Claude
+		job.log(`Generating candidate prompts using Claude`);
+		const candidatePrompts = await generateCandidatePromptsForReports(
+			brandName,
+			brandWebsite,
+			websiteAnalysis.products,
 			competitors,
-			personaGroups,
-			keywords,
-			customPrompts: [], // No custom prompts for reports
-		});
-		job.updateProgress(50);
+		);
+		
+		if (candidatePrompts.length === 0) {
+			job.log(`Failed to generate candidate prompts, report cannot continue`);
+			throw new Error("Failed to generate candidate prompts");
+		}
+		
+		job.log(`Generated ${candidatePrompts.length} candidate prompts`);
+		job.updateProgress(40);
 
-		// Step 6: Run prompts
-		job.log(`Running ${prompts.length} prompts, 5 times each`);
-		const promptRuns: PromptRunResult[] = [];
-		const totalPromptRuns = prompts.length;
-		let completedPromptRuns = 0;
+		// Step 6: Run all candidate prompts to test them
+		job.log(`Testing ${candidatePrompts.length} candidate prompts`);
+		const candidateResults: Array<{
+			promptValue: string;
+			brandedPrompt: boolean;
+			runs: Array<{
+				modelGroup: "openai" | "anthropic" | "google";
+				model: string;
+				webSearchEnabled: boolean;
+				rawOutput: any;
+				webQueries: string[];
+				textContent: string;
+				brandMentioned: boolean;
+				competitorsMentioned: string[];
+			}>;
+		}> = [];
+		
+		const totalCandidates = candidatePrompts.length;
+		let completedCandidates = 0;
 
-		// Run prompts in smaller batches to avoid overwhelming the APIs
+		// Run candidates in batches
 		const batchSize = 10;
-		for (let i = 0; i < prompts.length; i += batchSize) {
-			const batch = prompts.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (prompt) => {
+		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
+			const batch = candidatePrompts.slice(i, i + batchSize);
+			const batchPromises = batch.map(async (candidate) => {
 				try {
-					const result = await runPrompt(prompt.value, brandName, brandWebsite, competitors, job);
-					completedPromptRuns++;
-					const progress = 50 + (completedPromptRuns / totalPromptRuns) * 45; // 50-95% for prompt runs
+					const result = await runPrompt(candidate.prompt, brandName, brandWebsite, competitors, job);
+					completedCandidates++;
+					const progress = 40 + (completedCandidates / totalCandidates) * 30; // 40-70% for testing
 					job.updateProgress(progress);
-					return result;
+					return {
+						promptValue: result.promptValue,
+						brandedPrompt: candidate.brandedPrompt,
+						runs: result.runs,
+					};
 				} catch (error) {
 					job.log(
-						`Error running prompt "${prompt.value}": ${error instanceof Error ? error.message : "Unknown error"}`,
+						`Error testing candidate "${candidate.prompt}": ${error instanceof Error ? error.message : "Unknown error"}`,
 					);
-					completedPromptRuns++;
-					const progress = 50 + (completedPromptRuns / totalPromptRuns) * 45;
+					completedCandidates++;
+					const progress = 40 + (completedCandidates / totalCandidates) * 30;
 					job.updateProgress(progress);
-					// Return empty result for failed prompts
 					return {
-						promptValue: prompt.value,
+						promptValue: candidate.prompt,
+						brandedPrompt: candidate.brandedPrompt,
 						runs: [],
 					};
 				}
 			});
 
 			const batchResults = await Promise.all(batchPromises);
-			promptRuns.push(...batchResults);
+			candidateResults.push(...batchResults);
 
-			// Small delay between batches to be respectful to APIs
-			if (i + batchSize < prompts.length) {
+			// Small delay between batches
+			if (i + batchSize < candidatePrompts.length) {
 				await new Promise((resolve) => setTimeout(resolve, 1000));
 			}
 		}
 
+		job.updateProgress(70);
+
+		// Step 7: Select optimal prompts from candidates
+		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
+		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandWebsite);
+		job.updateProgress(75);
+
+		// Step 8: Re-run selected prompts for final data
+		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
+		const promptRuns: PromptRunResult[] = [];
+		const totalFinalRuns = selectedPromptValues.length;
+		let completedFinalRuns = 0;
+
+		// Get the results for selected prompts from candidateResults
+		const selectedPromptResults = candidateResults.filter((result) =>
+			selectedPromptValues.includes(result.promptValue),
+		);
+
+		// Use existing results instead of re-running
+		for (const result of selectedPromptResults) {
+			promptRuns.push({
+				promptValue: result.promptValue,
+				runs: result.runs,
+			});
+			completedFinalRuns++;
+			const progress = 75 + (completedFinalRuns / totalFinalRuns) * 20; // 75-95%
+			job.updateProgress(progress);
+		}
+
 		job.updateProgress(95);
+
+		// Create prompts data structure for storage
+		const prompts: PromptData[] = selectedPromptValues.map((promptValue) => ({
+			brandId: reportId,
+			groupCategory: null,
+			groupPrefix: null,
+			value: promptValue,
+			enabled: true,
+		}));
 
 		// Create final report data
 		const reportData: ReportData = {

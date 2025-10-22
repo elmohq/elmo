@@ -208,16 +208,40 @@ function getVisibilityBackgroundColor(value: number): string {
 	return "bg-rose-50";
 }
 
+// Check if a prompt is branded (contains brand name or domain)
+function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
+	const promptLower = promptValue.toLowerCase();
+	const brandNameLower = brandName.toLowerCase();
+	
+	try {
+		const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
+		const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+		const domainWithoutTld = domain.split('.')[0];
+		
+		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
+	} catch (error) {
+		return promptLower.includes(brandNameLower);
+	}
+}
+
 // Types for display items
 type DisplayItem = {
 	type: "individual" | "group";
 	mentionScore: number;
 	brandVisibility: number;
 	hasRuns: boolean;
+	isBranded: boolean;
+	hasCompetitorMentions: boolean;
 	data: MockPrompt | { groupKey: string; prompts: MockPrompt[] };
 };
 
 export default async function ReportRenderPage({ params }: { params: Promise<{ reportId: string }> }) {
+	// Check if user has report generator access
+	const hasAccess = await hasReportGeneratorAccess();
+	if (!hasAccess) {
+		notFound();
+	}
+
 	const { reportId } = await params;
 
 	// Validate reportId
@@ -346,12 +370,16 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		const hasRuns = runs.length > 0;
 		const mentionScore = calculatePromptMentionScore(prompt.id, mockPromptRuns, parsedReportData.competitors);
 		const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
+		const isBranded = isPromptBranded(prompt.value, report.brandName, report.brandWebsite);
+		const hasCompetitorMentions = runs.some((run) => run.competitorsMentioned && run.competitorsMentioned.length > 0);
 
 		return {
 			type: "individual" as const,
 			mentionScore,
 			brandVisibility,
 			hasRuns,
+			isBranded,
+			hasCompetitorMentions,
 			data: prompt,
 		};
 	});
@@ -364,12 +392,17 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		const hasRuns = allRunsForGroup.length > 0;
 		const mentionScore = calculateGroupMentionScore(groupPrompts, mockPromptRuns, parsedReportData.competitors);
 		const brandVisibility = calculateGroupBrandVisibility(groupPrompts, mockPromptRuns);
+		// A group is branded if any of its prompts are branded
+		const isBranded = groupPrompts.some((prompt) => isPromptBranded(prompt.value, report.brandName, report.brandWebsite));
+		const hasCompetitorMentions = allRunsForGroup.some((run) => run.competitorsMentioned && run.competitorsMentioned.length > 0);
 
 		return {
 			type: "group" as const,
 			mentionScore,
 			brandVisibility,
 			hasRuns,
+			isBranded,
+			hasCompetitorMentions,
 			data: { groupKey, prompts: groupPrompts },
 		};
 	});
@@ -423,10 +456,72 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		}
 	};
 
-	// Filter items with visibility data and limit to top 4
+	// Filter items with visibility data
 	const itemsWithVisibility = allDisplayItems.filter(hasSimpleVisibilityData);
-	const topDisplayItems = itemsWithVisibility.slice(0, 4);
-	const remainingItems = itemsWithVisibility.slice(4);
+	
+	// Smart selection: prefer non-branded prompts with both brand and competitor mentions
+	const selectedDisplayItems: DisplayItem[] = [];
+	const brandedItems: DisplayItem[] = [];
+	const nonBrandedItems: DisplayItem[] = [];
+	
+	// Separate branded and non-branded items
+	for (const item of itemsWithVisibility) {
+		if (item.isBranded) {
+			brandedItems.push(item);
+		} else {
+			nonBrandedItems.push(item);
+		}
+	}
+	
+	// Sort non-branded items: prioritize those with both brand and competitor mentions
+	nonBrandedItems.sort((a, b) => {
+		// First: items with brand visibility
+		const aHasBrand = a.brandVisibility > 0;
+		const bHasBrand = b.brandVisibility > 0;
+		if (aHasBrand !== bHasBrand) return aHasBrand ? -1 : 1;
+		
+		// Second: items with competitor mentions
+		if (a.hasCompetitorMentions !== b.hasCompetitorMentions) {
+			return a.hasCompetitorMentions ? -1 : 1;
+		}
+		
+		// Third: by mention score
+		if (Math.abs(a.mentionScore - b.mentionScore) > 0.1) {
+			return b.mentionScore - a.mentionScore;
+		}
+		
+		// Fourth: by brand visibility
+		return b.brandVisibility - a.brandVisibility;
+	});
+	
+	// Sort branded items by brand visibility and competitor mentions
+	brandedItems.sort((a, b) => {
+		if (Math.abs(a.brandVisibility - b.brandVisibility) > 5) {
+			return b.brandVisibility - a.brandVisibility;
+		}
+		return b.mentionScore - a.mentionScore;
+	});
+	
+	// Select up to 3 non-branded items first
+	selectedDisplayItems.push(...nonBrandedItems.slice(0, 3));
+	
+	// Check if first 3 have any brand mentions
+	const hasBrandMentionInFirst3 = selectedDisplayItems.some((item) => item.brandVisibility > 0);
+	
+	// If no brand mentions in first 3, add one branded item. Otherwise add best remaining item.
+	if (!hasBrandMentionInFirst3 && brandedItems.length > 0) {
+		selectedDisplayItems.push(brandedItems[0]);
+	} else if (selectedDisplayItems.length < 4) {
+		// Add the next best item (branded or non-branded)
+		const remainingNonBranded = nonBrandedItems.slice(selectedDisplayItems.length);
+		const allRemaining = [...remainingNonBranded, ...brandedItems];
+		if (allRemaining.length > 0) {
+			selectedDisplayItems.push(allRemaining[0]);
+		}
+	}
+	
+	const topDisplayItems = selectedDisplayItems.slice(0, 4);
+	const remainingItems = itemsWithVisibility.filter((item) => !selectedDisplayItems.includes(item));
 
 	return (
 		<div className="max-w-4xl mx-auto p-6 print:pt-8">
@@ -782,7 +877,7 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 			</div>
 
 			{/* Call to Action Section */}
-			<div className="mt-8 print:mt-0 print:break-before-page print:flex print:items-center print:justify-center print:py-48">
+			<div className="mt-8 print:mt-0 print:break-before-page print:flex print:items-center print:justify-center print:mt-48">
 				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:w-full">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>

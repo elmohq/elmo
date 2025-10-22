@@ -7,11 +7,6 @@ export async function middleware(request: NextRequest) {
 	try {
 		const { pathname } = request.nextUrl;
 
-		// Allow /reports/render/* routes without authentication
-		if (pathname.startsWith("/reports/render/")) {
-			return NextResponse.next();
-		}
-
 		// Allow public access to API documentation
 		if (pathname.startsWith("/api/v1/docs") || pathname.startsWith("/api/v1/openapi.json")) {
 			return NextResponse.next();

@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Report } from "@/lib/db/schema";
 import FullPageCard from "@/components/full-page-card";
 import { NavUserNoSidebar } from "@/components/nav-user-no-sidebar";
+import Link from "next/link";
 
 interface ReportFormData {
 	brandName: string;
@@ -42,8 +43,6 @@ export default function ReportPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitError, setSubmitError] = useState("");
 	const [success, setSuccess] = useState("");
-	const [downloadError, setDownloadError] = useState("");
-	const [downloadingReportIds, setDownloadingReportIds] = useState<Set<string>>(new Set());
 	const [formData, setFormData] = useState<ReportFormData>({
 		brandName: "",
 		brandWebsite: "",
@@ -81,50 +80,6 @@ export default function ReportPage() {
 		}
 	};
 
-	const handleDownloadPDF = async (reportId: string, brandName: string) => {
-		if (downloadingReportIds.has(reportId)) return; // Prevent duplicate downloads of same report
-
-		setDownloadingReportIds((prev) => new Set([...prev, reportId]));
-		try {
-			setDownloadError("");
-			const response = await fetch(`/api/reports/download/${reportId}`, {
-				method: "GET",
-			});
-
-			if (!response.ok) {
-				if (response.status === 403) {
-					setDownloadError("Access denied. You don't have permission to download reports.");
-				} else {
-					const errorData = await response.json();
-					setDownloadError(errorData.error || "Failed to download report");
-				}
-				return;
-			}
-
-			// Create blob from response
-			const blob = await response.blob();
-			const url = window.URL.createObjectURL(blob);
-
-			// Create temporary download link
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = `${brandName.replace(/[^a-zA-Z0-9]/g, "_")}_report.pdf`;
-			document.body.appendChild(link);
-			link.click();
-
-			// Cleanup
-			document.body.removeChild(link);
-			window.URL.revokeObjectURL(url);
-		} catch (err) {
-			setDownloadError("Failed to download report");
-		} finally {
-			setDownloadingReportIds((prev) => {
-				const newSet = new Set(prev);
-				newSet.delete(reportId);
-				return newSet;
-			});
-		}
-	};
 
 	const getStatusBadgeVariant = (status: string) => {
 		switch (status) {
@@ -204,13 +159,6 @@ export default function ReportPage() {
 						</Card>
 					)}
 
-					{/* Display download errors */}
-					{downloadError && (
-						<div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
-							<p className="text-sm text-destructive">{downloadError}</p>
-						</div>
-					)}
-
 					{isLoading ? (
 						<div className="flex items-center justify-center py-8">
 							<div className="flex items-center space-x-2">
@@ -238,25 +186,12 @@ export default function ReportPage() {
 											</div>
 											<div className="ml-4">
 												{report.status === "completed" ? (
-													<Button
-														variant="default"
-														size="sm"
-														onClick={() => handleDownloadPDF(report.id, report.brandName)}
-														className="cursor-pointer h-6 px-2 text-xs"
-														disabled={downloadingReportIds.has(report.id)}
-													>
-														{downloadingReportIds.has(report.id) ? (
-															<>
-																<Loader2 className="w-3 h-3 mr-1 animate-spin" />
-																Generating...
-															</>
-														) : (
-															<>
-																<Save className="w-3 h-3 mr-1" />
-																Download
-															</>
-														)}
-													</Button>
+													<Link href={`/reports/render/${report.id}`} target="_blank" rel="noopener noreferrer">
+														<Button variant="default" size="sm" className="cursor-pointer h-6 px-2 text-xs">
+															<ExternalLink className="size-3 mr-0.5" />
+															View Report
+														</Button>
+													</Link>
 												) : (
 													<Badge variant={getStatusBadgeVariant(report.status)} className="text-xs">
 														{report.status.charAt(0).toUpperCase() + report.status.slice(1)}

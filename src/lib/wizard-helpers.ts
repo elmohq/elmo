@@ -752,6 +752,111 @@ Only include suffixes that clearly fit into strategic categories. Ignore overly 
 	return personaGroups;
 }
 
+// Generate candidate prompts for reports using Claude
+export async function generateCandidatePromptsForReports(
+	brandName: string,
+	brandWebsite: string,
+	products: string[],
+	competitors: CompetitorResult[],
+): Promise<{ prompt: string; brandedPrompt: boolean }[]> {
+	const productList = products.join(", ");
+	const competitorNames = competitors.map((c) => c.name).join(", ");
+	
+	// Get website excerpt for additional context
+	const websiteExcerpt = await getWebsiteExcerpt(brandWebsite);
+	const excerptContext = websiteExcerpt
+		? `\n\nHere is an excerpt of the first 200 lines of text from ${brandWebsite}:\n\n${websiteExcerpt}\n\n`
+		: "\n\n";
+
+	const prompt = `I want to create a set of 70 simple prompts related to the brand ${brandName} (${brandWebsite}).
+Website excerpt:
+---
+${excerptContext}
+---
+
+The goal is for 14-28 of these prompts, when evaluated in ChatGPT/Claude/similar, to mention the brand in the response. Ideally all of these prompts should mention at least one major competitor of ${brandName}, like ${competitorNames}, and the prompts should talk about the type of products/services ${brandName} offers (${productList}). The prompts should generally be based on what someone might ask as a purchasing decision ("best X", "best X for Y", "good X alternative", "where to buy X", etc).
+
+The prompts should be pretty short and simple, and not structured as full sentences. Most prompts should NOT include competitor names directly. Use lowercase for the brand name when it appears in prompts.
+
+Output these in a CSV table with a header row. The first column should be the text of the prompt, the second % confidence the brand ${brandName} will be mentioned in response, and the third % confidence one of ${brandName}'s major competitors will be mentioned.
+
+After the 70 prompts, also generate 14 "fallback" queries that contain the brand's name directly (like "best ${brandName.toLowerCase()} products", "${brandName.toLowerCase()} alternatives", "where to buy from ${brandName.toLowerCase()}", etc). These should be simple branded prompts that are guaranteed to get responses mentioning the brand.
+
+Example format:
+prompt,brand_confidence,competitor_confidence
+best affordable shoes,45,85
+${brandName.toLowerCase()} best products,95,60`;
+
+	try {
+		const response = await anthropicClient.messages.create({
+			model: "claude-sonnet-4-20250514",
+			max_tokens: 8000,
+			messages: [
+				{
+					role: "user",
+					content: prompt,
+				},
+			],
+		});
+
+		// Extract text content from all text blocks in response
+		const textBlocks = response.content.filter((block) => block.type === "text");
+		const allTextContent = textBlocks.map((block) => block.text).join("\n");
+
+		// Parse CSV output
+		const lines = allTextContent.split("\n").filter((line) => line.trim().length > 0);
+		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = [];
+
+		// Helper to check if a prompt is branded
+		const checkIfBranded = (promptText: string): boolean => {
+			const promptLower = promptText.toLowerCase();
+			const brandNameLower = brandName.toLowerCase();
+			
+			try {
+				const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
+				const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+				const domainWithoutTld = domain.split('.')[0];
+				
+				return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
+			} catch (error) {
+				return promptLower.includes(brandNameLower);
+			}
+		};
+
+		// Skip header row and parse each line
+		for (let i = 1; i < lines.length; i++) {
+			const line = lines[i].trim();
+			if (!line) continue;
+
+			// Simple CSV parsing (handles basic cases)
+			const parts = line.split(",");
+			if (parts.length >= 1) {
+				const promptText = parts[0].trim();
+
+				if (promptText && promptText !== "prompt") {
+					candidatePrompts.push({
+						prompt: promptText,
+						brandedPrompt: checkIfBranded(promptText),
+					});
+				}
+			}
+		}
+
+		if (candidatePrompts.length === 0) {
+			throw new Error("Failed to generate any candidate prompts from Claude response");
+		}
+
+		console.log(
+			`Generated ${candidatePrompts.length} candidate prompts (${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
+		);
+
+		return candidatePrompts;
+	} catch (error) {
+		console.error("Error generating candidate prompts:", error);
+		throw error; // Re-throw to propagate the error
+	}
+}
+
 // Create prompts from wizard data (without database operations)
 export function createPromptsData(data: {
 	brandId: string;

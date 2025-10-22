@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { Badge } from "./ui/badge";
 import { BaseChartPrint } from "./base-chart-print";
+import { ChartDownloadFooter } from "./chart-download-footer";
+import { useChartDownload } from "@/hooks/use-chart-download";
 import type { Brand, Competitor } from "@/lib/db/schema";
 import {
 	LookbackPeriod,
@@ -43,6 +45,9 @@ export function PromptChartPrint({
 	competitors,
 	promptRuns,
 }: PromptChartPrintProps) {
+	const fileName = `${brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
+	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
+
 	// Filter prompt runs for this specific prompt
 	const promptSpecificRuns = promptRuns?.filter((run) => run.promptId === promptId) || [];
 
@@ -79,7 +84,7 @@ export function PromptChartPrint({
 
 	if (hasNoRuns) {
 		return (
-			<Card className="py-3 gap-3 print:shadow-none print:border">
+			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border">
 				<CardHeader className="flex justify-between items-center px-3">
 					<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
 				</CardHeader>
@@ -91,6 +96,7 @@ export function PromptChartPrint({
 						</span>
 					</div>
 				</CardContent>
+				<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 			</Card>
 		);
 	}
@@ -98,7 +104,7 @@ export function PromptChartPrint({
 	// Show "No brands found" message when there's no visibility data
 	if (!hasVisibilityData) {
 		return (
-			<Card className="py-3 gap-3 print:shadow-none print:border">
+			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border">
 				<CardHeader className="flex justify-between items-center px-3">
 					<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
 				</CardHeader>
@@ -110,12 +116,13 @@ export function PromptChartPrint({
 						</span>
 					</div>
 				</CardContent>
+				<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 			</Card>
 		);
 	}
 
 	return (
-		<Card className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
+		<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
 			<CardHeader className="flex justify-between items-center px-3">
 				<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
 				<div className="flex items-center gap-2">
@@ -133,6 +140,7 @@ export function PromptChartPrint({
 			<CardContent className="p-0">
 				<BaseChartPrint data={chartData} brand={brand} competitors={selectedCompetitors} />
 			</CardContent>
+			<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 		</Card>
 	);
 }

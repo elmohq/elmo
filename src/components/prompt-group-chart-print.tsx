@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Separator } from "./ui/separator";
 import { BaseChartPrint } from "./base-chart-print";
+import { ChartDownloadFooter } from "./chart-download-footer";
+import { useChartDownload } from "@/hooks/use-chart-download";
 import type { Brand, Competitor } from "@/lib/db/schema";
 import { LookbackPeriod, calculateGroupVisibilityData, selectCompetitorsToDisplay } from "@/lib/chart-utils";
 
@@ -46,6 +48,9 @@ export function PromptGroupChartPrint({
 	competitors,
 	promptRuns,
 }: PromptGroupChartPrintProps) {
+	const fileName = `${brand.name}-${groupName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
+	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
+
 	// Check if we have no prompt runs for any prompts in this group
 	const promptIds = prompts.map((p) => p.id);
 	const groupPromptRuns = promptRuns?.filter((run) => promptIds.includes(run.promptId)) || [];
@@ -80,7 +85,7 @@ export function PromptGroupChartPrint({
 
 	if (hasNoRuns) {
 		return (
-			<Card className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
+			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
 				<CardHeader className="flex justify-between items-center px-3">
 					<CardTitle className="text-sm print:text-xs">
 						{prompts[0]?.groupPrefix}{" "}
@@ -99,6 +104,7 @@ export function PromptGroupChartPrint({
 						</span>
 					</div>
 				</CardContent>
+				<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 			</Card>
 		);
 	}
@@ -106,7 +112,7 @@ export function PromptGroupChartPrint({
 	// Show "No brands found" message when there's no visibility data for any prompts in the group
 	if (!hasVisibilityData) {
 		return (
-			<Card className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
+			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
 				<CardHeader className="flex justify-between items-center px-3">
 					<CardTitle className="text-sm print:text-xs">
 						{prompts[0]?.groupPrefix}{" "}
@@ -125,12 +131,13 @@ export function PromptGroupChartPrint({
 						</span>
 					</div>
 				</CardContent>
+				<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 			</Card>
 		);
 	}
 
 	return (
-		<Card className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
+		<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
 			<CardHeader className="flex justify-between items-center px-3">
 				<CardTitle className="text-sm print:text-xs">
 					{prompts[0]?.groupPrefix}{" "}
@@ -158,6 +165,7 @@ export function PromptGroupChartPrint({
 					))}
 				</div>
 			</CardContent>
+			<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 		</Card>
 	);
 }
