@@ -778,7 +778,7 @@ The goal is for 14-28 of these prompts, when evaluated in ChatGPT/Claude/similar
 
 The prompts should be pretty short and simple, and not structured as full sentences. Most prompts should NOT include competitor names directly. Use lowercase for the brand name when it appears in prompts.
 
-Output these in a CSV table with a header row. The first column should be the text of the prompt, the second % confidence the brand ${brandName} will be mentioned in response, and the third % confidence one of ${brandName}'s major competitors will be mentioned.
+Output these in a CSV table with a header row. The first column should be the text of the prompt, the second % confidence the brand ${brandName} will be mentioned in response, and the third % confidence one of ${brandName}'s major competitors will be mentioned. Do not output any other surrounding text or metadata.
 
 After the 70 prompts, also generate 14 "fallback" queries that contain the brand's name directly (like "best ${brandName.toLowerCase()} products", "${brandName.toLowerCase()} alternatives", "where to buy from ${brandName.toLowerCase()}", etc). These should be simple branded prompts that are guaranteed to get responses mentioning the brand.
 
