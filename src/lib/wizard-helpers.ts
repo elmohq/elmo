@@ -988,7 +988,7 @@ export function createPromptsDataForReports(data: {
 				brandId,
 				groupCategory: null,
 				groupPrefix: null,
-				value: `best ${competitor.name} alternative`,
+				value: `best ${competitor.name.toLowerCase()} alternative`,
 				enabled: true,
 			});
 		}
