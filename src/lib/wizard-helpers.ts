@@ -854,7 +854,7 @@ ${brandName.toLowerCase()} best products,95,60`;
 				!promptText.match(/^```/)
 			) {
 				candidatePrompts.push({
-					prompt: promptText,
+					prompt: promptText.toLowerCase(),
 					brandedPrompt: checkIfBranded(promptText),
 				});
 			}
