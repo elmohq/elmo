@@ -36,6 +36,7 @@ export interface ReportJobData {
 	reportId: string;
 	brandName: string;
 	brandWebsite: string;
+	manualPrompts?: string[];
 }
 
 interface PromptRunResult {
@@ -436,9 +437,15 @@ async function runPrompt(
 
 // Main report worker function
 export async function processReportJob(job: Job<ReportJobData>) {
-	const { reportId, brandName, brandWebsite } = job.data;
+	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
+	
+	// Determine if we're using manual prompts
+	const useManualPrompts = manualPrompts && manualPrompts.length > 0;
+	if (useManualPrompts) {
+		job.log(`Using ${manualPrompts.length} manual prompts - skipping auto-generation`);
+	}
 
 	try {
 		// Update report status to processing
@@ -486,32 +493,55 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		const competitors = await getCompetitors(websiteAnalysis.products, brandWebsite);
 		job.updateProgress(25);
 
-		// Step 3: Get keywords
-		job.log(`Getting keywords for domain and products`);
-		const keywords = await getKeywords(brandWebsite, websiteAnalysis.products);
-		job.updateProgress(35);
-
-		// Step 4: Get personas (not used directly for prompt generation anymore, but kept for compatibility)
-		job.log(`Getting personas for products and website`);
-		const personaGroups = await getPersonas(websiteAnalysis.products, brandWebsite);
-		job.updateProgress(35);
-
-		// Step 5: Generate candidate prompts using Claude
-		job.log(`Generating candidate prompts using Claude`);
-		const candidatePrompts = await generateCandidatePromptsForReports(
-			brandName,
-			brandWebsite,
-			websiteAnalysis.products,
-			competitors,
-		);
-		
-		if (candidatePrompts.length === 0) {
-			job.log(`Failed to generate candidate prompts, report cannot continue`);
-			throw new Error("Failed to generate candidate prompts");
+		// Step 3: Get keywords (only if not using manual prompts)
+		let keywords: KeywordResult[] = [];
+		if (!useManualPrompts) {
+			job.log(`Getting keywords for domain and products`);
+			keywords = await getKeywords(brandWebsite, websiteAnalysis.products);
+			job.updateProgress(35);
+		} else {
+			job.updateProgress(35);
 		}
+
+		// Step 4: Get personas (only if not using manual prompts)
+		let personaGroups: PersonaGroup[] = [];
+		if (!useManualPrompts) {
+			job.log(`Getting personas for products and website`);
+			personaGroups = await getPersonas(websiteAnalysis.products, brandWebsite);
+			job.updateProgress(35);
+		} else {
+			job.updateProgress(35);
+		}
+
+		// Step 5: Generate or use provided prompts
+		let candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
 		
-		job.log(`Generated ${candidatePrompts.length} candidate prompts`);
-		job.updateProgress(40);
+		if (useManualPrompts) {
+			// Use manual prompts directly
+			job.log(`Using ${manualPrompts.length} manual prompts`);
+			candidatePrompts = manualPrompts.map(prompt => ({
+				prompt: prompt.toLowerCase().trim(),
+				brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
+			}));
+			job.updateProgress(40);
+		} else {
+			// Generate candidate prompts using Claude
+			job.log(`Generating candidate prompts using Claude`);
+			candidatePrompts = await generateCandidatePromptsForReports(
+				brandName,
+				brandWebsite,
+				websiteAnalysis.products,
+				competitors,
+			);
+			
+			if (candidatePrompts.length === 0) {
+				job.log(`Failed to generate candidate prompts, report cannot continue`);
+				throw new Error("Failed to generate candidate prompts");
+			}
+			
+			job.log(`Generated ${candidatePrompts.length} candidate prompts`);
+			job.updateProgress(40);
+		}
 
 		// Step 6: Run all candidate prompts to test them
 		job.log(`Testing ${candidatePrompts.length} candidate prompts`);

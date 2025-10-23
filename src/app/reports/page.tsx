@@ -5,6 +5,7 @@ import useSWR, { mutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
@@ -16,6 +17,7 @@ import Link from "next/link";
 interface ReportFormData {
 	brandName: string;
 	brandWebsite: string;
+	manualPrompts: string;
 }
 
 const fetcher = async (url: string) => {
@@ -46,6 +48,7 @@ export default function ReportPage() {
 	const [formData, setFormData] = useState<ReportFormData>({
 		brandName: "",
 		brandWebsite: "",
+		manualPrompts: "",
 	});
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -70,7 +73,7 @@ export default function ReportPage() {
 			}
 
 			setSuccess("Report request submitted successfully!");
-			setFormData({ brandName: "", brandWebsite: "" });
+			setFormData({ brandName: "", brandWebsite: "", manualPrompts: "" });
 			// Trigger immediate revalidation of the reports list
 			mutate("/api/reports");
 		} catch (err) {
@@ -135,6 +138,30 @@ export default function ReportPage() {
 									disabled={isSubmitting}
 								/>
 							</div>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="manualPrompts">
+								Manual Prompts <span className="text-muted-foreground font-normal">(Optional)</span>
+							</Label>
+							<Textarea
+								id="manualPrompts"
+								placeholder="Enter one prompt per line, up to 50"
+								value={formData.manualPrompts}
+								onChange={(e) => setFormData({ ...formData, manualPrompts: e.target.value })}
+								disabled={isSubmitting}
+								rows={6}
+								className="font-mono text-sm"
+							/>
+							<p className="text-xs text-muted-foreground">
+								{formData.manualPrompts.trim() ? (
+									<>
+										<strong>Note:</strong> Prompts will NOT be auto-generated. Using your {formData.manualPrompts.trim().split('\n').filter(line => line.trim()).length} manual prompt{formData.manualPrompts.trim().split('\n').filter(line => line.trim()).length !== 1 ? 's' : ''}.
+									</>
+								) : (
+									"Leave empty to auto-generate prompts based on website analysis, competitors, and keywords."
+								)}
+							</p>
 						</div>
 
 						{submitError && <p className="text-sm text-destructive">{submitError}</p>}

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body = await request.json();
-		const { brandName, brandWebsite } = body;
+		const { brandName, brandWebsite, manualPrompts } = body;
 
 		// Validate required fields
 		if (!brandName || typeof brandName !== "string" || !brandName.trim()) {
@@ -60,6 +60,15 @@ export async function POST(request: NextRequest) {
 			new URL(brandWebsite);
 		} catch {
 			return NextResponse.json({ error: "Invalid website URL format" }, { status: 400 });
+		}
+
+		// Parse manual prompts if provided
+		const parsedManualPrompts: string[] = [];
+		if (manualPrompts && typeof manualPrompts === "string" && manualPrompts.trim()) {
+			const lines = manualPrompts.split('\n')
+				.map(line => line.trim())
+				.filter(line => line.length > 0);
+			parsedManualPrompts.push(...lines);
 		}
 
 		// Create new report record
@@ -84,6 +93,7 @@ export async function POST(request: NextRequest) {
 					reportId: createdReport.id,
 					brandName: createdReport.brandName,
 					brandWebsite: createdReport.brandWebsite,
+					manualPrompts: parsedManualPrompts.length > 0 ? parsedManualPrompts : undefined,
 				},
 				{
 					attempts: 3,
