@@ -18,6 +18,7 @@ import { ProgressBarChart, MODEL_COLORS } from "@/components/progress-bar-chart"
 import { CitationsDisplay } from "@/components/citations-display";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { getDaysFromLookback } from "@/lib/chart-utils";
+import ReactMarkdown from "react-markdown";
 
 type PromptRun = {
 	id: string;
@@ -426,6 +427,15 @@ export default function PromptHistoryPage() {
 												None
 											</Badge>
 										)}
+									</div>
+								</div>
+
+								<div>
+									<strong className="text-sm text-gray-700 block mb-2">Formatted LLM Response</strong>
+									<div className="bg-green-50 border border-green-200 rounded-lg p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
+										<ReactMarkdown>
+											{extractTextContent(run.rawOutput, run.modelGroup)}
+										</ReactMarkdown>
 									</div>
 								</div>
 
