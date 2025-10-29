@@ -1,119 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getModelDisplayName } from "@/lib/utils";
-
-// Custom tick component for better text rendering with brand bolding
-const CustomTick = (props: any) => {
-	const { x, y, payload } = props;
-	return (
-		<g transform={`translate(${x},${y})`}>
-			<text x={0} y={0} dy={4} textAnchor="end" fill="#666" fontSize="12" style={{ maxWidth: "220px" }}>
-				{payload.value}
-			</text>
-		</g>
-	);
-};
-
-// Custom brand tick component that bolds the current brand
-const BrandTick = (props: any, currentBrandName?: string) => {
-	const { x, y, payload } = props;
-	const isBrand = payload.value === currentBrandName;
-
-	return (
-		<g transform={`translate(${x},${y})`}>
-			<text
-				x={-5}
-				y={0}
-				dy={4}
-				textAnchor="end"
-				fill={isBrand ? "#1f2937" : "#666"}
-				fontSize="12"
-				fontWeight={isBrand ? "bold" : "normal"}
-				style={{ maxWidth: "220px" }}
-			>
-				{payload.value}
-			</text>
-		</g>
-	);
-};
-
-// Reusable Horizontal Bar Chart Component
-interface HorizontalBarChartProps {
-	data: { name: string; count: number }[];
-	color: string;
-	tooltipLabel: string;
-	highlightValue?: string;
-	tickComponent?: React.ComponentType<any>;
-	maxValue?: number;
-}
-
-const HorizontalBarChart = ({
-	data,
-	color,
-	tooltipLabel,
-	highlightValue,
-	tickComponent: TickComponent = CustomTick,
-	maxValue,
-}: HorizontalBarChartProps) => {
-	// Helper function to get max count safely
-	const getMaxCount = (chartData: { count: number }[]) => {
-		if (!chartData || chartData.length === 0) return 1;
-		const validCounts = chartData
-			.map((d) => d.count)
-			.filter((count) => typeof count === "number" && !isNaN(count) && count >= 0);
-		if (validCounts.length === 0) return 1;
-		const max = Math.max(...validCounts);
-		return isNaN(max) ? 1 : Math.max(max, 1);
-	};
-
-	// Helper function to validate chart data
-	const isValidChartData = (chartData: { name: string; count: number }[]) => {
-		if (!chartData || !Array.isArray(chartData) || chartData.length === 0) return false;
-		return chartData.every(
-			(item) =>
-				item &&
-				typeof item.name === "string" &&
-				typeof item.count === "number" &&
-				!isNaN(item.count) &&
-				item.count >= 0,
-		);
-	};
-
-	// Calculate dynamic heights based on number of categories (40px per bar + padding)
-	const calculateChartHeight = (itemCount: number, minHeight = 200, maxHeight = 800) => {
-		const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, itemCount * 40 + 80));
-		return calculatedHeight;
-	};
-
-	if (!isValidChartData(data)) {
-		return <div className="text-muted-foreground text-center py-8">No data available</div>;
-	}
-
-	return (
-		<div style={{ height: calculateChartHeight(data.length) }}>
-			<ResponsiveContainer width="100%" height="100%">
-				<BarChart data={data} layout="vertical" margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-					<CartesianGrid strokeDasharray="3 3" />
-					<XAxis
-						type="number"
-						domain={[0, maxValue || getMaxCount(data)]}
-						tickCount={Math.min(10, (maxValue || getMaxCount(data)) + 1)}
-						allowDecimals={false}
-					/>
-					<YAxis dataKey="name" type="category" width={240} tick={<TickComponent />} interval={0} />
-					<Tooltip formatter={(value) => [value, tooltipLabel]} />
-					<Bar dataKey="count" fill={color} barSize={8} />
-				</BarChart>
-			</ResponsiveContainer>
-		</div>
-	);
-};
 
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
@@ -122,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { extractTextContent } from "@/lib/text-extraction";
 import { IconChevronLeft, IconChevronRight, IconExternalLink } from "@tabler/icons-react";
+import { ProgressBarChart, MODEL_COLORS, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
 
 type PromptRun = {
 	id: string;
@@ -169,10 +62,6 @@ export default function PromptHistoryPage() {
 		days: daysFilter
 	});
 
-	// Create custom tick component with brand name
-	const BrandYAxisTick = (props: any) => {
-		return BrandTick(props, brand?.name);
-	};
 
 	// Handle pagination
 	const handlePageChange = (newPage: number) => {
@@ -299,148 +188,21 @@ export default function PromptHistoryPage() {
 						</CardDescription>
 					</CardHeader>
 					<Separator />
-					<CardContent>
-						<HorizontalBarChart
-							data={mentionStats}
-							color="#3b82f6"
-							tooltipLabel="Mentions"
-							highlightValue={brand?.name}
-							tickComponent={BrandYAxisTick}
-							maxValue={aggregations?.totalRuns || 1}
+					<CardContent className="space-y-4">
+						<ProgressBarChart
+							items={mentionStats.map((stat) => ({
+								label: stat.name,
+								count: stat.count,
+							}))}
+							defaultColor="#3b82f6"
+							customTotal={aggregations?.totalRuns || 1}
+							highlightLabel={brand?.name}
 						/>
 					</CardContent>
 				</Card>
 			)}
 
-			{/* Citation Statistics */}
-			{citationStats && citationStats.totalCitations > 0 && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Citations</CardTitle>
-						<CardDescription>
-							Sources cited by LLMs when responding to this prompt. {citationStats.brandCitations > 0 && (
-								<>Your brand was cited in <strong>{Math.round((citationStats.brandCitations / citationStats.totalCitations) * 100)}%</strong> of citations.</>
-							)}
-						</CardDescription>
-					</CardHeader>
-					<Separator />
-					
-					{/* Category Summary */}
-					<CardContent className="pb-0">
-						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-							<div className="flex items-center gap-2">
-								<div className="w-3 h-3 rounded-full bg-green-500" />
-								<div>
-									<div className="text-sm font-medium">Brand</div>
-									<div className="text-lg font-bold">{citationStats.brandCitations}</div>
-								</div>
-							</div>
-							<div className="flex items-center gap-2">
-								<div className="w-3 h-3 rounded-full bg-red-500" />
-								<div>
-									<div className="text-sm font-medium">Competitor</div>
-									<div className="text-lg font-bold">{citationStats.competitorCitations}</div>
-								</div>
-							</div>
-							<div className="flex items-center gap-2">
-								<div className="w-3 h-3 rounded-full bg-purple-500" />
-								<div>
-									<div className="text-sm font-medium">Social Media</div>
-									<div className="text-lg font-bold">{citationStats.socialMediaCitations}</div>
-								</div>
-							</div>
-							<div className="flex items-center gap-2">
-								<div className="w-3 h-3 rounded-full bg-gray-500" />
-								<div>
-									<div className="text-sm font-medium">Other</div>
-									<div className="text-lg font-bold">{citationStats.otherCitations}</div>
-								</div>
-							</div>
-						</div>
-					</CardContent>
-
-					<Separator className="mt-6" />
-
-					{/* Top Domains */}
-					{citationStats.domainDistribution.length > 0 && (
-						<CardContent className="pb-0">
-							<h4 className="text-sm font-medium mb-3">Top Cited Domains</h4>
-							<HorizontalBarChart
-								data={citationStats.domainDistribution.slice(0, 15).map(d => ({
-									name: d.domain,
-									count: d.count,
-									category: d.category,
-								}))}
-								color="#3b82f6"
-								tooltipLabel="Citations"
-								maxValue={aggregations?.totalRuns || 1}
-							/>
-						</CardContent>
-					)}
-
-					<Separator className="mt-6" />
-
-					{/* Specific URLs */}
-					{citationStats.specificUrls.length > 0 && (
-						<CardContent>
-							<h4 className="text-sm font-medium mb-3">All Cited URLs (Top 20)</h4>
-							<div className="space-y-2">
-								{citationStats.specificUrls.slice(0, 20).map((citation, idx) => {
-									const getCategoryColor = (category: string) => {
-										switch (category) {
-											case 'brand': return 'bg-green-100 text-green-800 border-green-300';
-											case 'competitor': return 'bg-red-100 text-red-800 border-red-300';
-											case 'social_media': return 'bg-purple-100 text-purple-800 border-purple-300';
-											case 'other': return 'bg-gray-100 text-gray-800 border-gray-300';
-											default: return 'bg-gray-100 text-gray-800 border-gray-300';
-										}
-									};
-
-									const getCategoryLabel = (category: string) => {
-										switch (category) {
-											case 'brand': return 'Brand';
-											case 'competitor': return 'Competitor';
-											case 'social_media': return 'Social Media';
-											case 'other': return 'Other';
-											default: return category;
-										}
-									};
-
-									return (
-										<div 
-											key={idx} 
-											className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-										>
-											<div className="flex-1 min-w-0 mr-4">
-												<div className="flex items-center gap-2 mb-1">
-													<span className={`text-xs px-2 py-0.5 rounded-full border ${getCategoryColor(citation.category)}`}>
-														{getCategoryLabel(citation.category)}
-													</span>
-													<span className="text-xs text-muted-foreground">{citation.domain}</span>
-												</div>
-												<a 
-													href={citation.url}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-sm hover:underline flex items-center gap-1 text-blue-600"
-												>
-													{citation.title || citation.url}
-													<IconExternalLink className="h-3 w-3" />
-												</a>
-											</div>
-											<Badge variant="secondary" className="shrink-0">
-												{citation.count}
-											</Badge>
-										</div>
-									);
-								})}
-							</div>
-						</CardContent>
-					)}
-				</Card>
-			)}
-
-			{/* Web Query Statistics */}
+		{/* Web Query Statistics */}
 			{(webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) && (
 				<Card>
 					<CardHeader>
@@ -456,11 +218,13 @@ export default function PromptHistoryPage() {
 						<CardContent className="pb-0">
 							<div>
 								<h4 className="text-sm font-medium mb-3">All</h4>
-								<HorizontalBarChart
-									data={webQueryStats.overall}
-									color="#10b981"
-									tooltipLabel="Uses"
-									maxValue={aggregations?.totalRuns || 1}
+								<ProgressBarChart
+									items={webQueryStats.overall.map((query) => ({
+										label: query.name,
+										count: query.count,
+									}))}
+									defaultColor="#8b5cf6"
+									customTotal={aggregations?.totalRuns || 1}
 								/>
 							</div>
 						</CardContent>
@@ -476,6 +240,7 @@ export default function PromptHistoryPage() {
 					{/* Web Queries by Model - in specific order */}
 					{webQueryStats.byModel && (() => {
 						const modelOrder = ['openai', 'anthropic', 'google'];
+						
 						const filteredModels = modelOrder.filter(model => 
 							webQueryStats.byModel[model] && webQueryStats.byModel[model].length > 0
 						);
@@ -484,11 +249,14 @@ export default function PromptHistoryPage() {
 							<div key={model}>
 								<CardContent className="pb-0">
 									<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
-									<HorizontalBarChart
-										data={webQueryStats.byModel[model]}
-										color="#8b5cf6"
-										tooltipLabel="Uses"
-										maxValue={aggregations?.totalRuns || 1}
+									<ProgressBarChart
+										items={webQueryStats.byModel[model].map((query: { name: string; count: number }) => ({
+											label: query.name,
+											count: query.count,
+											category: model,
+										}))}
+										colorMapping={MODEL_COLORS}
+										customTotal={aggregations?.totalRuns || 1}
 									/>
 								</CardContent>
 								{/* Separator between model sections (not after the last one) */}
@@ -497,15 +265,144 @@ export default function PromptHistoryPage() {
 						));
 					})()}
 
-					{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
-						<CardContent>
-							<div className="text-muted-foreground text-center py-8">No web queries found in the prompt runs</div>
-						</CardContent>
+			{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
+				<CardContent>
+					<div className="text-muted-foreground text-center py-8">No web queries found in the prompt runs</div>
+				</CardContent>
+			)}
+		</Card>
+	)}
+
+	{/* Citation Statistics */}
+	{citationStats && citationStats.totalCitations > 0 && (
+		<Card>
+			<CardHeader>
+				<CardTitle>Citations</CardTitle>
+				<CardDescription>
+					Sources cited by LLMs when responding to this prompt. {citationStats.brandCitations > 0 && (
+						<>Your brand was cited in <strong>{Math.round((citationStats.brandCitations / citationStats.totalCitations) * 100)}%</strong> of citations.</>
 					)}
-				</Card>
+				</CardDescription>
+			</CardHeader>
+			<Separator />
+			
+			{/* Category Summary */}
+			<CardContent className="pb-0">
+				<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+					<div className="flex items-center gap-2">
+						<div className="w-3 h-3 rounded-full bg-green-500" />
+						<div>
+							<div className="text-sm font-medium">Brand</div>
+							<div className="text-lg font-bold">{citationStats.brandCitations}</div>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="w-3 h-3 rounded-full bg-red-500" />
+						<div>
+							<div className="text-sm font-medium">Competitor</div>
+							<div className="text-lg font-bold">{citationStats.competitorCitations}</div>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="w-3 h-3 rounded-full bg-purple-500" />
+						<div>
+							<div className="text-sm font-medium">Social Media</div>
+							<div className="text-lg font-bold">{citationStats.socialMediaCitations}</div>
+						</div>
+					</div>
+					<div className="flex items-center gap-2">
+						<div className="w-3 h-3 rounded-full bg-gray-500" />
+						<div>
+							<div className="text-sm font-medium">Other</div>
+							<div className="text-lg font-bold">{citationStats.otherCitations}</div>
+						</div>
+					</div>
+				</div>
+			</CardContent>
+
+			<Separator className="mt-6" />
+
+			{/* Top Domains */}
+			{citationStats.domainDistribution.length > 0 && (
+				<CardContent className="pb-0">
+					<h4 className="text-sm font-medium mb-3">Top Cited Domains</h4>
+					<ProgressBarChart
+						items={citationStats.domainDistribution.slice(0, 15).map((domain: { domain: string; count: number; category: string }) => ({
+							label: domain.domain,
+							count: domain.count,
+							category: domain.category,
+						}))}
+						colorMapping={DOMAIN_CATEGORY_COLORS}
+						percentageMode="max"
+						barHeight="h-3"
+						trackColor="bg-primary/20"
+					/>
+				</CardContent>
 			)}
 
-			<div className="flex justify-between items-center">
+			<Separator className="mt-6" />
+
+			{/* Specific URLs */}
+			{citationStats.specificUrls.length > 0 && (
+				<CardContent>
+					<h4 className="text-sm font-medium mb-3">All Cited URLs (Top 20)</h4>
+					<div className="space-y-2">
+						{citationStats.specificUrls.slice(0, 20).map((citation, idx) => {
+							const getCategoryColor = (category: string) => {
+								switch (category) {
+									case 'brand': return 'bg-green-100 text-green-800 border-green-300';
+									case 'competitor': return 'bg-red-100 text-red-800 border-red-300';
+									case 'social_media': return 'bg-purple-100 text-purple-800 border-purple-300';
+									case 'other': return 'bg-gray-100 text-gray-800 border-gray-300';
+									default: return 'bg-gray-100 text-gray-800 border-gray-300';
+								}
+							};
+
+							const getCategoryLabel = (category: string) => {
+								switch (category) {
+									case 'brand': return 'Brand';
+									case 'competitor': return 'Competitor';
+									case 'social_media': return 'Social Media';
+									case 'other': return 'Other';
+									default: return category;
+								}
+							};
+
+							return (
+								<div 
+									key={idx} 
+									className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+								>
+									<div className="flex-1 min-w-0 mr-4">
+										<div className="flex items-center gap-2 mb-1">
+											<span className={`text-xs px-2 py-0.5 rounded-full border ${getCategoryColor(citation.category)}`}>
+												{getCategoryLabel(citation.category)}
+											</span>
+											<span className="text-xs text-muted-foreground">{citation.domain}</span>
+										</div>
+										<a 
+											href={citation.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="text-sm hover:underline flex items-center gap-1 text-blue-600"
+										>
+											{citation.title || citation.url}
+											<IconExternalLink className="h-3 w-3" />
+										</a>
+									</div>
+									<Badge variant="secondary" className="shrink-0">
+										{citation.count}
+									</Badge>
+								</div>
+							);
+						})}
+					</div>
+				</CardContent>
+			)}
+		</Card>
+	)}
+
+	<div className="flex justify-between items-center">
 				<h2 className="text-2xl font-bold">
 					Prompt Runs ({pagination?.total || 0})
 				</h2>

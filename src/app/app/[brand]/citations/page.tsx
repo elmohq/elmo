@@ -9,96 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCitations } from "@/hooks/use-citations";
 import { useBrand } from "@/hooks/use-brands";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Label } from "recharts";
 import { IconExternalLink } from "@tabler/icons-react";
-import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
-
-// Custom tick component for domain names
-const CustomTick = (props: any) => {
-	const { x, y, payload } = props;
-	return (
-		<g transform={`translate(${x},${y})`}>
-			<text x={-5} y={0} dy={4} textAnchor="end" fill="#666" fontSize="12" style={{ maxWidth: "220px" }}>
-				{payload.value}
-			</text>
-		</g>
-	);
-};
-
-// Reusable Horizontal Bar Chart Component
-interface HorizontalBarChartProps {
-	data: { name: string; count: number; category?: string }[];
-	tooltipLabel: string;
-	maxValue?: number;
-	getCategoryColor?: (category: string) => string;
-}
-
-const HorizontalBarChart = ({
-	data,
-	tooltipLabel,
-	maxValue,
-	getCategoryColor,
-}: HorizontalBarChartProps) => {
-	// Helper function to get max count safely
-	const getMaxCount = (chartData: { count: number }[]) => {
-		if (!chartData || chartData.length === 0) return 1;
-		const validCounts = chartData
-			.map((d) => d.count)
-			.filter((count) => typeof count === "number" && !isNaN(count) && count >= 0);
-		if (validCounts.length === 0) return 1;
-		const max = Math.max(...validCounts);
-		return isNaN(max) ? 1 : Math.max(max, 1);
-	};
-
-	// Helper function to validate chart data
-	const isValidChartData = (chartData: { name: string; count: number }[]) => {
-		if (!chartData || !Array.isArray(chartData) || chartData.length === 0) return false;
-		return chartData.every(
-			(item) =>
-				item &&
-				typeof item.name === "string" &&
-				typeof item.count === "number" &&
-				!isNaN(item.count) &&
-				item.count >= 0,
-		);
-	};
-
-	// Calculate dynamic heights based on number of categories (40px per bar + padding)
-	const calculateChartHeight = (itemCount: number, minHeight = 200, maxHeight = 800) => {
-		const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, itemCount * 40 + 80));
-		return calculatedHeight;
-	};
-
-	if (!isValidChartData(data)) {
-		return <div className="text-muted-foreground text-center py-8">No data available</div>;
-	}
-
-	return (
-		<div style={{ height: calculateChartHeight(data.length) }}>
-			<ResponsiveContainer width="100%" height="100%">
-				<BarChart data={data} layout="vertical" margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-					<CartesianGrid strokeDasharray="3 3" />
-					<XAxis
-						type="number"
-						domain={[0, maxValue || getMaxCount(data)]}
-						tickCount={Math.min(10, (maxValue || getMaxCount(data)) + 1)}
-						allowDecimals={false}
-					/>
-					<YAxis dataKey="name" type="category" width={240} tick={<CustomTick />} interval={0} />
-					<Tooltip formatter={(value) => [value, tooltipLabel]} />
-					<Bar dataKey="count" barSize={8}>
-						{data.map((entry, index) => (
-							<Cell 
-								key={`cell-${index}`} 
-								fill={getCategoryColor && entry.category ? getCategoryColor(entry.category) : '#3b82f6'} 
-							/>
-						))}
-					</Bar>
-				</BarChart>
-			</ResponsiveContainer>
-		</div>
-	);
-};
+import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
 
 export default function CitationsPage() {
 	const params = useParams();
@@ -111,7 +23,7 @@ export default function CitationsPage() {
 	// Get citation data
 	const { data: citationData, isLoading, isError } = useCitations(brandId, { days: daysFilter });
 
-	// Category color mapping
+	// Category color mapping (for badge display in URLs section)
 	const getCategoryColor = (category: string) => {
 		switch (category) {
 			case 'brand':
@@ -187,36 +99,6 @@ export default function CitationsPage() {
 		category: d.category,
 	}));
 
-	// Prepare pie chart data for category distribution
-	const categoryChartData = [
-		{ category: "brand", name: "Brand", count: citationData.brandCitations, fill: "#48bb78" },
-		{ category: "competitor", name: "Competitor", count: citationData.competitorCitations, fill: "#f56565" },
-		{ category: "social_media", name: "Social Media", count: citationData.socialMediaCitations, fill: "#7e56ee" },
-		{ category: "other", name: "Other", count: citationData.otherCitations, fill: "#9ca3af" },
-	].filter(item => item.count > 0); // Only show categories with data
-
-	const categoryChartConfig = {
-		count: {
-			label: "Citations",
-		},
-		brand: {
-			label: "Brand",
-			color: "#48bb78",
-		},
-		competitor: {
-			label: "Competitor",
-			color: "#f56565",
-		},
-		social_media: {
-			label: "Social Media",
-			color: "#7e56ee",
-		},
-		other: {
-			label: "Other",
-			color: "#9ca3af",
-		},
-	} satisfies ChartConfig;
-
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-start">
@@ -272,73 +154,16 @@ export default function CitationsPage() {
 					</CardHeader>
 					<Separator />
 					<CardContent className="space-y-6">
-						{/* Brand */}
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<span className="text-sm font-medium">Brand</span>
-								<span className="text-sm">{citationData.brandCitations}</span>
-							</div>
-							<div className="relative h-3 w-full overflow-hidden rounded-full bg-primary/20">
-								<div 
-									className="h-full transition-all rounded-full"
-									style={{ 
-										width: `${citationData.totalCitations > 0 ? (citationData.brandCitations / citationData.totalCitations) * 100 : 0}%`,
-										backgroundColor: '#48bb78'
-									}}
-								/>
-							</div>
-						</div>
-
-						{/* Competitor */}
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<span className="text-sm font-medium">Competitor</span>
-								<span className="text-sm">{citationData.competitorCitations}</span>
-							</div>
-							<div className="relative h-3 w-full overflow-hidden rounded-full bg-primary/20">
-								<div 
-									className="h-full transition-all rounded-full"
-									style={{ 
-										width: `${citationData.totalCitations > 0 ? (citationData.competitorCitations / citationData.totalCitations) * 100 : 0}%`,
-										backgroundColor: '#f56565'
-									}}
-								/>
-							</div>
-						</div>
-
-						{/* Social Media */}
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<span className="text-sm font-medium">Social Media</span>
-								<span className="text-sm">{citationData.socialMediaCitations}</span>
-							</div>
-							<div className="relative h-3 w-full overflow-hidden rounded-full bg-primary/20">
-								<div 
-									className="h-full transition-all rounded-full"
-									style={{ 
-										width: `${citationData.totalCitations > 0 ? (citationData.socialMediaCitations / citationData.totalCitations) * 100 : 0}%`,
-										backgroundColor: '#7e56ee'
-									}}
-								/>
-							</div>
-						</div>
-
-						{/* Other */}
-						<div className="space-y-2">
-							<div className="flex items-center justify-between">
-								<span className="text-sm font-medium">Other</span>
-								<span className="text-sm">{citationData.otherCitations}</span>
-							</div>
-							<div className="relative h-3 w-full overflow-hidden rounded-full bg-primary/20">
-								<div 
-									className="h-full transition-all rounded-full"
-									style={{ 
-										width: `${citationData.totalCitations > 0 ? (citationData.otherCitations / citationData.totalCitations) * 100 : 0}%`,
-										backgroundColor: '#9ca3af'
-									}}
-								/>
-							</div>
-						</div>
+						<ProgressBarChart
+							items={[
+								{ label: "Brand", count: citationData.brandCitations, category: "brand" },
+								{ label: "Competitor", count: citationData.competitorCitations, category: "competitor" },
+								{ label: "Social Media", count: citationData.socialMediaCitations, category: "social_media" },
+								{ label: "Other", count: citationData.otherCitations, category: "other" },
+							]}
+							colorMapping={DOMAIN_CATEGORY_COLORS}
+							percentageMode="total"
+						/>
 					</CardContent>
 				</Card>
 			</div>
@@ -353,11 +178,15 @@ export default function CitationsPage() {
 						</CardDescription>
 					</CardHeader>
 					<Separator />
-					<CardContent>
-						<HorizontalBarChart
-							data={domainChartData}
-							tooltipLabel="Citations"
-							getCategoryColor={getCategoryColor}
+					<CardContent className="space-y-4">
+						<ProgressBarChart
+							items={domainChartData.map((domain) => ({
+								label: domain.name,
+								count: domain.count,
+								category: domain.category || "other",
+							}))}
+							colorMapping={DOMAIN_CATEGORY_COLORS}
+							percentageMode="max"
 						/>
 					</CardContent>
 				</Card>
