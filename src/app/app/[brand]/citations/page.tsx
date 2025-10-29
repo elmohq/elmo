@@ -1,24 +1,27 @@
 "use client";
 
-import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { useCitations } from "@/hooks/use-citations";
 import { useBrand } from "@/hooks/use-brands";
 import { CitationsDisplay } from "@/components/citations-display";
+import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { getDaysFromLookback } from "@/lib/chart-utils";
 
 export default function CitationsPage() {
 	const params = useParams();
 	const brandId = params.brand as string;
-	const [daysFilter, setDaysFilter] = useState(7);
+
+	// Use lookback period from URL state
+	const lookback = useLookbackPeriod("1w");
+	const days = getDaysFromLookback(lookback);
 
 	// Get brand data
 	const { brand } = useBrand(brandId);
 
 	// Get citation data
-	const { data: citationData, isLoading, isError } = useCitations(brandId, { days: daysFilter });
+	const { data: citationData, isLoading, isError } = useCitations(brandId, { days });
 
 	if (isLoading) {
 		return (
@@ -68,27 +71,15 @@ export default function CitationsPage() {
 					</p>
 				</div>
 				
-				{/* Days Filter */}
-				<div className="flex gap-2">
-					{[7, 14, 30].map((days) => (
-						<Button
-							key={days}
-							variant={daysFilter === days ? "default" : "outline"}
-							size="sm"
-							onClick={() => setDaysFilter(days)}
-							className="cursor-pointer"
-						>
-							{days}d
-						</Button>
-					))}
-				</div>
+				{/* Lookback Period Selector */}
+				<LookbackSelector defaultPeriod="1w" />
 			</div>
 
 			{citationData.totalCitations === 0 ? (
 				<Card>
 					<CardContent className="pt-6">
 						<div className="text-muted-foreground text-center py-8">
-							No citations found in the past {daysFilter} days. Citations are only available from prompts evaluated with web search enabled.
+							No citations found. Citations are only available from prompts evaluated with web search enabled.
 						</div>
 					</CardContent>
 				</Card>

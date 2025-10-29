@@ -50,6 +50,7 @@ export function usePromptRunsOnly(promptId: string, options: UsePromptRunsOnlyOp
 		isError: error,
 		revalidate: mutate,
 		// Convenience accessors
+		prompt: data?.prompt,
 		runs: data?.runs || [],
 		pagination: data?.pagination,
 	};

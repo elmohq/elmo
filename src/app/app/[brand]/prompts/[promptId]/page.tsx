@@ -16,6 +16,8 @@ import { extractTextContent } from "@/lib/text-extraction";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { ProgressBarChart, MODEL_COLORS } from "@/components/progress-bar-chart";
 import { CitationsDisplay } from "@/components/citations-display";
+import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { getDaysFromLookback } from "@/lib/chart-utils";
 
 type PromptRun = {
 	id: string;
@@ -44,24 +46,30 @@ export default function PromptHistoryPage() {
 	const brandId = params.brand as string;
 	const promptId = params.promptId as string;
 
+	// Use lookback period from URL state
+	const lookback = useLookbackPeriod("1w");
+	const days = getDaysFromLookback(lookback);
+
 	// Pagination state
 	const [currentPage, setCurrentPage] = useState(1);
-	const [daysFilter, setDaysFilter] = useState(7);
 
 	// Get brand data
 	const { brand } = useBrand(brandId);
 
 	// Get stats (only reload when days filter changes)
-	const { data: statsData, isLoading: isStatsLoading, isError: isStatsError, prompt, aggregations } = usePromptStats(promptId, {
-		days: daysFilter
+	const { data: statsData, isLoading: isStatsLoading, isError: isStatsError, prompt: statsPrompt, aggregations } = usePromptStats(promptId, {
+		days
 	});
 
-	// Get paginated runs (reload when page or days filter changes)
-	const { runs, pagination, isLoading: isRunsLoading, isError: isRunsError } = usePromptRunsOnly(promptId, {
+	// Get paginated runs (reload when page or days filter changes) - this loads faster and includes prompt
+	const { runs, pagination, prompt: runsPrompt, isLoading: isRunsLoading, isError: isRunsError } = usePromptRunsOnly(promptId, {
 		page: currentPage,
 		limit: 15,
-		days: daysFilter
+		days
 	});
+
+	// Use prompt from runs API (faster) or fall back to stats API
+	const prompt = runsPrompt || statsPrompt;
 
 
 	// Handle pagination
@@ -71,10 +79,9 @@ export default function PromptHistoryPage() {
 		}
 	};
 
-	// Handle days filter change
-	const handleDaysFilterChange = (days: number) => {
-		setDaysFilter(days);
-		setCurrentPage(1); // Reset to first page when filter changes
+	// Handle lookback change - reset to first page
+	const handleLookbackChange = () => {
+		setCurrentPage(1);
 	};
 
 	const formatRawOutput = (rawOutput: any) => {
@@ -96,35 +103,18 @@ export default function PromptHistoryPage() {
 	const webSearchSummary = aggregations?.webSearchSummary || { enabled: 0, disabled: 0, percentage: 0 };
 	const citationStats = aggregations?.citationStats;
 
-	if (isStatsLoading && isRunsLoading) {
-		return (
-			<div className="container mx-auto p-6 space-y-6">
-				<Card>
-					<CardHeader>
-						<CardTitle>Prompt History</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-4">
-							<Skeleton className="h-4 w-3/4" />
-							<Skeleton className="h-4 w-1/2" />
-							<Skeleton className="h-4 w-2/3" />
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
-
+	// Show error state
 	if (isStatsError || isRunsError) {
 		return (
-			<div className="container mx-auto p-6 space-y-6">
+			<div className="space-y-6">
+				<div className="flex justify-between items-start">
+					<h1 className="text-3xl font-bold">Prompt History</h1>
+					<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+				</div>
 				<Card>
-					<CardHeader>
-						<CardTitle>Prompt History</CardTitle>
-					</CardHeader>
-					<CardContent>
+					<CardContent className="pt-6">
 						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-							Failed to load prompt runs. Please try again.
+							Failed to load prompt data. Please try again.
 						</div>
 					</CardContent>
 				</Card>
@@ -132,14 +122,16 @@ export default function PromptHistoryPage() {
 		);
 	}
 
-	if (!prompt) {
+	// Show "not found" only if we're done loading and truly have no prompt
+	if (!isStatsLoading && !prompt) {
 		return (
-			<div className="container mx-auto p-6 space-y-6">
+			<div className="space-y-6">
+				<div className="flex justify-between items-start">
+					<h1 className="text-3xl font-bold">Prompt History</h1>
+					<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+				</div>
 				<Card>
-					<CardHeader>
-						<CardTitle>Prompt History</CardTitle>
-					</CardHeader>
-					<CardContent>
+					<CardContent className="pt-6">
 						<div className="text-muted-foreground">No prompt data found.</div>
 					</CardContent>
 				</Card>
@@ -150,28 +142,31 @@ export default function PromptHistoryPage() {
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-start">
-				<h1 className="text-3xl font-bold">
-					{prompt.value} <span className="text-muted-foreground font-normal">(past {daysFilter} days)</span>
-				</h1>
+				{prompt ? (
+					<h1 className="text-3xl font-bold">
+						{prompt.value}
+					</h1>
+				) : (
+					<Skeleton className="h-10 w-96" />
+				)}
 				
-				{/* Days Filter */}
-				<div className="flex gap-2">
-					{[7, 14, 30].map((days) => (
-						<Button
-							key={days}
-							variant={daysFilter === days ? "default" : "outline"}
-							size="sm"
-							onClick={() => handleDaysFilterChange(days)}
-							className="cursor-pointer"
-						>
-							{days}d
-						</Button>
-					))}
-				</div>
+				{/* Lookback Period Selector */}
+				<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
 			</div>
 
 			{/* Mention Statistics */}
-			{mentionStats.length > 0 && (
+			{isStatsLoading ? (
+				<Card>
+					<CardHeader>
+						<Skeleton className="h-6 w-32 mb-2" />
+						<Skeleton className="h-4 w-96" />
+					</CardHeader>
+					<Separator />
+					<CardContent className="space-y-4">
+						<Skeleton className="h-32 w-full" />
+					</CardContent>
+				</Card>
+			) : mentionStats.length > 0 ? (
 				<Card>
 					<CardHeader>
 						<CardTitle>Mentions</CardTitle>
@@ -201,10 +196,21 @@ export default function PromptHistoryPage() {
 						/>
 					</CardContent>
 				</Card>
-			)}
+			) : null}
 
 		{/* Web Query Statistics */}
-			{(webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) && (
+			{isStatsLoading ? (
+				<Card>
+					<CardHeader>
+						<Skeleton className="h-6 w-32 mb-2" />
+						<Skeleton className="h-4 w-full" />
+					</CardHeader>
+					<Separator />
+					<CardContent className="space-y-4">
+						<Skeleton className="h-48 w-full" />
+					</CardContent>
+				</Card>
+			) : (webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) ? (
 				<Card>
 					<CardHeader>
 						<CardTitle>Web Queries</CardTitle>
@@ -272,10 +278,21 @@ export default function PromptHistoryPage() {
 				</CardContent>
 			)}
 		</Card>
-	)}
+	) : null}
 
 	{/* Citation Statistics */}
-	{citationStats && citationStats.totalCitations > 0 && (
+	{isStatsLoading ? (
+		<Card>
+			<CardHeader>
+				<Skeleton className="h-6 w-32 mb-2" />
+				<Skeleton className="h-4 w-64" />
+			</CardHeader>
+			<Separator />
+			<CardContent className="space-y-4">
+				<Skeleton className="h-64 w-full" />
+			</CardContent>
+		</Card>
+	) : citationStats && citationStats.totalCitations > 0 ? (
 		<CitationsDisplay
 			citationData={citationStats}
 			brandId={brandId}
@@ -285,12 +302,17 @@ export default function PromptHistoryPage() {
 			maxDomains={20}
 			maxUrls={50}
 		/>
-	)}
+	) : null}
 
+	{/* Prompt Runs Section */}
 	<div className="flex justify-between items-center">
-				<h2 className="text-2xl font-bold">
-					Prompt Runs ({pagination?.total || 0})
-				</h2>
+				{isRunsLoading && !pagination ? (
+					<Skeleton className="h-8 w-48" />
+				) : (
+					<h2 className="text-2xl font-bold">
+						Prompt Runs ({pagination?.total || 0})
+					</h2>
+				)}
 				
 				{/* Pagination Controls */}
 				{!isRunsLoading && pagination && pagination.totalPages > 1 && (
