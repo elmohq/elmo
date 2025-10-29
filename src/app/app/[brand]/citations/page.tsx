@@ -89,7 +89,6 @@ export default function CitationsPage() {
 					brandId={brandId}
 					brandName={brand?.name}
 					showStats={true}
-					showPromptBreakdown={true}
 					maxDomains={20}
 					maxUrls={50}
 				/>

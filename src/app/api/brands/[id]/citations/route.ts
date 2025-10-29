@@ -87,11 +87,6 @@ export interface CitationStats {
 		count: number;
 		category: 'brand' | 'competitor' | 'social_media' | 'other';
 	}[];
-	citationsByPrompt: {
-		promptId: string;
-		promptValue: string;
-		citationCount: number;
-	}[];
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -156,7 +151,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const allCitations: (Citation & { promptId: string; promptValue: string })[] = [];
 		const domainCounts = new Map<string, { count: number; exampleTitle?: string }>();
 		const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-		const citationsByPrompt = new Map<string, { promptValue: string; count: number }>();
 
 		for (const run of runs) {
 			const citations = extractCitations(run.rawOutput, run.modelGroup);
@@ -185,11 +179,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				urlCount.title = citation.title;
 			}
 			urlCounts.set(normalizedUrl, urlCount);
-
-				// Count by prompt
-				const promptCount = citationsByPrompt.get(run.promptId) || { promptValue: run.promptValue, count: 0 };
-				promptCount.count++;
-				citationsByPrompt.set(run.promptId, promptCount);
 			}
 		}
 
@@ -257,13 +246,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			otherCitations,
 			domainDistribution,
 			specificUrls,
-			citationsByPrompt: Array.from(citationsByPrompt.entries())
-				.map(([promptId, { promptValue, count }]) => ({
-					promptId,
-					promptValue,
-					citationCount: count,
-				}))
-				.sort((a, b) => b.citationCount - a.citationCount),
 		};
 
 		return NextResponse.json(response);

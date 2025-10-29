@@ -22,11 +22,6 @@ export interface CitationStats {
 		count: number;
 		category: 'brand' | 'competitor' | 'social_media' | 'other';
 	}[];
-	citationsByPrompt: {
-		promptId: string;
-		promptValue: string;
-		citationCount: number;
-	}[];
 }
 
 export function useCitations(brandId: string, options: { days?: number } = {}) {

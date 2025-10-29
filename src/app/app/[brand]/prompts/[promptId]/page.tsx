@@ -298,7 +298,6 @@ export default function PromptHistoryPage() {
 			brandId={brandId}
 			brandName={brand?.name}
 			showStats={true}
-			showPromptBreakdown={false}
 			maxDomains={20}
 			maxUrls={50}
 		/>

@@ -26,11 +26,6 @@ export interface CitationData {
 		count: number;
 		category: 'brand' | 'competitor' | 'social_media' | 'other';
 	}[];
-	citationsByPrompt?: {
-		promptId: string;
-		promptValue: string;
-		citationCount: number;
-	}[];
 }
 
 interface CitationsDisplayProps {
@@ -38,7 +33,6 @@ interface CitationsDisplayProps {
 	brandId?: string;
 	brandName?: string;
 	showStats?: boolean;
-	showPromptBreakdown?: boolean;
 	maxDomains?: number;
 	maxUrls?: number;
 }
@@ -131,7 +125,6 @@ export function CitationsDisplay({
 	brandId,
 	brandName,
 	showStats = false,
-	showPromptBreakdown = false,
 	maxDomains = 15,
 	maxUrls = 20,
 }: CitationsDisplayProps) {
@@ -191,7 +184,7 @@ export function CitationsDisplay({
 				<CardHeader>
 					<CardTitle>Citations</CardTitle>
 					<CardDescription>
-						Sources cited by LLMs when responding to {showPromptBreakdown ? 'prompts' : 'this prompt'}. {citationData.brandCitations > 0 && brandName && (
+						Sources cited by LLMs when responding to prompts. {citationData.brandCitations > 0 && brandName && (
 							<>{brandName} was cited in <strong>{Math.round((citationData.brandCitations / citationData.totalCitations) * 100)}%</strong> of citations.</>
 						)}
 					</CardDescription>
@@ -266,38 +259,6 @@ export function CitationsDisplay({
 					</CardContent>
 				)}
 			</Card>
-
-			{/* Citations by Prompt - Only on full citations page */}
-			{showPromptBreakdown && citationData.citationsByPrompt && citationData.citationsByPrompt.length > 0 && brandId && (
-				<Card>
-					<CardHeader>
-						<CardTitle>Citations by Prompt</CardTitle>
-						<CardDescription>
-							Which prompts generate the most citations
-						</CardDescription>
-					</CardHeader>
-					<Separator />
-					<CardContent>
-						<div className="space-y-3">
-							{citationData.citationsByPrompt.slice(0, 10).map((item) => (
-								<div key={item.promptId} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-									<div className="flex-1">
-										<a
-											href={`/app/${brandId}/prompts/${item.promptId}`}
-											className="text-sm font-medium hover:underline"
-										>
-											{item.promptValue}
-										</a>
-									</div>
-									<Badge variant="outline" className="ml-4">
-										{item.citationCount} {item.citationCount === 1 ? 'citation' : 'citations'}
-									</Badge>
-								</div>
-							))}
-						</div>
-					</CardContent>
-				</Card>
-			)}
 		</>
 	);
 }
