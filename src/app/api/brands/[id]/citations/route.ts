@@ -47,6 +47,26 @@ function isSocialMediaDomain(domain: string): boolean {
 	return SOCIAL_MEDIA_DOMAINS.some(sm => domain === sm || domain.endsWith(`.${sm}`));
 }
 
+// Helper function to remove utm_source=openai from URLs while preserving other params
+function normalizeUrl(url: string): string {
+	try {
+		const urlObj = new URL(url);
+		const params = urlObj.searchParams;
+		
+		// Only remove utm_source if it equals 'openai'
+		if (params.get('utm_source') === 'openai') {
+			params.delete('utm_source');
+		}
+		
+		// Reconstruct URL with updated params
+		urlObj.search = params.toString();
+		return urlObj.toString();
+	} catch (e) {
+		// If URL parsing fails, return as-is
+		return url;
+	}
+}
+
 export interface CitationStats {
 	totalCitations: number;
 	uniqueDomains: number;
@@ -156,10 +176,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				}
 				domainCounts.set(citation.domain, domainCount);
 
-				// Count by URL
-				const urlCount = urlCounts.get(citation.url) || { count: 0, title: citation.title, domain: citation.domain };
-				urlCount.count++;
-				urlCounts.set(citation.url, urlCount);
+			// Count by URL (normalize to remove query parameters like ?utm_source=openai)
+			const normalizedUrl = normalizeUrl(citation.url);
+			const urlCount = urlCounts.get(normalizedUrl) || { count: 0, title: citation.title, domain: citation.domain };
+			urlCount.count++;
+			// Keep the title from the first occurrence if not already set
+			if (!urlCount.title && citation.title) {
+				urlCount.title = citation.title;
+			}
+			urlCounts.set(normalizedUrl, urlCount);
 
 				// Count by prompt
 				const promptCount = citationsByPrompt.get(run.promptId) || { promptValue: run.promptValue, count: 0 };
