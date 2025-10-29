@@ -104,6 +104,28 @@ const formatUrlForDisplay = (url: string, domain: string) => {
 	return displayUrl;
 };
 
+const extractFilenameFromUrl = (url: string) => {
+	try {
+		const urlObj = new URL(url);
+		// Get pathname without search params
+		const pathname = urlObj.pathname;
+		
+		// Get the last segment of the path
+		const segments = pathname.split('/').filter(Boolean);
+		
+		if (segments.length === 0) {
+			// If no path segments, return the domain
+			return urlObj.hostname.replace(/^www\./, '');
+		}
+		
+		// Return the last segment (filename)
+		return segments[segments.length - 1];
+	} catch {
+		// If URL parsing fails, fall back to the original URL
+		return url;
+	}
+};
+
 export function CitationsDisplay({
 	citationData,
 	brandId,
@@ -221,7 +243,7 @@ export function CitationsDisplay({
 													{getCategoryLabel(citation.category)}
 												</Badge>
 												<span className="text-sm font-medium truncate">
-													{citation.title || citation.url}
+													{citation.title || extractFilenameFromUrl(citation.url)}
 												</span>
 											</div>
 											<span className="text-sm font-semibold text-gray-700 shrink-0">
