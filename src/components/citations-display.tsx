@@ -76,16 +76,32 @@ const getCategoryLabel = (category: string) => {
 const getCategoryColorClass = (category: string) => {
 	switch (category) {
 		case 'brand':
-			return 'bg-green-100 text-green-800 border-green-300';
+			return 'bg-green-500 text-white';
 		case 'competitor':
-			return 'bg-red-100 text-red-800 border-red-300';
+			return 'bg-red-500 text-white';
 		case 'social_media':
-			return 'bg-purple-100 text-purple-800 border-purple-300';
+			return 'bg-purple-500 text-white';
 		case 'other':
-			return 'bg-gray-100 text-gray-800 border-gray-300';
+			return 'bg-gray-500 text-white';
 		default:
-			return 'bg-gray-100 text-gray-800 border-gray-300';
+			return 'bg-gray-500 text-white';
 	}
+};
+
+const formatUrlForDisplay = (url: string, domain: string) => {
+	// Remove protocol
+	let displayUrl = url.replace(/^https?:\/\//, '');
+	
+	// Remove leading www.
+	displayUrl = displayUrl.replace(/^www\./, '');
+	
+	// Truncate if too long (max 80 characters)
+	const maxLength = 80;
+	if (displayUrl.length > maxLength) {
+		displayUrl = displayUrl.substring(0, maxLength) + '...';
+	}
+	
+	return displayUrl;
 };
 
 export function CitationsDisplay({
@@ -184,40 +200,46 @@ export function CitationsDisplay({
 					<CardContent>
 						<h4 className="text-sm font-medium mb-3">Top {maxUrls} Cited URLs</h4>
 						<div className="space-y-2">
-							{citationData.specificUrls.slice(0, maxUrls).map((citation, idx) => (
-								<div
-									key={idx}
-									className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-								>
-									<div className="flex-1 min-w-0 mr-4">
-										<div className="flex items-center gap-2 mb-1">
-											<Badge
-												variant={citation.category === 'brand' ? 'default' : 'outline'}
-												style={{
-													backgroundColor: citation.category === 'brand' ? getCategoryColor('brand') : undefined,
-													borderColor: getCategoryColor(citation.category),
-													color: citation.category === 'brand' ? 'white' : getCategoryColor(citation.category),
-												}}
-											>
-												{getCategoryLabel(citation.category)}
-											</Badge>
-											<span className="text-xs text-muted-foreground">{citation.domain}</span>
+							{citationData.specificUrls.slice(0, maxUrls).map((citation, idx) => {
+								const displayUrl = formatUrlForDisplay(citation.url, citation.domain);
+								const domainEndIndex = displayUrl.indexOf('/');
+								const domainPart = domainEndIndex > 0 ? displayUrl.substring(0, domainEndIndex) : displayUrl;
+								const pathPart = domainEndIndex > 0 ? displayUrl.substring(domainEndIndex) : '';
+								
+								return (
+									<a
+										key={idx}
+										href={citation.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="block relative p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors group"
+									>
+										{/* First row: Category badge, title, and count */}
+										<div className="flex items-start justify-between gap-3 mb-2">
+											<div className="flex items-center gap-2 min-w-0 flex-1">
+												<Badge className={getCategoryColorClass(citation.category)}>
+													{getCategoryLabel(citation.category)}
+												</Badge>
+												<span className="text-sm font-medium truncate">
+													{citation.title || citation.url}
+												</span>
+											</div>
+											<span className="text-sm font-semibold text-gray-700 shrink-0">
+												{citation.count}
+											</span>
 										</div>
-										<a
-											href={citation.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="text-sm hover:underline flex items-center gap-1 text-blue-600"
-										>
-											{citation.title || citation.url}
-											<IconExternalLink className="h-3 w-3" />
-										</a>
-									</div>
-									<Badge variant="secondary" className="shrink-0">
-										{citation.count}
-									</Badge>
-								</div>
-							))}
+										
+										{/* Second row: URL with bolded domain */}
+										<div className="text-xs text-muted-foreground truncate pr-6">
+											<span className="font-bold">{domainPart}</span>
+											{pathPart && <span>{pathPart}</span>}
+										</div>
+										
+										{/* External link icon in bottom right */}
+										<IconExternalLink className="h-3.5 w-3.5 absolute bottom-3 right-3 text-gray-400 group-hover:text-gray-600 transition-colors" />
+									</a>
+								);
+							})}
 						</div>
 					</CardContent>
 				)}
