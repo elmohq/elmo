@@ -121,7 +121,7 @@ import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { extractTextContent } from "@/lib/text-extraction";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { IconChevronLeft, IconChevronRight, IconExternalLink } from "@tabler/icons-react";
 
 type PromptRun = {
 	id: string;
@@ -204,6 +204,7 @@ export default function PromptHistoryPage() {
 	const mentionStats = aggregations?.mentionStats || [];
 	const webQueryStats = aggregations?.webQueryStats || { overall: [], byModel: {} };
 	const webSearchSummary = aggregations?.webSearchSummary || { enabled: 0, disabled: 0, percentage: 0 };
+	const citationStats = aggregations?.citationStats;
 
 	if (isStatsLoading && isRunsLoading) {
 		return (
@@ -308,6 +309,134 @@ export default function PromptHistoryPage() {
 							maxValue={aggregations?.totalRuns || 1}
 						/>
 					</CardContent>
+				</Card>
+			)}
+
+			{/* Citation Statistics */}
+			{citationStats && citationStats.totalCitations > 0 && (
+				<Card>
+					<CardHeader>
+						<CardTitle>Citations</CardTitle>
+						<CardDescription>
+							Sources cited by LLMs when responding to this prompt. {citationStats.brandCitations > 0 && (
+								<>Your brand was cited in <strong>{Math.round((citationStats.brandCitations / citationStats.totalCitations) * 100)}%</strong> of citations.</>
+							)}
+						</CardDescription>
+					</CardHeader>
+					<Separator />
+					
+					{/* Category Summary */}
+					<CardContent className="pb-0">
+						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+							<div className="flex items-center gap-2">
+								<div className="w-3 h-3 rounded-full bg-green-500" />
+								<div>
+									<div className="text-sm font-medium">Brand</div>
+									<div className="text-lg font-bold">{citationStats.brandCitations}</div>
+								</div>
+							</div>
+							<div className="flex items-center gap-2">
+								<div className="w-3 h-3 rounded-full bg-red-500" />
+								<div>
+									<div className="text-sm font-medium">Competitor</div>
+									<div className="text-lg font-bold">{citationStats.competitorCitations}</div>
+								</div>
+							</div>
+							<div className="flex items-center gap-2">
+								<div className="w-3 h-3 rounded-full bg-purple-500" />
+								<div>
+									<div className="text-sm font-medium">Social Media</div>
+									<div className="text-lg font-bold">{citationStats.socialMediaCitations}</div>
+								</div>
+							</div>
+							<div className="flex items-center gap-2">
+								<div className="w-3 h-3 rounded-full bg-gray-500" />
+								<div>
+									<div className="text-sm font-medium">Other</div>
+									<div className="text-lg font-bold">{citationStats.otherCitations}</div>
+								</div>
+							</div>
+						</div>
+					</CardContent>
+
+					<Separator className="mt-6" />
+
+					{/* Top Domains */}
+					{citationStats.domainDistribution.length > 0 && (
+						<CardContent className="pb-0">
+							<h4 className="text-sm font-medium mb-3">Top Cited Domains</h4>
+							<HorizontalBarChart
+								data={citationStats.domainDistribution.slice(0, 15).map(d => ({
+									name: d.domain,
+									count: d.count,
+									category: d.category,
+								}))}
+								color="#3b82f6"
+								tooltipLabel="Citations"
+								maxValue={aggregations?.totalRuns || 1}
+							/>
+						</CardContent>
+					)}
+
+					<Separator className="mt-6" />
+
+					{/* Specific URLs */}
+					{citationStats.specificUrls.length > 0 && (
+						<CardContent>
+							<h4 className="text-sm font-medium mb-3">All Cited URLs (Top 20)</h4>
+							<div className="space-y-2">
+								{citationStats.specificUrls.slice(0, 20).map((citation, idx) => {
+									const getCategoryColor = (category: string) => {
+										switch (category) {
+											case 'brand': return 'bg-green-100 text-green-800 border-green-300';
+											case 'competitor': return 'bg-red-100 text-red-800 border-red-300';
+											case 'social_media': return 'bg-purple-100 text-purple-800 border-purple-300';
+											case 'other': return 'bg-gray-100 text-gray-800 border-gray-300';
+											default: return 'bg-gray-100 text-gray-800 border-gray-300';
+										}
+									};
+
+									const getCategoryLabel = (category: string) => {
+										switch (category) {
+											case 'brand': return 'Brand';
+											case 'competitor': return 'Competitor';
+											case 'social_media': return 'Social Media';
+											case 'other': return 'Other';
+											default: return category;
+										}
+									};
+
+									return (
+										<div 
+											key={idx} 
+											className="flex items-start justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+										>
+											<div className="flex-1 min-w-0 mr-4">
+												<div className="flex items-center gap-2 mb-1">
+													<span className={`text-xs px-2 py-0.5 rounded-full border ${getCategoryColor(citation.category)}`}>
+														{getCategoryLabel(citation.category)}
+													</span>
+													<span className="text-xs text-muted-foreground">{citation.domain}</span>
+												</div>
+												<a 
+													href={citation.url}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="text-sm hover:underline flex items-center gap-1 text-blue-600"
+												>
+													{citation.title || citation.url}
+													<IconExternalLink className="h-3 w-3" />
+												</a>
+											</div>
+											<Badge variant="secondary" className="shrink-0">
+												{citation.count}
+											</Badge>
+										</div>
+									);
+								})}
+							</div>
+						</CardContent>
+					)}
 				</Card>
 			)}
 
