@@ -19,6 +19,7 @@ import {
 	IconUsers,
 	IconAward,
 	IconList,
+	IconLink,
 } from "@tabler/icons-react";
 
 import {
@@ -47,6 +48,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				title: "Prompts",
 				url: "/prompts",
 				icon: IconListDetails,
+			},
+			{
+				title: "Citations",
+				url: "/citations",
+				icon: IconLink,
 			},
 			// {
 			// 	title: "Reputation",

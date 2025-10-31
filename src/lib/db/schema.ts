@@ -36,6 +36,7 @@ export const prompts = pgTable(
 	},
 	(table) => ({
 		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
+		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
 	}),
 ).enableRLS();
 
@@ -73,6 +74,7 @@ export const promptRuns = pgTable(
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
 		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
+		webSearchModelGroupCreatedAtIdx: index("prompt_runs_web_search_model_group_created_at_idx").on(table.webSearchEnabled, table.modelGroup, table.createdAt),
 	}),
 ).enableRLS();
 

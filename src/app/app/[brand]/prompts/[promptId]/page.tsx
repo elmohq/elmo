@@ -1,119 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getModelDisplayName } from "@/lib/utils";
-
-// Custom tick component for better text rendering with brand bolding
-const CustomTick = (props: any) => {
-	const { x, y, payload } = props;
-	return (
-		<g transform={`translate(${x},${y})`}>
-			<text x={0} y={0} dy={4} textAnchor="end" fill="#666" fontSize="12" style={{ maxWidth: "220px" }}>
-				{payload.value}
-			</text>
-		</g>
-	);
-};
-
-// Custom brand tick component that bolds the current brand
-const BrandTick = (props: any, currentBrandName?: string) => {
-	const { x, y, payload } = props;
-	const isBrand = payload.value === currentBrandName;
-
-	return (
-		<g transform={`translate(${x},${y})`}>
-			<text
-				x={-5}
-				y={0}
-				dy={4}
-				textAnchor="end"
-				fill={isBrand ? "#1f2937" : "#666"}
-				fontSize="12"
-				fontWeight={isBrand ? "bold" : "normal"}
-				style={{ maxWidth: "220px" }}
-			>
-				{payload.value}
-			</text>
-		</g>
-	);
-};
-
-// Reusable Horizontal Bar Chart Component
-interface HorizontalBarChartProps {
-	data: { name: string; count: number }[];
-	color: string;
-	tooltipLabel: string;
-	highlightValue?: string;
-	tickComponent?: React.ComponentType<any>;
-	maxValue?: number;
-}
-
-const HorizontalBarChart = ({
-	data,
-	color,
-	tooltipLabel,
-	highlightValue,
-	tickComponent: TickComponent = CustomTick,
-	maxValue,
-}: HorizontalBarChartProps) => {
-	// Helper function to get max count safely
-	const getMaxCount = (chartData: { count: number }[]) => {
-		if (!chartData || chartData.length === 0) return 1;
-		const validCounts = chartData
-			.map((d) => d.count)
-			.filter((count) => typeof count === "number" && !isNaN(count) && count >= 0);
-		if (validCounts.length === 0) return 1;
-		const max = Math.max(...validCounts);
-		return isNaN(max) ? 1 : Math.max(max, 1);
-	};
-
-	// Helper function to validate chart data
-	const isValidChartData = (chartData: { name: string; count: number }[]) => {
-		if (!chartData || !Array.isArray(chartData) || chartData.length === 0) return false;
-		return chartData.every(
-			(item) =>
-				item &&
-				typeof item.name === "string" &&
-				typeof item.count === "number" &&
-				!isNaN(item.count) &&
-				item.count >= 0,
-		);
-	};
-
-	// Calculate dynamic heights based on number of categories (40px per bar + padding)
-	const calculateChartHeight = (itemCount: number, minHeight = 200, maxHeight = 800) => {
-		const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, itemCount * 40 + 80));
-		return calculatedHeight;
-	};
-
-	if (!isValidChartData(data)) {
-		return <div className="text-muted-foreground text-center py-8">No data available</div>;
-	}
-
-	return (
-		<div style={{ height: calculateChartHeight(data.length) }}>
-			<ResponsiveContainer width="100%" height="100%">
-				<BarChart data={data} layout="vertical" margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-					<CartesianGrid strokeDasharray="3 3" />
-					<XAxis
-						type="number"
-						domain={[0, maxValue || getMaxCount(data)]}
-						tickCount={Math.min(10, (maxValue || getMaxCount(data)) + 1)}
-						allowDecimals={false}
-					/>
-					<YAxis dataKey="name" type="category" width={240} tick={<TickComponent />} interval={0} />
-					<Tooltip formatter={(value) => [value, tooltipLabel]} />
-					<Bar dataKey="count" fill={color} barSize={8} />
-				</BarChart>
-			</ResponsiveContainer>
-		</div>
-	);
-};
 
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
@@ -122,6 +14,11 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { extractTextContent } from "@/lib/text-extraction";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { ProgressBarChart, MODEL_COLORS } from "@/components/progress-bar-chart";
+import { CitationsDisplay } from "@/components/citations-display";
+import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { getDaysFromLookback } from "@/lib/chart-utils";
+import ReactMarkdown from "react-markdown";
 
 type PromptRun = {
 	id: string;
@@ -150,29 +47,31 @@ export default function PromptHistoryPage() {
 	const brandId = params.brand as string;
 	const promptId = params.promptId as string;
 
+	// Use lookback period from URL state
+	const lookback = useLookbackPeriod("1w");
+	const days = getDaysFromLookback(lookback);
+
 	// Pagination state
 	const [currentPage, setCurrentPage] = useState(1);
-	const [daysFilter, setDaysFilter] = useState(7);
 
 	// Get brand data
 	const { brand } = useBrand(brandId);
 
 	// Get stats (only reload when days filter changes)
-	const { data: statsData, isLoading: isStatsLoading, isError: isStatsError, prompt, aggregations } = usePromptStats(promptId, {
-		days: daysFilter
+	const { data: statsData, isLoading: isStatsLoading, isError: isStatsError, prompt: statsPrompt, aggregations } = usePromptStats(promptId, {
+		days
 	});
 
-	// Get paginated runs (reload when page or days filter changes)
-	const { runs, pagination, isLoading: isRunsLoading, isError: isRunsError } = usePromptRunsOnly(promptId, {
+	// Get paginated runs (reload when page or days filter changes) - this loads faster and includes prompt
+	const { runs, pagination, prompt: runsPrompt, isLoading: isRunsLoading, isError: isRunsError } = usePromptRunsOnly(promptId, {
 		page: currentPage,
 		limit: 15,
-		days: daysFilter
+		days
 	});
 
-	// Create custom tick component with brand name
-	const BrandYAxisTick = (props: any) => {
-		return BrandTick(props, brand?.name);
-	};
+	// Use prompt from runs API (faster) or fall back to stats API
+	const prompt = runsPrompt || statsPrompt;
+
 
 	// Handle pagination
 	const handlePageChange = (newPage: number) => {
@@ -181,10 +80,9 @@ export default function PromptHistoryPage() {
 		}
 	};
 
-	// Handle days filter change
-	const handleDaysFilterChange = (days: number) => {
-		setDaysFilter(days);
-		setCurrentPage(1); // Reset to first page when filter changes
+	// Handle lookback change - reset to first page
+	const handleLookbackChange = () => {
+		setCurrentPage(1);
 	};
 
 	const formatRawOutput = (rawOutput: any) => {
@@ -204,36 +102,20 @@ export default function PromptHistoryPage() {
 	const mentionStats = aggregations?.mentionStats || [];
 	const webQueryStats = aggregations?.webQueryStats || { overall: [], byModel: {} };
 	const webSearchSummary = aggregations?.webSearchSummary || { enabled: 0, disabled: 0, percentage: 0 };
+	const citationStats = aggregations?.citationStats;
 
-	if (isStatsLoading && isRunsLoading) {
-		return (
-			<div className="container mx-auto p-6 space-y-6">
-				<Card>
-					<CardHeader>
-						<CardTitle>Prompt History</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-4">
-							<Skeleton className="h-4 w-3/4" />
-							<Skeleton className="h-4 w-1/2" />
-							<Skeleton className="h-4 w-2/3" />
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
-
+	// Show error state
 	if (isStatsError || isRunsError) {
 		return (
-			<div className="container mx-auto p-6 space-y-6">
+			<div className="space-y-6">
+				<div className="flex justify-between items-start">
+					<h1 className="text-3xl font-bold">Prompt History</h1>
+					<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+				</div>
 				<Card>
-					<CardHeader>
-						<CardTitle>Prompt History</CardTitle>
-					</CardHeader>
-					<CardContent>
+					<CardContent className="pt-6">
 						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-							Failed to load prompt runs. Please try again.
+							Failed to load prompt data. Please try again.
 						</div>
 					</CardContent>
 				</Card>
@@ -241,14 +123,16 @@ export default function PromptHistoryPage() {
 		);
 	}
 
-	if (!prompt) {
+	// Show "not found" only if we're done loading and truly have no prompt
+	if (!isStatsLoading && !prompt) {
 		return (
-			<div className="container mx-auto p-6 space-y-6">
+			<div className="space-y-6">
+				<div className="flex justify-between items-start">
+					<h1 className="text-3xl font-bold">Prompt History</h1>
+					<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+				</div>
 				<Card>
-					<CardHeader>
-						<CardTitle>Prompt History</CardTitle>
-					</CardHeader>
-					<CardContent>
+					<CardContent className="pt-6">
 						<div className="text-muted-foreground">No prompt data found.</div>
 					</CardContent>
 				</Card>
@@ -259,28 +143,31 @@ export default function PromptHistoryPage() {
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-start">
-				<h1 className="text-3xl font-bold">
-					{prompt.value} <span className="text-muted-foreground font-normal">(past {daysFilter} days)</span>
-				</h1>
+				{prompt ? (
+					<h1 className="text-3xl font-bold">
+						{prompt.value}
+					</h1>
+				) : (
+					<Skeleton className="h-10 w-96" />
+				)}
 				
-				{/* Days Filter */}
-				<div className="flex gap-2">
-					{[7, 14, 30].map((days) => (
-						<Button
-							key={days}
-							variant={daysFilter === days ? "default" : "outline"}
-							size="sm"
-							onClick={() => handleDaysFilterChange(days)}
-							className="cursor-pointer"
-						>
-							{days}d
-						</Button>
-					))}
-				</div>
+				{/* Lookback Period Selector */}
+				<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
 			</div>
 
 			{/* Mention Statistics */}
-			{mentionStats.length > 0 && (
+			{isStatsLoading ? (
+				<Card>
+					<CardHeader>
+						<Skeleton className="h-6 w-32 mb-2" />
+						<Skeleton className="h-4 w-96" />
+					</CardHeader>
+					<Separator />
+					<CardContent className="space-y-4">
+						<Skeleton className="h-32 w-full" />
+					</CardContent>
+				</Card>
+			) : mentionStats.length > 0 ? (
 				<Card>
 					<CardHeader>
 						<CardTitle>Mentions</CardTitle>
@@ -298,21 +185,33 @@ export default function PromptHistoryPage() {
 						</CardDescription>
 					</CardHeader>
 					<Separator />
-					<CardContent>
-						<HorizontalBarChart
-							data={mentionStats}
-							color="#3b82f6"
-							tooltipLabel="Mentions"
-							highlightValue={brand?.name}
-							tickComponent={BrandYAxisTick}
-							maxValue={aggregations?.totalRuns || 1}
+					<CardContent className="space-y-4">
+						<ProgressBarChart
+							items={mentionStats.map((stat) => ({
+								label: stat.name,
+								count: stat.count,
+							}))}
+							defaultColor="#3b82f6"
+							customTotal={aggregations?.totalRuns || 1}
+							highlightLabel={brand?.name}
 						/>
 					</CardContent>
 				</Card>
-			)}
+			) : null}
 
-			{/* Web Query Statistics */}
-			{(webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) && (
+		{/* Web Query Statistics */}
+			{isStatsLoading ? (
+				<Card>
+					<CardHeader>
+						<Skeleton className="h-6 w-32 mb-2" />
+						<Skeleton className="h-4 w-full" />
+					</CardHeader>
+					<Separator />
+					<CardContent className="space-y-4">
+						<Skeleton className="h-48 w-full" />
+					</CardContent>
+				</Card>
+			) : (webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) ? (
 				<Card>
 					<CardHeader>
 						<CardTitle>Web Queries</CardTitle>
@@ -327,11 +226,13 @@ export default function PromptHistoryPage() {
 						<CardContent className="pb-0">
 							<div>
 								<h4 className="text-sm font-medium mb-3">All</h4>
-								<HorizontalBarChart
-									data={webQueryStats.overall}
-									color="#10b981"
-									tooltipLabel="Uses"
-									maxValue={aggregations?.totalRuns || 1}
+								<ProgressBarChart
+									items={webQueryStats.overall.map((query) => ({
+										label: query.name,
+										count: query.count,
+									}))}
+									defaultColor="#8b5cf6"
+									customTotal={aggregations?.totalRuns || 1}
 								/>
 							</div>
 						</CardContent>
@@ -347,6 +248,7 @@ export default function PromptHistoryPage() {
 					{/* Web Queries by Model - in specific order */}
 					{webQueryStats.byModel && (() => {
 						const modelOrder = ['openai', 'anthropic', 'google'];
+						
 						const filteredModels = modelOrder.filter(model => 
 							webQueryStats.byModel[model] && webQueryStats.byModel[model].length > 0
 						);
@@ -355,11 +257,14 @@ export default function PromptHistoryPage() {
 							<div key={model}>
 								<CardContent className="pb-0">
 									<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
-									<HorizontalBarChart
-										data={webQueryStats.byModel[model]}
-										color="#8b5cf6"
-										tooltipLabel="Uses"
-										maxValue={aggregations?.totalRuns || 1}
+									<ProgressBarChart
+										items={webQueryStats.byModel[model].map((query: { name: string; count: number }) => ({
+											label: query.name,
+											count: query.count,
+											category: model,
+										}))}
+										colorMapping={MODEL_COLORS}
+										customTotal={aggregations?.totalRuns || 1}
 									/>
 								</CardContent>
 								{/* Separator between model sections (not after the last one) */}
@@ -368,18 +273,46 @@ export default function PromptHistoryPage() {
 						));
 					})()}
 
-					{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
-						<CardContent>
-							<div className="text-muted-foreground text-center py-8">No web queries found in the prompt runs</div>
-						</CardContent>
-					)}
-				</Card>
+			{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
+				<CardContent>
+					<div className="text-muted-foreground text-center py-8">No web queries found in the prompt runs</div>
+				</CardContent>
 			)}
+		</Card>
+	) : null}
 
-			<div className="flex justify-between items-center">
-				<h2 className="text-2xl font-bold">
-					Prompt Runs ({pagination?.total || 0})
-				</h2>
+	{/* Citation Statistics */}
+	{isStatsLoading ? (
+		<Card>
+			<CardHeader>
+				<Skeleton className="h-6 w-32 mb-2" />
+				<Skeleton className="h-4 w-64" />
+			</CardHeader>
+			<Separator />
+			<CardContent className="space-y-4">
+				<Skeleton className="h-64 w-full" />
+			</CardContent>
+		</Card>
+	) : citationStats && citationStats.totalCitations > 0 ? (
+		<CitationsDisplay
+			citationData={citationStats}
+			brandId={brandId}
+			brandName={brand?.name}
+			showStats={true}
+			maxDomains={20}
+			maxUrls={50}
+		/>
+	) : null}
+
+	{/* Prompt Runs Section */}
+	<div className="flex justify-between items-center">
+				{isRunsLoading && !pagination ? (
+					<Skeleton className="h-8 w-48" />
+				) : (
+					<h2 className="text-2xl font-bold">
+						Prompt Runs ({pagination?.total || 0})
+					</h2>
+				)}
 				
 				{/* Pagination Controls */}
 				{!isRunsLoading && pagination && pagination.totalPages > 1 && (
@@ -494,6 +427,15 @@ export default function PromptHistoryPage() {
 												None
 											</Badge>
 										)}
+									</div>
+								</div>
+
+								<div>
+									<strong className="text-sm text-gray-700 block mb-2">Formatted LLM Response</strong>
+									<div className="bg-green-50 border border-green-200 rounded-lg p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
+										<ReactMarkdown>
+											{extractTextContent(run.rawOutput, run.modelGroup)}
+										</ReactMarkdown>
 									</div>
 								</div>
 

@@ -3,6 +3,7 @@ import { db } from "@/lib/db/db";
 import { promptRuns, prompts, brands, competitors } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, gte, sql, count, and } from "drizzle-orm";
+import { extractCitations } from "@/lib/text-extraction";
 
 type Params = {
 	promptId: string;
@@ -24,6 +25,26 @@ export interface PromptStatsResponse {
 			enabled: number;
 			disabled: number;
 			percentage: number;
+		};
+		citationStats?: {
+			totalCitations: number;
+			uniqueDomains: number;
+			brandCitations: number;
+			competitorCitations: number;
+			socialMediaCitations: number;
+			otherCitations: number;
+			domainDistribution: {
+				domain: string;
+				count: number;
+				category: 'brand' | 'competitor' | 'social_media' | 'other';
+			}[];
+			specificUrls: {
+				url: string;
+				title?: string;
+				domain: string;
+				count: number;
+				category: 'brand' | 'competitor' | 'social_media' | 'other';
+			}[];
 		};
 		totalRuns: number;
 	};
@@ -74,7 +95,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			mentionStatsResult,
 			competitorMentionsResult,
 			webQueryStatsResult,
-			webSearchSummaryResult
+			webSearchSummaryResult,
+			citationRunsResult
 		] = await Promise.all([
 			// Get mention statistics (server-side aggregation)
 			db
@@ -109,7 +131,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 					webSearchEnabled: sql<number>`SUM(CASE WHEN ${promptRuns.webSearchEnabled} THEN 1 ELSE 0 END)`,
 				})
 				.from(promptRuns)
-				.where(and(eq(promptRuns.promptId, promptId), timeCondition))
+				.where(and(eq(promptRuns.promptId, promptId), timeCondition)),
+
+			// Get runs with raw output for citation extraction
+			db
+				.select({
+					modelGroup: promptRuns.modelGroup,
+					rawOutput: promptRuns.rawOutput,
+				})
+				.from(promptRuns)
+				.where(and(
+					eq(promptRuns.promptId, promptId), 
+					timeCondition,
+					eq(promptRuns.webSearchEnabled, true)
+				))
 		]);
 
 		// Process mention stats
@@ -245,12 +280,127 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				: 0
 		};
 
+		// Process citation stats
+		let citationStats = undefined;
+		
+		if (citationRunsResult.length > 0) {
+			// Helper function to extract domain from URL or website string
+			const extractDomain = (urlOrDomain: string): string => {
+				try {
+					const cleaned = urlOrDomain.replace(/^https?:\/\//, '');
+					const withoutWww = cleaned.replace(/^www\./, '');
+					const domain = withoutWww.split('/')[0];
+					return domain.toLowerCase();
+				} catch (e) {
+					return urlOrDomain.toLowerCase();
+				}
+			};
+
+			// List of common social media domains
+			const SOCIAL_MEDIA_DOMAINS = [
+				'facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'linkedin.com',
+				'youtube.com', 'tiktok.com', 'pinterest.com', 'reddit.com', 'snapchat.com',
+				'tumblr.com', 'whatsapp.com', 'telegram.org', 'discord.com', 'twitch.tv',
+			];
+
+			const isSocialMediaDomain = (domain: string): boolean => {
+				return SOCIAL_MEDIA_DOMAINS.some(sm => domain === sm || domain.endsWith(`.${sm}`));
+			};
+
+			// Get brand and competitor info
+			const [brandInfo, competitorsList] = await Promise.all([
+				db.select({ website: brands.website }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
+				db.select({ domain: competitors.domain }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
+			]);
+
+			const brandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : '';
+			const competitorDomains = new Set(competitorsList.map(c => extractDomain(c.domain)));
+
+			// Extract citations from all runs
+			const domainCounts = new Map<string, number>();
+			const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
+
+			for (const run of citationRunsResult) {
+				const citations = extractCitations(run.rawOutput, run.modelGroup);
+				
+				for (const citation of citations) {
+					// Count by domain
+					domainCounts.set(citation.domain, (domainCounts.get(citation.domain) || 0) + 1);
+
+					// Count by URL
+					const urlCount = urlCounts.get(citation.url) || { count: 0, title: citation.title, domain: citation.domain };
+					urlCount.count++;
+					urlCounts.set(citation.url, urlCount);
+				}
+			}
+
+			// Categorize domains
+			const domainDistribution = Array.from(domainCounts.entries())
+				.map(([domain, count]) => {
+					let category: 'brand' | 'competitor' | 'social_media' | 'other';
+					
+					if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
+						category = 'brand';
+					} else if (competitorDomains.has(domain)) {
+						category = 'competitor';
+					} else if (isSocialMediaDomain(domain)) {
+						category = 'social_media';
+					} else {
+						category = 'other';
+					}
+
+					return { domain, count, category };
+				})
+				.sort((a, b) => b.count - a.count);
+
+			// Categorize specific URLs
+			const specificUrls = Array.from(urlCounts.entries())
+				.map(([url, { count, title, domain }]) => {
+					let category: 'brand' | 'competitor' | 'social_media' | 'other';
+					
+					if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
+						category = 'brand';
+					} else if (competitorDomains.has(domain)) {
+						category = 'competitor';
+					} else if (isSocialMediaDomain(domain)) {
+						category = 'social_media';
+					} else {
+						category = 'other';
+					}
+
+					return { url, title, domain, count, category };
+				})
+				.sort((a, b) => b.count - a.count);
+
+			// Calculate category totals
+			const brandCitations = domainDistribution.filter(d => d.category === 'brand').reduce((sum, d) => sum + d.count, 0);
+			const competitorCitations = domainDistribution.filter(d => d.category === 'competitor').reduce((sum, d) => sum + d.count, 0);
+			const socialMediaCitations = domainDistribution.filter(d => d.category === 'social_media').reduce((sum, d) => sum + d.count, 0);
+			const otherCitations = domainDistribution.filter(d => d.category === 'other').reduce((sum, d) => sum + d.count, 0);
+
+			const totalCitations = brandCitations + competitorCitations + socialMediaCitations + otherCitations;
+
+			if (totalCitations > 0) {
+				citationStats = {
+					totalCitations,
+					uniqueDomains: domainCounts.size,
+					brandCitations,
+					competitorCitations,
+					socialMediaCitations,
+					otherCitations,
+					domainDistribution,
+					specificUrls,
+				};
+			}
+		}
+
 		const response: PromptStatsResponse = {
 			prompt: prompt[0],
 			aggregations: {
 				mentionStats,
 				webQueryStats,
 				webSearchSummary,
+				citationStats,
 				totalRuns: Number(mentionData?.totalRuns || 0)
 			}
 		};

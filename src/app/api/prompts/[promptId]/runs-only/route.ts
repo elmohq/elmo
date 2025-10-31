@@ -9,6 +9,11 @@ type Params = {
 };
 
 export interface PromptRunsOnlyResponse {
+	prompt: {
+		id: string;
+		brandId: string;
+		value: string;
+	};
 	runs: {
 		id: string;
 		promptId: string;
@@ -110,6 +115,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const totalPages = Math.ceil(Number(total) / limit);
 
 		const response: PromptRunsOnlyResponse = {
+			prompt: prompt[0],
 			runs: paginatedRuns.map((run: any) => ({
 				...run,
 				createdAt: run.createdAt.toISOString()
