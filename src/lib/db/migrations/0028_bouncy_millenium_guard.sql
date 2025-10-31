@@ -1,0 +1,2 @@
+CREATE INDEX "prompt_runs_web_search_model_group_created_at_idx" ON "prompt_runs" USING btree ("web_search_enabled","modelGroup","created_at");--> statement-breakpoint
+CREATE INDEX "prompts_brand_id_enabled_idx" ON "prompts" USING btree ("brand_id","enabled");

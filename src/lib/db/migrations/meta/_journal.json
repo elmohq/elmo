@@ -197,6 +197,13 @@
       "when": 1759991981848,
       "tag": "0027_late_exiles",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1761950966758,
+      "tag": "0028_bouncy_millenium_guard",
+      "breakpoints": true
     }
   ]
 }

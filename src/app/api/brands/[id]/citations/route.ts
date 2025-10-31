@@ -3,7 +3,6 @@ import { db } from "@/lib/db/db";
 import { prompts, promptRuns, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { extractCitations, type Citation } from "@/lib/text-extraction";
 
 type Params = {
 	id: string;
@@ -124,63 +123,141 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const brandDomain = extractDomain(brand.website);
 		const competitorDomains = new Set(competitorsList.map(c => extractDomain(c.domain)));
 
-		// Get all prompt runs with their prompts for the brand within the date range
-		const runs = await db
-			.select({
-				id: promptRuns.id,
-				promptId: promptRuns.promptId,
-				promptValue: prompts.value,
-				modelGroup: promptRuns.modelGroup,
-				rawOutput: promptRuns.rawOutput,
-				createdAt: promptRuns.createdAt,
-			})
-			.from(promptRuns)
-			.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-			.where(
-				and(
-					eq(prompts.brandId, brandId),
-					eq(prompts.enabled, true),
-					gte(promptRuns.createdAt, fromDate),
-					// Only include runs with web search enabled (citations only come from web searches)
-					eq(promptRuns.webSearchEnabled, true)
-				)
-			)
-			.orderBy(promptRuns.createdAt);
+	// Extract citations directly from JSON in the database
+	// This avoids fetching the entire rawOutput JSON blob
+	const citationsQuery = sql<{
+		url: string;
+		title: string | null;
+		model_group: string;
+	}>`
+		WITH prompt_runs_filtered AS (
+			SELECT 
+				pr.id,
+				pr."modelGroup" as model_group,
+				pr.raw_output::jsonb as raw_output
+			FROM prompt_runs pr
+			INNER JOIN prompts p ON pr.prompt_id = p.id
+			WHERE 
+				p.brand_id = ${brandId}
+				AND p.enabled = true
+				AND pr.created_at >= ${fromDate}
+				AND pr.web_search_enabled = true
+		),
+		openai_citations AS (
+			SELECT 
+				annotation->>'url' as url,
+				annotation->>'title' as title,
+				model_group
+			FROM prompt_runs_filtered
+			CROSS JOIN LATERAL (
+				SELECT output_item
+				FROM jsonb_array_elements(
+					CASE 
+						WHEN jsonb_typeof(raw_output->'output') = 'array' 
+						THEN raw_output->'output'
+						ELSE '[]'::jsonb
+					END
+				) AS output_item
+				WHERE output_item->>'type' = 'message'
+			) AS outputs
+			CROSS JOIN LATERAL (
+				SELECT content_item
+				FROM jsonb_array_elements(
+					CASE 
+						WHEN jsonb_typeof(outputs.output_item->'content') = 'array' 
+						THEN outputs.output_item->'content'
+						ELSE '[]'::jsonb
+					END
+				) AS content_item
+				WHERE content_item->>'type' = 'output_text'
+			) AS contents
+			CROSS JOIN LATERAL (
+				SELECT annotation
+				FROM jsonb_array_elements(
+					CASE 
+						WHEN jsonb_typeof(contents.content_item->'annotations') = 'array' 
+						THEN contents.content_item->'annotations'
+						ELSE '[]'::jsonb
+					END
+				) AS annotation
+				WHERE annotation->>'type' = 'url_citation'
+				AND annotation->>'url' IS NOT NULL
+			) AS annotations
+			WHERE model_group = 'openai'
+		),
+		google_citations AS (
+			SELECT 
+				ref->>'url' as url,
+				ref->>'title' as title,
+				model_group
+			FROM prompt_runs_filtered
+			CROSS JOIN LATERAL (
+				SELECT item
+				FROM jsonb_array_elements(
+					CASE 
+						WHEN jsonb_typeof(raw_output->'tasks'->0->'result'->0->'items') = 'array'
+						THEN raw_output->'tasks'->0->'result'->0->'items'
+						ELSE '[]'::jsonb
+					END
+				) AS item
+				WHERE item->>'type' = 'ai_overview'
+			) AS items
+			CROSS JOIN LATERAL (
+				SELECT ref
+				FROM jsonb_array_elements(
+					CASE 
+						WHEN jsonb_typeof(items.item->'references') = 'array' 
+						THEN items.item->'references'
+						ELSE '[]'::jsonb
+					END
+				) AS ref
+				WHERE ref->>'url' IS NOT NULL
+			) AS refs
+			WHERE model_group = 'google'
+		)
+		SELECT url, title, model_group FROM openai_citations
+		UNION ALL
+		SELECT url, title, model_group FROM google_citations
+	`;
 
-		// Extract citations from all runs
-		const allCitations: (Citation & { promptId: string; promptValue: string })[] = [];
-		const domainCounts = new Map<string, { count: number; exampleTitle?: string }>();
-		const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
+	const citations = await db.execute(citationsQuery);
 
-		for (const run of runs) {
-			const citations = extractCitations(run.rawOutput, run.modelGroup);
-			
-			for (const citation of citations) {
-				allCitations.push({
-					...citation,
-					promptId: run.promptId,
-					promptValue: run.promptValue,
-				});
+	// Process citations
+	let totalCitationCount = 0;
+	const domainCounts = new Map<string, { count: number; exampleTitle?: string }>();
+	const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
 
-				// Count by domain
-				const domainCount = domainCounts.get(citation.domain) || { count: 0 };
-				domainCount.count++;
-				if (!domainCount.exampleTitle && citation.title) {
-					domainCount.exampleTitle = citation.title;
-				}
-				domainCounts.set(citation.domain, domainCount);
+	for (const row of citations.rows) {
+		// Type assertion for the raw SQL result
+		const citation = row as { url: string; title: string | null; model_group: string };
+		
+		try {
+			const url = new URL(citation.url);
+			const domain = url.hostname.replace(/^www\./, '');
+			totalCitationCount++;
+
+			// Count by domain
+			const domainCount = domainCounts.get(domain) || { count: 0 };
+			domainCount.count++;
+			if (!domainCount.exampleTitle && citation.title) {
+				domainCount.exampleTitle = citation.title;
+			}
+			domainCounts.set(domain, domainCount);
 
 			// Count by URL (normalize to remove query parameters like ?utm_source=openai)
 			const normalizedUrl = normalizeUrl(citation.url);
-			const urlCount = urlCounts.get(normalizedUrl) || { count: 0, title: citation.title, domain: citation.domain };
+			const urlCount = urlCounts.get(normalizedUrl) || { count: 0, title: citation.title || undefined, domain };
 			urlCount.count++;
 			// Keep the title from the first occurrence if not already set
 			if (!urlCount.title && citation.title) {
 				urlCount.title = citation.title;
 			}
 			urlCounts.set(normalizedUrl, urlCount);
-			}
+		} catch (e) {
+			// Invalid URL, skip
+			console.warn("Invalid citation URL:", citation.url);
 		}
+	}
 
 		// Categorize domains
 		const domainDistribution = Array.from(domainCounts.entries())
@@ -237,16 +314,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const socialMediaCitations = domainDistribution.filter(d => d.category === 'social_media').reduce((sum, d) => sum + d.count, 0);
 		const otherCitations = domainDistribution.filter(d => d.category === 'other').reduce((sum, d) => sum + d.count, 0);
 
-		const response: CitationStats = {
-			totalCitations: allCitations.length,
-			uniqueDomains: domainCounts.size,
-			brandCitations,
-			competitorCitations,
-			socialMediaCitations,
-			otherCitations,
-			domainDistribution,
-			specificUrls,
-		};
+	const response: CitationStats = {
+		totalCitations: totalCitationCount,
+		uniqueDomains: domainCounts.size,
+		brandCitations,
+		competitorCitations,
+		socialMediaCitations,
+		otherCitations,
+		domainDistribution,
+		specificUrls,
+	};
 
 		return NextResponse.json(response);
 
