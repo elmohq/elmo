@@ -4,6 +4,8 @@ export const WHITE_LABEL_CONFIG = {
 	url: "https://ai.whitelabel-client.com/",
 	parent_name: "WHITELABEL-CLIENT",
 	parent_url: "https://app.whitelabel-client.com/",
+	onboarding_redirect_url: (brandId: string): string | undefined => 
+		`https://app.whitelabel-client.com/search/onboarding?org_id=${brandId}`,
 	chart_colors: [
 		"#3182ce",
 		"#ae7679",

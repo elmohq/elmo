@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useRouter } from "next/navigation";
+import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 
 function getVisibilityTextColor(value: number): string {
 	if (value > 75) return "text-emerald-600";
@@ -21,6 +23,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 	const [brandId, setBrandId] = useState<string>("");
 	const { brand, isLoading } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
+	const router = useRouter();
 
 	// Get the brand ID from params
 	useEffect(() => {
@@ -50,11 +53,15 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 						couple of minutes.
 					</p>
 				</div>
-				<PromptWizard
-					onComplete={() => {
-						// The wizard will trigger a revalidation, so the page will update automatically
-					}}
-				/>
+			<PromptWizard
+				onComplete={() => {
+					// redirect happens after the revalidation occurs, so this isn't necessary - just for redirect continuity
+					const redirectUrl = WHITE_LABEL_CONFIG.onboarding_redirect_url(brandId);
+					if (redirectUrl) {
+						window.location.href = redirectUrl;
+					}
+				}}
+			/>
 			</div>
 		);
 	}
