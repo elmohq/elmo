@@ -36,7 +36,7 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 		<PromptsDisplay
 			prompts={brandPrompts}
 			pageTitle="Prompts (Using Web Search)"
-			pageDescription="See how LLMs are using the web to respond to prompts related to your brand. Updated daily."
+			pageDescription="See how LLMs are using the web to respond to prompts related to your brand."
 			editLink={`/app/${brandId}/prompts/edit`}
 			webSearchEnabled={true}
 		/>
