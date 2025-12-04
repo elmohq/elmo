@@ -18,7 +18,18 @@
       "core-js-pure",
       "tree-sitter",
       "tree-sitter-json"
-    ]
+    ],
+    "overrides": {
+      "esbuild@<=0.24.2": ">=0.25.0",
+      "next@>=15.0.0 <=15.4.4": ">=15.4.5",
+      "next@>=15.0.0-canary.0 <15.4.7": ">=15.4.7",
+      "js-yaml@<3.14.2": ">=3.14.2",
+      "glob@>=10.2.0 <10.5.0": ">=10.5.0",
+      "body-parser@>=2.2.0 <2.2.1": ">=2.2.1",
+      "mdast-util-to-hast@>=13.0.0 <13.2.1": ">=13.2.1",
+      "ai@<5.0.52": ">=5.0.52",
+      "next@>=15.3.0-canary.0 <15.3.6": ">=15.3.6"
+    }
   },
   "scripts": {
     "dev": "next dev --turbopack",
