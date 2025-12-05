@@ -31,13 +31,15 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const isProduction = process.env.VERCEL_ENV === "production";
+
 	return (
 		<html lang="en">
 			<head>
 				<PlausibleProvider domain="aeo.whitelabel-client.com" />
 			</head>
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-				<ClarityAnalytics />
+				{isProduction && <ClarityAnalytics />}
 				<NuqsAdapter>{children}</NuqsAdapter>
 			</body>
 		</html>
