@@ -30,7 +30,6 @@ interface PromptsDisplayProps {
 	pageTitle: string;
 	pageDescription: string;
 	editLink: string;
-	webSearchEnabled?: boolean;
 	excludeModels?: ModelType[];
 }
 
@@ -161,7 +160,6 @@ export function PromptsDisplay({
 	pageTitle,
 	pageDescription,
 	editLink,
-	webSearchEnabled,
 	excludeModels = [],
 }: PromptsDisplayProps) {
 	// Filter available models based on excludeModels prop
@@ -188,7 +186,6 @@ export function PromptsDisplay({
 		isError: summaryError,
 	} = usePromptsSummary(brand?.id, {
 		lookback: selectedLookback,
-		webSearchEnabled,
 		modelGroup: modelGroupParam,
 	});
 
@@ -338,7 +335,6 @@ export function PromptsDisplay({
 											promptId={prompt.id}
 											brandId={brand?.id || ""}
 											lookback={selectedLookback}
-											webSearchEnabled={webSearchEnabled}
 											selectedModel={selectedModel}
 											availableModels={availableIndividualModels}
 											priority={priority}
@@ -361,7 +357,6 @@ export function PromptsDisplay({
 														promptId={prompt.id}
 														brandId={brand?.id || ""}
 														lookback={selectedLookback}
-														webSearchEnabled={webSearchEnabled}
 														selectedModel={selectedModel}
 														availableModels={availableIndividualModels}
 														priority={priority}
