@@ -46,12 +46,6 @@ function getVisibilityLabelColor(value: number): string {
 	return "text-rose-600 dark:text-rose-500";
 }
 
-function getVisibilityDescriptionColor(value: number): string {
-	if (value > 75) return "text-emerald-800 dark:text-emerald-300";
-	if (value > 45) return "text-amber-800 dark:text-amber-300";
-	return "text-rose-800 dark:text-rose-300";
-}
-
 function formatRelativeTime(dateString: string | null): string {
 	if (!dateString) return "Never";
 	
@@ -96,7 +90,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 
 	const hasPrompts = brand?.prompts && brand.prompts.length > 0;
 
-	if (!hasPrompts && !brand?.onboarded) {
+	if (!brand?.onboarded) {
 		return (
 			<div className="space-y-6 max-w-2xl p-4">
 				<div className="space-y-2">
