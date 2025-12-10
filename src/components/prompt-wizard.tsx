@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, memo, useEffect, useRef } from "react";
+import { useState, useCallback, memo, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -8,11 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket, Plus, X } from "lucide-react";
+import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket, Plus, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@/components/ui/tags-input";
 import { Separator } from "@/components/ui/separator";
 import { MAX_COMPETITORS } from "@/lib/constants";
+
+// Maximum prompts limit
+const MAX_PROMPTS = 150;
 
 // Step status types
 type StepStatus = "pending" | "running" | "completed" | "error" | "blocked" | "cancelled";
@@ -143,7 +146,7 @@ const apiCalls = {
 			keywords: Array<{ keyword: string; search_volume: number; difficulty: number; selected: boolean }>;
 			customPrompts: string[];
 		},
-	) {
+	): Promise<{ success: boolean; error?: string }> {
 		const selectedKeywords = data.keywords.filter((kw) => kw.selected);
 
 		const response = await fetch("/api/wizard/create-prompts", {
@@ -159,7 +162,12 @@ const apiCalls = {
 			}),
 		});
 
-		return response.ok;
+		if (!response.ok) {
+			const data = await response.json();
+			return { success: false, error: data.error || "Failed to create prompts" };
+		}
+
+		return { success: true };
 	},
 
 };
@@ -217,6 +225,47 @@ const EditableTagsInput = memo(
 );
 
 EditableTagsInput.displayName = "EditableTagsInput";
+
+// Simple collapsible section component
+const CollapsibleSection = memo(
+	({
+		title,
+		count,
+		badgeColor,
+		subtitle,
+		children,
+	}: {
+		title: string;
+		count: number;
+		badgeColor: string;
+		subtitle?: string;
+		children: React.ReactNode;
+	}) => {
+		const [isOpen, setIsOpen] = useState(false);
+
+		return (
+			<div className="border rounded-lg">
+				<button
+					type="button"
+					onClick={() => setIsOpen(!isOpen)}
+					className="flex w-full items-center justify-between p-3 text-sm font-medium hover:bg-accent/50 transition-colors"
+				>
+					<div className="flex items-center gap-2">
+						<Badge variant="default" className={badgeColor}>
+							{count}
+						</Badge>
+						<span>{title}</span>
+						{subtitle && <span className="text-xs text-muted-foreground font-normal">({subtitle})</span>}
+					</div>
+					{isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+				</button>
+				{isOpen && <div className="border-t">{children}</div>}
+			</div>
+		);
+	},
+);
+
+CollapsibleSection.displayName = "CollapsibleSection";
 
 // Step status rendering utility
 const getStepStatusIcon = (status: StepStatus) => {
@@ -376,6 +425,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const [currentPhase, setCurrentPhase] = useState<"idle" | "processing" | "review" | "complete">("idle");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [isCreatingPrompts, setIsCreatingPrompts] = useState(false);
+	const [createPromptsError, setCreatePromptsError] = useState<string | null>(null);
 	const [wizardData, setWizardData] = useState<WizardData>({
 		products: [],
 		competitors: [],
@@ -385,6 +435,55 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	});
 
 	const { steps, setSteps, executeStep, resetSteps } = useStepManager(brand);
+
+	// Calculate prompts preview
+	const promptsPreview = useMemo(() => {
+		const existingPrompts = brand?.prompts || [];
+		const existingCount = existingPrompts.length;
+
+		// Product prompts: "best [product]"
+		const productPrompts = wizardData.products.map((product) => `best ${product}`);
+
+		// Product × Persona prompts
+		const productPersonaPrompts: Array<{ prompt: string; group: string; product: string }> = [];
+		for (const product of wizardData.products) {
+			for (const group of wizardData.personaGroups) {
+				for (const persona of group.personas) {
+					productPersonaPrompts.push({
+						prompt: `best ${product} for ${persona}`,
+						group: group.name || "Unnamed Group",
+						product,
+					});
+				}
+			}
+		}
+
+		// Selected keywords
+		const selectedKeywords = wizardData.keywords.filter((kw) => kw.selected).map((kw) => kw.keyword);
+
+		// Custom prompts
+		const customPrompts = wizardData.customPrompts;
+
+		// Calculate totals
+		const newPromptsCount =
+			productPrompts.length + productPersonaPrompts.length + selectedKeywords.length + customPrompts.length;
+		const totalAfterCreation = existingCount + newPromptsCount;
+		const wouldExceedLimit = totalAfterCreation > MAX_PROMPTS;
+		const availableSlots = Math.max(0, MAX_PROMPTS - existingCount);
+
+		return {
+			existingPrompts,
+			existingCount,
+			productPrompts,
+			productPersonaPrompts,
+			selectedKeywords,
+			customPrompts,
+			newPromptsCount,
+			totalAfterCreation,
+			wouldExceedLimit,
+			availableSlots,
+		};
+	}, [brand?.prompts, wizardData]);
 
 	// Memoized callback for updating persona group names
 	const updatePersonaGroupName = useCallback((groupId: string, name: string) => {
@@ -607,17 +706,18 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		if (!brand?.id) return;
 
 		setIsCreatingPrompts(true);
+		setCreatePromptsError(null);
 		try {
-			const success = await apiCalls.createPrompts(brand.id, wizardData);
-			if (success) {
+			const result = await apiCalls.createPrompts(brand.id, wizardData);
+			if (result.success) {
 				await revalidate();
 				onComplete();
 			} else {
-				// Handle API failure
-				console.error("Failed to create prompts");
+				setCreatePromptsError(result.error || "Failed to create prompts");
 			}
 		} catch (error) {
 			console.error("Error creating prompts:", error);
+			setCreatePromptsError(error instanceof Error ? error.message : "An unexpected error occurred");
 		} finally {
 			setIsCreatingPrompts(false);
 		}
@@ -887,9 +987,220 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 				<Separator />
 
+				{/* Prompts Preview Section */}
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<h2 className="text-2xl font-bold">Prompts Preview</h2>
+						<p className="text-muted-foreground">Review all prompts that will be created based on your selections.</p>
+					</div>
+
+					{/* Summary Card */}
+					<Card
+						className={
+							promptsPreview.wouldExceedLimit
+								? "border-red-300 bg-red-50/50 dark:border-red-800 dark:bg-red-950/30"
+								: "bg-gradient-to-br from-background to-muted/30"
+						}
+					>
+						<CardContent className="pt-6 pb-5">
+							{/* Main stats row */}
+							<div className="flex items-center justify-between mb-4">
+								<div className="flex items-baseline gap-1">
+									<span className="text-4xl font-bold tabular-nums">
+										{promptsPreview.totalAfterCreation}
+									</span>
+									<span className="text-lg text-muted-foreground">/ {MAX_PROMPTS}</span>
+								</div>
+								<div className="text-right">
+									{promptsPreview.wouldExceedLimit ? (
+										<Badge variant="destructive" className="text-xs">
+											Exceeds limit by {promptsPreview.totalAfterCreation - MAX_PROMPTS}
+										</Badge>
+									) : promptsPreview.newPromptsCount > 0 ? (
+										<Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+											+{promptsPreview.newPromptsCount} new
+										</Badge>
+									) : (
+										<Badge variant="secondary" className="text-xs">
+											No changes
+										</Badge>
+									)}
+								</div>
+							</div>
+
+							{/* Progress bar with segments */}
+							<div className="relative h-3 rounded-full bg-muted overflow-hidden mb-3">
+								{/* Existing prompts segment */}
+								<div
+									className="absolute left-0 top-0 h-full bg-gray-400 dark:bg-gray-600 transition-all"
+									style={{ width: `${Math.min((promptsPreview.existingCount / MAX_PROMPTS) * 100, 100)}%` }}
+								/>
+								{/* New prompts segment */}
+								<div
+									className={`absolute top-0 h-full transition-all ${
+										promptsPreview.wouldExceedLimit
+											? "bg-red-500"
+											: "bg-blue-500"
+									}`}
+									style={{
+										left: `${Math.min((promptsPreview.existingCount / MAX_PROMPTS) * 100, 100)}%`,
+										width: `${Math.min((promptsPreview.newPromptsCount / MAX_PROMPTS) * 100, 100 - (promptsPreview.existingCount / MAX_PROMPTS) * 100)}%`,
+									}}
+								/>
+							</div>
+
+							{/* Legend */}
+							<div className="flex items-center justify-between text-xs text-muted-foreground">
+								<div className="flex items-center gap-4">
+									<div className="flex items-center gap-1.5">
+										<div className="w-2.5 h-2.5 rounded-full bg-gray-400 dark:bg-gray-600" />
+										<span>Existing ({promptsPreview.existingCount})</span>
+									</div>
+									<div className="flex items-center gap-1.5">
+										<div className={`w-2.5 h-2.5 rounded-full ${promptsPreview.wouldExceedLimit ? "bg-red-500" : "bg-blue-500"}`} />
+										<span>New ({promptsPreview.newPromptsCount})</span>
+									</div>
+								</div>
+								<span>{promptsPreview.availableSlots} slots available</span>
+							</div>
+
+							{/* Error message */}
+							{promptsPreview.wouldExceedLimit && (
+								<div className="mt-4 flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-100/50 dark:bg-red-900/20 rounded-md p-3">
+									<AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+									<span>
+										Remove {promptsPreview.totalAfterCreation - MAX_PROMPTS} prompts to proceed. 
+										Try reducing targeting groups or deselecting keywords.
+									</span>
+								</div>
+							)}
+						</CardContent>
+					</Card>
+
+					{/* Breakdown */}
+					<div className="space-y-2">
+						{/* Existing Prompts */}
+						{promptsPreview.existingCount > 0 && (
+							<CollapsibleSection
+								title="Existing Prompts"
+								count={promptsPreview.existingCount}
+								badgeColor="bg-gray-500"
+							>
+								<div className="max-h-48 overflow-y-auto bg-muted/30 p-3">
+									<div className="space-y-1">
+										{promptsPreview.existingPrompts.map((prompt) => (
+											<div key={prompt.id} className="text-xs text-muted-foreground truncate">
+												{prompt.value}
+											</div>
+										))}
+									</div>
+								</div>
+							</CollapsibleSection>
+						)}
+
+						{/* Product Prompts */}
+						{promptsPreview.productPrompts.length > 0 && (
+							<CollapsibleSection
+								title="Product Prompts"
+								count={promptsPreview.productPrompts.length}
+								badgeColor="bg-blue-500"
+								subtitle="from product categories"
+							>
+								<div className="bg-muted/30 p-3">
+									<div className="space-y-1">
+										{promptsPreview.productPrompts.map((prompt, i) => (
+											<div key={i} className="text-xs">
+												{prompt}
+											</div>
+										))}
+									</div>
+								</div>
+							</CollapsibleSection>
+						)}
+
+						{/* Product × Persona Prompts */}
+						{promptsPreview.productPersonaPrompts.length > 0 && (
+							<CollapsibleSection
+								title="Product × Targeting Prompts"
+								count={promptsPreview.productPersonaPrompts.length}
+								badgeColor="bg-purple-500"
+								subtitle="products × targeting groups"
+							>
+								<div className="max-h-64 overflow-y-auto bg-muted/30 p-3">
+									<div className="space-y-1">
+										{promptsPreview.productPersonaPrompts.map((item, i) => (
+											<div key={i} className="text-xs flex items-center gap-2">
+												<span>{item.prompt}</span>
+												<Badge variant="outline" className="text-[10px] px-1 py-0">
+													{item.group}
+												</Badge>
+											</div>
+										))}
+									</div>
+								</div>
+							</CollapsibleSection>
+						)}
+
+						{/* Selected Keywords */}
+						{promptsPreview.selectedKeywords.length > 0 && (
+							<CollapsibleSection
+								title="SEO Keyword Prompts"
+								count={promptsPreview.selectedKeywords.length}
+								badgeColor="bg-green-500"
+								subtitle="selected keywords"
+							>
+								<div className="bg-muted/30 p-3">
+									<div className="space-y-1">
+										{promptsPreview.selectedKeywords.map((keyword, i) => (
+											<div key={i} className="text-xs">
+												{keyword}
+											</div>
+										))}
+									</div>
+								</div>
+							</CollapsibleSection>
+						)}
+
+						{/* Custom Prompts */}
+						{promptsPreview.customPrompts.length > 0 && (
+							<CollapsibleSection
+								title="Custom Prompts"
+								count={promptsPreview.customPrompts.length}
+								badgeColor="bg-orange-500"
+							>
+								<div className="bg-muted/30 p-3">
+									<div className="space-y-1">
+										{promptsPreview.customPrompts.map((prompt, i) => (
+											<div key={i} className="text-xs">
+												{prompt}
+											</div>
+										))}
+									</div>
+								</div>
+							</CollapsibleSection>
+						)}
+
+						{/* No new prompts message */}
+						{promptsPreview.newPromptsCount === 0 && (
+							<div className="text-sm text-muted-foreground text-center py-4 border rounded-lg">
+								No new prompts to create. Add products, targeting groups, keywords, or custom prompts above.
+							</div>
+						)}
+					</div>
+				</div>
+
+				<Separator />
+
+				{createPromptsError && (
+					<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+						<AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+						<div className="text-sm">{createPromptsError}</div>
+					</div>
+				)}
+
 				<Button
 					onClick={createPrompts}
-					disabled={isCreatingPrompts}
+					disabled={isCreatingPrompts || promptsPreview.wouldExceedLimit || promptsPreview.newPromptsCount === 0}
 					className="flex items-center gap-2 cursor-pointer"
 				>
 					{isCreatingPrompts ? (
@@ -900,7 +1211,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					) : (
 						<>
 							<Rocket className="h-4 w-4" />
-							Start Tracking
+							Start Tracking ({promptsPreview.newPromptsCount} new prompts)
 						</>
 					)}
 				</Button>
