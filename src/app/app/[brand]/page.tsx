@@ -74,7 +74,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 	return (
 		<div className="space-y-8">
 			<div className="space-y-2">
-				<h2 className="text-2xl font-bold">AI Engine Optimization</h2>
+				<h2 className="text-2xl font-bold">AI Search Optimization</h2>
 				<p className="text-muted-foreground text-balance">
 					Monitor and optimize how AI models represent your brand across search queries and pre-trained knowledge.
 				</p>
