@@ -37,34 +37,42 @@ import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
 import { useBrand } from "@/hooks/use-brands";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+	const { brand } = useBrand();
+
+	const navMain = [
+		{
+			title: "Dashboard",
+			url: `/`,
+			icon: IconDashboard,
+		},
+		...(brand?.onboarded
+			? [
+					{
+						title: "Prompts",
+						url: "/prompts",
+						icon: IconListDetails,
+					},
+					{
+						title: "Citations",
+						url: "/citations",
+						icon: IconLink,
+					},
+				]
+			: []),
+		// {
+		// 	title: "Reputation",
+		// 	url: "/reputation",
+		// 	icon: IconAward,
+		// },
+		{
+			title: "Settings",
+			url: "/settings",
+			icon: IconSettings,
+		},
+	];
+
 	const data = {
-		navMain: [
-			{
-				title: "Dashboard",
-				url: `/`,
-				icon: IconDashboard,
-			},
-			{
-				title: "Prompts",
-				url: "/prompts",
-				icon: IconListDetails,
-			},
-			{
-				title: "Citations",
-				url: "/citations",
-				icon: IconLink,
-			},
-			// {
-			// 	title: "Reputation",
-			// 	url: "/reputation",
-			// 	icon: IconAward,
-			// },
-			{
-				title: "Settings",
-				url: "/settings",
-				icon: IconSettings,
-			},
-		],
+		navMain,
 	};
 
 	return (
