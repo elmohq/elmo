@@ -3,8 +3,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { IconExternalLink } from "@tabler/icons-react";
+import { IconExternalLink, IconInfoCircle } from "@tabler/icons-react";
 import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import Link from "next/link";
 
 export interface CitationData {
 	totalCitations: number;
@@ -160,7 +162,18 @@ export function CitationsDisplay({
 
 					<Card className="md:col-span-2 lg:col-span-3">
 						<CardHeader className="gap-0">
-							<CardTitle>Citations by Domain Type</CardTitle>
+							<CardTitle className="flex items-center gap-1.5">
+								Citations by Domain Type
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs text-sm font-normal">
+										<p className="mb-2"><strong>Competitor</strong> domains are only those you&apos;ve added to your <Link href={brandId ? `/app/${brandId}/settings` : "#"} className="underline">competitors list</Link>.</p>
+										<p>If you see a competitor in &quot;Other&quot;, consider adding them to your list for better tracking.</p>
+									</TooltipContent>
+								</Tooltip>
+							</CardTitle>
 						</CardHeader>
 						<Separator />
 						<CardContent className="space-y-6">
@@ -182,9 +195,20 @@ export function CitationsDisplay({
 			{/* Citations Card */}
 			<Card>
 				<CardHeader>
-					<CardTitle>Citations</CardTitle>
+					<CardTitle className="flex items-center gap-1.5">
+						Citations
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs text-sm font-normal">
+								<p className="mb-2">Citations are collected from all prompt evaluations in your selected time period, regardless of whether your brand appears in the response.</p>
+								<p><strong>Competitor</strong> domains shown are only those in your <Link href={brandId ? `/app/${brandId}/settings` : "#"} className="underline">tracked competitors list</Link>.</p>
+							</TooltipContent>
+						</Tooltip>
+					</CardTitle>
 					<CardDescription>
-						Sources cited by LLMs when responding to prompts. {citationData.brandCitations > 0 && brandName && (
+						Sources cited by LLMs when responding to your prompts. {citationData.brandCitations > 0 && brandName && (
 							<>{brandName} was cited in <strong>{Math.round((citationData.brandCitations / citationData.totalCitations) * 100)}%</strong> of citations.</>
 						)}
 					</CardDescription>
@@ -195,7 +219,8 @@ export function CitationsDisplay({
 				{domainChartData.length > 0 && (
 					<>
 						<CardContent className="pb-0">
-							<h4 className="text-sm font-medium mb-3">Top Cited Domains (showing top {maxDomains})</h4>
+							<h4 className="text-sm font-medium mb-1">Top Cited Domains (showing top {maxDomains})</h4>
+							<p className="text-xs text-muted-foreground mb-3">Counts show how many times each domain was cited across all prompt runs</p>
 							<ProgressBarChart
 								items={domainChartData.slice(0, maxDomains).map((domain) => ({
 									label: domain.domain,
@@ -213,7 +238,8 @@ export function CitationsDisplay({
 				{/* Specific URLs */}
 				{citationData.specificUrls.length > 0 && (
 					<CardContent>
-						<h4 className="text-sm font-medium mb-3">Top {maxUrls} Cited URLs</h4>
+						<h4 className="text-sm font-medium mb-1">Top {maxUrls} Cited URLs</h4>
+						<p className="text-xs text-muted-foreground mb-3">Counts show how many times each URL was cited across all prompt runs</p>
 						<div className="space-y-2">
 							{citationData.specificUrls.slice(0, maxUrls).map((citation, idx) => {
 								const displayUrl = formatUrlForDisplay(citation.url, citation.domain);

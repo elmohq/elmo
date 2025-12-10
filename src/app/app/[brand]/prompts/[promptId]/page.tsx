@@ -19,6 +19,9 @@ import { CitationsDisplay } from "@/components/citations-display";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import ReactMarkdown from "react-markdown";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { IconInfoCircle } from "@tabler/icons-react";
+import Link from "next/link";
 
 type PromptRun = {
 	id: string;
@@ -170,7 +173,18 @@ export default function PromptHistoryPage() {
 			) : mentionStats.length > 0 ? (
 				<Card>
 					<CardHeader>
-						<CardTitle>Mentions</CardTitle>
+						<CardTitle className="flex items-center gap-1.5">
+							Mentions
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-sm font-normal">
+									<p>Only competitors from your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link> are shown here.</p>
+									<p className="mt-2">If a competitor isn&apos;t showing up, add them to your list.</p>
+								</TooltipContent>
+							</Tooltip>
+						</CardTitle>
 						<CardDescription>
 							{brand?.name} was mentioned in{" "}
 							<strong>
@@ -211,10 +225,21 @@ export default function PromptHistoryPage() {
 						<Skeleton className="h-48 w-full" />
 					</CardContent>
 				</Card>
-			) : (webQueryStats.overall.length > 0 || Object.keys(webQueryStats.byModel).length > 0) ? (
+			) : (
 				<Card>
 					<CardHeader>
-						<CardTitle>Web Queries</CardTitle>
+						<CardTitle className="flex items-center gap-1.5">
+							Web Queries
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-sm font-normal">
+									<p className="mb-2">The number next to each query represents how many times it was made when evaluating this prompt.</p>
+									<p>LLMs can make multiple web queries per evaluation, and sometimes the same queries appear across different evaluations.</p>
+								</TooltipContent>
+							</Tooltip>
+						</CardTitle>
 						<CardDescription>
 							These are the underlying queries used by the LLMs to search for information relevant to the prompt.
 						</CardDescription>
@@ -225,7 +250,8 @@ export default function PromptHistoryPage() {
 					{webQueryStats.overall.length > 0 && (
 						<CardContent className="pb-0">
 							<div>
-								<h4 className="text-sm font-medium mb-3">All</h4>
+								<h4 className="text-sm font-medium mb-1">All</h4>
+								<p className="text-xs text-muted-foreground mb-3">Counts show how many times each query appeared across {aggregations?.totalRuns || 0} prompt runs</p>
 								<ProgressBarChart
 									items={webQueryStats.overall.map((query) => ({
 										label: query.name,
@@ -239,47 +265,43 @@ export default function PromptHistoryPage() {
 					)}
 
 					{/* Separator between overall and model-specific queries */}
-					{webQueryStats.overall.length > 0 &&
-						webQueryStats.byModel &&
-						Object.entries(webQueryStats.byModel).filter(([model, queries]) => queries.length > 0).length > 0 && (
-							<Separator />
-						)}
+					{webQueryStats.overall.length > 0 && <Separator />}
 
-					{/* Web Queries by Model - in specific order */}
-					{webQueryStats.byModel && (() => {
+					{/* Web Queries by Model - show all models, even those without queries */}
+					{(() => {
 						const modelOrder = ['openai', 'anthropic', 'google'];
 						
-						const filteredModels = modelOrder.filter(model => 
-							webQueryStats.byModel[model] && webQueryStats.byModel[model].length > 0
-						);
-						
-						return filteredModels.map((model, index) => (
-							<div key={model}>
-								<CardContent className="pb-0">
-									<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
-									<ProgressBarChart
-										items={webQueryStats.byModel[model].map((query: { name: string; count: number }) => ({
-											label: query.name,
-											count: query.count,
-											category: model,
-										}))}
-										colorMapping={MODEL_COLORS}
-										customTotal={aggregations?.totalRuns || 1}
-									/>
-								</CardContent>
-								{/* Separator between model sections (not after the last one) */}
-								{index < filteredModels.length - 1 && <Separator className="mt-6" />}
-							</div>
-						));
+						return modelOrder.map((model, index) => {
+							const hasQueries = webQueryStats.byModel?.[model] && webQueryStats.byModel[model].length > 0;
+							
+							return (
+								<div key={model}>
+									<CardContent className="pb-0">
+										<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
+										{hasQueries ? (
+											<ProgressBarChart
+												items={webQueryStats.byModel[model].map((query: { name: string; count: number }) => ({
+													label: query.name,
+													count: query.count,
+													category: model,
+												}))}
+												colorMapping={MODEL_COLORS}
+												customTotal={aggregations?.totalRuns || 1}
+											/>
+										) : (
+											<div className="text-muted-foreground text-sm py-4 px-3 bg-muted/50 rounded-md">
+												No web queries were made by {getModelDisplayName(model)} for this prompt.
+											</div>
+										)}
+									</CardContent>
+									{/* Separator between model sections (not after the last one) */}
+									{index < modelOrder.length - 1 && <Separator className="mt-6" />}
+								</div>
+							);
+						});
 					})()}
-
-			{webQueryStats.overall.length === 0 && Object.keys(webQueryStats.byModel).length === 0 && (
-				<CardContent>
-					<div className="text-muted-foreground text-center py-8">No web queries found in the prompt runs</div>
-				</CardContent>
+				</Card>
 			)}
-		</Card>
-	) : null}
 
 	{/* Citation Statistics */}
 	{isStatsLoading ? (

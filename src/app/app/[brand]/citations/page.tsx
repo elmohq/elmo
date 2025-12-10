@@ -8,6 +8,9 @@ import { useBrand } from "@/hooks/use-brands";
 import { CitationsDisplay } from "@/components/citations-display";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { getDaysFromLookback } from "@/lib/chart-utils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { IconInfoCircle } from "@tabler/icons-react";
+import Link from "next/link";
 
 export default function CitationsPage() {
 	const params = useParams();
@@ -65,9 +68,20 @@ export default function CitationsPage() {
 		<div className="space-y-6">
 			<div className="flex justify-between items-start">
 				<div>
-					<h1 className="text-3xl font-bold">Citations</h1>
+					<h1 className="text-3xl font-bold flex items-center gap-2">
+						Citations
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-5 w-5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs text-sm font-normal">
+								<p className="mb-2">Citations are collected from all prompt evaluations, regardless of whether your brand appears in the LLM response.</p>
+								<p><strong>Competitor</strong> domains shown are only those in your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link>.</p>
+							</TooltipContent>
+						</Tooltip>
+					</h1>
 					<p className="text-muted-foreground mt-1">
-						See which sources LLMs cite when responding to prompts about {brand?.name || "your brand"}.
+						See which sources LLMs cite when responding to your prompts.
 					</p>
 				</div>
 				
