@@ -5,6 +5,7 @@ import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-actions-footer";
+import { TextHighlighter } from "./text-highlighter";
 import { useChartDownload } from "@/hooks/use-chart-download";
 import { usePromptChartData } from "@/hooks/use-prompt-chart-data";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
@@ -25,6 +26,7 @@ interface PromptChartProps {
 	availableModels?: ("openai" | "anthropic" | "google")[];
 	enabled?: boolean;
 	priority?: "high" | "normal" | "low"; // For intelligent loading
+	searchHighlight?: string;
 }
 
 export function PromptChart({
@@ -37,6 +39,7 @@ export function PromptChart({
 	availableModels = ["openai", "anthropic", "google"],
 	enabled = true,
 	priority = "normal",
+	searchHighlight = "",
 }: PromptChartProps) {
 	// Use the optimized hook
 	const { chartData, isLoading, isError } = usePromptChartData(
@@ -90,12 +93,19 @@ export function PromptChart({
 		);
 	}
 
+	// Helper to render the title with optional highlighting
+	const renderTitle = () => (
+		<CardTitle className="text-sm">
+			<TextHighlighter text={promptName} highlight={searchHighlight} />
+		</CardTitle>
+	);
+
 	// Fast error state
 	if (isError) {
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<CardTitle className="text-sm">{promptName}</CardTitle>
+					{renderTitle()}
 					<Badge variant="destructive" className="text-xs">
 						Failed to load
 					</Badge>
@@ -134,7 +144,7 @@ export function PromptChart({
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<CardTitle className="text-sm">{promptName}</CardTitle>
+					{renderTitle()}
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
@@ -153,7 +163,7 @@ export function PromptChart({
 		return (
 			<Card className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
-				<CardTitle className="text-sm">{promptName}</CardTitle>
+				{renderTitle()}
 			</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
@@ -186,7 +196,7 @@ export function PromptChart({
 	return (
 		<Card ref={chartRef} className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
-				<CardTitle className="text-sm">{promptName}</CardTitle>
+				{renderTitle()}
 				{lastBrandVisibility !== null && (
 					<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
 						{lastBrandVisibility}% Visibility

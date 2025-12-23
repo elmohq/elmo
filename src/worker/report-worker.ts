@@ -21,6 +21,7 @@ import {
 	type PersonaGroup,
 	type PromptData,
 } from "../lib/wizard-helpers";
+import { isPromptBranded, computeSystemTags } from "../lib/tag-utils";
 
 // Initialize Anthropic client for direct API calls (for tool usage)
 const anthropic = new Anthropic({
@@ -188,23 +189,6 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 	} catch (error) {
 		console.error("Error running DataForSEO search:", error);
 		throw error;
-	}
-}
-
-// Function to check if a prompt contains the brand name or domain directly
-function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-	
-	// Extract domain from brandWebsite
-	try {
-		const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, '').toLowerCase();
-		const domainWithoutTld = domain.split('.')[0];
-		
-		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
-	} catch (error) {
-		return promptLower.includes(brandNameLower);
 	}
 }
 
@@ -640,6 +624,8 @@ export async function processReportJob(job: Job<ReportJobData>) {
 			groupPrefix: null,
 			value: promptValue,
 			enabled: true,
+			tags: [],
+			systemTags: computeSystemTags(promptValue, brandName, brandWebsite),
 		}));
 
 		// Create final report data

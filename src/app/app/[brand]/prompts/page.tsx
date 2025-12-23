@@ -4,6 +4,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { PromptsDisplay } from "./prompts-display";
+import Link from "next/link";
 
 async function getPrompts(brandId: string) {
 	// Verify user has access to this brand
@@ -32,11 +33,16 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 		notFound();
 	}
 
+	const infoContent = (
+		<p>Track how different LLMs respond to prompts related to your brand, products, and <Link href={`/app/${brandId}/settings`} className="underline">competitors</Link>.</p>
+	);
+
 	return (
 		<PromptsDisplay
 			prompts={brandPrompts}
 			pageTitle="Prompts"
 			pageDescription="See how LLMs are evaluating prompts related to your brand."
+			pageInfoContent={infoContent}
 			editLink={`/app/${brandId}/prompts/edit`}
 		/>
 	);

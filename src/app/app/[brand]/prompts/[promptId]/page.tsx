@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { getModelDisplayName } from "@/lib/utils";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
+import { PromptTagEditor } from "@/components/prompt-tag-editor";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { extractTextContent } from "@/lib/text-extraction";
@@ -56,6 +57,9 @@ export default function PromptHistoryPage() {
 
 	// Pagination state
 	const [currentPage, setCurrentPage] = useState(1);
+	
+	// Tags state (fetched from API)
+	const [promptTags, setPromptTags] = useState<string[]>([]);
 
 	// Get brand data
 	const { brand } = useBrand(brandId);
@@ -74,6 +78,20 @@ export default function PromptHistoryPage() {
 
 	// Use prompt from runs API (faster) or fall back to stats API
 	const prompt = runsPrompt || statsPrompt;
+
+	// Fetch prompt tags (tags are now stored on the prompt, including system tags)
+	useEffect(() => {
+		if (!brandId || !promptId) return;
+		
+		fetch(`/api/brands/${brandId}/prompts/${promptId}`)
+			.then((res) => res.json())
+			.then((data) => {
+				if (data.tags) {
+					setPromptTags(data.tags);
+				}
+			})
+			.catch(console.error);
+	}, [brandId, promptId]);
 
 
 	// Handle pagination
@@ -146,13 +164,22 @@ export default function PromptHistoryPage() {
 	return (
 		<div className="space-y-6">
 			<div className="flex justify-between items-start">
-				{prompt ? (
-					<h1 className="text-3xl font-bold">
-						{prompt.value}
-					</h1>
-				) : (
-					<Skeleton className="h-10 w-96" />
-				)}
+				<div className="space-y-2 flex-1 mr-4">
+					{prompt ? (
+						<h1 className="text-3xl font-bold">
+							{prompt.value}
+						</h1>
+					) : (
+						<Skeleton className="h-10 w-96" />
+					)}
+					{/* Tags */}
+					<PromptTagEditor
+						brandId={brandId}
+						promptId={promptId}
+						currentTags={promptTags}
+						onTagsUpdated={setPromptTags}
+					/>
+				</div>
 				
 				{/* Lookback Period Selector */}
 				<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />

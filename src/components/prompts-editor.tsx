@@ -4,8 +4,12 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Save, Inbox } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Plus, Save, Inbox, X, Check } from "lucide-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { invalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 
 interface Prompt {
 	id: string;
@@ -14,6 +18,8 @@ interface Prompt {
 	groupPrefix: string | null;
 	value: string;
 	enabled: boolean;
+	tags?: string[];
+	systemTags?: string[];
 	createdAt: Date;
 }
 
@@ -23,6 +29,8 @@ interface EditablePrompt {
 	groupCategory: string;
 	groupPrefix: string;
 	enabled: boolean;
+	tags: string[];
+	systemTags: string[]; // read-only, from initial data
 }
 
 interface PromptsEditorProps {
@@ -43,9 +51,12 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			groupCategory: p.groupCategory || "",
 			groupPrefix: p.groupPrefix || "",
 			enabled: p.enabled,
+			tags: p.tags || [],
+			systemTags: p.systemTags || [],
 		})),
 	);
 	const [isLoading, setIsLoading] = useState(false);
+	const [newTagInputs, setNewTagInputs] = useState<Record<number, string>>({});
 	const saveInProgress = useRef(false);
 	const router = useRouter();
 
@@ -53,13 +64,34 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		// Count only enabled prompts for the limit
 		const enabledCount = prompts.filter((p) => p.enabled).length;
 		if (enabledCount < MAX_PROMPTS) {
-			setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "", enabled: true }]);
+			setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "", enabled: true, tags: [], systemTags: [] }]);
 		}
 	};
 
-	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean) => {
+	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean | string[]) => {
 		const updated = [...prompts];
 		updated[index] = { ...updated[index], [field]: value };
+		setPrompts(updated);
+	};
+
+	const addTag = (index: number, tag: string) => {
+		const normalizedTag = tag.toLowerCase().trim();
+		// Don't add empty, system tags, or duplicates
+		if (!normalizedTag || normalizedTag === "branded" || normalizedTag === "unbranded") return;
+		if (prompts[index].tags.includes(normalizedTag)) return;
+		
+		const updated = [...prompts];
+		updated[index] = { ...updated[index], tags: [...updated[index].tags, normalizedTag] };
+		setPrompts(updated);
+		setNewTagInputs({ ...newTagInputs, [index]: "" });
+	};
+
+	const removeTag = (promptIndex: number, tagIndex: number) => {
+		const updated = [...prompts];
+		updated[promptIndex] = {
+			...updated[promptIndex],
+			tags: updated[promptIndex].tags.filter((_, i) => i !== tagIndex),
+		};
 		setPrompts(updated);
 	};
 
@@ -107,6 +139,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							groupCategory: prompt.groupCategory.trim() || null,
 							groupPrefix: prompt.groupPrefix.trim() || null,
 							enabled: prompt.enabled,
+							tags: prompt.tags,
 						}),
 					}).then((response) => {
 						if (!response.ok) {
@@ -130,6 +163,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							groupCategory: prompt.groupCategory.trim() || null,
 							groupPrefix: prompt.groupPrefix.trim() || null,
 							enabled: prompt.enabled,
+							tags: prompt.tags,
 						}),
 					}).then((response) => {
 						if (!response.ok) {
@@ -163,6 +197,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			// Wait for all operations to complete
 			await Promise.all(allPromises);
 
+			// Invalidate the prompts summary cache so tags are refreshed
+			invalidatePromptsSummary(brandId);
+
 			router.push(`/app/${brandId}/prompts`);
 		} catch (error) {
 			console.error("Error saving prompts:", error);
@@ -188,11 +225,65 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			<div className="space-y-4">
 				{/* Header row - always shown */}
-				<div className="grid grid-cols-11 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-					<div className="col-span-1 text-center">Enabled</div>
-					<div className="col-span-4">Prompt Text</div>
-					<div className="col-span-3">Group Category (Optional)</div>
-					<div className="col-span-3">Group Prefix (Optional)</div>
+				<div className="grid grid-cols-[3rem_1fr_8rem_8rem_6rem_10rem] gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+					<div className="flex justify-center">
+						<Check className="h-4 w-4" />
+					</div>
+					<div className="flex items-center gap-1">
+						Prompt Text
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+					<div className="flex items-center gap-1">
+						Category
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">Group similar prompts together (e.g., persona, demographic, activity).</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+					<div className="flex items-center gap-1">
+						Prefix
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">Common prefix shared by related prompts (e.g., &quot;best running shoes for&quot;).</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+					<div className="flex items-center gap-1">
+						System
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
+					<div className="flex items-center gap-1">
+						Tags
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
+							</TooltipContent>
+						</Tooltip>
+					</div>
 				</div>
 
 				{/* Content area - either placeholder or prompt rows */}
@@ -204,14 +295,14 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						</div>
 					</div>
 				) : (
-					<div className="space-y-4">
+					<div className="space-y-3">
 						{/* Prompt rows */}
 						{prompts.map((prompt, index) => (
 							<div
 								key={index}
-								className={`grid grid-cols-11 gap-2 items-center ${!prompt.enabled ? "opacity-60" : ""}`}
+								className={`grid grid-cols-[3rem_1fr_8rem_8rem_6rem_10rem] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
 							>
-								<div className="col-span-1 flex justify-center">
+								<div className="flex justify-center pt-2">
 									<Checkbox
 										checked={prompt.enabled}
 										onCheckedChange={(checked) => updatePrompt(index, "enabled", checked === true)}
@@ -221,20 +312,64 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 									value={prompt.value}
 									onChange={(e) => updatePrompt(index, "value", e.target.value)}
 									placeholder="Enter prompt text..."
-									className="col-span-4"
 								/>
 								<Input
 									value={prompt.groupCategory}
 									onChange={(e) => updatePrompt(index, "groupCategory", e.target.value)}
-									placeholder="e.g., personas"
-									className="col-span-3"
+									placeholder="personas"
 								/>
 								<Input
 									value={prompt.groupPrefix}
 									onChange={(e) => updatePrompt(index, "groupPrefix", e.target.value)}
-									placeholder="e.g., best product for"
-									className="col-span-3"
+									placeholder="best for"
 								/>
+								{/* System Tags (read-only) */}
+								<div className="flex items-center h-9">
+									{prompt.systemTags.length > 0 ? (
+										<div className="flex flex-wrap gap-1">
+											{prompt.systemTags.map((tag, tagIndex) => (
+												<Badge 
+													key={tagIndex} 
+													variant="outline" 
+													className="text-xs capitalize bg-muted/50"
+												>
+													{tag}
+												</Badge>
+											))}
+										</div>
+									) : (
+										<span className="text-xs text-muted-foreground">—</span>
+									)}
+								</div>
+								{/* User Tags (editable) */}
+								<div className="space-y-1.5">
+									<Input
+										value={newTagInputs[index] || ""}
+										onChange={(e) => setNewTagInputs({ ...newTagInputs, [index]: e.target.value })}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												e.preventDefault();
+												addTag(index, newTagInputs[index] || "");
+											}
+										}}
+										placeholder="Add tag..."
+									/>
+									{prompt.tags.length > 0 && (
+										<div className="flex flex-wrap gap-1">
+											{prompt.tags.map((tag, tagIndex) => (
+												<Badge key={tagIndex} variant="secondary" className="text-xs pr-1 gap-1">
+													{tag}
+													<button
+														onClick={() => removeTag(index, tagIndex)}
+														className="ml-0.5 hover:bg-muted rounded-sm p-0.5 cursor-pointer"
+													>
+														<X className="h-3 w-3" />
+													</button>
+												</Badge>
+											))}
+										</div>
+									)}
+								</div>
 							</div>
 						))}
 					</div>

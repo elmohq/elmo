@@ -60,6 +60,13 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// Get brand info for computing system tags
+		const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
+		if (brandInfo.length === 0) {
+			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+		}
+		const brand = brandInfo[0];
+
 		// Check current counts for limits
 		const [currentPromptCountResult, currentCompetitorCountResult] = await Promise.all([
 			db.select({ count: count() }).from(prompts).where(eq(prompts.brandId, brandId)),
@@ -69,9 +76,11 @@ export async function POST(request: NextRequest) {
 		const currentPromptCount = currentPromptCountResult[0]?.count || 0;
 		const currentCompetitorCount = currentCompetitorCountResult[0]?.count || 0;
 
-		// Use helper function to create prompts data
+		// Use helper function to create prompts data (includes system tags)
 		const { prompts: promptsToCreate, competitors: competitorsFromHelper } = createPromptsData({
 			brandId,
+			brandName: brand.name,
+			brandWebsite: brand.website,
 			products: products || [],
 			competitors: competitorData || [],
 			personaGroups: personaGroups || [],

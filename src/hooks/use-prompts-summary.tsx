@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate as globalMutate } from "swr";
 import { usePathname } from "next/navigation";
 import type { PromptsSummaryResponse } from "@/app/api/brands/[id]/prompts-summary/route";
 
@@ -10,6 +10,7 @@ export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
 	modelGroup?: "openai" | "anthropic" | "google";
+	tags?: string[]; // Filter by tag names
 }
 
 const fetcher = async (url: string): Promise<PromptsSummaryResponse> => {
@@ -45,6 +46,10 @@ function buildApiUrl(brandId: string, filters?: PromptsSummaryFilters): string {
 		params.append("modelGroup", filters.modelGroup);
 	}
 
+	if (filters.tags && filters.tags.length > 0) {
+		params.append("tags", filters.tags.join(","));
+	}
+
 	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
 }
 
@@ -73,4 +78,17 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 		isError: error,
 		revalidate: mutate,
 	};
+}
+
+/**
+ * Invalidate all prompts summary cache entries for a brand.
+ * Call this after updating prompts (e.g., adding/removing tags).
+ */
+export function invalidatePromptsSummary(brandId: string) {
+	// Invalidate all keys that start with the prompts-summary URL for this brand
+	globalMutate(
+		(key) => typeof key === "string" && key.startsWith(`/api/brands/${brandId}/prompts-summary`),
+		undefined,
+		{ revalidate: true }
+	);
 }

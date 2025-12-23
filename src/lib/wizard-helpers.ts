@@ -5,6 +5,7 @@ import * as client from "dataforseo-client";
 import { dfsLabsApi, dfsSerpApi } from "@/lib/dataforseo";
 import { getWebsiteExcerpt } from "@/lib/website-excerpt";
 import { MAX_COMPETITORS } from "@/lib/constants";
+import { isPromptBranded } from "@/lib/tag-utils";
 
 const anthropicClient = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
@@ -38,6 +39,8 @@ export interface PromptData {
 	groupPrefix: string | null;
 	value: string;
 	enabled: boolean;
+	tags: string[];
+	systemTags: string[];
 }
 
 // Helper function to retry async operations with exponential backoff
@@ -820,22 +823,6 @@ ${brandName.toLowerCase()} best products,95,60`;
 		});
 	const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = [];
 
-	// Helper to check if a prompt is branded
-	const checkIfBranded = (promptText: string): boolean => {
-		const promptLower = promptText.toLowerCase();
-		const brandNameLower = brandName.toLowerCase();
-			
-			try {
-				const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
-				const domain = url.hostname.replace(/^www\./, '').toLowerCase();
-				const domainWithoutTld = domain.split('.')[0];
-				
-				return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
-			} catch (error) {
-				return promptLower.includes(brandNameLower);
-			}
-		};
-
 	// Skip header row and parse each line
 	for (let i = 1; i < lines.length; i++) {
 		const line = lines[i];
@@ -855,7 +842,7 @@ ${brandName.toLowerCase()} best products,95,60`;
 			) {
 				candidatePrompts.push({
 					prompt: promptText.toLowerCase(),
-					brandedPrompt: checkIfBranded(promptText),
+					brandedPrompt: isPromptBranded(promptText, brandName, brandWebsite),
 				});
 			}
 		}
@@ -879,24 +866,35 @@ ${brandName.toLowerCase()} best products,95,60`;
 // Create prompts from wizard data (without database operations)
 export function createPromptsData(data: {
 	brandId: string;
+	brandName: string;
+	brandWebsite: string;
 	products: string[];
 	competitors: CompetitorResult[];
 	personaGroups: PersonaGroup[];
 	keywords: KeywordResult[];
 	customPrompts: string[];
 }): { prompts: PromptData[]; competitors: CompetitorResult[] } {
-	const { brandId, products, competitors, personaGroups, keywords, customPrompts } = data;
+	const { brandId, brandName, brandWebsite, products, competitors, personaGroups, keywords, customPrompts } = data;
 	const promptsToCreate: PromptData[] = [];
+
+	// Helper to compute system tags for a prompt value
+	const getSystemTags = (value: string): string[] => {
+		const { computeSystemTags } = require("@/lib/tag-utils");
+		return computeSystemTags(value, brandName, brandWebsite);
+	};
 
 	// Add product categories as basic prompts (with "best " prefix)
 	if (products && Array.isArray(products)) {
 		for (const product of products) {
+			const value = `best ${product}`;
 			promptsToCreate.push({
 				brandId,
 				groupCategory: null,
 				groupPrefix: null,
-				value: `best ${product}`,
+				value,
 				enabled: true,
+				tags: [],
+				systemTags: getSystemTags(value),
 			});
 		}
 	}
@@ -907,12 +905,15 @@ export function createPromptsData(data: {
 			for (const group of personaGroups) {
 				if (group && group.name && Array.isArray(group.personas)) {
 					for (const persona of group.personas) {
+						const value = `best ${product} for ${persona}`;
 						promptsToCreate.push({
 							brandId,
 							groupCategory: group.name,
 							groupPrefix: `best ${product} for `,
-							value: `best ${product} for ${persona}`,
+							value,
 							enabled: true,
+							tags: [],
+							systemTags: getSystemTags(value),
 						});
 					}
 				}
@@ -929,6 +930,8 @@ export function createPromptsData(data: {
 				groupPrefix: null,
 				value: prompt,
 				enabled: true,
+				tags: [],
+				systemTags: getSystemTags(prompt),
 			});
 		}
 	}
@@ -942,6 +945,8 @@ export function createPromptsData(data: {
 				groupPrefix: null,
 				value: keywordData.keyword,
 				enabled: true,
+				tags: [],
+				systemTags: getSystemTags(keywordData.keyword),
 			});
 		}
 	}
@@ -955,13 +960,21 @@ export function createPromptsData(data: {
 // Create prompts from wizard data for reports (includes additional report-specific prompts)
 export function createPromptsDataForReports(data: {
 	brandId: string;
+	brandName: string;
+	brandWebsite: string;
 	products: string[];
 	competitors: CompetitorResult[];
 	personaGroups: PersonaGroup[];
 	keywords: KeywordResult[];
 	customPrompts: string[];
 }): { prompts: PromptData[]; competitors: CompetitorResult[] } {
-	const { brandId, products, competitors } = data;
+	const { brandId, brandName, brandWebsite, products, competitors } = data;
+	
+	// Helper to compute system tags for a prompt value
+	const getSystemTags = (value: string): string[] => {
+		const { computeSystemTags } = require("@/lib/tag-utils");
+		return computeSystemTags(value, brandName, brandWebsite);
+	};
 	
 	// First, get all the standard prompts
 	const result = createPromptsData(data);
@@ -970,12 +983,15 @@ export function createPromptsDataForReports(data: {
 	// Add "where to buy" prompts for each product
 	if (products && Array.isArray(products)) {
 		for (const product of products) {
+			const value = `where to buy ${product}`;
 			promptsToCreate.push({
 				brandId,
 				groupCategory: null,
 				groupPrefix: null,
-				value: `where to buy ${product}`,
+				value,
 				enabled: true,
+				tags: [],
+				systemTags: getSystemTags(value),
 			});
 		}
 	}
@@ -984,12 +1000,15 @@ export function createPromptsDataForReports(data: {
 	if (competitors && Array.isArray(competitors)) {
 		const topCompetitors = competitors.slice(0, 2);
 		for (const competitor of topCompetitors) {
+			const value = `best ${competitor.name.toLowerCase()} alternative`;
 			promptsToCreate.push({
 				brandId,
 				groupCategory: null,
 				groupPrefix: null,
-				value: `best ${competitor.name.toLowerCase()} alternative`,
+				value,
 				enabled: true,
+				tags: [],
+				systemTags: getSystemTags(value),
 			});
 		}
 	}

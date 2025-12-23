@@ -46,6 +46,12 @@ function getVisibilityLabelColor(value: number): string {
 	return "text-rose-600 dark:text-rose-500";
 }
 
+function getVisibilityBorderColor(value: number): string {
+	if (value > 75) return "border-emerald-200 dark:border-emerald-800";
+	if (value > 45) return "border-amber-200 dark:border-amber-800";
+	return "border-rose-200 dark:border-rose-800";
+}
+
 function formatRelativeTime(dateString: string | null): string {
 	if (!dateString) return "Never";
 	
@@ -265,7 +271,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 
 				<div className="grid gap-4 lg:grid-cols-4">
 					{/* Hero Visibility Score */}
-					<Card className={`shadow-none border-0 flex flex-col ${getVisibilityBgColor(averageVisibility)}`}>
+					<Card className={`shadow-none flex flex-col ${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}>
 						<CardHeader className="pb-2">
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${getVisibilityLabelColor(averageVisibility)}`}>
 								Current Visibility

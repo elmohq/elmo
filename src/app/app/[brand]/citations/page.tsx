@@ -3,36 +3,44 @@
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useCitations } from "@/hooks/use-citations";
 import { useBrand } from "@/hooks/use-brands";
 import { CitationsDisplay } from "@/components/citations-display";
-import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { getDaysFromLookback } from "@/lib/chart-utils";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { IconInfoCircle } from "@tabler/icons-react";
 import Link from "next/link";
+import { PageHeader, PageHeaderSkeleton, usePageFilters, usePageFilterSetters } from "@/components/page-header";
 
 export default function CitationsPage() {
 	const params = useParams();
 	const brandId = params.brand as string;
 
-	// Use lookback period from URL state
-	const lookback = useLookbackPeriod("1w");
-	const days = getDaysFromLookback(lookback);
+	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
+	const { clearFilters } = usePageFilterSetters();
+	const days = getDaysFromLookback(selectedLookback);
 
 	// Get brand data
 	const { brand } = useBrand(brandId);
 
-	// Get citation data
-	const { data: citationData, isLoading, isError } = useCitations(brandId, { days });
+	// Get citation data with tag and model filter
+	const modelGroupParam = selectedModel === "all" ? undefined : selectedModel;
+	const { data: citationData, isLoading, isError } = useCitations(brandId, { 
+		days, 
+		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		modelGroup: modelGroupParam,
+	});
+
+	// Get available tags from citation data
+	const availableTags = citationData?.availableTags || [];
+
+	const infoContent = (
+		<p>Citations are collected from all prompt evaluations. <strong>Competitor</strong> domains shown are only those in your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link>.</p>
+	);
 
 	if (isLoading) {
 		return (
-			<div className="space-y-6">
-				<div>
-					<Skeleton className="h-10 w-96 mb-2" />
-					<Skeleton className="h-6 w-64" />
-				</div>
+			<>
+				<PageHeaderSkeleton />
 				<Card>
 					<CardHeader>
 						<Skeleton className="h-6 w-48" />
@@ -45,14 +53,20 @@ export default function CitationsPage() {
 						</div>
 					</CardContent>
 				</Card>
-			</div>
+			</>
 		);
 	}
 
 	if (isError || !citationData) {
 		return (
-			<div className="space-y-6">
-				<h1 className="text-3xl font-bold">Citations</h1>
+			<PageHeader
+				title="Citations"
+				subtitle="See which sources LLMs cite when responding to your prompts."
+				infoContent={infoContent}
+				availableTags={[]}
+				editTagsLink={`/app/${brandId}/prompts/edit`}
+				showModelSelector
+			>
 				<Card>
 					<CardContent className="pt-6">
 						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
@@ -60,40 +74,39 @@ export default function CitationsPage() {
 						</div>
 					</CardContent>
 				</Card>
-			</div>
+			</PageHeader>
 		);
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-start">
-				<div>
-					<h1 className="text-3xl font-bold flex items-center gap-2">
-						Citations
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-5 w-5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent className="max-w-xs text-sm font-normal">
-								<p className="mb-2">Citations are collected from all prompt evaluations, regardless of whether your brand appears in the LLM response.</p>
-								<p><strong>Competitor</strong> domains shown are only those in your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link>.</p>
-							</TooltipContent>
-						</Tooltip>
-					</h1>
-					<p className="text-muted-foreground mt-1">
-						See which sources LLMs cite when responding to your prompts.
-					</p>
-				</div>
-				
-				{/* Lookback Period Selector */}
-				<LookbackSelector defaultPeriod="1w" />
-			</div>
-
+		<PageHeader
+			title="Citations"
+			subtitle="See which sources LLMs cite when responding to your prompts."
+			infoContent={infoContent}
+			availableTags={availableTags}
+			editTagsLink={`/app/${brandId}/prompts/edit`}
+			showModelSelector
+		>
 			{citationData.totalCitations === 0 ? (
 				<Card>
 					<CardContent className="pt-6">
 						<div className="text-muted-foreground text-center py-8">
-							No citations found. Citations are only available from prompts evaluated with web search enabled.
+							{selectedTags.length > 0 || selectedModel !== "all" ? (
+								<>
+									<p className="mb-2">No citations found for the selected filters.</p>
+									<p className="text-sm mb-4">Try adjusting your filters or time period.</p>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={clearFilters}
+										className="cursor-pointer"
+									>
+										Clear filters
+									</Button>
+								</>
+							) : (
+								"No citations found. Citations are only available from prompts evaluated with web search enabled."
+							)}
 						</div>
 					</CardContent>
 				</Card>
@@ -107,7 +120,6 @@ export default function CitationsPage() {
 					maxUrls={50}
 				/>
 			)}
-		</div>
+		</PageHeader>
 	);
 }
-

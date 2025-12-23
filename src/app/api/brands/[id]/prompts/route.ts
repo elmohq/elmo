@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts } from "@/lib/db/schema";
+import { prompts, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, count } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
+import { sanitizeUserTags, computeSystemTags } from "@/lib/tag-utils";
 
 type Params = {
 	id: string;
@@ -54,11 +55,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
-		const { value, groupCategory, groupPrefix, enabled = true } = body;
+		const { value, groupCategory, groupPrefix, enabled = true, tags } = body;
 
 		if (!value || typeof value !== "string") {
 			return NextResponse.json({ error: "Prompt value is required" }, { status: 400 });
 		}
+
+		// Get brand info for computing system tags
+		const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
+		if (brandInfo.length === 0) {
+			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+		}
+		const brand = brandInfo[0];
 
 		// Check current prompt count for this brand
 		const currentCountResult = await db.select({ count: count() }).from(prompts).where(eq(prompts.brandId, brandId));
@@ -74,6 +82,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			);
 		}
 
+		// Compute tags
+		const userTags = tags ? sanitizeUserTags(tags) : [];
+		const systemTags = computeSystemTags(value.trim(), brand.name, brand.website);
+
 		// Create new prompt
 		const newPrompt = await db
 			.insert(prompts)
@@ -83,6 +95,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 				groupCategory: groupCategory || null,
 				groupPrefix: groupPrefix || null,
 				enabled,
+				tags: userTags,
+				systemTags,
 			})
 			.returning();
 

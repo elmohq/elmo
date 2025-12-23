@@ -58,6 +58,20 @@
 						"type": "boolean",
 						"description": "Whether the prompt is currently enabled"
 					},
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "User-defined tags for categorizing this prompt"
+					},
+					"systemTags": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Auto-computed system tags (e.g., 'branded', 'unbranded'). Read-only."
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time",
@@ -69,7 +83,7 @@
 						"description": "Timestamp when the prompt was last updated"
 					}
 				},
-				"required": ["id", "brandId", "value", "enabled", "createdAt", "updatedAt"]
+				"required": ["id", "brandId", "value", "enabled", "tags", "systemTags", "createdAt", "updatedAt"]
 			},
 			"CreatePromptRequest": {
 				"type": "object",
@@ -92,9 +106,47 @@
 						"type": "string",
 						"nullable": true,
 						"description": "Prefix for prompt grouping"
+					},
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "User-defined tags for categorizing this prompt"
 					}
 				},
 				"required": ["brandId", "value"]
+			},
+			"UpdatePromptRequest": {
+				"type": "object",
+				"properties": {
+					"value": {
+						"type": "string",
+						"description": "The prompt text",
+						"minLength": 1
+					},
+					"groupCategory": {
+						"type": "string",
+						"nullable": true,
+						"description": "Category group for organizing prompts"
+					},
+					"groupPrefix": {
+						"type": "string",
+						"nullable": true,
+						"description": "Prefix for prompt grouping"
+					},
+					"enabled": {
+						"type": "boolean",
+						"description": "Whether the prompt is enabled"
+					},
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "User-defined tags for categorizing this prompt"
+					}
+				}
 			},
 			"Error": {
 				"type": "object",
@@ -292,6 +344,97 @@
 			}
 		},
 		"/prompts/{promptId}": {
+			"get": {
+				"summary": "Get a prompt",
+				"description": "Retrieve a specific prompt by ID",
+				"operationId": "getPrompt",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Prompt details",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Prompt"
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			},
+			"patch": {
+				"summary": "Update a prompt",
+				"description": "Update a prompt's properties. Only provided fields will be updated.",
+				"operationId": "updatePrompt",
+				"tags": ["Prompts"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt to update",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdatePromptRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Prompt updated successfully",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/Prompt"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			},
 			"delete": {
 				"summary": "Delete a prompt",
 				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",

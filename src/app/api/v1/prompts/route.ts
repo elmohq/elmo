@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
 import { prompts, brands } from "@/lib/db/schema";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
-import { eq, count, desc, asc } from "drizzle-orm";
+import { eq, count, desc } from "drizzle-orm";
+import { sanitizeUserTags, computeSystemTags } from "@/lib/tag-utils";
 
 export async function GET(request: NextRequest) {
 	try {
@@ -55,6 +56,8 @@ export async function GET(request: NextRequest) {
 				groupPrefix: prompts.groupPrefix,
 				value: prompts.value,
 				enabled: prompts.enabled,
+				tags: prompts.tags,
+				systemTags: prompts.systemTags,
 				createdAt: prompts.createdAt,
 				updatedAt: prompts.updatedAt,
 			})
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json();
-		const { brandId, value, groupCategory, groupPrefix } = body;
+		const { brandId, value, groupCategory, groupPrefix, tags } = body;
 
 		// Validate required fields
 		if (!brandId || !value) {
@@ -106,10 +109,21 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Verify brand exists
-		const brandExists = await db.select({ id: brands.id }).from(brands).where(eq(brands.id, brandId)).limit(1);
+		// Validate tags if provided
+		if (tags !== undefined && !Array.isArray(tags)) {
+			return NextResponse.json(
+				{
+					error: "Validation Error",
+					message: "tags must be an array of strings",
+				},
+				{ status: 400 },
+			);
+		}
 
-		if (brandExists.length === 0) {
+		// Verify brand exists and get brand info for system tags
+		const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
+
+		if (brandInfo.length === 0) {
 			return NextResponse.json(
 				{
 					error: "Validation Error",
@@ -118,6 +132,11 @@ export async function POST(request: NextRequest) {
 				{ status: 400 },
 			);
 		}
+		const brand = brandInfo[0];
+
+		// Compute tags
+		const userTags = tags ? sanitizeUserTags(tags) : [];
+		const systemTags = computeSystemTags(value.trim(), brand.name, brand.website);
 
 		// Create the prompt
 		const [newPrompt] = await db
@@ -127,6 +146,8 @@ export async function POST(request: NextRequest) {
 				value: value.trim(),
 				groupCategory: groupCategory ? groupCategory.trim() : null,
 				groupPrefix: groupPrefix ? groupPrefix.trim() : null,
+				tags: userTags,
+				systemTags,
 				enabled: true, // Always enable new prompts in admin API
 			})
 			.returning();

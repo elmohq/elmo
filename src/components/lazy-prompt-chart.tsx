@@ -18,6 +18,8 @@ interface LazyPromptChartProps {
 	threshold?: number;
 	// Priority for intelligent loading
 	priority?: "high" | "normal" | "low";
+	// Search highlighting
+	searchHighlight?: string;
 }
 
 export function LazyPromptChart({
@@ -31,6 +33,7 @@ export function LazyPromptChart({
 	rootMargin = "200px",
 	threshold = 0,
 	priority = "normal",
+	searchHighlight = "",
 }: LazyPromptChartProps) {
 	const [isVisible, setIsVisible] = useState(false);
 	const [hasBeenVisible, setHasBeenVisible] = useState(false);
@@ -81,6 +84,7 @@ export function LazyPromptChart({
 				availableModels={availableModels}
 				enabled={shouldLoad}
 				priority={priority}
+				searchHighlight={searchHighlight}
 			/>
 		</div>
 	);

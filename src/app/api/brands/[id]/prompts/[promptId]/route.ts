@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts } from "@/lib/db/schema";
+import { prompts, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
+import { sanitizeUserTags, computeSystemTags } from "@/lib/tag-utils";
 
 type Params = {
 	id: string;
@@ -56,6 +57,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
+		// Get brand info for computing system tags
+		const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
+		if (brandInfo.length === 0) {
+			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+		}
+		const brand = brandInfo[0];
+
 		// Check if prompt exists and belongs to the brand
 		const existingPrompt = await db
 			.select()
@@ -67,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
 		}
 
-		const { value, groupCategory, groupPrefix, enabled } = body;
+		const { value, groupCategory, groupPrefix, enabled, tags } = body;
 
 		// Build update object with only provided fields
 		const updateData: Partial<typeof prompts.$inferInsert> = {};
@@ -92,6 +100,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 				return NextResponse.json({ error: "Enabled must be a boolean" }, { status: 400 });
 			}
 			updateData.enabled = enabled;
+		}
+
+		// Handle user tags if provided
+		if (tags !== undefined) {
+			if (!Array.isArray(tags)) {
+				return NextResponse.json({ error: "Tags must be an array of strings" }, { status: 400 });
+			}
+			updateData.tags = sanitizeUserTags(tags);
+		}
+
+		// Update system tags if value changed
+		if (value !== undefined) {
+			updateData.systemTags = computeSystemTags(value.trim(), brand.name, brand.website);
 		}
 
 		// Update the prompt

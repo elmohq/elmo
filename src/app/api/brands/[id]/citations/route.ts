@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts, promptRuns, competitors, brands } from "@/lib/db/schema";
+import { prompts, promptRuns, competitors, brands, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -86,6 +86,7 @@ export interface CitationStats {
 		count: number;
 		category: 'brand' | 'competitor' | 'social_media' | 'other';
 	}[];
+	availableTags?: string[];
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -104,6 +105,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Parse days parameter (default to 7 days)
 		const daysParam = searchParams.get("days");
 		const days = daysParam ? Number.parseInt(daysParam, 10) : 7;
+		
+		// Parse tag filter parameter (comma-separated tag names)
+		const tagsParam = searchParams.get("tags");
+		const filterTags = tagsParam ? tagsParam.split(",").map(t => t.trim().toLowerCase()).filter(Boolean) : [];
+
+		// Parse model group filter parameter
+		const modelGroupParam = searchParams.get("modelGroup");
 
 		// Calculate date range
 		const fromDate = new Date();
@@ -122,6 +130,67 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const brand = brandInfo[0];
 		const brandDomain = extractDomain(brand.website);
 		const competitorDomains = new Set(competitorsList.map(c => extractDomain(c.domain)));
+
+		// Get all enabled prompts to collect available tags and for filtering
+		const allPrompts = await db
+			.select({
+				id: prompts.id,
+				value: prompts.value,
+				tags: prompts.tags,
+				systemTags: prompts.systemTags,
+			})
+			.from(prompts)
+			.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
+
+		// Collect all unique user tags
+		const allUserTags = new Set<string>();
+		allPrompts.forEach(p => {
+			(p.tags || []).forEach(tag => allUserTags.add(tag));
+		});
+
+		// Build available tags list (system tags + user tags)
+		const availableTags = [
+			SYSTEM_TAGS.BRANDED,
+			SYSTEM_TAGS.UNBRANDED,
+			...Array.from(allUserTags).sort(),
+		];
+
+		// Filter prompts by tag if specified
+		let promptIdsToFilter: string[] | null = null;
+		if (filterTags.length > 0) {
+			// Check if any filter tag matches either system tags or user tags
+			const matchingPrompts = allPrompts.filter(p => {
+				const allPromptTags = [...(p.systemTags || []), ...(p.tags || [])].map(t => t.toLowerCase());
+				return filterTags.some(filterTag => allPromptTags.includes(filterTag));
+			});
+
+			promptIdsToFilter = matchingPrompts.map(p => p.id);
+			
+			// If no prompts match the filter, return empty results
+			if (promptIdsToFilter.length === 0) {
+				return NextResponse.json({
+					totalCitations: 0,
+					uniqueDomains: 0,
+					brandCitations: 0,
+					competitorCitations: 0,
+					socialMediaCitations: 0,
+					otherCitations: 0,
+					domainDistribution: [],
+					specificUrls: [],
+					availableTags,
+				});
+			}
+		}
+
+	// Build the prompt filter condition for SQL
+	const promptFilterCondition = promptIdsToFilter
+		? sql`AND p.id IN (${sql.raw(promptIdsToFilter.map(id => `'${id}'`).join(','))})`
+		: sql``;
+
+	// Build the model group filter condition for SQL
+	const modelGroupCondition = modelGroupParam
+		? sql`AND pr."modelGroup" = ${modelGroupParam}`
+		: sql``;
 
 	// Extract citations directly from JSON in the database
 	// This avoids fetching the entire rawOutput JSON blob
@@ -142,6 +211,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				AND p.enabled = true
 				AND pr.created_at >= ${fromDate}
 				AND pr.web_search_enabled = true
+				${promptFilterCondition}
+				${modelGroupCondition}
 		),
 		openai_citations AS (
 			SELECT 
@@ -323,6 +394,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		otherCitations,
 		domainDistribution,
 		specificUrls,
+		availableTags,
 	};
 
 		return NextResponse.json(response);
@@ -332,4 +404,3 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }
-

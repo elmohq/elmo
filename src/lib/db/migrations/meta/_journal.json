@@ -204,6 +204,27 @@
       "when": 1761950966758,
       "tag": "0028_bouncy_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1766450817368,
+      "tag": "0029_material_warhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1766451998609,
+      "tag": "0030_productive_xorn",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1766453549699,
+      "tag": "0031_small_silver_fox",
+      "breakpoints": true
     }
   ]
 }

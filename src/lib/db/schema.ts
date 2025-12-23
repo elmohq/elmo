@@ -28,6 +28,8 @@ export const prompts = pgTable(
 		groupPrefix: text("group_prefix"),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
+		tags: text("tags").array().notNull().default([]), // User-defined tags (lowercase strings)
+		systemTags: text("system_tags").array().notNull().default([]), // Auto-computed system tags (e.g., "branded", "unbranded")
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
@@ -117,3 +119,11 @@ export type BrandWithPrompts = Brand & {
 
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
+
+// Reserved system tags - these are computed, not stored
+export const SYSTEM_TAGS = {
+	BRANDED: "branded",
+	UNBRANDED: "unbranded",
+} as const;
+
+export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];

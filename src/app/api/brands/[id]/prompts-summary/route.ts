@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts, promptRuns } from "@/lib/db/schema";
+import { prompts, promptRuns, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, desc, count, sql } from "drizzle-orm";
 
@@ -22,11 +22,14 @@ export interface PromptSummary {
 	averageWeightedMentions: number; // average weighted mentions per run (brand = 2x, competitor = 1x each)
 	hasVisibilityData: boolean;
 	lastRunAt: Date | null;
+	// Tags - includes user tags + computed system tag
+	tags: string[];
 }
 
 export interface PromptsSummaryResponse {
 	prompts: PromptSummary[];
 	totalPrompts: number;
+	availableTags: string[]; // All unique tags including system tags
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -46,6 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const lookbackParam = searchParams.get("lookback");
 		const webSearchEnabledParam = searchParams.get("webSearchEnabled");
 		const modelGroupParam = searchParams.get("modelGroup");
+		const tagsParam = searchParams.get("tags"); // comma-separated tag names for filtering
 
 		let fromDate: Date | undefined;
 		let toDate: Date | undefined;
@@ -113,6 +117,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				groupCategory: prompts.groupCategory,
 				groupPrefix: prompts.groupPrefix,
 				enabled: prompts.enabled,
+				tags: prompts.tags,
+				systemTags: prompts.systemTags,
 				createdAt: prompts.createdAt,
 				totalRuns: count(promptRuns.id),
 				brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
@@ -132,9 +138,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				prompts.groupCategory,
 				prompts.groupPrefix,
 				prompts.enabled,
+				prompts.tags,
+				prompts.systemTags,
 				prompts.createdAt,
 			)
 			.orderBy(desc(prompts.createdAt));
+
+		// Fetch all unique user tags from ALL enabled prompts for this brand
+		// (not filtered by time period, so tags are always available for filtering)
+		const allEnabledPrompts = await db
+			.select({ tags: prompts.tags })
+			.from(prompts)
+			.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
+
+		const allUserTags = new Set<string>();
+		for (const p of allEnabledPrompts) {
+			if (p.tags && Array.isArray(p.tags)) {
+				p.tags.forEach((tag) => allUserTags.add(tag));
+			}
+		}
 
 		// Process the results to calculate rates and determine visibility
 		const processedPrompts: PromptSummary[] = promptsWithStats.map((prompt) => {
@@ -150,6 +172,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			// Consider prompt to have visibility data if there are any brand or competitor mentions
 			const hasVisibilityData = brandMentions > 0 || competitorMentions > 0;
 
+			// Combine system tags and user tags for response
+			const userTags = prompt.tags || [];
+			const systemTags = prompt.systemTags || [];
+			const allTags = [...systemTags, ...userTags];
+
 			return {
 				id: prompt.id,
 				value: prompt.value,
@@ -163,11 +190,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				averageWeightedMentions,
 				hasVisibilityData,
 				lastRunAt: prompt.lastRunAt,
+				tags: allTags,
 			};
 		});
 
-		// Filter to only enabled prompts and sort by priority
-		const enabledPrompts = processedPrompts.filter((prompt) => prompt.enabled);
+		// Filter to only enabled prompts
+		let enabledPrompts = processedPrompts.filter((prompt) => prompt.enabled);
+
+		// Filter by tags if specified
+		if (tagsParam) {
+			const filterTags = tagsParam.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+			if (filterTags.length > 0) {
+				enabledPrompts = enabledPrompts.filter((prompt) =>
+					prompt.tags.some((tag) => filterTags.includes(tag.toLowerCase())),
+				);
+			}
+		}
 		
 		// Sort by visibility data priority, then by weighted mentions, then alphabetically
 		const sortedPrompts = enabledPrompts.sort((a, b) => {
@@ -195,9 +233,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			return a.value.localeCompare(b.value);
 		});
 
+		// Build available tags list: system tags + all user tags
+		const availableTags = [
+			SYSTEM_TAGS.BRANDED,
+			SYSTEM_TAGS.UNBRANDED,
+			...Array.from(allUserTags).sort(),
+		];
+
 		const response: PromptsSummaryResponse = {
 			prompts: sortedPrompts,
 			totalPrompts: sortedPrompts.length,
+			availableTags,
 		};
 
 		return NextResponse.json(response);
