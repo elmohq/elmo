@@ -4,11 +4,9 @@ import { db } from "@/lib/db/db";
 import { brands, prompts, promptRuns } from "@/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { devPromptQueue, prodPromptQueue } from "@/worker/queues";
-import { Queue } from "bullmq";
+import { DEFAULT_DELAY_MS, recreatePromptJobScheduler } from "@/lib/job-scheduler";
 
 export const dynamic = "force-dynamic";
-
-const DEFAULT_DELAY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 // Model groups we track
 const MODEL_GROUPS = ["openai", "anthropic", "google"] as const;
@@ -491,7 +489,18 @@ export async function POST(request: NextRequest) {
 			.sort((a, b) => b.timestamp - a.timestamp)[0];
 
 		if (!promptFailedJob) {
-			return NextResponse.json({ error: "No failed job found for this prompt" }, { status: 404 });
+			// No failed job found - recreate the job scheduler instead
+			const success = await recreatePromptJobScheduler(promptId, queue);
+
+			if (!success) {
+				return NextResponse.json({ error: "Failed to recreate job scheduler" }, { status: 500 });
+			}
+
+			return NextResponse.json({
+				success: true,
+				message: `No failed job found - recreated job scheduler for prompt ${promptId} in ${environment}`,
+				recreatedScheduler: true,
+			});
 		}
 
 		await promptFailedJob.retry();

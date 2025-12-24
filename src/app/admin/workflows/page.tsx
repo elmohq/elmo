@@ -269,7 +269,7 @@ function RetryButton({
 }) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [success, setSuccess] = useState(false);
+	const [success, setSuccess] = useState<"queued" | "recreated" | false>(false);
 
 	const handleRetry = async () => {
 		setIsLoading(true);
@@ -288,7 +288,8 @@ function RetryButton({
 				throw new Error(data.error || "Failed to trigger retry");
 			}
 
-			setSuccess(true);
+			const data = await response.json();
+			setSuccess(data.recreatedScheduler ? "recreated" : "queued");
 			setTimeout(() => {
 				onSuccess();
 			}, 1000);
@@ -303,7 +304,7 @@ function RetryButton({
 		return (
 			<Button size="sm" variant="outline" disabled className="cursor-default">
 				<CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" />
-				Queued
+				{success === "recreated" ? "Scheduler Reset" : "Queued"}
 			</Button>
 		);
 	}
