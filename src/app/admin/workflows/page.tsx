@@ -559,14 +559,14 @@ function BrandRow({
 				<TableCell className="text-center">
 					<span className="text-sm">{formatDuration(brand.runFrequencyMs)}</span>
 				</TableCell>
-				<TableCell>
-					<div className="flex items-center gap-2">
-						<Progress value={scheduleHealth} className="w-20 h-2" />
-						<span className={`text-sm font-medium ${scheduleHealth < 80 ? "text-amber-600" : "text-emerald-600"}`}>
-							{scheduleHealth}%
-						</span>
-					</div>
-				</TableCell>
+			<TableCell className="text-center">
+				<div className="flex items-center justify-center gap-2">
+					<Progress value={scheduleHealth} className="w-20 h-2" />
+					<span className={`text-sm font-medium ${scheduleHealth < 80 ? "text-amber-600" : "text-emerald-600"}`}>
+						{scheduleHealth}%
+					</span>
+				</div>
+			</TableCell>
 				<TableCell className="text-center">
 					{brand.overduePrompts > 0 ? (
 						<Badge variant="destructive" className="bg-amber-500">
