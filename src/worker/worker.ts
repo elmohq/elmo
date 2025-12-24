@@ -80,6 +80,7 @@ async function runWithOpenAI(promptValue: string): Promise<{
 	webQueries: string[];
 	textContent: string;
 }> {
+	let rawResponse: any = null;
 	try {
 		// Generate text with web search using OpenAI Responses API
 		const result = await generateText({
@@ -93,6 +94,9 @@ async function runWithOpenAI(promptValue: string): Promise<{
 				}),
 			},
 		});
+
+		// Capture raw response for debugging
+		rawResponse = result.response?.body;
 
 		// Extract web search queries from OpenAI Responses API output
 		const webQueries: string[] = [];
@@ -111,9 +115,37 @@ async function runWithOpenAI(promptValue: string): Promise<{
 			webQueries,
 			textContent: extractTextContent(responseBody, "openai"), // Extract text content for mention analysis
 		};
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Error running OpenAI prompt:", error);
-		throw error;
+		// Enhance error with more context including raw response
+		let errorDetails = `OpenAI API error: ${error instanceof Error ? error.message : "Unknown error"}`;
+		
+		// Try to extract raw response from error object
+		const errorResponse = error?.response || error?.data || error?.body || rawResponse;
+		if (errorResponse) {
+			try {
+				errorDetails += `\nRaw response: ${JSON.stringify(errorResponse, null, 2)}`;
+			} catch {
+				errorDetails += `\nRaw response (non-JSON): ${String(errorResponse)}`;
+			}
+		}
+		
+		// Check for additional error properties
+		if (error?.status) errorDetails += `\nStatus: ${error.status}`;
+		if (error?.statusText) errorDetails += `\nStatus text: ${error.statusText}`;
+		if (error?.cause) {
+			try {
+				errorDetails += `\nCause: ${JSON.stringify(error.cause, null, 2)}`;
+			} catch {
+				errorDetails += `\nCause: ${String(error.cause)}`;
+			}
+		}
+		
+		const enhancedError = new Error(errorDetails);
+		if (error instanceof Error && error.stack) {
+			enhancedError.stack = error.stack;
+		}
+		throw enhancedError;
 	}
 }
 
@@ -123,6 +155,7 @@ async function runWithAnthropic(promptValue: string): Promise<{
 	webQueries: string[];
 	textContent: string;
 }> {
+	let rawResponse: any = null;
 	try {
 		const response = await anthropic.messages.create({
 			model: AI_MODELS.ANTHROPIC.MODEL,
@@ -143,6 +176,9 @@ async function runWithAnthropic(promptValue: string): Promise<{
 			// ],
 		});
 
+		// Capture raw response for debugging
+		rawResponse = response;
+
 		// Extract text content from response using helper
 		const textContent = extractTextContent(response, "anthropic");
 
@@ -157,9 +193,36 @@ async function runWithAnthropic(promptValue: string): Promise<{
 			webQueries,
 			textContent,
 		};
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Error running Anthropic prompt:", error);
-		throw error;
+		// Enhance error with more context including raw response
+		let errorDetails = `Anthropic API error: ${error instanceof Error ? error.message : "Unknown error"}`;
+		
+		// Try to extract raw response from error object (Anthropic SDK includes this)
+		const errorResponse = error?.response || error?.body || error?.error || rawResponse;
+		if (errorResponse) {
+			try {
+				errorDetails += `\nRaw response: ${JSON.stringify(errorResponse, null, 2)}`;
+			} catch {
+				errorDetails += `\nRaw response (non-JSON): ${String(errorResponse)}`;
+			}
+		}
+		
+		// Check for additional error properties
+		if (error?.status) errorDetails += `\nStatus: ${error.status}`;
+		if (error?.headers) {
+			try {
+				errorDetails += `\nHeaders: ${JSON.stringify(Object.fromEntries(error.headers), null, 2)}`;
+			} catch {
+				// headers might not be iterable
+			}
+		}
+		
+		const enhancedError = new Error(errorDetails);
+		if (error instanceof Error && error.stack) {
+			enhancedError.stack = error.stack;
+		}
+		throw enhancedError;
 	}
 }
 
@@ -169,6 +232,7 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 	webQueries: string[];
 	textContent: string;
 }> {
+	let rawResponse: any = null;
 	try {
 		// Use DataForSEO AI Mode Live Advanced endpoint to get AI-powered search results
 		const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
@@ -179,16 +243,19 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 		});
 
 		const response = await dfsSerpApi.googleAiModeLiveAdvanced([requestInfo]);
+		
+		// Capture raw response for debugging
+		rawResponse = response;
 
 		console.log("response", JSON.stringify(response, null, 2));
 
 		if (!response || !response.tasks || response.tasks.length === 0) {
-			throw new Error("DataForSEO API Error: No response or tasks");
+			throw new Error(`DataForSEO API Error: No response or tasks. Raw response: ${JSON.stringify(response, null, 2)}`);
 		}
 
 		const task = response.tasks[0];
 		if (task.status_code !== 20000 || !task.result || task.result.length === 0) {
-			throw new Error(`DataForSEO API Error: ${task.status_message}`);
+			throw new Error(`DataForSEO API Error: ${task.status_message}. Task details: ${JSON.stringify(task, null, 2)}`);
 		}
 
 		const textContent = extractTextContent(response, "google");
@@ -201,9 +268,35 @@ async function runWithDataForSEO(promptValue: string): Promise<{
 			webQueries,
 			textContent,
 		};
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Error running DataForSEO search:", error);
-		throw error;
+		// Enhance error with more context including raw response
+		let errorDetails = `DataForSEO API error: ${error instanceof Error ? error.message : "Unknown error"}`;
+		
+		// Include raw response if we have it and it's not already in the error message
+		if (rawResponse && !errorDetails.includes("Raw response")) {
+			try {
+				errorDetails += `\nRaw response: ${JSON.stringify(rawResponse, null, 2)}`;
+			} catch {
+				errorDetails += `\nRaw response (non-JSON): ${String(rawResponse)}`;
+			}
+		}
+		
+		// Check for additional error properties
+		if (error?.status) errorDetails += `\nStatus: ${error.status}`;
+		if (error?.response) {
+			try {
+				errorDetails += `\nError response: ${JSON.stringify(error.response, null, 2)}`;
+			} catch {
+				errorDetails += `\nError response: ${String(error.response)}`;
+			}
+		}
+		
+		const enhancedError = new Error(errorDetails);
+		if (error instanceof Error && error.stack) {
+			enhancedError.stack = error.stack;
+		}
+		throw enhancedError;
 	}
 }
 
@@ -338,6 +431,9 @@ const worker = new Worker(
 						);
 
 						updateProgress();
+					}).catch((error) => {
+						job.log(`Failed OpenAI iteration ${i + 1}/${RUNS_PER_PROMPT}: ${error instanceof Error ? error.message : "Unknown error"}`);
+						throw error;
 					}),
 				);
 			}
@@ -384,6 +480,9 @@ const worker = new Worker(
 						);
 
 						updateProgress();
+					}).catch((error) => {
+						job.log(`Failed Anthropic iteration ${i + 1}/${RUNS_PER_PROMPT}: ${error instanceof Error ? error.message : "Unknown error"}`);
+						throw error;
 					}),
 				);
 			}
@@ -430,6 +529,9 @@ const worker = new Worker(
 						);
 
 						updateProgress();
+					}).catch((error) => {
+						job.log(`Failed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}: ${error instanceof Error ? error.message : "Unknown error"}`);
+						throw error;
 					}),
 				);
 			}
@@ -446,7 +548,28 @@ const worker = new Worker(
 			job.log(`Successfully completed all ${totalRuns} runs for prompt ${promptId}`);
 			return { success: true, totalRuns: completedRuns };
 		} catch (error) {
-			job.log(`Error processing prompt ${promptId}: ${error instanceof Error ? error.message : "Unknown error"}`);
+			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			const errorStack = error instanceof Error ? error.stack : undefined;
+			
+			job.log(`Error processing prompt ${promptId}: ${errorMessage}`);
+			if (errorStack) {
+				job.log(`Stack trace: ${errorStack}`);
+			}
+			
+			// Log additional error details if available
+			if (error && typeof error === 'object') {
+				const errorObj = error as any;
+				if (errorObj.cause) {
+					job.log(`Error cause: ${JSON.stringify(errorObj.cause, null, 2)}`);
+				}
+				if (errorObj.response) {
+					job.log(`Response status: ${errorObj.response.status}`);
+					if (errorObj.response.data) {
+						job.log(`Response data: ${JSON.stringify(errorObj.response.data, null, 2)}`);
+					}
+				}
+			}
+			
 			throw error;
 		} finally {
 			// Always remove from running set when job completes (success or failure)
