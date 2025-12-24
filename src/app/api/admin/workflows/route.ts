@@ -5,6 +5,7 @@ import { brands, prompts, promptRuns } from "@/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { devPromptQueue, prodPromptQueue } from "@/worker/queues";
 import { DEFAULT_DELAY_MS, recreatePromptJobScheduler } from "@/lib/job-scheduler";
+import type { Queue } from "bullmq";
 
 export const dynamic = "force-dynamic";
 
