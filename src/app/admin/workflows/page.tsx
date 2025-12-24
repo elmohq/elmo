@@ -607,7 +607,25 @@ function BrandRow({
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{brand.prompts.map((prompt) => {
+									{[...brand.prompts]
+										.sort((a, b) => {
+											// Helper to determine prompt category for sorting
+											const getCategory = (p: typeof a) => {
+												const isOverdue = p.enabled && (
+													p.lastRunsByModelGroup.openai?.isOverdue ||
+													p.lastRunsByModelGroup.anthropic?.isOverdue ||
+													p.lastRunsByModelGroup.google?.isOverdue
+												);
+												const isDevOnly = p.schedulerInfo.dev.exists && !p.schedulerInfo.prod.exists;
+												
+												if (isOverdue) return 0; // Overdue first
+												if (p.enabled && !isDevOnly) return 1; // Enabled (with prod scheduler)
+												if (isDevOnly) return 2; // Dev only
+												return 3; // Disabled
+											};
+											return getCategory(a) - getCategory(b);
+										})
+										.map((prompt) => {
 										const isStuck =
 											prompt.enabled &&
 											(prompt.lastRunsByModelGroup.openai?.isOverdue ||
