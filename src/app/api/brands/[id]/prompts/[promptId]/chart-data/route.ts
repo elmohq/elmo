@@ -50,30 +50,42 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const lookbackParam = (searchParams.get("lookback") || "1w") as LookbackPeriod;
 		const webSearchEnabledParam = searchParams.get("webSearchEnabled");
 		const modelGroupParam = searchParams.get("modelGroup");
+		// Use client timezone if provided, otherwise fall back to server default
+		const timezoneParam = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-		// Calculate date range first
+		// Calculate date range for SQL query with buffer days to handle timezone differences
+		// The precise timezone-aware date bucketing happens in calculateVisibilityPercentages
 		let fromDate: Date | undefined;
 		let toDate: Date | undefined;
 
 		if (lookbackParam && lookbackParam !== "all") {
-			toDate = new Date();
-			fromDate = new Date();
-
+			const now = new Date();
+			
+			// End date: add 1 day buffer to ensure we include all of "today" in any timezone
+			toDate = new Date(now);
+			toDate.setDate(toDate.getDate() + 1);
+			
+			// Start date: add 1 day buffer before the lookback period
+			fromDate = new Date(now);
 			switch (lookbackParam) {
 				case "1w":
-					fromDate.setDate(fromDate.getDate() - 7);
+					fromDate.setDate(fromDate.getDate() - 8); // 7 days + 1 day buffer
 					break;
 				case "1m":
 					fromDate.setMonth(fromDate.getMonth() - 1);
+					fromDate.setDate(fromDate.getDate() - 1); // 1 day buffer
 					break;
 				case "3m":
 					fromDate.setMonth(fromDate.getMonth() - 3);
+					fromDate.setDate(fromDate.getDate() - 1);
 					break;
 				case "6m":
 					fromDate.setMonth(fromDate.getMonth() - 6);
+					fromDate.setDate(fromDate.getDate() - 1);
 					break;
 				case "1y":
 					fromDate.setFullYear(fromDate.getFullYear() - 1);
+					fromDate.setDate(fromDate.getDate() - 1);
 					break;
 			}
 		}
@@ -150,7 +162,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.orderBy(desc(promptRuns.createdAt));
 
 		// OPTIMIZATION 3: Use existing chart calculation but with minimal data
-		const chartData = calculateVisibilityPercentages(runs, brand, brandCompetitors, lookbackParam);
+		// Pass client timezone to ensure server and client agree on what "today" is
+		const chartData = calculateVisibilityPercentages(runs, brand, brandCompetitors, lookbackParam, timezoneParam);
 
 		// Calculate metadata
 		const totalRuns = runs.length;

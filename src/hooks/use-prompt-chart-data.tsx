@@ -48,25 +48,24 @@ function buildApiUrl(brandId: string, promptId: string, filters?: PromptChartDat
 	// Use the optimized endpoint for better performance
 	const baseUrl = `/api/brands/${brandId}/prompts/${promptId}/chart-data`;
 
-	if (!filters) {
-		return baseUrl;
-	}
-
 	const params = new URLSearchParams();
 
-	if (filters.lookback) {
+	// Always include client timezone to avoid timezone mismatch between server and client
+	params.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+	if (filters?.lookback) {
 		params.append("lookback", filters.lookback);
 	}
 
-	if (filters.webSearchEnabled !== undefined) {
+	if (filters?.webSearchEnabled !== undefined) {
 		params.append("webSearchEnabled", filters.webSearchEnabled.toString());
 	}
 
-	if (filters.modelGroup) {
+	if (filters?.modelGroup) {
 		params.append("modelGroup", filters.modelGroup);
 	}
 
-	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+	return `${baseUrl}?${params.toString()}`;
 }
 
 export function usePromptChartData(
