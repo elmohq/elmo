@@ -3,15 +3,15 @@ DESCRIPTION >
     Citations are extracted at ingestion time to avoid JSON parsing at query time.
 
 SCHEMA >
-    `prompt_run_id` String,
-    `prompt_id` String,
-    `brand_id` String,
-    `model_group` LowCardinality(String),
-    `url` String,
-    `domain` LowCardinality(String),
-    `title` Nullable(String),
-    `category` LowCardinality(String),
-    `created_at` DateTime64(3, 'UTC')
+    `prompt_run_id` String `json:$.prompt_run_id`,
+    `prompt_id` String `json:$.prompt_id`,
+    `brand_id` String `json:$.brand_id`,
+    `model_group` LowCardinality(String) `json:$.model_group`,
+    `url` String `json:$.url`,
+    `domain` LowCardinality(String) `json:$.domain`,
+    `title` Nullable(String) `json:$.title`,
+    `category` LowCardinality(String) `json:$.category`,
+    `created_at` DateTime64(3, 'UTC') `json:$.created_at`
 
 ENGINE "MergeTree"
 ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"

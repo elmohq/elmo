@@ -4,11 +4,11 @@ DESCRIPTION >
     Auto-expires after 90 days via TTL.
 
 SCHEMA >
-    `prompt_run_id` String,
-    `brand_id` String,
-    `model_group` LowCardinality(String),
-    `raw_output` String,
-    `created_at` DateTime64(3, 'UTC')
+    `prompt_run_id` String `json:$.prompt_run_id`,
+    `brand_id` String `json:$.brand_id`,
+    `model_group` LowCardinality(String) `json:$.model_group`,
+    `raw_output` String `json:$.raw_output`,
+    `created_at` DateTime64(3, 'UTC') `json:$.created_at`
 
 ENGINE "MergeTree"
 ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"

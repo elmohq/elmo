@@ -4,25 +4,25 @@ DESCRIPTION >
     Includes full-text search index on text_content.
 
 SCHEMA >
-    `id` String,
-    `prompt_id` String,
-    `brand_id` String,
-    `brand_name` String,
-    `prompt_value` String,
-    `prompt_group_category` Nullable(String),
-    `prompt_group_prefix` Nullable(String),
-    `prompt_tags` Array(String),
-    `prompt_system_tags` Array(String),
-    `model_group` LowCardinality(String),
-    `model` LowCardinality(String),
-    `web_search_enabled` UInt8,
-    `brand_mentioned` UInt8,
-    `competitors_mentioned` Array(String),
-    `web_queries` Array(String),
-    `text_content` String,
-    `created_at` DateTime64(3, 'UTC'),
-    `competitor_count` UInt16,
-    `has_competitor_mention` UInt8
+    `id` String `json:$.id`,
+    `prompt_id` String `json:$.prompt_id`,
+    `brand_id` String `json:$.brand_id`,
+    `brand_name` String `json:$.brand_name`,
+    `prompt_value` String `json:$.prompt_value`,
+    `prompt_group_category` Nullable(String) `json:$.prompt_group_category`,
+    `prompt_group_prefix` Nullable(String) `json:$.prompt_group_prefix`,
+    `prompt_tags` Array(String) `json:$.prompt_tags[:]`,
+    `prompt_system_tags` Array(String) `json:$.prompt_system_tags[:]`,
+    `model_group` LowCardinality(String) `json:$.model_group`,
+    `model` LowCardinality(String) `json:$.model`,
+    `web_search_enabled` UInt8 `json:$.web_search_enabled`,
+    `brand_mentioned` UInt8 `json:$.brand_mentioned`,
+    `competitors_mentioned` Array(String) `json:$.competitors_mentioned[:]`,
+    `web_queries` Array(String) `json:$.web_queries[:]`,
+    `text_content` String `json:$.text_content`,
+    `created_at` DateTime64(3, 'UTC') `json:$.created_at`,
+    `competitor_count` UInt16 `json:$.competitor_count`,
+    `has_competitor_mention` UInt8 `json:$.has_competitor_mention`
 
 INDEXES >
     text_content_idx text_content TYPE tokenbf_v1(32768, 3, 0) GRANULARITY 4
