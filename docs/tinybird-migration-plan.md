@@ -10,6 +10,16 @@ This document outlines the plan to migrate LLM response analytics data from Post
 - Flexible schema for future analytics use cases
 - Reduced load on primary PostgreSQL database
 - **Full-text search on LLM response contents** for content analysis and discovery
+- **Timezone-aware date aggregations** - users see data in their local timezone
+
+**Key Architecture Decision: Timezone Handling**
+
+All date-based queries pass `YYYY-MM-DD` dates plus the user's IANA timezone (from browser), 
+and ClickHouse handles conversion natively (`toDate(created_at, 'America/New_York')`). 
+No buffer math or complex date logic needed. We do NOT use pre-aggregated UTC-based 
+materialized views because they cannot correctly handle timezone boundaries.
+
+See "Timezone-Aware Queries" section for details.
 
 ---
 
@@ -34,20 +44,22 @@ The migration follows a phased approach to ensure zero data loss and validate co
 
 ### Checklist
 
-- [ ] **1.1** Create Tinybird account and workspace
-- [ ] **1.2** Add environment variables (`TINYBIRD_TOKEN`, `TINYBIRD_BASE_URL`)
-- [ ] **1.3** Install Tinybird client library (`@chronark/zod-bird`)
-- [ ] **1.4** Create Tinybird data sources (schemas):
-  - [ ] `prompt_runs` - Core events table
-  - [ ] `citations` - Pre-extracted citations
-  - [ ] `raw_outputs` - Full JSON archive (optional)
-- [ ] **1.5** Create Tinybird materialized views:
-  - [ ] `daily_visibility_mv` - Daily aggregates
-  - [ ] `daily_citations_mv` - Citation aggregates
-- [ ] **1.6** Create `src/lib/tinybird.ts` client module with ingestion functions
-- [ ] **1.7** Modify `src/worker/worker.ts` to dual-write:
-  - [ ] Add Tinybird ingestion after `savePromptRun()`
-  - [ ] Handle Tinybird errors gracefully (log but don't fail the job)
+- [x] **1.1** Create Tinybird account and workspace
+- [x] **1.2** Add environment variables (`TINYBIRD_TOKEN`, `TINYBIRD_BASE_URL`)
+- [x] **1.3** Install client libraries:
+  - [x] `@chronark/zod-bird` for writes (type-safe ingestion)
+  - [x] `@clickhouse/client` for reads (direct ClickHouse queries via Tinybird)
+- [x] **1.4** Create Tinybird data sources (schemas):
+  - [x] `prompt_runs` - Core events table
+  - [x] `citations` - Pre-extracted citations
+  - [x] `raw_outputs` - Full JSON archive
+- [x] ~~**1.5** Create Tinybird materialized views~~ (REMOVED - see "Why No Daily Materialized Views")
+  - ~~`daily_visibility_mv` - Daily aggregates~~
+  - ~~`daily_citations_mv` - Citation aggregates~~
+- [x] **1.6** Create `src/lib/tinybird.ts` client module with ingestion functions
+- [x] **1.7** Modify `src/worker/worker.ts` to dual-write:
+  - [x] Add Tinybird ingestion after `savePromptRun()`
+  - [x] Handle Tinybird errors gracefully (log but don't fail the job)
 - [ ] **1.8** Deploy and verify new data is flowing to Tinybird
 - [ ] **1.9** Monitor ingestion for 24-48 hours to ensure stability
 
@@ -178,6 +190,7 @@ The migration follows a phased approach to ensure zero data loss and validate co
 // src/app/api/brands/[id]/dashboard-summary/route.ts
 
 import { verifyAndLog } from '@/lib/tinybird-comparison';
+import { getDashboardSummary } from '@/lib/tinybird-read'; // Uses @clickhouse/client
 
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
     const { id: brandId } = await params;
@@ -187,10 +200,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
     const postgresResult = await queryPostgres(brandId, filters);
     const pgTime = performance.now() - startPg;
     
-    // Optionally verify against Tinybird
+    // Optionally verify against Tinybird (via @clickhouse/client)
     if (process.env.TINYBIRD_VERIFY_ENABLED === 'true') {
         const startTb = performance.now();
-        const tinybirdResult = await queryTinybird('dashboard_summary', { brand_id: brandId, ...filters });
+        // Uses @clickhouse/client - same query works on Tinybird or native ClickHouse
+        // Timezone is required, provided by frontend from browser
+        const tinybirdResult = await getDashboardSummary(
+            brandId, 
+            filters.fromDate,   // 'YYYY-MM-DD'
+            filters.toDate,     // 'YYYY-MM-DD'
+            filters.timezone    // Required - browser's IANA timezone
+        );
         const tbTime = performance.now() - startTb;
         
         // Compare and log (async, don't block response)
@@ -207,6 +227,110 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
     
     // Return PostgreSQL result
     return NextResponse.json(postgresResult);
+}
+```
+
+### Timezone-Aware Queries (Primary Approach)
+
+**All date-based queries use timezone-aware aggregation at query time.** We do NOT use 
+pre-aggregated UTC-based materialized views for date queries because:
+
+1. A user in New York querying for "Jan 1st" expects events that occurred on Jan 1st in their timezone
+2. An event at 11 PM EST on Jan 1st is 4 AM UTC on Jan 2nd - a UTC-based MV would put it in the wrong day
+3. Pre-aggregating by UTC date is incompatible with per-user timezone requirements
+
+**Simple approach:** Pass dates as `YYYY-MM-DD` strings plus timezone, let ClickHouse handle conversion natively:
+
+```sql
+-- ClickHouse handles timezone conversion natively - no buffer logic needed
+SELECT
+    toDate(created_at, 'America/New_York') as local_date,
+    count() as total_runs,
+    sum(brand_mentioned) as brand_mentioned_count,
+    round(sum(brand_mentioned) * 100.0 / count(), 1) as visibility
+FROM prompt_runs
+WHERE brand_id = {brandId:String}
+  AND toDate(created_at, {timezone:String}) BETWEEN {fromDate:Date} AND {toDate:Date}
+GROUP BY local_date
+ORDER BY local_date
+```
+
+```typescript
+// TypeScript - just pass YYYY-MM-DD dates and timezone, no buffer math needed
+export async function getVisibilityByLocalDate(
+    brandId: string,
+    fromDate: string,   // 'YYYY-MM-DD'
+    toDate: string,     // 'YYYY-MM-DD'
+    timezone: string    // e.g., 'America/New_York'
+) {
+    return queryTinybird<{ local_date: string; total_runs: number; visibility: number }>(`
+        SELECT
+            toDate(created_at, {timezone:String}) as local_date,
+            count() as total_runs,
+            round(sum(brand_mentioned) * 100.0 / count(), 1) as visibility
+        FROM prompt_runs
+        WHERE brand_id = {brandId:String}
+          AND toDate(created_at, {timezone:String}) BETWEEN {fromDate:Date} AND {toDate:Date}
+        GROUP BY local_date
+        ORDER BY local_date
+    `, { brandId, timezone, fromDate, toDate });
+}
+```
+
+**Why this is fast enough without materialized views:**
+
+| Scenario | Expected Performance | Notes |
+|----------|---------------------|-------|
+| Single brand, 30 days | 10-50ms | ClickHouse scans ~10K-50K rows |
+| Single brand, 1 year | 50-200ms | ClickHouse scans ~100K-500K rows |
+| Single brand, all time | 100-500ms | ClickHouse scans full brand partition |
+
+ClickHouse's columnar storage and partition pruning (`brand_id` + date range) make on-the-fly 
+aggregation extremely fast. The sorting key `brand_id, prompt_id, toDate(created_at), created_at` 
+ensures efficient data locality for these queries.
+
+**Timezone Strategy:**
+
+| Request Source | Timezone Handling |
+|----------------|-------------------|
+| **UI (browser)** | Always use browser's timezone via `Intl.DateTimeFormat().resolvedOptions().timeZone` |
+| **API (programmatic)** | Caller provides exact timestamps - timezone conversion not needed |
+
+```typescript
+// Frontend - always include browser timezone in requests
+const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// e.g., 'America/New_York', 'Europe/London', 'Asia/Tokyo'
+
+fetch(`/api/brands/${brandId}/dashboard-summary?` + new URLSearchParams({
+    fromDate: '2024-01-01',
+    toDate: '2024-01-31',
+    timezone: userTimezone,
+}));
+```
+
+```typescript
+// API route - require timezone for date-based queries
+export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
+    const { id: brandId } = await params;
+    const searchParams = request.nextUrl.searchParams;
+    
+    const fromDate = searchParams.get('fromDate');  // 'YYYY-MM-DD'
+    const toDate = searchParams.get('toDate');      // 'YYYY-MM-DD'
+    const timezone = searchParams.get('timezone');  // Required from frontend
+    
+    if (!timezone) {
+        return NextResponse.json({ error: 'timezone parameter required' }, { status: 400 });
+    }
+    
+    // Validate timezone is a valid IANA timezone
+    try {
+        Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    } catch {
+        return NextResponse.json({ error: 'Invalid timezone' }, { status: 400 });
+    }
+    
+    const result = await getDashboardSummary(brandId, fromDate, toDate, timezone);
+    return NextResponse.json(result);
 }
 ```
 
@@ -382,13 +506,12 @@ SCHEMA >
     -- Derived fields for faster queries
     competitor_count UInt16,
     has_competitor_mention UInt8,
-    run_date Date,               -- Materialized for partition/aggregation
     -- Full-text search index (tokenized for fast text search)
     INDEX text_content_idx text_content TYPE tokenbf_v1(32768, 3, 0) GRANULARITY 4
 
 ENGINE "MergeTree"
-ENGINE_PARTITION_KEY "toYYYYMM(run_date)"
-ENGINE_SORTING_KEY "brand_id, prompt_id, run_date, created_at"
+ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
+ENGINE_SORTING_KEY "brand_id, prompt_id, toDate(created_at), created_at"
 ```
 
 > **Full-Text Search Note**: The `tokenbf_v1` index is a token bloom filter that enables fast 
@@ -398,6 +521,11 @@ ENGINE_SORTING_KEY "brand_id, prompt_id, run_date, created_at"
 > **Tags Note**: Prompt tags are denormalized into each prompt_run event. If tags are updated
 > on a prompt, historical runs will retain their original tags. This is intentional - analytics
 > should reflect the tags at the time of the run. For current tag state, query PostgreSQL.
+
+> **Timezone Handling**: We store `created_at` as `DateTime64(3, 'UTC')` and derive dates at 
+> query time using ClickHouse's native timezone conversion: `toDate(created_at, 'America/New_York')`.
+> We do NOT use UTC-based materialized views for date aggregations because they cannot correctly
+> handle timezone boundaries. See "Timezone-Aware Queries" section for the query pattern.
 
 #### 2. `citations` (Extracted from raw_output)
 
@@ -414,12 +542,11 @@ SCHEMA >
     domain LowCardinality(String),
     title Nullable(String),
     category LowCardinality(String),  -- 'brand', 'competitor', 'social_media', 'other'
-    created_at DateTime64(3, 'UTC'),
-    run_date Date
+    created_at DateTime64(3, 'UTC')
 
 ENGINE "MergeTree"
-ENGINE_PARTITION_KEY "toYYYYMM(run_date)"
-ENGINE_SORTING_KEY "brand_id, prompt_id, domain, run_date"
+ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
+ENGINE_SORTING_KEY "brand_id, prompt_id, domain, toDate(created_at)"
 ```
 
 #### 3. `raw_outputs` (Archive/Deep Analysis)
@@ -441,128 +568,118 @@ ENGINE_SORTING_KEY "brand_id, created_at"
 ENGINE_TTL "created_at + INTERVAL 90 DAY"  -- Optional: auto-expire old data
 ```
 
-### Materialized Views (Pre-Aggregations)
+### Why No Daily Materialized Views
 
-#### Daily Visibility Aggregates
+We intentionally **do not use** pre-aggregated daily materialized views for date-based queries.
 
-```sql
--- Tinybird Materialized View: daily_visibility_mv
-SCHEMA >
-    brand_id String,
-    prompt_id String,
-    run_date Date,
-    model_group LowCardinality(String),
-    web_search_enabled UInt8,
-    is_branded UInt8,            -- Does prompt contain brand name?
-    total_runs UInt64,
-    brand_mentioned_count UInt64,
-    competitor_mentioned_count UInt64
+#### The Problem with UTC-Based Daily MVs
 
-SELECT
-    brand_id,
-    prompt_id,
-    run_date,
-    model_group,
-    web_search_enabled,
-    -- Check if 'branded' is in system tags
-    has(prompt_system_tags, 'branded') as is_branded,
-    count() as total_runs,
-    sum(brand_mentioned) as brand_mentioned_count,
-    sum(has_competitor_mention) as competitor_mentioned_count
-FROM prompt_runs
-GROUP BY brand_id, prompt_id, run_date, model_group, web_search_enabled, is_branded
+Pre-aggregating by UTC date creates a fundamental mismatch with timezone-aware queries:
 
-ENGINE "SummingMergeTree"
-ENGINE_SORTING_KEY "brand_id, run_date, model_group, web_search_enabled, prompt_id"
+```
+Example: User event at 11:00 PM EST on January 1st
+├── UTC time: 4:00 AM January 2nd
+├── UTC-based MV: Aggregated into January 2nd bucket
+└── User expectation: Should appear in January 1st report
 ```
 
-#### Daily Citation Aggregates
+This means:
+1. **MVs cannot be used** for timezone-aware date queries (the data is in the wrong buckets)
+2. **You'd always query raw tables** anyway for accurate local date aggregations
+3. **MVs add complexity and storage** for data that can't be used
 
-```sql
--- Tinybird Materialized View: daily_citations_mv
-SCHEMA >
-    brand_id String,
-    run_date Date,
-    domain LowCardinality(String),
-    category LowCardinality(String),
-    citation_count UInt64
+#### Why Raw Table Queries Are Fast Enough
 
-SELECT
-    brand_id,
-    run_date,
-    domain,
-    category,
-    count() as citation_count
-FROM citations
-GROUP BY brand_id, run_date, domain, category
+ClickHouse's architecture makes on-the-fly aggregation extremely efficient:
 
-ENGINE "SummingMergeTree"
-ENGINE_SORTING_KEY "brand_id, run_date, category, domain"
-```
+| Feature | Benefit |
+|---------|---------|
+| **Columnar storage** | Only reads columns needed for query |
+| **Partition pruning** | Skips partitions outside date range |
+| **Sorting key** | `brand_id, prompt_id, toDate(created_at)` ensures data locality |
+| **Vectorized execution** | Processes millions of rows per second |
+| **Native timezone support** | `toDate(ts, 'America/New_York')` is highly optimized |
+
+**Expected performance for timezone-aware aggregations:**
+- 10K-50K rows (30 days): **10-50ms**
+- 100K-500K rows (1 year): **50-200ms**
+- 1M+ rows (all time): **100-500ms**
+
+#### When MVs Would Make Sense
+
+Materialized views are beneficial when:
+1. You need aggregations that **don't involve date breakdowns** (e.g., total counts)
+2. You have a **single timezone** for all users (can pre-aggregate in that timezone)
+3. You're querying **very large datasets** where even ClickHouse struggles (billions of rows)
+
+None of these apply to our use case, where users need timezone-specific daily breakdowns.
 
 ---
 
 ## Published API Endpoints
 
+All date-based endpoints require a `timezone` parameter (IANA timezone from browser).
+Dates are passed as `YYYY-MM-DD` strings, and ClickHouse handles timezone conversion natively.
+
 ### 1. Dashboard Summary
 
 ```sql
 -- Endpoint: /v0/pipes/dashboard_summary.json
--- Parameters: brand_id, lookback (1w, 1m, 3m, 6m, 1y, all), tags (optional, comma-separated)
+-- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA)
 
 SELECT
     countDistinct(prompt_id) as total_prompts,
-    sum(total_runs) as total_runs,
-    round(sum(brand_mentioned_count) * 100.0 / sum(total_runs), 1) as avg_visibility,
-    round(sumIf(brand_mentioned_count, is_branded = 0) * 100.0 / 
-          sumIf(total_runs, is_branded = 0), 1) as non_branded_visibility,
-    max(run_date) as last_updated
-FROM daily_visibility_mv
-WHERE brand_id = {{String(brand_id, '')}}
-  AND run_date >= {{Date(from_date, '2024-01-01')}}
+    count() as total_runs,
+    round(sum(brand_mentioned) * 100.0 / count(), 1) as avg_visibility,
+    round(sumIf(brand_mentioned, NOT has(prompt_system_tags, 'branded')) * 100.0 / 
+          countIf(NOT has(prompt_system_tags, 'branded')), 1) as non_branded_visibility,
+    max(toDate(created_at, {{String(timezone)}})) as last_updated
+FROM prompt_runs
+WHERE brand_id = {{String(brand_id)}}
+  AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
 ```
 
 ### 2. Visibility Time Series
 
 ```sql
 -- Endpoint: /v0/pipes/visibility_timeseries.json
--- Parameters: brand_id, from_date, to_date
+-- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA)
 
 WITH daily AS (
     SELECT
-        run_date,
-        sum(total_runs) as day_runs,
-        sum(brand_mentioned_count) as day_mentioned
-    FROM daily_visibility_mv
-    WHERE brand_id = {{String(brand_id, '')}}
-      AND run_date BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
-    GROUP BY run_date
+        toDate(created_at, {{String(timezone)}}) as local_date,
+        count() as day_runs,
+        sum(brand_mentioned) as day_mentioned
+    FROM prompt_runs
+    WHERE brand_id = {{String(brand_id)}}
+      AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
+    GROUP BY local_date
 )
 SELECT
-    run_date as date,
+    local_date as date,
     round(
         sumIf(day_mentioned, 1=1) OVER w * 100.0 /
         sumIf(day_runs, 1=1) OVER w, 
         1
     ) as visibility_7d_avg
 FROM daily
-WINDOW w AS (ORDER BY run_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)
-ORDER BY run_date
+WINDOW w AS (ORDER BY local_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)
+ORDER BY local_date
 ```
 
 ### 3. Citation Stats
 
 ```sql
 -- Endpoint: /v0/pipes/citation_stats.json
--- Parameters: brand_id, days
+-- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA)
 
 SELECT
     domain,
     category,
-    sum(citation_count) as total_citations
-FROM daily_citations_mv
-WHERE brand_id = {{String(brand_id, '')}}
-  AND run_date >= today() - {{Int32(days, 7)}}
+    count() as total_citations
+FROM citations
+WHERE brand_id = {{String(brand_id)}}
+  AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
 GROUP BY domain, category
 ORDER BY total_citations DESC
 LIMIT 100
@@ -572,45 +689,45 @@ LIMIT 100
 
 ```sql
 -- Endpoint: /v0/pipes/prompt_chart.json
--- Parameters: brand_id, prompt_id, from_date, to_date, model_group (optional)
+-- Parameters: brand_id, prompt_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA), model_group (optional)
 
 SELECT
-    run_date as date,
+    toDate(created_at, {{String(timezone)}}) as date,
     model_group,
-    sum(total_runs) as runs,
-    sum(brand_mentioned_count) as brand_mentions,
-    round(sum(brand_mentioned_count) * 100.0 / sum(total_runs), 1) as visibility
-FROM daily_visibility_mv
-WHERE brand_id = {{String(brand_id, '')}}
-  AND prompt_id = {{String(prompt_id, '')}}
-  AND run_date BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
+    count() as runs,
+    sum(brand_mentioned) as brand_mentions,
+    round(sum(brand_mentioned) * 100.0 / count(), 1) as visibility
+FROM prompt_runs
+WHERE brand_id = {{String(brand_id)}}
+  AND prompt_id = {{String(prompt_id)}}
+  AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
   {% if defined(model_group) %}
   AND model_group = {{String(model_group)}}
   {% end %}
-GROUP BY run_date, model_group
-ORDER BY run_date
+GROUP BY date, model_group
+ORDER BY date
 ```
 
 ### 5. Prompts Summary with Tag Filtering
 
 ```sql
 -- Endpoint: /v0/pipes/prompts_summary.json
--- Parameters: brand_id, from_date, to_date, tags (optional, comma-separated)
+-- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA), tags (optional, comma-separated)
 
 SELECT
     prompt_id,
     any(prompt_value) as value,
     any(prompt_group_category) as group_category,
     any(prompt_group_prefix) as group_prefix,
-    arrayDistinct(arrayFlatten(groupArray(prompt_tags))) as tags,
-    arrayDistinct(arrayFlatten(groupArray(prompt_system_tags))) as system_tags,
-    sum(total_runs) as total_runs,
-    round(sum(brand_mentioned_count) * 100.0 / sum(total_runs), 1) as brand_mention_rate,
-    round(sum(competitor_mentioned_count) * 100.0 / sum(total_runs), 1) as competitor_mention_rate,
-    max(run_date) as last_run_date
-FROM daily_visibility_mv
-WHERE brand_id = {{String(brand_id, '')}}
-  AND run_date BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
+    arrayDistinct(groupArrayArray(prompt_tags)) as tags,
+    arrayDistinct(groupArrayArray(prompt_system_tags)) as system_tags,
+    count() as total_runs,
+    round(sum(brand_mentioned) * 100.0 / count(), 1) as brand_mention_rate,
+    round(sum(has_competitor_mention) * 100.0 / count(), 1) as competitor_mention_rate,
+    max(toDate(created_at, {{String(timezone)}})) as last_run_date
+FROM prompt_runs
+WHERE brand_id = {{String(brand_id)}}
+  AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
   {% if defined(tags) %}
   -- Filter by tags (matches if ANY of the filter tags are present)
   AND (
@@ -796,68 +913,231 @@ LIMIT 100
 
 ## Implementation Code
 
-### Tinybird Client Module
+### Client Library Strategy
+
+We use two different client libraries for writes and reads:
+
+| Operation | Library | Rationale |
+|-----------|---------|-----------|
+| **Writes** | `@chronark/zod-bird` | Type-safe ingestion with Zod schema validation |
+| **Reads** | `@clickhouse/client` | Native ClickHouse protocol for queries |
+
+**Why this split?** This architecture makes it easier to migrate between Tinybird and self-hosted ClickHouse in the future:
+- **Writes** through `zod-bird` are Tinybird-specific (Events API), but could be swapped to direct ClickHouse inserts
+- **Reads** through `@clickhouse/client` work identically against Tinybird or native ClickHouse (Tinybird exposes a ClickHouse-compatible endpoint)
+
+If we ever need to move off Tinybird, only the write code needs to change - all read queries remain unchanged.
+
+### Tinybird Write Client (zod-bird)
 
 ```typescript
-// src/lib/tinybird.ts
+// src/lib/tinybird-write.ts
 
+import { Tinybird } from '@chronark/zod-bird';
 import { z } from 'zod';
 
-const TINYBIRD_BASE_URL = process.env.TINYBIRD_BASE_URL || 'https://api.tinybird.co';
-const TINYBIRD_TOKEN = process.env.TINYBIRD_TOKEN!;
+const tb = new Tinybird({ token: process.env.TINYBIRD_TOKEN! });
 
-// Ingestion client
-export async function ingestToTinybird(
-    dataSource: string,
-    events: Record<string, any>[]
+// Define typed data source schemas
+const promptRunSchema = z.object({
+    id: z.string(),
+    prompt_id: z.string(),
+    brand_id: z.string(),
+    brand_name: z.string(),
+    prompt_value: z.string(),
+    prompt_group_category: z.string().nullable(),
+    prompt_group_prefix: z.string().nullable(),
+    prompt_tags: z.array(z.string()),
+    prompt_system_tags: z.array(z.string()),
+    model_group: z.string(),
+    model: z.string(),
+    web_search_enabled: z.number(),
+    brand_mentioned: z.number(),
+    competitors_mentioned: z.array(z.string()),
+    web_queries: z.array(z.string()),
+    text_content: z.string(),
+    created_at: z.string(),  // DateTime64 - dates derived at query time for timezone handling
+    competitor_count: z.number(),
+    has_competitor_mention: z.number(),
+});
+
+const citationSchema = z.object({
+    prompt_run_id: z.string(),
+    prompt_id: z.string(),
+    brand_id: z.string(),
+    model_group: z.string(),
+    url: z.string(),
+    domain: z.string(),
+    title: z.string().nullable(),
+    category: z.string(),
+    created_at: z.string(),  // DateTime64 - dates derived at query time for timezone handling
+});
+
+// Type-safe ingestion functions
+export const ingestPromptRuns = tb.buildIngestEndpoint({
+    datasource: 'prompt_runs',
+    event: promptRunSchema,
+});
+
+export const ingestCitations = tb.buildIngestEndpoint({
+    datasource: 'citations',
+    event: citationSchema,
+});
+
+// Wrapper with feature flag
+export async function ingestToTinybird<T>(
+    ingestFn: (events: T[]) => Promise<void>,
+    events: T[]
 ): Promise<void> {
     if (process.env.TINYBIRD_WRITE_ENABLED !== 'true') return;
     
-    const ndjson = events.map(e => JSON.stringify(e)).join('\n');
-    
-    const response = await fetch(
-        `${TINYBIRD_BASE_URL}/v0/events?name=${dataSource}`,
-        {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${TINYBIRD_TOKEN}`,
-                'Content-Type': 'application/x-ndjson',
-            },
-            body: ndjson,
-        }
-    );
-
-    if (!response.ok) {
-        console.error(`Tinybird ingestion failed: ${response.statusText}`);
+    try {
+        await ingestFn(events);
+    } catch (error) {
+        console.error('Tinybird ingestion failed:', error);
         // Don't throw - ingestion failures shouldn't block the main flow
     }
 }
+```
 
-// Query client
+### Tinybird Read Client (@clickhouse/client)
+
+```typescript
+// src/lib/tinybird-read.ts
+
+import { createClient } from '@clickhouse/client';
+
+// Tinybird exposes a ClickHouse-compatible endpoint
+// This makes migration to self-hosted ClickHouse seamless
+const client = createClient({
+    host: process.env.TINYBIRD_CLICKHOUSE_HOST || 'https://api.tinybird.co',
+    username: 'default',
+    password: process.env.TINYBIRD_TOKEN!,
+    // For Tinybird, use the workspace database
+    database: process.env.TINYBIRD_WORKSPACE || 'default',
+});
+
+// Generic query function with type inference
 export async function queryTinybird<T>(
-    pipe: string,
-    params: Record<string, string | number>
+    query: string,
+    params?: Record<string, string | number | boolean | Date>
 ): Promise<T[]> {
-    const searchParams = new URLSearchParams();
-    for (const [key, value] of Object.entries(params)) {
-        searchParams.set(key, String(value));
+    const result = await client.query({
+        query,
+        query_params: params,
+        format: 'JSONEachRow',
+    });
+    
+    return result.json<T[]>();
+}
+
+// Named query helpers - pass YYYY-MM-DD dates and timezone, ClickHouse handles conversion
+export async function getDashboardSummary(
+    brandId: string, 
+    fromDate: string,   // 'YYYY-MM-DD'
+    toDate: string,     // 'YYYY-MM-DD'
+    timezone: string    // IANA timezone from browser
+) {
+    return queryTinybird<{
+        total_prompts: number;
+        total_runs: number;
+        avg_visibility: number;
+        non_branded_visibility: number;
+        last_updated: string;
+    }>(`
+        SELECT
+            countDistinct(prompt_id) as total_prompts,
+            count() as total_runs,
+            round(sum(brand_mentioned) * 100.0 / count(), 1) as avg_visibility,
+            round(sumIf(brand_mentioned, NOT has(prompt_system_tags, 'branded')) * 100.0 / 
+                  countIf(NOT has(prompt_system_tags, 'branded')), 1) as non_branded_visibility,
+            max(toDate(created_at, {timezone:String})) as last_updated
+        FROM prompt_runs
+        WHERE brand_id = {brandId:String}
+          AND toDate(created_at, {timezone:String}) BETWEEN {fromDate:Date} AND {toDate:Date}
+    `, { brandId, timezone, fromDate, toDate });
+}
+
+export async function getVisibilityTimeSeries(
+    brandId: string, 
+    fromDate: string,   // 'YYYY-MM-DD'
+    toDate: string,     // 'YYYY-MM-DD'
+    timezone: string    // IANA timezone from browser
+) {
+    return queryTinybird<{
+        date: string;
+        visibility_7d_avg: number;
+    }>(`
+        WITH daily AS (
+            SELECT
+                toDate(created_at, {timezone:String}) as local_date,
+                count() as day_runs,
+                sum(brand_mentioned) as day_mentioned
+            FROM prompt_runs
+            WHERE brand_id = {brandId:String}
+              AND toDate(created_at, {timezone:String}) BETWEEN {fromDate:Date} AND {toDate:Date}
+            GROUP BY local_date
+        )
+        SELECT
+            local_date as date,
+            round(
+                sumIf(day_mentioned, 1=1) OVER w * 100.0 /
+                sumIf(day_runs, 1=1) OVER w, 
+                1
+            ) as visibility_7d_avg
+        FROM daily
+        WINDOW w AS (ORDER BY local_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW)
+        ORDER BY local_date
+    `, { brandId, timezone, fromDate, toDate });
+}
+
+export async function searchResponseContent(
+    brandId: string,
+    searchQuery: string,
+    options?: { fromDate?: string; toDate?: string; modelGroup?: string; limit?: number }
+) {
+    const { fromDate, toDate, modelGroup, limit = 100 } = options || {};
+    
+    let query = `
+        SELECT
+            id,
+            prompt_id,
+            prompt_value,
+            model_group,
+            brand_mentioned,
+            text_content,
+            created_at
+        FROM prompt_runs
+        WHERE brand_id = {brandId:String}
+          AND hasTokenCaseInsensitive(text_content, {searchQuery:String})
+    `;
+    
+    const params: Record<string, any> = { brandId, searchQuery, limit };
+    
+    if (fromDate) {
+        query += ` AND run_date >= {fromDate:Date}`;
+        params.fromDate = fromDate;
     }
-
-    const response = await fetch(
-        `${TINYBIRD_BASE_URL}/v0/pipes/${pipe}.json?${searchParams}`,
-        {
-            headers: {
-                Authorization: `Bearer ${TINYBIRD_TOKEN}`,
-            },
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error(`Tinybird query failed: ${response.statusText}`);
+    if (toDate) {
+        query += ` AND run_date <= {toDate:Date}`;
+        params.toDate = toDate;
     }
-
-    const data = await response.json();
-    return data.data;
+    if (modelGroup) {
+        query += ` AND model_group = {modelGroup:String}`;
+        params.modelGroup = modelGroup;
+    }
+    
+    query += ` ORDER BY created_at DESC LIMIT {limit:UInt32}`;
+    
+    return queryTinybird<{
+        id: string;
+        prompt_id: string;
+        prompt_value: string;
+        model_group: string;
+        brand_mentioned: number;
+        text_content: string;
+        created_at: string;
+    }>(query, params);
 }
 ```
 
@@ -866,7 +1146,7 @@ export async function queryTinybird<T>(
 ```typescript
 // src/worker/worker.ts - Add after savePromptRun()
 
-import { ingestToTinybird } from '@/lib/tinybird';
+import { ingestToTinybird, ingestPromptRuns, ingestCitations } from '@/lib/tinybird-write';
 import { extractTextContent, extractCitations } from '@/lib/text-extraction';
 
 interface TinybirdPromptRunEvent {
@@ -886,10 +1166,9 @@ interface TinybirdPromptRunEvent {
     competitors_mentioned: string[];
     web_queries: string[];
     text_content: string;
-    created_at: string;
+    created_at: string;  // DateTime64 - dates derived at query time for timezone handling
     competitor_count: number;
     has_competitor_mention: number;
-    run_date: string;
 }
 
 async function sendToTinybird(
@@ -933,18 +1212,19 @@ async function sendToTinybird(
         competitors_mentioned: promptRun.competitorsMentioned,
         web_queries: promptRun.webQueries,
         text_content: promptRun.textContent,
-        created_at: now.toISOString(),
+        created_at: now.toISOString(),  // Dates derived at query time for timezone handling
         competitor_count: promptRun.competitorsMentioned.length,
         has_competitor_mention: promptRun.competitorsMentioned.length > 0 ? 1 : 0,
-        run_date: now.toISOString().split('T')[0],
     };
     
-    await ingestToTinybird('prompt_runs', [event]);
+    // Use zod-bird typed ingestion (type-safe writes)
+    await ingestToTinybird(ingestPromptRuns, [event]);
 
     // Extract and send citations
     const citations = extractCitations(promptRun.rawOutput, promptRun.modelGroup);
     if (citations.length > 0) {
-        await ingestToTinybird('citations', citations.map(c => ({
+        // Use zod-bird typed ingestion for citations
+        await ingestToTinybird(ingestCitations, citations.map(c => ({
             prompt_run_id: promptRun.id,
             prompt_id: promptRun.promptId,
             brand_id: promptRun.brandId,
@@ -953,8 +1233,7 @@ async function sendToTinybird(
             domain: c.domain,
             title: c.title || null,
             category: c.category || 'other',
-            created_at: now.toISOString(),
-            run_date: now.toISOString().split('T')[0],
+            created_at: now.toISOString(),  // Dates derived at query time for timezone handling
         })));
     }
 }
@@ -1139,7 +1418,7 @@ function percentile(arr: number[], p: number): number {
 import { db } from '../src/lib/db/db';
 import { promptRuns, prompts, brands } from '../src/lib/db/schema';
 import { eq, gt, sql } from 'drizzle-orm';
-import { ingestToTinybird } from '../src/lib/tinybird';
+import { ingestToTinybird, ingestPromptRuns, ingestCitations } from '../src/lib/tinybird-write';
 import { extractTextContent, extractCitations } from '../src/lib/text-extraction';
 import { redis } from '../src/lib/redis';
 
@@ -1197,13 +1476,13 @@ async function backfillPromptRuns() {
             competitors_mentioned: run.competitorsMentioned || [],
             web_queries: run.webQueries || [],
             text_content: extractTextContent(run.rawOutput, run.modelGroup),
-            created_at: run.createdAt.toISOString(),
+            created_at: run.createdAt.toISOString(),  // Dates derived at query time for timezone handling
             competitor_count: (run.competitorsMentioned || []).length,
             has_competitor_mention: (run.competitorsMentioned || []).length > 0 ? 1 : 0,
-            run_date: run.createdAt.toISOString().split('T')[0],
         }));
 
-        await ingestToTinybird('prompt_runs', events);
+        // Use zod-bird for type-safe writes
+        await ingestToTinybird(ingestPromptRuns, events);
 
         // Extract citations for each run
         const allCitations = [];
@@ -1219,14 +1498,14 @@ async function backfillPromptRuns() {
                     domain: c.domain,
                     title: c.title || null,
                     category: c.category || 'other',
-                    created_at: run.createdAt.toISOString(),
-                    run_date: run.createdAt.toISOString().split('T')[0],
+                    created_at: run.createdAt.toISOString(),  // Dates derived at query time
                 });
             }
         }
         
         if (allCitations.length > 0) {
-            await ingestToTinybird('citations', allCitations);
+            // Use zod-bird for type-safe writes
+            await ingestToTinybird(ingestCitations, allCitations);
         }
 
         // Update progress
@@ -1312,10 +1591,12 @@ Search for hallucinations, factual errors, or outdated information in LLM respon
 **Monthly estimate**: ~$50-100/month for moderate usage
 
 ### Cost Optimization Strategies
-1. Use materialized views to pre-aggregate (reduces query scan costs)
+1. ~~Use materialized views to pre-aggregate~~ — Not used due to timezone requirements
 2. Set TTL on raw_outputs to auto-expire old data
 3. Only store raw_output for runs needing deep analysis
-4. Use partition pruning in queries (always filter by date range)
+4. **Use partition pruning** — Always filter by `created_at` date range AND `brand_id`
+5. **Leverage sorting key** — Queries on `brand_id + prompt_id + date` are extremely fast
+6. **Column projection** — Only SELECT needed columns (ClickHouse only reads referenced columns)
 
 ---
 
@@ -1335,8 +1616,25 @@ PostgreSQL remains the source of truth until Phase 5 cutover is confirmed stable
 
 ### Required
 - [ ] Tinybird account and workspace
-- [ ] `TINYBIRD_TOKEN` and `TINYBIRD_BASE_URL` environment variables
-- [ ] `@chronark/zod-bird` or similar Tinybird client library
+- [ ] Environment variables:
+  - `TINYBIRD_TOKEN` - API token for authentication
+  - `TINYBIRD_BASE_URL` - Base URL for Tinybird API (default: `https://api.tinybird.co`)
+  - `TINYBIRD_CLICKHOUSE_HOST` - ClickHouse-compatible endpoint for reads
+  - `TINYBIRD_WORKSPACE` - Workspace/database name for ClickHouse client
+- [ ] Client libraries:
+  - `@chronark/zod-bird` - Type-safe writes with Zod schema validation
+  - `@clickhouse/client` - Native ClickHouse protocol for reads (works with Tinybird's ClickHouse endpoint)
+
+### Why Two Libraries?
+
+| Library | Purpose | Migration Path |
+|---------|---------|----------------|
+| `zod-bird` | Writes (ingestion) | Swap to direct ClickHouse inserts if migrating |
+| `@clickhouse/client` | Reads (queries) | **Zero changes needed** - works with Tinybird or native ClickHouse |
+
+This split makes future migration to self-hosted ClickHouse straightforward:
+- Tinybird exposes a ClickHouse-compatible endpoint, so all read queries work unchanged
+- Only write code needs to be updated (replace zod-bird with direct ClickHouse inserts)
 
 ### Recommended
 - [ ] Tinybird CLI for local development (`tb`)

@@ -1,0 +1,36 @@
+DESCRIPTION >
+    Core events table for LLM prompt runs. Contains flattened event stream
+    optimized for analytics queries with denormalized prompt metadata for fast filtering.
+    Includes full-text search index on text_content.
+
+SCHEMA >
+    `id` String,
+    `prompt_id` String,
+    `brand_id` String,
+    `brand_name` String,
+    `prompt_value` String,
+    `prompt_group_category` Nullable(String),
+    `prompt_group_prefix` Nullable(String),
+    `prompt_tags` Array(String),
+    `prompt_system_tags` Array(String),
+    `model_group` LowCardinality(String),
+    `model` LowCardinality(String),
+    `web_search_enabled` UInt8,
+    `brand_mentioned` UInt8,
+    `competitors_mentioned` Array(String),
+    `web_queries` Array(String),
+    `text_content` String,
+    `created_at` DateTime64(3, 'UTC'),
+    `competitor_count` UInt16,
+    `has_competitor_mention` UInt8
+
+INDEXES >
+    text_content_idx text_content TYPE tokenbf_v1(32768, 3, 0) GRANULARITY 4
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
+ENGINE_SORTING_KEY "brand_id, prompt_id, toDate(created_at), created_at"
+
+FORWARD_QUERY >
+    SELECT id, prompt_id, brand_id, brand_name, prompt_value, prompt_group_category, prompt_group_prefix, prompt_tags, prompt_system_tags, model_group, model, web_search_enabled, brand_mentioned, competitors_mentioned, web_queries, text_content, created_at, competitor_count, has_competitor_mention
+

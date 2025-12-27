@@ -1,0 +1,22 @@
+DESCRIPTION >
+    Pre-extracted citations from LLM responses for fast citation analytics.
+    Citations are extracted at ingestion time to avoid JSON parsing at query time.
+
+SCHEMA >
+    `prompt_run_id` String,
+    `prompt_id` String,
+    `brand_id` String,
+    `model_group` LowCardinality(String),
+    `url` String,
+    `domain` LowCardinality(String),
+    `title` Nullable(String),
+    `category` LowCardinality(String),
+    `created_at` DateTime64(3, 'UTC')
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
+ENGINE_SORTING_KEY "brand_id, prompt_id, domain, toDate(created_at)"
+
+FORWARD_QUERY >
+    SELECT prompt_run_id, prompt_id, brand_id, model_group, url, domain, title, category, created_at
+

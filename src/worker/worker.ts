@@ -13,6 +13,14 @@ import {
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT, AI_MODELS } from "../lib/constants";
 import { runWithOpenAI, runWithAnthropic, runWithDataForSEO } from "../lib/ai-providers";
+import {
+	ingestToTinybird,
+	ingestPromptRuns,
+	ingestCitations,
+	type TinybirdPromptRunEvent,
+	type TinybirdCitationEvent,
+} from "../lib/tinybird";
+import { extractCitations } from "../lib/text-extraction";
 
 interface JobData {
 	promptId: string;
@@ -109,21 +117,86 @@ async function savePromptRun(
 	webQueries: string[],
 	brandMentioned: boolean,
 	competitorsMentioned: string[],
-): Promise<void> {
+): Promise<string> {
 	try {
-		await db.insert(promptRuns).values({
-			promptId,
-			modelGroup,
-			model,
-			webSearchEnabled,
-			rawOutput,
-			webQueries,
-			brandMentioned,
-			competitorsMentioned,
-		});
+		const [result] = await db
+			.insert(promptRuns)
+			.values({
+				promptId,
+				modelGroup,
+				model,
+				webSearchEnabled,
+				rawOutput,
+				webQueries,
+				brandMentioned,
+				competitorsMentioned,
+			})
+			.returning({ id: promptRuns.id });
+		return result.id;
 	} catch (error) {
 		console.error("Error saving prompt run:", error);
 		throw error;
+	}
+}
+
+// Function to send data to Tinybird (dual-write)
+// Errors are logged but don't fail the main job
+async function sendToTinybird(
+	promptRunId: string,
+	context: PromptContext,
+	modelGroup: "openai" | "anthropic" | "google",
+	model: string,
+	webSearchEnabled: boolean,
+	rawOutput: any,
+	webQueries: string[],
+	brandMentioned: boolean,
+	competitorsMentioned: string[],
+	textContent: string,
+): Promise<void> {
+	const { prompt, brand } = context;
+	const now = new Date();
+
+	// Send core prompt run event
+	const event: TinybirdPromptRunEvent = {
+		id: promptRunId,
+		prompt_id: prompt.id,
+		brand_id: prompt.brandId,
+		brand_name: brand.name,
+		prompt_value: prompt.value,
+		prompt_group_category: prompt.groupCategory,
+		prompt_group_prefix: prompt.groupPrefix,
+		prompt_tags: prompt.tags || [],
+		prompt_system_tags: prompt.systemTags || [],
+		model_group: modelGroup,
+		model: model,
+		web_search_enabled: webSearchEnabled ? 1 : 0,
+		brand_mentioned: brandMentioned ? 1 : 0,
+		competitors_mentioned: competitorsMentioned,
+		web_queries: webQueries,
+		text_content: textContent,
+		created_at: now.toISOString(),
+		competitor_count: competitorsMentioned.length,
+		has_competitor_mention: competitorsMentioned.length > 0 ? 1 : 0,
+	};
+
+	await ingestToTinybird(ingestPromptRuns, [event]);
+
+	// Extract and send citations
+	const citations = extractCitations(rawOutput, modelGroup);
+	if (citations.length > 0) {
+		const citationEvents: TinybirdCitationEvent[] = citations.map((c) => ({
+			prompt_run_id: promptRunId,
+			prompt_id: prompt.id,
+			brand_id: prompt.brandId,
+			model_group: modelGroup,
+			url: c.url,
+			domain: c.domain,
+			title: c.title || null,
+			category: "other", // Default category; could be enhanced to detect brand/competitor/social
+			created_at: now.toISOString(),
+		}));
+
+		await ingestToTinybird(ingestCitations, citationEvents);
 	}
 }
 
@@ -182,7 +255,7 @@ const worker = new Worker(
 						job.log(`Completed OpenAI with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						await savePromptRun(
+						const promptRunId = await savePromptRun(
 							promptId,
 							AI_MODELS.OPENAI.GROUP,
 							AI_MODELS.OPENAI.MODEL,
@@ -191,6 +264,20 @@ const worker = new Worker(
 							webQueries,
 							brandMentioned,
 							competitorsMentioned,
+						);
+
+						// Dual-write to Tinybird (errors are logged but don't fail the job)
+						await sendToTinybird(
+							promptRunId,
+							context,
+							AI_MODELS.OPENAI.GROUP,
+							AI_MODELS.OPENAI.MODEL,
+							true,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+							textContent,
 						);
 
 						updateProgress();
@@ -231,7 +318,7 @@ const worker = new Worker(
 						job.log(`Completed Anthropic without web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						await savePromptRun(
+						const promptRunId = await savePromptRun(
 							promptId,
 							AI_MODELS.ANTHROPIC.GROUP,
 							AI_MODELS.ANTHROPIC.MODEL,
@@ -240,6 +327,20 @@ const worker = new Worker(
 							webQueries,
 							brandMentioned,
 							competitorsMentioned,
+						);
+
+						// Dual-write to Tinybird (errors are logged but don't fail the job)
+						await sendToTinybird(
+							promptRunId,
+							context,
+							AI_MODELS.ANTHROPIC.GROUP,
+							AI_MODELS.ANTHROPIC.MODEL,
+							false,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+							textContent,
 						);
 
 						updateProgress();
@@ -280,7 +381,7 @@ const worker = new Worker(
 						job.log(`Completed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						await savePromptRun(
+						const promptRunId = await savePromptRun(
 							promptId,
 							"google",
 							"dataforseo",
@@ -289,6 +390,20 @@ const worker = new Worker(
 							webQueries,
 							brandMentioned,
 							competitorsMentioned,
+						);
+
+						// Dual-write to Tinybird (errors are logged but don't fail the job)
+						await sendToTinybird(
+							promptRunId,
+							context,
+							"google",
+							"dataforseo",
+							true,
+							rawOutput,
+							webQueries,
+							brandMentioned,
+							competitorsMentioned,
+							textContent,
 						);
 
 						updateProgress();

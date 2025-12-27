@@ -38,6 +38,8 @@
     "@ai-sdk/openai": "3.0.1",
     "@anthropic-ai/sdk": "^0.60.0",
     "@auth0/nextjs-auth0": "^4.8.0",
+    "@chronark/zod-bird": "^1.0.0",
+    "@clickhouse/client": "^1.15.0",
     "@hookform/resolvers": "^5.1.1",
     "@microsoft/clarity": "^1.0.0",
     "@queuedash/api": "^3.6.0",

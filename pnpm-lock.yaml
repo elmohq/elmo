@@ -20,6 +20,12 @@ importers:
       '@auth0/nextjs-auth0':
         specifier: ^4.8.0
         version: 4.8.0(next@15.3.8(@babel/core@7.28.0)(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@chronark/zod-bird':
+        specifier: ^1.0.0
+        version: 1.0.0(zod@3.25.76)
+      '@clickhouse/client':
+        specifier: ^1.15.0
+        version: 1.15.0
       '@hookform/resolvers':
         specifier: ^5.1.1
         version: 5.1.1(react-hook-form@7.60.0(react@19.1.0))
@@ -469,6 +475,18 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@chronark/zod-bird@1.0.0':
+    resolution: {integrity: sha512-OWdZt5EULFgDaHTbkxkxN130ohapRxSMaYdaW/fZTcQP3z1c4cYk4izJwbbTPOP4GdQeys18Prls0xz4NpFV0A==}
+    peerDependencies:
+      zod: ^4.0.0
+
+  '@clickhouse/client-common@1.15.0':
+    resolution: {integrity: sha512-/1BXaNNsBzH2w5ALWiH6M9zS+cJwlM9uMnMj9e8ETwvDjJzO+nIYlyxzp8Prc+9pEDZ5iAilZ4F8c0YVCzzNaA==}
+
+  '@clickhouse/client@1.15.0':
+    resolution: {integrity: sha512-QmW+p4c/r0oa3X6Un6lcBs4GZtJEQUdvf//x8GeqM5ru6m4oIUg3WwvermP3HE31kpEGoFOQfKbMN5ooR5gvNw==}
+    engines: {node: '>=16'}
 
   '@date-fns/tz@1.2.0':
     resolution: {integrity: sha512-LBrd7MiJZ9McsOgxqWX7AaxrDjcFVjWH/tIKJd7pnR7McaslGYOP1QmmiBXdJH/H/yLCT+rcQ7FaPBUxRGUtrg==}
@@ -4363,6 +4381,16 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.0.6':
     optional: true
+
+  '@chronark/zod-bird@1.0.0(zod@3.25.76)':
+    dependencies:
+      zod: 3.25.76
+
+  '@clickhouse/client-common@1.15.0': {}
+
+  '@clickhouse/client@1.15.0':
+    dependencies:
+      '@clickhouse/client-common': 1.15.0
 
   '@date-fns/tz@1.2.0': {}
 
