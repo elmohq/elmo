@@ -5,7 +5,10 @@ import { Tinybird } from "@chronark/zod-bird";
 import { z } from "zod";
 
 // Initialize Tinybird client
-const tb = new Tinybird({ token: process.env.TINYBIRD_TOKEN! });
+const tb = new Tinybird({
+	token: process.env.TINYBIRD_TOKEN!,
+	baseUrl: process.env.TINYBIRD_BASE_URL!,
+});
 
 // Define typed data source schemas
 const promptRunSchema = z.object({
