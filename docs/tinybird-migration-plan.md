@@ -29,8 +29,8 @@ The migration follows a phased approach to ensure zero data loss and validate co
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **Phase 1** | Dual-write new data to Tinybird | ⬜ Not Started |
-| **Phase 2** | Backfill historical data | ⬜ Not Started |
+| **Phase 1** | Dual-write new data to Tinybird | ✅ Completed |
+| **Phase 2** | Backfill historical data | 🔄 Ready to Run |
 | **Phase 3** | Add admin migration dashboard | ⬜ Not Started |
 | **Phase 4** | Dual-read with verification | ⬜ Not Started |
 | **Phase 5** | Cutover to Tinybird-only | ⬜ Not Started |
@@ -60,8 +60,8 @@ The migration follows a phased approach to ensure zero data loss and validate co
 - [x] **1.7** Modify `src/worker/worker.ts` to dual-write:
   - [x] Add Tinybird ingestion after `savePromptRun()`
   - [x] Handle Tinybird errors gracefully (log but don't fail the job)
-- [ ] **1.8** Deploy and verify new data is flowing to Tinybird
-- [ ] **1.9** Monitor ingestion for 24-48 hours to ensure stability
+- [x] **1.8** Deploy and verify new data is flowing to Tinybird
+- [x] **1.9** Monitor ingestion for 24-48 hours to ensure stability
 
 ### Notes
 - PostgreSQL remains the source of truth during this phase
@@ -79,13 +79,13 @@ The migration follows a phased approach to ensure zero data loss and validate co
 
 ### Checklist
 
-- [ ] **2.1** Create `scripts/backfill-tinybird.ts` script
-- [ ] **2.2** Add progress tracking (Redis or database) to support resumable backfill
+- [x] **2.1** Create `scripts/backfill-tinybird.ts` script
+- [x] **2.2** ~~Add progress tracking (Redis or database) to support resumable backfill~~ (Skipped - <700k rows runs fast)
 - [ ] **2.3** Test backfill on a small subset (e.g., 1 brand, last 30 days)
 - [ ] **2.4** Run full historical backfill:
-  - [ ] Process in batches of 1000 rows
-  - [ ] Rate limit to avoid overwhelming Tinybird API
-  - [ ] Log progress every 10,000 rows
+  - [x] Process in batches of 1000 rows
+  - [x] ~~Rate limit to avoid overwhelming Tinybird API~~ (Minimal 50ms delay between batches)
+  - [x] Log progress every 10,000 rows
 - [ ] **2.5** Verify row counts match between PostgreSQL and Tinybird
 - [ ] **2.6** Verify data integrity:
   - [ ] Spot check 10 random prompt_runs match
