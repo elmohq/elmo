@@ -21,7 +21,7 @@ SCHEMA >
     `raw_output` String `json:$.raw_output`,
     `citations.url` Array(String) `json:$.citations[:].url`,
     `citations.domain` Array(String) `json:$.citations[:].domain`,
-    `citations.title` Array(String) `json:$.citations[:].title`,
+    `citations.title` Array(Nullable(String)) `json:$.citations[:].title`,
     `created_at` DateTime64(3, 'UTC') `json:$.created_at`,
     `competitor_count` UInt16 `json:$.competitor_count`,
     `has_competitor_mention` UInt8 `json:$.has_competitor_mention`
