@@ -50,9 +50,9 @@ The migration follows a phased approach to ensure zero data loss and validate co
   - [x] `@chronark/zod-bird` for writes (type-safe ingestion)
   - [x] `@clickhouse/client` for reads (direct ClickHouse queries via Tinybird)
 - [x] **1.4** Create Tinybird data sources (schemas):
-  - [x] `prompt_runs` - Core events table
-  - [x] `citations` - Pre-extracted citations
-  - [x] `raw_outputs` - Full JSON archive
+  - [x] `prompt_runs` - Core events table (includes `raw_output` and `citations` array)
+  - [x] `citations` - Destination table for expanded citations (auto-populated via MV)
+  - [x] `citations_mv` - Materialized view that expands citations array to citations table
 - [x] ~~**1.5** Create Tinybird materialized views~~ (REMOVED - see "Why No Daily Materialized Views")
   - ~~`daily_visibility_mv` - Daily aggregates~~
   - ~~`daily_citations_mv` - Citation aggregates~~
@@ -527,21 +527,46 @@ ENGINE_SORTING_KEY "brand_id, prompt_id, toDate(created_at), created_at"
 > We do NOT use UTC-based materialized views for date aggregations because they cannot correctly
 > handle timezone boundaries. See "Timezone-Aware Queries" section for the query pattern.
 
-#### 2. `citations` (Extracted from raw_output)
+#### 2. `citations` (Auto-populated via Materialized View)
 
-Pre-extracted citations for fast citation analytics.
+Citations are stored as an array in `prompt_runs` and automatically expanded to a separate
+`citations` table via a materialized view. This gives us:
+- **Single ingestion call** - Only ingest to `prompt_runs`
+- **Best query patterns** - Citation analytics query the expanded table (no arrayJoin needed)
+- **Automatic sync** - MV triggers on every insert, no dual-write logic
 
 ```sql
--- Tinybird Data Source: citations
+-- In prompt_runs: citations stored as parallel arrays (Nested structure)
+`citations.url` Array(String),
+`citations.domain` Array(String),
+`citations.title` Array(String),
+
+-- Materialized view expands to citations table
+SELECT
+    id AS prompt_run_id,
+    prompt_id,
+    brand_id,
+    model_group,
+    url, domain, title,
+    created_at
+FROM prompt_runs
+ARRAY JOIN
+    `citations.url` AS url,
+    `citations.domain` AS domain,
+    `citations.title` AS title
+WHERE length(`citations.url`) > 0
+```
+
+```sql
+-- Tinybird Data Source: citations (destination for MV)
 SCHEMA >
     prompt_run_id String,
-    prompt_id String,                 -- For prompt-level citation analytics
+    prompt_id String,
     brand_id String,
     model_group LowCardinality(String),
     url String,
     domain LowCardinality(String),
     title Nullable(String),
-    category LowCardinality(String),  -- 'brand', 'competitor', 'social_media', 'other'
     created_at DateTime64(3, 'UTC')
 
 ENGINE "MergeTree"
@@ -549,24 +574,16 @@ ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
 ENGINE_SORTING_KEY "brand_id, prompt_id, domain, toDate(created_at)"
 ```
 
-#### 3. `raw_outputs` (Archive/Deep Analysis)
+#### Why `raw_output` is in `prompt_runs` (Not Separate)
 
-Store full raw outputs separately for deep analysis when needed.
+Initially we planned a separate `raw_outputs` datasource, but this was unnecessary:
 
-```sql
--- Tinybird Data Source: raw_outputs
-SCHEMA >
-    prompt_run_id String,
-    brand_id String,
-    model_group LowCardinality(String),
-    raw_output String,  -- JSON as string (compressed well by ClickHouse)
-    created_at DateTime64(3, 'UTC')
+1. **ClickHouse is columnar** - If you don't SELECT `raw_output`, it's never read from disk
+2. **Same retention policy** - We keep analytics data and raw outputs permanently
+3. **Simpler ingestion** - One less API call per prompt run
+4. **No JOIN needed** - When you need raw output for a specific run, it's right there
 
-ENGINE "MergeTree"
-ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
-ENGINE_SORTING_KEY "brand_id, created_at"
-ENGINE_TTL "created_at + INTERVAL 90 DAY"  -- Optional: auto-expire old data
-```
+The `raw_output` column is included in `prompt_runs` as a JSON string. It compresses well and doesn't affect query performance on other columns.
 
 ### Why No Daily Materialized Views
 
@@ -1592,8 +1609,8 @@ Search for hallucinations, factual errors, or outdated information in LLM respon
 
 ### Cost Optimization Strategies
 1. ~~Use materialized views to pre-aggregate~~ — Not used due to timezone requirements
-2. Set TTL on raw_outputs to auto-expire old data
-3. Only store raw_output for runs needing deep analysis
+2. ~~Set TTL on raw_outputs to auto-expire old data~~ — raw_output now in prompt_runs with same retention
+3. ~~Only store raw_output for runs needing deep analysis~~ — columnar storage means it's not read unless selected
 4. **Use partition pruning** — Always filter by `created_at` date range AND `brand_id`
 5. **Leverage sorting key** — Queries on `brand_id + prompt_id + date` are extremely fast
 6. **Column projection** — Only SELECT needed columns (ClickHouse only reads referenced columns)
@@ -1644,7 +1661,7 @@ This split makes future migration to self-hosted ClickHouse straightforward:
 
 ## Open Questions
 
-1. **Data Retention**: How long should we retain raw_output in Tinybird? (90 days recommended)
+1. ~~**Data Retention**: How long should we retain raw_output in Tinybird? (90 days recommended)~~ — **RESOLVED**: Same permanent retention as analytics data
 2. **Real-time Requirements**: Is near-real-time (seconds) sufficient, or do we need true real-time?
 3. **Access Control**: Should Tinybird endpoints be exposed directly to frontend, or proxied through Next.js API?
 4. **Historical Depth**: How far back should we backfill? (All time vs. last 6 months?)

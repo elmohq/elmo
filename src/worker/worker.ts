@@ -16,9 +16,8 @@ import { runWithOpenAI, runWithAnthropic, runWithDataForSEO } from "../lib/ai-pr
 import {
 	ingestToTinybird,
 	ingestPromptRuns,
-	ingestCitations,
 	type TinybirdPromptRunEvent,
-	type TinybirdCitationEvent,
+	type TinybirdCitationItem,
 } from "../lib/tinybird";
 import { extractCitations } from "../lib/text-extraction";
 
@@ -156,7 +155,15 @@ async function sendToTinybird(
 	const { prompt, brand } = context;
 	const now = new Date();
 
-	// Send core prompt run event
+	// Extract citations (will be auto-expanded to citations table via MV)
+	const extractedCitations = extractCitations(rawOutput, modelGroup);
+	const citations: TinybirdCitationItem[] = extractedCitations.map((c) => ({
+		url: c.url,
+		domain: c.domain,
+		title: c.title || null,
+	}));
+
+	// Send single event - citations array is auto-expanded via materialized view
 	const event: TinybirdPromptRunEvent = {
 		id: promptRunId,
 		prompt_id: prompt.id,
@@ -174,30 +181,14 @@ async function sendToTinybird(
 		competitors_mentioned: competitorsMentioned,
 		web_queries: webQueries,
 		text_content: textContent,
+		raw_output: JSON.stringify(rawOutput),
+		citations: citations,
 		created_at: now.toISOString(),
 		competitor_count: competitorsMentioned.length,
 		has_competitor_mention: competitorsMentioned.length > 0 ? 1 : 0,
 	};
 
 	await ingestToTinybird(ingestPromptRuns, [event]);
-
-	// Extract and send citations
-	const citations = extractCitations(rawOutput, modelGroup);
-	if (citations.length > 0) {
-		const citationEvents: TinybirdCitationEvent[] = citations.map((c) => ({
-			prompt_run_id: promptRunId,
-			prompt_id: prompt.id,
-			brand_id: prompt.brandId,
-			model_group: modelGroup,
-			url: c.url,
-			domain: c.domain,
-			title: c.title || null,
-			category: "other", // Default category; could be enhanced to detect brand/competitor/social
-			created_at: now.toISOString(),
-		}));
-
-		await ingestToTinybird(ingestCitations, citationEvents);
-	}
 }
 
 const queueEvents = new QueueEvents(promptQueue.name, { connection: queueConnectionConfig });

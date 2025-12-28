@@ -1,7 +1,9 @@
 DESCRIPTION >
     Core events table for LLM prompt runs. Contains flattened event stream
     optimized for analytics queries with denormalized prompt metadata for fast filtering.
-    Includes full-text search index on text_content.
+    Includes full-text search index on text_content, raw_output for archival/deep analysis,
+    and citations array that is auto-expanded to citations table via materialized view.
+    ClickHouse is columnar, so raw_output is only read when explicitly selected.
 
 SCHEMA >
     `id` String `json:$.id`,
@@ -20,6 +22,10 @@ SCHEMA >
     `competitors_mentioned` Array(String) `json:$.competitors_mentioned[:]`,
     `web_queries` Array(String) `json:$.web_queries[:]`,
     `text_content` String `json:$.text_content`,
+    `raw_output` String `json:$.raw_output`,
+    `citations.url` Array(String) `json:$.citations[:].url`,
+    `citations.domain` Array(String) `json:$.citations[:].domain`,
+    `citations.title` Array(String) `json:$.citations[:].title`,
     `created_at` DateTime64(3, 'UTC') `json:$.created_at`,
     `competitor_count` UInt16 `json:$.competitor_count`,
     `has_competitor_mention` UInt8 `json:$.has_competitor_mention`
@@ -30,7 +36,4 @@ INDEXES >
 ENGINE "MergeTree"
 ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
 ENGINE_SORTING_KEY "brand_id, prompt_id, toDate(created_at), created_at"
-
-FORWARD_QUERY >
-    SELECT id, prompt_id, brand_id, brand_name, prompt_value, prompt_group_category, prompt_group_prefix, prompt_tags, prompt_system_tags, model_group, model, web_search_enabled, brand_mentioned, competitors_mentioned, web_queries, text_content, created_at, competitor_count, has_competitor_mention
 

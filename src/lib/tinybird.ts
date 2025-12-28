@@ -10,6 +10,13 @@ const tb = new Tinybird({
 	baseUrl: process.env.TINYBIRD_BASE_URL!,
 });
 
+// Citation schema for array items
+const citationItemSchema = z.object({
+	url: z.string(),
+	domain: z.string(),
+	title: z.string().nullable(),
+});
+
 // Define typed data source schemas
 const promptRunSchema = z.object({
 	id: z.string(),
@@ -28,36 +35,22 @@ const promptRunSchema = z.object({
 	competitors_mentioned: z.array(z.string()),
 	web_queries: z.array(z.string()),
 	text_content: z.string(),
+	raw_output: z.string(), // JSON stringified - stored in same table since ClickHouse is columnar
+	citations: z.array(citationItemSchema), // Expanded to citations table via MV
 	created_at: z.string(), // DateTime64 as ISO string
 	competitor_count: z.number(),
 	has_competitor_mention: z.number(),
 });
 
-const citationSchema = z.object({
-	prompt_run_id: z.string(),
-	prompt_id: z.string(),
-	brand_id: z.string(),
-	model_group: z.string(),
-	url: z.string(),
-	domain: z.string(),
-	title: z.string().nullable(),
-	category: z.string(),
-	created_at: z.string(), // DateTime64 as ISO string
-});
-
 // Type definitions for external use
 export type TinybirdPromptRunEvent = z.infer<typeof promptRunSchema>;
-export type TinybirdCitationEvent = z.infer<typeof citationSchema>;
+export type TinybirdCitationItem = z.infer<typeof citationItemSchema>;
 
 // Type-safe ingestion endpoints
+// Only prompt_runs - citations are auto-expanded via materialized view
 export const ingestPromptRuns = tb.buildIngestEndpoint({
 	datasource: "prompt_runs",
 	event: promptRunSchema,
-});
-
-export const ingestCitations = tb.buildIngestEndpoint({
-	datasource: "citations",
-	event: citationSchema,
 });
 
 // Tinybird ingestion result type

@@ -1,0 +1,25 @@
+DESCRIPTION >
+    Materialized view that expands citations array from prompt_runs into citations table.
+    Triggered automatically on each prompt_runs insert.
+
+NODE expand_citations
+SQL >
+    SELECT
+        id AS prompt_run_id,
+        prompt_id,
+        brand_id,
+        model_group,
+        url,
+        domain,
+        title,
+        created_at
+    FROM prompt_runs
+    ARRAY JOIN
+        `citations.url` AS url,
+        `citations.domain` AS domain,
+        `citations.title` AS title
+    WHERE length(`citations.url`) > 0
+
+TYPE materialized
+DATASOURCE citations
+
