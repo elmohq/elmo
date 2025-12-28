@@ -18,16 +18,12 @@ const citationItemSchema = z.object({
 });
 
 // Define typed data source schemas
+// NOTE: Prompt/brand metadata (brand_name, prompt_value, prompt_group_*, prompt_tags, prompt_system_tags)
+// is NOT stored here - it should be joined from PostgreSQL at query time since those values can change.
 const promptRunSchema = z.object({
 	id: z.string(),
 	prompt_id: z.string(),
 	brand_id: z.string(),
-	brand_name: z.string(),
-	prompt_value: z.string(),
-	prompt_group_category: z.string().nullable(),
-	prompt_group_prefix: z.string().nullable(),
-	prompt_tags: z.array(z.string()),
-	prompt_system_tags: z.array(z.string()),
 	model_group: z.string(),
 	model: z.string(),
 	web_search_enabled: z.number(),
@@ -84,4 +80,3 @@ export async function ingestToTinybird<T>(
 export function isTinybirdWriteEnabled(): boolean {
 	return process.env.TINYBIRD_TOKEN !== undefined && process.env.TINYBIRD_WRITE_ENABLED === "true";
 }
-

@@ -95,7 +95,7 @@ The migration follows a phased approach to ensure zero data loss and validate co
 ### Backfill Script Considerations
 - Handle the `created_at` timestamp carefully (use original, not backfill time)
 - Extract `text_content` from `raw_output` using existing extraction logic
-- Include prompt `tags` and `systemTags` in the denormalized data
+- Do NOT include denormalized metadata (brand_name, prompt_value, tags) - these are looked up from PostgreSQL at query time
 
 ---
 
@@ -481,7 +481,9 @@ prompt_runs (
 
 #### 1. `prompt_runs` (Core Events)
 
-Flattened event stream optimized for analytics queries. Includes denormalized prompt metadata for fast filtering.
+Immutable event stream optimized for analytics queries. Contains only **immutable event data** - 
+prompt/brand metadata that can change (name, tags, etc.) is NOT stored here and should be 
+joined from PostgreSQL at query time.
 
 ```sql
 -- Tinybird Data Source: prompt_runs
@@ -489,12 +491,8 @@ SCHEMA >
     id String,
     prompt_id String,
     brand_id String,
-    brand_name String,           -- Denormalized for fast filtering
-    prompt_value String,         -- Denormalized for analysis
-    prompt_group_category Nullable(String),
-    prompt_group_prefix Nullable(String),
-    prompt_tags Array(String),   -- User-defined tags (denormalized from prompts.tags)
-    prompt_system_tags Array(String), -- System tags (denormalized from prompts.systemTags)
+    -- NOTE: brand_name, prompt_value, prompt_group_*, prompt_tags, prompt_system_tags
+    -- are NOT stored here. They can change and should be joined from PostgreSQL.
     model_group LowCardinality(String),  -- 'openai', 'anthropic', 'google'
     model LowCardinality(String),
     web_search_enabled UInt8,    -- Boolean as 0/1
@@ -518,9 +516,14 @@ ENGINE_SORTING_KEY "brand_id, prompt_id, toDate(created_at), created_at"
 > full-text search on `text_content`. This allows efficient queries like "find all responses 
 > mentioning 'pricing'" without scanning every row.
 
-> **Tags Note**: Prompt tags are denormalized into each prompt_run event. If tags are updated
-> on a prompt, historical runs will retain their original tags. This is intentional - analytics
-> should reflect the tags at the time of the run. For current tag state, query PostgreSQL.
+> **Why No Denormalized Metadata**: Fields like `brand_name`, `prompt_value`, `prompt_tags`, 
+> and `prompt_system_tags` are NOT stored in Tinybird. These values can change at the prompt 
+> or brand level, and storing them would cause stale data issues. Instead, queries that need 
+> this metadata should:
+> 1. Query Tinybird for aggregates/analytics (fast)
+> 2. Join with current PostgreSQL data for display labels (using `prompt_id`/`brand_id`)
+> 
+> This keeps the event stream immutable and accurate.
 
 > **Timezone Handling**: We store `created_at` as `DateTime64(3, 'UTC')` and derive dates at 
 > query time using ClickHouse's native timezone conversion: `toDate(created_at, 'America/New_York')`.
@@ -643,18 +646,22 @@ Dates are passed as `YYYY-MM-DD` strings, and ClickHouse handles timezone conver
 ```sql
 -- Endpoint: /v0/pipes/dashboard_summary.json
 -- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA)
+-- NOTE: For non_branded_visibility, you need to filter by prompt_ids from PostgreSQL
+-- where the prompt's systemTags don't include 'branded'
 
 SELECT
     countDistinct(prompt_id) as total_prompts,
     count() as total_runs,
     round(sum(brand_mentioned) * 100.0 / count(), 1) as avg_visibility,
-    round(sumIf(brand_mentioned, NOT has(prompt_system_tags, 'branded')) * 100.0 / 
-          countIf(NOT has(prompt_system_tags, 'branded')), 1) as non_branded_visibility,
     max(toDate(created_at, {{String(timezone)}})) as last_updated
 FROM prompt_runs
 WHERE brand_id = {{String(brand_id)}}
   AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
 ```
+
+> **Note**: For filtered queries (e.g., non-branded visibility), first fetch the list of 
+> qualifying `prompt_id`s from PostgreSQL, then pass them to the Tinybird query with 
+> `AND prompt_id IN ({prompt_ids:Array(String)})`.
 
 ### 2. Visibility Time Series
 
@@ -725,19 +732,16 @@ GROUP BY date, model_group
 ORDER BY date
 ```
 
-### 5. Prompts Summary with Tag Filtering
+### 5. Prompts Summary (Aggregates Only)
 
 ```sql
 -- Endpoint: /v0/pipes/prompts_summary.json
--- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA), tags (optional, comma-separated)
+-- Parameters: brand_id, from_date (YYYY-MM-DD), to_date (YYYY-MM-DD), timezone (IANA)
+-- NOTE: prompt_value, tags, group_category etc. are NOT in Tinybird.
+-- Join this result with prompt metadata from PostgreSQL using prompt_id.
 
 SELECT
     prompt_id,
-    any(prompt_value) as value,
-    any(prompt_group_category) as group_category,
-    any(prompt_group_prefix) as group_prefix,
-    arrayDistinct(groupArrayArray(prompt_tags)) as tags,
-    arrayDistinct(groupArrayArray(prompt_system_tags)) as system_tags,
     count() as total_runs,
     round(sum(brand_mentioned) * 100.0 / count(), 1) as brand_mention_rate,
     round(sum(has_competitor_mention) * 100.0 / count(), 1) as competitor_mention_rate,
@@ -745,16 +749,15 @@ SELECT
 FROM prompt_runs
 WHERE brand_id = {{String(brand_id)}}
   AND toDate(created_at, {{String(timezone)}}) BETWEEN {{Date(from_date)}} AND {{Date(to_date)}}
-  {% if defined(tags) %}
-  -- Filter by tags (matches if ANY of the filter tags are present)
-  AND (
-    hasAny(prompt_tags, splitByChar(',', {{String(tags, '')}}))
-    OR hasAny(prompt_system_tags, splitByChar(',', {{String(tags, '')}}))
-  )
-  {% end %}
 GROUP BY prompt_id
 ORDER BY total_runs DESC
 ```
+
+> **Tag Filtering Pattern**: To filter by tags, first query PostgreSQL for prompt_ids matching 
+> your tag criteria, then pass those IDs to Tinybird:
+> ```sql
+> WHERE prompt_id IN ({prompt_ids:Array(String)})
+> ```
 
 ### 6. Full-Text Search on Response Content
 
@@ -763,11 +766,11 @@ Search across all LLM response text for specific terms, phrases, or patterns.
 ```sql
 -- Endpoint: /v0/pipes/content_search.json
 -- Parameters: brand_id, query, from_date (optional), to_date (optional), model_group (optional)
+-- NOTE: prompt_value is NOT stored in Tinybird - join with PostgreSQL using prompt_id
 
 SELECT
     id,
     prompt_id,
-    prompt_value,
     model_group,
     brand_mentioned,
     text_content,
@@ -777,10 +780,10 @@ WHERE brand_id = {{String(brand_id, '')}}
   -- Full-text search using token matching (uses the bloom filter index)
   AND hasTokenCaseInsensitive(text_content, {{String(query, '')}})
   {% if defined(from_date) %}
-  AND run_date >= {{Date(from_date)}}
+  AND toDate(created_at) >= {{Date(from_date)}}
   {% end %}
   {% if defined(to_date) %}
-  AND run_date <= {{Date(to_date)}}
+  AND toDate(created_at) <= {{Date(to_date)}}
   {% end %}
   {% if defined(model_group) %}
   AND model_group = {{String(model_group)}}
@@ -796,11 +799,11 @@ Search for responses containing multiple terms (AND/OR logic).
 ```sql
 -- Endpoint: /v0/pipes/content_search_multi.json
 -- Parameters: brand_id, terms (comma-separated), match_all (boolean)
+-- NOTE: prompt_value is NOT stored in Tinybird - join with PostgreSQL using prompt_id
 
 SELECT
     id,
     prompt_id,
-    prompt_value,
     model_group,
     text_content,
     created_at,
@@ -849,10 +852,11 @@ Get response snippets with context around search matches.
 ```sql
 -- Endpoint: /v0/pipes/content_snippets.json
 -- Parameters: brand_id, query, context_chars (chars before/after match)
+-- NOTE: prompt_value is NOT stored in Tinybird - join with PostgreSQL using prompt_id
 
 SELECT
     id,
-    prompt_value,
+    prompt_id,
     model_group,
     created_at,
     -- Extract snippet with context around the match
@@ -911,8 +915,9 @@ GROUP BY model_group
 
 ```sql
 -- Find responses recommending competitors
+-- NOTE: prompt_value is NOT stored in Tinybird - join with PostgreSQL using prompt_id
 SELECT 
-    prompt_value,
+    prompt_id,
     text_content,
     competitors_mentioned
 FROM prompt_runs
@@ -955,17 +960,20 @@ import { z } from 'zod';
 
 const tb = new Tinybird({ token: process.env.TINYBIRD_TOKEN! });
 
+// Citation schema for array items (expanded via MV)
+const citationItemSchema = z.object({
+    url: z.string(),
+    domain: z.string(),
+    title: z.string().nullable(),
+});
+
 // Define typed data source schemas
+// NOTE: Prompt/brand metadata (brand_name, prompt_value, prompt_group_*, prompt_tags, prompt_system_tags)
+// is NOT stored here - it should be joined from PostgreSQL at query time since those values can change.
 const promptRunSchema = z.object({
     id: z.string(),
     prompt_id: z.string(),
     brand_id: z.string(),
-    brand_name: z.string(),
-    prompt_value: z.string(),
-    prompt_group_category: z.string().nullable(),
-    prompt_group_prefix: z.string().nullable(),
-    prompt_tags: z.array(z.string()),
-    prompt_system_tags: z.array(z.string()),
     model_group: z.string(),
     model: z.string(),
     web_search_enabled: z.number(),
@@ -973,32 +981,18 @@ const promptRunSchema = z.object({
     competitors_mentioned: z.array(z.string()),
     web_queries: z.array(z.string()),
     text_content: z.string(),
+    raw_output: z.string(),  // JSON stringified - stored in same table since ClickHouse is columnar
+    citations: z.array(citationItemSchema),  // Expanded to citations table via MV
     created_at: z.string(),  // DateTime64 - dates derived at query time for timezone handling
     competitor_count: z.number(),
     has_competitor_mention: z.number(),
 });
 
-const citationSchema = z.object({
-    prompt_run_id: z.string(),
-    prompt_id: z.string(),
-    brand_id: z.string(),
-    model_group: z.string(),
-    url: z.string(),
-    domain: z.string(),
-    title: z.string().nullable(),
-    category: z.string(),
-    created_at: z.string(),  // DateTime64 - dates derived at query time for timezone handling
-});
-
 // Type-safe ingestion functions
+// Only prompt_runs - citations are auto-expanded via materialized view
 export const ingestPromptRuns = tb.buildIngestEndpoint({
     datasource: 'prompt_runs',
     event: promptRunSchema,
-});
-
-export const ingestCitations = tb.buildIngestEndpoint({
-    datasource: 'citations',
-    event: citationSchema,
 });
 
 // Wrapper with feature flag
@@ -1049,6 +1043,8 @@ export async function queryTinybird<T>(
 }
 
 // Named query helpers - pass YYYY-MM-DD dates and timezone, ClickHouse handles conversion
+// NOTE: For non_branded_visibility, you need to filter by prompt_ids from PostgreSQL
+// where the prompt's systemTags don't include 'branded'
 export async function getDashboardSummary(
     brandId: string, 
     fromDate: string,   // 'YYYY-MM-DD'
@@ -1059,15 +1055,12 @@ export async function getDashboardSummary(
         total_prompts: number;
         total_runs: number;
         avg_visibility: number;
-        non_branded_visibility: number;
         last_updated: string;
     }>(`
         SELECT
             countDistinct(prompt_id) as total_prompts,
             count() as total_runs,
             round(sum(brand_mentioned) * 100.0 / count(), 1) as avg_visibility,
-            round(sumIf(brand_mentioned, NOT has(prompt_system_tags, 'branded')) * 100.0 / 
-                  countIf(NOT has(prompt_system_tags, 'branded')), 1) as non_branded_visibility,
             max(toDate(created_at, {timezone:String})) as last_updated
         FROM prompt_runs
         WHERE brand_id = {brandId:String}
@@ -1108,6 +1101,7 @@ export async function getVisibilityTimeSeries(
     `, { brandId, timezone, fromDate, toDate });
 }
 
+// NOTE: prompt_value is NOT stored in Tinybird - join with PostgreSQL using prompt_id
 export async function searchResponseContent(
     brandId: string,
     searchQuery: string,
@@ -1119,7 +1113,6 @@ export async function searchResponseContent(
         SELECT
             id,
             prompt_id,
-            prompt_value,
             model_group,
             brand_mentioned,
             text_content,
@@ -1132,11 +1125,11 @@ export async function searchResponseContent(
     const params: Record<string, any> = { brandId, searchQuery, limit };
     
     if (fromDate) {
-        query += ` AND run_date >= {fromDate:Date}`;
+        query += ` AND toDate(created_at) >= {fromDate:Date}`;
         params.fromDate = fromDate;
     }
     if (toDate) {
-        query += ` AND run_date <= {toDate:Date}`;
+        query += ` AND toDate(created_at) <= {toDate:Date}`;
         params.toDate = toDate;
     }
     if (modelGroup) {
@@ -1149,7 +1142,6 @@ export async function searchResponseContent(
     return queryTinybird<{
         id: string;
         prompt_id: string;
-        prompt_value: string;
         model_group: string;
         brand_mentioned: number;
         text_content: string;
@@ -1163,96 +1155,56 @@ export async function searchResponseContent(
 ```typescript
 // src/worker/worker.ts - Add after savePromptRun()
 
-import { ingestToTinybird, ingestPromptRuns, ingestCitations } from '@/lib/tinybird-write';
-import { extractTextContent, extractCitations } from '@/lib/text-extraction';
+import { ingestToTinybird, ingestPromptRuns, TinybirdPromptRunEvent, TinybirdCitationItem } from '@/lib/tinybird';
+import { extractCitations } from '@/lib/text-extraction';
 
-interface TinybirdPromptRunEvent {
-    id: string;
-    prompt_id: string;
-    brand_id: string;
-    brand_name: string;
-    prompt_value: string;
-    prompt_group_category: string | null;
-    prompt_group_prefix: string | null;
-    prompt_tags: string[];
-    prompt_system_tags: string[];
-    model_group: string;
-    model: string;
-    web_search_enabled: number;
-    brand_mentioned: number;
-    competitors_mentioned: string[];
-    web_queries: string[];
-    text_content: string;
-    created_at: string;  // DateTime64 - dates derived at query time for timezone handling
-    competitor_count: number;
-    has_competitor_mention: number;
-}
-
+// Function to send data to Tinybird (dual-write)
+// Errors are logged but don't fail the main job
+// NOTE: Prompt/brand metadata (brand_name, prompt_value, prompt_tags, etc.) is NOT sent here.
+// Those values can change and should be joined from PostgreSQL at query time.
 async function sendToTinybird(
-    promptRun: {
-        id: string;
-        promptId: string;
-        brandId: string;
-        brandName: string;
-        promptValue: string;
-        groupCategory: string | null;
-        groupPrefix: string | null;
-        tags: string[];
-        systemTags: string[];
-        modelGroup: string;
-        model: string;
-        webSearchEnabled: boolean;
-        brandMentioned: boolean;
-        competitorsMentioned: string[];
-        webQueries: string[];
-        textContent: string;
-        rawOutput: any;
-    }
+    promptRunId: string,
+    promptId: string,
+    brandId: string,
+    modelGroup: "openai" | "anthropic" | "google",
+    model: string,
+    webSearchEnabled: boolean,
+    rawOutput: any,
+    webQueries: string[],
+    brandMentioned: boolean,
+    competitorsMentioned: string[],
+    textContent: string,
 ): Promise<void> {
     const now = new Date();
-    
-    // Send core event
-    const event: TinybirdPromptRunEvent = {
-        id: promptRun.id,
-        prompt_id: promptRun.promptId,
-        brand_id: promptRun.brandId,
-        brand_name: promptRun.brandName,
-        prompt_value: promptRun.promptValue,
-        prompt_group_category: promptRun.groupCategory,
-        prompt_group_prefix: promptRun.groupPrefix,
-        prompt_tags: promptRun.tags,
-        prompt_system_tags: promptRun.systemTags,
-        model_group: promptRun.modelGroup,
-        model: promptRun.model,
-        web_search_enabled: promptRun.webSearchEnabled ? 1 : 0,
-        brand_mentioned: promptRun.brandMentioned ? 1 : 0,
-        competitors_mentioned: promptRun.competitorsMentioned,
-        web_queries: promptRun.webQueries,
-        text_content: promptRun.textContent,
-        created_at: now.toISOString(),  // Dates derived at query time for timezone handling
-        competitor_count: promptRun.competitorsMentioned.length,
-        has_competitor_mention: promptRun.competitorsMentioned.length > 0 ? 1 : 0,
-    };
-    
-    // Use zod-bird typed ingestion (type-safe writes)
-    await ingestToTinybird(ingestPromptRuns, [event]);
 
-    // Extract and send citations
-    const citations = extractCitations(promptRun.rawOutput, promptRun.modelGroup);
-    if (citations.length > 0) {
-        // Use zod-bird typed ingestion for citations
-        await ingestToTinybird(ingestCitations, citations.map(c => ({
-            prompt_run_id: promptRun.id,
-            prompt_id: promptRun.promptId,
-            brand_id: promptRun.brandId,
-            model_group: promptRun.modelGroup,
-            url: c.url,
-            domain: c.domain,
-            title: c.title || null,
-            category: c.category || 'other',
-            created_at: now.toISOString(),  // Dates derived at query time for timezone handling
-        })));
-    }
+    // Extract citations (will be auto-expanded to citations table via MV)
+    const extractedCitations = extractCitations(rawOutput, modelGroup);
+    const citations: TinybirdCitationItem[] = extractedCitations.map((c) => ({
+        url: c.url,
+        domain: c.domain,
+        title: c.title || null,
+    }));
+
+    // Send single event - citations array is auto-expanded via materialized view
+    const event: TinybirdPromptRunEvent = {
+        id: promptRunId,
+        prompt_id: promptId,
+        brand_id: brandId,
+        model_group: modelGroup,
+        model: model,
+        web_search_enabled: webSearchEnabled ? 1 : 0,
+        brand_mentioned: brandMentioned ? 1 : 0,
+        competitors_mentioned: competitorsMentioned,
+        web_queries: webQueries,
+        text_content: textContent,
+        raw_output: JSON.stringify(rawOutput),
+        citations: citations,
+        created_at: now.toISOString(),
+        competitor_count: competitorsMentioned.length,
+        has_competitor_mention: competitorsMentioned.length > 0 ? 1 : 0,
+    };
+
+    await ingestToTinybird(ingestPromptRuns, [event]);
 }
 ```
 
@@ -1433,9 +1385,9 @@ function percentile(arr: number[], p: number): number {
 // scripts/backfill-tinybird.ts
 
 import { db } from '../src/lib/db/db';
-import { promptRuns, prompts, brands } from '../src/lib/db/schema';
+import { promptRuns, prompts } from '../src/lib/db/schema';
 import { eq, gt, sql } from 'drizzle-orm';
-import { ingestToTinybird, ingestPromptRuns, ingestCitations } from '../src/lib/tinybird-write';
+import { ingestToTinybird, ingestPromptRuns, TinybirdCitationItem } from '../src/lib/tinybird';
 import { extractTextContent, extractCitations } from '../src/lib/text-extraction';
 import { redis } from '../src/lib/redis';
 
@@ -1457,15 +1409,15 @@ async function backfillPromptRuns() {
             ? gt(promptRuns.id, lastId)
             : sql`1=1`;
 
+        // NOTE: We only need prompt for brandId lookup - no need to join brands
+        // since we're not storing denormalized metadata
         const runs = await db
             .select({
                 run: promptRuns,
                 prompt: prompts,
-                brand: brands,
             })
             .from(promptRuns)
             .innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-            .innerJoin(brands, eq(prompts.brandId, brands.id))
             .where(whereCondition)
             .orderBy(promptRuns.id)
             .limit(BATCH_SIZE);
@@ -1476,54 +1428,38 @@ async function backfillPromptRuns() {
         }
 
         // Transform and batch insert
-        const events = runs.map(({ run, prompt, brand }) => ({
-            id: run.id,
-            prompt_id: run.promptId,
-            brand_id: prompt.brandId,
-            brand_name: brand.name,
-            prompt_value: prompt.value,
-            prompt_group_category: prompt.groupCategory,
-            prompt_group_prefix: prompt.groupPrefix,
-            prompt_tags: prompt.tags || [],
-            prompt_system_tags: prompt.systemTags || [],
-            model_group: run.modelGroup,
-            model: run.model,
-            web_search_enabled: run.webSearchEnabled ? 1 : 0,
-            brand_mentioned: run.brandMentioned ? 1 : 0,
-            competitors_mentioned: run.competitorsMentioned || [],
-            web_queries: run.webQueries || [],
-            text_content: extractTextContent(run.rawOutput, run.modelGroup),
-            created_at: run.createdAt.toISOString(),  // Dates derived at query time for timezone handling
-            competitor_count: (run.competitorsMentioned || []).length,
-            has_competitor_mention: (run.competitorsMentioned || []).length > 0 ? 1 : 0,
-        }));
+        // NOTE: No denormalized metadata (brand_name, prompt_value, tags, etc.)
+        // Those are looked up from PostgreSQL at query time
+        const events = runs.map(({ run, prompt }) => {
+            const extractedCitations = extractCitations(run.rawOutput, run.modelGroup);
+            const citations: TinybirdCitationItem[] = extractedCitations.map((c) => ({
+                url: c.url,
+                domain: c.domain,
+                title: c.title || null,
+            }));
+
+            return {
+                id: run.id,
+                prompt_id: run.promptId,
+                brand_id: prompt.brandId,
+                model_group: run.modelGroup,
+                model: run.model,
+                web_search_enabled: run.webSearchEnabled ? 1 : 0,
+                brand_mentioned: run.brandMentioned ? 1 : 0,
+                competitors_mentioned: run.competitorsMentioned || [],
+                web_queries: run.webQueries || [],
+                text_content: extractTextContent(run.rawOutput, run.modelGroup),
+                raw_output: JSON.stringify(run.rawOutput),
+                citations: citations,
+                created_at: run.createdAt.toISOString(),
+                competitor_count: (run.competitorsMentioned || []).length,
+                has_competitor_mention: (run.competitorsMentioned || []).length > 0 ? 1 : 0,
+            };
+        });
 
         // Use zod-bird for type-safe writes
+        // Citations are auto-expanded via materialized view
         await ingestToTinybird(ingestPromptRuns, events);
-
-        // Extract citations for each run
-        const allCitations = [];
-        for (const { run, prompt } of runs) {
-            const citations = extractCitations(run.rawOutput, run.modelGroup);
-            for (const c of citations) {
-                allCitations.push({
-                    prompt_run_id: run.id,
-                    prompt_id: run.promptId,
-                    brand_id: prompt.brandId,
-                    model_group: run.modelGroup,
-                    url: c.url,
-                    domain: c.domain,
-                    title: c.title || null,
-                    category: c.category || 'other',
-                    created_at: run.createdAt.toISOString(),  // Dates derived at query time
-                });
-            }
-        }
-        
-        if (allCitations.length > 0) {
-            // Use zod-bird for type-safe writes
-            await ingestToTinybird(ingestCitations, allCitations);
-        }
 
         // Update progress
         lastId = runs[runs.length - 1].run.id;

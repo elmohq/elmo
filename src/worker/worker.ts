@@ -140,9 +140,12 @@ async function savePromptRun(
 
 // Function to send data to Tinybird (dual-write)
 // Errors are logged but don't fail the main job
+// NOTE: Prompt/brand metadata (brand_name, prompt_value, prompt_tags, etc.) is NOT sent here.
+// Those values can change and should be joined from PostgreSQL at query time.
 async function sendToTinybird(
 	promptRunId: string,
-	context: PromptContext,
+	promptId: string,
+	brandId: string,
 	modelGroup: "openai" | "anthropic" | "google",
 	model: string,
 	webSearchEnabled: boolean,
@@ -152,7 +155,6 @@ async function sendToTinybird(
 	competitorsMentioned: string[],
 	textContent: string,
 ): Promise<void> {
-	const { prompt, brand } = context;
 	const now = new Date();
 
 	// Extract citations (will be auto-expanded to citations table via MV)
@@ -166,14 +168,8 @@ async function sendToTinybird(
 	// Send single event - citations array is auto-expanded via materialized view
 	const event: TinybirdPromptRunEvent = {
 		id: promptRunId,
-		prompt_id: prompt.id,
-		brand_id: prompt.brandId,
-		brand_name: brand.name,
-		prompt_value: prompt.value,
-		prompt_group_category: prompt.groupCategory,
-		prompt_group_prefix: prompt.groupPrefix,
-		prompt_tags: prompt.tags || [],
-		prompt_system_tags: prompt.systemTags || [],
+		prompt_id: promptId,
+		brand_id: brandId,
 		model_group: modelGroup,
 		model: model,
 		web_search_enabled: webSearchEnabled ? 1 : 0,
@@ -260,7 +256,8 @@ const worker = new Worker(
 						// Dual-write to Tinybird (errors are logged but don't fail the job)
 						await sendToTinybird(
 							promptRunId,
-							context,
+							promptId,
+							prompt.brandId,
 							AI_MODELS.OPENAI.GROUP,
 							AI_MODELS.OPENAI.MODEL,
 							true,
@@ -323,7 +320,8 @@ const worker = new Worker(
 						// Dual-write to Tinybird (errors are logged but don't fail the job)
 						await sendToTinybird(
 							promptRunId,
-							context,
+							promptId,
+							prompt.brandId,
 							AI_MODELS.ANTHROPIC.GROUP,
 							AI_MODELS.ANTHROPIC.MODEL,
 							false,
@@ -386,7 +384,8 @@ const worker = new Worker(
 						// Dual-write to Tinybird (errors are logged but don't fail the job)
 						await sendToTinybird(
 							promptRunId,
-							context,
+							promptId,
+							prompt.brandId,
 							"google",
 							"dataforseo",
 							true,
