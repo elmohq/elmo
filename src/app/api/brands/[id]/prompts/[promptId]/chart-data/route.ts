@@ -272,8 +272,42 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
 		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
 			try {
-				const fromDateStr = fromDate ? fromDate.toISOString().split("T")[0] : null;
-				const toDateStr = toDate ? toDate.toISOString().split("T")[0] : null;
+				// For Tinybird, we need dates in the user's timezone (not UTC) without buffer days
+				// PostgreSQL uses buffer days and does precise bucketing client-side, but Tinybird
+				// filters by date directly in the user's timezone
+				let tbFromDateStr: string | null = null;
+				let tbToDateStr: string | null = null;
+				
+				if (lookbackParam && lookbackParam !== "all") {
+					// Calculate the actual lookback dates (without buffers) in user's timezone
+					const now = new Date();
+					const todayInTz = now.toLocaleDateString("en-CA", { timeZone: timezoneParam });
+					
+					// End date is today in user's timezone
+					tbToDateStr = todayInTz;
+					
+					// Start date based on lookback period
+					const tbFromDate = new Date(now);
+					switch (lookbackParam) {
+						case "1w":
+							tbFromDate.setDate(tbFromDate.getDate() - 6); // 7 days including today
+							break;
+						case "1m":
+							tbFromDate.setMonth(tbFromDate.getMonth() - 1);
+							break;
+						case "3m":
+							tbFromDate.setMonth(tbFromDate.getMonth() - 3);
+							break;
+						case "6m":
+							tbFromDate.setMonth(tbFromDate.getMonth() - 6);
+							break;
+						case "1y":
+							tbFromDate.setFullYear(tbFromDate.getFullYear() - 1);
+							break;
+					}
+					tbFromDateStr = tbFromDate.toLocaleDateString("en-CA", { timeZone: timezoneParam });
+				}
+				
 				const webSearchEnabled =
 					webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
 
@@ -281,8 +315,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				const tinybirdResult = await getTinybirdPromptChartData(
 					brandId,
 					promptId,
-					fromDateStr,
-					toDateStr,
+					tbFromDateStr,
+					tbToDateStr,
 					timezoneParam,
 					webSearchEnabled,
 					modelGroupParam || undefined,
@@ -293,38 +327,55 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				const tbTotalRuns = tinybirdResult.reduce((sum, r) => sum + Number(r.total_runs), 0);
 				const tbBrandMentions = tinybirdResult.reduce((sum, r) => sum + Number(r.brand_mentioned_count), 0);
 
-				const pgBrandMentions = runs.filter((r) => r.brandMentioned).length;
+				// Build per-date counts first (needed for filtering)
+				const pgPerDateCounts: Record<string, number> = {};
+				const pgPerDateBrandMentions: Record<string, number> = {};
+				const tbPerDateCounts: Record<string, number> = {};
+				
+				// Group PG runs by date in user's timezone
+				for (const run of runs) {
+					const date = new Date(run.createdAt).toLocaleDateString("en-CA", { timeZone: timezoneParam });
+					pgPerDateCounts[date] = (pgPerDateCounts[date] || 0) + 1;
+					if (run.brandMentioned) {
+						pgPerDateBrandMentions[date] = (pgPerDateBrandMentions[date] || 0) + 1;
+					}
+				}
+				
+				// TB groups by date AND model_group, so accumulate counts per date
+				for (const row of tinybirdResult) {
+					tbPerDateCounts[row.date] = (tbPerDateCounts[row.date] || 0) + Number(row.total_runs);
+				}
+				
+				// Filter PG counts to only include dates within the Tinybird date range
+				// (PostgreSQL fetches with buffer days, so we need to exclude those for fair comparison)
+				let pgFilteredTotalRuns = 0;
+				let pgFilteredBrandMentions = 0;
+				const pgFilteredPerDateCounts: Record<string, number> = {};
+				
+				for (const date of Object.keys(pgPerDateCounts)) {
+					// Only include dates within the actual lookback range
+					if (tbFromDateStr && tbToDateStr && date >= tbFromDateStr && date <= tbToDateStr) {
+						pgFilteredPerDateCounts[date] = pgPerDateCounts[date];
+						pgFilteredTotalRuns += pgPerDateCounts[date];
+						pgFilteredBrandMentions += pgPerDateBrandMentions[date] || 0;
+					}
+				}
 
 				const pgComparable = {
-					totalRuns,
-					brandMentions: pgBrandMentions,
+					totalRuns: pgFilteredTotalRuns,
+					brandMentions: pgFilteredBrandMentions,
 				};
 
 				const tbComparable = {
 					totalRuns: tbTotalRuns,
 					brandMentions: tbBrandMentions,
 				};
-
-				// Build diagnostics with per-date breakdown
-				const pgPerDateCounts: Record<string, number> = {};
-				const tbPerDateCounts: Record<string, number> = {};
 				
-				// Group PG runs by date
-				for (const run of runs) {
-					const date = new Date(run.createdAt).toLocaleDateString("en-CA", { timeZone: timezoneParam });
-					pgPerDateCounts[date] = (pgPerDateCounts[date] || 0) + 1;
-				}
-				
-				// TB already has per-date data
-				for (const row of tinybirdResult) {
-					tbPerDateCounts[row.date] = Number(row.total_runs);
-				}
-				
-				// Find date differences
-				const allDates = new Set([...Object.keys(pgPerDateCounts), ...Object.keys(tbPerDateCounts)]);
+				// Find date differences (using filtered PG counts for fair comparison)
+				const allDates = new Set([...Object.keys(pgFilteredPerDateCounts), ...Object.keys(tbPerDateCounts)]);
 				const dateDifferences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
 				for (const date of allDates) {
-					const pgCount = pgPerDateCounts[date] || 0;
+					const pgCount = pgFilteredPerDateCounts[date] || 0;
 					const tbCount = tbPerDateCounts[date] || 0;
 					if (pgCount !== tbCount) {
 						dateDifferences.push({
@@ -339,7 +390,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 				const pgEarliest = runs.length > 0 ? runs[runs.length - 1].createdAt.toISOString() : null;
 				const pgLatest = runs.length > 0 ? runs[0].createdAt.toISOString() : null;
-				const tbDates = tinybirdResult.map(r => r.date).sort();
+				const tbDates = [...new Set(tinybirdResult.map(r => r.date))].sort();
 				
 				const diagnostics: DiagnosticInfo = {
 					dateRange: {
@@ -347,17 +398,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 						tb: { earliest: tbDates[0] || null, latest: tbDates[tbDates.length - 1] || null },
 					},
 					recordCounts: {
-						pg: totalRuns,
+						pg: pgFilteredTotalRuns,
 						tb: tbTotalRuns,
 					},
 					perPromptCounts: {
-						pg: pgPerDateCounts,
+						pg: pgFilteredPerDateCounts,
 						tb: tbPerDateCounts,
 						differences: dateDifferences.slice(0, 20),
 					},
 					extra: {
-						pgDatesWithData: Object.keys(pgPerDateCounts).length,
-						tbDatesWithData: tinybirdResult.length,
+						pgDatesWithData: Object.keys(pgFilteredPerDateCounts).length,
+						tbDatesWithData: tbDates.length,
+						pgTotalWithBuffers: totalRuns,
 						webSearchEnabled,
 						modelGroup: modelGroupParam,
 					},
@@ -369,6 +421,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 					filters: {
 						promptId,
 						lookback: lookbackParam,
+						fromDate: tbFromDateStr,
+						toDate: tbToDateStr,
 						webSearchEnabled: webSearchEnabledParam,
 						modelGroup: modelGroupParam,
 						timezone: timezoneParam,
