@@ -16,6 +16,8 @@ import {
 	LookbackPeriod,
 	ChartDataPoint,
 	filterAndCompleteChartData,
+	extendLinesToChartEdges,
+	isExtendedDataPoint,
 	getBadgeVariant,
 	getBadgeClassName,
 	selectCompetitorsToDisplay,
@@ -84,6 +86,7 @@ export function BaseChart({
 
 	// For bar charts, filter out days where ALL entities have null values
 	// For line charts, keep all days to maintain proper time-based spacing on x-axis
+	// and extend lines to chart edges to fill gaps at start/end of data collection
 	const chartData = chartType === "bar" 
 		? completeData.filter(point => {
 				// Keep the data point if ANY tracked entity has a non-null value
@@ -92,7 +95,7 @@ export function BaseChart({
 					return value !== null && value !== undefined;
 				});
 			})
-		: completeData;
+		: extendLinesToChartEdges(completeData, dataKeys);
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -218,56 +221,124 @@ export function BaseChart({
 						/>
 						<ChartTooltip
 							cursor={false}
-							content={
-								<ChartTooltipContent
-									labelFormatter={(value) => {
-										// Fix: Parse date string directly to avoid double timezone conversion
-										const [year, month, day] = value.split("-").map(Number);
-										const date = new Date(year, month - 1, day);
-										return date.toLocaleDateString("en-US", {
-											month: "short",
-											day: "numeric",
-										});
-									}}
-									indicator="dot"
-									formatter={(value, name, item, index) => {
-										const indicatorColor = chartConfig[name as string]?.color;
-										return (
-											<>
-												<div
-													className="shrink-0 rounded-[2px] h-2.5 w-2.5"
-													style={{
-														backgroundColor: indicatorColor,
-													}}
-												/>
-												<div className="flex flex-1 justify-between gap-4 leading-none items-center">
-													<div className="grid gap-1.5">
-														<span className="text-muted-foreground">{chartConfig[name as string]?.label || name}</span>
+							content={({ active, payload, label }) => {
+								if (!active || !payload?.length) return null;
+								
+								// Check if ALL values for this day are extended - if so, hide tooltip entirely
+								const hasRealData = payload.some((item: any) => {
+									const key = item.dataKey as string;
+									return item.payload && !isExtendedDataPoint(item.payload, key);
+								});
+								
+								if (!hasRealData) return null;
+								
+								// Format the date label
+								const [year, month, day] = (label as string).split("-").map(Number);
+								const date = new Date(year, month - 1, day);
+								const formattedDate = date.toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+								});
+								
+								// Filter to only show non-extended values
+								const realPayload = payload.filter((item: any) => {
+									const key = item.dataKey as string;
+									return item.payload && !isExtendedDataPoint(item.payload, key);
+								});
+								
+								return (
+									<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+										<div className="font-medium">{formattedDate}</div>
+										<div className="grid gap-1.5">
+											{realPayload.map((item: any) => {
+												const indicatorColor = chartConfig[item.dataKey as string]?.color;
+												return (
+													<div key={item.dataKey} className="flex w-full items-center gap-2">
+														<div
+															className="shrink-0 rounded-[2px] h-2.5 w-2.5"
+															style={{ backgroundColor: indicatorColor }}
+														/>
+														<div className="flex flex-1 justify-between gap-4 leading-none items-center">
+															<span className="text-muted-foreground">
+																{chartConfig[item.dataKey as string]?.label || item.dataKey}
+															</span>
+															{item.value !== null && item.value !== undefined && (
+																<span className="text-foreground font-mono font-xs tabular-nums">
+																	{item.value}%
+																</span>
+															)}
+														</div>
 													</div>
-													{value !== null && value !== undefined && (
-														<span className="text-foreground font-mono font-xs tabular-nums">{value}%</span>
-													)}
-												</div>
-											</>
-										);
-									}}
-								/>
-							}
+												);
+											})}
+										</div>
+									</div>
+								);
+							}}
 						/>
-					{dataKeys.map((key, index) => (
+					{/* Render two lines per entity: dashed for extended data, solid for real data */}
+					{dataKeys.flatMap((key) => [
+						// First: Dashed line showing extended/extrapolated portions
 						<Line
-							key={key}
+							key={`${key}-dashed`}
 							dataKey={key}
 							type="bump"
 							stroke={`var(--color-${key})`}
 							strokeWidth={2}
-							// need dots, otherwise first day of line chart won't show
-							dot={{ fill: `var(--color-${key})`, strokeWidth: 2, r: 2 }}
-							activeDot={{ r: 4, strokeWidth: 2 }}
+							strokeDasharray="4 4"
+							dot={false}
+							activeDot={false}
 							connectNulls={true}
 							isAnimationActive={isAnimationActive}
-						/>
-					))}
+						/>,
+						// Second: Solid line overlay for real data (hides dashed line where real data exists)
+						<Line
+							key={`${key}-solid`}
+							dataKey={(dataPoint: any) => {
+								// Return null for extended points so solid line doesn't render there
+								if (isExtendedDataPoint(dataPoint, key)) {
+									return null;
+								}
+								return dataPoint[key];
+							}}
+							type="bump"
+							stroke={`var(--color-${key})`}
+							strokeWidth={2}
+							// Custom dot that only shows for real data points
+							dot={({ cx, cy, payload, value }: any) => {
+								if (!payload || value === null || value === undefined) {
+									return null;
+								}
+								return (
+									<circle
+										cx={cx}
+										cy={cy}
+										r={2}
+										fill={`var(--color-${key})`}
+										stroke={`var(--color-${key})`}
+										strokeWidth={2}
+									/>
+								);
+							}}
+							activeDot={({ cx, cy, payload, value }: any) => {
+								if (!payload || value === null || value === undefined) {
+									return null;
+								}
+								return (
+									<circle
+										cx={cx}
+										cy={cy}
+										r={4}
+										fill={`var(--color-${key})`}
+										stroke={`var(--color-${key})`}
+										strokeWidth={2}
+									/>
+								);
+							}}
+							connectNulls={true}
+							isAnimationActive={isAnimationActive}
+						/>,
+					])}
 						<ChartLegend content={<ChartLegendContent payload={[]} />} />
 					</LineChart>
 				</ChartContainer>

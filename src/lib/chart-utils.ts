@@ -322,6 +322,71 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
 }
 
 /**
+ * Extends line chart data to the edges of the time frame.
+ * For each entity (brand/competitor), extends the first non-null value backward
+ * to fill the start of the chart, and extends the last non-null value forward
+ * to fill the end of the chart. This prevents gaps at the edges of the chart
+ * when data collection started mid-period or hasn't been collected yet for recent dates.
+ * 
+ * Extended points are marked with `_extended_{key}: true` so the chart can:
+ * - Skip rendering dots for extended points
+ * - Skip showing extended values in tooltips
+ */
+export function extendLinesToChartEdges(
+	chartData: ChartDataPoint[],
+	dataKeys: string[]
+): ChartDataPoint[] {
+	if (chartData.length === 0) return chartData;
+
+	// Deep clone the chart data to avoid mutating the original
+	const extendedData = chartData.map((point) => ({ ...point }));
+
+	for (const key of dataKeys) {
+		// Find the first and last indices with non-null values for this key
+		let firstValidIndex = -1;
+		let lastValidIndex = -1;
+		let firstValue: number | null = null;
+		let lastValue: number | null = null;
+
+		for (let i = 0; i < extendedData.length; i++) {
+			const value = extendedData[i][key];
+			if (value !== null && value !== undefined) {
+				if (firstValidIndex === -1) {
+					firstValidIndex = i;
+					firstValue = value as number;
+				}
+				lastValidIndex = i;
+				lastValue = value as number;
+			}
+		}
+
+		// If we found valid data, extend it to the edges
+		if (firstValidIndex !== -1 && lastValidIndex !== -1) {
+			// Extend backward from the first valid value to the start
+			for (let i = 0; i < firstValidIndex; i++) {
+				extendedData[i][key] = firstValue;
+				extendedData[i][`_extended_${key}`] = true;
+			}
+
+			// Extend forward from the last valid value to the end
+			for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
+				extendedData[i][key] = lastValue;
+				extendedData[i][`_extended_${key}`] = true;
+			}
+		}
+	}
+
+	return extendedData;
+}
+
+/**
+ * Check if a data point's value for a specific key is an extended/synthetic value
+ */
+export function isExtendedDataPoint(dataPoint: ChartDataPoint, key: string): boolean {
+	return dataPoint[`_extended_${key}`] === true;
+}
+
+/**
  * Create a mapping from prompt IDs to their oldest web query (first alphabetically if multiple from same time)
  */
 export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<string, string> {

@@ -1,4 +1,4 @@
-import { calculateVisibilityPercentages, generateDateRange, filterAndCompleteChartData } from "../chart-utils";
+import { calculateVisibilityPercentages, generateDateRange, filterAndCompleteChartData, extendLinesToChartEdges, isExtendedDataPoint } from "../chart-utils";
 import type { PromptRun, Brand, Competitor } from "../db/schema";
 
 describe("chart-utils", () => {
@@ -550,6 +550,213 @@ describe("chart-utils", () => {
 			// With the current partial fix (timezone-aware bucketing but UTC date range)
 			// the data bucketing should work correctly, but the date range might not include all buckets
 			console.log("=== End test ===\n");
+		});
+	});
+
+	describe("extendLinesToChartEdges", () => {
+		it("should extend first data point backward to fill the start of the chart", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-17", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-18", [mockBrand.id]: 50, [mockCompetitors[0].id]: 30 },
+				{ date: "2025-07-19", [mockBrand.id]: 60, [mockCompetitors[0].id]: 40 },
+				{ date: "2025-07-20", [mockBrand.id]: 70, [mockCompetitors[0].id]: 50 },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// First two days should be filled with the first valid values
+			expect(result[0][mockBrand.id]).toBe(50);
+			expect(result[0][mockCompetitors[0].id]).toBe(30);
+			expect(result[1][mockBrand.id]).toBe(50);
+			expect(result[1][mockCompetitors[0].id]).toBe(30);
+			// Original data should remain unchanged
+			expect(result[2][mockBrand.id]).toBe(50);
+			expect(result[3][mockBrand.id]).toBe(60);
+			expect(result[4][mockBrand.id]).toBe(70);
+		});
+
+		it("should extend last data point forward to fill the end of the chart", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: 50, [mockCompetitors[0].id]: 30 },
+				{ date: "2025-07-17", [mockBrand.id]: 60, [mockCompetitors[0].id]: 40 },
+				{ date: "2025-07-18", [mockBrand.id]: 70, [mockCompetitors[0].id]: 50 },
+				{ date: "2025-07-19", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-20", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// Original data should remain unchanged
+			expect(result[0][mockBrand.id]).toBe(50);
+			expect(result[1][mockBrand.id]).toBe(60);
+			expect(result[2][mockBrand.id]).toBe(70);
+			// Last two days should be filled with the last valid values
+			expect(result[3][mockBrand.id]).toBe(70);
+			expect(result[3][mockCompetitors[0].id]).toBe(50);
+			expect(result[4][mockBrand.id]).toBe(70);
+			expect(result[4][mockCompetitors[0].id]).toBe(50);
+		});
+
+		it("should extend both directions when data is in the middle", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-17", [mockBrand.id]: 50, [mockCompetitors[0].id]: 30 },
+				{ date: "2025-07-18", [mockBrand.id]: 60, [mockCompetitors[0].id]: 40 },
+				{ date: "2025-07-19", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// First day filled backward
+			expect(result[0][mockBrand.id]).toBe(50);
+			expect(result[0][mockCompetitors[0].id]).toBe(30);
+			// Original data unchanged
+			expect(result[1][mockBrand.id]).toBe(50);
+			expect(result[2][mockBrand.id]).toBe(60);
+			// Last day filled forward
+			expect(result[3][mockBrand.id]).toBe(60);
+			expect(result[3][mockCompetitors[0].id]).toBe(40);
+		});
+
+		it("should handle entities with different data ranges", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: null, [mockCompetitors[0].id]: 20 },
+				{ date: "2025-07-17", [mockBrand.id]: 50, [mockCompetitors[0].id]: 30 },
+				{ date: "2025-07-18", [mockBrand.id]: 60, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-19", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// Brand: first value (50) extended backward, last value (60) extended forward
+			expect(result[0][mockBrand.id]).toBe(50);
+			expect(result[3][mockBrand.id]).toBe(60);
+			// Competitor: already has data at start, last value (30) extended forward
+			expect(result[0][mockCompetitors[0].id]).toBe(20);
+			expect(result[2][mockCompetitors[0].id]).toBe(30);
+			expect(result[3][mockCompetitors[0].id]).toBe(30);
+		});
+
+		it("should not mutate original chart data", () => {
+			const originalData = [
+				{ date: "2025-07-16", [mockBrand.id]: null },
+				{ date: "2025-07-17", [mockBrand.id]: 50 },
+				{ date: "2025-07-18", [mockBrand.id]: null },
+			];
+
+			extendLinesToChartEdges(originalData, [mockBrand.id]);
+
+			// Original data should not be modified
+			expect(originalData[0][mockBrand.id]).toBe(null);
+			expect(originalData[2][mockBrand.id]).toBe(null);
+		});
+
+		it("should handle empty chart data", () => {
+			const result = extendLinesToChartEdges([], [mockBrand.id]);
+			expect(result).toEqual([]);
+		});
+
+		it("should handle data with no nulls", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: 50 },
+				{ date: "2025-07-17", [mockBrand.id]: 60 },
+				{ date: "2025-07-18", [mockBrand.id]: 70 },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id]);
+
+			// Data should remain unchanged and no points should be marked as extended
+			expect(result[0][mockBrand.id]).toBe(50);
+			expect(result[1][mockBrand.id]).toBe(60);
+			expect(result[2][mockBrand.id]).toBe(70);
+			expect(isExtendedDataPoint(result[0], mockBrand.id)).toBe(false);
+			expect(isExtendedDataPoint(result[1], mockBrand.id)).toBe(false);
+			expect(isExtendedDataPoint(result[2], mockBrand.id)).toBe(false);
+		});
+
+		it("should handle single data point", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: null },
+				{ date: "2025-07-17", [mockBrand.id]: 50 },
+				{ date: "2025-07-18", [mockBrand.id]: null },
+				{ date: "2025-07-19", [mockBrand.id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id]);
+
+			// Single value extended in both directions
+			expect(result[0][mockBrand.id]).toBe(50);
+			expect(result[2][mockBrand.id]).toBe(50);
+			expect(result[3][mockBrand.id]).toBe(50);
+		});
+
+		it("should handle entity with all null values (no extension)", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: 50, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-17", [mockBrand.id]: 60, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-18", [mockBrand.id]: 70, [mockCompetitors[0].id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// Brand extended correctly
+			expect(result[0][mockBrand.id]).toBe(50);
+			// Competitor with all nulls stays null
+			expect(result[0][mockCompetitors[0].id]).toBe(null);
+			expect(result[1][mockCompetitors[0].id]).toBe(null);
+			expect(result[2][mockCompetitors[0].id]).toBe(null);
+		});
+
+		it("should mark extended points with _extended flag for hiding dots and tooltips", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-17", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-18", [mockBrand.id]: 50, [mockCompetitors[0].id]: 30 },
+				{ date: "2025-07-19", [mockBrand.id]: 60, [mockCompetitors[0].id]: 40 },
+				{ date: "2025-07-20", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// Extended backward points should be marked
+			expect(isExtendedDataPoint(result[0], mockBrand.id)).toBe(true);
+			expect(isExtendedDataPoint(result[0], mockCompetitors[0].id)).toBe(true);
+			expect(isExtendedDataPoint(result[1], mockBrand.id)).toBe(true);
+			expect(isExtendedDataPoint(result[1], mockCompetitors[0].id)).toBe(true);
+
+			// Original data points should not be marked
+			expect(isExtendedDataPoint(result[2], mockBrand.id)).toBe(false);
+			expect(isExtendedDataPoint(result[2], mockCompetitors[0].id)).toBe(false);
+			expect(isExtendedDataPoint(result[3], mockBrand.id)).toBe(false);
+			expect(isExtendedDataPoint(result[3], mockCompetitors[0].id)).toBe(false);
+
+			// Extended forward points should be marked
+			expect(isExtendedDataPoint(result[4], mockBrand.id)).toBe(true);
+			expect(isExtendedDataPoint(result[4], mockCompetitors[0].id)).toBe(true);
+		});
+
+		it("should mark extended points per entity when they have different ranges", () => {
+			const chartData = [
+				{ date: "2025-07-16", [mockBrand.id]: null, [mockCompetitors[0].id]: 20 },
+				{ date: "2025-07-17", [mockBrand.id]: 50, [mockCompetitors[0].id]: 30 },
+				{ date: "2025-07-18", [mockBrand.id]: 60, [mockCompetitors[0].id]: null },
+				{ date: "2025-07-19", [mockBrand.id]: null, [mockCompetitors[0].id]: null },
+			];
+
+			const result = extendLinesToChartEdges(chartData, [mockBrand.id, mockCompetitors[0].id]);
+
+			// Brand: extended backward on first day, extended forward on last day
+			expect(isExtendedDataPoint(result[0], mockBrand.id)).toBe(true);
+			expect(isExtendedDataPoint(result[1], mockBrand.id)).toBe(false);
+			expect(isExtendedDataPoint(result[2], mockBrand.id)).toBe(false);
+			expect(isExtendedDataPoint(result[3], mockBrand.id)).toBe(true);
+
+			// Competitor: not extended on first two days, extended on last two
+			expect(isExtendedDataPoint(result[0], mockCompetitors[0].id)).toBe(false);
+			expect(isExtendedDataPoint(result[1], mockCompetitors[0].id)).toBe(false);
+			expect(isExtendedDataPoint(result[2], mockCompetitors[0].id)).toBe(true);
+			expect(isExtendedDataPoint(result[3], mockCompetitors[0].id)).toBe(true);
 		});
 	});
 
