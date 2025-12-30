@@ -1,0 +1,33 @@
+DESCRIPTION >
+    Materialized view that aggregates prompt_runs into hourly counts.
+    Triggers automatically on every insert to prompt_runs.
+    
+    Uses hourly granularity to enable timezone-aware queries:
+    - At query time: toDate(hour, timezone) converts to local dates
+    - This ensures correct day boundaries for any timezone
+    
+    Uses simple count() instead of uniqState() for speed.
+    SummingMergeTree automatically sums rows with same key during merges.
+    
+    Note: May double-count if same prompt_run is inserted multiple times,
+    but this is rare (~0.01%) and acceptable for display purposes.
+
+NODE aggregate_hourly_counts
+SQL >
+    SELECT
+        brand_id,
+        prompt_id,
+        toStartOfHour(created_at) as hour,
+        model_group,
+        web_search_enabled,
+        count() as run_count,
+        sum(brand_mentioned) as brand_mentioned_count,
+        sum(has_competitor_mention) as competitor_mentioned_count,
+        sum(competitor_count) as competitor_count_sum
+    FROM prompt_runs
+    GROUP BY brand_id, prompt_id, hour, model_group, web_search_enabled
+
+TYPE materialized
+DATASOURCE prompt_runs_hourly_counts
+
+

@@ -3,6 +3,8 @@ import { db } from "@/lib/db/db";
 import { promptRuns, prompts } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, desc, gte, count, and } from "drizzle-orm";
+import { isTinybirdVerifyEnabled, verifyAndLog } from "@/lib/tinybird-comparison";
+import { getTinybirdPromptRunsCount, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	promptId: string;
@@ -81,6 +83,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Build time filter condition
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
+		// Start timing PostgreSQL queries
+		const startPg = performance.now();
+
 		// Run queries in parallel for speed
 		const [totalCountResult, paginatedRuns] = await Promise.all([
 			// Get total count for pagination
@@ -110,6 +115,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				.offset(offset)
 		]);
 
+		// End PostgreSQL timing
+		const pgTime = performance.now() - startPg;
+
 		// Process results
 		const total = totalCountResult[0]?.count || 0;
 		const totalPages = Math.ceil(Number(total) / limit);
@@ -129,6 +137,52 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				hasPrev: page > 1
 			}
 		};
+
+		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
+		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
+			try {
+				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+				const toDateObj = new Date();
+				const toDateStr = toDateObj.toISOString().split("T")[0];
+				const fromDateStr = fromDate.toISOString().split("T")[0];
+
+				const startTb = performance.now();
+				const tinybirdResult = await getTinybirdPromptRunsCount(promptId, fromDateStr, toDateStr, userTimezone);
+				const tbTime = performance.now() - startTb;
+
+				if (tinybirdResult.length > 0) {
+					const tbData = tinybirdResult[0];
+
+					const pgComparable = {
+						totalCount: Number(total),
+					};
+
+					const tbComparable = {
+						totalCount: Number(tbData.total_count),
+					};
+
+					await verifyAndLog({
+						endpoint: "prompt-runs",
+						brandId: prompt[0].brandId,
+						filters: {
+							promptId,
+							days,
+							page,
+							limit,
+							fromDate: fromDateStr,
+							toDate: toDateStr,
+							timezone: userTimezone,
+						},
+						postgresResult: pgComparable,
+						tinybirdResult: tbComparable,
+						pgTime,
+						tbTime,
+					});
+				}
+			} catch (error) {
+				console.error("Tinybird verification failed for prompt-runs:", error);
+			}
+		}
 
 		return NextResponse.json(response);
 

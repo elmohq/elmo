@@ -4,7 +4,7 @@ import { prompts, promptRuns, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, desc, count, sql } from "drizzle-orm";
 import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
-import { getTinybirdPromptsSummary, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { getTinybirdPromptsSummary, getTinybirdPromptsSummaryFast, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -265,29 +265,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				// Get enabled prompt IDs for filtering Tinybird
 				const enabledPromptIds = sortedPrompts.map((p) => p.id);
 
+				// Time ONLY the main query (not diagnostics) for fair comparison
 				const startTb = performance.now();
-				const [tinybirdResult, tbDiagnostics] = await Promise.all([
-					getTinybirdPromptsSummary(
-						brandId,
-						fromDateStr,
-						toDateStr,
-						userTimezone,
-						webSearchEnabled,
-						modelGroupParam || undefined,
-						enabledPromptIds,
-					),
-					// Only run diagnostics if we have date filters
-					fromDateStr && toDateStr
-						? getTinybirdPromptRunDiagnostics(
-								brandId,
-								fromDateStr,
-								toDateStr,
-								userTimezone,
-								enabledPromptIds,
-						  )
-						: Promise.resolve(null),
-				]);
+				const tinybirdResult = await getTinybirdPromptsSummaryFast(
+					brandId,
+					fromDateStr,
+					toDateStr,
+					userTimezone,
+					webSearchEnabled,
+					modelGroupParam || undefined,
+					enabledPromptIds,
+				);
 				const tbTime = performance.now() - startTb;
+
+				// Run diagnostics separately (not included in timing)
+				const tbDiagnostics = fromDateStr && toDateStr
+					? await getTinybirdPromptRunDiagnostics(
+							brandId,
+							fromDateStr,
+							toDateStr,
+							userTimezone,
+							enabledPromptIds,
+					  )
+					: null;
 
 				// Compare aggregate metrics for enabled prompts
 				const pgTotalRuns = sortedPrompts.reduce((sum, p) => sum + p.totalRuns, 0);

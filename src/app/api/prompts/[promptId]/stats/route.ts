@@ -92,6 +92,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Build time filter condition
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
+		// Start timing PostgreSQL queries
+		const startPg = performance.now();
+
 		// Run aggregation queries in parallel
 		const [
 			mentionStatsResult,
@@ -396,6 +399,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			}
 		}
 
+		// End PostgreSQL timing
+		const pgTime = performance.now() - startPg;
+
 		const response: PromptStatsResponse = {
 			prompt: prompt[0],
 			aggregations: {
@@ -407,51 +413,52 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			}
 		};
 
-		// Dual-read verification against Tinybird (async, doesn't block response)
+		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
 		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
-			(async () => {
-				try {
-					const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-					const toDate = new Date();
-					const toDateStr = toDate.toISOString().split("T")[0];
-					const fromDateStr = fromDate.toISOString().split("T")[0];
+			try {
+				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+				const toDateObj = new Date();
+				const toDateStr = toDateObj.toISOString().split("T")[0];
+				const fromDateStr = fromDate.toISOString().split("T")[0];
 
-					const startTb = performance.now();
-					const tinybirdResult = await getTinybirdPromptStats(promptId, fromDateStr, toDateStr, userTimezone);
-					const tbTime = performance.now() - startTb;
+				const startTb = performance.now();
+				const tinybirdResult = await getTinybirdPromptStats(promptId, fromDateStr, toDateStr, userTimezone);
+				const tbTime = performance.now() - startTb;
 
-					if (tinybirdResult.length > 0) {
-						const tbData = tinybirdResult[0];
+				if (tinybirdResult.length > 0) {
+					const tbData = tinybirdResult[0];
 
-						const pgComparable = {
-							totalRuns: Number(mentionData?.totalRuns || 0),
-							brandMentions: Number(mentionData?.brandMentions || 0),
-							webSearchEnabled: webSearchSummary.enabled,
-						};
+					const pgComparable = {
+						totalRuns: Number(mentionData?.totalRuns || 0),
+						brandMentions: Number(mentionData?.brandMentions || 0),
+						webSearchEnabled: webSearchSummary.enabled,
+					};
 
-						const tbComparable = {
-							totalRuns: Number(tbData.total_runs),
-							brandMentions: Number(tbData.brand_mentions),
-							webSearchEnabled: Number(tbData.web_search_enabled_count),
-						};
+					const tbComparable = {
+						totalRuns: Number(tbData.total_runs),
+						brandMentions: Number(tbData.brand_mentions),
+						webSearchEnabled: Number(tbData.web_search_enabled_count),
+					};
 
-						verifyAndLog({
-							endpoint: "prompts-summary", // Reuse the prompts-summary endpoint tracking
-							brandId: prompt[0].brandId,
-							filters: {
-								promptId,
-								days,
-							},
-							postgresResult: pgComparable,
-							tinybirdResult: tbComparable,
-							pgTime: 0,
-							tbTime,
-						});
-					}
-				} catch (error) {
-					console.error("Tinybird verification failed for prompt stats:", error);
+					await verifyAndLog({
+						endpoint: "prompt-stats",
+						brandId: prompt[0].brandId,
+						filters: {
+							promptId,
+							days,
+							fromDate: fromDateStr,
+							toDate: toDateStr,
+							timezone: userTimezone,
+						},
+						postgresResult: pgComparable,
+						tinybirdResult: tbComparable,
+						pgTime,
+						tbTime,
+					});
 				}
-			})();
+			} catch (error) {
+				console.error("Tinybird verification failed for prompt-stats:", error);
+			}
 		}
 
 		return NextResponse.json(response);

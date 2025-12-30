@@ -5,7 +5,7 @@ import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, sql, count } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback, type LookbackPeriod } from "@/lib/chart-utils";
 import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
-import { getTinybirdDashboardSummary, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { getTinybirdDashboardSummary, getTinybirdDashboardSummaryFast, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -521,27 +521,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				const fromDateStr = fromDate ? fromDate.toISOString().split("T")[0] : null;
 				const toDateStr = toDate ? toDate.toISOString().split("T")[0] : null;
 
+				// Time ONLY the main query (not diagnostics) for fair comparison
 				const startTb = performance.now();
-				const [tinybirdResult, tbDiagnostics] = await Promise.all([
-					getTinybirdDashboardSummary(
-						brandId,
-						fromDateStr,
-						toDateStr,
-						userTimezone,
-						enabledPromptIds,
-					),
-					// Only run diagnostics if we have date filters
-					fromDateStr && toDateStr
-						? getTinybirdPromptRunDiagnostics(
-								brandId,
-								fromDateStr,
-								toDateStr,
-								userTimezone,
-								enabledPromptIds,
-						  )
-						: Promise.resolve(null),
-				]);
+				const tinybirdResult = await getTinybirdDashboardSummaryFast(
+					brandId,
+					fromDateStr,
+					toDateStr,
+					userTimezone,
+					enabledPromptIds,
+				);
 				const tbTime = performance.now() - startTb;
+
+				// Run diagnostics separately (not included in timing)
+				const tbDiagnostics = fromDateStr && toDateStr
+					? await getTinybirdPromptRunDiagnostics(
+							brandId,
+							fromDateStr,
+							toDateStr,
+							userTimezone,
+							enabledPromptIds,
+					  )
+					: null;
 
 				// Only compare if we got results
 				if (tinybirdResult.length > 0) {

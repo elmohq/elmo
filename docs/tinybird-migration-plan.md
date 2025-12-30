@@ -86,11 +86,11 @@ The migration follows a phased approach to ensure zero data loss and validate co
   - [x] Process in batches of 1000 rows
   - [x] ~~Rate limit to avoid overwhelming Tinybird API~~ (Minimal 50ms delay between batches)
   - [x] Log progress every 10,000 rows
-- [ ] **2.5** Verify row counts match between PostgreSQL and Tinybird
-- [ ] **2.6** Verify data integrity:
-  - [ ] Spot check 10 random prompt_runs match
-  - [ ] Verify citation counts match for 5 random brands
-  - [ ] Verify daily aggregates match for sample date range
+- [x] **2.5** Verify row counts match between PostgreSQL and Tinybird
+- [x] **2.6** Verify data integrity:
+  - [x] Spot check 10 random prompt_runs match
+  - [x] Verify citation counts match for 5 random brands
+  - [x] Verify daily aggregates match for sample date range
 
 ### Backfill Script Considerations
 - Handle the `created_at` timestamp carefully (use original, not backfill time)
@@ -136,10 +136,11 @@ The migration follows a phased approach to ensure zero data loss and validate co
 │ Endpoint              │ PostgreSQL │ Tinybird │ Speedup │ Match │
 │───────────────────────┼────────────┼──────────┼─────────┼───────│
 │ dashboard-summary     │ 1,245ms    │ 89ms     │ 14x     │ 100%  │
-│ visibility-timeseries │ 892ms      │ 45ms     │ 20x     │ 100%  │
 │ prompt-chart-data     │ 456ms      │ 32ms     │ 14x     │ 99.8% │
 │ citations             │ 2,103ms    │ 156ms    │ 13x     │ 100%  │
 │ prompts-summary       │ 1,567ms    │ 78ms     │ 20x     │ 100%  │
+│ prompt-stats          │ 234ms      │ 45ms     │ 5x      │ 100%  │
+│ prompt-runs           │ 89ms       │ 23ms     │ 4x      │ 100%  │
 ├─────────────────────────────────────────────────────────────────┤
 │ Recent Mismatches (2 in last 24h)                               │
 ├─────────────────────────────────────────────────────────────────┤
@@ -192,7 +193,8 @@ The migration follows a phased approach to ensure zero data loss and validate co
   - [x] `src/app/api/brands/[id]/prompts-summary/route.ts`
   - [x] `src/app/api/brands/[id]/citations/route.ts`
   - [x] `src/app/api/brands/[id]/prompts/[promptId]/chart-data/route.ts`
-  - [x] `src/app/api/prompts/[promptId]/stats/route.ts`
+  - [x] `src/app/api/prompts/[promptId]/stats/route.ts` (tracked as "prompt-stats")
+  - [x] `src/app/api/prompts/[promptId]/runs-only/route.ts` (tracked as "prompt-runs")
 - [ ] **4.5** Run verification for minimum 7 days
 - [ ] **4.6** Achieve 99.9% match rate (accounting for floating point tolerance)
 - [ ] **4.7** Investigate and resolve any systematic mismatches
@@ -1358,7 +1360,7 @@ export async function getMigrationStats(): Promise<{
     }[];
     recentMismatches: any[];
 }> {
-    const endpoints = ['dashboard-summary', 'visibility-timeseries', 'prompt-chart-data', 'citations', 'prompts-summary'];
+    const endpoints = ['dashboard-summary', 'prompt-chart-data', 'citations', 'prompts-summary', 'prompt-stats', 'prompt-runs'];
     const stats = [];
     
     for (const endpoint of endpoints) {

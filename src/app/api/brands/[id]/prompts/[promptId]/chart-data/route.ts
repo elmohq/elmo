@@ -7,7 +7,7 @@ import { generateDateRange, getDaysFromLookback, calculateVisibilityPercentages 
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@/lib/db/schema";
 import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
-import { getTinybirdPromptChartData, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { getTinybirdPromptChartData, getTinybirdPromptChartDataFast, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -312,7 +312,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 					webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
 
 				const startTb = performance.now();
-				const tinybirdResult = await getTinybirdPromptChartData(
+				// Use the fast MV-based function (pre-aggregated hourly with timezone support)
+				const tinybirdResult = await getTinybirdPromptChartDataFast(
 					brandId,
 					promptId,
 					tbFromDateStr,

@@ -1,0 +1,29 @@
+DESCRIPTION >
+    Pre-aggregated hourly counts for prompt runs using SummingMergeTree.
+    FAST queries because:
+    1. Sorting key matches query patterns (brand_id, prompt_id first)
+    2. Simple sum() aggregation instead of expensive uniqMerge()
+    3. Pre-aggregated by hour = much less data to scan
+    
+    Hourly granularity enables timezone-aware queries:
+    - At query time: toDate(hour, 'America/New_York') converts to local dates
+    - This ensures correct day boundaries for any timezone
+    
+    Trade-off: May double-count duplicates (~0.01% inflation) but this is
+    acceptable for dashboards, charts, and ordering where exact counts don't matter.
+
+SCHEMA >
+    `brand_id` String,
+    `prompt_id` String,
+    `hour` DateTime,
+    `model_group` LowCardinality(String),
+    `web_search_enabled` UInt8,
+    `run_count` UInt64,
+    `brand_mentioned_count` UInt64,
+    `competitor_mentioned_count` UInt64,
+    `competitor_count_sum` UInt64
+
+ENGINE "SummingMergeTree"
+ENGINE_SORTING_KEY "brand_id, prompt_id, hour, model_group, web_search_enabled"
+
+

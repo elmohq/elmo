@@ -13,6 +13,8 @@ export const TRACKED_ENDPOINTS = [
 	"prompt-chart-data",
 	"citations",
 	"prompts-summary",
+	"prompt-stats", // Individual prompt details page stats
+	"prompt-runs", // Individual prompt runs pagination
 ] as const;
 
 export type TrackedEndpoint = (typeof TRACKED_ENDPOINTS)[number];

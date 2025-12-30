@@ -416,26 +416,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				// Use filtered prompt IDs if tag filter is applied, otherwise use all enabled prompt IDs
 				const enabledPromptIds = promptIdsToFilter || allPrompts.map(p => p.id);
 
+				// Time ONLY the main query (not diagnostics) for fair comparison
 				const startTb = performance.now();
-				const [tbDomainStats, tbDiagnostics] = await Promise.all([
-					getTinybirdCitationDomainStats(
-						brandId,
-						fromDateStr,
-						toDateStr,
-						userTimezone,
-						enabledPromptIds,
-						modelGroupParam || undefined,
-					),
-					getTinybirdCitationDiagnostics(
-						brandId,
-						fromDateStr,
-						toDateStr,
-						userTimezone,
-						enabledPromptIds,
-						modelGroupParam || undefined,
-					),
-				]);
+				const tbDomainStats = await getTinybirdCitationDomainStats(
+					brandId,
+					fromDateStr,
+					toDateStr,
+					userTimezone,
+					enabledPromptIds,
+					modelGroupParam || undefined,
+				);
 				const tbTime = performance.now() - startTb;
+
+				// Run diagnostics separately (not included in timing)
+				const tbDiagnostics = await getTinybirdCitationDiagnostics(
+					brandId,
+					fromDateStr,
+					toDateStr,
+					userTimezone,
+					enabledPromptIds,
+					modelGroupParam || undefined,
+				);
 
 				// Compare aggregate metrics
 				const tbTotalCitations = tbDomainStats.reduce((sum, d) => sum + Number(d.count), 0);
