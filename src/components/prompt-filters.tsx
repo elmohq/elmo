@@ -177,13 +177,20 @@ export function PromptFilters({
 					) : (
 						<div className="space-y-0.5 max-h-52 overflow-y-auto -mx-1">
 							{availableTags.map((tag) => (
-								<button
+								<div
 									key={tag}
-									type="button"
+									role="button"
+									tabIndex={0}
 									onClick={(e) => {
 										e.preventDefault();
 										e.stopPropagation();
 										toggleTag(tag);
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											toggleTag(tag);
+										}
 									}}
 									className={`flex items-center gap-2.5 w-full py-2 px-2 rounded-md cursor-pointer transition-colors text-left ${
 										selectedTags.includes(tag)
@@ -196,7 +203,7 @@ export function PromptFilters({
 										className="pointer-events-none"
 									/>
 									<span className="text-sm capitalize flex-1">{tag}</span>
-								</button>
+								</div>
 							))}
 						</div>
 					)}
