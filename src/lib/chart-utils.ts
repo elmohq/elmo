@@ -74,7 +74,7 @@ export function getBadgeClassName(value: number): string {
 
 export interface ChartDataPoint {
 	date: string;
-	[key: string]: number | string | null; // Dynamic keys for brand/competitor IDs
+	[key: string]: number | string | boolean | null; // Dynamic keys for brand/competitor IDs and _extended_ flags
 }
 
 import type { PromptRun, Brand, Competitor } from "@/lib/db/schema";
