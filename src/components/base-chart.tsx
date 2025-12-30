@@ -95,7 +95,18 @@ export function BaseChart({
 					return value !== null && value !== undefined;
 				});
 			})
-		: extendLinesToChartEdges(completeData, dataKeys);
+		: extendLinesToChartEdges(completeData, dataKeys).map(point => {
+				// Add _solid versions of each key that have null for extended points
+				const newPoint = { ...point };
+				for (const key of dataKeys) {
+					if (isExtendedDataPoint(point, key)) {
+						newPoint[`${key}_solid`] = null;
+					} else {
+						newPoint[`${key}_solid`] = point[key];
+					}
+				}
+				return newPoint;
+			});
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -278,10 +289,11 @@ export function BaseChart({
 						/>
 					{/* Render two lines per entity: dashed for extended data, solid for real data */}
 					{dataKeys.flatMap((key) => [
-						// First: Dashed line showing extended/extrapolated portions
+						// First: Dashed line showing extended/extrapolated portions (hidden from legend)
 						<Line
 							key={`${key}-dashed`}
 							dataKey={key}
+							name={`${key}-dashed`}
 							type="bump"
 							stroke={`var(--color-${key})`}
 							strokeWidth={2}
@@ -290,27 +302,26 @@ export function BaseChart({
 							activeDot={false}
 							connectNulls={true}
 							isAnimationActive={isAnimationActive}
+							legendType="none"
 						/>,
-						// Second: Solid line overlay for real data (hides dashed line where real data exists)
+						// Second: Solid line overlay for real data (shows in legend)
 						<Line
 							key={`${key}-solid`}
-							dataKey={(dataPoint: any) => {
-								// Return null for extended points so solid line doesn't render there
-								if (isExtendedDataPoint(dataPoint, key)) {
-									return null;
-								}
-								return dataPoint[key];
-							}}
+							dataKey={`${key}_solid`}
+							name={key}
 							type="bump"
 							stroke={`var(--color-${key})`}
 							strokeWidth={2}
 							// Custom dot that only shows for real data points
-							dot={({ cx, cy, payload, value }: any) => {
-								if (!payload || value === null || value === undefined) {
-									return null;
+							dot={({ cx, cy, payload, value, index }: any) => {
+								// Don't render dot for extended points or null values
+								// Return empty <g> element instead of null to satisfy Recharts types
+								if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+									return <g key={`dot-empty-${key}-${index}`} />;
 								}
 								return (
 									<circle
+										key={`dot-${key}-${index}`}
 										cx={cx}
 										cy={cy}
 										r={2}
@@ -320,12 +331,15 @@ export function BaseChart({
 									/>
 								);
 							}}
-							activeDot={({ cx, cy, payload, value }: any) => {
-								if (!payload || value === null || value === undefined) {
-									return null;
+							activeDot={({ cx, cy, payload, value, index }: any) => {
+								// Don't render active dot for extended points or null values
+								// Return empty <g> element instead of null to satisfy Recharts types
+								if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+									return <g key={`activedot-empty-${key}-${index}`} />;
 								}
 								return (
 									<circle
+										key={`activedot-${key}-${index}`}
 										cx={cx}
 										cy={cy}
 										r={4}
