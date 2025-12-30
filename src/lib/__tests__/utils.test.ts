@@ -8,6 +8,7 @@ describe("calculateAverageVisibility", () => {
 		website: "https://testbrand.com",
 		enabled: true,
 		onboarded: true,
+		delayOverrideMs: null,
 		createdAt: new Date("2023-01-01"),
 		updatedAt: new Date("2023-01-01"),
 	};
@@ -30,6 +31,8 @@ describe("calculateAverageVisibility", () => {
 		groupPrefix: null,
 		value: `Test prompt ${id}`,
 		enabled,
+		tags: [],
+		systemTags: [],
 		createdAt: new Date("2023-01-01"),
 		updatedAt: new Date("2023-01-01"),
 	});
