@@ -123,8 +123,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
 		
-		// Get user's timezone (browser sends this, fallback to UTC)
-		const timezone = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
+		// Use UTC for date filtering to match PostgreSQL behavior
+		const timezone = "UTC";
 
 		// Get brand info and competitors (needed for categorization)
 		const [brandInfo, competitorsList] = await Promise.all([

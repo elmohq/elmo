@@ -108,7 +108,7 @@ export async function getTinybirdDashboardSummary(
 			count() as total_runs,
 			round(sum(brand_mentioned) * 100.0 / count(), 0) as avg_visibility,
 			round(sum(brand_mentioned) * 100.0 / count(), 0) as non_branded_visibility,
-			max(toDate(created_at, {timezone:String})) as last_updated
+			formatDateTime(max(created_at), '%Y-%m-%dT%H:%i:%S', 'UTC') || '.000Z' as last_updated
 		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			${dateFilter}
