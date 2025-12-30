@@ -84,6 +84,16 @@ export function BaseChart({
 	// Brand comes last so it renders on top when dots overlap
 	const dataKeys = [...sortedSelectedCompetitors.map((c) => c.id), brand.id];
 
+	// Build custom legend payload to only show brand + selected competitors (not duplicates from dashed/solid lines)
+	const legendPayload = [
+		{ value: brand.name, dataKey: brand.id, color: chartConfig[brand.id].color },
+		...sortedSelectedCompetitors.map((c) => ({
+			value: c.name,
+			dataKey: c.id,
+			color: chartConfig[c.id].color,
+		})),
+	];
+
 	// For bar charts, filter out days where ALL entities have null values
 	// For line charts, keep all days to maintain proper time-based spacing on x-axis
 	// and extend lines to chart edges to fill gaps at start/end of data collection
@@ -194,7 +204,7 @@ export function BaseChart({
 						{dataKeys.map((key, index) => (
 							<Bar key={key} dataKey={key} fill={`var(--color-${key})`} minPointSize={2} radius={2} />
 						))}
-						<ChartLegend content={<ChartLegendContent payload={[]} />} />
+						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} />} />
 					</BarChart>
 				</ChartContainer>
 		) : (
@@ -354,7 +364,7 @@ export function BaseChart({
 							isAnimationActive={isAnimationActive}
 						/>,
 					])}
-						<ChartLegend content={<ChartLegendContent payload={[]} />} />
+						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} />} />
 					</LineChart>
 				</ChartContainer>
 			)}
