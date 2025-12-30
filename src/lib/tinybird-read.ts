@@ -1008,14 +1008,6 @@ export async function getTinybirdVisibilityTimeSeriesFast(
 }
 
 // ============================================================================
-// Helper to check if Tinybird is configured
-// ============================================================================
-
-export function isTinybirdReadEnabled(): boolean {
-	return !!process.env.TINYBIRD_TOKEN && !!process.env.TINYBIRD_BASE_URL;
-}
-
-// ============================================================================
 // Diagnostic Queries for Debugging Mismatches
 // ============================================================================
 
@@ -1191,6 +1183,58 @@ export async function getTinybirdCitationDiagnostics(
 }
 
 // ============================================================================
+// Admin Stats Queries
+// ============================================================================
+
+export interface TinybirdAdminRunsOverTime {
+	date: string;
+	count: number;
+}
+
+export interface TinybirdAdminBrandRunStats {
+	brand_id: string;
+	runs_7d: number;
+	runs_30d: number;
+	last_run_at: string | null;
+}
+
+/**
+ * Get runs over time for the last 30 days (for admin dashboard chart)
+ * Uses FINAL for accurate counts.
+ */
+export async function getTinybirdAdminRunsOverTime(): Promise<TinybirdAdminRunsOverTime[]> {
+	return queryTinybird<TinybirdAdminRunsOverTime>(
+		`
+		SELECT
+			toDate(created_at, 'UTC') as date,
+			count() as count
+		FROM prompt_runs FINAL
+		WHERE created_at >= now() - INTERVAL 30 DAY
+		GROUP BY date
+		ORDER BY date
+		`,
+	);
+}
+
+/**
+ * Get per-brand run stats (7d, 30d counts and last run) for admin dashboard
+ * Uses FINAL for accurate counts.
+ */
+export async function getTinybirdAdminBrandRunStats(): Promise<TinybirdAdminBrandRunStats[]> {
+	return queryTinybird<TinybirdAdminBrandRunStats>(
+		`
+		SELECT
+			brand_id,
+			countIf(created_at >= now() - INTERVAL 7 DAY) as runs_7d,
+			countIf(created_at >= now() - INTERVAL 30 DAY) as runs_30d,
+			formatDateTime(max(created_at), '%Y-%m-%dT%H:%i:%S.000Z', 'UTC') as last_run_at
+		FROM prompt_runs FINAL
+		GROUP BY brand_id
+		`,
+	);
+}
+
+// ============================================================================
 // Connection Test
 // ============================================================================
 
@@ -1210,7 +1254,7 @@ export interface TinybirdConnectionTest {
  * Test the ClickHouse/Tinybird connection by running a simple query
  */
 export async function testTinybirdConnection(): Promise<TinybirdConnectionTest> {
-	if (!isTinybirdReadEnabled()) {
+	if (!process.env.TINYBIRD_TOKEN || !process.env.TINYBIRD_BASE_URL) {
 		return {
 			success: false,
 			message: "Tinybird is not configured",

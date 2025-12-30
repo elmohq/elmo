@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
 import { db } from "@/lib/db/db";
-import { brands, prompts, promptRuns } from "@/lib/db/schema";
-import { eq, sql, gte, desc } from "drizzle-orm";
+import { brands, prompts } from "@/lib/db/schema";
+import { eq, sql, desc } from "drizzle-orm";
+import { getTinybirdAdminRunsOverTime, getTinybirdAdminBrandRunStats } from "@/lib/tinybird-read";
 
 export const dynamic = "force-dynamic";
 
@@ -34,63 +35,77 @@ export async function GET() {
 			return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 		}
 
-		// Get all brands ordered by creation date (newest first)
-		const allBrands = await db.query.brands.findMany({
-			orderBy: desc(brands.createdAt),
-		});
+		// Fetch data in parallel for better performance
+		const [
+			allBrands,
+			brandsOverTime,
+			promptsOverTime,
+			tinybirdRunsOverTime,
+			tinybirdBrandStats,
+		] = await Promise.all([
+			// Get all brands ordered by creation date (newest first)
+			db.query.brands.findMany({
+				orderBy: desc(brands.createdAt),
+			}),
 
-		// Get cumulative brand count over time (last 30 days)
-		const brandsOverTime = await db
-			.select({
-				date: sql<string>`date_series::date`,
-				count: sql<number>`COUNT(${brands.id})::int`,
-			})
-			.from(sql`generate_series(
-				NOW()::date - INTERVAL '30 days',
-				NOW()::date,
-				INTERVAL '1 day'
-			) AS date_series`)
-			.leftJoin(
-				brands,
-				sql`${brands.createdAt}::date <= date_series::date`
-			)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`);
+			// Get cumulative brand count over time (last 30 days)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					count: sql<number>`COUNT(${brands.id})::int`,
+				})
+				.from(sql`generate_series(
+					NOW()::date - INTERVAL '30 days',
+					NOW()::date,
+					INTERVAL '1 day'
+				) AS date_series`)
+				.leftJoin(
+					brands,
+					sql`${brands.createdAt}::date <= date_series::date`
+				)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Get cumulative prompts count over time (last 30 days) - enabled vs disabled
-		const promptsOverTime = await db
-			.select({
-				date: sql<string>`date_series::date`,
-				enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
-				disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
-			})
-			.from(sql`generate_series(
-				NOW()::date - INTERVAL '30 days',
-				NOW()::date,
-				INTERVAL '1 day'
-			) AS date_series`)
-			.leftJoin(
-				prompts,
-				sql`${prompts.createdAt}::date <= date_series::date`
-			)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`);
+			// Get cumulative prompts count over time (last 30 days) - enabled vs disabled
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
+					disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
+				})
+				.from(sql`generate_series(
+					NOW()::date - INTERVAL '30 days',
+					NOW()::date,
+					INTERVAL '1 day'
+				) AS date_series`)
+				.leftJoin(
+					prompts,
+					sql`${prompts.createdAt}::date <= date_series::date`
+				)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Get historical data for prompt runs (last 30 days)
-		const runsOverTime = await db
-			.select({
-				date: sql<string>`DATE(${promptRuns.createdAt})`,
-				count: sql<number>`COUNT(*)::int`,
-			})
-			.from(promptRuns)
-			.where(gte(promptRuns.createdAt, sql`NOW() - INTERVAL '30 days'`))
-			.groupBy(sql`DATE(${promptRuns.createdAt})`)
-			.orderBy(sql`DATE(${promptRuns.createdAt})`);
+			// Get runs over time from Tinybird (fast!)
+			getTinybirdAdminRunsOverTime(),
 
-		// Get stats for each brand efficiently using raw SQL queries
+			// Get per-brand run stats from Tinybird (fast!)
+			getTinybirdAdminBrandRunStats(),
+		]);
+
+		// Create a map of brand_id -> run stats for quick lookup
+		const brandRunStatsMap = new Map(
+			tinybirdBrandStats.map((stat) => [stat.brand_id, stat])
+		);
+
+		// Get stats for each brand - now only needs prompt counts from PostgreSQL
+		const sevenDaysAgo = new Date();
+		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+		const thirtyDaysAgo = new Date();
+		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
 		const brandStats: BrandStats[] = await Promise.all(
 			allBrands.map(async (brand) => {
-				// Count total and active prompts
+				// Count total and active prompts (still from PostgreSQL - it's the source of truth for prompts)
 				const promptCounts = await db
 					.select({
 						total: sql<number>`count(*)::int`,
@@ -98,32 +113,6 @@ export async function GET() {
 					})
 					.from(prompts)
 					.where(eq(prompts.brandId, brand.id));
-
-				// Count prompt runs in last 7 and 30 days
-				const sevenDaysAgo = new Date();
-				sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-				const thirtyDaysAgo = new Date();
-				thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-				const runCounts = await db
-					.select({
-						runs7Days: sql<number>`count(*) filter (where ${promptRuns.createdAt} >= ${sevenDaysAgo})::int`,
-						runs30Days: sql<number>`count(*) filter (where ${promptRuns.createdAt} >= ${thirtyDaysAgo})::int`,
-					})
-					.from(promptRuns)
-					.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-					.where(eq(prompts.brandId, brand.id));
-
-				// Get last prompt run date
-				const lastRun = await db
-					.select({
-						createdAt: promptRuns.createdAt,
-					})
-					.from(promptRuns)
-					.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-					.where(eq(prompts.brandId, brand.id))
-					.orderBy(desc(promptRuns.createdAt))
-					.limit(1);
 
 				// Count prompts added and removed in last 7 and 30 days
 				const recentPromptCounts = await db
@@ -136,13 +125,16 @@ export async function GET() {
 					.from(prompts)
 					.where(eq(prompts.brandId, brand.id));
 
+				// Get run stats from Tinybird (pre-fetched)
+				const runStats = brandRunStatsMap.get(brand.id);
+
 				return {
 					...brand,
 					totalPrompts: promptCounts[0]?.total || 0,
 					activePrompts: promptCounts[0]?.active || 0,
-					promptRuns7Days: runCounts[0]?.runs7Days || 0,
-					promptRuns30Days: runCounts[0]?.runs30Days || 0,
-					lastPromptRunAt: lastRun[0]?.createdAt || null,
+					promptRuns7Days: runStats?.runs_7d || 0,
+					promptRuns30Days: runStats?.runs_30d || 0,
+					lastPromptRunAt: runStats?.last_run_at ? new Date(runStats.last_run_at) : null,
 					promptsAddedLast7Days: recentPromptCounts[0]?.added7Days || 0,
 					promptsRemovedLast7Days: recentPromptCounts[0]?.removed7Days || 0,
 					promptsAddedLast30Days: recentPromptCounts[0]?.added30Days || 0,
@@ -150,6 +142,12 @@ export async function GET() {
 				};
 			}),
 		);
+
+		// Transform Tinybird runs over time to match expected format
+		const runsOverTime = tinybirdRunsOverTime.map((row) => ({
+			date: row.date,
+			count: row.count,
+		}));
 
 		return NextResponse.json({ 
 			brands: brandStats,
@@ -162,4 +160,3 @@ export async function GET() {
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }
-
