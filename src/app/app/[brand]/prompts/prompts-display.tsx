@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useFilteredVisibility } from "@/hooks/use-filtered-visibility";
 import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 import { LazyPromptChart } from "@/components/lazy-prompt-chart";
@@ -91,6 +93,32 @@ export function PromptsDisplay({
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
 	});
 
+	// Compute filtered prompts (after tag filter from API + local text search)
+	const { sortedPrompts, availableTags } = useMemo(() => {
+		if (!promptsSummary) {
+			return { sortedPrompts: [], availableTags: [] };
+		}
+		const { prompts: allPrompts, availableTags = [] } = promptsSummary;
+		const filtered = searchQuery
+			? allPrompts.filter((p) => p.value.toLowerCase().includes(searchQuery.toLowerCase()))
+			: allPrompts;
+		return { sortedPrompts: filtered, availableTags };
+	}, [promptsSummary, searchQuery]);
+
+	// Get prompt IDs for visibility calculation
+	const filteredPromptIds = useMemo(() => {
+		return sortedPrompts.map(p => p.id);
+	}, [sortedPrompts]);
+
+	// Fetch filtered visibility data (for the summary bar) - based on displayed prompts
+	const {
+		filteredVisibility,
+		isLoading: isLoadingVisibility,
+	} = useFilteredVisibility(brand?.id, {
+		lookback: selectedLookback,
+		promptIds: filteredPromptIds.length > 0 ? filteredPromptIds : undefined,
+	});
+
 	// Show loading skeleton while summary is loading
 	if (isLoadingSummary || !promptsSummary) {
 		return (
@@ -123,13 +151,6 @@ export function PromptsDisplay({
 			</PageHeader>
 		);
 	}
-
-	const { prompts: allPrompts, availableTags = [] } = promptsSummary;
-
-	// Apply local text search filter
-	const sortedPrompts = searchQuery
-		? allPrompts.filter((p) => p.value.toLowerCase().includes(searchQuery.toLowerCase()))
-		: allPrompts;
 
 	// Group prompts for display
 	const uncategorizedPrompts = sortedPrompts.filter(
@@ -166,7 +187,7 @@ export function PromptsDisplay({
 	const allDisplayItems = [...individualItems, ...groupItems];
 
 	// Check if we have NO prompts at all (not just filtered results)
-	const hasNoPromptsAtAll = allPrompts.length === 0 && selectedTags.length === 0 && !searchQuery;
+	const hasNoPromptsAtAll = (promptsSummary?.prompts?.length ?? 0) === 0 && selectedTags.length === 0 && !searchQuery;
 
 	return (
 		<PageHeader
@@ -179,6 +200,8 @@ export function PromptsDisplay({
 			showModelSelector
 			availableModels={availableModels}
 			resultCount={sortedPrompts.length}
+			visibilityData={filteredVisibility}
+			isLoadingVisibility={isLoadingVisibility}
 		>
 			{hasNoPromptsAtAll ? (
 				// No prompts at all - show empty state with add button

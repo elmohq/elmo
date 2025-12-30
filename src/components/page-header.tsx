@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -9,6 +9,7 @@ import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
 import { PromptFilters } from "@/components/prompt-filters";
 import { Skeleton } from "@/components/ui/skeleton";
+import { VisibilityBar, VisibilityBarSkeleton } from "@/components/visibility-bar";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 
 export type ModelType = "openai" | "anthropic" | "google" | "all";
@@ -48,6 +49,20 @@ function getLookbackLabel(lookback: LookbackPeriod): string {
 	}
 }
 
+interface VisibilityTimeSeriesPoint {
+	date: string;
+	visibility: number | null;
+}
+
+interface VisibilityData {
+	currentVisibility: number;
+	totalRuns: number;
+	totalPrompts: number;
+	totalCitations: number;
+	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
+	lookback: string;
+}
+
 interface PageHeaderProps {
 	title: string;
 	subtitle: string;
@@ -62,6 +77,8 @@ interface PageHeaderProps {
 	selectedModel?: ModelType;
 	isLoading?: boolean;
 	resultCount?: number;
+	visibilityData?: VisibilityData;
+	isLoadingVisibility?: boolean;
 	children?: ReactNode;
 }
 
@@ -76,7 +93,7 @@ export function PageHeaderSkeleton() {
 			</div>
 
 			{/* Controls skeleton */}
-			<div className="sticky top-[var(--header-height)] z-10 bg-background pt-2 pb-4">
+			<div className="sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 shadow-[0_4px_6px_0px_rgba(255,255,255,1),0_10px_15px_-3px_rgba(255,255,255,1),0_20px_25px_-5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_6px_0px_rgba(9,9,11,1),0_10px_15px_-3px_rgba(9,9,11,1),0_20px_25px_-5px_rgba(9,9,11,0.9)]">
 				<div className="flex justify-between items-center">
 					<div className="flex space-x-1 bg-muted rounded-md p-1">
 						<Skeleton className="h-8 w-16" />
@@ -115,12 +132,33 @@ export function PageHeader({
 	selectedModel: controlledModel,
 	isLoading = false,
 	resultCount,
+	visibilityData,
+	isLoadingVisibility = false,
 	children,
 }: PageHeaderProps) {
 	const [internalModel, setInternalModel] = useQueryState("model", modelParser.withDefault(defaultModel));
 	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault("1w"));
 	const [selectedTags, setSelectedTags] = useQueryState("tags", tagsParser.withDefault([]));
 	const [searchQuery, setSearchQuery] = useQueryState("q", searchParser.withDefault(""));
+	const [isStuck, setIsStuck] = useState(false);
+	const sentinelRef = useRef<HTMLDivElement>(null);
+
+	// Detect when sticky header becomes stuck using IntersectionObserver
+	useEffect(() => {
+		const sentinel = sentinelRef.current;
+		if (!sentinel) return;
+
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				// When sentinel is not visible (scrolled past), header is stuck
+				setIsStuck(!entry.isIntersecting);
+			},
+			{ threshold: 0 }
+		);
+
+		observer.observe(sentinel);
+		return () => observer.disconnect();
+	}, []);
 
 	// Use controlled model if provided, otherwise use internal state
 	const selectedModel = controlledModel ?? internalModel;
@@ -132,6 +170,8 @@ export function PageHeader({
 	if (isLoading) {
 		return <PageHeaderSkeleton />;
 	}
+
+	const stuckShadow = "shadow-[0_4px_6px_0px_rgba(255,255,255,1),0_10px_15px_-3px_rgba(255,255,255,1),0_20px_25px_-5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_6px_0px_rgba(9,9,11,1),0_10px_15px_-3px_rgba(9,9,11,1),0_20px_25px_-5px_rgba(9,9,11,0.9)]";
 
 	return (
 		<div className="space-y-0">
@@ -153,8 +193,11 @@ export function PageHeader({
 				<p className="text-muted-foreground mt-1">{subtitle}</p>
 			</div>
 
-			{/* Sticky controls bar */}
-			<div className="sticky top-[var(--header-height)] z-10 bg-background pt-2 pb-4">
+			{/* Sentinel element to detect when sticky header becomes stuck */}
+			<div ref={sentinelRef} className="h-0" />
+
+			{/* Sticky controls bar - shadow only appears when stuck */}
+			<div className={`sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 ${isStuck ? stuckShadow : ''}`}>
 				<div className="flex justify-between items-center">
 					{/* Left side - Model selector or spacer */}
 					{showModelSelector ? (
@@ -222,6 +265,24 @@ export function PageHeader({
 						</div>
 					</div>
 				</div>
+
+				{/* Visibility summary bar - shows filtered visibility stats */}
+				{(isLoadingVisibility || visibilityData) && (
+					<div className="mt-3">
+						{isLoadingVisibility ? (
+							<VisibilityBarSkeleton />
+						) : visibilityData ? (
+							<VisibilityBar
+								currentVisibility={visibilityData.currentVisibility}
+								totalRuns={visibilityData.totalRuns}
+								totalPrompts={visibilityData.totalPrompts}
+								totalCitations={visibilityData.totalCitations}
+								visibilityTimeSeries={visibilityData.visibilityTimeSeries}
+								lookback={visibilityData.lookback}
+							/>
+						) : null}
+					</div>
+				)}
 			</div>
 
 			{/* Page content */}
