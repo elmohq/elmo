@@ -235,13 +235,22 @@ export function BaseChart({
 							content={({ active, payload, label }) => {
 								if (!active || !payload?.length) return null;
 								
-								// Check if ALL values for this day are extended - if so, hide tooltip entirely
-								const hasRealData = payload.some((item: any) => {
+								// Filter to only show:
+								// 1. Original keys (not _solid versions) from the dashed lines
+								// 2. Only non-extended values
+								const filteredPayload = payload.filter((item: any) => {
 									const key = item.dataKey as string;
-									return item.payload && !isExtendedDataPoint(item.payload, key);
+									// Skip _solid keys - we only want the original keys from dashed lines
+									if (key.endsWith('_solid')) return false;
+									// Skip extended data points
+									if (item.payload && isExtendedDataPoint(item.payload, key)) return false;
+									// Skip null/undefined values
+									if (item.value === null || item.value === undefined) return false;
+									return true;
 								});
 								
-								if (!hasRealData) return null;
+								// If no real data to show, hide tooltip entirely
+								if (filteredPayload.length === 0) return null;
 								
 								// Format the date label
 								const [year, month, day] = (label as string).split("-").map(Number);
@@ -251,17 +260,11 @@ export function BaseChart({
 									day: "numeric",
 								});
 								
-								// Filter to only show non-extended values
-								const realPayload = payload.filter((item: any) => {
-									const key = item.dataKey as string;
-									return item.payload && !isExtendedDataPoint(item.payload, key);
-								});
-								
 								return (
 									<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 										<div className="font-medium">{formattedDate}</div>
 										<div className="grid gap-1.5">
-											{realPayload.map((item: any) => {
+											{filteredPayload.map((item: any) => {
 												const indicatorColor = chartConfig[item.dataKey as string]?.color;
 												return (
 													<div key={item.dataKey} className="flex w-full items-center gap-2">
@@ -273,11 +276,9 @@ export function BaseChart({
 															<span className="text-muted-foreground">
 																{chartConfig[item.dataKey as string]?.label || item.dataKey}
 															</span>
-															{item.value !== null && item.value !== undefined && (
-																<span className="text-foreground font-mono font-xs tabular-nums">
-																	{item.value}%
-																</span>
-															)}
+															<span className="text-foreground font-mono font-xs tabular-nums">
+																{item.value}%
+															</span>
 														</div>
 													</div>
 												);
