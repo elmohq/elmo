@@ -205,11 +205,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const sortedCompetitors = [...brandCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
 		// Build chart data
-		const chartData = dateRange.map((date) => {
+		const chartData: Array<{ date: string; [key: string]: number | string | null }> = dateRange.map((date) => {
 			const dayStat = dailyStatsMap.get(date);
 			const totalRuns = dayStat?.total_runs || 0;
 
-			const dataPoint: Record<string, number | string | null> = { date };
+			const dataPoint: { date: string; [key: string]: number | string | null } = { date };
 
 			if (totalRuns === 0) {
 				// No data for this date
