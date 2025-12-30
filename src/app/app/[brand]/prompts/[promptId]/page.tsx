@@ -51,8 +51,8 @@ export default function PromptHistoryPage() {
 	const brandId = params.brand as string;
 	const promptId = params.promptId as string;
 
-	// Use lookback period from URL state
-	const lookback = useLookbackPeriod("1w");
+	// Use lookback period from URL state (defaults to 1m if > 1 week of data, else 1w)
+	const lookback = useLookbackPeriod();
 	const days = getDaysFromLookback(lookback);
 
 	// Pagination state
@@ -131,7 +131,7 @@ export default function PromptHistoryPage() {
 			<div className="space-y-6">
 				<div className="flex justify-between items-start">
 					<h1 className="text-3xl font-bold">Prompt History</h1>
-					<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+					<LookbackSelector onLookbackChange={handleLookbackChange} />
 				</div>
 				<Card>
 					<CardContent className="pt-6">
@@ -150,7 +150,7 @@ export default function PromptHistoryPage() {
 			<div className="space-y-6">
 				<div className="flex justify-between items-start">
 					<h1 className="text-3xl font-bold">Prompt History</h1>
-					<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+					<LookbackSelector onLookbackChange={handleLookbackChange} />
 				</div>
 				<Card>
 					<CardContent className="pt-6">
@@ -182,7 +182,7 @@ export default function PromptHistoryPage() {
 				</div>
 				
 				{/* Lookback Period Selector */}
-				<LookbackSelector defaultPeriod="1w" onLookbackChange={handleLookbackChange} />
+				<LookbackSelector onLookbackChange={handleLookbackChange} />
 			</div>
 
 			{/* Mention Statistics */}

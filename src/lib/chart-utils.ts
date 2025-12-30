@@ -1,5 +1,29 @@
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
+/**
+ * Determines the default lookback period based on the brand's data history.
+ * Returns "1m" (1 month) if the brand has more than 1 week of data,
+ * otherwise returns "1w" (1 week).
+ * 
+ * @param earliestDataDate - ISO date string of the earliest data point, or null if no data
+ * @returns The recommended default lookback period
+ */
+export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
+	if (!earliestDataDate) {
+		// No data yet - default to 1 week
+		return "1w";
+	}
+
+	const earliestDate = new Date(earliestDataDate);
+	const now = new Date();
+	const diffInMs = now.getTime() - earliestDate.getTime();
+	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+
+	// If brand has more than 7 days of data, default to 1 month
+	// Otherwise, default to 1 week
+	return diffInDays > 7 ? "1m" : "1w";
+}
+
 export function getDaysFromLookback(lookback: LookbackPeriod): number {
 	switch (lookback) {
 		case "1w":

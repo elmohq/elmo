@@ -4,7 +4,13 @@ import useSWR, { mutate as globalMutate } from "swr";
 import { usePathname } from "next/navigation";
 import type { BrandWithPrompts, Competitor } from "@/lib/db/schema";
 
-const fetcher = async (url: string): Promise<BrandWithPrompts[]> => {
+// Extended type that includes the earliest data date from Tinybird
+// Optional because the list endpoint doesn't fetch this for performance reasons
+export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
+	earliestDataDate?: string | null;
+};
+
+const fetcher = async (url: string): Promise<BrandWithPromptsAndDataInfo[]> => {
 	const response = await fetch(url);
 
 	if (!response.ok) {
@@ -16,7 +22,7 @@ const fetcher = async (url: string): Promise<BrandWithPrompts[]> => {
 	return response.json();
 };
 
-const singleBrandFetcher = async (url: string): Promise<BrandWithPrompts> => {
+const singleBrandFetcher = async (url: string): Promise<BrandWithPromptsAndDataInfo> => {
 	const response = await fetch(url);
 
 	if (!response.ok) {
@@ -41,7 +47,7 @@ const competitorsFetcher = async (url: string): Promise<Competitor[]> => {
 };
 
 export function useBrands() {
-	const { data, error, isLoading, mutate } = useSWR<BrandWithPrompts[]>("/api/brands", fetcher, {
+	const { data, error, isLoading, mutate } = useSWR<BrandWithPromptsAndDataInfo[]>("/api/brands", fetcher, {
 		revalidateOnFocus: true,
 		revalidateOnReconnect: true,
 		dedupingInterval: 30000, // 30 seconds deduping
@@ -65,7 +71,7 @@ export function useBrand(brandId: string | undefined = undefined) {
 			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
 		})();
 
-	const { data, error, isLoading, mutate } = useSWR<BrandWithPrompts>(
+	const { data, error, isLoading, mutate } = useSWR<BrandWithPromptsAndDataInfo>(
 		extractedBrandId ? `/api/brands/${extractedBrandId}` : null,
 		singleBrandFetcher,
 		{

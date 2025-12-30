@@ -1183,6 +1183,31 @@ export async function getTinybirdCitationDiagnostics(
 }
 
 // ============================================================================
+// Brand Data Age Query
+// ============================================================================
+
+/**
+ * Get the earliest prompt run date for a brand
+ * Used to determine if the brand has more than 1 week of data history
+ * Returns null if no data exists for the brand
+ */
+export async function getTinybirdBrandEarliestRunDate(
+	brandId: string,
+): Promise<string | null> {
+	const result = await queryTinybird<{ earliest_date: string | null }>(
+		`
+		SELECT
+			min(created_at) as earliest_date
+		FROM prompt_runs FINAL
+		WHERE brand_id = {brandId:String}
+	`,
+		{ brandId },
+	);
+
+	return result[0]?.earliest_date || null;
+}
+
+// ============================================================================
 // Admin Stats Queries
 // ============================================================================
 

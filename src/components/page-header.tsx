@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState, useMemo } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -10,7 +10,8 @@ import { MdSelectAll } from "react-icons/md";
 import { PromptFilters } from "@/components/prompt-filters";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VisibilityBar, VisibilityBarSkeleton } from "@/components/visibility-bar";
-import type { LookbackPeriod } from "@/lib/chart-utils";
+import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
+import { useBrand } from "@/hooks/use-brands";
 
 export type ModelType = "openai" | "anthropic" | "google" | "all";
 
@@ -136,8 +137,14 @@ export function PageHeader({
 	isLoadingVisibility = false,
 	children,
 }: PageHeaderProps) {
+	const { brand } = useBrand();
+	const defaultLookback = useMemo(
+		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
+		[brand?.earliestDataDate]
+	);
+
 	const [internalModel, setInternalModel] = useQueryState("model", modelParser.withDefault(defaultModel));
-	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault("1w"));
+	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
 	const [selectedTags, setSelectedTags] = useQueryState("tags", tagsParser.withDefault([]));
 	const [searchQuery, setSearchQuery] = useQueryState("q", searchParser.withDefault(""));
 	const [isStuck, setIsStuck] = useState(false);
@@ -294,9 +301,16 @@ export function PageHeader({
 }
 
 // Hook to get current filter state
+// Uses brand's earliest data date to determine default lookback (1m if > 1 week of data, else 1w)
 export function usePageFilters() {
+	const { brand } = useBrand();
+	const defaultLookback = useMemo(
+		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
+		[brand?.earliestDataDate]
+	);
+
 	const [selectedModel] = useQueryState("model", modelParser.withDefault("all"));
-	const [selectedLookback] = useQueryState("lookback", lookbackParser.withDefault("1w"));
+	const [selectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
 	const [selectedTags] = useQueryState("tags", tagsParser.withDefault([]));
 	const [searchQuery] = useQueryState("q", searchParser.withDefault(""));
 

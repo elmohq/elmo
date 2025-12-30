@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getElmoOrgs, getBrandFromDb, getBrandWithPrompts, updateBrand } from "@/lib/metadata";
 import { auth0 } from "@/lib/auth0";
 import { revalidatePath } from "next/cache";
+import { getTinybirdBrandEarliestRunDate } from "@/lib/tinybird-read";
 
 // URL validation function
 function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: string; error?: string } {
@@ -50,7 +51,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
-		const brand = await getBrandWithPrompts(brandId);
+		// Fetch brand data and earliest run date in parallel
+		const [brand, earliestDataDate] = await Promise.all([
+			getBrandWithPrompts(brandId),
+			getTinybirdBrandEarliestRunDate(brandId),
+		]);
 
 		if (!brand) {
 			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
@@ -61,6 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		return NextResponse.json({
 			...brand,
 			name: brand.name || metadataBrand?.name || brand.name,
+			earliestDataDate,
 		});
 	} catch (error) {
 		console.error("Error fetching brand:", error);
