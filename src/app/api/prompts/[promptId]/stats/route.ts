@@ -3,13 +3,54 @@ import { db } from "@/lib/db/db";
 import { promptRuns, prompts, brands, competitors } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, gte, sql, count, and } from "drizzle-orm";
-import { extractCitations } from "@/lib/text-extraction";
-import { isTinybirdVerifyEnabled, verifyAndLog } from "@/lib/tinybird-comparison";
-import { getTinybirdPromptStats, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { getTinybirdPromptCitationStats, getTinybirdPromptCitationUrlStats } from "@/lib/tinybird-read";
 
 type Params = {
 	promptId: string;
 };
+
+// Helper function to extract domain from URL or website string
+function extractDomain(urlOrDomain: string): string {
+	try {
+		const cleaned = urlOrDomain.replace(/^https?:\/\//, '');
+		const withoutWww = cleaned.replace(/^www\./, '');
+		const domain = withoutWww.split('/')[0];
+		return domain.toLowerCase();
+	} catch (e) {
+		return urlOrDomain.toLowerCase();
+	}
+}
+
+// List of common social media domains
+const SOCIAL_MEDIA_DOMAINS = [
+	'facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'linkedin.com',
+	'youtube.com', 'tiktok.com', 'pinterest.com', 'reddit.com', 'snapchat.com',
+	'tumblr.com', 'whatsapp.com', 'telegram.org', 'discord.com', 'twitch.tv',
+];
+
+function isSocialMediaDomain(domain: string): boolean {
+	return SOCIAL_MEDIA_DOMAINS.some(sm => domain === sm || domain.endsWith(`.${sm}`));
+}
+
+// Helper function to remove utm_source=openai from URLs while preserving other params
+function normalizeUrl(url: string): string {
+	try {
+		const urlObj = new URL(url);
+		const params = urlObj.searchParams;
+		
+		// Only remove utm_source if it equals 'openai'
+		if (params.get('utm_source') === 'openai') {
+			params.delete('utm_source');
+		}
+		
+		// Reconstruct URL with updated params
+		urlObj.search = params.toString();
+		return urlObj.toString();
+	} catch (e) {
+		// If URL parsing fails, return as-is
+		return url;
+	}
+}
 
 export interface PromptStatsResponse {
 	prompt: {
@@ -61,6 +102,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const days = Math.max(1, Math.min(365, parseInt(searchParams.get("days") || "7")));
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - days);
+		
+		// Format dates for Tinybird
+		const toDateObj = new Date();
+		const fromDateStr = fromDate.toISOString().split("T")[0];
+		const toDateStr = toDateObj.toISOString().split("T")[0];
+		
+		// Get user's timezone
+		const timezone = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 		// Check access control
 		const userBrands = await getElmoOrgs();
@@ -92,16 +141,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Build time filter condition
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
-		// Start timing PostgreSQL queries
-		const startPg = performance.now();
-
 		// Run aggregation queries in parallel
 		const [
 			mentionStatsResult,
 			competitorMentionsResult,
 			webQueryStatsResult,
 			webSearchSummaryResult,
-			citationRunsResult
 		] = await Promise.all([
 			// Get mention statistics (server-side aggregation)
 			db
@@ -137,19 +182,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				})
 				.from(promptRuns)
 				.where(and(eq(promptRuns.promptId, promptId), timeCondition)),
-
-			// Get runs with raw output for citation extraction
-			db
-				.select({
-					modelGroup: promptRuns.modelGroup,
-					rawOutput: promptRuns.rawOutput,
-				})
-				.from(promptRuns)
-				.where(and(
-					eq(promptRuns.promptId, promptId), 
-					timeCondition,
-					eq(promptRuns.webSearchEnabled, true)
-				))
 		]);
 
 		// Process mention stats
@@ -171,7 +203,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			]);
 
 			const brandName = brand[0]?.name;
-			const totalRunsCount = Number(mentionData.totalRuns);
 			const brandMentionsCount = Number(mentionData.brandMentions);
 
 			// Add brand mentions
@@ -285,80 +316,62 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				: 0
 		};
 
-		// Process citation stats
+		// Get citation stats from Tinybird
 		let citationStats = undefined;
 		
-		if (citationRunsResult.length > 0) {
-			// Helper function to extract domain from URL or website string
-			const extractDomain = (urlOrDomain: string): string => {
-				try {
-					const cleaned = urlOrDomain.replace(/^https?:\/\//, '');
-					const withoutWww = cleaned.replace(/^www\./, '');
-					const domain = withoutWww.split('/')[0];
-					return domain.toLowerCase();
-				} catch (e) {
-					return urlOrDomain.toLowerCase();
-				}
-			};
+		// Get brand and competitor info for categorization
+		const [brandInfo, competitorsList] = await Promise.all([
+			db.select({ website: brands.website }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
+			db.select({ domain: competitors.domain }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
+		]);
 
-			// List of common social media domains
-			const SOCIAL_MEDIA_DOMAINS = [
-				'facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'linkedin.com',
-				'youtube.com', 'tiktok.com', 'pinterest.com', 'reddit.com', 'snapchat.com',
-				'tumblr.com', 'whatsapp.com', 'telegram.org', 'discord.com', 'twitch.tv',
-			];
+		const brandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : '';
+		const competitorDomains = new Set(competitorsList.map(c => extractDomain(c.domain)));
 
-			const isSocialMediaDomain = (domain: string): boolean => {
-				return SOCIAL_MEDIA_DOMAINS.some(sm => domain === sm || domain.endsWith(`.${sm}`));
-			};
+		// Fetch citations from Tinybird
+		const [domainStats, urlStats] = await Promise.all([
+			getTinybirdPromptCitationStats(promptId, fromDateStr, toDateStr, timezone),
+			getTinybirdPromptCitationUrlStats(promptId, fromDateStr, toDateStr, timezone),
+		]);
 
-			// Get brand and competitor info
-			const [brandInfo, competitorsList] = await Promise.all([
-				db.select({ website: brands.website }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
-				db.select({ domain: competitors.domain }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
-			]);
-
-			const brandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : '';
-			const competitorDomains = new Set(competitorsList.map(c => extractDomain(c.domain)));
-
-			// Extract citations from all runs
-			const domainCounts = new Map<string, number>();
-			const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-
-			for (const run of citationRunsResult) {
-				const citations = extractCitations(run.rawOutput, run.modelGroup);
+		if (domainStats.length > 0) {
+			// Categorize domains
+			const domainDistribution = domainStats.map(({ domain, count }) => {
+				let category: 'brand' | 'competitor' | 'social_media' | 'other';
 				
-				for (const citation of citations) {
-					// Count by domain
-					domainCounts.set(citation.domain, (domainCounts.get(citation.domain) || 0) + 1);
+				if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
+					category = 'brand';
+				} else if (competitorDomains.has(domain)) {
+					category = 'competitor';
+				} else if (isSocialMediaDomain(domain)) {
+					category = 'social_media';
+				} else {
+					category = 'other';
+				}
 
-					// Count by URL
-					const urlCount = urlCounts.get(citation.url) || { count: 0, title: citation.title, domain: citation.domain };
-					urlCount.count++;
-					urlCounts.set(citation.url, urlCount);
+				return { domain, count: Number(count), category };
+			});
+
+			// Categorize specific URLs (normalize to remove utm_source=openai)
+			const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
+			
+			for (const { url, domain, title, count } of urlStats) {
+				const normalizedUrl = normalizeUrl(url);
+				const existing = urlCounts.get(normalizedUrl);
+				if (existing) {
+					existing.count += Number(count);
+					if (!existing.title && title) {
+						existing.title = title;
+					}
+				} else {
+					urlCounts.set(normalizedUrl, {
+						count: Number(count),
+						title: title || undefined,
+						domain,
+					});
 				}
 			}
 
-			// Categorize domains
-			const domainDistribution = Array.from(domainCounts.entries())
-				.map(([domain, count]) => {
-					let category: 'brand' | 'competitor' | 'social_media' | 'other';
-					
-					if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
-						category = 'brand';
-					} else if (competitorDomains.has(domain)) {
-						category = 'competitor';
-					} else if (isSocialMediaDomain(domain)) {
-						category = 'social_media';
-					} else {
-						category = 'other';
-					}
-
-					return { domain, count, category };
-				})
-				.sort((a, b) => b.count - a.count);
-
-			// Categorize specific URLs
 			const specificUrls = Array.from(urlCounts.entries())
 				.map(([url, { count, title, domain }]) => {
 					let category: 'brand' | 'competitor' | 'social_media' | 'other';
@@ -382,13 +395,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			const competitorCitations = domainDistribution.filter(d => d.category === 'competitor').reduce((sum, d) => sum + d.count, 0);
 			const socialMediaCitations = domainDistribution.filter(d => d.category === 'social_media').reduce((sum, d) => sum + d.count, 0);
 			const otherCitations = domainDistribution.filter(d => d.category === 'other').reduce((sum, d) => sum + d.count, 0);
-
 			const totalCitations = brandCitations + competitorCitations + socialMediaCitations + otherCitations;
 
 			if (totalCitations > 0) {
 				citationStats = {
 					totalCitations,
-					uniqueDomains: domainCounts.size,
+					uniqueDomains: domainDistribution.length,
 					brandCitations,
 					competitorCitations,
 					socialMediaCitations,
@@ -398,9 +410,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				};
 			}
 		}
-
-		// End PostgreSQL timing
-		const pgTime = performance.now() - startPg;
 
 		const response: PromptStatsResponse = {
 			prompt: prompt[0],
@@ -412,54 +421,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				totalRuns: Number(mentionData?.totalRuns || 0)
 			}
 		};
-
-		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
-		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
-			try {
-				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-				const toDateObj = new Date();
-				const toDateStr = toDateObj.toISOString().split("T")[0];
-				const fromDateStr = fromDate.toISOString().split("T")[0];
-
-				const startTb = performance.now();
-				const tinybirdResult = await getTinybirdPromptStats(promptId, fromDateStr, toDateStr, userTimezone);
-				const tbTime = performance.now() - startTb;
-
-				if (tinybirdResult.length > 0) {
-					const tbData = tinybirdResult[0];
-
-					const pgComparable = {
-						totalRuns: Number(mentionData?.totalRuns || 0),
-						brandMentions: Number(mentionData?.brandMentions || 0),
-						webSearchEnabled: webSearchSummary.enabled,
-					};
-
-					const tbComparable = {
-						totalRuns: Number(tbData.total_runs),
-						brandMentions: Number(tbData.brand_mentions),
-						webSearchEnabled: Number(tbData.web_search_enabled_count),
-					};
-
-					await verifyAndLog({
-						endpoint: "prompt-stats",
-						brandId: prompt[0].brandId,
-						filters: {
-							promptId,
-							days,
-							fromDate: fromDateStr,
-							toDate: toDateStr,
-							timezone: userTimezone,
-						},
-						postgresResult: pgComparable,
-						tinybirdResult: tbComparable,
-						pgTime,
-						tbTime,
-					});
-				}
-			} catch (error) {
-				console.error("Tinybird verification failed for prompt-stats:", error);
-			}
-		}
 
 		return NextResponse.json(response);
 

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts, promptRuns, competitors, brands, SYSTEM_TAGS } from "@/lib/db/schema";
+import { prompts, competitors, brands, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
-import { getTinybirdCitationDomainStats, getTinybirdCitationUrlStats, getTinybirdCitationDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { eq, and } from "drizzle-orm";
+import { getTinybirdCitationDomainStats, getTinybirdCitationUrlStats } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -116,13 +115,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const modelGroupParam = searchParams.get("modelGroup");
 
 		// Calculate date range
+		const toDate = new Date();
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - days);
+		
+		// Format dates for Tinybird
+		const fromDateStr = fromDate.toISOString().split("T")[0];
+		const toDateStr = toDate.toISOString().split("T")[0];
+		
+		// Get user's timezone (browser sends this, fallback to UTC)
+		const timezone = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-		// Start timing PostgreSQL queries
-		const startPg = performance.now();
-
-		// Get brand info and competitors
+		// Get brand info and competitors (needed for categorization)
 		const [brandInfo, competitorsList] = await Promise.all([
 			db.select().from(brands).where(eq(brands.id, brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, brandId)),
@@ -161,7 +165,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		];
 
 		// Filter prompts by tag if specified
-		let promptIdsToFilter: string[] | null = null;
+		let enabledPromptIds: string[] = allPrompts.map(p => p.id);
 		if (filterTags.length > 0) {
 			// Check if any filter tag matches either system tags or user tags
 			const matchingPrompts = allPrompts.filter(p => {
@@ -169,10 +173,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				return filterTags.some(filterTag => allPromptTags.includes(filterTag));
 			});
 
-			promptIdsToFilter = matchingPrompts.map(p => p.id);
+			enabledPromptIds = matchingPrompts.map(p => p.id);
 			
 			// If no prompts match the filter, return empty results
-			if (promptIdsToFilter.length === 0) {
+			if (enabledPromptIds.length === 0) {
 				return NextResponse.json({
 					totalCitations: 0,
 					uniqueDomains: 0,
@@ -187,179 +191,69 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			}
 		}
 
-	// Build the prompt filter condition for SQL
-	const promptFilterCondition = promptIdsToFilter
-		? sql`AND p.id IN (${sql.raw(promptIdsToFilter.map(id => `'${id}'`).join(','))})`
-		: sql``;
-
-	// Build the model group filter condition for SQL
-	const modelGroupCondition = modelGroupParam
-		? sql`AND pr."modelGroup" = ${modelGroupParam}`
-		: sql``;
-
-	// Extract citations directly from JSON in the database
-	// This avoids fetching the entire rawOutput JSON blob
-	const citationsQuery = sql<{
-		url: string;
-		title: string | null;
-		model_group: string;
-	}>`
-		WITH prompt_runs_filtered AS (
-			SELECT 
-				pr.id,
-				pr."modelGroup" as model_group,
-				pr.raw_output::jsonb as raw_output
-			FROM prompt_runs pr
-			INNER JOIN prompts p ON pr.prompt_id = p.id
-			WHERE 
-				p.brand_id = ${brandId}
-				AND p.enabled = true
-				AND pr.created_at >= ${fromDate}
-				AND pr.web_search_enabled = true
-				${promptFilterCondition}
-				${modelGroupCondition}
-		),
-		openai_citations AS (
-			SELECT 
-				annotation->>'url' as url,
-				annotation->>'title' as title,
-				model_group
-			FROM prompt_runs_filtered
-			CROSS JOIN LATERAL (
-				SELECT output_item
-				FROM jsonb_array_elements(
-					CASE 
-						WHEN jsonb_typeof(raw_output->'output') = 'array' 
-						THEN raw_output->'output'
-						ELSE '[]'::jsonb
-					END
-				) AS output_item
-				WHERE output_item->>'type' = 'message'
-			) AS outputs
-			CROSS JOIN LATERAL (
-				SELECT content_item
-				FROM jsonb_array_elements(
-					CASE 
-						WHEN jsonb_typeof(outputs.output_item->'content') = 'array' 
-						THEN outputs.output_item->'content'
-						ELSE '[]'::jsonb
-					END
-				) AS content_item
-				WHERE content_item->>'type' = 'output_text'
-			) AS contents
-			CROSS JOIN LATERAL (
-				SELECT annotation
-				FROM jsonb_array_elements(
-					CASE 
-						WHEN jsonb_typeof(contents.content_item->'annotations') = 'array' 
-						THEN contents.content_item->'annotations'
-						ELSE '[]'::jsonb
-					END
-				) AS annotation
-				WHERE annotation->>'type' = 'url_citation'
-				AND annotation->>'url' IS NOT NULL
-			) AS annotations
-			WHERE model_group = 'openai'
-		),
-		google_citations AS (
-			SELECT 
-				ref->>'url' as url,
-				ref->>'title' as title,
-				model_group
-			FROM prompt_runs_filtered
-			CROSS JOIN LATERAL (
-				SELECT item
-				FROM jsonb_array_elements(
-					CASE 
-						WHEN jsonb_typeof(raw_output->'tasks'->0->'result'->0->'items') = 'array'
-						THEN raw_output->'tasks'->0->'result'->0->'items'
-						ELSE '[]'::jsonb
-					END
-				) AS item
-				WHERE item->>'type' = 'ai_overview'
-			) AS items
-			CROSS JOIN LATERAL (
-				SELECT ref
-				FROM jsonb_array_elements(
-					CASE 
-						WHEN jsonb_typeof(items.item->'references') = 'array' 
-						THEN items.item->'references'
-						ELSE '[]'::jsonb
-					END
-				) AS ref
-				WHERE ref->>'url' IS NOT NULL
-			) AS refs
-			WHERE model_group = 'google'
-		)
-		SELECT url, title, model_group FROM openai_citations
-		UNION ALL
-		SELECT url, title, model_group FROM google_citations
-	`;
-
-	const citations = await db.execute(citationsQuery);
-
-	// Process citations
-	let totalCitationCount = 0;
-	const domainCounts = new Map<string, { count: number; exampleTitle?: string }>();
-	const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-
-	for (const row of citations.rows) {
-		// Type assertion for the raw SQL result
-		const citation = row as { url: string; title: string | null; model_group: string };
-		
-		try {
-			const url = new URL(citation.url);
-			const domain = url.hostname.replace(/^www\./, '');
-			totalCitationCount++;
-
-			// Count by domain
-			const domainCount = domainCounts.get(domain) || { count: 0 };
-			domainCount.count++;
-			if (!domainCount.exampleTitle && citation.title) {
-				domainCount.exampleTitle = citation.title;
-			}
-			domainCounts.set(domain, domainCount);
-
-			// Count by URL (normalize to remove query parameters like ?utm_source=openai)
-			const normalizedUrl = normalizeUrl(citation.url);
-			const urlCount = urlCounts.get(normalizedUrl) || { count: 0, title: citation.title || undefined, domain };
-			urlCount.count++;
-			// Keep the title from the first occurrence if not already set
-			if (!urlCount.title && citation.title) {
-				urlCount.title = citation.title;
-			}
-			urlCounts.set(normalizedUrl, urlCount);
-		} catch (e) {
-			// Invalid URL, skip
-			console.warn("Invalid citation URL:", citation.url);
-		}
-	}
+		// Query Tinybird for citation stats
+		const [domainStats, urlStats] = await Promise.all([
+			getTinybirdCitationDomainStats(
+				brandId,
+				fromDateStr,
+				toDateStr,
+				timezone,
+				enabledPromptIds,
+				modelGroupParam || undefined,
+			),
+			getTinybirdCitationUrlStats(
+				brandId,
+				fromDateStr,
+				toDateStr,
+				timezone,
+				enabledPromptIds,
+				modelGroupParam || undefined,
+			),
+		]);
 
 		// Categorize domains
-		const domainDistribution = Array.from(domainCounts.entries())
-			.map(([domain, { count, exampleTitle }]) => {
-				let category: 'brand' | 'competitor' | 'social_media' | 'other';
-				
-				if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
-					category = 'brand';
-				} else if (competitorDomains.has(domain)) {
-					category = 'competitor';
-				} else if (isSocialMediaDomain(domain)) {
-					category = 'social_media';
-				} else {
-					category = 'other';
+		const domainDistribution = domainStats.map(({ domain, count, example_title }) => {
+			let category: 'brand' | 'competitor' | 'social_media' | 'other';
+			
+			if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
+				category = 'brand';
+			} else if (competitorDomains.has(domain)) {
+				category = 'competitor';
+			} else if (isSocialMediaDomain(domain)) {
+				category = 'social_media';
+			} else {
+				category = 'other';
+			}
+
+			return {
+				domain,
+				count: Number(count),
+				category,
+				exampleTitle: example_title || undefined,
+			};
+		});
+
+		// Categorize specific URLs (normalize to remove utm_source=openai)
+		const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
+		
+		for (const { url, domain, title, count } of urlStats) {
+			const normalizedUrl = normalizeUrl(url);
+			const existing = urlCounts.get(normalizedUrl);
+			if (existing) {
+				existing.count += Number(count);
+				// Keep the title from the first occurrence if not already set
+				if (!existing.title && title) {
+					existing.title = title;
 				}
-
-				return {
+			} else {
+				urlCounts.set(normalizedUrl, {
+					count: Number(count),
+					title: title || undefined,
 					domain,
-					count,
-					category,
-					exampleTitle,
-				};
-			})
-			.sort((a, b) => b.count - a.count);
+				});
+			}
+		}
 
-		// Categorize specific URLs
 		const specificUrls = Array.from(urlCounts.entries())
 			.map(([url, { count, title, domain }]) => {
 				let category: 'brand' | 'competitor' | 'social_media' | 'other';
@@ -389,253 +283,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const competitorCitations = domainDistribution.filter(d => d.category === 'competitor').reduce((sum, d) => sum + d.count, 0);
 		const socialMediaCitations = domainDistribution.filter(d => d.category === 'social_media').reduce((sum, d) => sum + d.count, 0);
 		const otherCitations = domainDistribution.filter(d => d.category === 'other').reduce((sum, d) => sum + d.count, 0);
+		const totalCitations = brandCitations + competitorCitations + socialMediaCitations + otherCitations;
 
-	// End PostgreSQL timing
-	const pgTime = performance.now() - startPg;
-
-	const response: CitationStats = {
-		totalCitations: totalCitationCount,
-		uniqueDomains: domainCounts.size,
-		brandCitations,
-		competitorCitations,
-		socialMediaCitations,
-		otherCitations,
-		domainDistribution,
-		specificUrls,
-		availableTags,
-	};
-
-		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
-		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
-			try {
-				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-				const toDateObj = new Date();
-				const toDateStr = toDateObj.toISOString().split("T")[0];
-				const fromDateStr = fromDate.toISOString().split("T")[0];
-
-				// Use filtered prompt IDs if tag filter is applied, otherwise use all enabled prompt IDs
-				const enabledPromptIds = promptIdsToFilter || allPrompts.map(p => p.id);
-
-				// Time ONLY the main query (not diagnostics) for fair comparison
-				const startTb = performance.now();
-				const tbDomainStats = await getTinybirdCitationDomainStats(
-					brandId,
-					fromDateStr,
-					toDateStr,
-					userTimezone,
-					enabledPromptIds,
-					modelGroupParam || undefined,
-				);
-				const tbTime = performance.now() - startTb;
-
-				// Run diagnostics separately (not included in timing)
-				const tbDiagnostics = await getTinybirdCitationDiagnostics(
-					brandId,
-					fromDateStr,
-					toDateStr,
-					userTimezone,
-					enabledPromptIds,
-					modelGroupParam || undefined,
-				);
-
-				// Compare aggregate metrics
-				const tbTotalCitations = tbDomainStats.reduce((sum, d) => sum + Number(d.count), 0);
-				const tbUniqueDomains = tbDomainStats.length;
-
-				const pgComparable = {
-					totalCitations: totalCitationCount,
-					uniqueDomains: domainCounts.size,
-				};
-
-				const tbComparable = {
-					totalCitations: tbTotalCitations,
-					uniqueDomains: tbUniqueDomains,
-				};
-
-				// Build per-prompt counts for PG from the citations we already processed
-				// We need to re-query for this since we didn't track it during processing
-				const pgPerPromptQuery = sql<{ prompt_id: string; count: string; earliest: string; latest: string }>`
-					WITH prompt_runs_filtered AS (
-						SELECT 
-							pr.id,
-							p.id as prompt_id,
-							pr.created_at,
-							pr."modelGroup" as model_group,
-							pr.raw_output::jsonb as raw_output
-						FROM prompt_runs pr
-						INNER JOIN prompts p ON pr.prompt_id = p.id
-						WHERE 
-							p.brand_id = ${brandId}
-							AND p.enabled = true
-							AND pr.created_at >= ${fromDate}
-							AND pr.web_search_enabled = true
-							${promptFilterCondition}
-							${modelGroupCondition}
-					),
-					all_citations AS (
-						-- OpenAI citations
-						SELECT 
-							prompt_id,
-							created_at
-						FROM prompt_runs_filtered
-						CROSS JOIN LATERAL (
-							SELECT output_item
-							FROM jsonb_array_elements(
-								CASE 
-									WHEN jsonb_typeof(raw_output->'output') = 'array' 
-									THEN raw_output->'output'
-									ELSE '[]'::jsonb
-								END
-							) AS output_item
-							WHERE output_item->>'type' = 'message'
-						) AS outputs
-						CROSS JOIN LATERAL (
-							SELECT content_item
-							FROM jsonb_array_elements(
-								CASE 
-									WHEN jsonb_typeof(outputs.output_item->'content') = 'array' 
-									THEN outputs.output_item->'content'
-									ELSE '[]'::jsonb
-								END
-							) AS content_item
-							WHERE content_item->>'type' = 'output_text'
-						) AS contents
-						CROSS JOIN LATERAL (
-							SELECT annotation
-							FROM jsonb_array_elements(
-								CASE 
-									WHEN jsonb_typeof(contents.content_item->'annotations') = 'array' 
-									THEN contents.content_item->'annotations'
-									ELSE '[]'::jsonb
-								END
-							) AS annotation
-							WHERE annotation->>'type' = 'url_citation'
-							AND annotation->>'url' IS NOT NULL
-						) AS annotations
-						WHERE model_group = 'openai'
-						
-						UNION ALL
-						
-						-- Google citations
-						SELECT 
-							prompt_id,
-							created_at
-						FROM prompt_runs_filtered
-						CROSS JOIN LATERAL (
-							SELECT item
-							FROM jsonb_array_elements(
-								CASE 
-									WHEN jsonb_typeof(raw_output->'tasks'->0->'result'->0->'items') = 'array'
-									THEN raw_output->'tasks'->0->'result'->0->'items'
-									ELSE '[]'::jsonb
-								END
-							) AS item
-							WHERE item->>'type' = 'ai_overview'
-						) AS items
-						CROSS JOIN LATERAL (
-							SELECT ref
-							FROM jsonb_array_elements(
-								CASE 
-									WHEN jsonb_typeof(items.item->'references') = 'array' 
-									THEN items.item->'references'
-									ELSE '[]'::jsonb
-								END
-							) AS ref
-							WHERE ref->>'url' IS NOT NULL
-						) AS refs
-						WHERE model_group = 'google'
-					)
-					SELECT 
-						prompt_id,
-						count(*)::text as count,
-						min(created_at)::text as earliest,
-						max(created_at)::text as latest
-					FROM all_citations
-					GROUP BY prompt_id
-					ORDER BY count DESC
-				`;
-				
-				const pgDiagnosticsResult = await db.execute(pgPerPromptQuery);
-				const pgPerPromptCounts: Record<string, number> = {};
-				let pgEarliest: string | null = null;
-				let pgLatest: string | null = null;
-				
-				for (const row of pgDiagnosticsResult.rows) {
-					const r = row as { prompt_id: string; count: string; earliest: string; latest: string };
-					pgPerPromptCounts[r.prompt_id] = parseInt(r.count, 10);
-					if (!pgEarliest || r.earliest < pgEarliest) pgEarliest = r.earliest;
-					if (!pgLatest || r.latest > pgLatest) pgLatest = r.latest;
-				}
-				
-				// Build TB per-prompt counts
-				const tbPerPromptCounts: Record<string, number> = {};
-				for (const item of tbDiagnostics.per_prompt_counts) {
-					tbPerPromptCounts[item.prompt_id] = Number(item.count);
-				}
-				
-				// Find differences between PG and TB per-prompt counts
-				const allPromptIdsSet = new Set([
-					...Object.keys(pgPerPromptCounts),
-					...Object.keys(tbPerPromptCounts),
-				]);
-				const differences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
-				for (const promptId of allPromptIdsSet) {
-					const pgCount = pgPerPromptCounts[promptId] || 0;
-					const tbCount = tbPerPromptCounts[promptId] || 0;
-					if (pgCount !== tbCount) {
-						differences.push({
-							promptId,
-							pgCount,
-							tbCount,
-							diff: tbCount - pgCount,
-						});
-					}
-				}
-				// Sort by absolute difference
-				differences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-
-				const diagnostics: DiagnosticInfo = {
-					dateRange: {
-						pg: { earliest: pgEarliest, latest: pgLatest },
-						tb: { 
-							earliest: tbDiagnostics.earliest_date, 
-							latest: tbDiagnostics.latest_date 
-						},
-					},
-					recordCounts: {
-						pg: totalCitationCount,
-						tb: Number(tbDiagnostics.total_count),
-					},
-					perPromptCounts: {
-						pg: pgPerPromptCounts,
-						tb: tbPerPromptCounts,
-						differences: differences.slice(0, 20), // Top 20 differences
-					},
-					extra: {
-						enabledPromptIdCount: enabledPromptIds.length,
-						pgPromptRunCount: pgDiagnosticsResult.rows.length,
-						tbPromptRunCount: tbDiagnostics.prompt_run_count,
-					},
-				};
-
-				await verifyAndLog({
-					endpoint: "citations",
-					brandId,
-					filters: {
-						days,
-						tags: tagsParam,
-						modelGroup: modelGroupParam,
-					},
-					postgresResult: pgComparable,
-					tinybirdResult: tbComparable,
-					pgTime,
-					tbTime,
-					diagnostics,
-				});
-			} catch (error) {
-				console.error("Tinybird verification failed for citations:", error);
-			}
-		}
+		const response: CitationStats = {
+			totalCitations,
+			uniqueDomains: domainDistribution.length,
+			brandCitations,
+			competitorCitations,
+			socialMediaCitations,
+			otherCitations,
+			domainDistribution,
+			specificUrls,
+			availableTags,
+		};
 
 		return NextResponse.json(response);
 

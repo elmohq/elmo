@@ -545,6 +545,41 @@ export async function getTinybirdPromptCitationStats(
 	);
 }
 
+/**
+ * Get citation URL stats for a prompt from Tinybird
+ * 
+ * Queries the pre-expanded citations table (populated via materialized view).
+ * Uses FINAL for deduplication - much faster than ARRAY JOIN on prompt_runs.
+ */
+export async function getTinybirdPromptCitationUrlStats(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+): Promise<TinybirdCitationUrlStats[]> {
+	return queryTinybird<TinybirdCitationUrlStats>(
+		`
+		SELECT
+			url,
+			domain,
+			any(title) as title,
+			count() as count
+		FROM citations FINAL
+		WHERE prompt_id = {promptId:String}
+			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
+			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
+		GROUP BY url, domain
+		ORDER BY count DESC
+	`,
+		{
+			promptId,
+			timezone,
+			fromDate,
+			toDate,
+		},
+	);
+}
+
 // ============================================================================
 // Daily Citation Stats for Time Series
 // ============================================================================
