@@ -22,7 +22,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "jest && next build",
     "start": "next start",
     "lint": "biome lint",
     "format": "biome format --write .",
