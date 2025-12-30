@@ -4,11 +4,9 @@
 //
 // DEDUPLICATION STRATEGY (ReplacingMergeTree):
 // - prompt_runs uses ReplacingMergeTree which deduplicates during background merges
-// - FINAL forces deduplication at query time but is SLOW for large tables
-// - For AGGREGATES (count, sum, avg): Skip FINAL - small duplicate counts are acceptable
-// - For ROW-LEVEL queries: Use FINAL to guarantee no duplicates in results
+// - FINAL forces deduplication at query time (slight performance cost, but ensures accuracy)
+// - ALL queries use FINAL to guarantee accurate counts matching PostgreSQL
 // - For CITATIONS: Use pre-expanded citations table (via MV) with FINAL - much faster than ARRAY JOIN
-// - Background merges typically keep duplicates very low (~0.01%)
 
 import { createClient, type ClickHouseClient } from "@clickhouse/client";
 
@@ -84,7 +82,7 @@ export interface TinybirdVisibilityTimeSeriesPoint {
  * Note: Must pass enabledPromptIds from PostgreSQL since prompt enabled status can change
  * and is not stored in Tinybird
  * 
- * Aggregate query - skips FINAL for performance (tolerates minor duplicate counts).
+ * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdDashboardSummary(
 	brandId: string,
@@ -111,7 +109,7 @@ export async function getTinybirdDashboardSummary(
 			round(sum(brand_mentioned) * 100.0 / count(), 0) as avg_visibility,
 			round(sum(brand_mentioned) * 100.0 / count(), 0) as non_branded_visibility,
 			max(toDate(created_at, {timezone:String})) as last_updated
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			${dateFilter}
 			${promptFilter}
@@ -127,7 +125,7 @@ export async function getTinybirdDashboardSummary(
 
 /**
  * Get daily visibility data for time series (will be processed client-side for rolling averages)
- * Aggregate query - skips FINAL for performance (tolerates minor duplicate counts).
+ * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdVisibilityTimeSeries(
 	brandId: string,
@@ -156,7 +154,7 @@ export async function getTinybirdVisibilityTimeSeries(
 			count() as total_runs,
 			sum(brand_mentioned) as brand_mentioned_count,
 			has({brandedPromptIds:Array(String)}, prompt_id) as is_branded
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			${dateFilter}
 			${promptFilter}
@@ -189,7 +187,7 @@ export interface TinybirdPromptSummary {
 /**
  * Get summary stats for all prompts from Tinybird
  * Note: prompt_value, tags, groupCategory, etc. should be joined from PostgreSQL
- * Aggregate query - skips FINAL for performance (tolerates minor duplicate counts).
+ * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdPromptsSummary(
 	brandId: string,
@@ -223,7 +221,7 @@ export async function getTinybirdPromptsSummary(
 			round(sum(has_competitor_mention) * 100.0 / count(), 0) as competitor_mention_rate,
 			sum(brand_mentioned * 2 + competitor_count) as total_weighted_mentions,
 			max(toDate(created_at, {timezone:String})) as last_run_date
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			${dateFilter}
 			${webSearchFilter}
@@ -367,7 +365,7 @@ export interface TinybirdPromptChartDataPoint {
 
 /**
  * Get prompt-level chart data from Tinybird
- * Aggregate query - skips FINAL for performance (tolerates minor duplicate counts).
+ * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdPromptChartData(
 	brandId: string,
@@ -395,7 +393,7 @@ export async function getTinybirdPromptChartData(
 			count() as total_runs,
 			sum(brand_mentioned) as brand_mentioned_count,
 			sum(has_competitor_mention) as competitor_mentioned_count
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			AND prompt_id = {promptId:String}
 			${dateFilter}
@@ -427,7 +425,7 @@ export interface TinybirdPromptStats {
 
 /**
  * Get prompt-level aggregate stats from Tinybird
- * Aggregate query - skips FINAL for performance (tolerates minor duplicate counts).
+ * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdPromptStats(
 	promptId: string,
@@ -441,7 +439,7 @@ export async function getTinybirdPromptStats(
 			count() as total_runs,
 			sum(brand_mentioned) as brand_mentions,
 			sum(web_search_enabled) as web_search_enabled_count
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE prompt_id = {promptId:String}
 			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
 			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
@@ -592,7 +590,7 @@ export interface PromptRunDiagnostics {
 /**
  * Get diagnostic information about prompt runs for debugging mismatches
  * Returns date range and per-prompt counts
- * Aggregate query - skips FINAL for performance (tolerates minor duplicate counts).
+ * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdPromptRunDiagnostics(
 	brandId: string,
@@ -616,7 +614,7 @@ export async function getTinybirdPromptRunDiagnostics(
 			min(created_at) as earliest_date,
 			max(created_at) as latest_date,
 			count() as total_count
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
 			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
@@ -637,7 +635,7 @@ export async function getTinybirdPromptRunDiagnostics(
 		SELECT
 			prompt_id,
 			count() as count
-		FROM prompt_runs
+		FROM prompt_runs FINAL
 		WHERE brand_id = {brandId:String}
 			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
 			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
