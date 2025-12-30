@@ -1,7 +1,10 @@
 DESCRIPTION >
-    Expanded citations from LLM responses for fast citation analytics.
-    Auto-populated via materialized view from prompt_runs.citations array.
-    Do not ingest directly - data flows from prompt_runs through citations_mv.
+    Pre-expanded citations table populated automatically via materialized view.
+    Uses ReplacingMergeTree to handle duplicates from duplicate prompt_runs inserts.
+    
+    Deduplication strategy: Rows with same (prompt_run_id, citation_idx) are deduplicated,
+    keeping the one with latest created_at. The citation_idx preserves duplicate URLs
+    within the same prompt_run's array (important for accurate counting).
 
 SCHEMA >
     `prompt_run_id` String,
@@ -11,9 +14,11 @@ SCHEMA >
     `url` String,
     `domain` LowCardinality(String),
     `title` Nullable(String),
+    `citation_idx` UInt16,
     `created_at` DateTime64(3, 'UTC')
 
-ENGINE "MergeTree"
+ENGINE "ReplacingMergeTree"
 ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
-ENGINE_SORTING_KEY "brand_id, prompt_id, domain, toDate(created_at)"
+ENGINE_SORTING_KEY "brand_id, prompt_id, prompt_run_id, citation_idx"
+ENGINE_VER "created_at"
 

@@ -3,6 +3,8 @@ import { db } from "@/lib/db/db";
 import { prompts, promptRuns, competitors, brands, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
+import { getTinybirdCitationDomainStats, getTinybirdCitationUrlStats, getTinybirdCitationDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -116,6 +118,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Calculate date range
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - days);
+
+		// Start timing PostgreSQL queries
+		const startPg = performance.now();
 
 		// Get brand info and competitors
 		const [brandInfo, competitorsList] = await Promise.all([
@@ -385,6 +390,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const socialMediaCitations = domainDistribution.filter(d => d.category === 'social_media').reduce((sum, d) => sum + d.count, 0);
 		const otherCitations = domainDistribution.filter(d => d.category === 'other').reduce((sum, d) => sum + d.count, 0);
 
+	// End PostgreSQL timing
+	const pgTime = performance.now() - startPg;
+
 	const response: CitationStats = {
 		totalCitations: totalCitationCount,
 		uniqueDomains: domainCounts.size,
@@ -396,6 +404,237 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		specificUrls,
 		availableTags,
 	};
+
+		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
+		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
+			try {
+				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+				const toDateObj = new Date();
+				const toDateStr = toDateObj.toISOString().split("T")[0];
+				const fromDateStr = fromDate.toISOString().split("T")[0];
+
+				// Use filtered prompt IDs if tag filter is applied, otherwise use all enabled prompt IDs
+				const enabledPromptIds = promptIdsToFilter || allPrompts.map(p => p.id);
+
+				const startTb = performance.now();
+				const [tbDomainStats, tbDiagnostics] = await Promise.all([
+					getTinybirdCitationDomainStats(
+						brandId,
+						fromDateStr,
+						toDateStr,
+						userTimezone,
+						enabledPromptIds,
+						modelGroupParam || undefined,
+					),
+					getTinybirdCitationDiagnostics(
+						brandId,
+						fromDateStr,
+						toDateStr,
+						userTimezone,
+						enabledPromptIds,
+						modelGroupParam || undefined,
+					),
+				]);
+				const tbTime = performance.now() - startTb;
+
+				// Compare aggregate metrics
+				const tbTotalCitations = tbDomainStats.reduce((sum, d) => sum + Number(d.count), 0);
+				const tbUniqueDomains = tbDomainStats.length;
+
+				const pgComparable = {
+					totalCitations: totalCitationCount,
+					uniqueDomains: domainCounts.size,
+				};
+
+				const tbComparable = {
+					totalCitations: tbTotalCitations,
+					uniqueDomains: tbUniqueDomains,
+				};
+
+				// Build per-prompt counts for PG from the citations we already processed
+				// We need to re-query for this since we didn't track it during processing
+				const pgPerPromptQuery = sql<{ prompt_id: string; count: string; earliest: string; latest: string }>`
+					WITH prompt_runs_filtered AS (
+						SELECT 
+							pr.id,
+							p.id as prompt_id,
+							pr.created_at,
+							pr."modelGroup" as model_group,
+							pr.raw_output::jsonb as raw_output
+						FROM prompt_runs pr
+						INNER JOIN prompts p ON pr.prompt_id = p.id
+						WHERE 
+							p.brand_id = ${brandId}
+							AND p.enabled = true
+							AND pr.created_at >= ${fromDate}
+							AND pr.web_search_enabled = true
+							${promptFilterCondition}
+							${modelGroupCondition}
+					),
+					all_citations AS (
+						-- OpenAI citations
+						SELECT 
+							prompt_id,
+							created_at
+						FROM prompt_runs_filtered
+						CROSS JOIN LATERAL (
+							SELECT output_item
+							FROM jsonb_array_elements(
+								CASE 
+									WHEN jsonb_typeof(raw_output->'output') = 'array' 
+									THEN raw_output->'output'
+									ELSE '[]'::jsonb
+								END
+							) AS output_item
+							WHERE output_item->>'type' = 'message'
+						) AS outputs
+						CROSS JOIN LATERAL (
+							SELECT content_item
+							FROM jsonb_array_elements(
+								CASE 
+									WHEN jsonb_typeof(outputs.output_item->'content') = 'array' 
+									THEN outputs.output_item->'content'
+									ELSE '[]'::jsonb
+								END
+							) AS content_item
+							WHERE content_item->>'type' = 'output_text'
+						) AS contents
+						CROSS JOIN LATERAL (
+							SELECT annotation
+							FROM jsonb_array_elements(
+								CASE 
+									WHEN jsonb_typeof(contents.content_item->'annotations') = 'array' 
+									THEN contents.content_item->'annotations'
+									ELSE '[]'::jsonb
+								END
+							) AS annotation
+							WHERE annotation->>'type' = 'url_citation'
+							AND annotation->>'url' IS NOT NULL
+						) AS annotations
+						WHERE model_group = 'openai'
+						
+						UNION ALL
+						
+						-- Google citations
+						SELECT 
+							prompt_id,
+							created_at
+						FROM prompt_runs_filtered
+						CROSS JOIN LATERAL (
+							SELECT item
+							FROM jsonb_array_elements(
+								CASE 
+									WHEN jsonb_typeof(raw_output->'tasks'->0->'result'->0->'items') = 'array'
+									THEN raw_output->'tasks'->0->'result'->0->'items'
+									ELSE '[]'::jsonb
+								END
+							) AS item
+							WHERE item->>'type' = 'ai_overview'
+						) AS items
+						CROSS JOIN LATERAL (
+							SELECT ref
+							FROM jsonb_array_elements(
+								CASE 
+									WHEN jsonb_typeof(items.item->'references') = 'array' 
+									THEN items.item->'references'
+									ELSE '[]'::jsonb
+								END
+							) AS ref
+							WHERE ref->>'url' IS NOT NULL
+						) AS refs
+						WHERE model_group = 'google'
+					)
+					SELECT 
+						prompt_id,
+						count(*)::text as count,
+						min(created_at)::text as earliest,
+						max(created_at)::text as latest
+					FROM all_citations
+					GROUP BY prompt_id
+					ORDER BY count DESC
+				`;
+				
+				const pgDiagnosticsResult = await db.execute(pgPerPromptQuery);
+				const pgPerPromptCounts: Record<string, number> = {};
+				let pgEarliest: string | null = null;
+				let pgLatest: string | null = null;
+				
+				for (const row of pgDiagnosticsResult.rows) {
+					const r = row as { prompt_id: string; count: string; earliest: string; latest: string };
+					pgPerPromptCounts[r.prompt_id] = parseInt(r.count, 10);
+					if (!pgEarliest || r.earliest < pgEarliest) pgEarliest = r.earliest;
+					if (!pgLatest || r.latest > pgLatest) pgLatest = r.latest;
+				}
+				
+				// Build TB per-prompt counts
+				const tbPerPromptCounts: Record<string, number> = {};
+				for (const item of tbDiagnostics.per_prompt_counts) {
+					tbPerPromptCounts[item.prompt_id] = Number(item.count);
+				}
+				
+				// Find differences between PG and TB per-prompt counts
+				const allPromptIdsSet = new Set([
+					...Object.keys(pgPerPromptCounts),
+					...Object.keys(tbPerPromptCounts),
+				]);
+				const differences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
+				for (const promptId of allPromptIdsSet) {
+					const pgCount = pgPerPromptCounts[promptId] || 0;
+					const tbCount = tbPerPromptCounts[promptId] || 0;
+					if (pgCount !== tbCount) {
+						differences.push({
+							promptId,
+							pgCount,
+							tbCount,
+							diff: tbCount - pgCount,
+						});
+					}
+				}
+				// Sort by absolute difference
+				differences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+				const diagnostics: DiagnosticInfo = {
+					dateRange: {
+						pg: { earliest: pgEarliest, latest: pgLatest },
+						tb: { 
+							earliest: tbDiagnostics.earliest_date, 
+							latest: tbDiagnostics.latest_date 
+						},
+					},
+					recordCounts: {
+						pg: totalCitationCount,
+						tb: Number(tbDiagnostics.total_count),
+					},
+					perPromptCounts: {
+						pg: pgPerPromptCounts,
+						tb: tbPerPromptCounts,
+						differences: differences.slice(0, 20), // Top 20 differences
+					},
+					extra: {
+						enabledPromptIdCount: enabledPromptIds.length,
+						pgPromptRunCount: pgDiagnosticsResult.rows.length,
+						tbPromptRunCount: tbDiagnostics.prompt_run_count,
+					},
+				};
+
+				await verifyAndLog({
+					endpoint: "citations",
+					brandId,
+					filters: {
+						days,
+						tags: tagsParam,
+						modelGroup: modelGroupParam,
+					},
+					postgresResult: pgComparable,
+					tinybirdResult: tbComparable,
+					pgTime,
+					tbTime,
+					diagnostics,
+				});
+			} catch (error) {
+				console.error("Tinybird verification failed for citations:", error);
+			}
+		}
 
 		return NextResponse.json(response);
 

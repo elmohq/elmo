@@ -3,6 +3,8 @@ import { db } from "@/lib/db/db";
 import { prompts, promptRuns, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, desc, count, sql } from "drizzle-orm";
+import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
+import { getTinybirdPromptsSummary, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -108,6 +110,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			}
 			runConditions.push(eq(promptRuns.modelGroup, modelGroupParam as "openai" | "anthropic" | "google"));
 		}
+
+		// Start timing PostgreSQL queries
+		const startPg = performance.now();
 
 		// Get prompts with aggregated run statistics
 		const promptsWithStats = await db
@@ -240,11 +245,147 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			...Array.from(allUserTags).sort(),
 		];
 
+		// End PostgreSQL timing
+		const pgTime = performance.now() - startPg;
+
 		const response: PromptsSummaryResponse = {
 			prompts: sortedPrompts,
 			totalPrompts: sortedPrompts.length,
 			availableTags,
 		};
+
+		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
+		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
+			try {
+				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+				const fromDateStr = fromDate ? fromDate.toISOString().split("T")[0] : null;
+				const toDateStr = toDate ? toDate.toISOString().split("T")[0] : null;
+				const webSearchEnabled = webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
+
+				// Get enabled prompt IDs for filtering Tinybird
+				const enabledPromptIds = sortedPrompts.map((p) => p.id);
+
+				const startTb = performance.now();
+				const [tinybirdResult, tbDiagnostics] = await Promise.all([
+					getTinybirdPromptsSummary(
+						brandId,
+						fromDateStr,
+						toDateStr,
+						userTimezone,
+						webSearchEnabled,
+						modelGroupParam || undefined,
+						enabledPromptIds,
+					),
+					// Only run diagnostics if we have date filters
+					fromDateStr && toDateStr
+						? getTinybirdPromptRunDiagnostics(
+								brandId,
+								fromDateStr,
+								toDateStr,
+								userTimezone,
+								enabledPromptIds,
+						  )
+						: Promise.resolve(null),
+				]);
+				const tbTime = performance.now() - startTb;
+
+				// Compare aggregate metrics for enabled prompts
+				const pgTotalRuns = sortedPrompts.reduce((sum, p) => sum + p.totalRuns, 0);
+				const tbTotalRuns = tinybirdResult.reduce((sum, r) => sum + Number(r.total_runs), 0);
+
+				const pgComparable = {
+					totalPrompts: sortedPrompts.length,
+					totalRuns: pgTotalRuns,
+				};
+
+				const tbComparable = {
+					totalPrompts: tinybirdResult.length,
+					totalRuns: tbTotalRuns,
+				};
+
+				// Build diagnostics
+				let diagnostics: DiagnosticInfo | undefined;
+				if (tbDiagnostics) {
+					// Build per-prompt counts from PG (already have this from sortedPrompts)
+					const pgPerPromptCounts: Record<string, number> = {};
+					for (const p of sortedPrompts) {
+						pgPerPromptCounts[p.id] = p.totalRuns;
+					}
+
+					// Build TB per-prompt counts from the prompts-summary result
+					const tbPerPromptCounts: Record<string, number> = {};
+					for (const r of tinybirdResult) {
+						tbPerPromptCounts[r.prompt_id] = Number(r.total_runs);
+					}
+
+					// Find differences between PG and TB per-prompt counts
+					const allPromptIdsSet = new Set([
+						...Object.keys(pgPerPromptCounts),
+						...Object.keys(tbPerPromptCounts),
+					]);
+					const differences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
+					for (const promptId of allPromptIdsSet) {
+						const pgCount = pgPerPromptCounts[promptId] || 0;
+						const tbCount = tbPerPromptCounts[promptId] || 0;
+						if (pgCount !== tbCount) {
+							differences.push({
+								promptId,
+								pgCount,
+								tbCount,
+								diff: tbCount - pgCount,
+							});
+						}
+					}
+					// Sort by absolute difference
+					differences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+					diagnostics = {
+						dateRange: {
+							pg: { earliest: null, latest: null }, // Not easily available from sortedPrompts
+							tb: {
+								earliest: tbDiagnostics.earliest_date,
+								latest: tbDiagnostics.latest_date,
+							},
+						},
+						recordCounts: {
+							pg: pgTotalRuns,
+							tb: Number(tbDiagnostics.total_count),
+						},
+						perPromptCounts: {
+							pg: pgPerPromptCounts,
+							tb: tbPerPromptCounts,
+							differences: differences.slice(0, 20), // Top 20 differences
+						},
+						extra: {
+							enabledPromptIdCount: enabledPromptIds.length,
+							pgPromptCount: sortedPrompts.length,
+							tbPromptCount: tinybirdResult.length,
+							tbDiagPromptCount: tbDiagnostics.per_prompt_counts.length,
+							webSearchEnabled,
+							modelGroup: modelGroupParam,
+						},
+					};
+				}
+
+				await verifyAndLog({
+					endpoint: "prompts-summary",
+					brandId,
+					filters: {
+						lookback: lookbackParam,
+						webSearchEnabled: webSearchEnabledParam,
+						modelGroup: modelGroupParam,
+						tags: tagsParam,
+					},
+					postgresResult: pgComparable,
+					tinybirdResult: tbComparable,
+					pgTime,
+					tbTime,
+					diagnostics,
+				});
+			} catch (error) {
+				console.error("Tinybird verification failed for prompts-summary:", error);
+			}
+		}
 
 		return NextResponse.json(response);
 	} catch (error) {

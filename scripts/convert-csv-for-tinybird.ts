@@ -3,7 +3,7 @@
 //
 // Then import with: tb --cloud datasource append prompt_runs prompt_runs.ndjson.gz
 
-import { createReadStream, createWriteStream } from "node:fs";
+import { createReadStream, createWriteStream, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { createGzip } from "node:zlib";
 import { db } from "../src/lib/db/db";
@@ -12,6 +12,7 @@ import { extractTextContent, extractCitations } from "../src/lib/text-extraction
 
 const CSV_PATH = "./prompt_runs_rows.csv";
 const OUTPUT_PATH = "./prompt_runs.ndjson.gz";
+const METADATA_PATH = "./prompt_runs.meta.json";
 
 console.log("CSV to NDJSON.gz converter for Tinybird bulk import");
 console.log(`Input: ${CSV_PATH}`);
@@ -92,6 +93,7 @@ async function convert() {
 	let processedCount = 0;
 	let skippedCount = 0;
 	let lastId = "";
+	let maxCreatedAt: Date | null = null;
 	let isFirst = true;
 
 	const fileStream = createReadStream(CSV_PATH);
@@ -179,6 +181,9 @@ async function convert() {
 		}
 
 		lastId = id;
+		if (!maxCreatedAt || createdAt > maxCreatedAt) {
+			maxCreatedAt = createdAt;
+		}
 		processedCount++;
 
 		if (processedCount % 10000 === 0) {
@@ -195,20 +200,30 @@ async function convert() {
 		});
 	});
 
+	// Write metadata file for the continuation script
+	const metadata = {
+		maxCreatedAt: maxCreatedAt?.toISOString() || null,
+		rowCount: processedCount,
+		lastId,
+		generatedAt: new Date().toISOString(),
+	};
+	writeFileSync(METADATA_PATH, JSON.stringify(metadata, null, 2));
+
 	const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
 	console.log(`\n\n${"=".repeat(60)}`);
 	console.log(`Conversion complete!`);
 	console.log(`  Rows processed: ${processedCount.toLocaleString()}`);
 	console.log(`  Rows skipped: ${skippedCount}`);
+	console.log(`  Max created_at: ${maxCreatedAt?.toISOString()}`);
 	console.log(`  Output file: ${OUTPUT_PATH}`);
-	console.log(`  Last ID: ${lastId}`);
+	console.log(`  Metadata file: ${METADATA_PATH}`);
 	console.log(`  Time: ${totalTime}s`);
 	console.log(`${"=".repeat(60)}`);
 	console.log(`\nTo import into Tinybird:`);
 	console.log(`  tb --cloud datasource append prompt_runs ${OUTPUT_PATH}`);
 	console.log(`\nThen run the continuation script:`);
-	console.log(`  pnpm tsx --env-file=.env scripts/backfill-tinybird-continue.ts --after "${lastId}"`);
+	console.log(`  pnpm tsx --env-file=.env scripts/backfill-tinybird-continue.ts`);
 }
 
 convert()

@@ -31,8 +31,8 @@ The migration follows a phased approach to ensure zero data loss and validate co
 |-------|-------------|--------|
 | **Phase 1** | Dual-write new data to Tinybird | ✅ Completed |
 | **Phase 2** | Backfill historical data | 🔄 Ready to Run |
-| **Phase 3** | Add admin migration dashboard | ⬜ Not Started |
-| **Phase 4** | Dual-read with verification | ⬜ Not Started |
+| **Phase 3** | Add admin migration dashboard | ✅ Completed |
+| **Phase 4** | Dual-read with verification | ✅ Completed |
 | **Phase 5** | Cutover to Tinybird-only | ⬜ Not Started |
 | **Phase 6** | Cleanup migration infrastructure | ⬜ Not Started |
 
@@ -105,18 +105,18 @@ The migration follows a phased approach to ensure zero data loss and validate co
 
 ### Checklist
 
-- [ ] **3.1** Create Redis keys for storing query timing metrics:
+- [x] **3.1** Create Redis keys for storing query timing metrics:
   - `tinybird:timing:{endpoint}:postgres` - Array of recent PostgreSQL query times
   - `tinybird:timing:{endpoint}:tinybird` - Array of recent Tinybird query times
   - `tinybird:comparison:{endpoint}` - Recent comparison results (match/mismatch)
-- [ ] **3.2** Create `src/app/admin/tinybird/page.tsx` with:
-  - [ ] Migration phase status (Phase 1-6 checklist)
-  - [ ] Query performance comparison table
-  - [ ] Data verification results
-  - [ ] Mismatch log viewer
-- [ ] **3.3** Create `src/app/api/admin/tinybird/stats/route.ts` API endpoint
-- [ ] **3.4** Add query timing instrumentation to dual-read endpoints
-- [ ] **3.5** Add comparison result logging with debug details
+- [x] **3.2** Create `src/app/admin/tinybird/page.tsx` with:
+  - [x] Migration phase status (Phase 1-6 checklist)
+  - [x] Query performance comparison table
+  - [x] Data verification results
+  - [x] Mismatch log viewer
+- [x] **3.3** Create `src/app/api/admin/tinybird/stats/route.ts` API endpoint
+- [x] **3.4** Add query timing instrumentation to dual-read endpoints (via `src/lib/tinybird-comparison.ts`)
+- [x] **3.5** Add comparison result logging with debug details (via `verifyAndLog()` function)
 
 ### Dashboard Features
 
@@ -160,25 +160,39 @@ The migration follows a phased approach to ensure zero data loss and validate co
 - Phase 2 must be complete (all data backfilled)
 - Phase 3 must be complete (dashboard ready for monitoring)
 
+### Implementation Notes
+
+**Created files:**
+- `src/lib/tinybird-read.ts` - ClickHouse client using `@clickhouse/client` for Tinybird queries
+  - Uses direct SQL via ClickHouse protocol instead of Tinybird pipes
+  - Same queries work on Tinybird or self-hosted ClickHouse (easier future migration)
+
+**Environment variables needed:**
+- `TINYBIRD_VERIFY_ENABLED=true` - Enable dual-read verification
+- `TINYBIRD_BASE_URL` - Tinybird API URL (e.g., `https://api.tinybird.co`), same as write client
+- `TINYBIRD_TOKEN` - API token for authentication
+- `TINYBIRD_WORKSPACE` - Workspace/database name (optional, defaults to `default`)
+
 ### Checklist
 
-- [ ] **4.1** Create `src/lib/tinybird-comparison.ts` with comparison utilities:
-  - [ ] `compareResults()` - Deep comparison with configurable tolerance
-  - [ ] `logMismatch()` - Store mismatch details in Redis for debugging
-  - [ ] `recordTiming()` - Store query timing metrics
-- [ ] **4.2** Create Tinybird query endpoints (pipes):
-  - [ ] `dashboard_summary.pipe`
-  - [ ] `visibility_timeseries.pipe`
-  - [ ] `prompt_chart.pipe`
-  - [ ] `citation_stats.pipe`
-  - [ ] `prompts_summary.pipe`
-- [ ] **4.3** Add feature flag `TINYBIRD_VERIFY_ENABLED=true`
-- [ ] **4.4** Update API routes to dual-read:
-  - [ ] `src/app/api/brands/[id]/dashboard-summary/route.ts`
-  - [ ] `src/app/api/brands/[id]/prompts-summary/route.ts`
-  - [ ] `src/app/api/brands/[id]/citations/route.ts`
-  - [ ] `src/app/api/brands/[id]/prompts/[promptId]/chart-data/route.ts`
-  - [ ] `src/app/api/prompts/[promptId]/stats/route.ts`
+- [x] **4.1** Create `src/lib/tinybird-comparison.ts` with comparison utilities:
+  - [x] `compareResults()` - Deep comparison with configurable tolerance
+  - [x] `logMismatch()` - Store mismatch details in Redis for debugging
+  - [x] `recordTiming()` - Store query timing metrics
+- [x] **4.2** Create Tinybird read queries in `src/lib/tinybird-read.ts`:
+  - [x] `getTinybirdDashboardSummary()`
+  - [x] `getTinybirdVisibilityTimeSeries()`
+  - [x] `getTinybirdPromptChartData()`
+  - [x] `getTinybirdCitationDomainStats()` / `getTinybirdCitationUrlStats()`
+  - [x] `getTinybirdPromptsSummary()`
+  - Note: Uses `@clickhouse/client` directly instead of Tinybird pipes for easier migration to self-hosted ClickHouse
+- [x] **4.3** Add feature flag `TINYBIRD_VERIFY_ENABLED=true`
+- [x] **4.4** Update API routes to dual-read:
+  - [x] `src/app/api/brands/[id]/dashboard-summary/route.ts`
+  - [x] `src/app/api/brands/[id]/prompts-summary/route.ts`
+  - [x] `src/app/api/brands/[id]/citations/route.ts`
+  - [x] `src/app/api/brands/[id]/prompts/[promptId]/chart-data/route.ts`
+  - [x] `src/app/api/prompts/[promptId]/stats/route.ts`
 - [ ] **4.5** Run verification for minimum 7 days
 - [ ] **4.6** Achieve 99.9% match rate (accounting for floating point tolerance)
 - [ ] **4.7** Investigate and resolve any systematic mismatches
@@ -1020,8 +1034,11 @@ import { createClient } from '@clickhouse/client';
 
 // Tinybird exposes a ClickHouse-compatible endpoint
 // This makes migration to self-hosted ClickHouse seamless
+const baseUrl = process.env.TINYBIRD_BASE_URL || 'https://api.tinybird.co';
+const clickhouseUrl = baseUrl.includes(':443') ? baseUrl : `${baseUrl}:443`;
+
 const client = createClient({
-    host: process.env.TINYBIRD_CLICKHOUSE_HOST || 'https://api.tinybird.co',
+    url: clickhouseUrl,
     username: 'default',
     password: process.env.TINYBIRD_TOKEN!,
     // For Tinybird, use the workspace database
@@ -1571,8 +1588,7 @@ PostgreSQL remains the source of truth until Phase 5 cutover is confirmed stable
 - [ ] Tinybird account and workspace
 - [ ] Environment variables:
   - `TINYBIRD_TOKEN` - API token for authentication
-  - `TINYBIRD_BASE_URL` - Base URL for Tinybird API (default: `https://api.tinybird.co`)
-  - `TINYBIRD_CLICKHOUSE_HOST` - ClickHouse-compatible endpoint for reads
+  - `TINYBIRD_BASE_URL` - Base URL for Tinybird API (default: `https://api.tinybird.co`), used for both writes and reads
   - `TINYBIRD_WORKSPACE` - Workspace/database name for ClickHouse client
 - [ ] Client libraries:
   - `@chronark/zod-bird` - Type-safe writes with Zod schema validation

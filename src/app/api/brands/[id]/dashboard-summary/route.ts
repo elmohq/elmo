@@ -4,6 +4,8 @@ import { prompts, promptRuns, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, gte, lte, sql, count } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback, type LookbackPeriod } from "@/lib/chart-utils";
+import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
+import { getTinybirdDashboardSummary, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -106,12 +108,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		if (fromDate) runConditions.push(gte(promptRuns.createdAt, fromDate));
 		if (toDate) runConditions.push(lte(promptRuns.createdAt, toDate));
 
+		// Start timing PostgreSQL queries
+		const startPg = performance.now();
+
 		// Run all queries in parallel for speed
 		const [
 			brandResult,
 			totalPromptsResult,
 			totalRunsResult,
 			competitorsList,
+			enabledPromptsResult,
 		] = await Promise.all([
 			// Get brand info for brand name
 			db
@@ -135,7 +141,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 			// Get competitors for citation categorization
 			db.select().from(competitors).where(eq(competitors.brandId, brandId)),
+
+			// Get enabled prompt IDs for Tinybird filtering
+			db
+				.select({ id: prompts.id })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true))),
 		]);
+
+		// Extract enabled prompt IDs for Tinybird queries
+		const enabledPromptIds = enabledPromptsResult.map((p) => p.id);
 
 		// Process results
 		const brandName = brandResult[0]?.name || "";
@@ -485,6 +500,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 		// lastRunAt was already captured from the aggregated visibility query
 
+		// End PostgreSQL timing
+		const pgTime = performance.now() - startPg;
+
 		const response: DashboardSummaryResponse = {
 			totalPrompts: Number(totalPrompts),
 			totalRuns: Number(totalRuns),
@@ -495,6 +513,153 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			citationTimeSeries,
 			lastUpdatedAt: lastRunAt,
 		};
+
+		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
+		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
+			try {
+				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+				const fromDateStr = fromDate ? fromDate.toISOString().split("T")[0] : null;
+				const toDateStr = toDate ? toDate.toISOString().split("T")[0] : null;
+
+				const startTb = performance.now();
+				const [tinybirdResult, tbDiagnostics] = await Promise.all([
+					getTinybirdDashboardSummary(
+						brandId,
+						fromDateStr,
+						toDateStr,
+						userTimezone,
+						enabledPromptIds,
+					),
+					// Only run diagnostics if we have date filters
+					fromDateStr && toDateStr
+						? getTinybirdPromptRunDiagnostics(
+								brandId,
+								fromDateStr,
+								toDateStr,
+								userTimezone,
+								enabledPromptIds,
+						  )
+						: Promise.resolve(null),
+				]);
+				const tbTime = performance.now() - startTb;
+
+				// Only compare if we got results
+				if (tinybirdResult.length > 0) {
+					const tbData = tinybirdResult[0];
+
+					// Create comparable objects for key metrics
+					const pgComparable = {
+						totalRuns: Number(totalRuns),
+						averageVisibility,
+					};
+
+					const tbComparable = {
+						totalRuns: Number(tbData.total_runs),
+						averageVisibility: Number(tbData.avg_visibility),
+					};
+
+					// Build diagnostics if we have TB diagnostics data
+					let diagnostics: DiagnosticInfo | undefined;
+					if (tbDiagnostics) {
+						// Get PG per-prompt counts and date range
+						const pgDiagQuery = fromDate && toDate
+							? await db
+									.select({
+										promptId: promptRuns.promptId,
+										count: sql<number>`count(*)`,
+										earliest: sql<string>`min(${promptRuns.createdAt})::text`,
+										latest: sql<string>`max(${promptRuns.createdAt})::text`,
+									})
+									.from(promptRuns)
+									.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
+									.where(
+										and(
+											eq(prompts.brandId, brandId),
+											eq(prompts.enabled, true),
+											gte(promptRuns.createdAt, fromDate),
+											lte(promptRuns.createdAt, toDate),
+										),
+									)
+									.groupBy(promptRuns.promptId)
+							: [];
+
+						const pgPerPromptCounts: Record<string, number> = {};
+						let pgEarliest: string | null = null;
+						let pgLatest: string | null = null;
+
+						for (const row of pgDiagQuery) {
+							pgPerPromptCounts[row.promptId] = Number(row.count);
+							if (!pgEarliest || row.earliest < pgEarliest) pgEarliest = row.earliest;
+							if (!pgLatest || row.latest > pgLatest) pgLatest = row.latest;
+						}
+
+						// Build TB per-prompt counts
+						const tbPerPromptCounts: Record<string, number> = {};
+						for (const item of tbDiagnostics.per_prompt_counts) {
+							tbPerPromptCounts[item.prompt_id] = Number(item.count);
+						}
+
+						// Find differences between PG and TB per-prompt counts
+						const allPromptIdsSet = new Set([
+							...Object.keys(pgPerPromptCounts),
+							...Object.keys(tbPerPromptCounts),
+						]);
+						const differences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
+						for (const promptId of allPromptIdsSet) {
+							const pgCount = pgPerPromptCounts[promptId] || 0;
+							const tbCount = tbPerPromptCounts[promptId] || 0;
+							if (pgCount !== tbCount) {
+								differences.push({
+									promptId,
+									pgCount,
+									tbCount,
+									diff: tbCount - pgCount,
+								});
+							}
+						}
+						// Sort by absolute difference
+						differences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+						diagnostics = {
+							dateRange: {
+								pg: { earliest: pgEarliest, latest: pgLatest },
+								tb: {
+									earliest: tbDiagnostics.earliest_date,
+									latest: tbDiagnostics.latest_date,
+								},
+							},
+							recordCounts: {
+								pg: Number(totalRuns),
+								tb: Number(tbDiagnostics.total_count),
+							},
+							perPromptCounts: {
+								pg: pgPerPromptCounts,
+								tb: tbPerPromptCounts,
+								differences: differences.slice(0, 20), // Top 20 differences
+							},
+							extra: {
+								enabledPromptIdCount: enabledPromptIds.length,
+								pgPromptCount: pgDiagQuery.length,
+								tbPromptCount: tbDiagnostics.per_prompt_counts.length,
+							},
+						};
+					}
+
+					await verifyAndLog({
+						endpoint: "dashboard-summary",
+						brandId,
+						filters: { lookback: lookbackParam, fromDate: fromDateStr, toDate: toDateStr },
+						postgresResult: pgComparable,
+						tinybirdResult: tbComparable,
+						pgTime,
+						tbTime,
+						diagnostics,
+					});
+				}
+			} catch (error) {
+				console.error("Tinybird verification failed for dashboard-summary:", error);
+			}
+		}
 
 		return NextResponse.json(response);
 

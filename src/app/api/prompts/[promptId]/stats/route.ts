@@ -4,6 +4,8 @@ import { promptRuns, prompts, brands, competitors } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, gte, sql, count, and } from "drizzle-orm";
 import { extractCitations } from "@/lib/text-extraction";
+import { isTinybirdVerifyEnabled, verifyAndLog } from "@/lib/tinybird-comparison";
+import { getTinybirdPromptStats, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	promptId: string;
@@ -404,6 +406,53 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				totalRuns: Number(mentionData?.totalRuns || 0)
 			}
 		};
+
+		// Dual-read verification against Tinybird (async, doesn't block response)
+		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
+			(async () => {
+				try {
+					const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+					const toDate = new Date();
+					const toDateStr = toDate.toISOString().split("T")[0];
+					const fromDateStr = fromDate.toISOString().split("T")[0];
+
+					const startTb = performance.now();
+					const tinybirdResult = await getTinybirdPromptStats(promptId, fromDateStr, toDateStr, userTimezone);
+					const tbTime = performance.now() - startTb;
+
+					if (tinybirdResult.length > 0) {
+						const tbData = tinybirdResult[0];
+
+						const pgComparable = {
+							totalRuns: Number(mentionData?.totalRuns || 0),
+							brandMentions: Number(mentionData?.brandMentions || 0),
+							webSearchEnabled: webSearchSummary.enabled,
+						};
+
+						const tbComparable = {
+							totalRuns: Number(tbData.total_runs),
+							brandMentions: Number(tbData.brand_mentions),
+							webSearchEnabled: Number(tbData.web_search_enabled_count),
+						};
+
+						verifyAndLog({
+							endpoint: "prompts-summary", // Reuse the prompts-summary endpoint tracking
+							brandId: prompt[0].brandId,
+							filters: {
+								promptId,
+								days,
+							},
+							postgresResult: pgComparable,
+							tinybirdResult: tbComparable,
+							pgTime: 0,
+							tbTime,
+						});
+					}
+				} catch (error) {
+					console.error("Tinybird verification failed for prompt stats:", error);
+				}
+			})();
+		}
 
 		return NextResponse.json(response);
 

@@ -42,3 +42,8 @@ next-env.d.ts
 
 # tinybird
 .tinyb
+
+# to remove
+prompt_runs.ndjson.gz
+prompt_runs_rows.csv
+prompt_runs.meta.json

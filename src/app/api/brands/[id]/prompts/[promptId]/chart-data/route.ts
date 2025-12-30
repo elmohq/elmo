@@ -6,6 +6,8 @@ import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback, calculateVisibilityPercentages } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@/lib/db/schema";
+import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
+import { getTinybirdPromptChartData, isTinybirdReadEnabled } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -108,6 +110,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			}
 			runConditions.push(eq(promptRuns.modelGroup, modelGroupParam as "openai" | "anthropic" | "google"));
 		}
+
+		// Start timing PostgreSQL queries
+		const startPg = performance.now();
 
 		// OPTIMIZATION 1: Parallel queries instead of sequential
 		const [promptData, brandData, competitorsData] = await Promise.all([
@@ -244,6 +249,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			});
 		}
 
+		// End PostgreSQL timing
+		const pgTime = performance.now() - startPg;
+
 		const response: PromptChartDataResponse = {
 			prompt: {
 				id: prompt.id,
@@ -260,6 +268,121 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			webQueryMapping,
 			modelWebQueryMappings,
 		};
+
+		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
+		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
+			try {
+				const fromDateStr = fromDate ? fromDate.toISOString().split("T")[0] : null;
+				const toDateStr = toDate ? toDate.toISOString().split("T")[0] : null;
+				const webSearchEnabled =
+					webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
+
+				const startTb = performance.now();
+				const tinybirdResult = await getTinybirdPromptChartData(
+					brandId,
+					promptId,
+					fromDateStr,
+					toDateStr,
+					timezoneParam,
+					webSearchEnabled,
+					modelGroupParam || undefined,
+				);
+				const tbTime = performance.now() - startTb;
+
+				// Compare aggregate metrics
+				const tbTotalRuns = tinybirdResult.reduce((sum, r) => sum + Number(r.total_runs), 0);
+				const tbBrandMentions = tinybirdResult.reduce((sum, r) => sum + Number(r.brand_mentioned_count), 0);
+
+				const pgBrandMentions = runs.filter((r) => r.brandMentioned).length;
+
+				const pgComparable = {
+					totalRuns,
+					brandMentions: pgBrandMentions,
+				};
+
+				const tbComparable = {
+					totalRuns: tbTotalRuns,
+					brandMentions: tbBrandMentions,
+				};
+
+				// Build diagnostics with per-date breakdown
+				const pgPerDateCounts: Record<string, number> = {};
+				const tbPerDateCounts: Record<string, number> = {};
+				
+				// Group PG runs by date
+				for (const run of runs) {
+					const date = new Date(run.createdAt).toLocaleDateString("en-CA", { timeZone: timezoneParam });
+					pgPerDateCounts[date] = (pgPerDateCounts[date] || 0) + 1;
+				}
+				
+				// TB already has per-date data
+				for (const row of tinybirdResult) {
+					tbPerDateCounts[row.date] = Number(row.total_runs);
+				}
+				
+				// Find date differences
+				const allDates = new Set([...Object.keys(pgPerDateCounts), ...Object.keys(tbPerDateCounts)]);
+				const dateDifferences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
+				for (const date of allDates) {
+					const pgCount = pgPerDateCounts[date] || 0;
+					const tbCount = tbPerDateCounts[date] || 0;
+					if (pgCount !== tbCount) {
+						dateDifferences.push({
+							promptId: date, // Reusing the promptId field for date
+							pgCount,
+							tbCount,
+							diff: tbCount - pgCount,
+						});
+					}
+				}
+				dateDifferences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+				const pgEarliest = runs.length > 0 ? runs[runs.length - 1].createdAt.toISOString() : null;
+				const pgLatest = runs.length > 0 ? runs[0].createdAt.toISOString() : null;
+				const tbDates = tinybirdResult.map(r => r.date).sort();
+				
+				const diagnostics: DiagnosticInfo = {
+					dateRange: {
+						pg: { earliest: pgEarliest, latest: pgLatest },
+						tb: { earliest: tbDates[0] || null, latest: tbDates[tbDates.length - 1] || null },
+					},
+					recordCounts: {
+						pg: totalRuns,
+						tb: tbTotalRuns,
+					},
+					perPromptCounts: {
+						pg: pgPerDateCounts,
+						tb: tbPerDateCounts,
+						differences: dateDifferences.slice(0, 20),
+					},
+					extra: {
+						pgDatesWithData: Object.keys(pgPerDateCounts).length,
+						tbDatesWithData: tinybirdResult.length,
+						webSearchEnabled,
+						modelGroup: modelGroupParam,
+					},
+				};
+
+				await verifyAndLog({
+					endpoint: "prompt-chart-data",
+					brandId,
+					filters: {
+						promptId,
+						lookback: lookbackParam,
+						webSearchEnabled: webSearchEnabledParam,
+						modelGroup: modelGroupParam,
+						timezone: timezoneParam,
+					},
+					postgresResult: pgComparable,
+					tinybirdResult: tbComparable,
+					pgTime,
+					tbTime,
+					diagnostics,
+				});
+			} catch (error) {
+				console.error("Tinybird verification failed for prompt-chart-data:", error);
+			}
+		}
 
 		return NextResponse.json(response);
 

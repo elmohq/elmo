@@ -116,7 +116,7 @@ async function savePromptRun(
 	webQueries: string[],
 	brandMentioned: boolean,
 	competitorsMentioned: string[],
-): Promise<string> {
+): Promise<{ id: string; createdAt: Date }> {
 	try {
 		const [result] = await db
 			.insert(promptRuns)
@@ -130,8 +130,8 @@ async function savePromptRun(
 				brandMentioned,
 				competitorsMentioned,
 			})
-			.returning({ id: promptRuns.id });
-		return result.id;
+			.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
+		return result;
 	} catch (error) {
 		console.error("Error saving prompt run:", error);
 		throw error;
@@ -154,8 +154,8 @@ async function sendToTinybird(
 	brandMentioned: boolean,
 	competitorsMentioned: string[],
 	textContent: string,
+	createdAt: Date,
 ): Promise<void> {
-	const now = new Date();
 
 	// Extract citations (will be auto-expanded to citations table via MV)
 	const extractedCitations = extractCitations(rawOutput, modelGroup);
@@ -179,7 +179,7 @@ async function sendToTinybird(
 		text_content: textContent,
 		raw_output: JSON.stringify(rawOutput),
 		citations: citations,
-		created_at: now.toISOString(),
+		created_at: createdAt.toISOString(),
 		competitor_count: competitorsMentioned.length,
 		has_competitor_mention: competitorsMentioned.length > 0 ? 1 : 0,
 	};
@@ -242,31 +242,32 @@ const worker = new Worker(
 						job.log(`Completed OpenAI with web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						const promptRunId = await savePromptRun(
-							promptId,
-							AI_MODELS.OPENAI.GROUP,
-							AI_MODELS.OPENAI.MODEL,
-							true,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-						);
+					const { id: promptRunId, createdAt } = await savePromptRun(
+						promptId,
+						AI_MODELS.OPENAI.GROUP,
+						AI_MODELS.OPENAI.MODEL,
+						true,
+						rawOutput,
+						webQueries,
+						brandMentioned,
+						competitorsMentioned,
+					);
 
-						// Dual-write to Tinybird (errors are logged but don't fail the job)
-						await sendToTinybird(
-							promptRunId,
-							promptId,
-							prompt.brandId,
-							AI_MODELS.OPENAI.GROUP,
-							AI_MODELS.OPENAI.MODEL,
-							true,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-							textContent,
-						);
+					// Dual-write to Tinybird (errors are logged but don't fail the job)
+					await sendToTinybird(
+						promptRunId,
+						promptId,
+						prompt.brandId,
+						AI_MODELS.OPENAI.GROUP,
+						AI_MODELS.OPENAI.MODEL,
+						true,
+						rawOutput,
+						webQueries,
+						brandMentioned,
+						competitorsMentioned,
+						textContent,
+						createdAt,
+					);
 
 						updateProgress();
 					}).catch((error) => {
@@ -306,31 +307,32 @@ const worker = new Worker(
 						job.log(`Completed Anthropic without web search iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						const promptRunId = await savePromptRun(
-							promptId,
-							AI_MODELS.ANTHROPIC.GROUP,
-							AI_MODELS.ANTHROPIC.MODEL,
-							false,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-						);
+					const { id: promptRunId, createdAt } = await savePromptRun(
+						promptId,
+						AI_MODELS.ANTHROPIC.GROUP,
+						AI_MODELS.ANTHROPIC.MODEL,
+						false,
+						rawOutput,
+						webQueries,
+						brandMentioned,
+						competitorsMentioned,
+					);
 
-						// Dual-write to Tinybird (errors are logged but don't fail the job)
-						await sendToTinybird(
-							promptRunId,
-							promptId,
-							prompt.brandId,
-							AI_MODELS.ANTHROPIC.GROUP,
-							AI_MODELS.ANTHROPIC.MODEL,
-							false,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-							textContent,
-						);
+					// Dual-write to Tinybird (errors are logged but don't fail the job)
+					await sendToTinybird(
+						promptRunId,
+						promptId,
+						prompt.brandId,
+						AI_MODELS.ANTHROPIC.GROUP,
+						AI_MODELS.ANTHROPIC.MODEL,
+						false,
+						rawOutput,
+						webQueries,
+						brandMentioned,
+						competitorsMentioned,
+						textContent,
+						createdAt,
+					);
 
 						updateProgress();
 					}).catch((error) => {
@@ -370,31 +372,32 @@ const worker = new Worker(
 						job.log(`Completed DataForSEO iteration ${i + 1}/${RUNS_PER_PROMPT}`);
 						const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitors);
 
-						const promptRunId = await savePromptRun(
-							promptId,
-							"google",
-							"dataforseo",
-							true,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-						);
+					const { id: promptRunId, createdAt } = await savePromptRun(
+						promptId,
+						"google",
+						"dataforseo",
+						true,
+						rawOutput,
+						webQueries,
+						brandMentioned,
+						competitorsMentioned,
+					);
 
-						// Dual-write to Tinybird (errors are logged but don't fail the job)
-						await sendToTinybird(
-							promptRunId,
-							promptId,
-							prompt.brandId,
-							"google",
-							"dataforseo",
-							true,
-							rawOutput,
-							webQueries,
-							brandMentioned,
-							competitorsMentioned,
-							textContent,
-						);
+					// Dual-write to Tinybird (errors are logged but don't fail the job)
+					await sendToTinybird(
+						promptRunId,
+						promptId,
+						prompt.brandId,
+						"google",
+						"dataforseo",
+						true,
+						rawOutput,
+						webQueries,
+						brandMentioned,
+						competitorsMentioned,
+						textContent,
+						createdAt,
+					);
 
 						updateProgress();
 					}).catch((error) => {
