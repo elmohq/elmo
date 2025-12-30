@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts, promptRuns, SYSTEM_TAGS } from "@/lib/db/schema";
+import { prompts, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq, and, gte, lte, desc, count, sql } from "drizzle-orm";
-import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
-import { getTinybirdPromptsSummary, getTinybirdPromptsSummaryFast, getTinybirdPromptRunDiagnostics, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { eq, and, desc } from "drizzle-orm";
+import { getTinybirdPromptsSummary } from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -53,13 +52,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const modelGroupParam = searchParams.get("modelGroup");
 		const tagsParam = searchParams.get("tags"); // comma-separated tag names for filtering
 
-		let fromDate: Date | undefined;
-		let toDate: Date | undefined;
+		// Use UTC for date filtering to match PostgreSQL behavior
+		const timezone = "UTC";
+
+		let fromDateStr: string | null = null;
+		let toDateStr: string | null = null;
 
 		// Handle lookback periods
 		if (lookbackParam && lookbackParam !== "all") {
-			toDate = new Date();
-			fromDate = new Date();
+			const toDate = new Date();
+			const fromDate = new Date();
 
 			switch (lookbackParam) {
 				case "1w":
@@ -83,39 +85,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 						{ status: 400 },
 					);
 			}
+
+			fromDateStr = fromDate.toISOString().split("T")[0];
+			toDateStr = toDate.toISOString().split("T")[0];
 		}
 
-		// Build query conditions for prompt runs
-		const runConditions = [eq(prompts.brandId, brandId)];
-
-		// Add time range conditions if specified
-		if (fromDate) {
-			runConditions.push(gte(promptRuns.createdAt, fromDate));
-		}
-		if (toDate) {
-			runConditions.push(lte(promptRuns.createdAt, toDate));
-		}
-
-		// Add webSearchEnabled filter if specified
-		if (webSearchEnabledParam !== null) {
-			const webSearchEnabled = webSearchEnabledParam === "true";
-			runConditions.push(eq(promptRuns.webSearchEnabled, webSearchEnabled));
-		}
-
-		// Add modelGroup filter if specified
+		// Validate modelGroup if specified
 		if (modelGroupParam) {
 			const validModelGroups = ["openai", "anthropic", "google"];
 			if (!validModelGroups.includes(modelGroupParam)) {
 				return NextResponse.json({ error: "Invalid model group. Use: openai, anthropic, or google" }, { status: 400 });
 			}
-			runConditions.push(eq(promptRuns.modelGroup, modelGroupParam as "openai" | "anthropic" | "google"));
 		}
 
-		// Start timing PostgreSQL queries
-		const startPg = performance.now();
-
-		// Get prompts with aggregated run statistics
-		const promptsWithStats = await db
+		// Get all prompts with metadata from PostgreSQL
+		const allPrompts = await db
 			.select({
 				id: prompts.id,
 				value: prompts.value,
@@ -125,62 +109,78 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				tags: prompts.tags,
 				systemTags: prompts.systemTags,
 				createdAt: prompts.createdAt,
-				totalRuns: count(promptRuns.id),
-				brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
-				competitorMentions: sql<number>`SUM(CASE WHEN array_length(${promptRuns.competitorsMentioned}, 1) > 0 THEN 1 ELSE 0 END)`,
-				totalWeightedMentions: sql<number>`SUM(
-					CASE WHEN ${promptRuns.brandMentioned} THEN 2 ELSE 0 END +
-					COALESCE(array_length(${promptRuns.competitorsMentioned}, 1), 0)
-				)`,
-				lastRunAt: sql<Date | null>`MAX(${promptRuns.createdAt})`,
 			})
 			.from(prompts)
-			.leftJoin(promptRuns, eq(promptRuns.promptId, prompts.id))
-			.where(and(...runConditions))
-			.groupBy(
-				prompts.id,
-				prompts.value,
-				prompts.groupCategory,
-				prompts.groupPrefix,
-				prompts.enabled,
-				prompts.tags,
-				prompts.systemTags,
-				prompts.createdAt,
-			)
+			.where(eq(prompts.brandId, brandId))
 			.orderBy(desc(prompts.createdAt));
 
-		// Fetch all unique user tags from ALL enabled prompts for this brand
-		// (not filtered by time period, so tags are always available for filtering)
-		const allEnabledPrompts = await db
-			.select({ tags: prompts.tags })
-			.from(prompts)
-			.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
+		// Filter to enabled prompts
+		const enabledPrompts = allPrompts.filter((p) => p.enabled);
+		const enabledPromptIds = enabledPrompts.map((p) => p.id);
 
+		// Collect all unique user tags from enabled prompts
 		const allUserTags = new Set<string>();
-		for (const p of allEnabledPrompts) {
+		for (const p of enabledPrompts) {
 			if (p.tags && Array.isArray(p.tags)) {
 				p.tags.forEach((tag) => allUserTags.add(tag));
 			}
 		}
 
-		// Process the results to calculate rates and determine visibility
-		const processedPrompts: PromptSummary[] = promptsWithStats.map((prompt) => {
-			const totalRuns = Number(prompt.totalRuns);
-			const brandMentions = Number(prompt.brandMentions);
-			const competitorMentions = Number(prompt.competitorMentions);
-			const totalWeightedMentions = Number(prompt.totalWeightedMentions);
+		// Get stats from Tinybird
+		const webSearchEnabled = webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
+		
+		const tinybirdStats = await getTinybirdPromptsSummary(
+			brandId,
+			fromDateStr,
+			toDateStr,
+			timezone,
+			webSearchEnabled,
+			modelGroupParam || undefined,
+			enabledPromptIds,
+		);
 
-			const brandMentionRate = totalRuns > 0 ? Math.round((brandMentions / totalRuns) * 100) : 0;
-			const competitorMentionRate = totalRuns > 0 ? Math.round((competitorMentions / totalRuns) * 100) : 0;
+		// Create a map of prompt_id -> stats from Tinybird
+		const statsMap = new Map<string, {
+			totalRuns: number;
+			brandMentionRate: number;
+			competitorMentionRate: number;
+			totalWeightedMentions: number;
+			lastRunDate: string | null;
+		}>();
+
+		for (const stat of tinybirdStats) {
+			statsMap.set(stat.prompt_id, {
+				totalRuns: Number(stat.total_runs),
+				brandMentionRate: Number(stat.brand_mention_rate),
+				competitorMentionRate: Number(stat.competitor_mention_rate),
+				totalWeightedMentions: Number(stat.total_weighted_mentions),
+				lastRunDate: stat.last_run_date,
+			});
+		}
+
+		// Process prompts and merge with Tinybird stats
+		const processedPrompts: PromptSummary[] = enabledPrompts.map((prompt) => {
+			const stats = statsMap.get(prompt.id);
+			
+			const totalRuns = stats?.totalRuns || 0;
+			const brandMentionRate = stats?.brandMentionRate || 0;
+			const competitorMentionRate = stats?.competitorMentionRate || 0;
+			const totalWeightedMentions = stats?.totalWeightedMentions || 0;
 			const averageWeightedMentions = totalRuns > 0 ? totalWeightedMentions / totalRuns : 0;
 			
 			// Consider prompt to have visibility data if there are any brand or competitor mentions
-			const hasVisibilityData = brandMentions > 0 || competitorMentions > 0;
+			const hasVisibilityData = brandMentionRate > 0 || competitorMentionRate > 0;
 
 			// Combine system tags and user tags for response
 			const userTags = prompt.tags || [];
 			const systemTags = prompt.systemTags || [];
 			const allTags = [...systemTags, ...userTags];
+
+			// Parse lastRunDate - Tinybird returns date string, convert to Date
+			let lastRunAt: Date | null = null;
+			if (stats?.lastRunDate) {
+				lastRunAt = new Date(stats.lastRunDate);
+			}
 
 			return {
 				id: prompt.id,
@@ -194,26 +194,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				competitorMentionRate,
 				averageWeightedMentions,
 				hasVisibilityData,
-				lastRunAt: prompt.lastRunAt,
+				lastRunAt,
 				tags: allTags,
 			};
 		});
 
-		// Filter to only enabled prompts
-		let enabledPrompts = processedPrompts.filter((prompt) => prompt.enabled);
-
 		// Filter by tags if specified
+		let filteredPrompts = processedPrompts;
 		if (tagsParam) {
 			const filterTags = tagsParam.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
 			if (filterTags.length > 0) {
-				enabledPrompts = enabledPrompts.filter((prompt) =>
+				filteredPrompts = processedPrompts.filter((prompt) =>
 					prompt.tags.some((tag) => filterTags.includes(tag.toLowerCase())),
 				);
 			}
 		}
 		
 		// Sort by visibility data priority, then by weighted mentions, then alphabetically
-		const sortedPrompts = enabledPrompts.sort((a, b) => {
+		const sortedPrompts = filteredPrompts.sort((a, b) => {
 			// Define priority order: 1 = has visibility data, 2 = awaiting first data, 3 = no brands found
 			const getPriority = (prompt: PromptSummary): number => {
 				if (prompt.hasVisibilityData) return 1; // Has visibility data - show first
@@ -245,147 +243,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			...Array.from(allUserTags).sort(),
 		];
 
-		// End PostgreSQL timing
-		const pgTime = performance.now() - startPg;
-
 		const response: PromptsSummaryResponse = {
 			prompts: sortedPrompts,
 			totalPrompts: sortedPrompts.length,
 			availableTags,
 		};
-
-		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
-		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
-			try {
-				const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-				const fromDateStr = fromDate ? fromDate.toISOString().split("T")[0] : null;
-				const toDateStr = toDate ? toDate.toISOString().split("T")[0] : null;
-				const webSearchEnabled = webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
-
-				// Get enabled prompt IDs for filtering Tinybird
-				const enabledPromptIds = sortedPrompts.map((p) => p.id);
-
-				// Time ONLY the main query (not diagnostics) for fair comparison
-				const startTb = performance.now();
-				const tinybirdResult = await getTinybirdPromptsSummaryFast(
-					brandId,
-					fromDateStr,
-					toDateStr,
-					userTimezone,
-					webSearchEnabled,
-					modelGroupParam || undefined,
-					enabledPromptIds,
-				);
-				const tbTime = performance.now() - startTb;
-
-				// Run diagnostics separately (not included in timing)
-				const tbDiagnostics = fromDateStr && toDateStr
-					? await getTinybirdPromptRunDiagnostics(
-							brandId,
-							fromDateStr,
-							toDateStr,
-							userTimezone,
-							enabledPromptIds,
-					  )
-					: null;
-
-				// Compare aggregate metrics for enabled prompts
-				const pgTotalRuns = sortedPrompts.reduce((sum, p) => sum + p.totalRuns, 0);
-				const tbTotalRuns = tinybirdResult.reduce((sum, r) => sum + Number(r.total_runs), 0);
-
-				const pgComparable = {
-					totalPrompts: sortedPrompts.length,
-					totalRuns: pgTotalRuns,
-				};
-
-				const tbComparable = {
-					totalPrompts: tinybirdResult.length,
-					totalRuns: tbTotalRuns,
-				};
-
-				// Build diagnostics
-				let diagnostics: DiagnosticInfo | undefined;
-				if (tbDiagnostics) {
-					// Build per-prompt counts from PG (already have this from sortedPrompts)
-					const pgPerPromptCounts: Record<string, number> = {};
-					for (const p of sortedPrompts) {
-						pgPerPromptCounts[p.id] = p.totalRuns;
-					}
-
-					// Build TB per-prompt counts from the prompts-summary result
-					const tbPerPromptCounts: Record<string, number> = {};
-					for (const r of tinybirdResult) {
-						tbPerPromptCounts[r.prompt_id] = Number(r.total_runs);
-					}
-
-					// Find differences between PG and TB per-prompt counts
-					const allPromptIdsSet = new Set([
-						...Object.keys(pgPerPromptCounts),
-						...Object.keys(tbPerPromptCounts),
-					]);
-					const differences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
-					for (const promptId of allPromptIdsSet) {
-						const pgCount = pgPerPromptCounts[promptId] || 0;
-						const tbCount = tbPerPromptCounts[promptId] || 0;
-						if (pgCount !== tbCount) {
-							differences.push({
-								promptId,
-								pgCount,
-								tbCount,
-								diff: tbCount - pgCount,
-							});
-						}
-					}
-					// Sort by absolute difference
-					differences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-
-					diagnostics = {
-						dateRange: {
-							pg: { earliest: null, latest: null }, // Not easily available from sortedPrompts
-							tb: {
-								earliest: tbDiagnostics.earliest_date,
-								latest: tbDiagnostics.latest_date,
-							},
-						},
-						recordCounts: {
-							pg: pgTotalRuns,
-							tb: Number(tbDiagnostics.total_count),
-						},
-						perPromptCounts: {
-							pg: pgPerPromptCounts,
-							tb: tbPerPromptCounts,
-							differences: differences.slice(0, 20), // Top 20 differences
-						},
-						extra: {
-							enabledPromptIdCount: enabledPromptIds.length,
-							pgPromptCount: sortedPrompts.length,
-							tbPromptCount: tinybirdResult.length,
-							tbDiagPromptCount: tbDiagnostics.per_prompt_counts.length,
-							webSearchEnabled,
-							modelGroup: modelGroupParam,
-						},
-					};
-				}
-
-				await verifyAndLog({
-					endpoint: "prompts-summary",
-					brandId,
-					filters: {
-						lookback: lookbackParam,
-						webSearchEnabled: webSearchEnabledParam,
-						modelGroup: modelGroupParam,
-						tags: tagsParam,
-					},
-					postgresResult: pgComparable,
-					tinybirdResult: tbComparable,
-					pgTime,
-					tbTime,
-					diagnostics,
-				});
-			} catch (error) {
-				console.error("Tinybird verification failed for prompts-summary:", error);
-			}
-		}
 
 		return NextResponse.json(response);
 	} catch (error) {

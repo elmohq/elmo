@@ -363,6 +363,150 @@ export interface TinybirdPromptChartDataPoint {
 	competitor_mentioned_count: number;
 }
 
+export interface TinybirdPromptDailyStats {
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+}
+
+export interface TinybirdPromptCompetitorDailyStats {
+	date: string;
+	competitor_name: string;
+	mention_count: number;
+}
+
+export interface TinybirdWebQueryMapping {
+	model_group: string;
+	web_query: string;
+	created_at_iso: string;
+}
+
+/**
+ * Get prompt-level daily stats from Tinybird (brand visibility only, aggregated across models)
+ * Uses FINAL for accurate counts.
+ */
+export async function getTinybirdPromptDailyStats(
+	promptId: string,
+	fromDate: string | null,
+	toDate: string | null,
+	timezone: string,
+	webSearchEnabled?: boolean,
+	modelGroup?: string,
+): Promise<TinybirdPromptDailyStats[]> {
+	const dateFilter =
+		fromDate && toDate
+			? `AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String}) AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})`
+			: "";
+
+	const webSearchFilter = webSearchEnabled !== undefined ? `AND web_search_enabled = {webSearchEnabled:UInt8}` : "";
+	const modelGroupFilter = modelGroup ? `AND model_group = {modelGroup:String}` : "";
+
+	return queryTinybird<TinybirdPromptDailyStats>(
+		`
+		SELECT
+			toDate(created_at, {timezone:String}) as date,
+			count() as total_runs,
+			sum(brand_mentioned) as brand_mentioned_count
+		FROM prompt_runs FINAL
+		WHERE prompt_id = {promptId:String}
+			${dateFilter}
+			${webSearchFilter}
+			${modelGroupFilter}
+		GROUP BY date
+		ORDER BY date
+	`,
+		{
+			promptId,
+			timezone,
+			...(fromDate && toDate ? { fromDate, toDate } : {}),
+			...(webSearchEnabled !== undefined ? { webSearchEnabled: webSearchEnabled ? 1 : 0 } : {}),
+			...(modelGroup ? { modelGroup } : {}),
+		},
+	);
+}
+
+/**
+ * Get per-competitor daily mention counts from Tinybird
+ * Uses arrayJoin to expand competitors_mentioned array and count per competitor per day.
+ * Uses FINAL for accurate counts.
+ */
+export async function getTinybirdPromptCompetitorDailyStats(
+	promptId: string,
+	fromDate: string | null,
+	toDate: string | null,
+	timezone: string,
+	webSearchEnabled?: boolean,
+	modelGroup?: string,
+): Promise<TinybirdPromptCompetitorDailyStats[]> {
+	const dateFilter =
+		fromDate && toDate
+			? `AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String}) AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})`
+			: "";
+
+	const webSearchFilter = webSearchEnabled !== undefined ? `AND web_search_enabled = {webSearchEnabled:UInt8}` : "";
+	const modelGroupFilter = modelGroup ? `AND model_group = {modelGroup:String}` : "";
+
+	return queryTinybird<TinybirdPromptCompetitorDailyStats>(
+		`
+		SELECT
+			toDate(created_at, {timezone:String}) as date,
+			competitor_name,
+			count() as mention_count
+		FROM prompt_runs FINAL
+		ARRAY JOIN competitors_mentioned AS competitor_name
+		WHERE prompt_id = {promptId:String}
+			${dateFilter}
+			${webSearchFilter}
+			${modelGroupFilter}
+		GROUP BY date, competitor_name
+		ORDER BY date, competitor_name
+	`,
+		{
+			promptId,
+			timezone,
+			...(fromDate && toDate ? { fromDate, toDate } : {}),
+			...(webSearchEnabled !== undefined ? { webSearchEnabled: webSearchEnabled ? 1 : 0 } : {}),
+			...(modelGroup ? { modelGroup } : {}),
+		},
+	);
+}
+
+/**
+ * Get web queries for a prompt with timestamps for mapping (oldest query selection)
+ * Returns all web queries with their model_group and created_at for client-side processing.
+ * Uses FINAL for accurate counts.
+ */
+export async function getTinybirdPromptWebQueriesForMapping(
+	promptId: string,
+	fromDate: string | null,
+	toDate: string | null,
+	timezone: string,
+): Promise<TinybirdWebQueryMapping[]> {
+	const dateFilter =
+		fromDate && toDate
+			? `AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String}) AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})`
+			: "";
+
+	return queryTinybird<TinybirdWebQueryMapping>(
+		`
+		SELECT
+			model_group,
+			arrayJoin(web_queries) as web_query,
+			formatDateTime(created_at, '%Y-%m-%dT%H:%i:%S', 'UTC') || '.000Z' as created_at_iso
+		FROM prompt_runs FINAL
+		WHERE prompt_id = {promptId:String}
+			AND length(web_queries) > 0
+			${dateFilter}
+		ORDER BY created_at ASC
+	`,
+		{
+			promptId,
+			timezone,
+			...(fromDate && toDate ? { fromDate, toDate } : {}),
+		},
+	);
+}
+
 /**
  * Get prompt-level chart data from Tinybird
  * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).

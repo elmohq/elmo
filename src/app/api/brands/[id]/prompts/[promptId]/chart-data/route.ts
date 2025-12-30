@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db/db";
-import { prompts, promptRuns, competitors, brands } from "@/lib/db/schema";
+import { prompts, competitors, brands } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { generateDateRange, getDaysFromLookback, calculateVisibilityPercentages } from "@/lib/chart-utils";
+import { eq } from "drizzle-orm";
+import { generateDateRange, getDaysFromLookback } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@/lib/db/schema";
-import { isTinybirdVerifyEnabled, verifyAndLog, type DiagnosticInfo } from "@/lib/tinybird-comparison";
-import { getTinybirdPromptChartData, getTinybirdPromptChartDataFast, isTinybirdReadEnabled } from "@/lib/tinybird-read";
+import { 
+	getTinybirdPromptDailyStats, 
+	getTinybirdPromptCompetitorDailyStats,
+	getTinybirdPromptWebQueriesForMapping,
+} from "@/lib/tinybird-read";
 
 type Params = {
 	id: string;
@@ -52,71 +55,65 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const lookbackParam = (searchParams.get("lookback") || "1w") as LookbackPeriod;
 		const webSearchEnabledParam = searchParams.get("webSearchEnabled");
 		const modelGroupParam = searchParams.get("modelGroup");
-		// Use client timezone if provided, otherwise fall back to server default
-		const timezoneParam = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
+		
+		// Use client timezone for chart grouping - this matches the original behavior
+		// where calculateVisibilityPercentages used userTimezone to bucket events by local date
+		const timezone = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-		// Calculate date range for SQL query with buffer days to handle timezone differences
-		// The precise timezone-aware date bucketing happens in calculateVisibilityPercentages
-		let fromDate: Date | undefined;
-		let toDate: Date | undefined;
+		// Calculate date range in user's timezone
+		let fromDateStr: string | null = null;
+		let toDateStr: string | null = null;
+		let startDate: Date;
+		let endDate: Date;
+
+		const now = new Date();
+		// Get today's date in the user's timezone - always needed for endDate
+		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
 
 		if (lookbackParam && lookbackParam !== "all") {
-			const now = new Date();
+			toDateStr = todayStr;
 			
-			// End date: add 1 day buffer to ensure we include all of "today" in any timezone
-			toDate = new Date(now);
-			toDate.setDate(toDate.getDate() + 1);
-			
-			// Start date: add 1 day buffer before the lookback period
-			fromDate = new Date(now);
+			const fromDate = new Date(now);
 			switch (lookbackParam) {
 				case "1w":
-					fromDate.setDate(fromDate.getDate() - 8); // 7 days + 1 day buffer
+					fromDate.setDate(fromDate.getDate() - 6); // 7 days including today
 					break;
 				case "1m":
 					fromDate.setMonth(fromDate.getMonth() - 1);
-					fromDate.setDate(fromDate.getDate() - 1); // 1 day buffer
 					break;
 				case "3m":
 					fromDate.setMonth(fromDate.getMonth() - 3);
-					fromDate.setDate(fromDate.getDate() - 1);
 					break;
 				case "6m":
 					fromDate.setMonth(fromDate.getMonth() - 6);
-					fromDate.setDate(fromDate.getDate() - 1);
 					break;
 				case "1y":
 					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					fromDate.setDate(fromDate.getDate() - 1);
 					break;
 			}
+			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
+			
+			startDate = new Date(fromDateStr);
+			endDate = new Date(toDateStr);
+		} else {
+			// For "all", set toDate to today but leave fromDate null
+			// This ensures we include data up to today
+			toDateStr = todayStr;
+			// We'll determine startDate from the data, endDate is today
+			startDate = new Date();
+			endDate = new Date(todayStr);
 		}
 
-		// Build query conditions
-		const runConditions = [eq(promptRuns.promptId, promptId)];
-
-		if (fromDate) runConditions.push(gte(promptRuns.createdAt, fromDate));
-		if (toDate) runConditions.push(lte(promptRuns.createdAt, toDate));
-
-		if (webSearchEnabledParam !== null) {
-			const webSearchEnabled = webSearchEnabledParam === "true";
-			runConditions.push(eq(promptRuns.webSearchEnabled, webSearchEnabled));
-		}
-
+		// Validate modelGroup if specified
 		if (modelGroupParam) {
 			const validModelGroups = ["openai", "anthropic", "google"];
 			if (!validModelGroups.includes(modelGroupParam)) {
 				return NextResponse.json({ error: "Invalid model group" }, { status: 400 });
 			}
-			runConditions.push(eq(promptRuns.modelGroup, modelGroupParam as "openai" | "anthropic" | "google"));
 		}
 
-		// Start timing PostgreSQL queries
-		const startPg = performance.now();
-
-		// OPTIMIZATION 1: Parallel queries instead of sequential
+		// Get prompt, brand, and competitors from PostgreSQL (metadata only)
 		const [promptData, brandData, competitorsData] = await Promise.all([
-			// Get prompt info
 			db.select({
 				id: prompts.id,
 				value: prompts.value,
@@ -125,10 +122,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				brandId: prompts.brandId,
 			}).from(prompts).where(eq(prompts.id, promptId)).limit(1),
 
-			// Get brand info
 			db.select().from(brands).where(eq(brands.id, brandId)).limit(1),
 
-			// Get competitors
 			db.select().from(competitors).where(eq(competitors.brandId, brandId))
 		]);
 
@@ -148,34 +143,105 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const brand = brandData[0];
 		const brandCompetitors = competitorsData;
 
-		// OPTIMIZATION 2: Simplified approach - fetch minimal data efficiently
-		const runs = await db
-			.select({
-				id: promptRuns.id,
-				promptId: promptRuns.promptId,
-				modelGroup: promptRuns.modelGroup,
-				model: promptRuns.model,
-				webSearchEnabled: promptRuns.webSearchEnabled,
-				rawOutput: sql<unknown>`NULL`, // Don't fetch the large rawOutput field
-				webQueries: promptRuns.webQueries,
-				brandMentioned: promptRuns.brandMentioned,
-				competitorsMentioned: promptRuns.competitorsMentioned,
-				createdAt: promptRuns.createdAt,
-			})
-			.from(promptRuns)
-			.where(and(...runConditions))
-			.orderBy(desc(promptRuns.createdAt));
+		// Parse webSearchEnabled filter
+		const webSearchEnabled = webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
 
-		// OPTIMIZATION 3: Use existing chart calculation but with minimal data
-		// Pass client timezone to ensure server and client agree on what "today" is
-		const chartData = calculateVisibilityPercentages(runs, brand, brandCompetitors, lookbackParam, timezoneParam);
+		// Get stats from Tinybird
+		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
+			getTinybirdPromptDailyStats(
+				promptId,
+				fromDateStr,
+				toDateStr,
+				timezone,
+				webSearchEnabled,
+				modelGroupParam || undefined,
+			),
+			getTinybirdPromptCompetitorDailyStats(
+				promptId,
+				fromDateStr,
+				toDateStr,
+				timezone,
+				webSearchEnabled,
+				modelGroupParam || undefined,
+			),
+			getTinybirdPromptWebQueriesForMapping(
+				promptId,
+				fromDateStr,
+				toDateStr,
+				timezone,
+			),
+		]);
 
-		// Calculate metadata
-		const totalRuns = runs.length;
+		// For "all" lookback, determine startDate from data (endDate is already today)
+		if (lookbackParam === "all" && dailyStats.length > 0) {
+			const sortedDates = dailyStats.map(s => String(s.date)).sort();
+			startDate = new Date(sortedDates[0]);
+			// endDate stays as today (already set above)
+		}
+
+		// Generate date range
+		const dateRange = generateDateRange(startDate, endDate);
+
+		// Create maps for quick lookup
+		const dailyStatsMap = new Map<string, { total_runs: number; brand_mentioned_count: number }>();
+		for (const stat of dailyStats) {
+			dailyStatsMap.set(String(stat.date), {
+				total_runs: Number(stat.total_runs),
+				brand_mentioned_count: Number(stat.brand_mentioned_count),
+			});
+		}
+
+		// Create competitor stats map: date -> competitor_name -> count
+		const competitorStatsMap = new Map<string, Map<string, number>>();
+		for (const stat of competitorStats) {
+			const dateStr = String(stat.date);
+			if (!competitorStatsMap.has(dateStr)) {
+				competitorStatsMap.set(dateStr, new Map());
+			}
+			competitorStatsMap.get(dateStr)!.set(stat.competitor_name, Number(stat.mention_count));
+		}
+
+		// Sort competitors alphabetically for consistent color assignment
+		const sortedCompetitors = [...brandCompetitors].sort((a, b) => a.name.localeCompare(b.name));
+
+		// Build chart data
+		const chartData = dateRange.map((date) => {
+			const dayStat = dailyStatsMap.get(date);
+			const totalRuns = dayStat?.total_runs || 0;
+
+			const dataPoint: Record<string, number | string | null> = { date };
+
+			if (totalRuns === 0) {
+				// No data for this date
+				dataPoint[brand.id] = null;
+				sortedCompetitors.forEach((competitor) => {
+					dataPoint[competitor.id] = null;
+				});
+				return dataPoint;
+			}
+
+			// Calculate brand visibility percentage
+			const brandMentions = dayStat?.brand_mentioned_count || 0;
+			const brandVisibility = Math.round((brandMentions / totalRuns) * 100);
+			dataPoint[brand.id] = brandVisibility;
+
+			// Calculate competitor visibility percentages
+			const competitorCountsForDate = competitorStatsMap.get(date) || new Map();
+			sortedCompetitors.forEach((competitor) => {
+				const competitorMentions = competitorCountsForDate.get(competitor.name) || 0;
+				const competitorVisibility = Math.round((competitorMentions / totalRuns) * 100);
+				dataPoint[competitor.id] = competitorVisibility;
+			});
+
+			return dataPoint;
+		});
+
+		// Calculate totals and metadata
+		const totalRuns = dailyStats.reduce((sum, s) => sum + Number(s.total_runs), 0);
 		
 		const hasVisibilityData = chartData.some(dataPoint => {
-			const allBrandIds = [brand.id, ...brandCompetitors.map(c => c.id)];
-			return allBrandIds.some(id => {
+			const allIds = [brand.id, ...sortedCompetitors.map(c => c.id)];
+			return allIds.some(id => {
 				const visibility = dataPoint[id];
 				return visibility !== null && visibility !== undefined && Number(visibility) > 0;
 			});
@@ -184,73 +250,48 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const lastDataPoint = chartData.filter(point => point[brand.id] !== null).pop();
 		const lastBrandVisibility = lastDataPoint ? (lastDataPoint[brand.id] as number) : null;
 
-		// Generate web query mappings for optimize button (following chart-utils logic)
+		// Generate web query mappings for optimize button
 		const webQueryMapping: Record<string, string> = {};
 		const modelWebQueryMappings: Record<string, Record<string, string>> = {};
 
-		// Filter runs that have web queries
-		const runsWithWebQueries = runs.filter((run: any) => run.webQueries && run.webQueries.length > 0);
-
-		if (runsWithWebQueries.length > 0) {
-			// Overall mapping - find oldest web query (first alphabetically if tie)
-			// Sort by creation date (oldest first)
-			runsWithWebQueries.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-			
-			// Get oldest date
-			const oldestDate = runsWithWebQueries[0].createdAt;
-			const oldestRuns = runsWithWebQueries.filter(
-				(run: any) => new Date(run.createdAt).getTime() === new Date(oldestDate).getTime()
-			);
-
-			// Get all web queries from the oldest runs and find first alphabetically
-			const allWebQueries: string[] = [];
-			oldestRuns.forEach((run: any) => {
-				if (run.webQueries) {
-					allWebQueries.push(...run.webQueries);
+		if (webQueryData.length > 0) {
+			// Data is already ordered by created_at ASC, so first entry is oldest
+			// Find oldest web query overall
+			const oldestQuery = webQueryData[0];
+			if (oldestQuery) {
+				// Get all queries from the same timestamp
+				const oldestTime = new Date(oldestQuery.created_at_iso).getTime();
+				const oldestQueries = webQueryData
+					.filter(q => new Date(q.created_at_iso).getTime() === oldestTime)
+					.map(q => q.web_query)
+					.sort();
+				
+				if (oldestQueries.length > 0) {
+					webQueryMapping[promptId] = oldestQueries[0];
 				}
-			});
-
-			if (allWebQueries.length > 0) {
-				// Sort alphabetically and take the first
-				allWebQueries.sort();
-				webQueryMapping[promptId] = allWebQueries[0];
 			}
 
-			// Model-specific mappings - same logic per model
-			['openai', 'anthropic', 'google'].forEach(modelGroup => {
-				const modelRuns = runsWithWebQueries.filter((run: any) => run.modelGroup === modelGroup);
-				if (modelRuns.length > 0) {
-					// Sort by creation date (oldest first) for this model
-					modelRuns.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+			// Find oldest web query per model group
+			const modelGroups = ['openai', 'anthropic', 'google'];
+			modelGroups.forEach(modelGroup => {
+				const modelQueries = webQueryData.filter(q => q.model_group === modelGroup);
+				if (modelQueries.length > 0) {
+					const oldestModelQuery = modelQueries[0];
+					const oldestModelTime = new Date(oldestModelQuery.created_at_iso).getTime();
+					const oldestModelQueries = modelQueries
+						.filter(q => new Date(q.created_at_iso).getTime() === oldestModelTime)
+						.map(q => q.web_query)
+						.sort();
 					
-					// Get oldest date for this model
-					const oldestModelDate = modelRuns[0].createdAt;
-					const oldestModelRuns = modelRuns.filter(
-						(run: any) => new Date(run.createdAt).getTime() === new Date(oldestModelDate).getTime()
-					);
-
-					// Get all web queries from the oldest runs for this model
-					const modelWebQueries: string[] = [];
-					oldestModelRuns.forEach((run: any) => {
-						if (run.webQueries) {
-							modelWebQueries.push(...run.webQueries);
-						}
-					});
-
-					if (modelWebQueries.length > 0) {
-						// Sort alphabetically and take the first
-						modelWebQueries.sort();
+					if (oldestModelQueries.length > 0) {
 						if (!modelWebQueryMappings[modelGroup]) {
 							modelWebQueryMappings[modelGroup] = {};
 						}
-						modelWebQueryMappings[modelGroup][promptId] = modelWebQueries[0];
+						modelWebQueryMappings[modelGroup][promptId] = oldestModelQueries[0];
 					}
 				}
 			});
 		}
-
-		// End PostgreSQL timing
-		const pgTime = performance.now() - startPg;
 
 		const response: PromptChartDataResponse = {
 			prompt: {
@@ -269,180 +310,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			modelWebQueryMappings,
 		};
 
-		// Dual-read verification against Tinybird (awaited to ensure completion in serverless)
-		if (isTinybirdVerifyEnabled() && isTinybirdReadEnabled()) {
-			try {
-				// For Tinybird, we need dates in the user's timezone (not UTC) without buffer days
-				// PostgreSQL uses buffer days and does precise bucketing client-side, but Tinybird
-				// filters by date directly in the user's timezone
-				let tbFromDateStr: string | null = null;
-				let tbToDateStr: string | null = null;
-				
-				if (lookbackParam && lookbackParam !== "all") {
-					// Calculate the actual lookback dates (without buffers) in user's timezone
-					const now = new Date();
-					const todayInTz = now.toLocaleDateString("en-CA", { timeZone: timezoneParam });
-					
-					// End date is today in user's timezone
-					tbToDateStr = todayInTz;
-					
-					// Start date based on lookback period
-					const tbFromDate = new Date(now);
-					switch (lookbackParam) {
-						case "1w":
-							tbFromDate.setDate(tbFromDate.getDate() - 6); // 7 days including today
-							break;
-						case "1m":
-							tbFromDate.setMonth(tbFromDate.getMonth() - 1);
-							break;
-						case "3m":
-							tbFromDate.setMonth(tbFromDate.getMonth() - 3);
-							break;
-						case "6m":
-							tbFromDate.setMonth(tbFromDate.getMonth() - 6);
-							break;
-						case "1y":
-							tbFromDate.setFullYear(tbFromDate.getFullYear() - 1);
-							break;
-					}
-					tbFromDateStr = tbFromDate.toLocaleDateString("en-CA", { timeZone: timezoneParam });
-				}
-				
-				const webSearchEnabled =
-					webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
-
-				const startTb = performance.now();
-				// Use the fast MV-based function (pre-aggregated hourly with timezone support)
-				const tinybirdResult = await getTinybirdPromptChartDataFast(
-					brandId,
-					promptId,
-					tbFromDateStr,
-					tbToDateStr,
-					timezoneParam,
-					webSearchEnabled,
-					modelGroupParam || undefined,
-				);
-				const tbTime = performance.now() - startTb;
-
-				// Compare aggregate metrics
-				const tbTotalRuns = tinybirdResult.reduce((sum, r) => sum + Number(r.total_runs), 0);
-				const tbBrandMentions = tinybirdResult.reduce((sum, r) => sum + Number(r.brand_mentioned_count), 0);
-
-				// Build per-date counts first (needed for filtering)
-				const pgPerDateCounts: Record<string, number> = {};
-				const pgPerDateBrandMentions: Record<string, number> = {};
-				const tbPerDateCounts: Record<string, number> = {};
-				
-				// Group PG runs by date in user's timezone
-				for (const run of runs) {
-					const date = new Date(run.createdAt).toLocaleDateString("en-CA", { timeZone: timezoneParam });
-					pgPerDateCounts[date] = (pgPerDateCounts[date] || 0) + 1;
-					if (run.brandMentioned) {
-						pgPerDateBrandMentions[date] = (pgPerDateBrandMentions[date] || 0) + 1;
-					}
-				}
-				
-				// TB groups by date AND model_group, so accumulate counts per date
-				for (const row of tinybirdResult) {
-					tbPerDateCounts[row.date] = (tbPerDateCounts[row.date] || 0) + Number(row.total_runs);
-				}
-				
-				// Filter PG counts to only include dates within the Tinybird date range
-				// (PostgreSQL fetches with buffer days, so we need to exclude those for fair comparison)
-				let pgFilteredTotalRuns = 0;
-				let pgFilteredBrandMentions = 0;
-				const pgFilteredPerDateCounts: Record<string, number> = {};
-				
-				for (const date of Object.keys(pgPerDateCounts)) {
-					// Only include dates within the actual lookback range
-					if (tbFromDateStr && tbToDateStr && date >= tbFromDateStr && date <= tbToDateStr) {
-						pgFilteredPerDateCounts[date] = pgPerDateCounts[date];
-						pgFilteredTotalRuns += pgPerDateCounts[date];
-						pgFilteredBrandMentions += pgPerDateBrandMentions[date] || 0;
-					}
-				}
-
-				const pgComparable = {
-					totalRuns: pgFilteredTotalRuns,
-					brandMentions: pgFilteredBrandMentions,
-				};
-
-				const tbComparable = {
-					totalRuns: tbTotalRuns,
-					brandMentions: tbBrandMentions,
-				};
-				
-				// Find date differences (using filtered PG counts for fair comparison)
-				const allDates = new Set([...Object.keys(pgFilteredPerDateCounts), ...Object.keys(tbPerDateCounts)]);
-				const dateDifferences: Array<{ promptId: string; pgCount: number; tbCount: number; diff: number }> = [];
-				for (const date of allDates) {
-					const pgCount = pgFilteredPerDateCounts[date] || 0;
-					const tbCount = tbPerDateCounts[date] || 0;
-					if (pgCount !== tbCount) {
-						dateDifferences.push({
-							promptId: date, // Reusing the promptId field for date
-							pgCount,
-							tbCount,
-							diff: tbCount - pgCount,
-						});
-					}
-				}
-				dateDifferences.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
-
-				const pgEarliest = runs.length > 0 ? runs[runs.length - 1].createdAt.toISOString() : null;
-				const pgLatest = runs.length > 0 ? runs[0].createdAt.toISOString() : null;
-				const tbDates = [...new Set(tinybirdResult.map(r => r.date))].sort();
-				
-				const diagnostics: DiagnosticInfo = {
-					dateRange: {
-						pg: { earliest: pgEarliest, latest: pgLatest },
-						tb: { earliest: tbDates[0] || null, latest: tbDates[tbDates.length - 1] || null },
-					},
-					recordCounts: {
-						pg: pgFilteredTotalRuns,
-						tb: tbTotalRuns,
-					},
-					perPromptCounts: {
-						pg: pgFilteredPerDateCounts,
-						tb: tbPerDateCounts,
-						differences: dateDifferences.slice(0, 20),
-					},
-					extra: {
-						pgDatesWithData: Object.keys(pgFilteredPerDateCounts).length,
-						tbDatesWithData: tbDates.length,
-						pgTotalWithBuffers: totalRuns,
-						webSearchEnabled,
-						modelGroup: modelGroupParam,
-					},
-				};
-
-				await verifyAndLog({
-					endpoint: "prompt-chart-data",
-					brandId,
-					filters: {
-						promptId,
-						lookback: lookbackParam,
-						fromDate: tbFromDateStr,
-						toDate: tbToDateStr,
-						webSearchEnabled: webSearchEnabledParam,
-						modelGroup: modelGroupParam,
-						timezone: timezoneParam,
-					},
-					postgresResult: pgComparable,
-					tinybirdResult: tbComparable,
-					pgTime,
-					tbTime,
-					diagnostics,
-				});
-			} catch (error) {
-				console.error("Tinybird verification failed for prompt-chart-data:", error);
-			}
-		}
-
 		return NextResponse.json(response);
 
 	} catch (error) {
-		console.error("Error fetching fast prompt chart data:", error);
+		console.error("Error fetching prompt chart data:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }
