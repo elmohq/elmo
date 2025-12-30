@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Settings, TrendingUp, TrendingDown, ArrowLeft, Search, Sparkles, Loader2, Copy, Check, Activity, Database } from "lucide-react";
+import { Settings, TrendingUp, TrendingDown, ArrowLeft, Search, Sparkles, Loader2, Copy, Check, Activity } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 
 interface BrandStats {
@@ -828,12 +828,6 @@ export default function AdminPage() {
 						<Button variant="outline" className="cursor-pointer">
 							<Activity className="h-4 w-4 mr-2" />
 							Workflows
-						</Button>
-					</Link>
-					<Link href="/admin/tinybird">
-						<Button variant="outline" className="cursor-pointer">
-							<Database className="h-4 w-4 mr-2" />
-							Tinybird Migration
 						</Button>
 					</Link>
 					<AnalyzeDomainDialog />
