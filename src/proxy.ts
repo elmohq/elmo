@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { requireAdminAuth } from "@/lib/admin-auth";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
 	try {
 		const { pathname } = request.nextUrl;
 
