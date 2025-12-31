@@ -16,6 +16,7 @@ import { runWithOpenAI, runWithAnthropic, runWithDataForSEO } from "../lib/ai-pr
 import {
 	ingestToTinybird,
 	ingestPromptRuns,
+	ingestPromptRunsV2,
 	type TinybirdPromptRunEvent,
 	type TinybirdCitationItem,
 } from "../lib/tinybird";
@@ -184,7 +185,12 @@ async function sendToTinybird(
 		has_competitor_mention: competitorsMentioned.length > 0 ? 1 : 0,
 	};
 
-	await ingestToTinybird(ingestPromptRuns, [event]);
+	// Dual-write to both v1 and v2 tables during migration
+	// V2 has optimized sorting key for faster queries
+	await Promise.all([
+		ingestToTinybird(ingestPromptRuns, [event]),
+		ingestToTinybird(ingestPromptRunsV2, [event]),
+	]);
 }
 
 const queueEvents = new QueueEvents(promptQueue.name, { connection: queueConnectionConfig });

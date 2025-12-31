@@ -1,0 +1,29 @@
+DESCRIPTION >
+    Materialized view that expands citations array from prompt_runs_v2 into the citations_v2 table.
+    Triggers automatically on every insert to prompt_runs_v2.
+    Uses arrayEnumerate to preserve duplicate URLs within the same prompt_run's array.
+
+NODE expand_citations
+SQL >
+    SELECT
+        id AS prompt_run_id,
+        prompt_id,
+        brand_id,
+        model_group,
+        url,
+        domain,
+        title,
+        idx AS citation_idx,
+        created_at
+    FROM prompt_runs_v2
+    ARRAY JOIN
+        `citations.url` AS url,
+        `citations.domain` AS domain,
+        `citations.title` AS title,
+        arrayEnumerate(`citations.url`) AS idx
+    WHERE length(`citations.url`) > 0
+
+TYPE materialized
+DATASOURCE citations_v2
+
+

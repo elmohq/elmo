@@ -1,0 +1,41 @@
+DESCRIPTION >
+    Optimized events table for LLM prompt runs using ReplacingMergeTree.
+    
+    Key improvements over v1:
+    1. Sorting key matches query patterns (brand_id, prompt_id first) for fast index scans
+    2. FINAL is now fast because it only deduplicates within filtered rows
+    3. Data locality - all data for a brand/prompt is physically co-located
+    
+    Note: created_at cannot be in sorting key since it's used as ENGINE_VER.
+    
+    Deduplication strategy: Rows with same `id` are deduplicated, keeping the one with latest `created_at`.
+    Queries should use FINAL for guaranteed accuracy.
+
+SCHEMA >
+    `id` String `json:$.id`,
+    `prompt_id` String `json:$.prompt_id`,
+    `brand_id` String `json:$.brand_id`,
+    `model_group` LowCardinality(String) `json:$.model_group`,
+    `model` LowCardinality(String) `json:$.model`,
+    `web_search_enabled` UInt8 `json:$.web_search_enabled`,
+    `brand_mentioned` UInt8 `json:$.brand_mentioned`,
+    `competitors_mentioned` Array(String) `json:$.competitors_mentioned[:]`,
+    `web_queries` Array(String) `json:$.web_queries[:]`,
+    `text_content` String `json:$.text_content`,
+    `raw_output` String `json:$.raw_output`,
+    `citations.url` Array(String) `json:$.citations[:].url`,
+    `citations.domain` Array(String) `json:$.citations[:].domain`,
+    `citations.title` Array(Nullable(String)) `json:$.citations[:].title`,
+    `created_at` DateTime64(3, 'UTC') `json:$.created_at`,
+    `competitor_count` UInt16 `json:$.competitor_count`,
+    `has_competitor_mention` UInt8 `json:$.has_competitor_mention`
+
+INDEXES >
+    text_content_idx text_content TYPE tokenbf_v1(32768, 3, 0) GRANULARITY 4
+
+ENGINE "ReplacingMergeTree"
+ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
+ENGINE_SORTING_KEY "brand_id, prompt_id, id"
+ENGINE_VER "created_at"
+
+

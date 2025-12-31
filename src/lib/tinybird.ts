@@ -49,6 +49,13 @@ export const ingestPromptRuns = tb.buildIngestEndpoint({
 	event: promptRunSchema,
 });
 
+// V2 table with optimized sorting key (brand_id, prompt_id, toDate(created_at), id)
+// Dual-write during migration period
+export const ingestPromptRunsV2 = tb.buildIngestEndpoint({
+	datasource: "prompt_runs_v2",
+	event: promptRunSchema,
+});
+
 // Tinybird ingestion result type
 type TinybirdIngestResult = { successful_rows: number; quarantined_rows: number };
 
