@@ -3,7 +3,7 @@ import { isAdmin } from "@/lib/metadata";
 import { db } from "@/lib/db/db";
 import { brands, prompts } from "@/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { getTinybirdAdminRunsOverTime, getTinybirdAdminBrandRunStats } from "@/lib/tinybird-read";
+import { getAdminRunsOverTime, getAdminBrandRunStats } from "@/lib/tinybird-read-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -86,10 +86,10 @@ export async function GET() {
 				.orderBy(sql`date_series`),
 
 			// Get runs over time from Tinybird (fast!)
-			getTinybirdAdminRunsOverTime(),
+			getAdminRunsOverTime(),
 
 			// Get per-brand run stats from Tinybird (fast!)
-			getTinybirdAdminBrandRunStats(),
+			getAdminBrandRunStats(),
 		]);
 
 		// Create a map of brand_id -> run stats for quick lookup

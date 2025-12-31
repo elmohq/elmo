@@ -3,7 +3,7 @@ import { db } from "@/lib/db/db";
 import { prompts, competitors, brands, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and } from "drizzle-orm";
-import { getTinybirdCitationDomainStats, getTinybirdCitationUrlStats } from "@/lib/tinybird-read";
+import { getCitationDomainStats, getCitationUrlStats } from "@/lib/tinybird-read-v2";
 
 type Params = {
 	id: string;
@@ -193,7 +193,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Query Tinybird for citation stats
 		const [domainStats, urlStats] = await Promise.all([
-			getTinybirdCitationDomainStats(
+			getCitationDomainStats(
 				brandId,
 				fromDateStr,
 				toDateStr,
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				enabledPromptIds,
 				modelGroupParam || undefined,
 			),
-			getTinybirdCitationUrlStats(
+			getCitationUrlStats(
 				brandId,
 				fromDateStr,
 				toDateStr,

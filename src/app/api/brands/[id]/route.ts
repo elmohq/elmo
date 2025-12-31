@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getElmoOrgs, getBrandFromDb, getBrandWithPrompts, updateBrand } from "@/lib/metadata";
 import { auth0 } from "@/lib/auth0";
 import { revalidatePath } from "next/cache";
-import { getTinybirdBrandEarliestRunDate } from "@/lib/tinybird-read";
+import { getBrandEarliestRunDate } from "@/lib/tinybird-read-v2";
 
 // URL validation function
 function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: string; error?: string } {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Fetch brand data and earliest run date in parallel
 		const [brand, earliestDataDate] = await Promise.all([
 			getBrandWithPrompts(brandId),
-			getTinybirdBrandEarliestRunDate(brandId),
+			getBrandEarliestRunDate(brandId),
 		]);
 
 		if (!brand) {

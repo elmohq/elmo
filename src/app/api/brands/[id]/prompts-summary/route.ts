@@ -3,7 +3,7 @@ import { db } from "@/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, desc } from "drizzle-orm";
-import { getTinybirdPromptsSummary } from "@/lib/tinybird-read";
+import { getPromptsSummary } from "@/lib/tinybird-read-v2";
 
 type Params = {
 	id: string;
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Get stats from Tinybird
 		const webSearchEnabled = webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
 		
-		const tinybirdStats = await getTinybirdPromptsSummary(
+		const tinybirdStats = await getPromptsSummary(
 			brandId,
 			fromDateStr,
 			toDateStr,

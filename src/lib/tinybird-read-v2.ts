@@ -624,6 +624,9 @@ export async function getDailyCitationStats(
 /**
  * Get the earliest prompt run date for a brand
  * Used to determine if the brand has more than 1 week of data history
+ * 
+ * Note: No FINAL needed here because min() is idempotent - duplicates
+ * would have the same or later created_at, so min() returns correct result.
  */
 export async function getBrandEarliestRunDate(
 	brandId: string,
@@ -632,7 +635,7 @@ export async function getBrandEarliestRunDate(
 		`
 		SELECT
 			min(created_at) as earliest_date
-		FROM prompt_runs_v2 FINAL
+		FROM prompt_runs_v2
 		WHERE brand_id = {brandId:String}
 		`,
 		{ brandId },
@@ -659,6 +662,9 @@ export interface AdminBrandRunStats {
 
 /**
  * Get runs over time for the last 30 days (for admin dashboard chart)
+ * 
+ * Note: Uses FINAL for accurate counts. On freshly backfilled data this
+ * may be slow until background merges complete.
  */
 export async function getAdminRunsOverTime(): Promise<AdminRunsOverTime[]> {
 	return queryTinybird<AdminRunsOverTime>(

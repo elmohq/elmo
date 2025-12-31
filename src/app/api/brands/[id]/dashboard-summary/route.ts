@@ -5,10 +5,10 @@ import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, sql, count } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback, type LookbackPeriod } from "@/lib/chart-utils";
 import { 
-	getTinybirdDashboardSummary, 
-	getTinybirdVisibilityTimeSeries, 
-	getTinybirdDailyCitationStats,
-} from "@/lib/tinybird-read";
+	getDashboardSummary, 
+	getVisibilityTimeSeries, 
+	getDailyCitationStats,
+} from "@/lib/tinybird-read-v2";
 
 type Params = {
 	id: string;
@@ -159,11 +159,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.filter((p) => p.value.toLowerCase().includes(brandName.toLowerCase()))
 			.map((p) => p.id);
 
-		// Query Tinybird for analytics data
-		// Using FINAL versions for accuracy (not Fast MV-based versions which have slight duplicate inflation)
+		// Query Tinybird v2 for analytics data
 		const [summaryResult, visibilityData, citationData] = await Promise.all([
 			// Dashboard summary metrics
-			getTinybirdDashboardSummary(
+			getDashboardSummary(
 				brandId,
 				fromDateStr,
 				toDateStr,
@@ -171,7 +170,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				enabledPromptIds,
 			),
 			// Visibility time series (grouped by date and branded/non-branded)
-			getTinybirdVisibilityTimeSeries(
+			getVisibilityTimeSeries(
 				brandId,
 				fromDateStr,
 				toDateStr,
@@ -181,7 +180,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			),
 			// Daily citation stats by domain
 			fromDateStr && toDateStr
-				? getTinybirdDailyCitationStats(
+				? getDailyCitationStats(
 						brandId,
 						fromDateStr,
 						toDateStr,

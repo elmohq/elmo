@@ -5,9 +5,9 @@ import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, inArray } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback, type LookbackPeriod } from "@/lib/chart-utils";
 import { 
-	getTinybirdVisibilityTimeSeriesFast,
-	getTinybirdDailyCitationStats,
-} from "@/lib/tinybird-read";
+	getVisibilityTimeSeries,
+	getDailyCitationStats,
+} from "@/lib/tinybird-read-v2";
 
 type Params = {
 	id: string;
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Query Tinybird for visibility data and citation counts in parallel
 		const [visibilityData, citationData] = await Promise.all([
-			getTinybirdVisibilityTimeSeriesFast(
+			getVisibilityTimeSeries(
 				brandId,
 				fromDateStr,
 				toDateStr,
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				promptIds,
 			),
 			fromDateStr && toDateStr
-				? getTinybirdDailyCitationStats(
+				? getDailyCitationStats(
 						brandId,
 						fromDateStr,
 						toDateStr,

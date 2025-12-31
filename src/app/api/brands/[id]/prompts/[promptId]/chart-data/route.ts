@@ -7,10 +7,10 @@ import { generateDateRange, getDaysFromLookback } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@/lib/db/schema";
 import { 
-	getTinybirdPromptDailyStats, 
-	getTinybirdPromptCompetitorDailyStats,
-	getTinybirdPromptWebQueriesForMapping,
-} from "@/lib/tinybird-read";
+	getPromptDailyStats, 
+	getPromptCompetitorDailyStats,
+	getPromptWebQueriesForMapping,
+} from "@/lib/tinybird-read-v2";
 
 type Params = {
 	id: string;
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Get stats from Tinybird
 		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getTinybirdPromptDailyStats(
+			getPromptDailyStats(
 				promptId,
 				fromDateStr,
 				toDateStr,
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				webSearchEnabled,
 				modelGroupParam || undefined,
 			),
-			getTinybirdPromptCompetitorDailyStats(
+			getPromptCompetitorDailyStats(
 				promptId,
 				fromDateStr,
 				toDateStr,
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				webSearchEnabled,
 				modelGroupParam || undefined,
 			),
-			getTinybirdPromptWebQueriesForMapping(
+			getPromptWebQueriesForMapping(
 				promptId,
 				fromDateStr,
 				toDateStr,
