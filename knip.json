@@ -1,0 +1,15 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreWorkspaces": ["packages/ui"],
+  "workspaces": {
+    ".": {
+      "entry": ["turbo.json"],
+      "ignoreUnresolved": ["next"]
+    },
+    "apps/web": {
+      "entry": ["src/app/**/*.{ts,tsx}!", "scripts/*.ts"],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
+      "ignore": ["src/lib/db/migrations/**"],
+      "ignoreDependencies": ["postcss", "tailwindcss", "tw-animate-css", "@tailwindcss/typography"]
+    }  }
+}
