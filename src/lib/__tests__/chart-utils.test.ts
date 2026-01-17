@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { calculateVisibilityPercentages, generateDateRange, filterAndCompleteChartData, extendLinesToChartEdges, isExtendedDataPoint } from "../chart-utils";
 import type { PromptRun, Brand, Competitor } from "../db/schema";
 
@@ -77,8 +78,8 @@ describe("chart-utils", () => {
 			console.log("\n=== INCORRECT BUCKET COUNT ISSUE ===");
 
 			// Mock current date as July 22, 2025
-			jest.useFakeTimers();
-			jest.setSystemTime(new Date("2025-07-22T12:00:00.000Z"));
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-07-22T12:00:00.000Z"));
 
 			// Test 1w lookback - should show 7 days including today
 			const promptRuns = [createPromptRun("run-1", "2025-07-21T12:00:00.000Z", true)];
@@ -96,7 +97,7 @@ describe("chart-utils", () => {
 
 			console.log("=== END BUCKET COUNT TEST ===\n");
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 
 			// After fix: 1w shows 7 days, 1m shows 30 days
 			expect(result1w.length).toBe(7); // Fixed - now shows 7
@@ -112,8 +113,8 @@ describe("chart-utils", () => {
 			console.log("\n=== TOMORROW INCLUSION BUG ===");
 
 			// Mock current time as 6pm on July 21, 2025 PST (1 AM UTC July 22)
-			jest.useFakeTimers();
-			jest.setSystemTime(new Date("2025-07-22T01:00:00.000Z")); // 6 PM PST Jul 21 = 1 AM UTC Jul 22
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-07-22T01:00:00.000Z")); // 6 PM PST Jul 21 = 1 AM UTC Jul 22
 
 			const promptRuns = [createPromptRun("run-1", "2025-07-21T12:00:00.000Z", true)];
 			const result = calculateVisibilityPercentages(
@@ -140,7 +141,7 @@ describe("chart-utils", () => {
 
 			console.log("=== END TOMORROW BUG TEST ===\n");
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 
 			// After fix: should show 7 days ending on Jul 21 (today in PST)
 			expect(result.length).toBe(7);
@@ -152,12 +153,12 @@ describe("chart-utils", () => {
 	describe("filterAndCompleteChartData", () => {
 		beforeEach(() => {
 			// Mock the current date to July 22, 2025 at noon UTC for consistent testing
-			jest.useFakeTimers();
-			jest.setSystemTime(new Date("2025-07-22T12:00:00.000Z"));
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-07-22T12:00:00.000Z"));
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it("should return data as-is for 'all' lookback", () => {
@@ -189,7 +190,7 @@ describe("chart-utils", () => {
 		it("should handle timezone-aware filtering consistently", () => {
 			// Test that filterAndCompleteChartData uses timezone-aware logic
 			// Mock 6pm PST July 21 (1 AM UTC July 22)
-			jest.setSystemTime(new Date("2025-07-22T01:00:00.000Z"));
+			vi.setSystemTime(new Date("2025-07-22T01:00:00.000Z"));
 
 			const inputData = [createChartDataPoint("2025-07-21", 75)];
 
@@ -366,12 +367,12 @@ describe("chart-utils", () => {
 	describe("calculateVisibilityPercentages - Date Bucketing", () => {
 		beforeEach(() => {
 			// Mock the current date to July 22, 2025 at noon UTC for consistent testing
-			jest.useFakeTimers();
-			jest.setSystemTime(new Date("2025-07-22T12:00:00.000Z"));
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2025-07-22T12:00:00.000Z"));
 		});
 
 		afterEach(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it("should bucket PDT evening events correctly", () => {

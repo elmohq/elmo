@@ -25,12 +25,12 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "jest && next build",
+    "build": "vitest run && next build",
     "start": "next start",
     "lint": "biome lint",
     "format": "biome format --write .",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "queuedash": "tsx --env-file=.env src/queuedash/queuedash.ts",
     "worker:dev": "tsx --env-file=.env src/worker/worker.ts",
     "worker:prod": "tsx src/worker/worker.ts",
@@ -92,17 +92,15 @@
     "@biomejs/biome": "2.0.6",
     "@tailwindcss/postcss": "^4",
     "@types/express": "^5.0.6",
-    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.15.4",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "^0.31.8",
-    "jest": "^30.2.0",
     "tailwindcss": "^4",
-    "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "tw-animate-css": "^1.3.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.17"
   }
 }

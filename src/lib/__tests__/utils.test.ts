@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { calculateAverageVisibility } from "../utils";
 import type { Prompt, PromptRun, Brand, Competitor } from "../db/schema";
 
