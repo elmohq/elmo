@@ -371,47 +371,13 @@ export const config = {
    - Keep database operations in metadata.ts
    - Local provider returns all brands from DB
 
-### Phase 3: API Route Audit
-
-Before implementing demo mode blocking, audit all API routes to ensure proper HTTP method usage:
-
-1. **Audit all GET routes for side effects**
-   - Scan all `route.ts` files for GET handlers
-   - Ensure no GET handler performs database writes, cache mutations, or triggers expensive operations
-   - Document any violations found
-   
-2. **Review wizard endpoints specifically**
-   Current wizard endpoints to audit:
-   ```
-   /api/wizard/analyze-website    - Does this trigger AI calls? Should be POST
-   /api/wizard/create-prompts     - Creates data, should be POST
-   /api/wizard/get-competitors    - If it fetches externally, consider POST
-   /api/wizard/get-keywords       - If it fetches externally, consider POST
-   /api/wizard/get-personas       - If it fetches externally, consider POST
-   /api/wizard/skip-onboarding    - Modifies state, should be POST
-   /api/admin/wizard/*            - Review each for side effects
-   ```
-
-3. **Convert violating GET routes to POST**
-   - Any GET route that triggers expensive operations (AI calls, external API calls) → POST
-   - Any GET route that modifies state → POST/PUT/PATCH/DELETE as appropriate
-   - Update corresponding frontend code to use correct HTTP methods
-
-4. **Create route audit checklist**
-   ```
-   [ ] GET /api/brands - read only ✓
-   [ ] GET /api/brands/[id] - read only ✓
-   [ ] GET /api/wizard/analyze-website - AUDIT NEEDED
-   [ ] ... (full list in implementation)
-   ```
-
-### Phase 4: Demo Mode Middleware & UI
+### Phase 3: Demo Mode Middleware & UI
 
 1. **Add read-only middleware check**
    - Block POST/PUT/PATCH/DELETE on `/api/*` routes
    - Return 403 with clear demo mode message
    - No changes to individual route handlers needed
-   - **Relies on Phase 3 audit** - all writes must use non-GET methods
+   - All existing routes already use proper HTTP methods (GET = read-only, POST/PUT/PATCH/DELETE = writes)
 
 2. **Organization UI components**
    - Create `OrgSwitcher` component that respects auth provider capabilities
@@ -435,7 +401,7 @@ Before implementing demo mode blocking, audit all API routes to ensure proper HT
    - Optionally hide/disable mutation buttons
    - Add call-to-action for full version
 
-### Phase 5: Docker Compose Setup
+### Phase 4: Docker Compose Setup
 
 1. **Create `docker/` directory**
    ```
@@ -467,7 +433,7 @@ Before implementing demo mode blocking, audit all API routes to ensure proper HT
        profiles: ["disabled"]
    ```
 
-### Phase 6: Seed Data & Demo Content
+### Phase 5: Seed Data & Demo Content
 
 1. **Create seed scripts**
    - Sample brand with prompts
@@ -490,7 +456,6 @@ elmo/
 │       ├── src/
 │       │   ├── app/
 │       │   │   ├── api/
-│       │   │   │   ├── wizard/      # AUDIT: ensure expensive ops use POST
 │       │   │   │   └── ...          # (unchanged - middleware handles demo blocking)
 │       │   │   └── ...
 │       │   ├── lib/
@@ -680,13 +645,6 @@ BRAND_ICON="/icon.png"
 
 4. **ClickHouse for Docker**: Use standalone ClickHouse container, or connect to hosted Tinybird even in Docker mode?
 
-5. **Wizard endpoint HTTP methods**: Review which wizard endpoints should be POST vs GET:
-   - `analyze-website` - triggers AI/external calls → likely POST
-   - `get-competitors` - external API calls → consider POST
-   - `get-keywords` - external API calls → consider POST
-   - `get-personas` - AI calls → likely POST
-   - Need to audit actual implementation to determine
-
 ---
 
 ## Note on Redis Setup
@@ -727,17 +685,17 @@ This requires **zero code changes** - the existing `@upstash/redis` client works
 |-------|------------------|----------------|
 | 1 | Config package, presets | ~6 new files |
 | 2 | Auth package, providers | ~10 new files, ~3 modified |
-| 3 | API route audit | ~0 new files, ~5-10 routes potentially modified |
-| 4 | Demo mode middleware & UI | ~2 new files (middleware.ts, OrgSwitcher) |
-| 5 | Docker Compose setup | ~6 new files |
-| 6 | Seed data & demo content | ~3 new files |
+| 3 | Demo mode middleware & UI | ~2 new files (middleware.ts, OrgSwitcher) |
+| 4 | Docker Compose setup | ~6 new files |
+| 5 | Seed data & demo content | ~3 new files |
 
-**Total: ~27 new files, ~8-13 modified files**
+**Total: ~27 new files, ~3 modified files**
 
 Key simplifications:
 - Same Redis client everywhere (Upstash `@upstash/redis` + HTTP proxy for Docker)
 - Same analytics approach (ClickHouse client, can point to Tinybird or standalone)
 - Middleware-level demo blocking (no per-route wrappers)
+- All existing API routes already use proper HTTP methods (no audit/changes needed)
 
 ---
 
