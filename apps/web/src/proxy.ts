@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { requireAdminAuth } from "@/lib/admin-auth";
-import { getDeploymentConfig, getAuth0Client } from "@/lib/config";
+import { requireAdminApiKeyAuth } from "@/lib/admin-auth";
+import { getDeploymentConfig, handleProxyAuth } from "@/lib/config";
 
 /**
  * Demo mode error response
@@ -40,104 +40,56 @@ const WRITE_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
  * 2. Admin panel access control (disabled, readonly, or full)
  * 3. Public API documentation access
  * 4. Admin API key authentication for /api/v1/* routes
- * 5. Auth provider-specific session handling
+ * 5. Auth provider-specific session handling (delegated to config)
  */
 export async function proxy(request: NextRequest) {
-  try {
-    const { pathname } = request.nextUrl;
-    const deploymentConfig = getDeploymentConfig();
-    const isWriteMethod = WRITE_METHODS.includes(request.method);
+  const { pathname } = request.nextUrl;
+  const deploymentConfig = getDeploymentConfig();
+  const isWriteMethod = WRITE_METHODS.includes(request.method);
 
-    // Read-only mode: Block all write requests to API routes
-    if (deploymentConfig.features.readOnly) {
-      const isApiRoute = pathname.startsWith("/api/");
-      
-      if (isApiRoute && isWriteMethod) {
-        return NextResponse.json(DEMO_MODE_ERROR, { status: 403 });
-      }
-    }
-
-    // Handle admin panel access control
-    const adminAccess = deploymentConfig.features.adminAccess;
-    const isAdminRoute = pathname.startsWith("/admin");
-    const isAdminApiRoute = pathname.startsWith("/api/admin");
+  // Read-only mode: Block all write requests to API routes
+  if (deploymentConfig.features.readOnly) {
+    const isApiRoute = pathname.startsWith("/api/");
     
-    if (isAdminRoute || isAdminApiRoute) {
-      // Admin panel completely disabled
-      if (adminAccess === false) {
-        if (isAdminRoute) {
-          return NextResponse.redirect(new URL("/", request.url));
-        }
-        return NextResponse.json(ADMIN_PANEL_DISABLED_ERROR, { status: 403 });
-      }
-      
-      // Admin panel read-only - block write operations
-      if (adminAccess === "readonly" && isAdminApiRoute && isWriteMethod) {
-        return NextResponse.json(ADMIN_READONLY_ERROR, { status: 403 });
-      }
+    if (isApiRoute && isWriteMethod) {
+      return NextResponse.json(DEMO_MODE_ERROR, { status: 403 });
     }
-
-    // Allow public access to API documentation (all modes)
-    if (pathname.startsWith("/api/v1/docs") || pathname.startsWith("/api/v1/openapi.json")) {
-      return NextResponse.next();
-    }
-
-    // Handle /api/v1/* routes with API key authentication (admin API - all modes)
-    if (pathname.startsWith("/api/v1/")) {
-      const authError = requireAdminAuth(request);
-      if (authError) return authError;
-      return NextResponse.next();
-    }
-
-    // For local/demo modes, allow all requests (no session-based auth)
-    if (deploymentConfig.mode === "local" || deploymentConfig.mode === "demo") {
-      return NextResponse.next();
-    }
-
-    // Whitelabel mode: Handle Auth0 session-based authentication
-    if (deploymentConfig.mode === "whitelabel") {
-      const auth0 = getAuth0Client();
-      if (!auth0) {
-        console.error("Auth0 client not available in whitelabel mode");
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-      }
-      
-      const session = await auth0.getSession(request);
-      
-      if (!session) {
-        // No session - handle based on path
-        if (pathname.startsWith("/auth")) {
-          // Auth routes are handled by Auth0
-          return auth0.middleware(request);
-        } else if (pathname.startsWith("/api")) {
-          // API routes require authentication
-          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        } else {
-          // Other routes redirect to home
-          return NextResponse.redirect(new URL("/", request.url));
-        }
-      } else {
-        // Has session - let Auth0 middleware handle it
-        return auth0.middleware(request);
-      }
-    }
-
-    // Default: allow request
-    return NextResponse.next();
-  } catch (error) {
-    // Handle JWE decryption errors (corrupted sessions) - Auth0 specific
-    if (error instanceof Error && error.message?.includes("Invalid Compact JWE")) {
-      console.warn("Session decryption failed, clearing corrupted session:", error.message);
-
-      // Create a response that clears the session cookie
-      const response = NextResponse.next();
-      response.cookies.delete("appSession");
-      return response;
-    }
-
-    // Re-throw other errors
-    throw error;
   }
+
+  // Handle admin panel access control
+  const adminAccess = deploymentConfig.features.adminAccess;
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAdminApiRoute = pathname.startsWith("/api/admin");
+  
+  if (isAdminRoute || isAdminApiRoute) {
+    // Admin panel completely disabled
+    if (adminAccess === false) {
+      if (isAdminRoute) {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
+      return NextResponse.json(ADMIN_PANEL_DISABLED_ERROR, { status: 403 });
+    }
+    
+    // Admin panel read-only - block write operations
+    if (adminAccess === "readonly" && isAdminApiRoute && isWriteMethod) {
+      return NextResponse.json(ADMIN_READONLY_ERROR, { status: 403 });
+    }
+  }
+
+  // Allow public access to API documentation (all modes)
+  if (pathname.startsWith("/api/v1/docs") || pathname.startsWith("/api/v1/openapi.json")) {
+    return NextResponse.next();
+  }
+
+  // Handle /api/v1/* routes with API key authentication (admin API - all modes)
+  if (pathname.startsWith("/api/v1/")) {
+    const authError = requireAdminApiKeyAuth(request);
+    if (authError) return authError;
+    return NextResponse.next();
+  }
+
+  // Delegate auth handling to config (handles local/demo/whitelabel modes)
+  return handleProxyAuth(request, pathname);
 }
 
 export const config = {

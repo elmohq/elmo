@@ -13,7 +13,6 @@
 import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import type {
   DeploymentConfig,
-  ConfigDependencies,
   BrandingConfig,
   FeaturesConfig,
 } from "@workspace/config/types";
@@ -50,10 +49,10 @@ export interface WhitelabelConfigOptions {
   auth0Client: ConstructorParameters<typeof Auth0AuthProvider>[0];
   /** Auth0 Management API client instance */
   managementClient: ConstructorParameters<typeof Auth0AuthProvider>[1];
-  /** Optional dependencies (redis, db, env) */
-  dependencies?: ConfigDependencies;
   /** Optional branding overrides */
   branding?: Partial<BrandingConfig>;
+  /** Optional environment variables (defaults to process.env) */
+  env?: Record<string, string | undefined>;
 }
 
 /**
@@ -62,10 +61,7 @@ export interface WhitelabelConfigOptions {
  * Unlike local/demo, this requires Auth0 clients to be passed in
  */
 export function createWhitelabelConfig(options: WhitelabelConfigOptions): DeploymentConfig {
-  const { auth0Client, managementClient, dependencies = {}, branding: brandingOverrides = {} } = options;
-  
-  // Read from environment if available
-  const env = dependencies.env ?? process.env;
+  const { auth0Client, managementClient, branding: brandingOverrides = {}, env = process.env } = options;
   
   // Determine branding (whitelabel uses its own defaults if env vars not set)
   const branding: BrandingConfig = {
@@ -79,7 +75,7 @@ export function createWhitelabelConfig(options: WhitelabelConfigOptions): Deploy
   };
   
   // Create auth provider
-  const authProvider = new Auth0AuthProvider(auth0Client, managementClient, dependencies);
+  const authProvider = new Auth0AuthProvider(auth0Client, managementClient);
   
   return {
     mode: "whitelabel",

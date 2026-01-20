@@ -93,11 +93,4 @@ export class LocalAuthProvider implements AuthProvider {
   async hasReportGeneratorAccess(): Promise<boolean> {
     return true;
   }
-
-  /**
-   * No cache to clear in local mode
-   */
-  async clearCache(): Promise<void> {
-    // No-op for local provider
-  }
 }

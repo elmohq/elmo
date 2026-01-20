@@ -31,7 +31,7 @@ export function validateAdminApiKey(request: NextRequest): boolean {
  * Middleware function to authenticate admin API requests
  * Returns an error response if authentication fails, null if authenticated
  */
-export function requireAdminAuth(request: NextRequest): NextResponse | null {
+export function requireAdminApiKeyAuth(request: NextRequest): NextResponse | null {
 	if (!validateAdminApiKey(request)) {
 		return NextResponse.json(
 			{

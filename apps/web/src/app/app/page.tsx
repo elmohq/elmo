@@ -8,7 +8,7 @@ export default async function BrandSwitcherPage() {
 	const config = getDeploymentConfig();
 	
 	if (config.mode === "whitelabel") {
-		const orgs = await getElmoOrgs(true);
+		const orgs = await getElmoOrgs();
 
 		return (
 			<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">

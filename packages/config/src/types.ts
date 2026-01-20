@@ -98,8 +98,6 @@ export interface AuthProvider {
   isAdmin(): Promise<boolean>;
   /** Check if the user has report generator access */
   hasReportGeneratorAccess(): Promise<boolean>;
-  /** Clear any cached authentication data */
-  clearCache(): Promise<void>;
 }
 
 // ============================================================================
@@ -136,12 +134,6 @@ export type DeploymentConfigFactory = (options?: {
  * Dependencies that can be injected into config implementations
  */
 export interface ConfigDependencies {
-  /** Redis client for caching (optional) */
-  redis?: {
-    get<T>(key: string): Promise<T | null>;
-    setex(key: string, seconds: number, value: string): Promise<void>;
-    del(key: string): Promise<void>;
-  };
   /** Database query functions (optional) */
   db?: {
     getAllBrands(): Promise<Organization[]>;

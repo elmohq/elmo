@@ -3,7 +3,6 @@ import { brands, prompts, competitors, type Brand, type NewBrand, type BrandWith
 import { eq } from "drizzle-orm";
 import {
 	getOrganizations,
-	clearAuthCache,
 	isAdmin as configIsAdmin,
 	hasReportGeneratorAccess as configHasReportGeneratorAccess,
 } from "./config";
@@ -21,21 +20,11 @@ export type ElmoBrandMetadata = {
  * 
  * This function delegates to the config module which handles
  * different deployment modes (whitelabel, local, demo).
- */
-export async function getElmoOrgs(forceRefresh = false): Promise<ElmoBrandMetadata[]> {
-	if (forceRefresh) {
-		await clearAuthCache();
-	}
-	return getOrganizations();
-}
-
-/**
- * Clear the app metadata cache
  * 
- * @deprecated Use clearAuthCache() from @/lib/config instead
+ * Note: Metadata freshness is managed by the proxy (refreshed ~every 15 min).
  */
-export async function clearAppMetadataCache(): Promise<void> {
-	return clearAuthCache();
+export async function getElmoOrgs(): Promise<ElmoBrandMetadata[]> {
+	return getOrganizations();
 }
 
 export async function getBrandFromDb(brandId: string): Promise<Brand | undefined> {

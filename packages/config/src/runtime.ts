@@ -147,10 +147,3 @@ export async function isAdmin(): Promise<boolean> {
 export async function hasReportGeneratorAccess(): Promise<boolean> {
   return getAuthProvider().hasReportGeneratorAccess();
 }
-
-/**
- * Clear the auth cache
- */
-export async function clearAuthCache(): Promise<void> {
-  return getAuthProvider().clearCache();
-}
