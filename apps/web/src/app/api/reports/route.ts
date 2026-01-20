@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hasReportGeneratorAccess } from "@/lib/metadata";
-import { db } from "@/lib/db/db";
-import { reports, type NewReport } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { reportQueue } from "@/worker/queues";
+import { reportQueue } from "@workspace/lib/queues";
 
 export async function GET() {
 	try {

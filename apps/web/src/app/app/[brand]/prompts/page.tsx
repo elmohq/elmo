@@ -1,5 +1,5 @@
-import { db } from "@/lib/db/db";
-import { prompts } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";

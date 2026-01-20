@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { promptRuns, prompts, brands, competitors } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { promptRuns, prompts, brands, competitors } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, gte, sql, count, and } from "drizzle-orm";
 import { getPromptCitationStats, getPromptCitationUrlStats } from "@/lib/tinybird-read-v2";

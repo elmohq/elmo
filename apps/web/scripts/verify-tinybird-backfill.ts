@@ -3,8 +3,8 @@
 //
 // Compares row counts per prompt and spot-checks random rows
 
-import { db } from "../src/lib/db/db";
-import { prompts, promptRuns } from "../src/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 
 const SPOT_CHECK_COUNT = 20;

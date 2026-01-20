@@ -12,7 +12,7 @@ import {
 	generateOptimizationUrl,
 	type ChartDataPoint,
 } from "../chart-utils";
-import type { Competitor, PromptRun } from "../db/schema";
+import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 describe("chart-utils helpers", () => {
 	describe("getDefaultLookbackPeriod", () => {

@@ -1,6 +1,9 @@
-import { promptQueue, reportQueue, queueConnectionConfig } from "./queues";
+// Validate environment variables first - will exit if any are missing
+import "./env";
+
+import { promptQueue, reportQueue, queueConnectionConfig } from "@workspace/lib/queues";
 import { Job, QueueEvents, Worker } from "bullmq";
-import { db } from "../lib/db/db";
+import { db } from "@workspace/lib/db/db";
 import {
 	prompts,
 	brands,
@@ -9,18 +12,18 @@ import {
 	type Prompt,
 	type Brand,
 	type Competitor,
-} from "../lib/db/schema";
+} from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, AI_MODELS } from "../lib/constants";
-import { runWithOpenAI, runWithAnthropic, runWithDataForSEO } from "../lib/ai-providers";
+import { RUNS_PER_PROMPT, AI_MODELS } from "@workspace/lib/constants";
+import { runWithOpenAI, runWithAnthropic, runWithDataForSEO } from "@workspace/lib/ai-providers";
 import {
 	ingestToTinybird,
 	ingestPromptRuns,
 	ingestPromptRunsV2,
 	type TinybirdPromptRunEvent,
 	type TinybirdCitationItem,
-} from "../lib/tinybird";
-import { extractCitations } from "../lib/text-extraction";
+} from "@workspace/lib/tinybird";
+import { extractCitations } from "@workspace/lib/text-extraction";
 
 interface JobData {
 	promptId: string;

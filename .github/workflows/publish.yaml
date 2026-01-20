@@ -1,0 +1,95 @@
+# Manual release workflow - triggered via workflow_dispatch
+
+# Prerequisites:
+# 1. Run `pnpm changeset` locally to create changeset files
+# 2. Run `pnpm version-packages` to bump versions and generate changelogs
+# 3. Commit and push the version changes to main
+# 4. Trigger this workflow from GitHub Actions UI
+
+# Required secrets:
+# - NPM_TOKEN: npm access token with publish permissions
+# - DOCKERHUB_USERNAME: Docker Hub username
+# - DOCKERHUB_TOKEN: Docker Hub access token
+
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Get version
+        id: version
+        run: echo "version=$(node -p "require('./apps/cli/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Publish and create GitHub releases
+        uses: changesets/action@v1
+        with:
+          publish: pnpm release
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: web
+          push: true
+          tags: |
+            elmohq/elmo-web:${{ steps.version.outputs.version }}
+            elmohq/elmo-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: worker
+          push: true
+          tags: |
+            elmohq/elmo-worker:${{ steps.version.outputs.version }}
+            elmohq/elmo-worker:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -2,10 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic } from "@ai-sdk/anthropic";
 import { generateText } from "ai";
 import * as client from "dataforseo-client";
-import { dfsLabsApi, dfsSerpApi } from "@/lib/dataforseo";
-import { getWebsiteExcerpt } from "@/lib/website-excerpt";
-import { MAX_COMPETITORS } from "@/lib/constants";
-import { isPromptBranded } from "@/lib/tag-utils";
+import { dfsLabsApi, dfsSerpApi } from "./dataforseo";
+import { getWebsiteExcerpt } from "./website-excerpt";
+import { MAX_COMPETITORS } from "./constants";
+import { isPromptBranded, computeSystemTags } from "./tag-utils";
 
 const anthropicClient = new Anthropic({
 	apiKey: process.env.ANTHROPIC_API_KEY,
@@ -879,7 +879,6 @@ export function createPromptsData(data: {
 
 	// Helper to compute system tags for a prompt value
 	const getSystemTags = (value: string): string[] => {
-		const { computeSystemTags } = require("@/lib/tag-utils");
 		return computeSystemTags(value, brandName, brandWebsite);
 	};
 
@@ -972,7 +971,6 @@ export function createPromptsDataForReports(data: {
 	
 	// Helper to compute system tags for a prompt value
 	const getSystemTags = (value: string): string[] => {
-		const { computeSystemTags } = require("@/lib/tag-utils");
 		return computeSystemTags(value, brandName, brandWebsite);
 	};
 	

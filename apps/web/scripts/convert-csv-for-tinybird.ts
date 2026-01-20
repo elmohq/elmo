@@ -6,9 +6,9 @@
 import { createReadStream, createWriteStream, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { createGzip } from "node:zlib";
-import { db } from "../src/lib/db/db";
-import { prompts } from "../src/lib/db/schema";
-import { extractTextContent, extractCitations } from "../src/lib/text-extraction";
+import { db } from "@workspace/lib/db/db";
+import { prompts } from "@workspace/lib/db/schema";
+import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
 
 const CSV_PATH = "./prompt_runs_rows.csv";
 const OUTPUT_PATH = "./prompt_runs.ndjson.gz";

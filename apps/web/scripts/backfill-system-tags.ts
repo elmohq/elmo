@@ -12,10 +12,10 @@
  *   --dry-run    Preview changes without actually updating the database
  */
 
-import { db } from "../src/lib/db/db";
-import { prompts, brands } from "../src/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { computeSystemTags } from "../src/lib/tag-utils";
+import { computeSystemTags } from "@workspace/lib/tag-utils";
 
 interface PromptWithBrand {
 	id: string;

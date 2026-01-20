@@ -26,7 +26,7 @@ import {
 	ChartTooltip,
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -123,7 +123,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 				</div>
 				<PromptWizard
 					onComplete={() => {
-						const redirectUrl = WHITE_LABEL_CONFIG.onboarding_redirect_url(brandId);
+						const redirectUrl = getBranding().onboardingRedirectUrl?.(brandId);
 						if (redirectUrl) {
 							window.location.href = redirectUrl;
 						}

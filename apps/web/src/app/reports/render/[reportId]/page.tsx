@@ -1,13 +1,13 @@
 import { hasReportGeneratorAccess } from "@/lib/metadata";
-import { db } from "@/lib/db/db";
-import { reports } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { reports } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@workspace/ui/components/card";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
 import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
 import { Badge } from "@workspace/ui/components/badge";
 import { notFound } from "next/navigation";
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
 import {
 	calculateVisibilityPercentages,
 	calculateGroupVisibilityData,
@@ -529,8 +529,8 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 			<div className="flex items-center justify-between mb-32">
 				<h1 className="text-3xl font-bold text-gray-900">AI Visibility Report</h1>
 				<div className="flex items-center space-x-3">
-					<img src={WHITE_LABEL_CONFIG.icon} alt="Logo" className="!size-6" />
-					<span className="text-base font-semibold">{WHITE_LABEL_CONFIG.name}</span>
+					<img src={getBranding().icon} alt="Logo" className="!size-6" />
+					<span className="text-base font-semibold">{getBranding().name}</span>
 				</div>
 			</div>
 
@@ -881,9 +881,9 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:w-full">
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>
-						<CardDescription className="text-slate-700 text-base">
-							Take your brand's AI presence to the next level with {WHITE_LABEL_CONFIG.name}
-						</CardDescription>
+					<CardDescription className="text-slate-700 text-base">
+						Take your brand's AI presence to the next level with {getBranding().name}
+					</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -916,9 +916,9 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 							</div>
 						</div>
 						<div className="text-center pt-4 border-t border-blue-200">
-							<p className="text-slate-800 font-medium mb-2">Get started with {WHITE_LABEL_CONFIG.name} today</p>
+							<p className="text-slate-800 font-medium mb-2">Get started with {getBranding().name} today</p>
 							<p className="text-slate-700 text-sm">
-								Visit <strong>{WHITE_LABEL_CONFIG.url}</strong> to learn more about our AEO platform and services.
+								Visit <strong>{getBranding().url}</strong> to learn more about our AEO platform and services.
 							</p>
 						</div>
 					</CardContent>

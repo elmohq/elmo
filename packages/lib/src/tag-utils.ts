@@ -1,4 +1,4 @@
-import { SYSTEM_TAGS } from "@/lib/db/schema";
+import { SYSTEM_TAGS } from "./db/schema";
 
 /**
  * All possible system tag values

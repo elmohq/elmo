@@ -1,10 +1,6 @@
 "use client";
 
-import { SYSTEM_TAGS } from "@/lib/db/schema";
-import { isSystemTag, sanitizeUserTags } from "@/lib/tag-utils";
-
-// Re-export for convenience
-export { SYSTEM_TAGS, isSystemTag };
+import { sanitizeUserTags } from "@workspace/lib/tag-utils";
 
 /**
  * Update user tags for a prompt (system tags are computed automatically)

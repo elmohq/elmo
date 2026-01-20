@@ -3,7 +3,11 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+    },
+    "@workspace/worker#build": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "check-types": {
       "dependsOn": ["^check-types"]

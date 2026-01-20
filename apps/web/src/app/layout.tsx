@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
+import { getEnvValidationState } from "@workspace/config/env";
+import MissingEnvPage from "@/components/missing-env-page";
 import ClarityAnalytics from "@/components/clarity-analytics";
 import PlausibleProvider from "next-plausible";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -16,13 +18,15 @@ const geistMono = Geist_Mono({
 	subsets: ["latin"],
 });
 
+const branding = getBranding();
+
 export const metadata: Metadata = {
 	title: {
-		template: `%s - ${WHITE_LABEL_CONFIG.name}`,
-		default: `${WHITE_LABEL_CONFIG.name} - Generative AI Optimization`,
+		template: `%s - ${branding.name}`,
+		default: `${branding.name} - Generative AI Optimization`,
 	},
 	icons: {
-		icon: WHITE_LABEL_CONFIG.icon,
+		icon: branding.icon,
 	},
 };
 
@@ -31,6 +35,18 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
+	const envState = getEnvValidationState();
+
+	if (!envState.isValid) {
+		return (
+			<html lang="en">
+				<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+					<MissingEnvPage mode={envState.mode} missing={envState.missing} />
+				</body>
+			</html>
+		);
+	}
+
 	const isProduction = process.env.VERCEL_ENV === "production";
 
 	return (

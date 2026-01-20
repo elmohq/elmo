@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "@workspace/ui/components/badge";
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
 import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@/lib/db/schema";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
 interface BaseChartPrintProps {
 	data: ChartDataPoint[];
@@ -58,6 +58,7 @@ export function BaseChartPrint({
 	}
 
 	// Create bar data for all entities (brand + competitors)
+	const chartColors = getBranding().chartColors;
 	const allEntities: BarData[] = [];
 
 	// Add brand data
@@ -66,7 +67,7 @@ export function BaseChartPrint({
 		allEntities.push({
 			name: brand.name,
 			value: brandValue,
-			color: WHITE_LABEL_CONFIG.chart_colors[0],
+			color: chartColors[0],
 			isBrand: true,
 		});
 	}
@@ -75,11 +76,11 @@ export function BaseChartPrint({
 	competitors.forEach((competitor, index) => {
 		const competitorValue = latestDataPoint[competitor.id] as number;
 		if (competitorValue !== null && competitorValue !== undefined) {
-			const colorIndex = (index + 1) % WHITE_LABEL_CONFIG.chart_colors.length;
+			const colorIndex = (index + 1) % chartColors.length;
 			allEntities.push({
 				name: competitor.name,
 				value: competitorValue,
-				color: WHITE_LABEL_CONFIG.chart_colors[colorIndex],
+				color: chartColors[colorIndex],
 				isBrand: false,
 			});
 		}

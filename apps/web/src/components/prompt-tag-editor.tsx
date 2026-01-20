@@ -5,8 +5,9 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Tag, Plus, X, Loader2 } from "lucide-react";
-import { updatePromptTags, isSystemTag } from "@/hooks/use-tags";
-import { cn } from "@/lib/utils";
+import { updatePromptTags } from "@/hooks/use-tags";
+import { isSystemTag } from "@workspace/lib/tag-utils";
+import { cn } from "@workspace/ui/lib/utils";
 
 interface PromptTagEditorProps {
 	brandId: string;

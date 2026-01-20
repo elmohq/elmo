@@ -1,6 +1,6 @@
 "use client";
 
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
 import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -71,7 +71,7 @@ export function OptimizeButton({
 	const createSimpleButton = (promptName: string, promptId: string, model?: string) => (
 		<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" asChild>
 			<a href={createOptimizationUrl(promptName, promptId, model)} target="_blank" rel="noopener noreferrer">
-				Optimize with {WHITE_LABEL_CONFIG.parent_name}
+				Optimize with {getBranding().parentName}
 				<IconExternalLink size={12} className="size-3 ml-0.5" />
 			</a>
 		</Button>
@@ -156,7 +156,7 @@ export function OptimizeButton({
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-					Optimize with {WHITE_LABEL_CONFIG.parent_name}
+					Optimize with {getBranding().parentName}
 					<IconChevronDown size={12} className="size-3 ml-0.5" />
 				</Button>
 			</DropdownMenuTrigger>

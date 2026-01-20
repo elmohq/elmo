@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { prompts, competitors, brands } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@/lib/db/schema";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
 import { 
 	getPromptDailyStats, 
 	getPromptCompetitorDailyStats,

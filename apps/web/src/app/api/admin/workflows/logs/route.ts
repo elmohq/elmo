@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
-import { devPromptQueue, prodPromptQueue } from "@/worker/queues";
+import { devPromptQueue, prodPromptQueue } from "@workspace/lib/queues";
 
 export const dynamic = "force-dynamic";
 

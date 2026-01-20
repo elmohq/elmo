@@ -1,6 +1,6 @@
-import { promptQueue } from "@/worker/queues";
-import { db } from "./db/db";
-import { prompts, brands } from "./db/schema";
+import { promptQueue } from "@workspace/lib/queues";
+import { db } from "@workspace/lib/db/db";
+import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { Queue } from "bullmq";
 

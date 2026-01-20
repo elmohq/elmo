@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { prompts, competitors, brands } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, count } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import { MAX_COMPETITORS } from "@/lib/constants";
-import { createPromptsData } from "@/lib/wizard-helpers";
+import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { createPromptsData } from "@workspace/lib/wizard-helpers";
 
 // Maximum limits
 const MAX_PROMPTS = 150;

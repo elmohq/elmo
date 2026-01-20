@@ -6,7 +6,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import { BaseChartPrint } from "./base-chart-print";
 import { ChartDownloadFooter } from "./chart-download-footer";
 import { useChartDownload } from "@/hooks/use-chart-download";
-import type { Brand, Competitor } from "@/lib/db/schema";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
 import {
 	LookbackPeriod,
 	getBadgeVariant,

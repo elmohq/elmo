@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getElmoOrgs } from "@/lib/metadata";
-import { db } from "@/lib/db/db";
-import { promptRuns, prompts } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { promptRuns, prompts } from "@workspace/lib/db/schema";
 import { and, eq, gte, lte, desc } from "drizzle-orm";
 
 type Params = {

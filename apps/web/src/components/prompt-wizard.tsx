@@ -12,7 +12,7 @@ import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket, Plus, X,
 import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
-import { MAX_COMPETITORS } from "@/lib/constants";
+import { MAX_COMPETITORS } from "@workspace/lib/constants";
 
 // Maximum prompts limit
 const MAX_PROMPTS = 150;

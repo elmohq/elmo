@@ -1,96 +1,41 @@
-import { ManagementClient } from "auth0";
-import { auth0 } from "./auth0";
-import { redis } from "./redis";
-import { db } from "./db/db";
-import { brands, prompts, competitors, type Brand, type NewBrand, type BrandWithPrompts } from "./db/schema";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts, competitors, type Brand, type NewBrand, type BrandWithPrompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import {
+	getOrganizations,
+	clearAuthCache,
+	isAdmin as configIsAdmin,
+	hasReportGeneratorAccess as configHasReportGeneratorAccess,
+} from "./config";
 
-const management = new ManagementClient({
-	domain: process.env.AUTH0_MGMT_API_DOMAIN!,
-	clientId: process.env.AUTH0_CLIENT_ID!,
-	clientSecret: process.env.AUTH0_CLIENT_SECRET!,
-});
-
+/**
+ * Organization metadata type (backwards compatible alias)
+ */
 export type ElmoBrandMetadata = {
 	id: string;
 	name: string;
 };
 
-export type AppMetadata = {
-	elmo_orgs?: ElmoBrandMetadata[];
-	elmo_report_generator_access?: boolean;
-	elmo_admin?: boolean;
-};
-
-const CACHE_TTL = 60 * 5;
-
-function getRedisKey(userId: string): string {
-	return `auth0-app-metadata-${userId}`;
-}
-
-export async function getAppMetadata(): Promise<AppMetadata> {
-	const session = await auth0.getSession();
-
-	if (!session?.user?.sub) {
-		return {};
-	}
-
-	const userId = session.user.sub;
-	const redisKey = getRedisKey(userId);
-
-	try {
-		const cachedMetadata = await redis.get(redisKey);
-		if (cachedMetadata) {
-			return cachedMetadata as AppMetadata;
-		}
-	} catch (error) {
-		console.error("Error fetching from Redis cache:", error);
-	}
-
-	try {
-		const userData = await management.users.get({
-			id: userId,
-			fields: "app_metadata",
-		});
-
-		const appMetadata = (userData.data?.app_metadata as AppMetadata) || {};
-
-		try {
-			await redis.setex(redisKey, CACHE_TTL, JSON.stringify(appMetadata));
-		} catch (error) {
-			console.error("Error caching to Redis:", error);
-		}
-
-		return appMetadata;
-	} catch (error) {
-		console.error("Error fetching app_metadata from Management API:", error);
-		return {};
-	}
-}
-
+/**
+ * Get organizations the current user has access to
+ * 
+ * This function delegates to the config module which handles
+ * different deployment modes (whitelabel, local, demo).
+ */
 export async function getElmoOrgs(forceRefresh = false): Promise<ElmoBrandMetadata[]> {
 	if (forceRefresh) {
-		await clearAppMetadataCache();
+		await clearAuthCache();
 	}
-	const appMetadata = await getAppMetadata();
-	return appMetadata.elmo_orgs || [];
+	return getOrganizations();
 }
 
+/**
+ * Clear the app metadata cache
+ * 
+ * @deprecated Use clearAuthCache() from @/lib/config instead
+ */
 export async function clearAppMetadataCache(): Promise<void> {
-	const session = await auth0.getSession();
-
-	if (!session?.user?.sub) {
-		return;
-	}
-
-	const userId = session.user.sub;
-	const redisKey = getRedisKey(userId);
-
-	try {
-		await redis.del(redisKey);
-	} catch (error) {
-		console.error("Error clearing Redis cache:", error);
-	}
+	return clearAuthCache();
 }
 
 export async function getBrandFromDb(brandId: string): Promise<Brand | undefined> {
@@ -227,16 +172,16 @@ export async function getBrandMetadata(brandId: string): Promise<undefined | Elm
 	return orgs.find((org) => org.id === brandId);
 }
 
+/**
+ * Check if the current user has report generator access
+ */
 export async function hasReportGeneratorAccess(): Promise<boolean> {
-	const appMetadata = await getAppMetadata();
-	return appMetadata.elmo_report_generator_access === true;
+	return configHasReportGeneratorAccess();
 }
 
+/**
+ * Check if the current user is an admin
+ */
 export async function isAdmin(): Promise<boolean> {
-	const appMetadata = await getAppMetadata();
-	if (appMetadata.elmo_admin === true) {
-		return true;
-	} else {
-		return false;
-	}
+	return configIsAdmin();
 }

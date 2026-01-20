@@ -16,11 +16,20 @@ import { createClient, type ClickHouseClient } from "@clickhouse/client";
 let client: ClickHouseClient | null = null;
 
 /**
- * Derive the ClickHouse URL from the Tinybird API URL
+ * Get the ClickHouse URL for Tinybird
+ * 
+ * For hosted Tinybird, derives ClickHouse URL from API URL:
  * API URL: https://api.us-west-2.aws.tinybird.co
  * ClickHouse URL: https://clickhouse.us-west-2.aws.tinybird.co
+ * 
+ * For Tinybird Local (docker), use CLICKHOUSE_HOST directly since
+ * the URL transformation doesn't apply.
  */
 function getClickHouseUrl(): string {
+	// Allow direct override for Tinybird Local
+	if (process.env.CLICKHOUSE_HOST) {
+		return process.env.CLICKHOUSE_HOST;
+	}
 	const baseUrl = process.env.TINYBIRD_BASE_URL || "https://api.tinybird.co";
 	return baseUrl.replace("://api.", "://clickhouse.");
 }

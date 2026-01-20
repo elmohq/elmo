@@ -4,9 +4,9 @@
  * Run with: pnpm tsx --env-file=.env scripts/diagnose-v2-mismatch.ts
  */
 
-import * as v1 from "../src/lib/tinybird-read";
-import * as v2 from "../src/lib/tinybird-read-v2";
-import { queryTinybird } from "../src/lib/tinybird-read-v2";
+import * as v1 from "@/lib/tinybird-read";
+import * as v2 from "@/lib/tinybird-read-v2";
+import { queryTinybird } from "@/lib/tinybird-read-v2";
 
 const BRAND_ID = "b1957fb2-445f-410d-b516-ddce4ebc27cb";
 

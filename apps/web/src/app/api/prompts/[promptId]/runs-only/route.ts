@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { promptRuns, prompts } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { promptRuns, prompts } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, desc, gte, count, and } from "drizzle-orm";
 

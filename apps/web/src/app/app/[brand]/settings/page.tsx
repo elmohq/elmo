@@ -11,7 +11,7 @@ import { Plus, X } from "lucide-react";
 import { Separator } from "@workspace/ui/components/separator";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { AlertTriangle } from "lucide-react";
-import { MAX_COMPETITORS } from "@/lib/constants";
+import { MAX_COMPETITORS } from "@workspace/lib/constants";
 
 interface Competitor {
 	name: string;

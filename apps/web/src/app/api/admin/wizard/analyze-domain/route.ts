@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
-import { analyzeWebsite, getCompetitors } from "@/lib/wizard-helpers";
+import { analyzeWebsite, getCompetitors } from "@workspace/lib/wizard-helpers";
 
 export const dynamic = "force-dynamic";
 

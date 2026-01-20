@@ -2,7 +2,7 @@
 
 import useSWR, { mutate as globalMutate } from "swr";
 import { usePathname } from "next/navigation";
-import type { BrandWithPrompts, Competitor } from "@/lib/db/schema";
+import type { BrandWithPrompts, Competitor } from "@workspace/lib/db/schema";
 
 // Extended type that includes the earliest data date from Tinybird
 // Optional because the list endpoint doesn't fetch this for performance reasons

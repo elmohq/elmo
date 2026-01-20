@@ -77,7 +77,7 @@ export interface ChartDataPoint {
 	[key: string]: number | string | boolean | null; // Dynamic keys for brand/competitor IDs and _extended_ flags
 }
 
-import type { PromptRun, Brand, Competitor } from "@/lib/db/schema";
+import type { PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
 
 /**
  * Calculate visibility percentages for brand vs competitors from prompt runs

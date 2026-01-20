@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { prompts, brands } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, brands } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
-import { sanitizeUserTags, computeSystemTags } from "@/lib/tag-utils";
+import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
 
 type Params = {
 	id: string;

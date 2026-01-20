@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
-import { db } from "@/lib/db/db";
-import { brands, prompts } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 

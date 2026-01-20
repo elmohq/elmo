@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { prompts, SYSTEM_TAGS } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, desc } from "drizzle-orm";
 import { getPromptsSummary } from "@/lib/tinybird-read-v2";

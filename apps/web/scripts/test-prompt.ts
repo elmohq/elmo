@@ -12,9 +12,9 @@
  *   pnpm tsx --env-file=.env scripts/test-prompt.ts "Your prompt" --provider google
  */
 
-import { runWithOpenAI, runWithAnthropic, runWithDataForSEO, type PromptRunResult } from "../src/lib/ai-providers";
-import { extractCitations } from "../src/lib/text-extraction";
-import { AI_MODELS } from "../src/lib/constants";
+import { runWithOpenAI, runWithAnthropic, runWithDataForSEO, type PromptRunResult } from "@workspace/lib/ai-providers";
+import { extractCitations } from "@workspace/lib/text-extraction";
+import { AI_MODELS } from "@workspace/lib/constants";
 
 // Colors for terminal output
 const colors = {

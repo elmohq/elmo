@@ -9,8 +9,8 @@
  * Usage: tsx scripts/migrate-job-schedulers.ts
  */
 
-import { db } from "../src/lib/db/db";
-import { prompts } from "../src/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "../src/lib/job-scheduler";
 

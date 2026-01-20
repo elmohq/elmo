@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCompetitors } from "@/lib/wizard-helpers";
+import { getCompetitors } from "@workspace/lib/wizard-helpers";
 
 export async function POST(request: NextRequest) {
 	try {

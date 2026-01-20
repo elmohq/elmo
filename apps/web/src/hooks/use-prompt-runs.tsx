@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { usePathname } from "next/navigation";
-import type { PromptRun } from "@/lib/db/schema";
+import type { PromptRun } from "@workspace/lib/db/schema";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 

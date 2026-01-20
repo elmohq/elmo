@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/demo",
+  "version": "0.1.1",
+  "private": true,
+  "exports": {
+    "./config": "./src/config.ts",
+    "./auth-provider": "./src/auth-provider.ts",
+    "./components/*": "./src/components/*.tsx"
+  },
+  "dependencies": {
+    "@workspace/config": "workspace:*",
+    "@workspace/local": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "typescript": "^5"
+  }
+}

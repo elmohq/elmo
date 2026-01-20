@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { prompts, promptRuns, brands } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, promptRuns, brands } from "@workspace/lib/db/schema";
 import { removePromptJobScheduler, createPromptJobScheduler } from "@/lib/job-scheduler";
 import { eq } from "drizzle-orm";
-import { sanitizeUserTags, computeSystemTags } from "@/lib/tag-utils";
+import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
 
 type Params = {
 	promptId: string;

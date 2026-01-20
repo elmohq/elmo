@@ -8,7 +8,7 @@ import { ChartActionsFooter } from "./chart-actions-footer";
 import { useChartDownload } from "@/hooks/use-chart-download";
 import { useCompetitors, useBrand } from "@/hooks/use-brands";
 import { usePromptRuns } from "@/hooks/use-prompt-runs";
-import type { PromptRun } from "@/lib/db/schema";
+import type { PromptRun } from "@workspace/lib/db/schema";
 import { LookbackPeriod, calculateGroupVisibilityData, createPromptToWebQueryMapping } from "@/lib/chart-utils";
 
 interface Prompt {

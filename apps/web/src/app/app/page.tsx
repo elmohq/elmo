@@ -1,24 +1,25 @@
-import { Button } from "@workspace/ui/components/button";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getElmoOrgs } from "@/lib/metadata";
+import { getDeploymentConfig } from "@/lib/config";
 import FullPageCard from "@/components/full-page-card";
+import { BrandSwitcher } from "@workspace/whitelabel/components/brand-switcher";
 
 export default async function BrandSwitcherPage() {
-	const orgs = await getElmoOrgs(true);
+	const config = getDeploymentConfig();
+	
+	if (config.mode === "whitelabel") {
+		const orgs = await getElmoOrgs(true);
 
-	return (
-		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
-			<div className="flex flex-col space-y-3">
-				{orgs.length > 0 ? (
-					orgs.map((org: { id: string; name: string }) => (
-						<Button key={org.id} asChild variant="secondary" className="min-w-[200px]">
-							<Link href={`/app/${org.id}`}>{org.name}</Link>
-						</Button>
-					))
-				) : (
-					<p className="text-muted-foreground text-center">No brands available</p>
-				)}
-			</div>
-		</FullPageCard>
-	);
+		return (
+			<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
+				<BrandSwitcher organizations={orgs} />
+			</FullPageCard>
+		);
+	} else {
+		const defaultOrgId = config.defaultOrganization?.id;
+		if (!defaultOrgId) {
+			throw new Error("DEFAULT_ORG_ID is not configured for this deployment.");
+		}
+		redirect(`/app/${defaultOrgId}`);
+	}	
 }

@@ -13,7 +13,7 @@ import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { PromptTagEditor } from "@/components/prompt-tag-editor";
 import { Separator } from "@workspace/ui/components/separator";
 import { Button } from "@workspace/ui/components/button";
-import { extractTextContent } from "@/lib/text-extraction";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { ProgressBarChart, MODEL_COLORS } from "@/components/progress-bar-chart";
 import { CitationsDisplay } from "@/components/citations-display";

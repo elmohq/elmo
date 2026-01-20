@@ -1,0 +1,33 @@
+{
+  "name": "@workspace/worker",
+  "version": "0.1.1",
+  "private": true,
+  "scripts": {
+    "dev": "tsx --env-file=../web/.env src/index.ts",
+    "start": "tsx src/index.ts",
+    "queuedash": "tsx --env-file=../web/.env src/queuedash.ts",
+    "build": "tsc -p tsconfig.json",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "3.0.1",
+    "@anthropic-ai/sdk": "^0.60.0",
+    "@chronark/zod-bird": "^1.0.0",
+    "@queuedash/api": "^3.14.0",
+    "@workspace/lib": "workspace:*",
+    "ai": "^6.0.3",
+    "bullmq": "^5.59.0",
+    "dataforseo-client": "^2.0.2",
+    "drizzle-orm": "^0.45.1",
+    "express": "^5.2.1",
+    "pg": "^8.16.3",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20",
+    "@types/pg": "^8.15.4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

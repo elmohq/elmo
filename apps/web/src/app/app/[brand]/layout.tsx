@@ -1,6 +1,7 @@
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
+import { DemoModeBanner } from "@/components/demo-mode-banner";
 import BrandOnboarding from "@/components/brand-onboarding";
 import { getBrandFromDb, getBrandMetadata } from "@/lib/metadata";
 import { notFound } from "next/navigation";
@@ -38,6 +39,7 @@ export default async function OrgLayout({
 		>
 			<AppSidebar variant="sidebar" />
 			<SidebarInset className="ml-[var(--sidebar-width)]">
+				<DemoModeBanner />
 				<SiteHeader />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">

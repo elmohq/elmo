@@ -1,14 +1,14 @@
 import { Job } from "bullmq";
-import { db } from "../lib/db/db";
-import { reports, type Brand, brands } from "../lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { AI_MODELS } from "../lib/constants";
+import { AI_MODELS } from "@workspace/lib/constants";
 import Anthropic from "@anthropic-ai/sdk";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
-import { dfsSerpApi } from "../lib/dataforseo";
+import { dfsSerpApi } from "@workspace/lib/dataforseo";
 import * as client from "dataforseo-client";
-import { extractTextContent } from "../lib/text-extraction";
+import { extractTextContent } from "@workspace/lib/text-extraction";
 import {
 	analyzeWebsite,
 	getCompetitors,
@@ -20,8 +20,8 @@ import {
 	type KeywordResult,
 	type PersonaGroup,
 	type PromptData,
-} from "../lib/wizard-helpers";
-import { isPromptBranded, computeSystemTags } from "../lib/tag-utils";
+} from "@workspace/lib/wizard-helpers";
+import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
 
 // Initialize Anthropic client for direct API calls (for tool usage)
 const anthropic = new Anthropic({

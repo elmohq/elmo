@@ -11,7 +11,7 @@ import {
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
 import { Badge } from "@workspace/ui/components/badge";
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
 import {
 	LookbackPeriod,
 	ChartDataPoint,
@@ -22,7 +22,7 @@ import {
 	getBadgeClassName,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
-import type { Brand, Competitor } from "@/lib/db/schema";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
 interface BaseChartProps {
 	data: ChartDataPoint[];
@@ -61,22 +61,23 @@ export function BaseChart({
 	const sortedSelectedCompetitors = [...selectedCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
 	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
+	const chartColors = getBranding().chartColors;
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",
 		},
 		[brand.id]: {
 			label: brand.name,
-			color: WHITE_LABEL_CONFIG.chart_colors[0], // Brand gets first color
+			color: chartColors[0], // Brand gets first color
 		},
 	};
 
 	// Add ALL competitors to config with consistent colors based on their position in the full sorted list
 	sortedAllCompetitors.forEach((competitor, index) => {
-		const colorIndex = (index + 1) % WHITE_LABEL_CONFIG.chart_colors.length;
+		const colorIndex = (index + 1) % chartColors.length;
 		chartConfig[competitor.id] = {
 			label: competitor.name,
-			color: WHITE_LABEL_CONFIG.chart_colors[colorIndex],
+			color: chartColors[colorIndex],
 		};
 	});
 

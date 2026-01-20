@@ -1,0 +1,15 @@
+{
+  "name": "@workspace/local",
+  "version": "0.1.1",
+  "private": true,
+  "exports": {
+    "./config": "./src/config.ts",
+    "./auth-provider": "./src/auth-provider.ts"
+  },
+  "dependencies": {
+    "@workspace/config": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

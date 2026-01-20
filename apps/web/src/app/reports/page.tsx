@@ -9,7 +9,7 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { ExternalLink } from "lucide-react";
-import type { Report } from "@/lib/db/schema";
+import type { Report } from "@workspace/lib/db/schema";
 import FullPageCard from "@/components/full-page-card";
 import { NavUserNoSidebar } from "@/components/nav-user-no-sidebar";
 import Link from "next/link";

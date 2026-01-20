@@ -1,0 +1,14 @@
+{
+  "name": "@workspace/config",
+  "version": "0.1.1",
+  "private": true,
+  "exports": {
+    "./types": "./src/types.ts",
+    "./constants": "./src/constants.ts",
+    "./env": "./src/env.ts",
+    "./runtime": "./src/runtime.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

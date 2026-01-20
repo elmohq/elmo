@@ -2,7 +2,7 @@
   "name": "elmo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.28.0",
+  "packageManager": "pnpm@10.28.1",
   "engines": {
     "node": "24.x"
   },
@@ -30,10 +30,16 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "format": "biome format --write .",
-    "knip": "knip"
+    "knip": "knip",
+    "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
+    "cli:unlink": "npm unlink -g @elmohq/cli",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
+    "@changesets/cli": "^2.29.8",
     "knip": "^5.81.0",
     "turbo": "^2.5.3",
     "typescript": "^5"

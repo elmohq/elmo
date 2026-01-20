@@ -1,7 +1,7 @@
 import * as client from "dataforseo-client";
 
 function createAuthenticatedFetch(username: string, password: string) {
-	return (url: RequestInfo, init?: RequestInit): Promise<Response> => {
+	return (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
 		const token = btoa(`${username}:${password}`);
 		const authHeader = { Authorization: `Basic ${token}` };
 

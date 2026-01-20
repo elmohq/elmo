@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
-import { db } from "@/lib/db/db";
-import { brands, prompts, promptRuns } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { devPromptQueue, prodPromptQueue } from "@/worker/queues";
+import { devPromptQueue, prodPromptQueue } from "@workspace/lib/queues";
 import { DEFAULT_DELAY_MS, recreatePromptJobScheduler } from "@/lib/job-scheduler";
 import type { Queue } from "bullmq";
 

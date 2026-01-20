@@ -1,4 +1,4 @@
-# Elmo Whitelabel-Client
+# Elmo
 
 A monorepo project built with [Next.js](https://nextjs.org), [Turborepo](https://turborepo.dev), and [shadcn/ui](https://ui.shadcn.com).
 
@@ -163,9 +163,58 @@ When deploying to Vercel:
 
 The build command will automatically run tests before building.
 
+## Versioning and Releases
+
+This monorepo uses [Changesets](https://github.com/changesets/changesets) for version management. All packages in the monorepo are kept on the same version (fixed versioning).
+
+### For External Contributors
+
+1. Fork the repository and create a branch for your changes.
+
+2. Make your changes and add a changeset:
+
+   ```bash
+   pnpm changeset
+   ```
+
+3. Commit both your changes and the generated changeset file.
+
+4. Open a PR against the `main` branch.
+
+5. A maintainer will review your PR. Once merged, a maintainer will handle the release process.
+
+### Releasing a New Version (Maintainers Only)
+
+When ready to release:
+
+1. **Apply changesets and bump versions** locally:
+
+   ```bash
+   pnpm version-packages
+   ```
+
+   This will:
+   - Consume all pending changeset files
+   - Update `package.json` versions for all packages
+   - Generate/update `CHANGELOG.md` files
+
+2. **Review and commit** the version changes:
+
+   ```bash
+   git add .
+   git commit -m "chore: release v$(node -p "require('./apps/cli/package.json').version")"
+   git push
+   ```
+
+3. **Trigger the release workflow** from GitHub Actions:
+   - Go to Actions > Release > Run workflow
+   - This will create a GitHub release and publish to Docker Hub and npm.
+
+
 ## Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Turborepo Documentation](https://turborepo.dev/docs)
 - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)
+- [Changesets Documentation](https://github.com/changesets/changesets)

@@ -1,7 +1,6 @@
 "use client";
 
-import { useUser } from "@auth0/nextjs-auth0";
-import { IconDotsVertical, IconExternalLink, IconLogout, IconUser, IconStatusChange } from "@tabler/icons-react";
+import { IconDotsVertical, IconExternalLink, IconLogout, IconStatusChange } from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -15,11 +14,12 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 
 import Link from "next/link";
-import { WHITE_LABEL_CONFIG } from "@/lib/white-label";
+import { getBranding } from "@/lib/config.client";
 import { Button } from "@workspace/ui/components/button";
+import { useAuth } from "@/hooks/use-auth";
 
 export function NavUserNoSidebar() {
-	const { user, isLoading } = useUser();
+	const { user, isLoading, loginUrl, logoutUrl } = useAuth();
 
 	if (isLoading) {
 		return (
@@ -42,6 +42,10 @@ export function NavUserNoSidebar() {
 	}
 
 	if (!user) {
+		// If no login URL (local/demo mode), don't show sign in
+		if (!loginUrl) {
+			return null;
+		}
 		return (
 			<div className="w-fit">
 				<Button
@@ -50,7 +54,7 @@ export function NavUserNoSidebar() {
 					asChild
 					className="w-full justify-start px-2 py-2 h-14 border border-muted-foreground/20"
 				>
-					<a href="/auth/login">
+					<a href={loginUrl}>
 						<Avatar className="h-8 w-8 rounded-lg grayscale">
 							<AvatarFallback className="rounded-lg">?</AvatarFallback>
 						</Avatar>
@@ -115,20 +119,26 @@ export function NavUserNoSidebar() {
 								Switch Brand
 							</Link>
 						</DropdownMenuItem>
+					{getBranding().parentUrl && getBranding().parentName && (
 						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link href={WHITE_LABEL_CONFIG.parent_url} target="_blank">
+							<Link href={getBranding().parentUrl!} target="_blank">
 								<IconExternalLink />
-								{WHITE_LABEL_CONFIG.parent_name} Dashboard
+								{getBranding().parentName} Dashboard
 							</Link>
 						</DropdownMenuItem>
+					)}
 					</DropdownMenuGroup>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem asChild className="cursor-pointer">
-						<a href="/auth/logout">
-							<IconLogout />
-							Log out
-						</a>
-					</DropdownMenuItem>
+					{logoutUrl && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem asChild className="cursor-pointer">
+								<a href={logoutUrl}>
+									<IconLogout />
+									Log out
+								</a>
+							</DropdownMenuItem>
+						</>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>

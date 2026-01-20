@@ -1,7 +1,4 @@
-import type { Prompt, PromptRun, Brand, Competitor } from "./db/schema";
-
-// Re-export cn from the UI package for convenience
-export { cn } from "@workspace/ui/lib/utils";
+import type { Prompt, PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
 
 /**
  * Get the display name for a model with proper capitalization

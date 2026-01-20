@@ -3,9 +3,11 @@
 This document outlines a plan to modularize the elmo codebase to support multiple deployment paradigms:
 
 1. **White-label** (current) - Auth0-based authentication, branded for whitelabel-client
-2. **Docker Compose** - Self-contained local deployment, no auth required, full read/write
-3. **Cloud (non-whitelabel)** - Clerk authentication, multi-tenant SaaS
-4. **Demo** - Read-only public instance, no auth required, all writes blocked
+2. **Local** - Self-contained local deployment (Docker Compose), no auth required, full read/write
+3. **Demo** - Read-only public instance, no auth required, all writes blocked
+4. **Cloud (future)** - Clerk authentication, multi-tenant SaaS
+
+**Implementation Note:** Cloud functionality will be implemented last. We've designed the abstractions with cloud in mind (to ensure proper endpoint design), but the actual Clerk integration is more complex and will come after whitelabel, local, and demo modes are working.
 
 ---
 
@@ -56,10 +58,10 @@ packages/
 **Key configuration values:**
 ```typescript
 interface DeploymentConfig {
-  mode: 'whitelabel' | 'docker' | 'cloud' | 'demo';
+  mode: 'whitelabel' | 'local' | 'demo';  // Note: 'cloud' will be added later
   
   auth: {
-    provider: 'auth0' | 'clerk' | 'none';
+    provider: 'auth0' | 'none';  // Note: 'clerk' will be added for cloud mode later
     // Provider-specific config loaded dynamically
   };
   
@@ -69,7 +71,7 @@ interface DeploymentConfig {
     adminPanel: boolean;    // Enable admin routes
   };
   
-  // For local provider (docker/demo) - the single org to use
+  // For local provider (local/demo modes) - the single org to use
   defaultOrganization?: {
     id: string;
     name: string;
@@ -99,7 +101,7 @@ packages/
       providers/
         auth0.ts           # Current Auth0 implementation
         clerk.ts           # Clerk implementation  
-        local.ts           # No auth - for docker/demo modes
+        local.ts           # No auth - for local/demo modes
       middleware.ts        # Unified middleware factory
 ```
 
@@ -143,11 +145,11 @@ interface AuthProvider {
 
 | Provider | List Orgs | Create Orgs | Source |
 |----------|-----------|-------------|--------|
-| Local (Docker/Demo) | Single default org | No | Config/DB |
+| Local (Local/Demo) | Single default org | No | Config/DB |
 | Auth0 (White-label) | From `app_metadata.elmo_orgs` | No | Auth0 Management API |
-| Clerk (Cloud) | From Clerk organizations | Yes | Clerk API |
+| Clerk (Cloud) - *future* | From Clerk organizations | Yes | Clerk API |
 
-**Local Auth Provider (for Docker & Demo):**
+**Local Auth Provider (for Local & Demo modes):**
 ```typescript
 // packages/auth/src/providers/local.ts
 
@@ -319,21 +321,22 @@ export const config = {
        features: { readOnly: false, multiTenant: false, adminPanel: true },
        // Orgs: read from Auth0 metadata, cannot create
      },
-     docker: {
+     local: {
        auth: { provider: 'none' },
        features: { readOnly: false, multiTenant: false, adminPanel: true },
        // Orgs: single default org from config, cannot create
-     },
-     cloud: {
-       auth: { provider: 'clerk' },
-       features: { readOnly: false, multiTenant: true, adminPanel: true },
-       // Orgs: full CRUD via Clerk, can create/switch
      },
      demo: {
        auth: { provider: 'none' },
        features: { readOnly: true, multiTenant: false, adminPanel: false },
        // Orgs: single default org from config, cannot create (readOnly anyway)
-     }
+     },
+     // Future: cloud mode with Clerk auth
+     // cloud: {
+     //   auth: { provider: 'clerk' },
+     //   features: { readOnly: false, multiTenant: true, adminPanel: true },
+     //   // Orgs: full CRUD via Clerk, can create/switch
+     // },
    };
    ```
    
@@ -341,9 +344,9 @@ export const config = {
    | Mode | List Orgs | Create Orgs | Switch Orgs | Source |
    |------|-----------|-------------|-------------|--------|
    | White-label | Yes | No | Yes (if multiple in metadata) | Auth0 `app_metadata` |
-   | Docker | Single org only | No | No | Config env vars |
-   | Cloud | Yes | Yes | Yes | Clerk API |
+   | Local | Single org only | No | No | Config env vars |
    | Demo | Single org only | No | No | Config env vars |
+   | Cloud *(future)* | Yes | Yes | Yes | Clerk API |
 
 3. **Migrate `white-label.ts` to config package**
    - Make branding configurable via env vars
@@ -354,8 +357,8 @@ export const config = {
 1. **Create `packages/auth` package**
    - Define `AuthProvider` interface
    - Implement Auth0 provider (extract from current code)
-   - Implement Clerk provider
-   - Implement Local provider (no auth - for docker/demo)
+   - Implement Local provider (no auth - for local/demo modes)
+   - *(Clerk provider will be added in Phase 5 for cloud mode)*
 
 2. **Create unified middleware**
    ```typescript
@@ -369,7 +372,7 @@ export const config = {
 3. **Refactor `metadata.ts`**
    - Move org fetching logic to auth provider
    - Keep database operations in metadata.ts
-   - Local provider returns all brands from DB
+   - Local provider returns default org from config or first brand from DB
 
 ### Phase 3: Demo Mode Middleware & UI
 
@@ -401,14 +404,14 @@ export const config = {
    - Optionally hide/disable mutation buttons
    - Add call-to-action for full version
 
-### Phase 4: Docker Compose Setup
+### Phase 4: Docker Compose Setup (for Local Mode)
 
 1. **Create `docker/` directory**
    ```
    docker/
      Dockerfile
-     docker-compose.yml        # Full local setup
-     docker-compose.demo.yml   # Demo mode overlay
+     docker-compose.yml        # Full local setup (DEPLOYMENT_MODE=local)
+     docker-compose.demo.yml   # Demo mode overlay (DEPLOYMENT_MODE=demo)
      init-scripts/
        init-db.sql             # Database schema + seed data
        seed-demo.sql           # Demo-specific sample data
@@ -420,7 +423,7 @@ export const config = {
    - `postgres` - PostgreSQL database
    - `redis` - Redis for caching/queues
    - `redis-http` - Upstash-compatible HTTP proxy for Redis
-   - `clickhouse` - ClickHouse for analytics (optional, or connect to hosted)
+   - `tinybird` - Tinybird Local for analytics (ClickHouse-compatible, required)
 
 3. **Demo mode overlay (docker-compose.demo.yml):**
    ```yaml
@@ -444,6 +447,25 @@ export const config = {
    - README for Docker setup
    - Environment variable reference
    - Troubleshooting guide
+
+### Phase 6: Cloud Mode (Clerk Integration) - *Future*
+
+**Note:** This phase is intentionally last because it's more complex than the other modes. The earlier phases are designed with cloud in mind (proper endpoint abstractions, auth provider interface), but actual Clerk implementation comes after whitelabel, local, and demo are working.
+
+1. **Implement Clerk auth provider**
+   - Add `@clerk/nextjs` dependency
+   - Implement `ClerkProvider` following the `AuthProvider` interface
+   - Full organization CRUD via Clerk API
+
+2. **Add cloud mode preset**
+   - Update config to include `mode: 'cloud'`
+   - Add `auth.provider: 'clerk'` option
+   - Enable `multiTenant: true` feature flag
+
+3. **Multi-tenant considerations**
+   - Data isolation per organization
+   - Organization switching UI
+   - Billing integration (if applicable)
 
 ---
 
@@ -481,12 +503,12 @@ elmo/
 │           ├── middleware.ts
 │           └── providers/
 │               ├── auth0.ts
-│               ├── clerk.ts
-│               └── local.ts         # No auth - docker & demo
+│               ├── clerk.ts         # Future: for cloud mode
+│               └── local.ts         # No auth - local & demo modes
 └── docker/
     ├── Dockerfile
-    ├── docker-compose.yml           # Local dev (full read/write)
-    ├── docker-compose.demo.yml      # Demo mode overlay (read-only)
+    ├── docker-compose.yml           # Local mode (DEPLOYMENT_MODE=local, full read/write)
+    ├── docker-compose.demo.yml      # Demo mode overlay (DEPLOYMENT_MODE=demo, read-only)
     └── init-scripts/
         ├── init-db.sql
         └── seed-demo.sql
@@ -523,9 +545,9 @@ BRAND_NAME="WHITELABEL-CLIENT AI Search"
 BRAND_ICON="/brands/whitelabel-client/icon.png"
 ```
 
-### Docker Compose (local dev)
+### Local (Docker Compose)
 ```env
-DEPLOYMENT_MODE=docker
+DEPLOYMENT_MODE=local
 
 # No auth config needed - local provider gives full access
 
@@ -538,17 +560,18 @@ DATABASE_URL=postgres://postgres:password@postgres:5432/elmo
 UPSTASH_REDIS_REST_URL=http://redis-http:80
 UPSTASH_REDIS_REST_TOKEN=local-token
 
-# Analytics (ClickHouse - can point to local or hosted)
-CLICKHOUSE_HOST=http://clickhouse:8123
-CLICKHOUSE_DATABASE=elmo
-# Or connect to Tinybird's ClickHouse endpoint if preferred
+# Analytics (Tinybird Local - ClickHouse compatible)
+CLICKHOUSE_HOST=http://tinybird:7181
+TINYBIRD_BASE_URL=http://tinybird:7181
+TINYBIRD_WORKSPACE=default
+TINYBIRD_TOKEN=...  # Auto-fetched by tinybird-init service
 
 # Branding
-BRAND_NAME="Elmo AI (Local)"
+BRAND_NAME="Elmo"
 BRAND_ICON="/icon.png"
 ```
 
-### Cloud (Clerk)
+### Cloud (Clerk) - *Future*
 ```env
 DEPLOYMENT_MODE=cloud
 
@@ -567,7 +590,7 @@ CLICKHOUSE_DATABASE=...
 TINYBIRD_TOKEN=...  # If using Tinybird
 
 # Branding
-BRAND_NAME="Elmo AI"
+BRAND_NAME="Elmo"
 BRAND_ICON="/icon.png"
 ```
 
@@ -581,14 +604,14 @@ DEPLOYMENT_MODE=demo
 DEFAULT_ORG_ID=demo-org
 DEFAULT_ORG_NAME="Demo Organization"
 
-# Services (same as docker, could be hosted)
+# Services (same as local, could be hosted)
 DATABASE_URL=postgres://...
 UPSTASH_REDIS_REST_URL=...
 TINYBIRD_TOKEN=...
 TINYBIRD_BASE_URL=...
 
 # Branding
-BRAND_NAME="Elmo AI Demo"
+BRAND_NAME="Elmo"
 BRAND_ICON="/icon.png"
 ```
 
@@ -602,8 +625,8 @@ BRAND_ICON="/icon.png"
 - All new code behind `if (getConfig().mode === '...')` checks
 
 ### Step 2: Gradual migration
-- Add auth providers one at a time (Local → Clerk → keep Auth0)
-- Test each mode independently
+- Add auth providers one at a time (Local → keep Auth0 → Clerk later for cloud)
+- Test each mode independently (whitelabel, local, demo first; cloud last)
 - Middleware handles demo blocking with zero route changes
 
 ### Step 3: Remove old code
@@ -639,17 +662,17 @@ BRAND_ICON="/icon.png"
 
 1. **Demo data strategy**: Should demo use a snapshot of real data, or fully synthetic data?
 
-2. **Clerk organization model**: Does Clerk's organization feature map 1:1 to current Auth0 `elmo_orgs` metadata?
+2. **Worker in demo mode**: Disable background jobs entirely? (Recommended: yes, via Docker Compose profiles)
 
-3. **Worker in demo mode**: Disable background jobs entirely? (Recommended: yes, via Docker Compose profiles)
+3. ~~**ClickHouse for local mode**: Use standalone ClickHouse container, or connect to hosted Tinybird even in local mode?~~ **Resolved**: Using Tinybird Local for all local/demo Docker deployments. This provides ClickHouse-compatible analytics with the same Tinybird-specific features used in production.
 
-4. **ClickHouse for Docker**: Use standalone ClickHouse container, or connect to hosted Tinybird even in Docker mode?
+4. *(Future - Phase 6)* **Clerk organization model**: Does Clerk's organization feature map 1:1 to current Auth0 `elmo_orgs` metadata?
 
 ---
 
 ## Note on Redis Setup
 
-The codebase uses `@upstash/redis` (HTTP-based client) everywhere. For Docker deployments, use the `serverless-redis-http` proxy to expose standard Redis with an Upstash-compatible API:
+The codebase uses `@upstash/redis` (HTTP-based client) everywhere. For local deployments (Docker Compose), use the `serverless-redis-http` proxy to expose standard Redis with an Upstash-compatible API:
 
 ```yaml
 # docker-compose.yml
@@ -669,7 +692,7 @@ services:
       - redis
 ```
 
-**Environment variables for Docker:**
+**Environment variables for local mode:**
 ```env
 UPSTASH_REDIS_REST_URL=http://redis-http:80
 UPSTASH_REDIS_REST_TOKEN=local-token
@@ -684,12 +707,14 @@ This requires **zero code changes** - the existing `@upstash/redis` client works
 | Phase | Key Deliverables | Files Affected |
 |-------|------------------|----------------|
 | 1 | Config package, presets | ~6 new files |
-| 2 | Auth package, providers | ~10 new files, ~3 modified |
+| 2 | Auth package, providers (Auth0, Local) | ~8 new files, ~3 modified |
 | 3 | Demo mode middleware & UI | ~2 new files (middleware.ts, OrgSwitcher) |
 | 4 | Docker Compose setup | ~6 new files |
 | 5 | Seed data & demo content | ~3 new files |
+| 6 *(future)* | Cloud mode (Clerk integration) | ~3 new files, ~2 modified |
 
-**Total: ~27 new files, ~3 modified files**
+**Phases 1-5 Total: ~25 new files, ~3 modified files**
+**Phase 6 (future): ~3 additional files**
 
 Key simplifications:
 - Same Redis client everywhere (Upstash `@upstash/redis` + HTTP proxy for Docker)
@@ -712,3 +737,4 @@ The key principles are:
 2. **Middleware-first**: Demo mode blocking requires zero route changes
 3. **Convention over configuration**: Sensible defaults per mode
 4. **Gradual migration**: Don't break existing functionality
+5. **Cloud last**: Design for cloud, but implement whitelabel → local → demo first; cloud (Clerk) comes last

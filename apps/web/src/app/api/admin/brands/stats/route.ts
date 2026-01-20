@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
-import { db } from "@/lib/db/db";
-import { brands, prompts } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { getAdminRunsOverTime, getAdminBrandRunStats } from "@/lib/tinybird-read-v2";
 

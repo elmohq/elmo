@@ -1,0 +1,25 @@
+{
+  "name": "@elmohq/cli",
+  "version": "0.1.1",
+  "bin": {
+    "elmo": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "commander": "^14.0.2",
+    "picocolors": "^1.1.1",
+    "semver": "^7.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.30",
+    "@types/semver": "^7.7.1",
+    "typescript": "^5.9.3"
+  }
+}

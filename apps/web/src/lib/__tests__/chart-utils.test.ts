@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { calculateVisibilityPercentages, generateDateRange, filterAndCompleteChartData, extendLinesToChartEdges, isExtendedDataPoint } from "../chart-utils";
-import type { PromptRun, Brand, Competitor } from "../db/schema";
+import type { PromptRun, Brand, Competitor } from "@workspace/lib/db/schema";
 
 describe("chart-utils", () => {
 	const mockBrand: Brand = {

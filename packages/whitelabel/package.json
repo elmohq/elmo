@@ -1,0 +1,25 @@
+{
+  "name": "@workspace/whitelabel",
+  "version": "0.1.1",
+  "private": true,
+  "exports": {
+    "./config": "./src/config.ts",
+    "./auth-provider": "./src/auth-provider.ts",
+    "./components/*": "./src/components/*.tsx"
+  },
+  "dependencies": {
+    "@workspace/config": "workspace:*",
+    "@workspace/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "@auth0/nextjs-auth0": "^4.14.0",
+    "auth0": "^4.27.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19.0.0",
+    "typescript": "^5"
+  }
+}

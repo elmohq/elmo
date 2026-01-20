@@ -15,8 +15,8 @@
  * - Result correctness (row counts, data equality)
  */
 
-import * as v1 from "../src/lib/tinybird-read";
-import * as v2 from "../src/lib/tinybird-read-v2";
+import * as v1 from "@/lib/tinybird-read";
+import * as v2 from "@/lib/tinybird-read-v2";
 
 // Test brand IDs provided by user
 const TEST_BRAND_IDS = [

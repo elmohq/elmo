@@ -1,6 +1,6 @@
 import express from "express";
 import { createQueueDashExpressMiddleware } from "@queuedash/api";
-import { devPromptQueue, prodPromptQueue, devReportQueue, prodReportQueue } from "@/worker/queues";
+import { devPromptQueue, prodPromptQueue, devReportQueue, prodReportQueue } from "@workspace/lib/queues";
 
 const app = express();
 

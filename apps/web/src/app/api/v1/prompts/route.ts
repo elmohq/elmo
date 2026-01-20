@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db/db";
-import { prompts, brands } from "@/lib/db/schema";
+import { db } from "@workspace/lib/db/db";
+import { prompts, brands } from "@workspace/lib/db/schema";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { eq, count, desc } from "drizzle-orm";
-import { sanitizeUserTags, computeSystemTags } from "@/lib/tag-utils";
+import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
 
 export async function GET(request: NextRequest) {
 	try {
