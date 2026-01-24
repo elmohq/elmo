@@ -28,6 +28,7 @@ export interface Auth0SessionWithMetadata {
 
 // Cache TTL in seconds (15 minutes)
 export const APP_METADATA_CACHE_TTL = 60 * 15;
+const FALLBACK_REFRESH_PROBABILITY = 0.15;
 
 /**
  * Auth0 auth provider for whitelabel deployment mode
@@ -104,6 +105,7 @@ export class Auth0AuthProvider implements AuthProvider {
    * 
    * Primary: Reads from session (maintained by beforeSessionSaved hook)
    * Fallback: Management API (for edge cases where session wasn't updated)
+   * Throttling: Only triggers fallback refresh on a percentage of requests
    */
   private async getAppMetadata(): Promise<Auth0AppMetadata> {
     const session = await this.auth0Client.getSession();
@@ -121,6 +123,10 @@ export class Auth0AuthProvider implements AuthProvider {
       if (age < APP_METADATA_CACHE_TTL) {
         return session.elmoAppMetadata;
       }
+
+      if (Math.random() > FALLBACK_REFRESH_PROBABILITY) {
+        return session.elmoAppMetadata;
+      }
     }
     
     // Fallback: Fetch from Auth0 Management API
@@ -133,7 +139,8 @@ export class Auth0AuthProvider implements AuthProvider {
       return userData.data?.app_metadata || {};
     } catch (error) {
       console.error("Error fetching app_metadata from Management API:", error);
-      return {};
+      // If we have stale metadata, return it rather than nothing
+      return session.elmoAppMetadata || {};
     }
   }
 
