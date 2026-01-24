@@ -34,7 +34,7 @@ export default async function PromptsPage({ params }: { params: Promise<{ brand:
 	}
 
 	const infoContent = (
-		<p>Track how different LLMs respond to prompts related to your brand, products, and <Link href={`/app/${brandId}/settings`} className="underline">competitors</Link>.</p>
+		<>Track how different LLMs respond to prompts related to your brand, products, and <Link href={`/app/${brandId}/settings`} className="underline">competitors</Link>.</>
 	);
 
 	return (

@@ -37,7 +37,10 @@ export default function CitationsPage() {
 		<p>Citations are collected from all prompt evaluations. <strong>Competitor</strong> domains shown are only those in your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link>.</p>
 	);
 
-	if (isLoading) {
+	// Only show full loading skeleton on initial load (no previous data yet)
+	// When filters change and we have previous data, keep showing it while loading new data
+	const showFullSkeleton = isLoading && !citationData;
+	if (showFullSkeleton) {
 		return (
 			<>
 				<PageHeaderSkeleton />

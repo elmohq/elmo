@@ -52,7 +52,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		// Parse query parameters
-		const lookbackParam = (searchParams.get("lookback") || "1w") as LookbackPeriod;
+		// Default to "1m" to match frontend default (getDefaultLookbackPeriod)
+		const lookbackParam = (searchParams.get("lookback") || "1m") as LookbackPeriod;
 		const webSearchEnabledParam = searchParams.get("webSearchEnabled");
 		const modelGroupParam = searchParams.get("modelGroup");
 		

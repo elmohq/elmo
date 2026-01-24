@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import useSWR from "swr";
 
 export interface CitationStats {
 	totalCitations: number;
@@ -25,52 +25,52 @@ export interface CitationStats {
 	availableTags?: string[];
 }
 
+const fetcher = async (url: string): Promise<CitationStats> => {
+	const response = await fetch(url);
+
+	if (!response.ok) {
+		const error = new Error("Failed to fetch citations");
+		error.message = `${response.status}: ${response.statusText}`;
+		throw error;
+	}
+
+	return response.json();
+};
+
+function buildApiUrl(brandId: string, options: { days?: number; tags?: string[]; modelGroup?: string }): string {
+	const baseUrl = `/api/brands/${brandId}/citations`;
+	const params = new URLSearchParams();
+
+	if (options.days) {
+		params.append("days", options.days.toString());
+	}
+	if (options.tags && options.tags.length > 0) {
+		params.append("tags", options.tags.join(","));
+	}
+	if (options.modelGroup) {
+		params.append("modelGroup", options.modelGroup);
+	}
+
+	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+}
+
 export function useCitations(brandId: string, options: { days?: number; tags?: string[]; modelGroup?: string } = {}) {
-	const [data, setData] = useState<CitationStats | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isError, setIsError] = useState(false);
+	const apiUrl = brandId ? buildApiUrl(brandId, options) : null;
 
-	// Create a stable string key for tags to use in dependency array
-	const tagsKey = options.tags?.join(',') || '';
+	const { data, error, isLoading, isValidating, mutate } = useSWR<CitationStats>(apiUrl, fetcher, {
+		revalidateOnFocus: true,
+		revalidateOnReconnect: true,
+		refreshInterval: 60000, // Refresh every 60 seconds
+		dedupingInterval: 30000, // 30 seconds deduping
+		keepPreviousData: true, // Keep showing old data while fetching new data on filter changes
+	});
 
-	useEffect(() => {
-		const fetchData = async () => {
-			try {
-				setIsLoading(true);
-				setIsError(false);
-				
-				const params = new URLSearchParams();
-				if (options.days) {
-					params.append('days', options.days.toString());
-				}
-				if (options.tags && options.tags.length > 0) {
-					params.append('tags', options.tags.join(','));
-				}
-				if (options.modelGroup) {
-					params.append('modelGroup', options.modelGroup);
-				}
-				
-				const response = await fetch(`/api/brands/${brandId}/citations?${params.toString()}`);
-				
-				if (!response.ok) {
-					throw new Error('Failed to fetch citations');
-				}
-				
-				const json = await response.json();
-				setData(json);
-			} catch (error) {
-				console.error('Error fetching citations:', error);
-				setIsError(true);
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		if (brandId) {
-			fetchData();
-		}
-	}, [brandId, options.days, tagsKey, options.modelGroup]);
-
-	return { data, isLoading, isError };
+	return {
+		data,
+		isLoading,
+		isValidating, // True when fetching (including revalidations) - use for subtle loading indicators
+		isError: error,
+		revalidate: mutate,
+	};
 }
 

@@ -9,6 +9,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 export interface FilteredVisibilityFilters {
 	lookback?: LookbackPeriod;
 	promptIds?: string[]; // Specific prompt IDs to calculate visibility for
+	modelGroup?: string; // Filter by model group (openai, anthropic, google)
 }
 
 const fetcher = async (url: string): Promise<FilteredVisibilityResponse> => {
@@ -40,6 +41,10 @@ function buildApiUrl(brandId: string, filters?: FilteredVisibilityFilters): stri
 		params.append("promptIds", filters.promptIds.join(","));
 	}
 
+	if (filters.modelGroup) {
+		params.append("modelGroup", filters.modelGroup);
+	}
+
 	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
 }
 
@@ -55,16 +60,18 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 
 	const apiUrl = extractedBrandId ? buildApiUrl(extractedBrandId, filters) : null;
 
-	const { data, error, isLoading, mutate } = useSWR<FilteredVisibilityResponse>(apiUrl, fetcher, {
+	const { data, error, isLoading, isValidating, mutate } = useSWR<FilteredVisibilityResponse>(apiUrl, fetcher, {
 		revalidateOnFocus: true,
 		revalidateOnReconnect: true,
 		refreshInterval: 60000,
 		dedupingInterval: 30000,
+		keepPreviousData: true, // Keep showing old data while fetching new data on filter changes
 	});
 
 	return {
 		filteredVisibility: data,
 		isLoading,
+		isValidating, // True when fetching (including revalidations) - use for subtle loading indicators
 		isError: error,
 		revalidate: mutate,
 	};

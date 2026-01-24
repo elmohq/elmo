@@ -1,17 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
+import { Card } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Inbox } from "lucide-react";
 import { IconEditCircle } from "@tabler/icons-react";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useBatchChartData } from "@/hooks/use-batch-chart-data";
 import { useFilteredVisibility } from "@/hooks/use-filtered-visibility";
 import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
-import { LazyPromptChart } from "@/components/lazy-prompt-chart";
+import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
+import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PageHeader, PageHeaderSkeleton, usePageFilters, usePageFilterSetters, type ModelType } from "@/components/page-header";
+import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
 interface Prompt {
 	id: string;
@@ -36,24 +39,23 @@ interface PromptsDisplayProps {
 function ContentLoadingSkeleton() {
 	return (
 		<div className="space-y-6">
-			{[...Array(6)].map((_, i) => (
+			{[...Array(3)].map((_, i) => (
 				<Card key={i} className="py-3 gap-3">
-					<CardHeader className="flex justify-between items-center px-3">
+					<div className="flex justify-between items-center px-3 py-2">
 						<div className="flex items-center gap-2">
 							<Skeleton className="h-4 w-4 rounded" />
 							<Skeleton className="h-4 w-48" />
 						</div>
 						<div className="flex items-center gap-2">
 							<Skeleton className="h-6 w-20 rounded-full" />
-							<Skeleton className="h-8 w-8 rounded" />
 						</div>
-					</CardHeader>
+					</div>
 					<div className="px-3">
 						<Skeleton className="h-px w-full" />
 					</div>
-					<CardContent className="px-3">
+					<div className="px-3 py-2">
 						<Skeleton className="h-[250px] w-full" />
-					</CardContent>
+					</div>
 				</Card>
 			))}
 		</div>
@@ -105,22 +107,47 @@ export function PromptsDisplay({
 		return { sortedPrompts: filtered, availableTags };
 	}, [promptsSummary, searchQuery]);
 
-	// Get prompt IDs for visibility calculation
+	// Get prompt IDs for batch data fetching
 	const filteredPromptIds = useMemo(() => {
 		return sortedPrompts.map(p => p.id);
 	}, [sortedPrompts]);
 
-	// Fetch filtered visibility data (for the summary bar) - based on displayed prompts
+	// Fetch visibility data for header bar (using original endpoint with citations)
 	const {
 		filteredVisibility,
 		isLoading: isLoadingVisibility,
 	} = useFilteredVisibility(brand?.id, {
 		lookback: selectedLookback,
 		promptIds: filteredPromptIds.length > 0 ? filteredPromptIds : undefined,
+		modelGroup: modelGroupParam,
 	});
 
-	// Show loading skeleton while summary is loading
-	if (isLoadingSummary || !promptsSummary) {
+	// Fetch ALL chart data in a single batch request (instead of N individual requests)
+	const {
+		batchChartData,
+		isLoading: isLoadingChartData,
+	} = useBatchChartData(brand?.id, {
+		lookback: selectedLookback,
+		modelGroup: modelGroupParam,
+		promptIds: filteredPromptIds,
+	});
+
+	// Calculate date range for chart data provider
+	const { startDate, endDate } = useMemo(() => {
+		if (!batchChartData?.dateRange) {
+			const now = new Date();
+			return { startDate: now, endDate: now };
+		}
+		return {
+			startDate: new Date(batchChartData.dateRange.fromDate),
+			endDate: new Date(batchChartData.dateRange.toDate),
+		};
+	}, [batchChartData?.dateRange]);
+
+	// Only show full loading skeleton on initial load (no previous data yet)
+	// When filters change and we have previous data, keep showing it while loading new data
+	const showFullSkeleton = isLoadingSummary && !promptsSummary;
+	if (showFullSkeleton) {
 		return (
 			<>
 				<PageHeaderSkeleton />
@@ -152,42 +179,29 @@ export function PromptsDisplay({
 		);
 	}
 
-	// Group prompts for display
-	const uncategorizedPrompts = sortedPrompts.filter(
-		(prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized",
-	);
-
-	const groupedPrompts = sortedPrompts
-		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
-		.reduce(
-			(acc, prompt) => {
-				const category = prompt.groupCategory!;
-				const prefix = prompt.groupPrefix || "";
-				const groupKey = prefix ? `${category}:${prefix}` : category;
-				if (!acc[groupKey]) {
-					acc[groupKey] = [];
-				}
-				acc[groupKey].push(prompt);
-				return acc;
-			},
-			{} as Record<string, typeof sortedPrompts>,
-		);
-
-	// Create display items - individual prompts and groups
-	const individualItems = uncategorizedPrompts.map((prompt) => ({
-		type: "individual" as const,
-		data: prompt,
-	}));
-
-	const groupItems = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => ({
-		type: "group" as const,
-		data: { groupKey, prompts: groupPrompts },
-	}));
-
-	const allDisplayItems = [...individualItems, ...groupItems];
-
 	// Check if we have NO prompts at all (not just filtered results)
 	const hasNoPromptsAtAll = (promptsSummary?.prompts?.length ?? 0) === 0 && selectedTags.length === 0 && !searchQuery;
+
+	// Convert batch data to Brand/Competitor types for the provider
+	const brandForProvider: Brand | null = batchChartData?.brand ? {
+		id: batchChartData.brand.id,
+		name: batchChartData.brand.name,
+		website: "",
+		enabled: true,
+		onboarded: true,
+		delayOverrideMs: null,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	} : null;
+
+	const competitorsForProvider: Competitor[] = batchChartData?.competitors?.map(c => ({
+		id: c.id,
+		name: c.name,
+		brandId: brand?.id || "",
+		domain: "",
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	})) || [];
 
 	return (
 		<PageHeader
@@ -235,55 +249,23 @@ export function PromptsDisplay({
 					</div>
 				</div>
 			) : (
-				<div className="space-y-6">
-					{/* Display all items (both individual and group prompts) with lazy loading */}
-					{allDisplayItems.map((item, index) => {
-						if (item.type === "individual") {
-							const prompt = item.data;
-							// First 3 charts get high priority for immediate loading
-							const priority = index < 3 ? "high" : index < 10 ? "normal" : "low";
-							
-							return (
-								<LazyPromptChart
-									key={prompt.id}
-									promptName={prompt.value}
-									promptId={prompt.id}
-									brandId={brand?.id || ""}
-									lookback={selectedLookback}
-									selectedModel={selectedModel}
-									availableModels={availableIndividualModels}
-									priority={priority}
-									searchHighlight={searchQuery}
-								/>
-							);
-						} else {
-							// For groups, we'll render individual charts for each prompt in the group
-							const group = item.data as { groupKey: string; prompts: typeof sortedPrompts };
-							return (
-								<div key={group.groupKey} className="space-y-4">
-									{group.prompts.map((prompt, promptIndex) => {
-										// Group items get lower priority
-										const priority = index < 3 && promptIndex === 0 ? "high" : "low";
-										
-										return (
-											<LazyPromptChart
-												key={prompt.id}
-												promptName={prompt.value}
-												promptId={prompt.id}
-												brandId={brand?.id || ""}
-												lookback={selectedLookback}
-												selectedModel={selectedModel}
-												availableModels={availableIndividualModels}
-												priority={priority}
-												searchHighlight={searchQuery}
-											/>
-										);
-									})}
-								</div>
-							);
-						}
-					})}
-				</div>
+				<ChartDataProvider
+					batchData={batchChartData?.chartData || null}
+					brand={brandForProvider}
+					competitors={competitorsForProvider}
+					startDate={startDate}
+					endDate={endDate}
+					isLoading={isLoadingChartData}
+				>
+					<VirtualizedPromptList
+						prompts={sortedPrompts}
+						brandId={brand?.id || ""}
+						lookback={selectedLookback}
+						selectedModel={selectedModel}
+						availableModels={availableIndividualModels}
+						searchHighlight={searchQuery}
+					/>
+				</ChartDataProvider>
 			)}
 		</PageHeader>
 	);

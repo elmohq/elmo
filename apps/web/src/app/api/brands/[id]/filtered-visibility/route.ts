@@ -41,8 +41,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		// Parse query parameters
-		const lookbackParam = (searchParams.get("lookback") || "1w") as LookbackPeriod;
+		// Default to "1m" to match frontend default (getDefaultLookbackPeriod)
+		const lookbackParam = (searchParams.get("lookback") || "1m") as LookbackPeriod;
 		const promptIdsParam = searchParams.get("promptIds");
+		const modelGroupParam = searchParams.get("modelGroup");
 
 		// Use UTC for date filtering
 		const timezone = "UTC";
@@ -138,6 +140,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				timezone,
 				brandedPromptIds,
 				promptIds,
+				modelGroupParam || undefined,
 			),
 			fromDateStr && toDateStr
 				? getDailyCitationStats(
@@ -146,6 +149,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 						toDateStr,
 						timezone,
 						promptIds,
+						modelGroupParam || undefined,
 				  )
 				: Promise.resolve([]),
 		]);

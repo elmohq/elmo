@@ -16,9 +16,11 @@ import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 describe("chart-utils helpers", () => {
 	describe("getDefaultLookbackPeriod", () => {
-		it("should return 1w when no data date provided", () => {
-			expect(getDefaultLookbackPeriod(null)).toBe("1w");
-			expect(getDefaultLookbackPeriod(undefined)).toBe("1w");
+		it("should return 1m when no data date provided (safe default)", () => {
+			// When brand data hasn't loaded yet, we default to 1m because most brands
+			// have > 1 week of data. This prevents inconsistent defaults in nuqs.
+			expect(getDefaultLookbackPeriod(null)).toBe("1m");
+			expect(getDefaultLookbackPeriod(undefined)).toBe("1m");
 		});
 
 		it("should return 1w for brands with less than 7 days of data", () => {

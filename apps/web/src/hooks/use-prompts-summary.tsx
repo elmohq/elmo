@@ -65,16 +65,18 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 
 	const apiUrl = extractedBrandId ? buildApiUrl(extractedBrandId, filters) : null;
 
-	const { data, error, isLoading, mutate } = useSWR<PromptsSummaryResponse>(apiUrl, fetcher, {
+	const { data, error, isLoading, isValidating, mutate } = useSWR<PromptsSummaryResponse>(apiUrl, fetcher, {
 		revalidateOnFocus: true,
 		revalidateOnReconnect: true,
 		refreshInterval: 60000, // Refresh every 60 seconds (less frequent than individual charts)
 		dedupingInterval: 30000, // 30 seconds deduping
+		keepPreviousData: true, // Keep showing old data while fetching new data on filter changes
 	});
 
 	return {
 		promptsSummary: data,
 		isLoading,
+		isValidating, // True when fetching (including revalidations) - use for subtle loading indicators
 		isError: error,
 		revalidate: mutate,
 	};

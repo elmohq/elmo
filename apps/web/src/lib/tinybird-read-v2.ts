@@ -155,6 +155,7 @@ export async function getVisibilityTimeSeries(
 	timezone: string,
 	brandedPromptIds: string[],
 	enabledPromptIds?: string[],
+	modelGroup?: string,
 ): Promise<VisibilityTimeSeriesPoint[]> {
 	const dateFilter =
 		fromDate && toDate
@@ -164,6 +165,8 @@ export async function getVisibilityTimeSeries(
 	const promptFilter = enabledPromptIds?.length
 		? `AND prompt_id IN {enabledPromptIds:Array(String)}`
 		: "";
+
+	const modelGroupFilter = modelGroup ? `AND model_group = {modelGroup:String}` : "";
 
 	return queryTinybird<VisibilityTimeSeriesPoint>(
 		`
@@ -176,6 +179,7 @@ export async function getVisibilityTimeSeries(
 		WHERE brand_id = {brandId:String}
 			${dateFilter}
 			${promptFilter}
+			${modelGroupFilter}
 		GROUP BY date, is_branded
 		ORDER BY date
 		`,
@@ -185,6 +189,7 @@ export async function getVisibilityTimeSeries(
 			brandedPromptIds,
 			...(fromDate && toDate ? { fromDate, toDate } : {}),
 			...(enabledPromptIds?.length ? { enabledPromptIds } : {}),
+			...(modelGroup ? { modelGroup } : {}),
 		},
 	);
 }
@@ -597,10 +602,13 @@ export async function getDailyCitationStats(
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
+	modelGroup?: string,
 ): Promise<DailyCitationStats[]> {
 	const promptFilter = enabledPromptIds?.length
 		? `AND prompt_id IN {enabledPromptIds:Array(String)}`
 		: "";
+
+	const modelGroupFilter = modelGroup ? `AND model_group = {modelGroup:String}` : "";
 
 	return queryTinybird<DailyCitationStats>(
 		`
@@ -613,6 +621,7 @@ export async function getDailyCitationStats(
 			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
 			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
 			${promptFilter}
+			${modelGroupFilter}
 		GROUP BY date, domain
 		ORDER BY date
 		`,
@@ -622,6 +631,7 @@ export async function getDailyCitationStats(
 			fromDate,
 			toDate,
 			...(enabledPromptIds?.length ? { enabledPromptIds } : {}),
+			...(modelGroup ? { modelGroup } : {}),
 		},
 	);
 }
@@ -651,6 +661,233 @@ export async function getBrandEarliestRunDate(
 	);
 
 	return result[0]?.earliest_date || null;
+}
+
+// ============================================================================
+// Batch Chart Data Query (Performance Optimized)
+// ============================================================================
+
+export interface ProcessedBatchChartDataPoint {
+	prompt_id: string;
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+	competitor_counts: Record<string, number>;
+}
+
+interface RawBatchChartDataPoint {
+	prompt_id: string;
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+}
+
+interface RawCompetitorDataPoint {
+	prompt_id: string;
+	date: string;
+	competitor_name: string;
+	mention_count: number;
+}
+
+/**
+ * Get daily chart data for ALL prompts in a single batch.
+ * 
+ * Key optimizations:
+ * 1. 2 queries instead of 3N queries (where N = number of prompts)
+ * 2. First query: brand visibility data for all prompts
+ * 3. Second query: competitor mentions using ARRAY JOIN (more reliable than sumMap)
+ * 4. Returns data for all prompts at once, enabling client-side caching
+ */
+export async function getBatchChartData(
+	brandId: string,
+	promptIds: string[],
+	fromDate: string | null,
+	toDate: string | null,
+	timezone: string,
+	webSearchEnabled?: boolean,
+	modelGroup?: string,
+): Promise<ProcessedBatchChartDataPoint[]> {
+	if (promptIds.length === 0) {
+		return [];
+	}
+
+	const dateFilter =
+		fromDate && toDate
+			? `AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String}) AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})`
+			: "";
+
+	const webSearchFilter = webSearchEnabled !== undefined ? `AND web_search_enabled = {webSearchEnabled:UInt8}` : "";
+	const modelGroupFilter = modelGroup ? `AND model_group = {modelGroup:String}` : "";
+
+	// Run both queries in parallel
+	const [brandData, competitorData] = await Promise.all([
+		// Query 1: Brand visibility data for all prompts
+		queryTinybird<RawBatchChartDataPoint>(
+			`
+			SELECT
+				prompt_id,
+				toDate(created_at, {timezone:String}) as date,
+				count() as total_runs,
+				sum(brand_mentioned) as brand_mentioned_count
+			FROM prompt_runs_v2 FINAL
+			WHERE brand_id = {brandId:String}
+				AND prompt_id IN {promptIds:Array(String)}
+				${dateFilter}
+				${webSearchFilter}
+				${modelGroupFilter}
+			GROUP BY prompt_id, date
+			ORDER BY prompt_id, date
+			`,
+			{
+				brandId,
+				promptIds,
+				timezone,
+				...(fromDate && toDate ? { fromDate, toDate } : {}),
+				...(webSearchEnabled !== undefined ? { webSearchEnabled: webSearchEnabled ? 1 : 0 } : {}),
+				...(modelGroup ? { modelGroup } : {}),
+			},
+		),
+		// Query 2: Competitor mentions using ARRAY JOIN (batched for all prompts)
+		queryTinybird<RawCompetitorDataPoint>(
+			`
+			SELECT
+				prompt_id,
+				toDate(created_at, {timezone:String}) as date,
+				competitor_name,
+				count() as mention_count
+			FROM prompt_runs_v2 FINAL
+			ARRAY JOIN competitors_mentioned AS competitor_name
+			WHERE brand_id = {brandId:String}
+				AND prompt_id IN {promptIds:Array(String)}
+				${dateFilter}
+				${webSearchFilter}
+				${modelGroupFilter}
+			GROUP BY prompt_id, date, competitor_name
+			ORDER BY prompt_id, date, competitor_name
+			`,
+			{
+				brandId,
+				promptIds,
+				timezone,
+				...(fromDate && toDate ? { fromDate, toDate } : {}),
+				...(webSearchEnabled !== undefined ? { webSearchEnabled: webSearchEnabled ? 1 : 0 } : {}),
+				...(modelGroup ? { modelGroup } : {}),
+			},
+		),
+	]);
+
+	// Build competitor counts map: prompt_id -> date -> competitor_name -> count
+	const competitorMap = new Map<string, Map<string, Record<string, number>>>();
+	for (const row of competitorData) {
+		const promptKey = row.prompt_id;
+		const dateKey = String(row.date);
+		
+		if (!competitorMap.has(promptKey)) {
+			competitorMap.set(promptKey, new Map());
+		}
+		const promptData = competitorMap.get(promptKey)!;
+		
+		if (!promptData.has(dateKey)) {
+			promptData.set(dateKey, {});
+		}
+		const dateData = promptData.get(dateKey)!;
+		dateData[row.competitor_name] = Number(row.mention_count);
+	}
+
+	// Merge brand data with competitor data
+	return brandData.map(row => {
+		const promptCompetitors = competitorMap.get(row.prompt_id);
+		const dateCompetitors = promptCompetitors?.get(String(row.date)) || {};
+		
+		return {
+			prompt_id: row.prompt_id,
+			date: row.date,
+			total_runs: row.total_runs,
+			brand_mentioned_count: row.brand_mentioned_count,
+			competitor_counts: dateCompetitors,
+		};
+	});
+}
+
+/**
+ * Get visibility time series for the header bar along with batch chart data.
+ * This combines what was previously 2 separate API calls.
+ */
+export interface BatchVisibilityData {
+	// Per-date visibility (for the header bar time series)
+	visibilityTimeSeries: Array<{
+		date: string;
+		total_runs: number;
+		brand_mentioned_count: number;
+		is_branded: boolean;
+	}>;
+	// Summary stats
+	totalRuns: number;
+	totalMentioned: number;
+}
+
+export async function getBatchVisibilityData(
+	brandId: string,
+	promptIds: string[],
+	brandedPromptIds: string[],
+	fromDate: string | null,
+	toDate: string | null,
+	timezone: string,
+): Promise<BatchVisibilityData> {
+	if (promptIds.length === 0) {
+		return {
+			visibilityTimeSeries: [],
+			totalRuns: 0,
+			totalMentioned: 0,
+		};
+	}
+
+	const dateFilter =
+		fromDate && toDate
+			? `AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String}) AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})`
+			: "";
+
+	const result = await queryTinybird<{
+		date: string;
+		total_runs: number;
+		brand_mentioned_count: number;
+		is_branded: boolean;
+	}>(
+		`
+		SELECT
+			toDate(created_at, {timezone:String}) as date,
+			count() as total_runs,
+			sum(brand_mentioned) as brand_mentioned_count,
+			has({brandedPromptIds:Array(String)}, prompt_id) as is_branded
+		FROM prompt_runs_v2 FINAL
+		WHERE brand_id = {brandId:String}
+			AND prompt_id IN {promptIds:Array(String)}
+			${dateFilter}
+		GROUP BY date, is_branded
+		ORDER BY date
+		`,
+		{
+			brandId,
+			promptIds,
+			brandedPromptIds,
+			timezone,
+			...(fromDate && toDate ? { fromDate, toDate } : {}),
+		},
+	);
+
+	// Calculate totals
+	let totalRuns = 0;
+	let totalMentioned = 0;
+	for (const row of result) {
+		totalRuns += Number(row.total_runs);
+		totalMentioned += Number(row.brand_mentioned_count);
+	}
+
+	return {
+		visibilityTimeSeries: result,
+		totalRuns,
+		totalMentioned,
+	};
 }
 
 // ============================================================================
