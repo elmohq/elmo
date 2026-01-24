@@ -18,6 +18,12 @@ export interface FeaturesConfig {
   readOnly: boolean;
   /** Admin panel access level: false = disabled, "full" = full access, "readonly" = view only */
   adminAccess: false | "full" | "readonly";
+  /** Whether the optimize button should be shown */
+  showOptimizeButton: boolean;
+  /** Whether authentication is required */
+  requiresAuth: boolean;
+  /** Whether multi-org brand switching is supported */
+  supportsMultiOrg: boolean;
 }
 
 /**
@@ -26,6 +32,16 @@ export interface FeaturesConfig {
 export interface DefaultOrganization {
   id: string;
   name: string;
+}
+
+/**
+ * Analytics configuration
+ */
+export interface AnalyticsConfig {
+  /** Plausible analytics domain (optional) */
+  plausibleDomain?: string;
+  /** Microsoft Clarity project ID (optional) */
+  clarityProjectId?: string;
 }
 
 /**
@@ -44,6 +60,8 @@ export interface BrandingConfig {
   parentUrl?: string;
   /** Callback to generate onboarding redirect URL (optional) */
   onboardingRedirectUrl?: (brandId: string) => string | undefined;
+  /** Base URL for optimization links (optional, whitelabel only) */
+  optimizationBaseUrl?: string;
   /** Chart color palette */
   chartColors: string[];
 }
@@ -140,4 +158,102 @@ export interface ConfigDependencies {
   };
   /** Environment variables (defaults to process.env) */
   env?: Record<string, string | undefined>;
+}
+
+// ============================================================================
+// Client Config (Browser-Safe)
+// ============================================================================
+
+/**
+ * Client-safe configuration that can be used in browser code
+ * Does NOT include auth providers or server-side dependencies
+ */
+export interface ClientConfig {
+  /** Current deployment mode */
+  mode: DeploymentMode;
+  /** Feature flags */
+  features: FeaturesConfig;
+  /** Branding configuration */
+  branding: BrandingConfig;
+  /** Analytics configuration */
+  analytics: AnalyticsConfig;
+  /** Default organization (for local/demo modes) */
+  defaultOrganization?: DefaultOrganization;
+}
+
+/**
+ * Factory function type for creating client configs
+ */
+export type ClientConfigFactory = (env?: Record<string, string | undefined>) => ClientConfig;
+
+// ============================================================================
+// Server Config (Server-Side Only)
+// ============================================================================
+
+/**
+ * Server-side configuration including auth provider
+ */
+export interface ServerConfig {
+  /** Current deployment mode */
+  mode: DeploymentMode;
+  /** Feature flags */
+  features: FeaturesConfig;
+  /** Branding configuration */
+  branding: BrandingConfig;
+  /** Default organization (for local/demo modes) */
+  defaultOrganization?: DefaultOrganization;
+  /** Auth provider instance */
+  authProvider: AuthProvider;
+  /** Handle proxy authentication (mode-specific implementation) */
+  handleProxyAuth: ProxyAuthHandler;
+}
+
+/**
+ * Proxy auth handler signature
+ */
+export type ProxyAuthHandler = (
+  request: unknown, // NextRequest
+  pathname: string
+) => Promise<Response>;
+
+/**
+ * Factory function type for creating server configs
+ */
+export type ServerConfigFactory = (env?: Record<string, string | undefined>) => ServerConfig;
+
+// ============================================================================
+// Environment Requirements
+// ============================================================================
+
+/**
+ * Environment variable requirement
+ */
+export interface EnvRequirement {
+  /** Unique identifier */
+  id: string;
+  /** Human-readable label */
+  label: string;
+  /** Description of what this env var is for */
+  description?: string;
+  /** Check if the requirement is satisfied */
+  isSatisfied: (env: Record<string, string | undefined>) => boolean;
+}
+
+// ============================================================================
+// Deployment Package Interface
+// ============================================================================
+
+/**
+ * Interface that each deployment package must implement
+ * This allows build-time swapping of deployment implementations
+ */
+export interface DeploymentPackage {
+  /** Create client-safe configuration */
+  createClientConfig: ClientConfigFactory;
+  /** Create server-side configuration */
+  createServerConfig: ServerConfigFactory;
+  /** Get environment variable requirements for this deployment mode */
+  getEnvRequirements: () => EnvRequirement[];
+  /** The deployment mode this package provides */
+  mode: DeploymentMode;
 }

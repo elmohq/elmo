@@ -7,7 +7,7 @@ import { PromptChartPrint } from "@/components/prompt-chart-print";
 import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
 import { Badge } from "@workspace/ui/components/badge";
 import { notFound } from "next/navigation";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import {
 	calculateVisibilityPercentages,
 	calculateGroupVisibilityData,
@@ -529,8 +529,8 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 			<div className="flex items-center justify-between mb-32">
 				<h1 className="text-3xl font-bold text-gray-900">AI Visibility Report</h1>
 				<div className="flex items-center space-x-3">
-					<img src={getBranding().icon} alt="Logo" className="!size-6" />
-					<span className="text-base font-semibold">{getBranding().name}</span>
+					<img src={clientConfig.branding.icon} alt="Logo" className="!size-6" />
+					<span className="text-base font-semibold">{clientConfig.branding.name}</span>
 				</div>
 			</div>
 
@@ -882,7 +882,7 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 					<CardHeader className="text-center">
 						<CardTitle className="text-2xl text-slate-800">Ready to Optimize Your AI Visibility?</CardTitle>
 					<CardDescription className="text-slate-700 text-base">
-						Take your brand's AI presence to the next level with {getBranding().name}
+						Take your brand's AI presence to the next level with {clientConfig.branding.name}
 					</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
@@ -916,9 +916,9 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 							</div>
 						</div>
 						<div className="text-center pt-4 border-t border-blue-200">
-							<p className="text-slate-800 font-medium mb-2">Get started with {getBranding().name} today</p>
+							<p className="text-slate-800 font-medium mb-2">Get started with {clientConfig.branding.name} today</p>
 							<p className="text-slate-700 text-sm">
-								Visit <strong>{getBranding().url}</strong> to learn more about our AEO platform and services.
+								Visit <strong>{clientConfig.branding.url}</strong> to learn more about our AEO platform and services.
 							</p>
 						</div>
 					</CardContent>

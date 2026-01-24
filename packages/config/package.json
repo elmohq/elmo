@@ -5,10 +5,10 @@
   "exports": {
     "./types": "./src/types.ts",
     "./constants": "./src/constants.ts",
-    "./env": "./src/env.ts",
-    "./runtime": "./src/runtime.ts"
+    "./env": "./src/env.ts"
   },
   "devDependencies": {
+    "@types/node": "^20",
     "typescript": "^5"
   }
 }

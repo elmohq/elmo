@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Separator } from "@workspace/ui/components/separator";
@@ -30,8 +30,8 @@ export default function FullPageCard({
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-					<img src={getBranding().icon} alt="Logo" className="!size-5" />
-					<span className="text-base font-semibold">{getBranding().name}</span>
+					<img src={clientConfig.branding.icon} alt="Logo" className="!size-5" />
+					<span className="text-base font-semibold">{clientConfig.branding.name}</span>
 				</div>
 				<Card className="my-8">
 					{(title || subtitle) && (

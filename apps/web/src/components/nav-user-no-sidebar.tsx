@@ -14,7 +14,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 
 import Link from "next/link";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { Button } from "@workspace/ui/components/button";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -119,14 +119,14 @@ export function NavUserNoSidebar() {
 								Switch Brand
 							</Link>
 						</DropdownMenuItem>
-					{getBranding().parentUrl && getBranding().parentName && (
-						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link href={getBranding().parentUrl!} target="_blank">
-								<IconExternalLink />
-								{getBranding().parentName} Dashboard
-							</Link>
-						</DropdownMenuItem>
-					)}
+				{clientConfig.branding.parentUrl && clientConfig.branding.parentName && (
+					<DropdownMenuItem asChild className="cursor-pointer">
+						<Link href={clientConfig.branding.parentUrl!} target="_blank">
+							<IconExternalLink />
+							{clientConfig.branding.parentName} Dashboard
+						</Link>
+					</DropdownMenuItem>
+				)}
 					</DropdownMenuGroup>
 					{logoutUrl && (
 						<>

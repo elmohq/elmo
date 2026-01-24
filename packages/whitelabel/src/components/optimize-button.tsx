@@ -1,6 +1,5 @@
 "use client";
 
-import { getBranding } from "@/lib/config.client";
 import { IconExternalLink, IconChevronDown } from "@tabler/icons-react";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -11,8 +10,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu";
-import { generateOptimizationUrl } from "@/lib/chart-utils";
-import { getModelDisplayName } from "@/lib/utils";
+import { generateOptimizationUrl, DEFAULT_WHITELABEL_BRANDING } from "../config";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
 
@@ -21,7 +19,7 @@ interface PromptData {
 	value: string;
 }
 
-interface OptimizeButtonProps {
+export interface OptimizeButtonProps {
 	// Basic configuration
 	brandId?: string;
 	webSearchEnabled?: boolean;
@@ -42,6 +40,15 @@ interface OptimizeButtonProps {
 	modelWebQueryMappings?: Record<string, Record<string, string>>;
 }
 
+function getModelDisplayName(model: string): string {
+	switch (model) {
+		case "openai": return "ChatGPT";
+		case "anthropic": return "Claude";
+		case "google": return "Gemini";
+		default: return model;
+	}
+}
+
 export function OptimizeButton({
 	brandId,
 	webSearchEnabled,
@@ -55,8 +62,9 @@ export function OptimizeButton({
 	webQueryMapping = {},
 	modelWebQueryMappings = {},
 }: OptimizeButtonProps) {
-	// Helper functions
+	const parentName = DEFAULT_WHITELABEL_BRANDING.parentName;
 
+	// Helper functions
 	const createOptimizationUrl = (promptName: string, promptId: string, model?: string) => {
 		if (!brandId) return "#";
 
@@ -71,7 +79,7 @@ export function OptimizeButton({
 	const createSimpleButton = (promptName: string, promptId: string, model?: string) => (
 		<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" asChild>
 			<a href={createOptimizationUrl(promptName, promptId, model)} target="_blank" rel="noopener noreferrer">
-				Optimize with {getBranding().parentName}
+				Optimize with {parentName}
 				<IconExternalLink size={12} className="size-3 ml-0.5" />
 			</a>
 		</Button>
@@ -156,7 +164,7 @@ export function OptimizeButton({
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-					Optimize with {getBranding().parentName}
+					Optimize with {parentName}
 					<IconChevronDown size={12} className="size-3 ml-0.5" />
 				</Button>
 			</DropdownMenuTrigger>

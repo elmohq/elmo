@@ -437,30 +437,3 @@ export function createPromptToWebQueryMapping(promptRuns: PromptRun[]): Record<s
 
 	return promptToWebQuery;
 }
-
-/**
- * Generate optimization URL for a prompt
- */
-export function generateOptimizationUrl(
-	promptValue: string,
-	orgId: string,
-	webSearchEnabled?: boolean,
-	oldestWebQuery?: string,
-): string {
-	const baseUrl = "https://app.whitelabel-client.com/search/create-aeo-funnel";
-
-	// URL encode the prompt value (always use promptValue as the prompt parameter)
-	const encodedPrompt = encodeURIComponent(promptValue);
-	const encodedOrgId = encodeURIComponent(orgId);
-
-	// Build the URL with prompt and org_id
-	let url = `${baseUrl}?prompt=${encodedPrompt}&org_id=${encodedOrgId}`;
-
-	// Add web_query parameter if web search is enabled and web query is present
-	if (webSearchEnabled && oldestWebQuery) {
-		const encodedWebQuery = encodeURIComponent(oldestWebQuery);
-		url += `&web_query=${encodedWebQuery}`;
-	}
-
-	return url;
-}

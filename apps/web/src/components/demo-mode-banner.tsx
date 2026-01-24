@@ -1,6 +1,6 @@
 "use client";
 
-import { getDeploymentMode } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { IconInfoCircle } from "@tabler/icons-react";
 
 /**
@@ -8,7 +8,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
  * Shows a message indicating that write operations are disabled
  */
 export function DemoModeBanner() {
-  const mode = getDeploymentMode();
+  const mode = clientConfig.mode;
   
   // Only show in demo mode
   if (mode !== "demo") {

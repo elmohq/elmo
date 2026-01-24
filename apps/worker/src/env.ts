@@ -1,3 +1,10 @@
+/**
+ * Worker environment validation
+ * 
+ * The worker has some additional requirements beyond the common ones
+ * defined in @workspace/config/env. This uses Zod for runtime validation
+ * and typed access to environment variables.
+ */
 import { z } from "zod";
 
 const envSchema = z.object({

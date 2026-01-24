@@ -84,6 +84,9 @@ importers:
       '@workspace/demo':
         specifier: workspace:*
         version: link:../../packages/demo
+      '@workspace/deployment':
+        specifier: workspace:*
+        version: link:../../packages/deployment
       '@workspace/lib':
         specifier: workspace:*
         version: link:../../packages/lib
@@ -248,6 +251,9 @@ importers:
 
   packages/config:
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.30
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -264,9 +270,34 @@ importers:
         specifier: ^19
         version: 19.2.3
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.30
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/deployment:
+    dependencies:
+      '@workspace/config':
+        specifier: workspace:*
+        version: link:../config
+      '@workspace/demo':
+        specifier: workspace:*
+        version: link:../demo
+      '@workspace/local':
+        specifier: workspace:*
+        version: link:../local
+      '@workspace/whitelabel':
+        specifier: workspace:*
+        version: link:../whitelabel
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.30
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -322,7 +353,19 @@ importers:
       '@workspace/config':
         specifier: workspace:*
         version: link:../config
+      next:
+        specifier: ^15.0.0 || ^16.0.0
+        version: 16.1.1(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.2.3
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.30
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.7
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -423,6 +466,9 @@ importers:
       '@auth0/nextjs-auth0':
         specifier: ^4.14.0
         version: 4.14.0(next@16.1.1(@opentelemetry/api@1.9.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tabler/icons-react':
+        specifier: ^3.0.0
+        version: 3.36.1(react@19.2.3)
       '@workspace/config':
         specifier: workspace:*
         version: link:../config

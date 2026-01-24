@@ -1,11 +1,7 @@
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type Brand, type NewBrand, type BrandWithPrompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import {
-	getOrganizations,
-	isAdmin as configIsAdmin,
-	hasReportGeneratorAccess as configHasReportGeneratorAccess,
-} from "./config";
+import { serverConfig } from "./config/server";
 
 /**
  * Organization metadata type (backwards compatible alias)
@@ -24,7 +20,7 @@ export type ElmoBrandMetadata = {
  * Note: Metadata freshness is managed by the proxy (refreshed ~every 15 min).
  */
 export async function getElmoOrgs(): Promise<ElmoBrandMetadata[]> {
-	return getOrganizations();
+	return serverConfig.authProvider.organizations.list();
 }
 
 export async function getBrandFromDb(brandId: string): Promise<Brand | undefined> {
@@ -165,12 +161,12 @@ export async function getBrandMetadata(brandId: string): Promise<undefined | Elm
  * Check if the current user has report generator access
  */
 export async function hasReportGeneratorAccess(): Promise<boolean> {
-	return configHasReportGeneratorAccess();
+	return serverConfig.authProvider.hasReportGeneratorAccess();
 }
 
 /**
  * Check if the current user is an admin
  */
 export async function isAdmin(): Promise<boolean> {
-	return configIsAdmin();
+	return serverConfig.authProvider.isAdmin();
 }

@@ -5,8 +5,8 @@ import {
 	computeSystemTags,
 	normalizeTag,
 	sanitizeUserTags,
-} from "../tag-utils";
-import { SYSTEM_TAGS } from "../db/schema";
+} from "./tag-utils";
+import { SYSTEM_TAGS } from "./db/schema";
 
 describe("tag-utils", () => {
 	describe("isSystemTag", () => {

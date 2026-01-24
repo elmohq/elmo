@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/deployment",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@workspace/config": "workspace:*",
+    "@workspace/local": "workspace:*",
+    "@workspace/demo": "workspace:*",
+    "@workspace/whitelabel": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}

@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "@workspace/ui",
     "@workspace/config",
+    "@workspace/deployment",
     "@workspace/local",
     "@workspace/demo",
     "@workspace/whitelabel",

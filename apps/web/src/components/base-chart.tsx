@@ -11,7 +11,7 @@ import {
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
 import { Badge } from "@workspace/ui/components/badge";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import {
 	LookbackPeriod,
 	ChartDataPoint,
@@ -61,7 +61,7 @@ export function BaseChart({
 	const sortedSelectedCompetitors = [...selectedCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
 	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
-	const chartColors = getBranding().chartColors;
+	const chartColors = clientConfig.branding.chartColors;
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",

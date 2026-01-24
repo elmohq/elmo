@@ -15,7 +15,7 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 
 import Link from "next/link";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { useAuth } from "@/hooks/use-auth";
 
 export function NavUser() {
@@ -114,14 +114,14 @@ export function NavUser() {
 									Switch Brand
 								</Link>
 							</DropdownMenuItem>
-						{getBranding().parentUrl && getBranding().parentName && (
-							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link href={getBranding().parentUrl!} target="_blank">
-									<IconExternalLink />
-									{getBranding().parentName} Dashboard
-								</Link>
-							</DropdownMenuItem>
-						)}
+					{clientConfig.branding.parentUrl && clientConfig.branding.parentName && (
+						<DropdownMenuItem asChild className="cursor-pointer">
+							<Link href={clientConfig.branding.parentUrl!} target="_blank">
+								<IconExternalLink />
+								{clientConfig.branding.parentName} Dashboard
+							</Link>
+						</DropdownMenuItem>
+					)}
 						</DropdownMenuGroup>
 						{logoutUrl && (
 							<>

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireAdminApiKeyAuth } from "@/lib/admin-auth";
-import { getDeploymentConfig, handleProxyAuth } from "@/lib/config";
+import { serverConfig } from "@/lib/config/server";
 
 /**
  * Demo mode error response
@@ -44,7 +44,7 @@ const WRITE_METHODS = ["POST", "PUT", "PATCH", "DELETE"];
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const deploymentConfig = getDeploymentConfig();
+  const deploymentConfig = serverConfig;
   const isWriteMethod = WRITE_METHODS.includes(request.method);
 
   // Read-only mode: Block all write requests to API routes
@@ -89,7 +89,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Delegate auth handling to config (handles local/demo/whitelabel modes)
-  return handleProxyAuth(request, pathname);
+  return serverConfig.handleProxyAuth(request, pathname);
 }
 
 export const config = {

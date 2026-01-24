@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "@workspace/ui/components/badge";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
@@ -58,7 +58,7 @@ export function BaseChartPrint({
 	}
 
 	// Create bar data for all entities (brand + competitors)
-	const chartColors = getBranding().chartColors;
+	const chartColors = clientConfig.branding.chartColors;
 	const allEntities: BarData[] = [];
 
 	// Add brand data

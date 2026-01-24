@@ -12,7 +12,7 @@ import type { ConfigDependencies, DefaultOrganization } from "@workspace/config/
 export class DemoAuthProvider extends LocalAuthProvider {
   constructor(
     defaultOrganization?: DefaultOrganization,
-    dependencies: ConfigDependencies = {}
+    dependencies?: ConfigDependencies
   ) {
     super(defaultOrganization, dependencies);
   }

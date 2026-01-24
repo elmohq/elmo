@@ -9,9 +9,9 @@ import {
 	getCompetitorColor,
 	getBrandColor,
 	createPromptToWebQueryMapping,
-	generateOptimizationUrl,
 	type ChartDataPoint,
 } from "../chart-utils";
+import { generateOptimizationUrl } from "@workspace/whitelabel/config";
 import type { Competitor, PromptRun } from "@workspace/lib/db/schema";
 
 describe("chart-utils helpers", () => {

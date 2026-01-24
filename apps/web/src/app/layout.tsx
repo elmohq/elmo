@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { getEnvValidationState } from "@workspace/config/env";
 import MissingEnvPage from "@/components/missing-env-page";
 import ClarityAnalytics from "@/components/clarity-analytics";
@@ -18,7 +18,9 @@ const geistMono = Geist_Mono({
 	subsets: ["latin"],
 });
 
-const branding = getBranding();
+const config = clientConfig;
+const branding = config.branding;
+const analytics = config.analytics;
 
 export const metadata: Metadata = {
 	title: {
@@ -48,11 +50,12 @@ export default function RootLayout({
 	}
 
 	const isProduction = process.env.VERCEL_ENV === "production";
+	const plausibleDomain = analytics.plausibleDomain;
 
 	return (
 		<html lang="en">
 			<head>
-				<PlausibleProvider domain="aeo.whitelabel-client.com" />
+				{plausibleDomain && <PlausibleProvider domain={plausibleDomain} />}
 			</head>
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
 				{isProduction && <ClarityAnalytics />}

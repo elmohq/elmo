@@ -21,10 +21,10 @@ export class LocalAuthProvider implements AuthProvider {
 
   constructor(
     defaultOrganization?: DefaultOrganization,
-    dependencies: ConfigDependencies = {}
+    dependencies?: ConfigDependencies
   ) {
     this.defaultOrganization = defaultOrganization;
-    this.dependencies = dependencies;
+    this.dependencies = dependencies ?? {};
   }
 
   /**

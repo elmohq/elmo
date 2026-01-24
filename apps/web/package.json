@@ -26,6 +26,7 @@
     "@upstash/redis": "^1.35.1",
     "@workspace/config": "workspace:*",
     "@workspace/demo": "workspace:*",
+    "@workspace/deployment": "workspace:*",
     "@workspace/lib": "workspace:*",
     "@workspace/local": "workspace:*",
     "@workspace/whitelabel": "workspace:*",

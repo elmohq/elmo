@@ -1,13 +1,6 @@
-import type { DeploymentMode } from "./types";
+import type { DeploymentMode, EnvRequirement } from "./types";
 
-type EnvMap = Record<string, string | undefined>;
-
-export interface EnvRequirement {
-	id: string;
-	label: string;
-	description?: string;
-	isSatisfied: (env: EnvMap) => boolean;
-}
+export type EnvMap = Record<string, string | undefined>;
 
 export interface MissingEnvVar {
 	id: string;
@@ -15,15 +8,39 @@ export interface MissingEnvVar {
 	description?: string;
 }
 
-const hasValue = (value: string | undefined): boolean =>
+/**
+ * Check if an environment variable has a non-empty value
+ */
+export const hasValue = (value: string | undefined): boolean =>
 	typeof value === "string" && value.trim().length > 0;
 
-const requireAll =
+/**
+ * Create a requirement checker that requires all specified keys to have values
+ */
+export const requireAll =
 	(keys: string[]) =>
 	(env: EnvMap): boolean =>
 		keys.every((key) => hasValue(env[key]));
 
-const COMMON_REQUIREMENTS: EnvRequirement[] = [
+/**
+ * Create a simple env requirement for a single key
+ */
+export function createEnvRequirement(
+	key: string,
+	description?: string
+): EnvRequirement {
+	return {
+		id: key,
+		label: key,
+		description,
+		isSatisfied: requireAll([key]),
+	};
+}
+
+/**
+ * Common environment requirements for all deployment modes
+ */
+export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "DATABASE_URL",
 		label: "DATABASE_URL",
@@ -87,7 +104,10 @@ const COMMON_REQUIREMENTS: EnvRequirement[] = [
 	},
 ];
 
-const LOCAL_DEMO_REQUIREMENTS: EnvRequirement[] = [
+/**
+ * Environment requirements specific to local/demo modes
+ */
+export const LOCAL_DEMO_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "DEFAULT_ORG_ID",
 		label: "DEFAULT_ORG_ID",
@@ -103,7 +123,10 @@ const LOCAL_DEMO_REQUIREMENTS: EnvRequirement[] = [
 	// APP_NAME, APP_ICON, APP_URL are optional with defaults (see constants.ts)
 ];
 
-const AUTH0_REQUIREMENTS: EnvRequirement[] = [
+/**
+ * Environment requirements specific to Auth0/whitelabel mode
+ */
+export const AUTH0_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "AUTH0_MGMT_API_DOMAIN",
 		label: "AUTH0_MGMT_API_DOMAIN",
@@ -131,14 +154,28 @@ export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 	cloud: [], // todo
 };
 
+/**
+ * Get the deployment mode from environment variables
+ * 
+ * Defaults to "local" for OSS builds. The build system should set
+ * DEPLOYMENT_MODE appropriately for each environment.
+ */
+const VALID_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
+
 export function getDeploymentModeFromEnv(
 	env: EnvMap = process.env,
 ): DeploymentMode {
 	const mode = env.DEPLOYMENT_MODE?.toLowerCase();
-	if (mode === "local" || mode === "demo" || mode === "cloud") {
-		return mode;
+	
+	if (!mode) {
+		throw new Error("DEPLOYMENT_MODE environment variable is required");
 	}
-	return "whitelabel";
+	
+	if (!VALID_MODES.includes(mode as DeploymentMode)) {
+		throw new Error(`Invalid DEPLOYMENT_MODE: "${mode}". Must be one of: ${VALID_MODES.join(", ")}`);
+	}
+	
+	return mode as DeploymentMode;
 }
 
 export function getEnvRequirements(mode: DeploymentMode): EnvRequirement[] {
@@ -167,4 +204,52 @@ export function getEnvValidationState(env: EnvMap = process.env): {
 		missing,
 		isValid: missing.length === 0,
 	};
+}
+
+/**
+ * Validate environment variables against a specific set of requirements
+ * Used by deployment packages to validate their specific requirements
+ */
+export function validateEnvRequirements(
+	requirements: EnvRequirement[],
+	env: EnvMap = process.env
+): {
+	missing: MissingEnvVar[];
+	isValid: boolean;
+} {
+	const missing = requirements
+		.filter((requirement) => !requirement.isSatisfied(env))
+		.map((requirement) => ({
+			id: requirement.id,
+			label: requirement.label,
+			description: requirement.description,
+		}));
+
+	return {
+		missing,
+		isValid: missing.length === 0,
+	};
+}
+
+/**
+ * Get a required environment variable or throw an error
+ */
+export function requireEnv(key: string, env: EnvMap = process.env): string {
+	const value = env[key];
+	if (!hasValue(value)) {
+		throw new Error(`Missing required environment variable: ${key}`);
+	}
+	return value!;
+}
+
+/**
+ * Get an optional environment variable with a default value
+ */
+export function getEnv(
+	key: string,
+	defaultValue: string,
+	env: EnvMap = process.env
+): string {
+	const value = env[key];
+	return hasValue(value) ? value! : defaultValue;
 }

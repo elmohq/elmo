@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ChartFooter } from "./chart-footer";
 import { HistoryButton } from "./history-button";
-import { OptimizeButton } from "./optimize-button";
+import { OptimizeButton } from "@workspace/whitelabel/components/optimize-button";
 
 interface ChartActionsFooterProps {
 	// For single prompts

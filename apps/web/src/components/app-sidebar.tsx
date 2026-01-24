@@ -33,7 +33,7 @@ import {
 } from "@workspace/ui/components/sidebar";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { getBranding } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 import { useBrand } from "@/hooks/use-brands";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -82,8 +82,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
 							<Link href="/">
-								<img src={getBranding().icon} alt="Logo" className="!size-5" />
-								<span className="text-base font-semibold">{getBranding().name}</span>
+								<img src={clientConfig.branding.icon} alt="Logo" className="!size-5" />
+								<span className="text-base font-semibold">{clientConfig.branding.name}</span>
 							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>

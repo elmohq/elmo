@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@auth0/nextjs-auth0";
-import { getDeploymentMode, requiresAuthentication } from "@/lib/config.client";
+import { clientConfig } from "@/lib/config/client";
 
 // Type for user object that works across auth providers
 export interface AuthUser {
@@ -59,7 +59,7 @@ export function useAuth(): UseAuthResult {
   const { user: auth0User, isLoading: auth0Loading } = useUser();
   
   // Get deployment mode (this is a simple sync function, not a hook)
-  const mode = getDeploymentMode();
+  const mode = clientConfig.mode;
   
   // For local mode, return local user (ignore Auth0 result)
   if (mode === "local") {
@@ -104,5 +104,5 @@ export function useAuth(): UseAuthResult {
  * Check if the current deployment mode requires authentication
  */
 export function requiresAuth(): boolean {
-  return requiresAuthentication();
+  return clientConfig.features.requiresAuth;
 }

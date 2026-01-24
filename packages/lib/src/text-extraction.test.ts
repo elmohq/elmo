@@ -7,7 +7,7 @@ import {
 	extractCitationsFromOpenAI,
 	extractCitationsFromGoogle,
 	extractCitations,
-} from "../text-extraction";
+} from "./text-extraction";
 
 describe("text-extraction", () => {
 	describe("extractTextFromOpenAI", () => {
