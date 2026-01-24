@@ -1,27 +1,63 @@
 # Elmo
 
-A monorepo project built with [Next.js](https://nextjs.org), [Turborepo](https://turborepo.dev), and [shadcn/ui](https://ui.shadcn.com).
+AI visibility monitoring for brands. Track how AI models represent your brand across different prompts and over time.
+
+## Tech Stack
+
+- **Language**: TypeScript 5.x
+- **Framework**: Next.js 16.x (App Router with Turbopack)
+- **Styling**: Tailwind CSS v4
+- **Component Library**: shadcn/ui (new-york style)
+- **Data Fetching**: SWR
+- **Database**: Drizzle ORM with PostgreSQL
+- **Analytics**: Tinybird (time-series data)
+- **Queue**: BullMQ with Redis
+- **Testing**: Vitest
+- **Linting & Formatting**: Biome
+- **Package Manager**: pnpm (required)
+- **Monorepo**: Turborepo
 
 ## Project Structure
 
 ```
-apps/
-└── web/          # Next.js application
-    ├── src/
-    │   ├── app/        # Next.js app router
-    │   ├── components/ # Application-specific components
-    │   ├── hooks/      # Application-specific hooks
-    │   └── lib/        # Utilities, database, etc.
-    ├── scripts/        # CLI scripts
-    └── tinybird/       # Tinybird analytics
-
-packages/
-└── ui/           # Shared UI components (shadcn/ui)
-    └── src/
-        ├── components/ # UI components (button, card, etc.)
-        ├── hooks/      # UI hooks (use-mobile, etc.)
-        ├── lib/        # UI utilities (cn)
-        └── styles/     # Global CSS variables
+.
+├── apps/
+│   ├── web/                    # Next.js application
+│   │   ├── src/
+│   │   │   ├── app/            # App Router pages and API routes
+│   │   │   │   ├── api/        # API route handlers
+│   │   │   │   └── app/        # Protected app pages
+│   │   │   ├── components/     # Application-specific components
+│   │   │   ├── hooks/          # Custom React hooks (use-*.tsx)
+│   │   │   └── lib/            # Utilities, config, helpers
+│   │   ├── scripts/            # CLI scripts for maintenance tasks
+│   │   └── tinybird/           # Tinybird datasources and pipes
+│   ├── cli/                    # @elmohq/cli - Published npm package
+│   └── worker/                 # Background job worker (BullMQ)
+│
+├── packages/
+│   ├── ui/                     # Shared UI components (shadcn/ui)
+│   │   └── src/
+│   │       ├── components/     # Button, Card, Dialog, etc.
+│   │       ├── hooks/          # UI hooks (use-mobile)
+│   │       ├── lib/            # Utilities (cn)
+│   │       └── styles/         # Global CSS variables
+│   ├── lib/                    # Shared business logic
+│   │   └── src/
+│   │       ├── db/             # Drizzle schema and migrations
+│   │       ├── ai-providers.ts # AI SDK configuration
+│   │       ├── queues.ts       # BullMQ queue definitions
+│   │       └── tinybird.ts     # Tinybird client
+│   ├── config/                 # Type definitions for deployment
+│   ├── deployment/             # Deployment mode resolution
+│   ├── demo/                   # Demo mode implementation
+│   ├── local/                  # Local development mode
+│   └── whitelabel/             # Whitelabel deployment mode
+│
+├── biome.json                  # Linting and formatting config
+├── turbo.json                  # Turborepo pipeline config
+├── pnpm-workspace.yaml         # Workspace definition
+└── package.json                # Root package with scripts
 ```
 
 ## Getting Started
@@ -51,109 +87,131 @@ Or run only the web app:
 pnpm --filter @workspace/web dev
 ```
 
-### Build
+## Commands Reference
 
-Build all packages:
+### Development
 
 ```bash
-pnpm build
+pnpm dev                              # Run all dev servers (turbo)
+pnpm --filter @workspace/web dev      # Run only web app
+```
+
+### Building
+
+```bash
+pnpm build                            # Build all packages
+pnpm --filter @workspace/web build    # Build only web app
 ```
 
 ### Testing
 
-Run tests:
-
 ```bash
-pnpm test
+pnpm test                             # Run all tests
+pnpm --filter @workspace/web test:watch  # Watch mode for web
 ```
 
-### Linting
+### Code Quality
 
 ```bash
-pnpm lint
+pnpm lint                             # Run Biome linter
+pnpm format                           # Format with Biome
+pnpm knip                             # Find unused exports/dependencies
 ```
 
-### Format
-
-```bash
-pnpm format
-```
-
-## Working with UI Components
-
-### Adding New shadcn/ui Components
-
-To add new shadcn/ui components, navigate to the web app directory and run:
+### Database
 
 ```bash
 cd apps/web
-pnpm dlx shadcn@latest add [COMPONENT]
+pnpm drizzle-kit generate             # Generate migrations
+pnpm drizzle-kit migrate              # Run migrations
 ```
 
-The CLI will automatically install:
-- Base UI components to `packages/ui/src/components/`
-- Application-specific components to `apps/web/src/components/`
-
-### Importing Components
-
-Import UI components from the `@workspace/ui` package:
-
-```tsx
-import { Button } from "@workspace/ui/components/button"
-import { Card } from "@workspace/ui/components/card"
-import { cn } from "@workspace/ui/lib/utils"
-import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
-```
-
-## Workers
-
-### Queue Dashboard
+### Worker
 
 ```bash
-pnpm --filter @workspace/web queuedash
+pnpm --filter @workspace/worker dev   # Run worker in dev mode
+pnpm --filter @workspace/web queuedash  # Queue dashboard
 ```
 
-### Worker (Development)
+### Versioning
 
 ```bash
-pnpm --filter @workspace/web worker:dev
+pnpm changeset                        # Create a changeset
+pnpm version-packages                 # Apply changesets and bump versions
 ```
 
-### Worker (Production)
+### Code Style
 
-```bash
-pnpm --filter @workspace/web worker:prod
-```
-
-## Database
-
-This project uses Drizzle ORM with PostgreSQL.
-
-### Generate Migrations
-
-```bash
-cd apps/web
-pnpm drizzle-kit generate
-```
-
-### Run Migrations
-
-```bash
-cd apps/web
-pnpm drizzle-kit migrate
-```
-
-## Environment Variables
-
-Environment variables should be placed in a `.env` file at the **root** of the repository. The monorepo scripts are configured to read from this location.
-
-Required environment variables:
-- `DATABASE_URL` - PostgreSQL connection string
-- See `.env.example` for the full list
+Use `pnpm format` to apply Biome styles to the codebase.
 
 ## Deployment
 
-### Vercel
+### Deployment Modes
+
+The app supports multiple deployment modes configured via `DEPLOYMENT_MODE`:
+
+- **local**: Single-tenant, no auth required
+- **demo**: Read-only demo mode
+- **whitelabel**: Multi-tenant with Auth0
+- **cloud**: Full SaaS mode (future)
+
+Each mode has its own package in `packages/` with mode-specific implementations.
+
+### Docker Deployment (Local/Demo)
+
+For local and demo deployments, use Docker Compose with the `@elmohq/cli` package:
+
+```bash
+# Install the CLI globally
+npm install -g @elmohq/cli
+
+# Initialize configuration (interactive wizard)
+elmo init
+
+# Start the stack
+elmo start
+
+# View logs
+elmo logs -f
+
+# Run any docker compose command
+elmo compose ps
+elmo compose down
+```
+
+The `elmo init` command:
+1. Prompts for configuration (database, Redis, Tinybird, AI credentials)
+2. Generates `elmo.yaml` (Docker Compose file) with the appropriate services
+3. Generates `.env` with environment variables and secrets
+4. Optionally starts the stack immediately
+
+The generated stack includes:
+- **web**: Next.js application (port 1515)
+- **worker**: BullMQ background worker
+- **postgres**: PostgreSQL database (optional, can use external)
+- **redis** + **redis-http**: Redis with HTTP proxy for Upstash compatibility (optional)
+- **tinybird**: Tinybird Local for analytics (optional, can use Tinybird Cloud)
+
+### Development Builds
+
+For development builds from source, use the `--dev` flag:
+
+```bash
+# Build from local source instead of pulling images
+elmo init --dev
+
+# Rebuild after code changes
+elmo compose build
+elmo compose up -d
+```
+
+The Docker build uses a multi-stage `docker/Dockerfile` with separate targets:
+- `web` target: Standalone Next.js server
+- `worker` target: BullMQ worker process
+
+Both targets receive `DEPLOYMENT_MODE` as a build arg to configure mode-specific behavior at build time.
+
+### Vercel Deployment
 
 When deploying to Vercel:
 
@@ -161,7 +219,18 @@ When deploying to Vercel:
 2. Vercel will automatically detect the monorepo structure and build correctly
 3. Environment variables should be configured in the Vercel dashboard
 
-The build command will automatically run tests before building.
+## Environment Variables
+
+Environment variables should be placed in a `.env` file at the **root** of the repository. The monorepo scripts are configured to read from this location.
+
+Key variables:
+- `DATABASE_URL` - PostgreSQL connection string
+- `DEPLOYMENT_MODE` - Deployment mode (local/demo/whitelabel)
+- `AUTH0_*` - Auth0 configuration (whitelabel mode)
+- `TINYBIRD_*` - Tinybird analytics
+- `UPSTASH_REDIS_*` - Redis for BullMQ
+
+See `turbo.json` for the full list of global environment variables used across the monorepo.
 
 ## Versioning and Releases
 
@@ -209,7 +278,6 @@ When ready to release:
 3. **Trigger the release workflow** from GitHub Actions:
    - Go to Actions > Release > Run workflow
    - This will create a GitHub release and publish to Docker Hub and npm.
-
 
 ## Learn More
 
