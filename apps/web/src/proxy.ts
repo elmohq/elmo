@@ -81,6 +81,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow public access to generated icon (all modes, no auth required)
+  if (pathname === "/api/generated-icon") {
+    return NextResponse.next();
+  }
+
   // Handle /api/v1/* routes with API key authentication (admin API - all modes)
   if (pathname.startsWith("/api/v1/")) {
     const authError = requireAdminApiKeyAuth(request);
