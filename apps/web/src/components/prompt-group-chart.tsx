@@ -173,11 +173,8 @@ export function PromptGroupChart({
 					groupName={groupName}
 					onDownload={handleDownload}
 					isDownloading={isDownloading}
-					webSearchEnabled={webSearchEnabled}
 					selectedModel={selectedModel}
 					availableModels={availableModels}
-					webQueryMapping={webQueryMapping}
-					modelWebQueryMappings={modelWebQueryMappings}
 				/>
 			</Card>
 		);
@@ -224,11 +221,8 @@ export function PromptGroupChart({
 					groupName={groupName}
 					onDownload={handleDownload}
 					isDownloading={isDownloading}
-					webSearchEnabled={webSearchEnabled}
 					selectedModel={selectedModel}
 					availableModels={availableModels}
-					webQueryMapping={webQueryMapping}
-					modelWebQueryMappings={modelWebQueryMappings}
 				/>
 			</div>
 		</Card>

@@ -249,7 +249,7 @@ export function OptimizeButton({
 
 	// Simple button for single prompt with specific model
 	if (isSingleMode && !showDropdown) {
-		return createSimpleButton(promptName!, promptId!, selectedModel === "all" ? undefined : selectedModel);
+		return createSimpleButton(promptName!, promptId!, selectedModel);
 	}
 
 	// Dropdown menu for all other cases
