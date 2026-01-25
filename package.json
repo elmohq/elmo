@@ -41,7 +41,7 @@
     "@biomejs/biome": "2.0.6",
     "@changesets/cli": "^2.29.8",
     "knip": "^5.81.0",
-    "turbo": "^2.5.3",
+    "turbo": "^2.7.6",
     "typescript": "^5"
   }
 }
