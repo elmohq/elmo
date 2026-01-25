@@ -17,6 +17,9 @@ export interface OptimizeButtonProps {
 	groupPrefix?: string;
 	webQueryMapping?: Record<string, string>;
 	modelWebQueryMappings?: Record<string, Record<string, string>>;
+	// Branding configuration (required in whitelabel, optional in stub)
+	parentName?: string;
+	optimizationUrlTemplate?: string;
 }
 
 export function OptimizeButton(_props: OptimizeButtonProps) {

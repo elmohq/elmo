@@ -147,10 +147,58 @@ export const AUTH0_REQUIREMENTS: EnvRequirement[] = [
 	},
 ];
 
+/**
+ * Environment requirements specific to whitelabel branding
+ * All branding values must be provided - no defaults allowed
+ * 
+ * NOTE: These use NEXT_PUBLIC_ prefix because they're needed client-side.
+ * Next.js only exposes env vars with this prefix to the browser bundle.
+ */
+export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
+	{
+		id: "NEXT_PUBLIC_APP_NAME",
+		label: "NEXT_PUBLIC_APP_NAME",
+		description: "Application display name (e.g., 'Acme AI Search').",
+		isSatisfied: requireAll(["NEXT_PUBLIC_APP_NAME"]),
+	},
+	{
+		id: "NEXT_PUBLIC_APP_ICON",
+		label: "NEXT_PUBLIC_APP_ICON",
+		description: "Application icon URL (must be an external URL, e.g., 'https://cdn.example.com/icon.png').",
+		isSatisfied: requireAll(["NEXT_PUBLIC_APP_ICON"]),
+	},
+	{
+		id: "NEXT_PUBLIC_APP_URL",
+		label: "NEXT_PUBLIC_APP_URL",
+		description: "Application URL (e.g., 'https://ai.example.com/').",
+		isSatisfied: requireAll(["NEXT_PUBLIC_APP_URL"]),
+	},
+	{
+		id: "NEXT_PUBLIC_APP_PARENT_NAME",
+		label: "NEXT_PUBLIC_APP_PARENT_NAME",
+		description: "Parent application name (e.g., 'Acme').",
+		isSatisfied: requireAll(["NEXT_PUBLIC_APP_PARENT_NAME"]),
+	},
+	{
+		id: "NEXT_PUBLIC_APP_PARENT_URL",
+		label: "NEXT_PUBLIC_APP_PARENT_URL",
+		description: "Parent application URL (e.g., 'https://app.example.com/').",
+		isSatisfied: requireAll(["NEXT_PUBLIC_APP_PARENT_URL"]),
+	},
+	{
+		id: "NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE",
+		label: "NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE",
+		description: "URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
+		isSatisfied: requireAll(["NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE"]),
+	},
+	// NEXT_PUBLIC_ONBOARDING_REDIRECT_URL_TEMPLATE is optional - only needed if you want to redirect
+	// users to the parent app after completing onboarding. Uses {brandId} placeholder.
+];
+
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 	local: [...COMMON_REQUIREMENTS, ...LOCAL_DEMO_REQUIREMENTS],
 	demo: [...COMMON_REQUIREMENTS, ...LOCAL_DEMO_REQUIREMENTS],
-	whitelabel: [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS],
+	whitelabel: [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS, ...WHITELABEL_BRANDING_REQUIREMENTS],
 	cloud: [], // todo
 };
 

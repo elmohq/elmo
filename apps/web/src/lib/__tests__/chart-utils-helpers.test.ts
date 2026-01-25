@@ -264,16 +264,17 @@ describe("chart-utils helpers", () => {
 	});
 
 	describe("generateOptimizationUrl", () => {
-		it("should generate URL with prompt and org_id", () => {
-			const url = generateOptimizationUrl("best running shoes", "org-123");
+		const TEST_TEMPLATE = "https://example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}";
 
-			expect(url).toContain("https://app.whitelabel-client.com/search/create-aeo-funnel");
-			expect(url).toContain("prompt=best%20running%20shoes");
-			expect(url).toContain("org_id=org-123");
+		it("should generate URL with template substitution", () => {
+			const url = generateOptimizationUrl(TEST_TEMPLATE, "best running shoes", "org-123");
+
+			expect(url).toBe("https://example.com/optimize?org_id=org-123&prompt=best%20running%20shoes&web_query=");
 		});
 
 		it("should include web_query when web search is enabled", () => {
 			const url = generateOptimizationUrl(
+				TEST_TEMPLATE,
 				"best shoes",
 				"org-123",
 				true,
@@ -283,25 +284,27 @@ describe("chart-utils helpers", () => {
 			expect(url).toContain("web_query=running%20shoe%20reviews");
 		});
 
-		it("should not include web_query when web search is disabled", () => {
+		it("should leave web_query empty when web search is disabled", () => {
 			const url = generateOptimizationUrl(
+				TEST_TEMPLATE,
 				"best shoes",
 				"org-123",
 				false,
 				"running shoe reviews"
 			);
 
-			expect(url).not.toContain("web_query");
+			expect(url).toContain("web_query=");
+			expect(url).not.toContain("running%20shoe%20reviews");
 		});
 
-		it("should not include web_query when no query provided", () => {
-			const url = generateOptimizationUrl("best shoes", "org-123", true);
+		it("should leave web_query empty when no query provided", () => {
+			const url = generateOptimizationUrl(TEST_TEMPLATE, "best shoes", "org-123", true);
 
-			expect(url).not.toContain("web_query");
+			expect(url).toContain("web_query=");
 		});
 
 		it("should properly encode special characters", () => {
-			const url = generateOptimizationUrl("best shoes & boots?", "org-123");
+			const url = generateOptimizationUrl(TEST_TEMPLATE, "best shoes & boots?", "org-123");
 
 			expect(url).toContain("prompt=best%20shoes%20%26%20boots%3F");
 		});

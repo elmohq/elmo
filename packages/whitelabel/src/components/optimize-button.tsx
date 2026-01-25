@@ -10,7 +10,7 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu";
-import { generateOptimizationUrl, DEFAULT_WHITELABEL_BRANDING } from "../config";
+import { generateOptimizationUrl } from "../config";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
 
@@ -38,6 +38,10 @@ export interface OptimizeButtonProps {
 	// Web query mappings for generating optimization URLs
 	webQueryMapping?: Record<string, string>;
 	modelWebQueryMappings?: Record<string, Record<string, string>>;
+
+	// Branding configuration (required)
+	parentName: string;
+	optimizationUrlTemplate: string;
 }
 
 function getModelDisplayName(model: string): string {
@@ -61,9 +65,9 @@ export function OptimizeButton({
 	groupPrefix,
 	webQueryMapping = {},
 	modelWebQueryMappings = {},
+	parentName,
+	optimizationUrlTemplate,
 }: OptimizeButtonProps) {
-	const parentName = DEFAULT_WHITELABEL_BRANDING.parentName;
-
 	// Helper functions
 	const createOptimizationUrl = (promptName: string, promptId: string, model?: string) => {
 		if (!brandId) return "#";
@@ -73,7 +77,7 @@ export function OptimizeButton({
 		// Fall back to prompt's value if no web query is found
 		const finalWebQuery = webQuery || promptName;
 
-		return generateOptimizationUrl(promptName, brandId, webSearchEnabled, finalWebQuery);
+		return generateOptimizationUrl(optimizationUrlTemplate, promptName, brandId, webSearchEnabled, finalWebQuery);
 	};
 
 	const createSimpleButton = (promptName: string, promptId: string, model?: string) => (

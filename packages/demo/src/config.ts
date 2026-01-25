@@ -169,6 +169,7 @@ export const createDemoConfig: DeploymentConfigFactory = (options = {}) => {
     parentName: overrides.branding?.parentName ?? env.APP_PARENT_NAME,
     parentUrl: overrides.branding?.parentUrl ?? env.APP_PARENT_URL,
     onboardingRedirectUrl: overrides.branding?.onboardingRedirectUrl,
+    optimizationUrlTemplate: overrides.branding?.optimizationUrlTemplate,
     chartColors: overrides.branding?.chartColors ?? DEFAULT_CHART_COLORS,
   };
   

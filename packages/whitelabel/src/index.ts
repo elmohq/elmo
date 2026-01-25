@@ -21,8 +21,6 @@ export {
   // Constants
   MODE,
   DEFAULT_WHITELABEL_FEATURES,
-  DEFAULT_WHITELABEL_ANALYTICS,
-  DEFAULT_WHITELABEL_BRANDING,
   
   // Helper functions
   generateOptimizationUrl,

@@ -3,12 +3,15 @@
  */
 
 /**
- * Default branding values
+ * Default branding values for local/demo modes
  * These are used when environment variables are not set
+ * 
+ * NOTE: Whitelabel mode does NOT use these defaults - all values must be
+ * provided via environment variables.
  */
 export const DEFAULT_APP_NAME = "Elmo";
-export const DEFAULT_APP_ICON = "/brands/elmo/icon.png";
-export const DEFAULT_APP_URL = "https://elmo.chat/";
+export const DEFAULT_APP_ICON = "/api/generated-icon"; // Dynamic SVG route
+export const DEFAULT_APP_URL = "http://localhost:3000/";
 
 /**
  * Default chart colors used across all deployment modes

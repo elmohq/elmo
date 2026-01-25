@@ -14,7 +14,7 @@ import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 import {
   COMMON_REQUIREMENTS,
   AUTH0_REQUIREMENTS,
-  getEnv,
+  WHITELABEL_BRANDING_REQUIREMENTS,
   requireEnv,
 } from "@workspace/config/env";
 import type {
@@ -39,22 +39,8 @@ import { Auth0AuthProvider, type Auth0AppMetadata, type Auth0SessionWithMetadata
 export const MODE = "whitelabel" as const;
 
 /**
- * Default branding for whitelabel mode (Whitelabel-Client)
- */
-export const DEFAULT_WHITELABEL_BRANDING: BrandingConfig = {
-  name: "WHITELABEL-CLIENT AI Search",
-  icon: "/brands/whitelabel-client/icon.png",
-  url: "https://ai.whitelabel-client.com/",
-  parentName: "WHITELABEL-CLIENT",
-  parentUrl: "https://app.whitelabel-client.com/",
-  onboardingRedirectUrl: (brandId: string) =>
-    `https://app.whitelabel-client.com/search/onboarding?org_id=${brandId}`,
-  optimizationBaseUrl: "https://app.whitelabel-client.com/search/create-aeo-funnel",
-  chartColors: DEFAULT_CHART_COLORS,
-};
-
-/**
  * Default features for whitelabel mode
+ * NOTE: Branding has NO defaults - all values must come from environment variables
  */
 export const DEFAULT_WHITELABEL_FEATURES: FeaturesConfig = {
   readOnly: false,
@@ -64,23 +50,30 @@ export const DEFAULT_WHITELABEL_FEATURES: FeaturesConfig = {
   supportsMultiOrg: true,
 };
 
-/**
- * Default analytics config for whitelabel mode
- */
-export const DEFAULT_WHITELABEL_ANALYTICS: AnalyticsConfig = {
-  plausibleDomain: "aeo.whitelabel-client.com",
-  // Clarity is enabled conditionally based on VERCEL_ENV
-};
-
 // ============================================================================
 // Environment Requirements
 // ============================================================================
 
 /**
  * Get the environment variable requirements for whitelabel mode
+ * Includes all branding requirements - no defaults allowed
  */
 export function getEnvRequirements(): EnvRequirement[] {
-  return [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS];
+  return [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS, ...WHITELABEL_BRANDING_REQUIREMENTS];
+}
+
+// ============================================================================
+// Helper: Create onboarding redirect URL function from template
+// ============================================================================
+
+/**
+ * Create onboarding redirect URL function from template string
+ * Template should contain {brandId} placeholder
+ * Returns undefined if template is not provided
+ */
+function createOnboardingRedirectUrl(template: string | undefined): ((brandId: string) => string) | undefined {
+  if (!template) return undefined;
+  return (brandId: string) => template.replace("{brandId}", brandId);
 }
 
 // ============================================================================
@@ -88,27 +81,49 @@ export function getEnvRequirements(): EnvRequirement[] {
 // ============================================================================
 
 /**
- * Create client-safe configuration for whitelabel mode
+ * Helper to require an env var with a helpful error message
  */
-export function createClientConfig(
-  env: Record<string, string | undefined> = process.env
-): ClientConfig {
+function requireValue(value: string | undefined, name: string): string {
+  if (!value || value.trim().length === 0) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+/**
+ * Create client-safe configuration for whitelabel mode
+ * All branding values are REQUIRED from environment variables - no defaults
+ * 
+ * NOTE: Uses NEXT_PUBLIC_ prefixed env vars because this config is used client-side.
+ * Next.js only exposes env vars with this prefix to the browser bundle.
+ * 
+ * IMPORTANT: Environment variables MUST be accessed statically (process.env.NEXT_PUBLIC_*)
+ * for Next.js to inline them at build time. Dynamic access (env[key]) doesn't work.
+ */
+export function createClientConfig(): ClientConfig {
+  // All branding values are required - no fallbacks
+  // MUST use static access for Next.js to inline these at build time
   const branding: BrandingConfig = {
-    name: getEnv("APP_NAME", DEFAULT_WHITELABEL_BRANDING.name, env),
-    icon: getEnv("APP_ICON", DEFAULT_WHITELABEL_BRANDING.icon, env),
-    url: getEnv("APP_URL", DEFAULT_WHITELABEL_BRANDING.url, env),
-    parentName: env.APP_PARENT_NAME ?? DEFAULT_WHITELABEL_BRANDING.parentName,
-    parentUrl: env.APP_PARENT_URL ?? DEFAULT_WHITELABEL_BRANDING.parentUrl,
-    onboardingRedirectUrl: DEFAULT_WHITELABEL_BRANDING.onboardingRedirectUrl,
-    optimizationBaseUrl: env.OPTIMIZATION_BASE_URL ?? DEFAULT_WHITELABEL_BRANDING.optimizationBaseUrl,
+    name: requireValue(process.env.NEXT_PUBLIC_APP_NAME, "NEXT_PUBLIC_APP_NAME"),
+    icon: requireValue(process.env.NEXT_PUBLIC_APP_ICON, "NEXT_PUBLIC_APP_ICON"),
+    url: requireValue(process.env.NEXT_PUBLIC_APP_URL, "NEXT_PUBLIC_APP_URL"),
+    parentName: requireValue(process.env.NEXT_PUBLIC_APP_PARENT_NAME, "NEXT_PUBLIC_APP_PARENT_NAME"),
+    parentUrl: requireValue(process.env.NEXT_PUBLIC_APP_PARENT_URL, "NEXT_PUBLIC_APP_PARENT_URL"),
+    onboardingRedirectUrl: createOnboardingRedirectUrl(process.env.NEXT_PUBLIC_ONBOARDING_REDIRECT_URL_TEMPLATE),
+    optimizationUrlTemplate: requireValue(process.env.NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE, "NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE"),
     chartColors: DEFAULT_CHART_COLORS,
+  };
+
+  // Analytics - plausibleDomain is optional
+  const analytics: AnalyticsConfig = {
+    plausibleDomain: process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN,
   };
 
   return {
     mode: MODE,
     features: DEFAULT_WHITELABEL_FEATURES,
     branding,
-    analytics: DEFAULT_WHITELABEL_ANALYTICS,
+    analytics,
     // No defaultOrganization in whitelabel mode - uses multi-org from Auth0
   };
 }
@@ -268,7 +283,7 @@ function createProxyAuthHandler(env: Record<string, string | undefined> = proces
 export function createServerConfig(
   env: Record<string, string | undefined> = process.env
 ): ServerConfig {
-  const clientConfig = createClientConfig(env);
+  const clientConfig = createClientConfig();
   const authProvider = getAuthProvider(env);
 
   return {
@@ -285,30 +300,37 @@ export function createServerConfig(
 // ============================================================================
 
 /**
- * Generate optimization URL for a prompt
+ * Generate optimization URL for a prompt using template substitution
  * This is whitelabel-specific functionality
+ * 
+ * Template placeholders:
+ * - {brandId} - Organization/brand ID
+ * - {prompt} - The prompt text (URL encoded)
+ * - {webQuery} - Web query if web search enabled (URL encoded, empty string if not)
+ * 
+ * @param urlTemplate - URL template with placeholders
+ * @param promptValue - The prompt text to include
+ * @param brandId - Organization/brand ID
+ * @param webSearchEnabled - Whether web search is enabled
+ * @param webQuery - Web query to include if web search enabled
  */
 export function generateOptimizationUrl(
+  urlTemplate: string,
   promptValue: string,
-  orgId: string,
+  brandId: string,
   webSearchEnabled?: boolean,
-  oldestWebQuery?: string,
-  baseUrl: string = DEFAULT_WHITELABEL_BRANDING.optimizationBaseUrl!
+  webQuery?: string,
 ): string {
-  // URL encode the prompt value
   const encodedPrompt = encodeURIComponent(promptValue);
-  const encodedOrgId = encodeURIComponent(orgId);
+  const encodedBrandId = encodeURIComponent(brandId);
+  const encodedWebQuery = webSearchEnabled && webQuery 
+    ? encodeURIComponent(webQuery) 
+    : "";
 
-  // Build the URL with prompt and org_id
-  let url = `${baseUrl}?prompt=${encodedPrompt}&org_id=${encodedOrgId}`;
-
-  // Add web_query parameter if web search is enabled and web query is present
-  if (webSearchEnabled && oldestWebQuery) {
-    const encodedWebQuery = encodeURIComponent(oldestWebQuery);
-    url += `&web_query=${encodedWebQuery}`;
-  }
-
-  return url;
+  return urlTemplate
+    .replace("{brandId}", encodedBrandId)
+    .replace("{prompt}", encodedPrompt)
+    .replace("{webQuery}", encodedWebQuery);
 }
 
 // ============================================================================
@@ -323,8 +345,6 @@ export interface WhitelabelConfigOptions {
   auth0Client: ConstructorParameters<typeof Auth0AuthProvider>[0];
   /** Auth0 Management API client instance */
   managementClient: ConstructorParameters<typeof Auth0AuthProvider>[1];
-  /** Optional branding overrides */
-  branding?: Partial<BrandingConfig>;
   /** Optional environment variables (defaults to process.env) */
   env?: Record<string, string | undefined>;
 }
@@ -333,20 +353,22 @@ export interface WhitelabelConfigOptions {
  * Create a whitelabel deployment configuration
  * @deprecated Use createClientConfig() and createServerConfig() instead
  * 
- * Unlike local/demo, this requires Auth0 clients to be passed in
+ * All branding values must be provided via environment variables - no defaults
  */
 export function createWhitelabelConfig(options: WhitelabelConfigOptions): DeploymentConfig {
-  const { auth0Client, managementClient, branding: brandingOverrides = {}, env = process.env } = options;
+  const { auth0Client, managementClient, env = process.env } = options;
   
-  // Determine branding (whitelabel uses its own defaults if env vars not set)
+  // All branding values are required from environment - no fallbacks
+  // Uses NEXT_PUBLIC_ prefix for client-side availability
   const branding: BrandingConfig = {
-    name: env.APP_NAME ?? brandingOverrides.name ?? DEFAULT_WHITELABEL_BRANDING.name,
-    icon: env.APP_ICON ?? brandingOverrides.icon ?? DEFAULT_WHITELABEL_BRANDING.icon,
-    url: env.APP_URL ?? brandingOverrides.url ?? DEFAULT_WHITELABEL_BRANDING.url,
-    parentName: env.APP_PARENT_NAME ?? brandingOverrides.parentName ?? DEFAULT_WHITELABEL_BRANDING.parentName,
-    parentUrl: env.APP_PARENT_URL ?? brandingOverrides.parentUrl ?? DEFAULT_WHITELABEL_BRANDING.parentUrl,
-    onboardingRedirectUrl: brandingOverrides.onboardingRedirectUrl ?? DEFAULT_WHITELABEL_BRANDING.onboardingRedirectUrl,
-    chartColors: brandingOverrides.chartColors ?? DEFAULT_WHITELABEL_BRANDING.chartColors,
+    name: requireEnv("NEXT_PUBLIC_APP_NAME", env),
+    icon: requireEnv("NEXT_PUBLIC_APP_ICON", env),
+    url: requireEnv("NEXT_PUBLIC_APP_URL", env),
+    parentName: requireEnv("NEXT_PUBLIC_APP_PARENT_NAME", env),
+    parentUrl: requireEnv("NEXT_PUBLIC_APP_PARENT_URL", env),
+    onboardingRedirectUrl: createOnboardingRedirectUrl(env.NEXT_PUBLIC_ONBOARDING_REDIRECT_URL_TEMPLATE),
+    optimizationUrlTemplate: requireEnv("NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE", env),
+    chartColors: DEFAULT_CHART_COLORS,
   };
   
   // Create auth provider with provided clients

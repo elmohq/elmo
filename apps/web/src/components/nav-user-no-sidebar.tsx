@@ -121,7 +121,7 @@ export function NavUserNoSidebar() {
 						</DropdownMenuItem>
 				{clientConfig.branding.parentUrl && clientConfig.branding.parentName && (
 					<DropdownMenuItem asChild className="cursor-pointer">
-						<Link href={clientConfig.branding.parentUrl!} target="_blank">
+						<Link href={clientConfig.branding.parentUrl} target="_blank">
 							<IconExternalLink />
 							{clientConfig.branding.parentName} Dashboard
 						</Link>

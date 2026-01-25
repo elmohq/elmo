@@ -5,6 +5,7 @@ import { Button } from "@workspace/ui/components/button";
 import { ChartFooter } from "./chart-footer";
 import { HistoryButton } from "./history-button";
 import { OptimizeButton } from "@workspace/whitelabel/components/optimize-button";
+import { clientConfig } from "@/lib/config/client";
 
 interface ChartActionsFooterProps {
 	// For single prompts
@@ -48,6 +49,9 @@ export function ChartActionsFooter({
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);
 	const isGroup = Boolean(prompts && prompts.length > 0);
+	
+	// Get branding from client config for OptimizeButton
+	const { parentName, optimizationUrlTemplate } = clientConfig.branding;
 
 	// For single prompts
 	if (isSinglePrompt) {
@@ -83,6 +87,8 @@ export function ChartActionsFooter({
 						availableModels={availableModels}
 						webQueryMapping={webQueryMapping}
 						modelWebQueryMappings={modelWebQueryMappings}
+						parentName={parentName ?? ""}
+						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
 					/>
 				</div>
 			</ChartFooter>
@@ -125,6 +131,8 @@ export function ChartActionsFooter({
 						availableModels={availableModels}
 						webQueryMapping={webQueryMapping}
 						modelWebQueryMappings={modelWebQueryMappings}
+						parentName={parentName ?? ""}
+						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
 					/>
 				</div>
 			</ChartFooter>
