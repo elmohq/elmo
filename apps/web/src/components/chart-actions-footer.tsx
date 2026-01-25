@@ -7,6 +7,8 @@ import { HistoryButton } from "./history-button";
 import { OptimizeButton } from "@workspace/whitelabel/components/optimize-button";
 import { clientConfig } from "@/lib/config/client";
 
+type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+
 interface ChartActionsFooterProps {
 	// For single prompts
 	promptId?: string;
@@ -24,11 +26,9 @@ interface ChartActionsFooterProps {
 	isDownloading?: boolean;
 	
 	// For optimization
-	webSearchEnabled?: boolean;
 	selectedModel?: "openai" | "anthropic" | "google" | "all";
 	availableModels?: ("openai" | "anthropic" | "google")[];
-	webQueryMapping?: Record<string, string>;
-	modelWebQueryMappings?: Record<string, Record<string, string>>;
+	lookback?: LookbackPeriod;
 }
 
 export function ChartActionsFooter({ 
@@ -41,11 +41,9 @@ export function ChartActionsFooter({
 	groupName,
 	onDownload,
 	isDownloading = false,
-	webSearchEnabled,
 	selectedModel = "all",
 	availableModels = ["openai", "anthropic", "google"],
-	webQueryMapping = {},
-	modelWebQueryMappings = {},
+	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);
 	const isGroup = Boolean(prompts && prompts.length > 0);
@@ -82,11 +80,9 @@ export function ChartActionsFooter({
 						promptName={promptName}
 						promptId={promptId}
 						brandId={brandId}
-						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={webQueryMapping}
-						modelWebQueryMappings={modelWebQueryMappings}
+						lookback={lookback}
 						parentName={parentName ?? ""}
 						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
 					/>
@@ -126,11 +122,9 @@ export function ChartActionsFooter({
 						groupName={groupName}
 						groupPrefix={groupPrefix}
 						prompts={prompts}
-						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={webQueryMapping}
-						modelWebQueryMappings={modelWebQueryMappings}
+						lookback={lookback}
 						parentName={parentName ?? ""}
 						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
 					/>

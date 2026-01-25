@@ -135,8 +135,6 @@ export function PromptChart({
 		totalRuns, 
 		hasVisibilityData, 
 		lastBrandVisibility,
-		webQueryMapping,
-		modelWebQueryMappings 
 	} = chartData;
 
 	// No runs state
@@ -181,11 +179,9 @@ export function PromptChart({
 						brandName={brand?.name}
 						onDownload={handleDownload}
 						isDownloading={isDownloading}
-						webSearchEnabled={webSearchEnabled}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={{}}
-						modelWebQueryMappings={{}}
+						lookback={lookback}
 					/>
 				</div>
 			</Card>
@@ -222,11 +218,9 @@ export function PromptChart({
 					brandName={brand?.name}
 					onDownload={handleDownload}
 					isDownloading={isDownloading}
-					webSearchEnabled={webSearchEnabled}
 					selectedModel={selectedModel}
 					availableModels={availableModels}
-					webQueryMapping={webQueryMapping || {}}
-					modelWebQueryMappings={modelWebQueryMappings || {}}
+					lookback={lookback}
 				/>
 			</div>
 		</Card>

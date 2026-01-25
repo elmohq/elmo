@@ -138,11 +138,9 @@ export function CachedPromptChart({
 						brandName={brand?.name}
 						onDownload={handleDownload}
 						isDownloading={isDownloading}
-						webSearchEnabled={undefined}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
-						webQueryMapping={{}}
-						modelWebQueryMappings={{}}
+						lookback={lookback}
 					/>
 				</div>
 			</Card>
@@ -181,11 +179,9 @@ export function CachedPromptChart({
 					brandName={brand?.name}
 					onDownload={handleDownload}
 					isDownloading={isDownloading}
-					webSearchEnabled={undefined}
 					selectedModel={selectedModel}
 					availableModels={availableModels}
-					webQueryMapping={{}}
-					modelWebQueryMappings={{}}
+					lookback={lookback}
 				/>
 			</div>
 		</Card>

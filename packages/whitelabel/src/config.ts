@@ -327,10 +327,18 @@ export function generateOptimizationUrl(
     ? encodeURIComponent(webQuery) 
     : "";
 
-  return urlTemplate
+  let url = urlTemplate
     .replace("{brandId}", encodedBrandId)
     .replace("{prompt}", encodedPrompt)
     .replace("{webQuery}", encodedWebQuery);
+
+  // Remove empty web_query parameter entirely (handles both &web_query= and ?web_query=)
+  url = url.replace(/[&?]web_query=(?=&|$)/, "");
+  
+  // If we removed a ?web_query= and there are more params, fix the first & to ?
+  url = url.replace(/\?&/, "?");
+
+  return url;
 }
 
 // ============================================================================
