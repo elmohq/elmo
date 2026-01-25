@@ -269,7 +269,7 @@ describe("chart-utils helpers", () => {
 		it("should generate URL with template substitution", () => {
 			const url = generateOptimizationUrl(TEST_TEMPLATE, "best running shoes", "org-123");
 
-			expect(url).toBe("https://example.com/optimize?org_id=org-123&prompt=best%20running%20shoes&web_query=");
+			expect(url).toBe("https://example.com/optimize?org_id=org-123&prompt=best%20running%20shoes");
 		});
 
 		it("should include web_query when web search is enabled", () => {
@@ -284,7 +284,7 @@ describe("chart-utils helpers", () => {
 			expect(url).toContain("web_query=running%20shoe%20reviews");
 		});
 
-		it("should leave web_query empty when web search is disabled", () => {
+		it("should omit web_query when web search is disabled", () => {
 			const url = generateOptimizationUrl(
 				TEST_TEMPLATE,
 				"best shoes",
@@ -293,14 +293,14 @@ describe("chart-utils helpers", () => {
 				"running shoe reviews"
 			);
 
-			expect(url).toContain("web_query=");
+			expect(url).not.toContain("web_query");
 			expect(url).not.toContain("running%20shoe%20reviews");
 		});
 
-		it("should leave web_query empty when no query provided", () => {
+		it("should omit web_query when no query provided", () => {
 			const url = generateOptimizationUrl(TEST_TEMPLATE, "best shoes", "org-123", true);
 
-			expect(url).toContain("web_query=");
+			expect(url).not.toContain("web_query");
 		});
 
 		it("should properly encode special characters", () => {
