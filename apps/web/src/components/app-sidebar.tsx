@@ -82,6 +82,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 						title: "Admin",
 						url: "/admin",
 						icon: IconShieldCog,
+						absolute: true,
 					},
 				]
 			: []),

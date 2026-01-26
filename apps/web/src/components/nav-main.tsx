@@ -20,6 +20,7 @@ export function NavMain({
 		title: string;
 		url: string;
 		icon?: Icon;
+		absolute?: boolean;
 	}[];
 }) {
 	const { brand } = useBrand();
@@ -32,7 +33,7 @@ export function NavMain({
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton tooltip={item.title} className="cursor-pointer" asChild>
-								<Link href={`/app/${brand?.id}${item.url}`}>
+								<Link href={item.absolute ? item.url : `/app/${brand?.id}${item.url}`}>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>
 								</Link>
