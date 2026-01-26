@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { DemoModeBanner } from "@/components/demo-mode-banner";
 import BrandOnboarding from "@/components/brand-onboarding";
-import { getBrandFromDb, getBrandMetadata } from "@/lib/metadata";
+import { getBrandFromDb, getBrandMetadata, isAdmin } from "@/lib/metadata";
 import { notFound } from "next/navigation";
 
 export default async function OrgLayout({
@@ -27,6 +27,8 @@ export default async function OrgLayout({
 		return <BrandOnboarding brandId={brandId} brandName={brandMetadata.name} />;
 	}
 
+	const userIsAdmin = await isAdmin();
+
 	return (
 		<SidebarProvider
 			className="flex"
@@ -37,7 +39,7 @@ export default async function OrgLayout({
 				} as React.CSSProperties
 			}
 		>
-			<AppSidebar variant="sidebar" />
+			<AppSidebar variant="sidebar" isAdmin={userIsAdmin} />
 			<SidebarInset className="ml-[var(--sidebar-width)]">
 				<DemoModeBanner />
 				<SiteHeader />

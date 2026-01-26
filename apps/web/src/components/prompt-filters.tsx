@@ -127,7 +127,7 @@ export function PromptFilters({
 						<span className="font-medium text-sm">Filters</span>
 						{resultCount !== undefined && (
 							<span className="text-sm text-muted-foreground">
-								({resultCount} {resultCount === 1 ? "result" : "results"})
+								({resultCount.toLocaleString()} {resultCount === 1 ? "result" : "results"})
 							</span>
 						)}
 					</div>

@@ -114,7 +114,7 @@ export function ProgressBarChart({
 							>
 								{item.label}
 							</span>
-							<span className="text-sm ml-2 shrink-0">{item.count}</span>
+							<span className="text-sm ml-2 shrink-0">{item.count.toLocaleString()}</span>
 						</div>
 						<div className={cn("relative w-full overflow-hidden rounded-full", trackColor, barHeight)}>
 							<div

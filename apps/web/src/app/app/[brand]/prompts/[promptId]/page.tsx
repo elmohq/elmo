@@ -278,7 +278,7 @@ export default function PromptHistoryPage() {
 						<CardContent className="pb-0">
 							<div>
 								<h4 className="text-sm font-medium mb-1">All</h4>
-								<p className="text-xs text-muted-foreground mb-3">Counts show how many times each query appeared across {aggregations?.totalRuns || 0} prompt runs</p>
+								<p className="text-xs text-muted-foreground mb-3">Counts show how many times each query appeared across {(aggregations?.totalRuns || 0).toLocaleString()} prompt runs</p>
 								<ProgressBarChart
 									items={webQueryStats.overall.map((query) => ({
 										label: query.name,
@@ -359,7 +359,7 @@ export default function PromptHistoryPage() {
 					<Skeleton className="h-8 w-48" />
 				) : (
 					<h2 className="text-2xl font-bold">
-						Prompt Runs ({pagination?.total || 0})
+						Prompt Runs ({(pagination?.total || 0).toLocaleString()})
 					</h2>
 				)}
 				

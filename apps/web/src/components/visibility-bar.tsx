@@ -112,14 +112,14 @@ export function VisibilityBar({
 						<IconInfoCircle className={`h-3.5 w-3.5 ${colors.muted} cursor-help`} />
 					</TooltipTrigger>
 					<TooltipContent side="bottom" className="max-w-xs text-sm">
-						AI visibility for the {totalPrompts} prompt{totalPrompts !== 1 ? 's' : ''} shown below, calculated as the percentage of AI responses that mention your brand over the time period for the selected filters.
+						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? 's' : ''} shown below, calculated as the percentage of AI responses that mention your brand over the time period for the selected filters.
 					</TooltipContent>
 				</Tooltip>
 			</div>
 			
 			{/* Right side: stats - stacks on narrow screens */}
 			<div className={`flex flex-col sm:flex-row items-end sm:items-center gap-0.5 sm:gap-4 text-xs sm:text-sm ${colors.muted}`}>
-				<span><span className="font-medium">{totalPrompts}</span> prompts</span>
+				<span><span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts</span>
 				<span><span className="font-medium">{totalRuns.toLocaleString()}</span> runs</span>
 				<span><span className="font-medium">{totalCitations.toLocaleString()}</span> citations</span>
 			</div>

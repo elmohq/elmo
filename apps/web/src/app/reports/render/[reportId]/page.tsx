@@ -708,11 +708,11 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 													<tr className="border-b border-gray-100">
 														<td className="text-center py-3 px-2">
 															<span className="text-sm font-semibold text-gray-700">
-																{promptsWithBrandMentions * 15}
+																{(promptsWithBrandMentions * 15).toLocaleString()}
 															</span>
 														</td>
 														<td className="text-center py-3 px-2">
-															<span className="text-sm text-gray-700">{totalPromptsTracked * 15}</span>
+															<span className="text-sm text-gray-700">{(totalPromptsTracked * 15).toLocaleString()}</span>
 														</td>
 														<td className="text-center py-3 px-2">
 															<Badge className="text-xs">{opportunityLevel}</Badge>

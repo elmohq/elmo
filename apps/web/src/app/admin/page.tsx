@@ -632,11 +632,11 @@ function GeneratePromptsDialog() {
 								</div>
 								<div>
 									<Label className="text-muted-foreground">Unbranded Prompts</Label>
-									<p className="font-medium">{unbrandedCount}</p>
+									<p className="font-medium">{unbrandedCount.toLocaleString()}</p>
 								</div>
 								<div>
 									<Label className="text-muted-foreground">Branded Prompts</Label>
-									<p className="font-medium">{brandedCount}</p>
+									<p className="font-medium">{brandedCount.toLocaleString()}</p>
 								</div>
 							</div>
 							

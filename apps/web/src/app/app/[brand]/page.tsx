@@ -176,7 +176,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 								<IconList className="h-5 w-5 text-muted-foreground" />
 								<span className="text-sm">Prompts configured and enabled</span>
 							</div>
-							<span className="font-semibold">{totalPrompts}</span>
+							<span className="font-semibold">{totalPrompts.toLocaleString()}</span>
 						</div>
 					)}
 					<Button asChild variant="outline" className="w-full">
@@ -475,7 +475,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					<StatWithTooltip
 						icon={IconList}
 						label="prompts tracked"
-						value={totalPrompts}
+						value={totalPrompts.toLocaleString()}
 						tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
 					/>
 					<StatWithTooltip

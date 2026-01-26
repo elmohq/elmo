@@ -147,7 +147,7 @@ export function CitationsDisplay({
 								<CardTitle className="text-sm font-medium text-muted-foreground">Unique Domains Cited</CardTitle>
 							</CardHeader>
 							<CardContent className="flex-1 flex items-center">
-								<div className="text-3xl md:text-4xl lg:text-5xl font-bold">{citationData.uniqueDomains}</div>
+								<div className="text-3xl md:text-4xl lg:text-5xl font-bold">{citationData.uniqueDomains.toLocaleString()}</div>
 							</CardContent>
 						</Card>
 						<Card className="flex flex-col">
@@ -155,7 +155,7 @@ export function CitationsDisplay({
 								<CardTitle className="text-sm font-medium text-muted-foreground">Total Citations</CardTitle>
 							</CardHeader>
 							<CardContent className="flex-1 flex items-center">
-								<div className="text-3xl md:text-4xl lg:text-5xl font-bold">{citationData.totalCitations}</div>
+								<div className="text-3xl md:text-4xl lg:text-5xl font-bold">{citationData.totalCitations.toLocaleString()}</div>
 							</CardContent>
 						</Card>
 					</div>
@@ -266,7 +266,7 @@ export function CitationsDisplay({
 												</span>
 											</div>
 											<span className="text-sm font-semibold text-gray-700 shrink-0">
-												{citation.count}
+												{citation.count.toLocaleString()}
 											</span>
 										</div>
 										

@@ -20,6 +20,7 @@ import {
 	IconAward,
 	IconList,
 	IconLink,
+	IconShieldCog,
 } from "@tabler/icons-react";
 
 import {
@@ -36,8 +37,14 @@ import { NavUser } from "@/components/nav-user";
 import { clientConfig } from "@/lib/config/client";
 import { useBrand } from "@/hooks/use-brands";
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+	isAdmin?: boolean;
+}
+
+export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 	const { brand } = useBrand();
+
+	const showAdminLink = clientConfig.features.adminAccess && isAdmin;
 
 	const navMain = [
 		{
@@ -69,6 +76,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			url: "/settings",
 			icon: IconSettings,
 		},
+		...(showAdminLink
+			? [
+					{
+						title: "Admin",
+						url: "/admin",
+						icon: IconShieldCog,
+					},
+				]
+			: []),
 	];
 
 	const data = {
