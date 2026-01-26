@@ -205,7 +205,7 @@ export function BaseChart({
 						{dataKeys.map((key, index) => (
 							<Bar key={key} dataKey={key} fill={`var(--color-${key})`} minPointSize={2} radius={2} />
 						))}
-						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} />} />
+						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />} />
 					</BarChart>
 				</ChartContainer>
 		) : (
@@ -365,7 +365,7 @@ export function BaseChart({
 							isAnimationActive={isAnimationActive}
 						/>,
 					])}
-						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} />} />
+						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />} />
 					</LineChart>
 				</ChartContainer>
 			)}

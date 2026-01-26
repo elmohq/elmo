@@ -79,15 +79,15 @@ export function VisibilityBar({
 	}));
 
 	return (
-		<div className={`flex items-center justify-between gap-3 min-h-10 px-3 py-2 rounded-lg border ${colors.bg} ${colors.border}`}>
+		<div className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border ${colors.bg} ${colors.border}`}>
 			{/* Left side: visibility + chart + info */}
-			<div className="flex items-center gap-2">
-				<span className={`text-lg font-semibold ${colors.text}`}>
+			<div className="flex items-center gap-2 min-w-0 shrink-0">
+				<span className={`text-base sm:text-lg font-semibold whitespace-nowrap ${colors.text}`}>
 					{currentVisibility}% <span className="font-normal">Visibility</span>
 				</span>
 				
 				{showChart && (
-					<div className="w-24 h-6 hidden sm:block">
+					<div className="w-24 h-6 hidden sm:block shrink-0">
 						<ResponsiveContainer width="100%" height="100%">
 							<AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
 								<YAxis domain={[0, 100]} hide />
@@ -109,7 +109,7 @@ export function VisibilityBar({
 
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<IconInfoCircle className={`h-3.5 w-3.5 ${colors.muted} cursor-help`} />
+						<IconInfoCircle className={`h-3.5 w-3.5 shrink-0 ${colors.muted} cursor-help`} />
 					</TooltipTrigger>
 					<TooltipContent side="bottom" className="max-w-xs text-sm">
 						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? 's' : ''} shown below, calculated as the percentage of AI responses that mention your brand over the time period for the selected filters.
@@ -117,8 +117,8 @@ export function VisibilityBar({
 				</Tooltip>
 			</div>
 			
-			{/* Right side: stats - stacks on narrow screens */}
-			<div className={`flex flex-col sm:flex-row items-end sm:items-center gap-0.5 sm:gap-4 text-xs sm:text-sm ${colors.muted}`}>
+			{/* Right side: stats */}
+			<div className={`flex items-center gap-x-3 text-xs sm:text-sm ${colors.muted}`}>
 				<span><span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts</span>
 				<span><span className="font-medium">{totalRuns.toLocaleString()}</span> runs</span>
 				<span><span className="font-medium">{totalCitations.toLocaleString()}</span> citations</span>
@@ -129,15 +129,15 @@ export function VisibilityBar({
 
 export function VisibilityBarSkeleton() {
 	return (
-		<div className="flex items-center justify-between gap-3 h-10 px-3 rounded-lg border bg-muted/30">
+		<div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border bg-muted/30">
 			<div className="flex items-center gap-3">
 				<Skeleton className="h-5 w-36" />
 				<Skeleton className="h-6 w-24 hidden sm:block" />
 			</div>
-			<div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-4">
-				<Skeleton className="h-3 sm:h-4 w-14 sm:w-16" />
-				<Skeleton className="h-3 sm:h-4 w-14 sm:w-16" />
-				<Skeleton className="h-3 sm:h-4 w-14 sm:w-16" />
+			<div className="flex items-center gap-x-3">
+				<Skeleton className="h-3 sm:h-4 w-16" />
+				<Skeleton className="h-3 sm:h-4 w-14" />
+				<Skeleton className="h-3 sm:h-4 w-20" />
 			</div>
 		</div>
 	);

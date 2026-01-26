@@ -205,7 +205,7 @@ export function PageHeader({
 
 			{/* Sticky controls bar - shadow only appears when stuck */}
 			<div className={`sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 ${isStuck ? stuckShadow : ''}`}>
-				<div className="flex justify-between items-center">
+				<div className="flex flex-wrap justify-between items-center gap-2">
 					{/* Left side - Model selector or spacer */}
 					{showModelSelector ? (
 						<Tabs
@@ -216,22 +216,22 @@ export function PageHeader({
 							<TabsList>
 								{availableModels.includes("all") && (
 									<TabsTrigger value="all" className="cursor-pointer">
-										{getModelIcon("all")} <span>All</span>
+										{getModelIcon("all")} <span className="sr-only sm:not-sr-only">All</span>
 									</TabsTrigger>
 								)}
 								{availableModels.includes("openai") && (
 									<TabsTrigger value="openai" className="cursor-pointer">
-										{getModelIcon("openai")} <span>OpenAI</span>
+										{getModelIcon("openai")} <span className="sr-only sm:not-sr-only">OpenAI</span>
 									</TabsTrigger>
 								)}
 								{availableModels.includes("anthropic") && (
 									<TabsTrigger value="anthropic" className="cursor-pointer">
-										{getModelIcon("anthropic")} <span>Anthropic</span>
+										{getModelIcon("anthropic")} <span className="sr-only sm:not-sr-only">Anthropic</span>
 									</TabsTrigger>
 								)}
 								{availableModels.includes("google") && (
 									<TabsTrigger value="google" className="cursor-pointer">
-										{getModelIcon("google")} <span>Google</span>
+										{getModelIcon("google")} <span className="sr-only sm:not-sr-only">Google</span>
 									</TabsTrigger>
 								)}
 							</TabsList>
@@ -240,8 +240,8 @@ export function PageHeader({
 						<div /> // Spacer
 					)}
 
-					{/* Right side - Filters and lookback */}
-					<div className="flex items-center gap-2">
+					{/* Right side - Filters and lookback grouped together */}
+					<div className="flex items-center gap-1">
 						{/* Filters */}
 						<PromptFilters
 							availableTags={availableTags}
@@ -259,7 +259,7 @@ export function PageHeader({
 								<button
 									key={period}
 									onClick={() => setSelectedLookback(period)}
-									className={`px-3 py-1 text-sm rounded cursor-pointer ${
+									className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded cursor-pointer ${
 										selectedLookback === period
 											? "bg-background text-foreground shadow-sm"
 											: "text-muted-foreground hover:text-foreground"

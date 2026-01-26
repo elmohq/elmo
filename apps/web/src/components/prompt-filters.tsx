@@ -101,9 +101,9 @@ export function PromptFilters({
 					className={`h-8 gap-1.5 cursor-pointer ${className}`}
 				>
 					<Filter className="h-3.5 w-3.5" />
-					<span>Filters</span>
+					<span className="sr-only sm:not-sr-only">Filters</span>
 					{hasActiveFilters && (
-						<span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-medium">
+						<span className="ml-0 sm:ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-primary text-xs font-medium">
 							{filterCount}
 						</span>
 					)}

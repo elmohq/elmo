@@ -193,7 +193,7 @@ export function PromptGroupChart({
 				</CardTitle>
 			</CardHeader>
 			<Separator className="py-0 my-0" />
-			<CardContent className="pl-0 pr-6">
+			<CardContent className="pl-0 pr-2 sm:pr-6">
 				<div className={`grid grid-cols-1 lg:grid-cols-2 gap-3`}>
 					{groupVisibilityData.map((promptData) => (
 						<BaseChart

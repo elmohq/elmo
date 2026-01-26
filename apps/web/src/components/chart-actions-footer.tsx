@@ -55,8 +55,8 @@ export function ChartActionsFooter({
 	if (isSinglePrompt) {
 		return (
 			<ChartFooter>
-				<div className="flex items-center justify-between w-full">
-					<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center justify-between gap-2 w-full">
+					<div className="flex flex-wrap items-center gap-2">
 						<HistoryButton
 							promptName={promptName}
 							promptId={promptId}
@@ -95,8 +95,8 @@ export function ChartActionsFooter({
 	if (isGroup && prompts && prompts.length > 0) {
 		return (
 			<ChartFooter>
-				<div className="flex items-center justify-between w-full">
-					<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center justify-between gap-2 w-full">
+					<div className="flex flex-wrap items-center gap-2">
 						<HistoryButton
 							brandId={brandId}
 							groupName={groupName}
