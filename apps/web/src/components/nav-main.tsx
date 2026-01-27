@@ -23,7 +23,8 @@ export function NavMain({
 		absolute?: boolean;
 	}[];
 }) {
-	const { brand } = useBrand();
+	// Use brandId (from URL) instead of brand?.id to avoid undefined during loading
+	const { brandId } = useBrand();
 
 	return (
 		<SidebarGroup>
@@ -33,7 +34,7 @@ export function NavMain({
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton tooltip={item.title} className="cursor-pointer" asChild>
-								<Link href={item.absolute ? item.url : `/app/${brand?.id}${item.url}`}>
+								<Link href={item.absolute ? item.url : `/app/${brandId}${item.url}`}>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>
 								</Link>

@@ -8,7 +8,9 @@ import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 
 export function SiteHeader() {
-	const { brand } = useBrand();
+	// Use brandId (from URL) for navigation links to avoid undefined during loading
+	// Use brand for display data like name
+	const { brandId, brand } = useBrand();
 	const pathname = usePathname();
 
 	// Check if we're on an edit page
@@ -45,13 +47,13 @@ export function SiteHeader() {
 		<header className="bg-background sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
 			<div className="container flex w-full items-center gap-1 px-6 lg:gap-2">
 				<div className="flex items-center gap-2">
-					<Link href={`/app/${brand?.id}`}>
+					<Link href={`/app/${brandId}`}>
 						<h1 className="text-base font-medium cursor-pointer hover:underline">{brand?.name || "Dashboard"}</h1>
 					</Link>
 					<span className="text-base font-medium text-muted-foreground">/</span>
 					{isPromptDetailPage ? (
 						<>
-							<Link href={`/app/${brand?.id}/prompts`}>
+							<Link href={`/app/${brandId}/prompts`}>
 								<span className="text-base font-medium cursor-pointer hover:underline">Prompts</span>
 							</Link>
 							<span className="text-base font-medium text-muted-foreground">/</span>
@@ -71,7 +73,7 @@ export function SiteHeader() {
 				</div>
 				<div className="ml-auto flex items-center gap-2">
 					{!isEditPage && !isPromptDetailPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
-						<Link href={`/app/${brand?.id}/prompts/edit`}>
+						<Link href={`/app/${brandId}/prompts/edit`}>
 							<Button size="sm" className="hidden h-7 sm:flex cursor-pointer">
 								<IconEditCircle />
 								<span>Edit</span>

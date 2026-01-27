@@ -64,6 +64,7 @@ export function useBrands() {
 export function useBrand(brandId: string | undefined = undefined) {
 	const pathname = usePathname();
 
+	// Extract brand ID from URL synchronously - this is always available immediately
 	const extractedBrandId =
 		brandId ||
 		(() => {
@@ -89,6 +90,9 @@ export function useBrand(brandId: string | undefined = undefined) {
 	};
 
 	return {
+		// brandId is available immediately from URL (use for navigation links)
+		brandId: extractedBrandId,
+		// brand data requires async fetch (use when you need full brand details)
 		brand: data,
 		isLoading,
 		isError: error,
