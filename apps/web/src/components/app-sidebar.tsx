@@ -34,6 +34,7 @@ import {
 } from "@workspace/ui/components/sidebar";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { Logo } from "@/components/logo";
 import { clientConfig } from "@/lib/config/client";
 import { useBrand } from "@/hooks/use-brands";
 
@@ -99,8 +100,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 					<SidebarMenuItem>
 						<SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
 							<Link href="/">
-								<img src={clientConfig.branding.icon} alt="Logo" className="!size-5" />
-								<span className="text-base font-semibold">{clientConfig.branding.name}</span>
+								<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
 							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>

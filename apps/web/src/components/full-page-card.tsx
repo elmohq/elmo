@@ -1,9 +1,9 @@
 import { ReactNode } from "react";
-import { clientConfig } from "@/lib/config/client";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Separator } from "@workspace/ui/components/separator";
-import Link from "next/link";
+import { Logo } from "@/components/logo";
 
 interface FullPageCardProps {
 	title?: string;
@@ -30,8 +30,7 @@ export default function FullPageCard({
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-					<img src={clientConfig.branding.icon} alt="Logo" className="!size-5" />
-					<span className="text-base font-semibold">{clientConfig.branding.name}</span>
+						<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
 				</div>
 				<Card className="my-8">
 					{(title || subtitle) && (

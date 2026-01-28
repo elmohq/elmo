@@ -8,6 +8,7 @@ import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
 import { Badge } from "@workspace/ui/components/badge";
 import { notFound } from "next/navigation";
 import { clientConfig } from "@/lib/config/client";
+import { Logo } from "@/components/logo";
 import {
 	calculateVisibilityPercentages,
 	calculateGroupVisibilityData,
@@ -529,8 +530,7 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 			<div className="flex items-center justify-between mb-32">
 				<h1 className="text-3xl font-bold text-gray-900">AI Visibility Report</h1>
 				<div className="flex items-center space-x-3">
-					<img src={clientConfig.branding.icon} alt="Logo" className="!size-6" />
-					<span className="text-base font-semibold">{clientConfig.branding.name}</span>
+					<Logo iconClassName="!size-6" textClassName="text-base font-semibold" />
 				</div>
 			</div>
 

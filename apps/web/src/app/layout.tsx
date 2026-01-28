@@ -27,9 +27,13 @@ export const metadata: Metadata = {
 		template: `%s - ${branding.name}`,
 		default: `${branding.name} - Generative AI Optimization`,
 	},
-	icons: {
-		icon: branding.icon,
-	},
+	...(config.mode === "whitelabel"
+		? {
+				icons: {
+					icon: branding.icon,
+				},
+			}
+		: {}),
 };
 
 export default function RootLayout({
