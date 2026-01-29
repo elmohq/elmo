@@ -91,11 +91,19 @@ export interface Organization {
 }
 
 /**
+ * Options for listing organizations
+ */
+export interface OrganizationListOptions {
+  /** Force refresh from source, bypassing any cache */
+  forceRefresh?: boolean;
+}
+
+/**
  * Organization management interface
  */
 export interface OrganizationManager {
   /** List organizations the user has access to */
-  list(): Promise<Organization[]>;
+  list(options?: OrganizationListOptions): Promise<Organization[]>;
   /** Check if the user can create new organizations */
   canCreate(): boolean;
   /** Create a new organization (throws if not supported) */

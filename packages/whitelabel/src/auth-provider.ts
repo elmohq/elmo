@@ -1,6 +1,7 @@
 import type {
   AuthProvider,
   Organization,
+  OrganizationListOptions,
   Session,
 } from "@workspace/config/types";
 
@@ -106,8 +107,10 @@ export class Auth0AuthProvider implements AuthProvider {
    * Primary: Reads from session (maintained by beforeSessionSaved hook)
    * Fallback: Management API (for edge cases where session wasn't updated)
    * Throttling: Only triggers fallback refresh on a percentage of requests
+   * 
+   * @param forceRefresh - If true, bypasses cache and fetches directly from Auth0 Management API
    */
-  private async getAppMetadata(): Promise<Auth0AppMetadata> {
+  private async getAppMetadata(forceRefresh = false): Promise<Auth0AppMetadata> {
     const session = await this.auth0Client.getSession();
     
     if (!session?.user?.sub) {
@@ -117,20 +120,24 @@ export class Auth0AuthProvider implements AuthProvider {
     const userId = session.user.sub;
     const now = Math.floor(Date.now() / 1000);
     
-    // Primary: Read from session (maintained by proxy's handleProxyAuth)
-    if (session.elmoAppMetadata && session.elmoAppMetadataFetchedAt) {
-      const age = now - session.elmoAppMetadataFetchedAt;
-      if (age < APP_METADATA_CACHE_TTL) {
-        return session.elmoAppMetadata;
-      }
+    // If forceRefresh is true, skip cache and fetch directly from Management API
+    if (!forceRefresh) {
+      // Primary: Read from session (maintained by proxy's handleProxyAuth)
+      if (session.elmoAppMetadata && session.elmoAppMetadataFetchedAt) {
+        const age = now - session.elmoAppMetadataFetchedAt;
+        if (age < APP_METADATA_CACHE_TTL) {
+          return session.elmoAppMetadata;
+        }
 
-      if (Math.random() > FALLBACK_REFRESH_PROBABILITY) {
-        return session.elmoAppMetadata;
+        if (Math.random() > FALLBACK_REFRESH_PROBABILITY) {
+          return session.elmoAppMetadata;
+        }
       }
     }
     
-    // Fallback: Fetch from Auth0 Management API
-    console.log("Fallback: Fetching app_metadata from Auth0 Management API for user:", userId);
+    // Fetch from Auth0 Management API (either forced or fallback)
+    const reason = forceRefresh ? "Force refresh requested" : "Fallback";
+    console.log(`${reason}: Fetching app_metadata from Auth0 Management API for user:`, userId);
     try {
       const userData = await this.managementClient.users.get({
         id: userId,
@@ -150,9 +157,11 @@ export class Auth0AuthProvider implements AuthProvider {
   organizations = {
     /**
      * List organizations from Auth0 app_metadata.elmo_orgs
+     * 
+     * @param options.forceRefresh - If true, bypasses cache and fetches fresh data from Auth0
      */
-    list: async (): Promise<Organization[]> => {
-      const appMetadata = await this.getAppMetadata();
+    list: async (options?: OrganizationListOptions): Promise<Organization[]> => {
+      const appMetadata = await this.getAppMetadata(options?.forceRefresh);
       return appMetadata.elmo_orgs || [];
     },
 

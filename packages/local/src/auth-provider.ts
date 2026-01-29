@@ -1,6 +1,7 @@
 import type {
   AuthProvider,
   Organization,
+  OrganizationListOptions,
   Session,
   ConfigDependencies,
   DefaultOrganization,
@@ -47,8 +48,10 @@ export class LocalAuthProvider implements AuthProvider {
     /**
      * List available organizations
      * Returns the default org from config, or falls back to first brand from DB
+     * 
+     * @param _options - Unused in local mode (no caching)
      */
-    list: async (): Promise<Organization[]> => {
+    list: async (_options?: OrganizationListOptions): Promise<Organization[]> => {
       // Return default org from config if available
       if (this.defaultOrganization) {
         return [this.defaultOrganization];

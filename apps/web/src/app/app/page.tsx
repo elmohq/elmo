@@ -9,7 +9,9 @@ export default async function BrandSwitcherPage() {
 	
 	// Check if multi-org brand switching is supported (only whitelabel mode)
 	if (config.features.supportsMultiOrg) {
-		const orgs = await getElmoOrgs();
+		// Force refresh to always get the latest org memberships from Auth0
+		// This ensures users see updated organizations immediately when visiting this page
+		const orgs = await getElmoOrgs({ forceRefresh: true });
 
 		return (
 			<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">

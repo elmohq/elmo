@@ -12,15 +12,24 @@ export type ElmoBrandMetadata = {
 };
 
 /**
+ * Options for getting organizations
+ */
+export interface GetOrgsOptions {
+	/** Force refresh from source, bypassing any cache (useful for org switcher page) */
+	forceRefresh?: boolean;
+}
+
+/**
  * Get organizations the current user has access to
  * 
  * This function delegates to the config module which handles
  * different deployment modes (whitelabel, local, demo).
  * 
- * Note: Metadata freshness is managed by the proxy (refreshed ~every 15 min).
+ * Note: By default, metadata is cached (refreshed ~every 15 min in whitelabel mode).
+ * Use forceRefresh: true when you need the latest data immediately (e.g., org switcher page).
  */
-export async function getElmoOrgs(): Promise<ElmoBrandMetadata[]> {
-	return serverConfig.authProvider.organizations.list();
+export async function getElmoOrgs(options?: GetOrgsOptions): Promise<ElmoBrandMetadata[]> {
+	return serverConfig.authProvider.organizations.list({ forceRefresh: options?.forceRefresh });
 }
 
 export async function getBrandFromDb(brandId: string): Promise<Brand | undefined> {

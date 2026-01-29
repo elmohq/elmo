@@ -206,6 +206,34 @@ function createProxyAuthHandler(env: Record<string, string | undefined> = proces
   // Import NextResponse dynamically
   const { NextResponse } = require("next/server");
   
+  const fetchAppMetadata = async (
+    userId: string,
+    fallbackMetadata: Auth0AppMetadata | undefined
+  ): Promise<Auth0AppMetadata> => {
+    let appMetadata: Auth0AppMetadata = {};
+    
+    try {
+      const userData = await managementClient.users.get({
+        id: userId,
+        fields: "app_metadata",
+      });
+      const rawMetadata = userData.data?.app_metadata as Record<string, unknown> | undefined;
+      if (rawMetadata) {
+        appMetadata = {
+          elmo_orgs: rawMetadata.elmo_orgs as Auth0AppMetadata["elmo_orgs"],
+          elmo_admin: rawMetadata.elmo_admin as Auth0AppMetadata["elmo_admin"],
+          elmo_report_generator_access: rawMetadata.elmo_report_generator_access as Auth0AppMetadata["elmo_report_generator_access"],
+        };
+      }
+    } catch (error) {
+      console.error("[handleProxyAuth] Error fetching metadata:", error);
+      // On error, preserve existing metadata and continue
+      appMetadata = fallbackMetadata || {};
+    }
+    
+    return appMetadata;
+  };
+  
   return async (request: unknown, pathname: string): Promise<Response> => {
     const session = await auth0Client.getSession(request) as Auth0SessionWithMetadata | null;
     
@@ -224,6 +252,31 @@ function createProxyAuthHandler(env: Record<string, string | undefined> = proces
       }
     }
     
+    // Force refresh metadata when hitting the org switcher page
+    // This ensures the session is updated immediately after Auth0 changes
+    if ((pathname === "/app" || pathname === "/app/") && session.user?.sub) {
+      const now = Math.floor(Date.now() / 1000);
+      console.log(`[handleProxyAuth] Force refreshing metadata for org switcher - path: ${pathname}`);
+      
+      const appMetadata = await fetchAppMetadata(session.user.sub, session.elmoAppMetadata);
+      
+      // Create the middleware response first
+      const response = await auth0Client.middleware(request);
+      
+      // Update session with new metadata
+      try {
+        await auth0Client.updateSession(request, response, {
+          ...session,
+          elmoAppMetadata: appMetadata,
+          elmoAppMetadataFetchedAt: now,
+        });
+      } catch (error) {
+        console.error("[handleProxyAuth] Failed to update session:", error);
+      }
+      
+      return response;
+    }
+    
     // Has session - check if app metadata needs refreshing (~every 15 min)
     // Use probabilistic refresh (25% chance) to avoid thundering herd on stale sessions
     if (session.user?.sub && authProvider.needsMetadataRefresh(session) && Math.random() < 0.25) {
@@ -234,26 +287,7 @@ function createProxyAuthHandler(env: Record<string, string | undefined> = proces
       console.log(`[handleProxyAuth] Refreshing metadata - age: ${age}s, path: ${pathname}`);
       
       // Fetch metadata directly from Management API
-      let appMetadata: Auth0AppMetadata = {};
-      
-      try {
-        const userData = await managementClient.users.get({
-          id: session.user.sub,
-          fields: "app_metadata",
-        });
-        const rawMetadata = userData.data?.app_metadata as Record<string, unknown> | undefined;
-        if (rawMetadata) {
-          appMetadata = {
-            elmo_orgs: rawMetadata.elmo_orgs as Auth0AppMetadata["elmo_orgs"],
-            elmo_admin: rawMetadata.elmo_admin as Auth0AppMetadata["elmo_admin"],
-            elmo_report_generator_access: rawMetadata.elmo_report_generator_access as Auth0AppMetadata["elmo_report_generator_access"],
-          };
-        }
-      } catch (error) {
-        console.error("[handleProxyAuth] Error fetching metadata:", error);
-        // On error, preserve existing metadata and continue
-        appMetadata = session.elmoAppMetadata || {};
-      }
+      const appMetadata = await fetchAppMetadata(session.user.sub, session.elmoAppMetadata);
       
       // Create the middleware response first
       const response = await auth0Client.middleware(request);
