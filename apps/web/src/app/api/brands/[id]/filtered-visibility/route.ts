@@ -8,6 +8,7 @@ import {
 	getVisibilityTimeSeries,
 	getDailyCitationStats,
 } from "@/lib/tinybird-read-v2";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 type Params = {
 	id: string;
@@ -106,7 +107,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				.where(eq(brands.id, brandId))
 				.limit(1),
 			db
-				.select({ id: prompts.id, value: prompts.value })
+				.select({ 
+					id: prompts.id, 
+					value: prompts.value,
+					systemTags: prompts.systemTags,
+					tags: prompts.tags,
+				})
 				.from(prompts)
 				.where(and(eq(prompts.brandId, brandId), inArray(prompts.id, promptIds))),
 		]);
@@ -126,9 +132,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			} as FilteredVisibilityResponse);
 		}
 
-		// Determine which prompts are "branded" (contain brand name)
+		// Determine which prompts are "branded"
+		// Use effective status which considers user tag overrides
 		const brandedPromptIds = promptsResult
-			.filter((p) => p.value.toLowerCase().includes(brandName.toLowerCase()))
+			.filter((p) => {
+				const effectiveStatus = getEffectiveBrandedStatus(
+					p.systemTags || [],
+					p.tags || []
+				);
+				return effectiveStatus.isBranded;
+			})
 			.map((p) => p.id);
 
 		// Query Tinybird for visibility data and citation counts in parallel

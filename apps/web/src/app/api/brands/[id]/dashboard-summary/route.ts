@@ -9,6 +9,7 @@ import {
 	getVisibilityTimeSeries, 
 	getDailyCitationStats,
 } from "@/lib/tinybird-read-v2";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 type Params = {
 	id: string;
@@ -133,9 +134,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			// Get competitors for citation categorization
 			db.select().from(competitors).where(eq(competitors.brandId, brandId)),
 
-			// Get enabled prompts with their values (to determine branded/non-branded)
+			// Get enabled prompts with their values, system tags, and user tags
 			db
-				.select({ id: prompts.id, value: prompts.value })
+				.select({ 
+					id: prompts.id, 
+					value: prompts.value,
+					systemTags: prompts.systemTags,
+					tags: prompts.tags,
+				})
 				.from(prompts)
 				.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true))),
 
@@ -153,10 +159,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const competitorDomains = new Set(competitorsList.map(c => extractDomain(c.domain)));
 		const totalPrompts = totalPromptsResult[0]?.count || 0;
 
-		// Extract enabled prompt IDs and determine which are "branded" (contain brand name)
+		// Extract enabled prompt IDs and determine which are "branded"
+		// Use effective status which considers user tag overrides
 		const enabledPromptIds = enabledPromptsResult.map((p) => p.id);
 		const brandedPromptIds = enabledPromptsResult
-			.filter((p) => p.value.toLowerCase().includes(brandName.toLowerCase()))
+			.filter((p) => {
+				const effectiveStatus = getEffectiveBrandedStatus(
+					p.systemTags || [],
+					p.tags || []
+				);
+				return effectiveStatus.isBranded;
+			})
 			.map((p) => p.id);
 
 		// Query Tinybird v2 for analytics data

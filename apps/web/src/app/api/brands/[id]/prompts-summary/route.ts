@@ -4,6 +4,7 @@ import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, desc } from "drizzle-orm";
 import { getPromptsSummary } from "@/lib/tinybird-read-v2";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 type Params = {
 	id: string;
@@ -204,9 +205,45 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		if (tagsParam) {
 			const filterTags = tagsParam.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
 			if (filterTags.length > 0) {
-				filteredPrompts = processedPrompts.filter((prompt) =>
-					prompt.tags.some((tag) => filterTags.includes(tag.toLowerCase())),
+				// Check if we're filtering by branded/unbranded
+				const filterByBranded = filterTags.includes(SYSTEM_TAGS.BRANDED);
+				const filterByUnbranded = filterTags.includes(SYSTEM_TAGS.UNBRANDED);
+				// Get non-system filter tags
+				const nonSystemFilterTags = filterTags.filter(
+					(t) => t !== SYSTEM_TAGS.BRANDED && t !== SYSTEM_TAGS.UNBRANDED
 				);
+
+				filteredPrompts = processedPrompts.filter((prompt) => {
+					// Find the original prompt to get system tags and user tags separately
+					const originalPrompt = enabledPrompts.find((p) => p.id === prompt.id);
+					const systemTags = originalPrompt?.systemTags || [];
+					const userTags = originalPrompt?.tags || [];
+
+					// Check branded/unbranded filter using effective status
+					if (filterByBranded || filterByUnbranded) {
+						const effectiveStatus = getEffectiveBrandedStatus(systemTags, userTags);
+						const matchesBrandedFilter = filterByBranded && effectiveStatus.isBranded;
+						const matchesUnbrandedFilter = filterByUnbranded && !effectiveStatus.isBranded;
+						if (matchesBrandedFilter || matchesUnbrandedFilter) {
+							return true;
+						}
+					}
+
+					// Check non-system tags normally
+					if (nonSystemFilterTags.length > 0) {
+						const allTagsLower = prompt.tags.map((t) => t.toLowerCase());
+						if (nonSystemFilterTags.some((filterTag) => allTagsLower.includes(filterTag))) {
+							return true;
+						}
+					}
+
+					// If only filtering by branded/unbranded and didn't match above, exclude
+					if ((filterByBranded || filterByUnbranded) && nonSystemFilterTags.length === 0) {
+						return false;
+					}
+
+					return false;
+				});
 			}
 		}
 		
@@ -236,11 +273,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			return a.value.localeCompare(b.value);
 		});
 
-		// Build available tags list: system tags + all user tags
+		// Build available tags list: system tags + all user tags (excluding duplicates of system tags)
+		const userTagsWithoutSystemTags = Array.from(allUserTags)
+			.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
+			.sort();
 		const availableTags = [
 			SYSTEM_TAGS.BRANDED,
 			SYSTEM_TAGS.UNBRANDED,
-			...Array.from(allUserTags).sort(),
+			...userTagsWithoutSystemTags,
 		];
 
 		const response: PromptsSummaryResponse = {

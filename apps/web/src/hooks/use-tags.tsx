@@ -10,7 +10,7 @@ export async function updatePromptTags(
 	promptId: string,
 	tags: string[],
 ): Promise<void> {
-	// Filter out system tags and normalize
+	// Normalize tags (branded/unbranded are allowed as user tags to override system-computed values)
 	const userTags = sanitizeUserTags(tags);
 
 	const response = await fetch(`/api/brands/${brandId}/prompts/${promptId}`, {

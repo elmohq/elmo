@@ -5,6 +5,7 @@ import {
 	computeSystemTags,
 	normalizeTag,
 	sanitizeUserTags,
+	getEffectiveBrandedStatus,
 } from "./tag-utils";
 import { SYSTEM_TAGS } from "./db/schema";
 
@@ -115,14 +116,14 @@ describe("tag-utils", () => {
 			expect(result).toEqual(["valid", "another"]);
 		});
 
-		it("should filter out system tags", () => {
+		it("should allow branded and unbranded as user tags (for overrides)", () => {
 			const result = sanitizeUserTags(["custom", "branded", "unbranded", "my-tag"]);
-			expect(result).toEqual(["custom", "my-tag"]);
+			expect(result).toEqual(["custom", "branded", "unbranded", "my-tag"]);
 		});
 
-		it("should handle mixed case system tags", () => {
+		it("should normalize case for branded/unbranded tags", () => {
 			const result = sanitizeUserTags(["BRANDED", "Unbranded", "valid"]);
-			expect(result).toEqual(["valid"]);
+			expect(result).toEqual(["branded", "unbranded", "valid"]);
 		});
 
 		it("should preserve order of first occurrences", () => {
@@ -132,6 +133,125 @@ describe("tag-utils", () => {
 
 		it("should handle empty array", () => {
 			expect(sanitizeUserTags([])).toEqual([]);
+		});
+	});
+
+	describe("getEffectiveBrandedStatus", () => {
+		it("should use system tag when no user override", () => {
+			const brandedResult = getEffectiveBrandedStatus([SYSTEM_TAGS.BRANDED], ["custom"]);
+			expect(brandedResult.isBranded).toBe(true);
+			expect(brandedResult.isOverridden).toBe(false);
+			expect(brandedResult.systemIsBranded).toBe(true);
+
+			const unbrandedResult = getEffectiveBrandedStatus([SYSTEM_TAGS.UNBRANDED], ["custom"]);
+			expect(unbrandedResult.isBranded).toBe(false);
+			expect(unbrandedResult.isOverridden).toBe(false);
+			expect(unbrandedResult.systemIsBranded).toBe(false);
+		});
+
+		it("should override to branded when user has branded tag", () => {
+			const result = getEffectiveBrandedStatus([SYSTEM_TAGS.UNBRANDED], ["branded"]);
+			expect(result.isBranded).toBe(true);
+			expect(result.isOverridden).toBe(true);
+			expect(result.systemIsBranded).toBe(false);
+		});
+
+		it("should override to unbranded when user has unbranded tag", () => {
+			const result = getEffectiveBrandedStatus([SYSTEM_TAGS.BRANDED], ["unbranded"]);
+			expect(result.isBranded).toBe(false);
+			expect(result.isOverridden).toBe(true);
+			expect(result.systemIsBranded).toBe(true);
+		});
+
+		it("should use system tag when user has both branded and unbranded tags", () => {
+			const brandedResult = getEffectiveBrandedStatus([SYSTEM_TAGS.BRANDED], ["branded", "unbranded"]);
+			expect(brandedResult.isBranded).toBe(true);
+			expect(brandedResult.isOverridden).toBe(false);
+			expect(brandedResult.systemIsBranded).toBe(true);
+
+			const unbrandedResult = getEffectiveBrandedStatus([SYSTEM_TAGS.UNBRANDED], ["branded", "unbranded"]);
+			expect(unbrandedResult.isBranded).toBe(false);
+			expect(unbrandedResult.isOverridden).toBe(false);
+			expect(unbrandedResult.systemIsBranded).toBe(false);
+		});
+
+		it("should be case insensitive for user override tags", () => {
+			const result1 = getEffectiveBrandedStatus([SYSTEM_TAGS.UNBRANDED], ["BRANDED"]);
+			expect(result1.isBranded).toBe(true);
+			expect(result1.isOverridden).toBe(true);
+
+			const result2 = getEffectiveBrandedStatus([SYSTEM_TAGS.BRANDED], ["UnBrAnDeD"]);
+			expect(result2.isBranded).toBe(false);
+			expect(result2.isOverridden).toBe(true);
+		});
+
+		it("should not be marked as overridden if user tag matches system tag", () => {
+			const brandedResult = getEffectiveBrandedStatus([SYSTEM_TAGS.BRANDED], ["branded"]);
+			expect(brandedResult.isBranded).toBe(true);
+			expect(brandedResult.isOverridden).toBe(false); // Not an override, same as system
+
+			const unbrandedResult = getEffectiveBrandedStatus([SYSTEM_TAGS.UNBRANDED], ["unbranded"]);
+			expect(unbrandedResult.isBranded).toBe(false);
+			expect(unbrandedResult.isOverridden).toBe(false); // Not an override, same as system
+		});
+
+		it("should handle empty arrays", () => {
+			const result = getEffectiveBrandedStatus([], []);
+			expect(result.isBranded).toBe(false);
+			expect(result.isOverridden).toBe(false);
+			expect(result.systemIsBranded).toBe(false);
+		});
+	});
+
+	describe("end-to-end branded status with overrides", () => {
+		// Test the full flow: computeSystemTags -> getEffectiveBrandedStatus
+		// Using Nike as the brand for concrete examples
+		const brandName = "Nike";
+		const brandWebsite = "https://nike.com";
+
+		const getEffectiveStatus = (promptValue: string, userTags: string[]) => {
+			const systemTags = computeSystemTags(promptValue, brandName, brandWebsite);
+			return getEffectiveBrandedStatus(systemTags, userTags);
+		};
+
+		it("nike something, [] -> branded (system branded, no override)", () => {
+			const result = getEffectiveStatus("nike something", []);
+			expect(result.isBranded).toBe(true);
+			expect(result.isOverridden).toBe(false);
+		});
+
+		it("something, [] -> unbranded (system unbranded, no override)", () => {
+			const result = getEffectiveStatus("something", []);
+			expect(result.isBranded).toBe(false);
+			expect(result.isOverridden).toBe(false);
+		});
+
+		it("nike something 2, ['unbranded'] -> unbranded (system branded, user override to unbranded)", () => {
+			const result = getEffectiveStatus("nike something 2", ["unbranded"]);
+			expect(result.isBranded).toBe(false);
+			expect(result.isOverridden).toBe(true);
+			expect(result.systemIsBranded).toBe(true);
+		});
+
+		it("n something 3, ['branded'] -> branded (system unbranded, user override to branded)", () => {
+			const result = getEffectiveStatus("n something 3", ["branded"]);
+			expect(result.isBranded).toBe(true);
+			expect(result.isOverridden).toBe(true);
+			expect(result.systemIsBranded).toBe(false);
+		});
+
+		it("nike something 4, ['branded', 'unbranded'] -> branded (system branded, both tags cancel out)", () => {
+			const result = getEffectiveStatus("nike something 4", ["branded", "unbranded"]);
+			expect(result.isBranded).toBe(true);
+			expect(result.isOverridden).toBe(false);
+			expect(result.systemIsBranded).toBe(true);
+		});
+
+		it("n something 5, ['branded', 'unbranded'] -> unbranded (system unbranded, both tags cancel out)", () => {
+			const result = getEffectiveStatus("n something 5", ["branded", "unbranded"]);
+			expect(result.isBranded).toBe(false);
+			expect(result.isOverridden).toBe(false);
+			expect(result.systemIsBranded).toBe(false);
 		});
 	});
 });

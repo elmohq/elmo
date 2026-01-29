@@ -4,6 +4,7 @@ import { prompts, competitors, brands, SYSTEM_TAGS } from "@workspace/lib/db/sch
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and } from "drizzle-orm";
 import { getCitationDomainStats, getCitationUrlStats } from "@/lib/tinybird-read-v2";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 type Params = {
 	id: string;
@@ -157,20 +158,55 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			(p.tags || []).forEach(tag => allUserTags.add(tag));
 		});
 
-		// Build available tags list (system tags + user tags)
+		// Build available tags list (system tags + user tags, excluding duplicates of system tags)
+		const userTagsWithoutSystemTags = Array.from(allUserTags)
+			.filter((tag) => tag.toLowerCase() !== SYSTEM_TAGS.BRANDED && tag.toLowerCase() !== SYSTEM_TAGS.UNBRANDED)
+			.sort();
 		const availableTags = [
 			SYSTEM_TAGS.BRANDED,
 			SYSTEM_TAGS.UNBRANDED,
-			...Array.from(allUserTags).sort(),
+			...userTagsWithoutSystemTags,
 		];
 
 		// Filter prompts by tag if specified
 		let enabledPromptIds: string[] = allPrompts.map(p => p.id);
 		if (filterTags.length > 0) {
-			// Check if any filter tag matches either system tags or user tags
+			// Check if we're filtering by branded/unbranded
+			const filterByBranded = filterTags.includes(SYSTEM_TAGS.BRANDED);
+			const filterByUnbranded = filterTags.includes(SYSTEM_TAGS.UNBRANDED);
+			// Get non-system filter tags
+			const nonSystemFilterTags = filterTags.filter(
+				(t) => t !== SYSTEM_TAGS.BRANDED && t !== SYSTEM_TAGS.UNBRANDED
+			);
+
 			const matchingPrompts = allPrompts.filter(p => {
-				const allPromptTags = [...(p.systemTags || []), ...(p.tags || [])].map(t => t.toLowerCase());
-				return filterTags.some(filterTag => allPromptTags.includes(filterTag));
+				const systemTags = p.systemTags || [];
+				const userTags = p.tags || [];
+
+				// Check branded/unbranded filter using effective status
+				if (filterByBranded || filterByUnbranded) {
+					const effectiveStatus = getEffectiveBrandedStatus(systemTags, userTags);
+					const matchesBrandedFilter = filterByBranded && effectiveStatus.isBranded;
+					const matchesUnbrandedFilter = filterByUnbranded && !effectiveStatus.isBranded;
+					if (matchesBrandedFilter || matchesUnbrandedFilter) {
+						return true;
+					}
+				}
+
+				// Check non-system tags normally
+				if (nonSystemFilterTags.length > 0) {
+					const allTagsLower = [...systemTags, ...userTags].map(t => t.toLowerCase());
+					if (nonSystemFilterTags.some(filterTag => allTagsLower.includes(filterTag))) {
+						return true;
+					}
+				}
+
+				// If only filtering by branded/unbranded and didn't match above, exclude
+				if ((filterByBranded || filterByUnbranded) && nonSystemFilterTags.length === 0) {
+					return false;
+				}
+
+				return false;
 			});
 
 			enabledPromptIds = matchingPrompts.map(p => p.id);

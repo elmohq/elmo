@@ -6,10 +6,11 @@ import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Badge } from "@workspace/ui/components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Plus, Save, Inbox, X, Check } from "lucide-react";
+import { Plus, Save, Inbox, X, Check, AlertTriangle } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { invalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 interface Prompt {
 	id: string;
@@ -76,8 +77,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 	const addTag = (index: number, tag: string) => {
 		const normalizedTag = tag.toLowerCase().trim();
-		// Don't add empty, system tags, or duplicates
-		if (!normalizedTag || normalizedTag === "branded" || normalizedTag === "unbranded") return;
+		// Don't add empty or duplicate tags
+		// Note: "branded" and "unbranded" are allowed as user tags to override system-computed values
+		if (!normalizedTag) return;
 		if (prompts[index].tags.includes(normalizedTag)) return;
 		
 		const updated = [...prompts];
@@ -323,20 +325,45 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 									onChange={(e) => updatePrompt(index, "groupPrefix", e.target.value)}
 									placeholder="best for"
 								/>
-								{/* System Tags (read-only) */}
+								{/* System Tags (read-only) with override indicator */}
 								<div className="flex items-center h-9">
 									{prompt.systemTags.length > 0 ? (
-										<div className="flex flex-wrap gap-1">
-											{prompt.systemTags.map((tag, tagIndex) => (
-												<Badge 
-													key={tagIndex} 
-													variant="outline" 
-													className="text-xs capitalize bg-muted/50"
-												>
-													{tag}
-												</Badge>
-											))}
-										</div>
+										(() => {
+											const effectiveStatus = getEffectiveBrandedStatus(prompt.systemTags, prompt.tags);
+											return (
+												<div className="flex flex-wrap gap-1 items-center">
+													{prompt.systemTags.map((tag, tagIndex) => {
+														const normalizedTag = tag.toLowerCase();
+														const isBrandedTag = normalizedTag === "branded" || normalizedTag === "unbranded";
+														const showOverride = isBrandedTag && effectiveStatus.isOverridden;
+														return (
+															<Tooltip key={tagIndex}>
+																<TooltipTrigger asChild>
+																	<Badge 
+																		variant="outline" 
+																		className={`text-xs capitalize bg-muted/50 gap-1 ${
+																			showOverride ? "line-through opacity-60" : ""
+																		}`}
+																	>
+																		{showOverride && (
+																			<AlertTriangle className="h-3 w-3 text-muted-foreground" />
+																		)}
+																		{tag}
+																	</Badge>
+																</TooltipTrigger>
+																{showOverride && (
+																	<TooltipContent>
+																		<p className="max-w-xs">
+																			Overridden by user tag: {effectiveStatus.isBranded ? "branded" : "unbranded"}
+																		</p>
+																	</TooltipContent>
+																)}
+															</Tooltip>
+														);
+													})}
+												</div>
+											);
+										})()
 									) : (
 										<span className="text-xs text-muted-foreground">—</span>
 									)}
@@ -354,6 +381,9 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 										}}
 										placeholder="Add tag..."
 									/>
+									{prompt.tags.length === 0 && (newTagInputs[index] || "").trim() && (
+										<p className="text-xs text-muted-foreground">Press Enter to add tag</p>
+									)}
 									{prompt.tags.length > 0 && (
 										<div className="flex flex-wrap gap-1">
 											{prompt.tags.map((tag, tagIndex) => (
