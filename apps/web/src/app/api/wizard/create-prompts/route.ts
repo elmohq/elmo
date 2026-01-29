@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@workspace/lib/db/db";
 import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq, and, count } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { createPromptsData } from "@workspace/lib/wizard-helpers";
 
 // Maximum limits
-const MAX_PROMPTS = 150;
 const MAX_PERSONA_GROUP_MEMBERS = 4;
 
 export async function POST(request: NextRequest) {
@@ -67,14 +66,12 @@ export async function POST(request: NextRequest) {
 		}
 		const brand = brandInfo[0];
 
-		// Check current counts for limits
-		const [currentPromptCountResult, currentCompetitorCountResult] = await Promise.all([
-			db.select({ count: count() }).from(prompts).where(eq(prompts.brandId, brandId)),
-			db.select({ count: count() }).from(competitors).where(eq(competitors.brandId, brandId)),
-		]);
+	// Check current counts for limits
+	const [currentCompetitorCountResult] = await Promise.all([
+		db.select({ count: count() }).from(competitors).where(eq(competitors.brandId, brandId)),
+	]);
 
-		const currentPromptCount = currentPromptCountResult[0]?.count || 0;
-		const currentCompetitorCount = currentCompetitorCountResult[0]?.count || 0;
+	const currentCompetitorCount = currentCompetitorCountResult[0]?.count || 0;
 
 		// Use helper function to create prompts data (includes system tags)
 		const { prompts: promptsToCreate, competitors: competitorsFromHelper } = createPromptsData({
@@ -98,17 +95,8 @@ export async function POST(request: NextRequest) {
 			});
 		}
 
-		// Check limits before creating
-		if (currentPromptCount + promptsToCreate.length > MAX_PROMPTS) {
-			return NextResponse.json(
-				{
-					error: `Cannot create prompts. This would exceed the maximum limit of ${MAX_PROMPTS} prompts. Current: ${currentPromptCount}, Attempting to create: ${promptsToCreate.length}`,
-				},
-				{ status: 400 },
-			);
-		}
-
-		if (currentCompetitorCount + competitorsToCreate.length > MAX_COMPETITORS) {
+	// Check limits before creating
+	if (currentCompetitorCount + competitorsToCreate.length > MAX_COMPETITORS) {
 			return NextResponse.json(
 				{
 					error: `Cannot create competitors. This would exceed the maximum limit of ${MAX_COMPETITORS} competitors. Current: ${currentCompetitorCount}, Attempting to create: ${competitorsToCreate.length}`,

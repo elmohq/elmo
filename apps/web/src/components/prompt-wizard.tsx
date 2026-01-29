@@ -14,9 +14,6 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 
-// Maximum prompts limit
-const MAX_PROMPTS = 150;
-
 // Step status types
 type StepStatus = "pending" | "running" | "completed" | "error" | "blocked" | "cancelled";
 
@@ -468,8 +465,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		const newPromptsCount =
 			productPrompts.length + productPersonaPrompts.length + selectedKeywords.length + customPrompts.length;
 		const totalAfterCreation = existingCount + newPromptsCount;
-		const wouldExceedLimit = totalAfterCreation > MAX_PROMPTS;
-		const availableSlots = Math.max(0, MAX_PROMPTS - existingCount);
 
 		return {
 			existingPrompts,
@@ -480,8 +475,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			customPrompts,
 			newPromptsCount,
 			totalAfterCreation,
-			wouldExceedLimit,
-			availableSlots,
 		};
 	}, [brand?.prompts, wizardData]);
 
@@ -994,88 +987,43 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<p className="text-muted-foreground">Review all prompts that will be created based on your selections.</p>
 					</div>
 
-					{/* Summary Card */}
-					<Card
-						className={
-							promptsPreview.wouldExceedLimit
-								? "border-red-300 bg-red-50/50 dark:border-red-800 dark:bg-red-950/30"
-								: "bg-gradient-to-br from-background to-muted/30"
-						}
-					>
-						<CardContent className="pt-6 pb-5">
-							{/* Main stats row */}
-							<div className="flex items-center justify-between mb-4">
-								<div className="flex items-baseline gap-1">
-									<span className="text-4xl font-bold tabular-nums">
-										{promptsPreview.totalAfterCreation}
-									</span>
-									<span className="text-lg text-muted-foreground">/ {MAX_PROMPTS}</span>
-								</div>
-								<div className="text-right">
-									{promptsPreview.wouldExceedLimit ? (
-										<Badge variant="destructive" className="text-xs">
-											Exceeds limit by {promptsPreview.totalAfterCreation - MAX_PROMPTS}
-										</Badge>
-									) : promptsPreview.newPromptsCount > 0 ? (
-										<Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-											+{promptsPreview.newPromptsCount} new
-										</Badge>
-									) : (
-										<Badge variant="secondary" className="text-xs">
-											No changes
-										</Badge>
-									)}
-								</div>
+				{/* Summary Card */}
+				<Card className="bg-gradient-to-br from-background to-muted/30">
+					<CardContent className="pt-6 pb-5">
+						{/* Main stats row */}
+						<div className="flex items-center justify-between mb-4">
+							<div className="flex items-baseline gap-1">
+								<span className="text-4xl font-bold tabular-nums">
+									{promptsPreview.totalAfterCreation}
+								</span>
+								<span className="text-lg text-muted-foreground">total prompts</span>
 							</div>
-
-							{/* Progress bar with segments */}
-							<div className="relative h-3 rounded-full bg-muted overflow-hidden mb-3">
-								{/* Existing prompts segment */}
-								<div
-									className="absolute left-0 top-0 h-full bg-gray-400 dark:bg-gray-600 transition-all"
-									style={{ width: `${Math.min((promptsPreview.existingCount / MAX_PROMPTS) * 100, 100)}%` }}
-								/>
-								{/* New prompts segment */}
-								<div
-									className={`absolute top-0 h-full transition-all ${
-										promptsPreview.wouldExceedLimit
-											? "bg-red-500"
-											: "bg-blue-500"
-									}`}
-									style={{
-										left: `${Math.min((promptsPreview.existingCount / MAX_PROMPTS) * 100, 100)}%`,
-										width: `${Math.min((promptsPreview.newPromptsCount / MAX_PROMPTS) * 100, 100 - (promptsPreview.existingCount / MAX_PROMPTS) * 100)}%`,
-									}}
-								/>
+							<div className="text-right">
+								{promptsPreview.newPromptsCount > 0 ? (
+									<Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+										+{promptsPreview.newPromptsCount} new
+									</Badge>
+								) : (
+									<Badge variant="secondary" className="text-xs">
+										No changes
+									</Badge>
+								)}
 							</div>
+						</div>
 
-							{/* Legend */}
-							<div className="flex items-center justify-between text-xs text-muted-foreground">
-								<div className="flex items-center gap-4">
-									<div className="flex items-center gap-1.5">
-										<div className="w-2.5 h-2.5 rounded-full bg-gray-400 dark:bg-gray-600" />
-										<span>Existing ({promptsPreview.existingCount})</span>
-									</div>
-									<div className="flex items-center gap-1.5">
-										<div className={`w-2.5 h-2.5 rounded-full ${promptsPreview.wouldExceedLimit ? "bg-red-500" : "bg-blue-500"}`} />
-										<span>New ({promptsPreview.newPromptsCount})</span>
-									</div>
-								</div>
-								<span>{promptsPreview.availableSlots} slots available</span>
+						{/* Legend */}
+						<div className="flex items-center gap-4 text-xs text-muted-foreground">
+							<div className="flex items-center gap-1.5">
+								<div className="w-2.5 h-2.5 rounded-full bg-gray-400 dark:bg-gray-600" />
+								<span>Existing ({promptsPreview.existingCount})</span>
 							</div>
-
-							{/* Error message */}
-							{promptsPreview.wouldExceedLimit && (
-								<div className="mt-4 flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-100/50 dark:bg-red-900/20 rounded-md p-3">
-									<AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-									<span>
-										Remove {promptsPreview.totalAfterCreation - MAX_PROMPTS} prompts to proceed. 
-										Try reducing targeting groups or deselecting keywords.
-									</span>
-								</div>
-							)}
-						</CardContent>
-					</Card>
+							<div className="flex items-center gap-1.5">
+								<div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+								<span>New ({promptsPreview.newPromptsCount})</span>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
 
 					{/* Breakdown */}
 					<div className="space-y-2">
@@ -1198,11 +1146,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					</div>
 				)}
 
-				<Button
-					onClick={createPrompts}
-					disabled={isCreatingPrompts || promptsPreview.wouldExceedLimit || promptsPreview.newPromptsCount === 0}
-					className="flex items-center gap-2 cursor-pointer"
-				>
+			<Button
+				onClick={createPrompts}
+				disabled={isCreatingPrompts || promptsPreview.newPromptsCount === 0}
+				className="flex items-center gap-2 cursor-pointer"
+			>
 					{isCreatingPrompts ? (
 						<>
 							<Loader2 className="h-4 w-4 animate-spin" />

@@ -42,9 +42,6 @@ interface PromptsEditorProps {
 }
 
 export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription }: PromptsEditorProps) {
-	// Maximum limits
-	const MAX_PROMPTS = 150;
-
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(
 		initialPrompts.map((p) => ({
 			id: p.id,
@@ -62,11 +59,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const router = useRouter();
 
 	const addPrompt = () => {
-		// Count only enabled prompts for the limit
-		const enabledCount = prompts.filter((p) => p.enabled).length;
-		if (enabledCount < MAX_PROMPTS) {
-			setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "", enabled: true, tags: [], systemTags: [] }]);
-		}
+		setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "", enabled: true, tags: [], systemTags: [] }]);
 	};
 
 	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean | string[]) => {
@@ -109,14 +102,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		try {
 			// Get valid prompts (non-empty value)
 			const validPrompts = prompts.filter((p) => p.value.trim());
-
-			// Check server-side limits before saving (only count enabled prompts)
-			const enabledValidPrompts = validPrompts.filter((p) => p.enabled);
-			if (enabledValidPrompts.length > MAX_PROMPTS) {
-				alert(`You can only have a maximum of ${MAX_PROMPTS} enabled prompts.`);
-				setIsLoading(false);
-				return;
-			}
 
 			// Separate existing prompts vs new prompts
 			const existingPrompts = validPrompts.filter((p) => p.id);
@@ -214,7 +199,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 	const validPromptCount = prompts.filter((p) => p.value.trim()).length;
 	const enabledPromptCount = prompts.filter((p) => p.value.trim() && p.enabled).length;
-	const isAtLimit = enabledPromptCount >= MAX_PROMPTS;
 
 	return (
 		<div className="space-y-6">
@@ -422,32 +406,23 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							</>
 						)}
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={addPrompt}
-						disabled={isAtLimit}
-						className="flex items-center gap-2 cursor-pointer"
-					>
-						<Plus className="h-4 w-4" /> Add Prompt
-					</Button>
-					{isAtLimit && (
-						<p className="text-xs text-muted-foreground">
-							Maximum of {MAX_PROMPTS} enabled prompts allowed. Disable a prompt to add a new one.
-						</p>
-					)}
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={addPrompt}
+					className="flex items-center gap-2 cursor-pointer"
+				>
+					<Plus className="h-4 w-4" /> Add Prompt
+				</Button>
 				</div>
 
-				{/* Count information */}
-				<div className="text-xs text-muted-foreground">
-					<strong>
-						{enabledPromptCount}/{MAX_PROMPTS}
-					</strong>{" "}
-					enabled prompts{enabledPromptCount >= MAX_PROMPTS ? " (maximum reached)" : ""}
-					{validPromptCount !== enabledPromptCount && (
-						<span className="ml-2">• {validPromptCount - enabledPromptCount} disabled</span>
-					)}
-				</div>
+			{/* Count information */}
+			<div className="text-xs text-muted-foreground">
+				<strong>{enabledPromptCount}</strong> enabled prompts
+				{validPromptCount !== enabledPromptCount && (
+					<span className="ml-2">• {validPromptCount - enabledPromptCount} disabled</span>
+				)}
+			</div>
 			</div>
 		</div>
 	);

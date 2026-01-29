@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
-import { eq, count } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
@@ -10,9 +10,6 @@ import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
 type Params = {
 	id: string;
 };
-
-// Maximum limits
-const MAX_PROMPTS = 150;
 
 // GET all prompts for a brand
 export async function GET(request: NextRequest, { params }: { params: Promise<Params> }) {
@@ -61,26 +58,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			return NextResponse.json({ error: "Prompt value is required" }, { status: 400 });
 		}
 
-		// Get brand info for computing system tags
-		const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
-		if (brandInfo.length === 0) {
-			return NextResponse.json({ error: "Brand not found" }, { status: 404 });
-		}
-		const brand = brandInfo[0];
-
-		// Check current prompt count for this brand
-		const currentCountResult = await db.select({ count: count() }).from(prompts).where(eq(prompts.brandId, brandId));
-
-		const currentCount = currentCountResult[0]?.count || 0;
-
-		if (currentCount >= MAX_PROMPTS) {
-			return NextResponse.json(
-				{
-					error: `Maximum limit reached. You can only have ${MAX_PROMPTS} prompts.`,
-				},
-				{ status: 400 },
-			);
-		}
+	// Get brand info for computing system tags
+	const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
+	if (brandInfo.length === 0) {
+		return NextResponse.json({ error: "Brand not found" }, { status: 404 });
+	}
+	const brand = brandInfo[0];
 
 		// Compute tags
 		const userTags = tags ? sanitizeUserTags(tags) : [];
