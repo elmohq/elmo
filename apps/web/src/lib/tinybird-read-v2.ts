@@ -952,10 +952,10 @@ export interface AdminActiveBrandsOverTime {
  * Get active brands over time for the last 30 days (for admin dashboard chart)
  * 
  * For each day, counts the number of distinct brands that had at least one
- * prompt run in the 7-day window ending on that day.
+ * prompt run in the 30-day window ending on that day.
  * 
  * Strategy: For each run on date R, it contributes to the "active" count for
- * dates R through R+6. We expand each run into those target dates, filter to
+ * dates R through R+29. We expand each run into those target dates, filter to
  * our 30-day range, and count distinct brands per date.
  */
 export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsOverTime[]> {
@@ -967,9 +967,9 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 		FROM (
 			SELECT
 				brand_id,
-				toDate(created_at, 'UTC') + arrayJoin(range(0, 7)) as target_date
+				toDate(created_at, 'UTC') + arrayJoin(range(0, 30)) as target_date
 			FROM prompt_runs_v2 FINAL
-			WHERE created_at >= now() - INTERVAL 37 DAY
+			WHERE created_at >= now() - INTERVAL 60 DAY
 		)
 		WHERE target_date >= today() - 30
 			AND target_date <= today()

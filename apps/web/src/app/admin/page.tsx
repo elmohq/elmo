@@ -913,7 +913,7 @@ export default function AdminPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Active Brands</CardTitle>
-						<CardDescription>With runs in last 7 days: {activeBrandsOverTime[activeBrandsOverTime.length - 1]?.count ?? 0}</CardDescription>
+						<CardDescription>With runs in last 30 days: {activeBrandsOverTime[activeBrandsOverTime.length - 1]?.count ?? 0}</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer
