@@ -3,20 +3,8 @@ import { hasReportGeneratorAccess } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { DBOSClient } from "@dbos-inc/dbos-sdk";
 import { reportsQueue } from "@workspace/lib/dbos";
-
-let dbosClientPromise: Promise<DBOSClient> | null = null;
-
-async function getDbosClient(): Promise<DBOSClient> {
-	if (!dbosClientPromise) {
-		dbosClientPromise = DBOSClient.create({
-			systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
-		});
-	}
-
-	return dbosClientPromise;
-}
+import { getDbosClient } from "@/lib/dbos-client";
 
 export async function GET() {
 	try {

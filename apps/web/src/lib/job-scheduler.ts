@@ -1,9 +1,9 @@
-import { DBOSClient } from "@dbos-inc/dbos-sdk";
 import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { promptsQueue } from "@workspace/lib/dbos";
+import { getDbosClient } from "@/lib/dbos-client";
 
 const WORKFLOW_NAME = "processPrompt";
 
@@ -43,18 +43,6 @@ export async function getPromptDelayHours(promptId: string): Promise<number> {
 		console.error(`Error fetching delay for prompt ${promptId}:`, error);
 		return DEFAULT_DELAY_HOURS;
 	}
-}
-
-let dbosClientPromise: Promise<DBOSClient> | null = null;
-
-async function getDbosClient(): Promise<DBOSClient> {
-	if (!dbosClientPromise) {
-		dbosClientPromise = DBOSClient.create({
-			systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
-		});
-	}
-
-	return dbosClientPromise;
 }
 
 /**

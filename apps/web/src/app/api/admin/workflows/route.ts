@@ -5,8 +5,8 @@ import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
-import { DBOSClient } from "@dbos-inc/dbos-sdk";
 import { Client } from "pg";
+import { getDbosClient } from "@/lib/dbos-client";
 
 export const dynamic = "force-dynamic";
 
@@ -85,17 +85,6 @@ interface RecentJob {
 	finishedOn: number | null;
 	stacktrace: string[] | null;
 	returnValue: any;
-}
-
-let dbosClientPromise: Promise<DBOSClient> | null = null;
-
-async function getDbosClient(): Promise<DBOSClient> {
-	if (!dbosClientPromise) {
-		dbosClientPromise = DBOSClient.create({
-			systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
-		});
-	}
-	return dbosClientPromise;
 }
 
 async function withDbosClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
