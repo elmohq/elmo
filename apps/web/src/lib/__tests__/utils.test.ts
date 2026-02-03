@@ -28,8 +28,6 @@ describe("calculateAverageVisibility", () => {
 	const createMockPrompt = (id: string, enabled = true): Prompt => ({
 		id,
 		brandId: "brand-1",
-		groupCategory: null,
-		groupPrefix: null,
 		value: `Test prompt ${id}`,
 		enabled,
 		tags: [],

@@ -182,46 +182,6 @@ export function calculateVisibilityPercentages(
 		return dataPoint;
 	});
 }
-
-/**
- * Calculate visibility percentages for individual prompts in a group
- */
-export function calculateGroupVisibilityData(
-	promptRuns: PromptRun[],
-	prompts: Array<{ id: string; value: string; groupPrefix: string | null }>,
-	brand: Brand,
-	competitors: Competitor[],
-	lookback: LookbackPeriod,
-	userTimezone: string = Intl.DateTimeFormat().resolvedOptions().timeZone,
-): Array<{
-	promptId: string;
-	promptTitle: string;
-	chartData: ChartDataPoint[];
-	lastVisibility: number | null;
-}> {
-	return prompts.map((prompt) => {
-		// Filter runs for this specific prompt
-		const promptSpecificRuns = promptRuns.filter((run) => run.promptId === prompt.id);
-
-		// Calculate chart data for this prompt
-		const chartData = calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback, userTimezone);
-
-		// Get the prompt title (remove group prefix if present)
-		const promptTitle = prompt.groupPrefix ? prompt.value.slice(prompt.groupPrefix.length).trim() : prompt.value;
-
-		// Get last visibility value for the brand
-		const lastDataPoint = chartData.filter((point) => point[brand.id] !== null).pop();
-		const lastVisibility = (lastDataPoint?.[brand.id] as number | null) ?? null;
-
-		return {
-			promptId: prompt.id,
-			promptTitle,
-			chartData,
-			lastVisibility,
-		};
-	});
-}
-
 /**
  * Get competitor color based on alphabetical position using white label colors
  */

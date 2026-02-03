@@ -15,8 +15,6 @@ import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 interface Prompt {
 	id: string;
 	brandId: string;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 	value: string;
 	enabled: boolean;
 	tags?: string[];
@@ -27,8 +25,6 @@ interface Prompt {
 interface EditablePrompt {
 	id?: string; // undefined for new prompts
 	value: string;
-	groupCategory: string;
-	groupPrefix: string;
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[]; // read-only, from initial data
@@ -46,8 +42,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		initialPrompts.map((p) => ({
 			id: p.id,
 			value: p.value,
-			groupCategory: p.groupCategory || "",
-			groupPrefix: p.groupPrefix || "",
 			enabled: p.enabled,
 			tags: p.tags || [],
 			systemTags: p.systemTags || [],
@@ -59,7 +53,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const router = useRouter();
 
 	const addPrompt = () => {
-		setPrompts([...prompts, { value: "", groupCategory: "", groupPrefix: "", enabled: true, tags: [], systemTags: [] }]);
+		setPrompts([...prompts, { value: "", enabled: true, tags: [], systemTags: [] }]);
 	};
 
 	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean | string[]) => {
@@ -123,8 +117,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						},
 						body: JSON.stringify({
 							value: prompt.value.trim(),
-							groupCategory: prompt.groupCategory.trim() || null,
-							groupPrefix: prompt.groupPrefix.trim() || null,
 							enabled: prompt.enabled,
 							tags: prompt.tags,
 						}),
@@ -147,8 +139,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						},
 						body: JSON.stringify({
 							value: prompt.value.trim(),
-							groupCategory: prompt.groupCategory.trim() || null,
-							groupPrefix: prompt.groupPrefix.trim() || null,
 							enabled: prompt.enabled,
 							tags: prompt.tags,
 						}),
@@ -211,7 +201,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			<div className="space-y-4">
 				{/* Header row - always shown */}
-				<div className="grid grid-cols-[3rem_1fr_8rem_8rem_6rem_10rem] gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+				<div className="grid grid-cols-[3rem_1fr_6rem_10rem] gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
 					<div className="flex justify-center">
 						<Check className="h-4 w-4" />
 					</div>
@@ -223,28 +213,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 							</TooltipTrigger>
 							<TooltipContent>
 								<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-					<div className="flex items-center gap-1">
-						Category
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="max-w-xs">Group similar prompts together (e.g., persona, demographic, activity).</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-					<div className="flex items-center gap-1">
-						Prefix
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="max-w-xs">Common prefix shared by related prompts (e.g., &quot;best running shoes for&quot;).</p>
 							</TooltipContent>
 						</Tooltip>
 					</div>
@@ -286,7 +254,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						{prompts.map((prompt, index) => (
 							<div
 								key={index}
-								className={`grid grid-cols-[3rem_1fr_8rem_8rem_6rem_10rem] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
+								className={`grid grid-cols-[3rem_1fr_6rem_10rem] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
 							>
 								<div className="flex justify-center pt-2">
 									<Checkbox
@@ -298,16 +266,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 									value={prompt.value}
 									onChange={(e) => updatePrompt(index, "value", e.target.value)}
 									placeholder="Enter prompt text..."
-								/>
-								<Input
-									value={prompt.groupCategory}
-									onChange={(e) => updatePrompt(index, "groupCategory", e.target.value)}
-									placeholder="personas"
-								/>
-								<Input
-									value={prompt.groupPrefix}
-									onChange={(e) => updatePrompt(index, "groupPrefix", e.target.value)}
-									placeholder="best for"
 								/>
 								{/* System Tags (read-only) with override indicator */}
 								<div className="flex items-center h-9">

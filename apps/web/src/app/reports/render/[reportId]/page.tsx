@@ -4,14 +4,12 @@ import { reports } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@workspace/ui/components/card";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
-import { PromptGroupChartPrint } from "@/components/prompt-group-chart-print";
 import { Badge } from "@workspace/ui/components/badge";
 import { notFound } from "next/navigation";
 import { clientConfig } from "@/lib/config/client";
 import { Logo } from "@/components/logo";
 import {
 	calculateVisibilityPercentages,
-	calculateGroupVisibilityData,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
 import { Target, BarChart3, Rocket } from "lucide-react";
@@ -33,8 +31,6 @@ interface CompetitorResult {
 
 interface PromptData {
 	value: string;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 }
 
 interface PromptRunResult {
@@ -57,8 +53,6 @@ interface MockPrompt {
 	brandId: string;
 	value: string;
 	enabled: boolean;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 	createdAt: Date;
 }
 
@@ -151,33 +145,6 @@ function calculatePromptMentionScore(
 	return totalMentions / runs.length; // Average weighted mentions per run
 }
 
-// Calculate weighted mention score for a group of prompts (matches prompts-display logic)
-function calculateGroupMentionScore(
-	groupPrompts: MockPrompt[],
-	promptRuns: MockPromptRun[],
-	competitors: CompetitorResult[],
-): number {
-	const allRunsForGroup = groupPrompts.flatMap((prompt) => promptRuns.filter((run) => run.promptId === prompt.id));
-
-	if (allRunsForGroup.length === 0) return 0;
-
-	const totalMentions = allRunsForGroup.reduce((total, run) => {
-		let mentions = 0;
-		// Count brand mention (weighted 2x)
-		if (run.brandMentioned) mentions += 2;
-		// Count each competitor mention separately (weighted 1x) - only if name matches exactly
-		if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-			const matchingCompetitorMentions = run.competitorsMentioned.filter((mentionedName) =>
-				competitors.some((competitor) => competitor.name === mentionedName),
-			);
-			mentions += matchingCompetitorMentions.length;
-		}
-		return total + mentions;
-	}, 0);
-
-	return totalMentions / allRunsForGroup.length; // Average weighted mentions per run
-}
-
 // Calculate brand visibility percentage for a single prompt
 function calculatePromptBrandVisibility(promptId: string, promptRuns: MockPromptRun[]): number {
 	const runs = promptRuns.filter((run) => run.promptId === promptId);
@@ -185,16 +152,6 @@ function calculatePromptBrandVisibility(promptId: string, promptRuns: MockPrompt
 
 	const brandMentionedCount = runs.filter((run) => run.brandMentioned).length;
 	return Math.round((brandMentionedCount / runs.length) * 100);
-}
-
-// Calculate brand visibility percentage for a group of prompts
-function calculateGroupBrandVisibility(groupPrompts: MockPrompt[], promptRuns: MockPromptRun[]): number {
-	const allRunsForGroup = groupPrompts.flatMap((prompt) => promptRuns.filter((run) => run.promptId === prompt.id));
-
-	if (allRunsForGroup.length === 0) return 0;
-
-	const brandMentionedCount = allRunsForGroup.filter((run) => run.brandMentioned).length;
-	return Math.round((brandMentionedCount / allRunsForGroup.length) * 100);
 }
 
 function getVisibilityTextColor(value: number): string {
@@ -227,13 +184,13 @@ function isPromptBranded(promptValue: string, brandName: string, brandWebsite: s
 
 // Types for display items
 type DisplayItem = {
-	type: "individual" | "group";
+	type: "individual";
 	mentionScore: number;
 	brandVisibility: number;
 	hasRuns: boolean;
 	isBranded: boolean;
 	hasCompetitorMentions: boolean;
-	data: MockPrompt | { groupKey: string; prompts: MockPrompt[] };
+	data: MockPrompt;
 };
 
 export default async function ReportRenderPage({ params }: { params: Promise<{ reportId: string }> }) {
@@ -303,8 +260,6 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		brandId: mockBrand.id,
 		value: prompt.value,
 		enabled: true,
-		groupCategory: prompt.groupCategory,
-		groupPrefix: prompt.groupPrefix,
 		createdAt: new Date(),
 	}));
 
@@ -344,29 +299,9 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		parsedReportData.competitors,
 	);
 
-	// Group prompts similar to prompts-display
-	const uncategorizedPrompts = mockPrompts.filter(
-		(prompt) => !prompt.groupCategory || prompt.groupCategory === "Uncategorized",
-	);
-
-	const groupedPrompts = mockPrompts
-		.filter((prompt) => prompt.groupCategory && prompt.groupCategory !== "Uncategorized")
-		.reduce(
-			(acc, prompt) => {
-				const category = prompt.groupCategory!;
-				const prefix = prompt.groupPrefix || "";
-				const groupKey = prefix ? `${category}:${prefix}` : category;
-				if (!acc[groupKey]) {
-					acc[groupKey] = [];
-				}
-				acc[groupKey].push(prompt);
-				return acc;
-			},
-			{} as Record<string, MockPrompt[]>,
-		);
-
-	// Create display items for individual prompts
-	const individualItems: DisplayItem[] = uncategorizedPrompts.map((prompt) => {
+	// All prompts are now individual (no more grouping by category/prefix)
+	// Create display items for all prompts
+	const individualItems: DisplayItem[] = mockPrompts.map((prompt) => {
 		const runs = mockPromptRuns.filter((run) => run.promptId === prompt.id);
 		const hasRuns = runs.length > 0;
 		const mentionScore = calculatePromptMentionScore(prompt.id, mockPromptRuns, parsedReportData.competitors);
@@ -385,76 +320,29 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 		};
 	});
 
-	// Create display items for groups
-	const groupItems: DisplayItem[] = Object.entries(groupedPrompts).map(([groupKey, groupPrompts]) => {
-		const allRunsForGroup = groupPrompts.flatMap((prompt) =>
-			mockPromptRuns.filter((run) => run.promptId === prompt.id),
-		);
-		const hasRuns = allRunsForGroup.length > 0;
-		const mentionScore = calculateGroupMentionScore(groupPrompts, mockPromptRuns, parsedReportData.competitors);
-		const brandVisibility = calculateGroupBrandVisibility(groupPrompts, mockPromptRuns);
-		// A group is branded if any of its prompts are branded
-		const isBranded = groupPrompts.some((prompt) => isPromptBranded(prompt.value, report.brandName, report.brandWebsite));
-		const hasCompetitorMentions = allRunsForGroup.some((run) => run.competitorsMentioned && run.competitorsMentioned.length > 0);
-
-		return {
-			type: "group" as const,
-			mentionScore,
-			brandVisibility,
-			hasRuns,
-			isBranded,
-			hasCompetitorMentions,
-			data: { groupKey, prompts: groupPrompts },
-		};
-	});
-
-	// Combine and sort all items by mention score (descending), then alphabetically
-	const allDisplayItems = [...individualItems, ...groupItems].sort((a, b) => {
+	// Sort all items by mention score (descending), then alphabetically
+	const allDisplayItems = [...individualItems].sort((a, b) => {
 		// First sort by mention score (descending)
 		if (a.mentionScore !== b.mentionScore) {
 			return b.mentionScore - a.mentionScore;
 		}
 
 		// Then sort alphabetically
-		const nameA =
-			a.type === "individual"
-				? (a.data as MockPrompt).value
-				: (() => {
-						const { groupKey } = a.data as { groupKey: string; prompts: MockPrompt[] };
-						return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-					})();
-
-		const nameB =
-			b.type === "individual"
-				? (b.data as MockPrompt).value
-				: (() => {
-						const { groupKey } = b.data as { groupKey: string; prompts: MockPrompt[] };
-						return groupKey.includes(":") ? groupKey.split(":")[1] : groupKey;
-					})();
+		const nameA = (a.data as MockPrompt).value;
+		const nameB = (b.data as MockPrompt).value;
 
 		return nameA.localeCompare(nameB);
 	});
 
 	// Simple check for whether an item has any visibility data (without expensive chart calculations)
 	const hasSimpleVisibilityData = (item: DisplayItem): boolean => {
-		if (item.type === "individual") {
-			const prompt = item.data as MockPrompt;
-			const promptRuns = mockPromptRuns.filter((run) => run.promptId === prompt.id);
+		const prompt = item.data;
+		const promptRuns = mockPromptRuns.filter((run) => run.promptId === prompt.id);
 
-			// Simple check: any runs with brand or competitor mentions
-			return promptRuns.some(
-				(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
-			);
-		} else {
-			const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-			const groupPromptIds = group.prompts.map((p) => p.id);
-			const groupRuns = mockPromptRuns.filter((run) => groupPromptIds.includes(run.promptId));
-
-			// Simple check: any runs with brand or competitor mentions
-			return groupRuns.some(
-				(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
-			);
-		}
+		// Simple check: any runs with brand or competitor mentions
+		return promptRuns.some(
+			(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
+		);
 	};
 
 	// Filter items with visibility data
@@ -614,35 +502,14 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 
 					{topDisplayItems.map((item, index) => (
 						<div key={index} className="print:break-inside-avoid">
-							{item.type === "individual" ? (
-								<PromptChartPrint
-									lookback="1m"
-									promptName={(item.data as MockPrompt).value}
-									promptId={(item.data as MockPrompt).id}
-									brand={mockBrand}
-									competitors={mockCompetitors}
-									promptRuns={fullPromptRuns}
-								/>
-							) : (
-								(() => {
-									const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-									const firstPrompt = group.prompts[0];
-									const groupCategory = firstPrompt?.groupCategory || "Uncategorized";
-									const groupPrefix = firstPrompt?.groupPrefix;
-									const chartName = groupPrefix ? `${groupPrefix} ${groupCategory}` : groupCategory;
-
-									return (
-										<PromptGroupChartPrint
-											lookback="1m"
-											groupName={chartName}
-											prompts={group.prompts}
-											brand={mockBrand}
-											competitors={mockCompetitors}
-											promptRuns={fullPromptRuns}
-										/>
-									);
-								})()
-							)}
+							<PromptChartPrint
+								lookback="1m"
+								promptName={(item.data as MockPrompt).value}
+								promptId={(item.data as MockPrompt).id}
+								brand={mockBrand}
+								competitors={mockCompetitors}
+								promptRuns={fullPromptRuns}
+							/>
 						</div>
 					))}
 				</div>
@@ -662,30 +529,13 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 							</CardHeader>
 							<CardContent>
 								{(() => {
-									// Calculate total prompts tracked (expand groups to count individual prompts)
-									const totalPromptsTracked = itemsWithVisibility.reduce((total, item) => {
-										if (item.type === "individual") {
-											return total + 1;
-										} else {
-											const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-											return total + group.prompts.length;
-										}
-									}, 0);
+									// Calculate total prompts tracked
+									const totalPromptsTracked = itemsWithVisibility.length;
 
-									// Calculate prompts where brand is mentioned (check individual prompts within groups)
-									const promptsWithBrandMentions = itemsWithVisibility.reduce((total, item) => {
-										if (item.type === "individual") {
-											return total + (item.brandVisibility > 0 ? 1 : 0);
-										} else {
-											const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-											// Count individual prompts in the group that have brand mentions
-											const groupPromptsWithMentions = group.prompts.filter((prompt) => {
-												const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
-												return brandVisibility > 0;
-											}).length;
-											return total + groupPromptsWithMentions;
-										}
-									}, 0);
+									// Calculate prompts where brand is mentioned
+									const promptsWithBrandMentions = itemsWithVisibility.filter(
+										(item) => item.brandVisibility > 0
+									).length;
 
 									// Calculate opportunity level based on brand mention ratio
 									const brandMentionRatio =
@@ -746,18 +596,8 @@ export default async function ReportRenderPage({ params }: { params: Promise<{ r
 									// Calculate competitive analysis only for subset
 									const competitiveAnalysis = topPromptsSubset
 										.map((item) => {
-											let prompt: MockPrompt;
-											let promptRuns: MockPromptRun[];
-
-											if (item.type === "individual") {
-												prompt = item.data as MockPrompt;
-												promptRuns = mockPromptRuns.filter((run) => run.promptId === prompt.id);
-											} else {
-												// For groups, take the first prompt as representative
-												const group = item.data as { groupKey: string; prompts: MockPrompt[] };
-												prompt = group.prompts[0];
-												promptRuns = mockPromptRuns.filter((run) => group.prompts.some((p) => p.id === run.promptId));
-											}
+											const prompt = item.data;
+											const promptRuns = mockPromptRuns.filter((run) => run.promptId === prompt.id);
 
 											if (promptRuns.length === 0) return null;
 

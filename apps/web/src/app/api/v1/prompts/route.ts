@@ -52,8 +52,6 @@ export async function GET(request: NextRequest) {
 			.select({
 				id: prompts.id,
 				brandId: prompts.brandId,
-				groupCategory: prompts.groupCategory,
-				groupPrefix: prompts.groupPrefix,
 				value: prompts.value,
 				enabled: prompts.enabled,
 				tags: prompts.tags,
@@ -86,7 +84,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json();
-		const { brandId, value, groupCategory, groupPrefix, tags } = body;
+		const { brandId, value, tags } = body;
 
 		// Validate required fields
 		if (!brandId || !value) {
@@ -144,8 +142,6 @@ export async function POST(request: NextRequest) {
 			.values({
 				brandId: brandId.trim(),
 				value: value.trim(),
-				groupCategory: groupCategory ? groupCategory.trim() : null,
-				groupPrefix: groupPrefix ? groupPrefix.trim() : null,
 				tags: userTags,
 				systemTags,
 				enabled: true, // Always enable new prompts in admin API

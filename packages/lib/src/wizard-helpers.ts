@@ -35,8 +35,6 @@ export interface PersonaGroup {
 
 export interface PromptData {
 	brandId: string;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 	value: string;
 	enabled: boolean;
 	tags: string[];
@@ -888,8 +886,6 @@ export function createPromptsData(data: {
 			const value = `best ${product}`;
 			promptsToCreate.push({
 				brandId,
-				groupCategory: null,
-				groupPrefix: null,
 				value,
 				enabled: true,
 				tags: [],
@@ -898,7 +894,7 @@ export function createPromptsData(data: {
 		}
 	}
 
-	// Add product categories + personas as grouped prompts (cross-product)
+	// Add product categories + personas as prompts
 	if (products && Array.isArray(products) && personaGroups && Array.isArray(personaGroups)) {
 		for (const product of products) {
 			for (const group of personaGroups) {
@@ -907,11 +903,9 @@ export function createPromptsData(data: {
 						const value = `best ${product} for ${persona}`;
 						promptsToCreate.push({
 							brandId,
-							groupCategory: group.name,
-							groupPrefix: `best ${product} for `,
 							value,
 							enabled: true,
-							tags: [],
+							tags: [group.name.toLowerCase()], // Use group name as a tag
 							systemTags: getSystemTags(value),
 						});
 					}
@@ -925,8 +919,6 @@ export function createPromptsData(data: {
 		for (const prompt of customPrompts) {
 			promptsToCreate.push({
 				brandId,
-				groupCategory: null,
-				groupPrefix: null,
 				value: prompt,
 				enabled: true,
 				tags: [],
@@ -935,13 +927,11 @@ export function createPromptsData(data: {
 		}
 	}
 
-	// Add keywords from DataForSEO (no group)
+	// Add keywords from DataForSEO
 	if (keywords && Array.isArray(keywords)) {
 		for (const keywordData of keywords) {
 			promptsToCreate.push({
 				brandId,
-				groupCategory: null,
-				groupPrefix: null,
 				value: keywordData.keyword,
 				enabled: true,
 				tags: [],
@@ -984,8 +974,6 @@ export function createPromptsDataForReports(data: {
 			const value = `where to buy ${product}`;
 			promptsToCreate.push({
 				brandId,
-				groupCategory: null,
-				groupPrefix: null,
 				value,
 				enabled: true,
 				tags: [],
@@ -1001,8 +989,6 @@ export function createPromptsDataForReports(data: {
 			const value = `best ${competitor.name.toLowerCase()} alternative`;
 			promptsToCreate.push({
 				brandId,
-				groupCategory: null,
-				groupPrefix: null,
 				value,
 				enabled: true,
 				tags: [],

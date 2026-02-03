@@ -16,33 +16,18 @@ import { generateOptimizationUrl } from "../config";
 type ModelType = "openai" | "anthropic" | "google" | "all";
 type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
-interface PromptData {
-	id: string;
-	value: string;
-}
-
 interface WebQueryResponse {
 	webQuery: string | null;
 	modelWebQueries: Record<string, string>;
 }
 
 export interface OptimizeButtonProps {
-	// Basic configuration
 	brandId?: string;
 	selectedModel?: ModelType;
 	availableModels?: ("openai" | "anthropic" | "google")[];
 	lookback?: LookbackPeriod;
-
-	// Single prompt mode (if promptName is provided)
 	promptName?: string;
 	promptId?: string;
-
-	// Multi-prompt mode (if prompts array is provided)
-	prompts?: PromptData[];
-	groupName?: string;
-	groupPrefix?: string;
-
-	// Branding configuration (required)
 	parentName: string;
 	optimizationUrlTemplate: string;
 }
@@ -89,53 +74,45 @@ export function OptimizeButton({
 	lookback = "1m",
 	promptName,
 	promptId,
-	prompts = [],
-	groupName,
-	groupPrefix,
 	parentName,
 	optimizationUrlTemplate,
 }: OptimizeButtonProps) {
 	const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
-	// Handler for clicking an optimization link
+	if (!promptName || !promptId || !brandId) {
+		return null;
+	}
+
 	const handleOptimizeClick = async (
 		e: React.MouseEvent,
-		promptNameToUse: string,
-		promptIdToUse: string,
 		model?: string,
 	) => {
 		e.preventDefault();
-		if (!brandId) return;
 
-		const key = `${model || 'all'}-${promptIdToUse}`;
+		const key = `${model || 'all'}-${promptId}`;
 		setLoadingKey(key);
 
 		try {
-			const webQueryData = await fetchWebQuery(brandId, promptIdToUse, lookback, model);
+			const webQueryData = await fetchWebQuery(brandId, promptId, lookback, model);
 			
-			// Get the appropriate web query - use model-specific if available
-			// If no web query exists for this model, leave it empty (don't fall back to prompt)
 			const webQuery = model 
 				? webQueryData.modelWebQueries[model]
 				: webQueryData.webQuery;
 			
-			// Generate URL and navigate
-			// Pass the actual web query or undefined - generateOptimizationUrl will leave it empty if not found
 			const url = generateOptimizationUrl(
 				optimizationUrlTemplate, 
-				promptNameToUse, 
+				promptName, 
 				brandId, 
-				!!webQuery, // only enable web search if we have a query
+				!!webQuery,
 				webQuery || undefined
 			);
 			
 			window.open(url, "_blank", "noopener,noreferrer");
 		} catch (error) {
 			console.error("Failed to fetch web query:", error);
-			// On error, just navigate without web query
 			const url = generateOptimizationUrl(
 				optimizationUrlTemplate, 
-				promptNameToUse, 
+				promptName, 
 				brandId, 
 				false,
 				undefined
@@ -146,113 +123,28 @@ export function OptimizeButton({
 		}
 	};
 
-	const isLoading = (model: string | undefined, pId: string) => {
-		return loadingKey === `${model || 'all'}-${pId}`;
+	const isLoading = (model: string | undefined) => {
+		return loadingKey === `${model || 'all'}-${promptId}`;
 	};
 
-	const createSimpleButton = (pName: string, pId: string, model?: string) => {
-		const loading = isLoading(model, pId);
+	// Simple button for single model selection
+	if (selectedModel !== "all") {
+		const loading = isLoading(selectedModel);
 		return (
 			<Button 
 				size="sm" 
 				className="text-xs cursor-pointer p-0 m-0 h-6"
-				onClick={(e) => handleOptimizeClick(e, pName, pId, model)}
+				onClick={(e) => handleOptimizeClick(e, selectedModel)}
 				disabled={loading}
 			>
-				{loading ? (
-					<IconLoader2 size={12} className="size-3 mr-0.5 animate-spin" />
-				) : null}
+				{loading && <IconLoader2 size={12} className="size-3 mr-0.5 animate-spin" />}
 				Optimize with {parentName}
 				<IconExternalLink size={12} className="size-3 ml-0.5" />
 			</Button>
 		);
-	};
-
-	const createDropdownItem = (
-		key: string,
-		pName: string,
-		pId: string,
-		model?: string,
-		displayText?: string,
-	) => {
-		const loading = isLoading(model, pId);
-		return (
-			<DropdownMenuItem 
-				key={key} 
-				className="cursor-pointer"
-				onClick={(e) => handleOptimizeClick(e, pName, pId, model)}
-				disabled={loading}
-			>
-				<div className="flex items-center justify-between w-full text-xs">
-					<span className={displayText ? "text-muted-foreground" : ""}>
-						{displayText || pName}
-					</span>
-					{loading ? (
-						<IconLoader2 size={12} className="size-3 ml-2 animate-spin" />
-					) : (
-						<IconExternalLink size={12} className="size-3 ml-2" />
-					)}
-				</div>
-			</DropdownMenuItem>
-		);
-	};
-
-	const createFallbackDropdownItem = (key: string, text: string, showOptimizePrefix: boolean = false) => (
-		<DropdownMenuItem key={key} className="cursor-pointer" disabled>
-			<div className="flex items-center justify-between w-full text-xs">
-				<span>
-					{showOptimizePrefix ? (
-						<>
-							optimize <span className="text-muted-foreground">{text}</span>
-						</>
-					) : (
-						<span className="text-muted-foreground">{text}</span>
-					)}
-				</span>
-				<IconExternalLink size={12} className="size-3 ml-2" />
-			</div>
-		</DropdownMenuItem>
-	);
-
-	// Mode detection
-	const isSingleMode = Boolean(promptName && promptId);
-	const isMultiMode = prompts.length > 0;
-
-	const renderModelSection = (model: string, modelIndex: number, isAllModelsMode: boolean = false) => {
-		const modelName = getModelDisplayName(model);
-		const items = [];
-
-		if (modelIndex > 0) {
-			items.push(<DropdownMenuSeparator key={`sep-${model}`} />);
-		}
-
-		items.push(<DropdownMenuLabel key={`label-${model}`}>Optimize for {modelName}</DropdownMenuLabel>);
-
-		if (isSingleMode) {
-			items.push(createDropdownItem(`${model}-${promptId}`, promptName!, promptId!, model));
-		} else {
-			// Multi-prompt mode
-			if (prompts.length > 0) {
-				prompts.forEach((prompt) => {
-					const displayText = `${groupPrefix} ${prompt.value}`;
-					items.push(createDropdownItem(`${model}-${prompt.id}`, prompt.value, prompt.id, model, displayText));
-				});
-			} else {
-				items.push(createFallbackDropdownItem(`${model}-fallback`, groupName || "", isAllModelsMode));
-			}
-		}
-
-		return items;
-	};
-
-	const showDropdown = selectedModel === "all" || isMultiMode;
-
-	// Simple button for single prompt with specific model
-	if (isSingleMode && !showDropdown) {
-		return createSimpleButton(promptName!, promptId!, selectedModel);
 	}
 
-	// Dropdown menu for all other cases
+	// Dropdown for "all" model selection - shows options for each model
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
@@ -261,12 +153,31 @@ export function OptimizeButton({
 					<IconChevronDown size={12} className="size-3 ml-0.5" />
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className={isMultiMode ? "w-100" : "w-48"}>
-				{selectedModel === "all"
-					? // Show all model sections
-						availableModels.flatMap((model, index) => renderModelSection(model, index, true))
-					: // Show single model section
-						renderModelSection(selectedModel, 0, false)}
+			<DropdownMenuContent align="end" className="w-48">
+				{availableModels.map((model, index) => {
+					const modelName = getModelDisplayName(model);
+					const loading = isLoading(model);
+					return (
+						<div key={model}>
+							{index > 0 && <DropdownMenuSeparator />}
+							<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
+							<DropdownMenuItem 
+								className="cursor-pointer"
+								onClick={(e) => handleOptimizeClick(e, model)}
+								disabled={loading}
+							>
+								<div className="flex items-center justify-between w-full text-xs">
+									<span>{promptName}</span>
+									{loading ? (
+										<IconLoader2 size={12} className="size-3 ml-2 animate-spin" />
+									) : (
+										<IconExternalLink size={12} className="size-3 ml-2" />
+									)}
+								</div>
+							</DropdownMenuItem>
+						</div>
+					);
+				})}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

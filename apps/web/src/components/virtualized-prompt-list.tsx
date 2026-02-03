@@ -11,8 +11,6 @@ type ModelType = "openai" | "anthropic" | "google" | "all";
 interface PromptItem {
 	id: string;
 	value: string;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 }
 
 interface VirtualizedPromptListProps {
@@ -40,16 +38,8 @@ export function VirtualizedPromptList({
 	const [scrollMargin, setScrollMargin] = useState(0);
 	const chartContext = useOptionalChartDataContext();
 
-	// Preserve original ordering: uncategorized prompts first, then grouped prompts
-	const orderedPrompts = useMemo(() => {
-		const uncategorized = prompts.filter(
-			(p) => !p.groupCategory || p.groupCategory === "Uncategorized"
-		);
-		const categorized = prompts.filter(
-			(p) => p.groupCategory && p.groupCategory !== "Uncategorized"
-		);
-		return [...uncategorized, ...categorized];
-	}, [prompts]);
+	// Use prompts as-is (no longer grouping by category)
+	const orderedPrompts = useMemo(() => prompts, [prompts]);
 
 	// Measure the offset of the list from the top of the page
 	useLayoutEffect(() => {

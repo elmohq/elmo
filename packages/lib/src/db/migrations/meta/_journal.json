@@ -225,6 +225,13 @@
       "when": 1766453549699,
       "tag": "0031_small_silver_fox",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1770148469575,
+      "tag": "0032_dry_rictor",
+      "breakpoints": true
     }
   ]
 }

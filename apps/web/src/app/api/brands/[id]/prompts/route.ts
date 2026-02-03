@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.select()
 			.from(prompts)
 			.where(eq(prompts.brandId, brandId))
-			.orderBy(prompts.groupCategory, prompts.createdAt);
+			.orderBy(prompts.createdAt);
 
 		return NextResponse.json(brandPrompts);
 	} catch (error) {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			return NextResponse.json({ error: "Access denied to this brand" }, { status: 403 });
 		}
 
-		const { value, groupCategory, groupPrefix, enabled = true, tags } = body;
+		const { value, enabled = true, tags } = body;
 
 		if (!value || typeof value !== "string") {
 			return NextResponse.json({ error: "Prompt value is required" }, { status: 400 });
@@ -75,8 +75,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 			.values({
 				brandId,
 				value: value.trim(),
-				groupCategory: groupCategory || null,
-				groupPrefix: groupPrefix || null,
 				enabled,
 				tags: userTags,
 				systemTags,

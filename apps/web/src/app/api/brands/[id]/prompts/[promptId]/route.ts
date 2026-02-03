@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 			return NextResponse.json({ error: "Prompt not found" }, { status: 404 });
 		}
 
-		const { value, groupCategory, groupPrefix, enabled, tags } = body;
+		const { value, enabled, tags } = body;
 
 		// Build update object with only provided fields
 		const updateData: Partial<typeof prompts.$inferInsert> = {};
@@ -85,14 +85,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 				return NextResponse.json({ error: "Prompt value must be a non-empty string" }, { status: 400 });
 			}
 			updateData.value = value.trim();
-		}
-
-		if (groupCategory !== undefined) {
-			updateData.groupCategory = groupCategory || null;
-		}
-
-		if (groupPrefix !== undefined) {
-			updateData.groupPrefix = groupPrefix || null;
 		}
 
 		if (enabled !== undefined) {

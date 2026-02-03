@@ -24,8 +24,6 @@ export const prompts = pgTable(
 		brandId: text("brand_id")
 			.references(() => brands.id)
 			.notNull(),
-		groupCategory: text("group_category"),
-		groupPrefix: text("group_prefix"),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
 		tags: text("tags").array().notNull().default([]), // User-defined tags (lowercase strings)

@@ -15,8 +15,6 @@ export interface PromptChartDataResponse {
 	prompt: {
 		id: string;
 		value: string;
-		groupCategory: string | null;
-		groupPrefix: string | null;
 	};
 	chartData: Array<{
 		date: string;

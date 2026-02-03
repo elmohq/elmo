@@ -620,8 +620,6 @@ export async function processReportJob(job: Job<ReportJobData>) {
 		// Create prompts data structure for storage
 		const prompts: PromptData[] = selectedPromptValues.map((promptValue) => ({
 			brandId: reportId,
-			groupCategory: null,
-			groupPrefix: null,
 			value: promptValue,
 			enabled: true,
 			tags: [],

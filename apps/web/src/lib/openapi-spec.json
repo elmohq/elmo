@@ -40,16 +40,6 @@
 						"type": "string",
 						"description": "Brand identifier this prompt belongs to"
 					},
-					"groupCategory": {
-						"type": "string",
-						"nullable": true,
-						"description": "Category group for organizing prompts"
-					},
-					"groupPrefix": {
-						"type": "string",
-						"nullable": true,
-						"description": "Prefix for prompt grouping"
-					},
 					"value": {
 						"type": "string",
 						"description": "The actual prompt text"
@@ -97,16 +87,6 @@
 						"description": "The prompt text",
 						"minLength": 1
 					},
-					"groupCategory": {
-						"type": "string",
-						"nullable": true,
-						"description": "Category group for organizing prompts"
-					},
-					"groupPrefix": {
-						"type": "string",
-						"nullable": true,
-						"description": "Prefix for prompt grouping"
-					},
 					"tags": {
 						"type": "array",
 						"items": {
@@ -124,16 +104,6 @@
 						"type": "string",
 						"description": "The prompt text",
 						"minLength": 1
-					},
-					"groupCategory": {
-						"type": "string",
-						"nullable": true,
-						"description": "Category group for organizing prompts"
-					},
-					"groupPrefix": {
-						"type": "string",
-						"nullable": true,
-						"description": "Prefix for prompt grouping"
 					},
 					"enabled": {
 						"type": "boolean",

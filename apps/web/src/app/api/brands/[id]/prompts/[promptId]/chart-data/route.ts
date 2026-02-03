@@ -21,8 +21,6 @@ export interface PromptChartDataResponse {
 	prompt: {
 		id: string;
 		value: string;
-		groupCategory: string | null;
-		groupPrefix: string | null;
 	};
 	chartData: Array<{
 		date: string;
@@ -118,8 +116,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			db.select({
 				id: prompts.id,
 				value: prompts.value,
-				groupCategory: prompts.groupCategory,
-				groupPrefix: prompts.groupPrefix,
 				brandId: prompts.brandId,
 			}).from(prompts).where(eq(prompts.id, promptId)).limit(1),
 
@@ -298,8 +294,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			prompt: {
 				id: prompt.id,
 				value: prompt.value,
-				groupCategory: prompt.groupCategory,
-				groupPrefix: prompt.groupPrefix,
 			},
 			chartData,
 			brand,

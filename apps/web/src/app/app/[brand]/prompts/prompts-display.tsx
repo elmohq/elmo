@@ -19,8 +19,6 @@ import type { Brand, Competitor } from "@workspace/lib/db/schema";
 interface Prompt {
 	id: string;
 	brandId: string;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 	value: string;
 	enabled: boolean;
 	createdAt: Date;

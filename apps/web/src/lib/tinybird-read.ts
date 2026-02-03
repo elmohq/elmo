@@ -195,7 +195,7 @@ export interface TinybirdPromptSummary {
 
 /**
  * Get summary stats for all prompts from Tinybird
- * Note: prompt_value, tags, groupCategory, etc. should be joined from PostgreSQL
+ * Note: prompt_value, tags, etc. should be joined from PostgreSQL
  * Uses FINAL for accurate counts (deduplicates ReplacingMergeTree rows at query time).
  */
 export async function getTinybirdPromptsSummary(

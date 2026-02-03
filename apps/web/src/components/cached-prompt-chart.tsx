@@ -135,7 +135,6 @@ export function CachedPromptChart({
 						promptId={promptId} 
 						brandId={brandId}
 						promptName={promptName}
-						brandName={brand?.name}
 						onDownload={handleDownload}
 						isDownloading={isDownloading}
 						selectedModel={selectedModel}
@@ -176,7 +175,6 @@ export function CachedPromptChart({
 					promptId={promptId} 
 					brandId={brandId}
 					promptName={promptName}
-					brandName={brand?.name}
 					onDownload={handleDownload}
 					isDownloading={isDownloading}
 					selectedModel={selectedModel}

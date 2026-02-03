@@ -13,8 +13,6 @@ type Params = {
 export interface PromptSummary {
 	id: string;
 	value: string;
-	groupCategory: string | null;
-	groupPrefix: string | null;
 	enabled: boolean;
 	createdAt: Date;
 	// Aggregated stats
@@ -104,8 +102,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.select({
 				id: prompts.id,
 				value: prompts.value,
-				groupCategory: prompts.groupCategory,
-				groupPrefix: prompts.groupPrefix,
 				enabled: prompts.enabled,
 				tags: prompts.tags,
 				systemTags: prompts.systemTags,
@@ -186,8 +182,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			return {
 				id: prompt.id,
 				value: prompt.value,
-				groupCategory: prompt.groupCategory,
-				groupPrefix: prompt.groupPrefix,
 				enabled: prompt.enabled,
 				createdAt: prompt.createdAt,
 				totalRuns,

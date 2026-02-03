@@ -10,16 +10,9 @@ import { clientConfig } from "@/lib/config/client";
 type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 interface ChartActionsFooterProps {
-	// For single prompts
 	promptId?: string;
 	promptName?: string;
 	brandId?: string;
-	brandName?: string;
-	
-	// For groups
-	prompts?: Array<{ id: string; value: string }>;
-	groupPrefix?: string;
-	groupName?: string;
 	
 	// For export
 	onDownload?: () => void;
@@ -35,10 +28,6 @@ export function ChartActionsFooter({
 	promptId, 
 	promptName,
 	brandId, 
-	brandName,
-	prompts, 
-	groupPrefix,
-	groupName,
 	onDownload,
 	isDownloading = false,
 	selectedModel = "all",
@@ -46,92 +35,48 @@ export function ChartActionsFooter({
 	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);
-	const isGroup = Boolean(prompts && prompts.length > 0);
 	
 	// Get branding from client config for OptimizeButton
 	const { parentName, optimizationUrlTemplate } = clientConfig.branding;
 
-	// For single prompts
-	if (isSinglePrompt) {
-		return (
-			<ChartFooter>
-				<div className="flex flex-wrap items-center justify-between gap-2 w-full">
-					<div className="flex flex-wrap items-center gap-2">
-						<HistoryButton
-							promptName={promptName}
-							promptId={promptId}
-							brandId={brandId}
-						/>
-						{onDownload && (
-							<Button
-								onClick={onDownload}
-								disabled={isDownloading}
-								size="sm"
-								variant="secondary"
-								className="text-xs cursor-pointer h-6 flex items-center px-2"
-								title="Download chart as PNG"
-							>
-								<Download className="size-3 mr-0.5" />
-								<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
-							</Button>
-						)}
-					</div>
-					<OptimizeButton
+	if (!isSinglePrompt) {
+		return null;
+	}
+
+	return (
+		<ChartFooter>
+			<div className="flex flex-wrap items-center justify-between gap-2 w-full">
+				<div className="flex flex-wrap items-center gap-2">
+					<HistoryButton
 						promptName={promptName}
 						promptId={promptId}
 						brandId={brandId}
-						selectedModel={selectedModel}
-						availableModels={availableModels}
-						lookback={lookback}
-						parentName={parentName ?? ""}
-						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
 					/>
+					{onDownload && (
+						<Button
+							onClick={onDownload}
+							disabled={isDownloading}
+							size="sm"
+							variant="secondary"
+							className="text-xs cursor-pointer h-6 flex items-center px-2"
+							title="Download chart as PNG"
+						>
+							<Download className="size-3 mr-0.5" />
+							<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
+						</Button>
+					)}
 				</div>
-			</ChartFooter>
-		);
-	}
-
-	// For groups
-	if (isGroup && prompts && prompts.length > 0) {
-		return (
-			<ChartFooter>
-				<div className="flex flex-wrap items-center justify-between gap-2 w-full">
-					<div className="flex flex-wrap items-center gap-2">
-						<HistoryButton
-							brandId={brandId}
-							groupName={groupName}
-							groupPrefix={groupPrefix}
-							prompts={prompts}
-						/>
-						{onDownload && (
-							<Button
-								onClick={onDownload}
-								disabled={isDownloading}
-								size="sm"
-								variant="secondary"
-								className="text-xs cursor-pointer h-6 flex items-center px-2"
-								title="Download chart as PNG"
-							>
-								<Download className="size-3 mr-0.5" />
-								<span className="text-xs font-normal">{isDownloading ? "Exporting..." : "Export (PNG)"}</span>
-							</Button>
-						)}
-					</div>
-					<OptimizeButton
-						brandId={brandId}
-						groupName={groupName}
-						groupPrefix={groupPrefix}
-						prompts={prompts}
-						selectedModel={selectedModel}
-						availableModels={availableModels}
-						lookback={lookback}
-						parentName={parentName ?? ""}
-						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
-					/>
-				</div>
-			</ChartFooter>
-		);
-	}
-
-	return null;
+				<OptimizeButton
+					promptName={promptName}
+					promptId={promptId}
+					brandId={brandId}
+					selectedModel={selectedModel}
+					availableModels={availableModels}
+					lookback={lookback}
+					parentName={parentName ?? ""}
+					optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
+				/>
+			</div>
+		</ChartFooter>
+	);
 }

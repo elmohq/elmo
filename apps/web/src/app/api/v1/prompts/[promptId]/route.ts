@@ -33,8 +33,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 			.select({
 				id: prompts.id,
 				brandId: prompts.brandId,
-				groupCategory: prompts.groupCategory,
-				groupPrefix: prompts.groupPrefix,
 				value: prompts.value,
 				enabled: prompts.enabled,
 				tags: prompts.tags,
@@ -101,7 +99,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const brand = brandInfo[0];
 
 		const body = await request.json();
-		const { value, groupCategory, groupPrefix, enabled, tags } = body;
+		const { value, enabled, tags } = body;
 
 		// Build update object with only provided fields
 		const updateData: Partial<typeof prompts.$inferInsert> = {};
@@ -114,14 +112,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 				);
 			}
 			updateData.value = value.trim();
-		}
-
-		if (groupCategory !== undefined) {
-			updateData.groupCategory = groupCategory ? groupCategory.trim() : null;
-		}
-
-		if (groupPrefix !== undefined) {
-			updateData.groupPrefix = groupPrefix ? groupPrefix.trim() : null;
 		}
 
 		if (enabled !== undefined) {

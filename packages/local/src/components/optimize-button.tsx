@@ -7,16 +7,10 @@
 
 export interface OptimizeButtonProps {
 	brandId?: string;
-	webSearchEnabled?: boolean;
 	selectedModel?: "openai" | "anthropic" | "google" | "all";
 	availableModels?: ("openai" | "anthropic" | "google")[];
 	promptName?: string;
 	promptId?: string;
-	prompts?: Array<{ id: string; value: string }>;
-	groupName?: string;
-	groupPrefix?: string;
-	webQueryMapping?: Record<string, string>;
-	modelWebQueryMappings?: Record<string, Record<string, string>>;
 	// Branding configuration (required in whitelabel, optional in stub)
 	parentName?: string;
 	optimizationUrlTemplate?: string;
