@@ -711,6 +711,7 @@ function ActivityIndicator({ added, removed }: { added: number; removed: number 
 export default function AdminPage() {
 	const [brands, setBrands] = useState<BrandStats[]>([]);
 	const [brandsOverTime, setBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
+	const [activeBrandsOverTime, setActiveBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
 	const [promptsOverTime, setPromptsOverTime] = useState<{ date: string; enabled: number; disabled: number }[]>([]);
 	const [runsOverTime, setRunsOverTime] = useState<{ date: string; count: number }[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -733,6 +734,7 @@ export default function AdminPage() {
 			const data = await response.json();
 			setBrands(data.brands);
 			setBrandsOverTime(data.brandsOverTime || []);
+			setActiveBrandsOverTime(data.activeBrandsOverTime || []);
 			setPromptsOverTime(data.promptsOverTime || []);
 			setRunsOverTime(data.runsOverTime || []);
 		} catch (err) {
@@ -813,6 +815,13 @@ export default function AdminPage() {
 			promptsRemovedLast30Days: 0,
 		},
 	);
+
+	// Calculate shared Y-axis max for All Brands and Active Brands charts
+	const brandsYAxisMax = Math.max(
+		...brandsOverTime.map(d => d.count),
+		...activeBrandsOverTime.map(d => d.count),
+		0
+	);
 	
 	return (
 		<div className="container mx-auto py-8 space-y-8">
@@ -842,10 +851,10 @@ export default function AdminPage() {
 			</div>
 			
 			{/* Summary Cards with Charts */}
-			<div className="grid gap-4 md:grid-cols-3">
+			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<Card>
 					<CardHeader>
-						<CardTitle>Brands</CardTitle>
+						<CardTitle>All Brands</CardTitle>
 						<CardDescription>Total: {totals.totalBrands} brands</CardDescription>
 					</CardHeader>
 					<CardContent className="p-0 pb-4">
@@ -878,9 +887,10 @@ export default function AdminPage() {
 										return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 									}}
 								/>
-								<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} />
+								<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} domain={[0, brandsYAxisMax]} />
 								<ChartTooltip 
 									content={<ChartTooltipContent 
+										className="min-w-[180px]"
 										labelFormatter={(value) => {
 											const date = new Date(value);
 											return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -892,6 +902,64 @@ export default function AdminPage() {
 									dataKey="count"
 									stroke="#3b82f6"
 									fill="url(#fillBrands)"
+									strokeWidth={2}
+								/>
+								</AreaChart>
+							</ResponsiveContainer>
+						</ChartContainer>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Active Brands</CardTitle>
+						<CardDescription>With runs in last 7 days: {activeBrandsOverTime[activeBrandsOverTime.length - 1]?.count ?? 0}</CardDescription>
+					</CardHeader>
+					<CardContent className="p-0 pb-4">
+						<ChartContainer
+							config={{
+								count: {
+									label: "Active Brands",
+									color: "#22c55e",
+								},
+							}}
+							className="h-[200px] w-full px-4"
+						>
+							<ResponsiveContainer width="100%" height="100%">
+								<AreaChart data={activeBrandsOverTime}>
+								<defs>
+									<linearGradient id="fillActiveBrands" x1="0" y1="0" x2="0" y2="1">
+										<stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+										<stop offset="95%" stopColor="#22c55e" stopOpacity={0.1} />
+									</linearGradient>
+								</defs>
+								<CartesianGrid strokeDasharray="3 3" vertical={false} />
+								<XAxis
+									dataKey="date"
+									tickLine={false}
+									axisLine={false}
+									tickMargin={8}
+									minTickGap={30}
+									tickFormatter={(value) => {
+										const date = new Date(value);
+										return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+									}}
+								/>
+								<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} domain={[0, brandsYAxisMax]} />
+								<ChartTooltip 
+									content={<ChartTooltipContent 
+										className="min-w-[180px]"
+										labelFormatter={(value) => {
+											const date = new Date(value);
+											return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+										}}
+									/>} 
+								/>
+								<Area
+									type="monotone"
+									dataKey="count"
+									stroke="#22c55e"
+									fill="url(#fillActiveBrands)"
 									strokeWidth={2}
 								/>
 								</AreaChart>
@@ -951,6 +1019,7 @@ export default function AdminPage() {
 											const reversedPayload = [...props.payload].reverse();
 											return (
 												<ChartTooltipContent 
+													className="min-w-[180px]"
 													active={props.active}
 													payload={reversedPayload}
 													label={props.label}
@@ -1018,6 +1087,7 @@ export default function AdminPage() {
 								<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} />
 								<ChartTooltip 
 									content={<ChartTooltipContent 
+										className="min-w-[180px]"
 										labelFormatter={(value) => {
 											const date = new Date(value);
 											return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });

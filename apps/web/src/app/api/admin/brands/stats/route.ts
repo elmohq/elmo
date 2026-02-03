@@ -3,7 +3,7 @@ import { isAdmin } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { getAdminRunsOverTime, getAdminBrandRunStats } from "@/lib/tinybird-read-v2";
+import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/tinybird-read-v2";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,7 @@ export async function GET() {
 			promptsOverTime,
 			tinybirdRunsOverTime,
 			tinybirdBrandStats,
+			tinybirdActiveBrandsOverTime,
 		] = await Promise.all([
 			// Get all brands ordered by creation date (newest first)
 			db.query.brands.findMany({
@@ -90,6 +91,9 @@ export async function GET() {
 
 			// Get per-brand run stats from Tinybird (fast!)
 			getAdminBrandRunStats(),
+
+			// Get active brands over time from Tinybird (rolling 7-day window)
+			getAdminActiveBrandsOverTime(),
 		]);
 
 		// Create a map of brand_id -> run stats for quick lookup
@@ -149,9 +153,16 @@ export async function GET() {
 			count: row.count,
 		}));
 
+		// Transform Tinybird active brands over time to match expected format
+		const activeBrandsOverTime = tinybirdActiveBrandsOverTime.map((row) => ({
+			date: row.date,
+			count: row.count,
+		}));
+
 		return NextResponse.json({ 
 			brands: brandStats,
 			brandsOverTime,
+			activeBrandsOverTime,
 			promptsOverTime,
 			runsOverTime,
 		});
