@@ -464,7 +464,7 @@ export async function POST(request: NextRequest) {
 		const workflows = await dbosClient.listWorkflows({
 			workflowName: WORKFLOW_NAME,
 			workflow_id_prefix: `prompt-${promptId}-`,
-			status: ["ERROR"],
+			status: "ERROR",
 			limit: 1,
 			sortDesc: true,
 		});

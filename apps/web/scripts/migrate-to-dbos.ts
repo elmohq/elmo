@@ -66,8 +66,13 @@ function computeInitialDelayHours(info: PromptDelayInfo, now: number): number {
 async function migrate() {
 	console.log("🚀 Starting BullMQ → DBOS migration");
 
+	const systemDatabaseUrl = process.env.DBOS_SYSTEM_DATABASE_URL;
+	if (!systemDatabaseUrl) {
+		throw new Error("DBOS_SYSTEM_DATABASE_URL is required to run migration.");
+	}
+
 	const dbosClient = await DBOSClient.create({
-		systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
+		systemDatabaseUrl,
 	});
 
 	const promptInfos = await getEnabledPromptInfo();
@@ -95,7 +100,7 @@ async function migrate() {
 				}
 
 				const workflowId = `prompt-${info.promptId}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-				await dbosClient.startWorkflow(
+				await dbosClient.enqueue(
 					{
 						workflowName: WORKFLOW_NAME,
 						queueName: promptsQueue.name,

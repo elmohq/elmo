@@ -62,9 +62,9 @@ export async function createPromptJobScheduler(
 		};
 
 		if (initialDelayHours === undefined || initialDelayHours === null) {
-			await dbosClient.startWorkflow(workflowOptions, promptId);
+			await dbosClient.enqueue(workflowOptions, promptId);
 		} else {
-			await dbosClient.startWorkflow(workflowOptions, promptId, initialDelayHours);
+			await dbosClient.enqueue(workflowOptions, promptId, initialDelayHours);
 		}
 		return true;
 	} catch (error) {
@@ -81,12 +81,20 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 		const dbosClient = await getDbosClient();
 		const workflowPrefix = `prompt-${promptId}-`;
 
-		const workflows = await dbosClient.listWorkflows({
+		const pendingWorkflows = await dbosClient.listWorkflows({
 			workflowName: WORKFLOW_NAME,
 			workflow_id_prefix: workflowPrefix,
-			status: ["PENDING", "ENQUEUED"],
+			status: "PENDING",
 			limit: 1000,
 		});
+		const enqueuedWorkflows = await dbosClient.listWorkflows({
+			workflowName: WORKFLOW_NAME,
+			workflow_id_prefix: workflowPrefix,
+			status: "ENQUEUED",
+			limit: 1000,
+		});
+
+		const workflows = [...pendingWorkflows, ...enqueuedWorkflows];
 
 		await Promise.all(
 			workflows.map((workflow) => dbosClient.cancelWorkflow(workflow.workflowID)),
