@@ -1,6 +1,6 @@
 import express from "express";
 import { createQueueDashExpressMiddleware } from "@queuedash/api";
-import { devPromptQueue, prodPromptQueue, devReportQueue, prodReportQueue } from "@workspace/lib/queues";
+import { promptQueue, reportQueue } from "@workspace/lib/queues";
 
 const app = express();
 
@@ -10,23 +10,13 @@ app.use(
 		ctx: {
 			queues: [
 				{
-					queue: devPromptQueue,
-					displayName: "Prompts (dev)",
+					queue: promptQueue,
+					displayName: "Prompts",
 					type: "bullmq" as const,
 				},
 				{
-					queue: prodPromptQueue,
-					displayName: "Prompts (prod)",
-					type: "bullmq" as const,
-				},
-				{
-					queue: devReportQueue,
-					displayName: "Reports (dev)",
-					type: "bullmq" as const,
-				},
-				{
-					queue: prodReportQueue,
-					displayName: "Reports (prod)",
+					queue: reportQueue,
+					displayName: "Reports",
 					type: "bullmq" as const,
 				},
 			],

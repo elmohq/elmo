@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAdmin } from "@/lib/metadata";
-import { devPromptQueue, prodPromptQueue } from "@workspace/lib/queues";
+import { promptQueue } from "@workspace/lib/queues";
 
 export const dynamic = "force-dynamic";
 
@@ -14,24 +14,16 @@ export async function GET(request: NextRequest) {
 
 		const searchParams = request.nextUrl.searchParams;
 		const jobId = searchParams.get("jobId");
-		const environment = searchParams.get("environment");
 
 		if (!jobId) {
 			return NextResponse.json({ error: "jobId is required" }, { status: 400 });
 		}
 
-		if (!environment || (environment !== "dev" && environment !== "prod")) {
-			return NextResponse.json({ error: "environment must be 'dev' or 'prod'" }, { status: 400 });
-		}
-
-		const queue = environment === "prod" ? prodPromptQueue : devPromptQueue;
-
 		// Get job logs
-		const logsResult = await queue.getJobLogs(jobId);
+		const logsResult = await promptQueue.getJobLogs(jobId);
 
 		return NextResponse.json({
 			jobId,
-			environment,
 			logs: logsResult.logs,
 			count: logsResult.count,
 		});

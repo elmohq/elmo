@@ -3,9 +3,8 @@ import { isAdmin } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { devPromptQueue, prodPromptQueue } from "@workspace/lib/queues";
+import { promptQueue } from "@workspace/lib/queues";
 import { DEFAULT_DELAY_MS, recreatePromptJobScheduler } from "@/lib/job-scheduler";
-import type { Queue } from "bullmq";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +33,9 @@ interface PromptScheduleStatus {
 			overdueByMs: number | null;
 		};
 	};
-	schedulerInfo: {
-		dev: SchedulerInfo;
-		prod: SchedulerInfo;
-	};
-	recentFailures: {
-		dev: number;
-		prod: number;
-	};
-	isActiveOrWaiting: {
-		dev: boolean;
-		prod: boolean;
-	};
+	schedulerInfo: SchedulerInfo;
+	recentFailures: number;
+	isActiveOrWaiting: boolean;
 }
 
 interface BrandScheduleSummary {
@@ -58,16 +48,12 @@ interface BrandScheduleSummary {
 	runFrequencyMs: number;
 	overduePrompts: number;
 	onSchedulePrompts: number;
-	schedulerCoverage: {
-		dev: { scheduled: number; total: number };
-		prod: { scheduled: number; total: number };
-	};
+	schedulerCoverage: { scheduled: number; total: number };
 	prompts: PromptScheduleStatus[];
 }
 
 interface QueueStats {
 	name: string;
-	environment: "dev" | "prod";
 	waiting: number;
 	active: number;
 	completed: number;
@@ -88,17 +74,15 @@ interface RecentJob {
 	finishedOn: number | null;
 	stacktrace: string[] | null;
 	returnValue: any;
-	environment: "dev" | "prod";
 }
 
-async function getQueueStats(queue: Queue, environment: "dev" | "prod"): Promise<QueueStats> {
+async function getQueueStats(): Promise<QueueStats> {
 	try {
-		const jobCounts = await queue.getJobCounts("waiting", "active", "completed", "failed", "delayed");
-		const schedulersCount = await queue.getJobSchedulersCount();
+		const jobCounts = await promptQueue.getJobCounts("waiting", "active", "completed", "failed", "delayed");
+		const schedulersCount = await promptQueue.getJobSchedulersCount();
 
 		return {
-			name: queue.name,
-			environment,
+			name: promptQueue.name,
 			waiting: jobCounts.waiting || 0,
 			active: jobCounts.active || 0,
 			completed: jobCounts.completed || 0,
@@ -107,10 +91,9 @@ async function getQueueStats(queue: Queue, environment: "dev" | "prod"): Promise
 			schedulersCount,
 		};
 	} catch (error) {
-		console.error(`Error getting queue stats for ${queue.name}:`, error);
+		console.error(`Error getting queue stats for ${promptQueue.name}:`, error);
 		return {
-			name: queue.name,
-			environment,
+			name: promptQueue.name,
 			waiting: 0,
 			active: 0,
 			completed: 0,
@@ -121,11 +104,11 @@ async function getQueueStats(queue: Queue, environment: "dev" | "prod"): Promise
 	}
 }
 
-async function getRecentJobs(queue: Queue, environment: "dev" | "prod", limit: number = 50): Promise<RecentJob[]> {
+async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
 	try {
 		const [failedJobs, completedJobs] = await Promise.all([
-			queue.getFailed(0, limit - 1),
-			queue.getCompleted(0, limit - 1),
+			promptQueue.getFailed(0, limit - 1),
+			promptQueue.getCompleted(0, limit - 1),
 		]);
 
 		const failed: RecentJob[] = failedJobs.map((job) => ({
@@ -140,7 +123,6 @@ async function getRecentJobs(queue: Queue, environment: "dev" | "prod", limit: n
 			finishedOn: job.finishedOn || null,
 			stacktrace: job.stacktrace || null,
 			returnValue: null,
-			environment,
 		}));
 
 		const completed: RecentJob[] = completedJobs.map((job) => ({
@@ -155,26 +137,20 @@ async function getRecentJobs(queue: Queue, environment: "dev" | "prod", limit: n
 			finishedOn: job.finishedOn || null,
 			stacktrace: null,
 			returnValue: job.returnvalue,
-			environment,
 		}));
 
 		return [...failed, ...completed];
 	} catch (error) {
-		console.error(`Error getting recent jobs for ${queue.name}:`, error);
+		console.error(`Error getting recent jobs for ${promptQueue.name}:`, error);
 		return [];
 	}
 }
 
-interface SchedulerDetails {
-	promptId: string;
-	info: SchedulerInfo;
-}
-
-async function getSchedulerDetails(queue: Queue): Promise<Map<string, SchedulerInfo>> {
+async function getSchedulerDetails(): Promise<Map<string, SchedulerInfo>> {
 	const schedulerMap = new Map<string, SchedulerInfo>();
 
 	try {
-		const schedulers = await queue.getJobSchedulers(0, -1);
+		const schedulers = await promptQueue.getJobSchedulers(0, -1);
 
 		for (const scheduler of schedulers) {
 			// Scheduler key format: repeater-{promptId}
@@ -189,17 +165,17 @@ async function getSchedulerDetails(queue: Queue): Promise<Map<string, SchedulerI
 			}
 		}
 	} catch (error) {
-		console.error(`Error getting job schedulers for ${queue.name}:`, error);
+		console.error(`Error getting job schedulers for ${promptQueue.name}:`, error);
 	}
 
 	return schedulerMap;
 }
 
-async function getActiveOrWaitingPromptIds(queue: Queue): Promise<Set<string>> {
+async function getActiveOrWaitingPromptIds(): Promise<Set<string>> {
 	const promptIds = new Set<string>();
 
 	try {
-		const [activeJobs, waitingJobs] = await Promise.all([queue.getActive(0, 100), queue.getWaiting(0, 100)]);
+		const [activeJobs, waitingJobs] = await Promise.all([promptQueue.getActive(0, 100), promptQueue.getWaiting(0, 100)]);
 
 		for (const job of [...activeJobs, ...waitingJobs]) {
 			if (job.data?.promptId) {
@@ -207,7 +183,7 @@ async function getActiveOrWaitingPromptIds(queue: Queue): Promise<Set<string>> {
 			}
 		}
 	} catch (error) {
-		console.error(`Error getting active/waiting jobs for ${queue.name}:`, error);
+		console.error(`Error getting active/waiting jobs for ${promptQueue.name}:`, error);
 	}
 
 	return promptIds;
@@ -257,34 +233,20 @@ export async function GET() {
 			lastRunsMap[run.promptId][run.modelGroup as ModelGroup] = run.lastRunAt;
 		}
 
-		// Get scheduler details from both dev and prod queues
-		const [devSchedulerDetails, prodSchedulerDetails, devActiveWaiting, prodActiveWaiting] = await Promise.all([
-			getSchedulerDetails(devPromptQueue),
-			getSchedulerDetails(prodPromptQueue),
-			getActiveOrWaitingPromptIds(devPromptQueue),
-			getActiveOrWaitingPromptIds(prodPromptQueue),
-		]);
-
-		// Get queue stats and recent jobs from both environments
-		const [devQueueStats, prodQueueStats, devRecentJobs, prodRecentJobs] = await Promise.all([
-			getQueueStats(devPromptQueue, "dev"),
-			getQueueStats(prodPromptQueue, "prod"),
-		getRecentJobs(devPromptQueue, "dev", 5000),
-		getRecentJobs(prodPromptQueue, "prod", 5000),
+		// Get scheduler details and queue stats
+		const [schedulerDetails, activeWaiting, queueStats, recentJobs] = await Promise.all([
+			getSchedulerDetails(),
+			getActiveOrWaitingPromptIds(),
+			getQueueStats(),
+			getRecentJobs(5000),
 		]);
 
 		// Count failures by promptId
-		const devFailuresByPrompt = new Map<string, number>();
-		const prodFailuresByPrompt = new Map<string, number>();
+		const failuresByPrompt = new Map<string, number>();
 
-		for (const job of devRecentJobs) {
+		for (const job of recentJobs) {
 			if (job.status === "failed" && job.data?.promptId) {
-				devFailuresByPrompt.set(job.data.promptId, (devFailuresByPrompt.get(job.data.promptId) || 0) + 1);
-			}
-		}
-		for (const job of prodRecentJobs) {
-			if (job.status === "failed" && job.data?.promptId) {
-				prodFailuresByPrompt.set(job.data.promptId, (prodFailuresByPrompt.get(job.data.promptId) || 0) + 1);
+				failuresByPrompt.set(job.data.promptId, (failuresByPrompt.get(job.data.promptId) || 0) + 1);
 			}
 		}
 
@@ -304,8 +266,7 @@ export async function GET() {
 
 			let overduePrompts = 0;
 			let onSchedulePrompts = 0;
-			let devScheduled = 0;
-			let prodScheduled = 0;
+			let scheduledCount = 0;
 
 			const promptStatuses: PromptScheduleStatus[] = brandPrompts.map((prompt) => {
 				const lastRuns = lastRunsMap[prompt.id] || {};
@@ -340,11 +301,9 @@ export async function GET() {
 					};
 				}
 
-				const devSchedulerInfo = devSchedulerDetails.get(prompt.id) || defaultSchedulerInfo;
-				const prodSchedulerInfo = prodSchedulerDetails.get(prompt.id) || defaultSchedulerInfo;
+				const schedulerInfo = schedulerDetails.get(prompt.id) || defaultSchedulerInfo;
 
-				if (devSchedulerInfo.exists) devScheduled++;
-				if (prodSchedulerInfo.exists) prodScheduled++;
+				if (schedulerInfo.exists) scheduledCount++;
 
 				if (prompt.enabled) {
 					if (anyOverdue) {
@@ -362,18 +321,9 @@ export async function GET() {
 					enabled: prompt.enabled,
 					runFrequencyMs,
 					lastRunsByModelGroup,
-					schedulerInfo: {
-						dev: devSchedulerInfo,
-						prod: prodSchedulerInfo,
-					},
-					recentFailures: {
-						dev: devFailuresByPrompt.get(prompt.id) || 0,
-						prod: prodFailuresByPrompt.get(prompt.id) || 0,
-					},
-					isActiveOrWaiting: {
-						dev: devActiveWaiting.has(prompt.id),
-						prod: prodActiveWaiting.has(prompt.id),
-					},
+					schedulerInfo,
+					recentFailures: failuresByPrompt.get(prompt.id) || 0,
+					isActiveOrWaiting: activeWaiting.has(prompt.id),
 				};
 			});
 
@@ -389,10 +339,7 @@ export async function GET() {
 				runFrequencyMs,
 				overduePrompts,
 				onSchedulePrompts,
-				schedulerCoverage: {
-					dev: { scheduled: devScheduled, total: enabledPrompts },
-					prod: { scheduled: prodScheduled, total: enabledPrompts },
-				},
+				schedulerCoverage: { scheduled: scheduledCount, total: enabledPrompts },
 				prompts: promptStatuses,
 			};
 		});
@@ -412,13 +359,9 @@ export async function GET() {
 				totalOnSchedule,
 				percentOnSchedule: totalEnabled > 0 ? Math.round((totalOnSchedule / totalEnabled) * 100) : 100,
 			},
-			queues: {
-				dev: devQueueStats,
-				prod: prodQueueStats,
-			},
-			recentJobs: [...devRecentJobs, ...prodRecentJobs].sort((a, b) => b.timestamp - a.timestamp),
+			queue: queueStats,
+			recentJobs: recentJobs.sort((a, b) => b.timestamp - a.timestamp),
 			brands: brandSummaries,
-			currentEnvironment: process.env.ENVIRONMENT || "dev",
 		});
 	} catch (error) {
 		console.error("Error fetching workflow data:", error);
@@ -436,17 +379,11 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body = await request.json();
-		const { promptId, environment, jobId } = body;
-
-		if (!environment || (environment !== "dev" && environment !== "prod")) {
-			return NextResponse.json({ error: "environment must be 'dev' or 'prod'" }, { status: 400 });
-		}
-
-		const queue = environment === "prod" ? prodPromptQueue : devPromptQueue;
+		const { promptId, jobId } = body;
 
 		// If jobId is provided, retry that specific job
 		if (jobId) {
-			const job = await queue.getJob(jobId);
+			const job = await promptQueue.getJob(jobId);
 			if (!job) {
 				return NextResponse.json({ error: "Job not found" }, { status: 404 });
 			}
@@ -460,7 +397,7 @@ export async function POST(request: NextRequest) {
 
 			return NextResponse.json({
 				success: true,
-				message: `Retrying job ${jobId} in ${environment}`,
+				message: `Retrying job ${jobId}`,
 				jobId: job.id,
 			});
 		}
@@ -484,14 +421,14 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Find the most recent failed job for this prompt
-		const failedJobs = await queue.getFailed(0, 100);
+		const failedJobs = await promptQueue.getFailed(0, 100);
 		const promptFailedJob = failedJobs
 			.filter((job) => job.data?.promptId === promptId)
 			.sort((a, b) => b.timestamp - a.timestamp)[0];
 
 		if (!promptFailedJob) {
 			// No failed job found - recreate the job scheduler instead
-			const success = await recreatePromptJobScheduler(promptId, queue);
+			const success = await recreatePromptJobScheduler(promptId);
 
 			if (!success) {
 				return NextResponse.json({ error: "Failed to recreate job scheduler" }, { status: 500 });
@@ -499,7 +436,7 @@ export async function POST(request: NextRequest) {
 
 			return NextResponse.json({
 				success: true,
-				message: `No failed job found - recreated job scheduler for prompt ${promptId} in ${environment}`,
+				message: `No failed job found - recreated job scheduler for prompt ${promptId}`,
 				recreatedScheduler: true,
 			});
 		}
@@ -508,7 +445,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json({
 			success: true,
-			message: `Retrying failed job for prompt ${promptId} in ${environment}`,
+			message: `Retrying failed job for prompt ${promptId}`,
 			jobId: promptFailedJob.id,
 		});
 	} catch (error) {

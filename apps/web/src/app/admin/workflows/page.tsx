@@ -30,7 +30,6 @@ import {
 	ChevronRight,
 	Play,
 	Loader2,
-	AlertCircle,
 } from "lucide-react";
 
 interface SchedulerInfo {
@@ -58,18 +57,9 @@ interface PromptScheduleStatus {
 		anthropic?: LastRunByModelGroup;
 		google?: LastRunByModelGroup;
 	};
-	schedulerInfo: {
-		dev: SchedulerInfo;
-		prod: SchedulerInfo;
-	};
-	recentFailures: {
-		dev: number;
-		prod: number;
-	};
-	isActiveOrWaiting: {
-		dev: boolean;
-		prod: boolean;
-	};
+	schedulerInfo: SchedulerInfo;
+	recentFailures: number;
+	isActiveOrWaiting: boolean;
 }
 
 interface BrandScheduleSummary {
@@ -82,16 +72,12 @@ interface BrandScheduleSummary {
 	runFrequencyMs: number;
 	overduePrompts: number;
 	onSchedulePrompts: number;
-	schedulerCoverage: {
-		dev: { scheduled: number; total: number };
-		prod: { scheduled: number; total: number };
-	};
+	schedulerCoverage: { scheduled: number; total: number };
 	prompts: PromptScheduleStatus[];
 }
 
 interface QueueStats {
 	name: string;
-	environment: "dev" | "prod";
 	waiting: number;
 	active: number;
 	completed: number;
@@ -112,7 +98,6 @@ interface RecentJob {
 	finishedOn: number | null;
 	stacktrace: string[] | null;
 	returnValue: any;
-	environment: "dev" | "prod";
 }
 
 interface WorkflowsData {
@@ -124,13 +109,9 @@ interface WorkflowsData {
 		totalOnSchedule: number;
 		percentOnSchedule: number;
 	};
-	queues: {
-		dev: QueueStats;
-		prod: QueueStats;
-	};
+	queue: QueueStats;
 	recentJobs: RecentJob[];
 	brands: BrandScheduleSummary[];
-	currentEnvironment: string;
 }
 
 function formatDuration(ms: number): string {
@@ -258,12 +239,10 @@ function ModelGroupStatus({ status }: { status?: LastRunByModelGroup }) {
 
 function RetryButton({
 	promptId,
-	environment,
 	jobId,
 	onSuccess,
 }: {
 	promptId?: string;
-	environment: "dev" | "prod";
 	jobId?: string;
 	onSuccess: () => void;
 }) {
@@ -280,7 +259,7 @@ function RetryButton({
 			const response = await fetch("/api/admin/workflows", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ promptId, environment, jobId }),
+				body: JSON.stringify({ promptId, jobId }),
 			});
 
 			if (!response.ok) {
@@ -323,7 +302,7 @@ function RetryButton({
 				) : (
 					<Play className="h-3 w-3 mr-1" />
 				)}
-				Retry ({environment})
+				Retry
 			</Button>
 			{error && <span className="text-xs text-red-500">{error}</span>}
 		</div>
@@ -344,7 +323,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 		if (isOpen && job.id) {
 			setLogsLoading(true);
 			setLogsError(null);
-			fetch(`/api/admin/workflows/logs?jobId=${encodeURIComponent(job.id)}&environment=${job.environment}`)
+			fetch(`/api/admin/workflows/logs?jobId=${encodeURIComponent(job.id)}`)
 				.then((res) => res.json())
 				.then((data) => {
 					if (data.error) {
@@ -360,7 +339,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 					setLogsLoading(false);
 				});
 		}
-	}, [isOpen, job.id, job.environment]);
+	}, [isOpen, job.id]);
 
 	const handleRetry = async () => {
 		setRetryLoading(true);
@@ -371,7 +350,7 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 			const response = await fetch("/api/admin/workflows", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ jobId: job.id, environment: job.environment }),
+				body: JSON.stringify({ jobId: job.id }),
 			});
 
 			if (!response.ok) {
@@ -420,12 +399,6 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<p className="text-muted-foreground">Status</p>
 							<Badge className={isFailed ? "bg-red-500" : "bg-emerald-600"}>
 								{job.status}
-							</Badge>
-						</div>
-						<div>
-							<p className="text-muted-foreground">Environment</p>
-							<Badge className={job.environment === "prod" ? "bg-emerald-600" : "bg-amber-500"}>
-								{job.environment}
 							</Badge>
 						</div>
 						<div>
@@ -581,12 +554,12 @@ function BrandRow({
 				<TableCell className="text-center">
 					<span
 						className={`text-sm ${
-							brand.schedulerCoverage.prod.scheduled < brand.schedulerCoverage.prod.total
+							brand.schedulerCoverage.scheduled < brand.schedulerCoverage.total
 								? "text-amber-600"
 								: "text-emerald-600"
 						}`}
 					>
-						{brand.schedulerCoverage.prod.scheduled}/{brand.schedulerCoverage.prod.total}
+						{brand.schedulerCoverage.scheduled}/{brand.schedulerCoverage.total}
 					</span>
 				</TableCell>
 			</TableRow>
@@ -617,12 +590,10 @@ function BrandRow({
 													p.lastRunsByModelGroup.anthropic?.isOverdue ||
 													p.lastRunsByModelGroup.google?.isOverdue
 												);
-												const isDevOnly = p.schedulerInfo.dev.exists && !p.schedulerInfo.prod.exists;
 												
 												if (isOverdue) return 0; // Overdue first
-												if (p.enabled && !isDevOnly) return 1; // Enabled (with prod scheduler)
-												if (isDevOnly) return 2; // Dev only
-												return 3; // Disabled
+												if (p.enabled) return 1; // Enabled
+												return 2; // Disabled
 											};
 											return getCategory(a) - getCategory(b);
 										})
@@ -636,10 +607,8 @@ function BrandRow({
 											.filter((j) => j.data?.promptId === prompt.promptId)
 											.sort((a, b) => b.timestamp - a.timestamp);
 										const latestJob = promptJobs[0];
-										const showDevRetry = prompt.enabled && isStuck && prompt.schedulerInfo.dev.exists && !prompt.isActiveOrWaiting.dev;
-										const showProdRetry = prompt.enabled && isStuck && prompt.schedulerInfo.prod.exists && !prompt.isActiveOrWaiting.prod;
-										const isDevOnly = prompt.schedulerInfo.dev.exists && !prompt.schedulerInfo.prod.exists;
-										const shouldDim = !prompt.enabled || isDevOnly;
+										const showRetry = prompt.enabled && isStuck && prompt.schedulerInfo.exists && !prompt.isActiveOrWaiting;
+										const shouldDim = !prompt.enabled;
 
 										return (
 											<TableRow key={prompt.promptId} className={shouldDim ? "opacity-50" : ""}>
@@ -647,11 +616,11 @@ function BrandRow({
 													<p className="truncate text-sm" title={prompt.promptValue}>
 														{prompt.promptValue}
 													</p>
-													{(prompt.isActiveOrWaiting.dev || prompt.isActiveOrWaiting.prod) && (
+													{prompt.isActiveOrWaiting && (
 														<div className="flex items-center gap-1 mt-1">
 															<Loader2 className="h-3 w-3 animate-spin text-blue-500" />
 															<span className="text-xs text-blue-600">
-																Processing in {prompt.isActiveOrWaiting.prod ? "prod" : "dev"}
+																Processing
 															</span>
 														</div>
 													)}
@@ -659,10 +628,6 @@ function BrandRow({
 												<TableCell className="text-center">
 													{!prompt.enabled ? (
 														<Badge variant="outline">Disabled</Badge>
-													) : isDevOnly ? (
-														<Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
-															Dev Only
-														</Badge>
 													) : (
 														<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
 															Enabled
@@ -679,23 +644,16 @@ function BrandRow({
 													<ModelGroupStatus status={prompt.lastRunsByModelGroup.google} />
 												</TableCell>
 												<TableCell className="text-center">
-													<SchedulerCell info={prompt.schedulerInfo.prod} />
+													<SchedulerCell info={prompt.schedulerInfo} />
 												</TableCell>
 												<TableCell className="text-center">
 													{latestJob && <JobDetailsDialog job={latestJob} onRetrySuccess={onRefresh} />}
 												</TableCell>
 												<TableCell className="text-center">
-													{(showDevRetry || showProdRetry) && (
-														<div className="flex flex-col gap-1">
-															{showDevRetry && (
-																<RetryButton promptId={prompt.promptId} environment="dev" onSuccess={onRefresh} />
-															)}
-															{showProdRetry && (
-																<RetryButton promptId={prompt.promptId} environment="prod" onSuccess={onRefresh} />
-															)}
-														</div>
+													{showRetry && (
+														<RetryButton promptId={prompt.promptId} onSuccess={onRefresh} />
 													)}
-													{(prompt.isActiveOrWaiting.dev || prompt.isActiveOrWaiting.prod) && (
+													{prompt.isActiveOrWaiting && (
 														<span className="text-xs text-muted-foreground">In progress...</span>
 													)}
 												</TableCell>
@@ -821,7 +779,7 @@ export default function WorkflowsPage() {
 				<div className="space-y-2">
 					<h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
 					<p className="text-muted-foreground">
-						Monitor prompt scheduling, job execution, and worker health across environments
+						Monitor prompt scheduling, job execution, and worker health
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -919,7 +877,7 @@ export default function WorkflowsPage() {
 			</div>
 
 			{/* Queue Stats */}
-			<QueueStatsCard stats={data.queues.prod} title="Production Queue" />
+			<QueueStatsCard stats={data.queue} title="Prompt Queue" />
 
 			{/* Brands Table */}
 			<Card>

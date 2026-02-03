@@ -2,7 +2,6 @@ import { promptQueue } from "@workspace/lib/queues";
 import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import type { Queue } from "bullmq";
 
 export const DEFAULT_DELAY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
@@ -46,15 +45,12 @@ export async function getPromptDelay(promptId: string): Promise<number> {
 
 /**
  * Creates or updates a repeatable job scheduler for a prompt
- * @param promptId - The prompt ID to create a scheduler for
- * @param queueOverride - Optional queue to use instead of the default environment-based queue
  */
-export async function createPromptJobScheduler(promptId: string, queueOverride?: Queue): Promise<boolean> {
+export async function createPromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		const delay = await getPromptDelay(promptId);
-		const queue = queueOverride ?? promptQueue;
 		
-		await queue.upsertJobScheduler(
+		await promptQueue.upsertJobScheduler(
 			`repeater-${promptId}`,
 			{
 				every: delay,
@@ -82,13 +78,10 @@ export async function createPromptJobScheduler(promptId: string, queueOverride?:
 
 /**
  * Removes a repeatable job scheduler for a prompt
- * @param promptId - The prompt ID to remove the scheduler for
- * @param queueOverride - Optional queue to use instead of the default environment-based queue
  */
-export async function removePromptJobScheduler(promptId: string, queueOverride?: Queue): Promise<boolean> {
+export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
-		const queue = queueOverride ?? promptQueue;
-		await queue.removeJobScheduler(`repeater-${promptId}`);
+		await promptQueue.removeJobScheduler(`repeater-${promptId}`);
 		return true;
 	} catch (error) {
 		console.error(`Failed to remove job scheduler for prompt ${promptId}:`, error);
@@ -99,11 +92,9 @@ export async function removePromptJobScheduler(promptId: string, queueOverride?:
 /**
  * Creates job schedulers for multiple prompts
  * Returns an array of results indicating success/failure for each prompt
- * @param promptIds - Array of prompt IDs to create schedulers for
- * @param queueOverride - Optional queue to use instead of the default environment-based queue
  */
-export async function createMultiplePromptJobSchedulers(promptIds: string[], queueOverride?: Queue): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, queueOverride)));
+export async function createMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -111,11 +102,9 @@ export async function createMultiplePromptJobSchedulers(promptIds: string[], que
 /**
  * Removes job schedulers for multiple prompts
  * Returns an array of results indicating success/failure for each prompt
- * @param promptIds - Array of prompt IDs to remove schedulers for
- * @param queueOverride - Optional queue to use instead of the default environment-based queue
  */
-export async function removeMultiplePromptJobSchedulers(promptIds: string[], queueOverride?: Queue): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId, queueOverride)));
+export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
+	const results = await Promise.allSettled(promptIds.map((promptId) => removePromptJobScheduler(promptId)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -123,15 +112,13 @@ export async function removeMultiplePromptJobSchedulers(promptIds: string[], que
 /**
  * Recreates a job scheduler for a prompt (removes and creates)
  * Useful when the original job is no longer available for retry
- * @param promptId - The prompt ID to recreate the scheduler for
- * @param queueOverride - Optional queue to use instead of the default environment-based queue
  */
-export async function recreatePromptJobScheduler(promptId: string, queueOverride?: Queue): Promise<boolean> {
+export async function recreatePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		// Remove existing scheduler if any (ignore errors if it doesn't exist)
-		await removePromptJobScheduler(promptId, queueOverride);
+		await removePromptJobScheduler(promptId);
 		// Create new scheduler
-		return await createPromptJobScheduler(promptId, queueOverride);
+		return await createPromptJobScheduler(promptId);
 	} catch (error) {
 		console.error(`Failed to recreate job scheduler for prompt ${promptId}:`, error);
 		return false;
