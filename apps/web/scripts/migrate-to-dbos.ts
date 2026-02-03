@@ -14,7 +14,7 @@ type PromptDelayInfo = {
 	promptId: string;
 	brandId: string;
 	delayHours: number;
-	lastRunAt: Date | null;
+	lastRunAt: Date | string | null;
 };
 
 async function getEnabledPromptInfo(): Promise<PromptDelayInfo[]> {
@@ -50,12 +50,28 @@ async function getEnabledPromptInfo(): Promise<PromptDelayInfo[]> {
 	}));
 }
 
+function normalizeLastRunAt(lastRunAt: Date | string | null): Date | null {
+	if (!lastRunAt) {
+		return null;
+	}
+	if (lastRunAt instanceof Date) {
+		return lastRunAt;
+	}
+	const parsed = new Date(lastRunAt);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function computeInitialDelayHours(info: PromptDelayInfo, now: number): number {
 	if (!info.lastRunAt) {
 		return 0;
 	}
 
-	const nextRunAt = info.lastRunAt.getTime() + info.delayHours * 60 * 60 * 1000;
+	const lastRunAt = normalizeLastRunAt(info.lastRunAt);
+	if (!lastRunAt) {
+		return 0;
+	}
+
+	const nextRunAt = lastRunAt.getTime() + info.delayHours * 60 * 60 * 1000;
 	if (nextRunAt <= now) {
 		return 0;
 	}
@@ -129,8 +145,12 @@ async function migrate() {
 	console.log(`  • Workflows started: ${started}`);
 	console.log(`  • Failures: ${failures}`);
 
-	const safeDate = new Date(now + maxDelayHours * 60 * 60 * 1000);
-	console.log(`\nSafe to remove initialDelayHours after: ${safeDate.toISOString()}`);
+	if (started > 0) {
+		const safeDate = new Date(now + maxDelayHours * 60 * 60 * 1000);
+		console.log(`\nSafe to remove initialDelayHours after: ${safeDate.toISOString()}`);
+	} else {
+		console.log("\nSafe to remove initialDelayHours after: (no workflows started)");
+	}
 }
 
 if (require.main === module) {
