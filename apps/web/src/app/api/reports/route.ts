@@ -3,7 +3,20 @@ import { hasReportGeneratorAccess } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { reportQueue } from "@workspace/lib/queues";
+import { DBOSClient } from "@dbos-inc/dbos-sdk";
+import { reportsQueue } from "@workspace/lib/dbos";
+
+let dbosClientPromise: Promise<DBOSClient> | null = null;
+
+async function getDbosClient(): Promise<DBOSClient> {
+	if (!dbosClientPromise) {
+		dbosClientPromise = DBOSClient.create({
+			systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
+		});
+	}
+
+	return dbosClientPromise;
+}
 
 export async function GET() {
 	try {
@@ -85,31 +98,24 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Failed to create report" }, { status: 500 });
 		}
 
-		// Add job to the report queue
+		// Enqueue report generation workflow
 		try {
-			await reportQueue.add(
-				"generate-report",
+			const dbosClient = await getDbosClient();
+			await dbosClient.enqueue(
 				{
-					reportId: createdReport.id,
-					brandName: createdReport.brandName,
-					brandWebsite: createdReport.brandWebsite,
-					manualPrompts: parsedManualPrompts.length > 0 ? parsedManualPrompts : undefined,
+					workflowName: "generateReport",
+					queueName: reportsQueue.name,
 				},
-				{
-					attempts: 3,
-					backoff: {
-						type: "exponential",
-						delay: 5000,
-					},
-					removeOnComplete: 100,
-					removeOnFail: 100,
-				},
+				createdReport.id,
+				createdReport.brandName,
+				createdReport.brandWebsite,
+				parsedManualPrompts.length > 0 ? parsedManualPrompts : undefined,
 			);
 
-			console.log(`Report job queued for report ID: ${createdReport.id}`);
+			console.log(`Report workflow queued for report ID: ${createdReport.id}`);
 		} catch (queueError) {
-			console.error("Error adding report to queue:", queueError);
-			// Update report status to failed if queue addition fails
+			console.error("Error adding report to DBOS queue:", queueError);
+			// Update report status to failed if enqueue fails
 			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, createdReport.id));
 
 			return NextResponse.json({ error: "Failed to queue report generation" }, { status: 500 });

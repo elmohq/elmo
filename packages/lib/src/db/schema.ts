@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, bigint } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer } from "drizzle-orm/pg-core";
 
 export const modelGroupsEnum = pgEnum("model_groups", ["openai", "anthropic", "google"]);
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
@@ -9,7 +9,7 @@ export const brands = pgTable("brands", {
 	website: text("website").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),
 	onboarded: boolean("onboarded").default(false).notNull(),
-	delayOverrideMs: bigint("delay_override_ms", { mode: "number" }), // Override for job scheduler delay in milliseconds
+	delayOverrideHours: integer("delay_override_hours"), // Override for job scheduler delay in hours
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()

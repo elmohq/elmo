@@ -4,11 +4,12 @@ import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 interface UpdateDelayOverrideRequest {
-	delayOverrideMs: number | null; // null to remove override
+	delayOverrideHours: number | null; // null to remove override
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -23,19 +24,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const body: UpdateDelayOverrideRequest = await request.json();
 
 		// Validate the delay override
-		if (body.delayOverrideMs !== null && typeof body.delayOverrideMs !== "number") {
+		if (body.delayOverrideHours !== null && typeof body.delayOverrideHours !== "number") {
 			return NextResponse.json({ error: "Invalid delay override value" }, { status: 400 });
 		}
 
-		if (body.delayOverrideMs !== null && body.delayOverrideMs < 0) {
-			return NextResponse.json({ error: "Delay override must be a positive number" }, { status: 400 });
+		if (body.delayOverrideHours !== null) {
+			if (!Number.isInteger(body.delayOverrideHours) || body.delayOverrideHours <= 0) {
+				return NextResponse.json({ error: "Delay override must be a positive integer" }, { status: 400 });
+			}
 		}
 
 		// Update the brand
 		const result = await db
 			.update(brands)
 			.set({
-				delayOverrideMs: body.delayOverrideMs,
+				delayOverrideHours: body.delayOverrideHours,
 				updatedAt: new Date(),
 			})
 			.where(eq(brands.id, brandId))
@@ -55,9 +58,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		if (enabledPrompts.length > 0) {
 			const promptIds = enabledPrompts.map((p) => p.id);
 			console.log(`Updating job schedulers for ${promptIds.length} prompts in brand ${brandId}`);
-			
+
+			const delayHours = body.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+
 			// Update job schedulers with the new delay
-			const results = await createMultiplePromptJobSchedulers(promptIds);
+			const results = await createMultiplePromptJobSchedulers(promptIds, delayHours);
 			const successCount = results.filter((success) => success).length;
 			const failureCount = results.length - successCount;
 			

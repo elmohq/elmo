@@ -3,14 +3,14 @@ import { isAdmin } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { promptQueue } from "@workspace/lib/queues";
-import { DEFAULT_DELAY_MS, recreatePromptJobScheduler } from "@/lib/job-scheduler";
+import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { createPromptJobScheduler } from "@/lib/job-scheduler";
+import { DBOSClient } from "@dbos-inc/dbos-sdk";
+import { Client } from "pg";
 
 export const dynamic = "force-dynamic";
 
-// Model groups we track
-const MODEL_GROUPS = ["openai", "anthropic", "google"] as const;
-type ModelGroup = (typeof MODEL_GROUPS)[number];
+const WORKFLOW_NAME = "processPrompt";
 
 interface SchedulerInfo {
 	exists: boolean;
@@ -27,7 +27,17 @@ interface PromptScheduleStatus {
 	enabled: boolean;
 	runFrequencyMs: number;
 	lastRunsByModelGroup: {
-		[K in ModelGroup]?: {
+		openai?: {
+			lastRunAt: Date | null;
+			isOverdue: boolean;
+			overdueByMs: number | null;
+		};
+		anthropic?: {
+			lastRunAt: Date | null;
+			isOverdue: boolean;
+			overdueByMs: number | null;
+		};
+		google?: {
 			lastRunAt: Date | null;
 			isOverdue: boolean;
 			overdueByMs: number | null;
@@ -36,6 +46,7 @@ interface PromptScheduleStatus {
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
 	isActiveOrWaiting: boolean;
+	isInInitialDelay: boolean;
 }
 
 interface BrandScheduleSummary {
@@ -65,7 +76,7 @@ interface QueueStats {
 interface RecentJob {
 	id: string;
 	name: string;
-	data: { promptId?: string };
+	data: { promptId?: string; initialDelayHours?: number };
 	status: "completed" | "failed";
 	failedReason: string | null;
 	attemptsMade: number;
@@ -76,136 +87,173 @@ interface RecentJob {
 	returnValue: any;
 }
 
-async function getQueueStats(): Promise<QueueStats> {
-	try {
-		const jobCounts = await promptQueue.getJobCounts("waiting", "active", "completed", "failed", "delayed");
-		const schedulersCount = await promptQueue.getJobSchedulersCount();
+let dbosClientPromise: Promise<DBOSClient> | null = null;
 
-		return {
-			name: promptQueue.name,
-			waiting: jobCounts.waiting || 0,
-			active: jobCounts.active || 0,
-			completed: jobCounts.completed || 0,
-			failed: jobCounts.failed || 0,
-			delayed: jobCounts.delayed || 0,
-			schedulersCount,
-		};
-	} catch (error) {
-		console.error(`Error getting queue stats for ${promptQueue.name}:`, error);
-		return {
-			name: promptQueue.name,
-			waiting: 0,
-			active: 0,
-			completed: 0,
-			failed: 0,
-			delayed: 0,
-			schedulersCount: 0,
-		};
+async function getDbosClient(): Promise<DBOSClient> {
+	if (!dbosClientPromise) {
+		dbosClientPromise = DBOSClient.create({
+			systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
+		});
 	}
+	return dbosClientPromise;
+}
+
+async function withDbosClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+	const connectionString = process.env.DBOS_SYSTEM_DATABASE_URL;
+	if (!connectionString) {
+		throw new Error("DBOS_SYSTEM_DATABASE_URL is required");
+	}
+
+	const client = new Client({ connectionString });
+	await client.connect();
+	try {
+		return await fn(client);
+	} finally {
+		await client.end();
+	}
+}
+
+function parseInputs(raw: unknown): { promptId?: string; initialDelayHours?: number } {
+	if (!raw) return {};
+
+	try {
+		const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+		if (Array.isArray(parsed)) {
+			return {
+				promptId: typeof parsed[0] === "string" ? parsed[0] : undefined,
+				initialDelayHours: typeof parsed[1] === "number" ? parsed[1] : undefined,
+			};
+		}
+		if (typeof parsed === "object" && parsed !== null) {
+			const obj = parsed as Record<string, unknown>;
+			return {
+				promptId: typeof obj.promptId === "string" ? obj.promptId : undefined,
+				initialDelayHours: typeof obj.initialDelayHours === "number" ? obj.initialDelayHours : undefined,
+			};
+		}
+	} catch {
+		// ignore parse failures
+	}
+
+	return {};
+}
+
+function parseError(raw: unknown): { message: string | null; stack: string[] | null } {
+	if (!raw) return { message: null, stack: null };
+
+	try {
+		const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+		if (parsed && typeof parsed === "object") {
+			const errorObj = parsed as { message?: string; stack?: string };
+			const stack = errorObj.stack ? errorObj.stack.split("\n") : null;
+			return { message: errorObj.message ?? "Unknown error", stack };
+		}
+	} catch {
+		// ignore parse failures
+	}
+
+	return { message: "Unknown error", stack: null };
+}
+
+async function getQueueStats(): Promise<QueueStats> {
+	const rows = await withDbosClient(async (client) => {
+		const result = await client.query(
+			`SELECT
+				COUNT(*) FILTER (WHERE status = 'ENQUEUED') AS waiting,
+				COUNT(*) FILTER (WHERE status = 'PENDING') AS active,
+				COUNT(*) FILTER (WHERE status = 'SUCCESS') AS completed,
+				COUNT(*) FILTER (WHERE status = 'ERROR') AS failed
+			FROM dbos.workflow_status
+			WHERE name = $1`,
+			[WORKFLOW_NAME],
+		);
+		return result.rows[0];
+	});
+
+	return {
+		name: WORKFLOW_NAME,
+		waiting: Number(rows.waiting || 0),
+		active: Number(rows.active || 0),
+		completed: Number(rows.completed || 0),
+		failed: Number(rows.failed || 0),
+		delayed: 0,
+		schedulersCount: 1,
+	};
 }
 
 async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
-	try {
-		const [failedJobs, completedJobs] = await Promise.all([
-			promptQueue.getFailed(0, limit - 1),
-			promptQueue.getCompleted(0, limit - 1),
-		]);
+	const rows = await withDbosClient(async (client) => {
+		const result = await client.query(
+			`SELECT workflow_uuid, status, name, inputs, error, created_at, updated_at
+			 FROM dbos.workflow_status
+			 WHERE name = $1 AND status IN ('SUCCESS', 'ERROR')
+			 ORDER BY created_at DESC
+			 LIMIT $2`,
+			[WORKFLOW_NAME, limit],
+		);
+		return result.rows;
+	});
 
-		const failed: RecentJob[] = failedJobs.map((job) => ({
-			id: job.id || "",
-			name: job.name,
-			data: job.data as { promptId?: string },
-			status: "failed" as const,
-			failedReason: job.failedReason || "Unknown",
-			attemptsMade: job.attemptsMade,
-			timestamp: job.timestamp,
-			processedOn: job.processedOn || null,
-			finishedOn: job.finishedOn || null,
-			stacktrace: job.stacktrace || null,
+	return rows.map((row) => {
+		const inputs = parseInputs(row.inputs);
+		const error = parseError(row.error);
+		return {
+			id: row.workflow_uuid,
+			name: row.name,
+			data: inputs,
+			status: row.status === "SUCCESS" ? "completed" : "failed",
+			failedReason: row.status === "ERROR" ? error.message : null,
+			attemptsMade: 0,
+			timestamp: Number(row.created_at),
+			processedOn: Number(row.created_at),
+			finishedOn: Number(row.updated_at || row.created_at),
+			stacktrace: row.status === "ERROR" ? error.stack : null,
 			returnValue: null,
-		}));
-
-		const completed: RecentJob[] = completedJobs.map((job) => ({
-			id: job.id || "",
-			name: job.name,
-			data: job.data as { promptId?: string },
-			status: "completed" as const,
-			failedReason: null,
-			attemptsMade: job.attemptsMade,
-			timestamp: job.timestamp,
-			processedOn: job.processedOn || null,
-			finishedOn: job.finishedOn || null,
-			stacktrace: null,
-			returnValue: job.returnvalue,
-		}));
-
-		return [...failed, ...completed];
-	} catch (error) {
-		console.error(`Error getting recent jobs for ${promptQueue.name}:`, error);
-		return [];
-	}
+		};
+	});
 }
 
-async function getSchedulerDetails(): Promise<Map<string, SchedulerInfo>> {
-	const schedulerMap = new Map<string, SchedulerInfo>();
+async function getActiveWorkflowMap(): Promise<Map<string, { nextRunAt: number | null; isInInitialDelay: boolean }>> {
+	const now = Date.now();
+	const rows = await withDbosClient(async (client) => {
+		const result = await client.query(
+			`SELECT workflow_uuid, status, inputs, created_at
+			 FROM dbos.workflow_status
+			 WHERE name = $1 AND status IN ('ENQUEUED','PENDING')`,
+			[WORKFLOW_NAME],
+		);
+		return result.rows;
+	});
 
-	try {
-		const schedulers = await promptQueue.getJobSchedulers(0, -1);
+	const map = new Map<string, { nextRunAt: number | null; isInInitialDelay: boolean }>();
 
-		for (const scheduler of schedulers) {
-			// Scheduler key format: repeater-{promptId}
-			if (scheduler.key.startsWith("repeater-")) {
-				const promptId = scheduler.key.substring("repeater-".length);
-				schedulerMap.set(promptId, {
-					exists: true,
-					nextRunAt: scheduler.next || null,
-					iterationCount: scheduler.iterationCount || null,
-					every: scheduler.every || null,
-				});
-			}
-		}
-	} catch (error) {
-		console.error(`Error getting job schedulers for ${promptQueue.name}:`, error);
+	for (const row of rows) {
+		const inputs = parseInputs(row.inputs);
+		if (!inputs.promptId) continue;
+
+		const createdAt = Number(row.created_at);
+		const delayMs = (inputs.initialDelayHours ?? 0) * 60 * 60 * 1000;
+		const nextRunAt = delayMs > 0 ? createdAt + delayMs : null;
+		const isInInitialDelay = Boolean(nextRunAt && nextRunAt > now);
+
+		map.set(inputs.promptId, { nextRunAt, isInInitialDelay });
 	}
 
-	return schedulerMap;
-}
-
-async function getActiveOrWaitingPromptIds(): Promise<Set<string>> {
-	const promptIds = new Set<string>();
-
-	try {
-		const [activeJobs, waitingJobs] = await Promise.all([promptQueue.getActive(0, 100), promptQueue.getWaiting(0, 100)]);
-
-		for (const job of [...activeJobs, ...waitingJobs]) {
-			if (job.data?.promptId) {
-				promptIds.add(job.data.promptId);
-			}
-		}
-	} catch (error) {
-		console.error(`Error getting active/waiting jobs for ${promptQueue.name}:`, error);
-	}
-
-	return promptIds;
+	return map;
 }
 
 export async function GET() {
 	try {
-		// Check if user is admin
 		const adminStatus = await isAdmin();
 		if (!adminStatus) {
 			return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 		}
 
-		// Get all brands with their delay overrides
 		const allBrands = await db.query.brands.findMany({
 			orderBy: desc(brands.createdAt),
 		});
-
-		// Get all prompts
 		const allPrompts = await db.query.prompts.findMany();
 
-		// Group prompts by brand
 		const promptsByBrand: Record<string, typeof allPrompts> = {};
 		for (const prompt of allPrompts) {
 			if (!promptsByBrand[prompt.brandId]) {
@@ -214,7 +262,6 @@ export async function GET() {
 			promptsByBrand[prompt.brandId].push(prompt);
 		}
 
-		// Get the last run for each prompt and model group combination
 		const lastRunsQuery = await db
 			.select({
 				promptId: promptRuns.promptId,
@@ -224,34 +271,28 @@ export async function GET() {
 			.from(promptRuns)
 			.groupBy(promptRuns.promptId, promptRuns.modelGroup);
 
-		// Create a map of promptId -> modelGroup -> lastRunAt
-		const lastRunsMap: Record<string, Record<ModelGroup, Date>> = {};
+		const lastRunsMap: Record<string, Record<string, Date>> = {};
 		for (const run of lastRunsQuery) {
 			if (!lastRunsMap[run.promptId]) {
-				lastRunsMap[run.promptId] = {} as Record<ModelGroup, Date>;
+				lastRunsMap[run.promptId] = {};
 			}
-			lastRunsMap[run.promptId][run.modelGroup as ModelGroup] = run.lastRunAt;
+			lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
 		}
 
-		// Get scheduler details and queue stats
-		const [schedulerDetails, activeWaiting, queueStats, recentJobs] = await Promise.all([
-			getSchedulerDetails(),
-			getActiveOrWaitingPromptIds(),
+		const [queueStats, recentJobs, activeWorkflowMap] = await Promise.all([
 			getQueueStats(),
 			getRecentJobs(5000),
+			getActiveWorkflowMap(),
 		]);
 
-		// Count failures by promptId
 		const failuresByPrompt = new Map<string, number>();
-
 		for (const job of recentJobs) {
 			if (job.status === "failed" && job.data?.promptId) {
 				failuresByPrompt.set(job.data.promptId, (failuresByPrompt.get(job.data.promptId) || 0) + 1);
 			}
 		}
 
-		const now = new Date().getTime();
-
+		const now = Date.now();
 		const defaultSchedulerInfo: SchedulerInfo = {
 			exists: false,
 			nextRunAt: null,
@@ -259,10 +300,13 @@ export async function GET() {
 			every: null,
 		};
 
-		// Build brand summaries
+		let initialDelayCount = 0;
+		let latestInitialDelayEndAt: number | null = null;
+
 		const brandSummaries: BrandScheduleSummary[] = allBrands.map((brand) => {
 			const brandPrompts = promptsByBrand[brand.id] || [];
-			const runFrequencyMs = brand.delayOverrideMs ?? DEFAULT_DELAY_MS;
+			const delayHours = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+			const runFrequencyMs = delayHours * 60 * 60 * 1000;
 
 			let overduePrompts = 0;
 			let onSchedulePrompts = 0;
@@ -274,7 +318,7 @@ export async function GET() {
 
 				let anyOverdue = false;
 
-				for (const modelGroup of MODEL_GROUPS) {
+				for (const modelGroup of ["openai", "anthropic", "google"] as const) {
 					const lastRunAt = lastRuns[modelGroup] || null;
 					let isOverdue = false;
 					let overdueByMs: number | null = null;
@@ -288,7 +332,6 @@ export async function GET() {
 								anyOverdue = true;
 							}
 						} else {
-							// Never run - consider it overdue if prompt is enabled
 							isOverdue = true;
 							anyOverdue = true;
 						}
@@ -301,7 +344,15 @@ export async function GET() {
 					};
 				}
 
-				const schedulerInfo = schedulerDetails.get(prompt.id) || defaultSchedulerInfo;
+				const workflowInfo = activeWorkflowMap.get(prompt.id);
+				const schedulerInfo = workflowInfo
+					? {
+							exists: true,
+							nextRunAt: workflowInfo.nextRunAt,
+							iterationCount: null,
+							every: runFrequencyMs,
+						}
+					: defaultSchedulerInfo;
 
 				if (schedulerInfo.exists) scheduledCount++;
 
@@ -310,6 +361,13 @@ export async function GET() {
 						overduePrompts++;
 					} else {
 						onSchedulePrompts++;
+					}
+				}
+
+				if (workflowInfo?.isInInitialDelay) {
+					initialDelayCount++;
+					if (workflowInfo.nextRunAt && (!latestInitialDelayEndAt || workflowInfo.nextRunAt > latestInitialDelayEndAt)) {
+						latestInitialDelayEndAt = workflowInfo.nextRunAt;
 					}
 				}
 
@@ -323,7 +381,8 @@ export async function GET() {
 					lastRunsByModelGroup,
 					schedulerInfo,
 					recentFailures: failuresByPrompt.get(prompt.id) || 0,
-					isActiveOrWaiting: activeWaiting.has(prompt.id),
+					isActiveOrWaiting: Boolean(workflowInfo),
+					isInInitialDelay: Boolean(workflowInfo?.isInInitialDelay),
 				};
 			});
 
@@ -344,11 +403,17 @@ export async function GET() {
 			};
 		});
 
-		// Calculate overall stats
 		const totalOverdue = brandSummaries.reduce((sum, b) => sum + b.overduePrompts, 0);
 		const totalOnSchedule = brandSummaries.reduce((sum, b) => sum + b.onSchedulePrompts, 0);
 		const totalEnabled = brandSummaries.reduce((sum, b) => sum + b.enabledPrompts, 0);
 		const totalPrompts = brandSummaries.reduce((sum, b) => sum + b.totalPrompts, 0);
+
+		// TODO(post-migration): Remove migration status tracking once initialDelayHours is removed
+		const migrationStatus = {
+			initialDelayRemaining: initialDelayCount,
+			totalPrompts,
+			latestInitialDelayEndAt,
+		};
 
 		return NextResponse.json({
 			summary: {
@@ -362,6 +427,7 @@ export async function GET() {
 			queue: queueStats,
 			recentJobs: recentJobs.sort((a, b) => b.timestamp - a.timestamp),
 			brands: brandSummaries,
+			migration: migrationStatus,
 		});
 	} catch (error) {
 		console.error("Error fetching workflow data:", error);
@@ -369,10 +435,8 @@ export async function GET() {
 	}
 }
 
-// POST endpoint to retry a failed job for a prompt
 export async function POST(request: NextRequest) {
 	try {
-		// Check if user is admin
 		const adminStatus = await isAdmin();
 		if (!adminStatus) {
 			return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
@@ -381,33 +445,21 @@ export async function POST(request: NextRequest) {
 		const body = await request.json();
 		const { promptId, jobId } = body;
 
-		// If jobId is provided, retry that specific job
+		const dbosClient = await getDbosClient();
+
 		if (jobId) {
-			const job = await promptQueue.getJob(jobId);
-			if (!job) {
-				return NextResponse.json({ error: "Job not found" }, { status: 404 });
-			}
-
-			const isFailed = await job.isFailed();
-			if (!isFailed) {
-				return NextResponse.json({ error: "Job is not in failed state" }, { status: 400 });
-			}
-
-			await job.retry();
-
+			await dbosClient.resumeWorkflow(jobId);
 			return NextResponse.json({
 				success: true,
-				message: `Retrying job ${jobId}`,
-				jobId: job.id,
+				message: `Retrying workflow ${jobId}`,
+				jobId,
 			});
 		}
 
-		// If only promptId is provided, find the most recent failed job for this prompt
 		if (!promptId || typeof promptId !== "string") {
 			return NextResponse.json({ error: "Either jobId or promptId is required" }, { status: 400 });
 		}
 
-		// Verify prompt exists and is enabled
 		const prompt = await db.query.prompts.findFirst({
 			where: eq(prompts.id, promptId),
 		});
@@ -420,33 +472,32 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Prompt is disabled" }, { status: 400 });
 		}
 
-		// Find the most recent failed job for this prompt
-		const failedJobs = await promptQueue.getFailed(0, 100);
-		const promptFailedJob = failedJobs
-			.filter((job) => job.data?.promptId === promptId)
-			.sort((a, b) => b.timestamp - a.timestamp)[0];
+		const workflows = await dbosClient.listWorkflows({
+			workflowName: WORKFLOW_NAME,
+			workflow_id_prefix: `prompt-${promptId}-`,
+			status: ["ERROR"],
+			limit: 1,
+			sortDesc: true,
+		});
 
-		if (!promptFailedJob) {
-			// No failed job found - recreate the job scheduler instead
-			const success = await recreatePromptJobScheduler(promptId);
-
-			if (!success) {
-				return NextResponse.json({ error: "Failed to recreate job scheduler" }, { status: 500 });
-			}
-
+		if (workflows.length > 0) {
+			await dbosClient.resumeWorkflow(workflows[0].workflowID);
 			return NextResponse.json({
 				success: true,
-				message: `No failed job found - recreated job scheduler for prompt ${promptId}`,
-				recreatedScheduler: true,
+				message: `Retrying failed workflow for prompt ${promptId}`,
+				jobId: workflows[0].workflowID,
 			});
 		}
 
-		await promptFailedJob.retry();
+		const success = await createPromptJobScheduler(promptId);
+		if (!success) {
+			return NextResponse.json({ error: "Failed to recreate workflow" }, { status: 500 });
+		}
 
 		return NextResponse.json({
 			success: true,
-			message: `Retrying failed job for prompt ${promptId}`,
-			jobId: promptFailedJob.id,
+			message: `No failed workflow found - started new workflow for prompt ${promptId}`,
+			recreatedScheduler: true,
 		});
 	} catch (error) {
 		console.error("Error triggering retry:", error);

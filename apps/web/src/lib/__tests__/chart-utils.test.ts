@@ -9,7 +9,7 @@ describe("chart-utils", () => {
 		website: "https://testbrand.com",
 		enabled: true,
 		onboarded: true,
-		delayOverrideMs: null,
+		delayOverrideHours: null,
 		createdAt: new Date("2023-01-01"),
 		updatedAt: new Date("2023-01-01"),
 	};

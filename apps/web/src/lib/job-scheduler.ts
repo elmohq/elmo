@@ -1,14 +1,16 @@
-import { promptQueue } from "@workspace/lib/queues";
+import { DBOSClient } from "@dbos-inc/dbos-sdk";
 import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { promptsQueue } from "@workspace/lib/dbos";
 
-export const DEFAULT_DELAY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const WORKFLOW_NAME = "processPrompt";
 
 /**
  * Gets the delay for a prompt based on its brand's delay override or the default
  */
-export async function getPromptDelay(promptId: string): Promise<number> {
+export async function getPromptDelayHours(promptId: string): Promise<number> {
 	try {
 		// Get the prompt to find its brand
 		const prompt = await db.query.prompts.findFirst({
@@ -17,7 +19,7 @@ export async function getPromptDelay(promptId: string): Promise<number> {
 		
 		if (!prompt) {
 			console.warn(`Prompt ${promptId} not found, using default delay`);
-			return DEFAULT_DELAY_MS;
+			return DEFAULT_DELAY_HOURS;
 		}
 		
 		// Get the brand to check for delay override
@@ -27,48 +29,55 @@ export async function getPromptDelay(promptId: string): Promise<number> {
 		
 		if (!brand) {
 			console.warn(`Brand ${prompt.brandId} not found, using default delay`);
-			return DEFAULT_DELAY_MS;
+			return DEFAULT_DELAY_HOURS;
 		}
 		
 		// Use override if set, otherwise use default
-		if (brand.delayOverrideMs !== null) {
-			console.log(`Using custom delay for brand ${brand.name}: ${brand.delayOverrideMs}ms`);
-			return brand.delayOverrideMs;
+		if (brand.delayOverrideHours !== null) {
+			console.log(`Using custom delay for brand ${brand.name}: ${brand.delayOverrideHours}h`);
+			return brand.delayOverrideHours;
 		}
 		
-		return DEFAULT_DELAY_MS;
+		return DEFAULT_DELAY_HOURS;
 	} catch (error) {
 		console.error(`Error fetching delay for prompt ${promptId}:`, error);
-		return DEFAULT_DELAY_MS;
+		return DEFAULT_DELAY_HOURS;
 	}
+}
+
+let dbosClientPromise: Promise<DBOSClient> | null = null;
+
+async function getDbosClient(): Promise<DBOSClient> {
+	if (!dbosClientPromise) {
+		dbosClientPromise = DBOSClient.create({
+			systemDatabaseUrl: process.env.DBOS_SYSTEM_DATABASE_URL,
+		});
+	}
+
+	return dbosClientPromise;
 }
 
 /**
  * Creates or updates a repeatable job scheduler for a prompt
  */
-export async function createPromptJobScheduler(promptId: string): Promise<boolean> {
+export async function createPromptJobScheduler(
+	promptId: string,
+	initialDelayHours?: number,
+): Promise<boolean> {
 	try {
-		const delay = await getPromptDelay(promptId);
-		
-		await promptQueue.upsertJobScheduler(
-			`repeater-${promptId}`,
-			{
-				every: delay,
-			},
-			{
-				name: `prompt-${promptId}`, // Unique job name per prompt
-				data: { promptId },
-				opts: {
-					attempts: 3,
-					backoff: {
-						type: "exponential",
-						delay: 2000,
-					},
-					removeOnComplete: 5000,
-					removeOnFail: 5000,
-				},
-			},
-		);
+		const dbosClient = await getDbosClient();
+
+		const workflowOptions = {
+			workflowName: WORKFLOW_NAME,
+			queueName: promptsQueue.name,
+			workflowID: `prompt-${promptId}-${Date.now()}`,
+		};
+
+		if (initialDelayHours === undefined || initialDelayHours === null) {
+			await dbosClient.startWorkflow(workflowOptions, promptId);
+		} else {
+			await dbosClient.startWorkflow(workflowOptions, promptId, initialDelayHours);
+		}
 		return true;
 	} catch (error) {
 		console.error(`Failed to create job scheduler for prompt ${promptId}:`, error);
@@ -81,7 +90,19 @@ export async function createPromptJobScheduler(promptId: string): Promise<boolea
  */
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
-		await promptQueue.removeJobScheduler(`repeater-${promptId}`);
+		const dbosClient = await getDbosClient();
+		const workflowPrefix = `prompt-${promptId}-`;
+
+		const workflows = await dbosClient.listWorkflows({
+			workflowName: WORKFLOW_NAME,
+			workflow_id_prefix: workflowPrefix,
+			status: ["PENDING", "ENQUEUED"],
+			limit: 1000,
+		});
+
+		await Promise.all(
+			workflows.map((workflow) => dbosClient.cancelWorkflow(workflow.workflowID)),
+		);
 		return true;
 	} catch (error) {
 		console.error(`Failed to remove job scheduler for prompt ${promptId}:`, error);
@@ -93,8 +114,13 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
  * Creates job schedulers for multiple prompts
  * Returns an array of results indicating success/failure for each prompt
  */
-export async function createMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId)));
+export async function createMultiplePromptJobSchedulers(
+	promptIds: string[],
+	initialDelayHours?: number,
+): Promise<boolean[]> {
+	const results = await Promise.allSettled(
+		promptIds.map((promptId) => createPromptJobScheduler(promptId, initialDelayHours)),
+	);
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }

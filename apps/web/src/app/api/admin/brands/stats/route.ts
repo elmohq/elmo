@@ -13,7 +13,7 @@ interface BrandStats {
 	website: string;
 	enabled: boolean;
 	onboarded: boolean;
-	delayOverrideMs: number | null;
+	delayOverrideHours: number | null;
 	createdAt: Date;
 	updatedAt: Date;
 	totalPrompts: number;

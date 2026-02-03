@@ -146,7 +146,7 @@ export async function createBrand(brandData: { id: string; name: string; website
 
 export async function updateBrand(
 	brandId: string,
-	brandData: Partial<Pick<Brand, "name" | "website" | "enabled" | "onboarded" | "delayOverrideMs">>,
+	brandData: Partial<Pick<Brand, "name" | "website" | "enabled" | "onboarded" | "delayOverrideHours">>,
 ): Promise<Brand | null> {
 	try {
 		const result = await db

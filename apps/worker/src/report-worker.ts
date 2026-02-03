@@ -1,4 +1,3 @@
-import { Job } from "bullmq";
 import { db } from "@workspace/lib/db/db";
 import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -38,6 +37,12 @@ export interface ReportJobData {
 	brandName: string;
 	brandWebsite: string;
 	manualPrompts?: string[];
+}
+
+export interface ReportJobContext {
+	data: ReportJobData;
+	log: (message: string) => void;
+	updateProgress: (progress: number) => void;
 }
 
 interface PromptRunResult {
@@ -322,7 +327,7 @@ async function runPrompt(
 	brandName: string,
 	brandWebsite: string,
 	competitors: CompetitorResult[],
-	job: Job,
+	job: ReportJobContext,
 ): Promise<PromptRunResult> {
 	const runs: Array<{
 		modelGroup: "openai" | "anthropic" | "google";
@@ -420,7 +425,7 @@ async function runPrompt(
 }
 
 // Main report worker function
-export async function processReportJob(job: Job<ReportJobData>) {
+export async function processReportJob(job: ReportJobContext) {
 	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);

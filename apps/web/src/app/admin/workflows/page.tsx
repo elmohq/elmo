@@ -52,6 +52,7 @@ interface PromptScheduleStatus {
 	brandName: string;
 	enabled: boolean;
 	runFrequencyMs: number;
+	isInInitialDelay: boolean;
 	lastRunsByModelGroup: {
 		openai?: LastRunByModelGroup;
 		anthropic?: LastRunByModelGroup;
@@ -112,6 +113,11 @@ interface WorkflowsData {
 	queue: QueueStats;
 	recentJobs: RecentJob[];
 	brands: BrandScheduleSummary[];
+	migration?: {
+		initialDelayRemaining: number;
+		totalPrompts: number;
+		latestInitialDelayEndAt: number | null;
+	};
 }
 
 function formatDuration(ms: number): string {
@@ -629,9 +635,17 @@ function BrandRow({
 													{!prompt.enabled ? (
 														<Badge variant="outline">Disabled</Badge>
 													) : (
-														<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-															Enabled
-														</Badge>
+														<div className="flex flex-col items-center gap-1">
+															<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+																Enabled
+															</Badge>
+															{/* TODO(post-migration): Remove initial delay status after initialDelayHours is removed */}
+															{prompt.isInInitialDelay && (
+																<Badge variant="secondary" className="bg-amber-100 text-amber-700">
+																	Initial delay
+																</Badge>
+															)}
+														</div>
 													)}
 												</TableCell>
 												<TableCell className="text-center">
@@ -800,6 +814,31 @@ export default function WorkflowsPage() {
 					</Link>
 				</div>
 			</div>
+
+			{/* TODO(post-migration): Remove migration status banner after initialDelayHours is removed */}
+			{data.migration && data.migration.initialDelayRemaining > 0 && (
+				<Card className="border-amber-500/50">
+					<CardHeader className="pb-2">
+						<CardTitle className="text-sm font-medium flex items-center gap-2">
+							<Clock className="h-4 w-4 text-amber-500" />
+							Migration In Progress
+						</CardTitle>
+						<CardDescription>
+							{data.migration.initialDelayRemaining}/{data.migration.totalPrompts} prompts still in initial delay
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="text-sm text-muted-foreground">
+						{data.migration.latestInitialDelayEndAt ? (
+							<span>
+								All prompts will have run by{" "}
+								{new Date(data.migration.latestInitialDelayEndAt).toLocaleString()}
+							</span>
+						) : (
+							<span>Waiting for the last initial delay to complete.</span>
+						)}
+					</CardContent>
+				</Card>
+			)}
 
 			{/* Summary Cards */}
 			<div className="grid gap-4 md:grid-cols-4">

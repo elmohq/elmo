@@ -21,7 +21,7 @@ interface BrandStats {
 	website: string;
 	enabled: boolean;
 	onboarded: boolean;
-	delayOverrideMs: number | null;
+	delayOverrideHours: number | null;
 	createdAt: string;
 	updatedAt: string;
 	totalPrompts: number;
@@ -35,65 +35,44 @@ interface BrandStats {
 	promptsRemovedLast30Days: number;
 }
 
-const DEFAULT_DELAY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+const DEFAULT_DELAY_HOURS = 72; // 3 days in hours
 
-function formatDelay(ms: number): string {
-	const weeks = Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
-	const days = Math.floor((ms % (7 * 24 * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000));
-	const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-	const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+function formatDelayHours(hours: number): string {
+	const weeks = Math.floor(hours / (7 * 24));
+	const days = Math.floor((hours % (7 * 24)) / 24);
+	const remainingHours = hours % 24;
 	
 	const parts: string[] = [];
 	if (weeks > 0) parts.push(`${weeks}w`);
 	if (days > 0) parts.push(`${days}d`);
-	if (hours > 0) parts.push(`${hours}h`);
-	if (minutes > 0) parts.push(`${minutes}m`);
+	if (remainingHours > 0) parts.push(`${remainingHours}h`);
 	
-	return parts.length > 0 ? parts.join(" ") : "0m";
+	return parts.length > 0 ? parts.join(" ") : "0h";
 }
 
-function msToTimeUnits(ms: number): { weeks: number; days: number; hours: number; minutes: number; seconds: number; milliseconds: number } {
-	const weeks = Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
-	let remainder = ms % (7 * 24 * 60 * 60 * 1000);
-	
-	const days = Math.floor(remainder / (24 * 60 * 60 * 1000));
-	remainder = remainder % (24 * 60 * 60 * 1000);
-	
-	const hours = Math.floor(remainder / (60 * 60 * 1000));
-	remainder = remainder % (60 * 60 * 1000);
-	
-	const minutes = Math.floor(remainder / (60 * 1000));
-	remainder = remainder % (60 * 1000);
-	
-	const seconds = Math.floor(remainder / 1000);
-	const milliseconds = remainder % 1000;
-	
-	return { weeks, days, hours, minutes, seconds, milliseconds };
+function hoursToTimeUnits(hours: number): { weeks: number; days: number; hours: number } {
+	const weeks = Math.floor(hours / (7 * 24));
+	const days = Math.floor((hours % (7 * 24)) / 24);
+	const remainingHours = hours % 24;
+	return { weeks, days, hours: remainingHours };
 }
 
-function timeUnitsToMs(units: { weeks: number; days: number; hours: number; minutes: number; seconds: number; milliseconds: number }): number {
-	return (
-		units.weeks * 7 * 24 * 60 * 60 * 1000 +
-		units.days * 24 * 60 * 60 * 1000 +
-		units.hours * 60 * 60 * 1000 +
-		units.minutes * 60 * 1000 +
-		units.seconds * 1000 +
-		units.milliseconds
-	);
+function timeUnitsToHours(units: { weeks: number; days: number; hours: number }): number {
+	return units.weeks * 7 * 24 + units.days * 24 + units.hours;
 }
 
 function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate: () => void }) {
 	const [open, setOpen] = useState(false);
-	const [timeUnits, setTimeUnits] = useState({ weeks: 0, days: 0, hours: 0, minutes: 0, seconds: 0, milliseconds: 0 });
+	const [timeUnits, setTimeUnits] = useState({ weeks: 0, days: 0, hours: 0 });
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	
-	const currentDelay = brand.delayOverrideMs ?? DEFAULT_DELAY_MS;
+	const currentDelay = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
 	
 	useEffect(() => {
 		if (open) {
 			// Pre-fill with current value
-			setTimeUnits(msToTimeUnits(currentDelay));
+			setTimeUnits(hoursToTimeUnits(currentDelay));
 			setError(null);
 		}
 	}, [open, currentDelay]);
@@ -106,14 +85,14 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 	const handleUpdate = async () => {
 		setError(null);
 		
-		const totalMs = timeUnitsToMs(timeUnits);
+		const totalHours = timeUnitsToHours(timeUnits);
 		
-		if (totalMs === 0) {
+		if (totalHours === 0) {
 			setError("Please enter a delay value");
 			return;
 		}
 		
-		if (totalMs < 60 * 60 * 1000) {
+		if (totalHours < 1) {
 			setError("Delay must be at least 1 hour");
 			return;
 		}
@@ -124,7 +103,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			const response = await fetch(`/api/admin/brands/${brand.id}/delay-override`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ delayOverrideMs: totalMs }),
+				body: JSON.stringify({ delayOverrideHours: totalHours }),
 			});
 			
 			if (!response.ok) {
@@ -149,7 +128,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			const response = await fetch(`/api/admin/brands/${brand.id}/delay-override`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ delayOverrideMs: null }),
+				body: JSON.stringify({ delayOverrideHours: null }),
 			});
 			
 			if (!response.ok) {
@@ -177,7 +156,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 				<DialogHeader>
 					<DialogTitle>Configure Job Delay for {brand.name}</DialogTitle>
 					<DialogDescription>
-						Set a custom delay for how often prompt jobs run. Default is {formatDelay(DEFAULT_DELAY_MS)}.
+						Set a custom delay for how often prompt jobs run. Default is {formatDelayHours(DEFAULT_DELAY_HOURS)}.
 					</DialogDescription>
 				</DialogHeader>
 				
@@ -221,50 +200,14 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 									placeholder="0"
 								/>
 							</div>
-							<div className="space-y-2">
-								<Label htmlFor="minutes" className="text-xs text-muted-foreground">Minutes</Label>
-								<Input
-									id="minutes"
-									type="number"
-									min="0"
-									value={timeUnits.minutes || ""}
-									onChange={(e) => handleUpdateUnit("minutes", e.target.value)}
-									disabled={isUpdating}
-									placeholder="0"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="seconds" className="text-xs text-muted-foreground">Seconds</Label>
-								<Input
-									id="seconds"
-									type="number"
-									min="0"
-									value={timeUnits.seconds || ""}
-									onChange={(e) => handleUpdateUnit("seconds", e.target.value)}
-									disabled={isUpdating}
-									placeholder="0"
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor="milliseconds" className="text-xs text-muted-foreground">Milliseconds</Label>
-								<Input
-									id="milliseconds"
-									type="number"
-									min="0"
-									value={timeUnits.milliseconds || ""}
-									onChange={(e) => handleUpdateUnit("milliseconds", e.target.value)}
-									disabled={isUpdating}
-									placeholder="0"
-								/>
-							</div>
 						</div>
 						<p className="text-sm text-muted-foreground">
-							Current: <strong>{formatDelay(currentDelay)}</strong>
-							{brand.delayOverrideMs !== null && " (custom)"}
-							{brand.delayOverrideMs === null && " (default)"}
+							Current: <strong>{formatDelayHours(currentDelay)}</strong>
+							{brand.delayOverrideHours !== null && " (custom)"}
+							{brand.delayOverrideHours === null && " (default)"}
 						</p>
 						<p className="text-sm text-muted-foreground">
-							Total: <strong>{formatDelay(timeUnitsToMs(timeUnits))}</strong>
+							Total: <strong>{formatDelayHours(timeUnitsToHours(timeUnits))}</strong>
 						</p>
 					</div>
 					
@@ -275,7 +218,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 				
 				<DialogFooter>
 					<div className="flex justify-between w-full">
-						{brand.delayOverrideMs !== null && (
+						{brand.delayOverrideHours !== null && (
 							<Button
 								variant="outline"
 								onClick={handleClearOverride}
@@ -1132,11 +1075,12 @@ export default function AdminPage() {
 							</TableHeader>
 							<TableBody>
 								{brands.map((brand) => {
-									const currentDelay = brand.delayOverrideMs ?? DEFAULT_DELAY_MS;
+									const currentDelayHours = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+									const currentDelayMs = currentDelayHours * 60 * 60 * 1000;
 									
 									// Check if last run is overdue
 									const isOverdue = brand.lastPromptRunAt && brand.activePrompts > 0
-										? new Date().getTime() - new Date(brand.lastPromptRunAt).getTime() > currentDelay
+										? new Date().getTime() - new Date(brand.lastPromptRunAt).getTime() > currentDelayMs
 										: false;
 									
 									return (
@@ -1188,8 +1132,8 @@ export default function AdminPage() {
 											</TableCell>
 											<TableCell>
 												<div className="space-y-1">
-													<div className="font-medium">{formatDelay(currentDelay)}</div>
-													{brand.delayOverrideMs !== null ? (
+													<div className="font-medium">{formatDelayHours(currentDelayHours)}</div>
+													{brand.delayOverrideHours !== null ? (
 														<span className="text-xs text-muted-foreground">Custom</span>
 													) : (
 														<span className="text-xs text-muted-foreground">Default</span>

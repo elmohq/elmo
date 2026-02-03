@@ -70,17 +70,17 @@ function formatRelativeTime(dateString: string | null): string {
 	return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-const DEFAULT_DELAY_MS = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+const DEFAULT_DELAY_HOURS = 72; // 3 days in hours
 
-function formatRunFrequency(ms: number): string {
-	const weeks = Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
-	const days = Math.floor((ms % (7 * 24 * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000));
-	const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+function formatRunFrequency(hours: number): string {
+	const weeks = Math.floor(hours / (7 * 24));
+	const days = Math.floor((hours % (7 * 24)) / 24);
+	const remainingHours = hours % 24;
 	
 	const parts: string[] = [];
 	if (weeks > 0) parts.push(`${weeks}w`);
 	if (days > 0) parts.push(`${days}d`);
-	if (hours > 0) parts.push(`${hours}h`);
+	if (remainingHours > 0) parts.push(`${remainingHours}h`);
 	
 	return parts.length > 0 ? `~${parts.join(" ")}` : "~1h";
 }
@@ -487,8 +487,8 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					<StatWithTooltip
 						icon={IconClock}
 						label="run frequency"
-						value={formatRunFrequency(brand?.delayOverrideMs ?? DEFAULT_DELAY_MS)}
-						tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideMs ?? DEFAULT_DELAY_MS).replace("~", "")} on average to track changes in AI model responses over time.`}
+						value={formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS)}
+						tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS).replace("~", "")} on average to track changes in AI model responses over time.`}
 					/>
 					<StatWithTooltip
 						icon={IconRefresh}

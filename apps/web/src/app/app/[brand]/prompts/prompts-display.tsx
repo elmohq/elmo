@@ -187,7 +187,7 @@ export function PromptsDisplay({
 		website: "",
 		enabled: true,
 		onboarded: true,
-		delayOverrideMs: null,
+		delayOverrideHours: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} : null;

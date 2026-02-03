@@ -130,7 +130,6 @@ pnpm drizzle-kit migrate              # Run migrations
 
 ```bash
 pnpm --filter @workspace/worker dev   # Run worker in dev mode
-pnpm --filter @workspace/web queuedash  # Queue dashboard
 ```
 
 ### Versioning
