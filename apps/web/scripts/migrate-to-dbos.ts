@@ -4,7 +4,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { DBOSClient } from "@dbos-inc/dbos-sdk";
-import { promptsQueue } from "@workspace/lib/dbos";
+import { PROMPTS_QUEUE_NAME } from "@workspace/lib/dbos";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 
 const WORKFLOW_NAME = "processPrompt";
@@ -119,7 +119,7 @@ async function migrate() {
 				await dbosClient.enqueue(
 					{
 						workflowName: WORKFLOW_NAME,
-						queueName: promptsQueue.name,
+						queueName: PROMPTS_QUEUE_NAME,
 						workflowID: workflowId,
 					},
 					info.promptId,

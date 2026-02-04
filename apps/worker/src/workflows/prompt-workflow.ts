@@ -11,7 +11,7 @@ import {
 } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { AI_MODELS, RUNS_PER_PROMPT, DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
-import { promptsQueue } from "@workspace/lib/dbos";
+import { promptsQueue } from "../queues";
 import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
 import {
 	ingestPromptRuns,

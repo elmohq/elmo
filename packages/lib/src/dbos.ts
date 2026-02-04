@@ -1,13 +1,5 @@
-import { WorkflowQueue } from "@dbos-inc/dbos-sdk";
-import { DEFAULT_DELAY_HOURS } from "./constants";
+// Queue names - safe to import anywhere (web, worker, etc.)
+export const PROMPTS_QUEUE_NAME = "prompts-queue";
+export const REPORTS_QUEUE_NAME = "reports-queue";
 
-export const promptsQueue = new WorkflowQueue("prompts-queue", {
-	workerConcurrency: 5,
-	rateLimit: { limitPerPeriod: 50, periodSec: 60 },
-});
-
-export const reportsQueue = new WorkflowQueue("reports-queue", {
-	workerConcurrency: 2,
-});
-
-export { DEFAULT_DELAY_HOURS };
+export { DEFAULT_DELAY_HOURS } from "./constants";

@@ -1,5 +1,8 @@
 import { DBOS } from "@dbos-inc/dbos-sdk";
 
+// Import queues first to register them before workflows
+import "./queues";
+
 import "./workflows/prompt-workflow";
 import "./workflows/report-workflow";
 import "./workflows/retention-workflow";

@@ -45,7 +45,7 @@ interface PromptScheduleStatus {
 	};
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
-	isActiveOrWaiting: boolean;
+	workflowStatus: "running" | "sleeping" | "enqueued" | "none";
 	isInInitialDelay: boolean;
 }
 
@@ -65,12 +65,12 @@ interface BrandScheduleSummary {
 
 interface QueueStats {
 	name: string;
-	waiting: number;
-	active: number;
+	enqueued: number;
+	running: number;
+	sleeping: number;
 	completed: number;
 	failed: number;
-	delayed: number;
-	schedulersCount: number;
+	totalActive: number;
 }
 
 interface RecentJob {
@@ -107,14 +107,26 @@ function parseInputs(raw: unknown): { promptId?: string; initialDelayHours?: num
 
 	try {
 		const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-		if (Array.isArray(parsed)) {
+
+		// Handle DBOS superjson format: { json: [...], __dbos_serializer: "superjson" }
+		let args: unknown = parsed;
+		if (
+			typeof parsed === "object" &&
+			parsed !== null &&
+			"json" in parsed &&
+			(parsed as Record<string, unknown>).__dbos_serializer === "superjson"
+		) {
+			args = (parsed as Record<string, unknown>).json;
+		}
+
+		if (Array.isArray(args)) {
 			return {
-				promptId: typeof parsed[0] === "string" ? parsed[0] : undefined,
-				initialDelayHours: typeof parsed[1] === "number" ? parsed[1] : undefined,
+				promptId: typeof args[0] === "string" ? args[0] : undefined,
+				initialDelayHours: typeof args[1] === "number" ? args[1] : undefined,
 			};
 		}
-		if (typeof parsed === "object" && parsed !== null) {
-			const obj = parsed as Record<string, unknown>;
+		if (typeof args === "object" && args !== null) {
+			const obj = args as Record<string, unknown>;
 			return {
 				promptId: typeof obj.promptId === "string" ? obj.promptId : undefined,
 				initialDelayHours: typeof obj.initialDelayHours === "number" ? obj.initialDelayHours : undefined,
@@ -131,7 +143,18 @@ function parseError(raw: unknown): { message: string | null; stack: string[] | n
 	if (!raw) return { message: null, stack: null };
 
 	try {
-		const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+		let parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+
+		// Handle DBOS superjson format if present
+		if (
+			typeof parsed === "object" &&
+			parsed !== null &&
+			"json" in parsed &&
+			(parsed as Record<string, unknown>).__dbos_serializer === "superjson"
+		) {
+			parsed = (parsed as Record<string, unknown>).json;
+		}
+
 		if (parsed && typeof parsed === "object") {
 			const errorObj = parsed as { message?: string; stack?: string };
 			const stack = errorObj.stack ? errorObj.stack.split("\n") : null;
@@ -144,12 +167,12 @@ function parseError(raw: unknown): { message: string | null; stack: string[] | n
 	return { message: "Unknown error", stack: null };
 }
 
-async function getQueueStats(): Promise<QueueStats> {
+async function getQueueStats(sleepingCount: number): Promise<QueueStats> {
 	const rows = await withDbosClient(async (client) => {
 		const result = await client.query(
 			`SELECT
-				COUNT(*) FILTER (WHERE status = 'ENQUEUED') AS waiting,
-				COUNT(*) FILTER (WHERE status = 'PENDING') AS active,
+				COUNT(*) FILTER (WHERE status = 'ENQUEUED') AS enqueued,
+				COUNT(*) FILTER (WHERE status = 'PENDING') AS running,
 				COUNT(*) FILTER (WHERE status = 'SUCCESS') AS completed,
 				COUNT(*) FILTER (WHERE status = 'ERROR') AS failed
 			FROM dbos.workflow_status
@@ -159,14 +182,17 @@ async function getQueueStats(): Promise<QueueStats> {
 		return result.rows[0];
 	});
 
+	const enqueued = Number(rows.enqueued || 0);
+	const running = Number(rows.running || 0);
+
 	return {
 		name: WORKFLOW_NAME,
-		waiting: Number(rows.waiting || 0),
-		active: Number(rows.active || 0),
+		enqueued,
+		running,
+		sleeping: sleepingCount,
 		completed: Number(rows.completed || 0),
 		failed: Number(rows.failed || 0),
-		delayed: 0,
-		schedulersCount: 1,
+		totalActive: enqueued + running,
 	};
 }
 
@@ -202,7 +228,17 @@ async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
 	});
 }
 
-async function getActiveWorkflowMap(): Promise<Map<string, { nextRunAt: number | null; isInInitialDelay: boolean }>> {
+interface WorkflowInfo {
+	nextRunAt: number | null;
+	isInInitialDelay: boolean;
+	isRunning: boolean; // PENDING status (actually executing)
+	isEnqueued: boolean; // ENQUEUED status (waiting in queue)
+}
+
+async function getActiveWorkflowMap(): Promise<{
+	map: Map<string, WorkflowInfo>;
+	sleepingCount: number;
+}> {
 	const now = Date.now();
 	const rows = await withDbosClient(async (client) => {
 		const result = await client.query(
@@ -214,7 +250,8 @@ async function getActiveWorkflowMap(): Promise<Map<string, { nextRunAt: number |
 		return result.rows;
 	});
 
-	const map = new Map<string, { nextRunAt: number | null; isInInitialDelay: boolean }>();
+	const map = new Map<string, WorkflowInfo>();
+	let sleepingCount = 0;
 
 	for (const row of rows) {
 		const inputs = parseInputs(row.inputs);
@@ -224,11 +261,15 @@ async function getActiveWorkflowMap(): Promise<Map<string, { nextRunAt: number |
 		const delayMs = (inputs.initialDelayHours ?? 0) * 60 * 60 * 1000;
 		const nextRunAt = delayMs > 0 ? createdAt + delayMs : null;
 		const isInInitialDelay = Boolean(nextRunAt && nextRunAt > now);
+		const isRunning = row.status === "PENDING";
+		const isEnqueued = row.status === "ENQUEUED";
 
-		map.set(inputs.promptId, { nextRunAt, isInInitialDelay });
+		if (isInInitialDelay) sleepingCount++;
+
+		map.set(inputs.promptId, { nextRunAt, isInInitialDelay, isRunning, isEnqueued });
 	}
 
-	return map;
+	return { map, sleepingCount };
 }
 
 export async function GET() {
@@ -268,11 +309,13 @@ export async function GET() {
 			lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
 		}
 
-		const [queueStats, recentJobs, activeWorkflowMap] = await Promise.all([
-			getQueueStats(),
+		const [recentJobs, activeWorkflowResult] = await Promise.all([
 			getRecentJobs(5000),
 			getActiveWorkflowMap(),
 		]);
+
+		const activeWorkflowMap = activeWorkflowResult.map;
+		const queueStats = await getQueueStats(activeWorkflowResult.sleepingCount);
 
 		const failuresByPrompt = new Map<string, number>();
 		for (const job of recentJobs) {
@@ -360,6 +403,16 @@ export async function GET() {
 					}
 				}
 
+				// Determine workflow status
+				let workflowStatus: "running" | "sleeping" | "enqueued" | "none" = "none";
+				if (workflowInfo) {
+					if (workflowInfo.isRunning) {
+						workflowStatus = workflowInfo.isInInitialDelay ? "sleeping" : "running";
+					} else if (workflowInfo.isEnqueued) {
+						workflowStatus = "enqueued";
+					}
+				}
+
 				return {
 					promptId: prompt.id,
 					promptValue: prompt.value,
@@ -370,7 +423,7 @@ export async function GET() {
 					lastRunsByModelGroup,
 					schedulerInfo,
 					recentFailures: failuresByPrompt.get(prompt.id) || 0,
-					isActiveOrWaiting: Boolean(workflowInfo),
+					workflowStatus,
 					isInInitialDelay: Boolean(workflowInfo?.isInInitialDelay),
 				};
 			});

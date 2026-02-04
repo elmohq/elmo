@@ -3,7 +3,7 @@ import { hasReportGeneratorAccess } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { reportsQueue } from "@workspace/lib/dbos";
+import { REPORTS_QUEUE_NAME } from "@workspace/lib/dbos";
 import { getDbosClient } from "@/lib/dbos-client";
 
 export async function GET() {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 			await dbosClient.enqueue(
 				{
 					workflowName: "generateReport",
-					queueName: reportsQueue.name,
+					queueName: REPORTS_QUEUE_NAME,
 				},
 				createdReport.id,
 				createdReport.brandName,

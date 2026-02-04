@@ -2,7 +2,7 @@ import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
-import { promptsQueue } from "@workspace/lib/dbos";
+import { PROMPTS_QUEUE_NAME } from "@workspace/lib/dbos";
 import { getDbosClient } from "@/lib/dbos-client";
 
 const WORKFLOW_NAME = "processPrompt";
@@ -57,7 +57,7 @@ export async function createPromptJobScheduler(
 
 		const workflowOptions = {
 			workflowName: WORKFLOW_NAME,
-			queueName: promptsQueue.name,
+			queueName: PROMPTS_QUEUE_NAME,
 			workflowID: `prompt-${promptId}-${Date.now()}`,
 		};
 

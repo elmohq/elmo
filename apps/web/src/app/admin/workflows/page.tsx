@@ -60,7 +60,7 @@ interface PromptScheduleStatus {
 	};
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
-	isActiveOrWaiting: boolean;
+	workflowStatus: "running" | "sleeping" | "enqueued" | "none";
 }
 
 interface BrandScheduleSummary {
@@ -79,12 +79,12 @@ interface BrandScheduleSummary {
 
 interface QueueStats {
 	name: string;
-	waiting: number;
-	active: number;
+	enqueued: number;
+	running: number;
+	sleeping: number;
 	completed: number;
 	failed: number;
-	delayed: number;
-	schedulersCount: number;
+	totalActive: number;
 }
 
 interface RecentJob {
@@ -160,7 +160,7 @@ function formatFutureTime(timestamp: number | null): string {
 }
 
 function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) {
-	const hasIssues = stats.failed > 0 || stats.delayed > 10;
+	const hasIssues = stats.failed > 0;
 
 	return (
 		<Card className={hasIssues ? "border-amber-500/50" : ""}>
@@ -169,20 +169,21 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 					<Server className="h-4 w-4" />
 					{title}
 				</CardTitle>
+				<CardDescription>DBOS Workflow Status</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div className="grid grid-cols-3 gap-4 text-sm">
 					<div>
-						<p className="text-muted-foreground">Active</p>
-						<p className="text-xl font-semibold text-emerald-600">{stats.active}</p>
+						<p className="text-muted-foreground">Running</p>
+						<p className="text-xl font-semibold text-emerald-600">{stats.running}</p>
 					</div>
 					<div>
-						<p className="text-muted-foreground">Waiting</p>
-						<p className="text-xl font-semibold text-blue-600">{stats.waiting}</p>
+						<p className="text-muted-foreground">Enqueued</p>
+						<p className="text-xl font-semibold text-blue-600">{stats.enqueued}</p>
 					</div>
 					<div>
-						<p className="text-muted-foreground">Delayed</p>
-						<p className="text-xl font-semibold text-amber-600">{stats.delayed}</p>
+						<p className="text-muted-foreground">Sleeping</p>
+						<p className="text-xl font-semibold text-amber-600">{stats.sleeping}</p>
 					</div>
 					<div>
 						<p className="text-muted-foreground">Completed</p>
@@ -193,8 +194,8 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 						<p className={`text-xl font-semibold ${stats.failed > 0 ? "text-red-600" : ""}`}>{stats.failed}</p>
 					</div>
 					<div>
-						<p className="text-muted-foreground">Schedulers</p>
-						<p className="text-xl font-semibold text-violet-600">{stats.schedulersCount}</p>
+						<p className="text-muted-foreground">Total Active</p>
+						<p className="text-xl font-semibold text-violet-600">{stats.totalActive}</p>
 					</div>
 				</div>
 			</CardContent>
@@ -613,7 +614,8 @@ function BrandRow({
 											.filter((j) => j.data?.promptId === prompt.promptId)
 											.sort((a, b) => b.timestamp - a.timestamp);
 										const latestJob = promptJobs[0];
-										const showRetry = prompt.enabled && isStuck && prompt.schedulerInfo.exists && !prompt.isActiveOrWaiting;
+										const hasActiveWorkflow = prompt.workflowStatus !== "none";
+										const showRetry = prompt.enabled && isStuck && prompt.schedulerInfo.exists && !hasActiveWorkflow;
 										const shouldDim = !prompt.enabled;
 
 										return (
@@ -622,7 +624,7 @@ function BrandRow({
 													<p className="truncate text-sm" title={prompt.promptValue}>
 														{prompt.promptValue}
 													</p>
-													{prompt.isActiveOrWaiting && (
+													{prompt.workflowStatus === "running" && (
 														<div className="flex items-center gap-1 mt-1">
 															<Loader2 className="h-3 w-3 animate-spin text-blue-500" />
 															<span className="text-xs text-blue-600">
@@ -640,9 +642,14 @@ function BrandRow({
 																Enabled
 															</Badge>
 															{/* TODO(post-migration): Remove initial delay status after initialDelayHours is removed */}
-															{prompt.isInInitialDelay && (
+															{prompt.workflowStatus === "sleeping" && (
 																<Badge variant="secondary" className="bg-amber-100 text-amber-700">
-																	Initial delay
+																	Sleeping
+																</Badge>
+															)}
+															{prompt.workflowStatus === "enqueued" && (
+																<Badge variant="secondary" className="bg-blue-100 text-blue-700">
+																	Queued
 																</Badge>
 															)}
 														</div>
@@ -667,8 +674,14 @@ function BrandRow({
 													{showRetry && (
 														<RetryButton promptId={prompt.promptId} onSuccess={onRefresh} />
 													)}
-													{prompt.isActiveOrWaiting && (
-														<span className="text-xs text-muted-foreground">In progress...</span>
+													{prompt.workflowStatus === "running" && (
+														<span className="text-xs text-muted-foreground">Processing...</span>
+													)}
+													{prompt.workflowStatus === "sleeping" && (
+														<span className="text-xs text-muted-foreground">Waiting...</span>
+													)}
+													{prompt.workflowStatus === "enqueued" && (
+														<span className="text-xs text-muted-foreground">In queue</span>
 													)}
 												</TableCell>
 											</TableRow>
