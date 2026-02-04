@@ -1,16 +1,29 @@
 import { WorkflowQueue } from "@dbos-inc/dbos-sdk";
 import { PROMPTS_QUEUE_NAME, REPORTS_QUEUE_NAME } from "@workspace/lib/dbos";
 
-// Note: workerConcurrency is set very high because we migrated ~4000 workflows
-// that have initialDelayHours and call DBOS.sleep(). While sleeping, workflows
-// are "active" (count against concurrency) but don't consume CPU - they're
-// persisted in the database. The rateLimit controls actual API throughput.
-// TODO(post-migration): Once initialDelayHours is removed and workflows
-// schedule their next run at completion time (not sleep internally),
-// this can be reduced to a lower number like 10-20.
+/**
+ * Prompts Queue Configuration
+ *
+ * CURRENT STATE (during migration):
+ * - workerConcurrency is set very high (5000) because ~4000 workflows have
+ *   initialDelayHours and call DBOS.sleep(). Sleeping workflows count against
+ *   concurrency but don't consume CPU.
+ * - No rateLimit so workflows can start quickly and enter sleep state.
+ * - Actual API calls are limited by apiCallSemaphore (see semaphore.ts).
+ *
+ * TODO(post-migration): Once initialDelayHours is removed from all workflows:
+ * 1. Reduce workerConcurrency to 10-20 (this will naturally limit API calls)
+ * 2. Optionally add rateLimit back: { limitPerPeriod: 50, periodSec: 60 }
+ * 3. Remove apiCallSemaphore usage from prompt-workflow.ts
+ * 4. Delete semaphore.ts
+ *
+ * Post-migration, workflows will:
+ * - Run immediately when started (no internal sleep)
+ * - Complete and schedule next run as a NEW workflow with delay
+ * - workerConcurrency will directly limit concurrent API calls
+ */
 export const promptsQueue = new WorkflowQueue(PROMPTS_QUEUE_NAME, {
 	workerConcurrency: 5000,
-	rateLimit: { limitPerPeriod: 50, periodSec: 60 },
 });
 
 export const reportsQueue = new WorkflowQueue(REPORTS_QUEUE_NAME, {
