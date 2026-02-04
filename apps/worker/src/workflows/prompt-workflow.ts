@@ -90,6 +90,14 @@ const getDelayHoursStep = DBOS.registerStep(
 	{ name: "getDelayHours", retriesAllowed: true, maxAttempts: 3, intervalSeconds: 2 },
 );
 
+/**
+ * Sanitize an object to ensure it's plain JSON-serializable.
+ * This handles DBOS serialization stubs that can appear in recovered workflow data.
+ */
+function sanitizeForJson(obj: unknown): unknown {
+	return JSON.parse(JSON.stringify(obj));
+}
+
 function analyzeMentions(
 	content: string,
 	brand: Brand,
@@ -242,6 +250,10 @@ async function runModelIteration({
 		{ name: stepName, retriesAllowed: true, maxAttempts: 3, intervalSeconds: 5, backoffRate: 2 },
 	);
 
+	// Sanitize rawOutput to ensure it's plain JSON (DBOS serialization can leave stubs
+	// for functions which cause issues when saving to database on workflow recovery)
+	const sanitizedRawOutput = sanitizeForJson(rawOutput);
+
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitorsList);
 
 	const { id: promptRunId, createdAt } = await savePromptRunStep(
@@ -249,7 +261,7 @@ async function runModelIteration({
 		modelGroup,
 		model,
 		webSearchEnabled,
-		rawOutput,
+		sanitizedRawOutput,
 		webQueries,
 		brandMentioned,
 		competitorsMentioned,
@@ -262,7 +274,7 @@ async function runModelIteration({
 		modelGroup,
 		model,
 		webSearchEnabled,
-		rawOutput,
+		sanitizedRawOutput,
 		webQueries,
 		brandMentioned,
 		competitorsMentioned,
