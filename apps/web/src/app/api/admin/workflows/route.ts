@@ -171,27 +171,60 @@ async function getQueueStats(): Promise<QueueStats> {
 
 async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
 	const jobs = await withPgClient(async (client) => {
-		// Check if pgboss archive table exists
-		const tableCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'archive')`,
-		);
-		
-		if (!tableCheck.rows[0]?.exists) {
-			return [];
+		// Check which pg-boss tables exist
+		const [jobCheck, archiveCheck] = await Promise.all([
+			client.query(
+				`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
+			),
+			client.query(
+				`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'archive')`,
+			),
+		]);
+
+		const rows: any[] = [];
+
+		if (jobCheck.rows[0]?.exists) {
+			const result = await client.query(
+				`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
+				 FROM pgboss.job
+				 WHERE name = 'process-prompt'
+				   AND state IN ('completed', 'failed')
+				 ORDER BY completed_on DESC NULLS LAST
+				 LIMIT $1`,
+				[limit],
+			);
+			rows.push(...result.rows);
 		}
 
-		const result = await client.query(
-			`SELECT id, name, data, state, output, retrycount, createdon, startedon, completedon
-			 FROM pgboss.archive
-			 WHERE name = 'process-prompt'
-			 ORDER BY completedon DESC NULLS LAST
-			 LIMIT $1`,
-			[limit],
-		);
-		return result.rows;
+		if (archiveCheck.rows[0]?.exists) {
+			const result = await client.query(
+				`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
+				 FROM pgboss.archive
+				 WHERE name = 'process-prompt'
+				 ORDER BY completed_on DESC NULLS LAST
+				 LIMIT $1`,
+				[limit],
+			);
+			rows.push(...result.rows);
+		}
+
+		return rows;
 	});
 
-	return jobs.map((row) => {
+	const deduped = new Map<string, typeof jobs[number]>();
+	for (const row of jobs) {
+		if (!deduped.has(row.id)) {
+			deduped.set(row.id, row);
+		}
+	}
+
+	const sorted = Array.from(deduped.values()).sort((a, b) => {
+		const aTime = a.completed_on ? new Date(a.completed_on).getTime() : 0;
+		const bTime = b.completed_on ? new Date(b.completed_on).getTime() : 0;
+		return bTime - aTime;
+	});
+
+	return sorted.slice(0, limit).map((row) => {
 		const data = parseJobData(row.data);
 		let failedReason: string | null = null;
 		
@@ -210,10 +243,10 @@ async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
 			data,
 			status: row.state === "completed" ? "completed" : "failed",
 			failedReason,
-			attemptsMade: row.retrycount || 0,
-			timestamp: row.createdon ? new Date(row.createdon).getTime() : 0,
-			processedOn: row.startedon ? new Date(row.startedon).getTime() : null,
-			finishedOn: row.completedon ? new Date(row.completedon).getTime() : null,
+			attemptsMade: row.retry_count || 0,
+			timestamp: row.created_on ? new Date(row.created_on).getTime() : 0,
+			processedOn: row.started_on ? new Date(row.started_on).getTime() : null,
+			finishedOn: row.completed_on ? new Date(row.completed_on).getTime() : null,
 		};
 	});
 }
@@ -221,6 +254,70 @@ async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
 interface ScheduleInfo {
 	promptId: string;
 	cadenceHours: number | null;
+	nextRunAt: number | null;
+}
+
+function getNextRunFromCron(cron: string, now: Date): number | null {
+	const hourlyMatch = cron.match(/^0 \*\/(\d+) \* \* \*$/);
+	if (hourlyMatch) {
+		const interval = Number(hourlyMatch[1]);
+		if (!Number.isFinite(interval) || interval <= 0) return null;
+
+		const nowMs = now.getTime();
+		const nowUtc = new Date(nowMs);
+		const year = nowUtc.getUTCFullYear();
+		const month = nowUtc.getUTCMonth();
+		const day = nowUtc.getUTCDate();
+		const hour = nowUtc.getUTCHours();
+		const minute = nowUtc.getUTCMinutes();
+		const second = nowUtc.getUTCSeconds();
+		const ms = nowUtc.getUTCMilliseconds();
+
+		let nextHour = hour;
+		if (minute > 0 || second > 0 || ms > 0) {
+			nextHour += 1;
+		}
+
+		for (let i = 0; i <= 48; i += 1) {
+			const h = nextHour + i;
+			if (h % interval === 0) {
+				const dayOffset = Math.floor(h / 24);
+				const hourOfDay = h % 24;
+				const baseMidnight = Date.UTC(year, month, day, 0, 0, 0, 0);
+				const candidateMs =
+					baseMidnight + dayOffset * 24 * 60 * 60 * 1000 + hourOfDay * 60 * 60 * 1000;
+				if (candidateMs > nowMs) {
+					return candidateMs;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	const dailyMatch = cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
+	if (dailyMatch) {
+		const dayInterval = dailyMatch[1] ? Number(dailyMatch[1]) : 1;
+		if (!Number.isFinite(dayInterval) || dayInterval <= 0) return null;
+
+		const nowMs = now.getTime();
+		const nowUtc = new Date(nowMs);
+
+		for (let i = 0; i <= 31; i += 1) {
+			const candidate = new Date(
+				Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() + i, 0, 0, 0, 0),
+			);
+			const dayOfMonth = candidate.getUTCDate();
+			const matches = dayInterval === 1 || (dayOfMonth - 1) % dayInterval === 0;
+			if (matches && candidate.getTime() > nowMs) {
+				return candidate.getTime();
+			}
+		}
+
+		return null;
+	}
+
+	return null;
 }
 
 async function getScheduleMap(): Promise<Map<string, ScheduleInfo>> {
@@ -244,6 +341,7 @@ async function getScheduleMap(): Promise<Map<string, ScheduleInfo>> {
 	});
 
 	const map = new Map<string, ScheduleInfo>();
+	const now = new Date();
 
 	for (const row of schedules) {
 		// The key is the promptId
@@ -252,6 +350,7 @@ async function getScheduleMap(): Promise<Map<string, ScheduleInfo>> {
 			// Parse cadence from cron expression
 			// Formats: "0 */N * * *" (every N hours) or "0 0 */N * *" (every N days)
 			let cadenceHours: number | null = null;
+			let nextRunAt: number | null = null;
 			if (row.cron) {
 				// Try hourly pattern: "0 */6 * * *"
 				const hourlyMatch = row.cron.match(/^0 \*\/(\d+) \* \* \*$/);
@@ -264,8 +363,10 @@ async function getScheduleMap(): Promise<Map<string, ScheduleInfo>> {
 						cadenceHours = dailyMatch[1] ? Number(dailyMatch[1]) * 24 : 24;
 					}
 				}
+
+				nextRunAt = getNextRunFromCron(row.cron, now);
 			}
-			map.set(promptId, { promptId, cadenceHours });
+			map.set(promptId, { promptId, cadenceHours, nextRunAt });
 		}
 	}
 
@@ -289,10 +390,19 @@ async function getActiveJobMap(): Promise<Map<string, ActiveJobInfo>> {
 		}
 
 		const result = await client.query(`
-			SELECT id, data, state
+			SELECT id, data, state, created_on, started_on
 			FROM pgboss.job
 			WHERE name = 'process-prompt'
 			  AND state IN ('created', 'active', 'retry')
+			ORDER BY
+				CASE state
+					WHEN 'active' THEN 1
+					WHEN 'retry' THEN 2
+					WHEN 'created' THEN 3
+					ELSE 4
+				END,
+				started_on DESC NULLS LAST,
+				created_on DESC NULLS LAST
 		`);
 		return result.rows;
 	});
@@ -302,10 +412,12 @@ async function getActiveJobMap(): Promise<Map<string, ActiveJobInfo>> {
 	for (const row of jobs) {
 		const data = parseJobData(row.data);
 		if (data.promptId) {
-			map.set(data.promptId, {
-				promptId: data.promptId,
-				state: row.state as "created" | "active" | "retry",
-			});
+			if (!map.has(data.promptId)) {
+				map.set(data.promptId, {
+					promptId: data.promptId,
+					state: row.state as "created" | "active" | "retry",
+				});
+			}
 		}
 	}
 
@@ -415,7 +527,7 @@ export async function GET() {
 				const schedulerInfo: SchedulerInfo = scheduleInfo
 					? {
 							exists: true,
-							nextRunAt: null, // pg-boss doesn't expose next run time easily
+							nextRunAt: scheduleInfo.nextRunAt,
 							cadenceHours: scheduleInfo.cadenceHours,
 						}
 					: defaultSchedulerInfo;

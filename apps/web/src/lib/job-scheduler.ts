@@ -16,8 +16,12 @@ import { getBoss } from "@/lib/boss-client";
  * - 72 hours → "0 0 *\/3 * *" (every 3 days at midnight)
  */
 export function hoursToCron(hours: number): string {
-	if (hours <= 0) {
-		throw new Error("Hours must be positive");
+	if (!Number.isFinite(hours) || hours <= 0) {
+		throw new Error("Hours must be a positive number");
+	}
+
+	if (!Number.isInteger(hours)) {
+		throw new Error("Hours must be an integer for cron scheduling");
 	}
 
 	if (hours < 24) {
@@ -26,8 +30,12 @@ export function hoursToCron(hours: number): string {
 		return `0 */${hours} * * *`;
 	}
 
-	// For >= 24 hours, convert to days
-	const days = Math.round(hours / 24);
+	// For >= 24 hours, convert to days (only exact multiples)
+	if (hours % 24 !== 0) {
+		throw new Error("Hours must be a multiple of 24 for daily cron scheduling");
+	}
+
+	const days = hours / 24;
 	if (days === 1) {
 		// Daily at midnight
 		return "0 0 * * *";
@@ -79,10 +87,18 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
  * Creates a schedule for a prompt to run on a recurring cadence.
  * Also sends an immediate job for the first run.
  */
-export async function createPromptJobScheduler(promptId: string): Promise<boolean> {
+type SchedulerOptions = {
+	sendImmediate?: boolean;
+};
+
+export async function createPromptJobScheduler(
+	promptId: string,
+	options: SchedulerOptions = {},
+): Promise<boolean> {
 	try {
 		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
+		const sendImmediate = options.sendImmediate ?? true;
 
 		// Use fixed job name with promptId as key for uniqueness
 		// This way the worker can listen for "process-prompt" jobs
@@ -93,19 +109,21 @@ export async function createPromptJobScheduler(promptId: string): Promise<boolea
 		const cron = hoursToCron(cadenceHours);
 		await boss.schedule("process-prompt", cron, { promptId }, { tz: "UTC", key: promptId });
 
-		// Also send an immediate job for first run
-		await boss.send(
-			"process-prompt",
-			{ promptId },
-			{
-				singletonKey: `immediate-${promptId}`,
-				singletonSeconds: 60 * 60, // 1 hour - prevent duplicate immediate jobs
-				retryLimit: 3,
-				retryDelay: 60,
-				retryBackoff: true,
-				expireInSeconds: 60 * 15, // 15 minute timeout
-			},
-		);
+		if (sendImmediate) {
+			// Also send an immediate job for first run
+			await boss.send(
+				"process-prompt",
+				{ promptId },
+				{
+					singletonKey: `immediate-${promptId}`,
+					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate immediate jobs
+					retryLimit: 3,
+					retryDelay: 60,
+					retryBackoff: true,
+					expireInSeconds: 60 * 15, // 15 minute timeout
+				},
+			);
+		}
 
 		console.log(`Created schedule for prompt ${promptId} with ${cadenceHours}h cadence`);
 		return true;
@@ -137,8 +155,13 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
  * Creates schedules for multiple prompts.
  * Returns an array of results indicating success/failure for each prompt.
  */
-export async function createMultiplePromptJobSchedulers(promptIds: string[]): Promise<boolean[]> {
-	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId)));
+export async function createMultiplePromptJobSchedulers(
+	promptIds: string[],
+	options: SchedulerOptions = {},
+): Promise<boolean[]> {
+	const results = await Promise.allSettled(
+		promptIds.map((promptId) => createPromptJobScheduler(promptId, options)),
+	);
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -157,12 +180,15 @@ export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Pr
  * Recreates a schedule for a prompt (removes and creates).
  * Useful when cadence has changed or job needs to be reset.
  */
-export async function recreatePromptJobScheduler(promptId: string): Promise<boolean> {
+export async function recreatePromptJobScheduler(
+	promptId: string,
+	options: SchedulerOptions = {},
+): Promise<boolean> {
 	try {
 		// Remove existing schedule if any (ignore errors if it doesn't exist)
 		await removePromptJobScheduler(promptId);
 		// Create new schedule
-		return await createPromptJobScheduler(promptId);
+		return await createPromptJobScheduler(promptId, options);
 	} catch (error) {
 		console.error(`Failed to recreate job scheduler for prompt ${promptId}:`, error);
 		return false;

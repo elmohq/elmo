@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
 
 			// Try active jobs first
 			let result = await client.query(
-				`SELECT id, name, data, state, output, retrycount, createdon, startedon, completedon
+				`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
 				 FROM pgboss.job
 				 WHERE id = $1`,
 				[jobId],
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 			if (result.rows.length === 0) {
 				// Try archive
 				result = await client.query(
-					`SELECT id, name, data, state, output, retrycount, createdon, startedon, completedon
+					`SELECT id, name, data, state, output, retry_count, created_on, started_on, completed_on
 					 FROM pgboss.archive
 					 WHERE id = $1`,
 					[jobId],
@@ -75,16 +75,16 @@ export async function GET(request: NextRequest) {
 		logs.push(`Job ID: ${job.id}`);
 		logs.push(`Name: ${job.name}`);
 		logs.push(`State: ${job.state}`);
-		logs.push(`Retry count: ${job.retrycount || 0}`);
+		logs.push(`Retry count: ${job.retry_count || 0}`);
 
-		if (job.createdon) {
-			logs.push(`Created: ${new Date(job.createdon).toISOString()}`);
+		if (job.created_on) {
+			logs.push(`Created: ${new Date(job.created_on).toISOString()}`);
 		}
-		if (job.startedon) {
-			logs.push(`Started: ${new Date(job.startedon).toISOString()}`);
+		if (job.started_on) {
+			logs.push(`Started: ${new Date(job.started_on).toISOString()}`);
 		}
-		if (job.completedon) {
-			logs.push(`Completed: ${new Date(job.completedon).toISOString()}`);
+		if (job.completed_on) {
+			logs.push(`Completed: ${new Date(job.completed_on).toISOString()}`);
 		}
 
 		if (job.data) {

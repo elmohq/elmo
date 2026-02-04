@@ -59,7 +59,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 			console.log(`Updating job schedulers for ${promptIds.length} prompts in brand ${brandId}`);
 
 			// Recreate schedulers - they will pick up the new delay from the updated brand
-			const results = await createMultiplePromptJobSchedulers(promptIds);
+			const results = await createMultiplePromptJobSchedulers(promptIds, { sendImmediate: false });
 			const successCount = results.filter((success) => success).length;
 			const failureCount = results.length - successCount;
 			

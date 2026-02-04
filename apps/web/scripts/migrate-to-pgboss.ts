@@ -29,8 +29,12 @@ const BATCH_SIZE = 50;
  * pg-boss uses standard cron format: minute hour day-of-month month day-of-week
  */
 function hoursToCron(hours: number): string {
-	if (hours <= 0) {
-		throw new Error("Hours must be positive");
+	if (!Number.isFinite(hours) || hours <= 0) {
+		throw new Error("Hours must be a positive number");
+	}
+
+	if (!Number.isInteger(hours)) {
+		throw new Error("Hours must be an integer for cron scheduling");
 	}
 
 	if (hours < 24) {
@@ -38,8 +42,12 @@ function hoursToCron(hours: number): string {
 		return `0 */${hours} * * *`;
 	}
 
-	// For >= 24 hours, convert to days
-	const days = Math.round(hours / 24);
+	// For >= 24 hours, convert to days (only exact multiples)
+	if (hours % 24 !== 0) {
+		throw new Error("Hours must be a multiple of 24 for daily cron scheduling");
+	}
+
+	const days = hours / 24;
 	if (days === 1) {
 		return "0 0 * * *"; // Daily at midnight
 	}
