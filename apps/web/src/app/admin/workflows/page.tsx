@@ -173,15 +173,15 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 			</CardHeader>
 			<CardContent>
 				<div className="grid grid-cols-3 gap-4 text-sm">
-					<div>
-						<p className="text-muted-foreground">Running</p>
+					<div title="PENDING status - workflow started but may be sleeping or waiting for worker">
+						<p className="text-muted-foreground">Pending</p>
 						<p className="text-xl font-semibold text-emerald-600">{stats.running}</p>
 					</div>
-					<div>
+					<div title="ENQUEUED status - waiting in queue to start">
 						<p className="text-muted-foreground">Enqueued</p>
 						<p className="text-xl font-semibold text-blue-600">{stats.enqueued}</p>
 					</div>
-					<div>
+					<div title="Pending workflows currently in initial delay sleep">
 						<p className="text-muted-foreground">Sleeping</p>
 						<p className="text-xl font-semibold text-amber-600">{stats.sleeping}</p>
 					</div>
@@ -624,14 +624,6 @@ function BrandRow({
 													<p className="truncate text-sm" title={prompt.promptValue}>
 														{prompt.promptValue}
 													</p>
-													{prompt.workflowStatus === "running" && (
-														<div className="flex items-center gap-1 mt-1">
-															<Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-															<span className="text-xs text-blue-600">
-																Processing
-															</span>
-														</div>
-													)}
 												</TableCell>
 												<TableCell className="text-center">
 													{!prompt.enabled ? (
@@ -641,7 +633,12 @@ function BrandRow({
 															<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
 																Enabled
 															</Badge>
-															{/* TODO(post-migration): Remove initial delay status after initialDelayHours is removed */}
+															{/* TODO(post-migration): Remove workflow status badges after initialDelayHours is removed */}
+															{prompt.workflowStatus === "running" && (
+																<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+																	Pending
+																</Badge>
+															)}
 															{prompt.workflowStatus === "sleeping" && (
 																<Badge variant="secondary" className="bg-amber-100 text-amber-700">
 																	Sleeping
@@ -675,10 +672,10 @@ function BrandRow({
 														<RetryButton promptId={prompt.promptId} onSuccess={onRefresh} />
 													)}
 													{prompt.workflowStatus === "running" && (
-														<span className="text-xs text-muted-foreground">Processing...</span>
+														<span className="text-xs text-muted-foreground">Pending...</span>
 													)}
 													{prompt.workflowStatus === "sleeping" && (
-														<span className="text-xs text-muted-foreground">Waiting...</span>
+														<span className="text-xs text-muted-foreground">Sleeping...</span>
 													)}
 													{prompt.workflowStatus === "enqueued" && (
 														<span className="text-xs text-muted-foreground">In queue</span>

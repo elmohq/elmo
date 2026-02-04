@@ -9,13 +9,13 @@ import { PROMPTS_QUEUE_NAME, REPORTS_QUEUE_NAME } from "@workspace/lib/dbos";
  *   initialDelayHours and call DBOS.sleep(). Sleeping workflows count against
  *   concurrency but don't consume CPU.
  * - No rateLimit so workflows can start quickly and enter sleep state.
- * - Actual API calls are limited by apiCallSemaphore (see semaphore.ts).
+ * - Actual API calls are limited by a semaphore in ai-providers.ts (max 10 concurrent).
+ *   This is safe because the semaphore is INSIDE the DBOS step, not affecting step order.
  *
  * TODO(post-migration): Once initialDelayHours is removed from all workflows:
  * 1. Reduce workerConcurrency to 10-20 (this will naturally limit API calls)
  * 2. Optionally add rateLimit back: { limitPerPeriod: 50, periodSec: 60 }
- * 3. Remove apiCallSemaphore usage from prompt-workflow.ts
- * 4. Delete semaphore.ts
+ * 3. Remove or increase the semaphore limit in ai-providers.ts
  *
  * Post-migration, workflows will:
  * - Run immediately when started (no internal sleep)

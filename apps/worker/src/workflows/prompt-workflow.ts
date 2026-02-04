@@ -21,8 +21,6 @@ import {
 	type TinybirdPromptRunEvent,
 } from "@workspace/lib/tinybird";
 import { extractCitations } from "@workspace/lib/text-extraction";
-// TODO(post-migration): Remove semaphore import and usage after initialDelayHours is removed
-import { apiCallSemaphore } from "../semaphore";
 
 interface PromptContext {
 	prompt: Prompt;
@@ -231,21 +229,17 @@ async function runModelIteration({
 				? `runOpenAI_${runIndex}`
 				: `runAnthropic_${runIndex}`;
 
-	// TODO(post-migration): Remove semaphore wrapper after initialDelayHours is removed
-	// At that point, workerConcurrency will limit concurrent workflows instead
-	const { rawOutput, webQueries, textContent } = await apiCallSemaphore.withPermit(() =>
-		DBOS.runStep(
-			async () => {
-				if (modelGroup === "openai") {
-					return runWithOpenAI(promptValue);
-				}
-				if (modelGroup === "anthropic") {
-					return runWithAnthropic(promptValue);
-				}
-				return runWithDataForSEO(promptValue);
-			},
-			{ name: stepName, retriesAllowed: true, maxAttempts: 3, intervalSeconds: 5, backoffRate: 2 },
-		),
+	const { rawOutput, webQueries, textContent } = await DBOS.runStep(
+		async () => {
+			if (modelGroup === "openai") {
+				return runWithOpenAI(promptValue);
+			}
+			if (modelGroup === "anthropic") {
+				return runWithAnthropic(promptValue);
+			}
+			return runWithDataForSEO(promptValue);
+		},
+		{ name: stepName, retriesAllowed: true, maxAttempts: 3, intervalSeconds: 5, backoffRate: 2 },
 	);
 
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitorsList);
