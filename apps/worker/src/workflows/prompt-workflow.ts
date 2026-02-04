@@ -250,11 +250,38 @@ async function runModelIteration({
 		{ name: stepName, retriesAllowed: true, maxAttempts: 3, intervalSeconds: 5, backoffRate: 2 },
 	);
 
+	DBOS.logger.info(`[${stepName}] AI step completed, proceeding to save. textContent length: ${textContent?.length ?? 'null'}, type: ${typeof textContent}`);
+
+	// Ensure textContent is a string (DBOS deserialization might return undefined in edge cases)
+	const safeTextContent = typeof textContent === 'string' ? textContent : '';
+	if (!textContent) {
+		DBOS.logger.warn(`[${stepName}] textContent was ${textContent === undefined ? 'undefined' : textContent === null ? 'null' : 'empty'}, using empty string`);
+	}
+
 	// Sanitize rawOutput to ensure it's plain JSON (DBOS serialization can leave stubs
 	// for functions which cause issues when saving to database on workflow recovery)
-	const sanitizedRawOutput = sanitizeForJson(rawOutput);
+	let sanitizedRawOutput: unknown;
+	try {
+		sanitizedRawOutput = sanitizeForJson(rawOutput);
+		DBOS.logger.info(`[${stepName}] Sanitization complete`);
+	} catch (sanitizeError) {
+		DBOS.logger.error(`[${stepName}] Failed to sanitize rawOutput: ${sanitizeError instanceof Error ? sanitizeError.message : String(sanitizeError)}`);
+		throw sanitizeError;
+	}
 
-	const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brand, competitorsList);
+	let brandMentioned: boolean;
+	let competitorsMentioned: string[];
+	try {
+		const mentions = analyzeMentions(safeTextContent, brand, competitorsList);
+		brandMentioned = mentions.brandMentioned;
+		competitorsMentioned = mentions.competitorsMentioned;
+		DBOS.logger.info(`[${stepName}] Mention analysis complete: brand=${brandMentioned}, competitors=${competitorsMentioned.length}`);
+	} catch (analyzeError) {
+		DBOS.logger.error(`[${stepName}] Failed to analyze mentions: ${analyzeError instanceof Error ? analyzeError.message : String(analyzeError)}`);
+		throw analyzeError;
+	}
+
+	DBOS.logger.info(`[${stepName}] About to call savePromptRunStep`);
 
 	const { id: promptRunId, createdAt } = await savePromptRunStep(
 		promptId,
@@ -267,6 +294,8 @@ async function runModelIteration({
 		competitorsMentioned,
 	);
 
+	DBOS.logger.info(`[${stepName}] Saved prompt run ${promptRunId}, sending to Tinybird`);
+
 	await sendToTinybirdStep(
 		promptRunId,
 		promptId,
@@ -278,9 +307,11 @@ async function runModelIteration({
 		webQueries,
 		brandMentioned,
 		competitorsMentioned,
-		textContent,
+		safeTextContent,
 		createdAt,
 	);
+
+	DBOS.logger.info(`[${stepName}] Completed successfully`);
 }
 
 async function processPromptWorkflow(promptId: string, initialDelayHours?: number) {
