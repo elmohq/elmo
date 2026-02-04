@@ -82,6 +82,15 @@ export interface PromptRunResult {
 }
 
 /**
+ * Sanitize an object to ensure it's plain JSON-serializable.
+ * This is critical for DBOS workflow serialization - API client libraries
+ * often return class instances with methods that can't be serialized.
+ */
+function sanitizeForJson(obj: unknown): unknown {
+	return JSON.parse(JSON.stringify(obj));
+}
+
+/**
  * Run prompt with OpenAI using Vercel AI SDK with web search
  */
 export async function runWithOpenAI(promptValue: string): Promise<PromptRunResult> {
@@ -117,7 +126,7 @@ export async function runWithOpenAI(promptValue: string): Promise<PromptRunResul
 			}
 
 			return {
-				rawOutput: responseBody,
+				rawOutput: sanitizeForJson(responseBody),
 				webQueries,
 				textContent: extractTextContent(responseBody, "openai"), // Extract text content for mention analysis
 			};
@@ -195,7 +204,7 @@ export async function runWithAnthropic(promptValue: string): Promise<PromptRunRe
 				.filter(Boolean);
 
 			return {
-				rawOutput: response,
+				rawOutput: sanitizeForJson(response),
 				webQueries,
 				textContent,
 			};
@@ -268,7 +277,7 @@ export async function runWithDataForSEO(promptValue: string): Promise<PromptRunR
 			const webQueries = [promptValue];
 
 			return {
-				rawOutput: response,
+				rawOutput: sanitizeForJson(response),
 				webQueries,
 				textContent,
 			};
