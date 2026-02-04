@@ -16,6 +16,10 @@ async function main() {
 	DBOS.setConfig({
 		name: "elmo-worker",
 		systemDatabaseUrl,
+		// Fixed application version ensures workflows survive normal code deploys.
+		// All worker instances use the same version, so multiple workers work correctly.
+		// Only bump this if you make BREAKING changes to workflow step order/logic.
+		applicationVersion: "v1",
 	});
 
 	await DBOS.launch();
