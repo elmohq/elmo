@@ -22,14 +22,8 @@ const anthropic = new Anthropic({
  * This is used to prevent overwhelming external AI APIs when many workflows
  * wake up from sleep and try to make API calls simultaneously.
  *
- * This is safe to use inside DBOS steps because:
- * - The semaphore waiting happens INSIDE the step execution
- * - DBOS records step results - on replay, it uses recorded results without re-executing
- * - Step ordering is preserved (the step is still called in the same order)
- *
- * TODO(post-migration): Once initialDelayHours is removed and workerConcurrency
- * is reduced to 10-20, this semaphore can be removed or its limit increased,
- * since workerConcurrency will naturally limit concurrent API calls.
+ * This limits concurrent API calls when multiple jobs run in parallel,
+ * preventing rate limits from external AI providers.
  */
 class Semaphore {
 	private permits: number;
@@ -83,8 +77,8 @@ export interface PromptRunResult {
 
 /**
  * Sanitize an object to ensure it's plain JSON-serializable.
- * This is critical for DBOS workflow serialization - API client libraries
- * often return class instances with methods that can't be serialized.
+ * API client libraries often return class instances with methods
+ * that can't be serialized to the database.
  */
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));

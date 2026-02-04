@@ -4,7 +4,6 @@ import { db } from "@workspace/lib/db/db";
 import { brands, prompts } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -59,10 +58,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 			const promptIds = enabledPrompts.map((p) => p.id);
 			console.log(`Updating job schedulers for ${promptIds.length} prompts in brand ${brandId}`);
 
-			const delayHours = body.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
-
-			// Update job schedulers with the new delay
-			const results = await createMultiplePromptJobSchedulers(promptIds, delayHours);
+			// Recreate schedulers - they will pick up the new delay from the updated brand
+			const results = await createMultiplePromptJobSchedulers(promptIds);
 			const successCount = results.filter((success) => success).length;
 			const failureCount = results.length - successCount;
 			

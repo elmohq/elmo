@@ -35,8 +35,7 @@ import {
 interface SchedulerInfo {
 	exists: boolean;
 	nextRunAt: number | null;
-	iterationCount: number | null;
-	every: number | null;
+	cadenceHours: number | null;
 }
 
 interface LastRunByModelGroup {
@@ -52,7 +51,6 @@ interface PromptScheduleStatus {
 	brandName: string;
 	enabled: boolean;
 	runFrequencyMs: number;
-	isInInitialDelay: boolean;
 	lastRunsByModelGroup: {
 		openai?: LastRunByModelGroup;
 		anthropic?: LastRunByModelGroup;
@@ -60,7 +58,7 @@ interface PromptScheduleStatus {
 	};
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
-	workflowStatus: "running" | "sleeping" | "enqueued" | "none";
+	jobStatus: "active" | "created" | "retry" | "none";
 }
 
 interface BrandScheduleSummary {
@@ -79,12 +77,12 @@ interface BrandScheduleSummary {
 
 interface QueueStats {
 	name: string;
-	enqueued: number;
-	running: number;
-	sleeping: number;
+	created: number;
+	active: number;
+	retry: number;
 	completed: number;
 	failed: number;
-	totalActive: number;
+	totalPending: number;
 }
 
 interface RecentJob {
@@ -97,8 +95,6 @@ interface RecentJob {
 	timestamp: number;
 	processedOn: number | null;
 	finishedOn: number | null;
-	stacktrace: string[] | null;
-	returnValue: any;
 }
 
 interface WorkflowsData {
@@ -113,11 +109,6 @@ interface WorkflowsData {
 	queue: QueueStats;
 	recentJobs: RecentJob[];
 	brands: BrandScheduleSummary[];
-	migration?: {
-		initialDelayRemaining: number;
-		totalPrompts: number;
-		latestInitialDelayEndAt: number | null;
-	};
 }
 
 function formatDuration(ms: number): string {
@@ -169,21 +160,21 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 					<Server className="h-4 w-4" />
 					{title}
 				</CardTitle>
-				<CardDescription>DBOS Workflow Status</CardDescription>
+				<CardDescription>pg-boss Job Queue Status</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div className="grid grid-cols-3 gap-4 text-sm">
-					<div title="PENDING status - workflow started but may be sleeping or waiting for worker">
-						<p className="text-muted-foreground">Pending</p>
-						<p className="text-xl font-semibold text-emerald-600">{stats.running}</p>
+					<div title="Jobs waiting to be picked up by a worker">
+						<p className="text-muted-foreground">Created</p>
+						<p className="text-xl font-semibold text-blue-600">{stats.created}</p>
 					</div>
-					<div title="ENQUEUED status - waiting in queue to start">
-						<p className="text-muted-foreground">Enqueued</p>
-						<p className="text-xl font-semibold text-blue-600">{stats.enqueued}</p>
+					<div title="Jobs currently being processed">
+						<p className="text-muted-foreground">Active</p>
+						<p className="text-xl font-semibold text-emerald-600">{stats.active}</p>
 					</div>
-					<div title="Pending workflows currently in initial delay sleep">
-						<p className="text-muted-foreground">Sleeping</p>
-						<p className="text-xl font-semibold text-amber-600">{stats.sleeping}</p>
+					<div title="Jobs waiting to be retried after failure">
+						<p className="text-muted-foreground">Retry</p>
+						<p className="text-xl font-semibold text-amber-600">{stats.retry}</p>
 					</div>
 					<div>
 						<p className="text-muted-foreground">Completed</p>
@@ -194,8 +185,8 @@ function QueueStatsCard({ stats, title }: { stats: QueueStats; title: string }) 
 						<p className={`text-xl font-semibold ${stats.failed > 0 ? "text-red-600" : ""}`}>{stats.failed}</p>
 					</div>
 					<div>
-						<p className="text-muted-foreground">Total Active</p>
-						<p className="text-xl font-semibold text-violet-600">{stats.totalActive}</p>
+						<p className="text-muted-foreground">Total Pending</p>
+						<p className="text-xl font-semibold text-violet-600">{stats.totalPending}</p>
 					</div>
 				</div>
 			</CardContent>
@@ -423,12 +414,6 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">{job.failedReason}</div>
 						</div>
 					)}
-					{isFailed && job.stacktrace && job.stacktrace.length > 0 && (
-						<div>
-							<p className="text-muted-foreground mb-1">Stack Trace</p>
-							<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-60">{job.stacktrace.join("\n")}</pre>
-						</div>
-					)}
 					{/* Job Logs Section */}
 					<div>
 						<p className="text-muted-foreground mb-1">Execution Logs</p>
@@ -449,14 +434,6 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							<p className="text-sm text-muted-foreground italic">No logs available</p>
 						)}
 					</div>
-					{!isFailed && job.returnValue && (
-						<div>
-							<p className="text-muted-foreground mb-1">Return Value</p>
-							<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-60">
-								{JSON.stringify(job.returnValue, null, 2)}
-							</pre>
-						</div>
-					)}
 					{/* Retry Button for Failed Jobs */}
 					{isFailed && (
 						<div className="flex items-center gap-3 pt-2 border-t">
@@ -605,18 +582,18 @@ function BrandRow({
 											return getCategory(a) - getCategory(b);
 										})
 										.map((prompt) => {
-										const isStuck =
-											prompt.enabled &&
-											(prompt.lastRunsByModelGroup.openai?.isOverdue ||
-												prompt.lastRunsByModelGroup.anthropic?.isOverdue ||
-												prompt.lastRunsByModelGroup.google?.isOverdue);
-										const promptJobs = recentJobs
-											.filter((j) => j.data?.promptId === prompt.promptId)
-											.sort((a, b) => b.timestamp - a.timestamp);
-										const latestJob = promptJobs[0];
-										const hasActiveWorkflow = prompt.workflowStatus !== "none";
-										const showRetry = prompt.enabled && isStuck && prompt.schedulerInfo.exists && !hasActiveWorkflow;
-										const shouldDim = !prompt.enabled;
+									const isStuck =
+										prompt.enabled &&
+										(prompt.lastRunsByModelGroup.openai?.isOverdue ||
+											prompt.lastRunsByModelGroup.anthropic?.isOverdue ||
+											prompt.lastRunsByModelGroup.google?.isOverdue);
+									const promptJobs = recentJobs
+										.filter((j) => j.data?.promptId === prompt.promptId)
+										.sort((a, b) => b.timestamp - a.timestamp);
+									const latestJob = promptJobs[0];
+									const hasActiveJob = prompt.jobStatus !== "none";
+									const showRetry = prompt.enabled && isStuck && prompt.schedulerInfo.exists && !hasActiveJob;
+									const shouldDim = !prompt.enabled;
 
 										return (
 											<TableRow key={prompt.promptId} className={shouldDim ? "opacity-50" : ""}>
@@ -633,20 +610,19 @@ function BrandRow({
 															<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
 																Enabled
 															</Badge>
-															{/* TODO(post-migration): Remove workflow status badges after initialDelayHours is removed */}
-															{prompt.workflowStatus === "running" && (
+															{prompt.jobStatus === "active" && (
 																<Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-																	Pending
+																	Active
 																</Badge>
 															)}
-															{prompt.workflowStatus === "sleeping" && (
-																<Badge variant="secondary" className="bg-amber-100 text-amber-700">
-																	Sleeping
-																</Badge>
-															)}
-															{prompt.workflowStatus === "enqueued" && (
+															{prompt.jobStatus === "created" && (
 																<Badge variant="secondary" className="bg-blue-100 text-blue-700">
 																	Queued
+																</Badge>
+															)}
+															{prompt.jobStatus === "retry" && (
+																<Badge variant="secondary" className="bg-amber-100 text-amber-700">
+																	Retry
 																</Badge>
 															)}
 														</div>
@@ -671,14 +647,14 @@ function BrandRow({
 													{showRetry && (
 														<RetryButton promptId={prompt.promptId} onSuccess={onRefresh} />
 													)}
-													{prompt.workflowStatus === "running" && (
-														<span className="text-xs text-muted-foreground">Pending...</span>
+													{prompt.jobStatus === "active" && (
+														<span className="text-xs text-muted-foreground">Processing...</span>
 													)}
-													{prompt.workflowStatus === "sleeping" && (
-														<span className="text-xs text-muted-foreground">Sleeping...</span>
-													)}
-													{prompt.workflowStatus === "enqueued" && (
+													{prompt.jobStatus === "created" && (
 														<span className="text-xs text-muted-foreground">In queue</span>
+													)}
+													{prompt.jobStatus === "retry" && (
+														<span className="text-xs text-muted-foreground">Retrying soon</span>
 													)}
 												</TableCell>
 											</TableRow>
@@ -824,31 +800,6 @@ export default function WorkflowsPage() {
 					</Link>
 				</div>
 			</div>
-
-			{/* TODO(post-migration): Remove migration status banner after initialDelayHours is removed */}
-			{data.migration && data.migration.initialDelayRemaining > 0 && (
-				<Card className="border-amber-500/50">
-					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium flex items-center gap-2">
-							<Clock className="h-4 w-4 text-amber-500" />
-							Migration In Progress
-						</CardTitle>
-						<CardDescription>
-							{data.migration.initialDelayRemaining}/{data.migration.totalPrompts} prompts still in initial delay
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="text-sm text-muted-foreground">
-						{data.migration.latestInitialDelayEndAt ? (
-							<span>
-								All prompts will have run by{" "}
-								{new Date(data.migration.latestInitialDelayEndAt).toLocaleString()}
-							</span>
-						) : (
-							<span>Waiting for the last initial delay to complete.</span>
-						)}
-					</CardContent>
-				</Card>
-			)}
 
 			{/* Summary Cards */}
 			<div className="grid gap-4 md:grid-cols-4">

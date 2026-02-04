@@ -3,8 +3,7 @@ import { hasReportGeneratorAccess } from "@/lib/metadata";
 import { db } from "@workspace/lib/db/db";
 import { reports, type NewReport } from "@workspace/lib/db/schema";
 import { desc, eq } from "drizzle-orm";
-import { REPORTS_QUEUE_NAME } from "@workspace/lib/dbos";
-import { getDbosClient } from "@/lib/dbos-client";
+import { sendReportJob } from "@/lib/job-scheduler";
 
 export async function GET() {
 	try {
@@ -66,9 +65,10 @@ export async function POST(request: NextRequest) {
 		// Parse manual prompts if provided
 		const parsedManualPrompts: string[] = [];
 		if (manualPrompts && typeof manualPrompts === "string" && manualPrompts.trim()) {
-			const lines = manualPrompts.split('\n')
-				.map(line => line.trim())
-				.filter(line => line.length > 0);
+			const lines = manualPrompts
+				.split("\n")
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0);
 			parsedManualPrompts.push(...lines);
 		}
 
@@ -86,23 +86,22 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Failed to create report" }, { status: 500 });
 		}
 
-		// Enqueue report generation workflow
+		// Queue report generation job
 		try {
-			const dbosClient = await getDbosClient();
-			await dbosClient.enqueue(
-				{
-					workflowName: "generateReport",
-					queueName: REPORTS_QUEUE_NAME,
-				},
+			const success = await sendReportJob(
 				createdReport.id,
 				createdReport.brandName,
 				createdReport.brandWebsite,
 				parsedManualPrompts.length > 0 ? parsedManualPrompts : undefined,
 			);
 
-			console.log(`Report workflow queued for report ID: ${createdReport.id}`);
+			if (!success) {
+				throw new Error("Failed to send report job");
+			}
+
+			console.log(`Report job queued for report ID: ${createdReport.id}`);
 		} catch (queueError) {
-			console.error("Error adding report to DBOS queue:", queueError);
+			console.error("Error adding report to queue:", queueError);
 			// Update report status to failed if enqueue fails
 			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, createdReport.id));
 

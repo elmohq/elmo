@@ -4,10 +4,10 @@ import { Client } from "pg";
 
 export const dynamic = "force-dynamic";
 
-async function withDbosClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-	const connectionString = process.env.DBOS_SYSTEM_DATABASE_URL;
+async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) {
-		throw new Error("DBOS_SYSTEM_DATABASE_URL is required");
+		throw new Error("DATABASE_URL is required");
 	}
 
 	const client = new Client({ connectionString });
@@ -33,24 +33,81 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: "jobId is required" }, { status: 400 });
 		}
 
-		const rows = await withDbosClient(async (client) => {
-			const result = await client.query(
-				`SELECT function_name, output, error, started_at_epoch_ms, completed_at_epoch_ms
-				 FROM dbos.operation_outputs
-				 WHERE workflow_uuid = $1
-				 ORDER BY function_id ASC`,
+		// Try to find the job in either the active jobs table or archive
+		const job = await withPgClient(async (client) => {
+			// Check if pgboss schema exists
+			const schemaCheck = await client.query(
+				`SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss')`,
+			);
+
+			if (!schemaCheck.rows[0]?.exists) {
+				return null;
+			}
+
+			// Try active jobs first
+			let result = await client.query(
+				`SELECT id, name, data, state, output, retrycount, createdon, startedon, completedon
+				 FROM pgboss.job
+				 WHERE id = $1`,
 				[jobId],
 			);
-			return result.rows;
+
+			if (result.rows.length === 0) {
+				// Try archive
+				result = await client.query(
+					`SELECT id, name, data, state, output, retrycount, createdon, startedon, completedon
+					 FROM pgboss.archive
+					 WHERE id = $1`,
+					[jobId],
+				);
+			}
+
+			return result.rows[0] || null;
 		});
 
-		const logs = rows.map((row) => {
-			const startedAt = row.started_at_epoch_ms ? new Date(Number(row.started_at_epoch_ms)).toISOString() : "unknown";
-			const completedAt = row.completed_at_epoch_ms ? new Date(Number(row.completed_at_epoch_ms)).toISOString() : "unknown";
-			const output = row.output ? JSON.stringify(row.output) : "";
-			const error = row.error ? JSON.stringify(row.error) : "";
-			return `[${startedAt} - ${completedAt}] ${row.function_name} ${error ? `ERROR: ${error}` : output}`;
-		});
+		if (!job) {
+			return NextResponse.json({ error: "Job not found" }, { status: 404 });
+		}
+
+		// Format job details as logs
+		const logs: string[] = [];
+
+		logs.push(`Job ID: ${job.id}`);
+		logs.push(`Name: ${job.name}`);
+		logs.push(`State: ${job.state}`);
+		logs.push(`Retry count: ${job.retrycount || 0}`);
+
+		if (job.createdon) {
+			logs.push(`Created: ${new Date(job.createdon).toISOString()}`);
+		}
+		if (job.startedon) {
+			logs.push(`Started: ${new Date(job.startedon).toISOString()}`);
+		}
+		if (job.completedon) {
+			logs.push(`Completed: ${new Date(job.completedon).toISOString()}`);
+		}
+
+		if (job.data) {
+			try {
+				const data = typeof job.data === "string" ? JSON.parse(job.data) : job.data;
+				logs.push(`Data: ${JSON.stringify(data, null, 2)}`);
+			} catch {
+				logs.push(`Data: ${String(job.data)}`);
+			}
+		}
+
+		if (job.output) {
+			try {
+				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
+				if (job.state === "failed") {
+					logs.push(`Error: ${JSON.stringify(output, null, 2)}`);
+				} else {
+					logs.push(`Output: ${JSON.stringify(output, null, 2)}`);
+				}
+			} catch {
+				logs.push(`Output: ${String(job.output)}`);
+			}
+		}
 
 		return NextResponse.json({
 			jobId,

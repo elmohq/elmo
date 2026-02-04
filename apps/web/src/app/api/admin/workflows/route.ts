@@ -4,19 +4,15 @@ import { db } from "@workspace/lib/db/db";
 import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
+import { createPromptJobScheduler, sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
-import { getDbosClient } from "@/lib/dbos-client";
 
 export const dynamic = "force-dynamic";
-
-const WORKFLOW_NAME = "processPrompt";
 
 interface SchedulerInfo {
 	exists: boolean;
 	nextRunAt: number | null;
-	iterationCount: number | null;
-	every: number | null;
+	cadenceHours: number | null;
 }
 
 interface PromptScheduleStatus {
@@ -45,8 +41,7 @@ interface PromptScheduleStatus {
 	};
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
-	workflowStatus: "running" | "sleeping" | "enqueued" | "none";
-	isInInitialDelay: boolean;
+	jobStatus: "active" | "created" | "retry" | "none";
 }
 
 interface BrandScheduleSummary {
@@ -65,32 +60,30 @@ interface BrandScheduleSummary {
 
 interface QueueStats {
 	name: string;
-	enqueued: number;
-	running: number;
-	sleeping: number;
+	created: number;
+	active: number;
+	retry: number;
 	completed: number;
 	failed: number;
-	totalActive: number;
+	totalPending: number;
 }
 
 interface RecentJob {
 	id: string;
 	name: string;
-	data: { promptId?: string; initialDelayHours?: number };
+	data: { promptId?: string };
 	status: "completed" | "failed";
 	failedReason: string | null;
 	attemptsMade: number;
 	timestamp: number;
 	processedOn: number | null;
 	finishedOn: number | null;
-	stacktrace: string[] | null;
-	returnValue: any;
 }
 
-async function withDbosClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-	const connectionString = process.env.DBOS_SYSTEM_DATABASE_URL;
+async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
+	const connectionString = process.env.DATABASE_URL;
 	if (!connectionString) {
-		throw new Error("DBOS_SYSTEM_DATABASE_URL is required");
+		throw new Error("DATABASE_URL is required");
 	}
 
 	const client = new Client({ connectionString });
@@ -102,34 +95,16 @@ async function withDbosClient<T>(fn: (client: Client) => Promise<T>): Promise<T>
 	}
 }
 
-function parseInputs(raw: unknown): { promptId?: string; initialDelayHours?: number } {
-	if (!raw) return {};
+function parseJobData(data: unknown): { promptId?: string } {
+	if (!data) return {};
 
 	try {
-		const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-
-		// Handle DBOS superjson format: { json: [...], __dbos_serializer: "superjson" }
-		let args: unknown = parsed;
-		if (
-			typeof parsed === "object" &&
-			parsed !== null &&
-			"json" in parsed &&
-			(parsed as Record<string, unknown>).__dbos_serializer === "superjson"
-		) {
-			args = (parsed as Record<string, unknown>).json;
-		}
-
-		if (Array.isArray(args)) {
+		const parsed = typeof data === "string" ? JSON.parse(data) : data;
+		if (typeof parsed === "object" && parsed !== null) {
 			return {
-				promptId: typeof args[0] === "string" ? args[0] : undefined,
-				initialDelayHours: typeof args[1] === "number" ? args[1] : undefined,
-			};
-		}
-		if (typeof args === "object" && args !== null) {
-			const obj = args as Record<string, unknown>;
-			return {
-				promptId: typeof obj.promptId === "string" ? obj.promptId : undefined,
-				initialDelayHours: typeof obj.initialDelayHours === "number" ? obj.initialDelayHours : undefined,
+				promptId: typeof (parsed as Record<string, unknown>).promptId === "string" 
+					? (parsed as Record<string, unknown>).promptId as string 
+					: undefined,
 			};
 		}
 	} catch {
@@ -139,137 +114,202 @@ function parseInputs(raw: unknown): { promptId?: string; initialDelayHours?: num
 	return {};
 }
 
-function parseError(raw: unknown): { message: string | null; stack: string[] | null } {
-	if (!raw) return { message: null, stack: null };
-
-	try {
-		let parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-
-		// Handle DBOS superjson format if present
-		if (
-			typeof parsed === "object" &&
-			parsed !== null &&
-			"json" in parsed &&
-			(parsed as Record<string, unknown>).__dbos_serializer === "superjson"
-		) {
-			parsed = (parsed as Record<string, unknown>).json;
-		}
-
-		if (parsed && typeof parsed === "object") {
-			const errorObj = parsed as { message?: string; stack?: string };
-			const stack = errorObj.stack ? errorObj.stack.split("\n") : null;
-			return { message: errorObj.message ?? "Unknown error", stack };
-		}
-	} catch {
-		// ignore parse failures
-	}
-
-	return { message: "Unknown error", stack: null };
-}
-
-async function getQueueStats(sleepingCount: number): Promise<QueueStats> {
-	const rows = await withDbosClient(async (client) => {
-		const result = await client.query(
-			`SELECT
-				COUNT(*) FILTER (WHERE status = 'ENQUEUED') AS enqueued,
-				COUNT(*) FILTER (WHERE status = 'PENDING') AS running,
-				COUNT(*) FILTER (WHERE status = 'SUCCESS') AS completed,
-				COUNT(*) FILTER (WHERE status = 'ERROR') AS failed
-			FROM dbos.workflow_status
-			WHERE name = $1`,
-			[WORKFLOW_NAME],
+async function getQueueStats(): Promise<QueueStats> {
+	const stats = await withPgClient(async (client) => {
+		// Check if pgboss tables exist
+		const tableCheck = await client.query(
+			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
 		);
-		return result.rows[0];
+		
+		if (!tableCheck.rows[0]?.exists) {
+			return { created: 0, active: 0, retry: 0, completed: 0, failed: 0 };
+		}
+
+		const result = await client.query(`
+			SELECT
+				COUNT(*) FILTER (WHERE state = 'created') AS created,
+				COUNT(*) FILTER (WHERE state = 'active') AS active,
+				COUNT(*) FILTER (WHERE state = 'retry') AS retry
+			FROM pgboss.job
+			WHERE name = 'process-prompt'
+		`);
+
+		// Archive table may not exist yet
+		const archiveCheck = await client.query(
+			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'archive')`,
+		);
+		
+		let completed = 0;
+		let failed = 0;
+		if (archiveCheck.rows[0]?.exists) {
+			const archiveResult = await client.query(`
+				SELECT
+					COUNT(*) FILTER (WHERE state = 'completed') AS completed,
+					COUNT(*) FILTER (WHERE state = 'failed') AS failed
+				FROM pgboss.archive
+				WHERE name = 'process-prompt'
+			`);
+			completed = Number(archiveResult.rows[0]?.completed || 0);
+			failed = Number(archiveResult.rows[0]?.failed || 0);
+		}
+
+		return {
+			created: Number(result.rows[0]?.created || 0),
+			active: Number(result.rows[0]?.active || 0),
+			retry: Number(result.rows[0]?.retry || 0),
+			completed,
+			failed,
+		};
 	});
 
-	const enqueued = Number(rows.enqueued || 0);
-	const running = Number(rows.running || 0);
-
 	return {
-		name: WORKFLOW_NAME,
-		enqueued,
-		running,
-		sleeping: sleepingCount,
-		completed: Number(rows.completed || 0),
-		failed: Number(rows.failed || 0),
-		totalActive: enqueued + running,
+		name: "process-prompt",
+		...stats,
+		totalPending: stats.created + stats.active + stats.retry,
 	};
 }
 
 async function getRecentJobs(limit: number = 50): Promise<RecentJob[]> {
-	const rows = await withDbosClient(async (client) => {
+	const jobs = await withPgClient(async (client) => {
+		// Check if pgboss archive table exists
+		const tableCheck = await client.query(
+			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'archive')`,
+		);
+		
+		if (!tableCheck.rows[0]?.exists) {
+			return [];
+		}
+
 		const result = await client.query(
-			`SELECT workflow_uuid, status, name, inputs, error, created_at, updated_at
-			 FROM dbos.workflow_status
-			 WHERE name = $1 AND status IN ('SUCCESS', 'ERROR')
-			 ORDER BY created_at DESC
-			 LIMIT $2`,
-			[WORKFLOW_NAME, limit],
+			`SELECT id, name, data, state, output, retrycount, createdon, startedon, completedon
+			 FROM pgboss.archive
+			 WHERE name = 'process-prompt'
+			 ORDER BY completedon DESC NULLS LAST
+			 LIMIT $1`,
+			[limit],
 		);
 		return result.rows;
 	});
 
-	return rows.map((row) => {
-		const inputs = parseInputs(row.inputs);
-		const error = parseError(row.error);
+	return jobs.map((row) => {
+		const data = parseJobData(row.data);
+		let failedReason: string | null = null;
+		
+		if (row.state === "failed" && row.output) {
+			try {
+				const output = typeof row.output === "string" ? JSON.parse(row.output) : row.output;
+				failedReason = output?.message || output?.error || "Unknown error";
+			} catch {
+				failedReason = "Unknown error";
+			}
+		}
+
 		return {
-			id: row.workflow_uuid,
+			id: row.id,
 			name: row.name,
-			data: inputs,
-			status: row.status === "SUCCESS" ? "completed" : "failed",
-			failedReason: row.status === "ERROR" ? error.message : null,
-			attemptsMade: 0,
-			timestamp: Number(row.created_at),
-			processedOn: Number(row.created_at),
-			finishedOn: Number(row.updated_at || row.created_at),
-			stacktrace: row.status === "ERROR" ? error.stack : null,
-			returnValue: null,
+			data,
+			status: row.state === "completed" ? "completed" : "failed",
+			failedReason,
+			attemptsMade: row.retrycount || 0,
+			timestamp: row.createdon ? new Date(row.createdon).getTime() : 0,
+			processedOn: row.startedon ? new Date(row.startedon).getTime() : null,
+			finishedOn: row.completedon ? new Date(row.completedon).getTime() : null,
 		};
 	});
 }
 
-interface WorkflowInfo {
-	nextRunAt: number | null;
-	isInInitialDelay: boolean;
-	isRunning: boolean; // PENDING status (actually executing)
-	isEnqueued: boolean; // ENQUEUED status (waiting in queue)
+interface ScheduleInfo {
+	promptId: string;
+	cadenceHours: number | null;
 }
 
-async function getActiveWorkflowMap(): Promise<{
-	map: Map<string, WorkflowInfo>;
-	sleepingCount: number;
-}> {
-	const now = Date.now();
-	const rows = await withDbosClient(async (client) => {
-		const result = await client.query(
-			`SELECT workflow_uuid, status, inputs, created_at
-			 FROM dbos.workflow_status
-			 WHERE name = $1 AND status IN ('ENQUEUED','PENDING')`,
-			[WORKFLOW_NAME],
+async function getScheduleMap(): Promise<Map<string, ScheduleInfo>> {
+	const schedules = await withPgClient(async (client) => {
+		// Check if pgboss schedule table exists
+		const tableCheck = await client.query(
+			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'schedule')`,
 		);
+		
+		if (!tableCheck.rows[0]?.exists) {
+			return [];
+		}
+
+		// Schedules use name='process-prompt' with key=promptId for uniqueness
+		const result = await client.query(`
+			SELECT name, key, data, cron
+			FROM pgboss.schedule
+			WHERE name = 'process-prompt'
+		`);
 		return result.rows;
 	});
 
-	const map = new Map<string, WorkflowInfo>();
-	let sleepingCount = 0;
+	const map = new Map<string, ScheduleInfo>();
 
-	for (const row of rows) {
-		const inputs = parseInputs(row.inputs);
-		if (!inputs.promptId) continue;
-
-		const createdAt = Number(row.created_at);
-		const delayMs = (inputs.initialDelayHours ?? 0) * 60 * 60 * 1000;
-		const nextRunAt = delayMs > 0 ? createdAt + delayMs : null;
-		const isInInitialDelay = Boolean(nextRunAt && nextRunAt > now);
-		const isRunning = row.status === "PENDING";
-		const isEnqueued = row.status === "ENQUEUED";
-
-		if (isInInitialDelay) sleepingCount++;
-
-		map.set(inputs.promptId, { nextRunAt, isInInitialDelay, isRunning, isEnqueued });
+	for (const row of schedules) {
+		// The key is the promptId
+		const promptId = row.key;
+		if (promptId) {
+			// Parse cadence from cron expression
+			// Formats: "0 */N * * *" (every N hours) or "0 0 */N * *" (every N days)
+			let cadenceHours: number | null = null;
+			if (row.cron) {
+				// Try hourly pattern: "0 */6 * * *"
+				const hourlyMatch = row.cron.match(/^0 \*\/(\d+) \* \* \*$/);
+				if (hourlyMatch) {
+					cadenceHours = Number(hourlyMatch[1]);
+				} else {
+					// Try daily pattern: "0 0 */3 * *" or "0 0 * * *"
+					const dailyMatch = row.cron.match(/^0 0 (?:\*\/(\d+)|\*) \* \*$/);
+					if (dailyMatch) {
+						cadenceHours = dailyMatch[1] ? Number(dailyMatch[1]) * 24 : 24;
+					}
+				}
+			}
+			map.set(promptId, { promptId, cadenceHours });
+		}
 	}
 
-	return { map, sleepingCount };
+	return map;
+}
+
+interface ActiveJobInfo {
+	promptId: string;
+	state: "created" | "active" | "retry";
+}
+
+async function getActiveJobMap(): Promise<Map<string, ActiveJobInfo>> {
+	const jobs = await withPgClient(async (client) => {
+		// Check if pgboss job table exists
+		const tableCheck = await client.query(
+			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
+		);
+		
+		if (!tableCheck.rows[0]?.exists) {
+			return [];
+		}
+
+		const result = await client.query(`
+			SELECT id, data, state
+			FROM pgboss.job
+			WHERE name = 'process-prompt'
+			  AND state IN ('created', 'active', 'retry')
+		`);
+		return result.rows;
+	});
+
+	const map = new Map<string, ActiveJobInfo>();
+
+	for (const row of jobs) {
+		const data = parseJobData(row.data);
+		if (data.promptId) {
+			map.set(data.promptId, {
+				promptId: data.promptId,
+				state: row.state as "created" | "active" | "retry",
+			});
+		}
+	}
+
+	return map;
 }
 
 export async function GET() {
@@ -309,13 +349,12 @@ export async function GET() {
 			lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
 		}
 
-		const [recentJobs, activeWorkflowResult] = await Promise.all([
+		const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
 			getRecentJobs(5000),
-			getActiveWorkflowMap(),
+			getScheduleMap(),
+			getActiveJobMap(),
+			getQueueStats(),
 		]);
-
-		const activeWorkflowMap = activeWorkflowResult.map;
-		const queueStats = await getQueueStats(activeWorkflowResult.sleepingCount);
 
 		const failuresByPrompt = new Map<string, number>();
 		for (const job of recentJobs) {
@@ -328,12 +367,8 @@ export async function GET() {
 		const defaultSchedulerInfo: SchedulerInfo = {
 			exists: false,
 			nextRunAt: null,
-			iterationCount: null,
-			every: null,
+			cadenceHours: null,
 		};
-
-		let initialDelayCount = 0;
-		let latestInitialDelayEndAt: number | null = null;
 
 		const brandSummaries: BrandScheduleSummary[] = allBrands.map((brand) => {
 			const brandPrompts = promptsByBrand[brand.id] || [];
@@ -376,13 +411,12 @@ export async function GET() {
 					};
 				}
 
-				const workflowInfo = activeWorkflowMap.get(prompt.id);
-				const schedulerInfo = workflowInfo
+				const scheduleInfo = scheduleMap.get(prompt.id);
+				const schedulerInfo: SchedulerInfo = scheduleInfo
 					? {
 							exists: true,
-							nextRunAt: workflowInfo.nextRunAt,
-							iterationCount: null,
-							every: runFrequencyMs,
+							nextRunAt: null, // pg-boss doesn't expose next run time easily
+							cadenceHours: scheduleInfo.cadenceHours,
 						}
 					: defaultSchedulerInfo;
 
@@ -396,22 +430,9 @@ export async function GET() {
 					}
 				}
 
-				if (workflowInfo?.isInInitialDelay) {
-					initialDelayCount++;
-					if (workflowInfo.nextRunAt && (!latestInitialDelayEndAt || workflowInfo.nextRunAt > latestInitialDelayEndAt)) {
-						latestInitialDelayEndAt = workflowInfo.nextRunAt;
-					}
-				}
-
-				// Determine workflow status
-				let workflowStatus: "running" | "sleeping" | "enqueued" | "none" = "none";
-				if (workflowInfo) {
-					if (workflowInfo.isRunning) {
-						workflowStatus = workflowInfo.isInInitialDelay ? "sleeping" : "running";
-					} else if (workflowInfo.isEnqueued) {
-						workflowStatus = "enqueued";
-					}
-				}
+				// Get job status
+				const activeJob = activeJobMap.get(prompt.id);
+				const jobStatus: "active" | "created" | "retry" | "none" = activeJob?.state ?? "none";
 
 				return {
 					promptId: prompt.id,
@@ -423,8 +444,7 @@ export async function GET() {
 					lastRunsByModelGroup,
 					schedulerInfo,
 					recentFailures: failuresByPrompt.get(prompt.id) || 0,
-					workflowStatus,
-					isInInitialDelay: Boolean(workflowInfo?.isInInitialDelay),
+					jobStatus,
 				};
 			});
 
@@ -450,13 +470,6 @@ export async function GET() {
 		const totalEnabled = brandSummaries.reduce((sum, b) => sum + b.enabledPrompts, 0);
 		const totalPrompts = brandSummaries.reduce((sum, b) => sum + b.totalPrompts, 0);
 
-		// TODO(post-migration): Remove migration status tracking once initialDelayHours is removed
-		const migrationStatus = {
-			initialDelayRemaining: initialDelayCount,
-			totalPrompts,
-			latestInitialDelayEndAt,
-		};
-
 		return NextResponse.json({
 			summary: {
 				totalBrands: allBrands.length,
@@ -469,7 +482,6 @@ export async function GET() {
 			queue: queueStats,
 			recentJobs: recentJobs.sort((a, b) => b.timestamp - a.timestamp),
 			brands: brandSummaries,
-			migration: migrationStatus,
 		});
 	} catch (error) {
 		console.error("Error fetching workflow data:", error);
@@ -485,21 +497,10 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body = await request.json();
-		const { promptId, jobId } = body;
-
-		const dbosClient = await getDbosClient();
-
-		if (jobId) {
-			await dbosClient.resumeWorkflow(jobId);
-			return NextResponse.json({
-				success: true,
-				message: `Retrying workflow ${jobId}`,
-				jobId,
-			});
-		}
+		const { promptId } = body;
 
 		if (!promptId || typeof promptId !== "string") {
-			return NextResponse.json({ error: "Either jobId or promptId is required" }, { status: 400 });
+			return NextResponse.json({ error: "promptId is required" }, { status: 400 });
 		}
 
 		const prompt = await db.query.prompts.findFirst({
@@ -514,35 +515,18 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: "Prompt is disabled" }, { status: 400 });
 		}
 
-		const workflows = await dbosClient.listWorkflows({
-			workflowName: WORKFLOW_NAME,
-			workflow_id_prefix: `prompt-${promptId}-`,
-			status: "ERROR",
-			limit: 1,
-			sortDesc: true,
-		});
-
-		if (workflows.length > 0) {
-			await dbosClient.resumeWorkflow(workflows[0].workflowID);
-			return NextResponse.json({
-				success: true,
-				message: `Retrying failed workflow for prompt ${promptId}`,
-				jobId: workflows[0].workflowID,
-			});
-		}
-
-		const success = await createPromptJobScheduler(promptId);
+		// Send an immediate job to process the prompt
+		const success = await sendImmediatePromptJob(promptId);
 		if (!success) {
-			return NextResponse.json({ error: "Failed to recreate workflow" }, { status: 500 });
+			return NextResponse.json({ error: "Failed to send job" }, { status: 500 });
 		}
 
 		return NextResponse.json({
 			success: true,
-			message: `No failed workflow found - started new workflow for prompt ${promptId}`,
-			recreatedScheduler: true,
+			message: `Triggered immediate job for prompt ${promptId}`,
 		});
 	} catch (error) {
-		console.error("Error triggering retry:", error);
+		console.error("Error triggering job:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }

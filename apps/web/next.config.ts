@@ -10,8 +10,6 @@ const nextConfig: NextConfig = {
     "@workspace/demo",
     "@workspace/whitelabel",
   ],
-  // DBOS SDK cannot be bundled; keep it external for server runtime
-  serverExternalPackages: ["@dbos-inc/dbos-sdk", "@dbos-inc/otel"],
   // Enable standalone output for Docker deployment
   output: "standalone",
 };
