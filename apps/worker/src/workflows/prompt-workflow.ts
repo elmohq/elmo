@@ -350,10 +350,13 @@ async function processPromptWorkflow(promptId: string, initialDelayHours?: numbe
 	}
 
 	const results = await Promise.allSettled(runPromises);
-	const failures = results.filter((result) => result.status === "rejected");
+	const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
 
 	if (failures.length > 0) {
-		DBOS.logger.warn(`Prompt ${promptId} completed with ${failures.length} failed runs`);
+		const errorMessages = failures
+			.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
+			.join("; ");
+		throw new Error(`Prompt ${promptId} had ${failures.length} failed runs: ${errorMessages}`);
 	}
 
 	const stillEnabled = await isPromptEnabledStep(promptId);
