@@ -9,7 +9,7 @@ import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
 import { PromptFilters } from "@/components/prompt-filters";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { VisibilityBar, VisibilityBarSkeleton } from "@/components/visibility-bar";
+import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/components/visibility-bar";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { useBrand } from "@/hooks/use-brands";
 
@@ -282,15 +282,15 @@ export function PageHeader({
 
 				{/* Visibility summary bar - skeleton stays in DOM (grid overlay) for stable height; opacity-0 hides it once real bar loads */}
 				{showVisibilityBar && (() => {
-					// Only show the real bar when we have meaningful data (totalRuns > 0)
-					// The first fetch (without promptIds) may return totalRuns=0 before the filtered fetch arrives
-					const showReal = visibilityData && !isLoadingVisibility && visibilityData.totalRuns > 0;
+					const hasLoaded = visibilityData && !isLoadingVisibility;
+					const hasData = hasLoaded && visibilityData.totalRuns > 0;
+					const isEmpty = hasLoaded && visibilityData.totalRuns === 0;
 					return (
 						<div className="mt-3 grid [&>*]:col-start-1 [&>*]:row-start-1">
-							<div className={showReal ? "opacity-0 pointer-events-none" : undefined}>
+							<div className={(hasData || isEmpty) ? "opacity-0 pointer-events-none" : undefined}>
 								<VisibilityBarSkeleton />
 							</div>
-							{showReal && (
+							{hasData && (
 								<VisibilityBar
 									currentVisibility={visibilityData.currentVisibility}
 									totalRuns={visibilityData.totalRuns}
@@ -300,6 +300,7 @@ export function PageHeader({
 									lookback={visibilityData.lookback}
 								/>
 							)}
+							{isEmpty && <VisibilityBarEmpty />}
 						</div>
 					);
 				})()}

@@ -105,12 +105,7 @@ export function CachedPromptChart({
 
 	// No runs state - distinguish between "never evaluated" vs "no data in selected window"
 	if (totalRuns === 0) {
-		const message = hasEverBeenEvaluated
-			? "No data in selected time range"
-			: "Evaluating for the first time...";
-		const subMessage = hasEverBeenEvaluated
-			? "Try selecting a longer time period to see historical data."
-			: null;
+		const isFirstEval = !hasEverBeenEvaluated;
 
 		return (
 			<Card className="py-3 gap-3">
@@ -118,16 +113,43 @@ export function CachedPromptChart({
 					{renderTitle()}
 				</CardHeader>
 				<Separator className="py-0 my-0" />
+				{/* h-[300px] instead of h-[250px] to compensate for the missing footer section,
+				   keeping overall card height consistent with data-filled cards for virtualization */}
 				<CardContent className="px-3">
-					<div className="h-[250px] flex items-center">
-						<div>
-							<span className="font-semibold text-xl text-muted-foreground">
-								{message}
-							</span>
-							{subMessage && (
-								<p className="text-sm text-muted-foreground mt-1">
-									{subMessage}
-								</p>
+					<div className="h-[300px] flex items-center justify-center">
+						<div className="flex flex-col items-center text-center max-w-xs">
+							{isFirstEval ? (
+								<>
+									<div className="flex space-x-1.5 mb-3">
+										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse" />
+										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:0.2s]" />
+										<div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:0.4s]" />
+									</div>
+									<p className="text-sm font-medium text-muted-foreground">
+										Evaluating for the first time
+									</p>
+									<p className="text-xs text-muted-foreground/70 mt-1">
+										Results will appear here shortly.
+									</p>
+								</>
+							) : (
+								<>
+									<div className="h-16 w-full mb-3 flex items-end justify-center gap-[3px]">
+										{[20, 35, 15, 45, 25, 40, 30, 50, 20, 35, 45, 28].map((h, i) => (
+											<div
+												key={i}
+												className="w-1.5 rounded-sm bg-muted-foreground/10"
+												style={{ height: `${h}%` }}
+											/>
+										))}
+									</div>
+									<p className="text-sm font-medium text-muted-foreground">
+										No data in selected time range
+									</p>
+									<p className="text-xs text-muted-foreground/70 mt-1">
+										Try selecting a longer time period to see historical data.
+									</p>
+								</>
 							)}
 						</div>
 					</div>

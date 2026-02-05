@@ -125,6 +125,7 @@ export function PromptsDisplay({
 	const {
 		filteredVisibility,
 		isLoading: isLoadingVisibility,
+		isValidating: isValidatingVisibility,
 	} = useFilteredVisibility(brand?.id, {
 		lookback: selectedLookback,
 		promptIds: filteredPromptIds.length > 0 ? filteredPromptIds : undefined,
@@ -274,7 +275,13 @@ export function PromptsDisplay({
 			availableModels={availableModels}
 			resultCount={isInitialLoad ? undefined : sortedPrompts.length}
 			visibilityData={stableVisibilityData}
-			isLoadingVisibility={!stableVisibilityData}
+			isLoadingVisibility={
+				// Stay on skeleton if: (1) no data yet, (2) summary hasn't loaded (promptIds aren't stable),
+				// or (3) visibility shows 0 runs but SWR is revalidating (transitioning from unfiltered to filtered fetch)
+				!stableVisibilityData ||
+				isInitialLoad ||
+				(stableVisibilityData.totalRuns === 0 && isValidatingVisibility)
+			}
 		>
 			{content}
 		</PageHeader>
