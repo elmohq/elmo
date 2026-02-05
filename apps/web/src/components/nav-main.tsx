@@ -17,6 +17,7 @@ import {
 	SidebarMenuSub,
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
+	useSidebar,
 } from "@workspace/ui/components/sidebar";
 import Link from "next/link";
 import { useBrand } from "@/hooks/use-brands";
@@ -39,6 +40,7 @@ export function NavMain({
 }) {
 	// Use brandId (from URL) instead of brand?.id to avoid undefined during loading
 	const { brandId } = useBrand();
+	const { setOpenMobile } = useSidebar();
 
 	const getHref = (url: string, absolute?: boolean) => {
 		return absolute ? url : `/app/${brandId}${url}`;
@@ -51,12 +53,12 @@ export function NavMain({
 				{items.map((item) => (
 					<Collapsible key={item.title} asChild defaultOpen={item.isActive}>
 						<SidebarMenuItem>
-							<SidebarMenuButton asChild tooltip={item.title}>
-								<Link href={getHref(item.url, item.absolute)}>
-									{item.icon && <item.icon />}
-									<span>{item.title}</span>
-								</Link>
-							</SidebarMenuButton>
+						<SidebarMenuButton asChild tooltip={item.title}>
+							<Link href={getHref(item.url, item.absolute)} onClick={() => setOpenMobile(false)}>
+								{item.icon && <item.icon />}
+								<span>{item.title}</span>
+							</Link>
+						</SidebarMenuButton>
 							{item.items?.length ? (
 								<>
 									<CollapsibleTrigger asChild>
@@ -69,11 +71,11 @@ export function NavMain({
 										<SidebarMenuSub>
 											{item.items?.map((subItem) => (
 												<SidebarMenuSubItem key={subItem.title}>
-													<SidebarMenuSubButton asChild>
-														<Link href={getHref(subItem.url, subItem.absolute)}>
-															<span>{subItem.title}</span>
-														</Link>
-													</SidebarMenuSubButton>
+												<SidebarMenuSubButton asChild>
+													<Link href={getHref(subItem.url, subItem.absolute)} onClick={() => setOpenMobile(false)}>
+														<span>{subItem.title}</span>
+													</Link>
+												</SidebarMenuSubButton>
 												</SidebarMenuSubItem>
 											))}
 										</SidebarMenuSub>

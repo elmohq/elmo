@@ -25,7 +25,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export function NavUser() {
 	const { user, isLoading, loginUrl, logoutUrl } = useAuth();
-	const { isMobile } = useSidebar();
+	const { isMobile, setOpenMobile } = useSidebar();
 
 	if (isLoading) {
 		return (
@@ -114,7 +114,7 @@ export function NavUser() {
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link href="/app">
+								<Link href="/app" onClick={() => setOpenMobile(false)}>
 									<IconStatusChange />
 									Switch Brand
 								</Link>

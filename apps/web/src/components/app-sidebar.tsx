@@ -20,6 +20,7 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	useSidebar,
 } from "@workspace/ui/components/sidebar";
 import { NavMain } from "@/components/nav-main";
 // import { NavSecondary } from "@/components/nav-secondary";
@@ -34,6 +35,7 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 	const { brand } = useBrand();
+	const { setOpenMobile } = useSidebar();
 
 	const showAdminLink = clientConfig.features.adminAccess && isAdmin;
 
@@ -93,11 +95,11 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton size="lg" asChild>
-							<Link href="/">
-								<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
-							</Link>
-						</SidebarMenuButton>
+					<SidebarMenuButton size="lg" asChild>
+						<Link href="/" onClick={() => setOpenMobile(false)}>
+							<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
+						</Link>
+					</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
