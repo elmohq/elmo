@@ -49,7 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const modelGroupParam = searchParams.get("modelGroup");
 
 		// Use client timezone for consistent date filtering with batch-chart-data
-		const timezone = resolveTimezone(searchParams.get("timezone"));
+		const timezone = resolveTimezone(searchParams.get("timezone") ?? undefined);
 
 		let fromDate: Date | undefined;
 		let toDate: Date | undefined;
