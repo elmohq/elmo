@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const promptIdsParam = searchParams.get("promptIds"); // comma-separated
 		
 		// Use client timezone for chart grouping
-		const timezone = resolveTimezone(searchParams.get("timezone"));
+		const timezone = resolveTimezone(searchParams.get("timezone") ?? undefined);
 
 		// Calculate date range
 		let fromDateStr: string | null = null;
