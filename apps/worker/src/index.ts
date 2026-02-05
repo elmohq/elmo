@@ -30,15 +30,14 @@ async function main() {
 	console.log("Queues created");
 
 	// Set up recurring schedule for maintenance job
-	// Runs every hour to catch any orphaned prompts
-	// Note: Hourly cron patterns work correctly (unlike day-of-month patterns)
+	// Runs every 5 minutes to catch any orphaned prompts
 	await boss.schedule(
 		"schedule-maintenance",
-		"0 * * * *", // Every hour at minute 0
+		"*/5 * * * *", // Every 5 minutes
 		{ source: "scheduled" },
 		{ tz: "UTC" },
 	);
-	console.log("Scheduled maintenance job (every hour)");
+	console.log("Scheduled maintenance job (every 5 minutes)");
 
 	// Register job handlers
 	await registerHandlers(boss);
