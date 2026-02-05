@@ -238,12 +238,83 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 
 	if (isLoadingBrand) {
 		return (
-			<div className="flex flex-1 flex-col gap-4 p-4">
-				<div className="grid gap-4 lg:grid-cols-4">
-					<Skeleton className="h-[200px] rounded-xl" />
-					<Skeleton className="h-[200px] rounded-xl lg:col-span-3" />
-				</div>
-				<Skeleton className="h-[200px] rounded-xl" />
+			<div className="flex flex-1 flex-col gap-4 p-4 max-w-[1600px] mx-auto w-full">
+				{/* AI Visibility section skeleton */}
+				<section className="space-y-3">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-semibold flex items-center gap-2">
+							<IconEye className="h-5 w-5 text-muted-foreground" />
+							AI Visibility
+						</h2>
+						<Button asChild variant="ghost" size="sm" className="h-8">
+							<Link href={`/app/${brandId}/prompts`}>
+								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
+						</Button>
+					</div>
+					<div className="grid gap-4 lg:grid-cols-4">
+						<Card className="shadow-none flex flex-col">
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+									Current Visibility
+									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="flex-1 flex flex-col justify-center gap-4">
+								<div style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
+									<Skeleton className="h-20 w-36" />
+								</div>
+							</CardContent>
+						</Card>
+						<Card className="shadow-none lg:col-span-3 flex flex-col">
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+									Visibility Trends (30d)
+									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="flex-1 min-h-[120px]">
+								<Skeleton className="h-full w-full" />
+							</CardContent>
+						</Card>
+					</div>
+				</section>
+
+				{/* Citations section skeleton */}
+				<section className="space-y-3">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-semibold flex items-center gap-2">
+							<IconLink className="h-5 w-5 text-muted-foreground" />
+							Citations
+						</h2>
+						<Button asChild variant="ghost" size="sm" className="h-8">
+							<Link href={`/app/${brandId}/citations`}>
+								View Citations <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
+						</Button>
+					</div>
+					<Card className="shadow-none">
+						<CardHeader className="pb-2">
+							<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+								Citation Category Trends (30d)
+								<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<Skeleton className="h-[140px] w-full" />
+						</CardContent>
+					</Card>
+				</section>
+
+				{/* Footer stats skeleton */}
+				<section className="pt-4">
+					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+						<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
+						<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
+						<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+						<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+					</div>
+				</section>
 			</div>
 		);
 	}
@@ -416,16 +487,16 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 					</h2>
 					<Button asChild variant="ghost" size="sm" className="h-8">
 						<Link href={`/app/${brandId}/prompts`}>
-							View Prompts <IconArrowRight className="h-4 w-4 ml-1" />
+							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 						</Link>
 					</Button>
 				</div>
 
 				<div className="grid gap-4 lg:grid-cols-4">
 					{/* Hero Visibility Score */}
-					<Card className={`shadow-none flex flex-col ${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}>
+					<Card className={`shadow-none flex flex-col ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
 						<CardHeader className="pb-2">
-							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${getVisibilityLabelColor(averageVisibility)}`}>
+							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${isLoading ? "text-muted-foreground" : getVisibilityLabelColor(averageVisibility)}`}>
 								Current Visibility
 								<Tooltip>
 									<TooltipTrigger asChild>
@@ -439,7 +510,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 						</CardHeader>
 						<CardContent className="flex-1 flex flex-col justify-center gap-4">
 							<div 
-								className={`font-bold tracking-tight ${getVisibilityTextColor(averageVisibility)}`}
+								className={`font-bold tracking-tight ${isLoading ? "text-muted-foreground" : getVisibilityTextColor(averageVisibility)}`}
 								style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
 							>
 								{isLoading ? <Skeleton className="h-20 w-36" /> : `${averageVisibility}%`}
@@ -648,33 +719,44 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 			{/* Section 3: Tracking Stats */}
 			<section className="pt-4">
 				<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-					<StatWithTooltip
-						icon={IconList}
-						label="prompts tracked"
-						value={totalPrompts.toLocaleString()}
-						tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
-					/>
-					<StatWithTooltip
-						icon={IconActivity}
-						label="evaluations (30d)"
-						value={totalRuns.toLocaleString()}
-						tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
-					/>
-					<StatWithTooltip
-						icon={IconClock}
-						label="run frequency"
-						value={formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS)}
-						tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS).replace("~", "")} on average to track changes in AI model responses over time.`}
-					/>
-					<StatWithTooltip
-						icon={IconRefresh}
-						label="last updated"
-						value={formatRelativeTime(lastUpdatedAt)}
-						tooltip={lastUpdatedAt 
-							? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
-							: "No evaluations have been run yet."
-						}
-					/>
+					{isLoadingSummary ? (
+						<>
+							<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
+							<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
+							<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+							<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+						</>
+					) : (
+						<>
+							<StatWithTooltip
+								icon={IconList}
+								label="prompts tracked"
+								value={totalPrompts.toLocaleString()}
+								tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
+							/>
+							<StatWithTooltip
+								icon={IconActivity}
+								label="evaluations (30d)"
+								value={totalRuns.toLocaleString()}
+								tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+							/>
+							<StatWithTooltip
+								icon={IconClock}
+								label="run frequency"
+								value={formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS)}
+								tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS).replace("~", "")} on average to track changes in AI model responses over time.`}
+							/>
+							<StatWithTooltip
+								icon={IconRefresh}
+								label="last updated"
+								value={formatRelativeTime(lastUpdatedAt)}
+								tooltip={lastUpdatedAt 
+									? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
+									: "No evaluations have been run yet."
+								}
+							/>
+						</>
+					)}
 				</div>
 			</section>
 		</div>
