@@ -3,22 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-	IconCamera,
-	IconChartBar,
 	IconDashboard,
-	IconDatabase,
-	IconFileAi,
-	IconFileDescription,
-	IconFileWord,
-	IconFolder,
-	IconHelp,
+	// IconHelp,
 	IconListDetails,
-	IconReport,
-	IconSearch,
+	// IconMessageReport,
 	IconSettings,
-	IconUsers,
-	IconAward,
-	IconList,
 	IconLink,
 	IconShieldCog,
 } from "@tabler/icons-react";
@@ -33,6 +22,7 @@ import {
 	SidebarMenuItem,
 } from "@workspace/ui/components/sidebar";
 import { NavMain } from "@/components/nav-main";
+// import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/logo";
 import { clientConfig } from "@/lib/config/client";
@@ -59,6 +49,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 						title: "Prompts",
 						url: "/prompts",
 						icon: IconListDetails,
+						isActive: true,
 					},
 					{
 						title: "Citations",
@@ -67,11 +58,6 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 					},
 				]
 			: []),
-		// {
-		// 	title: "Reputation",
-		// 	url: "/reputation",
-		// 	icon: IconAward,
-		// },
 		{
 			title: "Settings",
 			url: "/settings",
@@ -89,16 +75,25 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 			: []),
 	];
 
-	const data = {
-		navMain,
-	};
+	// const navSecondary = [
+	// 	{
+	// 		title: "Support",
+	// 		url: "mailto:support@example.com",
+	// 		icon: IconHelp,
+	// 	},
+	// 	{
+	// 		title: "Feedback",
+	// 		url: "mailto:feedback@example.com",
+	// 		icon: IconMessageReport,
+	// 	},
+	// ];
 
 	return (
-		<Sidebar collapsible="none" className="fixed left-0 top-0 h-screen border-r z-10" {...props}>
-			<SidebarHeader className="border-b">
+		<Sidebar variant="inset" {...props}>
+			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
+						<SidebarMenuButton size="lg" asChild>
 							<Link href="/">
 								<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
 							</Link>
@@ -107,7 +102,8 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<NavMain items={data.navMain} />
+				<NavMain items={navMain} />
+				{/* <NavSecondary items={navSecondary} className="mt-auto" /> */}
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />

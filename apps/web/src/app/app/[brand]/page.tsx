@@ -301,7 +301,10 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="flex-1 flex flex-col justify-center gap-4">
-							<div className={`text-6xl sm:text-7xl lg:text-8xl font-bold tracking-tight ${getVisibilityTextColor(averageVisibility)}`}>
+							<div 
+								className={`font-bold tracking-tight ${getVisibilityTextColor(averageVisibility)}`}
+								style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
+							>
 								{isLoading ? <Skeleton className="h-20 w-36" /> : `${averageVisibility}%`}
 							</div>
 						</CardContent>

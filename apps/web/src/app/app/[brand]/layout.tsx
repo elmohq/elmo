@@ -30,22 +30,14 @@ export default async function OrgLayout({
 	const userIsAdmin = await isAdmin();
 
 	return (
-		<SidebarProvider
-			className="flex"
-			style={
-				{
-					"--sidebar-width": "calc(var(--spacing) * 64)",
-					"--header-height": "calc(var(--spacing) * 12 + 1px)",
-				} as React.CSSProperties
-			}
-		>
-			<AppSidebar variant="sidebar" isAdmin={userIsAdmin} />
-			<SidebarInset className="ml-[var(--sidebar-width)]">
+		<SidebarProvider>
+			<AppSidebar isAdmin={userIsAdmin} />
+			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
 				<DemoModeBanner />
 				<SiteHeader />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">
-						<div className="container pb-8 flex flex-col gap-4 px-6 py-4 md:gap-6 md:py-6">{children}</div>
+						<div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">{children}</div>
 					</div>
 				</div>
 			</SidebarInset>

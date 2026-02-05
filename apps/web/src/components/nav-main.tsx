@@ -1,14 +1,22 @@
 "use client";
 
-import { type Icon } from "@tabler/icons-react";
+import { IconChevronRight, type Icon } from "@tabler/icons-react";
 
 import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@workspace/ui/components/collapsible";
+import {
 	SidebarGroup,
-	SidebarGroupContent,
 	SidebarGroupLabel,
 	SidebarMenu,
+	SidebarMenuAction,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarMenuSub,
+	SidebarMenuSubButton,
+	SidebarMenuSubItem,
 } from "@workspace/ui/components/sidebar";
 import Link from "next/link";
 import { useBrand } from "@/hooks/use-brands";
@@ -21,28 +29,61 @@ export function NavMain({
 		url: string;
 		icon?: Icon;
 		absolute?: boolean;
+		isActive?: boolean;
+		items?: {
+			title: string;
+			url: string;
+			absolute?: boolean;
+		}[];
 	}[];
 }) {
 	// Use brandId (from URL) instead of brand?.id to avoid undefined during loading
 	const { brandId } = useBrand();
 
+	const getHref = (url: string, absolute?: boolean) => {
+		return absolute ? url : `/app/${brandId}${url}`;
+	};
+
 	return (
 		<SidebarGroup>
-			<SidebarGroupContent>
-				<SidebarGroupLabel className="sr-only">Pages</SidebarGroupLabel>
-				<SidebarMenu>
-					{items.map((item) => (
-						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton tooltip={item.title} className="cursor-pointer" asChild>
-								<Link href={item.absolute ? item.url : `/app/${brandId}${item.url}`}>
+			<SidebarGroupLabel>Platform</SidebarGroupLabel>
+			<SidebarMenu>
+				{items.map((item) => (
+					<Collapsible key={item.title} asChild defaultOpen={item.isActive}>
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild tooltip={item.title}>
+								<Link href={getHref(item.url, item.absolute)}>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>
 								</Link>
 							</SidebarMenuButton>
+							{item.items?.length ? (
+								<>
+									<CollapsibleTrigger asChild>
+										<SidebarMenuAction className="data-[state=open]:rotate-90">
+											<IconChevronRight />
+											<span className="sr-only">Toggle</span>
+										</SidebarMenuAction>
+									</CollapsibleTrigger>
+									<CollapsibleContent>
+										<SidebarMenuSub>
+											{item.items?.map((subItem) => (
+												<SidebarMenuSubItem key={subItem.title}>
+													<SidebarMenuSubButton asChild>
+														<Link href={getHref(subItem.url, subItem.absolute)}>
+															<span>{subItem.title}</span>
+														</Link>
+													</SidebarMenuSubButton>
+												</SidebarMenuSubItem>
+											))}
+										</SidebarMenuSub>
+									</CollapsibleContent>
+								</>
+							) : null}
 						</SidebarMenuItem>
-					))}
-				</SidebarMenu>
-			</SidebarGroupContent>
+					</Collapsible>
+				))}
+			</SidebarMenu>
 		</SidebarGroup>
 	);
 }

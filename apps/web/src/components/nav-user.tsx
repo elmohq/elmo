@@ -1,6 +1,11 @@
 "use client";
 
-import { IconDotsVertical, IconExternalLink, IconLogout, IconStatusChange } from "@tabler/icons-react";
+import {
+	IconSelector,
+	IconExternalLink,
+	IconLogout,
+	IconStatusChange,
+} from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -71,7 +76,7 @@ export function NavUser() {
 							size="lg"
 							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
 						>
-							<Avatar className="h-8 w-8 rounded-lg grayscale">
+							<Avatar className="h-8 w-8 rounded-lg">
 								<AvatarImage src={user.picture} alt={user.name} />
 								<AvatarFallback className="rounded-lg">
 									{user.given_name?.[0]}
@@ -80,9 +85,9 @@ export function NavUser() {
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">{user.name}</span>
-								<span className="text-muted-foreground truncate text-xs">{user.email}</span>
+								<span className="truncate text-xs">{user.email}</span>
 							</div>
-							<IconDotsVertical className="ml-auto size-4" />
+							<IconSelector className="ml-auto size-4" />
 						</SidebarMenuButton>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
@@ -102,7 +107,7 @@ export function NavUser() {
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.name}</span>
-									<span className="text-muted-foreground truncate text-xs">{user.email}</span>
+									<span className="truncate text-xs">{user.email}</span>
 								</div>
 							</div>
 						</DropdownMenuLabel>
@@ -114,14 +119,14 @@ export function NavUser() {
 									Switch Brand
 								</Link>
 							</DropdownMenuItem>
-					{clientConfig.branding.parentUrl && clientConfig.branding.parentName && (
-						<DropdownMenuItem asChild className="cursor-pointer">
-							<Link href={clientConfig.branding.parentUrl} target="_blank">
-								<IconExternalLink />
-								{clientConfig.branding.parentName} Dashboard
-							</Link>
-						</DropdownMenuItem>
-					)}
+							{clientConfig.branding.parentUrl && clientConfig.branding.parentName && (
+								<DropdownMenuItem asChild className="cursor-pointer">
+									<Link href={clientConfig.branding.parentUrl} target="_blank">
+										<IconExternalLink />
+										{clientConfig.branding.parentName} Dashboard
+									</Link>
+								</DropdownMenuItem>
+							)}
 						</DropdownMenuGroup>
 						{logoutUrl && (
 							<>

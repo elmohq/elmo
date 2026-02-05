@@ -4,6 +4,16 @@ import { IconEditCircle } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@workspace/ui/components/button";
+import { Separator } from "@workspace/ui/components/separator";
+import { SidebarTrigger } from "@workspace/ui/components/sidebar";
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbLink,
+	BreadcrumbList,
+	BreadcrumbPage,
+	BreadcrumbSeparator,
+} from "@workspace/ui/components/breadcrumb";
 import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 
@@ -37,40 +47,50 @@ export function SiteHeader() {
 		return pathname.endsWith("/edit") ? pathname.slice(0, -5) : pathname;
 	};
 
-	// Create edit link - remove trailing slashes and add /edit if not already present
-	const getEditLink = () => {
-		const cleanPath = pathname.replace(/\/+$/, "");
-		return cleanPath.endsWith("/edit") ? cleanPath : `${cleanPath}/edit`;
-	};
-
 	return (
-		<header className="bg-background sticky top-0 z-10 flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-			<div className="container flex w-full items-center gap-1 px-6 lg:gap-2">
-				<div className="flex items-center gap-2">
-					<Link href={`/app/${brandId}`}>
-						<h1 className="text-base font-medium cursor-pointer hover:underline">{brand?.name || "Dashboard"}</h1>
-					</Link>
-					<span className="text-base font-medium text-muted-foreground">/</span>
-					{isPromptDetailPage ? (
-						<>
-							<Link href={`/app/${brandId}/prompts`}>
-								<span className="text-base font-medium cursor-pointer hover:underline">Prompts</span>
-							</Link>
-							<span className="text-base font-medium text-muted-foreground">/</span>
-							<span className="text-base font-medium text-muted-foreground">Prompt History</span>
-						</>
-					) : isEditPage ? (
-						<>
-							<Link href={getBasePath()}>
-								<span className="text-base font-medium cursor-pointer hover:underline">{pageName}</span>
-							</Link>
-							<span className="text-base font-medium text-muted-foreground">/</span>
-							<span className="text-base font-medium text-muted-foreground">Edit</span>
-						</>
-					) : (
-						<span className="text-base font-medium text-muted-foreground">{pageName}</span>
-					)}
-				</div>
+		<header className="bg-background sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+			<div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+				<SidebarTrigger className="-ml-1 cursor-pointer" />
+				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+				<Breadcrumb>
+					<BreadcrumbList>
+						<BreadcrumbItem className="hidden md:block">
+							<BreadcrumbLink asChild>
+								<Link href={`/app/${brandId}`}>{brand?.name || "Dashboard"}</Link>
+							</BreadcrumbLink>
+						</BreadcrumbItem>
+						<BreadcrumbSeparator className="hidden md:block" />
+						{isPromptDetailPage ? (
+							<>
+								<BreadcrumbItem className="hidden md:block">
+									<BreadcrumbLink asChild>
+										<Link href={`/app/${brandId}/prompts`}>Prompts</Link>
+									</BreadcrumbLink>
+								</BreadcrumbItem>
+								<BreadcrumbSeparator className="hidden md:block" />
+								<BreadcrumbItem>
+									<BreadcrumbPage>Prompt History</BreadcrumbPage>
+								</BreadcrumbItem>
+							</>
+						) : isEditPage ? (
+							<>
+								<BreadcrumbItem className="hidden md:block">
+									<BreadcrumbLink asChild>
+										<Link href={getBasePath()}>{pageName}</Link>
+									</BreadcrumbLink>
+								</BreadcrumbItem>
+								<BreadcrumbSeparator className="hidden md:block" />
+								<BreadcrumbItem>
+									<BreadcrumbPage>Edit</BreadcrumbPage>
+								</BreadcrumbItem>
+							</>
+						) : (
+							<BreadcrumbItem>
+								<BreadcrumbPage>{pageName}</BreadcrumbPage>
+							</BreadcrumbItem>
+						)}
+					</BreadcrumbList>
+				</Breadcrumb>
 				<div className="ml-auto flex items-center gap-2">
 					{!isEditPage && !isPromptDetailPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
 						<Link href={`/app/${brandId}/prompts/edit`}>
