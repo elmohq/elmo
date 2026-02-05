@@ -72,6 +72,7 @@ interface PageHeaderProps {
 	editTagsLink?: string;
 	showSearch?: boolean;
 	showModelSelector?: boolean;
+	showVisibilityBar?: boolean;
 	availableModels?: ModelType[];
 	defaultModel?: ModelType;
 	onModelChange?: (model: ModelType) => void;
@@ -114,6 +115,11 @@ export function PageHeaderSkeleton() {
 						</div>
 					</div>
 				</div>
+
+				{/* Visibility bar skeleton — reserves space so charts don't jump when real bar appears */}
+				<div className="mt-3">
+					<VisibilityBarSkeleton />
+				</div>
 			</div>
 		</div>
 	);
@@ -127,6 +133,7 @@ export function PageHeader({
 	editTagsLink,
 	showSearch = false,
 	showModelSelector = false,
+	showVisibilityBar = false,
 	availableModels = ["all", "openai", "anthropic", "google"],
 	defaultModel = "all",
 	onModelChange,
@@ -273,23 +280,29 @@ export function PageHeader({
 					</div>
 				</div>
 
-				{/* Visibility summary bar - shows filtered visibility stats */}
-				{(isLoadingVisibility || visibilityData) && (
-					<div className="mt-3">
-						{isLoadingVisibility ? (
-							<VisibilityBarSkeleton />
-						) : visibilityData ? (
-							<VisibilityBar
-								currentVisibility={visibilityData.currentVisibility}
-								totalRuns={visibilityData.totalRuns}
-								totalPrompts={visibilityData.totalPrompts}
-								totalCitations={visibilityData.totalCitations}
-								visibilityTimeSeries={visibilityData.visibilityTimeSeries}
-								lookback={visibilityData.lookback}
-							/>
-						) : null}
-					</div>
-				)}
+				{/* Visibility summary bar - skeleton stays in DOM (grid overlay) for stable height; opacity-0 hides it once real bar loads */}
+				{showVisibilityBar && (() => {
+					// Only show the real bar when we have meaningful data (totalRuns > 0)
+					// The first fetch (without promptIds) may return totalRuns=0 before the filtered fetch arrives
+					const showReal = visibilityData && !isLoadingVisibility && visibilityData.totalRuns > 0;
+					return (
+						<div className="mt-3 grid [&>*]:col-start-1 [&>*]:row-start-1">
+							<div className={showReal ? "opacity-0 pointer-events-none" : undefined}>
+								<VisibilityBarSkeleton />
+							</div>
+							{showReal && (
+								<VisibilityBar
+									currentVisibility={visibilityData.currentVisibility}
+									totalRuns={visibilityData.totalRuns}
+									totalPrompts={visibilityData.totalPrompts}
+									totalCitations={visibilityData.totalCitations}
+									visibilityTimeSeries={visibilityData.visibilityTimeSeries}
+									lookback={visibilityData.lookback}
+								/>
+							)}
+						</div>
+					);
+				})()}
 			</div>
 
 			{/* Page content */}

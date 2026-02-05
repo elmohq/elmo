@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Badge } from "@workspace/ui/components/badge";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -59,23 +59,18 @@ export function CachedPromptChart({
 	// Determine chart type based on lookback period
 	const chartType = lookback === "1w" ? "bar" : "line";
 
-	// Loading state
+	// Loading state — structure matches the success state card exactly:
+	// CardHeader (title + badge), Separator, CardContent (pl-0 pr-6, h-[250px]), footer
 	if (!chartContext || chartContext.isLoading || !chartData) {
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					<div className="flex items-center gap-2">
-						<Skeleton className="h-4 w-4 rounded" />
-						<Skeleton className="h-4 w-48" />
-					</div>
-					<div className="flex items-center gap-2">
-						<Skeleton className="h-6 w-20 rounded-full" />
-						<Skeleton className="h-8 w-8 rounded" />
-					</div>
+					<Skeleton className="h-4 w-48" />
+					<Skeleton className="h-5 w-24 rounded-full" />
 				</CardHeader>
 				<Separator className="py-0 my-0" />
-				<CardContent className="px-3">
-					<div className="h-[200px] flex items-center justify-center">
+				<CardContent className="pl-0 pr-6">
+					<div className="h-[250px] flex items-center justify-center">
 						<div className="space-y-2">
 							<Skeleton className="h-4 w-32 mx-auto" />
 							<div className="flex justify-center space-x-2">
@@ -86,6 +81,14 @@ export function CachedPromptChart({
 						</div>
 					</div>
 				</CardContent>
+				<Separator className="py-0 my-0" />
+				<CardFooter className="flex items-center justify-between px-3 pt-3 pb-0">
+					<div className="flex items-center gap-2">
+						<Skeleton className="h-6 w-16 rounded" />
+						<Skeleton className="h-6 w-24 rounded" />
+					</div>
+					<Skeleton className="h-6 w-20 rounded" />
+				</CardFooter>
 			</Card>
 		);
 	}
@@ -116,15 +119,17 @@ export function CachedPromptChart({
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div>
-						<span className="font-semibold text-xl text-muted-foreground">
-							{message}
-						</span>
-						{subMessage && (
-							<p className="text-sm text-muted-foreground mt-1">
-								{subMessage}
-							</p>
-						)}
+					<div className="h-[250px] flex items-center">
+						<div>
+							<span className="font-semibold text-xl text-muted-foreground">
+								{message}
+							</span>
+							{subMessage && (
+								<p className="text-sm text-muted-foreground mt-1">
+									{subMessage}
+								</p>
+							)}
+						</div>
 					</div>
 				</CardContent>
 			</Card>
@@ -140,7 +145,7 @@ export function CachedPromptChart({
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div>
+					<div className="h-[250px] flex items-center">
 						<span className="font-semibold text-xl text-muted-foreground">
 							No brands found.
 						</span>

@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useMemo, useState, useLayoutEffect, useEffect } from "react";
+import { useRef, useMemo, useState, useCallback, useLayoutEffect, useEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { CachedPromptChart } from "./cached-prompt-chart";
-import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
@@ -25,9 +24,8 @@ interface VirtualizedPromptListProps {
 	searchHighlight?: string;
 }
 
-// Heights for different chart states
-const FULL_CHART_HEIGHT = 380; // Full chart with data
-const EMPTY_STATE_HEIGHT = 120; // "No data in selected time range" or "Evaluating for the first time..."
+// All chart cards use a uniform height (empty states match chart height via h-[250px])
+const CHART_CARD_HEIGHT = 380;
 const CHART_GAP = 24; // px - gap between cards (space-y-6)
 
 export function VirtualizedPromptList({
@@ -40,7 +38,6 @@ export function VirtualizedPromptList({
 }: VirtualizedPromptListProps) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const [scrollMargin, setScrollMargin] = useState(0);
-	const chartContext = useOptionalChartDataContext();
 
 	// Use prompts as-is (no longer grouping by category)
 	const orderedPrompts = useMemo(() => prompts, [prompts]);
@@ -57,47 +54,23 @@ export function VirtualizedPromptList({
 		return orderedPrompts.map(p => p.id).join(",");
 	}, [orderedPrompts]);
 
-	// Track chart loading state
-	const isChartLoading = chartContext?.isLoading ?? true;
-
-	// Create a function to estimate height based on whether the prompt has data
-	const getEstimatedHeight = useMemo(() => {
-		return (index: number) => {
-			const prompt = orderedPrompts[index];
-			if (!prompt) return FULL_CHART_HEIGHT + CHART_GAP;
-
-			// If chart data is loaded, check if this prompt has data in the current window
-			if (chartContext && !chartContext.isLoading) {
-				const chartData = chartContext.getChartDataForPrompt(prompt.id);
-				// If no runs in the current window, use the smaller empty state height
-				if (chartData && chartData.totalRuns === 0) {
-					return EMPTY_STATE_HEIGHT + CHART_GAP;
-				}
-			}
-
-			return FULL_CHART_HEIGHT + CHART_GAP;
-		};
-	}, [orderedPrompts, chartContext]);
+	// Uniform height estimate — all cards (loading, empty, full) have matching content areas
+	const estimateSize = useCallback(() => CHART_CARD_HEIGHT + CHART_GAP, []);
 
 	const virtualizer = useWindowVirtualizer({
 		count: orderedPrompts.length,
-		// Use smart estimate based on whether prompt has data in current window
-		estimateSize: getEstimatedHeight,
+		estimateSize,
 		overscan: 3, // Render 3 extra items above and below viewport
 		scrollMargin,
 	});
 
-	// Force virtualizer to recalculate when:
-	// 1. Prompts list changes (e.g., after filtering)
-	// 2. Chart data finishes loading (actual heights are now known)
-	// 3. Height estimates change (e.g., when we know which prompts have no data)
+	// Force virtualizer to recalculate when prompts list changes (e.g., after filtering)
 	useEffect(() => {
-		// Small delay to ensure DOM has updated with new content
 		const timer = setTimeout(() => {
 			virtualizer.measure();
 		}, 50);
 		return () => clearTimeout(timer);
-	}, [virtualizer, promptsKey, isChartLoading, getEstimatedHeight]);
+	}, [virtualizer, promptsKey]);
 
 	const virtualItems = virtualizer.getVirtualItems();
 
@@ -124,6 +97,8 @@ export function VirtualizedPromptList({
 								left: 0,
 								width: "100%",
 								transform: `translateY(${virtualItem.start - scrollMargin}px)`,
+								willChange: "transform",
+								contain: "layout style",
 							}}
 						>
 							<div style={{ paddingBottom: CHART_GAP }}>

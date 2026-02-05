@@ -131,13 +131,13 @@ export function VisibilityBarSkeleton() {
 	return (
 		<div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border bg-muted/30">
 			<div className="flex items-center gap-3">
-				<Skeleton className="h-5 w-36" />
+				<Skeleton className="h-6 sm:h-7 w-36" />
 				<Skeleton className="h-6 w-24 hidden sm:block" />
 			</div>
 			<div className="flex items-center gap-x-3">
-				<Skeleton className="h-3 sm:h-4 w-16" />
-				<Skeleton className="h-3 sm:h-4 w-14" />
-				<Skeleton className="h-3 sm:h-4 w-20" />
+				<Skeleton className="h-4 sm:h-5 w-16" />
+				<Skeleton className="h-4 sm:h-5 w-14" />
+				<Skeleton className="h-4 sm:h-5 w-20" />
 			</div>
 		</div>
 	);
