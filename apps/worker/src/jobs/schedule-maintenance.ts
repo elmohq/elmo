@@ -59,117 +59,171 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	// Get last runs for all prompts (most recent per prompt, any model group)
+	// Get last runs per prompt per model group (matches dashboard overdue logic)
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
+			modelGroup: promptRuns.modelGroup,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId);
+		.groupBy(promptRuns.promptId, promptRuns.modelGroup);
 
-	const lastRunsMap: Record<string, Date> = {};
+	const lastRunsMap: Record<string, Record<string, Date>> = {};
 	for (const run of lastRunsQuery) {
-		lastRunsMap[run.promptId] = run.lastRunAt;
+		if (!lastRunsMap[run.promptId]) {
+			lastRunsMap[run.promptId] = {};
+		}
+		lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
 	}
 
-	// Get all pending jobs (created, active, retry states)
-	const pendingJobs = await getPendingJobPromptIds();
+	// Get all pending jobs with their state info
+	const pendingJobMap = await getPendingJobMap();
 
 	const now = Date.now();
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
+	const jobsToExpedite: string[] = []; // Job IDs to expedite (move startafter to now)
 
 	for (const prompt of enabledPrompts) {
-		// Skip if there's already a pending job for this prompt
-		if (pendingJobs.has(prompt.id)) {
+		const pendingJob = pendingJobMap.get(prompt.id);
+
+		// Skip if there's an active or retry job (already being worked on)
+		if (pendingJob && (pendingJob.state === "active" || pendingJob.state === "retry")) {
 			continue;
 		}
 
 		const cadenceHours = brandDelayMap[prompt.brandId] ?? DEFAULT_DELAY_HOURS;
 		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
-		const lastRunAt = lastRunsMap[prompt.id];
+		const lastRuns = lastRunsMap[prompt.id] || {};
 
-		// Check if overdue
+		// Check if any model group is overdue (matches dashboard logic)
 		let isOverdue = false;
-		if (!lastRunAt) {
-			isOverdue = true; // Never run
-		} else {
+		for (const modelGroup of ["openai", "anthropic", "google"] as const) {
+			const lastRunAt = lastRuns[modelGroup];
+			if (!lastRunAt) {
+				isOverdue = true;
+				break;
+			}
 			const timeSinceRun = now - new Date(lastRunAt).getTime();
 			if (timeSinceRun > runFrequencyMs) {
 				isOverdue = true;
+				break;
 			}
 		}
 
-		if (isOverdue) {
+		if (!isOverdue) continue;
+
+		if (pendingJob && pendingJob.state === "created") {
+			// There's a future job scheduled - expedite it to run now
+			jobsToExpedite.push(pendingJob.jobId);
+		} else {
+			// No pending job at all - create a new one
 			promptsToSchedule.push({ promptId: prompt.id, cadenceHours });
 		}
 	}
 
-	if (promptsToSchedule.length === 0) {
+	if (promptsToSchedule.length === 0 && jobsToExpedite.length === 0) {
 		console.log("[schedule-maintenance] All prompts are on schedule or have pending jobs");
 		return;
 	}
 
-	console.log(`[schedule-maintenance] Found ${promptsToSchedule.length} prompts needing jobs`);
+	console.log(
+		`[schedule-maintenance] Found ${promptsToSchedule.length} prompts needing new jobs, ${jobsToExpedite.length} jobs to expedite`,
+	);
 
-	// Schedule jobs in batches
-	const BATCH_SIZE = 50;
-	let successCount = 0;
-	let failCount = 0;
-
-	for (let i = 0; i < promptsToSchedule.length; i += BATCH_SIZE) {
-		const batch = promptsToSchedule.slice(i, i + BATCH_SIZE);
-		const results = await Promise.allSettled(
-			batch.map(({ promptId, cadenceHours }) =>
-				boss.send(
-					"process-prompt",
-					{ promptId, cadenceHours },
-					{
-						singletonKey: `prompt-${promptId}`,
-						singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
-						retryLimit: 3,
-						retryDelay: 60,
-						retryBackoff: true,
-						expireInSeconds: 60 * 15,
-					},
-				),
-			),
-		);
-
-		for (const result of results) {
-			if (result.status === "fulfilled") {
-				successCount++;
-			} else {
-				failCount++;
-				console.error("[schedule-maintenance] Failed to schedule job:", result.reason);
+	// Expedite existing future jobs to run now by updating startafter
+	if (jobsToExpedite.length > 0) {
+		let expeditedCount = 0;
+		for (const jobId of jobsToExpedite) {
+			try {
+				await db.execute(sql`
+					UPDATE pgboss.job
+					SET startafter = now()
+					WHERE id = ${jobId}
+					  AND state = 'created'
+				`);
+				expeditedCount++;
+			} catch (error) {
+				console.error(`[schedule-maintenance] Failed to expedite job ${jobId}:`, error);
 			}
 		}
+		console.log(`[schedule-maintenance] Expedited ${expeditedCount} future jobs to run now`);
 	}
 
-	console.log(
-		`[schedule-maintenance] Scheduled ${successCount} jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
-	);
+	// Schedule new jobs for prompts with no pending job
+	if (promptsToSchedule.length > 0) {
+		const BATCH_SIZE = 50;
+		let successCount = 0;
+		let failCount = 0;
+
+		for (let i = 0; i < promptsToSchedule.length; i += BATCH_SIZE) {
+			const batch = promptsToSchedule.slice(i, i + BATCH_SIZE);
+			const results = await Promise.allSettled(
+				batch.map(({ promptId, cadenceHours }) =>
+					boss.send(
+						"process-prompt",
+						{ promptId, cadenceHours },
+						{
+							singletonKey: `prompt-${promptId}`,
+							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
+							retryLimit: 3,
+							retryDelay: 60,
+							retryBackoff: true,
+							expireInSeconds: 60 * 15,
+						},
+					),
+				),
+			);
+
+			for (const result of results) {
+				if (result.status === "fulfilled") {
+					successCount++;
+				} else {
+					failCount++;
+					console.error("[schedule-maintenance] Failed to schedule job:", result.reason);
+				}
+			}
+		}
+
+		console.log(
+			`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
+		);
+	}
 }
 
 /**
- * Get the set of promptIds that have pending jobs (created, active, or retry state).
+ * Get pending jobs for each prompt, preferring the most active state.
+ * Returns at most one job per prompt: active > retry > created.
  */
-async function getPendingJobPromptIds(): Promise<Set<string>> {
-	// Query pgboss.job table directly for pending jobs
+interface PendingJobInfo {
+	jobId: string;
+	state: "created" | "active" | "retry";
+}
+
+async function getPendingJobMap(): Promise<Map<string, PendingJobInfo>> {
 	const result = await db.execute(sql`
-		SELECT DISTINCT data->>'promptId' as prompt_id
+		SELECT id, data->>'promptId' as prompt_id, state
 		FROM pgboss.job
 		WHERE name = 'process-prompt'
 		  AND state IN ('created', 'active', 'retry')
 		  AND data->>'promptId' IS NOT NULL
+		ORDER BY
+			CASE state
+				WHEN 'active' THEN 1
+				WHEN 'retry' THEN 2
+				WHEN 'created' THEN 3
+			END
 	`);
 
-	const promptIds = new Set<string>();
-	for (const row of result.rows as { prompt_id: string }[]) {
-		if (row.prompt_id) {
-			promptIds.add(row.prompt_id);
+	const map = new Map<string, PendingJobInfo>();
+	for (const row of result.rows as { id: string; prompt_id: string; state: string }[]) {
+		if (row.prompt_id && !map.has(row.prompt_id)) {
+			map.set(row.prompt_id, {
+				jobId: row.id,
+				state: row.state as "created" | "active" | "retry",
+			});
 		}
 	}
 
-	return promptIds;
+	return map;
 }
