@@ -48,25 +48,6 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 		isSatisfied: requireAll(["DATABASE_URL"]),
 	},
 	{
-		id: "UPSTASH_REDIS_REST_URL",
-		label: "UPSTASH_REDIS_REST_URL",
-		description: "Upstash Redis REST URL.",
-		isSatisfied: requireAll(["UPSTASH_REDIS_REST_URL"]),
-	},
-	{
-		id: "UPSTASH_REDIS_REST_TOKEN",
-		label: "UPSTASH_REDIS_REST_TOKEN",
-		description: "Upstash Redis REST token.",
-		isSatisfied: requireAll(["UPSTASH_REDIS_REST_TOKEN"]),
-	},
-	{
-		id: "UPSTASH_REDIS_ENDPOINT",
-		label: "UPSTASH_REDIS_ENDPOINT",
-		description:
-			"Redis host for BullMQ queues (e.g., 'redis' for Docker or 'xxx.upstash.io' for Upstash).",
-		isSatisfied: requireAll(["UPSTASH_REDIS_ENDPOINT"]),
-	},
-	{
 		id: "ANTHROPIC_API_KEY",
 		label: "ANTHROPIC_API_KEY",
 		description: "Anthropic API key.",

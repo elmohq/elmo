@@ -179,16 +179,15 @@ elmo compose down
 ```
 
 The `elmo init` command:
-1. Prompts for configuration (database, Redis, Tinybird, AI credentials)
+1. Prompts for configuration (database, Tinybird, AI credentials)
 2. Generates `elmo.yaml` (Docker Compose file) with the appropriate services
 3. Generates `.env` with environment variables and secrets
 4. Optionally starts the stack immediately
 
 The generated stack includes:
 - **web**: Next.js application (port 1515)
-- **worker**: BullMQ background worker
+- **worker**: pg-boss background worker
 - **postgres**: PostgreSQL database (optional, can use external)
-- **redis** + **redis-http**: Redis with HTTP proxy for Upstash compatibility (optional)
 - **tinybird**: Tinybird Local for analytics (optional, can use Tinybird Cloud)
 
 ### Development Builds
@@ -206,7 +205,7 @@ elmo compose up -d
 
 The Docker build uses a multi-stage `docker/Dockerfile` with separate targets:
 - `web` target: Standalone Next.js server
-- `worker` target: BullMQ worker process
+- `worker` target: pg-boss worker process
 
 Both targets receive `DEPLOYMENT_MODE` as a build arg to configure mode-specific behavior at build time.
 

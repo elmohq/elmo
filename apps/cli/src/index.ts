@@ -25,7 +25,6 @@ type InitOptions = {
 	dev?: boolean;
 };
 
-type RedisMode = "docker" | "upstash" | "proxy";
 type PostgresMode = "docker" | "external";
 type TinybirdMode = "docker" | "external";
 
@@ -39,9 +38,6 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/brands/elmo/icon.png";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
-const LOCAL_REDIS_ENDPOINT = "redis";
-const LOCAL_REDIS_HTTP_URL = "http://redis-http:80";
-const LOCAL_REDIS_HTTP_TOKEN = "local-token";
 const LOCAL_TINYBIRD_URL = "http://tinybird:7181";
 
 const log = {
@@ -373,55 +369,6 @@ async function gatherInitConfig(
 		env.DATABASE_URL = LOCAL_DATABASE_URL;
 	}
 
-	const redisMode = await promptSelect<RedisMode>(
-		rl,
-		"Redis connection",
-		[
-			{ label: "Run Redis in Docker (with HTTP proxy)", value: "docker" },
-			{ label: "Use Upstash Redis (REST + endpoint)", value: "upstash" },
-			{ label: "Use existing Redis + HTTP proxy", value: "proxy" },
-		],
-		"docker",
-	);
-
-	if (redisMode === "docker") {
-		env.UPSTASH_REDIS_ENDPOINT = LOCAL_REDIS_ENDPOINT;
-		env.UPSTASH_REDIS_REST_URL = LOCAL_REDIS_HTTP_URL;
-		env.UPSTASH_REDIS_REST_TOKEN = LOCAL_REDIS_HTTP_TOKEN;
-	} else if (redisMode === "upstash") {
-		env.UPSTASH_REDIS_ENDPOINT = await promptText(
-			rl,
-			"Upstash Redis endpoint (host for BullMQ, e.g. xxx.upstash.io)",
-			{ required: true },
-		);
-		env.UPSTASH_REDIS_REST_URL = await promptText(
-			rl,
-			"Upstash REST URL",
-			{ required: true },
-		);
-		env.UPSTASH_REDIS_REST_TOKEN = await promptText(
-			rl,
-			"Upstash REST token",
-			{ required: true },
-		);
-	} else {
-		env.UPSTASH_REDIS_ENDPOINT = await promptText(
-			rl,
-			"Redis host (for BullMQ)",
-			{ required: true },
-		);
-		env.UPSTASH_REDIS_REST_URL = await promptText(
-			rl,
-			"Redis HTTP proxy URL",
-			{ required: true },
-		);
-		env.UPSTASH_REDIS_REST_TOKEN = await promptText(
-			rl,
-			"Redis HTTP proxy token",
-			{ required: true },
-		);
-	}
-
 	const tinybirdMode = await promptSelect<TinybirdMode>(
 		rl,
 		"Tinybird analytics",
@@ -478,7 +425,6 @@ async function gatherInitConfig(
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
 		postgresMode,
-		redisMode,
 		tinybirdMode,
 		repoRoot: paths.repoRoot,
 		dockerDir: paths.dockerDir,
@@ -542,7 +488,6 @@ function formatEnvValue(value: string): string {
 function buildComposeYaml(options: {
 	dev: boolean;
 	postgresMode: PostgresMode;
-	redisMode: RedisMode;
 	tinybirdMode: TinybirdMode;
 	repoRoot: string;
 	dockerDir?: string;
@@ -555,8 +500,6 @@ function buildComposeYaml(options: {
 
 	const dependencyConditions: Record<string, string> = {
 		postgres: "service_healthy",
-		redis: "service_healthy",
-		"redis-http": "service_started",
 		tinybird: "service_healthy",
 		"tinybird-init": "service_completed_successfully",
 	};
@@ -566,14 +509,6 @@ function buildComposeYaml(options: {
 		dependsOnWeb.push("postgres");
 		dependsOnWorker.push("postgres");
 		volumes.add("postgres_data");
-	}
-
-	if (options.redisMode === "docker") {
-		services.push(buildRedisService());
-		services.push(buildRedisHttpService());
-		dependsOnWeb.push("redis-http");
-		dependsOnWorker.push("redis");
-		volumes.add("redis_data");
 	}
 
 	if (options.tinybirdMode === "docker") {
@@ -645,38 +580,6 @@ function buildPostgresService(): string {
 		"    interval: 5s",
 		"    timeout: 5s",
 		"    retries: 5",
-	].join("\n");
-}
-
-function buildRedisService(): string {
-	return [
-		"redis:",
-		"  image: redis:7-alpine",
-		"  volumes:",
-		"    - redis_data:/data",
-		"  ports:",
-		'    - "6379:6379"',
-		"  healthcheck:",
-		'    test: ["CMD", "redis-cli", "ping"]',
-		"    interval: 5s",
-		"    timeout: 5s",
-		"    retries: 5",
-	].join("\n");
-}
-
-function buildRedisHttpService(): string {
-	return [
-		"redis-http:",
-		"  image: hiett/serverless-redis-http:latest",
-		"  environment:",
-		"    SRH_MODE: env",
-		"    SRH_TOKEN: local-token",
-		"    SRH_CONNECTION_STRING: redis://redis:6379",
-		"  ports:",
-		'    - "8079:80"',
-		"  depends_on:",
-		"    redis:",
-		"      condition: service_healthy",
 	].join("\n");
 }
 

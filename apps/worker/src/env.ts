@@ -22,11 +22,6 @@ const envSchema = z.object({
 	// Environment
 	ENVIRONMENT: z.string().min(1, "ENVIRONMENT is required"),
 
-	// Redis - uses Upstash-style env vars for both Upstash and local Docker (via redis-http)
-	UPSTASH_REDIS_ENDPOINT: z.string().min(1, "UPSTASH_REDIS_ENDPOINT is required"),
-	UPSTASH_REDIS_REST_TOKEN: z.string().min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
-	UPSTASH_REDIS_REST_URL: z.string().min(1, "UPSTASH_REDIS_REST_URL is required"),
-
 	// Tinybird
 	TINYBIRD_TOKEN: z.string().min(1, "TINYBIRD_TOKEN is required"),
 	TINYBIRD_BASE_URL: z.string().min(1, "TINYBIRD_BASE_URL is required"),

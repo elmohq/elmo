@@ -24,7 +24,6 @@
     "@tabler/icons-react": "^3.34.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-virtual": "^3.13.18",
-    "@upstash/redis": "^1.35.1",
     "@workspace/config": "workspace:*",
     "@workspace/demo": "workspace:*",
     "@workspace/deployment": "workspace:*",
