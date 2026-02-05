@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { 
 	IconArrowRight,
@@ -27,6 +27,130 @@ import {
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
 import { clientConfig } from "@/lib/config/client";
+import type { VisibilityTimeSeriesPoint, CitationTimeSeriesPoint } from "@/app/api/brands/[id]/dashboard-summary/route";
+
+// Extended data point types for dashboard charts
+interface ExtendedVisibilityPoint extends VisibilityTimeSeriesPoint {
+	_extended?: boolean;
+	overallReal?: number | null; // Only non-extended values (null for extended points)
+}
+
+interface ExtendedCitationPoint extends CitationTimeSeriesPoint {
+	_extended?: boolean;
+	brandReal?: number;
+	competitorReal?: number;
+	socialMediaReal?: number;
+}
+
+/**
+ * Extends visibility time series data to chart edges using straight lines.
+ * Finds the first and last non-null values and fills gaps at edges.
+ * Marks extended points so we can skip tooltips for them.
+ * Also creates an 'overallReal' key that is null for extended points (for overlay rendering).
+ */
+function extendVisibilityData(data: VisibilityTimeSeriesPoint[]): ExtendedVisibilityPoint[] {
+	if (data.length === 0) return [];
+
+	const extendedData: ExtendedVisibilityPoint[] = data.map((point) => ({ 
+		...point,
+		overallReal: point.overall, // Initially, all real data goes here
+	}));
+
+	// Find first and last valid indices for 'overall'
+	let firstValidIndex = -1;
+	let lastValidIndex = -1;
+	let firstValue: number | null = null;
+	let lastValue: number | null = null;
+
+	for (let i = 0; i < extendedData.length; i++) {
+		if (extendedData[i].overall !== null) {
+			if (firstValidIndex === -1) {
+				firstValidIndex = i;
+				firstValue = extendedData[i].overall;
+			}
+			lastValidIndex = i;
+			lastValue = extendedData[i].overall;
+		}
+	}
+
+	// If we found valid data, extend it to the edges
+	if (firstValidIndex !== -1 && lastValidIndex !== -1) {
+		// Extend backward
+		for (let i = 0; i < firstValidIndex; i++) {
+			extendedData[i].overall = firstValue;
+			extendedData[i].overallReal = null; // No real data for extended points
+			extendedData[i]._extended = true;
+		}
+		// Extend forward
+		for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
+			extendedData[i].overall = lastValue;
+			extendedData[i].overallReal = null; // No real data for extended points
+			extendedData[i]._extended = true;
+		}
+	}
+
+	return extendedData;
+}
+
+/**
+ * Extends citation time series data to chart edges using straight lines.
+ * Marks extended points so we can skip tooltips for them.
+ * Also creates 'Real' keys that are 0 for extended points (for overlay rendering).
+ */
+function extendCitationData(data: CitationTimeSeriesPoint[]): ExtendedCitationPoint[] {
+	if (data.length === 0) return [];
+
+	const extendedData: ExtendedCitationPoint[] = data.map((point) => ({ 
+		...point,
+		brandReal: point.brand,
+		competitorReal: point.competitor,
+		socialMediaReal: point.socialMedia,
+	}));
+
+	// Find first and last indices with any citation data
+	let firstValidIndex = -1;
+	let lastValidIndex = -1;
+
+	for (let i = 0; i < extendedData.length; i++) {
+		const point = extendedData[i];
+		const hasData = point.brand > 0 || point.competitor > 0 || point.socialMedia > 0;
+		if (hasData) {
+			if (firstValidIndex === -1) {
+				firstValidIndex = i;
+			}
+			lastValidIndex = i;
+		}
+	}
+
+	// If we found valid data, extend it to the edges
+	if (firstValidIndex !== -1 && lastValidIndex !== -1) {
+		const firstPoint = extendedData[firstValidIndex];
+		const lastPoint = extendedData[lastValidIndex];
+
+		// Extend backward
+		for (let i = 0; i < firstValidIndex; i++) {
+			extendedData[i].brand = firstPoint.brand;
+			extendedData[i].competitor = firstPoint.competitor;
+			extendedData[i].socialMedia = firstPoint.socialMedia;
+			extendedData[i].brandReal = 0;
+			extendedData[i].competitorReal = 0;
+			extendedData[i].socialMediaReal = 0;
+			extendedData[i]._extended = true;
+		}
+		// Extend forward
+		for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
+			extendedData[i].brand = lastPoint.brand;
+			extendedData[i].competitor = lastPoint.competitor;
+			extendedData[i].socialMedia = lastPoint.socialMedia;
+			extendedData[i].brandReal = 0;
+			extendedData[i].competitorReal = 0;
+			extendedData[i].socialMediaReal = 0;
+			extendedData[i]._extended = true;
+		}
+	}
+
+	return extendedData;
+}
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -97,6 +221,21 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 
 	const isLoading = isLoadingBrand || isLoadingSummary;
 
+	// Get time series data (may be empty arrays if still loading)
+	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
+	const citationTimeSeries = dashboardSummary?.citationTimeSeries || [];
+
+	// Extend data to chart edges (memoized for performance)
+	// These hooks must be called before any early returns
+	const extendedVisibilityData = useMemo(
+		() => extendVisibilityData(visibilityTimeSeries),
+		[visibilityTimeSeries]
+	);
+	const extendedCitationData = useMemo(
+		() => extendCitationData(citationTimeSeries),
+		[citationTimeSeries]
+	);
+
 	if (isLoadingBrand) {
 		return (
 			<div className="flex flex-1 flex-col gap-4 p-4">
@@ -138,8 +277,6 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 	const totalPrompts = dashboardSummary?.totalPrompts || 0;
 	const averageVisibility = dashboardSummary?.averageVisibility || 0;
 	const nonBrandedVisibility = dashboardSummary?.nonBrandedVisibility || 0;
-	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
-	const citationTimeSeries = dashboardSummary?.citationTimeSeries || [];
 	const lastUpdatedAt = dashboardSummary?.lastUpdatedAt || null;
 
 	// Show placeholder if no evaluations yet
@@ -323,7 +460,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 								<Skeleton className="h-full w-full" />
 							) : (
 								<ChartContainer config={visibilityChartConfig} className="aspect-auto h-full w-full">
-									<AreaChart data={visibilityTimeSeries} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+									<AreaChart data={extendedVisibilityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
 										<CartesianGrid vertical={false} strokeDasharray="3 3" />
 										<XAxis
 											dataKey="date"
@@ -349,17 +486,29 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 										/>
 										<ChartTooltip
 											cursor={false}
-											content={
-												<ChartTooltipContent
-													className="min-w-[12rem]"
-													labelFormatter={(value) => {
-														const [year, month, day] = value.split("-").map(Number);
-														const date = new Date(year, month - 1, day);
-														return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-													}}
-												/>
-											}
+											content={({ active, payload, label }) => {
+												// Skip tooltip for extended data points
+												if (!active || !payload?.length) return null;
+												const dataPoint = payload[0]?.payload as ExtendedVisibilityPoint;
+												if (dataPoint?._extended) return null;
+												
+												const [year, month, day] = (label as string).split("-").map(Number);
+												const date = new Date(year, month - 1, day);
+												const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+												
+												return (
+													<div className="border-border/50 bg-background grid min-w-[12rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+														<div className="font-medium">{formattedDate}</div>
+														<div className="flex items-center gap-2">
+															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-emerald-500" />
+															<span className="text-muted-foreground">AI Visibility (7d avg)</span>
+															<span className="ml-auto font-mono tabular-nums">{dataPoint?.overall}%</span>
+														</div>
+													</div>
+												);
+											}}
 										/>
+										{/* Area extended to chart edges, tooltips hidden for extended points */}
 										<Area
 											dataKey="overall"
 											type="monotone"
@@ -403,7 +552,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 							<Skeleton className="h-[140px] w-full" />
 						) : (
 							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[140px] w-full">
-								<AreaChart data={citationTimeSeries} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+								<AreaChart data={extendedCitationData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
 									<CartesianGrid vertical={false} strokeDasharray="3 3" />
 									<XAxis
 										dataKey="date"
@@ -427,17 +576,41 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 									/>
 									<ChartTooltip
 										cursor={false}
-										content={
-											<ChartTooltipContent
-												className="min-w-[10rem]"
-												labelFormatter={(value) => {
-													const [year, month, day] = value.split("-").map(Number);
-													const date = new Date(year, month - 1, day);
-													return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-												}}
-											/>
-										}
+										content={({ active, payload, label }) => {
+											// Skip tooltip for extended data points
+											if (!active || !payload?.length) return null;
+											const dataPoint = payload[0]?.payload as ExtendedCitationPoint;
+											if (dataPoint?._extended) return null;
+											
+											const [year, month, day] = (label as string).split("-").map(Number);
+											const date = new Date(year, month - 1, day);
+											const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+											
+											return (
+												<div className="border-border/50 bg-background grid min-w-[10rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+													<div className="font-medium">{formattedDate}</div>
+													<div className="grid gap-1">
+														<div className="flex items-center gap-2">
+															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-emerald-500" />
+															<span className="text-muted-foreground">Your Brand</span>
+															<span className="ml-auto font-mono tabular-nums">{dataPoint?.brand}</span>
+														</div>
+														<div className="flex items-center gap-2">
+															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-red-500" />
+															<span className="text-muted-foreground">Competitors</span>
+															<span className="ml-auto font-mono tabular-nums">{dataPoint?.competitor}</span>
+														</div>
+														<div className="flex items-center gap-2">
+															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-violet-500" />
+															<span className="text-muted-foreground">Social Media</span>
+															<span className="ml-auto font-mono tabular-nums">{dataPoint?.socialMedia}</span>
+														</div>
+													</div>
+												</div>
+											);
+										}}
 									/>
+									{/* Stacked areas - extended to chart edges, tooltips hidden for extended points */}
 									<Area
 										dataKey="socialMedia"
 										type="monotone"
