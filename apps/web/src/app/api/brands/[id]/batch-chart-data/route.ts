@@ -4,6 +4,7 @@ import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, inArray, and } from "drizzle-orm";
 import type { LookbackPeriod } from "@/lib/chart-utils";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { 
 	getBatchChartData,
 	getBatchVisibilityData,
@@ -64,44 +65,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const promptIdsParam = searchParams.get("promptIds"); // comma-separated
 		
 		// Use client timezone for chart grouping
-		const timezone = searchParams.get("timezone") || Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const timezone = resolveTimezone(searchParams.get("timezone"));
 
 		// Calculate date range
 		let fromDateStr: string | null = null;
 		let toDateStr: string | null = null;
 
-		const now = new Date();
-		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
-
-		if (lookbackParam && lookbackParam !== "all") {
-			toDateStr = todayStr;
-			
-			const fromDate = new Date(now);
-			switch (lookbackParam) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 6); // 7 days including today
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
-		} else {
-			// For "all", set reasonable defaults
-			toDateStr = todayStr;
-			const fromDate = new Date(now);
-			fromDate.setFullYear(fromDate.getFullYear() - 1);
-			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
-		}
+		({ fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
+			allStrategy: "1y",
+		}));
 
 		// Parse prompt IDs
 		const promptIds = promptIdsParam 

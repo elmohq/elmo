@@ -11,6 +11,9 @@ type ModelType = "openai" | "anthropic" | "google" | "all";
 interface PromptItem {
 	id: string;
 	value: string;
+	// All-time first evaluation date (null if never evaluated)
+	// Note: Date objects are serialized to strings in JSON responses
+	firstEvaluatedAt?: Date | string | null;
 }
 
 interface VirtualizedPromptListProps {
@@ -24,6 +27,7 @@ interface VirtualizedPromptListProps {
 
 // Heights for different chart states
 const FULL_CHART_HEIGHT = 380; // Full chart with data
+const EMPTY_STATE_HEIGHT = 120; // "No data in selected time range" or "Evaluating for the first time..."
 const CHART_GAP = 24; // px - gap between cards (space-y-6)
 
 export function VirtualizedPromptList({
@@ -56,10 +60,29 @@ export function VirtualizedPromptList({
 	// Track chart loading state
 	const isChartLoading = chartContext?.isLoading ?? true;
 
+	// Create a function to estimate height based on whether the prompt has data
+	const getEstimatedHeight = useMemo(() => {
+		return (index: number) => {
+			const prompt = orderedPrompts[index];
+			if (!prompt) return FULL_CHART_HEIGHT + CHART_GAP;
+
+			// If chart data is loaded, check if this prompt has data in the current window
+			if (chartContext && !chartContext.isLoading) {
+				const chartData = chartContext.getChartDataForPrompt(prompt.id);
+				// If no runs in the current window, use the smaller empty state height
+				if (chartData && chartData.totalRuns === 0) {
+					return EMPTY_STATE_HEIGHT + CHART_GAP;
+				}
+			}
+
+			return FULL_CHART_HEIGHT + CHART_GAP;
+		};
+	}, [orderedPrompts, chartContext]);
+
 	const virtualizer = useWindowVirtualizer({
 		count: orderedPrompts.length,
-		// Use a consistent estimate - the measureElement ref will get actual heights
-		estimateSize: () => FULL_CHART_HEIGHT + CHART_GAP,
+		// Use smart estimate based on whether prompt has data in current window
+		estimateSize: getEstimatedHeight,
 		overscan: 3, // Render 3 extra items above and below viewport
 		scrollMargin,
 	});
@@ -67,13 +90,14 @@ export function VirtualizedPromptList({
 	// Force virtualizer to recalculate when:
 	// 1. Prompts list changes (e.g., after filtering)
 	// 2. Chart data finishes loading (actual heights are now known)
+	// 3. Height estimates change (e.g., when we know which prompts have no data)
 	useEffect(() => {
 		// Small delay to ensure DOM has updated with new content
 		const timer = setTimeout(() => {
 			virtualizer.measure();
 		}, 50);
 		return () => clearTimeout(timer);
-	}, [virtualizer, promptsKey, isChartLoading]);
+	}, [virtualizer, promptsKey, isChartLoading, getEstimatedHeight]);
 
 	const virtualItems = virtualizer.getVirtualItems();
 
@@ -111,6 +135,7 @@ export function VirtualizedPromptList({
 									selectedModel={selectedModel}
 									availableModels={availableModels}
 									searchHighlight={searchHighlight}
+									hasEverBeenEvaluated={Boolean(prompt.firstEvaluatedAt)}
 								/>
 							</div>
 						</div>

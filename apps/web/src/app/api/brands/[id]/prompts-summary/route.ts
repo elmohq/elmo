@@ -3,7 +3,7 @@ import { db } from "@workspace/lib/db/db";
 import { prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, desc } from "drizzle-orm";
-import { getPromptsSummary } from "@/lib/tinybird-read-v2";
+import { getPromptsSummary, getPromptsFirstEvaluatedAt } from "@/lib/tinybird-read-v2";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 type Params = {
@@ -22,6 +22,9 @@ export interface PromptSummary {
 	averageWeightedMentions: number; // average weighted mentions per run (brand = 2x, competitor = 1x each)
 	hasVisibilityData: boolean;
 	lastRunAt: Date | null;
+	// All-time first evaluation date (null if never evaluated)
+	// Used to distinguish "never evaluated" vs "no data in selected window"
+	firstEvaluatedAt: Date | null;
 	// Tags - includes user tags + computed system tag
 	tags: string[];
 }
@@ -126,15 +129,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		// Get stats from Tinybird
 		const webSearchEnabled = webSearchEnabledParam !== null ? webSearchEnabledParam === "true" : undefined;
 		
-		const tinybirdStats = await getPromptsSummary(
-			brandId,
-			fromDateStr,
-			toDateStr,
-			timezone,
-			webSearchEnabled,
-			modelGroupParam || undefined,
-			enabledPromptIds,
-		);
+		// Fetch both lookback-filtered stats and all-time first evaluation dates in parallel
+		const [tinybirdStats, firstEvaluatedAtResults] = await Promise.all([
+			getPromptsSummary(
+				brandId,
+				fromDateStr,
+				toDateStr,
+				timezone,
+				webSearchEnabled,
+				modelGroupParam || undefined,
+				enabledPromptIds,
+			),
+			// Get all-time first evaluation dates (no date filter)
+			// This helps distinguish "never evaluated" vs "no data in selected window"
+			getPromptsFirstEvaluatedAt(brandId, enabledPromptIds),
+		]);
+
+		// Create a map of prompt_id -> first_evaluated_at
+		const firstEvaluatedAtMap = new Map<string, Date>();
+		for (const item of firstEvaluatedAtResults) {
+			firstEvaluatedAtMap.set(item.prompt_id, new Date(item.first_evaluated_at));
+		}
 
 		// Create a map of prompt_id -> stats from Tinybird
 		const statsMap = new Map<string, {
@@ -179,6 +194,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				lastRunAt = new Date(stats.lastRunDate);
 			}
 
+			// Get all-time first evaluation date (null if never evaluated)
+			const firstEvaluatedAt = firstEvaluatedAtMap.get(prompt.id) || null;
+
 			return {
 				id: prompt.id,
 				value: prompt.value,
@@ -190,6 +208,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 				averageWeightedMentions,
 				hasVisibilityData,
 				lastRunAt,
+				firstEvaluatedAt,
 				tags: allTags,
 			};
 		});

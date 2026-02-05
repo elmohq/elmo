@@ -4,6 +4,7 @@ import { prompts, brands } from "@workspace/lib/db/schema";
 import { getElmoOrgs } from "@/lib/metadata";
 import { eq, and, inArray } from "drizzle-orm";
 import { generateDateRange, getDaysFromLookback, type LookbackPeriod } from "@/lib/chart-utils";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { 
 	getVisibilityTimeSeries,
 	getDailyCitationStats,
@@ -47,40 +48,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Pa
 		const promptIdsParam = searchParams.get("promptIds");
 		const modelGroupParam = searchParams.get("modelGroup");
 
-		// Use UTC for date filtering
-		const timezone = "UTC";
+		// Use client timezone for consistent date filtering with batch-chart-data
+		const timezone = resolveTimezone(searchParams.get("timezone"));
 
 		let fromDate: Date | undefined;
 		let toDate: Date | undefined;
 		let fromDateStr: string | null = null;
 		let toDateStr: string | null = null;
 
-		// Handle lookback periods
-		if (lookbackParam !== "all") {
-			toDate = new Date();
-			fromDate = new Date();
-
-			switch (lookbackParam) {
-				case "1w":
-					fromDate.setDate(fromDate.getDate() - 7);
-					break;
-				case "1m":
-					fromDate.setMonth(fromDate.getMonth() - 1);
-					break;
-				case "3m":
-					fromDate.setMonth(fromDate.getMonth() - 3);
-					break;
-				case "6m":
-					fromDate.setMonth(fromDate.getMonth() - 6);
-					break;
-				case "1y":
-					fromDate.setFullYear(fromDate.getFullYear() - 1);
-					break;
-			}
-			
-			fromDateStr = fromDate.toISOString().split("T")[0];
-			toDateStr = toDate.toISOString().split("T")[0];
-		}
+		// Handle lookback periods - use same logic as batch-chart-data for consistency
+		({ fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone));
+		if (fromDateStr) fromDate = new Date(`${fromDateStr}T00:00:00Z`);
+		if (toDateStr) toDate = new Date(`${toDateStr}T00:00:00Z`);
 
 		// Parse prompt IDs from parameter
 		const promptIds = promptIdsParam 

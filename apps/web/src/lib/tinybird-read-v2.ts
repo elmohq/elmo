@@ -207,6 +207,40 @@ export interface PromptSummary {
 	last_run_date: string | null;
 }
 
+export interface PromptFirstEvaluatedAt {
+	prompt_id: string;
+	first_evaluated_at: string;
+}
+
+/**
+ * Get the first evaluation date for each prompt (all-time, no date filter).
+ * Used to distinguish between "never evaluated" vs "no data in selected window".
+ */
+export async function getPromptsFirstEvaluatedAt(
+	brandId: string,
+	promptIds: string[],
+): Promise<PromptFirstEvaluatedAt[]> {
+	if (promptIds.length === 0) {
+		return [];
+	}
+
+	return queryTinybird<PromptFirstEvaluatedAt>(
+		`
+		SELECT
+			prompt_id,
+			min(created_at) as first_evaluated_at
+		FROM prompt_runs_v2 FINAL
+		WHERE brand_id = {brandId:String}
+			AND prompt_id IN {promptIds:Array(String)}
+		GROUP BY prompt_id
+		`,
+		{
+			brandId,
+			promptIds,
+		},
+	);
+}
+
 /**
  * Get summary stats for all prompts
  */

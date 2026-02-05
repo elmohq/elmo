@@ -27,25 +27,24 @@ const fetcher = async (url: string): Promise<FilteredVisibilityResponse> => {
 function buildApiUrl(brandId: string, filters?: FilteredVisibilityFilters): string {
 	const baseUrl = `/api/brands/${brandId}/filtered-visibility`;
 
-	if (!filters) {
-		return baseUrl;
-	}
-
 	const params = new URLSearchParams();
 
-	if (filters.lookback) {
+	// Always include client timezone for consistent date filtering with batch-chart-data
+	params.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+	if (filters?.lookback) {
 		params.append("lookback", filters.lookback);
 	}
 
-	if (filters.promptIds && filters.promptIds.length > 0) {
+	if (filters?.promptIds && filters.promptIds.length > 0) {
 		params.append("promptIds", filters.promptIds.join(","));
 	}
 
-	if (filters.modelGroup) {
+	if (filters?.modelGroup) {
 		params.append("modelGroup", filters.modelGroup);
 	}
 
-	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+	return `${baseUrl}?${params.toString()}`;
 }
 
 export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibilityFilters) {

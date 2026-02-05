@@ -35,6 +35,9 @@ interface PromptChartPrintProps {
 	brand: Brand;
 	competitors: Competitor[];
 	promptRuns: PromptRunData[];
+	// Whether this prompt has ever been evaluated (all-time)
+	// Used to distinguish "never evaluated" vs "no data in selected window"
+	hasEverBeenEvaluated?: boolean;
 }
 
 export function PromptChartPrint({
@@ -44,6 +47,7 @@ export function PromptChartPrint({
 	brand,
 	competitors,
 	promptRuns,
+	hasEverBeenEvaluated = false,
 }: PromptChartPrintProps) {
 	const fileName = `${brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
 	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
@@ -83,6 +87,10 @@ export function PromptChartPrint({
 	const chartType = lookback === "1w" ? "bar" : "line";
 
 	if (hasNoRuns) {
+		const message = hasEverBeenEvaluated
+			? "No data in selected time range"
+			: "Evaluating for the first time...";
+
 		return (
 			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border">
 				<CardHeader className="flex justify-between items-center px-3">
@@ -92,7 +100,7 @@ export function PromptChartPrint({
 				<CardContent className="px-3">
 					<div>
 						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground print:text-lg">
-							Evaluating for the first time...
+							{message}
 						</span>
 					</div>
 				</CardContent>

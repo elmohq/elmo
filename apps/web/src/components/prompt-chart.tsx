@@ -27,6 +27,9 @@ interface PromptChartProps {
 	enabled?: boolean;
 	priority?: "high" | "normal" | "low"; // For intelligent loading
 	searchHighlight?: string;
+	// Whether this prompt has ever been evaluated (all-time)
+	// Used to distinguish "never evaluated" vs "no data in selected window"
+	hasEverBeenEvaluated?: boolean;
 }
 
 export function PromptChart({
@@ -40,6 +43,7 @@ export function PromptChart({
 	enabled = true,
 	priority = "normal",
 	searchHighlight = "",
+	hasEverBeenEvaluated = false,
 }: PromptChartProps) {
 	// Use the optimized hook
 	const { chartData, isLoading, isError } = usePromptChartData(
@@ -137,8 +141,15 @@ export function PromptChart({
 		lastBrandVisibility,
 	} = chartData;
 
-	// No runs state
+	// No runs state - distinguish between "never evaluated" vs "no data in selected window"
 	if (totalRuns === 0) {
+		const message = hasEverBeenEvaluated
+			? "No data in selected time range"
+			: "Evaluating for the first time...";
+		const subMessage = hasEverBeenEvaluated
+			? "Try selecting a longer time period to see historical data."
+			: null;
+
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
@@ -148,8 +159,13 @@ export function PromptChart({
 				<CardContent className="px-3">
 					<div>
 						<span className="font-semibold text-xl text-muted-foreground">
-							Evaluating for the first time...
+							{message}
 						</span>
+						{subMessage && (
+							<p className="text-sm text-muted-foreground mt-1">
+								{subMessage}
+							</p>
+						)}
 					</div>
 				</CardContent>
 			</Card>
