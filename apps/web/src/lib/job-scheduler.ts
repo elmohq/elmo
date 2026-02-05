@@ -5,44 +5,10 @@ import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { getBoss } from "@/lib/boss-client";
 
 /**
- * Convert cadence hours to a cron expression.
- * pg-boss uses standard cron format: minute hour day-of-month month day-of-week
- *
- * Examples:
- * - 6 hours → "0 *\/6 * * *" (every 6 hours at minute 0)
- * - 12 hours → "0 *\/12 * * *" (every 12 hours)
- * - 24 hours → "0 0 * * *" (daily at midnight)
- * - 48 hours → "0 0 *\/2 * *" (every 2 days at midnight)
- * - 72 hours → "0 0 *\/3 * *" (every 3 days at midnight)
+ * Convert cadence hours to milliseconds.
  */
-export function hoursToCron(hours: number): string {
-	if (!Number.isFinite(hours) || hours <= 0) {
-		throw new Error("Hours must be a positive number");
-	}
-
-	if (!Number.isInteger(hours)) {
-		throw new Error("Hours must be an integer for cron scheduling");
-	}
-
-	if (hours < 24) {
-		// For sub-daily intervals, run every N hours
-		// "0 */N * * *" means at minute 0, every N hours
-		return `0 */${hours} * * *`;
-	}
-
-	// For >= 24 hours, convert to days (only exact multiples)
-	if (hours % 24 !== 0) {
-		throw new Error("Hours must be a multiple of 24 for daily cron scheduling");
-	}
-
-	const days = hours / 24;
-	if (days === 1) {
-		// Daily at midnight
-		return "0 0 * * *";
-	}
-
-	// Every N days at midnight
-	return `0 0 */${days} * *`;
+export function hoursToMs(hours: number): number {
+	return hours * 60 * 60 * 1000;
 }
 
 /**
@@ -84,8 +50,9 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 }
 
 /**
- * Creates a schedule for a prompt to run on a recurring cadence.
- * Also sends an immediate job for the first run.
+ * Creates a scheduled job for a prompt to run after a delay.
+ * Uses interval-based scheduling with startAfter instead of cron patterns.
+ * The job will self-reschedule after completion via the worker.
  */
 type SchedulerOptions = {
 	sendImmediate?: boolean;
@@ -100,49 +67,70 @@ export async function createPromptJobScheduler(
 		const cadenceHours = await getPromptCadenceHours(promptId);
 		const sendImmediate = options.sendImmediate ?? true;
 
-		// Use fixed job name with promptId as key for uniqueness
-		// This way the worker can listen for "process-prompt" jobs
-		// and the key ensures one schedule per prompt
-		await boss.unschedule("process-prompt", promptId);
-
-		// Create the recurring schedule - key ensures uniqueness per prompt
-		const cron = hoursToCron(cadenceHours);
-		await boss.schedule("process-prompt", cron, { promptId }, { tz: "UTC", key: promptId });
+		// Remove any old cron-based schedule (migration cleanup)
+		try {
+			await boss.unschedule("process-prompt", promptId);
+		} catch {
+			// Ignore errors - schedule may not exist
+		}
 
 		if (sendImmediate) {
-			// Also send an immediate job for first run
+			// Send an immediate job
 			await boss.send(
 				"process-prompt",
-				{ promptId },
+				{ promptId, cadenceHours },
 				{
-					singletonKey: `immediate-${promptId}`,
-					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate immediate jobs
+					singletonKey: `prompt-${promptId}`,
+					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate jobs
 					retryLimit: 3,
 					retryDelay: 60,
 					retryBackoff: true,
 					expireInSeconds: 60 * 15, // 15 minute timeout
 				},
 			);
+		} else {
+			// Schedule the next run based on cadence
+			const startAfterSeconds = cadenceHours * 60 * 60;
+			await boss.send(
+				"process-prompt",
+				{ promptId, cadenceHours },
+				{
+					singletonKey: `prompt-${promptId}`,
+					singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
+					startAfter: startAfterSeconds,
+					retryLimit: 3,
+					retryDelay: 60,
+					retryBackoff: true,
+					expireInSeconds: 60 * 15,
+				},
+			);
 		}
 
-		console.log(`Created schedule for prompt ${promptId} with ${cadenceHours}h cadence`);
+		console.log(`Created job for prompt ${promptId} with ${cadenceHours}h cadence`);
 		return true;
 	} catch (error) {
-		console.error(`Failed to create job scheduler for prompt ${promptId}:`, error);
+		console.error(`Failed to create job for prompt ${promptId}:`, error);
 		return false;
 	}
 }
 
 /**
- * Removes the schedule for a prompt.
+ * Removes any scheduled jobs for a prompt.
  */
 export async function removePromptJobScheduler(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
 
-		// Unschedule using the job name and prompt-specific key
-		await boss.unschedule("process-prompt", promptId);
+		// Remove old cron-based schedule if exists
+		try {
+			await boss.unschedule("process-prompt", promptId);
+		} catch {
+			// Ignore - may not exist
+		}
 
+		// Cancel any pending jobs for this prompt
+		// Note: pg-boss doesn't have a direct way to cancel by data, 
+		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
 	} catch (error) {
@@ -202,10 +190,11 @@ export async function recreatePromptJobScheduler(
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
+		const cadenceHours = await getPromptCadenceHours(promptId);
 
 		await boss.send(
 			"process-prompt",
-			{ promptId },
+			{ promptId, cadenceHours },
 			{
 				retryLimit: 3,
 				retryDelay: 60,
@@ -218,6 +207,37 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 		return true;
 	} catch (error) {
 		console.error(`Failed to send immediate job for prompt ${promptId}:`, error);
+		return false;
+	}
+}
+
+/**
+ * Schedules the next run for a prompt after a delay.
+ * Called by the worker after successful job completion.
+ */
+export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
+	try {
+		const boss = await getBoss();
+		const startAfterSeconds = cadenceHours * 60 * 60;
+
+		await boss.send(
+			"process-prompt",
+			{ promptId, cadenceHours },
+			{
+				singletonKey: `prompt-${promptId}`,
+				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
+				startAfter: startAfterSeconds,
+				retryLimit: 3,
+				retryDelay: 60,
+				retryBackoff: true,
+				expireInSeconds: 60 * 15,
+			},
+		);
+
+		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
+		return true;
+	} catch (error) {
+		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		return false;
 	}
 }

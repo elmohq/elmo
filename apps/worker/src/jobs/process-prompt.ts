@@ -2,7 +2,7 @@ import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { AI_MODELS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { AI_MODELS, DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
 import {
 	ingestPromptRuns,
@@ -12,15 +12,63 @@ import {
 	type TinybirdPromptRunEvent,
 } from "@workspace/lib/tinybird";
 import { extractCitations } from "@workspace/lib/text-extraction";
+import boss from "../boss";
 
 export interface ProcessPromptData {
 	promptId: string;
+	cadenceHours?: number; // Hours until next run (for self-rescheduling)
 }
 
 interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
 	competitors: Competitor[];
+}
+
+/**
+ * Schedule the next run for a prompt after the specified cadence.
+ */
+async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<void> {
+	const startAfterSeconds = cadenceHours * 60 * 60;
+
+	try {
+		await boss.send(
+			"process-prompt",
+			{ promptId, cadenceHours },
+			{
+				singletonKey: `prompt-${promptId}`,
+				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
+				startAfter: startAfterSeconds,
+				retryLimit: 3,
+				retryDelay: 60,
+				retryBackoff: true,
+				expireInSeconds: 60 * 15,
+			},
+		);
+		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
+	} catch (error) {
+		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
+		// Don't throw - we don't want to fail the job just because rescheduling failed
+	}
+}
+
+/**
+ * Get the cadence hours for a prompt based on its brand's delay override.
+ */
+async function getCadenceHours(promptId: string): Promise<number> {
+	const prompt = await db.query.prompts.findFirst({
+		where: eq(prompts.id, promptId),
+	});
+
+	if (!prompt) return DEFAULT_DELAY_HOURS;
+
+	const brand = await db.query.brands.findFirst({
+		where: eq(brands.id, prompt.brandId),
+	});
+
+	if (!brand) return DEFAULT_DELAY_HOURS;
+
+	return brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
@@ -229,26 +277,32 @@ async function runModelIteration({
 /**
  * Process a prompt - runs AI models and saves results.
  * This is a pg-boss job handler, called when a scheduled job fires.
+ * After successful completion, schedules the next run.
  */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { promptId } = job.data;
+		const { promptId, cadenceHours: providedCadence } = job.data;
 		console.log(`Processing prompt ${promptId}`);
+
+		// Get cadence hours - use provided value or look it up
+		const cadenceHours = providedCadence ?? (await getCadenceHours(promptId));
 
 		// Get prompt context
 		const context = await getPromptContext(promptId);
 		if (!context) {
-			console.log(`Prompt ${promptId} not found, skipping`);
-			continue; // Job completes successfully - prompt was deleted
+			console.log(`Prompt ${promptId} not found, skipping (no reschedule)`);
+			continue; // Job completes successfully - prompt was deleted, don't reschedule
 		}
 
 		const { prompt, brand, competitors: competitorsList } = context;
 
 		// Check if prompt and brand are enabled
 		if (!prompt.enabled || !brand.enabled) {
-			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping`);
-			continue; // Job completes successfully - schedule continues but job is skipped
+			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
+			// Still reschedule - the prompt might be enabled later
+			await scheduleNextRun(promptId, cadenceHours);
+			continue;
 		}
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
@@ -321,5 +375,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		console.log(
 			`Completed prompt ${promptId}: ${runPromises.length - failures.length}/${runPromises.length} successful runs`,
 		);
+
+		// Schedule the next run
+		await scheduleNextRun(promptId, cadenceHours);
 	}
 }

@@ -21,7 +21,24 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 60, // 1 hour timeout for reports
 	});
+	await boss.createQueue("schedule-maintenance", {
+		retryLimit: 3,
+		retryDelay: 300, // 5 minutes between retries
+		retryBackoff: true,
+		expireInSeconds: 60 * 30, // 30 minute timeout
+	});
 	console.log("Queues created");
+
+	// Set up recurring schedule for maintenance job
+	// Runs every hour to catch any orphaned prompts
+	// Note: Hourly cron patterns work correctly (unlike day-of-month patterns)
+	await boss.schedule(
+		"schedule-maintenance",
+		"0 * * * *", // Every hour at minute 0
+		{ source: "scheduled" },
+		{ tz: "UTC" },
+	);
+	console.log("Scheduled maintenance job (every hour)");
 
 	// Register job handlers
 	await registerHandlers(boss);

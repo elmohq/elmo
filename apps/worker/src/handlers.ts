@@ -1,6 +1,7 @@
 import type { PgBoss } from "pg-boss";
 import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
+import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
 
 /**
  * Register all job handlers with pg-boss.
@@ -25,4 +26,14 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		generateReportJob,
 	);
 	console.log("Registered handler: generate-report");
+
+	// Schedule maintenance job - ensures all prompts have scheduled jobs
+	await boss.work<ScheduleMaintenanceData>(
+		"schedule-maintenance",
+		{
+			localConcurrency: 1, // Only one maintenance job at a time
+		},
+		scheduleMaintenanceJob,
+	);
+	console.log("Registered handler: schedule-maintenance");
 }

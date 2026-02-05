@@ -609,8 +609,14 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body = await request.json();
-		const { promptId } = body;
+		const { action, promptId, brandId } = body;
 
+		// Handle retry all overdue action
+		if (action === "retry-all-overdue") {
+			return await handleRetryAllOverdue(brandId);
+		}
+
+		// Handle single prompt retry (legacy and default behavior)
 		if (!promptId || typeof promptId !== "string") {
 			return NextResponse.json({ error: "promptId is required" }, { status: 400 });
 		}
@@ -639,6 +645,122 @@ export async function POST(request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("Error triggering job:", error);
+		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+	}
+}
+
+/**
+ * Retry all overdue prompts - sends immediate jobs for all prompts that are past their run frequency.
+ */
+async function handleRetryAllOverdue(brandId?: string): Promise<NextResponse> {
+	try {
+		// Get all enabled brands and their prompts
+		const allBrands = await db.query.brands.findMany({
+			where: brandId ? eq(brands.id, brandId) : undefined,
+		});
+
+		const enabledBrandIds = allBrands.filter((b) => b.enabled).map((b) => b.id);
+
+		// Get all enabled prompts for enabled brands
+		const allPrompts = await db.query.prompts.findMany();
+		const enabledPrompts = allPrompts.filter(
+			(p) => p.enabled && enabledBrandIds.includes(p.brandId),
+		);
+
+		// Get last runs for all prompts
+		const lastRunsQuery = await db
+			.select({
+				promptId: promptRuns.promptId,
+				modelGroup: promptRuns.modelGroup,
+				lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			})
+			.from(promptRuns)
+			.groupBy(promptRuns.promptId, promptRuns.modelGroup);
+
+		const lastRunsMap: Record<string, Record<string, Date>> = {};
+		for (const run of lastRunsQuery) {
+			if (!lastRunsMap[run.promptId]) {
+				lastRunsMap[run.promptId] = {};
+			}
+			lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
+		}
+
+		// Build a map of brand delay overrides
+		const brandDelayMap: Record<string, number> = {};
+		for (const brand of allBrands) {
+			brandDelayMap[brand.id] = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+		}
+
+		const now = Date.now();
+		const overduePromptIds: string[] = [];
+
+		for (const prompt of enabledPrompts) {
+			const delayHours = brandDelayMap[prompt.brandId] ?? DEFAULT_DELAY_HOURS;
+			const runFrequencyMs = delayHours * 60 * 60 * 1000;
+			const lastRuns = lastRunsMap[prompt.id] || {};
+
+			// Check if any model group is overdue
+			let isOverdue = false;
+			for (const modelGroup of ["openai", "anthropic", "google"]) {
+				const lastRunAt = lastRuns[modelGroup];
+				if (!lastRunAt) {
+					isOverdue = true; // Never run
+					break;
+				}
+				const timeSinceRun = now - new Date(lastRunAt).getTime();
+				if (timeSinceRun > runFrequencyMs) {
+					isOverdue = true;
+					break;
+				}
+			}
+
+			if (isOverdue) {
+				overduePromptIds.push(prompt.id);
+			}
+		}
+
+		if (overduePromptIds.length === 0) {
+			return NextResponse.json({
+				success: true,
+				message: "No overdue prompts found",
+				retriedCount: 0,
+			});
+		}
+
+		// Send immediate jobs for all overdue prompts (batch in chunks to avoid overwhelming)
+		const BATCH_SIZE = 50;
+		let successCount = 0;
+		let failCount = 0;
+
+		for (let i = 0; i < overduePromptIds.length; i += BATCH_SIZE) {
+			const batch = overduePromptIds.slice(i, i + BATCH_SIZE);
+			const results = await Promise.allSettled(
+				batch.map((pid) => sendImmediatePromptJob(pid)),
+			);
+
+			for (const result of results) {
+				if (result.status === "fulfilled" && result.value) {
+					successCount++;
+				} else {
+					failCount++;
+				}
+			}
+
+			// Small delay between batches to avoid rate limiting
+			if (i + BATCH_SIZE < overduePromptIds.length) {
+				await new Promise((resolve) => setTimeout(resolve, 100));
+			}
+		}
+
+		return NextResponse.json({
+			success: true,
+			message: `Triggered jobs for ${successCount} overdue prompts${failCount > 0 ? ` (${failCount} failed)` : ""}`,
+			retriedCount: successCount,
+			failedCount: failCount,
+			totalOverdue: overduePromptIds.length,
+		});
+	} catch (error) {
+		console.error("Error retrying all overdue:", error);
 		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
 	}
 }
