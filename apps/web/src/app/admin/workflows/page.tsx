@@ -772,6 +772,25 @@ export default function WorkflowsPage() {
 
 	if (!data) return null;
 
+	// Compute overdue breakdown: >30min late vs total overdue
+	const THIRTY_MIN_MS = 30 * 60 * 1000;
+	const overdueBreakdown = data.brands.reduce(
+		(acc, brand) => {
+			for (const prompt of brand.prompts) {
+				if (!prompt.enabled) continue;
+				const modelGroups = Object.values(prompt.lastRunsByModelGroup);
+				const isOverdue = modelGroups.some((mg) => mg?.isOverdue);
+				const isSeverelyOverdue = modelGroups.some(
+					(mg) => mg?.isOverdue && mg.overdueByMs && mg.overdueByMs > THIRTY_MIN_MS,
+				);
+				if (isOverdue) acc.total++;
+				if (isSeverelyOverdue) acc.severe++;
+			}
+			return acc;
+		},
+		{ total: 0, severe: 0 },
+	);
+
 	return (
 		<div className="container mx-auto py-8 px-6 space-y-8">
 			{/* Header */}
@@ -792,12 +811,6 @@ export default function WorkflowsPage() {
 						<RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
 						Refresh
 					</Button>
-					<Link href="/admin">
-						<Button variant="outline" className="cursor-pointer">
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back to Admin
-						</Button>
-					</Link>
 				</div>
 			</div>
 
@@ -839,23 +852,25 @@ export default function WorkflowsPage() {
 					</CardContent>
 				</Card>
 
-				<Card className={data.summary.totalOverdue > 0 ? "border-amber-500/50" : ""}>
+				<Card className={overdueBreakdown.severe > 0 ? "border-red-500/50" : overdueBreakdown.total > 0 ? "border-amber-500/50" : ""}>
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-medium flex items-center gap-2">
-							<AlertTriangle className="h-4 w-4 text-amber-500" />
-							Overdue
+							<AlertTriangle className={`h-4 w-4 ${overdueBreakdown.severe > 0 ? "text-red-500" : "text-amber-500"}`} />
+							Overdue &gt;30min
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
 							<span
-								className={`text-3xl font-bold ${data.summary.totalOverdue > 0 ? "text-amber-600" : "text-muted-foreground"}`}
+								className={`text-3xl font-bold ${overdueBreakdown.severe > 0 ? "text-red-600" : "text-muted-foreground"}`}
 							>
-								{data.summary.totalOverdue}
+								{overdueBreakdown.severe}
 							</span>
 							<span className="text-muted-foreground text-sm">prompts</span>
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">need attention</p>
+						<p className="text-xs text-muted-foreground mt-1">
+							{overdueBreakdown.total - overdueBreakdown.severe} additional recently expired
+						</p>
 					</CardContent>
 				</Card>
 
