@@ -34,7 +34,7 @@ export default function CitationsPage() {
 	const availableTags = citationData?.availableTags || [];
 
 	const infoContent = (
-		<p>Citations are collected from all prompt evaluations. <strong>Competitor</strong> domains shown are only those in your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link>.</p>
+		<p>Citations are collected from all prompt evaluations. <strong>Competitor</strong> domains shown are only those in your <Link href={`/app/${brandId}/settings/competitors`} className="underline">tracked competitors list</Link>.</p>
 	);
 
 	// Only show full loading skeleton on initial load (no previous data yet)
@@ -67,19 +67,19 @@ export default function CitationsPage() {
 				subtitle="See which sources LLMs cite when responding to your prompts."
 				infoContent={infoContent}
 				availableTags={[]}
-				editTagsLink={`/app/${brandId}/prompts/edit`}
-				showModelSelector
-			>
-				<Card>
-					<CardContent className="pt-6">
-						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-							Failed to load citation data. Please try again.
-						</div>
-					</CardContent>
-				</Card>
-			</PageHeader>
-		);
-	}
+			editTagsLink={`/app/${brandId}/settings/prompts`}
+			showModelSelector
+		>
+			<Card>
+				<CardContent className="pt-6">
+					<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+						Failed to load citation data. Please try again.
+					</div>
+				</CardContent>
+			</Card>
+		</PageHeader>
+	);
+}
 
 	return (
 		<PageHeader
@@ -87,7 +87,7 @@ export default function CitationsPage() {
 			subtitle="See which sources LLMs cite when responding to your prompts."
 			infoContent={infoContent}
 			availableTags={availableTags}
-			editTagsLink={`/app/${brandId}/prompts/edit`}
+			editTagsLink={`/app/${brandId}/settings/prompts`}
 			showModelSelector
 		>
 			{citationData.totalCitations === 0 ? (

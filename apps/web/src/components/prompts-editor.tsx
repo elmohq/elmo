@@ -177,7 +177,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			// Invalidate the prompts summary cache so tags are refreshed
 			invalidatePromptsSummary(brandId);
 
-			router.push(`/app/${brandId}/prompts`);
+			router.push(`/app/${brandId}/visibility`);
 		} catch (error) {
 			console.error("Error saving prompts:", error);
 			alert(`Failed to save prompts: ${error instanceof Error ? error.message : "Unknown error"}`);

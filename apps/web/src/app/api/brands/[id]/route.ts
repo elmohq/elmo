@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		revalidatePath(`/app/${brandId}`);
-		revalidatePath(`/app/${brandId}/settings`);
+		revalidatePath(`/app/${brandId}/settings/brand`);
 
 		const metadataBrand = userBrands.find((b) => b.id === brandId);
 

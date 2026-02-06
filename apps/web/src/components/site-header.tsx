@@ -1,9 +1,7 @@
 "use client";
 
-import { IconEditCircle } from "@tabler/icons-react";
 import { usePathname } from "next/navigation";
 
-import { Button } from "@workspace/ui/components/button";
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import {
@@ -17,35 +15,169 @@ import {
 import { useBrand } from "@/hooks/use-brands";
 import Link from "next/link";
 
-export function SiteHeader() {
-	// Use brandId (from URL) for navigation links to avoid undefined during loading
-	// Use brand for display data like name
-	const { brandId, brand } = useBrand();
-	const pathname = usePathname();
+/** Map of page segments to display names */
+const PAGE_NAMES: Record<string, string> = {
+	visibility: "Visibility",
+	prompts: "Prompts",
+	citations: "Citations",
+	brand: "Brand",
+	competitors: "Competitors",
+	llms: "LLMs",
+	workflows: "Workflows",
+	tools: "Tools",
+};
 
-	// Check if we're on an edit page
-	const isEditPage = pathname.endsWith("/edit");
+function getPageDisplayName(segment: string): string {
+	return PAGE_NAMES[segment] || segment.charAt(0).toUpperCase() + segment.slice(1);
+}
 
-	// Extract the page segment from the path (e.g., /app/foo/reputation -> reputation)
+function AdminBreadcrumbs({ pathname }: { pathname: string }) {
+	const segments = pathname.split("/").filter(Boolean);
+	// /admin -> ["admin"]
+	// /admin/workflows -> ["admin", "workflows"]
+	// /admin/tools -> ["admin", "tools"]
+	// /reports -> ["reports"]
+
+	if (segments[0] === "reports") {
+		// /reports/render/[id] - keep existing behavior
+		if (segments.length > 1) {
+			return (
+				<>
+					<BreadcrumbItem className="hidden md:block">
+						<BreadcrumbLink asChild>
+							<Link href="/reports">Reports</Link>
+						</BreadcrumbLink>
+					</BreadcrumbItem>
+					<BreadcrumbSeparator className="hidden md:block" />
+					<BreadcrumbItem>
+						<BreadcrumbPage>View Report</BreadcrumbPage>
+					</BreadcrumbItem>
+				</>
+			);
+		}
+		// /reports
+		return (
+			<>
+				<BreadcrumbItem className="hidden md:block">
+					<span className="text-muted-foreground">Admin</span>
+				</BreadcrumbItem>
+				<BreadcrumbSeparator className="hidden md:block" />
+				<BreadcrumbItem>
+					<BreadcrumbPage>Reports</BreadcrumbPage>
+				</BreadcrumbItem>
+			</>
+		);
+	}
+
+	// /admin - show Admin > Brands
+	if (segments.length === 1) {
+		return (
+			<>
+				<BreadcrumbItem className="hidden md:block">
+					<span className="text-muted-foreground">Admin</span>
+				</BreadcrumbItem>
+				<BreadcrumbSeparator className="hidden md:block" />
+				<BreadcrumbItem>
+					<BreadcrumbPage>Brands</BreadcrumbPage>
+				</BreadcrumbItem>
+			</>
+		);
+	}
+
+	// /admin/workflows, /admin/tools, etc.
+	const subPage = segments[1];
+	return (
+		<>
+			<BreadcrumbItem className="hidden md:block">
+				<span className="text-muted-foreground">Admin</span>
+			</BreadcrumbItem>
+			<BreadcrumbSeparator className="hidden md:block" />
+			<BreadcrumbItem>
+				<BreadcrumbPage>{getPageDisplayName(subPage)}</BreadcrumbPage>
+			</BreadcrumbItem>
+		</>
+	);
+}
+
+function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; brandId: string | undefined; brandName: string }) {
+	// Extract the page segment from the path (e.g., /app/foo/prompts -> prompts)
 	const pathSegments = pathname.split("/");
 	const brandIndex = pathSegments.findIndex((segment) => segment === "app");
 	const pageSegment = brandIndex >= 0 && pathSegments[brandIndex + 2] ? pathSegments[brandIndex + 2] : "";
+	const subSegment = brandIndex >= 0 && pathSegments[brandIndex + 3] ? pathSegments[brandIndex + 3] : "";
 
 	// Check if we're on a specific prompt detail page (e.g., /app/foo/prompts/uuid)
 	const isPromptDetailPage =
 		pageSegment === "prompts" &&
-		pathSegments[brandIndex + 3] &&
-		pathSegments[brandIndex + 3] !== "edit" &&
-		// Basic UUID pattern check (8-4-4-4-12 characters)
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathSegments[brandIndex + 3]);
+		subSegment &&
+		subSegment !== "edit" &&
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subSegment);
 
-	// Capitalize the page segment or default to Dashboard
-	const pageName = pageSegment ? pageSegment.charAt(0).toUpperCase() + pageSegment.slice(1) : "Dashboard";
+	// Check if we're on an edit page
+	const isEditPage = pathname.endsWith("/edit");
 
-	// Get the base path without /edit for linking
-	const getBasePath = () => {
-		return pathname.endsWith("/edit") ? pathname.slice(0, -5) : pathname;
-	};
+	// Settings sub-pages: /app/brandId/settings/brand, /app/brandId/settings/competitors, etc.
+	const isSettingsSubPage = pageSegment === "settings" && subSegment;
+
+	// Determine page name
+	const pageName = pageSegment ? getPageDisplayName(pageSegment) : "Overview";
+
+	return (
+		<>
+			<BreadcrumbItem className="hidden md:block">
+				<BreadcrumbLink asChild>
+					<Link href={`/app/${brandId}`}>{brandName}</Link>
+				</BreadcrumbLink>
+			</BreadcrumbItem>
+			<BreadcrumbSeparator className="hidden md:block" />
+			{isPromptDetailPage ? (
+				<>
+					<BreadcrumbItem className="hidden md:block">
+						<BreadcrumbLink asChild>
+							<Link href={`/app/${brandId}/visibility`}>Visibility</Link>
+						</BreadcrumbLink>
+					</BreadcrumbItem>
+					<BreadcrumbSeparator className="hidden md:block" />
+					<BreadcrumbItem>
+						<BreadcrumbPage>Prompt History</BreadcrumbPage>
+					</BreadcrumbItem>
+				</>
+			) : isSettingsSubPage ? (
+				<>
+					<BreadcrumbItem className="hidden md:block">
+						<span className="text-muted-foreground">Settings</span>
+					</BreadcrumbItem>
+					<BreadcrumbSeparator className="hidden md:block" />
+					<BreadcrumbItem>
+						<BreadcrumbPage>{getPageDisplayName(subSegment)}</BreadcrumbPage>
+					</BreadcrumbItem>
+				</>
+			) : isEditPage ? (
+				<>
+					<BreadcrumbItem className="hidden md:block">
+						<BreadcrumbLink asChild>
+							<Link href={pathname.slice(0, -5)}>{pageName}</Link>
+						</BreadcrumbLink>
+					</BreadcrumbItem>
+					<BreadcrumbSeparator className="hidden md:block" />
+					<BreadcrumbItem>
+						<BreadcrumbPage>Edit</BreadcrumbPage>
+					</BreadcrumbItem>
+				</>
+			) : (
+				<BreadcrumbItem>
+					<BreadcrumbPage>{pageName}</BreadcrumbPage>
+				</BreadcrumbItem>
+			)}
+		</>
+	);
+}
+
+export function SiteHeader() {
+	const { brandId, brand } = useBrand();
+	const pathname = usePathname();
+
+	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
 
 	return (
 		<header className="bg-background sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -54,53 +186,17 @@ export function SiteHeader() {
 				<Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
 				<Breadcrumb>
 					<BreadcrumbList>
-						<BreadcrumbItem className="hidden md:block">
-							<BreadcrumbLink asChild>
-								<Link href={`/app/${brandId}`}>{brand?.name || "Dashboard"}</Link>
-							</BreadcrumbLink>
-						</BreadcrumbItem>
-						<BreadcrumbSeparator className="hidden md:block" />
-						{isPromptDetailPage ? (
-							<>
-								<BreadcrumbItem className="hidden md:block">
-									<BreadcrumbLink asChild>
-										<Link href={`/app/${brandId}/prompts`}>Prompts</Link>
-									</BreadcrumbLink>
-								</BreadcrumbItem>
-								<BreadcrumbSeparator className="hidden md:block" />
-								<BreadcrumbItem>
-									<BreadcrumbPage>Prompt History</BreadcrumbPage>
-								</BreadcrumbItem>
-							</>
-						) : isEditPage ? (
-							<>
-								<BreadcrumbItem className="hidden md:block">
-									<BreadcrumbLink asChild>
-										<Link href={getBasePath()}>{pageName}</Link>
-									</BreadcrumbLink>
-								</BreadcrumbItem>
-								<BreadcrumbSeparator className="hidden md:block" />
-								<BreadcrumbItem>
-									<BreadcrumbPage>Edit</BreadcrumbPage>
-								</BreadcrumbItem>
-							</>
+						{isAdminPage ? (
+							<AdminBreadcrumbs pathname={pathname} />
 						) : (
-							<BreadcrumbItem>
-								<BreadcrumbPage>{pageName}</BreadcrumbPage>
-							</BreadcrumbItem>
+							<BrandBreadcrumbs
+								pathname={pathname}
+								brandId={brandId}
+								brandName={brand?.name || "Dashboard"}
+							/>
 						)}
 					</BreadcrumbList>
 				</Breadcrumb>
-				<div className="ml-auto flex items-center gap-2">
-					{!isEditPage && !isPromptDetailPage && (pageSegment === "prompts" || pageSegment === "reputation") && (
-						<Link href={`/app/${brandId}/prompts/edit`}>
-							<Button size="sm" className="hidden h-7 sm:flex cursor-pointer">
-								<IconEditCircle />
-								<span>Edit</span>
-							</Button>
-						</Link>
-					)}
-				</div>
 			</div>
 		</header>
 	);

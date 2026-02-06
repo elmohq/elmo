@@ -18,7 +18,6 @@ import {
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
 import {
-	ArrowLeft,
 	CheckCircle2,
 	AlertTriangle,
 	XCircle,
@@ -535,21 +534,10 @@ function BrandRow({
 						</Badge>
 					)}
 				</TableCell>
-				<TableCell className="text-center">
-					<span
-						className={`text-sm ${
-							brand.schedulerCoverage.scheduled < brand.schedulerCoverage.total
-								? "text-amber-600"
-								: "text-emerald-600"
-						}`}
-					>
-						{brand.schedulerCoverage.scheduled}/{brand.schedulerCoverage.total}
-					</span>
-				</TableCell>
 			</TableRow>
 			{isExpanded && brand.prompts.length > 0 && (
 				<TableRow>
-					<TableCell colSpan={6} className="bg-muted/30 p-0">
+					<TableCell colSpan={5} className="bg-muted/30 p-0">
 						<div className="p-4">
 							<Table>
 								<TableHeader>
@@ -729,7 +717,7 @@ export default function WorkflowsPage() {
 
 	if (loading) {
 		return (
-			<div className="container mx-auto py-8 space-y-8">
+			<div className="space-y-8">
 				<div className="space-y-2">
 					<Skeleton className="h-8 w-64" />
 					<Skeleton className="h-4 w-96" />
@@ -757,7 +745,7 @@ export default function WorkflowsPage() {
 
 	if (error) {
 		return (
-			<div className="container mx-auto py-8">
+			<div>
 				<Card>
 					<CardHeader>
 						<CardTitle className="text-destructive">Error</CardTitle>
@@ -792,7 +780,7 @@ export default function WorkflowsPage() {
 	);
 
 	return (
-		<div className="container mx-auto py-8 px-6 space-y-8">
+		<div className="space-y-8">
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div className="space-y-2">
@@ -909,7 +897,6 @@ export default function WorkflowsPage() {
 								<TableHead className="text-center">Run Frequency</TableHead>
 								<TableHead className="text-center">Health</TableHead>
 								<TableHead className="text-center">Status</TableHead>
-								<TableHead className="text-center">Schedulers</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>

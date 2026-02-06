@@ -169,7 +169,7 @@ export function CitationsDisplay({
 										<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs text-sm font-normal">
-										<p className="mb-2"><strong>Competitor</strong> domains are only those you&apos;ve added to your <Link href={brandId ? `/app/${brandId}/settings` : "#"} className="underline">competitors list</Link>.</p>
+										<p className="mb-2"><strong>Competitor</strong> domains are only those you&apos;ve added to your <Link href={brandId ? `/app/${brandId}/settings/competitors` : "#"} className="underline">competitors list</Link>.</p>
 										<p>If you see a competitor in &quot;Other&quot;, consider adding them to your list for better tracking.</p>
 									</TooltipContent>
 								</Tooltip>
@@ -203,7 +203,7 @@ export function CitationsDisplay({
 							</TooltipTrigger>
 							<TooltipContent className="max-w-xs text-sm font-normal">
 								<p className="mb-2">Citations are collected from all prompt evaluations in your selected time period, regardless of whether your brand appears in the response.</p>
-								<p><strong>Competitor</strong> domains shown are only those in your <Link href={brandId ? `/app/${brandId}/settings` : "#"} className="underline">tracked competitors list</Link>.</p>
+								<p><strong>Competitor</strong> domains shown are only those in your <Link href={brandId ? `/app/${brandId}/settings/competitors` : "#"} className="underline">tracked competitors list</Link>.</p>
 							</TooltipContent>
 						</Tooltip>
 					</CardTitle>

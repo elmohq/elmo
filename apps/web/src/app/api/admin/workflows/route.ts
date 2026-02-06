@@ -532,7 +532,11 @@ export async function GET() {
 						}
 					: defaultSchedulerInfo;
 
-				if (schedulerInfo.exists) scheduledCount++;
+				// Get job status
+				const activeJob = activeJobMap.get(prompt.id);
+
+				// Count enabled prompts that have a pending job (created/active/retry)
+				if (prompt.enabled && activeJob) scheduledCount++;
 
 				if (prompt.enabled) {
 					if (anyOverdue) {
@@ -541,9 +545,6 @@ export async function GET() {
 						onSchedulePrompts++;
 					}
 				}
-
-				// Get job status
-				const activeJob = activeJobMap.get(prompt.id);
 				const jobStatus: "active" | "created" | "retry" | "none" = activeJob?.state ?? "none";
 
 				return {

@@ -207,7 +207,7 @@ export default function PromptHistoryPage() {
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-sm font-normal">
-									<p>Only competitors from your <Link href={`/app/${brandId}/settings`} className="underline">tracked competitors list</Link> are shown here.</p>
+									<p>Only competitors from your <Link href={`/app/${brandId}/settings/competitors`} className="underline">tracked competitors list</Link> are shown here.</p>
 									<p className="mt-2">If a competitor isn&apos;t showing up, add them to your list.</p>
 								</TooltipContent>
 							</Tooltip>

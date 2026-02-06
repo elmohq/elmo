@@ -4,12 +4,16 @@ import * as React from "react";
 import Link from "next/link";
 import {
 	IconDashboard,
-	// IconHelp,
-	IconListDetails,
-	// IconMessageReport,
-	IconSettings,
+	IconChartBar,
 	IconLink,
-	IconShieldCog,
+	IconBuilding,
+	IconBuildings,
+	IconListDetails,
+	IconCpu,
+	IconTable,
+	IconReport,
+	IconTimeline,
+	IconTool,
 } from "@tabler/icons-react";
 
 import {
@@ -22,8 +26,7 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import { NavMain } from "@/components/nav-main";
-// import { NavSecondary } from "@/components/nav-secondary";
+import { NavMain, type NavGroup } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/logo";
 import { clientConfig } from "@/lib/config/client";
@@ -31,64 +34,123 @@ import { useBrand } from "@/hooks/use-brands";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;
+	hasReportAccess?: boolean;
+	/** When true, only show admin section (no brand-specific nav) */
+	adminOnly?: boolean;
 }
 
-export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
+export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, ...props }: AppSidebarProps) {
 	const { brand } = useBrand();
 	const { setOpenMobile } = useSidebar();
 
-	const showAdminLink = clientConfig.features.adminAccess && isAdmin;
+	const showAdminSection = clientConfig.features.adminAccess && (isAdmin || hasReportAccess);
 
-	const navMain = [
-		{
-			title: "Dashboard",
-			url: `/`,
-			icon: IconDashboard,
-		},
-		...(brand?.onboarded
-			? [
+	const groups: NavGroup[] = [];
+
+	// Dashboard section - only show if we have a brand context and not admin-only
+	if (!adminOnly) {
+		const dashboardItems = [
+			{
+				title: "Overview",
+				url: "/",
+				icon: IconDashboard,
+			},
+		];
+
+		// Only show Visibility and Citations if the brand is onboarded
+		if (brand?.onboarded) {
+			dashboardItems.push(
+				{
+					title: "Visibility",
+					url: "/visibility",
+					icon: IconChartBar,
+				},
+				{
+					title: "Citations",
+					url: "/citations",
+					icon: IconLink,
+				},
+			);
+		}
+
+		groups.push({
+			label: "Dashboard",
+			items: dashboardItems,
+		});
+
+		// Settings section - only show if onboarded
+		if (brand?.onboarded) {
+			groups.push({
+				label: "Settings",
+				items: [
+					{
+						title: "Brand",
+						url: "/settings/brand",
+						icon: IconBuilding,
+					},
+					{
+						title: "Competitors",
+						url: "/settings/competitors",
+						icon: IconBuildings,
+					},
 					{
 						title: "Prompts",
-						url: "/prompts",
+						url: "/settings/prompts",
 						icon: IconListDetails,
-						isActive: true,
 					},
 					{
-						title: "Citations",
-						url: "/citations",
-						icon: IconLink,
+						title: "LLMs",
+						url: "/settings/llms",
+						icon: IconCpu,
 					},
-				]
-			: []),
-		{
-			title: "Settings",
-			url: "/settings",
-			icon: IconSettings,
-		},
-		...(showAdminLink
+				],
+			});
+		}
+	}
+
+	// Admin section
+	if (showAdminSection) {
+		const adminItems = isAdmin
 			? [
 					{
-						title: "Admin",
+						title: "Brands",
 						url: "/admin",
-						icon: IconShieldCog,
+						icon: IconTable,
+						absolute: true,
+					},
+					{
+						title: "Reports",
+						url: "/reports",
+						icon: IconReport,
+						absolute: true,
+					},
+					{
+						title: "Workflows",
+						url: "/admin/workflows",
+						icon: IconTimeline,
+						absolute: true,
+					},
+					{
+						title: "Tools",
+						url: "/admin/tools",
+						icon: IconTool,
 						absolute: true,
 					},
 				]
-			: []),
-	];
+			: [
+					{
+						title: "Reports",
+						url: "/reports",
+						icon: IconReport,
+						absolute: true,
+					},
+				];
 
-	// const navSecondary = [
-	// 	{
-	// 		title: "Support",
-	// 		url: "mailto:support@example.com",
-	// 		icon: IconHelp,
-	// 	},
-	// 	{
-	// 		title: "Feedback",
-	// 		url: "mailto:feedback@example.com",
-	// 		icon: IconMessageReport,
-	// 	},
-	// ];
+		groups.push({
+			label: "Admin",
+			items: adminItems,
+		});
+	}
 
 	return (
 		<Sidebar variant="inset" {...props}>
@@ -104,8 +166,7 @@ export function AppSidebar({ isAdmin = false, ...props }: AppSidebarProps) {
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<NavMain items={navMain} />
-				{/* <NavSecondary items={navSecondary} className="mt-auto" /> */}
+				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />

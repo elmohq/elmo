@@ -247,7 +247,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 							AI Visibility
 						</h2>
 						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link href={`/app/${brandId}/prompts`}>
+							<Link href={`/app/${brandId}/visibility`}>
 								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 							</Link>
 						</Button>
@@ -388,7 +388,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 						</div>
 					)}
 					<Button asChild variant="outline" className="w-full">
-						<Link href={`/app/${brandId}/prompts/edit`}>
+						<Link href={`/app/${brandId}/settings/prompts`}>
 							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"} <IconArrowRight className="h-4 w-4 ml-1" />
 						</Link>
 					</Button>
@@ -486,7 +486,7 @@ export default function AppPage({ params }: { params: Promise<{ brand: string }>
 						AI Visibility
 					</h2>
 					<Button asChild variant="ghost" size="sm" className="h-8">
-						<Link href={`/app/${brandId}/prompts`}>
+						<Link href={`/app/${brandId}/visibility`}>
 							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 						</Link>
 					</Button>

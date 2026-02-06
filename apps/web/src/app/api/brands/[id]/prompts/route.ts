@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<P
 		}
 
 		// Revalidate related pages
-		revalidatePath(`/app/${brandId}/prompts`);
+		revalidatePath(`/app/${brandId}/visibility`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
 		return NextResponse.json(

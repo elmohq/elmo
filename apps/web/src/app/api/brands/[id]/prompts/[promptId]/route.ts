@@ -138,7 +138,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 		}
 
 		// Revalidate related pages
-		revalidatePath(`/app/${brandId}/prompts`);
+		revalidatePath(`/app/${brandId}/visibility`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
 		return NextResponse.json({
@@ -189,7 +189,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 			.returning();
 
 		// Revalidate related pages
-		revalidatePath(`/app/${brandId}/prompts`);
+		revalidatePath(`/app/${brandId}/visibility`);
 		revalidatePath(`/app/${brandId}/reputation`);
 
 		return NextResponse.json({

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
 		// Revalidate the brand pages
 		revalidatePath(`/app/${brandId}`);
-		revalidatePath(`/app/${brandId}/settings`);
+		revalidatePath(`/app/${brandId}/settings/brand`);
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

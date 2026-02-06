@@ -153,7 +153,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<Pa
 
 		// Revalidate related pages
 		revalidatePath(`/app/${brandId}/reputation`);
-		revalidatePath(`/app/${brandId}/settings`);
+		revalidatePath(`/app/${brandId}/settings/competitors`);
 
 		return NextResponse.json({
 			message: "Competitors updated successfully",
