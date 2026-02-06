@@ -82,7 +82,7 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	const now = Date.now();
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
-	const jobsToExpedite: string[] = []; // Job IDs to expedite (move startafter to now)
+	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
 
 	for (const prompt of enabledPrompts) {
 		const pendingJob = pendingJobMap.get(prompt.id);
@@ -131,14 +131,14 @@ async function runMaintenanceCheck(): Promise<void> {
 		`[schedule-maintenance] Found ${promptsToSchedule.length} prompts needing new jobs, ${jobsToExpedite.length} jobs to expedite`,
 	);
 
-	// Expedite existing future jobs to run now by updating startafter
+	// Expedite existing future jobs to run now by updating start_after
 	if (jobsToExpedite.length > 0) {
 		let expeditedCount = 0;
 		for (const jobId of jobsToExpedite) {
 			try {
 				await db.execute(sql`
 					UPDATE pgboss.job
-					SET startafter = now()
+					SET start_after = now()
 					WHERE id = ${jobId}
 					  AND state = 'created'
 				`);
