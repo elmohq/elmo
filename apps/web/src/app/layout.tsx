@@ -53,7 +53,6 @@ export default function RootLayout({
 		);
 	}
 
-	const isProduction = process.env.VERCEL_ENV === "production";
 	const plausibleDomain = analytics.plausibleDomain;
 
 	return (
@@ -62,7 +61,7 @@ export default function RootLayout({
 				{plausibleDomain && <PlausibleProvider domain={plausibleDomain} />}
 			</head>
 			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-				{isProduction && <ClarityAnalytics />}
+				{process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID && <ClarityAnalytics projectId={process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID} />}
 				<NuqsAdapter>{children}</NuqsAdapter>
 			</body>
 		</html>
