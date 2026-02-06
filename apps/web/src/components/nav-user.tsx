@@ -26,6 +26,8 @@ import { useAuth } from "@/hooks/use-auth";
 export function NavUser() {
 	const { user, isLoading, loginUrl, logoutUrl } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
+	const isNameEmailSame =
+		user?.name?.trim().toLowerCase() === user?.email?.trim().toLowerCase();
 
 	if (isLoading) {
 		return (
@@ -85,7 +87,7 @@ export function NavUser() {
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">{user.name}</span>
-								<span className="truncate text-xs">{user.email}</span>
+								<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
 							</div>
 							<IconSelector className="ml-auto size-4" />
 						</SidebarMenuButton>
@@ -107,7 +109,7 @@ export function NavUser() {
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.name}</span>
-									<span className="truncate text-xs">{user.email}</span>
+									<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
 								</div>
 							</div>
 						</DropdownMenuLabel>
