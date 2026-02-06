@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { DemoModeBanner } from "@/components/demo-mode-banner";
 import BrandOnboarding from "@/components/brand-onboarding";
-import { getBrandFromDb, getBrandMetadata, isAdmin } from "@/lib/metadata";
+import { getBrandFromDb, getBrandMetadata, isAdmin, hasReportGeneratorAccess } from "@/lib/metadata";
 import { notFound } from "next/navigation";
 
 export default async function OrgLayout({
@@ -27,11 +27,14 @@ export default async function OrgLayout({
 		return <BrandOnboarding brandId={brandId} brandName={brandMetadata.name} />;
 	}
 
-	const userIsAdmin = await isAdmin();
+	const [userIsAdmin, userHasReportAccess] = await Promise.all([
+		isAdmin(),
+		hasReportGeneratorAccess(),
+	]);
 
 	return (
 		<SidebarProvider>
-			<AppSidebar isAdmin={userIsAdmin} />
+			<AppSidebar isAdmin={userIsAdmin} hasReportAccess={userHasReportAccess} />
 			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
 				<DemoModeBanner />
 				<SiteHeader />
