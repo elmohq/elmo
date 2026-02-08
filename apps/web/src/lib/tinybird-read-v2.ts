@@ -618,6 +618,85 @@ export async function getPromptCitationUrlStats(
 }
 
 // ============================================================================
+// Prompt Snapshot Queries (for /api/v1 snapshot endpoint)
+// ============================================================================
+
+export interface PromptMentionSummary {
+	total_runs: number;
+	brand_mentioned_count: number;
+	competitor_mentioned_count: number;
+}
+
+/**
+ * Get aggregated mention summary for a prompt over a date range.
+ * Returns total runs, brand mention count, and competitor mention count.
+ *
+ * Note: No FINAL needed — uses uniqExact(id) / uniqExactIf(id, cond) which
+ * are idempotent with respect to duplicates. Duplicate rows (un-merged in
+ * ReplacingMergeTree) have the same id, so uniqExact counts them once.
+ */
+export async function getPromptMentionSummary(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+): Promise<PromptMentionSummary> {
+	const result = await queryTinybird<PromptMentionSummary>(
+		`
+		SELECT
+			uniqExact(id) as total_runs,
+			uniqExactIf(id, brand_mentioned = 1) as brand_mentioned_count,
+			uniqExactIf(id, has_competitor_mention = 1) as competitor_mentioned_count
+		FROM prompt_runs_v2
+		WHERE prompt_id = {promptId:String}
+			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
+			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
+		`,
+		{ promptId, timezone, fromDate, toDate },
+	);
+
+	return result[0] || { total_runs: 0, brand_mentioned_count: 0, competitor_mentioned_count: 0 };
+}
+
+export interface TopCompetitorMention {
+	competitor_name: string;
+	mention_count: number;
+}
+
+/**
+ * Get the top-K competitors by mention count for a prompt over a date range.
+ * Uses ARRAY JOIN on competitors_mentioned to expand and aggregate per entity.
+ *
+ * Note: No FINAL needed — uses uniqExact(id) which is idempotent with respect
+ * to duplicates. Even though ARRAY JOIN expands duplicate rows, uniqExact(id)
+ * counts each run only once per competitor.
+ */
+export async function getPromptTopCompetitorMentions(
+	promptId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	limit: number,
+): Promise<TopCompetitorMention[]> {
+	return queryTinybird<TopCompetitorMention>(
+		`
+		SELECT
+			competitor_name,
+			uniqExact(id) as mention_count
+		FROM prompt_runs_v2
+		ARRAY JOIN competitors_mentioned AS competitor_name
+		WHERE prompt_id = {promptId:String}
+			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
+			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
+		GROUP BY competitor_name
+		ORDER BY mention_count DESC
+		LIMIT {kLimit:UInt32}
+		`,
+		{ promptId, timezone, fromDate, toDate, kLimit: limit },
+	);
+}
+
+// ============================================================================
 // Daily Citation Stats for Time Series
 // ============================================================================
 

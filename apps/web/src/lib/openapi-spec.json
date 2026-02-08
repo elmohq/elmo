@@ -145,6 +145,118 @@
 					}
 				},
 				"required": ["message"]
+			},
+			"MentionEntry": {
+				"type": "object",
+				"properties": {
+					"entity": {
+						"type": "string",
+						"description": "Competitor entity name"
+					},
+					"count": {
+						"type": "integer",
+						"description": "Number of runs where this entity was mentioned"
+					}
+				},
+				"required": ["entity", "count"]
+			},
+			"CitedUrlEntry": {
+				"type": "object",
+				"properties": {
+					"url": {
+						"type": "string",
+						"description": "The cited URL"
+					},
+					"title": {
+						"type": "string",
+						"nullable": true,
+						"description": "Page title if available"
+					},
+					"count": {
+						"type": "integer",
+						"description": "Number of times this URL was cited"
+					}
+				},
+				"required": ["url", "title", "count"]
+			},
+			"PromptSnapshot": {
+				"type": "object",
+				"properties": {
+					"brandId": {
+						"type": "string",
+						"description": "Brand identifier this prompt belongs to"
+					},
+					"promptId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier for the prompt"
+					},
+					"promptValue": {
+						"type": "string",
+						"description": "The prompt text"
+					},
+					"startDate": {
+						"type": "string",
+						"format": "date",
+						"description": "Start of the queried date range (YYYY-MM-DD)"
+					},
+					"endDate": {
+						"type": "string",
+						"format": "date",
+						"description": "End of the queried date range (YYYY-MM-DD)"
+					},
+					"mentions": {
+						"type": "object",
+						"properties": {
+							"mentionsTotal": {
+								"type": "integer",
+								"description": "Total number of prompt evaluation runs in the date range"
+							},
+							"brandMentionsTotal": {
+								"type": "integer",
+								"description": "Number of runs where the brand was mentioned"
+							},
+							"competitorMentionsTotal": {
+								"type": "integer",
+								"description": "Number of runs where at least one competitor was mentioned"
+							},
+							"mentionsTopK": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/MentionEntry"
+								},
+								"description": "Top-K competitor entities ranked by mention count"
+							}
+						},
+						"required": ["mentionsTotal", "brandMentionsTotal", "competitorMentionsTotal", "mentionsTopK"]
+					},
+					"citations": {
+						"type": "object",
+						"properties": {
+							"citationsTotal": {
+								"type": "integer",
+								"description": "Total number of citations across all runs"
+							},
+							"brandCitationsTotal": {
+								"type": "integer",
+								"description": "Number of citations to brand-owned domains"
+							},
+							"competitorCitationsTotal": {
+								"type": "integer",
+								"description": "Number of citations to competitor-owned domains"
+							},
+							"citedUrlsTopK": {
+								"type": "array",
+								"items": {
+									"$ref": "#/components/schemas/CitedUrlEntry"
+								},
+								"description": "Top-K cited URLs ranked by frequency"
+							}
+						},
+						"required": ["citationsTotal", "brandCitationsTotal", "competitorCitationsTotal", "citedUrlsTopK"]
+					}
+				},
+				"required": ["brandId", "promptId", "promptValue", "startDate", "endDate", "mentions", "citations"]
 			}
 		},
 		"responses": {
@@ -313,6 +425,130 @@
 				}
 			}
 		},
+		"/prompts/{promptId}/snapshot": {
+			"get": {
+				"summary": "Get prompt snapshot",
+				"description": "Get an aggregated snapshot of mention and citation analytics for a specific prompt over a date range. Use this to identify competitive gaps, track brand visibility trends, and discover top cited URLs.",
+				"operationId": "getPromptSnapshot",
+				"tags": ["Snapshots"],
+				"parameters": [
+					{
+						"name": "promptId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the prompt",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					},
+					{
+						"name": "startDate",
+						"in": "query",
+						"required": true,
+						"description": "Start of date range (YYYY-MM-DD)",
+						"schema": {
+							"type": "string",
+							"format": "date"
+						},
+						"example": "2026-01-08"
+					},
+					{
+						"name": "endDate",
+						"in": "query",
+						"required": true,
+						"description": "End of date range (YYYY-MM-DD)",
+						"schema": {
+							"type": "string",
+							"format": "date"
+						},
+						"example": "2026-01-15"
+					},
+					{
+						"name": "kMentions",
+						"in": "query",
+						"required": false,
+						"description": "Number of top competitor entities to return in mentionsTopK",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 50,
+							"default": 5
+						}
+					},
+					{
+						"name": "kCitations",
+						"in": "query",
+						"required": false,
+						"description": "Number of top cited URLs to return in citedUrlsTopK",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 50,
+							"default": 10
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Prompt snapshot with mention and citation analytics",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PromptSnapshot"
+								},
+								"example": {
+									"brandId": "brand_nike",
+									"promptId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+									"promptValue": "best running shoes for marathon training",
+									"startDate": "2026-01-08",
+									"endDate": "2026-01-15",
+									"mentions": {
+										"mentionsTotal": 210,
+										"brandMentionsTotal": 42,
+										"competitorMentionsTotal": 130,
+										"mentionsTopK": [
+											{ "entity": "Adidas", "count": 58 },
+											{ "entity": "New Balance", "count": 45 },
+											{ "entity": "ASICS", "count": 27 }
+										]
+									},
+									"citations": {
+										"citationsTotal": 1240,
+										"brandCitationsTotal": 85,
+										"competitorCitationsTotal": 620,
+										"citedUrlsTopK": [
+											{
+												"url": "https://www.runnersworld.com/gear/best-running-shoes/",
+												"title": "Best Running Shoes 2026",
+												"count": 72
+											},
+											{
+												"url": "https://www.nike.com/running/marathon",
+												"title": "Nike Marathon Collection",
+												"count": 34
+											}
+										]
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
 		"/prompts/{promptId}": {
 			"get": {
 				"summary": "Get a prompt",
@@ -450,6 +686,10 @@
 		{
 			"name": "Prompts",
 			"description": "Manage brand prompts"
+		},
+		{
+			"name": "Snapshots",
+			"description": "Aggregated analytics snapshots for prompts"
 		}
 	]
 }
