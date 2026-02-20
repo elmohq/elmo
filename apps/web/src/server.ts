@@ -7,7 +7,10 @@ if (process.env.SENTRY_DSN) {
 		tracesSampleRate: 1.0,
 		enableLogs: true,
 		registerEsmLoaderHooks: false,
-		integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
+		integrations: (defaultIntegrations) => [
+			...defaultIntegrations.filter((integration) => integration.name !== "Postgres"),
+			Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
+		],
 	});
 }
 
