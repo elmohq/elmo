@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --port 3000",
-		"build": "vite build && if [ -d .output/server ]; then cp instrument.server.mjs .output/server/; elif [ -d .vercel/output/functions/__server.func ]; then cp instrument.server.mjs .vercel/output/functions/__server.func/; fi",
-		"start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
+		"build": "vite build",
+		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"lint": "biome lint",
