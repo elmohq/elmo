@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/openai": "3.0.1",
     "@anthropic-ai/sdk": "^0.60.0",
+    "@sentry/node": "^10.39.0",
     "@workspace/lib": "workspace:*",
     "ai": "^6.0.3",
     "dataforseo-client": "^2.0.2",

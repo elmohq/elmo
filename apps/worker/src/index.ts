@@ -1,5 +1,13 @@
+import * as Sentry from "@sentry/node";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
+
+if (process.env.SENTRY_DSN) {
+	Sentry.init({
+		dsn: process.env.SENTRY_DSN,
+		tracesSampleRate: 1.0,
+	});
+}
 
 async function main() {
 	console.log("Starting pg-boss worker...");
@@ -44,8 +52,10 @@ async function main() {
 	console.log("All handlers registered, worker is ready");
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
+	Sentry.captureException(error);
 	console.error("Failed to start worker:", error);
+	await Sentry.flush(2000);
 	process.exit(1);
 });
 
@@ -53,6 +63,7 @@ main().catch((error) => {
 process.on("SIGTERM", async () => {
 	console.log("Received SIGTERM, shutting down gracefully...");
 	await boss.stop({ graceful: true, timeout: 30000 });
+	await Sentry.flush(2000);
 	console.log("Worker stopped");
 	process.exit(0);
 });
@@ -60,6 +71,7 @@ process.on("SIGTERM", async () => {
 process.on("SIGINT", async () => {
 	console.log("Received SIGINT, shutting down gracefully...");
 	await boss.stop({ graceful: true, timeout: 30000 });
+	await Sentry.flush(2000);
 	console.log("Worker stopped");
 	process.exit(0);
 });

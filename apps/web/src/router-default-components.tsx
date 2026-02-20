@@ -24,7 +24,7 @@ export function DefaultPendingComponent() {
 	);
 }
 
-export function DefaultErrorComponent({ error, reset }: ErrorComponentProps) {
+export function DefaultErrorComponent(_props: ErrorComponentProps) {
 	return (
 		<FullPageCard
 			title="Something went wrong"
