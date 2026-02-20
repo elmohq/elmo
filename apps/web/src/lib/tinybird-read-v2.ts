@@ -631,9 +631,11 @@ export interface PromptMentionSummary {
  * Get aggregated mention summary for a prompt over a date range.
  * Returns total runs, brand mention count, and competitor mention count.
  *
- * Note: No FINAL needed — uses uniqExact(id) / uniqExactIf(id, cond) which
- * are idempotent with respect to duplicates. Duplicate rows (un-merged in
- * ReplacingMergeTree) have the same id, so uniqExact counts them once.
+ * Deduplicates via GROUP BY id in a subquery (safe for un-merged
+ * ReplacingMergeTree rows). competitor_mentioned_count is the total number
+ * of individual competitor mentions (one per competitor per run), not just
+ * the number of runs with any competitor mention — so it stays consistent
+ * with the per-entity breakdown in mentionsTopK.
  */
 export async function getPromptMentionSummary(
 	promptId: string,
@@ -644,13 +646,20 @@ export async function getPromptMentionSummary(
 	const result = await queryTinybird<PromptMentionSummary>(
 		`
 		SELECT
-			uniqExact(id) as total_runs,
-			uniqExactIf(id, brand_mentioned = 1) as brand_mentioned_count,
-			uniqExactIf(id, has_competitor_mention = 1) as competitor_mentioned_count
-		FROM prompt_runs_v2
-		WHERE prompt_id = {promptId:String}
-			AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
-			AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
+			count() as total_runs,
+			countIf(brand_mentioned = 1) as brand_mentioned_count,
+			sum(competitor_count) as competitor_mentioned_count
+		FROM (
+			SELECT
+				id,
+				any(brand_mentioned) as brand_mentioned,
+				any(competitor_count) as competitor_count
+			FROM prompt_runs_v2
+			WHERE prompt_id = {promptId:String}
+				AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String})
+				AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})
+			GROUP BY id
+		)
 		`,
 		{ promptId, timezone, fromDate, toDate },
 	);

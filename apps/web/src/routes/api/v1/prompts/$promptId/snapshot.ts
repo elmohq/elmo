@@ -170,12 +170,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						promptValue: prompt.value,
 						startDate,
 						endDate,
-						mentions: {
-							mentionsTotal: Number(mentionData.total_runs),
-							brandMentionsTotal: Number(mentionData.brand_mentioned_count),
-							competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
-							mentionsTopK,
-						},
+					mentions: {
+						mentionsTotal:
+							Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
+						brandMentionsTotal: Number(mentionData.brand_mentioned_count),
+						competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
+						mentionsTopK,
+					},
 						citations: {
 							citationsTotal,
 							brandCitationsTotal,
