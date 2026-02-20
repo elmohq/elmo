@@ -6,6 +6,7 @@ if (process.env.SENTRY_DSN) {
 		sendDefaultPii: true,
 		tracesSampleRate: 1.0,
 		enableLogs: true,
+		registerEsmLoaderHooks: false,
 		integrations: [Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] })],
 	});
 }
