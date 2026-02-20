@@ -10,8 +10,16 @@
  * provided via environment variables.
  */
 export const DEFAULT_APP_NAME = "Elmo";
-export const DEFAULT_APP_ICON = "/api/generated-icon"; // Dynamic SVG route
+export const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 export const DEFAULT_APP_URL = "http://localhost:3000/";
+
+/**
+ * Elmo brand constants — used for icon generation, manifest, and the brand kit.
+ */
+export const ELMO_BRAND_COLOR = "#2563eb"; // blue-600
+export const ELMO_BRAND_FONT = "Titan One";
+export const ELMO_THEME_COLOR = "#2563eb";
+export const ELMO_BACKGROUND_COLOR = "#ffffff";
 
 /**
  * Default chart colors used across all deployment modes

@@ -4,12 +4,12 @@
   "private": true,
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
   },
   "dependencies": {
     "@workspace/config": "workspace:*",
     "@workspace/local": "workspace:*",
-    "@workspace/demo": "workspace:*",
     "@workspace/whitelabel": "workspace:*"
   },
   "devDependencies": {

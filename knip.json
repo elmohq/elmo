@@ -3,8 +3,7 @@
   "ignoreWorkspaces": ["packages/ui"],
   "workspaces": {
     ".": {
-      "entry": ["turbo.json"],
-      "ignoreUnresolved": ["next"]
+      "entry": ["turbo.json"]
     },
     "apps/web": {
       "entry": ["src/app/**/*.{ts,tsx}!", "scripts/*.ts"],

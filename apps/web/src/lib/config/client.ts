@@ -1,22 +1,16 @@
 /**
- * Client-safe deployment configuration
+ * Client-safe deployment configuration for TanStack Start
+ *
+ * Re-exports types used by client components.
+ * The actual config is loaded via a server function in the root route's loader
+ * and passed down through route context.
  */
-import { deployment } from "@workspace/deployment";
-import type { ClientConfig } from "@workspace/config/types";
+import type {
+	AnalyticsConfig,
+	BrandingConfig,
+	ClientConfig,
+	DeploymentMode,
+	FeaturesConfig,
+} from "@workspace/config/types";
 
-let _cached: ClientConfig;
-
-function getConfig(): ClientConfig {
-  return _cached ??= deployment().createClientConfig();
-}
-
-/**
- * Client configuration singleton (lazy-initialized)
- */
-export const clientConfig: ClientConfig = new Proxy({} as ClientConfig, {
-  get(_, prop) {
-    return getConfig()[prop as keyof ClientConfig];
-  },
-});
-
-export type { ClientConfig, BrandingConfig, FeaturesConfig, AnalyticsConfig, DeploymentMode } from "@workspace/config/types";
+export type { ClientConfig, BrandingConfig, FeaturesConfig, AnalyticsConfig, DeploymentMode };

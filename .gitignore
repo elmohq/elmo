@@ -20,6 +20,10 @@ node_modules
 .next/
 out/
 
+# tanstack start
+.output/
+.tanstack/
+
 # production
 /build
 
@@ -36,6 +40,15 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# playwright
+playwright-report/
+test-results/
+blob-report/
+
+# e2e generated config (created by `elmo init --dev --defaults`)
+e2e/.elmo/
+e2e/.auth/
+
 # vercel
 .vercel
 
@@ -50,3 +63,7 @@ next-env.d.ts
 prompt_runs.ndjson.gz
 prompt_runs_rows.csv
 prompt_runs.meta.json
+
+# docker
+elmo.yaml
+e2e/artifacts

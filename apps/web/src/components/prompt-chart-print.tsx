@@ -1,4 +1,3 @@
-"use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
@@ -83,9 +82,6 @@ export function PromptChartPrint({
 	const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
 	const lastBrandVisibility = lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
 
-	// Determine chart type based on lookback period
-	const chartType = lookback === "1w" ? "bar" : "line";
-
 	if (hasNoRuns) {
 		const message = hasEverBeenEvaluated
 			? "No data in selected time range"
@@ -118,10 +114,15 @@ export function PromptChartPrint({
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div>
-						<span className="font-semibold text-xl sm:text-2xl md:text-3xl lg:text-4xl text-muted-foreground print:text-lg">
-							No brands found.
-						</span>
+					<div className="h-[250px] flex items-center justify-center">
+						<div className="flex flex-col items-center text-center max-w-xs">
+							<p className="text-sm font-medium text-muted-foreground print:text-xs">
+								No brands found in responses
+							</p>
+							<p className="text-xs text-muted-foreground/70 mt-1 print:text-[10px]">
+								Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+							</p>
+						</div>
 					</div>
 				</CardContent>
 				<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />

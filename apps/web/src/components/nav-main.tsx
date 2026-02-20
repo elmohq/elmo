@@ -1,5 +1,3 @@
-"use client";
-
 import { type Icon } from "@tabler/icons-react";
 
 import {
@@ -10,9 +8,7 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import Link from "next/link";
-import { useBrand } from "@/hooks/use-brands";
-import { usePathname } from "next/navigation";
+import { Link, useLocation, useParams } from "@tanstack/react-router";
 
 export interface NavItem {
 	title: string;
@@ -27,10 +23,11 @@ export interface NavGroup {
 }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
-	// Use brandId (from URL) instead of brand?.id to avoid undefined during loading
-	const { brandId } = useBrand();
+	const params = useParams({ strict: false }) as { brand?: string };
+	const brandId = params.brand;
 	const { setOpenMobile } = useSidebar();
-	const pathname = usePathname();
+	const location = useLocation();
+	const pathname = location.pathname;
 
 	const getHref = (url: string, absolute?: boolean) => {
 		return absolute ? url : `/app/${brandId}${url}`;
@@ -38,7 +35,6 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 
 	const isActive = (url: string, absolute?: boolean) => {
 		const href = getHref(url, absolute);
-		// Exact match for root dashboard
 		if (href === `/app/${brandId}` || href === `/app/${brandId}/`) {
 			return pathname === `/app/${brandId}` || pathname === `/app/${brandId}/`;
 		}
@@ -58,13 +54,13 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 									tooltip={item.title}
 									isActive={isActive(item.url, item.absolute)}
 								>
-									<Link
-										href={getHref(item.url, item.absolute)}
-										onClick={() => setOpenMobile(false)}
-									>
-										{item.icon && <item.icon />}
-										<span>{item.title}</span>
-									</Link>
+								<Link
+									to={getHref(item.url, item.absolute)}
+									onClick={() => setOpenMobile(false)}
+								>
+									{item.icon && <item.icon />}
+									<span>{item.title}</span>
+								</Link>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 						))}

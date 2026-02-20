@@ -11,25 +11,40 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from "@workspace/ui/components/dropdown-menu";
-import { generateOptimizationUrl } from "../config";
+import type { OptimizeButtonProps } from "@workspace/config/types";
 
-type ModelType = "openai" | "anthropic" | "google" | "all";
-type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+export type { OptimizeButtonProps };
 
-interface WebQueryResponse {
-	webQuery: string | null;
-	modelWebQueries: Record<string, string>;
-}
+/**
+ * Generate optimization URL for a prompt using template substitution
+ *
+ * Template placeholders:
+ * - {brandId} - Organization/brand ID
+ * - {prompt} - The prompt text (URL encoded)
+ * - {webQuery} - Web query if web search enabled (URL encoded, empty string if not)
+ */
+function generateOptimizationUrl(
+  urlTemplate: string,
+  promptValue: string,
+  brandId: string,
+  webSearchEnabled?: boolean,
+  webQuery?: string,
+): string {
+  const encodedPrompt = encodeURIComponent(promptValue);
+  const encodedBrandId = encodeURIComponent(brandId);
+  const encodedWebQuery = webSearchEnabled && webQuery
+    ? encodeURIComponent(webQuery)
+    : "";
 
-export interface OptimizeButtonProps {
-	brandId?: string;
-	selectedModel?: ModelType;
-	availableModels?: ("openai" | "anthropic" | "google")[];
-	lookback?: LookbackPeriod;
-	promptName?: string;
-	promptId?: string;
-	parentName: string;
-	optimizationUrlTemplate: string;
+  let url = urlTemplate
+    .replace("{brandId}", encodedBrandId)
+    .replace("{prompt}", encodedPrompt)
+    .replace("{webQuery}", encodedWebQuery);
+
+  url = url.replace(/[&?]web_query=(?=&|$)/, "");
+  url = url.replace(/\?&/, "?");
+
+  return url;
 }
 
 function getModelDisplayName(model: string): string {
@@ -41,32 +56,6 @@ function getModelDisplayName(model: string): string {
 	}
 }
 
-async function fetchWebQuery(
-	brandId: string, 
-	promptId: string, 
-	lookback: LookbackPeriod,
-	modelGroup?: string,
-): Promise<WebQueryResponse> {
-	const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const params = new URLSearchParams({
-		timezone,
-		lookback,
-	});
-	if (modelGroup) {
-		params.append("modelGroup", modelGroup);
-	}
-	
-	const response = await fetch(
-		`/api/brands/${brandId}/prompts/${promptId}/web-query?${params.toString()}`
-	);
-	
-	if (!response.ok) {
-		throw new Error("Failed to fetch web query");
-	}
-	
-	return response.json();
-}
-
 export function OptimizeButton({
 	brandId,
 	selectedModel = "all",
@@ -76,10 +65,11 @@ export function OptimizeButton({
 	promptId,
 	parentName,
 	optimizationUrlTemplate,
+	fetchWebQuery,
 }: OptimizeButtonProps) {
 	const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
-	if (!promptName || !promptId || !brandId) {
+	if (!promptName || !promptId || !brandId || !parentName || !optimizationUrlTemplate) {
 		return null;
 	}
 
@@ -93,12 +83,15 @@ export function OptimizeButton({
 		setLoadingKey(key);
 
 		try {
-			const webQueryData = await fetchWebQuery(brandId, promptId, lookback, model);
-			
-			const webQuery = model 
-				? webQueryData.modelWebQueries[model]
-				: webQueryData.webQuery;
-			
+			let webQuery: string | null | undefined = null;
+
+			if (fetchWebQuery) {
+				const webQueryData = await fetchWebQuery(promptId, lookback ?? "1m", model);
+				webQuery = model
+					? webQueryData.modelWebQueries[model]
+					: webQueryData.webQuery;
+			}
+
 			const url = generateOptimizationUrl(
 				optimizationUrlTemplate, 
 				promptName, 

@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -8,9 +7,10 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Plus, Save, Inbox, X, Check, AlertTriangle } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { useRouter } from "next/navigation";
-import { invalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import { useNavigate } from "@tanstack/react-router";
+import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { updatePromptsFn } from "@/server/prompts";
 
 interface Prompt {
 	id: string;
@@ -50,7 +50,8 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const [isLoading, setIsLoading] = useState(false);
 	const [newTagInputs, setNewTagInputs] = useState<Record<number, string>>({});
 	const saveInProgress = useRef(false);
-	const router = useRouter();
+	const navigate = useNavigate();
+	const invalidatePromptsSummary = useInvalidatePromptsSummary();
 
 	const addPrompt = () => {
 		setPrompts([...prompts, { value: "", enabled: true, tags: [], systemTags: [] }]);
@@ -85,7 +86,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	};
 
 	const savePrompts = async () => {
-		// Prevent duplicate saves
 		if (saveInProgress.current) {
 			console.warn("Save already in progress, ignoring duplicate request");
 			return;
@@ -94,90 +94,27 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		saveInProgress.current = true;
 		setIsLoading(true);
 		try {
-			// Get valid prompts (non-empty value)
 			const validPrompts = prompts.filter((p) => p.value.trim());
 
-			// Separate existing prompts vs new prompts
-			const existingPrompts = validPrompts.filter((p) => p.id);
-			const newPrompts = validPrompts.filter((p) => !p.id);
+			const currentIds = new Set(validPrompts.filter((p) => p.id).map((p) => p.id));
+			const removedPrompts = initialPrompts
+				.filter((p) => !currentIds.has(p.id))
+				.map((p) => ({ id: p.id, value: p.value, enabled: false, tags: p.tags || [] }));
 
-			// Find prompts that were removed (exist in initialPrompts but not in current validPrompts)
-			const currentIds = new Set(existingPrompts.map((p) => p.id));
-			const removedPrompts = initialPrompts.filter((p) => !currentIds.has(p.id));
+			const allPrompts = [
+				...validPrompts.map((p) => ({
+					...(p.id ? { id: p.id } : {}),
+					value: p.value.trim(),
+					enabled: p.enabled,
+					tags: p.tags,
+				})),
+				...removedPrompts,
+			];
 
-			const allPromises = [];
+			await updatePromptsFn({ data: { brandId, prompts: allPrompts } });
 
-			// Update existing prompts
-			for (const prompt of existingPrompts) {
-				allPromises.push(
-					fetch(`/api/brands/${brandId}/prompts/${prompt.id}`, {
-						method: "PUT",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							value: prompt.value.trim(),
-							enabled: prompt.enabled,
-							tags: prompt.tags,
-						}),
-					}).then((response) => {
-						if (!response.ok) {
-							throw new Error(`Failed to update prompt "${prompt.value}": ${response.statusText}`);
-						}
-						return response;
-					}),
-				);
-			}
-
-			// Create new prompts
-			for (const prompt of newPrompts) {
-				allPromises.push(
-					fetch(`/api/brands/${brandId}/prompts`, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							value: prompt.value.trim(),
-							enabled: prompt.enabled,
-							tags: prompt.tags,
-						}),
-					}).then((response) => {
-						if (!response.ok) {
-							throw new Error(`Failed to create prompt "${prompt.value}": ${response.statusText}`);
-						}
-						return response;
-					}),
-				);
-			}
-
-			// Disable removed prompts
-			for (const prompt of removedPrompts) {
-				allPromises.push(
-					fetch(`/api/brands/${brandId}/prompts/${prompt.id}`, {
-						method: "PUT",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							enabled: false,
-						}),
-					}).then((response) => {
-						if (!response.ok) {
-							throw new Error(`Failed to disable removed prompt ${prompt.id}: ${response.statusText}`);
-						}
-						return response;
-					}),
-				);
-			}
-
-			// Wait for all operations to complete
-			await Promise.all(allPromises);
-
-			// Invalidate the prompts summary cache so tags are refreshed
 			invalidatePromptsSummary(brandId);
-
-			router.push(`/app/${brandId}/visibility`);
+			navigate({ to: `/app/${brandId}/visibility` });
 		} catch (error) {
 			console.error("Error saving prompts:", error);
 			alert(`Failed to save prompts: ${error instanceof Error ? error.message : "Unknown error"}`);

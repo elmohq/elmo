@@ -1,5 +1,13 @@
 import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer } from "drizzle-orm/pg-core";
 
+// Better-auth tables & relations — re-exported so `import * as schema` sees everything.
+// Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
+export * from "./schema-auth";
+
+// ============================================================================
+// Application tables
+// ============================================================================
+
 export const modelGroupsEnum = pgEnum("model_groups", ["openai", "anthropic", "google"]);
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
@@ -9,7 +17,7 @@ export const brands = pgTable("brands", {
 	website: text("website").notNull(),
 	enabled: boolean("enabled").default(true).notNull(),
 	onboarded: boolean("onboarded").default(false).notNull(),
-	delayOverrideHours: integer("delay_override_hours"), // Override for job scheduler delay in hours
+	delayOverrideHours: integer("delay_override_hours"),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()
@@ -26,8 +34,8 @@ export const prompts = pgTable(
 			.notNull(),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
-		tags: text("tags").array().notNull().default([]), // User-defined tags (lowercase strings)
-		systemTags: text("system_tags").array().notNull().default([]), // Auto-computed system tags (e.g., "branded", "unbranded")
+		tags: text("tags").array().notNull().default([]),
+		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		updatedAt: timestamp("updated_at", { withTimezone: true })
 			.defaultNow()
@@ -118,7 +126,6 @@ export type BrandWithPrompts = Brand & {
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
 
-// Reserved system tags - these are computed, not stored
 export const SYSTEM_TAGS = {
 	BRANDED: "branded",
 	UNBRANDED: "unbranded",

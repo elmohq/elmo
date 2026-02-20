@@ -1,146 +1,114 @@
-"use client";
-
-import useSWR, { mutate as globalMutate } from "swr";
-import { usePathname } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import type { BrandWithPrompts, Competitor } from "@workspace/lib/db/schema";
+import { getBrands, getBrand, getCompetitors } from "@/server/brands";
 
-// Extended type that includes the earliest data date from Tinybird
-// Optional because the list endpoint doesn't fetch this for performance reasons
 export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
 };
 
-const fetcher = async (url: string): Promise<BrandWithPromptsAndDataInfo[]> => {
-	const response = await fetch(url);
+// ============================================================================
+// Query keys
+// ============================================================================
 
-	if (!response.ok) {
-		const error = new Error("Failed to fetch brands");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
+export const brandKeys = {
+	all: ["brands"] as const,
+	list: () => [...brandKeys.all, "list"] as const,
+	detail: (brandId: string) => [...brandKeys.all, "detail", brandId] as const,
+	competitors: (brandId: string) => [...brandKeys.all, "competitors", brandId] as const,
 };
 
-const singleBrandFetcher = async (url: string): Promise<BrandWithPromptsAndDataInfo> => {
-	const response = await fetch(url);
+// ============================================================================
+// Hooks
+// ============================================================================
 
-	if (!response.ok) {
-		const error = new Error("Failed to fetch brand");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
-};
-
-const competitorsFetcher = async (url: string): Promise<Competitor[]> => {
-	const response = await fetch(url);
-
-	if (!response.ok) {
-		const error = new Error("Failed to fetch competitors");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
-};
-
+/**
+ * Get all brands the user has access to
+ */
 export function useBrands() {
-	const { data, error, isLoading, mutate } = useSWR<BrandWithPromptsAndDataInfo[]>("/api/brands", fetcher, {
-		revalidateOnFocus: true,
-		revalidateOnReconnect: true,
-		dedupingInterval: 30000, // 30 seconds deduping
+	const query = useQuery({
+		queryKey: brandKeys.list(),
+		queryFn: () => getBrands(),
+		staleTime: 30_000, // 30 seconds
+		refetchOnWindowFocus: true,
+		refetchOnReconnect: true,
 	});
 
 	return {
-		brands: data,
-		isLoading,
-		isError: error,
-		revalidate: mutate,
+		brands: query.data,
+		isLoading: query.isLoading,
+		isError: query.error,
+		revalidate: query.refetch,
 	};
 }
 
-export function useBrand(brandId: string | undefined = undefined) {
-	const pathname = usePathname();
+/**
+ * Get a single brand by ID.
+ * If no brandId provided, extracts from route params.
+ */
+export function useBrand(brandId?: string) {
+	// Try to get brandId from route params if not provided
+	const params = useParams({ strict: false }) as { brand?: string };
+	const resolvedBrandId = brandId || params.brand;
+	const queryClient = useQueryClient();
 
-	// Extract brand ID from URL synchronously - this is always available immediately
-	const extractedBrandId =
-		brandId ||
-		(() => {
-			const segments = pathname.split("/");
-			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
-		})();
-
-	const { data, error, isLoading, mutate } = useSWR<BrandWithPromptsAndDataInfo>(
-		extractedBrandId ? `/api/brands/${extractedBrandId}` : null,
-		singleBrandFetcher,
-		{
-			revalidateOnFocus: true,
-			revalidateOnReconnect: true,
-			dedupingInterval: 30000, // 30 seconds deduping
-		},
-	);
+	const query = useQuery({
+		queryKey: brandKeys.detail(resolvedBrandId || ""),
+		queryFn: () => getBrand({ data: { brandId: resolvedBrandId! } }),
+		enabled: !!resolvedBrandId,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchOnReconnect: true,
+	});
 
 	const revalidate = async () => {
-		// Revalidate the individual brand cache
-		await mutate();
-		// Also revalidate the brands list cache to keep them in sync
-		await globalMutate("/api/brands");
+		await query.refetch();
+		// Also invalidate the brands list
+		queryClient.invalidateQueries({ queryKey: brandKeys.list() });
 	};
 
 	return {
-		// brandId is available immediately from URL (use for navigation links)
-		brandId: extractedBrandId,
-		// brand data requires async fetch (use when you need full brand details)
-		brand: data,
-		isLoading,
-		isError: error,
+		brandId: resolvedBrandId,
+		brand: query.data as BrandWithPromptsAndDataInfo | undefined,
+		isLoading: query.isLoading,
+		isError: query.error,
 		revalidate,
 	};
 }
 
+/**
+ * Get competitors for a brand
+ */
 export function useCompetitors(brandId?: string) {
-	const pathname = usePathname();
+	const params = useParams({ strict: false }) as { brand?: string };
+	const resolvedBrandId = brandId || params.brand;
 
-	const extractedBrandId =
-		brandId ||
-		(() => {
-			const segments = pathname.split("/");
-			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
-		})();
-
-	const { data, error, isLoading, mutate } = useSWR<Competitor[]>(
-		extractedBrandId ? `/api/brands/${extractedBrandId}/competitors` : null,
-		competitorsFetcher,
-		{
-			revalidateOnFocus: true,
-			revalidateOnReconnect: true,
-			dedupingInterval: 30000, // 30 seconds deduping
-		},
-	);
+	const query = useQuery({
+		queryKey: brandKeys.competitors(resolvedBrandId || ""),
+		queryFn: () => getCompetitors({ data: { brandId: resolvedBrandId! } }),
+		enabled: !!resolvedBrandId,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchOnReconnect: true,
+	});
 
 	return {
-		competitors: data || [],
-		isLoading,
-		isError: error,
-		revalidate: mutate,
+		competitors: query.data || [],
+		isLoading: query.isLoading,
+		isError: query.error,
+		revalidate: query.refetch,
 	};
 }
 
-// Hook for manually revalidating all brand-related cache
+/**
+ * Utility for invalidating all brand-related queries
+ */
 export function useBrandsRevalidation() {
-	const { mutate: mutateBrands } = useSWR("/api/brands", fetcher);
+	const queryClient = useQueryClient();
 
-	const revalidateAll = async () => {
-		// Revalidate the brands list
-		await mutateBrands();
-
-		// Note: Individual brand cache entries will be revalidated
-		// automatically when accessed or can be done manually per brand
+	const revalidateAll = () => {
+		queryClient.invalidateQueries({ queryKey: brandKeys.all });
 	};
 
-	return {
-		revalidateAll,
-	};
+	return { revalidateAll };
 }

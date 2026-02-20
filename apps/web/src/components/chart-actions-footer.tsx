@@ -1,11 +1,13 @@
-"use client";
 
+import { useCallback } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ChartFooter } from "./chart-footer";
 import { HistoryButton } from "./history-button";
-import { OptimizeButton } from "@workspace/whitelabel/components/optimize-button";
-import { clientConfig } from "@/lib/config/client";
+import { useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { getOptimizeButtonForMode } from "@workspace/deployment/client";
+import { getPromptWebQueryFn } from "@/server/prompts";
 
 type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -36,8 +38,27 @@ export function ChartActionsFooter({
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);
 	
-	// Get branding from client config for OptimizeButton
-	const { parentName, optimizationUrlTemplate } = clientConfig.branding;
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const mode = context.clientConfig?.mode ?? "local";
+	const showOptimizeButton = context.clientConfig?.features.showOptimizeButton ?? false;
+	const { parentName, optimizationUrlTemplate } = context.clientConfig?.branding ?? {};
+	const OptimizeButton = getOptimizeButtonForMode(mode);
+
+	const fetchWebQuery = useCallback(
+		async (pId: string, lb: string, modelGroup?: string) => {
+			if (!brandId) throw new Error("No brand ID");
+			return getPromptWebQueryFn({
+				data: {
+					brandId,
+					promptId: pId,
+					lookback: lb,
+					modelGroup,
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				},
+			});
+		},
+		[brandId],
+	);
 
 	if (!isSinglePrompt) {
 		return null;
@@ -66,16 +87,19 @@ export function ChartActionsFooter({
 						</Button>
 					)}
 				</div>
-				<OptimizeButton
-					promptName={promptName}
-					promptId={promptId}
-					brandId={brandId}
-					selectedModel={selectedModel}
-					availableModels={availableModels}
-					lookback={lookback}
-					parentName={parentName ?? ""}
-					optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
-				/>
+				{showOptimizeButton && (
+					<OptimizeButton
+						promptName={promptName}
+						promptId={promptId}
+						brandId={brandId}
+						selectedModel={selectedModel}
+						availableModels={availableModels}
+						lookback={lookback}
+						parentName={parentName ?? ""}
+						optimizationUrlTemplate={optimizationUrlTemplate ?? ""}
+						fetchWebQuery={fetchWebQuery}
+					/>
+				)}
 			</div>
 		</ChartFooter>
 	);

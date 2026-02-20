@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo } from "react";
 import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
@@ -36,7 +34,8 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 		[defaultPeriod, brand?.earliestDataDate]
 	);
 
-	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(computedDefaultPeriod));
+	const [selectedLookbackRaw, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(computedDefaultPeriod));
+	const selectedLookback = selectedLookbackRaw ?? computedDefaultPeriod;
 
 	const handleChange = (period: LookbackPeriod) => {
 		setSelectedLookback(period);
@@ -71,6 +70,6 @@ export function useLookbackPeriod(defaultPeriod?: LookbackPeriod) {
 	);
 
 	const [selectedLookback] = useQueryState("lookback", lookbackParser.withDefault(computedDefaultPeriod));
-	return selectedLookback;
+	return selectedLookback ?? computedDefaultPeriod;
 }
 

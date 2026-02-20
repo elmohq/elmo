@@ -1,0 +1,32 @@
+DESCRIPTION >
+    Pre-expanded citations table populated automatically via materialized view.
+    Uses ReplacingMergeTree to handle duplicates from duplicate prompt_runs inserts.
+    
+    Key improvements over v1:
+    1. Sorting key matches query patterns (brand_id, prompt_id first) for fast index scans
+    2. FINAL is now fast because it only deduplicates within filtered rows
+    3. Data locality - all citations for a brand/prompt are physically co-located
+    
+    Note: created_at cannot be in sorting key since it's used as ENGINE_VER.
+    
+    Deduplication strategy: Rows with same (prompt_run_id, citation_idx) are deduplicated,
+    keeping the one with latest created_at. The citation_idx preserves duplicate URLs
+    within the same prompt_run's array (important for accurate counting).
+
+SCHEMA >
+    `prompt_run_id` String,
+    `prompt_id` String,
+    `brand_id` String,
+    `model_group` LowCardinality(String),
+    `url` String,
+    `domain` LowCardinality(String),
+    `title` Nullable(String),
+    `citation_idx` UInt32,
+    `created_at` DateTime64(3, 'UTC')
+
+ENGINE "ReplacingMergeTree"
+ENGINE_PARTITION_KEY "toYYYYMM(toDate(created_at))"
+ENGINE_SORTING_KEY "brand_id, prompt_id, prompt_run_id, citation_idx"
+ENGINE_VER "created_at"
+
+

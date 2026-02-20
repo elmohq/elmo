@@ -2,8 +2,8 @@
   "$schema": "https://turborepo.dev/schema.json",
   "globalEnv": [
     "DATABASE_URL",
-    "APP_BASE_URL",
-    "AUTH0_SECRET",
+    "APP_URL",
+    "BETTER_AUTH_SECRET",
     "AUTH0_DOMAIN",
     "AUTH0_CLIENT_ID",
     "AUTH0_CLIENT_SECRET",
@@ -21,17 +21,28 @@
     "TINYBIRD_BASE_URL",
     "TINYBIRD_WORKSPACE",
     "DEPLOYMENT_MODE",
-    "NEXT_PUBLIC_DEPLOYMENT_MODE",
-    "NEXT_PUBLIC_AUTH0_DOMAIN",
-    "NEXT_PUBLIC_AUTH0_CLIENT_ID",
     "ADMIN_AUTH0_SUB",
     "ADMIN_API_KEYS",
-    "ENVIRONMENT"
+    "ENVIRONMENT",
+    "VITE_DEPLOYMENT_MODE",
+    "VITE_APP_NAME",
+    "VITE_APP_ICON",
+    "VITE_APP_URL",
+    "VITE_APP_PARENT_NAME",
+    "VITE_APP_PARENT_URL",
+    "VITE_OPTIMIZATION_URL_TEMPLATE",
+    "VITE_PLAUSIBLE_DOMAIN",
+    "VITE_CLARITY_PROJECT_ID",
+    "VITE_ONBOARDING_REDIRECT_URL_TEMPLATE",
+    "VITE_AUTH0_DOMAIN",
+    "VITE_AUTH0_CLIENT_ID",
+    "BLOB_READ_WRITE_TOKEN",
+    "DBOS_SYSTEM_DATABASE_URL"
   ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": ["^build", "check-types"],
+      "outputs": [".output/**", ".vercel/output/**", "dist/**"]
     },
     "@workspace/worker#build": {
       "dependsOn": ["^build"],

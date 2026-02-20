@@ -1,10 +1,9 @@
-# Elmo - Multi-stage Dockerfile
-# Supports: web app, worker
+# Elmo 
+# Supports: web app (Nitro server) and worker
 
 # Base stage with Node.js
 FROM node:24-alpine AS base
 RUN corepack enable pnpm
-# Install curl for healthchecks and token fetching
 RUN apk add --no-cache curl
 
 # Dependencies stage
@@ -17,9 +16,10 @@ COPY apps/web/package.json ./apps/web/
 COPY apps/worker/package.json ./apps/worker/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/config/package.json ./packages/config/
+COPY packages/lib/package.json ./packages/lib/
 COPY packages/local/package.json ./packages/local/
-COPY packages/demo/package.json ./packages/demo/
 COPY packages/whitelabel/package.json ./packages/whitelabel/
+COPY packages/deployment/package.json ./packages/deployment/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -34,53 +34,63 @@ COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
+COPY --from=deps /app/packages/lib/node_modules ./packages/lib/node_modules
 COPY --from=deps /app/packages/local/node_modules ./packages/local/node_modules
-COPY --from=deps /app/packages/demo/node_modules ./packages/demo/node_modules
 COPY --from=deps /app/packages/whitelabel/node_modules ./packages/whitelabel/node_modules
+COPY --from=deps /app/packages/deployment/node_modules ./packages/deployment/node_modules
 
 # Copy source code
 COPY . .
 
-# Build arguments
+# Build arguments for VITE_ env vars (baked into client bundle)
 ARG DEPLOYMENT_MODE=local
-ENV DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
-ENV NEXT_PUBLIC_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
-ENV NEXT_TELEMETRY_DISABLED=1
+ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
+ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
 
-# Build the application (skip tests - they run in CI)
-RUN pnpm --filter @workspace/web build:docker
+# Build the web application (increase heap for large bundles)
+RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @workspace/web build
 
-# Runner stage for web app
+# Create pruned standalone deployments (only each package's own deps)
+# --legacy: allows deploy without inject-workspace-packages (which breaks Alpine Docker builds)
+RUN pnpm --filter @workspace/worker deploy --legacy /deploy/worker
+RUN pnpm --filter @workspace/lib deploy --legacy /deploy/lib
+
+# Runner stage for web app (Nitro)
 FROM base AS web
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 elmo
 
 # Copy entrypoint script
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy built assets
-COPY --from=builder /app/apps/web/public ./apps/web/public
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+# Copy Nitro output - this is the entire server bundle
+COPY --from=builder --chown=elmo:nodejs /app/apps/web/.output ./.output
 
 # Create config directory for Tinybird token
-RUN mkdir -p /app/tinybird-config && chown nextjs:nodejs /app/tinybird-config
+RUN mkdir -p /app/tinybird-config && chown elmo:nodejs /app/tinybird-config
 
-USER nextjs
+USER elmo
 
 EXPOSE 3000
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
+ENV HOST="0.0.0.0"
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["node", "apps/web/server.js"]
+CMD ["node", ".output/server/index.mjs"]
+
+# Migration stage — runs drizzle-kit migrate then exits
+FROM base AS migrate
+WORKDIR /app
+
+COPY --from=builder /deploy/lib ./
+
+CMD ["npx", "drizzle-kit", "migrate"]
 
 # Worker stage
 FROM base AS worker
@@ -88,29 +98,17 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Create non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 worker
 
-# Copy entrypoint script
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Copy dependencies and source
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/apps/worker/node_modules ./apps/worker/node_modules
-COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
-COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
-COPY --from=deps /app/packages/local/node_modules ./packages/local/node_modules
-COPY --from=deps /app/packages/demo/node_modules ./packages/demo/node_modules
-COPY --from=deps /app/packages/whitelabel/node_modules ./packages/whitelabel/node_modules
-COPY . .
+COPY --from=builder --chown=worker:nodejs /deploy/worker ./
 
-# Create config directory for Tinybird token
 RUN mkdir -p /app/tinybird-config && chown worker:nodejs /app/tinybird-config
 
 USER worker
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["pnpm", "--filter", "@workspace/worker", "start"]
+CMD ["npx", "tsx", "src/index.ts"]

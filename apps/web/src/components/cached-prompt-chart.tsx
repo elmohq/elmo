@@ -1,4 +1,3 @@
-"use client";
 
 import { useMemo } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -18,7 +17,7 @@ import {
 
 type ModelType = "openai" | "anthropic" | "google" | "all";
 
-interface CachedPromptChartProps {
+export interface CachedPromptChartProps {
 	promptId: string;
 	promptName: string;
 	brandId: string;
@@ -55,9 +54,6 @@ export function CachedPromptChart({
 		? `${chartContext.brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`
 		: `chart-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
 	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
-
-	// Determine chart type based on lookback period
-	const chartType = lookback === "1w" ? "bar" : "line";
 
 	// Loading state — structure matches the success state card exactly:
 	// CardHeader (title + badge), Separator, CardContent (pl-0 pr-6, h-[250px]), footer
@@ -167,10 +163,24 @@ export function CachedPromptChart({
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
-					<div className="h-[250px] flex items-center">
-						<span className="font-semibold text-xl text-muted-foreground">
-							No brands found.
-						</span>
+					<div className="h-[250px] flex items-center justify-center">
+						<div className="flex flex-col items-center text-center max-w-xs">
+							<div className="h-16 w-full mb-3 flex items-end justify-center gap-[3px]">
+								{[10, 15, 8, 12, 10, 14, 8, 12, 10, 15, 12, 9].map((h, i) => (
+									<div
+										key={i}
+										className="w-1.5 rounded-sm bg-muted-foreground/10"
+										style={{ height: `${h}%` }}
+									/>
+								))}
+							</div>
+							<p className="text-sm font-medium text-muted-foreground">
+								No brands found in responses
+							</p>
+							<p className="text-xs text-muted-foreground/70 mt-1">
+								Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+							</p>
+						</div>
 					</div>
 				</CardContent>
 				<div className="print:hidden">
@@ -209,7 +219,7 @@ export function CachedPromptChart({
 						brand={brand}
 						competitors={competitors}
 						isAnimationActive={false}
-						chartType={chartType}
+						chartType="line"
 					/>
 				)}
 			</CardContent>

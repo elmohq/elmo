@@ -1,1 +1,0 @@
-ALTER TABLE "brands" ALTER COLUMN "delay_override_ms" SET DATA TYPE bigint;

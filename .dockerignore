@@ -6,12 +6,18 @@ node_modules
 # Build outputs
 .next
 **/.next
+.output
+**/.output
 out
 **/out
 dist
 **/dist
 build
 **/build
+
+# Turborepo cache
+.turbo
+**/.turbo
 
 # Git
 .git
@@ -63,6 +69,15 @@ docs
 # Docker (don't copy init scripts into build)
 docker/init-scripts
 
+# Directories not needed in Docker builds
+e2e
+.elmo
+**/.elmo
+apps/cli
+
+# pnpm config (use-node-version breaks Alpine/MUSL Docker builds)
+.npmrc
+
 # Misc
 .DS_Store
 **/.DS_Store
@@ -70,3 +85,4 @@ Thumbs.db
 **/Thumbs.db
 *.log
 **/*.log
+e2e/artifacts

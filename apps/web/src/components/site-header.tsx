@@ -1,6 +1,5 @@
-"use client";
 
-import { usePathname } from "next/navigation";
+import { useLocation } from "@tanstack/react-router";
 
 import { Separator } from "@workspace/ui/components/separator";
 import { SidebarTrigger } from "@workspace/ui/components/sidebar";
@@ -13,7 +12,7 @@ import {
 	BreadcrumbSeparator,
 } from "@workspace/ui/components/breadcrumb";
 import { useBrand } from "@/hooks/use-brands";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 
 /** Map of page segments to display names */
 const PAGE_NAMES: Record<string, string> = {
@@ -45,7 +44,7 @@ function AdminBreadcrumbs({ pathname }: { pathname: string }) {
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							<Link href="/reports">Reports</Link>
+							<Link to="/reports">Reports</Link>
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -126,7 +125,7 @@ function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; 
 		<>
 			<BreadcrumbItem className="hidden md:block">
 				<BreadcrumbLink asChild>
-					<Link href={`/app/${brandId}`}>{brandName}</Link>
+					{brandId ? <Link to="/app/$brand" params={{ brand: brandId }}>{brandName}</Link> : <span>{brandName}</span>}
 				</BreadcrumbLink>
 			</BreadcrumbItem>
 			<BreadcrumbSeparator className="hidden md:block" />
@@ -134,7 +133,7 @@ function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; 
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							<Link href={`/app/${brandId}/visibility`}>Visibility</Link>
+							{brandId ? <Link to="/app/$brand/visibility" params={{ brand: brandId }}>Visibility</Link> : <span>Visibility</span>}
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -156,7 +155,7 @@ function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; 
 				<>
 					<BreadcrumbItem className="hidden md:block">
 						<BreadcrumbLink asChild>
-							<Link href={pathname.slice(0, -5)}>{pageName}</Link>
+							<Link to={pathname.slice(0, -5)}>{pageName}</Link>
 						</BreadcrumbLink>
 					</BreadcrumbItem>
 					<BreadcrumbSeparator className="hidden md:block" />
@@ -175,7 +174,7 @@ function BrandBreadcrumbs({ pathname, brandId, brandName }: { pathname: string; 
 
 export function SiteHeader() {
 	const { brandId, brand } = useBrand();
-	const pathname = usePathname();
+	const { pathname } = useLocation();
 
 	const isAdminPage = pathname.startsWith("/admin") || pathname.startsWith("/reports");
 

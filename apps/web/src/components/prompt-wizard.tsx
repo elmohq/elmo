@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useCallback, memo, useEffect, useRef, useMemo } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -13,6 +12,13 @@ import { useBrand } from "@/hooks/use-brands";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import {
+	analyzeWebsiteFn,
+	getKeywordsFn,
+	getCompetitorsFn,
+	getPersonasFn,
+	createPromptsFn,
+} from "@/server/wizard";
 
 // Step status types
 type StepStatus = "pending" | "running" | "completed" | "error" | "blocked" | "cancelled";
@@ -88,50 +94,22 @@ class ProgressTracker {
 	}
 }
 
-// API call utilities
+// Server function wrappers
 const apiCalls = {
 	async analyzeWebsite(website: string) {
-		const response = await fetch("/api/wizard/analyze-website", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ website }),
-		});
-
-		if (!response.ok) throw new Error("Failed to analyze website");
-		return response.json();
+		return analyzeWebsiteFn({ data: { website } });
 	},
 
 	async getKeywords(domain: string, products: string[]) {
-		const response = await fetch("/api/wizard/get-keywords", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ domain, products }),
-		});
-
-		if (!response.ok) throw new Error("Failed to get keywords");
-		return response.json();
+		return getKeywordsFn({ data: { domain, products } });
 	},
 
 	async getCompetitors(products: string[], website: string) {
-		const response = await fetch("/api/wizard/get-competitors", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ products, website }),
-		});
-
-		if (!response.ok) throw new Error("Failed to get competitors");
-		return response.json();
+		return getCompetitorsFn({ data: { products, website } });
 	},
 
 	async getPersonas(products: string[], website: string) {
-		const response = await fetch("/api/wizard/get-personas", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ products, website }),
-		});
-
-		if (!response.ok) throw new Error("Failed to analyze personas");
-		return response.json();
+		return getPersonasFn({ data: { products, website } });
 	},
 
 	async createPrompts(
@@ -144,29 +122,26 @@ const apiCalls = {
 			customPrompts: string[];
 		},
 	): Promise<{ success: boolean; error?: string }> {
-		const selectedKeywords = data.keywords.filter((kw) => kw.selected);
-
-		const response = await fetch("/api/wizard/create-prompts", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				brandId,
-				products: data.products,
-				competitors: data.competitors,
-				personaGroups: data.personaGroups,
-				keywords: selectedKeywords,
-				customPrompts: data.customPrompts,
-			}),
-		});
-
-		if (!response.ok) {
-			const data = await response.json();
-			return { success: false, error: data.error || "Failed to create prompts" };
+		try {
+			const selectedKeywords = data.keywords.filter((kw) => kw.selected).map((kw) => kw.keyword);
+			await createPromptsFn({
+				data: {
+					brandId,
+					products: data.products,
+					competitors: data.competitors.map((c) => ({ name: c.name, domain: c.domain })),
+					personaGroups: data.personaGroups.map((g) => ({
+						name: g.name,
+						personas: g.personas.map((p) => ({ name: p })),
+					})),
+					keywords: selectedKeywords,
+					customPrompts: data.customPrompts,
+				},
+			});
+			return { success: true };
+		} catch (error) {
+			return { success: false, error: error instanceof Error ? error.message : "Failed to create prompts" };
 		}
-
-		return { success: true };
 	},
-
 };
 
 // Step execution wrapper

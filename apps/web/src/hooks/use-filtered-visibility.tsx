@@ -1,78 +1,50 @@
-"use client";
-
-import useSWR from "swr";
-import { usePathname } from "next/navigation";
-import type { FilteredVisibilityResponse } from "@/app/api/brands/[id]/filtered-visibility/route";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
+import { getFilteredVisibilityFn, type FilteredVisibilityResponse } from "@/server/visibility";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 export interface FilteredVisibilityFilters {
 	lookback?: LookbackPeriod;
-	promptIds?: string[]; // Specific prompt IDs to calculate visibility for
-	modelGroup?: string; // Filter by model group (openai, anthropic, google)
-}
-
-const fetcher = async (url: string): Promise<FilteredVisibilityResponse> => {
-	const response = await fetch(url);
-
-	if (!response.ok) {
-		const error = new Error("Failed to fetch filtered visibility");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
-};
-
-function buildApiUrl(brandId: string, filters?: FilteredVisibilityFilters): string {
-	const baseUrl = `/api/brands/${brandId}/filtered-visibility`;
-
-	const params = new URLSearchParams();
-
-	// Always include client timezone for consistent date filtering with batch-chart-data
-	params.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
-
-	if (filters?.lookback) {
-		params.append("lookback", filters.lookback);
-	}
-
-	if (filters?.promptIds && filters.promptIds.length > 0) {
-		params.append("promptIds", filters.promptIds.join(","));
-	}
-
-	if (filters?.modelGroup) {
-		params.append("modelGroup", filters.modelGroup);
-	}
-
-	return `${baseUrl}?${params.toString()}`;
+	promptIds?: string[];
+	modelGroup?: string;
 }
 
 export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibilityFilters) {
-	const pathname = usePathname();
+	const params = useParams({ strict: false }) as { brand?: string };
+	const resolvedBrandId = brandId || params.brand;
 
-	const extractedBrandId =
-		brandId ||
-		(() => {
-			const segments = pathname.split("/");
-			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
-		})();
-
-	const apiUrl = extractedBrandId ? buildApiUrl(extractedBrandId, filters) : null;
-
-	const { data, error, isLoading, isValidating, mutate } = useSWR<FilteredVisibilityResponse>(apiUrl, fetcher, {
-		revalidateOnFocus: true,
-		revalidateOnReconnect: true,
-		refreshInterval: 60000,
-		dedupingInterval: 30000,
-		keepPreviousData: true, // Keep showing old data while fetching new data on filter changes
+	const query = useQuery({
+		queryKey: [
+			"filtered-visibility",
+			resolvedBrandId,
+			filters?.lookback,
+			filters?.modelGroup,
+			filters?.promptIds?.join(","),
+		],
+		queryFn: () =>
+			getFilteredVisibilityFn({
+				data: {
+					brandId: resolvedBrandId!,
+					lookback: filters?.lookback || "1m",
+					modelGroup: filters?.modelGroup,
+					promptIds: filters?.promptIds || [],
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				},
+			}),
+		enabled: !!resolvedBrandId,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchOnReconnect: true,
+		refetchInterval: 60_000,
+		placeholderData: (prev) => prev,
 	});
 
 	return {
-		filteredVisibility: data,
-		isLoading,
-		isValidating, // True when fetching (including revalidations) - use for subtle loading indicators
-		isError: error,
-		revalidate: mutate,
+		filteredVisibility: query.data,
+		isLoading: query.isLoading,
+		isValidating: query.isFetching,
+		isError: query.error,
+		revalidate: query.refetch,
 	};
 }
-

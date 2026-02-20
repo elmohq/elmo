@@ -1,4 +1,3 @@
-"use client";
 
 import { Separator } from "@workspace/ui/components/separator";
 import { CardFooter } from "@workspace/ui/components/card";

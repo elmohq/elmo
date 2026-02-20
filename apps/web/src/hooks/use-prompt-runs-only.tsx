@@ -1,57 +1,49 @@
-"use client";
+import { useQuery } from "@tanstack/react-query";
+import { getPromptRunsFn } from "@/server/prompts";
 
-import useSWR from "swr";
-import type { PromptRunsOnlyResponse } from "@/app/api/prompts/[promptId]/runs-only/route";
-
-interface UsePromptRunsOnlyOptions {
-	page?: number;
-	limit?: number;
-	days?: number; // Number of days to look back (default: 7)
-}
-
-const fetcher = async (url: string): Promise<PromptRunsOnlyResponse> => {
-	const response = await fetch(url);
-
-	if (!response.ok) {
-		const error = new Error("Failed to fetch prompt runs");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
+export const promptRunsKeys = {
+	all: ["prompt-runs"] as const,
+	list: (promptId: string, options: { page: number; limit: number; days: number }) =>
+		[...promptRunsKeys.all, promptId, options] as const,
 };
 
-function buildApiUrl(promptId: string, options: UsePromptRunsOnlyOptions = {}): string {
-	const { page = 1, limit = 15, days = 7 } = options;
-	const params = new URLSearchParams({
-		page: page.toString(),
-		limit: limit.toString(),
-		days: days.toString()
+export function usePromptRunsOnly(
+	promptId?: string,
+	options?: { page?: number; limit?: number; days?: number },
+) {
+	const page = options?.page || 1;
+	const limit = options?.limit || 10;
+	const days = options?.days || 7;
+
+	const query = useQuery({
+		queryKey: promptRunsKeys.list(promptId || "", { page, limit, days }),
+		queryFn: () => getPromptRunsFn({ data: { promptId: promptId!, page, limit, days } }),
+		enabled: !!promptId,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		placeholderData: (prev) => prev,
 	});
 
-	return `/api/prompts/${promptId}/runs-only?${params.toString()}`;
-}
-
-export function usePromptRunsOnly(promptId: string, options: UsePromptRunsOnlyOptions = {}) {
-	const apiUrl = promptId ? buildApiUrl(promptId, options) : null;
-
-	const { data, error, isLoading, mutate } = useSWR<PromptRunsOnlyResponse>(apiUrl, fetcher, {
-		revalidateOnFocus: false,
-		revalidateOnReconnect: true,
-		refreshInterval: 0, // Don't auto-refresh
-		dedupingInterval: 30000, // 30 seconds deduping
-		// Keep previous data while loading new page for smooth transitions
-		keepPreviousData: true,
-	});
+	const total = Number(query.data?.total || 0);
+	const totalPages = Math.ceil(total / limit) || 1;
 
 	return {
-		data,
-		isLoading,
-		isError: error,
-		revalidate: mutate,
-		// Convenience accessors
-		prompt: data?.prompt,
-		runs: data?.runs || [],
-		pagination: data?.pagination,
+		runs: query.data?.runs || [],
+		total,
+		hasMore: query.data?.hasMore || false,
+		isLoading: query.isLoading,
+		isError: query.error,
+		revalidate: query.refetch,
+		// Pagination object matching Next.js hook shape
+		pagination: query.data
+			? {
+					page,
+					limit,
+					total,
+					totalPages,
+					hasNext: page < totalPages,
+					hasPrev: page > 1,
+				}
+			: undefined,
 	};
 }

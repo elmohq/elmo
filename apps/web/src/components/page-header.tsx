@@ -1,5 +1,3 @@
-"use client";
-
 import { ReactNode, useEffect, useRef, useState, useMemo } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
@@ -150,10 +148,14 @@ export function PageHeader({
 		[brand?.earliestDataDate]
 	);
 
-	const [internalModel, setInternalModel] = useQueryState("model", modelParser.withDefault(defaultModel));
-	const [selectedLookback, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
-	const [selectedTags, setSelectedTags] = useQueryState("tags", tagsParser.withDefault([]));
-	const [searchQuery, setSearchQuery] = useQueryState("q", searchParser.withDefault(""));
+	const [internalModelRaw, setInternalModel] = useQueryState("model", modelParser.withDefault(defaultModel));
+	const internalModel = internalModelRaw ?? defaultModel;
+	const [selectedLookbackRaw, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
+	const selectedLookback = selectedLookbackRaw ?? defaultLookback;
+	const [selectedTagsRaw, setSelectedTags] = useQueryState("tags", tagsParser.withDefault([]));
+	const selectedTags = selectedTagsRaw ?? [];
+	const [searchQueryRaw, setSearchQuery] = useQueryState("q", searchParser.withDefault(""));
+	const searchQuery = searchQueryRaw ?? "";
 	const [isStuck, setIsStuck] = useState(false);
 	const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -174,8 +176,8 @@ export function PageHeader({
 		return () => observer.disconnect();
 	}, []);
 
-	// Use controlled model if provided, otherwise use internal state
-	const selectedModel = controlledModel ?? internalModel;
+	// Use controlled model if provided, otherwise use internal state (fallback to default)
+	const selectedModel = controlledModel ?? internalModel ?? defaultModel;
 	const handleModelChange = (model: ModelType) => {
 		setInternalModel(model);
 		onModelChange?.(model);
@@ -329,10 +331,10 @@ export function usePageFilters() {
 	const [searchQuery] = useQueryState("q", searchParser.withDefault(""));
 
 	return {
-		selectedModel: selectedModel as ModelType,
-		selectedLookback: selectedLookback as LookbackPeriod,
-		selectedTags,
-		searchQuery,
+		selectedModel: (selectedModel ?? "all") as ModelType,
+		selectedLookback: (selectedLookback ?? defaultLookback) as LookbackPeriod,
+		selectedTags: selectedTags ?? [],
+		searchQuery: searchQuery ?? "",
 	};
 }
 

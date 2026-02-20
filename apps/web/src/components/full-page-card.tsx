@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Separator } from "@workspace/ui/components/separator";
@@ -30,7 +30,7 @@ export default function FullPageCard({
 		<div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
 			<div className={`mx-auto ${className}`}>
 				<div className="flex items-center justify-center space-x-3">
-						<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
+					<Logo />
 				</div>
 				<Card className="my-8">
 					{(title || subtitle) && (
@@ -53,7 +53,7 @@ export default function FullPageCard({
 				) : showBackButton ? (
 					<div className="flex justify-center">
 						<Button variant="outline" size="sm" asChild>
-							<Link href={backButtonHref}>{backButtonText}</Link>
+							<Link to={backButtonHref}>{backButtonText}</Link>
 						</Button>
 					</div>
 				) : null}

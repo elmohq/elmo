@@ -1,99 +1,43 @@
-import type {
-  AuthProvider,
-  Organization,
-  OrganizationListOptions,
-  Session,
-  ConfigDependencies,
-  DefaultOrganization,
-} from "@workspace/config/types";
-
 /**
- * Local auth provider for local development mode
- * 
- * This provider:
- * - Returns a fixed "local-user" session
- * - Provides a single organization from config (or falls back to DB)
- * - Does not support organization creation
- * - Grants full admin access
+ * @workspace/local - Local development deployment
+ *
+ * Creates a Deployment for local development.
+ * When READ_ONLY=true, acts as a demo deployment with write operations blocked.
+ *
+ * Auth is fully handled by better-auth — this only provides static config.
  */
-export class LocalAuthProvider implements AuthProvider {
-  private dependencies: ConfigDependencies;
-  private defaultOrganization?: DefaultOrganization;
+import {
+	DEFAULT_APP_ICON,
+	DEFAULT_APP_NAME,
+	DEFAULT_APP_URL,
+	DEFAULT_CHART_COLORS,
+} from "@workspace/config/constants";
+import { getEnv, requireEnv } from "@workspace/config/env";
+import type { Deployment } from "@workspace/config/types";
 
-  constructor(
-    defaultOrganization?: DefaultOrganization,
-    dependencies?: ConfigDependencies
-  ) {
-    this.defaultOrganization = defaultOrganization;
-    this.dependencies = dependencies ?? {};
-  }
+export function createLocalDeployment(
+	env: Record<string, string | undefined> = process.env,
+): Deployment {
+	const readOnly = env.READ_ONLY === "true";
 
-  /**
-   * Returns a fixed local user session
-   */
-  async getSession(): Promise<Session | null> {
-    return {
-      user: {
-        id: "local-user",
-        name: "Local User",
-        email: "local@localhost",
-      },
-    };
-  }
-
-  /**
-   * Organization management for local mode
-   */
-  organizations = {
-    /**
-     * List available organizations
-     * Returns the default org from config, or falls back to first brand from DB
-     * 
-     * @param _options - Unused in local mode (no caching)
-     */
-    list: async (_options?: OrganizationListOptions): Promise<Organization[]> => {
-      // Return default org from config if available
-      if (this.defaultOrganization) {
-        return [this.defaultOrganization];
-      }
-      
-      // Fallback: get first brand from database
-      if (this.dependencies.db) {
-        const brands = await this.dependencies.db.getAllBrands();
-        return brands.slice(0, 1);
-      }
-      
-      // No orgs available
-      return [];
-    },
-
-    /**
-     * Local mode does not support creating organizations
-     */
-    canCreate: (): boolean => {
-      return false;
-    },
-
-    /**
-     * Check if user has access to a specific organization
-     */
-    hasAccess: async (orgId: string): Promise<boolean> => {
-      const orgs = await this.organizations.list();
-      return orgs.some((org) => org.id === orgId);
-    },
-  };
-
-  /**
-   * Local mode grants full admin access
-   */
-  async isAdmin(): Promise<boolean> {
-    return true;
-  }
-
-  /**
-   * Local mode grants report generator access
-   */
-  async hasReportGeneratorAccess(): Promise<boolean> {
-    return true;
-  }
+	return {
+		mode: readOnly ? "demo" : "local",
+		features: {
+			readOnly,
+			showOptimizeButton: false,
+			supportsMultiOrg: false,
+		},
+		branding: {
+			name: getEnv("APP_NAME", DEFAULT_APP_NAME, env),
+			icon: getEnv("APP_ICON", DEFAULT_APP_ICON, env),
+			url: getEnv("APP_URL", DEFAULT_APP_URL, env),
+			parentName: env.APP_PARENT_NAME,
+			parentUrl: env.APP_PARENT_URL,
+			chartColors: DEFAULT_CHART_COLORS,
+		},
+		defaultOrganization: {
+			id: requireEnv("DEFAULT_ORG_ID", env),
+			name: requireEnv("DEFAULT_ORG_NAME", env),
+		},
+	};
 }

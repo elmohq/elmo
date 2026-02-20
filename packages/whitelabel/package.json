@@ -5,19 +5,18 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./config": "./src/config.ts",
-    "./auth-provider": "./src/auth-provider.ts",
+    "./auth-hooks": "./src/auth-hooks.ts",
     "./components/*": "./src/components/*.tsx"
   },
   "dependencies": {
     "@workspace/config": "workspace:*",
-    "@workspace/ui": "workspace:*"
+    "@workspace/lib": "workspace:*",
+    "@workspace/ui": "workspace:*",
+    "better-auth": "^1.4.18"
   },
   "peerDependencies": {
-    "@auth0/nextjs-auth0": "^4.14.0",
     "@tabler/icons-react": "^3.0.0",
     "auth0": "^4.27.0",
-    "next": "^16.0.0",
     "react": "^19.0.0"
   },
   "devDependencies": {

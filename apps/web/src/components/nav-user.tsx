@@ -1,10 +1,9 @@
-"use client";
-
 import {
 	IconSelector,
 	IconExternalLink,
 	IconLogout,
 	IconStatusChange,
+	IconUser,
 } from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
@@ -19,15 +18,24 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@workspace/ui/components/sidebar";
 
-import Link from "next/link";
-import { clientConfig } from "@/lib/config/client";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
+import { NavAppInfo } from "@/components/nav-app-info";
 
 export function NavUser() {
 	const { user, isLoading, loginUrl, logoutUrl } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const clientConfig = context.clientConfig;
 	const isNameEmailSame =
 		user?.name?.trim().toLowerCase() === user?.email?.trim().toLowerCase();
+
+	// In local/demo mode, there's no auth system — show app info instead
+	if (!loginUrl && !logoutUrl) {
+		return <NavAppInfo />;
+	}
 
 	if (isLoading) {
 		return (
@@ -35,7 +43,9 @@ export function NavUser() {
 				<SidebarMenuItem>
 					<SidebarMenuButton size="lg" disabled>
 						<Avatar className="h-8 w-8 rounded-lg grayscale">
-							<AvatarFallback className="rounded-lg">...</AvatarFallback>
+							<AvatarFallback className="rounded-lg bg-muted text-muted-foreground">
+								<IconUser className="size-4" />
+							</AvatarFallback>
 						</Avatar>
 						<div className="grid flex-1 text-left text-sm leading-tight">
 							<span className="truncate font-medium">Loading...</span>
@@ -47,17 +57,19 @@ export function NavUser() {
 	}
 
 	if (!user) {
-		// If no login URL (local/demo mode), don't show sign in
+		// If no login URL (local/demo mode), show app info instead
 		if (!loginUrl) {
-			return null;
+			return <NavAppInfo />;
 		}
 		return (
 			<SidebarMenu>
 				<SidebarMenuItem>
 					<SidebarMenuButton size="lg" asChild>
 						<a href={loginUrl}>
-							<Avatar className="h-8 w-8 rounded-lg grayscale">
-								<AvatarFallback className="rounded-lg">?</AvatarFallback>
+							<Avatar className="h-8 w-8 rounded-lg">
+								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+									<IconUser className="size-4" />
+								</AvatarFallback>
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
 								<span className="truncate font-medium">Sign In</span>
@@ -80,9 +92,8 @@ export function NavUser() {
 						>
 							<Avatar className="h-8 w-8 rounded-lg">
 								<AvatarImage src={user.picture} alt={user.name} />
-								<AvatarFallback className="rounded-lg">
-									{user.given_name?.[0]}
-									{user.family_name?.[0]}
+								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+									<IconUser className="size-4" />
 								</AvatarFallback>
 							</Avatar>
 							<div className="grid flex-1 text-left text-sm leading-tight">
@@ -102,10 +113,9 @@ export function NavUser() {
 							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 								<Avatar className="h-8 w-8 rounded-lg">
 									<AvatarImage src={user.picture} alt={user.name} />
-									<AvatarFallback className="rounded-lg">
-										{user.given_name?.[0]}
-										{user.family_name?.[0]}
-									</AvatarFallback>
+								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+									<IconUser className="size-4" />
+								</AvatarFallback>
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.name}</span>
@@ -116,31 +126,40 @@ export function NavUser() {
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link href="/app" onClick={() => setOpenMobile(false)}>
+								<Link to="/app" onClick={() => setOpenMobile(false)}>
 									<IconStatusChange />
 									Switch Brand
 								</Link>
 							</DropdownMenuItem>
-							{clientConfig.branding.parentUrl && clientConfig.branding.parentName && (
+							{clientConfig?.branding.parentUrl && clientConfig?.branding.parentName && (
 								<DropdownMenuItem asChild className="cursor-pointer">
-									<Link href={clientConfig.branding.parentUrl} target="_blank">
+									<a href={clientConfig.branding.parentUrl} target="_blank" rel="noreferrer">
 										<IconExternalLink />
 										{clientConfig.branding.parentName} Dashboard
-									</Link>
+									</a>
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
-						{logoutUrl && (
-							<>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem asChild className="cursor-pointer">
-									<a href={logoutUrl}>
-										<IconLogout />
-										Log out
-									</a>
-								</DropdownMenuItem>
-							</>
-						)}
+					{logoutUrl && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								className="cursor-pointer"
+								onClick={() => {
+									authClient.signOut({
+										fetchOptions: {
+											onSuccess: () => {
+												window.location.href = "/auth/logout";
+											},
+										},
+									});
+								}}
+							>
+								<IconLogout />
+								Log out
+							</DropdownMenuItem>
+						</>
+					)}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

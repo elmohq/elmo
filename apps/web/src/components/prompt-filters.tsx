@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@workspace/ui/components/button";
@@ -6,7 +5,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { Filter, Search, Pencil } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 
 interface PromptFiltersProps {
 	availableTags: string[];
@@ -163,7 +162,7 @@ export function PromptFilters({
 						<span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tags</span>
 						{editTagsLink && (
 							<Link
-								href={editTagsLink}
+								to={editTagsLink}
 								className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
 							>
 								<Pencil className="h-3 w-3" />

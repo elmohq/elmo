@@ -1,1 +1,0 @@
-ALTER TABLE "reports" ADD COLUMN "raw_output" json NOT NULL;

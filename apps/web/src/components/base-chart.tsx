@@ -1,4 +1,3 @@
-"use client";
 
 import * as React from "react";
 import { Line, LineChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
@@ -11,7 +10,8 @@ import {
 	ChartTooltipContent,
 } from "@workspace/ui/components/chart";
 import { Badge } from "@workspace/ui/components/badge";
-import { clientConfig } from "@/lib/config/client";
+import { useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import {
 	LookbackPeriod,
 	ChartDataPoint,
@@ -50,6 +50,7 @@ export function BaseChart({
 	chartType = "line",
 }: BaseChartProps) {
 	const completeData = filterAndCompleteChartData(data, lookback);
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 
 	// Sort all competitors alphabetically for consistent color assignment
 	const sortedAllCompetitors = [...competitors].sort((a, b) => a.name.localeCompare(b.name));
@@ -61,7 +62,7 @@ export function BaseChart({
 	const sortedSelectedCompetitors = [...selectedCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
 	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
-	const chartColors = clientConfig.branding.chartColors;
+	const chartColors = context.clientConfig?.branding.chartColors ?? [];
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",

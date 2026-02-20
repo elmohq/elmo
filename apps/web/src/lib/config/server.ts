@@ -1,22 +1,14 @@
 /**
- * Server-side deployment configuration
+ * Server-side deployment accessor for the TanStack Start app.
+ *
+ * Thin wrapper around @workspace/deployment's getDeployment().
+ * All auth is handled by better-auth — the Deployment is pure config.
  */
-import { deployment } from "@workspace/deployment";
-import type { ServerConfig } from "@workspace/config/types";
+import { getDeployment as getDeploymentBase } from "@workspace/deployment";
+import type { Deployment } from "@workspace/config/types";
 
-let _cached: ServerConfig;
+export type { Deployment };
 
-function getConfig(): ServerConfig {
-  return _cached ??= deployment().createServerConfig();
+export function getDeployment(env: Record<string, string | undefined> = process.env): Deployment {
+	return getDeploymentBase({ env });
 }
-
-/**
- * Server configuration singleton (lazy-initialized)
- */
-export const serverConfig: ServerConfig = new Proxy({} as ServerConfig, {
-  get(_, prop) {
-    return getConfig()[prop as keyof ServerConfig];
-  },
-});
-
-export type { ServerConfig, AuthProvider, Session, Organization, BrandingConfig, FeaturesConfig, DeploymentMode } from "@workspace/config/types";

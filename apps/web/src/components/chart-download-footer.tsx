@@ -1,4 +1,3 @@
-"use client";
 
 import { Download } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";

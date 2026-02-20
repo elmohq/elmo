@@ -1,8 +1,12 @@
 /**
  * Core types and interfaces for deployment configuration
- * 
+ *
  * This package defines the contracts that all deployment mode implementations must follow.
- * Actual implementations live in local, demo, whitelabel, etc.
+ * Actual implementations live in local, whitelabel, etc.
+ *
+ * Auth-related runtime methods (getSession, isAdmin, organizations, etc.) have been
+ * removed — those are now handled by better-auth. The Deployment interface only carries
+ * static configuration used by middleware and the client.
  */
 
 /**
@@ -16,12 +20,8 @@ export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 export interface FeaturesConfig {
   /** Block all write operations (demo mode) */
   readOnly: boolean;
-  /** Admin panel access level: false = disabled, "full" = full access, "readonly" = view only */
-  adminAccess: false | "full" | "readonly";
   /** Whether the optimize button should be shown */
   showOptimizeButton: boolean;
-  /** Whether authentication is required */
-  requiresAuth: boolean;
   /** Whether multi-org brand switching is supported */
   supportsMultiOrg: boolean;
 }
@@ -67,105 +67,24 @@ export interface BrandingConfig {
 }
 
 // ============================================================================
-// Auth Provider Types
+// Deployment Interface
 // ============================================================================
 
 /**
- * Represents a user session
+ * The main deployment interface. Each deployment mode implements this.
+ *
+ * This is now a pure configuration object — all auth-related runtime
+ * behaviour (sessions, org access, admin checks) lives in better-auth.
  */
-export interface Session {
-  user: {
-    id: string;
-    name?: string;
-    email?: string;
-    picture?: string;
-  };
-}
-
-/**
- * Represents an organization the user has access to
- */
-export interface Organization {
-  id: string;
-  name: string;
-}
-
-/**
- * Options for listing organizations
- */
-export interface OrganizationListOptions {
-  /** Force refresh from source, bypassing any cache */
-  forceRefresh?: boolean;
-}
-
-/**
- * Organization management interface
- */
-export interface OrganizationManager {
-  /** List organizations the user has access to */
-  list(options?: OrganizationListOptions): Promise<Organization[]>;
-  /** Check if the user can create new organizations */
-  canCreate(): boolean;
-  /** Create a new organization (throws if not supported) */
-  create?(name: string): Promise<Organization>;
-  /** Check if user has access to a specific organization */
-  hasAccess(orgId: string): Promise<boolean>;
-}
-
-/**
- * Auth provider interface - must be implemented by each deployment mode
- */
-export interface AuthProvider {
-  /** Get the current user session */
-  getSession(): Promise<Session | null>;
-  /** Organization management */
-  organizations: OrganizationManager;
-  /** Check if the user is an admin */
-  isAdmin(): Promise<boolean>;
-  /** Check if the user has report generator access */
-  hasReportGeneratorAccess(): Promise<boolean>;
-}
-
-// ============================================================================
-// Deployment Config Interface
-// ============================================================================
-
-/**
- * Complete deployment configuration interface
- * Each config-* package must provide an implementation of this
- */
-export interface DeploymentConfig {
+export interface Deployment {
   /** Current deployment mode */
   mode: DeploymentMode;
   /** Feature flags */
   features: FeaturesConfig;
-  /** Default organization for local/demo modes */
-  defaultOrganization?: DefaultOrganization;
   /** Branding configuration */
   branding: BrandingConfig;
-  /** Auth provider instance */
-  authProvider: AuthProvider;
-}
-
-/**
- * Factory function type for creating deployment configs
- * Each config-* package exports a function matching this signature
- */
-export type DeploymentConfigFactory = (options?: {
-  dependencies?: ConfigDependencies;
-  overrides?: Partial<Pick<DeploymentConfig, "branding" | "defaultOrganization">>;
-}) => DeploymentConfig;
-
-/**
- * Dependencies that can be injected into config implementations
- */
-export interface ConfigDependencies {
-  /** Database query functions (optional) */
-  db?: {
-    getAllBrands(): Promise<Organization[]>;
-  };
-  /** Environment variables (defaults to process.env) */
-  env?: Record<string, string | undefined>;
+  /** Default organization (for local/demo modes) */
+  defaultOrganization?: DefaultOrganization;
 }
 
 // ============================================================================
@@ -173,8 +92,8 @@ export interface ConfigDependencies {
 // ============================================================================
 
 /**
- * Client-safe configuration that can be used in browser code
- * Does NOT include auth providers or server-side dependencies
+ * Client-safe configuration that can be used in browser code.
+ * Does NOT include runtime methods or server-side dependencies.
  */
 export interface ClientConfig {
   /** Current deployment mode */
@@ -189,45 +108,26 @@ export interface ClientConfig {
   defaultOrganization?: DefaultOrganization;
 }
 
-/**
- * Factory function type for creating client configs
- */
-export type ClientConfigFactory = (env?: Record<string, string | undefined>) => ClientConfig;
-
 // ============================================================================
-// Server Config (Server-Side Only)
+// OptimizeButton Shared Types
 // ============================================================================
 
-/**
- * Server-side configuration including auth provider
- */
-export interface ServerConfig {
-  /** Current deployment mode */
-  mode: DeploymentMode;
-  /** Feature flags */
-  features: FeaturesConfig;
-  /** Branding configuration */
-  branding: BrandingConfig;
-  /** Default organization (for local/demo modes) */
-  defaultOrganization?: DefaultOrganization;
-  /** Auth provider instance */
-  authProvider: AuthProvider;
-  /** Handle proxy authentication (mode-specific implementation) */
-  handleProxyAuth: ProxyAuthHandler;
+export interface WebQueryResult {
+  webQuery: string | null;
+  modelWebQueries: Record<string, string>;
 }
 
-/**
- * Proxy auth handler signature
- */
-export type ProxyAuthHandler = (
-  request: unknown, // NextRequest
-  pathname: string
-) => Promise<Response>;
-
-/**
- * Factory function type for creating server configs
- */
-export type ServerConfigFactory = (env?: Record<string, string | undefined>) => ServerConfig;
+export interface OptimizeButtonProps {
+  brandId?: string;
+  selectedModel?: "openai" | "anthropic" | "google" | "all";
+  availableModels?: ("openai" | "anthropic" | "google")[];
+  lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
+  promptName?: string;
+  promptId?: string;
+  parentName?: string;
+  optimizationUrlTemplate?: string;
+  fetchWebQuery?: (promptId: string, lookback: string, modelGroup?: string) => Promise<WebQueryResult>;
+}
 
 // ============================================================================
 // Environment Requirements
@@ -245,23 +145,4 @@ export interface EnvRequirement {
   description?: string;
   /** Check if the requirement is satisfied */
   isSatisfied: (env: Record<string, string | undefined>) => boolean;
-}
-
-// ============================================================================
-// Deployment Package Interface
-// ============================================================================
-
-/**
- * Interface that each deployment package must implement
- * This allows build-time swapping of deployment implementations
- */
-export interface DeploymentPackage {
-  /** Create client-safe configuration */
-  createClientConfig: ClientConfigFactory;
-  /** Create server-side configuration */
-  createServerConfig: ServerConfigFactory;
-  /** Get environment variable requirements for this deployment mode */
-  getEnvRequirements: () => EnvRequirement[];
-  /** The deployment mode this package provides */
-  mode: DeploymentMode;
 }

@@ -1,7 +1,6 @@
-"use client";
-
-import useSWR from "swr";
-import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
+import { getPromptChartDataFn } from "@/server/prompts";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -25,45 +24,8 @@ export interface PromptChartDataResponse {
 	totalRuns: number;
 	hasVisibilityData: boolean;
 	lastBrandVisibility: number | null;
-	// Web query mappings for optimize button
 	webQueryMapping: Record<string, string>;
 	modelWebQueryMappings: Record<string, Record<string, string>>;
-}
-
-const fetcher = async (url: string): Promise<PromptChartDataResponse> => {
-	const response = await fetch(url);
-
-	if (!response.ok) {
-		const error = new Error("Failed to fetch prompt chart data");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
-};
-
-function buildApiUrl(brandId: string, promptId: string, filters?: PromptChartDataFilters): string {
-	// Use the optimized endpoint for better performance
-	const baseUrl = `/api/brands/${brandId}/prompts/${promptId}/chart-data`;
-
-	const params = new URLSearchParams();
-
-	// Always include client timezone to avoid timezone mismatch between server and client
-	params.append("timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
-
-	if (filters?.lookback) {
-		params.append("lookback", filters.lookback);
-	}
-
-	if (filters?.webSearchEnabled !== undefined) {
-		params.append("webSearchEnabled", filters.webSearchEnabled.toString());
-	}
-
-	if (filters?.modelGroup) {
-		params.append("modelGroup", filters.modelGroup);
-	}
-
-	return `${baseUrl}?${params.toString()}`;
 }
 
 export function usePromptChartData(
@@ -72,31 +34,33 @@ export function usePromptChartData(
 	filters?: PromptChartDataFilters,
 	enabled: boolean = true,
 ) {
-	const pathname = usePathname();
+	const params = useParams({ strict: false });
+	const resolvedBrandId =
+		brandId || (params && "brand" in params ? (params.brand as string) : undefined);
 
-	const extractedBrandId =
-		brandId ||
-		(() => {
-			const segments = pathname.split("/");
-			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
-		})();
-
-	const apiUrl = extractedBrandId && enabled ? buildApiUrl(extractedBrandId, promptId, filters) : null;
-
-	const { data, error, isLoading, mutate } = useSWR<PromptChartDataResponse>(apiUrl, fetcher, {
-		revalidateOnFocus: false, // Don't refetch when window gains focus
-		revalidateOnReconnect: true,
-		refreshInterval: 0, // Don't auto-refresh
-		dedupingInterval: 60000, // 1 minute deduping
-		// Add error retry with exponential backoff
-		errorRetryCount: 3,
-		errorRetryInterval: 1000,
+	const { data, error, isLoading, refetch } = useQuery({
+		queryKey: ["promptChartData", resolvedBrandId, promptId, filters],
+		queryFn: () =>
+			getPromptChartDataFn({
+				data: {
+					brandId: resolvedBrandId!,
+					promptId,
+					lookback: filters?.lookback || "1m",
+					webSearchEnabled: filters?.webSearchEnabled?.toString(),
+					modelGroup: filters?.modelGroup,
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				},
+			}),
+		enabled: enabled && !!resolvedBrandId,
+		staleTime: 60_000,
+		retry: 3,
+		placeholderData: (prev) => prev, // Keep previous data while refetching with new filters
 	});
 
 	return {
-		chartData: data,
+		chartData: data as PromptChartDataResponse | undefined,
 		isLoading,
 		isError: error,
-		revalidate: mutate,
+		revalidate: refetch,
 	};
 }

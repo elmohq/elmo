@@ -1,1 +1,0 @@
-CREATE INDEX "prompt_runs_prompt_id_created_at_idx" ON "prompt_runs" USING btree ("prompt_id","created_at");

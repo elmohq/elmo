@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import pc from "picocolors";
-import { createInterface } from "readline/promises";
-import { spawn, spawnSync } from "child_process";
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
+import * as p from "@clack/prompts";
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import crypto from "node:crypto";
 import semver from "semver";
+import { fileURLToPath } from "node:url";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type GlobalConfig = {
 	configDir: string;
 	dockerDir?: string;
+	dev?: boolean;
+	postgresMode?: PostgresMode;
+	tinybirdMode?: TinybirdMode;
+	repoRoot?: string;
 	updatedAt: string;
 };
 
@@ -23,6 +31,12 @@ type ComposeService = {
 
 type InitOptions = {
 	dev?: boolean;
+	dir?: string;
+	dockerDir?: string;
+};
+
+type DirOption = {
+	dir?: string;
 };
 
 type PostgresMode = "docker" | "external";
@@ -30,22 +44,77 @@ type TinybirdMode = "docker" | "external";
 
 type EnvMap = Record<string, string>;
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
 const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
 const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
 const DEFAULT_ORG_ID = "default";
 const DEFAULT_ORG_NAME = "Default Organization";
 const DEFAULT_APP_NAME = "Elmo";
-const DEFAULT_APP_ICON = "/brands/elmo/icon.png";
+const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
 const LOCAL_TINYBIRD_URL = "http://tinybird:7181";
+const LOCAL_CLICKHOUSE_URL = "http://tinybird:7182";
+
+// ── Banner ───────────────────────────────────────────────────────────────────
+
+const ELMO_ASCII = [
+	"",
+	"      ▄▄                ",
+	"      ██                ",
+	"▄█▀█▄ ██ ███▄███▄ ▄███▄ ",
+	"██▄█▀ ██ ██ ██ ██ ██ ██ ",
+	"▀█▄▄▄ ██ ██ ██ ██ ▀███▀ ",
+	"",
+].join("\n");
+
+function printBanner(): void {
+	// text-blue-600 ≈ #2563EB → RGB(37, 99, 235)
+	const blue = "\x1b[38;2;37;99;235m";
+	const reset = "\x1b[0m";
+	console.log(`${blue}${ELMO_ASCII}${reset}`);
+}
+
+// ── Logging ──────────────────────────────────────────────────────────────────
 
 const log = {
-	info: (message: string) => console.log(pc.cyan(message)),
-	success: (message: string) => console.log(pc.green(message)),
-	warn: (message: string) => console.warn(pc.yellow(message)),
-	error: (message: string) => console.error(pc.red(message)),
+	info: (msg: string) =>
+		isCI() ? console.log(msg) : p.log.info(msg),
+	warn: (msg: string) =>
+		isCI() ? console.warn(pc.yellow(msg)) : p.log.warn(msg),
+	error: (msg: string) =>
+		isCI() ? console.error(pc.red(msg)) : p.log.error(msg),
+	success: (msg: string) =>
+		isCI() ? console.log(pc.green(msg)) : p.log.success(msg),
+	step: (msg: string) =>
+		isCI() ? console.log(msg) : p.log.step(msg),
 };
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function assertNotCancelled<T>(value: T | symbol): asserts value is T {
+	if (p.isCancel(value)) {
+		p.cancel("Setup cancelled.");
+		process.exit(0);
+	}
+}
+
+function isCI(): boolean {
+	return Boolean(process.env.ELMO_CI);
+}
+
+function generateSecret(bytes = 32): string {
+	return crypto.randomBytes(bytes).toString("base64url");
+}
+
+function link(text: string, url: string): string {
+	// OSC 8 hyperlink: clickable in iTerm2, Windows Terminal, GNOME Terminal, etc.
+	// Falls back to plain text in unsupported terminals.
+	return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
 	const version = await getPackageVersion();
@@ -53,58 +122,99 @@ async function main() {
 
 	program
 		.name("elmo")
-		.description("Elmo local docker CLI")
-		.version(version);
+		.version(version)
+		.action(() => {
+			printBanner();
+			program.outputHelp();
+		});
 
 	program
 		.command("init")
-		.description("Configure Elmo on Docker Compose")
+		.description("set up local Elmo instance")
 		.option("--dev", "Use local build context (repo only)")
+		.option("--dir <path>", "Directory to store config files")
+		.option(
+			"--docker-dir <path>",
+			"Path to Docker build context (dev mode)",
+		)
 		.action(async (options: InitOptions) => {
-			await withVersionCheck(version, async () => {
-				await runInit(options);
-			});
+			await withVersionCheck(version, () => runInit(options));
+		});
+
+	program
+		.command("regen")
+		.description("regenerate configuration files from current settings")
+		.option("--dir <path>", "Config directory")
+		.action(async (options: DirOption) => {
+			await withVersionCheck(version, () => runRegen(options));
 		});
 
 	program
 		.command("start")
-		.description("Start Elmo on Docker Compose")
-		.action(async () => {
-			await withVersionCheck(version, async () => {
-				await runStart();
-			});
+		.description("start Elmo instance")
+		.option("--dir <path>", "Config directory")
+		.action(async (options: DirOption) => {
+			await withVersionCheck(version, () => runStart(options));
+		});
+
+	program
+		.command("stop")
+		.description("stop Elmo instance")
+		.option("--dir <path>", "Config directory")
+		.action(async (options: DirOption) => {
+			await withVersionCheck(version, () => runStop(options));
 		});
 
 	program
 		.command("status")
-		.description("Check service health status")
-		.action(async () => {
-			await withVersionCheck(version, async () => {
-				await runStatus();
-			});
+		.description("check Elmo instance health")
+		.option("--dir <path>", "Config directory")
+		.action(async (options: DirOption) => {
+			await withVersionCheck(version, () => runStatus(options));
 		});
 
 	program
 		.command("compose")
-		.description("Run Docker Compose commands using your Elmo config")
+		.description("run Docker Compose commands using your Elmo config")
 		.allowUnknownOption(true)
+		.option("--dir <path>", "Config directory")
 		.argument("[args...]", "Arguments passed to Docker Compose")
-		.action(async (args: string[]) => {
-			await withVersionCheck(version, async () => {
-				await runCompose(args);
-			});
+		.action(async (args: string[], options: DirOption) => {
+			await withVersionCheck(version, () =>
+				runCompose(args, options),
+			);
 		});
 
 	program
 		.command("logs")
-		.description("Shortcut for Docker Compose logs")
+		.description("view Elmo instance logs")
 		.allowUnknownOption(true)
+		.option("--dir <path>", "Config directory")
 		.argument("[args...]", "Arguments passed to Docker Compose logs")
-		.action(async (args: string[]) => {
-			await withVersionCheck(version, async () => {
-				await runCompose(["logs", ...args]);
-			});
+		.action(async (args: string[], options: DirOption) => {
+			await withVersionCheck(version, () =>
+				runCompose(["logs", ...args], options),
+			);
 		});
+
+	program
+		.command("build")
+		.description("build Docker images locally for development")
+		.option("--dir <path>", "Config directory")
+		.option("--web-only", "Only build the web image")
+		.option("--worker-only", "Only build the worker image")
+		.option("--no-cache", "Build without Docker cache")
+		.action(
+			async (
+				options: DirOption & {
+					webOnly?: boolean;
+					workerOnly?: boolean;
+					cache?: boolean;
+				},
+			) => {
+				await withVersionCheck(version, () => runBuild(options));
+			},
+		);
 
 	await program.parseAsync(process.argv);
 }
@@ -118,165 +228,475 @@ async function withVersionCheck(
 	await notifyPromise.catch(() => undefined);
 }
 
+// ── Command: init ────────────────────────────────────────────────────────────
+
 async function runInit(options: InitOptions): Promise<void> {
-	assertInteractive();
-	await ensureDir(CONFIG_HOME);
+	printBanner();
 
-	const rl = createInterface({
-		input: process.stdin,
-		output: process.stdout,
-	});
-
-	const cwd = process.cwd();
-	const dockerDir = options.dev ? await promptDockerDir(rl, cwd) : undefined;
-	const repoRoot = options.dev ? path.resolve(dockerDir!, "..") : cwd;
-	const hasLocalCompose = await fileExists(path.join(cwd, "elmo.yaml"));
-	let configDir: string | null = null;
-
-	try {
-		if (hasLocalCompose) {
-			const useLocal = await promptYesNo(
-				rl,
-				"Found elmo.yaml in this directory. Use it as your global config location?",
-				true,
-			);
-			if (useLocal) {
-				configDir = cwd;
-				const keepExisting = await promptYesNo(
-					rl,
-					"Keep the existing config files without changes?",
-					true,
-				);
-				if (keepExisting) {
-					await writeGlobalConfig(configDir, dockerDir);
-					log.success(`Global config updated to ${configDir}.`);
-					const hasEnv = await fileExists(path.join(configDir, ".env"));
-					if (!hasEnv) {
-						log.warn("No .env file found alongside elmo.yaml.");
-					}
-					return;
-				}
-			}
-		}
-
-		if (!configDir) {
-			const location = await promptSelect(
-				rl,
-				"Where should the Elmo config be created?",
-				[
-					{ label: "Current directory", value: "cwd" },
-					{ label: "Create a subdirectory", value: "subdir" },
-				],
-				"cwd",
-			);
-
-			if (location === "cwd") {
-				configDir = cwd;
-			} else {
-				const subdir = await promptText(rl, "Subdirectory name", {
-					defaultValue: "elmo",
-					required: true,
-				});
-				configDir = path.resolve(cwd, subdir);
-			}
-		}
-
-		if (!configDir) {
-			throw new Error("Unable to resolve configuration directory.");
-		}
-
-		const existingConfig = await readGlobalConfig();
-		if (
-			existingConfig?.configDir &&
-			path.resolve(existingConfig.configDir) !== configDir
-		) {
-			const replacePointer = await promptYesNo(
-				rl,
-				`Global config currently points to ${existingConfig.configDir}. Update it to ${configDir}?`,
-				true,
-			);
-			if (!replacePointer) {
-				log.warn("Init cancelled.");
-				return;
-			}
-		}
-
-		const existingFiles = await detectExistingConfigFiles(configDir);
-		if (existingFiles.length > 0) {
-			log.warn(
-				`Existing config files found in ${configDir}: ${existingFiles.join(", ")}`,
-			);
-			const strategy = await promptSelect(
-				rl,
-				"How would you like to proceed?",
-				[
-					{ label: "Update (overwrite elmo.yaml and .env)", value: "update" },
-					{
-						label: "Replace (remove elmo.yaml/.env and regenerate)",
-						value: "replace",
-					},
-					{ label: "Cancel", value: "cancel" },
-				],
-				"update",
-			);
-
-			if (strategy === "cancel") {
-				log.warn("Init cancelled.");
-				return;
-			}
-
-			if (strategy === "replace") {
-				await removeKnownConfigFiles(configDir);
-			}
-		}
-
-		const initConfig = await gatherInitConfig(rl, options, {
-			repoRoot,
-			dockerDir,
-		});
-		await ensureDir(configDir);
-		await writeGlobalConfig(configDir, dockerDir);
-		await writeConfigFiles(configDir, initConfig);
-
-		log.success(`Config written to ${configDir}`);
-		log.warn(
-			"Your .env contains secrets. Do not commit it to version control.",
-		);
-
-		if (options.dev) {
-			log.info(
-				"Dev mode enabled. Run `elmo compose build` before starting.",
-			);
-		}
-
-		const shouldStart = await promptYesNo(
-			rl,
-			"Start the stack now?",
-			true,
-		);
-		if (shouldStart) {
-			await runStart();
-		} else {
-			log.info("You can start later with `elmo start`.");
-		}
-	} finally {
-		rl.close();
+	if (isCI()) {
+		await runInitCI(options);
+		return;
 	}
+
+	await runInitInteractive(options);
 }
 
-async function runStart(): Promise<void> {
-	const configDir = await getConfigDirOrThrow();
+async function runInitInteractive(options: InitOptions): Promise<void> {
+	p.intro(pc.bold("Setting up Elmo"));
+
+	const cwd = process.cwd();
+
+	// ── Resolve config directory ─────────────────────────────────────────
+	let configDir: string;
+	if (options.dir) {
+		configDir = path.resolve(cwd, options.dir);
+	} else {
+		const dir = await p.text({
+			message: "Where should the config be stored?",
+			placeholder: "./elmo",
+			defaultValue: "./elmo",
+		});
+		assertNotCancelled(dir);
+		configDir = path.resolve(cwd, dir);
+	}
+
+	// ── .env safety check ────────────────────────────────────────────────
+	const existingEnvPath = path.join(configDir, ".env");
+	if (await fileExists(existingEnvPath)) {
+		const contents = await fs.readFile(existingEnvPath, "utf8");
+		const isElmoEnv = contents.startsWith("# Generated by elmo");
+
+		if (!isElmoEnv) {
+			p.log.warn(
+				`A .env file already exists in ${configDir} and was NOT created by Elmo.`,
+			);
+			const overwrite = await p.confirm({
+				message:
+					"Overwrite the existing .env file? This cannot be undone.",
+				initialValue: false,
+			});
+			assertNotCancelled(overwrite);
+			if (!overwrite) {
+				p.cancel(
+					"Setup cancelled. Choose a different directory with --dir.",
+				);
+				process.exit(0);
+			}
+		} else {
+			p.log.info("Existing Elmo config found — it will be updated.");
+		}
+	}
+
+	// ── Dev mode: resolve docker directory ───────────────────────────────
+	let dockerDir: string | undefined;
+	let repoRoot: string;
+
+	if (options.dev) {
+		if (options.dockerDir) {
+			dockerDir = path.resolve(cwd, options.dockerDir);
+			if (
+				!(await fileExists(path.join(dockerDir, "Dockerfile")))
+			) {
+				p.log.error(
+					`Dockerfile not found in ${dockerDir}`,
+				);
+				process.exit(1);
+			}
+		} else {
+			dockerDir = await resolveDockerDirInteractive(cwd);
+		}
+		repoRoot = path.resolve(dockerDir, "..");
+	} else {
+		repoRoot = cwd;
+	}
+
+	// ── Data stores ──────────────────────────────────────────────────────
+	const postgresMode = await p.select({
+		message: "PostgreSQL connection",
+		options: [
+			{
+				value: "docker" as const,
+				label: "Run Postgres in Docker",
+			},
+			{
+				value: "external" as const,
+				label: "Use existing Postgres (provide DATABASE_URL)",
+			},
+		],
+		initialValue: "docker" as PostgresMode,
+	});
+	assertNotCancelled(postgresMode);
+
+	const env: EnvMap = {};
+	env.DEPLOYMENT_MODE = "local";
+	env.VITE_DEPLOYMENT_MODE = "local";
+	env.BETTER_AUTH_SECRET = generateSecret();
+	env.DEFAULT_ORG_ID = DEFAULT_ORG_ID;
+	env.DEFAULT_ORG_NAME = DEFAULT_ORG_NAME;
+	env.APP_NAME = DEFAULT_APP_NAME;
+	env.APP_ICON = DEFAULT_APP_ICON;
+	env.APP_URL = DEFAULT_APP_URL;
+	env.VITE_APP_NAME = DEFAULT_APP_NAME;
+	env.VITE_APP_ICON = DEFAULT_APP_ICON;
+	env.VITE_APP_URL = DEFAULT_APP_URL;
+
+	if (postgresMode === "external") {
+		const url = await p.text({
+			message: "DATABASE_URL",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(url);
+		env.DATABASE_URL = url;
+	} else {
+		env.DATABASE_URL = LOCAL_DATABASE_URL;
+	}
+
+	const tinybirdMode = await p.select({
+		message: "Tinybird analytics",
+		options: [
+			{
+				value: "docker" as const,
+				label: "Run Tinybird Local in Docker",
+			},
+			{
+				value: "external" as const,
+				label: "Use Tinybird Cloud",
+			},
+		],
+		initialValue: "docker" as TinybirdMode,
+	});
+	assertNotCancelled(tinybirdMode);
+
+	if (tinybirdMode === "docker") {
+		env.TINYBIRD_BASE_URL = LOCAL_TINYBIRD_URL;
+		env.CLICKHOUSE_HOST = LOCAL_CLICKHOUSE_URL;
+		env.TINYBIRD_WORKSPACE = "default";
+	} else {
+		const tbUrl = await p.text({
+			message: "Tinybird base URL",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(tbUrl);
+		env.TINYBIRD_BASE_URL = tbUrl;
+
+		const tbToken = await p.text({
+			message: "Tinybird token",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(tbToken);
+		env.TINYBIRD_TOKEN = tbToken;
+
+		const tbWorkspace = await p.text({
+			message: "Tinybird workspace",
+			defaultValue: "default",
+		});
+		assertNotCancelled(tbWorkspace);
+		env.TINYBIRD_WORKSPACE = tbWorkspace;
+
+		const chHost = await p.text({
+			message: "ClickHouse host",
+			defaultValue: tbUrl,
+		});
+		assertNotCancelled(chHost);
+		env.CLICKHOUSE_HOST = chHost;
+	}
+
+	// ── AI providers ─────────────────────────────────────────────────────
+	const setOpenai = await p.confirm({
+		message: "Set OpenAI credentials?",
+		initialValue: true,
+	});
+	assertNotCancelled(setOpenai);
+	if (setOpenai) {
+		const key = await p.text({
+			message: "OPENAI_API_KEY",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENAI_API_KEY = key;
+	}
+
+	const setAnthropic = await p.confirm({
+		message: "Set Anthropic credentials?",
+		initialValue: true,
+	});
+	assertNotCancelled(setAnthropic);
+	if (setAnthropic) {
+		const key = await p.text({
+			message: "ANTHROPIC_API_KEY",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.ANTHROPIC_API_KEY = key;
+	}
+
+	const setDataforseo = await p.confirm({
+		message: "Set DataForSEO credentials?",
+		initialValue: false,
+	});
+	assertNotCancelled(setDataforseo);
+	if (setDataforseo) {
+		const login = await p.text({
+			message: "DATAFORSEO_LOGIN",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(login);
+		env.DATAFORSEO_LOGIN = login;
+
+		const pwd = await p.text({
+			message: "DATAFORSEO_PASSWORD",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(pwd);
+		env.DATAFORSEO_PASSWORD = pwd;
+	}
+
+	// ── Write config ─────────────────────────────────────────────────────
+	const composeYaml = buildComposeYaml({
+		dev: Boolean(options.dev),
+		postgresMode,
+		tinybirdMode,
+		repoRoot,
+		dockerDir,
+	});
+
+	await ensureDir(configDir);
+	await writeConfigFiles(configDir, {
+		env,
+		composeYaml,
+		postgresMode,
+		tinybirdMode,
+		dev: Boolean(options.dev),
+	});
+	await writeGlobalConfig({
+		configDir,
+		dockerDir,
+		dev: Boolean(options.dev),
+		postgresMode,
+		tinybirdMode,
+		repoRoot,
+	});
+
+	p.log.success(`Config written to ${configDir}`);
+	p.log.warn(
+		"Your .env contains secrets — do not commit it to version control.",
+	);
+
+	if (options.dev) {
+		p.log.info(
+			"Dev mode enabled. Run `elmo compose build` before starting.",
+		);
+	}
+
+	const shouldStart = await p.confirm({
+		message: "Start the stack now?",
+		initialValue: true,
+	});
+	assertNotCancelled(shouldStart);
+
+	if (shouldStart) {
+		await doStart(configDir);
+	} else {
+		p.log.info("You can start later with `elmo start`.");
+	}
+
+	p.outro(pc.green("Setup complete!"));
+}
+
+async function runInitCI(options: InitOptions): Promise<void> {
+	const cwd = process.cwd();
+
+	// Resolve config directory — --dir flag or ELMO_CONFIG_DIR or cwd
+	const dirArg =
+		options.dir ?? process.env.ELMO_CONFIG_DIR ?? cwd;
+	const configDir = path.resolve(cwd, dirArg);
+
+	// Resolve docker directory for dev mode
+	let dockerDir: string | undefined;
+	let repoRoot: string;
+
+	if (options.dev) {
+		const explicitDockerDir =
+			options.dockerDir ?? process.env.ELMO_DOCKER_DIR;
+		dockerDir = await resolveDockerDirAuto(cwd, explicitDockerDir);
+		repoRoot = path.resolve(dockerDir, "..");
+	} else {
+		repoRoot = cwd;
+	}
+
+	// Build env from defaults and env vars
+	const postgresMode: PostgresMode =
+		(process.env.ELMO_POSTGRES_MODE as PostgresMode) ?? "docker";
+	const tinybirdMode: TinybirdMode =
+		(process.env.ELMO_TINYBIRD_MODE as TinybirdMode) ?? "docker";
+
+	const env: EnvMap = {};
+	env.DEPLOYMENT_MODE = "local";
+	env.VITE_DEPLOYMENT_MODE = "local";
+	env.BETTER_AUTH_SECRET = generateSecret();
+	env.DEFAULT_ORG_ID = DEFAULT_ORG_ID;
+	env.DEFAULT_ORG_NAME = DEFAULT_ORG_NAME;
+	env.APP_NAME = DEFAULT_APP_NAME;
+	env.APP_ICON = DEFAULT_APP_ICON;
+	env.APP_URL = DEFAULT_APP_URL;
+	env.VITE_APP_NAME = DEFAULT_APP_NAME;
+	env.VITE_APP_ICON = DEFAULT_APP_ICON;
+	env.VITE_APP_URL = DEFAULT_APP_URL;
+
+	if (postgresMode === "external") {
+		env.DATABASE_URL = process.env.ELMO_DATABASE_URL ?? "";
+	} else {
+		env.DATABASE_URL = LOCAL_DATABASE_URL;
+	}
+
+	if (tinybirdMode === "docker") {
+		env.TINYBIRD_BASE_URL = LOCAL_TINYBIRD_URL;
+		env.CLICKHOUSE_HOST = LOCAL_CLICKHOUSE_URL;
+		env.TINYBIRD_WORKSPACE = "default";
+	} else {
+		env.TINYBIRD_BASE_URL =
+			process.env.ELMO_TINYBIRD_BASE_URL ?? "";
+		env.TINYBIRD_TOKEN = process.env.ELMO_TINYBIRD_TOKEN ?? "";
+		env.TINYBIRD_WORKSPACE =
+			process.env.ELMO_TINYBIRD_WORKSPACE ?? "default";
+		env.CLICKHOUSE_HOST =
+			process.env.ELMO_CLICKHOUSE_HOST ??
+			env.TINYBIRD_BASE_URL;
+	}
+
+	// AI providers from env vars
+	if (process.env.ELMO_OPENAI_API_KEY) {
+		env.OPENAI_API_KEY = process.env.ELMO_OPENAI_API_KEY;
+	}
+	if (process.env.ELMO_ANTHROPIC_API_KEY) {
+		env.ANTHROPIC_API_KEY = process.env.ELMO_ANTHROPIC_API_KEY;
+	}
+	if (process.env.ELMO_DATAFORSEO_LOGIN) {
+		env.DATAFORSEO_LOGIN = process.env.ELMO_DATAFORSEO_LOGIN;
+		env.DATAFORSEO_PASSWORD =
+			process.env.ELMO_DATAFORSEO_PASSWORD ?? "";
+	}
+
+	const composeYaml = buildComposeYaml({
+		dev: Boolean(options.dev),
+		postgresMode,
+		tinybirdMode,
+		repoRoot,
+		dockerDir,
+	});
+
+	await ensureDir(configDir);
+	await writeConfigFiles(configDir, {
+		env,
+		composeYaml,
+		postgresMode,
+		tinybirdMode,
+		dev: Boolean(options.dev),
+	});
+	await writeGlobalConfig({
+		configDir,
+		dockerDir,
+		dev: Boolean(options.dev),
+		postgresMode,
+		tinybirdMode,
+		repoRoot,
+	});
+
+	console.log(`Config written to ${configDir}`);
+}
+
+// ── Command: update ──────────────────────────────────────────────────────────
+
+async function runRegen(options: DirOption): Promise<void> {
+	const configDir = await resolveConfigDir(options.dir);
+	const globalConfig = await readGlobalConfig();
+
+	// Determine settings: prefer global config, fall back to detecting from files
+	let dev: boolean;
+	let postgresMode: PostgresMode;
+	let tinybirdMode: TinybirdMode;
+	let repoRoot: string;
+	let dockerDir: string | undefined;
+
+	if (
+		globalConfig?.postgresMode &&
+		globalConfig?.tinybirdMode
+	) {
+		dev = globalConfig.dev ?? false;
+		postgresMode = globalConfig.postgresMode;
+		tinybirdMode = globalConfig.tinybirdMode;
+		repoRoot = globalConfig.repoRoot ?? process.cwd();
+		dockerDir = globalConfig.dockerDir;
+	} else {
+		// Fall back to detecting from existing files
+		const detected = await detectSettingsFromConfig(configDir);
+		dev = detected.dev;
+		postgresMode = detected.postgresMode;
+		tinybirdMode = detected.tinybirdMode;
+		repoRoot = detected.repoRoot;
+		dockerDir = detected.dockerDir;
+	}
+
+	const composeYaml = buildComposeYaml({
+		dev,
+		postgresMode,
+		tinybirdMode,
+		repoRoot,
+		dockerDir,
+	});
+
+	const composePath = path.join(configDir, "elmo.yaml");
+	await fs.writeFile(composePath, composeYaml, "utf8");
+
+	// Update global config with current settings
+	await writeGlobalConfig({
+		configDir,
+		dockerDir,
+		dev,
+		postgresMode,
+		tinybirdMode,
+		repoRoot,
+	});
+
+	log.success(`Regenerated ${composePath}`);
+	log.info("The .env file was not modified.");
+}
+
+// ── Command: start ───────────────────────────────────────────────────────────
+
+async function runStart(options: DirOption): Promise<void> {
+	const configDir = await resolveConfigDir(options.dir);
+	await doStart(configDir);
+}
+
+async function doStart(configDir: string): Promise<void> {
 	assertDockerRunning();
 
-	log.info("Starting Docker Compose stack...");
+	log.step("Starting Docker Compose stack...");
 	await runDockerCompose(configDir, ["up", "-d"]);
 
-	log.info("Waiting for services to become healthy...");
-	const ok = await waitForHealthy(configDir, 180_000);
-	if (!ok) {
-		log.warn("Some services did not report healthy status.");
+	if (!isCI()) {
+		const s = p.spinner();
+		s.start("Waiting for services to become healthy...");
+		const ok = await waitForHealthy(configDir, 180_000);
+		if (ok) {
+			s.stop("All services healthy!");
+		} else {
+			s.stop("Health check timed out.");
+			p.log.warn(
+				"Some services did not report healthy status.",
+			);
+		}
 	} else {
-		log.success("Elmo stack is healthy.");
+		console.log("Waiting for services to become healthy...");
+		const ok = await waitForHealthy(configDir, 180_000);
+		if (ok) {
+			console.log("All services healthy.");
+		} else {
+			console.warn(
+				"Some services did not report healthy status.",
+			);
+		}
 	}
 
 	log.info("Examples:");
@@ -285,8 +705,21 @@ async function runStart(): Promise<void> {
 	console.log(`  ${pc.bold("elmo compose ps")}`);
 }
 
-async function runStatus(): Promise<void> {
-	const configDir = await getConfigDirOrThrow();
+// ── Command: stop ────────────────────────────────────────────────────────────
+
+async function runStop(options: DirOption): Promise<void> {
+	const configDir = await resolveConfigDir(options.dir);
+	assertDockerRunning();
+
+	log.step("Stopping Docker Compose stack...");
+	await runDockerCompose(configDir, ["down"]);
+	log.success("Stack stopped.");
+}
+
+// ── Command: status ──────────────────────────────────────────────────────────
+
+async function runStatus(options: DirOption): Promise<void> {
+	const configDir = await resolveConfigDir(options.dir);
 	assertDockerRunning();
 
 	const services = await getComposeServices(configDir);
@@ -311,179 +744,55 @@ async function runStatus(): Promise<void> {
 	}
 }
 
-async function runCompose(args: string[]): Promise<void> {
-	const configDir = await getConfigDirOrThrow();
+// ── Command: compose ─────────────────────────────────────────────────────────
+
+async function runCompose(
+	args: string[],
+	options: DirOption,
+): Promise<void> {
+	const configDir = await resolveConfigDir(options.dir);
 	assertDockerRunning();
 	await runDockerCompose(configDir, args);
 }
 
-async function gatherInitConfig(
-	rl: ReturnType<typeof createInterface>,
-	options: InitOptions,
-	paths: { repoRoot: string; dockerDir?: string },
-) {
-	const env: EnvMap = {};
+// ── Command: build ───────────────────────────────────────────────────────────
 
-	log.info("Core configuration (these will be written to .env)");
-	env.DEPLOYMENT_MODE = "local";
-	env.NEXT_PUBLIC_DEPLOYMENT_MODE = "local";
-
-	env.DEFAULT_ORG_ID = await promptText(rl, "Default org ID", {
-		defaultValue: DEFAULT_ORG_ID,
-		required: true,
-	});
-	env.DEFAULT_ORG_NAME = await promptText(rl, "Default org name", {
-		defaultValue: DEFAULT_ORG_NAME,
-		required: true,
-	});
-	env.APP_NAME = await promptText(rl, "App name", {
-		defaultValue: DEFAULT_APP_NAME,
-	});
-	env.APP_ICON = await promptText(rl, "App icon path or URL", {
-		defaultValue: DEFAULT_APP_ICON,
-	});
-	env.APP_URL = await promptText(rl, "App URL", {
-		defaultValue: DEFAULT_APP_URL,
-	});
-
-	env.NEXT_PUBLIC_APP_NAME = env.APP_NAME;
-	env.NEXT_PUBLIC_APP_ICON = env.APP_ICON;
-	env.NEXT_PUBLIC_APP_URL = env.APP_URL;
-
-	log.info("Data stores");
-	const postgresMode = await promptSelect<PostgresMode>(
-		rl,
-		"PostgreSQL connection",
-		[
-			{ label: "Run Postgres in Docker", value: "docker" },
-			{ label: "Use existing Postgres (DATABASE_URL)", value: "external" },
-		],
-		"docker",
-	);
-
-	if (postgresMode === "external") {
-		env.DATABASE_URL = await promptText(rl, "DATABASE_URL", {
-			required: true,
-		});
-	} else {
-		env.DATABASE_URL = LOCAL_DATABASE_URL;
-	}
-
-	const tinybirdMode = await promptSelect<TinybirdMode>(
-		rl,
-		"Tinybird analytics",
-		[
-			{ label: "Run Tinybird Local in Docker", value: "docker" },
-			{ label: "Use Tinybird Cloud", value: "external" },
-		],
-		"docker",
-	);
-
-	if (tinybirdMode === "docker") {
-		env.TINYBIRD_BASE_URL = LOCAL_TINYBIRD_URL;
-		env.CLICKHOUSE_HOST = LOCAL_TINYBIRD_URL;
-		env.TINYBIRD_WORKSPACE = "default";
-	} else {
-		env.TINYBIRD_BASE_URL = await promptText(rl, "Tinybird base URL", {
-			required: true,
-		});
-		env.TINYBIRD_TOKEN = await promptText(rl, "Tinybird token", {
-			required: true,
-		});
-		env.TINYBIRD_WORKSPACE = await promptText(rl, "Tinybird workspace", {
-			defaultValue: "default",
-			required: true,
-		});
-		env.CLICKHOUSE_HOST = await promptText(rl, "ClickHouse host", {
-			defaultValue: env.TINYBIRD_BASE_URL,
-			required: true,
-		});
-	}
-
-	log.info("AI + data providers");
-	if (await promptYesNo(rl, "Set OpenAI credentials now?", true)) {
-		env.OPENAI_API_KEY = await promptText(rl, "OPENAI_API_KEY", {
-			required: true,
-		});
-	}
-
-	if (await promptYesNo(rl, "Set Anthropic credentials now?", true)) {
-		env.ANTHROPIC_API_KEY = await promptText(rl, "ANTHROPIC_API_KEY", {
-			required: true,
-		});
-	}
-
-	if (await promptYesNo(rl, "Set DataForSEO credentials now?", false)) {
-		env.DATAFORSEO_LOGIN = await promptText(rl, "DATAFORSEO_LOGIN", {
-			required: true,
-		});
-		env.DATAFORSEO_PASSWORD = await promptText(rl, "DATAFORSEO_PASSWORD", {
-			required: true,
-		});
-	}
-
-	const composeYaml = buildComposeYaml({
-		dev: Boolean(options.dev),
-		postgresMode,
-		tinybirdMode,
-		repoRoot: paths.repoRoot,
-		dockerDir: paths.dockerDir,
-	});
-
-	return {
-		env,
-		composeYaml,
-		postgresMode,
-		tinybirdMode,
-		dev: Boolean(options.dev),
-	};
-}
-
-async function writeConfigFiles(
-	configDir: string,
-	initConfig: {
-		env: EnvMap;
-		composeYaml: string;
-		postgresMode: PostgresMode;
-		tinybirdMode: TinybirdMode;
-		dev: boolean;
+async function runBuild(
+	options: DirOption & {
+		webOnly?: boolean;
+		workerOnly?: boolean;
+		cache?: boolean;
 	},
 ): Promise<void> {
-	const envPath = path.join(configDir, ".env");
-	const composePath = path.join(configDir, "elmo.yaml");
+	const configDir = await resolveConfigDir(options.dir);
+	assertDockerRunning();
 
-	await ensureDir(configDir);
-	await fs.writeFile(envPath, buildEnvFile(initConfig.env), "utf8");
-	await fs.writeFile(composePath, initConfig.composeYaml, "utf8");
-}
+	const buildWeb = !options.workerOnly;
+	const buildWorker = !options.webOnly;
+	const noCache = options.cache === false;
 
-function buildEnvFile(env: EnvMap): string {
-	const lines = [
-		"# Generated by elmo init",
-		"# WARNING: contains secrets. Do not commit.",
-		"",
-	];
+	const targets: string[] = [];
+	if (buildWeb) targets.push("web");
+	if (buildWorker) targets.push("worker");
 
-	for (const [key, rawValue] of Object.entries(env)) {
-		if (rawValue === undefined) {
-			continue;
-		}
-		lines.push(`${key}=${formatEnvValue(rawValue)}`);
+	log.step(
+		`Building Docker images: ${targets.join(", ")}${noCache ? " (no cache)" : ""}...`,
+	);
+
+	const buildArgs: string[] = ["build"];
+	if (noCache) buildArgs.push("--no-cache");
+
+	for (const target of targets) {
+		log.step(`Building ${target}...`);
+		await runDockerCompose(configDir, [...buildArgs, target]);
+		log.success(`${target} image built successfully.`);
 	}
 
-	return `${lines.join("\n")}\n`;
+	log.success("All images built.");
+	console.log(`  Run ${pc.bold("elmo start")} to start the stack.`);
 }
 
-function formatEnvValue(value: string): string {
-	if (value === "") {
-		return '""';
-	}
-	if (/[\s#"']/u.test(value)) {
-		const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-		return `"${escaped}"`;
-	}
-	return value;
-}
+// ── Compose YAML Builder ─────────────────────────────────────────────────────
 
 function buildComposeYaml(options: {
 	dev: boolean;
@@ -502,18 +811,34 @@ function buildComposeYaml(options: {
 		postgres: "service_healthy",
 		tinybird: "service_healthy",
 		"tinybird-init": "service_completed_successfully",
+		"db-migrate": "service_completed_successfully",
 	};
+
+	const dockerfilePath = options.dockerDir
+		? path.relative(
+				options.repoRoot,
+				path.join(options.dockerDir, "Dockerfile"),
+			)
+		: "docker/Dockerfile";
 
 	if (options.postgresMode === "docker") {
 		services.push(buildPostgresService());
-		dependsOnWeb.push("postgres");
-		dependsOnWorker.push("postgres");
+		services.push(
+			buildDbMigrateService({
+				dockerfilePath,
+				repoRoot: options.repoRoot,
+			}),
+		);
+		dependsOnWeb.push("db-migrate");
+		dependsOnWorker.push("db-migrate");
 		volumes.add("postgres_data");
 	}
 
 	if (options.tinybirdMode === "docker") {
 		services.push(buildTinybirdService());
-		services.push(buildTinybirdInitService());
+		services.push(
+			buildTinybirdInitService({ repoRoot: options.repoRoot }),
+		);
 		dependsOnWeb.push("tinybird", "tinybird-init");
 		dependsOnWorker.push("tinybird", "tinybird-init");
 		volumes.add("tinybird_config");
@@ -525,12 +850,7 @@ function buildComposeYaml(options: {
 			dependsOn: dependsOnWeb,
 			dependencyConditions,
 			repoRoot: options.repoRoot,
-			dockerfilePath: options.dockerDir
-				? path.relative(
-						options.repoRoot,
-						path.join(options.dockerDir, "Dockerfile"),
-					)
-				: "docker/Dockerfile",
+			dockerfilePath,
 			includeTinybirdVolume: options.tinybirdMode === "docker",
 		}),
 	);
@@ -540,18 +860,15 @@ function buildComposeYaml(options: {
 			dependsOn: dependsOnWorker,
 			dependencyConditions,
 			repoRoot: options.repoRoot,
-			dockerfilePath: options.dockerDir
-				? path.relative(
-						options.repoRoot,
-						path.join(options.dockerDir, "Dockerfile"),
-					)
-				: "docker/Dockerfile",
+			dockerfilePath,
 			includeTinybirdVolume: options.tinybirdMode === "docker",
 		}),
 	);
 
 	const lines = ["name: elmo", "", "services:"];
-	lines.push(...services.map((service) => indentBlock(service, 2)));
+	lines.push(
+		...services.map((service) => indentBlock(service, 2)),
+	);
 
 	if (volumes.size > 0) {
 		lines.push("", "volumes:");
@@ -580,6 +897,25 @@ function buildPostgresService(): string {
 		"    interval: 5s",
 		"    timeout: 5s",
 		"    retries: 5",
+		"    start_period: 30s",
+	].join("\n");
+}
+
+function buildDbMigrateService(options: {
+	dockerfilePath: string;
+	repoRoot: string;
+}): string {
+	return [
+		"db-migrate:",
+		"  build:",
+		`    context: ${options.repoRoot}`,
+		`    dockerfile: ${options.dockerfilePath}`,
+		"    target: migrate",
+		"  environment:",
+		"    - DATABASE_URL=postgres://postgres:postgres@postgres:5432/elmo",
+		"  depends_on:",
+		"    postgres:",
+		"      condition: service_healthy",
 	].join("\n");
 }
 
@@ -588,36 +924,44 @@ function buildTinybirdService(): string {
 		"tinybird:",
 		"  image: tinybirdco/tinybird-local:latest",
 		"  platform: linux/amd64",
+		"  restart: on-failure:2",
 		"  environment:",
 		'    COMPATIBILITY_MODE: "1"',
 		"  ports:",
 		'    - "7181:7181"',
+		'    - "7182:7182"',
 		"  stop_grace_period: 2s",
 		"  healthcheck:",
 		'    test: ["CMD", "curl", "-f", "http://localhost:7181/v0/health"]',
 		"    interval: 5s",
 		"    timeout: 5s",
 		"    retries: 30",
+		"    start_period: 60s",
 	].join("\n");
 }
 
-function buildTinybirdInitService(): string {
+function buildTinybirdInitService(options: {
+	repoRoot: string;
+}): string {
 	return [
 		"tinybird-init:",
-		"  image: alpine:latest",
+		"  image: tinybirdco/tinybird-cli-docker:latest",
 		"  volumes:",
 		"    - tinybird_config:/config",
+		`    - ${options.repoRoot}/tinybird:/schema:ro`,
 		"  depends_on:",
 		"    tinybird:",
 		"      condition: service_healthy",
-		"  entrypoint: [\"/bin/sh\", \"-c\"]",
+		'  entrypoint: ["/bin/sh", "-c"]',
 		"  command:",
 		"    - |",
-		"      apk add --no-cache curl jq > /dev/null 2>&1",
-		"      echo \"Fetching Tinybird token...\"",
-		"      TOKEN=$$(curl -s http://tinybird:7181/tokens | jq -r '.workspace_admin_token')",
-		"      echo \"TINYBIRD_TOKEN=$$TOKEN\" > /config/tinybird.env",
-		"      echo \"Token saved to /config/tinybird.env\"",
+		'      echo "Fetching Tinybird token..."',
+		"      TOKEN=$$(python3 -c \"import urllib.request,json; print(json.loads(urllib.request.urlopen('http://tinybird:7181/tokens').read())['workspace_admin_token'])\")",
+		'      echo "TINYBIRD_TOKEN=$$TOKEN" > /config/tinybird.env',
+		'      echo "Token saved."',
+		'      echo "Deploying Tinybird schema..."',
+		"      cd /schema && tb --host http://tinybird:7181 --token $$TOKEN push --force",
+		'      echo "Tinybird schema deployed."',
 	].join("\n");
 }
 
@@ -652,15 +996,22 @@ function buildWebService(options: {
 	);
 
 	if (options.includeTinybirdVolume) {
-		lines.push("  volumes:", "    - tinybird_config:/app/tinybird-config:ro");
+		lines.push(
+			"  volumes:",
+			"    - tinybird_config:/app/tinybird-config:ro",
+		);
 	}
 
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
 		for (const service of options.dependsOn) {
 			const condition =
-				options.dependencyConditions[service] ?? "service_started";
-			lines.push(`    ${service}:`, `      condition: ${condition}`);
+				options.dependencyConditions[service] ??
+				"service_started";
+			lines.push(
+				`    ${service}:`,
+				`      condition: ${condition}`,
+			);
 		}
 	}
 
@@ -696,15 +1047,22 @@ function buildWorkerService(options: {
 	);
 
 	if (options.includeTinybirdVolume) {
-		lines.push("  volumes:", "    - tinybird_config:/app/tinybird-config:ro");
+		lines.push(
+			"  volumes:",
+			"    - tinybird_config:/app/tinybird-config:ro",
+		);
 	}
 
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
 		for (const service of options.dependsOn) {
 			const condition =
-				options.dependencyConditions[service] ?? "service_started";
-			lines.push(`    ${service}:`, `      condition: ${condition}`);
+				options.dependencyConditions[service] ??
+				"service_started";
+			lines.push(
+				`    ${service}:`,
+				`      condition: ${condition}`,
+			);
 		}
 	}
 
@@ -719,16 +1077,42 @@ function indentBlock(block: string, spaces: number): string {
 		.join("\n");
 }
 
-async function getComposeServices(configDir: string): Promise<ComposeService[]> {
-	const output = await runDockerComposeCapture(configDir, ["ps", "--format", "json"]);
+// ── Docker Helpers ───────────────────────────────────────────────────────────
+
+async function getComposeServices(
+	configDir: string,
+): Promise<ComposeService[]> {
+	const output = await runDockerComposeCapture(configDir, [
+		"ps",
+		"--format",
+		"json",
+	]);
 	if (!output.trim()) {
 		return [];
 	}
 	try {
-		return JSON.parse(output) as ComposeService[];
-	} catch (error) {
-		log.warn("Unable to parse docker compose status.");
+		const trimmed = output.trim();
+		const parsed = JSON.parse(trimmed);
+		if (Array.isArray(parsed)) {
+			return parsed as ComposeService[];
+		}
+		if (typeof parsed === "object" && parsed !== null) {
+			return [parsed as ComposeService];
+		}
 		return [];
+	} catch {
+		try {
+			return output
+				.trim()
+				.split("\n")
+				.filter((line) => line.trim())
+				.map(
+					(line) => JSON.parse(line) as ComposeService,
+				);
+		} catch {
+			log.warn("Unable to parse docker compose status.");
+			return [];
+		}
 	}
 }
 
@@ -740,11 +1124,16 @@ function formatServiceStatus(service: ComposeService): string {
 
 	if (isServiceReady(service)) {
 		color = pc.green;
-	} else if (health === "starting" || state.includes("starting")) {
+	} else if (
+		health === "starting" ||
+		state.includes("starting")
+	) {
 		color = pc.yellow;
 	}
 
-	return color(`${label} ${state} ${service.Health ? `(${health})` : ""}`.trim());
+	return color(
+		`${label} ${state} ${service.Health ? `(${health})` : ""}`.trim(),
+	);
 }
 
 function isServiceReady(service: ComposeService): boolean {
@@ -767,7 +1156,10 @@ async function waitForHealthy(
 	const start = Date.now();
 	while (Date.now() - start < timeoutMs) {
 		const services = await getComposeServices(configDir);
-		if (services.length > 0 && services.every(isServiceReady)) {
+		if (
+			services.length > 0 &&
+			services.every(isServiceReady)
+		) {
 			return true;
 		}
 		await sleep(3000);
@@ -779,16 +1171,30 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function runDockerCompose(configDir: string, args: string[]): Promise<void> {
+function runDockerCompose(
+	configDir: string,
+	args: string[],
+): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const composeFile = path.join(configDir, "elmo.yaml");
-		const commandArgs = ["compose", "-f", composeFile, ...args];
-		const child = spawn("docker", commandArgs, { stdio: "inherit" });
+		const commandArgs = [
+			"compose",
+			"-f",
+			composeFile,
+			...args,
+		];
+		const child = spawn("docker", commandArgs, {
+			stdio: "inherit",
+		});
 		child.on("close", (code) => {
 			if (code === 0) {
 				resolve();
 			} else {
-				reject(new Error(`docker compose exited with code ${code}`));
+				reject(
+					new Error(
+						`docker compose exited with code ${code}`,
+					),
+				);
 			}
 		});
 	});
@@ -800,28 +1206,40 @@ function runDockerComposeCapture(
 ): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const composeFile = path.join(configDir, "elmo.yaml");
-		const commandArgs = ["compose", "-f", composeFile, ...args];
+		const commandArgs = [
+			"compose",
+			"-f",
+			composeFile,
+			...args,
+		];
 		const child = spawn("docker", commandArgs);
 		let stdout = "";
 		let stderr = "";
-		child.stdout.on("data", (data) => {
+		child.stdout.on("data", (data: Buffer) => {
 			stdout += data.toString();
 		});
-		child.stderr.on("data", (data) => {
+		child.stderr.on("data", (data: Buffer) => {
 			stderr += data.toString();
 		});
 		child.on("close", (code) => {
 			if (code === 0) {
 				resolve(stdout);
 			} else {
-				reject(new Error(stderr || `docker compose exited with code ${code}`));
+				reject(
+					new Error(
+						stderr ||
+							`docker compose exited with code ${code}`,
+					),
+				);
 			}
 		});
 	});
 }
 
 function assertDockerRunning(): void {
-	const result = spawnSync("docker", ["info"], { stdio: "ignore" });
+	const result = spawnSync("docker", ["info"], {
+		stdio: "ignore",
+	});
 	if (result.status !== 0) {
 		throw new Error(
 			"Docker does not appear to be running. Start Docker and try again.",
@@ -829,22 +1247,115 @@ function assertDockerRunning(): void {
 	}
 }
 
-async function getConfigDirOrThrow(): Promise<string> {
+// ── Docker Dir Resolution ────────────────────────────────────────────────────
+
+async function resolveDockerDirInteractive(
+	cwd: string,
+): Promise<string> {
+	const inCwd = await fileExists(
+		path.join(cwd, "Dockerfile"),
+	);
+	const inDockerDir = await fileExists(
+		path.join(cwd, "docker", "Dockerfile"),
+	);
+	const defaultDir = inCwd
+		? "."
+		: inDockerDir
+			? "docker"
+			: ".";
+
+	const dir = await p.text({
+		message:
+			"Path to docker directory (contains Dockerfile)",
+		defaultValue: defaultDir,
+	});
+	assertNotCancelled(dir);
+
+	const resolved = path.resolve(cwd, dir);
+	if (
+		!(await fileExists(path.join(resolved, "Dockerfile")))
+	) {
+		p.log.error(
+			`Dockerfile not found in ${resolved}. Provide the directory that contains Dockerfile.`,
+		);
+		process.exit(1);
+	}
+
+	return resolved;
+}
+
+async function resolveDockerDirAuto(
+	cwd: string,
+	explicitDir?: string,
+): Promise<string> {
+	if (explicitDir) {
+		const resolved = path.resolve(cwd, explicitDir);
+		if (
+			!(await fileExists(
+				path.join(resolved, "Dockerfile"),
+			))
+		) {
+			throw new Error(
+				`Dockerfile not found in ${resolved}`,
+			);
+		}
+		return resolved;
+	}
+
+	// Auto-detect
+	if (
+		await fileExists(
+			path.join(cwd, "docker", "Dockerfile"),
+		)
+	) {
+		return path.resolve(cwd, "docker");
+	}
+	if (await fileExists(path.join(cwd, "Dockerfile"))) {
+		return cwd;
+	}
+
+	throw new Error(
+		"Could not find Dockerfile. Specify --docker-dir or set ELMO_DOCKER_DIR.",
+	);
+}
+
+// ── Config Dir Resolution ────────────────────────────────────────────────────
+
+async function resolveConfigDir(
+	explicitDir?: string,
+): Promise<string> {
+	if (explicitDir) {
+		const resolved = path.resolve(
+			process.cwd(),
+			explicitDir,
+		);
+		const composePath = path.join(resolved, "elmo.yaml");
+		if (!(await fileExists(composePath))) {
+			throw new Error(
+				`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init\` to create your local setup.`,
+			);
+		}
+		return resolved;
+	}
+
 	const config = await readGlobalConfig();
 	if (!config?.configDir) {
 		throw new Error(
-			"No config found. Run `elmo init` to create your local setup.",
+			"No config found. Run `elmo init` or specify --dir.",
 		);
 	}
+
 	const resolved = path.resolve(config.configDir);
 	const composePath = path.join(resolved, "elmo.yaml");
 	if (!(await fileExists(composePath))) {
 		throw new Error(
-			`Config directory does not contain elmo.yaml: ${resolved}. Run \`elmo init\` to regenerate.`,
+			`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init\` to regenerate.`,
 		);
 	}
 	return resolved;
 }
+
+// ── File & Config Helpers ────────────────────────────────────────────────────
 
 async function readGlobalConfig(): Promise<GlobalConfig | null> {
 	try {
@@ -855,150 +1366,143 @@ async function readGlobalConfig(): Promise<GlobalConfig | null> {
 	}
 }
 
-async function writeGlobalConfig(
-	configDir: string,
-	dockerDir?: string,
-): Promise<void> {
-	const config: GlobalConfig = {
-		configDir,
+async function writeGlobalConfig(config: {
+	configDir: string;
+	dockerDir?: string;
+	dev?: boolean;
+	postgresMode?: PostgresMode;
+	tinybirdMode?: TinybirdMode;
+	repoRoot?: string;
+}): Promise<void> {
+	const globalConfig: GlobalConfig = {
+		...config,
 		updatedAt: new Date().toISOString(),
-		...(dockerDir ? { dockerDir } : {}),
 	};
 	await ensureDir(CONFIG_HOME);
-	await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
+	await fs.writeFile(
+		CONFIG_FILE,
+		JSON.stringify(globalConfig, null, 2),
+		"utf8",
+	);
 }
 
-async function detectExistingConfigFiles(configDir: string): Promise<string[]> {
-	const candidates = ["elmo.yaml", ".env"];
-	const existing: string[] = [];
-	for (const file of candidates) {
-		if (await fileExists(path.join(configDir, file))) {
-			existing.push(file);
-		}
-	}
-	return existing;
+async function writeConfigFiles(
+	configDir: string,
+	initConfig: {
+		env: EnvMap;
+		composeYaml: string;
+		postgresMode: PostgresMode;
+		tinybirdMode: TinybirdMode;
+		dev: boolean;
+	},
+): Promise<void> {
+	const envPath = path.join(configDir, ".env");
+	const composePath = path.join(configDir, "elmo.yaml");
+
+	await ensureDir(configDir);
+	await fs.writeFile(
+		envPath,
+		buildEnvFile(initConfig.env),
+		"utf8",
+	);
+	await fs.writeFile(composePath, initConfig.composeYaml, "utf8");
 }
 
-async function removeKnownConfigFiles(configDir: string): Promise<void> {
-	const targets = [
-		path.join(configDir, "elmo.yaml"),
-		path.join(configDir, ".env"),
-		path.join(configDir, "init-scripts"),
+function buildEnvFile(env: EnvMap): string {
+	const lines = [
+		"# Generated by elmo init",
+		"# WARNING: contains secrets. Do not commit.",
+		"",
 	];
-	for (const target of targets) {
-		if (await fileExists(target)) {
-			await fs.rm(target, { recursive: true, force: true });
+
+	for (const [key, rawValue] of Object.entries(env)) {
+		if (rawValue === undefined) {
+			continue;
 		}
+		lines.push(`${key}=${formatEnvValue(rawValue)}`);
 	}
+
+	return `${lines.join("\n")}\n`;
 }
 
-async function promptText(
-	rl: ReturnType<typeof createInterface>,
-	label: string,
-	options: { defaultValue?: string; required?: boolean } = {},
-): Promise<string> {
-	while (true) {
-		const suffix = options.defaultValue ? ` (${options.defaultValue})` : "";
-		const value = (await rl.question(`${label}${suffix}: `)).trim();
-		if (value) {
-			return value;
-		}
-		if (options.defaultValue) {
-			return options.defaultValue;
-		}
-		if (!options.required) {
-			return "";
-		}
-		log.warn("This value is required.");
+function formatEnvValue(value: string): string {
+	if (value === "") {
+		return '""';
 	}
+	if (/[\s#"']/u.test(value)) {
+		const escaped = value
+			.replace(/\\/g, "\\\\")
+			.replace(/"/g, '\\"');
+		return `"${escaped}"`;
+	}
+	return value;
 }
 
-async function promptYesNo(
-	rl: ReturnType<typeof createInterface>,
-	label: string,
-	defaultValue: boolean,
-): Promise<boolean> {
-	const hint = defaultValue ? "[Y/n]" : "[y/N]";
-	while (true) {
-		const value = (await rl.question(`${label} ${hint}: `)).trim().toLowerCase();
-		if (!value) {
-			return defaultValue;
-		}
-		if (["y", "yes"].includes(value)) {
-			return true;
-		}
-		if (["n", "no"].includes(value)) {
-			return false;
-		}
-		log.warn("Please enter yes or no.");
-	}
-}
+async function detectSettingsFromConfig(
+	configDir: string,
+): Promise<{
+	dev: boolean;
+	postgresMode: PostgresMode;
+	tinybirdMode: TinybirdMode;
+	repoRoot: string;
+	dockerDir?: string;
+}> {
+	const envPath = path.join(configDir, ".env");
+	const env = await readEnvFile(envPath);
 
-async function promptSelect<T extends string>(
-	rl: ReturnType<typeof createInterface>,
-	label: string,
-	options: { label: string; value: T }[],
-	defaultValue: T,
-): Promise<T> {
-	while (true) {
-		console.log(`\n${label}:`);
-		options.forEach((option, index) => {
-			const isDefault = option.value === defaultValue;
-			const marker = isDefault ? "*" : " ";
-			console.log(`  ${marker} ${index + 1}) ${option.label}`);
-		});
-
-		const response = (await rl.question("Select an option: ")).trim();
-		if (!response) {
-			return defaultValue;
-		}
-		const index = Number(response);
-		if (!Number.isNaN(index) && options[index - 1]) {
-			return options[index - 1].value;
-		}
-		const match = options.find(
-			(option) => option.value === response || option.label === response,
-		);
-		if (match) {
-			return match.value;
-		}
-		log.warn("Please enter a valid option.");
-	}
-}
-
-async function promptDockerDir(
-	rl: ReturnType<typeof createInterface>,
-	cwd: string,
-): Promise<string> {
-	const dockerfileHere = await fileExists(path.join(cwd, "Dockerfile"));
-	const dockerfileInDockerDir = await fileExists(
-		path.join(cwd, "docker", "Dockerfile"),
-	);
-	const defaultValue = dockerfileHere
-		? "."
-		: dockerfileInDockerDir
+	const postgresMode: PostgresMode =
+		env.DATABASE_URL?.includes("postgres:5432")
 			? "docker"
-			: ".";
+			: "external";
+	const tinybirdMode: TinybirdMode =
+		env.TINYBIRD_BASE_URL?.includes("tinybird:7181")
+			? "docker"
+			: "external";
 
-	const input = await promptText(
-		rl,
-		"Path to docker directory (use . for current dir)",
-		{ defaultValue, required: true },
-	);
+	// Check if elmo.yaml has build contexts (dev mode)
+	const yamlPath = path.join(configDir, "elmo.yaml");
+	let dev = false;
+	let repoRoot = process.cwd();
 
-	const resolved = path.resolve(cwd, input);
-	const dockerfilePath = path.join(resolved, "Dockerfile");
-	if (!(await fileExists(dockerfilePath))) {
-		throw new Error(
-			`Dockerfile not found in ${resolved}. Provide the directory that contains Dockerfile.`,
+	try {
+		const yamlContent = await fs.readFile(yamlPath, "utf8");
+		dev = yamlContent.includes("build:");
+		const contextMatch = yamlContent.match(
+			/context:\s+(.+)/,
 		);
+		if (contextMatch) {
+			repoRoot = contextMatch[1].trim();
+		}
+	} catch {
+		// Use defaults
 	}
-	return resolved;
+
+	return { dev, postgresMode, tinybirdMode, repoRoot };
 }
 
-function assertInteractive(): void {
-	if (!process.stdin.isTTY) {
-		throw new Error("Interactive mode required. Run this command in a TTY.");
+async function readEnvFile(envPath: string): Promise<EnvMap> {
+	try {
+		const contents = await fs.readFile(envPath, "utf8");
+		const env: EnvMap = {};
+		for (const line of contents.split("\n")) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith("#")) continue;
+			const eqIndex = trimmed.indexOf("=");
+			if (eqIndex < 0) continue;
+			const key = trimmed.substring(0, eqIndex);
+			let value = trimmed.substring(eqIndex + 1);
+			// Remove surrounding quotes
+			if (
+				(value.startsWith('"') && value.endsWith('"')) ||
+				(value.startsWith("'") && value.endsWith("'"))
+			) {
+				value = value.slice(1, -1);
+			}
+			env[key] = value;
+		}
+		return env;
+	} catch {
+		return {};
 	}
 }
 
@@ -1015,24 +1519,42 @@ async function ensureDir(dir: string): Promise<void> {
 	await fs.mkdir(dir, { recursive: true });
 }
 
+// ── Version Helpers ──────────────────────────────────────────────────────────
+
 async function getPackageVersion(): Promise<string> {
-	const packagePath = path.resolve(__dirname, "..", "package.json");
+	const selfDir = path.dirname(
+		fileURLToPath(import.meta.url),
+	);
+	const packagePath = path.resolve(
+		selfDir,
+		"..",
+		"package.json",
+	);
 	const contents = await fs.readFile(packagePath, "utf8");
 	const json = JSON.parse(contents) as { version?: string };
 	return json.version!;
 }
 
-async function maybeNotifyNewVersion(currentVersion: string): Promise<void> {
+async function maybeNotifyNewVersion(
+	currentVersion: string,
+): Promise<void> {
 	try {
-		const response = await fetch("https://registry.npmjs.org/@elmohq/cli/latest");
+		const response = await fetch(
+			"https://registry.npmjs.org/@elmohq/cli/latest",
+		);
 		if (!response.ok) {
 			return;
 		}
-		const data = (await response.json()) as { version?: string };
+		const data = (await response.json()) as {
+			version?: string;
+		};
 		if (!data.version) {
 			return;
 		}
-		if (semver.valid(currentVersion) && semver.lt(currentVersion, data.version)) {
+		if (
+			semver.valid(currentVersion) &&
+			semver.lt(currentVersion, data.version)
+		) {
 			log.warn(
 				`New CLI version available (${data.version}). Run: npm install -g @elmohq/cli@latest`,
 			);
@@ -1042,7 +1564,11 @@ async function maybeNotifyNewVersion(currentVersion: string): Promise<void> {
 	}
 }
 
+// ── Entry Point ──────────────────────────────────────────────────────────────
+
 main().catch((error) => {
-	log.error(error instanceof Error ? error.message : String(error));
+	const msg =
+		error instanceof Error ? error.message : String(error);
+	console.error(`\n${pc.red("Error:")} ${msg}`);
 	process.exit(1);
 });

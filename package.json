@@ -31,17 +31,20 @@
     "test": "turbo test",
     "format": "biome format --write .",
     "knip": "knip",
+    "elmo": "tsx apps/cli/src/index.ts",
     "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
     "cli:unlink": "npm unlink -g @elmohq/cli",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && changeset publish",
+    "test:e2e": "bash e2e/run-local.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
     "@changesets/cli": "^2.29.8",
     "knip": "^5.81.0",
-    "turbo": "^2.8.2",
+    "tsx": "^4.21.0",
+    "turbo": "^2.8.9",
     "typescript": "^5"
   }
 }

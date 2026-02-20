@@ -1,4 +1,3 @@
-"use client";
 
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 import { Skeleton } from "@workspace/ui/components/skeleton";

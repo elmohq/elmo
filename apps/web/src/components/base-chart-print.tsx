@@ -1,9 +1,9 @@
-"use client";
 
 import * as React from "react";
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "@workspace/ui/components/badge";
-import { clientConfig } from "@/lib/config/client";
+import { useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import { ChartDataPoint, getBadgeVariant, getBadgeClassName } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
@@ -33,6 +33,7 @@ export function BaseChartPrint({
 	brand,
 	competitors,
 }: BaseChartPrintProps) {
+	const routeContext = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	// Get the most recent data point that has actual data
 	const latestDataPoint = data
 		.filter((point) => {
@@ -58,7 +59,7 @@ export function BaseChartPrint({
 	}
 
 	// Create bar data for all entities (brand + competitors)
-	const chartColors = clientConfig.branding.chartColors;
+	const chartColors = routeContext.clientConfig?.branding.chartColors ?? [];
 	const allEntities: BarData[] = [];
 
 	// Add brand data

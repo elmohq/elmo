@@ -1,0 +1,151 @@
+# End-to-End Integration Tests
+#
+# Verifies the open source local deployment works end-to-end.
+# Walks through the `elmo init --dev` CLI flow in CI mode, starts services
+# via Docker Compose (skipping worker to avoid execution costs),
+# seeds test data, and runs Playwright tests against the Dockerized web app.
+#
+# This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
+# Run locally via: pnpm test:e2e  (uses https://github.com/nektos/act)
+
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      ELMO_CI: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # without this, docker builds run out of space
+      - name: Free Disk Space
+        if: ${{ !env.ACT }}
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build elmo CLI
+        run: pnpm -C apps/cli build
+
+      - name: "Run: elmo init --dev (via cli-driver)"
+        run: |
+          mkdir -p e2e/.elmo
+          cd e2e
+          npx tsx cli-driver.ts "$PWD/.elmo" "$GITHUB_WORKSPACE"
+
+      - name: Patch .env with test overrides
+        run: |
+          cat >> e2e/.elmo/.env <<'PATCH'
+
+          # E2E test overrides
+          ADMIN_API_KEYS=test-api-key-e2e
+          PATCH
+
+      - name: Show generated config
+        run: |
+          echo "=== .env ==="
+          cat e2e/.elmo/.env
+          echo ""
+          echo "=== elmo.yaml (services) ==="
+          grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
+
+      - name: Start all services
+        run: docker compose -f e2e/.elmo/elmo.yaml up -d --build
+
+      - name: Stop worker
+        run: docker compose -f e2e/.elmo/elmo.yaml stop worker
+
+      - name: Wait for web
+        run: |
+          echo "Waiting for web to be ready on http://localhost:1515..."
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://localhost:1515/ 2>/dev/null; then
+              echo "Web is ready."
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "ERROR: Web did not become ready in time."
+          docker compose -f e2e/.elmo/elmo.yaml logs
+          exit 1
+
+      - name: Fetch Tinybird token
+        run: |
+          echo "Fetching Tinybird token from http://localhost:7181..."
+          for i in $(seq 1 30); do
+            TOKEN=$(curl -sf http://localhost:7181/tokens 2>/dev/null \
+              | python3 -c "import sys,json; print(json.load(sys.stdin).get('workspace_admin_token',''))" 2>/dev/null || echo "")
+            if [ -n "$TOKEN" ]; then
+              echo "TINYBIRD_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+              echo "TINYBIRD_BASE_URL=http://localhost:7181" >> "$GITHUB_ENV"
+              echo "Tinybird token acquired."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "ERROR: Could not fetch Tinybird token."
+          exit 1
+
+      - name: Seed test data
+        run: cd e2e && npx tsx seed.ts
+
+      - name: Install Playwright browsers
+        run: cd e2e && npx playwright install chromium --with-deps
+
+      - name: Run Playwright E2E tests
+        run: cd e2e && npx playwright test
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results
+          path: e2e/test-results/
+          retention-days: 7
+
+      - name: Cleanup Docker services
+        if: always()
+        run: docker compose -f e2e/.elmo/elmo.yaml down -v 2>/dev/null || true

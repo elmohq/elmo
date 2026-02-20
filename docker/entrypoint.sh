@@ -18,9 +18,6 @@ else
     echo "  Tinybird features may not work. Check if tinybird-init completed."
 fi
 
-# Run database migrations (worker image has deps installed)
-echo "Running database migrations..."
-pnpm --filter @workspace/web drizzle-kit migrate
-
+# Database migrations are handled by the db-migrate init container.
 # Execute the main command
 exec "$@"

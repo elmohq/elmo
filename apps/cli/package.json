@@ -8,11 +8,12 @@
     "dist",
     "templates"
   ],
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@clack/prompts": "^1.0.1",
     "commander": "^14.0.2",
     "picocolors": "^1.1.1",
     "semver": "^7.7.3"

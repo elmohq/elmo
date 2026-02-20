@@ -1,8 +1,6 @@
-"use client";
-
-import useSWR, { mutate as globalMutate } from "swr";
-import { usePathname } from "next/navigation";
-import type { PromptsSummaryResponse } from "@/app/api/brands/[id]/prompts-summary/route";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
+import { getPromptsSummaryFn } from "@/server/prompts";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -10,87 +8,58 @@ export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
 	modelGroup?: "openai" | "anthropic" | "google";
-	tags?: string[]; // Filter by tag names
+	tags?: string[];
 }
 
-const fetcher = async (url: string): Promise<PromptsSummaryResponse> => {
-	const response = await fetch(url);
-
-	if (!response.ok) {
-		const error = new Error("Failed to fetch prompts summary");
-		error.message = `${response.status}: ${response.statusText}`;
-		throw error;
-	}
-
-	return response.json();
+export const promptsSummaryKeys = {
+	all: ["prompts-summary"] as const,
+	list: (brandId: string, filters?: PromptsSummaryFilters) =>
+		[...promptsSummaryKeys.all, brandId, filters] as const,
 };
 
-function buildApiUrl(brandId: string, filters?: PromptsSummaryFilters): string {
-	const baseUrl = `/api/brands/${brandId}/prompts-summary`;
-
-	if (!filters) {
-		return baseUrl;
-	}
-
-	const params = new URLSearchParams();
-
-	if (filters.lookback) {
-		params.append("lookback", filters.lookback);
-	}
-
-	if (filters.webSearchEnabled !== undefined) {
-		params.append("webSearchEnabled", filters.webSearchEnabled.toString());
-	}
-
-	if (filters.modelGroup) {
-		params.append("modelGroup", filters.modelGroup);
-	}
-
-	if (filters.tags && filters.tags.length > 0) {
-		params.append("tags", filters.tags.join(","));
-	}
-
-	return params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
-}
-
 export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilters) {
-	const pathname = usePathname();
+	const params = useParams({ strict: false }) as { brand?: string };
+	const resolvedBrandId = brandId || params.brand;
 
-	const extractedBrandId =
-		brandId ||
-		(() => {
-			const segments = pathname.split("/");
-			return segments[1] === "app" && segments[2] ? segments[2] : undefined;
-		})();
-
-	const apiUrl = extractedBrandId ? buildApiUrl(extractedBrandId, filters) : null;
-
-	const { data, error, isLoading, isValidating, mutate } = useSWR<PromptsSummaryResponse>(apiUrl, fetcher, {
-		revalidateOnFocus: true,
-		revalidateOnReconnect: true,
-		refreshInterval: 60000, // Refresh every 60 seconds (less frequent than individual charts)
-		dedupingInterval: 30000, // 30 seconds deduping
-		keepPreviousData: true, // Keep showing old data while fetching new data on filter changes
+	const query = useQuery({
+		queryKey: promptsSummaryKeys.list(resolvedBrandId || "", filters),
+		queryFn: () =>
+			getPromptsSummaryFn({
+				data: {
+					brandId: resolvedBrandId!,
+					lookback: filters?.lookback || "1m",
+					webSearchEnabled: filters?.webSearchEnabled?.toString(),
+					modelGroup: filters?.modelGroup,
+					tags: filters?.tags?.join(","),
+				},
+			}),
+		enabled: !!resolvedBrandId,
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
+		refetchOnReconnect: true,
+		refetchInterval: 60_000,
+		placeholderData: (prev) => prev, // Keep previous data while refetching
 	});
 
 	return {
-		promptsSummary: data,
-		isLoading,
-		isValidating, // True when fetching (including revalidations) - use for subtle loading indicators
-		isError: error,
-		revalidate: mutate,
+		promptsSummary: query.data,
+		isLoading: query.isLoading,
+		isValidating: query.isFetching,
+		isError: query.error,
+		revalidate: query.refetch,
 	};
 }
 
 /**
- * Invalidate all prompts summary cache entries for a brand.
- * Call this after updating prompts (e.g., adding/removing tags).
+ * Hook to get an invalidation function for prompts summary cache.
+ * Call at the top level of a component, then invoke the returned function in handlers.
  */
-export function invalidatePromptsSummary(brandId: string) {
-	// Invalidate all keys that start with the prompts-summary URL for this brand
-	globalMutate(
-		(key) => typeof key === "string" && key.startsWith(`/api/brands/${brandId}/prompts-summary`),
-		undefined,
-		{ revalidate: true }
-	);
+export function useInvalidatePromptsSummary() {
+	const queryClient = useQueryClient();
+
+	return (brandId: string) => {
+		queryClient.invalidateQueries({
+			queryKey: [...promptsSummaryKeys.all, brandId],
+		});
+	};
 }

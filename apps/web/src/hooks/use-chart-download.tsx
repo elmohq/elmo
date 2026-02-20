@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas-pro";
 
@@ -36,4 +34,3 @@ export function useChartDownload(fileName: string) {
 
 	return { chartRef, isDownloading, handleDownload };
 }
-

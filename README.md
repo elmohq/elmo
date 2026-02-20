@@ -2,6 +2,35 @@
 
 AI visibility monitoring for brands. Track how AI models represent your brand across different prompts and over time.
 
+## Quick Start
+
+For local deployments, use Docker Compose as configured with the `@elmohq/cli` package:
+
+```bash
+# Install the CLI globally
+npm install -g @elmohq/cli
+
+# Initialize configuration (interactive wizard)
+elmo init
+
+# Start the stack
+elmo start
+```
+
+You may find these commands useful:
+
+```bash
+# Stop the stack
+elmo stop
+
+# View logs
+elmo logs -f
+
+# Run any docker compose command
+elmo compose ps
+elmo compose down
+```
+
 ## Tech Stack
 
 - **Language**: TypeScript 5.x
@@ -110,6 +139,14 @@ pnpm test                             # Run all tests
 pnpm --filter @workspace/web test:watch  # Watch mode for web
 ```
 
+### Component Stories (Ladle)
+
+```bash
+pnpm --filter @workspace/web ladle    # Start Ladle dev server
+```
+
+Stories live in `apps/web/src/stories/` and cover the app sidebar (across deployment modes) and prompt charts (including loading, error, and empty states). Ladle uses a separate Vite config (`.ladle/vite.config.ts`) with mocked hooks and routing so components render in isolation without a running backend.
+
 ### Code Quality
 
 ```bash
@@ -169,13 +206,6 @@ elmo init
 
 # Start the stack
 elmo start
-
-# View logs
-elmo logs -f
-
-# Run any docker compose command
-elmo compose ps
-elmo compose down
 ```
 
 The `elmo init` command:
@@ -185,7 +215,7 @@ The `elmo init` command:
 4. Optionally starts the stack immediately
 
 The generated stack includes:
-- **web**: Next.js application (port 1515)
+- **web**: Tanstack Start application (port 1515)
 - **worker**: pg-boss background worker
 - **postgres**: PostgreSQL database (optional, can use external)
 - **tinybird**: Tinybird Local for analytics (optional, can use Tinybird Cloud)
@@ -204,7 +234,7 @@ elmo compose up -d
 ```
 
 The Docker build uses a multi-stage `docker/Dockerfile` with separate targets:
-- `web` target: Standalone Next.js server
+- `web` target: TanStack Start / Nitro server
 - `worker` target: pg-boss worker process
 
 Both targets receive `DEPLOYMENT_MODE` as a build arg to configure mode-specific behavior at build time.
@@ -279,7 +309,7 @@ When ready to release:
 
 ## Learn More
 
-- [Next.js Documentation](https://nextjs.org/docs)
+- [Tanstack Start Documentation](https://tanstack.com/start/latest)
 - [Turborepo Documentation](https://turborepo.dev/docs)
 - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)

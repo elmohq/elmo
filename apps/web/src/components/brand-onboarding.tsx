@@ -1,12 +1,12 @@
-"use client";
 
 import { useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 
-import { useRouter } from "next/navigation";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import FullPageCard from "@/components/full-page-card";
+import { createBrandFn } from "@/server/brands";
 
 interface BrandOnboardingProps {
 	brandId: string;
@@ -16,6 +16,7 @@ interface BrandOnboardingProps {
 export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
+	const navigate = useNavigate();
 	const router = useRouter();
 
 	const handleSubmit = async (formData: FormData) => {
@@ -23,19 +24,13 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 		setError("");
 
 		try {
-			const response = await fetch("/api/brands", {
-				method: "POST",
-				body: formData,
+			const website = formData.get("website") as string;
+			await createBrandFn({
+				data: { brandId, brandName, website },
 			});
 
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.error || "An error occurred");
-			}
-
-			// API will revalidate the path, so refresh to show Profile
-			router.refresh();
+			await router.invalidate();
+			await navigate({ to: "/app/$brand", params: { brand: brandId } });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {

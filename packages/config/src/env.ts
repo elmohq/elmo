@@ -23,6 +23,14 @@ export const requireAll =
 		keys.every((key) => hasValue(env[key]));
 
 /**
+ * Create a requirement checker that is satisfied when any key has a value.
+ */
+export const requireAny =
+	(keys: string[]) =>
+	(env: EnvMap): boolean =>
+		keys.some((key) => hasValue(env[key]));
+
+/**
  * Create a simple env requirement for a single key
  */
 export function createEnvRequirement(
@@ -41,6 +49,12 @@ export function createEnvRequirement(
  * Common environment requirements for all deployment modes
  */
 export const COMMON_REQUIREMENTS: EnvRequirement[] = [
+	{
+		id: "BETTER_AUTH_SECRET",
+		label: "BETTER_AUTH_SECRET",
+		description: "Session cookie encryption secret.",
+		isSatisfied: requireAll(["BETTER_AUTH_SECRET"]),
+	},
 	{
 		id: "DATABASE_URL",
 		label: "DATABASE_URL",
@@ -131,48 +145,47 @@ export const AUTH0_REQUIREMENTS: EnvRequirement[] = [
 /**
  * Environment requirements specific to whitelabel branding
  * All branding values must be provided - no defaults allowed
- * 
- * NOTE: These use NEXT_PUBLIC_ prefix because they're needed client-side.
- * Next.js only exposes env vars with this prefix to the browser bundle.
+ *
+ * TanStack Start uses VITE_* for client-side env vars.
  */
 export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
 	{
-		id: "NEXT_PUBLIC_APP_NAME",
-		label: "NEXT_PUBLIC_APP_NAME",
+		id: "VITE_APP_NAME",
+		label: "VITE_APP_NAME",
 		description: "Application display name (e.g., 'Acme AI Search').",
-		isSatisfied: requireAll(["NEXT_PUBLIC_APP_NAME"]),
+		isSatisfied: requireAll(["VITE_APP_NAME"]),
 	},
 	{
-		id: "NEXT_PUBLIC_APP_ICON",
-		label: "NEXT_PUBLIC_APP_ICON",
+		id: "VITE_APP_ICON",
+		label: "VITE_APP_ICON",
 		description: "Application icon URL (must be an external URL, e.g., 'https://cdn.example.com/icon.png').",
-		isSatisfied: requireAll(["NEXT_PUBLIC_APP_ICON"]),
+		isSatisfied: requireAll(["VITE_APP_ICON"]),
 	},
 	{
-		id: "NEXT_PUBLIC_APP_URL",
-		label: "NEXT_PUBLIC_APP_URL",
+		id: "VITE_APP_URL",
+		label: "VITE_APP_URL",
 		description: "Application URL (e.g., 'https://ai.example.com/').",
-		isSatisfied: requireAll(["NEXT_PUBLIC_APP_URL"]),
+		isSatisfied: requireAll(["VITE_APP_URL"]),
 	},
 	{
-		id: "NEXT_PUBLIC_APP_PARENT_NAME",
-		label: "NEXT_PUBLIC_APP_PARENT_NAME",
+		id: "VITE_APP_PARENT_NAME",
+		label: "VITE_APP_PARENT_NAME",
 		description: "Parent application name (e.g., 'Acme').",
-		isSatisfied: requireAll(["NEXT_PUBLIC_APP_PARENT_NAME"]),
+		isSatisfied: requireAll(["VITE_APP_PARENT_NAME"]),
 	},
 	{
-		id: "NEXT_PUBLIC_APP_PARENT_URL",
-		label: "NEXT_PUBLIC_APP_PARENT_URL",
+		id: "VITE_APP_PARENT_URL",
+		label: "VITE_APP_PARENT_URL",
 		description: "Parent application URL (e.g., 'https://app.example.com/').",
-		isSatisfied: requireAll(["NEXT_PUBLIC_APP_PARENT_URL"]),
+		isSatisfied: requireAll(["VITE_APP_PARENT_URL"]),
 	},
 	{
-		id: "NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE",
-		label: "NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE",
+		id: "VITE_OPTIMIZATION_URL_TEMPLATE",
+		label: "VITE_OPTIMIZATION_URL_TEMPLATE",
 		description: "URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
-		isSatisfied: requireAll(["NEXT_PUBLIC_OPTIMIZATION_URL_TEMPLATE"]),
+		isSatisfied: requireAll(["VITE_OPTIMIZATION_URL_TEMPLATE"]),
 	},
-	// NEXT_PUBLIC_ONBOARDING_REDIRECT_URL_TEMPLATE is optional - only needed if you want to redirect
+	// VITE_ONBOARDING_REDIRECT_URL_TEMPLATE is optional - only needed if you want to redirect
 	// users to the parent app after completing onboarding. Uses {brandId} placeholder.
 ];
 

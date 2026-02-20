@@ -1,7 +1,7 @@
-"use client";
 
 import { GoStack } from "react-icons/go";
 import { Button } from "@workspace/ui/components/button";
+import { Link } from "@tanstack/react-router";
 
 interface HistoryButtonProps {
 	brandId?: string;
@@ -22,10 +22,10 @@ export function HistoryButton({
 
 	return (
 		<Button size="sm" variant="secondary" className="text-xs cursor-pointer h-6 flex items-center px-2" asChild>
-			<a href={historyUrl}>
+			<Link to={historyUrl}>
 				<GoStack className="size-3 mr-0.5" />
 				<span className="text-xs font-normal">View Details</span>
-			</a>
+			</Link>
 		</Button>
 	);
 }

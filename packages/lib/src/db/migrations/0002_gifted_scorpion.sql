@@ -1,1 +1,0 @@
-ALTER TABLE "brands" ALTER COLUMN "id" SET DATA TYPE text;

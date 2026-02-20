@@ -2,9 +2,16 @@
   "name": "@workspace/lib",
   "version": "0.1.2",
   "private": true,
+  "scripts": {
+    "generate:auth-schema": "bash scripts/generate-auth-schema.sh"
+  },
   "exports": {
     "./db/db": "./src/db/db.ts",
     "./db/schema": "./src/db/schema.ts",
+    "./db/auth-sync": "./src/db/auth-sync.ts",
+    "./auth/server": "./src/auth/server.ts",
+    "./auth/client": "./src/auth/client.ts",
+    "./auth/permissions": "./src/auth/permissions.ts",
     "./constants": "./src/constants.ts",
     "./ai-providers": "./src/ai-providers.ts",
     "./tinybird": "./src/tinybird.ts",
@@ -18,8 +25,10 @@
     "@ai-sdk/anthropic": "^3.0.1",
     "@ai-sdk/openai": "3.0.1",
     "@anthropic-ai/sdk": "^0.60.0",
+    "@better-auth/sso": "*",
     "@chronark/zod-bird": "^1.0.0",
     "ai": "^6.0.3",
+    "better-auth": "^1.4.18",
     "dataforseo-client": "^2.0.2",
     "drizzle-orm": "^0.45.1",
     "pg": "^8.16.3",

@@ -1,1 +1,0 @@
-ALTER TABLE "prompt_runs" ADD COLUMN "web_search_enabled" boolean NOT NULL;

@@ -1,7 +1,5 @@
-"use client";
-
 import * as React from "react";
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import {
 	IconDashboard,
 	IconChartBar,
@@ -29,21 +27,21 @@ import {
 import { NavMain, type NavGroup } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { Logo } from "@/components/logo";
-import { clientConfig } from "@/lib/config/client";
-import { useBrand } from "@/hooks/use-brands";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;
 	hasReportAccess?: boolean;
 	/** When true, only show admin section (no brand-specific nav) */
 	adminOnly?: boolean;
+	/** Brand data from route loader — avoids a separate client-side fetch */
+	brand?: BrandWithPrompts | null;
 }
 
-export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, ...props }: AppSidebarProps) {
-	const { brand } = useBrand();
+export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, brand, ...props }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 
-	const showAdminSection = clientConfig.features.adminAccess && (isAdmin || hasReportAccess);
+	const showAdminSection = isAdmin || hasReportAccess;
 
 	const groups: NavGroup[] = [];
 
@@ -158,8 +156,8 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 				<SidebarMenu>
 					<SidebarMenuItem>
 					<SidebarMenuButton size="lg" asChild>
-						<Link href="/" onClick={() => setOpenMobile(false)}>
-							<Logo iconClassName="!size-5" textClassName="text-base font-semibold" />
+						<Link to="/app" onClick={() => setOpenMobile(false)}>
+							<Logo iconClassName="!size-5" />
 						</Link>
 					</SidebarMenuButton>
 					</SidebarMenuItem>
