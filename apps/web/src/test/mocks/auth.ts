@@ -84,5 +84,3 @@ export function createMockDeployment(
 	};
 }
 
-/** @deprecated Use createMockDeployment instead */
-export const createMockServerConfig = createMockDeployment;

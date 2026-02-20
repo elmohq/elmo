@@ -21,7 +21,7 @@ export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
  * BrandingConfig.onboardingRedirectUrl is a function, so we strip it and send the
  * raw template string instead. The client can reconstruct the function if needed.
  */
-export const getPublicClientConfig = createServerFn({ method: "GET" }).handler(async (): Promise<PublicClientConfig> => {
+export const getClientConfig = createServerFn({ method: "GET" }).handler(async (): Promise<PublicClientConfig> => {
 	const deployment = getDeployment();
 
 	const { onboardingRedirectUrl, ...serializableBranding } = deployment.branding;
@@ -40,9 +40,6 @@ export const getPublicClientConfig = createServerFn({ method: "GET" }).handler(a
 		defaultOrganization: deployment.defaultOrganization,
 	};
 });
-
-// Backwards-compatible alias.
-export const getClientConfig = getPublicClientConfig;
 
 export const getEnvValidationStateFn = createServerFn({ method: "GET" }).handler(async () => {
 	const envState = getEnvValidationState();

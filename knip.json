@@ -3,12 +3,21 @@
   "ignoreWorkspaces": ["packages/ui"],
   "workspaces": {
     ".": {
-      "entry": ["turbo.json"]
+      "entry": ["turbo.json"],
+      "ignoreBinaries": ["playwright"]
     },
     "apps/web": {
-      "entry": ["src/app/**/*.{ts,tsx}!", "scripts/*.ts"],
+      "entry": ["src/routes/**/*.{ts,tsx}!", "scripts/*.ts"],
       "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
       "ignore": ["src/lib/db/migrations/**"],
-      "ignoreDependencies": ["postcss", "tailwindcss", "tw-animate-css", "@tailwindcss/typography"]
-    }  }
+      "ignoreDependencies": ["tailwindcss", "tw-animate-css", "@tailwindcss/typography"]
+    },
+    "e2e": {
+      "entry": ["*.ts"],
+      "project": ["**/*.ts"]
+    },
+    "packages/lib": {
+      "entry": ["src/db/seed-auth.ts"]
+    }
+  }
 }

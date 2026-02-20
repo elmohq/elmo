@@ -11,8 +11,7 @@
   "dependencies": {
     "@workspace/config": "workspace:*",
     "@workspace/lib": "workspace:*",
-    "@workspace/ui": "workspace:*",
-    "better-auth": "^1.4.18"
+    "@workspace/ui": "workspace:*"
   },
   "peerDependencies": {
     "@tabler/icons-react": "^3.0.0",
