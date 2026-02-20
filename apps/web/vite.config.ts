@@ -12,6 +12,9 @@ const hasSentry =
 	process.env.SENTRY_ORG && process.env.SENTRY_PROJECT && process.env.SENTRY_AUTH_TOKEN;
 
 export default defineConfig({
+	build: {
+		sourcemap: "hidden",
+	},
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 	},
@@ -29,11 +32,8 @@ export default defineConfig({
 		tanstackStart(),
 		nitro({
 			rollupConfig: {
-				external: ["fsevents"],
-			},
-			externals: {
-				inline: [],
 				external: [
+					"fsevents",
 					"pg",
 					"pg-boss",
 					"@clickhouse/client",
@@ -46,11 +46,14 @@ export default defineConfig({
 		viteReact(),
 		...(hasSentry
 			? [
-					sentryTanstackStart({
-						org: process.env.SENTRY_ORG!,
-						project: process.env.SENTRY_PROJECT!,
-						authToken: process.env.SENTRY_AUTH_TOKEN,
-					}),
+				sentryTanstackStart({
+					org: process.env.SENTRY_ORG!,
+					project: process.env.SENTRY_PROJECT!,
+					authToken: process.env.SENTRY_AUTH_TOKEN,
+					sourcemaps: {
+						filesToDeleteAfterUpload: [".output/**/*.map", ".vercel/**/*.map"],
+					},
+				}),
 				]
 			: []),
 	],
