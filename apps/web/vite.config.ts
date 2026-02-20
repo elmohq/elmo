@@ -31,6 +31,7 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
+			sourcemap: true,
 			rollupConfig: {
 				external: [
 					"fsevents",
