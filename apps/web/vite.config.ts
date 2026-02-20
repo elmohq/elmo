@@ -33,16 +33,7 @@ export default defineConfig({
 		nitro({
 			sourcemap: true,
 			rollupConfig: {
-				external: [
-					"fsevents",
-					"pg",
-					"pg-boss",
-					"drizzle-orm",
-					"@clickhouse/client",
-					"@sentry/tanstackstart-react",
-					"@sentry/node",
-					"@opentelemetry/api",
-				],
+				external: ["fsevents"],
 			},
 		}),
 		viteReact(),

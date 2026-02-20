@@ -34,11 +34,13 @@ export const getRouter = () => {
 			integrations: [
 				Sentry.tanstackRouterBrowserTracingIntegration(router),
 				Sentry.replayIntegration(),
+				Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
 			],
 			tunnel: "/api/sentry-tunnel",
 			tracesSampleRate: 1.0,
 			replaysSessionSampleRate: 0.1,
 			replaysOnErrorSampleRate: 1.0,
+			enableLogs: true,
 		});
 	}
 
