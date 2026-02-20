@@ -37,6 +37,7 @@ export default defineConfig({
 					"fsevents",
 					"pg",
 					"pg-boss",
+					"drizzle-orm",
 					"@clickhouse/client",
 					"@sentry/tanstackstart-react",
 					"@sentry/node",
