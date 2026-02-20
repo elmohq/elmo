@@ -31,6 +31,17 @@ export default defineConfig({
 			rollupConfig: {
 				external: ["fsevents"],
 			},
+			externals: {
+				inline: [],
+				external: [
+					"pg",
+					"pg-boss",
+					"@clickhouse/client",
+					"@sentry/tanstackstart-react",
+					"@sentry/node",
+					"@opentelemetry/api",
+				],
+			},
 		}),
 		viteReact(),
 		...(hasSentry
