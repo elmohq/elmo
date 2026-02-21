@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --port 3000",
-		"build": "vite build",
-		"start": "node .output/server/index.mjs",
+		"build": "vite build && cp instrument.server.mjs .output/server",
+		"start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"lint": "biome lint",
