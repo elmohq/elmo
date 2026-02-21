@@ -6,8 +6,7 @@
 	"scripts": {
 		"dev": "vite dev --port 3000",
 		"build": "vite build",
-		"build:vercel": "vite build && cp instrument.server.mjs .vercel/output/functions/__server.func/",
-		"start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
+		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"lint": "biome lint",
@@ -18,7 +17,6 @@
 	},
 	"dependencies": {
 		"@clickhouse/client": "^1.16.0",
-		"@sentry/tanstackstart-react": "^10.39.0",
 		"@tabler/icons-react": "^3.34.0",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.0",
