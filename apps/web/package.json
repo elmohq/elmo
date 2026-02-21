@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev --port 3000",
 		"build": "vite build",
+		"build:vercel": "vite build && cp instrument.server.mjs .vercel/output/functions/__server.func/",
 		"start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
