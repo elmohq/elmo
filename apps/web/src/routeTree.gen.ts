@@ -18,7 +18,6 @@ import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthedAppRouteImport } from './routes/_authed/app'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as ApiSetupStatusIndexRouteImport } from './routes/api/setup-status/index'
-import { Route as ApiSentryTunnelIndexRouteImport } from './routes/api/sentry-tunnel/index'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports/index'
 import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
@@ -89,11 +88,6 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
 const ApiSetupStatusIndexRoute = ApiSetupStatusIndexRouteImport.update({
   id: '/api/setup-status/',
   path: '/api/setup-status/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSentryTunnelIndexRoute = ApiSentryTunnelIndexRouteImport.update({
-  id: '/api/sentry-tunnel/',
-  path: '/api/sentry-tunnel/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiManifestIndexRoute = ApiManifestIndexRouteImport.update({
@@ -261,7 +255,6 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AuthedAppIndexRoute
   '/reports/': typeof AuthedReportsIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
-  '/api/sentry-tunnel/': typeof ApiSentryTunnelIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
@@ -295,7 +288,6 @@ export interface FileRoutesByTo {
   '/app': typeof AuthedAppIndexRoute
   '/reports': typeof AuthedReportsIndexRoute
   '/api/manifest': typeof ApiManifestIndexRoute
-  '/api/sentry-tunnel': typeof ApiSentryTunnelIndexRoute
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
@@ -335,7 +327,6 @@ export interface FileRoutesById {
   '/_authed/app/': typeof AuthedAppIndexRoute
   '/_authed/reports/': typeof AuthedReportsIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
-  '/api/sentry-tunnel/': typeof ApiSentryTunnelIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
@@ -375,7 +366,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/reports/'
     | '/api/manifest/'
-    | '/api/sentry-tunnel/'
     | '/api/setup-status/'
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
@@ -409,7 +399,6 @@ export interface FileRouteTypes {
     | '/app'
     | '/reports'
     | '/api/manifest'
-    | '/api/sentry-tunnel'
     | '/api/setup-status'
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
@@ -448,7 +437,6 @@ export interface FileRouteTypes {
     | '/_authed/app/'
     | '/_authed/reports/'
     | '/api/manifest/'
-    | '/api/sentry-tunnel/'
     | '/api/setup-status/'
     | '/_authed/app/$brand/citations'
     | '/_authed/app/$brand/visibility'
@@ -478,7 +466,6 @@ export interface RootRouteChildren {
   AuthRegisterRoute: typeof AuthRegisterRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
-  ApiSentryTunnelIndexRoute: typeof ApiSentryTunnelIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
@@ -550,13 +537,6 @@ declare module '@tanstack/react-router' {
       path: '/api/setup-status'
       fullPath: '/api/setup-status/'
       preLoaderRoute: typeof ApiSetupStatusIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sentry-tunnel/': {
-      id: '/api/sentry-tunnel/'
-      path: '/api/sentry-tunnel'
-      fullPath: '/api/sentry-tunnel/'
-      preLoaderRoute: typeof ApiSentryTunnelIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/manifest/': {
@@ -864,7 +844,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRegisterRoute: AuthRegisterRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiManifestIndexRoute: ApiManifestIndexRoute,
-  ApiSentryTunnelIndexRoute: ApiSentryTunnelIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
