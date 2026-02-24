@@ -48,7 +48,7 @@ ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
 ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
 
 # Build the web application (increase heap for large bundles)
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @workspace/web build
+RUN NODE_OPTIONS="--max-old-space-size=6144" pnpm --filter @workspace/web build
 
 # Create pruned standalone deployments (only each package's own deps)
 # --legacy: allows deploy without inject-workspace-packages (which breaks Alpine Docker builds)
