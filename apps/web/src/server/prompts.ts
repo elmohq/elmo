@@ -580,12 +580,24 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		);
 
 		const saved = await db.transaction(async (tx) => {
-			await tx.delete(prompts).where(eq(prompts.brandId, data.brandId));
+			const toUpdate = data.prompts.filter((p) => p.id);
+			const toInsert = data.prompts.filter((p) => !p.id);
 
-			if (data.prompts.length > 0) {
+			for (const p of toUpdate) {
+				await tx
+					.update(prompts)
+					.set({
+						value: p.value,
+						enabled: p.enabled,
+						tags: p.tags || [],
+						systemTags: computeSystemTags(p.value, brand.name, brand.website),
+					})
+					.where(and(eq(prompts.id, p.id!), eq(prompts.brandId, data.brandId)));
+			}
+
+			if (toInsert.length > 0) {
 				await tx.insert(prompts).values(
-					data.prompts.map((p) => ({
-						...(p.id ? { id: p.id } : {}),
+					toInsert.map((p) => ({
 						brandId: data.brandId,
 						value: p.value,
 						enabled: p.enabled,
