@@ -166,13 +166,13 @@ export function BaseChart({
 							tickFormatter={(value) => `${value}%`}
 						/>
 						<ChartTooltip
+							isAnimationActive={false}
 							cursor={false}
 							content={
 								<ChartTooltipContent
-									labelFormatter={(value) => {
-										// Fix: Parse date string directly to avoid double timezone conversion
-										const [year, month, day] = value.split("-").map(Number);
-										const date = new Date(year, month - 1, day);
+								labelFormatter={(value) => {
+									const [year, month, day] = String(value).split("-").map(Number);
+									const date = new Date(year, month - 1, day);
 										return date.toLocaleDateString("en-US", {
 											month: "short",
 											day: "numeric",
@@ -243,6 +243,7 @@ export function BaseChart({
 							tickFormatter={(value) => `${value}%`}
 						/>
 						<ChartTooltip
+							isAnimationActive={false}
 							cursor={false}
 							content={({ active, payload, label }) => {
 								if (!active || !payload?.length) return null;

@@ -1,7 +1,7 @@
 /**
  * /admin - Admin dashboard with brand statistics and charts
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getAppName } from "@/lib/route-head";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -253,8 +253,8 @@ function AdminDashboard() {
 		return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 	};
 
-	const tooltipLabelFormatter = (value: string) => {
-		const date = new Date(value);
+	const tooltipLabelFormatter = (value: ReactNode) => {
+		const date = new Date(String(value));
 		return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 	};
 
@@ -273,13 +273,13 @@ function AdminDashboard() {
 					<CardHeader><CardTitle>All Brands</CardTitle><CardDescription>Total: {totals.totalBrands} brands</CardDescription></CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer config={{ count: { label: "Total Brands", color: "#3b82f6" } }} className="h-[120px] w-full px-4">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 								<AreaChart data={brandsOverTime}>
 									<defs><linearGradient id="fillBrands" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} /></linearGradient></defs>
 									<CartesianGrid strokeDasharray="3 3" vertical={false} />
 									<XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={30} tickFormatter={dateFormatter} />
 									<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} domain={[0, brandsYAxisMax]} />
-									<ChartTooltip content={<ChartTooltipContent className="min-w-[180px]" labelFormatter={tooltipLabelFormatter} />} />
+									<ChartTooltip isAnimationActive={false} content={<ChartTooltipContent className="min-w-[180px]" labelFormatter={tooltipLabelFormatter} />} />
 									<Area type="monotone" dataKey="count" stroke="#3b82f6" fill="url(#fillBrands)" strokeWidth={2} />
 								</AreaChart>
 							</ResponsiveContainer>
@@ -291,13 +291,13 @@ function AdminDashboard() {
 					<CardHeader><CardTitle>Active Brands</CardTitle><CardDescription>With runs in last 30 days: {activeBrandsOverTime[activeBrandsOverTime.length - 1]?.count ?? 0}</CardDescription></CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer config={{ count: { label: "Active Brands", color: "#22c55e" } }} className="h-[120px] w-full px-4">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 								<AreaChart data={activeBrandsOverTime}>
 									<defs><linearGradient id="fillActiveBrands" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} /><stop offset="95%" stopColor="#22c55e" stopOpacity={0.1} /></linearGradient></defs>
 									<CartesianGrid strokeDasharray="3 3" vertical={false} />
 									<XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={30} tickFormatter={dateFormatter} />
 									<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} domain={[0, brandsYAxisMax]} />
-									<ChartTooltip content={<ChartTooltipContent className="min-w-[180px]" labelFormatter={tooltipLabelFormatter} />} />
+									<ChartTooltip isAnimationActive={false} content={<ChartTooltipContent className="min-w-[180px]" labelFormatter={tooltipLabelFormatter} />} />
 									<Area type="monotone" dataKey="count" stroke="#22c55e" fill="url(#fillActiveBrands)" strokeWidth={2} />
 								</AreaChart>
 							</ResponsiveContainer>
@@ -309,7 +309,7 @@ function AdminDashboard() {
 					<CardHeader><CardTitle>Prompts</CardTitle><CardDescription>Active: {totals.activePrompts} | Total: {totals.totalPrompts}</CardDescription></CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer config={{ enabled: { label: "Enabled", color: "#10b981" }, disabled: { label: "Disabled", color: "#ef4444" } }} className="h-[120px] w-full px-4">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 								<AreaChart data={promptsOverTime}>
 									<defs>
 										<linearGradient id="fillEnabled" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.8} /><stop offset="95%" stopColor="#10b981" stopOpacity={0.1} /></linearGradient>
@@ -318,7 +318,7 @@ function AdminDashboard() {
 									<CartesianGrid strokeDasharray="3 3" vertical={false} />
 									<XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={30} tickFormatter={dateFormatter} />
 									<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} />
-									<ChartTooltip content={(props) => {
+									<ChartTooltip isAnimationActive={false} content={(props) => {
 										if (!props.active || !props.payload) return null;
 										const reversedPayload = [...props.payload].reverse();
 										return <ChartTooltipContent className="min-w-[180px]" active={props.active} payload={reversedPayload} label={props.label} labelFormatter={tooltipLabelFormatter} />;
@@ -335,12 +335,12 @@ function AdminDashboard() {
 					<CardHeader><CardTitle>Runs</CardTitle><CardDescription>7d: {totals.promptRuns7Days.toLocaleString()} | 30d: {totals.promptRuns30Days.toLocaleString()}</CardDescription></CardHeader>
 					<CardContent className="p-0 pb-4">
 						<ChartContainer config={{ count: { label: "Runs", color: "#8b5cf6" } }} className="h-[120px] w-full px-4">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 								<BarChart data={runsOverTime}>
 									<CartesianGrid strokeDasharray="3 3" vertical={false} />
 									<XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={30} tickFormatter={dateFormatter} />
 									<YAxis tickLine={false} axisLine={false} tickMargin={8} width={40} />
-									<ChartTooltip content={<ChartTooltipContent className="min-w-[180px]" labelFormatter={tooltipLabelFormatter} />} />
+									<ChartTooltip isAnimationActive={false} content={<ChartTooltipContent className="min-w-[180px]" labelFormatter={tooltipLabelFormatter} />} />
 									<Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
 								</BarChart>
 							</ResponsiveContainer>

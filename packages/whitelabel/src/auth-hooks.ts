@@ -43,10 +43,7 @@ function getManagementClient(): ManagementClient {
 
 async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetadata> {
 	const client = getManagementClient();
-	const userData = await client.users.get({
-		id: auth0UserId,
-		fields: "app_metadata",
-	});
+	const userData = await client.users.get(auth0UserId);
 	return (userData.data as { app_metadata?: Auth0AppMetadata })?.app_metadata ?? {};
 }
 

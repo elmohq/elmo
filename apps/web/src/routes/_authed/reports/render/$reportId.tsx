@@ -365,7 +365,7 @@ function ReportRenderPage() {
 	return (
 		<div className="max-w-4xl mx-auto p-6 print:pt-8">
 			{/* Header with White Label Branding */}
-			<div className="flex items-center justify-between mb-32">
+			<div className="flex items-center justify-between mb-32 print:mb-8">
 				<h1 className="text-3xl font-bold text-gray-900">AI Visibility Report</h1>
 				<div className="flex items-center space-x-3">
 					<Logo iconClassName="!size-6" textClassName="text-base font-semibold" />

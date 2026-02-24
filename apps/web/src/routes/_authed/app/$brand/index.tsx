@@ -552,6 +552,7 @@ function DashboardPage() {
 											tickFormatter={(value) => `${value}%`}
 										/>
 										<ChartTooltip
+											isAnimationActive={false}
 											cursor={false}
 											content={({ active, payload, label }) => {
 												if (!active || !payload?.length) return null;
@@ -640,6 +641,7 @@ function DashboardPage() {
 										tick={{ fontSize: 11 }}
 									/>
 									<ChartTooltip
+										isAnimationActive={false}
 										cursor={false}
 										content={({ active, payload, label }) => {
 											if (!active || !payload?.length) return null;

@@ -127,9 +127,9 @@ export function BaseChartPrint({
 					)}
 				</div>
 			)}
-			<div className="h-[300px] print:h-[250px] w-full">
-				<ResponsiveContainer width="100%" height="100%">
-					<BarChart data={sortedEntities} margin={{ top: 20, right: 0, left: 20, bottom: 0 }} barCategoryGap="20%">
+		<div className="h-[300px] w-full">
+			<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
+				<BarChart data={sortedEntities} margin={{ top: 20, right: 15, left: 20, bottom: 0 }} barCategoryGap="20%">
 						<XAxis
 							dataKey="name"
 							axisLine={false}
@@ -159,7 +159,7 @@ export function BaseChartPrint({
 								fontSize: 11,
 								fontWeight: "bold",
 								fill: "#374151",
-								formatter: (value: number) => `${value}%`,
+								formatter: (value: unknown) => `${value}%`,
 							}}
 						>
 							{sortedEntities.map((entry, index) => (

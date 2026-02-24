@@ -87,7 +87,7 @@ export function VisibilityBar({
 				
 				{showChart && (
 					<div className="w-24 h-6 hidden sm:block shrink-0">
-						<ResponsiveContainer width="100%" height="100%">
+						<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
 							<AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
 								<YAxis domain={[0, 100]} hide />
 								<Area

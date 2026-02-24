@@ -19,7 +19,6 @@
 		"strict": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true,
-		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
 			"@workspace/ui/*": ["../../packages/ui/src/*"]

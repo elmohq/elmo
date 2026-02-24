@@ -131,24 +131,24 @@ export function PromptChartPrint({
 	}
 
 	return (
-		<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
-			<CardHeader className="flex justify-between items-center px-3">
-				<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
-				<div className="flex items-center gap-2">
-					{lastBrandVisibility !== null && (
-						<Badge
-							variant={getBadgeVariant(lastBrandVisibility)}
-							className={`${getBadgeClassName(lastBrandVisibility)} print:text-xs`}
-						>
-							{lastBrandVisibility}% Visibility
-						</Badge>
-					)}
-				</div>
-			</CardHeader>
-			<Separator className="py-0 my-0" />
-			<CardContent className="p-0">
-				<BaseChartPrint data={chartData} brand={brand} competitors={selectedCompetitors} />
-			</CardContent>
+	<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
+		<CardHeader className="flex justify-between items-center px-3">
+			<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
+			<div className="flex items-center gap-2">
+				{lastBrandVisibility !== null && (
+					<Badge
+						variant={getBadgeVariant(lastBrandVisibility)}
+						className={`${getBadgeClassName(lastBrandVisibility)} print:text-xs`}
+					>
+						{lastBrandVisibility}% Visibility
+					</Badge>
+				)}
+			</div>
+		</CardHeader>
+		<Separator className="py-0 my-0" />
+		<CardContent className="p-0">
+			<BaseChartPrint data={chartData} brand={brand} competitors={selectedCompetitors} />
+		</CardContent>
 			<ChartDownloadFooter onDownload={handleDownload} isDownloading={isDownloading} />
 		</Card>
 	);

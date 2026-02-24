@@ -7,6 +7,10 @@
     "node": "24.x"
   },
   "pnpm": {
+    "overrides": {
+      "@types/react": "^19.2.14",
+      "@types/react-dom": "^19.2.3"
+    },
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",
       "core-js",
@@ -40,11 +44,11 @@
     "test:e2e": "bash e2e/run-local.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.0.6",
+    "@biomejs/biome": "2.4.4",
     "@changesets/cli": "^2.29.8",
-    "knip": "^5.81.0",
+    "knip": "^5.85.0",
     "tsx": "^4.21.0",
-    "turbo": "^2.8.9",
-    "typescript": "^5"
+    "turbo": "^2.8.10",
+    "typescript": "^5.9.3"
   }
 }
