@@ -26,8 +26,8 @@ import {
 
 interface Auth0AppMetadata {
 	elmo_orgs: Array<{ id: string; name: string }>;
-	elmo_report_generator_access: boolean;
-	elmo_admin: boolean;
+	elmo_report_generator_access?: boolean;
+	elmo_admin?: boolean;
 }
 
 let managementClient: ManagementClient | null = null;
@@ -39,8 +39,8 @@ const Auth0AppMetadataSchema = z.object({
 			name: z.string().min(1),
 		}),
 	),
-	elmo_report_generator_access: z.boolean(),
-	elmo_admin: z.boolean(),
+	elmo_report_generator_access: z.boolean().optional(),
+	elmo_admin: z.boolean().optional(),
 });
 
 const REVOKED_METADATA: Auth0AppMetadata = {
@@ -118,7 +118,7 @@ export async function syncAuth0User(
 
 	const flags = {
 		role: metadata.elmo_admin ? "admin" : "user",
-		hasReportGeneratorAccess: metadata.elmo_report_generator_access,
+		hasReportGeneratorAccess: metadata.elmo_report_generator_access ?? false,
 	};
 	await updateUserFlags(userId, flags);
 
