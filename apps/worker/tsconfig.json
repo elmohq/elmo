@@ -12,7 +12,8 @@
     "noEmit": true,
     "paths": {
       "@/*": ["./src/*", "../web/src/*"],
-      "@workspace/ui/*": ["../../packages/ui/src/*"]
+      "@workspace/ui/*": ["../../packages/ui/src/*"],
+      "@workspace/whitelabel/*": ["../../packages/whitelabel/src/*"]
     }
   },
   "include": [

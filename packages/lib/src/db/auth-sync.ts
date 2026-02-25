@@ -9,7 +9,7 @@
  * cross-package type mismatches from different drizzle-orm resolutions.
  */
 import { db } from "./db";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, inArray } from "drizzle-orm";
 import { organization, member, user, account } from "./schema";
 
 async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<string> {
@@ -69,6 +69,64 @@ export async function ensureMembership(
 		role,
 		createdAt: new Date(),
 	});
+}
+
+export interface SyncMembershipsResult {
+	added: string[];
+	removed: string[];
+}
+
+/**
+ * Reconciles a user's org memberships to match the given set of org IDs.
+ * Adds missing memberships and removes stale ones in a single transaction.
+ */
+export async function syncMemberships(
+	userId: string,
+	orgIds: string[],
+): Promise<SyncMembershipsResult> {
+	const added: string[] = [];
+	const removed: string[] = [];
+
+	await db.transaction(async (tx) => {
+		const existing = await tx
+			.select({ id: member.id, organizationId: member.organizationId })
+			.from(member)
+			.where(eq(member.userId, userId));
+
+		const existingOrgIds = new Set(existing.map((m) => m.organizationId));
+		const targetOrgIds = new Set(orgIds);
+
+		for (const orgId of orgIds) {
+			if (!existingOrgIds.has(orgId)) {
+				await tx.insert(member).values({
+					id: crypto.randomUUID(),
+					organizationId: orgId,
+					userId,
+					role: "member",
+					createdAt: new Date(),
+				});
+				added.push(orgId);
+			}
+		}
+
+		const stale = existing.filter((m) => !targetOrgIds.has(m.organizationId));
+		if (stale.length > 0) {
+			await tx.delete(member).where(inArray(member.id, stale.map((m) => m.id)));
+			removed.push(...stale.map((m) => m.organizationId));
+		}
+	});
+
+	return { added, removed };
+}
+
+/**
+ * Returns all users that have an Auth0 SSO account linked.
+ */
+export async function listAuth0Accounts(): Promise<{ userId: string; accountId: string }[]> {
+	return db
+		.select({ userId: account.userId, accountId: account.accountId })
+		.from(account)
+		.where(eq(account.providerId, "auth0-whitelabel"));
 }
 
 export async function updateUserFlags(

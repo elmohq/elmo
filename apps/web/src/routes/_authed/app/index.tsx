@@ -8,6 +8,7 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getDeployment } from "@/lib/config/server";
 import { requireAuthSession, listUserOrganizations } from "@/lib/auth/helpers";
+import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
@@ -18,8 +19,18 @@ const getOrganizations = createServerFn({ method: "GET" }).handler(async (): Pro
 	defaultOrgId?: string;
 }> => {
 	const session = await requireAuthSession();
-	const organizations = await listUserOrganizations(session.user.id);
 	const deployment = getDeployment();
+
+	if (deployment.mode === "whitelabel") {
+		// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
+		try {
+			await syncAuth0UserById(session.user.id);
+		} catch (error) {
+			console.error("[auth0-sync] Failed to sync user on /app load; continuing with cached memberships", error);
+		}
+	}
+
+	const organizations = await listUserOrganizations(session.user.id);
 	return {
 		organizations,
 		supportsMultiOrg: deployment.features.supportsMultiOrg,

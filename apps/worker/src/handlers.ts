@@ -2,6 +2,7 @@ import type { PgBoss } from "pg-boss";
 import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
 import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
+import { syncAuth0MembershipsJob, type SyncAuth0MembershipsData } from "./jobs/sync-auth0-memberships";
 
 /**
  * Register all job handlers with pg-boss.
@@ -31,9 +32,20 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	await boss.work<ScheduleMaintenanceData>(
 		"schedule-maintenance",
 		{
-			localConcurrency: 1, // Only one maintenance job at a time
+			localConcurrency: 1,
 		},
 		scheduleMaintenanceJob,
 	);
 	console.log("Registered handler: schedule-maintenance");
+
+	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
+		await boss.work<SyncAuth0MembershipsData>(
+			"sync-auth0-memberships",
+			{
+				localConcurrency: 1,
+			},
+			syncAuth0MembershipsJob,
+		);
+		console.log("Registered handler: sync-auth0-memberships");
+	}
 }

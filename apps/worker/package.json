@@ -13,6 +13,8 @@
     "@anthropic-ai/sdk": "^0.78.0",
     "@sentry/node": "^10.39.0",
     "@workspace/lib": "workspace:*",
+    "@workspace/whitelabel": "workspace:*",
+    "auth0": "^5.3.1",
     "ai": "^6.0.97",
     "dataforseo-client": "^2.0.19",
     "drizzle-orm": "^0.45.1",

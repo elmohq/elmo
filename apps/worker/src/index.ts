@@ -35,17 +35,33 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 30, // 30 minute timeout
 	});
+	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
+		await boss.createQueue("sync-auth0-memberships", {
+			retryLimit: 3,
+			retryDelay: 60,
+			retryBackoff: true,
+			expireInSeconds: 60 * 10,
+		});
+	}
 	console.log("Queues created");
 
-	// Set up recurring schedule for maintenance job
-	// Runs every 5 minutes to catch any orphaned prompts
 	await boss.schedule(
 		"schedule-maintenance",
-		"*/5 * * * *", // Every 5 minutes
+		"*/5 * * * *",
 		{ source: "scheduled" },
 		{ tz: "UTC" },
 	);
 	console.log("Scheduled maintenance job (every 5 minutes)");
+
+	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
+		await boss.schedule(
+			"sync-auth0-memberships",
+			"*/15 * * * *",
+			{ source: "scheduled" },
+			{ tz: "UTC" },
+		);
+		console.log("Scheduled Auth0 membership sync (every 15 minutes)");
+	}
 
 	// Register job handlers
 	await registerHandlers(boss);

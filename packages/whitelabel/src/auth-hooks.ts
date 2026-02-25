@@ -15,20 +15,39 @@
  * NOTE: This module is separately licensed from the core auth package.
  */
 import { ManagementClient } from "auth0";
+import { z } from "zod";
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import {
 	upsertOrganization,
-	ensureMembership,
+	syncMemberships,
 	updateUserFlags,
+	findAccountByProvider,
 } from "@workspace/lib/db/auth-sync";
 
 interface Auth0AppMetadata {
-	elmo_orgs?: Array<{ id: string; name: string }>;
-	elmo_report_generator_access?: boolean;
-	elmo_admin?: boolean;
+	elmo_orgs: Array<{ id: string; name: string }>;
+	elmo_report_generator_access: boolean;
+	elmo_admin: boolean;
 }
 
 let managementClient: ManagementClient | null = null;
+
+const Auth0AppMetadataSchema = z.object({
+	elmo_orgs: z.array(
+		z.object({
+			id: z.string().min(1),
+			name: z.string().min(1),
+		}),
+	),
+	elmo_report_generator_access: z.boolean(),
+	elmo_admin: z.boolean(),
+});
+
+const REVOKED_METADATA: Auth0AppMetadata = {
+	elmo_orgs: [],
+	elmo_report_generator_access: false,
+	elmo_admin: false,
+};
 
 function getManagementClient(): ManagementClient {
 	if (!managementClient) {
@@ -44,7 +63,20 @@ function getManagementClient(): ManagementClient {
 async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetadata> {
 	const client = getManagementClient();
 	const userData = await client.users.get(auth0UserId);
-	return (userData.data as { app_metadata?: Auth0AppMetadata })?.app_metadata ?? {};
+	const appMetadataRaw =
+		(userData as { app_metadata?: unknown }).app_metadata ??
+		(userData as { data?: { app_metadata?: unknown } }).data?.app_metadata;
+
+	const parsed = Auth0AppMetadataSchema.safeParse(appMetadataRaw);
+	if (!parsed.success) {
+		// Missing/malformed metadata in a successful Auth0 response revokes access by policy.
+		console.error(
+			`[auth0-sync] Invalid app_metadata for auth0UserId=${auth0UserId}; revoking access`,
+			parsed.error.issues,
+		);
+		return REVOKED_METADATA;
+	}
+	return parsed.data;
 }
 
 async function syncOrganizations(
@@ -53,7 +85,16 @@ async function syncOrganizations(
 ): Promise<void> {
 	for (const org of orgs) {
 		await upsertOrganization(org);
-		await ensureMembership(userId, org.id);
+	}
+	const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
+	const { added, removed } = await syncMemberships(userId, orgs.map((o) => o.id));
+	if (added.length > 0 || removed.length > 0) {
+		const parts: string[] = [];
+		if (added.length > 0) parts.push(`added=[${added.map((id) => orgNameById.get(id) ?? id).join(", ")}]`);
+		if (removed.length > 0) parts.push(`removed=[${removed.join(", ")}]`);
+		console.log(`[auth0-sync] user=${userId} ${parts.join(" ")}`);
+	} else {
+		console.log(`[auth0-sync] user=${userId} already in sync`);
 	}
 }
 
@@ -70,20 +111,30 @@ export async function syncAuth0User(
 	userId: string,
 	auth0UserId: string,
 ): Promise<{ role: string; hasReportGeneratorAccess: boolean }> {
+	console.log(`[auth0-sync] Syncing user=${userId}`);
 	const metadata = await fetchAuth0AppMetadata(auth0UserId);
 
-	await Promise.all([
-		syncOrganizations(userId, metadata.elmo_orgs ?? []),
-		updateUserFlags(userId, {
-			role: metadata.elmo_admin ? "admin" : "user",
-			hasReportGeneratorAccess: metadata.elmo_report_generator_access ?? false,
-		}),
-	]);
+	await syncOrganizations(userId, metadata.elmo_orgs);
 
-	return {
+	const flags = {
 		role: metadata.elmo_admin ? "admin" : "user",
-		hasReportGeneratorAccess: metadata.elmo_report_generator_access ?? false,
+		hasReportGeneratorAccess: metadata.elmo_report_generator_access,
 	};
+	await updateUserFlags(userId, flags);
+
+	return flags;
+}
+
+/**
+ * Syncs a user's Auth0 memberships by looking up their linked Auth0 account.
+ * Returns null if the user has no Auth0 account (non-SSO user).
+ */
+export async function syncAuth0UserById(
+	userId: string,
+): Promise<{ role: string; hasReportGeneratorAccess: boolean } | null> {
+	const acc = await findAccountByProvider(userId, (p) => p === "auth0-whitelabel");
+	if (!acc) return null;
+	return syncAuth0User(userId, acc.accountId);
 }
 
 /**
