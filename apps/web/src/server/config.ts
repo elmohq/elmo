@@ -7,9 +7,7 @@ import type { ClientConfig } from "@workspace/config/types";
 import { getEnvValidationState } from "@workspace/config/env";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
-	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl"> & {
-		onboardingRedirectUrl?: undefined;
-	};
+	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;
 };
 
 /**
@@ -29,10 +27,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 	return {
 		mode: deployment.mode,
 		features: deployment.features,
-		branding: {
-			...serializableBranding,
-			onboardingRedirectUrl: undefined,
-		},
+		branding: serializableBranding,
 		analytics: {
 			plausibleDomain: process.env.VITE_PLAUSIBLE_DOMAIN,
 			clarityProjectId: process.env.VITE_CLARITY_PROJECT_ID,

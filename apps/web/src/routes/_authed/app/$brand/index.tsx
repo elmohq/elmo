@@ -332,9 +332,9 @@ function DashboardPage() {
 				</div>
 				<PromptWizard
 					onComplete={() => {
-						const redirectUrl = clientConfig?.branding.onboardingRedirectUrl?.(brandId);
-						if (redirectUrl) {
-							window.location.href = redirectUrl;
+						const template = clientConfig?.branding.onboardingRedirectUrlTemplate;
+						if (template) {
+							window.location.href = template.replace("{brandId}", brandId);
 						}
 					}}
 				/>

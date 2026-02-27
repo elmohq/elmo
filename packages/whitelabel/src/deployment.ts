@@ -37,6 +37,7 @@ export function createWhitelabelDeployment(
 			parentName: env.VITE_APP_PARENT_NAME,
 			parentUrl: env.VITE_APP_PARENT_URL,
 			onboardingRedirectUrl: createOnboardingRedirectUrl(env.VITE_ONBOARDING_REDIRECT_URL_TEMPLATE),
+			onboardingRedirectUrlTemplate: env.VITE_ONBOARDING_REDIRECT_URL_TEMPLATE,
 			optimizationUrlTemplate: requireEnv("VITE_OPTIMIZATION_URL_TEMPLATE", env),
 			chartColors: DEFAULT_CHART_COLORS,
 		},

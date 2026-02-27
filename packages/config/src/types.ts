@@ -60,6 +60,8 @@ export interface BrandingConfig {
   parentUrl?: string;
   /** Callback to generate onboarding redirect URL with brandId (optional, redirects after PromptWizard completion) */
   onboardingRedirectUrl?: (brandId: string) => string | undefined;
+  /** Raw URL template for onboarding redirect with {brandId} placeholder (serializable, for client use) */
+  onboardingRedirectUrlTemplate?: string;
   /** URL template for optimization links with placeholders: {brandId}, {prompt}, {webQuery} (optional, whitelabel only) */
   optimizationUrlTemplate?: string;
   /** Chart color palette */
