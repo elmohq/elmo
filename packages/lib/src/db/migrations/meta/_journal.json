@@ -15,6 +15,20 @@
       "when": 1771495206934,
       "tag": "0001_sturdy_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773081311430,
+      "tag": "0002_legal_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773081457906,
+      "tag": "0003_phase3-constraints-and-indices",
+      "breakpoints": true
     }
   ]
 }

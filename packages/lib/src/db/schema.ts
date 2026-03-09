@@ -69,6 +69,7 @@ export const promptRuns = pgTable(
 		promptId: uuid("prompt_id")
 			.references(() => prompts.id)
 			.notNull(),
+		brandId: text("brand_id").references(() => brands.id),
 		modelGroup: modelGroupsEnum().notNull(),
 		model: text("model").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
@@ -83,6 +84,32 @@ export const promptRuns = pgTable(
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
 		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
 		webSearchModelGroupCreatedAtIdx: index("prompt_runs_web_search_model_group_created_at_idx").on(table.webSearchEnabled, table.modelGroup, table.createdAt),
+	}),
+).enableRLS();
+
+export const citations = pgTable(
+	"citations",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		promptRunId: uuid("prompt_run_id")
+			.references(() => promptRuns.id)
+			.notNull(),
+		promptId: uuid("prompt_id")
+			.references(() => prompts.id)
+			.notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
+		modelGroup: modelGroupsEnum().notNull(),
+		url: text("url").notNull(),
+		domain: text("domain").notNull(),
+		title: text("title"),
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+	},
+	(table) => ({
+		brandCreatedIdx: index("citations_brand_id_created_at_idx").on(table.brandId, table.createdAt),
+		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
+		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
 ).enableRLS();
 
@@ -122,6 +149,9 @@ export type BrandWithPrompts = Brand & {
 	prompts: Prompt[];
 	competitors: Competitor[];
 };
+
+export type CitationRecord = typeof citations.$inferSelect;
+export type NewCitationRecord = typeof citations.$inferInsert;
 
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;

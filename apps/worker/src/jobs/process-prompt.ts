@@ -1,6 +1,6 @@
 import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
+import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { AI_MODELS, DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
@@ -136,6 +136,7 @@ function analyzeMentions(
 
 async function savePromptRun(
 	promptId: string,
+	brandId: string,
 	modelGroup: "openai" | "anthropic" | "google",
 	model: string,
 	webSearchEnabled: boolean,
@@ -148,6 +149,7 @@ async function savePromptRun(
 		.insert(promptRuns)
 		.values({
 			promptId,
+			brandId,
 			modelGroup,
 			model,
 			webSearchEnabled,
@@ -159,6 +161,31 @@ async function savePromptRun(
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
 
 	return result;
+}
+
+async function saveCitations(
+	promptRunId: string,
+	promptId: string,
+	brandId: string,
+	modelGroup: "openai" | "anthropic" | "google",
+	rawOutput: unknown,
+	createdAt: Date,
+): Promise<void> {
+	const extracted = extractCitations(rawOutput, modelGroup);
+	if (extracted.length === 0) return;
+
+	await db.insert(citations).values(
+		extracted.map((c) => ({
+			promptRunId,
+			promptId,
+			brandId,
+			modelGroup,
+			url: c.url,
+			domain: c.domain,
+			title: c.title || null,
+			createdAt,
+		})),
+	);
 }
 
 async function sendToTinybird(
@@ -246,6 +273,7 @@ async function runModelIteration({
 	// Save to database
 	const { id: promptRunId, createdAt } = await savePromptRun(
 		promptId,
+		brand.id,
 		modelGroup,
 		model,
 		webSearchEnabled,
@@ -255,6 +283,9 @@ async function runModelIteration({
 		competitorsMentioned,
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+
+	// Save citations to Postgres
+	await saveCitations(promptRunId, promptId, brand.id, modelGroup, rawOutput, createdAt);
 
 	// Send to Tinybird
 	await sendToTinybird(

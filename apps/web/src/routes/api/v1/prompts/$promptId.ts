@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
@@ -149,14 +149,15 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 
 					await removePromptJobScheduler(promptId);
 
-					const result = await db.transaction(async (tx) => {
-						const deletedRuns = await tx
-							.delete(promptRuns)
-							.where(eq(promptRuns.promptId, promptId))
-							.returning({ id: promptRuns.id });
-						const deletedPrompt = await tx.delete(prompts).where(eq(prompts.id, promptId)).returning();
-						return { deletedRuns, deletedPrompt };
-					});
+				const result = await db.transaction(async (tx) => {
+					await tx.delete(citations).where(eq(citations.promptId, promptId));
+					const deletedRuns = await tx
+						.delete(promptRuns)
+						.where(eq(promptRuns.promptId, promptId))
+						.returning({ id: promptRuns.id });
+					const deletedPrompt = await tx.delete(prompts).where(eq(prompts.id, promptId)).returning();
+					return { deletedRuns, deletedPrompt };
+				});
 
 					return Response.json({
 						message: "Prompt deleted successfully",

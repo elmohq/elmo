@@ -17,6 +17,7 @@ import {
 interface PromptRunData {
 	id: string;
 	promptId: string;
+	brandId: string | null;
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
 	createdAt: Date;
