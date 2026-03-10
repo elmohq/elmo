@@ -44,10 +44,6 @@ declare global {
 			readonly ANTHROPIC_API_KEY: string;
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
-			readonly TINYBIRD_TOKEN: string;
-			readonly TINYBIRD_BASE_URL: string;
-			readonly TINYBIRD_WORKSPACE?: string;
-			readonly CLICKHOUSE_HOST?: string;
 			readonly BETTER_AUTH_SECRET?: string;
 			readonly DEFAULT_ORG_ID?: string;
 			readonly DEFAULT_ORG_NAME?: string;

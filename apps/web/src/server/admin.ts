@@ -65,9 +65,9 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		allBrands,
 		brandsOverTime,
 		promptsOverTime,
-		tinybirdRunsOverTime,
-		tinybirdBrandStats,
-		tinybirdActiveBrandsOverTime,
+		runsOverTimeData,
+		brandRunStats,
+		activeBrandsData,
 	] = await Promise.all([
 		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
@@ -111,7 +111,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 		getAdminActiveBrandsOverTime(),
 	]);
 
-	const brandRunStatsMap = new Map(tinybirdBrandStats.map((stat) => [stat.brand_id, stat]));
+	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
 
 	const brandStats = await Promise.all(
 		allBrands.map(async (brand) => {
@@ -153,12 +153,12 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	return {
 		brands: brandStats,
 		brandsOverTime,
-		activeBrandsOverTime: tinybirdActiveBrandsOverTime.map((row) => ({
+		activeBrandsOverTime: activeBrandsData.map((row) => ({
 			date: row.date,
 			count: row.count,
 		})),
 		promptsOverTime,
-		runsOverTime: tinybirdRunsOverTime.map((row) => ({
+		runsOverTime: runsOverTimeData.map((row) => ({
 			date: row.date,
 			count: row.count,
 		})),

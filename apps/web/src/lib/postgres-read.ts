@@ -1,11 +1,8 @@
 /**
- * Postgres read layer — drop-in replacement for tinybird-read-v2.ts
+ * Postgres analytics read layer.
  *
- * Exports the same function signatures and return types so server files
- * can switch imports without any other code changes.
- *
- * Requires Phase 1 (brand_id on prompt_runs, citations table) and
- * Phase 3 (covering indices) to be deployed for full performance.
+ * All analytics queries run against PostgreSQL with covering indices
+ * on prompt_runs and citations tables.
  */
 
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -13,46 +10,122 @@ import { sql, type SQL } from "drizzle-orm";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
-// Re-export all the same types so callers don't need to change imports
-export type {
-	DashboardSummary,
-	VisibilityTimeSeriesPoint,
-	PromptSummary,
-	PromptFirstEvaluatedAt,
-	PromptDailyStats,
-	PromptCompetitorDailyStats,
-	WebQueryMapping,
-	CitationDomainStats,
-	CitationUrlStats,
-	PromptMentionSummary,
-	TopCompetitorMention,
-	DailyCitationStats,
-	AdminRunsOverTime,
-	AdminBrandRunStats,
-	AdminActiveBrandsOverTime,
-	ProcessedBatchChartDataPoint,
-	BatchVisibilityData,
-} from "./tinybird-read-v2";
+// ============================================================================
+// Types
+// ============================================================================
 
-import type {
-	DashboardSummary,
-	VisibilityTimeSeriesPoint,
-	PromptSummary,
-	PromptFirstEvaluatedAt,
-	PromptDailyStats,
-	PromptCompetitorDailyStats,
-	WebQueryMapping,
-	CitationDomainStats,
-	CitationUrlStats,
-	PromptMentionSummary,
-	TopCompetitorMention,
-	DailyCitationStats,
-	AdminRunsOverTime,
-	AdminBrandRunStats,
-	AdminActiveBrandsOverTime,
-	ProcessedBatchChartDataPoint,
-	BatchVisibilityData,
-} from "./tinybird-read-v2";
+export interface DashboardSummary {
+	total_prompts: number;
+	total_runs: number;
+	avg_visibility: number;
+	non_branded_visibility: number;
+	last_updated: string | null;
+}
+
+export interface VisibilityTimeSeriesPoint {
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+	is_branded: boolean;
+}
+
+export interface PromptSummary {
+	prompt_id: string;
+	total_runs: number;
+	brand_mention_rate: number;
+	competitor_mention_rate: number;
+	total_weighted_mentions: number;
+	last_run_date: string | null;
+}
+
+export interface PromptFirstEvaluatedAt {
+	prompt_id: string;
+	first_evaluated_at: string;
+}
+
+export interface PromptDailyStats {
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+}
+
+export interface PromptCompetitorDailyStats {
+	date: string;
+	competitor_name: string;
+	mention_count: number;
+}
+
+export interface WebQueryMapping {
+	model_group: string;
+	web_query: string;
+	created_at_iso: string;
+}
+
+export interface CitationDomainStats {
+	domain: string;
+	count: number;
+	example_title: string | null;
+}
+
+export interface CitationUrlStats {
+	url: string;
+	domain: string;
+	title: string | null;
+	count: number;
+}
+
+export interface PromptMentionSummary {
+	total_runs: number;
+	brand_mentioned_count: number;
+	competitor_mentioned_count: number;
+}
+
+export interface TopCompetitorMention {
+	competitor_name: string;
+	mention_count: number;
+}
+
+export interface DailyCitationStats {
+	date: string;
+	domain: string;
+	count: number;
+}
+
+export interface ProcessedBatchChartDataPoint {
+	prompt_id: string;
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+	competitor_counts: Record<string, number>;
+}
+
+export interface BatchVisibilityData {
+	visibilityTimeSeries: Array<{
+		date: string;
+		total_runs: number;
+		brand_mentioned_count: number;
+		is_branded: boolean;
+	}>;
+	totalRuns: number;
+	totalMentioned: number;
+}
+
+export interface AdminRunsOverTime {
+	date: string;
+	count: number;
+}
+
+export interface AdminBrandRunStats {
+	brand_id: string;
+	runs_7d: number;
+	runs_30d: number;
+	last_run_at: string | null;
+}
+
+export interface AdminActiveBrandsOverTime {
+	date: string;
+	count: number;
+}
 
 // ============================================================================
 // Helpers
@@ -275,7 +348,7 @@ export async function getPromptWebQueriesForMapping(
 }
 
 // ============================================================================
-// Web Query Counts (replaces inline queryTinybird in prompts.ts)
+// Web Query Counts
 // ============================================================================
 
 export interface WebQueryCount {
@@ -674,16 +747,3 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 	return rows;
 }
 
-// ============================================================================
-// queryTinybird shim (for inline queries in prompts.ts)
-// ============================================================================
-
-export async function queryTinybird<T>(
-	_query: string,
-	_params?: Record<string, string | number | boolean | Date | string[]>,
-): Promise<T[]> {
-	throw new Error(
-		"queryTinybird() is not supported in postgres-read. " +
-		"Refactor the caller to use a dedicated function instead of inline ClickHouse SQL.",
-	);
-}

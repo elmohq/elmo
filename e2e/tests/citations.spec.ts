@@ -2,8 +2,7 @@
  * Citations Page E2E Tests
  *
  * Tests the citations page which shows citation statistics.
- * Since Tinybird is not running, this primarily tests that the page
- * loads and handles the error/empty state gracefully.
+ * Tests that the citations page loads and displays citation data.
  */
 import { test, expect } from "@playwright/test";
 

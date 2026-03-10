@@ -16,7 +16,6 @@
 		"ladle:build": "ladle build"
 	},
 	"dependencies": {
-		"@clickhouse/client": "^1.17.0",
 		"@tabler/icons-react": "^3.37.1",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.1",

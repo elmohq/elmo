@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import type { ProcessedBatchChartDataPoint } from "@/lib/tinybird-read-v2";
+import type { ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 import { generateDateRange } from "@/lib/chart-utils";
 

@@ -230,7 +230,6 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			})
 			.map((p) => p.id);
 
-		// Query Tinybird
 		const [visibilityData, citationData] = await Promise.all([
 			getVisibilityTimeSeries(
 				data.brandId,

@@ -129,7 +129,6 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.filter((p) => getEffectiveBrandedStatus(p.systemTags || [], p.tags || []).isBranded)
 			.map((p) => p.id);
 
-		// Query Tinybird for analytics data
 		const [summaryResult, visibilityData, citationData] = await Promise.all([
 			getDashboardSummary(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 			getVisibilityTimeSeries(data.brandId, fromDateStr, toDateStr, timezone, brandedPromptIds, enabledPromptIds),

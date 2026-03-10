@@ -72,9 +72,6 @@ RUN chmod +x /entrypoint.sh
 # Copy Nitro output - this is the entire server bundle
 COPY --from=builder --chown=elmo:nodejs /app/apps/web/.output ./.output
 
-# Create config directory for Tinybird token
-RUN mkdir -p /app/tinybird-config && chown elmo:nodejs /app/tinybird-config
-
 USER elmo
 
 EXPOSE 3000
@@ -105,8 +102,6 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 COPY --from=builder --chown=worker:nodejs /deploy/worker ./
-
-RUN mkdir -p /app/tinybird-config && chown worker:nodejs /app/tinybird-config
 
 USER worker
 

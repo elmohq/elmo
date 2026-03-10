@@ -39,7 +39,7 @@ elmo compose down
 - **Component Library**: shadcn/ui (new-york style)
 - **Data Fetching**: SWR
 - **Database**: Drizzle ORM with PostgreSQL
-- **Analytics**: Tinybird (time-series data)
+- **Analytics**: PostgreSQL with covering indices
 - **Queue**: BullMQ with Redis
 - **Testing**: Vitest
 - **Linting & Formatting**: Biome
@@ -59,8 +59,7 @@ elmo compose down
 │   │   │   ├── components/     # Application-specific components
 │   │   │   ├── hooks/          # Custom React hooks (use-*.tsx)
 │   │   │   └── lib/            # Utilities, config, helpers
-│   │   ├── scripts/            # CLI scripts for maintenance tasks
-│   │   └── tinybird/           # Tinybird datasources and pipes
+│   │   └── scripts/            # CLI scripts for maintenance tasks
 │   ├── cli/                    # @elmohq/cli - Published npm package
 │   └── worker/                 # Background job worker (BullMQ)
 │
@@ -74,9 +73,7 @@ elmo compose down
 │   ├── lib/                    # Shared business logic
 │   │   └── src/
 │   │       ├── db/             # Drizzle schema and migrations
-│   │       ├── ai-providers.ts # AI SDK configuration
-│   │       ├── queues.ts       # BullMQ queue definitions
-│   │       └── tinybird.ts     # Tinybird client
+│   │       └── ai-providers.ts # AI SDK configuration
 │   ├── config/                 # Type definitions for deployment
 │   ├── deployment/             # Deployment mode resolution
 │   ├── demo/                   # Demo mode implementation
@@ -209,7 +206,7 @@ elmo start
 ```
 
 The `elmo init` command:
-1. Prompts for configuration (database, Tinybird, AI credentials)
+1. Prompts for configuration (database, AI credentials)
 2. Generates `elmo.yaml` (Docker Compose file) with the appropriate services
 3. Generates `.env` with environment variables and secrets
 4. Optionally starts the stack immediately
@@ -218,7 +215,6 @@ The generated stack includes:
 - **web**: Tanstack Start application (port 1515)
 - **worker**: pg-boss background worker
 - **postgres**: PostgreSQL database (optional, can use external)
-- **tinybird**: Tinybird Local for analytics (optional, can use Tinybird Cloud)
 
 ### Development Builds
 
@@ -255,7 +251,6 @@ Key variables:
 - `DATABASE_URL` - PostgreSQL connection string
 - `DEPLOYMENT_MODE` - Deployment mode (local/demo/whitelabel)
 - `AUTH0_*` - Auth0 configuration (whitelabel mode)
-- `TINYBIRD_*` - Tinybird analytics
 - `UPSTASH_REDIS_*` - Redis for BullMQ
 
 See `turbo.json` for the full list of global environment variables used across the monorepo.

@@ -17,7 +17,6 @@ type GlobalConfig = {
 	dockerDir?: string;
 	dev?: boolean;
 	postgresMode?: PostgresMode;
-	tinybirdMode?: TinybirdMode;
 	repoRoot?: string;
 	updatedAt: string;
 };
@@ -40,7 +39,6 @@ type DirOption = {
 };
 
 type PostgresMode = "docker" | "external";
-type TinybirdMode = "docker" | "external";
 
 type EnvMap = Record<string, string>;
 
@@ -54,8 +52,6 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
-const LOCAL_TINYBIRD_URL = "http://tinybird:7181";
-const LOCAL_CLICKHOUSE_URL = "http://tinybird:7182";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -351,56 +347,6 @@ async function runInitInteractive(options: InitOptions): Promise<void> {
 		env.DATABASE_URL = LOCAL_DATABASE_URL;
 	}
 
-	const tinybirdMode = await p.select({
-		message: "Tinybird analytics",
-		options: [
-			{
-				value: "docker" as const,
-				label: "Run Tinybird Local in Docker",
-			},
-			{
-				value: "external" as const,
-				label: "Use Tinybird Cloud",
-			},
-		],
-		initialValue: "docker" as TinybirdMode,
-	});
-	assertNotCancelled(tinybirdMode);
-
-	if (tinybirdMode === "docker") {
-		env.TINYBIRD_BASE_URL = LOCAL_TINYBIRD_URL;
-		env.CLICKHOUSE_HOST = LOCAL_CLICKHOUSE_URL;
-		env.TINYBIRD_WORKSPACE = "default";
-	} else {
-		const tbUrl = await p.text({
-			message: "Tinybird base URL",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(tbUrl);
-		env.TINYBIRD_BASE_URL = tbUrl;
-
-		const tbToken = await p.text({
-			message: "Tinybird token",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(tbToken);
-		env.TINYBIRD_TOKEN = tbToken;
-
-		const tbWorkspace = await p.text({
-			message: "Tinybird workspace",
-			defaultValue: "default",
-		});
-		assertNotCancelled(tbWorkspace);
-		env.TINYBIRD_WORKSPACE = tbWorkspace;
-
-		const chHost = await p.text({
-			message: "ClickHouse host",
-			defaultValue: tbUrl,
-		});
-		assertNotCancelled(chHost);
-		env.CLICKHOUSE_HOST = chHost;
-	}
-
 	// ── AI providers ─────────────────────────────────────────────────────
 	const setOpenai = await p.confirm({
 		message: "Set OpenAI credentials?",
@@ -455,7 +401,6 @@ async function runInitInteractive(options: InitOptions): Promise<void> {
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
 		postgresMode,
-		tinybirdMode,
 		repoRoot,
 		dockerDir,
 	});
@@ -465,7 +410,6 @@ async function runInitInteractive(options: InitOptions): Promise<void> {
 		env,
 		composeYaml,
 		postgresMode,
-		tinybirdMode,
 		dev: Boolean(options.dev),
 	});
 	await writeGlobalConfig({
@@ -473,7 +417,6 @@ async function runInitInteractive(options: InitOptions): Promise<void> {
 		dockerDir,
 		dev: Boolean(options.dev),
 		postgresMode,
-		tinybirdMode,
 		repoRoot,
 	});
 
@@ -527,8 +470,6 @@ async function runInitCI(options: InitOptions): Promise<void> {
 	// Build env from defaults and env vars
 	const postgresMode: PostgresMode =
 		(process.env.ELMO_POSTGRES_MODE as PostgresMode) ?? "docker";
-	const tinybirdMode: TinybirdMode =
-		(process.env.ELMO_TINYBIRD_MODE as TinybirdMode) ?? "docker";
 
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
@@ -549,21 +490,6 @@ async function runInitCI(options: InitOptions): Promise<void> {
 		env.DATABASE_URL = LOCAL_DATABASE_URL;
 	}
 
-	if (tinybirdMode === "docker") {
-		env.TINYBIRD_BASE_URL = LOCAL_TINYBIRD_URL;
-		env.CLICKHOUSE_HOST = LOCAL_CLICKHOUSE_URL;
-		env.TINYBIRD_WORKSPACE = "default";
-	} else {
-		env.TINYBIRD_BASE_URL =
-			process.env.ELMO_TINYBIRD_BASE_URL ?? "";
-		env.TINYBIRD_TOKEN = process.env.ELMO_TINYBIRD_TOKEN ?? "";
-		env.TINYBIRD_WORKSPACE =
-			process.env.ELMO_TINYBIRD_WORKSPACE ?? "default";
-		env.CLICKHOUSE_HOST =
-			process.env.ELMO_CLICKHOUSE_HOST ??
-			env.TINYBIRD_BASE_URL;
-	}
-
 	// AI providers from env vars
 	if (process.env.ELMO_OPENAI_API_KEY) {
 		env.OPENAI_API_KEY = process.env.ELMO_OPENAI_API_KEY;
@@ -580,7 +506,6 @@ async function runInitCI(options: InitOptions): Promise<void> {
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
 		postgresMode,
-		tinybirdMode,
 		repoRoot,
 		dockerDir,
 	});
@@ -590,7 +515,6 @@ async function runInitCI(options: InitOptions): Promise<void> {
 		env,
 		composeYaml,
 		postgresMode,
-		tinybirdMode,
 		dev: Boolean(options.dev),
 	});
 	await writeGlobalConfig({
@@ -598,7 +522,6 @@ async function runInitCI(options: InitOptions): Promise<void> {
 		dockerDir,
 		dev: Boolean(options.dev),
 		postgresMode,
-		tinybirdMode,
 		repoRoot,
 	});
 
@@ -614,25 +537,18 @@ async function runRegen(options: DirOption): Promise<void> {
 	// Determine settings: prefer global config, fall back to detecting from files
 	let dev: boolean;
 	let postgresMode: PostgresMode;
-	let tinybirdMode: TinybirdMode;
 	let repoRoot: string;
 	let dockerDir: string | undefined;
 
-	if (
-		globalConfig?.postgresMode &&
-		globalConfig?.tinybirdMode
-	) {
+	if (globalConfig?.postgresMode) {
 		dev = globalConfig.dev ?? false;
 		postgresMode = globalConfig.postgresMode;
-		tinybirdMode = globalConfig.tinybirdMode;
 		repoRoot = globalConfig.repoRoot ?? process.cwd();
 		dockerDir = globalConfig.dockerDir;
 	} else {
-		// Fall back to detecting from existing files
 		const detected = await detectSettingsFromConfig(configDir);
 		dev = detected.dev;
 		postgresMode = detected.postgresMode;
-		tinybirdMode = detected.tinybirdMode;
 		repoRoot = detected.repoRoot;
 		dockerDir = detected.dockerDir;
 	}
@@ -640,7 +556,6 @@ async function runRegen(options: DirOption): Promise<void> {
 	const composeYaml = buildComposeYaml({
 		dev,
 		postgresMode,
-		tinybirdMode,
 		repoRoot,
 		dockerDir,
 	});
@@ -648,13 +563,11 @@ async function runRegen(options: DirOption): Promise<void> {
 	const composePath = path.join(configDir, "elmo.yaml");
 	await fs.writeFile(composePath, composeYaml, "utf8");
 
-	// Update global config with current settings
 	await writeGlobalConfig({
 		configDir,
 		dockerDir,
 		dev,
 		postgresMode,
-		tinybirdMode,
 		repoRoot,
 	});
 
@@ -797,7 +710,6 @@ async function runBuild(
 function buildComposeYaml(options: {
 	dev: boolean;
 	postgresMode: PostgresMode;
-	tinybirdMode: TinybirdMode;
 	repoRoot: string;
 	dockerDir?: string;
 }): string {
@@ -809,8 +721,6 @@ function buildComposeYaml(options: {
 
 	const dependencyConditions: Record<string, string> = {
 		postgres: "service_healthy",
-		tinybird: "service_healthy",
-		"tinybird-init": "service_completed_successfully",
 		"db-migrate": "service_completed_successfully",
 	};
 
@@ -834,16 +744,6 @@ function buildComposeYaml(options: {
 		volumes.add("postgres_data");
 	}
 
-	if (options.tinybirdMode === "docker") {
-		services.push(buildTinybirdService());
-		services.push(
-			buildTinybirdInitService({ repoRoot: options.repoRoot }),
-		);
-		dependsOnWeb.push("tinybird", "tinybird-init");
-		dependsOnWorker.push("tinybird", "tinybird-init");
-		volumes.add("tinybird_config");
-	}
-
 	services.push(
 		buildWebService({
 			dev: options.dev,
@@ -851,7 +751,6 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
-			includeTinybirdVolume: options.tinybirdMode === "docker",
 		}),
 	);
 	services.push(
@@ -861,7 +760,6 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
-			includeTinybirdVolume: options.tinybirdMode === "docker",
 		}),
 	);
 
@@ -919,59 +817,12 @@ function buildDbMigrateService(options: {
 	].join("\n");
 }
 
-function buildTinybirdService(): string {
-	return [
-		"tinybird:",
-		"  image: tinybirdco/tinybird-local:latest",
-		"  platform: linux/amd64",
-		"  restart: on-failure:2",
-		"  environment:",
-		'    COMPATIBILITY_MODE: "1"',
-		"  ports:",
-		'    - "7181:7181"',
-		'    - "7182:7182"',
-		"  stop_grace_period: 2s",
-		"  healthcheck:",
-		'    test: ["CMD", "curl", "-f", "http://localhost:7181/v0/health"]',
-		"    interval: 5s",
-		"    timeout: 5s",
-		"    retries: 30",
-		"    start_period: 60s",
-	].join("\n");
-}
-
-function buildTinybirdInitService(options: {
-	repoRoot: string;
-}): string {
-	return [
-		"tinybird-init:",
-		"  image: tinybirdco/tinybird-cli-docker:latest",
-		"  volumes:",
-		"    - tinybird_config:/config",
-		`    - ${options.repoRoot}/tinybird:/schema:ro`,
-		"  depends_on:",
-		"    tinybird:",
-		"      condition: service_healthy",
-		'  entrypoint: ["/bin/sh", "-c"]',
-		"  command:",
-		"    - |",
-		'      echo "Fetching Tinybird token..."',
-		"      TOKEN=$$(python3 -c \"import urllib.request,json; print(json.loads(urllib.request.urlopen('http://tinybird:7181/tokens').read())['workspace_admin_token'])\")",
-		'      echo "TINYBIRD_TOKEN=$$TOKEN" > /config/tinybird.env',
-		'      echo "Token saved."',
-		'      echo "Deploying Tinybird schema..."',
-		"      cd /schema && tb --host http://tinybird:7181 --token $$TOKEN push --force",
-		'      echo "Tinybird schema deployed."',
-	].join("\n");
-}
-
 function buildWebService(options: {
 	dev: boolean;
 	dependsOn: string[];
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
-	includeTinybirdVolume: boolean;
 }): string {
 	const lines = ["web:"];
 	if (options.dev) {
@@ -995,13 +846,6 @@ function buildWebService(options: {
 		'    - "1515:3000"',
 	);
 
-	if (options.includeTinybirdVolume) {
-		lines.push(
-			"  volumes:",
-			"    - tinybird_config:/app/tinybird-config:ro",
-		);
-	}
-
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
 		for (const service of options.dependsOn) {
@@ -1024,7 +868,6 @@ function buildWorkerService(options: {
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
-	includeTinybirdVolume: boolean;
 }): string {
 	const lines = ["worker:"];
 	if (options.dev) {
@@ -1045,13 +888,6 @@ function buildWorkerService(options: {
 		"    - path: .env",
 		"      required: true",
 	);
-
-	if (options.includeTinybirdVolume) {
-		lines.push(
-			"  volumes:",
-			"    - tinybird_config:/app/tinybird-config:ro",
-		);
-	}
 
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
@@ -1142,9 +978,6 @@ function isServiceReady(service: ComposeService): boolean {
 	}
 	if (service.State?.startsWith("running")) {
 		return true;
-	}
-	if (service.Service === "tinybird-init") {
-		return service.ExitCode === 0;
 	}
 	return false;
 }
@@ -1371,7 +1204,6 @@ async function writeGlobalConfig(config: {
 	dockerDir?: string;
 	dev?: boolean;
 	postgresMode?: PostgresMode;
-	tinybirdMode?: TinybirdMode;
 	repoRoot?: string;
 }): Promise<void> {
 	const globalConfig: GlobalConfig = {
@@ -1392,7 +1224,6 @@ async function writeConfigFiles(
 		env: EnvMap;
 		composeYaml: string;
 		postgresMode: PostgresMode;
-		tinybirdMode: TinybirdMode;
 		dev: boolean;
 	},
 ): Promise<void> {
@@ -1443,7 +1274,6 @@ async function detectSettingsFromConfig(
 ): Promise<{
 	dev: boolean;
 	postgresMode: PostgresMode;
-	tinybirdMode: TinybirdMode;
 	repoRoot: string;
 	dockerDir?: string;
 }> {
@@ -1454,12 +1284,7 @@ async function detectSettingsFromConfig(
 		env.DATABASE_URL?.includes("postgres:5432")
 			? "docker"
 			: "external";
-	const tinybirdMode: TinybirdMode =
-		env.TINYBIRD_BASE_URL?.includes("tinybird:7181")
-			? "docker"
-			: "external";
 
-	// Check if elmo.yaml has build contexts (dev mode)
 	const yamlPath = path.join(configDir, "elmo.yaml");
 	let dev = false;
 	let repoRoot = process.cwd();
@@ -1477,7 +1302,7 @@ async function detectSettingsFromConfig(
 		// Use defaults
 	}
 
-	return { dev, postgresMode, tinybirdMode, repoRoot };
+	return { dev, postgresMode, repoRoot };
 }
 
 async function readEnvFile(envPath: string): Promise<EnvMap> {

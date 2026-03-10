@@ -139,7 +139,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		// Query Tinybird for citation stats
 		const [domainStats, urlStats] = await Promise.all([
 			getCitationDomainStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),

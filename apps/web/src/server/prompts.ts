@@ -9,7 +9,6 @@ import { db } from "@workspace/lib/db/db";
 import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
 import {
-	queryTinybird,
 	getPromptsSummary,
 	getPromptsFirstEvaluatedAt,
 	getPromptCitationStats,
@@ -17,7 +16,8 @@ import {
 	getPromptDailyStats,
 	getPromptCompetitorDailyStats,
 	getPromptWebQueriesForMapping,
-} from "@/lib/tinybird-read-v2";
+	getPromptWebQueryCounts,
+} from "@/lib/postgres-read";
 import { generateDateRange } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
@@ -131,7 +131,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		// Parse webSearchEnabled
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
-		// Get stats from Tinybird
 		const [summaryData, firstEvaluatedData] = await Promise.all([
 			getPromptsSummary(
 				data.brandId,
@@ -417,7 +416,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				: 0,
 		};
 
-		// ---- Citation stats from Tinybird ----
+		// ---- Citation stats ----
 		let citationStats = undefined;
 		const [brandInfo, competitorsList] = await Promise.all([
 			db.select({ website: brands.website }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
@@ -690,7 +689,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
-		// Get stats from Tinybird
 		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
 			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
 			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),

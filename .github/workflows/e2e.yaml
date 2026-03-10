@@ -104,23 +104,6 @@ jobs:
           docker compose -f e2e/.elmo/elmo.yaml logs
           exit 1
 
-      - name: Fetch Tinybird token
-        run: |
-          echo "Fetching Tinybird token from http://localhost:7181..."
-          for i in $(seq 1 30); do
-            TOKEN=$(curl -sf http://localhost:7181/tokens 2>/dev/null \
-              | python3 -c "import sys,json; print(json.load(sys.stdin).get('workspace_admin_token',''))" 2>/dev/null || echo "")
-            if [ -n "$TOKEN" ]; then
-              echo "TINYBIRD_TOKEN=$TOKEN" >> "$GITHUB_ENV"
-              echo "TINYBIRD_BASE_URL=http://localhost:7181" >> "$GITHUB_ENV"
-              echo "Tinybird token acquired."
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "ERROR: Could not fetch Tinybird token."
-          exit 1
-
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 

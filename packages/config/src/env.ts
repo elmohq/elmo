@@ -85,18 +85,6 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 		description: "DataForSEO password.",
 		isSatisfied: requireAll(["DATAFORSEO_PASSWORD"]),
 	},
-	{
-		id: "TINYBIRD_TOKEN",
-		label: "TINYBIRD_TOKEN",
-		description: "Tinybird API token.",
-		isSatisfied: requireAll(["TINYBIRD_TOKEN"]),
-	},
-	{
-		id: "TINYBIRD_BASE_URL",
-		label: "TINYBIRD_BASE_URL",
-		description: "Tinybird base URL.",
-		isSatisfied: requireAll(["TINYBIRD_BASE_URL"]),
-	},
 ];
 
 /**

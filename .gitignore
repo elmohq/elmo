@@ -56,9 +56,6 @@ e2e/.auth/
 *.tsbuildinfo
 next-env.d.ts
 
-# tinybird
-.tinyb
-
 # to remove
 prompt_runs.ndjson.gz
 prompt_runs_rows.csv

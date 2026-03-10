@@ -4,13 +4,6 @@ import { brands, citations, competitors, promptRuns, prompts, type Brand, type C
 import { eq } from "drizzle-orm";
 import { AI_MODELS, DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
-import {
-	ingestPromptRuns,
-	ingestPromptRunsV2,
-	ingestToTinybird,
-	type TinybirdCitationItem,
-	type TinybirdPromptRunEvent,
-} from "@workspace/lib/tinybird";
 import { extractCitations } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 
@@ -189,47 +182,6 @@ async function saveCitations(
 	);
 }
 
-async function sendToTinybird(
-	promptRunId: string,
-	promptId: string,
-	brandId: string,
-	modelGroup: "openai" | "anthropic" | "google",
-	model: string,
-	webSearchEnabled: boolean,
-	rawOutput: unknown,
-	webQueries: string[],
-	brandMentioned: boolean,
-	competitorsMentioned: string[],
-	textContent: string,
-	createdAt: Date,
-): Promise<void> {
-	const extractedCitations = extractCitations(rawOutput, modelGroup);
-	const citations: TinybirdCitationItem[] = extractedCitations.map((c) => ({
-		url: c.url,
-		domain: c.domain,
-		title: c.title || null,
-	}));
-
-	const event: TinybirdPromptRunEvent = {
-		id: promptRunId,
-		prompt_id: promptId,
-		brand_id: brandId,
-		model_group: modelGroup,
-		model: model,
-		web_search_enabled: webSearchEnabled ? 1 : 0,
-		brand_mentioned: brandMentioned ? 1 : 0,
-		competitors_mentioned: competitorsMentioned,
-		web_queries: webQueries,
-		text_content: textContent,
-		raw_output: JSON.stringify(rawOutput),
-		citations: citations,
-		created_at: createdAt.toISOString(),
-		competitor_count: competitorsMentioned.length,
-		has_competitor_mention: competitorsMentioned.length > 0 ? 1 : 0,
-	};
-
-	await Promise.all([ingestToTinybird(ingestPromptRuns, [event]), ingestToTinybird(ingestPromptRunsV2, [event])]);
-}
 
 async function runModelIteration({
 	promptId,
@@ -285,25 +237,7 @@ async function runModelIteration({
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	// Save citations to Postgres
 	await saveCitations(promptRunId, promptId, brand.id, modelGroup, rawOutput, createdAt);
-
-	// Send to Tinybird
-	await sendToTinybird(
-		promptRunId,
-		promptId,
-		brand.id,
-		modelGroup,
-		model,
-		webSearchEnabled,
-		rawOutput,
-		webQueries,
-		brandMentioned,
-		competitorsMentioned,
-		safeTextContent,
-		createdAt,
-	);
-	console.log(`${logPrefix} Sent to Tinybird`);
 }
 
 /**

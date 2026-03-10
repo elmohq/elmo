@@ -2,24 +2,15 @@
  * E2E Test Database Seeder
  *
  * Seeds the LOCAL test database with realistic fixture data for E2E testing.
- * Uses raw SQL via pg for Postgres, and the Tinybird Events API for analytics.
  *
- * SAFETY: Database and Tinybird URLs are hardcoded to localhost to prevent
+ * SAFETY: Database URL is hardcoded to localhost to prevent
  * accidentally running this against a production database (it DELETEs all data).
  *
- * Usage: TINYBIRD_TOKEN=... tsx seed.ts
+ * Usage: tsx seed.ts
  */
 import pg from "pg";
 
-// Hardcoded to localhost — NEVER change these to point at a remote database.
 const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
-const TINYBIRD_BASE_URL = "http://localhost:7181";
-const TINYBIRD_TOKEN = process.env.TINYBIRD_TOKEN;
-
-if (!TINYBIRD_TOKEN) {
-  console.error("TINYBIRD_TOKEN environment variable is required");
-  process.exit(1);
-}
 
 // ---------------------------------------------------------------------------
 // Fixed IDs for test fixtures (so tests can reference them directly)
@@ -319,11 +310,12 @@ async function seed() {
 
     for (const run of promptRuns) {
       await client.query(
-        `INSERT INTO prompt_runs (id, prompt_id, "modelGroup", model, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        `INSERT INTO prompt_runs (id, prompt_id, brand_id, "modelGroup", model, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           run.id,
           run.promptId,
+          TEST_BRAND_ID,
           run.modelGroup,
           run.model,
           run.webSearchEnabled,
@@ -338,54 +330,31 @@ async function seed() {
     console.log(`  Created ${promptRuns.length} prompt runs (Postgres)`);
 
     // -----------------------------------------------------------------------
-    // 5. Ingest prompt runs into ClickHouse (Tinybird) for analytics
-    //    The UI reads visibility, citations, and chart data from ClickHouse.
+    // 5. Insert citations into Postgres
     // -----------------------------------------------------------------------
-    console.log("  Ingesting into ClickHouse (Tinybird)...");
-
-    // Format events to match the Tinybird datasource JSON schema mappings
-    // (e.g., `json:$.citations[:].url` expects nested objects, not flat keys)
-    const tbEvents = promptRuns.map((run) => ({
-      id: run.id,
-      prompt_id: run.promptId,
-      brand_id: TEST_BRAND_ID,
-      model_group: run.modelGroup,
-      model: run.model,
-      web_search_enabled: run.webSearchEnabled ? 1 : 0,
-      brand_mentioned: run.brandMentioned ? 1 : 0,
-      competitors_mentioned: run.competitorsMentioned,
-      web_queries: run.webQueries,
-      text_content: run.textContent,
-      raw_output: JSON.stringify(run.rawOutput),
-      citations: run.citations, // nested objects: [{url, domain, title}, ...]
-      created_at: run.createdAt.toISOString(),
-      competitor_count: run.competitorsMentioned.length,
-      has_competitor_mention: run.competitorsMentioned.length > 0 ? 1 : 0,
-    }));
-
-    const ndjson = tbEvents.map((e) => JSON.stringify(e)).join("\n");
-
-    // Use the Tinybird Events API — the documented ingestion endpoint
-    const resp = await fetch(
-      `${TINYBIRD_BASE_URL}/v0/events?name=prompt_runs_v2`,
-      {
-        method: "POST",
-        body: ndjson,
-        headers: {
-          "Authorization": `Bearer ${TINYBIRD_TOKEN}`,
-          "Content-Type": "application/x-ndjson",
-        },
-      },
-    );
-
-    const respBody = await resp.text();
-    if (!resp.ok) {
-      throw new Error(`Tinybird Events API failed (${resp.status}): ${respBody}`);
+    let citationCount = 0;
+    for (const run of promptRuns) {
+      for (let i = 0; i < run.citations.length; i++) {
+        const c = run.citations[i];
+        await client.query(
+          `INSERT INTO citations (prompt_run_id, prompt_id, brand_id, "modelGroup", url, domain, title, citation_index, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            run.id,
+            run.promptId,
+            TEST_BRAND_ID,
+            run.modelGroup,
+            c.url,
+            c.domain,
+            c.title,
+            i,
+            run.createdAt,
+          ]
+        );
+        citationCount++;
+      }
     }
-
-    console.log(`  Tinybird response: ${respBody.trim()}`);
-    console.log(`  Ingested ${tbEvents.length} prompt runs into ClickHouse`);
-    console.log(`  (citations_v2 auto-populated via materialized view)`);
+    console.log(`  Created ${citationCount} citations (Postgres)`);
 
     console.log("\nE2E database seeding complete!");
     console.log(`  Brand: ${TEST_BRAND_ID} (${TEST_BRAND_NAME})`);
