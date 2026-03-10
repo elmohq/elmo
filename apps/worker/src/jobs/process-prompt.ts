@@ -183,6 +183,7 @@ async function saveCitations(
 			url: c.url,
 			domain: c.domain,
 			title: c.title || null,
+			citationIndex: c.citationIndex,
 			createdAt,
 		})),
 	);

@@ -97,13 +97,14 @@ export type Citation = {
 	url: string;
 	title?: string;
 	domain: string;
+	citationIndex: number;
 };
 
 export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
+		let idx = 0;
 		
-		// For OpenAI Responses API, check the output array for message content with annotations
 		if (rawOutput && rawOutput.output && Array.isArray(rawOutput.output)) {
 			const messageOutputs = rawOutput.output.filter((item: any) => item.type === "message");
 			
@@ -118,10 +119,11 @@ export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
 										citations.push({
 											url: annotation.url,
 											title: annotation.title || undefined,
-											domain: url.hostname.replace(/^www\./, '')
+											domain: url.hostname.replace(/^www\./, ''),
+											citationIndex: idx,
 										});
+										idx++;
 									} catch (e) {
-										// Invalid URL, skip
 										console.warn("Invalid citation URL:", annotation.url);
 									}
 								}
@@ -142,8 +144,8 @@ export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
 export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
+		let idx = 0;
 		
-		// DataForSEO structure
 		if (rawOutput && rawOutput.tasks && rawOutput.tasks.length > 0) {
 			const task = rawOutput.tasks[0];
 			if (task.result && task.result.length > 0) {
@@ -152,7 +154,6 @@ export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
 				const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
 				
 				for (const aiOverview of aiOverviewItems) {
-					// Check if there are references in the AI overview
 					if (aiOverview.references && Array.isArray(aiOverview.references)) {
 						for (const ref of aiOverview.references) {
 							if (ref.url) {
@@ -161,8 +162,10 @@ export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
 									citations.push({
 										url: ref.url,
 										title: ref.title || undefined,
-										domain: url.hostname.replace(/^www\./, '')
+										domain: url.hostname.replace(/^www\./, ''),
+										citationIndex: idx,
 									});
+									idx++;
 								} catch (e) {
 									console.warn("Invalid citation URL:", ref.url);
 								}

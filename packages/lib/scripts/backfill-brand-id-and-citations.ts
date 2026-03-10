@@ -2,12 +2,14 @@
 /**
  * Backfill script for Phase 2 of the Tinybird-to-Postgres migration.
  *
- * 1. Backfills `brand_id` on `prompt_runs` rows where it's NULL.
- * 2. Backfills the `citations` table from `raw_output` JSON for rows
- *    that don't yet have citations extracted.
+ * 1. Backfills `brand_id` on `prompt_runs` rows where it's NULL (single UPDATE).
+ * 2. Backfills the `citations` table entirely in SQL using jsonb_array_elements
+ *    to extract citation data from raw_output — no data leaves the database.
  *
- * Safe to run while the worker is live — uses batched updates with
- * cursor-based pagination. Idempotent and restartable.
+ * Safe to run while the worker is live. Idempotent and restartable.
+ *
+ * Requires a writable database connection — set BACKFILL_DATABASE_URL,
+ * DIRECT_DATABASE_URL, or DATABASE_URL (checked in that order).
  *
  * Usage:
  *   pnpm tsx --env-file=.env scripts/backfill-brand-id-and-citations.ts
@@ -18,21 +20,27 @@
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import { sql } from "drizzle-orm";
-import { extractCitations } from "../src/text-extraction";
 
-const BRAND_ID_BATCH_SIZE = 5000;
-const CITATIONS_BATCH_SIZE = 500;
-const PAUSE_BETWEEN_BATCHES_MS = 100;
+const SQL_BATCH_SIZE = 10_000;
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 const brandIdOnly = args.includes("--brand-id-only");
 const citationsOnly = args.includes("--citations-only");
 
-const db = drizzle(process.env.DATABASE_URL!);
+const connectionString =
+	process.env.BACKFILL_DATABASE_URL ??
+	process.env.DIRECT_DATABASE_URL ??
+	process.env.DATABASE_URL;
 
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+if (!connectionString) {
+	throw new Error("BACKFILL_DATABASE_URL, DIRECT_DATABASE_URL, or DATABASE_URL is required");
+}
+
+const db = drizzle(connectionString);
+
+function redactConnectionString(value: string): string {
+	return value.replace(/:[^@]+@/, ":***@");
 }
 
 let interrupted = false;
@@ -41,161 +49,280 @@ process.on("SIGINT", () => {
 	interrupted = true;
 });
 
+async function assertWritableConnection(): Promise<void> {
+	const { rows } = await db.execute<{ transaction_read_only: string }>(
+		sql`SHOW transaction_read_only`,
+	);
+	const isReadOnly = rows[0]?.transaction_read_only === "on";
+
+	if (isReadOnly && !dryRun) {
+		throw new Error(
+			[
+				"Connected database session is read-only.",
+				"Use a writable primary connection, e.g. set BACKFILL_DATABASE_URL or DIRECT_DATABASE_URL.",
+				`Current connection: ${redactConnectionString(connectionString)}`,
+			].join(" "),
+		);
+	}
+
+	console.log(`  transaction_read_only: ${rows[0]?.transaction_read_only ?? "unknown"}`);
+}
+
+// ============================================================================
+// brand_id backfill — single UPDATE
+// ============================================================================
+
 async function backfillBrandId(): Promise<void> {
 	console.log("\n=== Backfilling brand_id on prompt_runs ===");
 
-	const [{ count: totalNull }] = await db.execute<{ count: number }>(
+	const { rows: [{ count: totalNull }] } = await db.execute<{ count: number }>(
 		sql`SELECT count(*)::int as count FROM prompt_runs WHERE brand_id IS NULL`,
 	);
 	console.log(`Rows with NULL brand_id: ${totalNull}`);
-
-	if (dryRun) {
-		console.log("[DRY RUN] Would update these rows. Exiting.");
-		return;
-	}
 
 	if (totalNull === 0) {
 		console.log("Nothing to backfill.");
 		return;
 	}
 
-	let updated = 0;
-	let batchNum = 0;
-
-	while (!interrupted) {
-		const result = await db.execute<{ updated_count: number }>(sql`
-			WITH batch AS (
-				SELECT pr.id
-				FROM prompt_runs pr
-				WHERE pr.brand_id IS NULL
-				LIMIT ${BRAND_ID_BATCH_SIZE}
-			)
-			UPDATE prompt_runs
-			SET brand_id = p.brand_id
-			FROM prompts p, batch
-			WHERE prompt_runs.id = batch.id
-			  AND prompt_runs.prompt_id = p.id
-			RETURNING 1 as updated_count
-		`);
-
-		const batchUpdated = result.length;
-		if (batchUpdated === 0) break;
-
-		updated += batchUpdated;
-		batchNum++;
-		console.log(`  Batch ${batchNum}: updated ${batchUpdated} rows (total: ${updated}/${totalNull})`);
-
-		await sleep(PAUSE_BETWEEN_BATCHES_MS);
-	}
-
-	console.log(`brand_id backfill complete: ${updated} rows updated.`);
-}
-
-async function backfillCitations(): Promise<void> {
-	console.log("\n=== Backfilling citations table ===");
-
-	const [{ count: totalRuns }] = await db.execute<{ count: number }>(
-		sql`SELECT count(*)::int as count FROM prompt_runs`,
-	);
-	const [{ count: existingCitations }] = await db.execute<{ count: number }>(
-		sql`SELECT count(DISTINCT prompt_run_id)::int as count FROM citations`,
-	);
-	console.log(`Total prompt_runs: ${totalRuns}`);
-	console.log(`Prompt runs with citations already extracted: ${existingCitations}`);
-
 	if (dryRun) {
-		console.log(`[DRY RUN] Would process up to ${totalRuns - existingCitations} rows. Exiting.`);
+		console.log("[DRY RUN] Would update these rows. Exiting.");
 		return;
 	}
 
-	let processed = 0;
-	let citationsInserted = 0;
-	let cursor = "00000000-0000-0000-0000-000000000000";
+	console.log("Running single UPDATE...");
+	const start = performance.now();
 
-	while (!interrupted) {
-		const rows = await db.execute<{
-			id: string;
-			prompt_id: string;
-			brand_id: string;
-			modelGroup: string;
-			raw_output: unknown;
-			created_at: string;
-		}>(sql`
-			SELECT pr.id, pr.prompt_id, pr.brand_id, pr."modelGroup", pr.raw_output, pr.created_at
-			FROM prompt_runs pr
-			WHERE pr.id > ${cursor}
-			  AND pr.brand_id IS NOT NULL
-			  AND NOT EXISTS (
-			    SELECT 1 FROM citations c WHERE c.prompt_run_id = pr.id
-			  )
-			ORDER BY pr.id
-			LIMIT ${CITATIONS_BATCH_SIZE}
-		`);
+	const { rows } = await db.execute<{ count: number }>(sql`
+		WITH updated AS (
+			UPDATE prompt_runs
+			SET brand_id = p.brand_id
+			FROM prompts p
+			WHERE prompt_runs.prompt_id = p.id
+			  AND prompt_runs.brand_id IS NULL
+			RETURNING 1
+		)
+		SELECT count(*)::int AS count FROM updated
+	`);
 
-		if (rows.length === 0) break;
+	const elapsed = Math.round(performance.now() - start);
+	console.log(`brand_id backfill complete: ${rows[0].count} rows updated in ${elapsed}ms.`);
+}
 
-		const citationValues: Array<{
-			promptRunId: string;
-			promptId: string;
-			brandId: string;
-			modelGroup: string;
-			url: string;
-			domain: string;
-			title: string | null;
-			createdAt: Date;
-		}> = [];
+// ============================================================================
+// citations backfill — batched pure-SQL, no data leaves the database
+// ============================================================================
 
-		for (const row of rows) {
-			const extracted = extractCitations(row.raw_output, row.modelGroup);
-			for (const c of extracted) {
-				citationValues.push({
-					promptRunId: row.id,
-					promptId: row.prompt_id,
-					brandId: row.brand_id,
-					modelGroup: row.modelGroup,
-					url: c.url,
-					domain: c.domain,
-					title: c.title || null,
-					createdAt: new Date(row.created_at),
-				});
-			}
-			cursor = row.id;
-		}
+async function findResumeCursor(modelGroup: string): Promise<string> {
+	const { rows } = await db.execute<{ max_id: string }>(sql`
+		SELECT prompt_run_id::text as max_id
+		FROM citations
+		WHERE "modelGroup" = ${modelGroup}::model_groups
+		ORDER BY prompt_run_id DESC
+		LIMIT 1
+	`);
+	return rows[0]?.max_id ?? "00000000-0000-0000-0000-000000000000";
+}
 
-		if (citationValues.length > 0) {
-			const valueSets = citationValues.map(
-				(v) =>
-					sql`(gen_random_uuid(), ${v.promptRunId}, ${v.promptId}, ${v.brandId}, ${v.modelGroup}::model_groups, ${v.url}, ${v.domain}, ${v.title}, ${v.createdAt})`,
-			);
+async function backfillOpenAIBatch(cursor: string): Promise<{ inserted: number; batchSize: number; nextCursor: string | null }> {
+	const { rows: [result] } = await db.execute<{ inserted_count: number; batch_size: number; max_id: string | null }>(sql`
+		WITH batch_runs AS (
+			SELECT id, prompt_id, brand_id, "modelGroup", raw_output, created_at
+			FROM prompt_runs
+			WHERE "modelGroup" = 'openai'
+				AND brand_id IS NOT NULL
+				AND id > ${cursor}::uuid
+			ORDER BY id
+			LIMIT ${SQL_BATCH_SIZE}
+		),
+		inserted AS (
+			INSERT INTO citations (id, prompt_run_id, prompt_id, brand_id, "modelGroup", url, domain, title, citation_index, created_at)
+			SELECT
+				gen_random_uuid(),
+				pr.id,
+				pr.prompt_id,
+				pr.brand_id,
+				pr."modelGroup",
+				annotation->>'url',
+				regexp_replace(
+					split_part(split_part(annotation->>'url', '://', 2), '/', 1),
+					'^www\.', '', 'i'
+				),
+				NULLIF(annotation->>'title', ''),
+				(row_number() OVER (PARTITION BY pr.id ORDER BY content_idx, ann_idx)) - 1,
+				pr.created_at
+			FROM batch_runs pr,
+				jsonb_array_elements(pr.raw_output::jsonb->'output') WITH ORDINALITY AS output_item(val, idx),
+				jsonb_array_elements(output_item.val->'content') WITH ORDINALITY AS content_item(val, content_idx),
+				jsonb_array_elements(content_item.val->'annotations') WITH ORDINALITY AS annotation_item(val, ann_idx),
+				LATERAL (SELECT annotation_item.val AS annotation) AS a
+			WHERE output_item.val->>'type' = 'message'
+				AND content_item.val->>'type' = 'output_text'
+				AND annotation_item.val->>'type' = 'url_citation'
+				AND annotation_item.val->>'url' IS NOT NULL
+				AND split_part(split_part(annotation_item.val->>'url', '://', 2), '/', 1) != ''
+			ON CONFLICT DO NOTHING
+			RETURNING 1
+		)
+		SELECT
+			(SELECT count(*)::int FROM inserted) AS inserted_count,
+			(SELECT count(*)::int FROM batch_runs) AS batch_size,
+			(SELECT id::text FROM batch_runs ORDER BY id DESC LIMIT 1) AS max_id
+	`);
 
-			for (let i = 0; i < valueSets.length; i += 500) {
-				const chunk = valueSets.slice(i, i + 500);
-				await db.execute(sql`
-					INSERT INTO citations (id, prompt_run_id, prompt_id, brand_id, "modelGroup", url, domain, title, created_at)
-					VALUES ${sql.join(chunk, sql`, `)}
-				`);
-			}
+	return {
+		inserted: result.inserted_count,
+		batchSize: result.batch_size,
+		nextCursor: result.max_id,
+	};
+}
 
-			citationsInserted += citationValues.length;
-		}
+async function backfillGoogleBatch(cursor: string): Promise<{ inserted: number; batchSize: number; nextCursor: string | null }> {
+	const { rows: [result] } = await db.execute<{ inserted_count: number; batch_size: number; max_id: string | null }>(sql`
+		WITH batch_runs AS (
+			SELECT id, prompt_id, brand_id, "modelGroup", raw_output, created_at
+			FROM prompt_runs
+			WHERE "modelGroup" = 'google'
+				AND brand_id IS NOT NULL
+				AND id > ${cursor}::uuid
+			ORDER BY id
+			LIMIT ${SQL_BATCH_SIZE}
+		),
+		inserted AS (
+			INSERT INTO citations (id, prompt_run_id, prompt_id, brand_id, "modelGroup", url, domain, title, citation_index, created_at)
+			SELECT
+				gen_random_uuid(),
+				pr.id,
+				pr.prompt_id,
+				pr.brand_id,
+				pr."modelGroup",
+				ref->>'url',
+				regexp_replace(
+					split_part(split_part(ref->>'url', '://', 2), '/', 1),
+					'^www\.', '', 'i'
+				),
+				NULLIF(ref->>'title', ''),
+				(row_number() OVER (PARTITION BY pr.id ORDER BY ref_idx)) - 1,
+				pr.created_at
+			FROM batch_runs pr,
+				jsonb_array_elements(pr.raw_output::jsonb->'tasks') WITH ORDINALITY AS task_item(val, task_idx),
+				jsonb_array_elements(task_item.val->'result') WITH ORDINALITY AS result_item(val, result_idx),
+				jsonb_array_elements(result_item.val->'items') WITH ORDINALITY AS item(val, item_idx),
+				jsonb_array_elements(item.val->'references') WITH ORDINALITY AS ref_item(val, ref_idx),
+				LATERAL (SELECT ref_item.val AS ref) AS r
+			WHERE item.val->>'type' = 'ai_overview'
+				AND ref_item.val->>'url' IS NOT NULL
+				AND split_part(split_part(ref_item.val->>'url', '://', 2), '/', 1) != ''
+			ON CONFLICT DO NOTHING
+			RETURNING 1
+		)
+		SELECT
+			(SELECT count(*)::int FROM inserted) AS inserted_count,
+			(SELECT count(*)::int FROM batch_runs) AS batch_size,
+			(SELECT id::text FROM batch_runs ORDER BY id DESC LIMIT 1) AS max_id
+	`);
 
-		processed += rows.length;
-		console.log(
-			`  Processed ${processed} prompt_runs, inserted ${citationsInserted} citations (cursor: ${cursor.slice(0, 8)}...)`,
-		);
+	return {
+		inserted: result.inserted_count,
+		batchSize: result.batch_size,
+		nextCursor: result.max_id,
+	};
+}
 
-		await sleep(PAUSE_BETWEEN_BATCHES_MS);
+async function backfillCitationsForModel(
+	modelGroup: "openai" | "google",
+	totalRuns: number,
+	batchFn: (cursor: string) => Promise<{ inserted: number; batchSize: number; nextCursor: string | null }>,
+): Promise<number> {
+	let cursor = await findResumeCursor(modelGroup);
+	const isResuming = cursor !== "00000000-0000-0000-0000-000000000000";
+
+	if (isResuming) {
+		console.log(`  Resuming ${modelGroup} from cursor: ${cursor.slice(0, 8)}...`);
 	}
 
-	console.log(`Citations backfill complete: ${processed} prompt_runs processed, ${citationsInserted} citations inserted.`);
+	if (dryRun) {
+		console.log(`  [DRY RUN] Would process ${modelGroup} rows.`);
+		return 0;
+	}
+
+	let totalInserted = 0;
+	let totalProcessed = 0;
+	const start = performance.now();
+
+	while (!interrupted) {
+		const { inserted, batchSize, nextCursor } = await batchFn(cursor);
+		if (!nextCursor || batchSize === 0) break;
+
+		cursor = nextCursor;
+		totalInserted += inserted;
+		totalProcessed += batchSize;
+
+		const elapsed = Math.max(Math.round((performance.now() - start) / 1000), 1);
+		const rate = Math.round(totalProcessed / elapsed);
+		console.log(
+			`  ${modelGroup}: ${totalProcessed}/${totalRuns} runs, ${totalInserted} citations (${rate} runs/s, cursor: ${cursor.slice(0, 8)}...)`,
+		);
+	}
+
+	const elapsed = Math.round((performance.now() - start) / 1000);
+	console.log(`  ${modelGroup} done: ${totalInserted} citations from ${totalProcessed} runs in ${elapsed}s`);
+	return totalInserted;
 }
+
+async function backfillCitations(): Promise<void> {
+	console.log("\n=== Backfilling citations table (batched SQL) ===");
+
+	// Raise statement timeout for this session (default pooler timeout is often 60-120s)
+	await db.execute(sql`SET statement_timeout = '300s'`);
+
+	const { rows: [{ openai_count, google_count, other_count }] } = await db.execute<{
+		openai_count: number;
+		google_count: number;
+		other_count: number;
+	}>(sql`
+		SELECT
+			count(*) FILTER (WHERE "modelGroup" = 'openai')::int as openai_count,
+			count(*) FILTER (WHERE "modelGroup" = 'google')::int as google_count,
+			count(*) FILTER (WHERE "modelGroup" NOT IN ('openai', 'google'))::int as other_count
+		FROM prompt_runs
+		WHERE brand_id IS NOT NULL
+	`);
+
+	const { rows: [{ count: existingCitations }] } = await db.execute<{ count: number }>(
+		sql`SELECT count(*)::int as count FROM citations`,
+	);
+
+	console.log(`  OpenAI runs: ${openai_count}`);
+	console.log(`  Google runs: ${google_count}`);
+	console.log(`  Other runs: ${other_count} (skipped, no structured citations)`);
+	console.log(`  Existing citations: ${existingCitations}`);
+	console.log(`  Batch size: ${SQL_BATCH_SIZE} prompt_runs per SQL statement\n`);
+
+	const openaiInserted = await backfillCitationsForModel("openai", openai_count, backfillOpenAIBatch);
+
+	if (!interrupted) {
+		const googleInserted = await backfillCitationsForModel("google", google_count, backfillGoogleBatch);
+
+		const { rows: [{ count: finalCount }] } = await db.execute<{ count: number }>(
+			sql`SELECT count(*)::int as count FROM citations`,
+		);
+		console.log(`\nCitations backfill complete. Total citations: ${finalCount} (was ${existingCitations}, +${openaiInserted + googleInserted})`);
+	}
+}
+
+// ============================================================================
+// Main
+// ============================================================================
 
 async function main(): Promise<void> {
 	console.log("Backfill script started");
-	console.log(`  DATABASE_URL: ${process.env.DATABASE_URL?.replace(/:[^@]+@/, ":***@")}`);
+	console.log(`  Connection: ${redactConnectionString(connectionString)}`);
 	console.log(`  Dry run: ${dryRun}`);
 	console.log(`  Brand ID only: ${brandIdOnly}`);
 	console.log(`  Citations only: ${citationsOnly}`);
+
+	await assertWritableConnection();
 
 	if (!citationsOnly) {
 		await backfillBrandId();
