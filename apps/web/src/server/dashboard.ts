@@ -13,7 +13,7 @@ import {
 	getDashboardSummary,
 	getVisibilityTimeSeries,
 	getDailyCitationStats,
-} from "@/lib/tinybird-read-v2";
+} from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 // ============================================================================

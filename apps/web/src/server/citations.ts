@@ -8,7 +8,7 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getCitationDomainStats, getCitationUrlStats } from "@/lib/tinybird-read-v2";
+import { getCitationDomainStats, getCitationUrlStats } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 function extractDomain(urlOrDomain: string): string {

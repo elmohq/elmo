@@ -12,7 +12,7 @@ import {
 	getAdminRunsOverTime,
 	getAdminBrandRunStats,
 	getAdminActiveBrandsOverTime,
-} from "@/lib/tinybird-read-v2";
+} from "@/lib/postgres-read";
 import { analyzeWebsite, getCompetitors, generateCandidatePromptsForReports } from "@workspace/lib/wizard-helpers";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";

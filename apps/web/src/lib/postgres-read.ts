@@ -8,8 +8,10 @@
  * Phase 3 (covering indices) to be deployed for full performance.
  */
 
-import { db } from "@workspace/lib/db/db";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { sql, type SQL } from "drizzle-orm";
+
+const db = drizzle(process.env.DATABASE_URL!);
 
 // Re-export all the same types so callers don't need to change imports
 export type {
@@ -63,12 +65,16 @@ async function queryPg<T>(query: SQL): Promise<T[]> {
 
 function dateFilter(fromDate: string | null, toDate: string | null, timezone: string): SQL {
 	if (!fromDate || !toDate) return sql``;
-	return sql`AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date`;
+	return sql`AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone}) AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})`;
+}
+
+function uuidList(ids: string[]): SQL {
+	return sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
 }
 
 function promptIdFilter(enabledPromptIds?: string[]): SQL {
 	if (!enabledPromptIds?.length) return sql``;
-	return sql`AND prompt_id = ANY(${enabledPromptIds})`;
+	return sql`AND prompt_id IN (${uuidList(enabledPromptIds)})`;
 }
 
 function modelGroupFilter(modelGroup?: string): SQL {
@@ -125,7 +131,7 @@ export async function getVisibilityTimeSeries(
 			(created_at AT TIME ZONE ${timezone})::date AS date,
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			(prompt_id = ANY(${brandedPromptIds})) AS is_branded
+			(prompt_id IN (${uuidList(brandedPromptIds)})) AS is_branded
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
@@ -150,10 +156,10 @@ export async function getPromptsFirstEvaluatedAt(
 	const rows = await queryPg<PromptFirstEvaluatedAt>(sql`
 		SELECT
 			prompt_id,
-			min(created_at) AS first_evaluated_at
+			min(created_at) AT TIME ZONE 'UTC' AS first_evaluated_at
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
-			AND prompt_id = ANY(${promptIds})
+			AND prompt_id IN (${uuidList(promptIds)})
 		GROUP BY prompt_id
 	`);
 	return rows;
@@ -320,8 +326,8 @@ export async function getCitationDomainStats(
 			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
 			${modelGroupFilter(modelGroup)}
 		GROUP BY domain
@@ -350,8 +356,8 @@ export async function getCitationUrlStats(
 			count(*)::int AS count
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
 			${modelGroupFilter(modelGroup)}
 		GROUP BY url, domain
@@ -377,8 +383,8 @@ export async function getPromptCitationStats(
 			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE prompt_id = ${promptId}
-			AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 		GROUP BY domain
 		ORDER BY count DESC
 	`);
@@ -399,8 +405,8 @@ export async function getPromptCitationUrlStats(
 			count(*)::int AS count
 		FROM citations
 		WHERE prompt_id = ${promptId}
-			AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 		GROUP BY url, domain
 		ORDER BY count DESC
 	`);
@@ -424,8 +430,8 @@ export async function getPromptMentionSummary(
 			COALESCE(sum(array_length(competitors_mentioned, 1)), 0)::int AS competitor_mentioned_count
 		FROM prompt_runs
 		WHERE prompt_id = ${promptId}
-			AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 	`);
 	return rows[0] || { total_runs: 0, brand_mentioned_count: 0, competitor_mentioned_count: 0 };
 }
@@ -443,8 +449,8 @@ export async function getPromptTopCompetitorMentions(
 			count(DISTINCT pr.id)::int AS mention_count
 		FROM prompt_runs pr, unnest(pr.competitors_mentioned) AS competitor_name
 		WHERE pr.prompt_id = ${promptId}
-			AND (pr.created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (pr.created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 		GROUP BY competitor_name
 		ORDER BY mention_count DESC
 		LIMIT ${limit}
@@ -471,8 +477,8 @@ export async function getDailyCitationStats(
 			count(*)::int AS count
 		FROM citations
 		WHERE brand_id = ${brandId}
-			AND (created_at AT TIME ZONE ${timezone})::date >= ${fromDate}::date
-			AND (created_at AT TIME ZONE ${timezone})::date <= ${toDate}::date
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
 			${modelGroupFilter(modelGroup)}
 		GROUP BY date, domain
@@ -525,7 +531,7 @@ export async function getBatchChartData(
 				count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
 			FROM prompt_runs
 			WHERE brand_id = ${brandId}
-				AND prompt_id = ANY(${promptIds})
+				AND prompt_id IN (${uuidList(promptIds)})
 				${dateFilter(fromDate, toDate, timezone)}
 				${webSearchFilter(webSearchEnabled)}
 				${modelGroupFilter(modelGroup)}
@@ -545,7 +551,7 @@ export async function getBatchChartData(
 				count(*)::int AS mention_count
 			FROM prompt_runs, unnest(competitors_mentioned) AS competitor_name
 			WHERE brand_id = ${brandId}
-				AND prompt_id = ANY(${promptIds})
+				AND prompt_id IN (${uuidList(promptIds)})
 				${dateFilter(fromDate, toDate, timezone)}
 				${webSearchFilter(webSearchEnabled)}
 				${modelGroupFilter(modelGroup)}
@@ -598,10 +604,10 @@ export async function getBatchVisibilityData(
 			(created_at AT TIME ZONE ${timezone})::date AS date,
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			(prompt_id = ANY(${brandedPromptIds})) AS is_branded
+			(prompt_id IN (${uuidList(brandedPromptIds)})) AS is_branded
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
-			AND prompt_id = ANY(${promptIds})
+			AND prompt_id IN (${uuidList(promptIds)})
 			${dateFilter(fromDate, toDate, timezone)}
 		GROUP BY date, is_branded
 		ORDER BY date

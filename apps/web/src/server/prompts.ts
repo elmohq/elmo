@@ -801,12 +801,6 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 // Web Query Lookup (for OptimizeButton)
 // ============================================================================
 
-interface WebQueryCount {
-	model_group: string;
-	web_query: string;
-	query_count: number;
-}
-
 export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 	.inputValidator(
 		z.object({
@@ -839,31 +833,12 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
 		}
 
-		const dateFilter = fromDateStr
-			? `AND toDate(created_at, {timezone:String}) >= toDate({fromDate:String}) AND toDate(created_at, {timezone:String}) <= toDate({toDate:String})`
-			: "";
-		const modelFilter = data.modelGroup ? `AND model_group = {modelGroup:String}` : "";
-
-		const webQueryData = await queryTinybird<WebQueryCount>(
-			`
-			SELECT
-				model_group,
-				arrayJoin(web_queries) as web_query,
-				count() as query_count
-			FROM prompt_runs_v2 FINAL
-			WHERE prompt_id = {promptId:String}
-				AND length(web_queries) > 0
-				${dateFilter}
-				${modelFilter}
-			GROUP BY model_group, web_query
-			ORDER BY model_group, query_count DESC
-			`,
-			{
-				promptId: data.promptId,
-				timezone,
-				...(fromDateStr ? { fromDate: fromDateStr, toDate: toDateStr } : {}),
-				...(data.modelGroup ? { modelGroup: data.modelGroup } : {}),
-			},
+		const webQueryData = await getPromptWebQueryCounts(
+			data.promptId,
+			fromDateStr,
+			toDateStr,
+			timezone,
+			data.modelGroup,
 		);
 
 		let webQuery: string | null = null;
