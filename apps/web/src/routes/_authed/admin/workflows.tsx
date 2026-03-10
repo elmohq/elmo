@@ -646,9 +646,9 @@ function WorkflowsPage() {
 					<Skeleton className="h-4 w-96" />
 				</div>
 				<div className="grid gap-4 md:grid-cols-4">
-					{[...Array(4)].map((_, i) => (
-						<Skeleton key={i} className="h-32" />
-					))}
+				{[0, 1, 2, 3].map((n) => (
+					<Skeleton key={n} className="h-32" />
+				))}
 				</div>
 				<Card>
 					<CardHeader>
@@ -656,9 +656,9 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
-							{[...Array(5)].map((_, i) => (
-								<Skeleton key={i} className="h-16 w-full" />
-							))}
+						{[0, 1, 2, 3, 4].map((n) => (
+							<Skeleton key={n} className="h-16 w-full" />
+						))}
 						</div>
 					</CardContent>
 				</Card>

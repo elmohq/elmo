@@ -491,6 +491,49 @@ function CitationsTab({
 	return <CitationsDisplay citationData={citationStats} brandId={brandId} brandName={brandName} showStats={true} maxDomains={20} maxUrls={50} />;
 }
 
+function PaginationControls({
+	className,
+	pagination,
+	currentPage,
+	onPageChange,
+	isLoading,
+}: {
+	className?: string;
+	pagination: any;
+	currentPage: number;
+	onPageChange: (page: number) => void;
+	isLoading: boolean;
+}) {
+	if (!pagination || pagination.totalPages <= 1) return null;
+	return (
+		<div className={`flex items-center gap-2 ${className || ""}`}>
+			<Button
+				variant="outline"
+				size="sm"
+				onClick={() => onPageChange(currentPage - 1)}
+				disabled={!pagination.hasPrev || isLoading}
+				className="cursor-pointer disabled:cursor-not-allowed"
+			>
+				<IconChevronLeft className="h-4 w-4" />
+				Previous
+			</Button>
+			<span className="text-sm text-muted-foreground tabular-nums">
+				Page {pagination.page} of {pagination.totalPages}
+			</span>
+			<Button
+				variant="outline"
+				size="sm"
+				onClick={() => onPageChange(currentPage + 1)}
+				disabled={!pagination.hasNext || isLoading}
+				className="cursor-pointer disabled:cursor-not-allowed"
+			>
+				Next
+				<IconChevronRight className="h-4 w-4" />
+			</Button>
+		</div>
+	);
+}
+
 function ResponsesTab({
 	runs,
 	pagination,
@@ -509,35 +552,6 @@ function ResponsesTab({
 	const formatDate = (dateString: string) => new Date(dateString).toLocaleString(undefined, { timeZoneName: "short" });
 
 	const formatRawOutput = (rawOutput: any) => (typeof rawOutput === "string" ? rawOutput : JSON.stringify(rawOutput, null, 2));
-
-	const PaginationControls = ({ className }: { className?: string }) =>
-		pagination && pagination.totalPages > 1 ? (
-			<div className={`flex items-center gap-2 ${className || ""}`}>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => onPageChange(currentPage - 1)}
-					disabled={!pagination.hasPrev || isLoading}
-					className="cursor-pointer disabled:cursor-not-allowed"
-				>
-					<IconChevronLeft className="h-4 w-4" />
-					Previous
-				</Button>
-				<span className="text-sm text-muted-foreground tabular-nums">
-					Page {pagination.page} of {pagination.totalPages}
-				</span>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => onPageChange(currentPage + 1)}
-					disabled={!pagination.hasNext || isLoading}
-					className="cursor-pointer disabled:cursor-not-allowed"
-				>
-					Next
-					<IconChevronRight className="h-4 w-4" />
-				</Button>
-			</div>
-		) : null;
 
 	if (isLoading && runs.length === 0) {
 		return (
@@ -578,7 +592,7 @@ function ResponsesTab({
 		<div className="space-y-4">
 			<div className="flex justify-between items-center">
 				<h3 className="text-base font-medium">Individual Prompt Runs</h3>
-				<PaginationControls />
+				<PaginationControls pagination={pagination} currentPage={currentPage} onPageChange={onPageChange} isLoading={isLoading} />
 			</div>
 
 			{runs.map((run: any) => (
@@ -646,7 +660,7 @@ function ResponsesTab({
 				</Card>
 			))}
 
-			<PaginationControls className="justify-center pt-4" />
+			<PaginationControls className="justify-center pt-4" pagination={pagination} currentPage={currentPage} onPageChange={onPageChange} isLoading={isLoading} />
 		</div>
 	);
 }

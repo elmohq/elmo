@@ -38,8 +38,8 @@ function PromptsSettingsSkeleton() {
 				<Skeleton className="h-5 w-80" />
 			</div>
 			<div className="space-y-3">
-				{[...Array(5)].map((_, i) => (
-					<div key={i} className="flex items-center gap-3 p-3 border rounded-lg">
+				{[0, 1, 2, 3, 4].map((n) => (
+					<div key={n} className="flex items-center gap-3 p-3 border rounded-lg">
 						<Skeleton className="h-5 w-5" />
 						<Skeleton className="h-5 flex-1" />
 						<Skeleton className="h-8 w-20" />

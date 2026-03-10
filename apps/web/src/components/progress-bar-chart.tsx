@@ -94,14 +94,14 @@ export function ProgressBarChart({
 
 	return (
 		<div className={cn(spacing, className)}>
-			{items.map((item, idx) => {
+			{items.map((item) => {
 				const percentage = calculatePercentage(item.count);
 				const color = getItemColor(item);
 				const isHighlighted = highlightLabel && item.label === highlightLabel;
 				const isClickable = !!item.onClick;
 
 				return (
-					<div key={idx} className="space-y-2">
+					<div key={item.label} className="space-y-2">
 						<div className="flex items-center justify-between">
 							<span
 								className={cn(

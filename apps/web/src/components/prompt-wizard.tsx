@@ -1031,8 +1031,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							>
 								<div className="bg-muted/30 p-3">
 									<div className="space-y-1">
-										{promptsPreview.productPrompts.map((prompt, i) => (
-											<div key={i} className="text-xs">
+										{promptsPreview.productPrompts.map((prompt) => (
+											<div key={prompt} className="text-xs">
 												{prompt}
 											</div>
 										))}
@@ -1051,8 +1051,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							>
 								<div className="max-h-64 overflow-y-auto bg-muted/30 p-3">
 									<div className="space-y-1">
-										{promptsPreview.productPersonaPrompts.map((item, i) => (
-											<div key={i} className="text-xs flex items-center gap-2">
+										{promptsPreview.productPersonaPrompts.map((item) => (
+											<div key={`${item.prompt}-${item.group}`} className="text-xs flex items-center gap-2">
 												<span>{item.prompt}</span>
 												<Badge variant="outline" className="text-[10px] px-1 py-0">
 													{item.group}
@@ -1074,8 +1074,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							>
 								<div className="bg-muted/30 p-3">
 									<div className="space-y-1">
-										{promptsPreview.selectedKeywords.map((keyword, i) => (
-											<div key={i} className="text-xs">
+										{promptsPreview.selectedKeywords.map((keyword) => (
+											<div key={keyword} className="text-xs">
 												{keyword}
 											</div>
 										))}
@@ -1093,8 +1093,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							>
 								<div className="bg-muted/30 p-3">
 									<div className="space-y-1">
-										{promptsPreview.customPrompts.map((prompt, i) => (
-											<div key={i} className="text-xs">
+										{promptsPreview.customPrompts.map((prompt) => (
+											<div key={prompt} className="text-xs">
 												{prompt}
 											</div>
 										))}

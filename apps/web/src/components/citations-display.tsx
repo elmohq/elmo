@@ -240,7 +240,7 @@ export function CitationsDisplay({
 						<h4 className="text-sm font-medium mb-1">Top {maxUrls} Cited URLs</h4>
 						<p className="text-xs text-muted-foreground mb-3">Counts show how many times each URL was cited across all prompt runs</p>
 						<div className="space-y-2">
-							{citationData.specificUrls.slice(0, maxUrls).map((citation, idx) => {
+							{citationData.specificUrls.slice(0, maxUrls).map((citation) => {
 								const displayUrl = formatUrlForDisplay(citation.url, citation.domain);
 								const domainEndIndex = displayUrl.indexOf('/');
 								const domainPart = domainEndIndex > 0 ? displayUrl.substring(0, domainEndIndex) : displayUrl;
@@ -248,7 +248,7 @@ export function CitationsDisplay({
 								
 								return (
 									<a
-										key={idx}
+										key={citation.url}
 										href={citation.url}
 										target="_blank"
 										rel="noopener noreferrer"

@@ -24,6 +24,27 @@ interface BarData {
 	isBrand: boolean;
 }
 
+function CustomXAxisTick(props: any) {
+	const { x, y, payload, brandName } = props;
+	const isCurrentBrand = payload.value === brandName;
+
+	return (
+		<g transform={`translate(${x},${y})`}>
+			<text
+				x={0}
+				y={0}
+				dy={8}
+				textAnchor="middle"
+				fill="#374151"
+				fontSize="10"
+				fontWeight={isCurrentBrand ? "bold" : "normal"}
+			>
+				{payload.value}
+			</text>
+		</g>
+	);
+}
+
 export function BaseChartPrint({
 	data,
 	title,
@@ -90,28 +111,6 @@ export function BaseChartPrint({
 	// Sort all entities by value (highest first), then limit to top 6 (including brand if present)
 	const sortedEntities = allEntities.sort((a, b) => b.value - a.value).slice(0, 6);
 
-	// Custom tick formatter to bold the brand name
-	const CustomXAxisTick = (props: any) => {
-		const { x, y, payload } = props;
-		const isCurrentBrand = payload.value === brand.name;
-
-		return (
-			<g transform={`translate(${x},${y})`}>
-				<text
-					x={0}
-					y={0}
-					dy={8}
-					textAnchor="middle"
-					fill="#374151"
-					fontSize="10"
-					fontWeight={isCurrentBrand ? "bold" : "normal"}
-				>
-					{payload.value}
-				</text>
-			</g>
-		);
-	};
-
 	return (
 		<div className="flex-1">
 			{showTitle && (
@@ -134,7 +133,7 @@ export function BaseChartPrint({
 							dataKey="name"
 							axisLine={false}
 							tickLine={false}
-							tick={<CustomXAxisTick />}
+							tick={<CustomXAxisTick brandName={brand.name} />}
 							height={30}
 							interval={0}
 						/>
@@ -162,8 +161,8 @@ export function BaseChartPrint({
 								formatter: (value: unknown) => `${value}%`,
 							}}
 						>
-							{sortedEntities.map((entry, index) => (
-								<Cell key={`cell-${index}`} fill={entry.color} />
+							{sortedEntities.map((entry) => (
+								<Cell key={entry.name} fill={entry.color} />
 							))}
 						</Bar>
 					</BarChart>

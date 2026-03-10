@@ -15,7 +15,22 @@ import {
 	getBadgeClassName,
 } from "@/lib/chart-utils";
 
+const PLACEHOLDER_BARS_NO_DATA = [20, 35, 15, 45, 25, 40, 30, 50, 20, 35, 45, 28].map(
+	(h, i) => ({ key: String(i), h }),
+);
+const PLACEHOLDER_BARS_NO_VISIBILITY = [10, 15, 8, 12, 10, 14, 8, 12, 10, 15, 12, 9].map(
+	(h, i) => ({ key: String(i), h }),
+);
+
 type ModelType = "openai" | "anthropic" | "google" | "all";
+
+function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
+	return (
+		<CardTitle className="text-sm">
+			<TextHighlighter text={name} highlight={highlight} />
+		</CardTitle>
+	);
+}
 
 export interface CachedPromptChartProps {
 	promptId: string;
@@ -92,13 +107,6 @@ export function CachedPromptChart({
 	const { brand, competitors } = chartContext;
 	const { chartData: data, totalRuns, hasVisibilityData, lastBrandVisibility } = chartData;
 
-	// Helper to render the title with optional highlighting
-	const renderTitle = () => (
-		<CardTitle className="text-sm">
-			<TextHighlighter text={promptName} highlight={searchHighlight} />
-		</CardTitle>
-	);
-
 	// No runs state - distinguish between "never evaluated" vs "no data in selected window"
 	if (totalRuns === 0) {
 		const isFirstEval = !hasEverBeenEvaluated;
@@ -106,7 +114,7 @@ export function CachedPromptChart({
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					{renderTitle()}
+					<PromptTitle name={promptName} highlight={searchHighlight} />
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				{/* h-[300px] instead of h-[250px] to compensate for the missing footer section,
@@ -131,13 +139,13 @@ export function CachedPromptChart({
 							) : (
 								<>
 									<div className="h-16 w-full mb-3 flex items-end justify-center gap-[3px]">
-										{[20, 35, 15, 45, 25, 40, 30, 50, 20, 35, 45, 28].map((h, i) => (
-											<div
-												key={i}
-												className="w-1.5 rounded-sm bg-muted-foreground/10"
-												style={{ height: `${h}%` }}
-											/>
-										))}
+									{PLACEHOLDER_BARS_NO_DATA.map((bar) => (
+										<div
+											key={bar.key}
+											className="w-1.5 rounded-sm bg-muted-foreground/10"
+											style={{ height: `${bar.h}%` }}
+										/>
+									))}
 									</div>
 									<p className="text-sm font-medium text-muted-foreground">
 										No data in selected time range
@@ -159,20 +167,20 @@ export function CachedPromptChart({
 		return (
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
-					{renderTitle()}
+					<PromptTitle name={promptName} highlight={searchHighlight} />
 				</CardHeader>
 				<Separator className="py-0 my-0" />
 				<CardContent className="px-3">
 					<div className="h-[250px] flex items-center justify-center">
 						<div className="flex flex-col items-center text-center max-w-xs">
 							<div className="h-16 w-full mb-3 flex items-end justify-center gap-[3px]">
-								{[10, 15, 8, 12, 10, 14, 8, 12, 10, 15, 12, 9].map((h, i) => (
-									<div
-										key={i}
-										className="w-1.5 rounded-sm bg-muted-foreground/10"
-										style={{ height: `${h}%` }}
-									/>
-								))}
+							{PLACEHOLDER_BARS_NO_VISIBILITY.map((bar) => (
+								<div
+									key={bar.key}
+									className="w-1.5 rounded-sm bg-muted-foreground/10"
+									style={{ height: `${bar.h}%` }}
+								/>
+							))}
 							</div>
 							<p className="text-sm font-medium text-muted-foreground">
 								No brands found in responses
@@ -203,7 +211,7 @@ export function CachedPromptChart({
 	return (
 		<Card ref={chartRef} className="py-3 gap-3">
 			<CardHeader className="flex justify-between items-center px-3">
-				{renderTitle()}
+				<PromptTitle name={promptName} highlight={searchHighlight} />
 				{lastBrandVisibility !== null && (
 					<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
 						{lastBrandVisibility}% Visibility

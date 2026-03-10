@@ -38,8 +38,7 @@ export function VirtualizedPromptList({
 	const listRef = useRef<HTMLDivElement>(null);
 	const [scrollMargin, setScrollMargin] = useState(0);
 
-	// Use prompts as-is (no longer grouping by category)
-	const orderedPrompts = useMemo(() => prompts, [prompts]);
+	const orderedPrompts = prompts;
 
 	// Measure the offset of the list from the top of the page
 	useLayoutEffect(() => {
@@ -96,7 +95,6 @@ export function VirtualizedPromptList({
 								left: 0,
 								width: "100%",
 								transform: `translateY(${virtualItem.start - scrollMargin}px)`,
-								willChange: "transform",
 								contain: "layout style",
 							}}
 						>

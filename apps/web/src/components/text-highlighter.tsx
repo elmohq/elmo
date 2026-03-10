@@ -20,20 +20,23 @@ export function TextHighlighter({
 
 	const escapedHighlight = highlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	const regex = new RegExp(`(${escapedHighlight})`, "gi");
-	const parts = text.split(regex);
+	const segments = text.split(regex).map((part, i) => ({
+		key: `${i}-${part.slice(0, 8)}`,
+		part,
+		isMatch: part.toLowerCase() === highlight.toLowerCase(),
+	}));
 
 	return (
 		<span className={className}>
-			{parts.map((part, index) => {
-				const isMatch = part.toLowerCase() === highlight.toLowerCase();
-				return isMatch ? (
-					<mark key={index} className={highlightClassName}>
-						{part}
+			{segments.map((seg) =>
+				seg.isMatch ? (
+					<mark key={seg.key} className={highlightClassName}>
+						{seg.part}
 					</mark>
 				) : (
-					<Fragment key={index}>{part}</Fragment>
-				);
-			})}
+					<Fragment key={seg.key}>{seg.part}</Fragment>
+				),
+			)}
 		</span>
 	);
 }

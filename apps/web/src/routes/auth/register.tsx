@@ -25,18 +25,17 @@ export const Route = createFileRoute("/auth/register")({
 function RegisterPage() {
 	const { returnTo } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
-
-	if (context.clientConfig?.mode === "whitelabel") {
-		window.location.href = "/auth/login";
-		return null;
-	}
-
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
+
+	if (context.clientConfig?.mode === "whitelabel") {
+		window.location.href = "/auth/login";
+		return null;
+	}
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();

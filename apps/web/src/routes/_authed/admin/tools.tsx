@@ -150,8 +150,8 @@ function AnalyzeDomainDialog() {
 								<div>
 									<Label className="text-muted-foreground">Products ({result.products.length})</Label>
 									<div className="flex flex-wrap gap-1 mt-1">
-										{result.products.map((product, i) => (
-											<Badge key={i} variant="secondary">
+										{result.products.map((product) => (
+											<Badge key={product} variant="secondary">
 												{product}
 											</Badge>
 										))}
@@ -164,8 +164,8 @@ function AnalyzeDomainDialog() {
 										{result.competitors.length === 0 ? (
 											<p className="text-muted-foreground">No competitors found</p>
 										) : (
-											result.competitors.map((c, i) => (
-												<div key={i} className="flex items-center gap-2">
+											result.competitors.map((c) => (
+												<div key={c.domain} className="flex items-center gap-2">
 													<span className="font-medium">{c.name}</span>
 													<span className="text-muted-foreground">({c.domain})</span>
 												</div>
@@ -338,8 +338,8 @@ function GeneratePromptsDialog() {
 							<div className="space-y-2">
 								<Label className="text-muted-foreground">Products</Label>
 								<div className="flex flex-wrap gap-1">
-									{result.products.map((product, i) => (
-										<Badge key={i} variant="secondary">
+									{result.products.map((product) => (
+										<Badge key={product} variant="secondary">
 											{product}
 										</Badge>
 									))}
@@ -349,8 +349,8 @@ function GeneratePromptsDialog() {
 							<div className="space-y-2">
 								<Label className="text-muted-foreground">Competitors</Label>
 								<div className="flex flex-wrap gap-1">
-									{result.competitors.map((c, i) => (
-										<Badge key={i} variant="outline">
+									{result.competitors.map((c) => (
+										<Badge key={c.name} variant="outline">
 											{c.name}
 										</Badge>
 									))}
@@ -360,9 +360,9 @@ function GeneratePromptsDialog() {
 							<div className="space-y-2">
 								<Label className="text-muted-foreground">Prompts</Label>
 								<div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
-									{result.prompts.map((p, i) => (
-										<div key={i} className="flex items-start gap-2 py-1 border-b last:border-0">
-											<span className="text-muted-foreground w-6 flex-shrink-0">{i + 1}.</span>
+								{result.prompts.map((p, i) => (
+									<div key={p.prompt} className="flex items-start gap-2 py-1 border-b last:border-0">
+										<span className="text-muted-foreground w-6 flex-shrink-0">{i + 1}.</span>
 											<span className={p.brandedPrompt ? "text-blue-600" : ""}>{p.prompt}</span>
 											{p.brandedPrompt && (
 												<Badge variant="secondary" className="text-xs flex-shrink-0">

@@ -62,21 +62,18 @@ export function useMatch(_opts?: unknown) {
 	return { params: { brand: "mock-brand-id" } };
 }
 
-export const Link = React.forwardRef<HTMLAnchorElement, any>(function LinkMock(
+export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(
 	{ to, children, onClick, ...props },
 	ref,
 ) {
 	return (
-		<a
+		<button
+			type="button"
 			ref={ref}
-			href={typeof to === "string" ? to : "#"}
-			onClick={(e) => {
-				e.preventDefault();
-				onClick?.(e);
-			}}
+			onClick={onClick}
 			{...props}
 		>
 			{children}
-		</a>
+		</button>
 	);
 });

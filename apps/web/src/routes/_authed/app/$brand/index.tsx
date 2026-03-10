@@ -214,6 +214,59 @@ export const Route = createFileRoute("/_authed/app/$brand/")({
 	component: DashboardPage,
 });
 
+function StatWithTooltip({
+	icon: Icon,
+	label,
+	value,
+	tooltip,
+}: {
+	icon: typeof IconList;
+	label: string;
+	value: string | number;
+	tooltip: string;
+}) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="flex items-center gap-2 cursor-help">
+					<Icon className="h-4 w-4 flex-shrink-0" />
+					<span>
+						<span className="font-semibold text-foreground">{value}</span> {label}
+					</span>
+					<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
+				</div>
+			</TooltipTrigger>
+			<TooltipContent className="max-w-xs text-sm">
+				{tooltip}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function CardTitleWithTooltip({
+	title,
+	tooltip,
+	className = "",
+}: {
+	title: string;
+	tooltip: string;
+	className?: string;
+}) {
+	return (
+		<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${className}`}>
+			{title}
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+				</TooltipTrigger>
+				<TooltipContent className="max-w-xs text-sm font-normal">
+					{tooltip}
+				</TooltipContent>
+			</Tooltip>
+		</CardTitle>
+	);
+}
+
 function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
@@ -421,55 +474,6 @@ function DashboardPage() {
 			color: "#8b5cf6",
 		},
 	};
-
-	const StatWithTooltip = ({
-		icon: Icon,
-		label,
-		value,
-		tooltip,
-	}: {
-		icon: typeof IconList;
-		label: string;
-		value: string | number;
-		tooltip: string;
-	}) => (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<div className="flex items-center gap-2 cursor-help">
-					<Icon className="h-4 w-4 flex-shrink-0" />
-					<span>
-						<span className="font-semibold text-foreground">{value}</span> {label}
-					</span>
-					<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
-				</div>
-			</TooltipTrigger>
-			<TooltipContent className="max-w-xs text-sm">
-				{tooltip}
-			</TooltipContent>
-		</Tooltip>
-	);
-
-	const CardTitleWithTooltip = ({
-		title,
-		tooltip,
-		className = "",
-	}: {
-		title: string;
-		tooltip: string;
-		className?: string;
-	}) => (
-		<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${className}`}>
-			{title}
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-				</TooltipTrigger>
-				<TooltipContent className="max-w-xs text-sm font-normal">
-					{tooltip}
-				</TooltipContent>
-			</Tooltip>
-		</CardTitle>
-	);
 
 	return (
 		<div className="flex flex-1 flex-col gap-4 p-4 max-w-[1600px] mx-auto w-full">

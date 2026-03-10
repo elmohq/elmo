@@ -327,42 +327,42 @@ export function BaseChart({
 							stroke={`var(--color-${key})`}
 							strokeWidth={2}
 							// Custom dot that only shows for real data points
-							dot={({ cx, cy, payload, value, index }: any) => {
-								// Don't render dot for extended points or null values
-								// Return empty <g> element instead of null to satisfy Recharts types
-								if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-									return <g key={`dot-empty-${key}-${index}`} />;
-								}
-								return (
-									<circle
-										key={`dot-${key}-${index}`}
-										cx={cx}
-										cy={cy}
-										r={2}
-										fill={`var(--color-${key})`}
-										stroke={`var(--color-${key})`}
-										strokeWidth={2}
-									/>
-								);
-							}}
-							activeDot={({ cx, cy, payload, value, index }: any) => {
-								// Don't render active dot for extended points or null values
-								// Return empty <g> element instead of null to satisfy Recharts types
-								if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-									return <g key={`activedot-empty-${key}-${index}`} />;
-								}
-								return (
-									<circle
-										key={`activedot-${key}-${index}`}
-										cx={cx}
-										cy={cy}
-										r={4}
-										fill={`var(--color-${key})`}
-										stroke={`var(--color-${key})`}
-										strokeWidth={2}
-									/>
-								);
-							}}
+						dot={({ cx, cy, payload, value }: any) => {
+							// Don't render dot for extended points or null values
+							// Return empty <g> element instead of null to satisfy Recharts types
+							if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+								return <g key={`dot-empty-${key}-${cx}`} />;
+							}
+							return (
+								<circle
+									key={`dot-${key}-${cx}`}
+									cx={cx}
+									cy={cy}
+									r={2}
+									fill={`var(--color-${key})`}
+									stroke={`var(--color-${key})`}
+									strokeWidth={2}
+								/>
+							);
+						}}
+						activeDot={({ cx, cy, payload, value }: any) => {
+							// Don't render active dot for extended points or null values
+							// Return empty <g> element instead of null to satisfy Recharts types
+							if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+								return <g key={`activedot-empty-${key}-${cx}`} />;
+							}
+							return (
+								<circle
+									key={`activedot-${key}-${cx}`}
+									cx={cx}
+									cy={cy}
+									r={4}
+									fill={`var(--color-${key})`}
+									stroke={`var(--color-${key})`}
+									strokeWidth={2}
+								/>
+							);
+						}}
 							connectNulls={true}
 							isAnimationActive={isAnimationActive}
 						/>,

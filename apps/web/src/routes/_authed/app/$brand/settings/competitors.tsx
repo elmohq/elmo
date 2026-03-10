@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/al
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 
 interface CompetitorEntry {
+	_key: string;
 	name: string;
 	domain: string;
 }
@@ -46,6 +47,7 @@ function CompetitorsSettingsPage() {
 		if (existingCompetitors.length > 0) {
 			setCompetitors(
 				existingCompetitors.map((c) => ({
+					_key: crypto.randomUUID(),
 					name: c.name,
 					domain: c.domain,
 				})),
@@ -55,7 +57,7 @@ function CompetitorsSettingsPage() {
 
 	const addCompetitor = () => {
 		if (competitors.length < MAX_COMPETITORS) {
-			setCompetitors([...competitors, { name: "", domain: "" }]);
+			setCompetitors([...competitors, { _key: crypto.randomUUID(), name: "", domain: "" }]);
 		}
 	};
 
@@ -130,7 +132,7 @@ function CompetitorsSettingsPage() {
 			<form onSubmit={handleSubmit} className="space-y-6">
 				<div className="space-y-4">
 					{competitors.map((competitor, index) => (
-						<div key={index} className="flex gap-2 items-center p-3 border rounded-lg">
+						<div key={competitor._key} className="flex gap-2 items-center p-3 border rounded-lg">
 							<Input
 								type="text"
 								value={competitor.name}

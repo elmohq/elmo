@@ -29,17 +29,14 @@ export function PromptFilters({
 	resultCount,
 }: PromptFiltersProps) {
 	const [open, setOpen] = useState(false);
-	const [localSearch, setLocalSearch] = useState(searchQuery);
+	const [localSearch, setLocalSearch] = useState("");
 	const debounceRef = useRef<NodeJS.Timeout | null>(null);
-	const lastCommittedSearch = useRef(searchQuery);
+	const lastCommittedSearch = useRef("");
 
-	// Sync local search with external searchQuery only when it changes externally (e.g., URL change)
-	useEffect(() => {
-		if (searchQuery !== lastCommittedSearch.current) {
-			setLocalSearch(searchQuery);
-			lastCommittedSearch.current = searchQuery;
-		}
-	}, [searchQuery]);
+	if (searchQuery !== lastCommittedSearch.current) {
+		setLocalSearch(searchQuery);
+		lastCommittedSearch.current = searchQuery;
+	}
 
 	// Commit search change
 	const commitSearch = useCallback((value: string) => {

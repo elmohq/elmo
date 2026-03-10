@@ -24,6 +24,7 @@ interface Prompt {
 
 interface EditablePrompt {
 	id?: string; // undefined for new prompts
+	_key: string;
 	value: string;
 	enabled: boolean;
 	tags: string[];
@@ -38,9 +39,10 @@ interface PromptsEditorProps {
 }
 
 export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription }: PromptsEditorProps) {
-	const [prompts, setPrompts] = useState<EditablePrompt[]>(
+	const [prompts, setPrompts] = useState<EditablePrompt[]>(() =>
 		initialPrompts.map((p) => ({
 			id: p.id,
+			_key: p.id,
 			value: p.value,
 			enabled: p.enabled,
 			tags: p.tags || [],
@@ -54,7 +56,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
 
 	const addPrompt = () => {
-		setPrompts([...prompts, { value: "", enabled: true, tags: [], systemTags: [] }]);
+		setPrompts([...prompts, { _key: crypto.randomUUID(), value: "", enabled: true, tags: [], systemTags: [] }]);
 	};
 
 	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean | string[]) => {
@@ -190,7 +192,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						{/* Prompt rows */}
 						{prompts.map((prompt, index) => (
 							<div
-								key={index}
+								key={prompt._key}
 								className={`grid grid-cols-[3rem_1fr_6rem_10rem] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
 							>
 								<div className="flex justify-center pt-2">

@@ -454,8 +454,8 @@ function ReportRenderPage() {
 			) : (
 				<div className="space-y-6 print:break-before-page">
 					<h2 className="text-xl font-bold text-gray-900 mb-4">Top Prompt Visibility Charts</h2>
-					{topDisplayItems.map((item, index) => (
-						<div key={index} className="print:break-inside-avoid">
+					{topDisplayItems.map((item) => (
+						<div key={item.data.id} className="print:break-inside-avoid">
 							<PromptChartPrint
 								lookback="1m"
 								promptName={item.data.value}
@@ -709,8 +709,8 @@ function OptimizationTable({
 					</tr>
 				</thead>
 				<tbody>
-					{topOpportunities.map((opportunity, index) => (
-						<tr key={index} className="border-b border-gray-100">
+					{topOpportunities.map((opportunity) => (
+						<tr key={opportunity.prompt} className="border-b border-gray-100">
 							<td className="py-3 px-2 max-w-xs">
 								<div className="text-xs text-gray-700 break-words">
 									{opportunity.prompt}
