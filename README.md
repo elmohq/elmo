@@ -40,7 +40,7 @@ elmo compose down
 - **Data Fetching**: SWR
 - **Database**: Drizzle ORM with PostgreSQL
 - **Analytics**: PostgreSQL with covering indices
-- **Queue**: BullMQ with Redis
+- **Job Queue**: pg-boss (Postgres-based)
 - **Testing**: Vitest
 - **Linting & Formatting**: Biome
 - **Package Manager**: pnpm (required)
@@ -61,7 +61,7 @@ elmo compose down
 │   │   │   └── lib/            # Utilities, config, helpers
 │   │   └── scripts/            # CLI scripts for maintenance tasks
 │   ├── cli/                    # @elmohq/cli - Published npm package
-│   └── worker/                 # Background job worker (BullMQ)
+│   └── worker/                 # Background job worker (pg-boss)
 │
 ├── packages/
 │   ├── ui/                     # Shared UI components (shadcn/ui)
@@ -251,7 +251,6 @@ Key variables:
 - `DATABASE_URL` - PostgreSQL connection string
 - `DEPLOYMENT_MODE` - Deployment mode (local/demo/whitelabel)
 - `AUTH0_*` - Auth0 configuration (whitelabel mode)
-- `UPSTASH_REDIS_*` - Redis for BullMQ
 
 See `turbo.json` for the full list of global environment variables used across the monorepo.
 
