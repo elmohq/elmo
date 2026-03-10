@@ -58,6 +58,7 @@ async function seed() {
     console.log("Seeding E2E test database...");
 
     // Clear existing data (in reverse FK order)
+    await client.query("DELETE FROM citations");
     await client.query("DELETE FROM prompt_runs");
     await client.query("DELETE FROM prompts");
     await client.query("DELETE FROM competitors");
