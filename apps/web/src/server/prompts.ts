@@ -22,32 +22,7 @@ import { generateDateRange } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-function extractDomain(urlOrDomain: string): string {
-	try {
-		const cleaned = urlOrDomain.replace(/^https?:\/\//, "");
-		const withoutWww = cleaned.replace(/^www\./, "");
-		return withoutWww.split("/")[0].toLowerCase();
-	} catch {
-		return urlOrDomain.toLowerCase();
-	}
-}
-
-const SOCIAL_MEDIA_DOMAINS = [
-	"facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
-	"youtube.com", "tiktok.com", "pinterest.com", "reddit.com", "snapchat.com",
-	"tumblr.com", "whatsapp.com", "telegram.org", "discord.com", "twitch.tv",
-];
-
-function isSocialMediaDomain(domain: string): boolean {
-	return SOCIAL_MEDIA_DOMAINS.some((sm) => domain === sm || domain.endsWith(`.${sm}`));
-}
-
-// ============================================================================
+import { extractDomain, normalizeUrl, categorizeDomain } from "@/lib/domain-categories";
 // Server Functions
 // ============================================================================
 
@@ -225,20 +200,6 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			],
 		};
 	});
-
-// Helper to remove utm_source=openai from URLs
-function normalizeUrl(url: string): string {
-	try {
-		const urlObj = new URL(url);
-		if (urlObj.searchParams.get("utm_source") === "openai") {
-			urlObj.searchParams.delete("utm_source");
-		}
-		urlObj.search = urlObj.searchParams.toString();
-		return urlObj.toString();
-	} catch {
-		return url;
-	}
-}
 
 /**
  * Get stats for a single prompt (mentions, web queries, citations)
@@ -432,14 +393,11 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		]);
 
 		if (domainStats.length > 0) {
-			const domainDistribution = domainStats.map(({ domain, count: cnt }) => {
-				let category: "brand" | "competitor" | "social_media" | "other";
-				if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) category = "brand";
-				else if (competitorDomains.has(domain)) category = "competitor";
-				else if (isSocialMediaDomain(domain)) category = "social_media";
-				else category = "other";
-				return { domain, count: Number(cnt), category };
-			});
+			const domainDistribution = domainStats.map(({ domain, count: cnt }) => ({
+				domain,
+				count: Number(cnt),
+				category: categorizeDomain(domain, brandDomain, competitorDomains),
+			}));
 
 			const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
 			for (const { url, domain, title, count: cnt } of urlStats) {
@@ -454,21 +412,19 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			}
 
 			const specificUrls = Array.from(urlCounts.entries())
-				.map(([url, { count: cnt, title, domain }]) => {
-					let category: "brand" | "competitor" | "social_media" | "other";
-					if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) category = "brand";
-					else if (competitorDomains.has(domain)) category = "competitor";
-					else if (isSocialMediaDomain(domain)) category = "social_media";
-					else category = "other";
-					return { url, title, domain, count: cnt, category };
-				})
+				.map(([url, { count: cnt, title, domain }]) => ({
+					url, title, domain, count: cnt,
+					category: categorizeDomain(domain, brandDomain, competitorDomains),
+				}))
 				.sort((a, b) => b.count - a.count);
 
 			const brandCitations = domainDistribution.filter((d) => d.category === "brand").reduce((s, d) => s + d.count, 0);
 			const competitorCitations = domainDistribution.filter((d) => d.category === "competitor").reduce((s, d) => s + d.count, 0);
 			const socialMediaCitations = domainDistribution.filter((d) => d.category === "social_media").reduce((s, d) => s + d.count, 0);
+			const googleCitations = domainDistribution.filter((d) => d.category === "google").reduce((s, d) => s + d.count, 0);
+			const institutionalCitations = domainDistribution.filter((d) => d.category === "institutional").reduce((s, d) => s + d.count, 0);
 			const otherCitations = domainDistribution.filter((d) => d.category === "other").reduce((s, d) => s + d.count, 0);
-			const totalCitations = brandCitations + competitorCitations + socialMediaCitations + otherCitations;
+			const totalCitations = brandCitations + competitorCitations + socialMediaCitations + googleCitations + institutionalCitations + otherCitations;
 
 			if (totalCitations > 0) {
 				citationStats = {
@@ -477,6 +433,8 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 					brandCitations,
 					competitorCitations,
 					socialMediaCitations,
+					googleCitations,
+					institutionalCitations,
 					otherCitations,
 					domainDistribution,
 					specificUrls,

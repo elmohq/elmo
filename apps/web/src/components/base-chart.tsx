@@ -156,7 +156,7 @@ export function BaseChart({
 							}}
 						/>
 						<YAxis
-							domain={[0, (dataMax: number) => 100]}
+							domain={[0, "auto"]}
 							type="number"
 							allowDataOverflow={false}
 							tickLine={false}
@@ -233,7 +233,7 @@ export function BaseChart({
 							}}
 						/>
 						<YAxis
-							domain={[0, (dataMax: number) => 100]}
+							domain={[0, "auto"]}
 							type="number"
 							allowDataOverflow={false}
 							tickLine={false}

@@ -1,17 +1,24 @@
 import React from "react";
 import { cn } from "@workspace/ui/lib/utils";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 
 export type ProgressBarItem = {
 	/** The label to display */
 	label: string;
 	/** The count/value to display */
 	count: number;
+	/** Optional subtitle shown below the label */
+	subtitle?: string;
+	/** Optional suffix rendered after the count (e.g. trend arrows) */
+	suffix?: React.ReactNode;
 	/** Optional category for color mapping */
 	category?: string;
 	/** Optional custom color (overrides category color) */
 	color?: string;
 	/** Optional click handler for future extensibility */
 	onClick?: () => void;
+	/** Optional tooltip text shown on hover over the label */
+	tooltip?: string;
 	/** Optional additional metadata */
 	metadata?: Record<string, any>;
 };
@@ -43,6 +50,8 @@ export type ProgressBarChartProps = {
 	className?: string;
 	/** Whether labels should be truncated if too long */
 	truncateLabels?: boolean;
+	/** Use flex layout to fill parent height and distribute items evenly */
+	fillHeight?: boolean;
 };
 
 export function ProgressBarChart({
@@ -57,6 +66,7 @@ export function ProgressBarChart({
 	highlightLabel,
 	className,
 	truncateLabels = true,
+	fillHeight = false,
 }: ProgressBarChartProps) {
 	// Calculate the total for percentage calculations
 	const total = React.useMemo(() => {
@@ -93,7 +103,7 @@ export function ProgressBarChart({
 	};
 
 	return (
-		<div className={cn(spacing, className)}>
+		<div className={cn(fillHeight ? "flex flex-col justify-between h-full" : spacing, className)}>
 			{items.map((item) => {
 				const percentage = calculatePercentage(item.count);
 				const color = getItemColor(item);
@@ -102,7 +112,25 @@ export function ProgressBarChart({
 
 				return (
 					<div key={item.label} className="space-y-2">
-						<div className="flex items-center justify-between">
+					<div className="flex items-center justify-between">
+						{item.tooltip ? (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span
+										className={cn(
+											"text-sm flex-1 cursor-default",
+											isHighlighted ? "font-bold" : "font-medium",
+											truncateLabels && "truncate",
+											isClickable && "cursor-pointer hover:underline"
+										)}
+										onClick={item.onClick}
+									>
+										{item.label}
+									</span>
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
+							</Tooltip>
+						) : (
 							<span
 								className={cn(
 									"text-sm flex-1",
@@ -114,8 +142,15 @@ export function ProgressBarChart({
 							>
 								{item.label}
 							</span>
-							<span className="text-sm ml-2 shrink-0">{item.count.toLocaleString()}</span>
+						)}
+							<div className="flex items-center gap-2 ml-2 shrink-0">
+								<span className="text-sm">{item.count.toLocaleString()}</span>
+								{item.suffix}
+							</div>
 						</div>
+						{item.subtitle && (
+							<p className="text-xs text-muted-foreground truncate -mt-1">{item.subtitle}</p>
+						)}
 						<div className={cn("relative w-full overflow-hidden rounded-full", trackColor, barHeight)}>
 							<div
 								className="h-full transition-all rounded-full"
@@ -132,13 +167,7 @@ export function ProgressBarChart({
 	);
 }
 
-// Preset color mappings for common use cases
-export const DOMAIN_CATEGORY_COLORS: ColorMapping = {
-	brand: "#48bb78", // green
-	competitor: "#f56565", // red
-	social_media: "#7e56ee", // purple
-	other: "#9ca3af", // gray
-};
+export { DOMAIN_CATEGORY_COLORS } from "@/lib/domain-categories";
 
 export const MODEL_COLORS: ColorMapping = {
 	openai: "#10b981", // green

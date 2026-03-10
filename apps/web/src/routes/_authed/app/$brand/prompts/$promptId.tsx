@@ -474,6 +474,8 @@ function CitationsTab({
 				brandCitations: number;
 				competitorCitations: number;
 				socialMediaCitations: number;
+				googleCitations: number;
+				institutionalCitations: number;
 				otherCitations: number;
 				domainDistribution: any[];
 				specificUrls: any[];

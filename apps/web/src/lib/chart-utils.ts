@@ -1,3 +1,6 @@
+import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
+import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 /**
@@ -56,6 +59,176 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 	}
 
 	return dates;
+}
+
+// ============================================================================
+// Smoothing utilities
+// ============================================================================
+
+export interface DailyVisibilityBucket {
+	branded: { total: number; mentioned: number };
+	nonBranded: { total: number; mentioned: number };
+}
+
+/**
+ * Per-prompt Last Value Carried Forward (LVCF) for visibility data.
+ *
+ * For each prompt, carries forward its last known (total_runs, brand_mentioned_count)
+ * to fill gap days when it didn't run. Then aggregates across all prompts per day,
+ * split by branded/non-branded status.
+ *
+ * This eliminates periodic artifacts caused by staggered prompt schedules:
+ * every prompt contributes to every day's aggregate via its last observation.
+ */
+export function applyPerPromptLVCF(
+	perPromptData: PerPromptVisibilityPoint[],
+	dateRange: string[],
+	brandedPromptIds: string[],
+): {
+	dailyVisibilityMap: Map<string, DailyVisibilityBucket>;
+	totalBrandedRuns: number;
+	totalBrandedMentioned: number;
+	totalNonBrandedRuns: number;
+	totalNonBrandedMentioned: number;
+} {
+	const brandedSet = new Set(brandedPromptIds);
+
+	// Group raw data by prompt_id -> date -> values
+	const byPrompt = new Map<string, Map<string, { total: number; mentioned: number }>>();
+	for (const row of perPromptData) {
+		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
+		byPrompt.get(row.prompt_id)!.set(String(row.date), {
+			total: Number(row.total_runs),
+			mentioned: Number(row.brand_mentioned_count),
+		});
+	}
+
+	const dailyVisibilityMap = new Map<string, DailyVisibilityBucket>();
+	let totalBrandedRuns = 0;
+	let totalBrandedMentioned = 0;
+	let totalNonBrandedRuns = 0;
+	let totalNonBrandedMentioned = 0;
+
+	// For each prompt, walk the date range with LVCF, accumulating into the daily map.
+	// Pre-seed carried value with the prompt's earliest observation so that
+	// dates before the first run still get a contribution (avoids ramp-up artifact).
+	for (const [promptId, dateMap] of byPrompt) {
+		const isBranded = brandedSet.has(promptId);
+		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+		let carried: { total: number; mentioned: number } | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
+
+		for (const date of dateRange) {
+			const actual = dateMap.get(date);
+			if (actual) {
+				carried = actual;
+			}
+			// Only contribute if we have a value (actual or carried forward)
+			if (!carried) continue;
+
+			if (!dailyVisibilityMap.has(date)) {
+				dailyVisibilityMap.set(date, {
+					branded: { total: 0, mentioned: 0 },
+					nonBranded: { total: 0, mentioned: 0 },
+				});
+			}
+			const bucket = dailyVisibilityMap.get(date)!;
+			const target = isBranded ? bucket.branded : bucket.nonBranded;
+			target.total += carried.total;
+			target.mentioned += carried.mentioned;
+
+			// Only count actual (non-carried) data toward period totals
+			if (actual) {
+				if (isBranded) {
+					totalBrandedRuns += actual.total;
+					totalBrandedMentioned += actual.mentioned;
+				} else {
+					totalNonBrandedRuns += actual.total;
+					totalNonBrandedMentioned += actual.mentioned;
+				}
+			}
+		}
+	}
+
+	return { dailyVisibilityMap, totalBrandedRuns, totalBrandedMentioned, totalNonBrandedRuns, totalNonBrandedMentioned };
+}
+
+export interface CitationCategories {
+	brand: number;
+	competitor: number;
+	socialMedia: number;
+	google: number;
+	institutional: number;
+	other: number;
+}
+
+/**
+ * Per-prompt LVCF for citation data with cadence normalization.
+ *
+ * For each prompt, carries forward its last known citation counts per category,
+ * normalized by the brand's cadence (citations_per_run / cadence_days) so the
+ * daily total reflects a steady rate rather than spiking on run days.
+ *
+ * Pre-seeds each prompt with its earliest observation to avoid ramp-up artifacts.
+ */
+export function applyPerPromptCitationLVCF(
+	perPromptData: PerPromptDailyCitationStats[],
+	dateRange: string[],
+	cadenceHours: number | null | undefined,
+	categorizeDomain: (domain: string) => "brand" | "competitor" | "social_media" | "google" | "institutional" | "other",
+): Map<string, CitationCategories> {
+	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? DEFAULT_DELAY_HOURS) / 24));
+
+	// Group by prompt_id -> date -> category totals
+	const byPrompt = new Map<string, Map<string, CitationCategories>>();
+	for (const row of perPromptData) {
+		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
+		const dateMap = byPrompt.get(row.prompt_id)!;
+		const dateStr = String(row.date);
+		if (!dateMap.has(dateStr)) dateMap.set(dateStr, { brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 });
+		const bucket = dateMap.get(dateStr)!;
+		const cat = categorizeDomain(row.domain);
+		if (cat === "social_media") bucket.socialMedia += Number(row.count);
+		else bucket[cat] += Number(row.count);
+	}
+
+	const dailyCitations = new Map<string, CitationCategories>();
+
+	for (const [, dateMap] of byPrompt) {
+		// Pre-seed with the earliest observation to avoid ramp-up
+		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+		let carried: CitationCategories | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
+
+		for (const date of dateRange) {
+			const actual = dateMap.get(date);
+			if (actual) {
+				carried = actual;
+			}
+			if (!carried) continue;
+
+			if (!dailyCitations.has(date)) {
+				dailyCitations.set(date, { brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 });
+			}
+			const day = dailyCitations.get(date)!;
+			day.brand += carried.brand / cadenceDays;
+			day.competitor += carried.competitor / cadenceDays;
+			day.socialMedia += carried.socialMedia / cadenceDays;
+			day.google += carried.google / cadenceDays;
+			day.institutional += carried.institutional / cadenceDays;
+			day.other += carried.other / cadenceDays;
+		}
+	}
+
+	// Round final values
+	for (const [, v] of dailyCitations) {
+		v.brand = Math.round(v.brand);
+		v.competitor = Math.round(v.competitor);
+		v.socialMedia = Math.round(v.socialMedia);
+		v.google = Math.round(v.google);
+		v.institutional = Math.round(v.institutional);
+		v.other = Math.round(v.other);
+	}
+
+	return dailyCitations;
 }
 
 // Function to normalize values from 0-500 range to 0-100% and round down to nearest 20%

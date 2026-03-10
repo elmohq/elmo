@@ -22,6 +22,7 @@ import PromptWizard from "@/components/prompt-wizard";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import type { VisibilityTimeSeriesPoint, CitationTimeSeriesPoint } from "@/server/dashboard";
+import { CATEGORY_CONFIG } from "@/lib/domain-categories";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -44,6 +45,8 @@ interface ExtendedCitationPoint extends CitationTimeSeriesPoint {
 	brandReal?: number;
 	competitorReal?: number;
 	socialMediaReal?: number;
+	googleReal?: number;
+	institutionalReal?: number;
 }
 
 /**
@@ -100,6 +103,8 @@ function extendCitationData(data: CitationTimeSeriesPoint[]): ExtendedCitationPo
 		brandReal: point.brand,
 		competitorReal: point.competitor,
 		socialMediaReal: point.socialMedia,
+		googleReal: point.google,
+		institutionalReal: point.institutional,
 	}));
 
 	let firstValidIndex = -1;
@@ -107,7 +112,7 @@ function extendCitationData(data: CitationTimeSeriesPoint[]): ExtendedCitationPo
 
 	for (let i = 0; i < extendedData.length; i++) {
 		const point = extendedData[i];
-		const hasData = point.brand > 0 || point.competitor > 0 || point.socialMedia > 0;
+		const hasData = point.brand > 0 || point.competitor > 0 || point.socialMedia > 0 || point.google > 0 || point.institutional > 0;
 		if (hasData) {
 			if (firstValidIndex === -1) {
 				firstValidIndex = i;
@@ -124,18 +129,26 @@ function extendCitationData(data: CitationTimeSeriesPoint[]): ExtendedCitationPo
 			extendedData[i].brand = firstPoint.brand;
 			extendedData[i].competitor = firstPoint.competitor;
 			extendedData[i].socialMedia = firstPoint.socialMedia;
+			extendedData[i].google = firstPoint.google;
+			extendedData[i].institutional = firstPoint.institutional;
 			extendedData[i].brandReal = 0;
 			extendedData[i].competitorReal = 0;
 			extendedData[i].socialMediaReal = 0;
+			extendedData[i].googleReal = 0;
+			extendedData[i].institutionalReal = 0;
 			extendedData[i]._extended = true;
 		}
 		for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
 			extendedData[i].brand = lastPoint.brand;
 			extendedData[i].competitor = lastPoint.competitor;
 			extendedData[i].socialMedia = lastPoint.socialMedia;
+			extendedData[i].google = lastPoint.google;
+			extendedData[i].institutional = lastPoint.institutional;
 			extendedData[i].brandReal = 0;
 			extendedData[i].competitorReal = 0;
 			extendedData[i].socialMediaReal = 0;
+			extendedData[i].googleReal = 0;
+			extendedData[i].institutionalReal = 0;
 			extendedData[i]._extended = true;
 		}
 	}
@@ -461,18 +474,12 @@ function DashboardPage() {
 	};
 
 	const citationsChartConfig: ChartConfig = {
-		brand: {
-			label: "Your Brand",
-			color: "#10b981",
-		},
-		competitor: {
-			label: "Competitors",
-			color: "#ef4444",
-		},
-		socialMedia: {
-			label: "Social Media",
-			color: "#8b5cf6",
-		},
+		brand: { label: "Your Brand", color: CATEGORY_CONFIG.brand.chartColor },
+		competitor: { label: "Competitors", color: CATEGORY_CONFIG.competitor.chartColor },
+		socialMedia: { label: "Social Media", color: CATEGORY_CONFIG.social_media.chartColor },
+		google: { label: "Google", color: CATEGORY_CONFIG.google.chartColor },
+		institutional: { label: "Institutional", color: CATEGORY_CONFIG.institutional.chartColor },
+		other: { label: "Other", color: CATEGORY_CONFIG.other.chartColor },
 	};
 
 	return (
@@ -521,10 +528,10 @@ function DashboardPage() {
 					{/* Visibility Chart */}
 					<Card className="shadow-none lg:col-span-3 flex flex-col">
 						<CardHeader className="pb-2">
-							<CardTitleWithTooltip
-								title="Visibility Trends (30d)"
-								tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. This chart shows the 7-day rolling average of how often your brand is mentioned in AI responses for the prompts we are tracking."
-							/>
+						<CardTitleWithTooltip
+							title="Visibility Trends (30d)"
+							tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
+						/>
 						</CardHeader>
 						<CardContent className="flex-1 min-h-[120px]">
 							{isLoading ? (
@@ -547,7 +554,7 @@ function DashboardPage() {
 											}}
 										/>
 										<YAxis
-											domain={[0, 100]}
+											domain={[0, "auto"]}
 											tickLine={false}
 											axisLine={false}
 											tickMargin={8}
@@ -614,7 +621,7 @@ function DashboardPage() {
 					<CardHeader className="pb-2">
 						<CardTitleWithTooltip
 							title="Citation Category Trends (30d)"
-							tooltip="A website contained in the response to a prompt evaluated by AI is a citation. This chart tracks how types of cited websites (your brand website, competitor websites, social media) change over time over prompts we evaluate. Uncategorized websites are not included in this chart."
+							tooltip="Distribution of citations by category over time, shown as a percentage of all citations each day. Data is smoothed to account for staggered prompt schedules."
 						/>
 					</CardHeader>
 					<CardContent>
@@ -622,7 +629,7 @@ function DashboardPage() {
 							<Skeleton className="h-[140px] w-full" />
 						) : (
 							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[140px] w-full">
-								<AreaChart data={extendedCitationData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+								<AreaChart data={extendedCitationData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
 									<CartesianGrid vertical={false} strokeDasharray="3 3" />
 									<XAxis
 										dataKey="date"
@@ -643,6 +650,7 @@ function DashboardPage() {
 										tickMargin={8}
 										tickCount={4}
 										tick={{ fontSize: 11 }}
+										tickFormatter={(value) => `${value}%`}
 									/>
 									<ChartTooltip
 										isAnimationActive={false}
@@ -659,54 +667,30 @@ function DashboardPage() {
 											return (
 												<div className="border-border/50 bg-background grid min-w-[10rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 													<div className="font-medium">{formattedDate}</div>
-													<div className="grid gap-1">
-														<div className="flex items-center gap-2">
-															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-emerald-500" />
-															<span className="text-muted-foreground">Your Brand</span>
-															<span className="ml-auto font-mono tabular-nums">{dataPoint?.brand}</span>
-														</div>
-														<div className="flex items-center gap-2">
-															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-red-500" />
-															<span className="text-muted-foreground">Competitors</span>
-															<span className="ml-auto font-mono tabular-nums">{dataPoint?.competitor}</span>
-														</div>
-														<div className="flex items-center gap-2">
-															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-violet-500" />
-															<span className="text-muted-foreground">Social Media</span>
-															<span className="ml-auto font-mono tabular-nums">{dataPoint?.socialMedia}</span>
-														</div>
-													</div>
+												<div className="grid gap-1">
+													{(["brand", "competitor", "social_media", "google", "institutional", "other"] as const).map((cat) => {
+														const cfg = CATEGORY_CONFIG[cat];
+														const key = cat === "social_media" ? "socialMedia" : cat;
+														const value = dataPoint?.[key as keyof ExtendedCitationPoint] as number | undefined;
+														if (!value) return null;
+														return (
+															<div key={cat} className="flex items-center gap-2">
+																<div className={`shrink-0 rounded-[2px] h-2.5 w-2.5 ${cfg.chartDotClass}`} />
+																<span className="text-muted-foreground">{cat === "brand" ? "Your Brand" : cfg.label}</span>
+																<span className="ml-auto font-mono tabular-nums">{value}%</span>
+															</div>
+														);
+													})}
+												</div>
 												</div>
 											);
 										}}
 									/>
-									<Area
-										dataKey="socialMedia"
-										type="monotone"
-										stackId="1"
-										stroke="var(--color-socialMedia)"
-										fill="var(--color-socialMedia)"
-										fillOpacity={0.8}
-										strokeWidth={0}
-									/>
-									<Area
-										dataKey="competitor"
-										type="monotone"
-										stackId="1"
-										stroke="var(--color-competitor)"
-										fill="var(--color-competitor)"
-										fillOpacity={0.8}
-										strokeWidth={0}
-									/>
-									<Area
-										dataKey="brand"
-										type="monotone"
-										stackId="1"
-										stroke="var(--color-brand)"
-										fill="var(--color-brand)"
-										fillOpacity={0.8}
-										strokeWidth={0}
-									/>
+								<Area dataKey="institutional" type="monotone" stackId="1" stroke="var(--color-institutional)" fill="var(--color-institutional)" fillOpacity={0.8} strokeWidth={0} />
+								<Area dataKey="google" type="monotone" stackId="1" stroke="var(--color-google)" fill="var(--color-google)" fillOpacity={0.8} strokeWidth={0} />
+								<Area dataKey="socialMedia" type="monotone" stackId="1" stroke="var(--color-socialMedia)" fill="var(--color-socialMedia)" fillOpacity={0.8} strokeWidth={0} />
+								<Area dataKey="competitor" type="monotone" stackId="1" stroke="var(--color-competitor)" fill="var(--color-competitor)" fillOpacity={0.8} strokeWidth={0} />
+								<Area dataKey="brand" type="monotone" stackId="1" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.8} strokeWidth={0} />
 								</AreaChart>
 							</ChartContainer>
 						)}

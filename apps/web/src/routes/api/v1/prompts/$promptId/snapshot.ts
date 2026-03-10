@@ -8,6 +8,7 @@ import {
 	getPromptTopCompetitorMentions,
 } from "@/lib/postgres-read";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
+import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 
 function isValidUUID(id: string): boolean {
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,30 +20,6 @@ function isValidDate(dateStr: string): boolean {
 	if (!dateRegex.test(dateStr)) return false;
 	const d = new Date(`${dateStr}T00:00:00Z`);
 	return !Number.isNaN(d.getTime());
-}
-
-function extractDomain(urlOrDomain: string): string {
-	try {
-		const cleaned = urlOrDomain.replace(/^https?:\/\//, "");
-		const withoutWww = cleaned.replace(/^www\./, "");
-		const domain = withoutWww.split("/")[0];
-		return domain.toLowerCase();
-	} catch {
-		return urlOrDomain.toLowerCase();
-	}
-}
-
-function normalizeUrl(url: string): string {
-	try {
-		const urlObj = new URL(url);
-		if (urlObj.searchParams.get("utm_source") === "openai") {
-			urlObj.searchParams.delete("utm_source");
-		}
-		urlObj.search = urlObj.searchParams.toString();
-		return urlObj.toString();
-	} catch {
-		return url;
-	}
 }
 
 function getPromptIdFromPath(request: Request): string {

@@ -52,14 +52,18 @@ function CitationsPage() {
 	const availableTags = citationData?.availableTags || [];
 
 	const infoContent = (
-		<p>
-			Citations are collected from all prompt evaluations.{" "}
-			<strong>Competitor</strong> domains shown are only those in your{" "}
-			<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
-				tracked competitors list
-			</Link>
-			.
-		</p>
+		<>
+			<p className="mb-2">
+				Citations are the links and sources that AI models include in their responses when answering your prompts. They show which websites the AI considers authoritative or relevant to your topics.
+			</p>
+			<p>
+				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}
+				<Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">
+					tracked competitors list
+				</Link>
+				. Other domains appear under their detected category (Google, Social Media, Institutional, or Other).
+			</p>
+		</>
 	);
 
 	// Only show full loading skeleton on initial load
@@ -145,7 +149,8 @@ function CitationsPage() {
 					brandName={brand?.name}
 					showStats={true}
 					maxDomains={20}
-					maxUrls={50}
+					maxUrls={20}
+					days={days}
 				/>
 			)}
 		</PageHeader>

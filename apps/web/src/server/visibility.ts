@@ -10,12 +10,12 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { generateDateRange, getDaysFromLookback, type LookbackPeriod } from "@/lib/chart-utils";
+import { generateDateRange, getDaysFromLookback, applyPerPromptLVCF, type LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
 	getBatchChartData,
 	getBatchVisibilityData,
-	getVisibilityTimeSeries,
+	getPerPromptVisibilityTimeSeries,
 	getDailyCitationStats,
 	type ProcessedBatchChartDataPoint,
 } from "@/lib/postgres-read";
@@ -208,7 +208,6 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 				.where(and(eq(prompts.brandId, data.brandId), inArray(prompts.id, data.promptIds))),
 		]);
 
-		const brandName = brandResult[0]?.name || "";
 		const totalPrompts = promptsResult.length;
 
 		if (totalPrompts === 0) {
@@ -230,13 +229,12 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			})
 			.map((p) => p.id);
 
-		const [visibilityData, citationData] = await Promise.all([
-			getVisibilityTimeSeries(
+		const [perPromptVisibility, citationData] = await Promise.all([
+			getPerPromptVisibilityTimeSeries(
 				data.brandId,
 				fromDateStr,
 				toDateStr,
 				timezone,
-				brandedPromptIds,
 				data.promptIds,
 				data.modelGroup,
 			),
@@ -247,57 +245,14 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		const totalCitations = citationData.reduce((sum, row) => sum + Number(row.count), 0);
 
-		// Process visibility data
-		const dailyVisibilityMap = new Map<
-			string,
-			{
-				branded: { total: number; mentioned: number };
-				nonBranded: { total: number; mentioned: number };
-			}
-		>();
-
-		let totalBrandedRuns = 0;
-		let totalBrandedMentioned = 0;
-		let totalNonBrandedRuns = 0;
-		let totalNonBrandedMentioned = 0;
-
-		for (const row of visibilityData) {
-			const dateStr = String(row.date);
-			if (!dailyVisibilityMap.has(dateStr)) {
-				dailyVisibilityMap.set(dateStr, {
-					branded: { total: 0, mentioned: 0 },
-					nonBranded: { total: 0, mentioned: 0 },
-				});
-			}
-			const dayData = dailyVisibilityMap.get(dateStr)!;
-			const runs = Number(row.total_runs);
-			const mentioned = Number(row.brand_mentioned_count);
-
-			if (row.is_branded) {
-				dayData.branded.total += runs;
-				dayData.branded.mentioned += mentioned;
-				totalBrandedRuns += runs;
-				totalBrandedMentioned += mentioned;
-			} else {
-				dayData.nonBranded.total += runs;
-				dayData.nonBranded.mentioned += mentioned;
-				totalNonBrandedRuns += runs;
-				totalNonBrandedMentioned += mentioned;
-			}
-		}
-
-		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
-		const currentVisibility = totalRuns > 0 ? Math.round((totalMentioned / totalRuns) * 100) : 0;
-
-		// Generate date range
+		// Generate date range (needed before LVCF)
+		const rawDates = perPromptVisibility.map((r) => String(r.date)).sort();
 		let startDate: Date;
 		let endDate: Date;
 
-		const sortedDates = Array.from(dailyVisibilityMap.keys()).sort();
-		if (lookbackParam === "all" && sortedDates.length > 0) {
-			startDate = new Date(sortedDates[0]);
-			endDate = new Date(sortedDates[sortedDates.length - 1]);
+		if (lookbackParam === "all" && rawDates.length > 0) {
+			startDate = new Date(rawDates[0]);
+			endDate = new Date(rawDates[rawDates.length - 1]);
 		} else {
 			const daysToSubtract = getDaysFromLookback(lookbackParam);
 			const currentDateInTimezone = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
@@ -308,36 +263,27 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		const dateRange = generateDateRange(startDate, endDate);
 
-		// 7-day rolling average
-		const ROLLING_WINDOW_DAYS = 7;
-		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = dateRange.map((date, dateIndex) => {
-			let windowBrandedTotal = 0;
-			let windowBrandedMentioned = 0;
-			let windowNonBrandedTotal = 0;
-			let windowNonBrandedMentioned = 0;
+		// Process visibility via per-prompt LVCF smoothing
+		const {
+			dailyVisibilityMap,
+			totalBrandedRuns,
+			totalBrandedMentioned,
+			totalNonBrandedRuns,
+			totalNonBrandedMentioned,
+		} = applyPerPromptLVCF(perPromptVisibility, dateRange, brandedPromptIds);
 
-			for (let i = 0; i < ROLLING_WINDOW_DAYS; i++) {
-				const lookbackIndex = dateIndex - i;
-				if (lookbackIndex >= 0) {
-					const lookbackDate = dateRange[lookbackIndex];
-					const dayData = dailyVisibilityMap.get(lookbackDate);
-					if (dayData) {
-						windowBrandedTotal += dayData.branded.total;
-						windowBrandedMentioned += dayData.branded.mentioned;
-						windowNonBrandedTotal += dayData.nonBranded.total;
-						windowNonBrandedMentioned += dayData.nonBranded.mentioned;
-					}
-				}
-			}
+		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
+		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
+		const currentVisibility = totalRuns > 0 ? Math.round((totalMentioned / totalRuns) * 100) : 0;
 
-			const totalWindowRuns = windowBrandedTotal + windowNonBrandedTotal;
-			const totalWindowMentioned = windowBrandedMentioned + windowNonBrandedMentioned;
-
-			if (totalWindowRuns === 0) {
-				return { date, visibility: null };
-			}
-
-			return { date, visibility: Math.round((totalWindowMentioned / totalWindowRuns) * 100) };
+		// Build visibility time series directly from LVCF-smoothed data (no rolling window needed)
+		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = dateRange.map((date) => {
+			const d = dailyVisibilityMap.get(date);
+			if (!d) return { date, visibility: null };
+			const t = d.branded.total + d.nonBranded.total;
+			const m = d.branded.mentioned + d.nonBranded.mentioned;
+			if (t === 0) return { date, visibility: null };
+			return { date, visibility: Math.round((m / t) * 100) };
 		});
 
 		return {

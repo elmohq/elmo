@@ -72,6 +72,8 @@ export interface CitationUrlStats {
 	domain: string;
 	title: string | null;
 	count: number;
+	avg_position: number | null;
+	prompt_count: number;
 }
 
 export interface PromptMentionSummary {
@@ -182,6 +184,43 @@ export async function getDashboardSummary(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
+	`);
+	return rows;
+}
+
+// ============================================================================
+// Per-Prompt Visibility Time Series (for LVCF smoothing)
+// ============================================================================
+
+export interface PerPromptVisibilityPoint {
+	prompt_id: string;
+	date: string;
+	total_runs: number;
+	brand_mentioned_count: number;
+}
+
+export async function getPerPromptVisibilityTimeSeries(
+	brandId: string,
+	fromDate: string | null,
+	toDate: string | null,
+	timezone: string,
+	enabledPromptIds?: string[],
+	modelGroup?: string,
+): Promise<PerPromptVisibilityPoint[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptVisibilityPoint>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date AS date,
+			count(*)::int AS total_runs,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelGroupFilter(modelGroup)}
+		GROUP BY prompt_id, date
+		ORDER BY prompt_id, date
 	`);
 	return rows;
 }
@@ -426,7 +465,9 @@ export async function getCitationUrlStats(
 			url,
 			domain,
 			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
-			count(*)::int AS count
+			count(*)::int AS count,
+			round(avg(citation_index)::numeric, 1)::float AS avg_position,
+			count(DISTINCT prompt_id)::int AS prompt_count
 		FROM citations
 		WHERE brand_id = ${brandId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -475,7 +516,9 @@ export async function getPromptCitationUrlStats(
 			url,
 			domain,
 			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
-			count(*)::int AS count
+			count(*)::int AS count,
+			round(avg(citation_index)::numeric, 1)::float AS avg_position,
+			count(DISTINCT prompt_id)::int AS prompt_count
 		FROM citations
 		WHERE prompt_id = ${promptId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -556,6 +599,44 @@ export async function getDailyCitationStats(
 			${modelGroupFilter(modelGroup)}
 		GROUP BY date, domain
 		ORDER BY date
+	`);
+	return rows;
+}
+
+// ============================================================================
+// Per-Prompt Daily Citation Stats (for LVCF smoothing)
+// ============================================================================
+
+export interface PerPromptDailyCitationStats {
+	prompt_id: string;
+	date: string;
+	domain: string;
+	count: number;
+}
+
+export async function getPerPromptDailyCitationStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	modelGroup?: string,
+): Promise<PerPromptDailyCitationStats[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyCitationStats>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date AS date,
+			domain,
+			count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${promptIdFilter(enabledPromptIds)}
+			${modelGroupFilter(modelGroup)}
+		GROUP BY prompt_id, date, domain
+		ORDER BY prompt_id, date
 	`);
 	return rows;
 }

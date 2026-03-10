@@ -8,43 +8,10 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getCitationDomainStats, getCitationUrlStats } from "@/lib/postgres-read";
+import { getCitationDomainStats, getCitationUrlStats, getPerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-
-function extractDomain(urlOrDomain: string): string {
-	try {
-		const cleaned = urlOrDomain.replace(/^https?:\/\//, "");
-		const withoutWww = cleaned.replace(/^www\./, "");
-		return withoutWww.split("/")[0].toLowerCase();
-	} catch {
-		return urlOrDomain.toLowerCase();
-	}
-}
-
-const SOCIAL_MEDIA_DOMAINS = [
-	"facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
-	"youtube.com", "tiktok.com", "pinterest.com", "reddit.com", "snapchat.com",
-	"tumblr.com", "whatsapp.com", "telegram.org", "discord.com", "twitch.tv",
-];
-
-function isSocialMediaDomain(domain: string): boolean {
-	return SOCIAL_MEDIA_DOMAINS.some((sm) => domain === sm || domain.endsWith(`.${sm}`));
-}
-
-function normalizeUrl(url: string): string {
-	try {
-		const urlObj = new URL(url);
-		if (urlObj.searchParams.get("utm_source") === "openai") {
-			urlObj.searchParams.delete("utm_source");
-		}
-		urlObj.search = urlObj.searchParams.toString();
-		return urlObj.toString();
-	} catch {
-		return url;
-	}
-}
-
-type CitationCategory = "brand" | "competitor" | "social_media" | "other";
+import { generateDateRange, applyPerPromptCitationLVCF } from "@/lib/chart-utils";
+import { type CitationCategory, extractDomain, normalizeUrl, categorizeDomain as categorizeDomainShared, toRoundedPercentages } from "@/lib/domain-categories";
 
 /**
  * Get citation statistics for a brand
@@ -62,13 +29,23 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		// Calculate date range
+		// Calculate date ranges
 		const toDate = new Date();
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
 		const timezone = "UTC";
+
+		// Previous period of equal length for comparisons
+		// Current period: [fromDate, toDate] inclusive = (data.days + 1) calendar days
+		// Previous period ends the day before fromDate, same span
+		const prevEndDate = new Date(fromDate);
+		prevEndDate.setDate(prevEndDate.getDate() - 1);
+		const prevStartDate = new Date(prevEndDate);
+		prevStartDate.setDate(prevStartDate.getDate() - data.days);
+		const prevFromDateStr = prevStartDate.toISOString().split("T")[0];
+		const prevToDateFmt = prevEndDate.toISOString().split("T")[0];
 
 		// Get brand info, competitors, and all enabled prompts
 		const [brandResult, competitorsList, allPrompts] = await Promise.all([
@@ -131,54 +108,101 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					brandCitations: 0,
 					competitorCitations: 0,
 					socialMediaCitations: 0,
+					googleCitations: 0,
+					institutionalCitations: 0,
 					otherCitations: 0,
-					domainDistribution: [],
-					specificUrls: [],
+					domainDistribution: [] as { domain: string; count: number; category: CitationCategory; exampleTitle?: string; previousCount: number; changePercent: number | null }[],
+					specificUrls: [] as { url: string; title?: string; domain: string; count: number; category: CitationCategory; avgPosition: number | null; promptCount: number; isNew: boolean }[],
 					availableTags,
+					citationTimeSeries: [] as { date: string; brand: number; competitor: number; socialMedia: number; google: number; institutional: number; other: number }[],
+					previousBrandShare: null as number | null,
+				whatsChanged: {
+					newUrls: [] as { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[],
+					droppedUrls: [] as { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[],
+					titleChanges: [] as { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[],
+					newDomains: [] as { domain: string; count: number; category: CitationCategory }[],
+					droppedDomains: [] as { domain: string; previousCount: number; category: CitationCategory }[],
+				},
 				};
 			}
 		}
 
-		const [domainStats, urlStats] = await Promise.all([
+		const [domainStats, urlStats, perPromptCitations, prevDomainStats, prevUrlStats] = await Promise.all([
 			getCitationDomainStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
+			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
+			getCitationDomainStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.modelGroup),
+			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.modelGroup),
 		]);
 
-		// Categorize domains
 		function categorizeDomain(domain: string): CitationCategory {
-			if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) return "brand";
-			if (competitorDomains.has(domain)) return "competitor";
-			if (isSocialMediaDomain(domain)) return "social_media";
-			return "other";
+			return categorizeDomainShared(domain, brandDomain, competitorDomains);
 		}
 
-		const domainDistribution = domainStats.map(({ domain, count, example_title }) => ({
-			domain,
-			count: Number(count),
-			category: categorizeDomain(domain),
-			exampleTitle: example_title || undefined,
-		}));
+		// Build previous period domain map for trend comparison
+		const prevDomainMap = new Map<string, number>();
+		for (const { domain, count } of prevDomainStats) {
+			prevDomainMap.set(domain, Number(count));
+		}
 
-		// Categorize and normalize specific URLs
-		const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-		for (const { url, domain, title, count } of urlStats) {
+		const domainDistribution = domainStats.map(({ domain, count, example_title }) => {
+			const currentCount = Number(count);
+			const previousCount = prevDomainMap.get(domain) || 0;
+			const changePercent = previousCount > 0
+				? Math.round(((currentCount - previousCount) / previousCount) * 100)
+				: null;
+			return {
+				domain,
+				count: currentCount,
+				category: categorizeDomain(domain),
+				exampleTitle: example_title || undefined,
+				previousCount,
+				changePercent,
+			};
+		});
+
+		// Build previous period URL map for comparison
+		const prevUrlMap = new Map<string, { count: number; title?: string; domain: string }>();
+		for (const { url, domain, title, count } of prevUrlStats) {
+			const normalizedUrl = normalizeUrl(url);
+			const existing = prevUrlMap.get(normalizedUrl);
+			if (existing) {
+				existing.count += Number(count);
+				if (!existing.title && title) existing.title = title;
+			} else {
+				prevUrlMap.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
+			}
+		}
+
+		// Categorize and normalize specific URLs with new fields
+		const urlCounts = new Map<string, { count: number; title?: string; domain: string; avgPosition: number | null; promptCount: number }>();
+		for (const { url, domain, title, count, avg_position, prompt_count } of urlStats) {
 			const normalizedUrl = normalizeUrl(url);
 			const existing = urlCounts.get(normalizedUrl);
 			if (existing) {
 				existing.count += Number(count);
 				if (!existing.title && title) existing.title = title;
 			} else {
-				urlCounts.set(normalizedUrl, { count: Number(count), title: title || undefined, domain });
+				urlCounts.set(normalizedUrl, {
+					count: Number(count),
+					title: title || undefined,
+					domain,
+					avgPosition: avg_position != null ? Number(avg_position) : null,
+					promptCount: Number(prompt_count),
+				});
 			}
 		}
 
 		const specificUrls = Array.from(urlCounts.entries())
-			.map(([url, { count, title, domain }]) => ({
+			.map(([url, { count, title, domain, avgPosition, promptCount }]) => ({
 				url,
 				title,
 				domain,
 				count,
 				category: categorizeDomain(domain),
+				avgPosition,
+				promptCount,
+				isNew: !prevUrlMap.has(url),
 			}))
 			.sort((a, b) => b.count - a.count);
 
@@ -186,8 +210,102 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const brandCitations = domainDistribution.filter((d) => d.category === "brand").reduce((s, d) => s + d.count, 0);
 		const competitorCitations = domainDistribution.filter((d) => d.category === "competitor").reduce((s, d) => s + d.count, 0);
 		const socialMediaCitations = domainDistribution.filter((d) => d.category === "social_media").reduce((s, d) => s + d.count, 0);
+		const googleCitations = domainDistribution.filter((d) => d.category === "google").reduce((s, d) => s + d.count, 0);
+		const institutionalCitations = domainDistribution.filter((d) => d.category === "institutional").reduce((s, d) => s + d.count, 0);
 		const otherCitations = domainDistribution.filter((d) => d.category === "other").reduce((s, d) => s + d.count, 0);
-		const totalCitations = brandCitations + competitorCitations + socialMediaCitations + otherCitations;
+		const totalCitations = brandCitations + competitorCitations + socialMediaCitations + googleCitations + institutionalCitations + otherCitations;
+
+		// Previous period brand share for delta
+		const prevBrandCitations = prevDomainStats
+			.filter((d) => categorizeDomain(d.domain) === "brand")
+			.reduce((s, d) => s + Number(d.count), 0);
+		const prevTotalCitations = prevDomainStats.reduce((s, d) => s + Number(d.count), 0);
+		const previousBrandShare = prevTotalCitations > 0
+			? Math.round((prevBrandCitations / prevTotalCitations) * 100)
+			: null;
+
+		// Citation time series via per-prompt LVCF with cadence normalization
+		const dateRangeStart = new Date(toDateStr);
+		dateRangeStart.setDate(dateRangeStart.getDate() - (data.days - 1));
+		const dateRange = generateDateRange(dateRangeStart, new Date(toDateStr));
+		const smoothedCitations = applyPerPromptCitationLVCF(
+			perPromptCitations, dateRange, brandResult[0]?.delayOverrideHours, categorizeDomain,
+		);
+		const citationTimeSeries = dateRange.map((date) => {
+			const c = smoothedCitations.get(date);
+			if (!c) return { date, brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 };
+			const pct = toRoundedPercentages({
+				brand: c.brand, competitor: c.competitor, socialMedia: c.socialMedia,
+				google: c.google, institutional: c.institutional, other: c.other,
+			});
+			return {
+				date,
+				brand: pct.brand ?? 0,
+				competitor: pct.competitor ?? 0,
+				socialMedia: pct.socialMedia ?? 0,
+				google: pct.google ?? 0,
+				institutional: pct.institutional ?? 0,
+				other: pct.other ?? 0,
+			};
+		});
+
+		// What's Changed: new URLs, dropped URLs, title changes
+		const MIN_COUNT_FOR_WHATS_CHANGED = 2;
+
+		const newUrls = specificUrls
+			.filter((u) => u.isNew && u.count >= MIN_COUNT_FOR_WHATS_CHANGED)
+			.slice(0, 10)
+			.map((u) => ({ url: u.url, domain: u.domain, count: u.count, promptCount: u.promptCount, category: u.category }));
+
+		const droppedUrls: { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[] = [];
+		for (const [url, prevData] of prevUrlMap.entries()) {
+			if (prevData.count < MIN_COUNT_FOR_WHATS_CHANGED) continue;
+			const current = urlCounts.get(url);
+			const currentCount = current?.count || 0;
+			const dropPercent = ((prevData.count - currentCount) / prevData.count) * 100;
+			if (dropPercent >= 50) {
+				droppedUrls.push({
+					url,
+					domain: prevData.domain,
+					previousCount: prevData.count,
+					currentCount,
+					category: categorizeDomain(prevData.domain),
+				});
+			}
+		}
+		droppedUrls.sort((a, b) => b.previousCount - a.previousCount);
+
+		const titleChanges: { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[] = [];
+		for (const [url, currentData] of urlCounts.entries()) {
+			const prevData = prevUrlMap.get(url);
+			if (!prevData) continue;
+			if (currentData.title && prevData.title && currentData.title !== prevData.title) {
+				titleChanges.push({
+					url,
+					domain: currentData.domain,
+					currentTitle: currentData.title,
+					previousTitle: prevData.title,
+					category: categorizeDomain(currentData.domain),
+				});
+			}
+		}
+
+		// Domain-level changes
+		const currentDomainSet = new Set(domainDistribution.map((d) => d.domain));
+		const newDomains = domainDistribution
+			.filter((d) => d.previousCount === 0 && d.count >= MIN_COUNT_FOR_WHATS_CHANGED)
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 10)
+			.map((d) => ({ domain: d.domain, count: d.count, category: d.category }));
+
+		const droppedDomains: { domain: string; previousCount: number; category: CitationCategory }[] = [];
+		for (const [domain, prevCount] of prevDomainMap.entries()) {
+			if (prevCount < MIN_COUNT_FOR_WHATS_CHANGED) continue;
+			if (!currentDomainSet.has(domain)) {
+				droppedDomains.push({ domain, previousCount: prevCount, category: categorizeDomain(domain) });
+			}
+		}
+		droppedDomains.sort((a, b) => b.previousCount - a.previousCount);
 
 		return {
 			totalCitations,
@@ -195,9 +313,20 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			brandCitations,
 			competitorCitations,
 			socialMediaCitations,
+			googleCitations,
+			institutionalCitations,
 			otherCitations,
 			domainDistribution,
 			specificUrls,
 			availableTags,
+			citationTimeSeries,
+			previousBrandShare,
+		whatsChanged: {
+			newUrls,
+			droppedUrls: droppedUrls.slice(0, 10),
+			titleChanges: titleChanges.slice(0, 10),
+			newDomains,
+			droppedDomains: droppedDomains.slice(0, 10),
+		},
 		};
 	});

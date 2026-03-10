@@ -138,8 +138,7 @@ export function BaseChartPrint({
 							interval={0}
 						/>
 						<YAxis
-							domain={[0, 100]}
-							ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+							domain={[0, "auto"]}
 							axisLine={false}
 							tickLine={false}
 							tick={{
