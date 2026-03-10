@@ -36,6 +36,13 @@
       "when": 1773100369290,
       "tag": "0004_nebulous_gunslinger",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773125217919,
+      "tag": "0005_known_warhawk",
+      "breakpoints": true
     }
   ]
 }

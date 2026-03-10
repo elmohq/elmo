@@ -69,7 +69,7 @@ export const promptRuns = pgTable(
 		promptId: uuid("prompt_id")
 			.references(() => prompts.id)
 			.notNull(),
-		brandId: text("brand_id").references(() => brands.id),
+		brandId: text("brand_id").references(() => brands.id).notNull(),
 		modelGroup: modelGroupsEnum().notNull(),
 		model: text("model").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
@@ -108,7 +108,7 @@ export const citations = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
-		brandCreatedIdx: index("citations_brand_id_created_at_idx").on(table.brandId, table.createdAt),
+		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(table.brandId, table.createdAt, table.url, table.domain, table.title, table.promptId, table.modelGroup),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
