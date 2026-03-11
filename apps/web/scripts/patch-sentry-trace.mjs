@@ -1,50 +1,56 @@
 /**
- * Ensures import-in-the-middle's hook.mjs (and its dependency create-hook.mjs)
+ * Ensures import-in-the-middle's hook.mjs and its full dependency tree
  * are present in the build output's node_modules.
  *
  * Sentry's @sentry/node calls module.register("import-in-the-middle/hook.mjs", ...)
- * at runtime. Because this is a string argument (not an import statement), Nitro's
- * file tracer (nft) doesn't detect it and omits hook.mjs from the output.
- * Without this file, OpenTelemetry's ESM loader hooks can't register, which means
- * third-party libraries like pg won't be auto-instrumented.
+ * at runtime to set up ESM loader hooks for OpenTelemetry instrumentation. Because
+ * this is a string argument (not an import statement), Nitro's file tracer (nft)
+ * doesn't detect it and omits hook.mjs and its dependencies from the output.
+ *
+ * Without these files, module.register() silently fails on Vercel, which means
+ * ESM loader hooks are never registered and third-party libraries like pg
+ * won't be auto-instrumented by Sentry/OpenTelemetry.
  */
 
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
 const require = createRequire(import.meta.url);
 
-const iitmDir = dirname(require.resolve("import-in-the-middle/package.json"));
-const filesToCopy = ["hook.mjs", "create-hook.mjs"];
+const iitmPkgJsonPath = require.resolve("import-in-the-middle/package.json");
+const iitmDir = dirname(iitmPkgJsonPath);
+
+// In pnpm's virtual store, a package and all its dependencies live as siblings
+// under .pnpm/<pkg>@<version>/node_modules/. Walk that directory to collect
+// all packages (the package itself + its deps).
+const pnpmNodeModules = dirname(iitmDir);
+const siblings = readdirSync(pnpmNodeModules);
+
+const packagesToCopy = siblings.map((name) => ({
+	name,
+	dir: realpathSync(join(pnpmNodeModules, name)),
+}));
 
 const outputDirs = [
-	".vercel/output/functions/__server.func/node_modules/import-in-the-middle",
-	".output/server/node_modules/import-in-the-middle",
+	".vercel/output/functions/__server.func",
+	".output/server",
 ];
 
 let patched = false;
 for (const outputDir of outputDirs) {
-	if (!existsSync(outputDir)) continue;
+	const targetNodeModules = join(outputDir, "node_modules");
+	if (!existsSync(targetNodeModules)) continue;
 
-	for (const file of filesToCopy) {
-		const src = join(iitmDir, file);
-		const dest = join(outputDir, file);
-		if (existsSync(src) && !existsSync(dest)) {
-			cpSync(src, dest);
-			patched = true;
-		}
-	}
-
-	const srcLib = join(iitmDir, "lib");
-	const destLib = join(outputDir, "lib");
-	if (existsSync(srcLib)) {
-		mkdirSync(destLib, { recursive: true });
-		cpSync(srcLib, destLib, { recursive: true });
+	for (const { name, dir } of packagesToCopy) {
+		const dest = join(targetNodeModules, name);
+		mkdirSync(dest, { recursive: true });
+		cpSync(dir, dest, { recursive: true });
 		patched = true;
 	}
 }
 
 if (patched) {
-	console.log("[patch-sentry-trace] Copied import-in-the-middle hook files to build output");
+	const names = packagesToCopy.map((p) => p.name).join(", ");
+	console.log(`[patch-sentry-trace] Copied ${names} to build output`);
 }
