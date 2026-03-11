@@ -45,6 +45,7 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
+			plugins: ["./server/plugins/sentry.ts"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
