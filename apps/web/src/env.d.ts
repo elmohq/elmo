@@ -16,6 +16,9 @@ interface ImportMetaEnv {
 	// Analytics
 	readonly VITE_PLAUSIBLE_DOMAIN?: string;
 	readonly VITE_CLARITY_PROJECT_ID?: string;
+
+	// Sentry
+	readonly VITE_SENTRY_DSN?: string;
 }
 
 interface ImportMeta {
@@ -52,6 +55,7 @@ declare global {
 			readonly AUTH0_CLIENT_SECRET?: string;
 			readonly ADMIN_API_KEYS?: string;
 			readonly ENVIRONMENT?: string;
+			readonly SENTRY_DSN?: string;
 		}
 	}
 }

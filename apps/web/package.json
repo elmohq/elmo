@@ -4,9 +4,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev --port 3000",
-		"build": "vite build",
-		"start": "node .output/server/index.mjs",
+		"dev": "NODE_OPTIONS='--import ./instrument.server.mjs' vite dev --port 3000",
+		"build": "vite build && cp instrument.server.mjs .output/server/",
+		"start": "node --import ./.output/server/instrument.server.mjs .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
 		"lint": "biome lint",
@@ -16,6 +16,7 @@
 		"ladle:build": "ladle build"
 	},
 	"dependencies": {
+		"@sentry/tanstackstart-react": "^10.43.0",
 		"@tabler/icons-react": "^3.37.1",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.1",

@@ -1,4 +1,6 @@
+import * as Sentry from "@sentry/tanstackstart-react";
 import type { ErrorComponentProps } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "./components/full-page-card";
 
@@ -24,7 +26,11 @@ export function DefaultPendingComponent() {
 	);
 }
 
-export function DefaultErrorComponent(_props: ErrorComponentProps) {
+export function DefaultErrorComponent({ error }: ErrorComponentProps) {
+	useEffect(() => {
+		Sentry.captureException(error);
+	}, [error]);
+
 	return (
 		<FullPageCard
 			title="Something went wrong"
