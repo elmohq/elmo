@@ -51,7 +51,7 @@ export default defineConfig({
 				tslib: tslibEsm,
 			},
 			rollupConfig: {
-				external: ["fsevents"],
+				external: ["fsevents", "import-in-the-middle"],
 			},
 		}),
 		viteReact(),
