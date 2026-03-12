@@ -43,7 +43,8 @@ export default defineConfig({
 		nitro({
 			sourcemap: true,
 			rollupConfig: {
-				external: ["fsevents"],
+				// tslib: Nitro resolves the CJS entry instead of ESM, breaking __toESM interop on Vercel
+				external: ["fsevents", "tslib"],
 			},
 		}),
 		viteReact(),
