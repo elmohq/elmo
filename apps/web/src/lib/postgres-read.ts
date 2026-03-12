@@ -238,12 +238,15 @@ export async function getVisibilityTimeSeries(
 	enabledPromptIds?: string[],
 	modelGroup?: string,
 ): Promise<VisibilityTimeSeriesPoint[]> {
+	const isBranded = brandedPromptIds.length > 0
+		? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))`
+		: sql`FALSE`;
 	const rows = await queryPg<VisibilityTimeSeriesPoint>(sql`
 		SELECT
 			(created_at AT TIME ZONE ${timezone})::date AS date,
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			(prompt_id IN (${uuidList(brandedPromptIds)})) AS is_branded
+			${isBranded} AS is_branded
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
@@ -748,6 +751,9 @@ export async function getBatchVisibilityData(
 		return { visibilityTimeSeries: [], totalRuns: 0, totalMentioned: 0 };
 	}
 
+	const isBranded = brandedPromptIds.length > 0
+		? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))`
+		: sql`FALSE`;
 	const result = await queryPg<{
 		date: string;
 		total_runs: number;
@@ -758,7 +764,7 @@ export async function getBatchVisibilityData(
 			(created_at AT TIME ZONE ${timezone})::date AS date,
 			count(*)::int AS total_runs,
 			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			(prompt_id IN (${uuidList(brandedPromptIds)})) AS is_branded
+			${isBranded} AS is_branded
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
