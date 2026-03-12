@@ -24,6 +24,9 @@ export default defineConfig({
 			{ find: /^@\//, replacement: path.resolve(__dirname, "../src") + "/" },
 		],
 	},
+	optimizeDeps: {
+		exclude: ["@tanstack/start-server-core"],
+	},
 	plugins: [
 		viteTsConfigPaths({
 			projects: [path.resolve(__dirname, "../tsconfig.json")],
