@@ -1,4 +1,3 @@
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
@@ -7,8 +6,6 @@ import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import pkg from "./package.json" with { type: "json" };
-
-const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
@@ -34,7 +31,6 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@/": new URL("./src/", import.meta.url).pathname,
-			tslib: tslibEsm,
 		},
 	},
 	plugins: [
@@ -45,13 +41,9 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			plugins: ["./server/plugins/sentry.ts"],
 			sourcemap: true,
-			alias: {
-				tslib: tslibEsm,
-			},
 			rollupConfig: {
-				external: ["fsevents", "import-in-the-middle"],
+				external: ["fsevents"],
 			},
 		}),
 		viteReact(),

@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import viteReact from "@vitejs/plugin-react";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
@@ -24,13 +25,11 @@ export default defineConfig({
 			{ find: /^@\//, replacement: path.resolve(__dirname, "../src") + "/" },
 		],
 	},
-	optimizeDeps: {
-		exclude: ["@tanstack/start-server-core"],
-	},
 	plugins: [
 		viteTsConfigPaths({
 			projects: [path.resolve(__dirname, "../tsconfig.json")],
 		}),
 		tailwindcss(),
+		viteReact(),
 	],
 });

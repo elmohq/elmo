@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --port 3000",
-		"build": "vite build && node scripts/patch-sentry-trace.mjs",
+		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run",
