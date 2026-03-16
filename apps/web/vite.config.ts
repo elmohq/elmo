@@ -27,12 +27,6 @@ export default defineConfig({
 	build: {
 		sourcemap: "hidden",
 	},
-	optimizeDeps: {
-		exclude: ["@takumi-rs/core"],
-	},
-	ssr: {
-		external: ["@takumi-rs/core"],
-	},
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 	},
@@ -52,25 +46,8 @@ export default defineConfig({
 			alias: {
 				tslib: tslibEsm,
 			},
-			traceDeps: [
-				"node_modules/@takumi-rs/core",
-				"node_modules/@takumi-rs/core-linux-x64-gnu",
-				"node_modules/@takumi-rs/core-linux-x64-musl",
-			],
 			rollupConfig: {
-				external: ["fsevents", /^@takumi-rs\/core/],
-				output: {
-					paths: (id: string) => {
-						if (id.includes("@takumi-rs/core")) {
-							const match = id.match(
-								/@takumi-rs\/core(-[^/]+)?(\/.*)?$/,
-							);
-							if (match)
-								return `@takumi-rs/core${match[1] || ""}${match[2] || ""}`;
-						}
-						return id;
-					},
-				},
+				external: ["fsevents"],
 			},
 		}),
 		viteReact(),

@@ -3,10 +3,12 @@ import { createRequire } from "node:module";
 import { extname } from "node:path";
 import { createElement } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ImageResponse } from "@takumi-rs/image-response";
-import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
-import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
-import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import satori from "satori";
+import { initWasm, Resvg } from "@resvg/resvg-wasm";
+import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff?url";
+import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff?url";
+import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff?url";
+import resvgWasmUrl from "@resvg/resvg-wasm/index_bg.wasm?url";
 import {
 	DEFAULT_APP_NAME,
 	ELMO_BRAND_COLOR,
@@ -21,6 +23,27 @@ const DEFAULT_DESCRIPTION =
 const fontDataCache = new Map<string, Promise<ArrayBuffer>>();
 const require = createRequire(import.meta.url);
 const publicDir = new URL("../../../../public/", import.meta.url);
+
+let wasmReady: Promise<void> | undefined;
+
+function ensureWasm(request: Request): Promise<void> {
+	if (!wasmReady) {
+		if (import.meta.env.DEV) {
+			wasmReady = Promise.resolve().then(async () => {
+				const buffer = readFileSync(
+					require.resolve("@resvg/resvg-wasm/index_bg.wasm"),
+				);
+				await initWasm(buffer);
+			});
+		} else {
+			const url = new URL(resvgWasmUrl, request.url);
+			wasmReady = fetch(url)
+				.then((res) => res.arrayBuffer())
+				.then((buf) => initWasm(buf));
+		}
+	}
+	return wasmReady;
+}
 
 async function fetchIconAsDataUri(
 	iconPath: string,
@@ -268,29 +291,30 @@ export const Route = createFileRoute("/api/og/")({
 					);
 				}
 
-				const [titanOne400, geistSans400, geistSans500] =
+				const [, titanOne400, geistSans400, geistSans500] =
 					await Promise.all([
+						ensureWasm(request),
 						loadFontData(
 							request,
 							"titan-one-400",
 							titanOne400Url,
-							"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
+							"@fontsource/titan-one/files/titan-one-latin-400-normal.woff",
 						),
 						loadFontData(
 							request,
 							"geist-sans-400",
 							geistSans400Url,
-							"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
+							"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff",
 						),
 						loadFontData(
 							request,
 							"geist-sans-500",
 							geistSans500Url,
-							"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
+							"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff",
 						),
 					]);
 
-				return new ImageResponse(
+				const svg = await satori(
 					renderOgImage({
 						appName,
 						accentColors: forceDefault
@@ -305,29 +329,37 @@ export const Route = createFileRoute("/api/og/")({
 							{
 								name: "Titan One",
 								data: titanOne400,
-								style: "normal",
-								weight: 400,
+								style: "normal" as const,
+								weight: 400 as const,
 							},
 							{
 								name: "Geist Sans",
 								data: geistSans400,
-								style: "normal",
-								weight: 400,
+								style: "normal" as const,
+								weight: 400 as const,
 							},
 							{
 								name: "Geist Sans",
 								data: geistSans500,
-								style: "normal",
-								weight: 500,
+								style: "normal" as const,
+								weight: 500 as const,
 							},
 						],
-						headers: {
-							"Content-Type": "image/png",
-							"Cache-Control":
-								"public, max-age=86400, s-maxage=604800",
-						},
 					},
 				);
+
+				const resvg = new Resvg(svg, {
+					fitTo: { mode: "width", value: 1200 },
+				});
+				const png = resvg.render().asPng();
+
+				return new Response(png, {
+					headers: {
+						"Content-Type": "image/png",
+						"Cache-Control":
+							"public, max-age=86400, s-maxage=604800",
+					},
+				});
 			},
 		},
 	},
