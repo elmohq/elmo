@@ -58,6 +58,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@fontsource/geist-sans':
+        specifier: ^5.2.5
+        version: 5.2.5
+      '@fontsource/titan-one':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@sentry/tanstackstart-react':
         specifier: ^10.43.0
         version: 10.43.0(react@19.2.4)(rollup@4.59.0)
@@ -70,6 +76,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.1
         version: 4.2.1(vite@8.0.0(@types/node@24.10.13)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0))
+      '@takumi-rs/image-response':
+        specifier: ^0.73.1
+        version: 0.73.1
       '@tanstack/devtools-vite':
         specifier: ^0.5.5
         version: 0.5.5(vite@8.0.0(@types/node@24.10.13)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0))
@@ -154,9 +163,6 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@8.0.0(@types/node@24.10.13)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0))
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -164,18 +170,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.4.4
         version: 2.4.4
-      '@fontsource/geist-sans':
-        specifier: ^5.2.5
-        version: 5.2.5
-      '@fontsource/titan-one':
-        specifier: ^5.2.8
-        version: 5.2.8
       '@ladle/react':
         specifier: ^5.1.1
         version: 5.1.1(@types/node@24.10.13)(@types/react@19.2.14)(jiti@2.6.1)(lightningcss@1.32.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tsx@4.21.0)(typescript@5.9.3)
-      '@takumi-rs/image-response':
-        specifier: ^0.73.1
-        version: 0.73.1
       '@types/archiver':
         specifier: ^7.0.0
         version: 7.0.0
@@ -7083,11 +7080,6 @@ packages:
     peerDependenciesMeta:
       vite:
         optional: true
-
-  vite-tsconfig-paths@6.1.1:
-    resolution: {integrity: sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg==}
-    peerDependencies:
-      vite: '*'
 
   vite@6.4.1:
     resolution: {integrity: sha512-+Oxm7q9hDoLMyJOYfUYBuHQo+dkAloi33apOPP56pzj+vsdJDzr+j1NISE5pyaAuKL4A3UD34qd0lx5+kfKp2g==}
@@ -14339,16 +14331,6 @@ snapshots:
       tsconfck: 3.1.6(typescript@5.9.3)
     optionalDependencies:
       vite: 6.4.1(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
-    transitivePeerDependencies:
-      - supports-color
-      - typescript
-
-  vite-tsconfig-paths@6.1.1(typescript@5.9.3)(vite@8.0.0(@types/node@24.10.13)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)):
-    dependencies:
-      debug: 4.4.3
-      globrex: 0.1.2
-      tsconfck: 3.1.6(typescript@5.9.3)
-      vite: 8.0.0(@types/node@24.10.13)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
