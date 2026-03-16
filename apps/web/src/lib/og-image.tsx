@@ -7,13 +7,17 @@
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { ImageResponse } from "@takumi-rs/image-response";
+import { ImageResponse } from "@takumi-rs/image-response/wasm";
 import {
 	DEFAULT_APP_NAME,
 	ELMO_BRAND_COLOR,
 } from "@workspace/config/constants";
 
 const require = createRequire(import.meta.url);
+
+const wasmModule = readFileSync(
+	require.resolve("@takumi-rs/wasm/takumi_wasm_bg.wasm"),
+);
 
 const ACCENT_COLORS = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
 const DEFAULT_TAGLINE = "AI Search Optimization";
@@ -172,7 +176,7 @@ export async function generateOgImage(
 ): Promise<Buffer> {
 	const response = new ImageResponse(
 		<OgImageComponent {...options} />,
-		{ width: 1200, height: 630, fonts },
+		{ width: 1200, height: 630, fonts, module: wasmModule },
 	);
 	return Buffer.from(await response.arrayBuffer());
 }
