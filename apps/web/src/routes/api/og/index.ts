@@ -1,26 +1,74 @@
-/**
- * /api/og - Dynamic Open Graph image
- *
- * Generates a 1200×630 PNG OG image using the current deployment's branding.
- * Elmo deployments get the Titan One logo + accent gradient; whitelabel
- * deployments show their icon + app name.
- *
- * Heavily cached — branding doesn't change without a redeploy.
- */
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { extname } from "node:path";
+import { createElement } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { ImageResponse } from "@takumi-rs/image-response";
+import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
+import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
+import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import {
+	DEFAULT_APP_NAME,
+	ELMO_BRAND_COLOR,
+} from "@workspace/config/constants";
 import { getDeployment } from "@/lib/config/server";
-import { DEFAULT_APP_NAME } from "@workspace/config/constants";
-import { generateOgImage } from "@/lib/og-image";
+
+const ACCENT_COLORS = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
+const DEFAULT_TAGLINE = "AI Search Optimization";
+const DEFAULT_DESCRIPTION =
+	"Track and optimize your brand's visibility across AI models.";
+
+const fontDataCache = new Map<string, Promise<ArrayBuffer>>();
+const require = createRequire(import.meta.url);
+const publicDir = new URL("../../../../public/", import.meta.url);
 
 async function fetchIconAsDataUri(
 	iconPath: string,
 	appUrl: string,
+	requestUrl: string,
 ): Promise<string | undefined> {
+	const readPublicIcon = (pathname: string): string | undefined => {
+		try {
+			const iconFile = new URL(`.${pathname}`, publicDir);
+			const buffer = readFileSync(iconFile);
+			const extension = extname(pathname).toLowerCase();
+			const contentType =
+				extension === ".svg"
+					? "image/svg+xml"
+					: extension === ".jpg" || extension === ".jpeg"
+						? "image/jpeg"
+						: extension === ".webp"
+							? "image/webp"
+							: "image/png";
+			return `data:${contentType};base64,${buffer.toString("base64")}`;
+		} catch {
+			return undefined;
+		}
+	};
+
+	if (iconPath.startsWith("/")) {
+		return readPublicIcon(iconPath);
+	}
+
 	const url = iconPath.startsWith("http")
 		? iconPath
 		: `${appUrl.replace(/\/$/, "")}${iconPath}`;
+
 	try {
-		const res = await fetch(url);
+		const iconUrl = new URL(url);
+		const currentUrl = new URL(requestUrl);
+		if (
+			iconUrl.origin === currentUrl.origin &&
+			iconUrl.pathname.startsWith("/")
+		) {
+			return readPublicIcon(iconUrl.pathname);
+		}
+	} catch {
+		return undefined;
+	}
+
+	try {
+		const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
 		if (!res.ok) return undefined;
 		const buf = await res.arrayBuffer();
 		const contentType = res.headers.get("content-type") || "image/png";
@@ -30,12 +78,177 @@ async function fetchIconAsDataUri(
 	}
 }
 
+function loadFontData(
+	request: Request,
+	cacheKey: string,
+	assetUrl: string,
+	packagePath: string,
+): Promise<ArrayBuffer> {
+	let cached = fontDataCache.get(cacheKey);
+	if (!cached) {
+		if (import.meta.env.DEV) {
+			cached = Promise.resolve().then(() => {
+				const buffer = readFileSync(require.resolve(packagePath));
+				return buffer.buffer.slice(
+					buffer.byteOffset,
+					buffer.byteOffset + buffer.byteLength,
+				);
+			});
+		} else {
+			const url = new URL(assetUrl, request.url);
+			cached = fetch(url).then(async (response) => {
+				if (!response.ok) {
+					throw new Error(
+						`Failed to load font asset: ${url.pathname}`,
+					);
+				}
+				return response.arrayBuffer();
+			});
+		}
+		fontDataCache.set(cacheKey, cached);
+	}
+	return cached;
+}
+
+interface OgImageOptions {
+	appName: string;
+	title?: string;
+	description?: string;
+	accentColors?: string[];
+	iconDataUri?: string;
+}
+
+function renderOgImage({
+	appName,
+	title,
+	description,
+	accentColors,
+	iconDataUri,
+}: OgImageOptions) {
+	const isElmo = appName === DEFAULT_APP_NAME;
+	const brandColor = isElmo
+		? ELMO_BRAND_COLOR
+		: (accentColors?.[0] ?? "#1e293b");
+	const desc = description || DEFAULT_DESCRIPTION;
+	const watermarkColor = isElmo
+		? "rgba(37,99,235,0.04)"
+		: "rgba(0,0,0,0.03)";
+	const gradientColors = isElmo
+		? ACCENT_COLORS
+		: accentColors && accentColors.length >= 2
+			? accentColors.slice(0, 4)
+			: [brandColor, brandColor];
+
+	return createElement(
+		"div",
+		{
+			style: {
+				display: "flex",
+				width: "100%",
+				height: "100%",
+				position: "relative",
+				overflow: "hidden",
+				backgroundColor: "#ffffff",
+			},
+		},
+		isElmo
+			? createElement(
+					"div",
+					{
+						style: {
+							position: "absolute",
+							fontFamily: "Titan One",
+							fontSize: 700,
+							color: watermarkColor,
+							lineHeight: 1,
+							right: -60,
+							top: -60,
+						},
+					},
+					"e",
+				)
+			: null,
+		createElement(
+			"div",
+			{
+				style: {
+					display: "flex",
+					flexDirection: "column",
+					justifyContent: "center",
+					height: "100%",
+					paddingLeft: 80,
+					paddingRight: 80,
+				},
+			},
+			isElmo
+				? createElement(
+						"div",
+						{
+							style: {
+								fontFamily: "Titan One",
+								fontSize: 80,
+								color: ELMO_BRAND_COLOR,
+								lineHeight: 1,
+								marginBottom: 28,
+							},
+						},
+						"elmo",
+					)
+				: iconDataUri
+					? createElement("img", {
+							src: iconDataUri,
+							width: 120,
+							height: 120,
+							style: { marginBottom: 28, objectFit: "contain" },
+						})
+					: null,
+			createElement(
+				"div",
+				{
+					style: {
+						fontFamily: "Geist Sans",
+						fontSize: 44,
+						fontWeight: 500,
+						color: "#1e293b",
+						lineHeight: 1.2,
+						marginBottom: 16,
+					},
+				},
+				isElmo ? (title || DEFAULT_TAGLINE) : appName,
+			),
+			createElement(
+				"div",
+				{
+					style: {
+						fontFamily: "Geist Sans",
+						fontSize: 24,
+						color: "#64748b",
+					},
+				},
+				desc,
+			),
+		),
+		createElement("div", {
+			style: {
+				display: "flex",
+				position: "absolute",
+				bottom: 0,
+				left: 0,
+				width: "100%",
+				height: 6,
+				backgroundImage: `linear-gradient(to right, ${gradientColors.join(", ")})`,
+			},
+		}),
+	);
+}
+
 export const Route = createFileRoute("/api/og/")({
 	server: {
 		handlers: {
 			GET: async ({ request }) => {
 				const url = new URL(request.url);
-				const forceDefault = url.searchParams.get("defaultBranding") === "true";
+				const forceDefault =
+					url.searchParams.get("defaultBranding") === "true";
 
 				const deployment = getDeployment();
 				const { branding } = deployment;
@@ -43,25 +256,78 @@ export const Route = createFileRoute("/api/og/")({
 				const appName = forceDefault ? DEFAULT_APP_NAME : branding.name;
 
 				let iconDataUri: string | undefined;
-				if (!forceDefault && appName !== DEFAULT_APP_NAME && branding.icon) {
+				if (
+					!forceDefault &&
+					appName !== DEFAULT_APP_NAME &&
+					branding.icon
+				) {
 					iconDataUri = await fetchIconAsDataUri(
 						branding.icon,
 						branding.url,
+						request.url,
 					);
 				}
 
-				const png = await generateOgImage({
-					appName,
-					accentColors: forceDefault ? undefined : branding.chartColors.slice(0, 4),
-					iconDataUri,
-				});
+				const [titanOne400, geistSans400, geistSans500] =
+					await Promise.all([
+						loadFontData(
+							request,
+							"titan-one-400",
+							titanOne400Url,
+							"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
+						),
+						loadFontData(
+							request,
+							"geist-sans-400",
+							geistSans400Url,
+							"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
+						),
+						loadFontData(
+							request,
+							"geist-sans-500",
+							geistSans500Url,
+							"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
+						),
+					]);
 
-				return new Response(new Uint8Array(png), {
-					headers: {
-						"Content-Type": "image/png",
-						"Cache-Control": "public, max-age=86400, s-maxage=604800",
+				return new ImageResponse(
+					renderOgImage({
+						appName,
+						accentColors: forceDefault
+							? undefined
+							: branding.chartColors.slice(0, 4),
+						iconDataUri,
+					}),
+					{
+						width: 1200,
+						height: 630,
+						fonts: [
+							{
+								name: "Titan One",
+								data: titanOne400,
+								style: "normal",
+								weight: 400,
+							},
+							{
+								name: "Geist Sans",
+								data: geistSans400,
+								style: "normal",
+								weight: 400,
+							},
+							{
+								name: "Geist Sans",
+								data: geistSans500,
+								style: "normal",
+								weight: 500,
+							},
+						],
+						headers: {
+							"Content-Type": "image/png",
+							"Cache-Control":
+								"public, max-age=86400, s-maxage=604800",
+						},
 					},
-				});
+				);
 			},
 		},
 	},
