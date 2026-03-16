@@ -7,7 +7,7 @@
  *  3. Maskable Icon — for adaptive/PWA contexts
  *  4. Color Palette — brand color, theme colors, and chart palette
  */
-import type { StoryDefault } from "@ladle/react";
+import type { Meta } from "@storybook/react";
 import { Logo } from "@/components/logo";
 import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
 import { setMockRouteContext } from "./_mocks/tanstack-router";
@@ -61,7 +61,7 @@ const whitelabelConfig: ClientConfig = {
 
 export default {
 	title: "Brand Kit",
-} satisfies StoryDefault;
+} satisfies Meta;
 
 // ---------------------------------------------------------------------------
 // Section helpers
@@ -182,50 +182,6 @@ export const ElmoBrandKit = () => {
 							/>
 						</div>
 						<span className="text-xs text-muted-foreground">Circular crop</span>
-					</div>
-				</div>
-			</Section>
-
-			{/* OG / Social Previews */}
-			<Section title="OG & Social Previews">
-				<div className="space-y-6">
-					<div>
-						<h3 className="text-sm font-medium mb-2">Default OG Image <span className="text-muted-foreground font-normal">(1200×630)</span></h3>
-						<p className="text-xs text-muted-foreground mb-3">
-							Dynamically generated at <code className="font-mono">/api/og</code> — adapts to the deployment's branding (Elmo or whitelabel).
-						</p>
-						<div className="border rounded-lg overflow-hidden" style={{ maxWidth: 600 }}>
-							<img src="/api/og" alt="Dynamic OG image" className="w-full" />
-						</div>
-					</div>
-					<div>
-						<h3 className="text-sm font-medium mb-2">Social Banner Mockups</h3>
-						<div className="space-y-3">
-							<div>
-								<span className="text-xs text-muted-foreground">Twitter/X header (1500×500)</span>
-								<div className="border rounded overflow-hidden mt-1" style={{ maxWidth: 600, aspectRatio: "1500/500", background: BRAND_COLOR }}>
-									<div className="w-full h-full flex items-center" style={{ padding: "0 6%" }}>
-										<div>
-											<span className="text-white font-bold text-lg" style={{ fontFamily: "'Titan One', sans-serif" }}>elmo</span>
-											<p className="text-white/80 text-xs mt-0.5">AI Search Optimization</p>
-											<p className="text-white/50 text-[10px] mt-0.5">Track and optimize your brand's visibility across AI models.</p>
-										</div>
-									</div>
-								</div>
-							</div>
-							<div>
-								<span className="text-xs text-muted-foreground">LinkedIn banner (1584×396)</span>
-								<div className="border rounded overflow-hidden mt-1" style={{ maxWidth: 600, aspectRatio: "1584/396", background: BRAND_COLOR }}>
-									<div className="w-full h-full flex items-center" style={{ padding: "0 6%" }}>
-										<div>
-											<span className="text-white font-bold text-lg" style={{ fontFamily: "'Titan One', sans-serif" }}>elmo</span>
-											<p className="text-white/80 text-xs mt-0.5">AI Search Optimization</p>
-											<p className="text-white/50 text-[10px] mt-0.5">Track and optimize your brand's visibility across AI models.</p>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
 					</div>
 				</div>
 			</Section>

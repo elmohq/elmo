@@ -1,5 +1,5 @@
 /**
- * Mock for @tanstack/react-router used in Ladle stories.
+ * Mock for @tanstack/react-router used in Storybook stories.
  * Provides stubs for the router hooks and components that the app uses.
  */
 import React, { createContext, useContext, type ReactNode } from "react";
@@ -60,6 +60,21 @@ export function useSearch(_opts?: unknown) {
 
 export function useMatch(_opts?: unknown) {
 	return { params: { brand: "mock-brand-id" } };
+}
+
+export function useRouter() {
+	return {
+		navigate: (_opts: unknown) => {},
+		state: { location: { pathname: "/", search: "", hash: "" } },
+	};
+}
+
+export function isRedirect(_error: unknown): _error is never {
+	return false;
+}
+
+export function RouterProvider(_props: { router: unknown }) {
+	return null;
 }
 
 export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(

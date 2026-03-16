@@ -9,7 +9,7 @@
  *  - Whitelabel Report-only (limited admin access)
  *  - Whitelabel Onboarding (brand not yet onboarded)
  */
-import type { StoryDefault } from "@ladle/react";
+import type { Meta } from "@storybook/react";
 import { SidebarProvider, SidebarInset } from "@workspace/ui/components/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { setMockBrand } from "./_mocks/use-brands";
@@ -187,7 +187,7 @@ function SidebarFrame({
 
 export default {
 	title: "App Sidebar",
-} satisfies StoryDefault;
+} satisfies Meta;
 
 /** Local (self-hosted) — all nav visible, admin access, no auth */
 export const Local = () => {

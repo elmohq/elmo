@@ -4,7 +4,7 @@
  *  2. Success States — lookback windows with varying visibility levels,
  *     search highlight, and long prompt name edge cases
  */
-import type { StoryDefault } from "@ladle/react";
+import type { Meta } from "@storybook/react";
 import { CachedPromptChart, type CachedPromptChartProps } from "@/components/cached-prompt-chart";
 import { setMockChartDataContext, type ProcessedChartData } from "./_mocks/chart-data-context";
 import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
@@ -164,7 +164,7 @@ function Chart({ contextData, props }: ChartConfig) {
 
 export default {
 	title: "Prompt Chart",
-} satisfies StoryDefault;
+} satisfies Meta;
 
 /**
  * All non-happy-path states: no visibility, no data, first eval, loading.
