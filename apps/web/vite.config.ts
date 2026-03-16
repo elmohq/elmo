@@ -37,6 +37,12 @@ export default defineConfig({
 			tslib: tslibEsm,
 		},
 	},
+	ssr: {
+		noExternal: ["@takumi-rs/core", "@takumi-rs/image-response"],
+	},
+	optimizeDeps: {
+		exclude: ["@takumi-rs/core"],
+	},
 	plugins: [
 		devtools(),
 		tailwindcss(),

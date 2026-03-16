@@ -3,11 +3,10 @@ import { createRequire } from "node:module";
 import { extname } from "node:path";
 import { createElement } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import satori from "satori";
-import { initWasm, Resvg } from "@resvg/resvg-wasm";
-import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff?url";
-import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff?url";
-import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff?url";
+import ImageResponse from "@takumi-rs/image-response";
+import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
+import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
+import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 import {
 	DEFAULT_APP_NAME,
 	ELMO_BRAND_COLOR,
@@ -22,20 +21,6 @@ const DEFAULT_DESCRIPTION =
 const fontDataCache = new Map<string, Promise<ArrayBuffer>>();
 const require = createRequire(import.meta.url);
 const publicDir = new URL("../../../../public/", import.meta.url);
-
-let wasmReady: Promise<void> | undefined;
-
-function ensureWasm(): Promise<void> {
-	if (!wasmReady) {
-		wasmReady = Promise.resolve().then(async () => {
-			const buffer = readFileSync(
-				require.resolve("@resvg/resvg-wasm/index_bg.wasm"),
-			);
-			await initWasm(buffer);
-		});
-	}
-	return wasmReady;
-}
 
 async function fetchIconAsDataUri(
 	iconPath: string,
@@ -283,30 +268,29 @@ export const Route = createFileRoute("/api/og/")({
 					);
 				}
 
-				const [, titanOne400, geistSans400, geistSans500] =
+				const [titanOne400, geistSans400, geistSans500] =
 					await Promise.all([
-						ensureWasm(),
 						loadFontData(
 							request,
 							"titan-one-400",
 							titanOne400Url,
-							"@fontsource/titan-one/files/titan-one-latin-400-normal.woff",
+							"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
 						),
 						loadFontData(
 							request,
 							"geist-sans-400",
 							geistSans400Url,
-							"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff",
+							"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
 						),
 						loadFontData(
 							request,
 							"geist-sans-500",
 							geistSans500Url,
-							"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff",
+							"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
 						),
 					]);
 
-				const svg = await satori(
+				const response = new ImageResponse(
 					renderOgImage({
 						appName,
 						accentColors: forceDefault
@@ -340,12 +324,7 @@ export const Route = createFileRoute("/api/og/")({
 					},
 				);
 
-				const resvg = new Resvg(svg, {
-					fitTo: { mode: "width", value: 1200 },
-				});
-				const png = resvg.render().asPng();
-
-				return new Response(Buffer.from(png), {
+				return new Response(response.body, {
 					headers: {
 						"Content-Type": "image/png",
 						"Cache-Control":
