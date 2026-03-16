@@ -8,7 +8,6 @@ import { initWasm, Resvg } from "@resvg/resvg-wasm";
 import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff?url";
 import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff?url";
 import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff?url";
-import resvgWasmUrl from "@resvg/resvg-wasm/index_bg.wasm?url";
 import {
 	DEFAULT_APP_NAME,
 	ELMO_BRAND_COLOR,
@@ -26,21 +25,14 @@ const publicDir = new URL("../../../../public/", import.meta.url);
 
 let wasmReady: Promise<void> | undefined;
 
-function ensureWasm(request: Request): Promise<void> {
+function ensureWasm(): Promise<void> {
 	if (!wasmReady) {
-		if (import.meta.env.DEV) {
-			wasmReady = Promise.resolve().then(async () => {
-				const buffer = readFileSync(
-					require.resolve("@resvg/resvg-wasm/index_bg.wasm"),
-				);
-				await initWasm(buffer);
-			});
-		} else {
-			const url = new URL(resvgWasmUrl, request.url);
-			wasmReady = fetch(url)
-				.then((res) => res.arrayBuffer())
-				.then((buf) => initWasm(buf));
-		}
+		wasmReady = Promise.resolve().then(async () => {
+			const buffer = readFileSync(
+				require.resolve("@resvg/resvg-wasm/index_bg.wasm"),
+			);
+			await initWasm(buffer);
+		});
 	}
 	return wasmReady;
 }
@@ -293,7 +285,7 @@ export const Route = createFileRoute("/api/og/")({
 
 				const [, titanOne400, geistSans400, geistSans500] =
 					await Promise.all([
-						ensureWasm(request),
+						ensureWasm(),
 						loadFontData(
 							request,
 							"titan-one-400",
