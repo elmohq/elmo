@@ -52,9 +52,25 @@ export default defineConfig({
 			alias: {
 				tslib: tslibEsm,
 			},
-			noExternals: ["@takumi-rs/core"],
+			traceDeps: [
+				"node_modules/@takumi-rs/core",
+				"node_modules/@takumi-rs/core-linux-x64-gnu",
+				"node_modules/@takumi-rs/core-linux-x64-musl",
+			],
 			rollupConfig: {
-				external: ["fsevents"],
+				external: ["fsevents", /^@takumi-rs\/core/],
+				output: {
+					paths: (id: string) => {
+						if (id.includes("@takumi-rs/core")) {
+							const match = id.match(
+								/@takumi-rs\/core(-[^/]+)?(\/.*)?$/,
+							);
+							if (match)
+								return `@takumi-rs/core${match[1] || ""}${match[2] || ""}`;
+						}
+						return id;
+					},
+				},
 			},
 		}),
 		viteReact(),
