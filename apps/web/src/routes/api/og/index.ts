@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/og/")({
 					iconDataUri,
 				});
 
-				return new Response(png, {
+				return new Response(new Uint8Array(png), {
 					headers: {
 						"Content-Type": "image/png",
 						"Cache-Control": "public, max-age=86400, s-maxage=604800",
