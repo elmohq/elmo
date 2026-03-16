@@ -42,3 +42,30 @@ export function buildTitle(
 	}
 	return `${pageName} | ${opts.appName}`;
 }
+
+/**
+ * Build OG / Twitter Card meta tags for a page.
+ * Points og:image at the dynamic /api/og endpoint which renders a brand-aware PNG.
+ */
+export function buildOgMeta(opts: {
+	title: string;
+	description?: string;
+}): Array<Record<string, string>> {
+	const description =
+		opts.description ||
+		"Track and optimize your brand's visibility across AI models.";
+	const ogImageUrl = "/api/og";
+
+	return [
+		{ property: "og:title", content: opts.title },
+		{ property: "og:description", content: description },
+		{ property: "og:image", content: ogImageUrl },
+		{ property: "og:image:width", content: "1200" },
+		{ property: "og:image:height", content: "630" },
+		{ property: "og:type", content: "website" },
+		{ name: "twitter:card", content: "summary_large_image" },
+		{ name: "twitter:title", content: opts.title },
+		{ name: "twitter:description", content: description },
+		{ name: "twitter:image", content: ogImageUrl },
+	];
+}

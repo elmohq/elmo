@@ -50,7 +50,7 @@ export default defineConfig({
 				tslib: tslibEsm,
 			},
 			rollupConfig: {
-				external: ["fsevents"],
+				external: ["fsevents", "@takumi-rs/image-response"],
 			},
 		}),
 		viteReact(),

@@ -56,6 +56,10 @@ e2e/.auth/
 *.tsbuildinfo
 next-env.d.ts
 
+# brand kit (generated assets)
+elmo-brand-kit.zip
+og-default.png
+
 # to remove
 prompt_runs.ndjson.gz
 prompt_runs_rows.csv
