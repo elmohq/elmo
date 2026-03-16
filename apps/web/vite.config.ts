@@ -27,6 +27,12 @@ export default defineConfig({
 	build: {
 		sourcemap: "hidden",
 	},
+	optimizeDeps: {
+		exclude: ["@takumi-rs/core"],
+	},
+	ssr: {
+		external: ["@takumi-rs/core"],
+	},
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
 	},
@@ -46,6 +52,7 @@ export default defineConfig({
 			alias: {
 				tslib: tslibEsm,
 			},
+			noExternals: ["@takumi-rs/core"],
 			rollupConfig: {
 				external: ["fsevents"],
 			},
