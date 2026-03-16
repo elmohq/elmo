@@ -58,6 +58,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.4",
 		"@storybook/react-vite": "^10.2.19",
+		"@takumi-rs/image-response": "^0.73.1",
 		"@types/archiver": "^7.0.0",
 		"@types/node": "^24.10.13",
 		"@types/pg": "^8.16.0",

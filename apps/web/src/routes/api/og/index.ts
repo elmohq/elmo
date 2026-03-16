@@ -353,7 +353,7 @@ export const Route = createFileRoute("/api/og/")({
 				});
 				const png = resvg.render().asPng();
 
-				return new Response(png, {
+				return new Response(Buffer.from(png), {
 					headers: {
 						"Content-Type": "image/png",
 						"Cache-Control":
