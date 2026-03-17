@@ -388,7 +388,7 @@ const sharedBannerStyle = {
 	bg: "#ffffff",
 	colors: ["#2563eb", "#f4d35e", "#ee964b", "#f95738", "#93c5fd", "#fbbf24"],
 	angle: 15,
-};
+} as const;
 
 await addFile(
 	"banners/twitter-banner.png",
