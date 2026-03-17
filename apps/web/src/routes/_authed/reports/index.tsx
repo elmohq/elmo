@@ -18,6 +18,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
+import { trackEvent } from "@/lib/posthog";
 import { ExternalLink } from "lucide-react";
 import { requireAuthSession, isAdmin, hasReportAccess } from "@/lib/auth/helpers";
 import { getReportsFn, createReportFn } from "@/server/reports";
@@ -80,7 +81,8 @@ function ReportsPage() {
 
 	const createMutation = useMutation({
 		mutationFn: (data: typeof formData) => createReportFn({ data }),
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
+			trackEvent("report_created", { has_manual_prompts: Boolean(variables.manualPrompts) });
 			setSuccess("Report request submitted successfully!");
 			setFormData({ brandName: "", brandWebsite: "", manualPrompts: "" });
 			queryClient.invalidateQueries({ queryKey: ["reports"] });

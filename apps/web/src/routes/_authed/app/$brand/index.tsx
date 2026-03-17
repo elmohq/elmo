@@ -4,7 +4,7 @@
  * Shows visibility charts, citation trends, and stats.
  * Displays onboarding wizard if brand is not yet onboarded.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
@@ -33,6 +33,7 @@ import {
 	ChartTooltip,
 } from "@workspace/ui/components/chart";
 import type { ClientConfig } from "@workspace/config/types";
+import { setPersonProperties } from "@/lib/posthog";
 
 // Extended data point types for dashboard charts
 interface ExtendedVisibilityPoint extends VisibilityTimeSeriesPoint {
@@ -288,6 +289,12 @@ function DashboardPage() {
 	const clientConfig = context.clientConfig;
 
 	const isLoading = isLoadingBrand || isLoadingSummary;
+
+	useEffect(() => {
+		if (dashboardSummary?.totalPrompts != null) {
+			setPersonProperties({ active_prompt_count: dashboardSummary.totalPrompts });
+		}
+	}, [dashboardSummary?.totalPrompts]);
 
 	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
 	const citationTimeSeries = dashboardSummary?.citationTimeSeries || [];

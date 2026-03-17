@@ -39,7 +39,9 @@
     "SENTRY_ORG",
     "SENTRY_PROJECT",
     "SENTRY_AUTH_TOKEN",
-    "VITE_SENTRY_DSN"
+    "VITE_SENTRY_DSN",
+    "VITE_POSTHOG_KEY",
+    "DISABLE_TELEMETRY"
   ],
   "tasks": {
     "build": {

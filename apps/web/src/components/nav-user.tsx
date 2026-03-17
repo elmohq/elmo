@@ -23,6 +23,7 @@ import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
 import { NavAppInfo } from "@/components/nav-app-info";
+import { resetPostHog } from "@/lib/posthog";
 
 export function NavUser() {
 	const { user, isLoading, loginUrl, logoutUrl } = useAuth();
@@ -149,6 +150,7 @@ export function NavUser() {
 									authClient.signOut({
 										fetchOptions: {
 											onSuccess: () => {
+												resetPostHog();
 												window.location.href = "/auth/logout";
 											},
 										},

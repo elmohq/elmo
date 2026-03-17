@@ -17,8 +17,8 @@
  *     og-default.png                    Default Open Graph image
  *
  *   Social banners:
- *     twitter-banner.png                1500×500 (Twitter/X header)
- *     linkedin-banner.png               1584×396 (LinkedIn personal)
+ *     twitter-banner.png                3000×1000 (Twitter/X header)
+ *     linkedin-banner.png               3384×573 (LinkedIn personal)
  *
  * Usage:
  *   pnpm --filter @workspace/web generate-brand-kit
@@ -155,88 +155,92 @@ function Logo({ bg, fontSize }: { bg?: string; fontSize: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Banner — logo + tagline + description
+// PatternBanner — repeating "elmo" wordmark at an angle, wrapping-paper style.
 // ---------------------------------------------------------------------------
 
-function Banner({
+function PatternBanner({
+	width,
 	height,
-	variant,
+	bg,
+	colors,
+	angle,
+	fontScale,
 }: {
+	width: number;
 	height: number;
-	variant: "dark" | "light";
+	bg: string;
+	colors: string[];
+	angle: number;
+	fontScale: number;
 }) {
-	const isDark = variant === "dark";
-	const bg = isDark ? BRAND_COLOR : "#ffffff";
-	const taglineFill = isDark ? "rgba(255,255,255,0.88)" : "#1e293b";
-	const descFill = isDark ? "rgba(255,255,255,0.55)" : "#64748b";
-	const watermarkColor = isDark ? "rgba(255,255,255,0.07)" : "rgba(37,99,235,0.06)";
+	const fontSize = Math.round(height * fontScale);
+	const wordWidth = Math.round(fontSize * 3.2);
+	const gap = Math.round(fontSize * 0.5);
+	const cellWidth = wordWidth + gap;
+	const rowHeight = Math.round(fontSize * 1.5);
 
-	const s = height / 380;
+	const diagonal = Math.ceil(Math.sqrt(width * width + height * height));
+	const gridSize = Math.round(diagonal * 1.5);
+
+	const cols = Math.ceil(gridSize / cellWidth) + 2;
+	const rows = Math.ceil(gridSize / rowHeight) + 2;
+
+	const offsetX = -Math.round((gridSize - width) / 2);
+	const offsetY = -Math.round((gridSize - height) / 2);
+
+	const rowElements: React.ReactElement[] = [];
+	for (let r = 0; r < rows; r++) {
+		const cells: React.ReactElement[] = [];
+		const brickOffset = r % 2 === 0 ? 0 : Math.round(cellWidth * 0.5);
+		for (let c = 0; c < cols; c++) {
+			const colorIdx = (r * 3 + c) % colors.length;
+			cells.push(
+				<div
+					style={{
+						fontFamily: "Titan One",
+						fontSize,
+						color: colors[colorIdx],
+						lineHeight: 1,
+						marginRight: gap,
+					}}
+				>
+					elmo
+				</div>,
+			);
+		}
+		rowElements.push(
+			<div
+				style={{
+					display: "flex",
+					marginLeft: brickOffset,
+					height: rowHeight,
+					alignItems: "center",
+				}}
+			>
+				{cells}
+			</div>,
+		);
+	}
 
 	return (
 		<div
 			tw="flex w-full h-full relative overflow-hidden"
-			style={{ backgroundColor: bg }}
+			style={{ backgroundColor: bg, opacity: 0.99 }}
 		>
 			<div
 				style={{
 					position: "absolute",
-					fontFamily: "Titan One",
-					fontSize: Math.round(height * 1.4),
-					color: watermarkColor,
-					lineHeight: 1,
-					right: Math.round(-height * 0.1),
-					top: Math.round(-height * 0.2),
-				}}
-			>
-				e
-			</div>
-
-			<div
-				tw="flex flex-col justify-center h-full"
-				style={{ paddingLeft: Math.round(80 * s), paddingRight: Math.round(80 * s) }}
-			>
-				<div
-					style={{
-						fontFamily: "Titan One",
-						fontSize: Math.round(64 * s),
-						color: isDark ? "#ffffff" : BRAND_COLOR,
-						lineHeight: 1,
-						marginBottom: Math.round(18 * s),
-					}}
-				>
-					elmo
-				</div>
-			<div
-				style={{
-					fontFamily: "Geist Sans",
-					fontSize: Math.round(28 * s),
-					fontWeight: 500,
-					color: taglineFill,
-					marginBottom: Math.round(10 * s),
-				}}
-			>
-				{TAGLINE}
-			</div>
-		<div style={{ fontFamily: "Geist Sans", fontSize: Math.round(18 * s), color: descFill, marginBottom: Math.round(14 * s) }}>
-			{DESCRIPTION}
-		</div>
-		<div style={{ fontFamily: "Geist Sans", fontSize: Math.round(14 * s), color: isDark ? "rgba(255,255,255,0.3)" : "#94a3b8" }}>
-			elmohq.com · github.com/elmohq/elmo
-		</div>
-		</div>
-
-			<div
-				style={{
 					display: "flex",
-					position: "absolute",
-					bottom: 0,
-					left: 0,
-					width: "100%",
-					height: 6,
-					backgroundImage: `linear-gradient(to right, ${ACCENT_COLORS.join(", ")})`,
+					flexDirection: "column",
+					transform: `rotate(${angle}deg)`,
+					left: offsetX,
+					top: offsetY,
+					width: gridSize,
+					height: gridSize,
 				}}
-			/>
+			>
+				{rowElements}
+			</div>
 		</div>
 	);
 }
@@ -377,18 +381,32 @@ const ogData = await render(<OgImage title={TAGLINE} />, 1200, 630);
 files.push({ name: "og/og-default.png", data: ogData });
 console.log("  ✓ og/og-default.png  (1200×630)");
 
-// Banners
+// Banners — wrapping-paper style, wildly different per platform
 console.log("\nSocial Banners:");
-const bannerVariants = [
-	{ name: "twitter-banner.png", w: 1500, h: 500, variant: "light" as const },
-	{ name: "linkedin-banner.png", w: 1584, h: 396, variant: "light" as const },
-];
-for (const b of bannerVariants) {
-	await addFile(
-		`banners/${b.name}`,
-		render(<Banner height={b.h} variant={b.variant} />, b.w, b.h),
-	);
-}
+
+const sharedBannerStyle = {
+	bg: "#ffffff",
+	colors: ["#2563eb", "#f4d35e", "#ee964b", "#f95738", "#93c5fd", "#fbbf24"],
+	angle: 15,
+};
+
+await addFile(
+	"banners/twitter-banner.png",
+	render(
+		<PatternBanner width={3000} height={1000} {...sharedBannerStyle} fontScale={0.105} />,
+		3000,
+		1000,
+	),
+);
+
+await addFile(
+	"banners/linkedin-banner.png",
+	render(
+		<PatternBanner width={3384} height={573} {...sharedBannerStyle} fontScale={0.18} />,
+		3384,
+		573,
+	),
+);
 
 // Write zip
 console.log("\nPacking zip…");

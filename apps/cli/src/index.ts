@@ -9,6 +9,7 @@ import os from "node:os";
 import crypto from "node:crypto";
 import semver from "semver";
 import { fileURLToPath } from "node:url";
+import { trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ async function main() {
 			"Path to Docker build context (dev mode)",
 		)
 		.action(async (options: InitOptions) => {
-			await withVersionCheck(version, () => runInit(options));
+			await withVersionCheck(version, () => runInit(options, version));
 		});
 
 	program
@@ -226,18 +227,18 @@ async function withVersionCheck(
 
 // ── Command: init ────────────────────────────────────────────────────────────
 
-async function runInit(options: InitOptions): Promise<void> {
+async function runInit(options: InitOptions, version: string): Promise<void> {
 	printBanner();
 
 	if (isCI()) {
-		await runInitCI(options);
+		await runInitCI(options, version);
 		return;
 	}
 
-	await runInitInteractive(options);
+	await runInitInteractive(options, version);
 }
 
-async function runInitInteractive(options: InitOptions): Promise<void> {
+async function runInitInteractive(options: InitOptions, version: string): Promise<void> {
 	p.intro(pc.bold("Setting up Elmo"));
 
 	const cwd = process.cwd();
@@ -397,6 +398,13 @@ async function runInitInteractive(options: InitOptions): Promise<void> {
 		env.DATAFORSEO_PASSWORD = pwd;
 	}
 
+	// ── Product updates ─────────────────────────────────────────────────
+	const updatesEmail = await p.text({
+		message: "Enter your email to receive product updates (optional)",
+		placeholder: "you@example.com",
+	});
+	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
+
 	// ── Write config ─────────────────────────────────────────────────────
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
@@ -443,10 +451,24 @@ async function runInitInteractive(options: InitOptions): Promise<void> {
 		p.log.info("You can start later with `elmo start`.");
 	}
 
+	// Fire telemetry in the background — never blocks the CLI
+	await trackCliEvent(
+		"cli_init",
+		{
+			version,
+			os: process.platform,
+			arch: process.arch,
+			node_version: process.version,
+			postgres_mode: postgresMode,
+			dev_mode: Boolean(options.dev),
+		},
+		email ? { $email: email, wants_updates: true } : undefined,
+	);
+
 	p.outro(pc.green("Setup complete!"));
 }
 
-async function runInitCI(options: InitOptions): Promise<void> {
+async function runInitCI(options: InitOptions, version: string): Promise<void> {
 	const cwd = process.cwd();
 
 	// Resolve config directory — --dir flag or ELMO_CONFIG_DIR or cwd
@@ -526,6 +548,15 @@ async function runInitCI(options: InitOptions): Promise<void> {
 	});
 
 	console.log(`Config written to ${configDir}`);
+
+	await trackCliEvent("cli_init", {
+		version,
+		os: process.platform,
+		arch: process.arch,
+		node_version: process.version,
+		postgres_mode: postgresMode,
+		dev_mode: Boolean(options.dev),
+	});
 }
 
 // ── Command: update ──────────────────────────────────────────────────────────

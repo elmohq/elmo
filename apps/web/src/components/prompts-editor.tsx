@@ -11,6 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { updatePromptsFn } from "@/server/prompts";
+import { trackEvent } from "@/lib/posthog";
 
 interface Prompt {
 	id: string;
@@ -114,6 +115,11 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			];
 
 			await updatePromptsFn({ data: { brandId, prompts: allPrompts } });
+
+			const added = validPrompts.filter((p) => !p.id).length;
+			const edited = validPrompts.filter((p) => p.id).length;
+			const deleted = removedPrompts.length;
+			trackEvent("prompts_updated", { added, edited, deleted });
 
 			invalidatePromptsSummary(brandId);
 			navigate({ to: `/app/${brandId}/visibility` });

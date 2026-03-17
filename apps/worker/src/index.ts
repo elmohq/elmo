@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
+import { shutdownTelemetry } from "./telemetry";
 
 if (process.env.SENTRY_DSN) {
 	Sentry.init({
@@ -80,7 +81,7 @@ main().catch(async (error) => {
 process.on("SIGTERM", async () => {
 	console.log("Received SIGTERM, shutting down gracefully...");
 	await boss.stop({ graceful: true, timeout: 30000 });
-	await Sentry.flush(2000);
+	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
 	console.log("Worker stopped");
 	process.exit(0);
 });
@@ -88,7 +89,7 @@ process.on("SIGTERM", async () => {
 process.on("SIGINT", async () => {
 	console.log("Received SIGINT, shutting down gracefully...");
 	await boss.stop({ graceful: true, timeout: 30000 });
-	await Sentry.flush(2000);
+	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
 	console.log("Worker stopped");
 	process.exit(0);
 });

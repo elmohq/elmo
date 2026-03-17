@@ -6,6 +6,7 @@ import { AI_MODELS, DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/
 import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
 import { extractCitations } from "@workspace/lib/text-extraction";
 import boss from "../boss";
+import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -338,9 +339,17 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 			}
 		}
 
-		console.log(
-			`Completed prompt ${promptId}: ${runPromises.length - failures.length}/${runPromises.length} successful runs`,
-		);
+		const successCount = runPromises.length - failures.length;
+		console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
+
+		trackWorkerEvent("prompt_processed", {
+			brand_id: brand.id,
+			model_groups: ["openai", "anthropic", "google"],
+			models: [AI_MODELS.OPENAI.MODEL, AI_MODELS.ANTHROPIC.MODEL, "dataforseo"],
+			total_runs: runPromises.length,
+			successful_runs: successCount,
+			failed_runs: failures.length,
+		});
 
 		// Schedule the next run
 		await scheduleNextRun(promptId, cadenceHours);

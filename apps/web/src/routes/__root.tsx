@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { useEffect } from "react";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -10,6 +11,7 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
+import { initPostHog } from "@/lib/posthog";
 import appCss from "../styles.css?url";
 
 interface RouterContext {
@@ -92,7 +94,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 });
 
 function RootComponent() {
-	const { envValidation } = Route.useRouteContext();
+	const { envValidation, clientConfig } = Route.useRouteContext();
+
+	useEffect(() => {
+		const key = clientConfig?.analytics?.posthogKey;
+		if (key) initPostHog(key);
+	}, [clientConfig?.analytics?.posthogKey]);
 
 	if (!envValidation.isValid) {
 		return (

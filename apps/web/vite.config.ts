@@ -74,6 +74,11 @@ export default defineConfig({
 			alias: {
 				tslib: tslibEsm,
 			},
+			noExternals: [
+				"@opentelemetry/instrumentation",
+				"@opentelemetry/api",
+				"@prisma/instrumentation",
+			],
 			rollupConfig: {
 				external: ["fsevents"],
 			},

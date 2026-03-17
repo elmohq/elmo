@@ -42,6 +42,8 @@ export interface AnalyticsConfig {
   plausibleDomain?: string;
   /** Microsoft Clarity project ID (optional) */
   clarityProjectId?: string;
+  /** PostHog project API key (optional) */
+  posthogKey?: string;
 }
 
 /**

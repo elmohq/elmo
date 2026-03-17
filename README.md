@@ -301,6 +301,18 @@ When ready to release:
    - Go to Actions > Release > Run workflow
    - This will create a GitHub release and publish to Docker Hub and npm.
 
+## Telemetry
+
+Elmo collects usage data to help us understand how the product is being used and improve it. This includes CLI install events and web app usage metrics (page views, feature usage, user identification via email).
+
+To disable all telemetry, set the following environment variable:
+
+```bash
+DISABLE_TELEMETRY=1
+```
+
+For Docker deployments, add this to your `.env` file. For the CLI, export it in your shell or prefix it before commands.
+
 ## Learn More
 
 - [Tanstack Start Documentation](https://tanstack.com/start/latest)

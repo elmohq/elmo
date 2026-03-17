@@ -17,6 +17,7 @@ interface ImportMetaEnv {
 	// Analytics
 	readonly VITE_PLAUSIBLE_DOMAIN?: string;
 	readonly VITE_CLARITY_PROJECT_ID?: string;
+	readonly VITE_POSTHOG_KEY?: string;
 
 	// Sentry
 	readonly VITE_SENTRY_DSN?: string;
@@ -57,6 +58,7 @@ declare global {
 			readonly ADMIN_API_KEYS?: string;
 			readonly ENVIRONMENT?: string;
 			readonly SENTRY_DSN?: string;
+			readonly DISABLE_TELEMETRY?: string;
 		}
 	}
 }

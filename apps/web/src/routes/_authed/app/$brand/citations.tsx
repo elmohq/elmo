@@ -14,6 +14,7 @@ import { CitationsDisplay } from "@/components/citations-display";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, usePageFilters, usePageFilterSetters } from "@/components/page-header";
 
+
 export const Route = createFileRoute("/_authed/app/$brand/citations")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
@@ -36,6 +37,7 @@ function CitationsPage() {
 	const days = getDaysFromLookback(selectedLookback);
 
 	const { brand } = useBrand(brandId);
+
 
 	// Get citation data with tag and model filter
 	const modelGroupParam = selectedModel === "all" ? undefined : selectedModel;

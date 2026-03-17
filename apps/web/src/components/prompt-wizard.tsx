@@ -19,6 +19,7 @@ import {
 	getPersonasFn,
 	createPromptsFn,
 } from "@/server/wizard";
+import { trackEvent } from "@/lib/posthog";
 
 // Step status types
 type StepStatus = "pending" | "running" | "completed" | "error" | "blocked" | "cancelled";
@@ -678,6 +679,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		try {
 			const result = await apiCalls.createPrompts(brand.id, wizardData);
 			if (result.success) {
+				trackEvent("wizard_completed", {
+					prompts_created: wizardData.customPrompts.length,
+					competitors_created: wizardData.competitors.length,
+					skipped: false,
+				});
 				await revalidate();
 				onComplete();
 			} else {

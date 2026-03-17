@@ -7,6 +7,7 @@ import { Label } from "@workspace/ui/components/label";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import FullPageCard from "@/components/full-page-card";
 import { createBrandFn } from "@/server/brands";
+import { trackEvent } from "@/lib/posthog";
 
 interface BrandOnboardingProps {
 	brandId: string;
@@ -28,6 +29,7 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 			await createBrandFn({
 				data: { brandId, brandName, website },
 			});
+			trackEvent("brand_created", { has_website: Boolean(website) });
 
 			await router.invalidate();
 			await navigate({ to: "/app/$brand", params: { brand: brandId } });

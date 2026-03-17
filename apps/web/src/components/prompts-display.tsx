@@ -15,6 +15,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PageHeader, usePageFilters, usePageFilterSetters, type ModelType } from "@/components/page-header";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
+
 interface Prompt {
 	id: string;
 	brandId: string;
@@ -80,6 +81,7 @@ export function PromptsDisplay({
 	const { brand } = useBrand();
 	const { selectedModel, selectedLookback, selectedTags, searchQuery } = usePageFilters();
 	const { clearFilters } = usePageFilterSetters();
+
 
 	// Filter available models based on excludeModels prop
 	const availableIndividualModels: ("openai" | "anthropic" | "google")[] = (

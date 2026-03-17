@@ -4,6 +4,7 @@
  * In single-org mode (local/demo): redirects to the default org
  * In multi-org mode (whitelabel): shows brand switcher
  */
+
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getDeployment } from "@/lib/config/server";
@@ -12,6 +13,7 @@ import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import FullPageCard from "@/components/full-page-card";
+
 
 const getOrganizations = createServerFn({ method: "GET" }).handler(async (): Promise<{
 	organizations: { id: string; name: string }[];
