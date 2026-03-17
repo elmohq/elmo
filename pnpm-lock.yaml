@@ -79,6 +79,9 @@ importers:
       '@takumi-rs/image-response':
         specifier: ^0.73.1
         version: 0.73.1
+      '@takumi-rs/wasm':
+        specifier: ^0.73.1
+        version: 0.73.1
       '@tanstack/devtools-vite':
         specifier: ^0.5.5
         version: 0.5.5(vite@8.0.0(@types/node@24.10.13)(esbuild@0.27.3)(jiti@2.6.1)(tsx@4.21.0))
