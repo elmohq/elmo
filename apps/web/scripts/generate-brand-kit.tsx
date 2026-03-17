@@ -169,7 +169,7 @@ function PatternBanner({
 	width: number;
 	height: number;
 	bg: string;
-	colors: string[];
+	colors: readonly string[];
 	angle: number;
 	fontScale: number;
 }) {
