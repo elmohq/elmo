@@ -1,13 +1,12 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { extname } from "node:path";
 import { createElement } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import ImageResponse from "@takumi-rs/image-response/wasm";
 import takumiWasm from "virtual:takumi-wasm";
-import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
-import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
-import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
+import titanOne400Data from "virtual:font/titan-one-400";
+import geistSans400Data from "virtual:font/geist-sans-400";
+import geistSans500Data from "virtual:font/geist-sans-500";
 import {
 	DEFAULT_APP_NAME,
 	ELMO_BRAND_COLOR,
@@ -19,8 +18,6 @@ const DEFAULT_TAGLINE = "AI Search Optimization";
 const DEFAULT_DESCRIPTION =
 	"Track and optimize your brand's visibility across AI models.";
 
-const fontDataCache = new Map<string, Promise<ArrayBuffer>>();
-const require = createRequire(import.meta.url);
 const publicDir = new URL("../../../../public/", import.meta.url);
 
 async function fetchIconAsDataUri(
@@ -77,38 +74,6 @@ async function fetchIconAsDataUri(
 	} catch {
 		return undefined;
 	}
-}
-
-function loadFontData(
-	request: Request,
-	cacheKey: string,
-	assetUrl: string,
-	packagePath: string,
-): Promise<ArrayBuffer> {
-	let cached = fontDataCache.get(cacheKey);
-	if (!cached) {
-		if (import.meta.env.DEV) {
-			cached = Promise.resolve().then(() => {
-				const buffer = readFileSync(require.resolve(packagePath));
-				return buffer.buffer.slice(
-					buffer.byteOffset,
-					buffer.byteOffset + buffer.byteLength,
-				);
-			});
-		} else {
-			const url = new URL(assetUrl, request.url);
-			cached = fetch(url).then(async (response) => {
-				if (!response.ok) {
-					throw new Error(
-						`Failed to load font asset: ${url.pathname}`,
-					);
-				}
-				return response.arrayBuffer();
-			});
-		}
-		fontDataCache.set(cacheKey, cached);
-	}
-	return cached;
 }
 
 interface OgImageOptions {
@@ -269,28 +234,6 @@ export const Route = createFileRoute("/api/og/")({
 					);
 				}
 
-				const [titanOne400, geistSans400, geistSans500] =
-					await Promise.all([
-						loadFontData(
-							request,
-							"titan-one-400",
-							titanOne400Url,
-							"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
-						),
-						loadFontData(
-							request,
-							"geist-sans-400",
-							geistSans400Url,
-							"@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
-						),
-						loadFontData(
-							request,
-							"geist-sans-500",
-							geistSans500Url,
-							"@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
-						),
-					]);
-
 				const response = new ImageResponse(
 					renderOgImage({
 						appName,
@@ -306,19 +249,19 @@ export const Route = createFileRoute("/api/og/")({
 						fonts: [
 							{
 								name: "Titan One",
-								data: titanOne400,
+								data: titanOne400Data,
 								style: "normal" as const,
 								weight: 400 as const,
 							},
 							{
 								name: "Geist Sans",
-								data: geistSans400,
+								data: geistSans400Data,
 								style: "normal" as const,
 								weight: 400 as const,
 							},
 							{
 								name: "Geist Sans",
-								data: geistSans500,
+								data: geistSans500Data,
 								style: "normal" as const,
 								weight: 500 as const,
 							},

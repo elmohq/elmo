@@ -12,20 +12,26 @@ import pkg from "./package.json" with { type: "json" };
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 const require = createRequire(import.meta.url);
 
-function embedTakumiWasm(): Plugin {
-	const virtualId = "virtual:takumi-wasm";
-	const resolvedId = `\0${virtualId}`;
+const EMBEDDED_BINARIES: Record<string, string> = {
+	"virtual:takumi-wasm": "@takumi-rs/wasm/takumi_wasm_bg.wasm",
+	"virtual:font/titan-one-400": "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
+	"virtual:font/geist-sans-400": "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2",
+	"virtual:font/geist-sans-500": "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2",
+};
+
+function embedBinaries(): Plugin {
 	return {
-		name: "embed-takumi-wasm",
+		name: "embed-binaries",
 		resolveId(id) {
-			if (id === virtualId) return resolvedId;
+			if (id in EMBEDDED_BINARIES) return `\0${id}`;
 		},
 		load(id) {
-			if (id === resolvedId) {
-				const wasmPath = require.resolve("@takumi-rs/wasm/takumi_wasm_bg.wasm");
-				const base64 = readFileSync(wasmPath).toString("base64");
-				return `export default Buffer.from(${JSON.stringify(base64)}, "base64");`;
-			}
+			const key = id.startsWith("\0") ? id.slice(1) : id;
+			const spec = EMBEDDED_BINARIES[key];
+			if (!spec) return;
+			const filePath = require.resolve(spec);
+			const base64 = readFileSync(filePath).toString("base64");
+			return `export default Buffer.from(${JSON.stringify(base64)}, "base64");`;
 		},
 	};
 }
@@ -59,7 +65,7 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		embedTakumiWasm(),
+		embedBinaries(),
 		devtools(),
 		tailwindcss(),
 		tanstackStart(),
