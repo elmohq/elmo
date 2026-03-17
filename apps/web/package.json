@@ -19,7 +19,6 @@
 	"dependencies": {
 		"@fontsource/geist-sans": "^5.2.5",
 		"@fontsource/titan-one": "^5.2.8",
-		"@takumi-rs/core": "^0.73.1",
 		"@takumi-rs/image-response": "^0.73.1",
 		"@sentry/tanstackstart-react": "^10.43.0",
 		"@tabler/icons-react": "^3.37.1",

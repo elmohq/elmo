@@ -25,6 +25,11 @@ interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
 
+declare module "virtual:takumi-wasm" {
+	const wasmBuffer: Buffer;
+	export default wasmBuffer;
+}
+
 declare module "@microsoft/clarity" {
 	interface ClarityApi {
 		init(projectId: string): void;

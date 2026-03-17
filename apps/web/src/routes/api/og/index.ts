@@ -3,7 +3,8 @@ import { createRequire } from "node:module";
 import { extname } from "node:path";
 import { createElement } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import ImageResponse from "@takumi-rs/image-response";
+import ImageResponse from "@takumi-rs/image-response/wasm";
+import takumiWasm from "virtual:takumi-wasm";
 import geistSans400Url from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
 import geistSans500Url from "@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2?url";
 import titanOne400Url from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
@@ -301,6 +302,7 @@ export const Route = createFileRoute("/api/og/")({
 					{
 						width: 1200,
 						height: 630,
+						module: takumiWasm,
 						fonts: [
 							{
 								name: "Titan One",
