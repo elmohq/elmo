@@ -25,12 +25,14 @@ import { setMockRouteContext } from "./_mocks/tanstack-router";
 // ---------------------------------------------------------------------------
 
 const CHART_COLORS = [
-	"hsl(217, 91%, 60%)",
-	"hsl(142, 71%, 45%)",
-	"hsl(38, 92%, 50%)",
-	"hsl(0, 84%, 60%)",
-	"hsl(280, 87%, 65%)",
-	"hsl(190, 90%, 50%)",
+	"#2563eb",
+	"#efb118",
+	"#3ca951",
+	"#ff725c",
+	"#a463f2",
+	"#ff8ab7",
+	"#38b2ac",
+	"#9c6b4e",
 ];
 
 const onboardedBrand = {

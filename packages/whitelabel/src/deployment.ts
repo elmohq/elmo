@@ -18,6 +18,15 @@ function createOnboardingRedirectUrl(template: string | undefined) {
 	return (brandId: string) => template.replace("{brandId}", brandId);
 }
 
+function parseChartColors(raw: string | undefined): string[] | undefined {
+	if (!raw) return undefined;
+	const colors = raw
+		.split(",")
+		.map((c) => c.trim())
+		.filter(Boolean);
+	return colors.length > 0 ? colors : undefined;
+}
+
 export function createWhitelabelDeployment(
 	options: CreateWhitelabelDeploymentOptions,
 ): Deployment {
@@ -39,7 +48,7 @@ export function createWhitelabelDeployment(
 			onboardingRedirectUrl: createOnboardingRedirectUrl(env.VITE_ONBOARDING_REDIRECT_URL_TEMPLATE),
 			onboardingRedirectUrlTemplate: env.VITE_ONBOARDING_REDIRECT_URL_TEMPLATE,
 			optimizationUrlTemplate: requireEnv("VITE_OPTIMIZATION_URL_TEMPLATE", env),
-			chartColors: DEFAULT_CHART_COLORS,
+			chartColors: parseChartColors(env.VITE_CHART_COLORS) ?? DEFAULT_CHART_COLORS,
 		},
 	};
 }

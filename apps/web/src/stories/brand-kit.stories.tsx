@@ -14,18 +14,17 @@ import { setMockRouteContext } from "./_mocks/tanstack-router";
 
 const BRAND_COLOR = "#2563eb";
 const CHART_COLORS = [
-	"#3182ce",
-	"#ae7679",
-	"#afa25f",
-	"#294339",
-	"#795b26",
-	"#7b8e87",
-	"#fbd38d",
-	"#566146",
-	"#52655e",
-	"#652b19",
-	"#1a365d",
-	"#454e38",
+	"#2563eb",
+	"#efb118",
+	"#3ca951",
+	"#ff725c",
+	"#a463f2",
+	"#ff8ab7",
+	"#38b2ac",
+	"#9c6b4e",
+	"#7cb342",
+	"#b07aa1",
+	"#9498a0",
 ];
 
 const elmoConfig: ClientConfig = {

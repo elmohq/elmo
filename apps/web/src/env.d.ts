@@ -12,6 +12,7 @@ interface ImportMetaEnv {
 	readonly VITE_APP_PARENT_URL?: string;
 	readonly VITE_OPTIMIZATION_URL_TEMPLATE?: string;
 	readonly VITE_ONBOARDING_REDIRECT_URL_TEMPLATE?: string;
+	readonly VITE_CHART_COLORS?: string;
 
 	// Analytics
 	readonly VITE_PLAUSIBLE_DOMAIN?: string;
