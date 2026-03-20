@@ -11,6 +11,17 @@ import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
+function getDefaultBrandDomains(): string[] {
+	const raw = process.env.DEFAULT_BRAND_DOMAINS;
+	if (!raw) return [];
+	return raw
+		.split(",")
+		.map((d) => d.trim())
+		.filter(Boolean)
+		.map((d) => cleanAndValidateDomain(d))
+		.filter((d): d is string => d !== null);
+}
+
 // ============================================================================
 // Helper functions (migrated from apps/web/src/lib/metadata.ts)
 // ============================================================================
@@ -120,6 +131,8 @@ export const createBrandFn = createServerFn({ method: "POST" })
 			throw new Error(urlValidation.error);
 		}
 
+		const defaultDomains = getDefaultBrandDomains();
+
 		const result = await db
 			.insert(brands)
 			.values({
@@ -127,6 +140,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 				name: data.brandName,
 				website: urlValidation.formattedUrl!,
 				enabled: true,
+				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 			})
 			.returning();
 

@@ -56,6 +56,7 @@ declare global {
 			readonly AUTH0_CLIENT_ID?: string;
 			readonly AUTH0_CLIENT_SECRET?: string;
 			readonly ADMIN_API_KEYS?: string;
+			readonly DEFAULT_BRAND_DOMAINS?: string;
 			readonly ENVIRONMENT?: string;
 			readonly SENTRY_DSN?: string;
 			readonly DISABLE_TELEMETRY?: string;
