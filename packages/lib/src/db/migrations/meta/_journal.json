@@ -43,6 +43,13 @@
       "when": 1773125217919,
       "tag": "0005_known_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773200000000,
+      "tag": "0006_multi_domain_aliases",
+      "breakpoints": true
     }
   ]
 }
