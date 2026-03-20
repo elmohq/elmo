@@ -79,7 +79,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 
 		// Get brand info, competitors, and prompts from PostgreSQL
 		const [brandResult, competitorsList, enabledPromptsResult, totalPromptsResult] = await Promise.all([
-			db.select({ name: brands.name, website: brands.website, delayOverrideHours: brands.delayOverrideHours }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
+			db.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains, delayOverrideHours: brands.delayOverrideHours }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 			db.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags, tags: prompts.tags })
 				.from(prompts).where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
@@ -87,8 +87,10 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		]);
 
 		const brandWebsite = brandResult[0]?.website || "";
-		const brandDomain = extractDomain(brandWebsite);
-		const competitorDomains = new Set(competitorsList.map((c) => extractDomain(c.domain)));
+		const primaryBrandDomain = extractDomain(brandWebsite);
+		const additionalBrandDomains = (brandResult[0]?.additionalDomains || []).map(extractDomain);
+		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
+		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 		const totalPrompts = totalPromptsResult[0]?.count || 0;
 
 		const enabledPromptIds = enabledPromptsResult.map((p) => p.id);
@@ -156,7 +158,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 
 		const smoothedCitations = applyPerPromptCitationLVCF(
 			perPromptCitations, dateRange, brandResult[0]?.delayOverrideHours,
-			(domain: string) => categorizeDomain(domain, brandDomain, competitorDomains),
+			(domain: string) => categorizeDomain(domain, brandDomains, competitorDomains),
 		);
 		const citationTimeSeries: CitationTimeSeriesPoint[] = dateRange.map((date) => {
 			const c = smoothedCitations.get(date);

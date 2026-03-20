@@ -15,6 +15,8 @@ export const brands = pgTable("brands", {
 	id: text("id").primaryKey().notNull(),
 	name: text("name").notNull(),
 	website: text("website").notNull(),
+	additionalDomains: text("additional_domains").array().notNull().default([]),
+	aliases: text("aliases").array().notNull().default([]),
 	enabled: boolean("enabled").default(true).notNull(),
 	onboarded: boolean("onboarded").default(false).notNull(),
 	delayOverrideHours: integer("delay_override_hours"),
@@ -54,7 +56,8 @@ export const competitors = pgTable("competitors", {
 		.references(() => brands.id)
 		.notNull(),
 	name: text("name").notNull(),
-	domain: text("domain").notNull(),
+	domains: text("domains").array().notNull().default([]),
+	aliases: text("aliases").array().notNull().default([]),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()

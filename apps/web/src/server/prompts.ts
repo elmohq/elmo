@@ -380,12 +380,14 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		// ---- Citation stats ----
 		let citationStats = undefined;
 		const [brandInfo, competitorsList] = await Promise.all([
-			db.select({ website: brands.website }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
-			db.select({ domain: competitors.domain }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
+			db.select({ website: brands.website, additionalDomains: brands.additionalDomains }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
+			db.select({ domains: competitors.domains }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
-		const brandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : "";
-		const competitorDomains = new Set(competitorsList.map((c) => extractDomain(c.domain)));
+		const primaryBrandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : "";
+		const additionalBrandDomains = (brandInfo[0]?.additionalDomains || []).map(extractDomain);
+		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
+		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 
 		const [domainStats, urlStats] = await Promise.all([
 			getPromptCitationStats(data.promptId, fromDateStr, toDateStr, timezone),
@@ -396,7 +398,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			const domainDistribution = domainStats.map(({ domain, count: cnt }) => ({
 				domain,
 				count: Number(cnt),
-				category: categorizeDomain(domain, brandDomain, competitorDomains),
+				category: categorizeDomain(domain, brandDomains, competitorDomains),
 			}));
 
 			const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
@@ -414,7 +416,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			const specificUrls = Array.from(urlCounts.entries())
 				.map(([url, { count: cnt, title, domain }]) => ({
 					url, title, domain, count: cnt,
-					category: categorizeDomain(domain, brandDomain, competitorDomains),
+					category: categorizeDomain(domain, brandDomains, competitorDomains),
 				}))
 				.sort((a, b) => b.count - a.count);
 

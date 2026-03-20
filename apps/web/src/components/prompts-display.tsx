@@ -166,6 +166,8 @@ export function PromptsDisplay({
 				id: batchChartData.brand.id,
 				name: batchChartData.brand.name,
 				website: "",
+				additionalDomains: [],
+				aliases: [],
 				enabled: true,
 				onboarded: true,
 				delayOverrideHours: null,
@@ -179,7 +181,8 @@ export function PromptsDisplay({
 			id: c.id,
 			name: c.name,
 			brandId: brand?.id || "",
-			domain: "",
+			domains: [],
+			aliases: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		})) || [];

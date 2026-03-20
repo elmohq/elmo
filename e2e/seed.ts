@@ -124,15 +124,15 @@ async function seed() {
     // 3. Competitors
     // -----------------------------------------------------------------------
     const competitorData = [
-      { id: COMPETITOR_IDS.competitorA, name: "Competitor Alpha", domain: "competitor-alpha.com" },
-      { id: COMPETITOR_IDS.competitorB, name: "Competitor Beta", domain: "competitor-beta.com" },
+      { id: COMPETITOR_IDS.competitorA, name: "Competitor Alpha", domains: ["competitor-alpha.com"] },
+      { id: COMPETITOR_IDS.competitorB, name: "Competitor Beta", domains: ["competitor-beta.com"] },
     ];
 
     for (const c of competitorData) {
       await client.query(
-        `INSERT INTO competitors (id, brand_id, name, domain, created_at, updated_at)
+        `INSERT INTO competitors (id, brand_id, name, domains, created_at, updated_at)
          VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-        [c.id, TEST_BRAND_ID, c.name, c.domain]
+        [c.id, TEST_BRAND_ID, c.name, c.domains]
       );
     }
     console.log(`  Created ${competitorData.length} competitors`);

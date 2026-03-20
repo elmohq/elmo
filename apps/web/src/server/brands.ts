@@ -144,13 +144,15 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			brandId: z.string(),
 			name: z.string().optional(),
 			website: z.string().optional(),
+			additionalDomains: z.array(z.string()).optional(),
+			aliases: z.array(z.string()).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const updateData: Partial<Pick<Brand, "name" | "website">> = {};
+		const updateData: Partial<Pick<Brand, "name" | "website" | "additionalDomains" | "aliases">> = {};
 
 		if (data.name !== undefined) {
 			if (!data.name.trim()) {
@@ -165,6 +167,14 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 				throw new Error(urlValidation.error);
 			}
 			updateData.website = urlValidation.formattedUrl;
+		}
+
+		if (data.additionalDomains !== undefined) {
+			updateData.additionalDomains = [...new Set(data.additionalDomains.map((d) => d.trim()).filter(Boolean))];
+		}
+
+		if (data.aliases !== undefined) {
+			updateData.aliases = [...new Set(data.aliases.map((a) => a.trim()).filter(Boolean))];
 		}
 
 		const result = await db
@@ -204,7 +214,8 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 			competitors: z.array(
 				z.object({
 					name: z.string(),
-					domain: z.string(),
+					domains: z.array(z.string()).min(1),
+					aliases: z.array(z.string()).optional().default([]),
 				}),
 			),
 		}),
@@ -222,7 +233,8 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 				data.competitors.map((c) => ({
 					brandId: data.brandId,
 					name: c.name,
-					domain: c.domain,
+					domains: c.domains,
+					aliases: c.aliases,
 				})),
 			);
 		}

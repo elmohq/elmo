@@ -101,11 +101,15 @@ export function isInstitutionalDomain(domain: string): boolean {
 
 export function categorizeDomain(
 	domain: string,
-	brandDomain: string,
+	brandDomains: Set<string>,
 	competitorDomains: Set<string>,
 ): CitationCategory {
-	if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) return "brand";
-	if (competitorDomains.has(domain)) return "competitor";
+	for (const bd of brandDomains) {
+		if (domain === bd || domain.endsWith(`.${bd}`)) return "brand";
+	}
+	for (const cd of competitorDomains) {
+		if (domain === cd || domain.endsWith(`.${cd}`)) return "competitor";
+	}
 	if (isSocialMediaDomain(domain)) return "social_media";
 	if (isGoogleDomain(domain)) return "google";
 	if (isInstitutionalDomain(domain)) return "institutional";

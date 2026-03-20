@@ -148,7 +148,7 @@ export const createPromptsFn = createServerFn({ method: "POST" })
 		const competitorsToCreate = competitorsFromHelper.map((c) => ({
 			brandId: data.brandId,
 			name: c.name,
-			domain: c.domain || "",
+			domains: [c.domain || ""].filter(Boolean),
 		}));
 
 		if (currentCompetitorCount + competitorsToCreate.length > MAX_COMPETITORS) {

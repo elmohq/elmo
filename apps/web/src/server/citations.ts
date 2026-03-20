@@ -57,8 +57,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 		]);
 
-		const brandDomain = extractDomain(brandResult[0]?.website || "");
-		const competitorDomains = new Set(competitorsList.map((c) => extractDomain(c.domain)));
+		const primaryBrandDomain = extractDomain(brandResult[0]?.website || "");
+		const additionalBrandDomains = (brandResult[0]?.additionalDomains || []).map(extractDomain);
+		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
+		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 
 		// Collect available tags
 		const allUserTags = new Set<string>();
@@ -136,7 +138,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		]);
 
 		function categorizeDomain(domain: string): CitationCategory {
-			return categorizeDomainShared(domain, brandDomain, competitorDomains);
+			return categorizeDomainShared(domain, brandDomains, competitorDomains);
 		}
 
 		// Build previous period domain map for trend comparison

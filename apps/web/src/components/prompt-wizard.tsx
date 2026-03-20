@@ -129,7 +129,7 @@ const apiCalls = {
 				data: {
 					brandId,
 					products: data.products,
-					competitors: data.competitors.map((c) => ({ name: c.name, domain: c.domain })),
+					competitors: data.competitors.map((c) => ({ name: c.name, domain: c.domain || undefined })),
 					personaGroups: data.personaGroups.map((g) => ({
 						name: g.name,
 						personas: g.personas.map((p) => ({ name: p })),

@@ -93,8 +93,17 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					if (brandInfo.length === 0) {
 						return Response.json({ error: "Internal Server Error", message: "Brand not found for prompt" }, { status: 500 });
 					}
-					const brandDomain = extractDomain(brandInfo[0].website);
-					const competitorDomains = new Set(competitorsList.map((c) => extractDomain(c.domain)));
+					const brandDomains = new Set(
+						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(Boolean),
+					);
+					const competitorDomains = new Set(competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean));
+
+					const isMatchingDomain = (domain: string, domainSet: Set<string>) => {
+						for (const d of domainSet) {
+							if (domain === d || domain.endsWith(`.${d}`)) return true;
+						}
+						return false;
+					};
 
 					const timezone = "UTC";
 					const [mentionData, topCompetitors, citationUrlStats] = await Promise.all([
@@ -126,9 +135,9 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const allCitationUrls = Array.from(urlCounts.entries())
 						.map(([url, { count, title, domain }]) => {
 							citationsTotal += count;
-							if (domain === brandDomain || domain.endsWith(`.${brandDomain}`)) {
+							if (isMatchingDomain(domain, brandDomains)) {
 								brandCitationsTotal += count;
-							} else if (competitorDomains.has(domain)) {
+							} else if (isMatchingDomain(domain, competitorDomains)) {
 								competitorCitationsTotal += count;
 							}
 							return { url, title, count };

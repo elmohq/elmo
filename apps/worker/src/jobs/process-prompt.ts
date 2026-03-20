@@ -95,6 +95,15 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	};
 }
 
+function extractDomainFromUrl(urlOrDomain: string): string {
+	try {
+		const url = new URL(urlOrDomain.startsWith("http") ? urlOrDomain : `https://${urlOrDomain}`);
+		return url.hostname.replace(/^www\./, "").toLowerCase();
+	} catch {
+		return urlOrDomain.replace(/^www\./, "").toLowerCase();
+	}
+}
+
 function analyzeMentions(
 	content: string,
 	brand: Brand,
@@ -104,23 +113,23 @@ function analyzeMentions(
 	competitorsMentioned: string[];
 } {
 	const contentLower = content.toLowerCase();
-	const brandName = brand.name.toLowerCase();
 
-	const url = new URL(brand.website.startsWith("http") ? brand.website : `https://${brand.website}`);
-	const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-
-	const brandMentioned = contentLower.includes(brandName) || contentLower.includes(domain);
+	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
+	const brandDomains = [
+		extractDomainFromUrl(brand.website),
+		...(brand.additionalDomains || []).map(extractDomainFromUrl),
+	];
+	const brandMentioned =
+		brandNames.some((n) => contentLower.includes(n)) ||
+		brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
-			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
-
-			const competitorUrl = new URL(
-				competitor.domain.startsWith("http") ? competitor.domain : `https://${competitor.domain}`,
+			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
+			const nameMatch = names.some((n) => contentLower.includes(n));
+			const domainMatch = (competitor.domains || []).some((d) =>
+				contentLower.includes(extractDomainFromUrl(d)),
 			);
-			const competitorDomain = competitorUrl.hostname.replace(/^www\./, "").toLowerCase();
-
-			const domainMatch = contentLower.includes(competitorDomain);
 			return nameMatch || domainMatch;
 		})
 		.map((competitor) => competitor.name);

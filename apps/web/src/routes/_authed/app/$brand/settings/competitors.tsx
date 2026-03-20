@@ -18,6 +18,8 @@ interface CompetitorEntry {
 	_key: string;
 	name: string;
 	domain: string;
+	extraDomains: string[];
+	aliases: string[];
 }
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/competitors")({
@@ -49,7 +51,9 @@ function CompetitorsSettingsPage() {
 				existingCompetitors.map((c) => ({
 					_key: crypto.randomUUID(),
 					name: c.name,
-					domain: c.domain,
+					domain: c.domains?.[0] || "",
+					extraDomains: c.domains?.slice(1) || [],
+					aliases: c.aliases || [],
 				})),
 			);
 		}
@@ -57,7 +61,7 @@ function CompetitorsSettingsPage() {
 
 	const addCompetitor = () => {
 		if (competitors.length < MAX_COMPETITORS) {
-			setCompetitors([...competitors, { _key: crypto.randomUUID(), name: "", domain: "" }]);
+			setCompetitors([...competitors, { _key: crypto.randomUUID(), name: "", domain: "", extraDomains: [], aliases: [] }]);
 		}
 	};
 
@@ -100,7 +104,9 @@ function CompetitorsSettingsPage() {
 		setSuccess("");
 
 		try {
-			const validCompetitors = competitors.filter((c) => c.name.trim() && c.domain.trim());
+			const validCompetitors = competitors
+				.filter((c) => c.name.trim() && c.domain.trim())
+				.map((c) => ({ name: c.name, domains: [c.domain, ...c.extraDomains], aliases: c.aliases }));
 
 			await updateCompetitors({
 				data: { brandId: brand.id, competitors: validCompetitors },
