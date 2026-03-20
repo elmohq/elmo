@@ -55,6 +55,19 @@ export function extractDomain(urlOrDomain: string): string {
 	}
 }
 
+const DOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+/**
+ * Clean and validate a user-entered domain string.
+ * Strips protocols, www prefix, and trailing paths. Returns the cleaned domain
+ * if valid, or null if the input doesn't look like a valid domain.
+ */
+export function cleanAndValidateDomain(input: string): string | null {
+	const cleaned = extractDomain(input.trim());
+	if (!cleaned || !DOMAIN_REGEX.test(cleaned)) return null;
+	return cleaned;
+}
+
 export function normalizeUrl(url: string): string {
 	try {
 		const urlObj = new URL(url);

@@ -1,12 +1,15 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { Separator } from "@workspace/ui/components/separator";
 import { Input } from "@workspace/ui/components/input";
-import { IconExternalLink, IconInfoCircle, IconSearch, IconPlus, IconArrowDownRight, IconSwitchHorizontal, IconChevronDown } from "@tabler/icons-react";
+import { Button } from "@workspace/ui/components/button";
+import { IconExternalLink, IconInfoCircle, IconSearch, IconPlus, IconArrowDownRight, IconSwitchHorizontal, IconChevronDown, IconCheck } from "@tabler/icons-react";
+import { Loader2 } from "lucide-react";
 import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
+import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/components/popover";
 import { Link } from "@tanstack/react-router";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -15,6 +18,8 @@ import {
 	ChartTooltip,
 } from "@workspace/ui/components/chart";
 import { type CitationCategory, CATEGORY_CONFIG } from "@/lib/domain-categories";
+import * as Sentry from "@sentry/tanstackstart-react";
+import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
 export interface CitationData {
 	totalCitations: number;
@@ -53,6 +58,7 @@ export interface CitationData {
 		other: number;
 	}[];
 	previousBrandShare?: number | null;
+	competitors?: Array<{ id: string; name: string; domains: string[] }>;
 	whatsChanged?: {
 		newUrls: { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[];
 		droppedUrls: { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[];
@@ -70,6 +76,7 @@ interface CitationsDisplayProps {
 	maxDomains?: number;
 	maxUrls?: number;
 	days?: number;
+	onCompetitorAdded?: () => void;
 }
 
 const getCategoryLabel = (category: string) =>
@@ -178,20 +185,195 @@ function UnderlineTabs<T extends string>({
 	);
 }
 
+function TrackDomainPopover({
+	domain,
+	brandId,
+	brandName,
+	competitors,
+	onAdded,
+}: {
+	domain: string;
+	brandId: string;
+	brandName?: string;
+	competitors: Array<{ id: string; name: string; domains: string[] }>;
+	onAdded?: () => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const [newName, setNewName] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [saved, setSaved] = useState(false);
+	const [error, setError] = useState("");
+
+	const handleSuccess = () => {
+		setSaving(false);
+		setSaved(true);
+		setError("");
+		setOpen(false);
+		onAdded?.();
+	};
+
+	const handleError = (e: unknown) => {
+		setSaving(false);
+		setError("Something went wrong. Please try again.");
+		Sentry.captureException(e);
+	};
+
+	const handleAddToBrand = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			await addDomainToBrandFn({ data: { brandId, domain } });
+			handleSuccess();
+		} catch (e) {
+			handleError(e);
+		}
+	};
+
+	const handleAddToExisting = async (competitorId: string) => {
+		setSaving(true);
+		setError("");
+		try {
+			await addDomainToCompetitorFn({ data: { brandId, competitorId, domain } });
+			handleSuccess();
+		} catch (e) {
+			handleError(e);
+		}
+	};
+
+	const handleCreateNew = async () => {
+		if (!newName.trim()) return;
+		setSaving(true);
+		setError("");
+		try {
+			await createCompetitorFromDomainFn({ data: { brandId, name: newName.trim(), domain } });
+			setNewName("");
+			handleSuccess();
+		} catch (e) {
+			handleError(e);
+		}
+	};
+
+	if (saved) {
+		return (
+			<span className="shrink-0 p-1 text-muted-foreground">
+				<Loader2 className="h-3.5 w-3.5 animate-spin" />
+			</span>
+		);
+	}
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+					title={`Track ${domain}`}
+				>
+					<IconPlus className="h-3.5 w-3.5" />
+				</button>
+			</PopoverTrigger>
+			<PopoverContent className="w-72 p-3" align="end">
+				<div className="space-y-3">
+					<p className="text-xs font-medium">Track <strong>{domain}</strong></p>
+
+					{error && (
+						<p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{error}</p>
+					)}
+
+					<div className="space-y-1">
+						<div className="flex items-center gap-1">
+							<p className="text-[11px] text-muted-foreground">Add as brand domain</p>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-xs font-normal">
+									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified as your brand.
+								</TooltipContent>
+							</Tooltip>
+						</div>
+						<button
+							type="button"
+							onClick={handleAddToBrand}
+							disabled={saving}
+							className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+						>
+							{brandName || "My brand"}
+						</button>
+					</div>
+
+					{competitors.length > 0 && (
+						<div className="space-y-1">
+							<div className="flex items-center gap-1">
+								<p className="text-[11px] text-muted-foreground">Add to existing competitor</p>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs text-xs font-normal">
+										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified under the selected competitor.
+									</TooltipContent>
+								</Tooltip>
+							</div>
+							<div className="max-h-32 overflow-y-auto space-y-0.5">
+								{competitors.map((c) => (
+									<button
+										key={c.id}
+										type="button"
+										onClick={() => handleAddToExisting(c.id)}
+										disabled={saving}
+										className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
+									>
+										{c.name}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
+					<div className="space-y-1.5">
+						<p className="text-[11px] text-muted-foreground">Or create new competitor:</p>
+						<div className="flex gap-1.5">
+							<Input
+								value={newName}
+								onChange={(e) => setNewName(e.target.value)}
+								placeholder="Competitor name"
+								className="h-7 text-xs"
+								onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreateNew(); } }}
+								disabled={saving}
+							/>
+							<Button
+								size="sm"
+								onClick={handleCreateNew}
+								disabled={saving || !newName.trim()}
+								className="h-7 px-2 text-xs cursor-pointer shrink-0"
+							>
+								Add
+							</Button>
+						</div>
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 export function CitationsDisplay({
 	citationData,
 	brandId,
 	brandName,
 	showStats = false,
-	maxDomains = 15,
+	maxDomains = 20,
 	maxUrls = 20,
 	days = 7,
+	onCompetitorAdded,
 }: CitationsDisplayProps) {
 	const [domainSearch, setDomainSearch] = useState("");
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [changeTypeFilter, setChangeTypeFilter] = useState<ChangeType>("new_pages");
 	const [changeTabExpanded, setChangeTabExpanded] = useState(false);
+	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
 
 	if (citationData.totalCitations === 0) {
 		return null;
@@ -202,13 +384,10 @@ export function CitationsDisplay({
 		: 0;
 
 	const filteredDomains = useMemo(() => {
-		let domains = citationData.domainDistribution;
-		if (domainSearch) {
-			const q = domainSearch.toLowerCase();
-			domains = domains.filter((d) => d.domain.toLowerCase().includes(q));
-		}
-		return domains.slice(0, Math.max(maxDomains, 20));
-	}, [citationData.domainDistribution, domainSearch, maxDomains]);
+		if (!domainSearch) return citationData.domainDistribution;
+		const q = domainSearch.toLowerCase();
+		return citationData.domainDistribution.filter((d) => d.domain.toLowerCase().includes(q));
+	}, [citationData.domainDistribution, domainSearch]);
 
 	const filteredUrls = useMemo(() => {
 		let urls = citationData.specificUrls;
@@ -586,8 +765,8 @@ export function CitationsDisplay({
 								<Input
 									placeholder="Search domains..."
 									value={domainSearch}
-									onChange={(e) => setDomainSearch(e.target.value)}
-									className="h-8 pl-8 text-xs"
+								onChange={(e) => { setDomainSearch(e.target.value); setVisibleDomains(maxDomains); }}
+								className="h-8 pl-8 text-xs"
 								/>
 							</div>
 						</div>
@@ -595,14 +774,31 @@ export function CitationsDisplay({
 					<Separator />
 					<CardContent>
 						<ProgressBarChart
-							items={filteredDomains.slice(0, maxDomains).map((domain) => ({
+							items={filteredDomains.slice(0, visibleDomains).map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
 								category: domain.category || "other",
+							action: domain.category === "other" && brandId && citationData.competitors ? (
+								<TrackDomainPopover
+									domain={domain.domain}
+									brandId={brandId}
+									brandName={brandName}
+									competitors={citationData.competitors}
+									onAdded={onCompetitorAdded}
+								/>
+								) : undefined,
 							}))}
 							colorMapping={DOMAIN_CATEGORY_COLORS}
 							percentageMode="max"
 						/>
+						{filteredDomains.length > visibleDomains && visibleDomains < 100 && (
+							<button
+								onClick={() => setVisibleDomains((prev) => Math.min(prev + 20, 100))}
+								className="mt-6 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+							>
+								Show more
+							</button>
+						)}
 					</CardContent>
 				</Card>
 			)}

@@ -4,7 +4,7 @@ export const RUNS_PER_PROMPT = 5;
 export const DEFAULT_DELAY_HOURS = 72;
 
 // Maximum limits for brand resources
-export const MAX_COMPETITORS = 50;
+export const MAX_COMPETITORS = 100;
 
 // Model configurations
 export const AI_MODELS = {

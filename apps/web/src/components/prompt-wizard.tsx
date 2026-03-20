@@ -37,7 +37,7 @@ interface WizardStep {
 
 interface WizardData {
 	products: string[];
-	competitors: Array<{ id: string; name: string; domain: string }>;
+	competitors: Array<{ id: string; name: string; domain: string; extraDomains: string[]; aliases: string[] }>;
 	personaGroups: Array<{
 		id: string;
 		name: string;
@@ -117,7 +117,7 @@ const apiCalls = {
 		brandId: string,
 		data: {
 			products: string[];
-			competitors: Array<{ name: string; domain: string }>;
+			competitors: Array<{ name: string; domain: string; extraDomains?: string[]; aliases?: string[] }>;
 			personaGroups: Array<{ name: string; personas: string[] }>;
 			keywords: Array<{ keyword: string; search_volume: number; difficulty: number; selected: boolean }>;
 			customPrompts: string[];
@@ -129,7 +129,12 @@ const apiCalls = {
 				data: {
 					brandId,
 					products: data.products,
-					competitors: data.competitors.map((c) => ({ name: c.name, domain: c.domain || undefined })),
+					competitors: data.competitors.map((c) => ({
+						name: c.name,
+						domain: c.domain || undefined,
+						extraDomains: c.extraDomains,
+						aliases: c.aliases,
+					})),
 					personaGroups: data.personaGroups.map((g) => ({
 						name: g.name,
 						personas: g.personas.map((p) => ({ name: p })),
@@ -514,7 +519,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const addCompetitor = useCallback(() => {
 		setWizardData((prev) => ({
 			...prev,
-			competitors: [...prev.competitors, { id: generateId(), name: "", domain: "" }],
+			competitors: [...prev.competitors, { id: generateId(), name: "", domain: "", extraDomains: [], aliases: [] }],
 		}));
 	}, []);
 
@@ -651,8 +656,11 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 							break;
 						case "get-competitors":
 							newWizardData.competitors = step.data.competitors.map((competitor: any) => ({
-								...competitor,
 								id: generateId(),
+								name: competitor.name || "",
+								domain: competitor.domain || "",
+								extraDomains: [],
+								aliases: [],
 							}));
 							break;
 						case "analyze-personas":

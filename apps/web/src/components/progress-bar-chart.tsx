@@ -19,6 +19,8 @@ export type ProgressBarItem = {
 	onClick?: () => void;
 	/** Optional tooltip text shown on hover over the label */
 	tooltip?: string;
+	/** Optional action element rendered next to the label */
+	action?: React.ReactNode;
 	/** Optional additional metadata */
 	metadata?: Record<string, any>;
 };
@@ -113,36 +115,39 @@ export function ProgressBarChart({
 				return (
 					<div key={item.label} className="space-y-2">
 					<div className="flex items-center justify-between">
-						{item.tooltip ? (
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<span
-										className={cn(
-											"text-sm flex-1 cursor-default",
-											isHighlighted ? "font-bold" : "font-medium",
-											truncateLabels && "truncate",
-											isClickable && "cursor-pointer hover:underline"
-										)}
-										onClick={item.onClick}
-									>
-										{item.label}
-									</span>
-								</TooltipTrigger>
-								<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
-							</Tooltip>
-						) : (
-							<span
-								className={cn(
-									"text-sm flex-1",
-									isHighlighted ? "font-bold" : "font-medium",
-									truncateLabels && "truncate",
-									isClickable && "cursor-pointer hover:underline"
-								)}
-								onClick={item.onClick}
-							>
-								{item.label}
-							</span>
-						)}
+						<div className="flex items-center gap-1 min-w-0 flex-1">
+							{item.tooltip ? (
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<span
+											className={cn(
+												"text-sm cursor-default",
+												isHighlighted ? "font-bold" : "font-medium",
+												truncateLabels && "truncate",
+												isClickable && "cursor-pointer hover:underline"
+											)}
+											onClick={item.onClick}
+										>
+											{item.label}
+										</span>
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
+								</Tooltip>
+							) : (
+								<span
+									className={cn(
+										"text-sm",
+										isHighlighted ? "font-bold" : "font-medium",
+										truncateLabels && "truncate",
+										isClickable && "cursor-pointer hover:underline"
+									)}
+									onClick={item.onClick}
+								>
+									{item.label}
+								</span>
+							)}
+							{item.action}
+						</div>
 							<div className="flex items-center gap-2 ml-2 shrink-0">
 								<span className="text-sm">{item.count.toLocaleString()}</span>
 								{item.suffix}

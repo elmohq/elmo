@@ -10,6 +10,7 @@ import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { eq, count } from "drizzle-orm";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import {
 	analyzeWebsite,
 	getCompetitors,
@@ -86,7 +87,12 @@ export const createPromptsFn = createServerFn({ method: "POST" })
 		z.object({
 			brandId: z.string(),
 			competitors: z
-				.array(z.object({ name: z.string(), domain: z.string().optional() }))
+				.array(z.object({
+					name: z.string(),
+					domain: z.string().optional(),
+					extraDomains: z.array(z.string()).optional(),
+					aliases: z.array(z.string()).optional(),
+				}))
 				.optional()
 				.default([]),
 			personaGroups: z
@@ -145,11 +151,21 @@ export const createPromptsFn = createServerFn({ method: "POST" })
 			customPrompts: data.customPrompts,
 		});
 
-		const competitorsToCreate = competitorsFromHelper.map((c) => ({
-			brandId: data.brandId,
-			name: c.name,
-			domains: [c.domain || ""].filter(Boolean),
-		}));
+		// Build a lookup from the original input to get extraDomains/aliases
+		const inputByName = new Map(data.competitors.map((c) => [c.name, c]));
+
+		const competitorsToCreate = competitorsFromHelper.map((c) => {
+			const input = inputByName.get(c.name);
+			const rawExtraDomains = (input?.extraDomains || []).map((d) => d.trim()).filter(Boolean);
+			const validatedExtra = rawExtraDomains.map((d) => cleanAndValidateDomain(d)).filter(Boolean) as string[];
+			const aliases = (input?.aliases || []).map((a) => a.trim()).filter(Boolean);
+			return {
+				brandId: data.brandId,
+				name: c.name,
+				domains: [c.domain || "", ...validatedExtra].filter(Boolean),
+				aliases,
+			};
+		});
 
 		if (currentCompetitorCount + competitorsToCreate.length > MAX_COMPETITORS) {
 			throw new Error(`Cannot create competitors. Would exceed maximum of ${MAX_COMPETITORS}.`);

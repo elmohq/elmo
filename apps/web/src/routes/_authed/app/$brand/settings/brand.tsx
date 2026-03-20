@@ -1,16 +1,23 @@
 /**
  * /app/$brand/settings/brand - Brand settings page
  *
- * Form to edit brand name and website.
+ * Form to edit brand name, website, additional domains, and aliases.
  */
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { useBrand } from "@/hooks/use-brands";
 import { updateBrandFn } from "@/server/brands";
+import { citationKeys } from "@/hooks/use-citations";
+import { dashboardKeys } from "@/hooks/use-dashboard-summary";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { TagsInput } from "@workspace/ui/components/tags-input";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
 	head: ({ matches, match }) => {
@@ -28,9 +35,37 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
 
 function BrandSettingsPage() {
 	const { brand, isLoading, revalidate } = useBrand();
+	const queryClient = useQueryClient();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
+	const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
+	const [aliases, setAliases] = useState<string[]>([]);
+
+	useEffect(() => {
+		if (brand) {
+			setAdditionalDomains(brand.additionalDomains || []);
+			setAliases(brand.aliases || []);
+		}
+	}, [brand?.updatedAt]);
+
+	const [domainError, setDomainError] = useState("");
+	const handleDomainsChange = useCallback((values: string[]) => {
+		const last = values[values.length - 1];
+		if (last && !additionalDomains.includes(last)) {
+			const cleaned = cleanAndValidateDomain(last);
+			if (!cleaned) {
+				setDomainError(`"${last}" is not a valid domain`);
+				return;
+			}
+			setDomainError("");
+			setAdditionalDomains([...additionalDomains, cleaned]);
+			return;
+		}
+		setDomainError("");
+		setAdditionalDomains(values);
+	}, [additionalDomains]);
+	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
 
 	if (isLoading) {
 		return (
@@ -64,8 +99,18 @@ function BrandSettingsPage() {
 			const website = formData.get("website") as string;
 
 			await updateBrandFn({
-				data: { brandId: brand.id, name, website },
+				data: {
+					brandId: brand.id,
+					name,
+					website,
+					additionalDomains,
+					aliases,
+				},
 			});
+
+			// Domain/alias changes affect citation categorization and mention detection
+			queryClient.invalidateQueries({ queryKey: citationKeys.all });
+			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 
 			setSuccess("Brand details updated successfully!");
 			await revalidate();
@@ -110,7 +155,48 @@ function BrandSettingsPage() {
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Enter your brand&apos;s website URL</p>
+						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website URL</p>
+					</div>
+
+					<div className="space-y-2">
+						<Label className="flex items-center gap-1.5">
+							Additional Domains
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-xs font-normal">
+									Other domains your brand owns (e.g. blog.example.com, shop.example.com). Citations from these domains will be counted as your brand&apos;s citations. <strong>Updates retroactively</strong> &mdash; existing citations will be reclassified immediately.
+								</TooltipContent>
+							</Tooltip>
+						</Label>
+						<TagsInput
+							value={additionalDomains}
+							onValueChange={handleDomainsChange}
+							placeholder="Add domain..."
+							maxItems={10}
+						/>
+						{domainError && <p className="text-xs text-destructive">{domainError}</p>}
+					</div>
+
+					<div className="space-y-2">
+						<Label className="flex items-center gap-1.5">
+							Brand Aliases
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-xs font-normal">
+									Alternative names for your brand (sub-brands, product lines, abbreviations). Used for mention detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively to past results.
+								</TooltipContent>
+							</Tooltip>
+						</Label>
+						<TagsInput
+							value={aliases}
+							onValueChange={handleAliasesChange}
+							placeholder="Add alias..."
+							maxItems={10}
+						/>
 					</div>
 				</div>
 

@@ -309,6 +309,12 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 		droppedDomains.sort((a, b) => b.previousCount - a.previousCount);
 
+		const competitorSummary = competitorsList.map((c) => ({
+			id: c.id,
+			name: c.name,
+			domains: c.domains,
+		}));
+
 		return {
 			totalCitations,
 			uniqueDomains: domainDistribution.length,
@@ -323,6 +329,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			availableTags,
 			citationTimeSeries,
 			previousBrandShare,
+			competitors: competitorSummary,
 		whatsChanged: {
 			newUrls,
 			droppedUrls: droppedUrls.slice(0, 10),
