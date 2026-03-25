@@ -8,6 +8,9 @@ const mocksDir = path.resolve(__dirname, "../src/stories/_mocks");
 const config: StorybookConfig = {
 	framework: "@storybook/react-vite",
 	stories: ["../src/stories/**/*.stories.{ts,tsx}"],
+	core: {
+		disableTelemetry: true,
+	},
 	async viteFinal(config) {
 		const { mergeConfig } = await import("vite");
 		const pkg = await import("../package.json", { with: { type: "json" } });
