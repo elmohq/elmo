@@ -1,0 +1,60 @@
+---
+title: Introduction
+description: Elmo is an open source AI visibility platform that tracks how AI search engines talk about your brand.
+---
+
+## What is Elmo?
+
+Elmo is an open source **Answer Engine Optimization (AEO)** platform. It monitors how AI models like ChatGPT, Claude, and Google AI Overviews mention your brand in their responses.
+
+Unlike proprietary alternatives, Elmo is fully self-hosted — you own your data, control your infrastructure, and can customize everything.
+
+## Key Features
+
+- **AI Visibility Tracking** — Monitor your brand's presence across ChatGPT, Claude, and Google AI Overviews
+- **Citation Analysis** — See which sources AI models cite when discussing your brand
+- **Competitor Intelligence** — Track how competitors appear in AI responses
+- **Prompt Management** — Configure and track prompts relevant to your brand with an AI-powered wizard
+- **Automated Reports** — Generate comprehensive AI visibility reports
+- **White Label** — Deploy under your own brand with full multi-org support
+
+## How It Works
+
+Elmo runs as a Docker Compose stack on your infrastructure. The CLI sets everything up in minutes:
+
+```bash
+npm install -g @elmohq/cli
+elmo init
+elmo start
+```
+
+Once running, the platform periodically queries AI models with your configured prompts and tracks how they mention your brand, competitors, and cited sources over time.
+
+## Architecture
+
+Elmo consists of three main components:
+
+| Component | Description |
+|-----------|-------------|
+| **Web** | The main dashboard for monitoring AI visibility, managing prompts, and viewing reports |
+| **Worker** | Background job runner that queries AI models and processes responses on a schedule |
+| **CLI** | Command-line interface for initializing and managing your Elmo deployment |
+
+These run together via Docker Compose, backed by a PostgreSQL database.
+
+## Next Steps
+
+<Cards>
+<Card title="Quick Start" href="/docs/getting-started">
+Install the CLI and get Elmo running in minutes.
+</Card>
+<Card title="User Guide" href="/docs/user-guide">
+Walk through the complete setup — from brand creation to visibility tracking.
+</Card>
+<Card title="Configuration" href="/docs/configuration">
+Configure AI models, deployment modes, and environment variables.
+</Card>
+<Card title="Contributing" href="/docs/contributing">
+Set up a development environment and contribute to Elmo.
+</Card>
+</Cards>

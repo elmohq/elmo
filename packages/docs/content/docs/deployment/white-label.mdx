@@ -1,0 +1,77 @@
+---
+title: White Label
+description: Deploy Elmo under your own brand with multi-org support and SSO.
+---
+
+## Overview
+
+Elmo's white-label mode lets you deploy the platform under your own brand for clients. Each client gets their own organization with isolated data, while you maintain a single deployment.
+
+## Features
+
+- **Custom Branding** — Your logo, name, and colors throughout the UI
+- **Multi-Organization** — Each client operates in their own isolated org
+- **SSO via Auth0** — Enterprise single sign-on for your clients
+- **Custom Domains** — Deploy on your own domain
+- **Optimization Links** — Link to your optimization service from the dashboard
+
+## Setup
+
+Set the deployment mode to `whitelabel` in your `.env` file and configure branding:
+
+```bash
+DEPLOYMENT_MODE=whitelabel
+
+# Branding
+VITE_APP_NAME="Your Brand"
+VITE_APP_ICON="https://yourdomain.com/icon.png"
+VITE_APP_URL="https://yourdomain.com"
+VITE_APP_PARENT_NAME="Your Agency"
+VITE_APP_PARENT_URL="https://youragency.com"
+```
+
+Then restart Elmo:
+
+```bash
+elmo stop
+elmo start
+```
+
+## Auth0 Configuration
+
+White-label mode requires Auth0 for authentication. Add these variables to your `.env`:
+
+```bash
+VITE_AUTH0_DOMAIN="your-tenant.auth0.com"
+VITE_AUTH0_CLIENT_ID="your-client-id"
+AUTH0_DOMAIN="your-tenant.auth0.com"
+AUTH0_CLIENT_ID="your-client-id"
+AUTH0_CLIENT_SECRET="your-client-secret"
+```
+
+### Auth0 Setup Steps
+
+1. Create an Auth0 application (Regular Web Application)
+2. Configure callback URLs to your deployment domain
+3. Set up user metadata fields for organization mapping
+4. Configure the Management API for user sync
+
+## Chart Colors
+
+Customize the chart color palette to match your brand:
+
+```bash
+VITE_CHART_COLORS="#1a73e8,#fbbc04,#34a853,#ea4335,#8430ce"
+```
+
+Colors are applied in order to chart series. Provide at least 5–10 colors for best results.
+
+## Multi-Org Architecture
+
+In white-label mode, each client gets:
+
+- A separate organization with its own brands, prompts, and evaluations
+- Isolated data — clients cannot see each other's data
+- Independent configuration — each org can track different brands and competitors
+
+You (the operator) can see all organizations from the admin dashboard.

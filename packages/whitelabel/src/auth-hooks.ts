@@ -11,8 +11,6 @@
  * 4. Upserts better-auth organizations from elmo_orgs
  * 5. Sets user admin role and report generator access flags
  * 6. Mutates the user object so the session cookie has correct data
- *
- * NOTE: This module is separately licensed from the core auth package.
  */
 import { ManagementClient } from "auth0";
 import { z } from "zod";

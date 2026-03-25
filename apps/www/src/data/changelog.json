@@ -1,0 +1,687 @@
+{
+  "generatedAt": "2026-03-20T23:13:50.283Z",
+  "months": [
+    {
+      "month": "2026-03",
+      "label": "March 2026",
+      "issues": [
+        {
+          "number": 126,
+          "title": "support default additional domains for a brand",
+          "html_url": "https://github.com/elmohq/elmo/issues/126",
+          "labels": [
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-20T22:33:41Z"
+        },
+        {
+          "number": 114,
+          "title": "allow easy adding of competitors from unclassified \"other\" citation domains",
+          "html_url": "https://github.com/elmohq/elmo/issues/114",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-20T01:27:58Z"
+        },
+        {
+          "number": 113,
+          "title": "allow multiple domains for brands and competitors",
+          "html_url": "https://github.com/elmohq/elmo/issues/113",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-20T01:27:45Z"
+        },
+        {
+          "number": 24,
+          "title": "unified analytics ",
+          "html_url": "https://github.com/elmohq/elmo/issues/24",
+          "labels": [
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-17T06:17:40Z"
+        },
+        {
+          "number": 76,
+          "title": "create brand kit",
+          "html_url": "https://github.com/elmohq/elmo/issues/76",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-16T04:19:26Z"
+        },
+        {
+          "number": 34,
+          "title": "Add additional citation types",
+          "html_url": "https://github.com/elmohq/elmo/issues/34",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-11T19:05:46Z"
+        },
+        {
+          "number": 35,
+          "title": "Brand coverage in citations in Reddit",
+          "html_url": "https://github.com/elmohq/elmo/issues/35",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T20:47:42Z"
+        },
+        {
+          "number": 102,
+          "title": "fix smoothing for main dashboard charts",
+          "html_url": "https://github.com/elmohq/elmo/issues/102",
+          "labels": [
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T20:46:25Z"
+        },
+        {
+          "number": 110,
+          "title": "show newly appeared citations",
+          "html_url": "https://github.com/elmohq/elmo/issues/110",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T20:46:06Z"
+        },
+        {
+          "number": 48,
+          "title": "better smoothing for trend graphs",
+          "html_url": "https://github.com/elmohq/elmo/issues/48",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T20:45:28Z"
+        },
+        {
+          "number": 111,
+          "title": "show citations that changed titles",
+          "html_url": "https://github.com/elmohq/elmo/issues/111",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T20:44:31Z"
+        },
+        {
+          "number": 58,
+          "title": "stop writing prompt_runs to postgres",
+          "html_url": "https://github.com/elmohq/elmo/issues/58",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T07:38:00Z"
+        },
+        {
+          "number": 67,
+          "title": "stop writes to tinybird v1 and rename datasources",
+          "html_url": "https://github.com/elmohq/elmo/issues/67",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-03-10T07:37:22Z"
+        }
+      ]
+    },
+    {
+      "month": "2026-02",
+      "label": "February 2026",
+      "issues": [
+        {
+          "number": 83,
+          "title": "audit unused deps with knip",
+          "html_url": "https://github.com/elmohq/elmo/issues/83",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-20T07:01:04Z"
+        },
+        {
+          "number": 74,
+          "title": "nextjs -> tanstack start",
+          "html_url": "https://github.com/elmohq/elmo/issues/74",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-14T00:49:38Z"
+        },
+        {
+          "number": 84,
+          "title": "add storybook or ladle (for charts, wizard flow, etc)",
+          "html_url": "https://github.com/elmohq/elmo/issues/84",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-14T00:25:38Z"
+        },
+        {
+          "number": 75,
+          "title": "make stable prompt stats summary API endpoint",
+          "html_url": "https://github.com/elmohq/elmo/issues/75",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-09T03:14:04Z"
+        },
+        {
+          "number": 53,
+          "title": "clean up prompt tag edits on prompt-specific page",
+          "html_url": "https://github.com/elmohq/elmo/issues/53",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-06T01:22:53Z"
+        },
+        {
+          "number": 66,
+          "title": "improve design of prompt details page",
+          "html_url": "https://github.com/elmohq/elmo/issues/66",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-06T01:22:50Z"
+        },
+        {
+          "number": 96,
+          "title": "admin page should live within the sidebar layout",
+          "html_url": "https://github.com/elmohq/elmo/issues/96",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-06T00:36:08Z"
+        },
+        {
+          "number": 59,
+          "title": "nicer loading skeletons for main dashboard",
+          "html_url": "https://github.com/elmohq/elmo/issues/59",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-05T23:08:29Z"
+        },
+        {
+          "number": 78,
+          "title": "ensure dashboard summary charts span the entire timeframe",
+          "html_url": "https://github.com/elmohq/elmo/issues/78",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-05T08:57:08Z"
+        },
+        {
+          "number": 72,
+          "title": "long run frequencies can show misleading chart warnings",
+          "html_url": "https://github.com/elmohq/elmo/issues/72",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-05T08:13:35Z"
+        },
+        {
+          "number": 71,
+          "title": "make sure all number displays use locale numbers",
+          "html_url": "https://github.com/elmohq/elmo/issues/71",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-05T06:54:58Z"
+        },
+        {
+          "number": 92,
+          "title": "prompts page isn't completely responsive on mobile",
+          "html_url": "https://github.com/elmohq/elmo/issues/92",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-05T06:53:35Z"
+        },
+        {
+          "number": 46,
+          "title": "update to new sidebar design",
+          "html_url": "https://github.com/elmohq/elmo/issues/46",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-05T06:53:26Z"
+        },
+        {
+          "number": 81,
+          "title": "move from bullmq to pg-boss",
+          "html_url": "https://github.com/elmohq/elmo/issues/81",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-04T10:06:17Z"
+        },
+        {
+          "number": 70,
+          "title": "remove group category / group prefix",
+          "html_url": "https://github.com/elmohq/elmo/issues/70",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-02-03T20:04:05Z"
+        }
+      ]
+    },
+    {
+      "month": "2026-01",
+      "label": "January 2026",
+      "issues": [
+        {
+          "number": 99,
+          "title": "ensure immediate org membership updates on viewing the org switcher",
+          "html_url": "https://github.com/elmohq/elmo/issues/99",
+          "labels": [
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-29T07:36:23Z"
+        },
+        {
+          "number": 98,
+          "title": "allow overriding branded/unbranded by setting custom labels",
+          "html_url": "https://github.com/elmohq/elmo/issues/98",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-29T07:36:17Z"
+        },
+        {
+          "number": 57,
+          "title": "clicking \"edit\" before a page load completes can result in a 404 to /app/undefined/prompts/edit",
+          "html_url": "https://github.com/elmohq/elmo/issues/57",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-27T07:03:26Z"
+        },
+        {
+          "number": 82,
+          "title": "show admin link on sidebar if available",
+          "html_url": "https://github.com/elmohq/elmo/issues/82",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-26T06:42:27Z"
+        },
+        {
+          "number": 88,
+          "title": "extract whitelabel configs + add separate whitelabel deploy",
+          "html_url": "https://github.com/elmohq/elmo/issues/88",
+          "labels": [
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-25T08:35:40Z"
+        },
+        {
+          "number": 52,
+          "title": "prevent hard reloads when filters (including model or lookback window) are updated on the prompts or citation pages",
+          "html_url": "https://github.com/elmohq/elmo/issues/52",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-24T20:19:53Z"
+        },
+        {
+          "number": 94,
+          "title": "ai visibility rollup doesn't respect model selection",
+          "html_url": "https://github.com/elmohq/elmo/issues/94",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-24T20:19:50Z"
+        },
+        {
+          "number": 93,
+          "title": "optimize prompts view (virtualization + clickhouse optimizations)",
+          "html_url": "https://github.com/elmohq/elmo/issues/93",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-24T20:19:47Z"
+        },
+        {
+          "number": 7,
+          "title": "docker-compose deploy option for local testing and single machine runs",
+          "html_url": "https://github.com/elmohq/elmo/issues/7",
+          "labels": [
+            {
+              "name": "area/oss",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-20T05:38:47Z"
+        },
+        {
+          "number": 77,
+          "title": "use env var validation",
+          "html_url": "https://github.com/elmohq/elmo/issues/77",
+          "labels": [
+            {
+              "name": "area/oss",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-20T01:21:10Z"
+        },
+        {
+          "number": 79,
+          "title": "use monorepo + other dx improvements",
+          "html_url": "https://github.com/elmohq/elmo/issues/79",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-20T01:18:27Z"
+        },
+        {
+          "number": 90,
+          "title": "move worker to separate app",
+          "html_url": "https://github.com/elmohq/elmo/issues/90",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-20T01:18:23Z"
+        },
+        {
+          "number": 86,
+          "title": "use changesets to manage versions",
+          "html_url": "https://github.com/elmohq/elmo/issues/86",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2026-01-20T01:18:17Z"
+        }
+      ]
+    },
+    {
+      "month": "2025-12",
+      "label": "December 2025",
+      "issues": [
+        {
+          "number": 4,
+          "title": "improve onboarding by ensuring initial suggested prompts have a reasonable starting visibility",
+          "html_url": "https://github.com/elmohq/elmo/issues/4",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-18T19:45:51Z"
+        },
+        {
+          "number": 2,
+          "title": "show citation and citation domain distribution across multiple prompts",
+          "html_url": "https://github.com/elmohq/elmo/issues/2",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-18T19:44:22Z"
+        },
+        {
+          "number": 1,
+          "title": "show citation domain distribution for specific prompts",
+          "html_url": "https://github.com/elmohq/elmo/issues/1",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-18T19:44:12Z"
+        },
+        {
+          "number": 3,
+          "title": "track overall ai visibility over time",
+          "html_url": "https://github.com/elmohq/elmo/issues/3",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-18T19:43:58Z"
+        },
+        {
+          "number": 56,
+          "title": "upgrade next from 15 -> 16",
+          "html_url": "https://github.com/elmohq/elmo/issues/56",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-31T03:48:05Z"
+        },
+        {
+          "number": 63,
+          "title": "improve tinybird/clickhouse storage and access method",
+          "html_url": "https://github.com/elmohq/elmo/issues/63",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-31T03:10:46Z"
+        },
+        {
+          "number": 31,
+          "title": "Rollup view for prompts after filtering, showing overall visibility and trends",
+          "html_url": "https://github.com/elmohq/elmo/issues/31",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-30T22:16:19Z"
+        },
+        {
+          "number": 16,
+          "title": "Fast stats (clickhouse)",
+          "html_url": "https://github.com/elmohq/elmo/issues/16",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-30T20:51:02Z"
+        },
+        {
+          "number": 19,
+          "title": "Worker queue admin ui",
+          "html_url": "https://github.com/elmohq/elmo/issues/19",
+          "labels": [
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-24T03:29:52Z"
+        },
+        {
+          "number": 54,
+          "title": "allow searching prompts",
+          "html_url": "https://github.com/elmohq/elmo/issues/54",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-23T03:18:15Z"
+        },
+        {
+          "number": 29,
+          "title": "Auto tag prompts by branded/non-branded",
+          "html_url": "https://github.com/elmohq/elmo/issues/29",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-23T03:16:35Z"
+        },
+        {
+          "number": 12,
+          "title": "group analysis by tag",
+          "html_url": "https://github.com/elmohq/elmo/issues/12",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-23T03:16:27Z"
+        },
+        {
+          "number": 47,
+          "title": "border for current visibility",
+          "html_url": "https://github.com/elmohq/elmo/issues/47",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "closed_at": "2025-12-23T03:16:06Z"
+        }
+      ]
+    }
+  ],
+  "releases": [],
+  "hasReleases": false
+}

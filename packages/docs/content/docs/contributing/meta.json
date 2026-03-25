@@ -1,0 +1,11 @@
+{
+	"title": "Contributing",
+	"pages": [
+		"index",
+		"development-setup",
+		"commands",
+		"architecture",
+		"ai-policy",
+		"releases"
+	]
+}

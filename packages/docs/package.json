@@ -1,0 +1,30 @@
+{
+	"name": "@workspace/docs",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./components/docs-sidebar": "./src/components/docs-sidebar.tsx",
+		"./components/docs-toc": "./src/components/docs-toc.tsx",
+		"./components/search-dialog": "./src/components/search-dialog.tsx",
+		"./components/openapi-reference": "./src/components/openapi-reference.tsx",
+		"./components/feedback/client": "./src/components/feedback/client.tsx",
+		"./components/feedback/schema": "./src/components/feedback/schema.ts",
+		"./components/mermaid": "./src/components/mermaid.tsx"
+	},
+	"dependencies": {
+		"@scalar/api-reference-react": "^0.9.13",
+		"@workspace/ui": "workspace:*",
+		"lucide-react": "^0.575.0",
+		"mermaid": "^11.13.0"
+	},
+	"peerDependencies": {
+		"@tanstack/react-router": ">=1.0.0",
+		"fumadocs-core": ">=16.0.0",
+		"react": ">=19.0.0"
+	},
+	"devDependencies": {
+		"@types/react": "^19.2.14",
+		"typescript": "^5.9.3"
+	}
+}

@@ -1,0 +1,53 @@
+{
+	"name": "@workspace/www",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev --port 3001",
+		"build": "vite build",
+		"start": "node .output/server/index.mjs",
+		"check-types": "tsc --noEmit",
+		"generate-api-docs": "node scripts/generate-openapi-docs.mjs",
+		"generate:changelog": "node scripts/generate-changelog.mjs",
+		"generate:roadmap": "node scripts/generate-roadmap.mjs",
+		"generate": "node scripts/generate-changelog.mjs && node scripts/generate-roadmap.mjs"
+	},
+	"dependencies": {
+		"@fontsource/geist-sans": "^5.2.5",
+		"@fontsource/titan-one": "^5.2.8",
+		"@scalar/api-reference-react": "^0.9.13",
+		"@tailwindcss/typography": "^0.5.19",
+		"@tailwindcss/vite": "^4.2.1",
+		"@takumi-rs/image-response": "^0.73.1",
+		"@takumi-rs/wasm": "^0.73.1",
+		"@tanstack/react-router": "^1.167.4",
+		"@tanstack/react-start": "^1.166.16",
+		"@workspace/api-spec": "workspace:*",
+		"@workspace/docs": "workspace:*",
+		"@workspace/config": "workspace:*",
+		"@workspace/og": "workspace:*",
+		"@workspace/ui": "workspace:*",
+		"fumadocs-core": "^16.7.1",
+		"fumadocs-mdx": "^14.2.11",
+		"fumadocs-openapi": "^10.4.1",
+		"fumadocs-ui": "^16.7.1",
+		"lucide-react": "^0.575.0",
+		"motion": "^12.38.0",
+		"posthog-js": "^1.360.2",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4",
+		"react-use-measure": "^2.1.7",
+		"tailwindcss": "^4.2.1",
+		"tw-animate-css": "^1.4.0"
+	},
+	"devDependencies": {
+		"@types/mdx": "^2.0.13",
+		"@types/node": "^24.10.13",
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.0",
+		"typescript": "^5.9.3",
+		"vite": "^8.0.0"
+	}
+}
