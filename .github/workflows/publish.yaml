@@ -78,8 +78,10 @@ jobs:
           tags: |
             elmohq/elmo-web:${{ steps.version.outputs.version }}
             elmohq/elmo-web:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=web
+            type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=web
 
       - name: Build and push worker image
         uses: docker/build-push-action@v6
@@ -91,5 +93,7 @@ jobs:
           tags: |
             elmohq/elmo-worker:${{ steps.version.outputs.version }}
             elmohq/elmo-worker:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=web
+            type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
