@@ -20,6 +20,8 @@ COPY packages/lib/package.json ./packages/lib/
 COPY packages/local/package.json ./packages/local/
 COPY packages/whitelabel/package.json ./packages/whitelabel/
 COPY packages/deployment/package.json ./packages/deployment/
+COPY packages/og/package.json ./packages/og/
+COPY packages/api-spec/package.json ./packages/api-spec/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -38,6 +40,7 @@ COPY --from=deps /app/packages/lib/node_modules ./packages/lib/node_modules
 COPY --from=deps /app/packages/local/node_modules ./packages/local/node_modules
 COPY --from=deps /app/packages/whitelabel/node_modules ./packages/whitelabel/node_modules
 COPY --from=deps /app/packages/deployment/node_modules ./packages/deployment/node_modules
+COPY --from=deps /app/packages/og/node_modules ./packages/og/node_modules
 
 # Copy source code
 COPY . .
