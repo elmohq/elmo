@@ -76,11 +76,11 @@ export function CompetitorComparison({
 			{/* Back link */}
 			<div className="mx-auto max-w-4xl px-4 pt-8 md:px-6">
 				<Link
-					to="/resources/aeo-tools"
+					to="/ai-visibility-tools"
 					className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
 				>
 					<ArrowLeft className="h-3 w-3" />
-					AEO Tool Directory
+					AI Visibility Tool Directory
 				</Link>
 			</div>
 

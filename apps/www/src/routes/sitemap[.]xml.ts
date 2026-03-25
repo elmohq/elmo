@@ -11,7 +11,7 @@ const staticPages = [
 	{ path: "/changelog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/roadmap", changefreq: "weekly", priority: 0.7 },
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
-	{ path: "/resources/aeo-tools", changefreq: "weekly", priority: 0.8 },
+	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
 ];
 
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 			const comparisonPages = competitors
 				.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
 				.map((c) => ({
-					path: `/resources/aeo-tools/${getComparisonSlug(c)}`,
+					path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
 					changefreq: "monthly",
 					priority: 0.6,
 				}));

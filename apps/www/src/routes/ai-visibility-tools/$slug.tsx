@@ -5,15 +5,15 @@ import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 import { competitors, getComparisonSlug, isLowDR, type Competitor } from "@/lib/competitors";
 
-export const Route = createFileRoute("/resources/aeo-tools/$slug")({
+export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 	head: ({ params }) => {
 		const competitor = competitors.find(
 			(c) => getComparisonSlug(c) === params.slug,
 		);
 		if (!competitor) return {};
-		const title = `Elmo vs ${competitor.name} — AEO Tool Comparison | Elmo`;
+		const title = `Elmo vs ${competitor.name} — AI Visibility Tool Comparison | Elmo`;
 		const description = `Compare Elmo and ${competitor.name} for AI visibility tracking. Feature-by-feature breakdown, pricing, and key differences.`;
-		const path = `/resources/aeo-tools/${params.slug}`;
+		const path = `/ai-visibility-tools/${params.slug}`;
 		const meta = [
 			{ title },
 			{ name: "description", content: description },
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/resources/aeo-tools/$slug")({
 			scripts: [
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
-					{ name: "AEO Tool Directory", path: "/resources/aeo-tools" },
+					{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 					{ name: `Elmo vs ${competitor.name}`, path },
 				]),
 			],
