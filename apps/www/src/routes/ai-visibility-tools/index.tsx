@@ -4,11 +4,11 @@ import { Footer } from "@/components/footer";
 import { CompetitorDirectory } from "@/components/competitor-directory";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
-const title = "AEO Tool Directory — Compare AI Visibility Tools | Elmo";
+const title = "AI Visibility Tool Directory — Compare AI Search Tools | Elmo";
 const description =
 	"Compare 70+ AI visibility and Answer Engine Optimization tools. Feature matrix, pricing, and head-to-head comparisons with Elmo.";
 
-export const Route = createFileRoute("/resources/aeo-tools/")({
+export const Route = createFileRoute("/ai-visibility-tools/")({
 	head: () => ({
 		meta: [
 			{ title },
@@ -16,17 +16,16 @@ export const Route = createFileRoute("/resources/aeo-tools/")({
 			...ogMeta({
 				title,
 				description,
-				path: "/resources/aeo-tools",
+				path: "/ai-visibility-tools",
 			}),
 		],
 		links: [
-			{ rel: "canonical", href: canonicalUrl("/resources/aeo-tools") },
+			{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools") },
 		],
 		scripts: [
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
-				{ name: "Resources", path: "/resources" },
-				{ name: "AEO Tool Directory", path: "/resources/aeo-tools" },
+				{ name: "AI Visibility Tool Directory", path: "/ai-visibility-tools" },
 			]),
 		],
 	}),

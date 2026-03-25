@@ -21,11 +21,11 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as AiVisibilityToolsIndexRouteImport } from './routes/ai-visibility-tools/index'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
-import { Route as ResourcesAeoToolsIndexRouteImport } from './routes/resources/aeo-tools/index'
-import { Route as ResourcesAeoToolsSlugRouteImport } from './routes/resources/aeo-tools/$slug'
+import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
 import { Route as OgDocsSplatRouteImport } from './routes/og/docs/$'
 import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
@@ -91,6 +91,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
   path: '/docs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiVisibilityToolsIndexRoute = AiVisibilityToolsIndexRouteImport.update({
+  id: '/ai-visibility-tools/',
+  path: '/ai-visibility-tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsSplatRoute = DocsSplatRouteImport.update({
   id: '/docs/$',
   path: '/docs/$',
@@ -106,14 +111,9 @@ const ApiOpenapiDotjsonRoute = ApiOpenapiDotjsonRouteImport.update({
   path: '/api/openapi.json',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResourcesAeoToolsIndexRoute = ResourcesAeoToolsIndexRouteImport.update({
-  id: '/resources/aeo-tools/',
-  path: '/resources/aeo-tools/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResourcesAeoToolsSlugRoute = ResourcesAeoToolsSlugRouteImport.update({
-  id: '/resources/aeo-tools/$slug',
-  path: '/resources/aeo-tools/$slug',
+const AiVisibilityToolsSlugRoute = AiVisibilityToolsSlugRouteImport.update({
+  id: '/ai-visibility-tools/$slug',
+  path: '/ai-visibility-tools/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OgDocsSplatRoute = OgDocsSplatRouteImport.update({
@@ -150,14 +150,14 @@ export interface FileRoutesByFullPath {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vision': typeof VisionRoute
+  '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
+  '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
-  '/resources/aeo-tools/$slug': typeof ResourcesAeoToolsSlugRoute
-  '/resources/aeo-tools/': typeof ResourcesAeoToolsIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -173,14 +173,14 @@ export interface FileRoutesByTo {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vision': typeof VisionRoute
+  '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
+  '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
   '/docs': typeof DocsIndexRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
-  '/resources/aeo-tools/$slug': typeof ResourcesAeoToolsSlugRoute
-  '/resources/aeo-tools': typeof ResourcesAeoToolsIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -197,14 +197,14 @@ export interface FileRoutesById {
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/vision': typeof VisionRoute
+  '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/docs/$': typeof DocsSplatRoute
+  '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
-  '/resources/aeo-tools/$slug': typeof ResourcesAeoToolsSlugRoute
-  '/resources/aeo-tools/': typeof ResourcesAeoToolsIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -222,14 +222,14 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/vision'
+    | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
     | '/docs/$'
+    | '/ai-visibility-tools/'
     | '/docs/'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
-    | '/resources/aeo-tools/$slug'
-    | '/resources/aeo-tools/'
     | '/api/plausible/event/'
     | '/api/plausible/js/script/'
   fileRoutesByTo: FileRoutesByTo
@@ -245,14 +245,14 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/vision'
+    | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
     | '/docs/$'
+    | '/ai-visibility-tools'
     | '/docs'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
-    | '/resources/aeo-tools/$slug'
-    | '/resources/aeo-tools'
     | '/api/plausible/event'
     | '/api/plausible/js/script'
   id:
@@ -268,14 +268,14 @@ export interface FileRouteTypes {
     | '/robots.txt'
     | '/sitemap.xml'
     | '/vision'
+    | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
     | '/docs/$'
+    | '/ai-visibility-tools/'
     | '/docs/'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
-    | '/resources/aeo-tools/$slug'
-    | '/resources/aeo-tools/'
     | '/api/plausible/event/'
     | '/api/plausible/js/script/'
   fileRoutesById: FileRoutesById
@@ -292,14 +292,14 @@ export interface RootRouteChildren {
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   VisionRoute: typeof VisionRoute
+  AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
   ApiSearchRoute: typeof ApiSearchRoute
   DocsSplatRoute: typeof DocsSplatRoute
+  AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
   LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
   OgDocsSplatRoute: typeof OgDocsSplatRoute
-  ResourcesAeoToolsSlugRoute: typeof ResourcesAeoToolsSlugRoute
-  ResourcesAeoToolsIndexRoute: typeof ResourcesAeoToolsIndexRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
   ApiPlausibleJsScriptIndexRoute: typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -390,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai-visibility-tools/': {
+      id: '/ai-visibility-tools/'
+      path: '/ai-visibility-tools'
+      fullPath: '/ai-visibility-tools/'
+      preLoaderRoute: typeof AiVisibilityToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs/$': {
       id: '/docs/$'
       path: '/docs/$'
@@ -411,18 +418,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiOpenapiDotjsonRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resources/aeo-tools/': {
-      id: '/resources/aeo-tools/'
-      path: '/resources/aeo-tools'
-      fullPath: '/resources/aeo-tools/'
-      preLoaderRoute: typeof ResourcesAeoToolsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resources/aeo-tools/$slug': {
-      id: '/resources/aeo-tools/$slug'
-      path: '/resources/aeo-tools/$slug'
-      fullPath: '/resources/aeo-tools/$slug'
-      preLoaderRoute: typeof ResourcesAeoToolsSlugRouteImport
+    '/ai-visibility-tools/$slug': {
+      id: '/ai-visibility-tools/$slug'
+      path: '/ai-visibility-tools/$slug'
+      fullPath: '/ai-visibility-tools/$slug'
+      preLoaderRoute: typeof AiVisibilityToolsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/og/docs/$': {
@@ -468,27 +468,17 @@ const rootRouteChildren: RootRouteChildren = {
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   VisionRoute: VisionRoute,
+  AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
   ApiSearchRoute: ApiSearchRoute,
   DocsSplatRoute: DocsSplatRoute,
+  AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
   LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
   OgDocsSplatRoute: OgDocsSplatRoute,
-  ResourcesAeoToolsSlugRoute: ResourcesAeoToolsSlugRoute,
-  ResourcesAeoToolsIndexRoute: ResourcesAeoToolsIndexRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
   ApiPlausibleJsScriptIndexRoute: ApiPlausibleJsScriptIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

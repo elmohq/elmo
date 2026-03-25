@@ -59,7 +59,7 @@ export function CompetitorDirectory() {
 						Resources
 					</p>
 					<h1 className="font-heading text-4xl text-balance md:text-5xl lg:text-6xl">
-						AEO Tool Directory
+						AI Visibility Tool Directory
 					</h1>
 					<p className="text-muted-foreground mt-6 max-w-3xl text-lg text-balance md:text-xl">
 						Every AI visibility and Answer Engine Optimization tool in
@@ -149,7 +149,7 @@ function CompetitorHeader({
 }) {
 	return (
 		<Link
-			to="/resources/aeo-tools/$slug"
+			to="/ai-visibility-tools/$slug"
 			params={{ slug: getComparisonSlug(competitor) }}
 			className="hover:text-foreground text-muted-foreground block text-[11px] leading-tight hover:underline"
 		>
