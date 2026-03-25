@@ -13,7 +13,7 @@
 		"./components/mermaid": "./src/components/mermaid.tsx"
 	},
 	"dependencies": {
-		"@scalar/api-reference-react": "^0.9.13",
+		"@scalar/api-reference-react": "^0.9.15",
 		"@workspace/ui": "workspace:*",
 		"lucide-react": "^0.575.0",
 		"mermaid": "^11.13.0"
