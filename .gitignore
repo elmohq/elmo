@@ -69,3 +69,8 @@ prompt_runs.meta.json
 # docker
 elmo.yaml
 e2e/artifacts
+
+# retroactive cleanup
+features/
+.agents/
+.cursor/
