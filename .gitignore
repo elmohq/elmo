@@ -74,3 +74,4 @@ e2e/artifacts
 features/
 .agents/
 .cursor/
+apps/www/dist/
