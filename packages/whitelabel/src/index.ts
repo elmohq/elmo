@@ -5,8 +5,6 @@
  * - createWhitelabelDeployment() factory for static config
  * - OptimizeButton component
  * - Auth hooks (exported via ./auth-hooks subpath) for better-auth integration
- *
- * NOTE: This package contains proprietary code and may be licensed differently.
  */
 
 export {

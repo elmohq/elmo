@@ -1,0 +1,1212 @@
+{
+  "generatedAt": "2026-03-20T23:49:10.935Z",
+  "groups": [
+    {
+      "area": "area/core",
+      "label": "Core Platform",
+      "description": "Core visibility tracking, dashboards, and analytics",
+      "issues": [
+        {
+          "number": 69,
+          "title": "add sentry / otel tracing",
+          "html_url": "https://github.com/elmohq/elmo/issues/69",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-31T04:08:37Z",
+          "reactions": 0,
+          "comments": 2,
+          "engagement": 2
+        },
+        {
+          "number": 115,
+          "title": "better auto-categorization of citation domains",
+          "html_url": "https://github.com/elmohq/elmo/issues/115",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-10T20:33:47Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 85,
+          "title": "add license checker for compliance",
+          "html_url": "https://github.com/elmohq/elmo/issues/85",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-19T23:38:12Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 73,
+          "title": "generate \"top action items\"  for users to see what they should improve",
+          "html_url": "https://github.com/elmohq/elmo/issues/73",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-09T19:51:02Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 28,
+          "title": "Auto-tag prompts by product",
+          "html_url": "https://github.com/elmohq/elmo/issues/28",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:47:35Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 26,
+          "title": "Show rough volume estimates (and caveats)",
+          "html_url": "https://github.com/elmohq/elmo/issues/26",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:43:28Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 25,
+          "title": "Email update summaries",
+          "html_url": "https://github.com/elmohq/elmo/issues/25",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:42:33Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 15,
+          "title": "Citation sentiment tracking",
+          "html_url": "https://github.com/elmohq/elmo/issues/15",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:34:34Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 123,
+          "title": "show suggested questions that can be answered by elmo",
+          "html_url": "https://github.com/elmohq/elmo/issues/123",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:46:26Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 122,
+          "title": "detect themes within citation pages",
+          "html_url": "https://github.com/elmohq/elmo/issues/122",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:42:47Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 120,
+          "title": "show citation domain breakdowns by category",
+          "html_url": "https://github.com/elmohq/elmo/issues/120",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:40:31Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 119,
+          "title": "reddit-style breakdowns for forum posts",
+          "html_url": "https://github.com/elmohq/elmo/issues/119",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:38:18Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 118,
+          "title": "explain brand visibility number",
+          "html_url": "https://github.com/elmohq/elmo/issues/118",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:36:36Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 117,
+          "title": "show which prompts have competitor citations but not brand citations",
+          "html_url": "https://github.com/elmohq/elmo/issues/117",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:33:38Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 112,
+          "title": "a 404 within a brand subdirectory should still show the sidebar if the user has access to the brand",
+          "html_url": "https://github.com/elmohq/elmo/issues/112",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-09T23:13:50Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 109,
+          "title": "migrate from drizzle to kysely",
+          "html_url": "https://github.com/elmohq/elmo/issues/109",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-09T18:33:42Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 108,
+          "title": "exporting a png of a chart should show the deployment info and be better formatted (no borders/corners)",
+          "html_url": "https://github.com/elmohq/elmo/issues/108",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-24T12:32:34Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 107,
+          "title": "add integration tests for editing settings",
+          "html_url": "https://github.com/elmohq/elmo/issues/107",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-24T11:50:59Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 106,
+          "title": "better text extraction error handling",
+          "html_url": "https://github.com/elmohq/elmo/issues/106",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-19T01:15:28Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 104,
+          "title": "move from shadcn radix -> base",
+          "html_url": "https://github.com/elmohq/elmo/issues/104",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-09T23:34:33Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 103,
+          "title": "replace TagsInput with shadcn Combobox with 'multiple' and 'ComboboxChips'",
+          "html_url": "https://github.com/elmohq/elmo/issues/103",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-07T19:16:07Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 101,
+          "title": "show on prompt details page when the next run is scheduled for a specific prompt",
+          "html_url": "https://github.com/elmohq/elmo/issues/101",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-03T22:28:33Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 100,
+          "title": "system tags are brittle",
+          "html_url": "https://github.com/elmohq/elmo/issues/100",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-29T07:28:28Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 97,
+          "title": "add configurable and default limits for number of prompts per brand",
+          "html_url": "https://github.com/elmohq/elmo/issues/97",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-29T06:22:18Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 89,
+          "title": "clean up biome checks and enable in ci",
+          "html_url": "https://github.com/elmohq/elmo/issues/89",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-20T00:36:51Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 68,
+          "title": "past ~300 active prompts for a single brand, filtered-visibility api might fail due to URL_TOO_LONG on Vercel",
+          "html_url": "https://github.com/elmohq/elmo/issues/68",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-31T03:32:09Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 65,
+          "title": "add stats computation integration tests",
+          "html_url": "https://github.com/elmohq/elmo/issues/65",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-31T01:31:30Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 64,
+          "title": "add ui stability tests",
+          "html_url": "https://github.com/elmohq/elmo/issues/64",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-31T01:31:10Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 60,
+          "title": "improve ordering of prompts",
+          "html_url": "https://github.com/elmohq/elmo/issues/60",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-30T22:11:19Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 51,
+          "title": "allow variants of brand name in order to compute automatic \"branded\" label better + compute visibility better",
+          "html_url": "https://github.com/elmohq/elmo/issues/51",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-23T02:10:55Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 50,
+          "title": "add data retention limits",
+          "html_url": "https://github.com/elmohq/elmo/issues/50",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-23T00:01:01Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 49,
+          "title": "default lookback should depend on previously selected + how much data is available",
+          "html_url": "https://github.com/elmohq/elmo/issues/49",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-22T23:59:21Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 45,
+          "title": "crawler log tracking",
+          "html_url": "https://github.com/elmohq/elmo/issues/45",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-19T06:54:00Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 44,
+          "title": "chatgpt shopping tracking",
+          "html_url": "https://github.com/elmohq/elmo/issues/44",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-19T06:51:07Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 39,
+          "title": "Separate slugs, external ids, and internal ids",
+          "html_url": "https://github.com/elmohq/elmo/issues/39",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:53:24Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 36,
+          "title": "Auto detect content gaps that you need to write content for",
+          "html_url": "https://github.com/elmohq/elmo/issues/36",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:51:42Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 33,
+          "title": "Autoscrape emails or contact pages for contacting the maintainers of citing websites",
+          "html_url": "https://github.com/elmohq/elmo/issues/33",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:50:24Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 32,
+          "title": "Auto tag by intent",
+          "html_url": "https://github.com/elmohq/elmo/issues/32",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:49:54Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 30,
+          "title": "Explicitly call out refusals",
+          "html_url": "https://github.com/elmohq/elmo/issues/30",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:48:23Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 27,
+          "title": "Auto detect products and traits over time",
+          "html_url": "https://github.com/elmohq/elmo/issues/27",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:47:16Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 23,
+          "title": "Auto detect additional competitors",
+          "html_url": "https://github.com/elmohq/elmo/issues/23",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:41:17Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 22,
+          "title": "Stable production api",
+          "html_url": "https://github.com/elmohq/elmo/issues/22",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:40:41Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 21,
+          "title": "Better onboarding",
+          "html_url": "https://github.com/elmohq/elmo/issues/21",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:39:59Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 20,
+          "title": "Prompt response aggregation and search",
+          "html_url": "https://github.com/elmohq/elmo/issues/20",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:38:46Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 17,
+          "title": "Configure to use scraping, open router, dataforseo, OpenAI, anthropic, and perplexity directly",
+          "html_url": "https://github.com/elmohq/elmo/issues/17",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:35:57Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 14,
+          "title": "Citation site page content collection",
+          "html_url": "https://github.com/elmohq/elmo/issues/14",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:34:21Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 13,
+          "title": "location-based prompts",
+          "html_url": "https://github.com/elmohq/elmo/issues/13",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-23T01:38:48Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 11,
+          "title": "brand sentiment tracking (in prompts)",
+          "html_url": "https://github.com/elmohq/elmo/issues/11",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-22T21:41:10Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 10,
+          "title": "show competitor icons",
+          "html_url": "https://github.com/elmohq/elmo/issues/10",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-22T03:42:07Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 6,
+          "title": "high level brand sentiment tracking",
+          "html_url": "https://github.com/elmohq/elmo/issues/6",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-22T02:16:46Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 5,
+          "title": "ensure mentions don't include responses like \"couldn't find <brand>\"",
+          "html_url": "https://github.com/elmohq/elmo/issues/5",
+          "labels": [
+            {
+              "name": "area/core",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-22T02:16:24Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        }
+      ]
+    },
+    {
+      "area": "area/oss",
+      "label": "Open Source",
+      "description": "Developer experience and community tooling",
+      "issues": [
+        {
+          "number": 80,
+          "title": "publish docker image for web app and worker",
+          "html_url": "https://github.com/elmohq/elmo/issues/80",
+          "labels": [
+            {
+              "name": "area/oss",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-19T01:04:35Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 95,
+          "title": "open source elmo!",
+          "html_url": "https://github.com/elmohq/elmo/issues/95",
+          "labels": [
+            {
+              "name": "area/oss",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-25T09:03:22Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 87,
+          "title": "publish cli for local docker compose configuration & management",
+          "html_url": "https://github.com/elmohq/elmo/issues/87",
+          "labels": [
+            {
+              "name": "area/oss",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-01-19T23:40:40Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        }
+      ]
+    },
+    {
+      "area": "area/extensions",
+      "label": "Extensions",
+      "description": "Integrations, plugins, and extended functionality",
+      "issues": [
+        {
+          "number": 62,
+          "title": "set up docs site",
+          "html_url": "https://github.com/elmohq/elmo/issues/62",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-30T23:23:22Z",
+          "reactions": 0,
+          "comments": 2,
+          "engagement": 2
+        },
+        {
+          "number": 125,
+          "title": "push github releases to a discord webhook to post in the #releases channel",
+          "html_url": "https://github.com/elmohq/elmo/issues/125",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T22:04:35Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 124,
+          "title": "easily deploy to vercel via the CLI",
+          "html_url": "https://github.com/elmohq/elmo/issues/124",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T21:35:07Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 121,
+          "title": "case study comparing chatgpt scraping vs api results",
+          "html_url": "https://github.com/elmohq/elmo/issues/121",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T20:41:46Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 105,
+          "title": "elmo mcp server",
+          "html_url": "https://github.com/elmohq/elmo/issues/105",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-02-18T22:29:32Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 61,
+          "title": "deploy publicly accessible demo instance at demo.elmohq.com",
+          "html_url": "https://github.com/elmohq/elmo/issues/61",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-30T22:58:17Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 43,
+          "title": "Site audits",
+          "html_url": "https://github.com/elmohq/elmo/issues/43",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:59:18Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 41,
+          "title": "Airbyte connector",
+          "html_url": "https://github.com/elmohq/elmo/issues/41",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:57:01Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 38,
+          "title": "One-off report generation",
+          "html_url": "https://github.com/elmohq/elmo/issues/38",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:52:36Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 37,
+          "title": "Content simulator -> what does the response look like if there's new content in the citations",
+          "html_url": "https://github.com/elmohq/elmo/issues/37",
+          "labels": [
+            {
+              "name": "area/extensions",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:52:17Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        }
+      ]
+    },
+    {
+      "area": "area/admin",
+      "label": "Admin",
+      "description": "Administration panel and multi-tenant management",
+      "issues": [
+        {
+          "number": 55,
+          "title": "better monitoring",
+          "html_url": "https://github.com/elmohq/elmo/issues/55",
+          "labels": [
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-24T03:46:29Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 40,
+          "title": "track visibility changes over time to demonstrate Elmo's efficacy",
+          "html_url": "https://github.com/elmohq/elmo/issues/40",
+          "labels": [
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:55:05Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 18,
+          "title": "Dollar perfect cost tracking",
+          "html_url": "https://github.com/elmohq/elmo/issues/18",
+          "labels": [
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:36:16Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        },
+        {
+          "number": 9,
+          "title": "allow configuring eval rate at the prompt and brand level",
+          "html_url": "https://github.com/elmohq/elmo/issues/9",
+          "labels": [
+            {
+              "name": "area/admin",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-22T02:20:20Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        }
+      ]
+    },
+    {
+      "area": "area/whitelabel",
+      "label": "White Label",
+      "description": "White-label deployment and branding customization",
+      "issues": [
+        {
+          "number": 116,
+          "title": "allow skipping prompt generation in the api for a new brand during onboarding",
+          "html_url": "https://github.com/elmohq/elmo/issues/116",
+          "labels": [
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2026-03-20T07:44:28Z",
+          "reactions": 0,
+          "comments": 1,
+          "engagement": 1
+        },
+        {
+          "number": 42,
+          "title": "Collaboration tools",
+          "html_url": "https://github.com/elmohq/elmo/issues/42",
+          "labels": [
+            {
+              "name": "area/whitelabel",
+              "color": "5319e7"
+            },
+            {
+              "name": "area/cloud",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-12-18T19:58:37Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        }
+      ]
+    },
+    {
+      "area": "area/cloud",
+      "label": "Cloud",
+      "description": "Managed cloud hosting and infrastructure",
+      "issues": [
+        {
+          "number": 8,
+          "title": "launch elmo-cloud",
+          "html_url": "https://github.com/elmohq/elmo/issues/8",
+          "labels": [
+            {
+              "name": "area/cloud",
+              "color": "5319e7"
+            }
+          ],
+          "milestone": null,
+          "created_at": "2025-10-22T02:19:37Z",
+          "reactions": 0,
+          "comments": 0,
+          "engagement": 0
+        }
+      ]
+    }
+  ],
+  "totalCount": 71
+}

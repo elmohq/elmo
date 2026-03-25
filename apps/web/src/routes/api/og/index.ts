@@ -1,22 +1,14 @@
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
-import { createElement } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import ImageResponse from "@takumi-rs/image-response/wasm";
 import takumiWasm from "virtual:takumi-wasm";
 import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
-import {
-	DEFAULT_APP_NAME,
-	ELMO_BRAND_COLOR,
-} from "@workspace/config/constants";
+import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { renderOgImage } from "@workspace/og/render";
 import { getDeployment } from "@/lib/config/server";
-
-const ACCENT_COLORS = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
-const DEFAULT_TAGLINE = "AI Search Optimization";
-const DEFAULT_DESCRIPTION =
-	"Track and optimize your brand's visibility across AI models.";
 
 const publicDir = new URL("../../../../public/", import.meta.url);
 
@@ -74,139 +66,6 @@ async function fetchIconAsDataUri(
 	} catch {
 		return undefined;
 	}
-}
-
-interface OgImageOptions {
-	appName: string;
-	title?: string;
-	description?: string;
-	accentColors?: string[];
-	iconDataUri?: string;
-}
-
-function renderOgImage({
-	appName,
-	title,
-	description,
-	accentColors,
-	iconDataUri,
-}: OgImageOptions) {
-	const isElmo = appName === DEFAULT_APP_NAME;
-	const brandColor = isElmo
-		? ELMO_BRAND_COLOR
-		: (accentColors?.[0] ?? "#1e293b");
-	const desc = description || DEFAULT_DESCRIPTION;
-	const watermarkColor = isElmo
-		? "rgba(37,99,235,0.04)"
-		: "rgba(0,0,0,0.03)";
-	const gradientColors = isElmo
-		? ACCENT_COLORS
-		: accentColors && accentColors.length >= 2
-			? accentColors.slice(0, 4)
-			: [brandColor, brandColor];
-
-	return createElement(
-		"div",
-		{
-			style: {
-				display: "flex",
-				width: "100%",
-				height: "100%",
-				position: "relative",
-				overflow: "hidden",
-				backgroundColor: "#ffffff",
-			},
-		},
-		isElmo
-			? createElement(
-					"div",
-					{
-						style: {
-							position: "absolute",
-							fontFamily: "Titan One",
-							fontSize: 700,
-							color: watermarkColor,
-							lineHeight: 1,
-							right: -60,
-							top: -60,
-						},
-					},
-					"e",
-				)
-			: null,
-		createElement(
-			"div",
-			{
-				style: {
-					display: "flex",
-					flexDirection: "column",
-					justifyContent: "center",
-					height: "100%",
-					paddingLeft: 80,
-					paddingRight: 80,
-				},
-			},
-			isElmo
-				? createElement(
-						"div",
-						{
-							style: {
-							fontFamily: "Titan One",
-							fontSize: 140,
-							color: ELMO_BRAND_COLOR,
-							lineHeight: 1,
-							marginBottom: 40,
-							},
-						},
-						"elmo",
-					)
-				: iconDataUri
-					? createElement("img", {
-							src: iconDataUri,
-							width: 120,
-							height: 120,
-							style: { marginBottom: 28, objectFit: "contain" },
-						})
-					: null,
-			createElement(
-				"div",
-				{
-					style: {
-					fontFamily: "Geist Sans",
-					fontSize: 80,
-					fontWeight: 500,
-					color: "#1e293b",
-					lineHeight: 1.2,
-					marginBottom: 28,
-					},
-				},
-				isElmo ? (title || DEFAULT_TAGLINE) : appName,
-			),
-			createElement(
-				"div",
-				{
-					style: {
-					fontFamily: "Geist Sans",
-					fontSize: 44,
-					color: "#64748b",
-					textWrap: "balance",
-					},
-				},
-				desc,
-			),
-		),
-		createElement("div", {
-			style: {
-				display: "flex",
-				position: "absolute",
-				bottom: 0,
-				left: 0,
-				width: "100%",
-				height: 6,
-				backgroundImage: `linear-gradient(to right, ${gradientColors.join(", ")})`,
-			},
-		}),
-	);
 }
 
 export const Route = createFileRoute("/api/og/")({

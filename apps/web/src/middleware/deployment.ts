@@ -12,7 +12,7 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getDeployment } from "@/lib/config/server";
-import openApiSpec from "@/lib/openapi-spec.json";
+import openApiSpec from "@workspace/api-spec";
 import {
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,

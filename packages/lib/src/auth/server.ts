@@ -3,8 +3,7 @@
  *
  * Central auth configuration shared by all deployment modes.
  * Exports a factory function so deployment-specific hooks (e.g. whitelabel
- * Auth0 org sync, cloud webhook handlers) can be injected without polluting
- * the shared package with licensed code.
+ * Auth0 org sync, cloud webhook handlers) can be injected.
  */
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
