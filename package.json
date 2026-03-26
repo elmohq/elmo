@@ -9,7 +9,19 @@
   "pnpm": {
     "overrides": {
       "@types/react": "^19.2.14",
-      "@types/react-dom": "^19.2.3"
+      "@types/react-dom": "^19.2.3",
+      "next": "^16.1.7",
+      "glob>minimatch": "^9.0.7",
+      "cheerio>undici": "^7.24.0",
+      "kysely": "~0.28.14",
+      "h3": ">=2.0.1-rc.18",
+      "h3-v2": "npm:h3@>=2.0.1-rc.18",
+      "picomatch": "^4.0.4",
+      "anymatch>picomatch": "^2.3.2",
+      "micromatch>picomatch": "^2.3.2",
+      "dompurify": "^3.3.2",
+      "yaml": "^2.8.3",
+      "@esbuild-kit/core-utils>esbuild": "^0.25.0"
     },
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",
@@ -46,7 +58,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.4.4",
     "@changesets/cli": "^2.29.8",
-    "knip": "^5.85.0",
+    "knip": "^6.0.5",
     "tsx": "^4.21.0",
     "turbo": "^2.8.17",
     "typescript": "^5.9.3"
