@@ -14,13 +14,10 @@
 <br />
 
 <p align="center">
-  <a href="https://www.elmohq.com/docs"><img src="https://img.shields.io/badge/Docs-2563eb?style=flat-square" alt="Docs"></a>
-  <a href="https://github.com/elmohq/elmo/issues"><img src="https://img.shields.io/badge/Issues-ee964b?style=flat-square" alt="Issues"></a>
-  <a href="https://github.com/orgs/elmohq/projects/3/views/1"><img src="https://img.shields.io/badge/Roadmap-f4d35e?style=flat-square" alt="Roadmap"></a>
-  <a href="https://discord.gg/s24nubCtKz"><img src="https://img.shields.io/badge/Discord-7289DA?style=flat-square&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/elmohq/elmo/pulse"><img src="https://img.shields.io/github/commit-activity/m/elmohq/elmo?style=flat-square" alt="Commits per month"></a>
-  <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Felmohq%2Felmo?ref=badge_shield&issueType=license"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Felmohq%2Felmo.svg?type=shield&issueType=license" alt="FOSSA Status"></a>
-  <a href="https://github.com/elmohq/elmo/stargazers"><img src="https://img.shields.io/github/stars/elmohq/elmo?style=flat-square" alt="GitHub Stars"></a>
+  <a href="https://www.elmohq.com/docs"><img src="https://img.shields.io/badge/Docs-2563eb?style=flat&logo=readthedocs&logoColor=white" alt="Docs"></a>&nbsp;
+  <a href="https://github.com/elmohq/elmo/issues"><img src="https://img.shields.io/badge/Issues-f95738?style=flat&logo=github&logoColor=white" alt="Issues"></a>&nbsp;
+  <a href="https://github.com/orgs/elmohq/projects/3/views/1"><img src="https://img.shields.io/badge/Roadmap-ee964b?style=flat&logo=github&logoColor=white" alt="Roadmap"></a>&nbsp;
+  <a href="https://discord.gg/s24nubCtKz"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
 </p>
 
 <br />
