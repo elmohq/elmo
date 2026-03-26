@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
@@ -7,6 +8,8 @@ import mdx from "fumadocs-mdx/vite";
 import { embedBinaries } from "@workspace/og/vite-plugin";
 import * as MdxConfig from "./source.config";
 
+const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
+
 export default defineConfig({
 	server: {
 		port: 3001,
@@ -15,6 +18,7 @@ export default defineConfig({
 		tsconfigPaths: true,
 		alias: {
 			"@/": new URL("./src/", import.meta.url).pathname,
+			tslib: tslibEsm,
 		},
 	},
 	plugins: [
@@ -22,7 +26,11 @@ export default defineConfig({
 		mdx(MdxConfig),
 		tailwindcss(),
 		tanstackStart(),
-		nitro(),
+		nitro({
+			alias: {
+				tslib: tslibEsm,
+			},
+		}),
 		viteReact(),
 	],
 });
