@@ -58,11 +58,8 @@ export const Route = createFileRoute("/roadmap")({
 });
 
 const getRoadmapData = createServerFn({ method: "GET" }).handler(async () => {
-	const { readFileSync } = await import("node:fs");
-	const { resolve } = await import("node:path");
-	const filePath = resolve("src/data/roadmap.json");
-	const raw = readFileSync(filePath, "utf-8");
-	return JSON.parse(raw) as RoadmapData;
+	const data = await import("../data/roadmap.json");
+	return data.default as RoadmapData;
 });
 
 function EngagementBadge({ reactions, comments }: { reactions: number; comments: number }) {

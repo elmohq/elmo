@@ -46,11 +46,8 @@ export const Route = createFileRoute("/changelog")({
 
 const getChangelogData = createServerFn({ method: "GET" }).handler(
 	async () => {
-		const { readFileSync } = await import("node:fs");
-		const { resolve } = await import("node:path");
-		const filePath = resolve("src/data/changelog.json");
-		const raw = readFileSync(filePath, "utf-8");
-		return JSON.parse(raw) as ChangelogData;
+		const data = await import("../data/changelog.json");
+		return data.default as ChangelogData;
 	},
 );
 
