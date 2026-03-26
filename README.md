@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  AI visibility monitoring for brands. Track how AI models represent your brand across different prompts and over time.
+  Open source AI visibility tracking and optimization.
   <br />
   <a href="https://www.elmohq.com/"><strong>Learn more »</strong></a>
   <br />
@@ -21,14 +21,9 @@
 
 <p align="center">
   <a href="https://github.com/elmohq/elmo/pulse"><img src="https://img.shields.io/github/commit-activity/m/elmohq/elmo" alt="Commits per month"></a>
+    <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Felmohq%2Felmo?ref=badge_shield&issueType=license"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Felmohq%2Felmo.svg?type=shield&issueType=license" alt="FOSSA Status"></a>
   <a href="https://github.com/elmohq/elmo/stargazers"><img src="https://img.shields.io/github/stars/elmohq/elmo" alt="GitHub Stars"></a>
-  <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Felmohq%2Felmo?ref=badge_shield&issueType=license"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Felmohq%2Felmo.svg?type=shield&issueType=license" alt="FOSSA Status"></a>
 </p>
-
-> [!TIP]
-> **Watch** this repo's **releases** to get notified of major updates.
-
-<br />
 
 ## Quick Start
 
@@ -58,6 +53,9 @@ elmo logs -f
 elmo compose ps
 elmo compose down
 ```
+
+> [!TIP]
+> **Watch** this repo's **releases** to get notified of major updates.
 
 ## Tech Stack
 
