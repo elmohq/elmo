@@ -15,6 +15,7 @@ import {
 	websiteJsonLd,
 	organizationJsonLd,
 } from "@/lib/seo";
+import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -44,10 +45,10 @@ export const Route = createRootRoute({
 				rel: "canonical",
 				href: SITE_URL,
 			},
-			{
-				rel: "stylesheet",
-				href: "/src/styles.css",
-			},
+		{
+			rel: "stylesheet",
+			href: appCss,
+		},
 		],
 		scripts: [
 			websiteJsonLd(),
