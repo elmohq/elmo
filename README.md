@@ -1,6 +1,34 @@
-# Elmo
+<p align="center">
+  <a href="https://github.com/elmohq/elmo">
+    <img src="apps/www/public/brand/logos/elmo-logo-xl.png" alt="Elmo" width="300">
+  </a>
+</p>
 
-AI visibility monitoring for brands. Track how AI models represent your brand across different prompts and over time.
+<p align="center">
+  AI visibility monitoring for brands. Track how AI models represent your brand across different prompts and over time.
+  <br />
+  <a href="https://www.elmohq.com/"><strong>Learn more »</strong></a>
+  <br />
+  <br />
+  <a href="https://www.elmohq.com/docs">Docs</a>
+  ·
+  <a href="https://github.com/elmohq/elmo/issues">Issues</a>
+  ·
+  <a href="https://github.com/orgs/elmohq/projects/3/views/1">Roadmap</a>
+  ·
+  <a href="https://discord.gg/s24nubCtKz">Discord</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/elmohq/elmo/pulse"><img src="https://img.shields.io/github/commit-activity/m/elmohq/elmo" alt="Commits per month"></a>
+  <a href="https://github.com/elmohq/elmo/stargazers"><img src="https://img.shields.io/github/stars/elmohq/elmo" alt="GitHub Stars"></a>
+  <a href="https://app.fossa.com/projects/git%2Bgithub.com%2Felmohq%2Felmo?ref=badge_shield&issueType=license"><img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Felmohq%2Felmo.svg?type=shield&issueType=license" alt="FOSSA Status"></a>
+</p>
+
+> [!TIP]
+> **Watch** this repo's **releases** to get notified of major updates.
+
+<br />
 
 ## Quick Start
 
@@ -313,6 +341,10 @@ DISABLE_TELEMETRY=1
 
 For Docker deployments, add this to your `.env` file. For the CLI, export it in your shell or prefix it before commands.
 
+## Contact
+
+Have questions or want to chat about Elmo? [Schedule a call](https://cal.com/jrhizor/elmo).
+
 ## Learn More
 
 - [Tanstack Start Documentation](https://tanstack.com/start/latest)
@@ -320,3 +352,7 @@ For Docker deployments, add this to your `.env` file. For the CLI, export it in 
 - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)
 - [Changesets Documentation](https://github.com/changesets/changesets)
+
+## Repo Activity
+
+![Repobeats analytics image](https://repobeats.axiom.co/api/embed/e602387f6d080bbec1161e6a16dccefb7ab76cca.svg "Repobeats analytics image")
