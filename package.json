@@ -56,11 +56,11 @@
     "test:e2e": "bash e2e/run-local.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.4",
-    "@changesets/cli": "^2.29.8",
+    "@biomejs/biome": "2.4.9",
+    "@changesets/cli": "^2.30.0",
     "knip": "^6.0.5",
     "tsx": "^4.21.0",
-    "turbo": "^2.8.17",
+    "turbo": "^2.8.20",
     "typescript": "^5.9.3"
   }
 }

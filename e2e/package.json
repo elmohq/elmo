@@ -10,8 +10,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
-    "@types/pg": "^8.16.0",
-    "pg": "^8.18.0",
+    "@types/pg": "^8.20.0",
+    "pg": "^8.20.0",
     "tsx": "^4.21.0"
   }
 }
