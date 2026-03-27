@@ -167,7 +167,7 @@ export function CompetitorComparison({
 					</h2>
 					<div className="overflow-hidden rounded-lg border shadow-sm">
 						<img
-							src={getScreenshotUrl(competitor.url)}
+							src={getScreenshotUrl(competitor.slug)}
 							alt={`Screenshot of ${competitor.name} homepage`}
 							className="w-full"
 							loading="lazy"

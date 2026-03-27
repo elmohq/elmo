@@ -246,6 +246,6 @@ export function isLowDR(competitor: Competitor): boolean {
 	return competitor.ahrefsDR < LOW_DR_THRESHOLD;
 }
 
-export function getScreenshotUrl(url: string): string {
-	return `https://api.screenshotone.com/take?access_key=6fA1dMa6H9WyNw&url=${encodeURIComponent(url)}&format=jpg&block_ads=true&block_cookie_banners=true&block_trackers=true&delay=0&timeout=60&response_type=by_format&image_quality=80`;
+export function getScreenshotUrl(slug: string): string {
+	return `https://nynjceth7hnajxhe.public.blob.vercel-storage.com/screenshots/${slug}.jpg`;
 }
