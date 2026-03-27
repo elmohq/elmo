@@ -1389,32 +1389,6 @@ export const competitors: Competitor[] = [
 		highlights: ["AI visibility monitoring platform"],
 	},
 	{
-		slug: "genrankengine",
-		name: "GenRankEngine",
-		domain: "genrankengine.com",
-		url: "https://www.genrankengine.com/",
-		tagline: "SaaS-focused with Displacement Reports on TrustViews traffic",
-		description:
-			"GenRankEngine targets SaaS companies specifically, offering Displacement Reports that show which competitors are being recommended instead of you. Uniquely uses TrustViews as a traffic baseline for measuring AI visibility impact.",
-		category: "tracking",
-		ahrefsDR: 6,
-		status: "active",
-		features: {
-			multiLlmTracking: true,
-			visibilityScore: true,
-			citationAnalytics: true,
-			competitorBenchmarking: true,
-			brandMentionTracking: true,
-			contentGeneration: true,
-		},
-		pricing: { hasFree: true, hasEnterprise: false },
-		highlights: [
-			"SaaS-focused niche",
-			"Displacement Reports — who's replacing you",
-			"Free visibility scan",
-		],
-	},
-	{
 		slug: "searchify",
 		name: "Searchify",
 		domain: "searchify.ai",
@@ -1587,31 +1561,6 @@ export const competitors: Competitor[] = [
 		highlights: [
 			"Content strategist approach",
 			"Combined SEO score and AEO tracking",
-		],
-	},
-	{
-		slug: "naryai",
-		name: "NaryAI",
-		domain: "naryai.com",
-		url: "https://naryai.com/",
-		tagline: "ROI estimates on recommendations with crisis prevention",
-		description:
-			"NaryAI provides AI visibility tracking with ROI estimates on their recommendations, helping brands understand the potential business impact of optimization actions. Their platform includes crisis prevention features that alert teams before visibility issues escalate.",
-		category: "tracking",
-		ahrefsDR: 1,
-		status: "active",
-		features: {
-			multiLlmTracking: true,
-			visibilityScore: true,
-			citationAnalytics: true,
-			brandMentionTracking: true,
-			actionRecommendations: true,
-			emailAlerts: true,
-		},
-		pricing: { hasFree: false, hasEnterprise: false },
-		highlights: [
-			"ROI estimates on recommendations",
-			"Crisis prevention alerts",
 		],
 	},
 	{
