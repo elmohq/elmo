@@ -118,6 +118,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					availableTags,
 					citationTimeSeries: [] as { date: string; brand: number; competitor: number; socialMedia: number; google: number; institutional: number; other: number }[],
 					previousBrandShare: null as number | null,
+				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
 				whatsChanged: {
 					newUrls: [] as { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[],
 					droppedUrls: [] as { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[],
@@ -309,6 +310,49 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 		droppedDomains.sort((a, b) => b.previousCount - a.previousCount);
 
+		// Prompts with competitor citations but no brand citations (computed from already-fetched data)
+		const competitorDomainEntries = competitorsList.flatMap((c) =>
+			c.domains.map((d) => ({ domain: extractDomain(d), competitorId: c.id })),
+		).filter((e) => e.domain);
+
+		function resolveCompetitorId(citationDomain: string): string | undefined {
+			const normalized = extractDomain(citationDomain);
+			for (const entry of competitorDomainEntries) {
+				if (normalized === entry.domain || normalized.endsWith(`.${entry.domain}`)) {
+					return entry.competitorId;
+				}
+			}
+			return undefined;
+		}
+
+		const promptCitationFlags = new Map<string, { hasBrand: boolean; hasCompetitor: boolean; competitorCount: number; competitorIds: Set<string> }>();
+		for (const row of perPromptCitations) {
+			const cat = categorizeDomain(row.domain);
+			let entry = promptCitationFlags.get(row.prompt_id);
+			if (!entry) {
+				entry = { hasBrand: false, hasCompetitor: false, competitorCount: 0, competitorIds: new Set() };
+				promptCitationFlags.set(row.prompt_id, entry);
+			}
+			if (cat === "brand") entry.hasBrand = true;
+			if (cat === "competitor") {
+				entry.hasCompetitor = true;
+				entry.competitorCount += Number(row.count);
+				const compId = resolveCompetitorId(row.domain);
+				if (compId) entry.competitorIds.add(compId);
+			}
+		}
+
+		const promptLookup = new Map(allPrompts.map((p) => [p.id, p]));
+		const competitorOnlyPrompts = Array.from(promptCitationFlags.entries())
+			.filter(([, data]) => data.hasCompetitor && !data.hasBrand)
+			.map(([id, data]) => {
+				const prompt = promptLookup.get(id);
+				if (!prompt) return null;
+				return { id, value: prompt.value, competitorCitationCount: data.competitorCount, uniqueCompetitors: data.competitorIds.size };
+			})
+			.filter((p): p is NonNullable<typeof p> => p !== null)
+			.sort((a, b) => b.competitorCitationCount - a.competitorCitationCount);
+
 		const competitorSummary = competitorsList.map((c) => ({
 			id: c.id,
 			name: c.name,
@@ -330,12 +374,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			citationTimeSeries,
 			previousBrandShare,
 			competitors: competitorSummary,
-		whatsChanged: {
-			newUrls,
-			droppedUrls: droppedUrls.slice(0, 10),
-			titleChanges: titleChanges.slice(0, 10),
-			newDomains,
-			droppedDomains: droppedDomains.slice(0, 10),
-		},
+			competitorOnlyPrompts,
+			whatsChanged: {
+				newUrls,
+				droppedUrls: droppedUrls.slice(0, 10),
+				titleChanges: titleChanges.slice(0, 10),
+				newDomains,
+				droppedDomains: droppedDomains.slice(0, 10),
+			},
 		};
 	});

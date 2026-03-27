@@ -5,7 +5,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import { Separator } from "@workspace/ui/components/separator";
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
-import { IconExternalLink, IconInfoCircle, IconSearch, IconPlus, IconArrowDownRight, IconSwitchHorizontal, IconChevronDown, IconCheck } from "@tabler/icons-react";
+import { IconExternalLink, IconInfoCircle, IconSearch, IconPlus, IconArrowDownRight, IconSwitchHorizontal, IconChevronDown, IconCheck, IconAlertTriangle } from "@tabler/icons-react";
 import { Loader2 } from "lucide-react";
 import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
@@ -59,6 +59,7 @@ export interface CitationData {
 	}[];
 	previousBrandShare?: number | null;
 	competitors?: Array<{ id: string; name: string; domains: string[] }>;
+	competitorOnlyPrompts?: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
 	whatsChanged?: {
 		newUrls: { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[];
 		droppedUrls: { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[];
@@ -355,6 +356,82 @@ function TrackDomainPopover({
 				</div>
 			</PopoverContent>
 		</Popover>
+	);
+}
+
+const OPPORTUNITY_TABS = [
+	{ key: "content_gaps" as const, label: "Content Gaps" },
+];
+
+function OpportunitiesCard({
+	prompts,
+	brandId,
+}: {
+	prompts: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
+	brandId: string;
+}) {
+	const [expanded, setExpanded] = useState(false);
+	const PREVIEW_COUNT = 3;
+	const visible = expanded ? prompts : prompts.slice(0, PREVIEW_COUNT);
+	const remaining = prompts.length - PREVIEW_COUNT;
+
+	return (
+		<Card>
+			<CardHeader>
+				<CardTitle className="flex items-center gap-1.5">
+					Opportunities
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+						</TooltipTrigger>
+						<TooltipContent className="max-w-xs text-sm font-normal">
+							Actionable insights to improve your brand&apos;s presence in AI-generated responses.
+						</TooltipContent>
+					</Tooltip>
+				</CardTitle>
+				<CardDescription>
+					Areas where you can improve your brand&apos;s citation presence
+				</CardDescription>
+			</CardHeader>
+			<Separator />
+			<CardContent>
+				<UnderlineTabs
+					tabs={OPPORTUNITY_TABS}
+					activeKey="content_gaps"
+					onSelect={() => {}}
+				/>
+				<div className="divide-y divide-border/50">
+					{visible.map((prompt) => (
+						<Link
+							key={prompt.id}
+							to="/app/$brand/prompts/$promptId"
+							params={{ brand: brandId, promptId: prompt.id }}
+							className="flex items-start gap-2.5 py-2 group"
+						>
+							<div className="shrink-0 mt-0.5">
+								<IconAlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+							</div>
+							<div className="min-w-0 flex-1">
+								<div className="flex items-center gap-1.5">
+									<span className="text-sm font-medium truncate text-foreground group-hover:underline">{prompt.value}</span>
+								</div>
+								<p className="text-xs text-muted-foreground mt-0.5">
+									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited {prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash; your brand cited 0 times
+								</p>
+							</div>
+						</Link>
+					))}
+				</div>
+				{remaining > 0 && !expanded && (
+					<button
+						onClick={() => setExpanded(true)}
+						className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+					>
+						Show {remaining} more
+					</button>
+				)}
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -737,6 +814,14 @@ export function CitationsDisplay({
 						)}
 					</CardContent>
 				</Card>
+			)}
+
+			{/* Opportunities */}
+			{citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId && (
+				<OpportunitiesCard
+					prompts={citationData.competitorOnlyPrompts}
+					brandId={brandId}
+				/>
 			)}
 
 			{/* Top Cited Domains */}
