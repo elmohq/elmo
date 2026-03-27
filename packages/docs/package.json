@@ -15,7 +15,7 @@
 	"dependencies": {
 		"@scalar/api-reference-react": "^0.9.15",
 		"@workspace/ui": "workspace:*",
-		"lucide-react": "^0.575.0",
+		"lucide-react": "^1.7.0",
 		"mermaid": "^11.13.0"
 	},
 	"peerDependencies": {
