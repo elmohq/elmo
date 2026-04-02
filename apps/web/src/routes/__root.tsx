@@ -43,6 +43,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const scripts = [];
 		if (analytics?.clarityProjectId) {
 			scripts.push({
+				children: `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`,
+			});
+			scripts.push({
 				src: `https://www.clarity.ms/tag/${analytics.clarityProjectId}`,
 				async: true,
 			});
