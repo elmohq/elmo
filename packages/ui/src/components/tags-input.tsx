@@ -162,7 +162,7 @@ export function TagsInput({
               }
             }}
             className={cn(
-              "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-transparent px-3 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
+              "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-transparent px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
               disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
             )}
           >
@@ -171,7 +171,7 @@ export function TagsInput({
                 <span className="text-muted-foreground text-xs">{placeholder}</span>
               ) : (
                 value.map((v) => (
-                  <Badge key={v} variant="secondary" className="gap-1 pr-1">
+                  <Badge key={v} variant="secondary" className={cn("gap-1", canRemove && "pr-1")}>
                     <span className="max-w-[14rem] truncate">{v}</span>
                     {canRemove && (
                       <button
