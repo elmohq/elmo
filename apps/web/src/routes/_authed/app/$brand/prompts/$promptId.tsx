@@ -352,7 +352,7 @@ function MentionsTab({
 	const brandMentionPct = Math.round(((mentionStats.find((s) => s.name === brandName)?.count || 0) / (totalRuns || 1)) * 100);
 
 	return (
-		<Card>
+		<Card className="gap-4">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5 text-base">
 					Mentions
@@ -378,7 +378,7 @@ function MentionsTab({
 				</CardDescription>
 			</CardHeader>
 			<Separator />
-			<CardContent className="pt-6">
+			<CardContent>
 				<ProgressBarChart
 					items={mentionStats.map((stat) => ({ label: stat.name, count: stat.count }))}
 					defaultColor="#3b82f6"
