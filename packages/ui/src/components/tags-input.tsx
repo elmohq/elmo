@@ -1,313 +1,265 @@
 "use client";
- 
+
+import * as React from "react";
+import { Check, Plus, X as RemoveIcon } from "lucide-react";
+
 import { Badge } from "@workspace/ui/components/badge";
-import { Input } from "@workspace/ui/components/input";
+import {
+  Command,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@workspace/ui/components/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { cn } from "@workspace/ui/lib/utils";
-import { X as RemoveIcon } from "lucide-react";
-import React from "react";
- 
-/**
- * used for identifying the split char and use will pasting
- */
-const SPLITTER_REGEX = /[\n#?=&\t,./-]+/;
- 
-/**
- * used for formatting the pasted element for the correct value format to be added
- */
- 
-const FORMATTING_REGEX = /^[^a-zA-Z0-9]*|[^a-zA-Z0-9]*$/g;
- 
-interface TagsInputProps extends React.HTMLAttributes<HTMLDivElement> {
+
+export type TagsInputOption = {
+  value: string;
+  label?: string;
+};
+
+export interface TagsInputProps {
   value: string[];
-  onValueChange: (value: string[]) => void;
+  onValueChange: (next: string[]) => void;
+  options?: TagsInputOption[];
   placeholder?: string;
+  searchPlaceholder?: string;
+  emptyText?: string;
+  allowCustomValues?: boolean;
+  normalizeValue?: (raw: string) => string;
+  /** Return `true` to accept the value, or an error string to reject it and show inline. */
+  onValidate?: (value: string) => true | string;
   maxItems?: number;
   minItems?: number;
+  disabled?: boolean;
+  className?: string;
 }
- 
-interface TagsInputContextProps {
-  value: string[];
-  onValueChange: (value: any) => void;
-  inputValue: string;
-  setInputValue: React.Dispatch<React.SetStateAction<string>>;
-  activeIndex: number;
-  setActiveIndex: React.Dispatch<React.SetStateAction<number>>;
-}
- 
-const TagInputContext = React.createContext<TagsInputContextProps | null>(null);
- 
-export const TagsInput = React.forwardRef<HTMLDivElement, TagsInputProps>(
-  (
-    {
-      children,
-      value,
-      onValueChange,
-      placeholder,
-      maxItems,
-      minItems,
-      className,
-      dir,
-      ...props
-    },
-    ref,
-  ) => {
-    const [activeIndex, setActiveIndex] = React.useState(-1);
-    const [inputValue, setInputValue] = React.useState("");
-    const [disableInput, setDisableInput] = React.useState(false);
-    const [disableButton, setDisableButton] = React.useState(false);
-    const [isValueSelected, setIsValueSelected] = React.useState(false);
-    const [selectedValue, setSelectedValue] = React.useState("");
- 
-    const parseMinItems = minItems ?? 0;
-    const parseMaxItems = maxItems ?? Infinity;
- 
-    const onValueChangeHandler = React.useCallback(
-      (val: string) => {
-        if (!value.includes(val) && value.length < parseMaxItems) {
-          onValueChange([...value, val]);
-        }
-      },
-      [value],
+
+const PASTE_SPLITTER = /[\n#?=&\t,./-]+/;
+
+export function TagsInput({
+  value,
+  onValueChange,
+  options = [],
+  placeholder = "Select...",
+  searchPlaceholder = "Search...",
+  emptyText = "No results.",
+  allowCustomValues = true,
+  normalizeValue,
+  onValidate,
+  maxItems,
+  minItems = 0,
+  disabled,
+  className,
+}: TagsInputProps) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const [validationError, setValidationError] = React.useState("");
+
+  const max = maxItems ?? Number.POSITIVE_INFINITY;
+  const atMax = value.length >= max;
+  const canRemove = !disabled && value.length > minItems;
+
+  const selectedSet = React.useMemo(() => new Set(value), [value]);
+
+  const normalize = (raw: string) => (normalizeValue ? normalizeValue(raw) : raw).trim();
+
+  const filteredOptions = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(
+      (o) => (o.label ?? o.value).toLowerCase().includes(q) || o.value.toLowerCase().includes(q),
     );
- 
-    const RemoveValue = React.useCallback(
-      (val: string) => {
-        if (value.includes(val) && value.length > parseMinItems) {
-          onValueChange(value.filter((item) => item !== val));
-        }
-      },
-      [value],
-    );
- 
-    const handlePaste = React.useCallback(
-      (e: React.ClipboardEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        const tags = e.clipboardData.getData("text").split(SPLITTER_REGEX);
-        const newValue = [...value];
-        tags.forEach((item) => {
-          const parsedItem = item.replaceAll(FORMATTING_REGEX, "").trim();
-          if (
-            parsedItem.length > 0 &&
-            !newValue.includes(parsedItem) &&
-            newValue.length < parseMaxItems
-          ) {
-            newValue.push(parsedItem);
-          }
-        });
-        onValueChange(newValue);
-        setInputValue("");
-      },
-      [value],
-    );
- 
-    const handleSelect = React.useCallback(
-      (e: React.SyntheticEvent<HTMLInputElement>) => {
-        const target = e.currentTarget;
-        const selection = target.value.substring(
-          target.selectionStart ?? 0,
-          target.selectionEnd ?? 0,
-        );
- 
-        setSelectedValue(selection);
-        setIsValueSelected(selection === inputValue);
-      },
-      [inputValue],
-    );
- 
-    // ? suggest : a refactor rather then using a useEffect
- 
-    React.useEffect(() => {
-      const VerifyDisable = () => {
-        if (value.length - 1 >= parseMinItems) {
-          setDisableButton(false);
-        } else {
-          setDisableButton(true);
-        }
-        if (value.length + 1 <= parseMaxItems) {
-          setDisableInput(false);
-        } else {
-          setDisableInput(true);
-        }
-      };
-      VerifyDisable();
-    }, [value]);
- 
-    // ? check: Under build , default option support
-    // * support : for the uncontrolled && controlled ui
- 
-    /*  React.useEffect(() => {
-      if (!defaultOptions) return;
-      onValueChange([...value, ...defaultOptions]);
-    }, []); */
- 
-    const handleKeyDown = React.useCallback(
-      async (e: React.KeyboardEvent<HTMLInputElement>) => {
-        e.stopPropagation();
- 
-        const moveNext = () => {
-          const nextIndex =
-            activeIndex + 1 > value.length - 1 ? -1 : activeIndex + 1;
-          setActiveIndex(nextIndex);
-        };
- 
-        const movePrev = () => {
-          const prevIndex =
-            activeIndex - 1 < 0 ? value.length - 1 : activeIndex - 1;
-          setActiveIndex(prevIndex);
-        };
- 
-        const moveCurrent = () => {
-          const newIndex =
-            activeIndex - 1 <= 0
-              ? value.length - 1 === 0
-                ? -1
-                : 0
-              : activeIndex - 1;
-          setActiveIndex(newIndex);
-        };
-        const target = e.currentTarget;
- 
-        // ? Suggest : the multi select should support the same pattern
- 
-        switch (e.key) {
-          case "ArrowLeft":
-            if (dir === "rtl") {
-              if (value.length > 0 && activeIndex !== -1) {
-                moveNext();
+  }, [options, query]);
+
+  const candidate = normalize(query);
+  const candidateIsNew =
+    candidate.length > 0 &&
+    !selectedSet.has(candidate) &&
+    !options.some((o) => o.value === candidate);
+  const showCreate = allowCustomValues && !disabled && !atMax && candidateIsNew;
+
+  function validate(val: string): boolean {
+    if (!onValidate) return true;
+    const result = onValidate(val);
+    if (result === true) {
+      setValidationError("");
+      return true;
+    }
+    setValidationError(result);
+    return false;
+  }
+
+  function add(raw: string) {
+    const val = normalize(raw);
+    if (!val || selectedSet.has(val) || value.length >= max) return;
+    if (!validate(val)) return;
+    onValueChange([...value, val]);
+  }
+
+  function addMany(rawValues: string[]) {
+    const next = [...value];
+    const seen = new Set(next);
+    for (const raw of rawValues) {
+      if (next.length >= max) break;
+      const val = normalize(raw);
+      if (!val || seen.has(val)) continue;
+      if (onValidate && onValidate(val) !== true) continue;
+      next.push(val);
+      seen.add(val);
+    }
+    if (next.length !== value.length) onValueChange(next);
+  }
+
+  function toggle(val: string) {
+    if (selectedSet.has(val)) {
+      if (canRemove) onValueChange(value.filter((v) => v !== val));
+    } else {
+      add(val);
+    }
+  }
+
+  function remove(val: string) {
+    if (canRemove && selectedSet.has(val)) {
+      onValueChange(value.filter((v) => v !== val));
+    }
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (disabled) return;
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setQuery("");
+      setValidationError("");
+    }
+  }
+
+  function handleCreate() {
+    add(candidate);
+    setQuery("");
+  }
+
+  const hasQuery = query.trim().length > 0;
+  const showEmpty = hasQuery && !showCreate && filteredOptions.length === 0;
+  const showHint = !hasQuery && options.length === 0 && allowCustomValues;
+
+  return (
+    <div className={cn("flex w-full flex-col", className)}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <div
+            role="combobox"
+            aria-expanded={open}
+            aria-disabled={disabled || undefined}
+            tabIndex={disabled ? -1 : 0}
+            onClick={() => !disabled && setOpen(true)}
+            onKeyDown={(e) => {
+              if (disabled) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setOpen(true);
               }
-            } else {
-              if (value.length > 0 && target.selectionStart === 0) {
-                movePrev();
-              }
-            }
-            break;
- 
-          case "ArrowRight":
-            if (dir === "rtl") {
-              if (value.length > 0 && target.selectionStart === 0) {
-                movePrev();
-              }
-            } else {
-              if (value.length > 0 && activeIndex !== -1) {
-                moveNext();
-              }
-            }
-            break;
- 
-          case "Backspace":
-          case "Delete":
-            if (value.length > 0) {
-              if (activeIndex !== -1 && activeIndex < value.length) {
-                RemoveValue(value[activeIndex]);
-                moveCurrent();
-              } else {
-                if (target.selectionStart === 0) {
-                  if (selectedValue === inputValue || isValueSelected) {
-                    RemoveValue(value[value.length - 1]);
-                  }
-                }
-              }
-            }
-            break;
- 
-          case "Escape":
-            const newIndex = activeIndex === -1 ? value.length - 1 : -1;
-            setActiveIndex(newIndex);
-            break;
- 
-          case "Enter":
-            if (inputValue.trim() !== "") {
-              e.preventDefault();
-              onValueChangeHandler(inputValue);
-              setInputValue("");
-            }
-            break;
-        }
-      },
-      [activeIndex, value, inputValue, RemoveValue],
-    );
- 
-    const mousePreventDefault = React.useCallback((e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-    }, []);
- 
-    const handleChange = React.useCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        setInputValue(e.currentTarget.value);
-      },
-      [],
-    );
- 
-    return (
-      <TagInputContext.Provider
-        value={{
-          value,
-          onValueChange,
-          inputValue,
-          setInputValue,
-          activeIndex,
-          setActiveIndex,
-        }}
-      >
-        <div
-          {...props}
-          ref={ref}
-          dir={dir}
-          className={cn(
-            "flex items-center flex-wrap gap-1 p-1 rounded-lg bg-background overflow-hidden   ring-1 ring-muted  ",
-            {
-              "focus-within:ring-ring": activeIndex === -1,
-            },
-            className,
-          )}
-        >
-          {value.map((item, index) => (
-            <Badge
-              tabIndex={activeIndex !== -1 ? 0 : activeIndex}
-              key={item}
-              aria-disabled={disableButton}
-              data-active={activeIndex === index}
-              className={cn(
-                "relative px-1 rounded flex items-center gap-1 data-[active='true']:ring-2 data-[active='true']:ring-muted-foreground truncate aria-disabled:opacity-50 aria-disabled:cursor-not-allowed",
-              )}
-              variant={"secondary"}
-            >
-              <span className="text-xs">{item}</span>
-              <button
-                type="button"
-                aria-label={`Remove ${item} option`}
-                aria-roledescription="button to remove option"
-                disabled={disableButton}
-                onMouseDown={mousePreventDefault}
-                onClick={() => RemoveValue(item)}
-                className="disabled:cursor-not-allowed"
-              >
-                <span className="sr-only">Remove {item} option</span>
-                <RemoveIcon className="size-3 cursor-pointer" />
-              </button>
-            </Badge>
-          ))}
-          <Input
-            tabIndex={0}
-            aria-label="input tag"
-            disabled={disableInput}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            value={inputValue}
-            onSelect={handleSelect}
-            onChange={activeIndex === -1 ? handleChange : undefined}
-            placeholder={disableInput ? '' : placeholder}
-            onClick={() => setActiveIndex(-1)}
+            }}
             className={cn(
-              "outline-0 border-none shadow-none h-7 min-w-fit flex-1 focus-visible:outline-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0 placeholder:text-muted-foreground px-1",
-              activeIndex !== -1 && "caret-transparent",
+              "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
+              disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
             )}
-          />
-        </div>
-      </TagInputContext.Provider>
-    );
-  },
-);
- 
-TagsInput.displayName = "TagsInput";
+          >
+            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1 min-h-[22px]">
+              {value.length === 0 ? (
+                <span className="text-muted-foreground text-xs">{placeholder}</span>
+              ) : (
+                value.map((v) => (
+                  <Badge key={v} variant="secondary" className={cn("gap-1", canRemove && "pr-1")}>
+                    <span className="max-w-[14rem] truncate">{v}</span>
+                    {canRemove && (
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={`Remove ${v}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(v);
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="rounded-sm p-0.5 hover:bg-muted-foreground/20"
+                      >
+                        <RemoveIcon className="size-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))
+              )}
+            </span>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0">
+          <Command shouldFilter={false}>
+            <CommandInput
+              value={query}
+              onValueChange={(v) => {
+                setQuery(v);
+                if (validationError) setValidationError("");
+              }}
+              placeholder={atMax ? "Maximum reached" : searchPlaceholder}
+              disabled={disabled || atMax}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && showCreate) {
+                  e.preventDefault();
+                  handleCreate();
+                }
+                if (e.key === "Backspace" && query === "" && value.length > 0 && canRemove) {
+                  e.preventDefault();
+                  onValueChange(value.slice(0, -1));
+                }
+              }}
+              onPaste={(e) => {
+                if (disabled || atMax) return;
+                const text = e.clipboardData.getData("text");
+                if (!PASTE_SPLITTER.test(text)) return;
+                e.preventDefault();
+                addMany(text.split(PASTE_SPLITTER));
+                setQuery("");
+              }}
+            />
+            <CommandList>
+              {showEmpty && (
+                <div className="py-6 text-center text-sm text-muted-foreground">{emptyText}</div>
+              )}
+              {showHint && (
+                <div className="px-3 py-3 text-center text-xs text-muted-foreground">
+                  Type to add a value
+                </div>
+              )}
+              {(showCreate || filteredOptions.length > 0) && (
+                <CommandGroup>
+                  {showCreate && (
+                    <CommandItem value={`__create__:${candidate}`} onSelect={handleCreate}>
+                      <Plus className="size-4 opacity-60" />
+                      <span className="truncate">
+                        Add <span className="font-medium">&ldquo;{candidate}&rdquo;</span>
+                      </span>
+                    </CommandItem>
+                  )}
+                  {filteredOptions.map((opt) => {
+                    const isSelected = selectedSet.has(opt.value);
+                    return (
+                      <CommandItem key={opt.value} value={opt.value} onSelect={() => toggle(opt.value)}>
+                        <Check className={cn("size-4", isSelected ? "opacity-100" : "opacity-0")} />
+                        <span className="truncate">{opt.label ?? opt.value}</span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              )}
+            </CommandList>
+            {validationError && (
+              <div className="border-t px-3 py-2 text-xs text-destructive">{validationError}</div>
+            )}
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
