@@ -166,9 +166,9 @@ export function TagsInput({
               disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
             )}
           >
-            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1 min-h-[22px]">
               {value.length === 0 ? (
-                <span className="text-muted-foreground py-0.5">{placeholder}</span>
+                <span className="text-muted-foreground text-xs">{placeholder}</span>
               ) : (
                 value.map((v) => (
                   <Badge key={v} variant="secondary" className="gap-1 pr-1">
