@@ -6,7 +6,6 @@ let initialized = false;
 
 export function initPostHog(apiKey: string): void {
 	if (initialized || typeof window === "undefined") return;
-	if (!import.meta.env.PROD) return;
 
 	posthog.init(apiKey, {
 		api_host: POSTHOG_HOST,
