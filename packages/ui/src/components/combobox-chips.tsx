@@ -41,14 +41,7 @@ export interface ComboboxChipsProps extends React.HTMLAttributes<HTMLDivElement>
   disabled?: boolean;
 }
 
-/**
- * used for identifying the split char and use will pasting
- */
 const SPLITTER_REGEX = /[\n#?=&\t,./-]+/;
-
-/**
- * used for formatting the pasted element for the correct value format to be added
- */
 const FORMATTING_REGEX = /^[^a-zA-Z0-9]*|[^a-zA-Z0-9]*$/g;
 
 export function ComboboxChips({
@@ -198,7 +191,7 @@ export function ComboboxChips({
               if (e.key === "Enter" && canCreate) {
                 e.preventDefault();
                 addValue(normalizedCandidate);
-                setOpen(false);
+                setQuery("");
               }
             }}
           >
@@ -219,7 +212,9 @@ export function ComboboxChips({
               }}
             />
             <CommandList>
-              <CommandEmpty>{emptyText}</CommandEmpty>
+              {query.trim().length > 0 && !canCreate && filteredOptions.length === 0 && (
+                <CommandEmpty>{emptyText}</CommandEmpty>
+              )}
               {(canCreate || filteredOptions.length > 0) && (
                 <CommandGroup>
                   {canCreate && (
@@ -227,7 +222,7 @@ export function ComboboxChips({
                       value={`__create__:${normalizedCandidate}`}
                       onSelect={() => {
                         addValue(normalizedCandidate);
-                        setOpen(false);
+                        setQuery("");
                       }}
                     >
                       <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -258,18 +253,6 @@ export function ComboboxChips({
           </Command>
         </PopoverContent>
       </Popover>
-      {(Number.isFinite(maxItems ?? Number.POSITIVE_INFINITY) || minItems > 0) && (
-        <div className="text-xs text-muted-foreground">
-          {Number.isFinite(maxItems ?? Number.POSITIVE_INFINITY) && (
-            <span>
-              <strong>
-                {value.length}/{maxItems}
-              </strong>{" "}
-              selected
-            </span>
-          )}
-        </div>
-      )}
     </div>
   );
 }

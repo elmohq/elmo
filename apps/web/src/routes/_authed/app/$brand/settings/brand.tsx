@@ -176,7 +176,6 @@ function BrandSettingsPage() {
 							placeholder="Add domain..."
 							searchPlaceholder="Add domain..."
 							maxItems={10}
-							normalizeValue={(raw) => raw.trim()}
 						/>
 						{domainError && <p className="text-xs text-destructive">{domainError}</p>}
 					</div>
@@ -199,7 +198,6 @@ function BrandSettingsPage() {
 							placeholder="Add alias..."
 							searchPlaceholder="Add alias..."
 							maxItems={10}
-							normalizeValue={(raw) => raw.trim()}
 						/>
 					</div>
 				</div>
