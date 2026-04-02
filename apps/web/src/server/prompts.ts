@@ -43,6 +43,26 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			return null;
 		}
 
+		let nextRunAt: string | null = null;
+		try {
+			const result = await db.execute(sql`
+				SELECT start_after
+				FROM pgboss.job
+				WHERE name = 'process-prompt'
+				  AND state IN ('created', 'retry')
+				  AND (data->>'promptId') = ${data.promptId}
+				  AND start_after > NOW()
+				ORDER BY start_after ASC
+				LIMIT 1
+			`);
+			const row = result.rows?.[0] as { start_after?: string } | undefined;
+			if (row?.start_after) {
+				nextRunAt = new Date(row.start_after).toISOString();
+			}
+		} catch {
+			// pgboss schema may not exist yet — that's fine
+		}
+
 		return {
 			id: prompt.id,
 			brandId: prompt.brandId,
@@ -50,6 +70,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 			enabled: prompt.enabled,
 			tags: prompt.tags || [],
 			systemTags: prompt.systemTags || [],
+			nextRunAt,
 		};
 	});
 

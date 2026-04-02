@@ -13,10 +13,10 @@
 		"./components/mermaid": "./src/components/mermaid.tsx"
 	},
 	"dependencies": {
-		"@scalar/api-reference-react": "^0.9.15",
+		"@scalar/api-reference-react": "^0.9.18",
 		"@workspace/ui": "workspace:*",
 		"lucide-react": "^0.575.0",
-		"mermaid": "^11.13.0"
+		"mermaid": "^11.14.0"
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": ">=1.0.0",

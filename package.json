@@ -53,15 +53,15 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
-    "test:e2e": "bash e2e/run-local.sh"
+    "test:e2e": "bash e2e/run-local.sh",
+    "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.4",
-    "@changesets/cli": "^2.29.8",
-    "@playwright/test": "^1.58.2",
-    "knip": "^6.0.5",
+    "@biomejs/biome": "2.4.10",
+    "@changesets/cli": "^2.30.0",
+    "knip": "^6.2.0",
     "tsx": "^4.21.0",
-    "turbo": "^2.8.17",
+    "turbo": "^2.9.3",
     "typescript": "^5.9.3"
   }
 }

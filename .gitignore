@@ -76,3 +76,4 @@ features/
 .agents/
 .cursor/
 apps/www/dist/
+apps/web/storybook-static/
