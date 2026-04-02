@@ -30,6 +30,37 @@ export const Freeform = () => {
   );
 };
 
+/** Validation — errors shown inside the popover. Try typing "bad" to see it. */
+export const WithValidation = () => {
+  const [values, setValues] = useState<string[]>(["example.com"]);
+
+  const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
+
+  return (
+    <div className="p-8 max-w-xl space-y-6">
+      <div className="space-y-2">
+        <Label>Domains (validated)</Label>
+        <TagsInput
+          value={values}
+          onValueChange={setValues}
+          placeholder="Add domain..."
+          searchPlaceholder="Add domain..."
+          maxItems={10}
+          onValidate={(val) => {
+            if (!domainRegex.test(val.toLowerCase())) {
+              return `"${val}" is not a valid domain`;
+            }
+            return true;
+          }}
+        />
+        <p className="text-xs text-muted-foreground">
+          Try adding &ldquo;bad&rdquo; or &ldquo;not a domain!&rdquo; to see inline validation.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 /**
  * Shared options across multiple inputs — like prompt tags where any tag
  * added to one prompt shows up as a suggestion for the others.

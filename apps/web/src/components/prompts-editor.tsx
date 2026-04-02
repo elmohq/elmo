@@ -1,11 +1,12 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Badge } from "@workspace/ui/components/badge";
+import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Plus, Save, Inbox, X, Check, AlertTriangle } from "lucide-react";
+import { Plus, Save, Inbox, Check, AlertTriangle } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
@@ -51,10 +52,17 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		})),
 	);
 	const [isLoading, setIsLoading] = useState(false);
-	const [newTagInputs, setNewTagInputs] = useState<Record<number, string>>({});
 	const saveInProgress = useRef(false);
 	const navigate = useNavigate();
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
+
+	const allTagOptions = useMemo(() => {
+		const set = new Set<string>();
+		for (const p of prompts) {
+			for (const t of p.tags) set.add(t);
+		}
+		return [...set].sort().map((t) => ({ value: t }));
+	}, [prompts]);
 
 	const addPrompt = () => {
 		setPrompts([...prompts, { _key: crypto.randomUUID(), value: "", enabled: true, tags: [], systemTags: [] }]);
@@ -63,28 +71,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean | string[]) => {
 		const updated = [...prompts];
 		updated[index] = { ...updated[index], [field]: value };
-		setPrompts(updated);
-	};
-
-	const addTag = (index: number, tag: string) => {
-		const normalizedTag = tag.toLowerCase().trim();
-		// Don't add empty or duplicate tags
-		// Note: "branded" and "unbranded" are allowed as user tags to override system-computed values
-		if (!normalizedTag) return;
-		if (prompts[index].tags.includes(normalizedTag)) return;
-		
-		const updated = [...prompts];
-		updated[index] = { ...updated[index], tags: [...updated[index].tags, normalizedTag] };
-		setPrompts(updated);
-		setNewTagInputs({ ...newTagInputs, [index]: "" });
-	};
-
-	const removeTag = (promptIndex: number, tagIndex: number) => {
-		const updated = [...prompts];
-		updated[promptIndex] = {
-			...updated[promptIndex],
-			tags: updated[promptIndex].tags.filter((_, i) => i !== tagIndex),
-		};
 		setPrompts(updated);
 	};
 
@@ -146,7 +132,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 
 			<div className="space-y-4">
 				{/* Header row - always shown */}
-				<div className="grid grid-cols-[3rem_1fr_6rem_10rem] gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+				<div className="grid grid-cols-[3rem_1fr_6rem_minmax(14rem,1fr)] gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
 					<div className="flex justify-center">
 						<Check className="h-4 w-4" />
 					</div>
@@ -199,7 +185,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						{prompts.map((prompt, index) => (
 							<div
 								key={prompt._key}
-								className={`grid grid-cols-[3rem_1fr_6rem_10rem] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
+								className={`grid grid-cols-[3rem_1fr_6rem_minmax(14rem,1fr)] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
 							>
 								<div className="flex justify-center pt-2">
 									<Checkbox
@@ -256,37 +242,14 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 									)}
 								</div>
 								{/* User Tags (editable) */}
-								<div className="space-y-1.5">
-									<Input
-										value={newTagInputs[index] || ""}
-										onChange={(e) => setNewTagInputs({ ...newTagInputs, [index]: e.target.value })}
-										onKeyDown={(e) => {
-											if (e.key === "Enter") {
-												e.preventDefault();
-												addTag(index, newTagInputs[index] || "");
-											}
-										}}
-										placeholder="Add tag..."
-									/>
-									{prompt.tags.length === 0 && (newTagInputs[index] || "").trim() && (
-										<p className="text-xs text-muted-foreground">Press Enter to add tag</p>
-									)}
-									{prompt.tags.length > 0 && (
-										<div className="flex flex-wrap gap-1">
-											{prompt.tags.map((tag, tagIndex) => (
-												<Badge key={tagIndex} variant="secondary" className="text-xs pr-1 gap-1">
-													{tag}
-													<button
-														onClick={() => removeTag(index, tagIndex)}
-														className="ml-0.5 hover:bg-muted rounded-sm p-0.5 cursor-pointer"
-													>
-														<X className="h-3 w-3" />
-													</button>
-												</Badge>
-											))}
-										</div>
-									)}
-								</div>
+								<TagsInput
+									value={prompt.tags}
+									onValueChange={(tags) => updatePrompt(index, "tags", tags)}
+									options={allTagOptions}
+									placeholder="Add tag..."
+									searchPlaceholder="Search or create tag..."
+									normalizeValue={(raw) => raw.toLowerCase().trim()}
+								/>
 							</div>
 						))}
 					</div>

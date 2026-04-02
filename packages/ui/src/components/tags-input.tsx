@@ -28,6 +28,8 @@ export interface TagsInputProps {
   emptyText?: string;
   allowCustomValues?: boolean;
   normalizeValue?: (raw: string) => string;
+  /** Return `true` to accept the value, or an error string to reject it and show inline. */
+  onValidate?: (value: string) => true | string;
   maxItems?: number;
   minItems?: number;
   disabled?: boolean;
@@ -45,6 +47,7 @@ export function TagsInput({
   emptyText = "No results.",
   allowCustomValues = true,
   normalizeValue,
+  onValidate,
   maxItems,
   minItems = 0,
   disabled,
@@ -52,6 +55,7 @@ export function TagsInput({
 }: TagsInputProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const [validationError, setValidationError] = React.useState("");
 
   const max = maxItems ?? Number.POSITIVE_INFINITY;
   const atMax = value.length >= max;
@@ -76,9 +80,21 @@ export function TagsInput({
     !options.some((o) => o.value === candidate);
   const showCreate = allowCustomValues && !disabled && !atMax && candidateIsNew;
 
+  function validate(val: string): boolean {
+    if (!onValidate) return true;
+    const result = onValidate(val);
+    if (result === true) {
+      setValidationError("");
+      return true;
+    }
+    setValidationError(result);
+    return false;
+  }
+
   function add(raw: string) {
     const val = normalize(raw);
     if (!val || selectedSet.has(val) || value.length >= max) return;
+    if (!validate(val)) return;
     onValueChange([...value, val]);
   }
 
@@ -89,6 +105,7 @@ export function TagsInput({
       if (next.length >= max) break;
       const val = normalize(raw);
       if (!val || seen.has(val)) continue;
+      if (onValidate && onValidate(val) !== true) continue;
       next.push(val);
       seen.add(val);
     }
@@ -112,7 +129,10 @@ export function TagsInput({
   function handleOpenChange(nextOpen: boolean) {
     if (disabled) return;
     setOpen(nextOpen);
-    if (!nextOpen) setQuery("");
+    if (!nextOpen) {
+      setQuery("");
+      setValidationError("");
+    }
   }
 
   function handleCreate() {
@@ -178,7 +198,10 @@ export function TagsInput({
           <Command shouldFilter={false}>
             <CommandInput
               value={query}
-              onValueChange={setQuery}
+              onValueChange={(v) => {
+                setQuery(v);
+                if (validationError) setValidationError("");
+              }}
               placeholder={atMax ? "Maximum reached" : searchPlaceholder}
               disabled={disabled || atMax}
               onKeyDown={(e) => {
@@ -231,6 +254,9 @@ export function TagsInput({
                 </CommandGroup>
               )}
             </CommandList>
+            {validationError && (
+              <div className="border-t px-3 py-2 text-xs text-destructive">{validationError}</div>
+            )}
           </Command>
         </PopoverContent>
       </Popover>

@@ -49,22 +49,11 @@ function BrandSettingsPage() {
 		}
 	}, [brand?.updatedAt]);
 
-	const [domainError, setDomainError] = useState("");
-	const handleDomainsChange = useCallback((values: string[]) => {
-		const last = values[values.length - 1];
-		if (last && !additionalDomains.includes(last)) {
-			const cleaned = cleanAndValidateDomain(last);
-			if (!cleaned) {
-				setDomainError(`"${last}" is not a valid domain`);
-				return;
-			}
-			setDomainError("");
-			setAdditionalDomains([...additionalDomains, cleaned]);
-			return;
-		}
-		setDomainError("");
-		setAdditionalDomains(values);
-	}, [additionalDomains]);
+	const validateDomain = useCallback((val: string): true | string => {
+		const cleaned = cleanAndValidateDomain(val);
+		if (!cleaned) return `"${val}" is not a valid domain`;
+		return true;
+	}, []);
 	const handleAliasesChange = useCallback((values: string[]) => setAliases(values), []);
 
 	if (isLoading) {
@@ -172,12 +161,13 @@ function BrandSettingsPage() {
 						</Label>
 						<TagsInput
 							value={additionalDomains}
-							onValueChange={handleDomainsChange}
+							onValueChange={setAdditionalDomains}
 							placeholder="Add domain..."
 							searchPlaceholder="Add domain..."
 							maxItems={10}
+							normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+							onValidate={validateDomain}
 						/>
-						{domainError && <p className="text-xs text-destructive">{domainError}</p>}
 					</div>
 
 					<div className="space-y-2">
