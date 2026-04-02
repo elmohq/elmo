@@ -43,6 +43,7 @@ export function Logo({
 					src={branding.icon}
 					alt={`${branding.name} logo`}
 					className={cn("size-5", iconClassName)}
+					fetchPriority="low"
 				/>
 			)}
 			<span className={cn("text-base font-semibold", textClassName)}>

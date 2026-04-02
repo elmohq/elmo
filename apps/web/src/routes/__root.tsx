@@ -11,6 +11,7 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
+import { initClarity } from "@/lib/clarity";
 import { initPostHog } from "@/lib/posthog";
 import appCss from "../styles.css?url";
 
@@ -47,11 +48,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				defer: true,
 				"data-domain": analytics.plausibleDomain,
 				"data-api": "/api/plausible/event",
-			});
-		}
-		if (analytics?.clarityProjectId) {
-			scripts.push({
-				children: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${analytics.clarityProjectId}");`,
 			});
 		}
 
@@ -100,6 +96,11 @@ function RootComponent() {
 		const key = clientConfig?.analytics?.posthogKey;
 		if (key) initPostHog(key);
 	}, [clientConfig?.analytics?.posthogKey]);
+
+	useEffect(() => {
+		const id = clientConfig?.analytics?.clarityProjectId;
+		if (id) initClarity(id);
+	}, [clientConfig?.analytics?.clarityProjectId]);
 
 	if (!envValidation.isValid) {
 		return (
