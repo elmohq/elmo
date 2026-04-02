@@ -5,11 +5,11 @@ import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline' https://www.clarity.ms https://var.elmohq.com",
+		"script-src 'self' 'unsafe-inline' https://www.clarity.ms https://scripts.clarity.ms https://var.elmohq.com",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https://var.elmohq.com https://*.sentry.io https://www.clarity.ms",
+		"connect-src 'self' https://var.elmohq.com https://*.sentry.io https://www.clarity.ms https://scripts.clarity.ms https://c.clarity.ms",
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
