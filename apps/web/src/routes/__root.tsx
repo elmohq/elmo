@@ -13,7 +13,7 @@ import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
 import { initClarity } from "@/lib/clarity";
 import { initPostHog } from "@/lib/posthog";
-import appCss from "../styles.css?url";
+import "../styles.css";
 
 interface RouterContext {
 	queryClient: QueryClient;
@@ -77,7 +77,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "twitter:image", content: ogImage },
 			],
 			links: [
-				{ rel: "stylesheet", href: appCss },
 				{ rel: "manifest", href: "/api/manifest" },
 				...(hasCustomIcon && branding?.icon
 					? [{ rel: "icon", type: "image/png", href: branding.icon }]
