@@ -42,6 +42,7 @@ type PromptMetadata = {
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[];
+	nextRunAt?: string | null;
 };
 
 type TabKey = "mentions" | "web-queries" | "citations" | "responses";
@@ -196,6 +197,23 @@ function PromptHistoryPage() {
 							</span>
 						) : (
 							<span className="text-muted-foreground">Disabled</span>
+						)}
+
+						{promptMeta?.nextRunAt && (
+							<>
+								<span className="text-border">|</span>
+								<span className="text-muted-foreground">
+									Next run:{" "}
+									<span className="text-foreground tabular-nums">
+										{new Date(promptMeta.nextRunAt).toLocaleString(undefined, {
+											month: "short",
+											day: "numeric",
+											hour: "numeric",
+											minute: "2-digit",
+										})}
+									</span>
+								</span>
+							</>
 						)}
 
 						{hasTags && <span className="text-border">|</span>}

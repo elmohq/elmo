@@ -48,6 +48,9 @@ See `README.md` for the full commands reference. Key ones:
 
 ### Gotchas
 
+- **Changesets**: Keep changesets short and end-user focused (what changed in the product), not internal implementation details.
+- **PR screenshots**: Do **not** commit before/after screenshots or one-off screenshot capture scripts to the repo. Add proof screenshots as PR artifacts (or attach in the PR description) instead.
+
 - **Node.js 24 required**: The repo enforces `engines.node: "24.x"`. Use `nvm use 24`.
 - **Biome CSS lint warnings**: The linter reports Tailwind `@apply` directive warnings in CSS files — these are pre-existing and expected.
 - **pnpm build warnings**: Some dependencies have ignored build scripts (sentry-cli, msw, protobufjs, vue-demi). This is configured via `pnpm.onlyBuiltDependencies` and `pnpm.ignoredBuiltDependencies` in root `package.json`.
