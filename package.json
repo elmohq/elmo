@@ -59,6 +59,7 @@
     "@biomejs/biome": "2.4.4",
     "@changesets/cli": "^2.29.8",
     "knip": "^6.0.5",
+    "playwright": "^1.59.1",
     "tsx": "^4.21.0",
     "turbo": "^2.8.17",
     "typescript": "^5.9.3"

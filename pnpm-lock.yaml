@@ -33,6 +33,9 @@ importers:
       knip:
         specifier: ^6.0.5
         version: 6.0.5
+      playwright:
+        specifier: ^1.59.1
+        version: 1.59.1
       tsx:
         specifier: ^4.21.0
         version: 4.21.0

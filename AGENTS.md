@@ -3,6 +3,7 @@ This repo uses automated agents. Follow these rules when making changes.
 
 ## Pull requests
 - **Do not commit image artifacts** (screenshots, videos, Playwright reports) to the repo. If you need proof in a PR description, generate artifacts locally and embed them in the PR description without committing them.
+- **Prefer uploading screenshots as PR artifacts** and embedding them inline in the PR description (avoid committing files, avoid linking to agent dashboards).
 - **Do not add “screenshot-only” tests** whose sole purpose is to generate PR images. Prefer existing tests; if you must add coverage, add a real assertion-based test that remains valuable long-term.
 - **Do not bump versions** (or add placeholder versions) unless the change explicitly requires a release/versioning action.
 
