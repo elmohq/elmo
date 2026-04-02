@@ -53,3 +53,15 @@ See `README.md` for the full commands reference. Key ones:
 - **pnpm build warnings**: Some dependencies have ignored build scripts (sentry-cli, msw, protobufjs, vue-demi). This is configured via `pnpm.onlyBuiltDependencies` and `pnpm.ignoredBuiltDependencies` in root `package.json`.
 - **E2E tests**: Require Playwright browsers (`pnpm exec playwright install`) and a running app instance. They are separate from unit tests.
 - **Worker env loading**: The worker's `dev` script uses `--env-file=../web/.env`, so the env file must be in `apps/web/`.
+
+## Pull request guidelines
+
+- **Do not commit image artifacts** (screenshots, videos, Playwright reports) to the repo. Generate artifacts locally and embed them in the PR description via `<img src="/opt/cursor/artifacts/..." />` so they are uploaded automatically.
+- **Prefer uploading screenshots as PR artifacts** inline in the PR description (avoid committing files or linking to agent dashboards).
+- **Do not add "screenshot-only" tests** whose sole purpose is to produce PR images. If you add test coverage, make it a real assertion-based test that is valuable long-term.
+- **Do not bump versions** (or add placeholder versions) unless the change explicitly requires a release/versioning action.
+
+## Changesets
+
+- When adding a Changeset, keep it **scoped to the packages actually affected**.
+- If a non-package directory (like `e2e/`) breaks Changesets tooling, fix the tooling configuration rather than inventing versions.
