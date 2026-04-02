@@ -18,7 +18,7 @@ import { Plus, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { TagsInput } from "@workspace/ui/components/tags-input";
+import { ComboboxChips } from "@workspace/ui/components/combobox-chips";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
@@ -257,11 +257,12 @@ function CompetitorsSettingsPage() {
 												</TooltipContent>
 											</Tooltip>
 										</Label>
-										<TagsInput
+										<ComboboxChips
 											value={competitor.domains.filter(Boolean)}
 											onValueChange={(values) => updateDomains(competitor._key, values.length > 0 ? values : [""])}
 											placeholder="Add domain..."
 											maxItems={10}
+											normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
 										/>
 										{domainErrors[competitor._key] && <p className="text-xs text-destructive">{domainErrors[competitor._key]}</p>}
 									</div>
@@ -278,7 +279,7 @@ function CompetitorsSettingsPage() {
 												</TooltipContent>
 											</Tooltip>
 										</Label>
-										<TagsInput
+										<ComboboxChips
 											value={competitor.aliases}
 											onValueChange={(values) => updateAliases(competitor._key, values)}
 											placeholder="Add alias..."

@@ -16,7 +16,7 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { TagsInput } from "@workspace/ui/components/tags-input";
+import { ComboboxChips } from "@workspace/ui/components/combobox-chips";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
@@ -170,11 +170,13 @@ function BrandSettingsPage() {
 								</TooltipContent>
 							</Tooltip>
 						</Label>
-						<TagsInput
+						<ComboboxChips
 							value={additionalDomains}
 							onValueChange={handleDomainsChange}
 							placeholder="Add domain..."
+							searchPlaceholder="Add domain..."
 							maxItems={10}
+							normalizeValue={(raw) => raw.trim()}
 						/>
 						{domainError && <p className="text-xs text-destructive">{domainError}</p>}
 					</div>
@@ -191,11 +193,13 @@ function BrandSettingsPage() {
 								</TooltipContent>
 							</Tooltip>
 						</Label>
-						<TagsInput
+						<ComboboxChips
 							value={aliases}
 							onValueChange={handleAliasesChange}
 							placeholder="Add alias..."
+							searchPlaceholder="Add alias..."
 							maxItems={10}
+							normalizeValue={(raw) => raw.trim()}
 						/>
 					</div>
 				</div>

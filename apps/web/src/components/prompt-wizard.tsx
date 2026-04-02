@@ -9,7 +9,7 @@ import { Label } from "@workspace/ui/components/label";
 import { Input } from "@workspace/ui/components/input";
 import { Loader2, CheckCircle, Clock, AlertCircle, Play, Pause, Rocket, Plus, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useBrand } from "@/hooks/use-brands";
-import { TagsInput } from "@workspace/ui/components/tags-input";
+import { ComboboxChips } from "@workspace/ui/components/combobox-chips";
 import { Separator } from "@workspace/ui/components/separator";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import {
@@ -190,7 +190,7 @@ const EditableTagsInput = memo(
 	}) => {
 		return (
 			<div className="space-y-2">
-				<TagsInput value={items} onValueChange={onValueChange} placeholder={placeholder} maxItems={maxItems} />
+				<ComboboxChips value={items} onValueChange={onValueChange} placeholder={placeholder} searchPlaceholder={placeholder} maxItems={maxItems} />
 				<p className="text-xs text-muted-foreground">
 					<strong>
 						{items.length}/{maxItems}
