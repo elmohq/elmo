@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 
@@ -7,7 +7,8 @@ export default {
   title: "Components/TagsInput",
 } satisfies Meta;
 
-export const FreeformEntries = () => {
+/** Standalone freeform input — each field manages its own values. */
+export const Freeform = () => {
   const [values, setValues] = useState<string[]>(["example.com", "blog.example.com"]);
 
   return (
@@ -22,71 +23,69 @@ export const FreeformEntries = () => {
           maxItems={10}
         />
         <p className="text-xs text-muted-foreground">
-          Type a domain and press Enter, or paste a comma/newline-separated list.
+          Type a domain and press Enter, or paste a comma-separated list.
         </p>
       </div>
     </div>
   );
 };
 
-export const WithPredefinedOptions = () => {
-  const [values, setValues] = useState<string[]>(["react"]);
+/**
+ * Shared options across multiple inputs — like prompt tags where any tag
+ * added to one prompt shows up as a suggestion for the others.
+ */
+export const SharedOptions = () => {
+  const [promptA, setPromptA] = useState<string[]>(["seo", "competitor"]);
+  const [promptB, setPromptB] = useState<string[]>(["pricing"]);
+  const [promptC, setPromptC] = useState<string[]>([]);
+
+  const allTags = useMemo(() => {
+    const set = new Set([...promptA, ...promptB, ...promptC]);
+    return [...set].sort().map((t) => ({ value: t }));
+  }, [promptA, promptB, promptC]);
 
   return (
-    <div className="p-8 max-w-xl space-y-6">
-      <div className="space-y-2">
-        <Label>Technologies</Label>
-        <TagsInput
-          value={values}
-          onValueChange={setValues}
-          placeholder="Select technologies..."
-          searchPlaceholder="Search or add..."
-          maxItems={5}
-          options={[
-            { value: "react", label: "React" },
-            { value: "vue", label: "Vue" },
-            { value: "svelte", label: "Svelte" },
-            { value: "angular", label: "Angular" },
-            { value: "solid", label: "SolidJS" },
-            { value: "htmx", label: "htmx" },
-          ]}
-        />
-        <p className="text-xs text-muted-foreground">
-          Pick from suggestions or type your own. Max 5.
+    <div className="p-8 max-w-xl space-y-8">
+      <div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Tags added to any prompt appear as suggestions in the others.
+          You can still type new tags that don&apos;t exist yet.
         </p>
       </div>
-    </div>
-  );
-};
 
-export const Empty = () => {
-  const [values, setValues] = useState<string[]>([]);
-
-  return (
-    <div className="p-8 max-w-xl space-y-6">
       <div className="space-y-2">
-        <Label>Brand Aliases</Label>
+        <Label>Prompt: &ldquo;best CRM for startups&rdquo;</Label>
         <TagsInput
-          value={values}
-          onValueChange={setValues}
-          placeholder="Add alias..."
-          searchPlaceholder="Add alias..."
+          value={promptA}
+          onValueChange={setPromptA}
+          options={allTags}
+          placeholder="Add tags..."
+          searchPlaceholder="Search or create tag..."
+          maxItems={8}
         />
       </div>
-    </div>
-  );
-};
 
-export const Disabled = () => {
-  return (
-    <div className="p-8 max-w-xl space-y-6">
       <div className="space-y-2">
-        <Label>Domains (disabled)</Label>
+        <Label>Prompt: &ldquo;cheapest project management tool&rdquo;</Label>
         <TagsInput
-          value={["example.com", "blog.example.com"]}
-          onValueChange={() => {}}
-          placeholder="Add domain..."
-          disabled
+          value={promptB}
+          onValueChange={setPromptB}
+          options={allTags}
+          placeholder="Add tags..."
+          searchPlaceholder="Search or create tag..."
+          maxItems={8}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Prompt: &ldquo;best analytics platform&rdquo;</Label>
+        <TagsInput
+          value={promptC}
+          onValueChange={setPromptC}
+          options={allTags}
+          placeholder="Add tags..."
+          searchPlaceholder="Search or create tag..."
+          maxItems={8}
         />
       </div>
     </div>
