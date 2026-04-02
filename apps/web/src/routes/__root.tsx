@@ -109,7 +109,6 @@ function RootComponent() {
 		return (
 			<html lang="en">
 				<head>
-					{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 					<HeadContent />
 				</head>
 				<body className="font-sans antialiased">
