@@ -79,9 +79,6 @@ importers:
       '@fontsource/titan-one':
         specifier: ^5.2.8
         version: 5.2.8
-      '@microsoft/clarity':
-        specifier: ^1.0.2
-        version: 1.0.2
       '@scalar/api-reference-react':
         specifier: ^0.9.18
         version: 0.9.18(react@19.2.4)(tailwindcss@4.2.2)(typescript@5.9.3)
@@ -1888,9 +1885,6 @@ packages:
 
   '@mermaid-js/parser@1.1.0':
     resolution: {integrity: sha512-gxK9ZX2+Fex5zu8LhRQoMeMPEHbc73UKZ0FQ54YrQtUxE1VVhMwzeNtKRPAu5aXks4FasbMe4xB4bWrmq6Jlxw==}
-
-  '@microsoft/clarity@1.0.2':
-    resolution: {integrity: sha512-9EZYROFpJxEGmQpHvUFqvD3ZJ7QQSqnibYSWmS+1xusoZfG1QQ1/Al9yVBBc11DWMbJrs1pe1hLT273it/skJg==}
 
   '@mswjs/interceptors@0.41.3':
     resolution: {integrity: sha512-cXu86tF4VQVfwz8W1SPbhoRyHJkti6mjH/XJIxp40jhO4j2k1m4KYrEykxqWPkFF3vrK4rgQppBh//AwyGSXPA==}
@@ -10028,8 +10022,6 @@ snapshots:
   '@mermaid-js/parser@1.1.0':
     dependencies:
       langium: 4.2.1
-
-  '@microsoft/clarity@1.0.2': {}
 
   '@mswjs/interceptors@0.41.3':
     dependencies:

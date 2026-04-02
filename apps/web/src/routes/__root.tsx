@@ -11,7 +11,6 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initClarity } from "@/lib/clarity";
 import { initPostHog } from "@/lib/posthog";
 import appCss from "../styles.css?url";
 
@@ -42,6 +41,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const branding = match.context?.clientConfig?.branding;
 		const analytics = match.context?.clientConfig?.analytics;
 		const scripts = [];
+		if (analytics?.clarityProjectId) {
+			scripts.push({
+				src: `https://www.clarity.ms/tag/${analytics.clarityProjectId}`,
+				async: true,
+			});
+		}
 		if (analytics?.plausibleDomain) {
 			scripts.push({
 				src: "/api/plausible/js/script",
@@ -96,11 +101,6 @@ function RootComponent() {
 		const key = clientConfig?.analytics?.posthogKey;
 		if (key) initPostHog(key);
 	}, [clientConfig?.analytics?.posthogKey]);
-
-	useEffect(() => {
-		const id = clientConfig?.analytics?.clarityProjectId;
-		if (id) initClarity(id);
-	}, [clientConfig?.analytics?.clarityProjectId]);
 
 	if (!envValidation.isValid) {
 		return (

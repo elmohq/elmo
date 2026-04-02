@@ -19,7 +19,6 @@
 	"dependencies": {
 		"@fontsource/geist-sans": "^5.2.5",
 		"@fontsource/titan-one": "^5.2.8",
-		"@microsoft/clarity": "^1.0.2",
 		"@scalar/api-reference-react": "^0.9.18",
 		"@sentry/tanstackstart-react": "^10.47.0",
 		"@tabler/icons-react": "^3.41.1",
