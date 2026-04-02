@@ -1,6 +1,4 @@
 packages:
   - "apps/*"
   - "packages/*"
-  # E2E is not part of the published package workspace. Keep it out of Changesets/publishing
-  # and avoid requiring package.json `version` etc.
-  - "!e2e"
+  - "e2e"
