@@ -36,6 +36,7 @@ import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompt
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
+import { Route as AuthedAppBrandSplatRouteImport } from './routes/_authed/app/$brand/$'
 import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plausible/js/script/index'
 import { Route as AuthedAppBrandSettingsIndexRouteImport } from './routes/_authed/app/$brand/settings/index'
 import { Route as AuthedAppBrandPromptsIndexRouteImport } from './routes/_authed/app/$brand/prompts/index'
@@ -183,6 +184,11 @@ const AuthedAppBrandCitationsRoute = AuthedAppBrandCitationsRouteImport.update({
   path: '/citations',
   getParentRoute: () => AuthedAppBrandRoute,
 } as any)
+const AuthedAppBrandSplatRoute = AuthedAppBrandSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AuthedAppBrandRoute,
+} as any)
 const ApiPlausibleJsScriptIndexRoute =
   ApiPlausibleJsScriptIndexRouteImport.update({
     id: '/api/plausible/js/script/',
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
+  '/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
@@ -297,6 +304,7 @@ export interface FileRoutesByTo {
   '/api/manifest': typeof ApiManifestIndexRoute
   '/api/og': typeof ApiOgIndexRoute
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
+  '/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
@@ -337,6 +345,7 @@ export interface FileRoutesById {
   '/api/manifest/': typeof ApiManifestIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
+  '/_authed/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
+    | '/app/$brand/$'
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/api/manifest'
     | '/api/og'
     | '/api/setup-status'
+    | '/app/$brand/$'
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/api/manifest/'
     | '/api/og/'
     | '/api/setup-status/'
+    | '/_authed/app/$brand/$'
     | '/_authed/app/$brand/citations'
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
@@ -678,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppBrandCitationsRouteImport
       parentRoute: typeof AuthedAppBrandRoute
     }
+    '/_authed/app/$brand/$': {
+      id: '/_authed/app/$brand/$'
+      path: '/$'
+      fullPath: '/app/$brand/$'
+      preLoaderRoute: typeof AuthedAppBrandSplatRouteImport
+      parentRoute: typeof AuthedAppBrandRoute
+    }
     '/api/plausible/js/script/': {
       id: '/api/plausible/js/script/'
       path: '/api/plausible/js/script'
@@ -770,6 +789,7 @@ const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
 )
 
 interface AuthedAppBrandRouteChildren {
+  AuthedAppBrandSplatRoute: typeof AuthedAppBrandSplatRoute
   AuthedAppBrandCitationsRoute: typeof AuthedAppBrandCitationsRoute
   AuthedAppBrandVisibilityRoute: typeof AuthedAppBrandVisibilityRoute
   AuthedAppBrandIndexRoute: typeof AuthedAppBrandIndexRoute
@@ -784,6 +804,7 @@ interface AuthedAppBrandRouteChildren {
 }
 
 const AuthedAppBrandRouteChildren: AuthedAppBrandRouteChildren = {
+  AuthedAppBrandSplatRoute: AuthedAppBrandSplatRoute,
   AuthedAppBrandCitationsRoute: AuthedAppBrandCitationsRoute,
   AuthedAppBrandVisibilityRoute: AuthedAppBrandVisibilityRoute,
   AuthedAppBrandIndexRoute: AuthedAppBrandIndexRoute,
