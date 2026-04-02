@@ -16,7 +16,7 @@ import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
-import { ComboboxChips } from "@workspace/ui/components/combobox-chips";
+import { TagsInput } from "@workspace/ui/components/tags-input";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/brand")({
@@ -170,7 +170,7 @@ function BrandSettingsPage() {
 								</TooltipContent>
 							</Tooltip>
 						</Label>
-						<ComboboxChips
+						<TagsInput
 							value={additionalDomains}
 							onValueChange={handleDomainsChange}
 							placeholder="Add domain..."
@@ -192,7 +192,7 @@ function BrandSettingsPage() {
 								</TooltipContent>
 							</Tooltip>
 						</Label>
-						<ComboboxChips
+						<TagsInput
 							value={aliases}
 							onValueChange={handleAliasesChange}
 							placeholder="Add alias..."

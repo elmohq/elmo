@@ -1,56 +1,94 @@
 import type { Meta } from "@storybook/react";
 import { useState } from "react";
 import { Label } from "@workspace/ui/components/label";
-import { ComboboxChips } from "@workspace/ui/components/combobox-chips";
 import { TagsInput } from "@workspace/ui/components/tags-input";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 export default {
-  title: "Components/ComboboxChips",
+  title: "Components/TagsInput",
 } satisfies Meta;
 
-export const After_MultiSelectWithCustomCreate = () => {
+export const FreeformEntries = () => {
   const [values, setValues] = useState<string[]>(["example.com", "blog.example.com"]);
 
   return (
     <div className="p-8 max-w-xl space-y-6">
       <div className="space-y-2">
         <Label>Domains</Label>
-        <ComboboxChips
+        <TagsInput
           value={values}
           onValueChange={setValues}
           placeholder="Add domain..."
           searchPlaceholder="Add domain..."
           maxItems={10}
-          normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
-          options={[
-            { value: "example.com" },
-            { value: "blog.example.com" },
-            { value: "shop.example.com" },
-            { value: "docs.example.com" },
-          ]}
         />
         <p className="text-xs text-muted-foreground">
-          Try typing a new domain and pressing Enter, or paste a comma/newline-separated list.
+          Type a domain and press Enter, or paste a comma/newline-separated list.
         </p>
       </div>
     </div>
   );
 };
 
-export const Before_TagsInput = () => {
-  const [values, setValues] = useState<string[]>(["example.com", "blog.example.com"]);
+export const WithPredefinedOptions = () => {
+  const [values, setValues] = useState<string[]>(["react"]);
 
   return (
     <div className="p-8 max-w-xl space-y-6">
       <div className="space-y-2">
-        <Label>Domains</Label>
-        <TagsInput value={values} onValueChange={setValues} placeholder="Add domain..." maxItems={10} />
+        <Label>Technologies</Label>
+        <TagsInput
+          value={values}
+          onValueChange={setValues}
+          placeholder="Select technologies..."
+          searchPlaceholder="Search or add..."
+          maxItems={5}
+          options={[
+            { value: "react", label: "React" },
+            { value: "vue", label: "Vue" },
+            { value: "svelte", label: "Svelte" },
+            { value: "angular", label: "Angular" },
+            { value: "solid", label: "SolidJS" },
+            { value: "htmx", label: "htmx" },
+          ]}
+        />
         <p className="text-xs text-muted-foreground">
-          Baseline: current TagsInput behavior (Enter to add, paste splitting).
+          Pick from suggestions or type your own. Max 5.
         </p>
       </div>
     </div>
   );
 };
 
+export const Empty = () => {
+  const [values, setValues] = useState<string[]>([]);
+
+  return (
+    <div className="p-8 max-w-xl space-y-6">
+      <div className="space-y-2">
+        <Label>Brand Aliases</Label>
+        <TagsInput
+          value={values}
+          onValueChange={setValues}
+          placeholder="Add alias..."
+          searchPlaceholder="Add alias..."
+        />
+      </div>
+    </div>
+  );
+};
+
+export const Disabled = () => {
+  return (
+    <div className="p-8 max-w-xl space-y-6">
+      <div className="space-y-2">
+        <Label>Domains (disabled)</Label>
+        <TagsInput
+          value={["example.com", "blog.example.com"]}
+          onValueChange={() => {}}
+          placeholder="Add domain..."
+          disabled
+        />
+      </div>
+    </div>
+  );
+};
