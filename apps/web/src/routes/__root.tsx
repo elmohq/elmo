@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { useEffect } from "react";
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { NuqsAdapter } from "nuqs/adapters/react";
@@ -42,9 +42,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const analytics = match.context?.clientConfig?.analytics;
 		const scripts = [];
 		if (analytics?.clarityProjectId) {
-			scripts.push({
-				children: `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`,
-			});
 			scripts.push({
 				src: `https://www.clarity.ms/tag/${analytics.clarityProjectId}`,
 				async: true,
@@ -99,16 +96,20 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
 	const { envValidation, clientConfig } = Route.useRouteContext();
+	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
 
 	useEffect(() => {
 		const key = clientConfig?.analytics?.posthogKey;
 		if (key) initPostHog(key);
 	}, [clientConfig?.analytics?.posthogKey]);
 
+	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
+
 	if (!envValidation.isValid) {
 		return (
 			<html lang="en">
 				<head>
+					{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 					<HeadContent />
 				</head>
 				<body className="font-sans antialiased">
@@ -122,6 +123,7 @@ function RootComponent() {
 	return (
 		<html lang="en">
 			<head>
+				{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased">
