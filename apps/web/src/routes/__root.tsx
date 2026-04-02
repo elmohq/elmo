@@ -11,6 +11,7 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
+import Clarity from "@microsoft/clarity";
 import { initPostHog } from "@/lib/posthog";
 import appCss from "../styles.css?url";
 
@@ -99,16 +100,7 @@ function RootComponent() {
 	useEffect(() => {
 		const projectId = clientConfig?.analytics?.clarityProjectId;
 		if (!projectId) return;
-		const w = window as Record<string, unknown>;
-		if (!w.clarity) {
-			const queue: unknown[][] = [];
-			w.clarity = (...args: unknown[]) => { queue.push(args); };
-			(w.clarity as Record<string, unknown>).q = queue;
-		}
-		const script = document.createElement("script");
-		script.async = true;
-		script.src = `https://www.clarity.ms/tag/${projectId}`;
-		document.head.appendChild(script);
+		Clarity.init(projectId);
 	}, [clientConfig?.analytics?.clarityProjectId]);
 
 	if (!envValidation.isValid) {

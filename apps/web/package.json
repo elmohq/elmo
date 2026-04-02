@@ -19,6 +19,7 @@
 	"dependencies": {
 		"@fontsource/geist-sans": "^5.2.5",
 		"@fontsource/titan-one": "^5.2.8",
+		"@microsoft/clarity": "^1.0.2",
 		"@scalar/api-reference-react": "^0.9.15",
 		"@sentry/tanstackstart-react": "^10.44.0",
 		"@tabler/icons-react": "^3.37.1",
@@ -36,9 +37,9 @@
 		"@tanstack/react-virtual": "^3.13.23",
 		"@workspace/api-spec": "workspace:*",
 		"@workspace/config": "workspace:*",
-		"@workspace/og": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",
+		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
 		"@workspace/whitelabel": "workspace:*",
 		"auth0": "^5.3.1",
