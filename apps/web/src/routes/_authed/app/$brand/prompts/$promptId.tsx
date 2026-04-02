@@ -28,6 +28,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
 import { getPromptMetadataFn } from "@/server/prompts";
+import { PromptDetailsHeaderMeta } from "@/components/prompt-details-header-meta";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import ReactMarkdown from "react-markdown";
 
@@ -42,6 +43,7 @@ type PromptMetadata = {
 	enabled: boolean;
 	tags: string[];
 	systemTags: string[];
+	nextRunAt?: string | null;
 };
 
 type TabKey = "mentions" | "web-queries" | "citations" | "responses";
@@ -129,7 +131,6 @@ function PromptHistoryPage() {
 
 	const systemTags = promptMeta?.systemTags || [];
 	const userTags = promptMeta?.tags || [];
-	const hasTags = systemTags.length > 0 || userTags.length > 0;
 
 	if (isStatsError || isRunsError) {
 		return (
@@ -185,47 +186,13 @@ function PromptHistoryPage() {
 						<Skeleton className="h-5 w-40" />
 					</div>
 				) : (
-					<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-						{promptMeta?.enabled ? (
-							<span className="inline-flex items-center gap-1.5 text-green-700">
-								<span className="relative flex h-2 w-2">
-									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-									<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-								</span>
-								Active
-							</span>
-						) : (
-							<span className="text-muted-foreground">Disabled</span>
-						)}
-
-						{hasTags && <span className="text-border">|</span>}
-
-						{hasTags && (
-							<div className="flex items-center gap-1.5">
-								<span className="text-muted-foreground">Tags:</span>
-								{systemTags.map((tag) => (
-									<Badge key={`sys-${tag}`} variant="secondary" className="text-xs capitalize font-normal">
-										{tag}
-									</Badge>
-								))}
-								{userTags.map((tag) => (
-									<Badge key={`usr-${tag}`} variant="outline" className="text-xs capitalize font-normal">
-										{tag}
-									</Badge>
-								))}
-							</div>
-						)}
-
-						<span className="text-border">|</span>
-
-						<Link
-							to="/app/$brand/settings/prompts"
-							params={{ brand: brandId }}
-							className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 decoration-muted-foreground/40 hover:decoration-foreground/40"
-						>
-							Edit prompts
-						</Link>
-					</div>
+					<PromptDetailsHeaderMeta
+						brandId={brandId}
+						enabled={Boolean(promptMeta?.enabled)}
+						systemTags={systemTags}
+						userTags={userTags}
+						nextRunAt={promptMeta?.nextRunAt ?? null}
+					/>
 				)}
 			</div>
 
