@@ -9,7 +9,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
-		"connect-src 'self' https://var.elmohq.com https://*.ingest.sentry.io https://www.clarity.ms",
+		"connect-src 'self' https://var.elmohq.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://www.clarity.ms",
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
