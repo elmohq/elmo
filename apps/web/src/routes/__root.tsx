@@ -11,7 +11,7 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
-import Clarity from "@microsoft/clarity";
+import { initClarity } from "@/lib/clarity";
 import { initPostHog } from "@/lib/posthog";
 import appCss from "../styles.css?url";
 
@@ -98,9 +98,8 @@ function RootComponent() {
 	}, [clientConfig?.analytics?.posthogKey]);
 
 	useEffect(() => {
-		const projectId = clientConfig?.analytics?.clarityProjectId;
-		if (!projectId) return;
-		Clarity.init(projectId);
+		const id = clientConfig?.analytics?.clarityProjectId;
+		if (id) initClarity(id);
 	}, [clientConfig?.analytics?.clarityProjectId]);
 
 	if (!envValidation.isValid) {
