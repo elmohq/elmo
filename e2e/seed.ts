@@ -10,8 +10,7 @@
  */
 import pg from "pg";
 
-const DATABASE_URL =
-	process.env.DATABASE_URL || process.env.E2E_DATABASE_URL || "postgres://postgres:postgres@localhost:5432/elmo";
+const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
 
 // ---------------------------------------------------------------------------
 // Fixed IDs for test fixtures (so tests can reference them directly)
@@ -368,13 +367,7 @@ async function seed() {
   }
 }
 
-const isMain =
-	typeof process !== "undefined" &&
-	process.argv[1]?.replace(/\\/g, "/").endsWith("/seed.ts");
-
-if (isMain) {
-	seed().catch((err) => {
-		console.error("Seeding failed:", err);
-		process.exit(1);
-	});
-}
+seed().catch((err) => {
+  console.error("Seeding failed:", err);
+  process.exit(1);
+});

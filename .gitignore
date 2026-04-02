@@ -37,7 +37,6 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 debug-storybook.log
-storybook-static/
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -76,8 +75,4 @@ features/
 .agents/
 .cursor/
 apps/www/dist/
-
-# PR proof screenshots / ad-hoc capture scripts
-docs/screenshots/
-apps/web/scripts/setup-pgboss-next-run.ts
-e2e/scripts/capture-issue-101-*.ts
+apps/web/storybook-static/

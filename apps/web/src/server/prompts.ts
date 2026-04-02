@@ -8,7 +8,6 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
-import { Client } from "pg";
 import {
 	getPromptsSummary,
 	getPromptsFirstEvaluatedAt,
@@ -27,50 +26,6 @@ import { extractDomain, normalizeUrl, categorizeDomain } from "@/lib/domain-cate
 // Server Functions
 // ============================================================================
 
-async function withPgClient<T>(fn: (client: Client) => Promise<T>): Promise<T> {
-	const connectionString = process.env.DATABASE_URL;
-	if (!connectionString) throw new Error("DATABASE_URL is required");
-	const client = new Client({ connectionString });
-	await client.connect();
-	try {
-		return await fn(client);
-	} finally {
-		await client.end();
-	}
-}
-
-async function getPromptNextRunAtIso(promptId: string): Promise<string | null> {
-	return withPgClient(async (client) => {
-		const schemaCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'pgboss')`,
-		);
-		if (!schemaCheck.rows[0]?.exists) return null;
-
-		const tableCheck = await client.query(
-			`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'pgboss' AND table_name = 'job')`,
-		);
-		if (!tableCheck.rows[0]?.exists) return null;
-
-		// Prefer delayed jobs (start_after) since those represent scheduled future runs.
-		const res = await client.query(
-			`
-			SELECT start_after
-			FROM pgboss.job
-			WHERE name = 'process-prompt'
-			  AND state IN ('created', 'retry')
-			  AND (data->>'promptId') = $1
-			  AND start_after IS NOT NULL
-			ORDER BY start_after ASC
-			LIMIT 1
-		`,
-			[promptId],
-		);
-
-		const startAfter = res.rows[0]?.start_after as string | undefined;
-		return startAfter ? new Date(startAfter).toISOString() : null;
-	});
-}
-
 /**
  * Get metadata for a single prompt
  */
@@ -80,18 +35,32 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const [prompt, nextRunAt] = await Promise.all([
-			db.query.prompts.findFirst({
-				where: and(eq(prompts.id, data.promptId), eq(prompts.brandId, data.brandId)),
-			}),
-			getPromptNextRunAtIso(data.promptId).catch((err) => {
-				console.error("Failed to fetch prompt nextRunAt:", err);
-				return null;
-			}),
-		]);
+		const prompt = await db.query.prompts.findFirst({
+			where: and(eq(prompts.id, data.promptId), eq(prompts.brandId, data.brandId)),
+		});
 
 		if (!prompt) {
 			return null;
+		}
+
+		let nextRunAt: string | null = null;
+		try {
+			const result = await db.execute(sql`
+				SELECT start_after
+				FROM pgboss.job
+				WHERE name = 'process-prompt'
+				  AND state IN ('created', 'retry')
+				  AND (data->>'promptId') = ${data.promptId}
+				  AND start_after > NOW()
+				ORDER BY start_after ASC
+				LIMIT 1
+			`);
+			const row = result.rows?.[0] as { start_after?: string } | undefined;
+			if (row?.start_after) {
+				nextRunAt = new Date(row.start_after).toISOString();
+			}
+		} catch {
+			// pgboss schema may not exist yet — that's fine
 		}
 
 		return {
