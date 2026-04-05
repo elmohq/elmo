@@ -436,7 +436,7 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 		env.SCRAPE_TARGETS = `chatgpt:brightdata:${chatgptDatasetId}:online,google-ai-mode:brightdata:${googleDatasetId}:online`;
 	} else {
 		p.log.info("Set SCRAPE_TARGETS in your .env file manually to configure providers.");
-		p.log.info("Format: engine:provider:model_or_mode separated by commas.");
+		p.log.info("Format: model:provider[:version][:online] separated by commas.");
 		p.log.info("Example: chatgpt:olostep:online,google-ai-mode:dataforseo:online");
 	}
 

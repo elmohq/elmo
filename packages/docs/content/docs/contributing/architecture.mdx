@@ -83,25 +83,25 @@ The `packages/deployment` package resolves the active mode at runtime based on `
 
 ## Provider Abstraction Layer
 
-The `packages/lib/src/providers/` directory implements a pluggable provider system that decouples **what** Elmo tracks (engines) from **how** it reaches them (providers).
+The `packages/lib/src/providers/` directory implements a pluggable provider system that decouples **what** Elmo tracks (models) from **how** it reaches them (providers).
 
 ### Key Concepts
 
 | Concept | Description | Examples |
 |---------|-------------|----------|
-| **Engine** | An AI product that end users interact with | `chatgpt`, `google-ai-mode`, `copilot`, `perplexity` |
-| **Provider** | The mechanism used to query an engine | `olostep`, `brightdata`, `direct`, `openrouter`, `dataforseo` |
-| **Model** | A specific model slug (required for API providers) | `gpt-5-mini`, `anthropic/claude-sonnet-4` |
+| **Model** | An AI product that end users interact with | `chatgpt`, `google-ai-mode`, `copilot`, `perplexity` |
+| **Provider** | The mechanism used to query a model | `olostep`, `brightdata`, `direct`, `openrouter`, `dataforseo` |
+| **Version** | A specific model version slug (required for API providers) | `gpt-5-mini`, `anthropic/claude-sonnet-4` |
 
 ### SCRAPE_TARGETS
 
-The `SCRAPE_TARGETS` environment variable drives the entire scraping pipeline. It is parsed at startup by `parseScrapeTargets()` in `packages/lib/src/providers/config.ts` into an array of `EngineConfig` objects:
+The `SCRAPE_TARGETS` environment variable drives the entire scraping pipeline. It is parsed at startup by `parseScrapeTargets()` in `packages/lib/src/providers/config.ts` into an array of `ModelConfig` objects:
 
 ```ts
-interface EngineConfig {
-  engine: string;
+interface ModelConfig {
+  model: string;
   provider: string;
-  model?: string;
+  version?: string;
   webSearch: boolean;
 }
 ```
@@ -117,15 +117,15 @@ interface Provider {
   id: string;
   name: string;
   isConfigured(): boolean;
-  run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+  run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
 }
 ```
 
-Providers are registered in the `providerMap` in `packages/lib/src/providers/index.ts`. The `resolveProviderId()` function handles the `direct` shorthand, mapping it to `direct-openai` or `direct-anthropic` based on the engine.
+Providers are registered in the `providerMap` in `packages/lib/src/providers/index.ts`. The `resolveProviderId()` function handles the `direct` shorthand, mapping it to `direct-openai` or `direct-anthropic` based on the model.
 
-### Engine Registry
+### Model Registry
 
-Known engines and their display metadata are defined in `packages/lib/src/providers/engines.ts`. The `KNOWN_ENGINES` map provides labels and icon IDs for the UI. Unknown engine strings are auto-formatted (hyphen-separated words are title-cased).
+Known models and their display metadata are defined in `packages/lib/src/providers/models.ts`. The `KNOWN_MODELS` map provides labels and icon IDs for the UI. Unknown model strings are auto-formatted (hyphen-separated words are title-cased).
 
 ## Database
 

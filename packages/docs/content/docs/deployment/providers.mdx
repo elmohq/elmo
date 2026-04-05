@@ -1,11 +1,11 @@
 ---
 title: AI Providers
-description: Configure which AI engines to track and which providers to use for scraping.
+description: Configure which AI models to track and which providers to use for scraping.
 ---
 
 ## Quick Start
 
-The fastest way to get started is with [Olostep](https://olostep.com), which can scrape ChatGPT, Google AI Mode, and Copilot — the three most valuable engines for visibility tracking.
+The fastest way to get started is with [Olostep](https://olostep.com), which can scrape ChatGPT, Google AI Mode, and Copilot — the three most valuable models for visibility tracking.
 
 Set a single environment variable:
 
@@ -14,12 +14,12 @@ OLOSTEP_API_KEY=your-key-here
 SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online
 ```
 
-This tells Elmo to track three engines, all using Olostep as the scraping provider, all with web search enabled.
+This tells Elmo to track three models, all using Olostep as the scraping provider, all with web search enabled.
 
 import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="info">
-It is almost always more valuable to track more prompts across the top 3 engines than to add more engines. Focus on prompt coverage first, engine breadth second.
+It is almost always more valuable to track more prompts across the top 3 models than to add more models. Focus on prompt coverage first, model breadth second.
 </Callout>
 
 ## SCRAPE_TARGETS Format
@@ -27,28 +27,28 @@ It is almost always more valuable to track more prompts across the top 3 engines
 The `SCRAPE_TARGETS` environment variable is a comma-separated list of scrape targets. Each target follows the format:
 
 ```
-engine:provider[:model][:online]
+model:provider[:version][:online]
 ```
 
 | Position | Required | Description |
 |----------|----------|-------------|
-| 1 — `engine` | Yes | AI engine to track (`chatgpt`, `google-ai-mode`, `copilot`, etc.) |
+| 1 — `model` | Yes | AI model to track (`chatgpt`, `google-ai-mode`, `copilot`, etc.) |
 | 2 — `provider` | Yes | How to reach it (`olostep`, `brightdata`, `direct`, `openrouter`, `dataforseo`) |
-| 3 — `model` | For `direct` and `openrouter` | Model slug (e.g. `gpt-5-mini`, `anthropic/claude-sonnet-4`). May contain colons for OpenRouter variants. |
+| 3 — `version` | For `direct` and `openrouter` | Model version slug (e.g. `gpt-5-mini`, `anthropic/claude-sonnet-4`). May contain colons for OpenRouter variants. |
 | 4 — `:online` | No | Append to enable web search. Omit for no web search. |
 
 ### Examples
 
 ```bash
-# Scraping providers (no model needed)
+# Scraping providers (no version needed)
 chatgpt:olostep:online
 google-ai-mode:brightdata:online
 
-# Direct API (model required)
+# Direct API (version required)
 chatgpt:direct:gpt-5-mini:online
 claude:direct:claude-sonnet-4
 
-# OpenRouter (model required, may include variant suffix)
+# OpenRouter (version required, may include variant suffix)
 chatgpt:openrouter:openai/gpt-5-mini:online
 perplexity:openrouter:perplexity/sonar-pro:online
 ```
@@ -67,13 +67,13 @@ The API key environment variables are still needed -- `SCRAPE_TARGETS` tells Elm
 
 ## Pricing Comparison
 
-Costs per query vary significantly by provider and engine. Use these tables to estimate your monthly spend.
+Costs per query vary significantly by provider and model. Use these tables to estimate your monthly spend.
 
 ### Scraping Providers (with Web Search)
 
-Scraping providers load the actual AI engine web UI, so results always reflect the real consumer experience including web search.
+Scraping providers load the actual AI model web UI, so results always reflect the real consumer experience including web search.
 
-| Engine | Olostep | BrightData | DataForSEO |
+| Model | Olostep | BrightData | DataForSEO |
 |--------|---------|------------|------------|
 | ChatGPT | ~$0.05 (5 credits) | ~$0.03 | — |
 | Google AI Mode | ~$0.03 (3 credits) | ~$0.03 | ~$0.04 |
@@ -87,7 +87,7 @@ Scraping providers load the actual AI engine web UI, so results always reflect t
 
 API providers call the model's API directly. Web search adds cost because the model performs live searches.
 
-| Engine | Direct API | OpenRouter |
+| Model | Direct API | OpenRouter |
 |--------|-----------|------------|
 | ChatGPT | ~$0.01–0.03 | ~$0.01–0.04 |
 | Claude | ~$0.05–0.15 | ~$0.05–0.15 |
@@ -99,7 +99,7 @@ API providers call the model's API directly. Web search adds cost because the mo
 
 Without web search, API calls are cheaper but results may not reflect what users see in the actual product.
 
-| Engine | Direct API | OpenRouter |
+| Model | Direct API | OpenRouter |
 |--------|-----------|------------|
 | ChatGPT | ~$0.005 | ~$0.005 |
 | Claude | ~$0.01 | ~$0.01 |
@@ -115,7 +115,7 @@ Pricing is approximate and based on typical query lengths (~500 tokens in, ~1000
 
 ### Essential (Top 3)
 
-These engines cover the vast majority of AI-assisted search traffic and should be tracked by every deployment:
+These models cover the vast majority of AI-assisted search traffic and should be tracked by every deployment:
 
 - **ChatGPT** with web search — the largest AI assistant by usage. Use `:online` to match the real user experience.
 - **Google AI Mode** — Google's AI-generated answers are shown to billions of search users. Always uses web search.
@@ -135,20 +135,20 @@ These engines cover the vast majority of AI-assisted search traffic and should b
 
 ### Olostep
 
-**Best for**: Most deployments. Broad engine support, simple setup.
+**Best for**: Most deployments. Broad model support, simple setup.
 
 - Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
 - Requires: `OLOSTEP_API_KEY`
 - Scrapes the actual web UI, so results match the real user experience
-- Credit-based pricing (3–5 credits per query depending on engine)
+- Credit-based pricing (3–5 credits per query depending on model)
 
 ### BrightData
 
-**Best for**: High-volume deployments that need per-engine dataset control.
+**Best for**: High-volume deployments that need per-model dataset control.
 
 - Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
-- Requires: `BRIGHTDATA_API_TOKEN` and dataset IDs passed as the model slug in `SCRAPE_TARGETS` (e.g., `chatgpt:brightdata:gd_abc123:online`)
-- Uses BrightData's Web Scraper API with engine-specific datasets
+- Requires: `BRIGHTDATA_API_TOKEN` and dataset IDs passed as the version slug in `SCRAPE_TARGETS` (e.g., `chatgpt:brightdata:gd_abc123:online`)
+- Uses BrightData's Web Scraper API with model-specific datasets
 - More configuration overhead but competitive per-query pricing
 
 ### OpenRouter
@@ -158,15 +158,15 @@ These engines cover the vast majority of AI-assisted search traffic and should b
 - Supports: ChatGPT, Claude, Perplexity, Gemini, Grok (and any model on OpenRouter)
 - Requires: `OPENROUTER_API_KEY`
 - Calls model APIs, not web UIs — results may differ from what end users see
-- Web search available via the `:online` model variant
-- Default models: `openai/gpt-5-mini`, `anthropic/claude-sonnet-4`, `perplexity/sonar-pro`, `google/gemini-2.5-flash`, `x-ai/grok-3-mini`
+- Web search available via the `:online` version variant
+- Default versions: `openai/gpt-5-mini`, `anthropic/claude-sonnet-4`, `perplexity/sonar-pro`, `google/gemini-2.5-flash`, `x-ai/grok-3-mini`
 
 ### Direct APIs
 
 **Best for**: When you already have API keys and want the lowest latency.
 
-- **Direct OpenAI** (`direct` or `direct-openai`): Requires `OPENAI_API_KEY`. Supports ChatGPT engine only.
-- **Direct Anthropic** (`direct-anthropic`): Requires `ANTHROPIC_API_KEY`. Supports Claude engine only.
+- **Direct OpenAI** (`direct` or `direct-openai`): Requires `OPENAI_API_KEY`. Supports ChatGPT model only.
+- **Direct Anthropic** (`direct-anthropic`): Requires `ANTHROPIC_API_KEY`. Supports Claude model only.
 - Lowest latency since there's no intermediary
 - Web search is supported on both (OpenAI via `web_search_preview` tool, Anthropic via `web_search` tool)
 
@@ -181,14 +181,14 @@ These engines cover the vast majority of AI-assisted search traffic and should b
 
 ## Web Search Configuration
 
-The `:online` suffix in `SCRAPE_TARGETS` enables web search for that target. This is important because AI engines behave differently with and without web access:
+The `:online` suffix in `SCRAPE_TARGETS` enables web search for that target. This is important because AI models behave differently with and without web access:
 
 - **With web search** (`:online`): The model searches the web before answering. Results include citations and reflect what users see when they ask questions in the real product. **Recommended for visibility tracking.**
-- **Without web search**: The model answers from its training data only. Cheaper, but doesn't represent the real user experience for most engines.
+- **Without web search**: The model answers from its training data only. Cheaper, but doesn't represent the real user experience for most models.
 
-### Recommendations Per Engine
+### Recommendations Per Model
 
-| Engine | Web Search Recommended? | Notes |
+| Model | Web Search Recommended? | Notes |
 |--------|------------------------|-------|
 | ChatGPT | Yes | Most users have web search enabled by default |
 | Google AI Mode | Always on | AI Mode inherently uses web search |
@@ -202,11 +202,11 @@ For scraping providers (Olostep, BrightData), web search is inherent in the scra
 
 ## Brand-Level Overrides
 
-By default, every brand in your workspace is evaluated against all configured `SCRAPE_TARGETS` engines. You can narrow this per brand using the `enabled_engines` column on the brands table.
+By default, every brand in your workspace is evaluated against all configured `SCRAPE_TARGETS` models. You can narrow this per brand using the `enabled_models` column on the brands table.
 
-When `enabled_engines` is set for a brand (e.g. `["chatgpt", "google-ai-mode"]`), only those engines will be used for that brand's prompts. When `NULL` (the default), all configured engines apply.
+When `enabled_models` is set for a brand (e.g. `["chatgpt", "google-ai-mode"]`), only those models will be used for that brand's prompts. When `NULL` (the default), all configured models apply.
 
 This is useful when:
-- Different brands operate in different markets where certain engines matter more
-- You want to reduce costs by only tracking the most relevant engines per brand
+- Different brands operate in different markets where certain models matter more
+- You want to reduce costs by only tracking the most relevant models per brand
 - Some brands are experimental and only need limited tracking

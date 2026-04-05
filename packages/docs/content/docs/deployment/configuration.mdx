@@ -29,11 +29,11 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 
 ### AI Provider Keys
 
-At least one AI provider is required for Elmo to track visibility. You only need keys for the providers you configure — see the [AI Providers](/docs/deployment/providers) page for a full guide on choosing providers and engines.
+At least one AI provider is required for Elmo to track visibility. You only need keys for the providers you configure — see the [AI Providers](/docs/deployment/providers) page for a full guide on choosing providers and models.
 
 | Variable | Description |
 |----------|-------------|
-| `SCRAPE_TARGETS` | Comma-separated list of `engine:provider[:model][:online]` targets. See [AI Providers](/docs/deployment/providers). |
+| `SCRAPE_TARGETS` | Comma-separated list of `model:provider[:version][:online]` targets. See [AI Providers](/docs/deployment/providers). |
 | `OLOSTEP_API_KEY` | Olostep API key — recommended for scraping ChatGPT, Google AI Mode, Copilot, and more |
 | `BRIGHTDATA_API_TOKEN` | BrightData API token — alternative scraping provider |
 | `OPENROUTER_API_KEY` | OpenRouter API key — access multiple AI models through one key |
@@ -45,7 +45,7 @@ At least one AI provider is required for Elmo to track visibility. You only need
 import { Callout } from "fumadocs-ui/components/callout";
 
 <Callout type="info">
-You only need **one** provider configured to start tracking. For most deployments, Olostep with `SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online` covers the three most important engines. See the [AI Providers](/docs/deployment/providers) page for detailed pricing and recommendations.
+You only need **one** provider configured to start tracking. For most deployments, Olostep with `SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online` covers the three most important models. See the [AI Providers](/docs/deployment/providers) page for detailed pricing and recommendations.
 </Callout>
 
 ### Branding (White Label)

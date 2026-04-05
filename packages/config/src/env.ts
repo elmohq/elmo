@@ -13,7 +13,7 @@ const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
 
 /**
  * Parse SCRAPE_TARGETS to determine which resolved provider IDs are needed.
- * Resolves "direct" to "direct-openai" or "direct-anthropic" based on model.
+ * Resolves "direct" to "direct-openai" or "direct-anthropic" based on the model.
  */
 function parseResolvedProviders(scrapeTargets: string | undefined): string[] {
 	if (!scrapeTargets) return [];
@@ -118,7 +118,7 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "SCRAPE_TARGETS",
 		label: "SCRAPE_TARGETS",
-		description: "Comma-separated engine:provider[:model][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+		description: "Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 		isSatisfied: requireAll(["SCRAPE_TARGETS"]),
 	},
 	...buildProviderKeyRequirements(),
