@@ -1,74 +1,110 @@
 /**
  * /app/$brand/settings/llms - LLM configuration page
  *
- * Shows info about tracked LLMs and their web search status.
+ * Shows dynamically configured AI engines from SCRAPE_TARGETS and lets
+ * brand admins toggle individual engines on/off via brands.enabledEngines.
  */
+import { useState, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-react";
-import { SiOpenai, SiAnthropic, SiGoogle } from "react-icons/si";
+import { Checkbox } from "@workspace/ui/components/checkbox";
+import { Badge } from "@workspace/ui/components/badge";
+import { IconCircleCheck, IconCircleX, IconInfoCircle, IconRobot } from "@tabler/icons-react";
+import { SiOpenai, SiAnthropic, SiGoogle, SiPerplexity, SiX } from "react-icons/si";
+import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { parseScrapeTargets, getEngineMeta } from "@workspace/lib/providers";
 
-interface ModelGroupInfo {
-	id: string;
-	name: string;
-	provider: string;
-	currentModel: string;
-	description: string;
-	icon: React.ReactNode;
-	trackedEnabled: boolean;
-	webSearchEnabled: boolean;
-	webSearchStatus: string;
-	webSearchDetail: string;
+// ============================================================================
+// Server functions
+// ============================================================================
+
+const getEngineConfigFn = createServerFn({ method: "GET" })
+	.inputValidator(z.object({ brandId: z.string() }))
+	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+		await requireOrgAccess(session.user.id, data.brandId);
+
+		const engineConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const activeEngines = engineConfigs.map((cfg) => {
+			const meta = getEngineMeta(cfg.engine);
+			return {
+				engine: cfg.engine,
+				provider: cfg.provider,
+				model: cfg.model ?? null,
+				webSearch: cfg.webSearch,
+				label: meta.label,
+				iconId: meta.iconId,
+			};
+		});
+
+		const brand = await db.query.brands.findFirst({
+			where: eq(brands.id, data.brandId),
+			columns: { enabledEngines: true },
+		});
+
+		return {
+			engines: activeEngines,
+			enabledEngines: brand?.enabledEngines ?? null,
+		};
+	});
+
+const updateBrandEnabledEnginesFn = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({
+			brandId: z.string(),
+			enabledEngines: z.array(z.string()).nullable(),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+		await requireOrgAccess(session.user.id, data.brandId);
+
+		const result = await db
+			.update(brands)
+			.set({ enabledEngines: data.enabledEngines, updatedAt: new Date() })
+			.where(eq(brands.id, data.brandId))
+			.returning({ enabledEngines: brands.enabledEngines });
+
+		if (!result[0]) throw new Error("Brand not found");
+		return { enabledEngines: result[0].enabledEngines };
+	});
+
+// ============================================================================
+// Icon mapping
+// ============================================================================
+
+function getEngineIcon(iconId: string) {
+	switch (iconId) {
+		case "openai":
+			return <SiOpenai className="h-6 w-6" />;
+		case "anthropic":
+			return <SiAnthropic className="h-6 w-6" />;
+		case "google":
+			return <SiGoogle className="h-6 w-6" />;
+		case "perplexity":
+			return <SiPerplexity className="h-6 w-6" />;
+		case "x":
+			return <SiX className="h-6 w-6" />;
+		default:
+			return <IconRobot className="h-6 w-6" />;
+	}
 }
 
-const MODEL_GROUPS: ModelGroupInfo[] = [
-	{
-		id: "openai",
-		name: "ChatGPT",
-		provider: "OpenAI",
-		currentModel: "gpt-5-mini",
-		description:
-			"ChatGPT is OpenAI's consumer assistant, and it's often the first place people turn for product recommendations and comparisons. Tracking visibility here shows how your brand appears in everyday ChatGPT responses.",
-		icon: <SiOpenai className="h-6 w-6" />,
-		trackedEnabled: true,
-		webSearchEnabled: true,
-		webSearchStatus: "Enabled",
-		webSearchDetail:
-			"Responses include real-time information from the web, making visibility here especially impactful for brand discovery.",
-	},
-	{
-		id: "anthropic",
-		name: "Claude",
-		provider: "Anthropic",
-		currentModel: "claude-sonnet-4-20250514",
-		description:
-			"Claude is Anthropic's assistant and is popular with professionals for nuanced, long-form research. Tracking Claude highlights how your brand appears in deeper analysis and decision making.",
-		icon: <SiAnthropic className="h-6 w-6" />,
-		trackedEnabled: true,
-		webSearchEnabled: false,
-		webSearchStatus: "Disabled",
-		webSearchDetail:
-			"Responses are based on Claude's training data. Brand mentions reflect how well your brand is represented in publicly available content.",
-	},
-	{
-		id: "google",
-		name: "Google AI Overviews",
-		provider: "Google",
-		currentModel: "AI Mode",
-		description:
-			"Google AI Mode powers AI Overviews in Search. Tracking AI Mode shows how your brand is summarized and cited as Google blends AI answers with traditional results.",
-		icon: <SiGoogle className="h-6 w-6" />,
-		trackedEnabled: true,
-		webSearchEnabled: true,
-		webSearchStatus: "Enabled",
-		webSearchDetail:
-			"Always uses live web data — results reflect real-time Google Search content, including your website, reviews, and mentions across the web.",
-	},
-];
+// ============================================================================
+// Route
+// ============================================================================
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
+	loader: async ({ params }) => {
+		return getEngineConfigFn({ data: { brandId: params.brand } });
+	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -82,99 +118,148 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 	component: LlmsSettingsPage,
 });
 
+// ============================================================================
+// Page component
+// ============================================================================
+
 function LlmsSettingsPage() {
+	const { engines, enabledEngines: initialEnabledEngines } = Route.useLoaderData();
+	const { brand: brandId } = Route.useParams();
+
+	const [enabledEngines, setEnabledEngines] = useState<string[] | null>(initialEnabledEngines);
+	const [saving, setSaving] = useState(false);
+
+	const isEngineEnabled = useCallback(
+		(engine: string) => {
+			if (enabledEngines === null) return true;
+			return enabledEngines.includes(engine);
+		},
+		[enabledEngines],
+	);
+
+	const handleToggle = useCallback(
+		async (engine: string, checked: boolean) => {
+			const allEngineIds = engines.map((e) => e.engine);
+			let next: string[];
+
+			if (enabledEngines === null) {
+				next = checked ? allEngineIds : allEngineIds.filter((e) => e !== engine);
+			} else {
+				next = checked ? [...enabledEngines, engine] : enabledEngines.filter((e) => e !== engine);
+			}
+
+			const isAllEnabled = allEngineIds.every((e) => next.includes(e));
+			const newValue = isAllEnabled ? null : next;
+
+			setEnabledEngines(newValue);
+			setSaving(true);
+			try {
+				await updateBrandEnabledEnginesFn({
+					data: { brandId, enabledEngines: newValue },
+				});
+			} finally {
+				setSaving(false);
+			}
+		},
+		[enabledEngines, engines, brandId],
+	);
+
 	return (
 		<div className="space-y-6 max-w-6xl">
 			<div>
 				<h1 className="text-3xl font-bold">LLMs</h1>
 				<p className="text-muted-foreground">
-					Your prompts are evaluated against multiple types of AI models to track how your brand appears across different
-					types of AI search.
+					Your prompts are evaluated against the AI engines configured for this instance. Instance-level
+					configuration (which engines, providers, and models) is set via the{" "}
+					<code className="text-xs bg-muted px-1 py-0.5 rounded">SCRAPE_TARGETS</code> environment variable.
+					You can toggle individual engines on or off for this brand below.
 				</p>
 			</div>
 
-			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{MODEL_GROUPS.map((group) => (
-					<Card key={group.id} className="h-full">
-						<CardHeader className="py-2 border-b">
-							<div className="flex items-start justify-between gap-2">
-								<div className="flex items-start gap-3">
-									<div className="flex items-center justify-center">{group.icon}</div>
-								</div>
-							</div>
-						</CardHeader>
-						<CardContent className="pt-2">
-							<div className="divide-y text-sm">
-								<div className="flex items-center justify-between py-2">
-									<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-										<span>Provider</span>
+			{engines.length === 0 ? (
+				<Card>
+					<CardContent className="py-8 text-center text-muted-foreground">
+						No engines configured. Set the <code className="text-xs bg-muted px-1 py-0.5 rounded">SCRAPE_TARGETS</code>{" "}
+						environment variable to add engines.
+					</CardContent>
+				</Card>
+			) : (
+				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{engines.map((engine) => {
+						const enabled = isEngineEnabled(engine.engine);
+						return (
+							<Card key={engine.engine} className={`h-full transition-opacity ${enabled ? "" : "opacity-60"}`}>
+								<CardHeader className="py-2 border-b">
+									<div className="flex items-center justify-between gap-2">
+										<div className="flex items-center gap-3">
+											<div className="flex items-center justify-center">{getEngineIcon(engine.iconId)}</div>
+											<span className="font-semibold text-sm">{engine.label}</span>
+										</div>
+										<Checkbox
+											checked={enabled}
+											disabled={saving}
+											onCheckedChange={(checked) => handleToggle(engine.engine, !!checked)}
+											aria-label={`Toggle ${engine.label}`}
+										/>
 									</div>
-									<span className="text-xs text-foreground">{group.provider}</span>
-								</div>
-								<div className="flex items-center justify-between py-2">
-									<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-										<span>Model</span>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-											</TooltipTrigger>
-											<TooltipContent className="max-w-xs text-xs font-normal">
-												Exact model version used for this group.
-											</TooltipContent>
-										</Tooltip>
-									</div>
-									<span className="font-mono text-xs text-foreground">{group.currentModel}</span>
-								</div>
-								<div className="flex items-center justify-between py-2">
-									<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-										<span>Tracked</span>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-											</TooltipTrigger>
-											<TooltipContent className="max-w-xs text-xs font-normal">
-												Whether this model group is included in your visibility runs.
-											</TooltipContent>
-										</Tooltip>
-									</div>
-									<div className="flex items-center gap-2 text-xs text-foreground">
-										{group.trackedEnabled ? (
-											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
-										) : (
-											<IconCircleX className="h-4 w-4 text-red-600" />
+								</CardHeader>
+								<CardContent className="pt-2">
+									<div className="divide-y text-sm">
+										<div className="flex items-center justify-between py-2">
+											<span className="text-xs uppercase tracking-wide text-muted-foreground">Provider</span>
+											<span className="text-xs text-foreground">{engine.provider}</span>
+										</div>
+										{engine.model && (
+											<div className="flex items-center justify-between py-2">
+												<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+													<span>Model</span>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
+														</TooltipTrigger>
+														<TooltipContent className="max-w-xs text-xs font-normal">
+															Exact model slug used for this engine.
+														</TooltipContent>
+													</Tooltip>
+												</div>
+												<span className="font-mono text-xs text-foreground">{engine.model}</span>
+											</div>
 										)}
-										<span className="sr-only">{group.trackedEnabled ? "Enabled" : "Disabled"}</span>
+										<div className="flex items-center justify-between py-2">
+											<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+												<span>Web search</span>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
+													</TooltipTrigger>
+													<TooltipContent className="max-w-xs text-xs font-normal">
+														Whether this engine uses real-time web search when generating responses.
+													</TooltipContent>
+												</Tooltip>
+											</div>
+											<div className="flex items-center gap-2 text-xs text-foreground">
+												{engine.webSearch ? (
+													<IconCircleCheck className="h-4 w-4 text-emerald-600" />
+												) : (
+													<IconCircleX className="h-4 w-4 text-red-600" />
+												)}
+												<span className="sr-only">{engine.webSearch ? "Enabled" : "Disabled"}</span>
+											</div>
+										</div>
 									</div>
-								</div>
-								<div className="flex items-center justify-between py-2">
-									<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-										<span>Web search</span>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-											</TooltipTrigger>
-											<TooltipContent className="max-w-xs text-xs font-normal">
-												{group.webSearchDetail}
-											</TooltipContent>
-										</Tooltip>
+								</CardContent>
+								<CardFooter className="pt-2 border-t">
+									<div className="flex items-center gap-2">
+										<Badge variant={enabled ? "default" : "secondary"} className="text-xs">
+											{enabled ? "Enabled" : "Disabled"}
+										</Badge>
 									</div>
-									<div className="flex items-center gap-2 text-xs text-foreground">
-										{group.webSearchEnabled ? (
-											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
-										) : (
-											<IconCircleX className="h-4 w-4 text-red-600" />
-										)}
-										<span className="sr-only">{group.webSearchStatus}</span>
-									</div>
-								</div>
-							</div>
-						</CardContent>
-						<CardFooter className="pt-2 border-t">
-							<CardDescription className="text-xs text-muted-foreground">{group.description}</CardDescription>
-						</CardFooter>
-					</Card>
-				))}
-			</div>
+								</CardFooter>
+							</Card>
+						);
+					})}
+				</div>
+			)}
 		</div>
 	);
 }
