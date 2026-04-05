@@ -185,7 +185,7 @@ The `:online` suffix in `SCRAPE_TARGETS` enables web search for that target. Thi
 | Gemini | Yes | Most Gemini users interact via Google, which includes search |
 | Grok | Optional | Depends on your audience |
 
-For scraping providers (Olostep, BrightData), web search is inherent in the scrape — the `:online` flag is still accepted for consistency but the scrape always reflects the real UI which includes search.
+For Olostep, web search is inherent in the scrape — the `:online` flag is required for consistency but the scrape always reflects the real UI which includes search. For BrightData, the `:online` flag is optional and controls whether web search is enabled for the scrape.
 
 ## Brand-Level Overrides
 
