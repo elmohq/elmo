@@ -122,61 +122,13 @@ describe("parseScrapeTargets", () => {
 		});
 	});
 
-	describe("legacy defaults", () => {
-		it("returns empty array when no legacy env vars set", () => {
-			delete process.env.OPENAI_API_KEY;
-			delete process.env.ANTHROPIC_API_KEY;
-			delete process.env.DATAFORSEO_LOGIN;
-			const result = parseScrapeTargets(undefined);
-			expect(result).toEqual([]);
+	describe("missing SCRAPE_TARGETS", () => {
+		it("throws when SCRAPE_TARGETS is undefined", () => {
+			expect(() => parseScrapeTargets(undefined)).toThrow("SCRAPE_TARGETS environment variable is required");
 		});
 
-		it("derives chatgpt:direct when OPENAI_API_KEY is set", () => {
-			process.env.OPENAI_API_KEY = "sk-test";
-			delete process.env.ANTHROPIC_API_KEY;
-			delete process.env.DATAFORSEO_LOGIN;
-			const result = parseScrapeTargets(undefined);
-			expect(result).toEqual([
-				{ engine: "chatgpt", provider: "direct", model: "gpt-5-mini", webSearch: true },
-			]);
-		});
-
-		it("derives claude:direct when ANTHROPIC_API_KEY is set", () => {
-			delete process.env.OPENAI_API_KEY;
-			process.env.ANTHROPIC_API_KEY = "sk-ant-test";
-			delete process.env.DATAFORSEO_LOGIN;
-			const result = parseScrapeTargets(undefined);
-			expect(result).toEqual([
-				{ engine: "claude", provider: "direct", model: "claude-sonnet-4", webSearch: false },
-			]);
-		});
-
-		it("derives google-ai-mode:dataforseo when DATAFORSEO_LOGIN is set", () => {
-			delete process.env.OPENAI_API_KEY;
-			delete process.env.ANTHROPIC_API_KEY;
-			process.env.DATAFORSEO_LOGIN = "test-login";
-			const result = parseScrapeTargets(undefined);
-			expect(result).toEqual([
-				{ engine: "google-ai-mode", provider: "dataforseo", webSearch: true },
-			]);
-		});
-
-		it("derives all three when all legacy env vars are set", () => {
-			process.env.OPENAI_API_KEY = "sk-test";
-			process.env.ANTHROPIC_API_KEY = "sk-ant-test";
-			process.env.DATAFORSEO_LOGIN = "test-login";
-			const result = parseScrapeTargets(undefined);
-			expect(result).toHaveLength(3);
-			expect(result[0].engine).toBe("chatgpt");
-			expect(result[1].engine).toBe("claude");
-			expect(result[2].engine).toBe("google-ai-mode");
-		});
-
-		it("does not use legacy defaults when SCRAPE_TARGETS is provided", () => {
-			process.env.OPENAI_API_KEY = "sk-test";
-			const result = parseScrapeTargets("copilot:olostep:online");
-			expect(result).toHaveLength(1);
-			expect(result[0].engine).toBe("copilot");
+		it("throws when SCRAPE_TARGETS is empty string", () => {
+			expect(() => parseScrapeTargets("")).toThrow("SCRAPE_TARGETS environment variable is required");
 		});
 	});
 });

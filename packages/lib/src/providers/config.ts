@@ -14,7 +14,14 @@ import type { EngineConfig } from "./types";
  * This naturally handles OpenRouter variant suffixes like ":free".
  */
 export function parseScrapeTargets(envValue?: string): EngineConfig[] {
-	if (!envValue) return deriveLegacyDefaults();
+	if (!envValue || !envValue.trim()) {
+		throw new Error(
+			"SCRAPE_TARGETS environment variable is required. " +
+			"Set it to configure which AI engines to track. Example:\n" +
+			"  SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online\n" +
+			"See https://docs.elmohq.com/docs/deployment/providers for details.",
+		);
+	}
 	return envValue.split(",").map((raw) => {
 		const trimmed = raw.trim();
 		if (!trimmed) throw new Error('Invalid SCRAPE_TARGETS: empty entry (check for trailing commas)');
@@ -28,14 +35,6 @@ export function parseScrapeTargets(envValue?: string): EngineConfig[] {
 		const model = modelParts.length > 0 ? modelParts.join(":") : undefined;
 		return { engine, provider, model, webSearch };
 	});
-}
-
-function deriveLegacyDefaults(): EngineConfig[] {
-	const configs: EngineConfig[] = [];
-	if (process.env.OPENAI_API_KEY) configs.push({ engine: "chatgpt", provider: "direct", model: "gpt-5-mini", webSearch: true });
-	if (process.env.ANTHROPIC_API_KEY) configs.push({ engine: "claude", provider: "direct", model: "claude-sonnet-4", webSearch: false });
-	if (process.env.DATAFORSEO_LOGIN) configs.push({ engine: "google-ai-mode", provider: "dataforseo", webSearch: true });
-	return configs;
 }
 
 export function validateScrapeTargets(

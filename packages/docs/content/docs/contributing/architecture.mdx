@@ -106,7 +106,7 @@ interface EngineConfig {
 }
 ```
 
-When `SCRAPE_TARGETS` is not set, `deriveLegacyDefaults()` generates equivalent configs from the legacy `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `DATAFORSEO_LOGIN` environment variables for backward compatibility.
+`SCRAPE_TARGETS` is a required environment variable. If not set, the application will throw an error at startup with an example of the expected format.
 
 ### Provider Interface
 

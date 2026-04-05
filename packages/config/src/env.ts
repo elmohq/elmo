@@ -58,10 +58,16 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 		isSatisfied: requireAll(["DATABASE_URL"]),
 	},
 	{
+		id: "SCRAPE_TARGETS",
+		label: "SCRAPE_TARGETS",
+		description: "Comma-separated engine:provider[:model][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+		isSatisfied: requireAll(["SCRAPE_TARGETS"]),
+	},
+	{
 		id: "AI_PROVIDER",
 		label: "At least one AI provider",
 		description:
-			"Configure at least one AI provider: OLOSTEP_API_KEY (recommended), OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, BRIGHTDATA_API_TOKEN, or DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD.",
+			"Configure at least one AI provider key referenced by SCRAPE_TARGETS: OLOSTEP_API_KEY (recommended), OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, BRIGHTDATA_API_TOKEN, or DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD.",
 		isSatisfied: requireAny([
 			"OLOSTEP_API_KEY",
 			"OPENAI_API_KEY",
