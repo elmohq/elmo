@@ -15,7 +15,7 @@ function createExportBrandingElement(branding: BrandingConfig): HTMLDivElement {
 	brandingDiv.className = "chart-export-branding";
 	
 	const name = branding.name || DEFAULT_APP_NAME;
-	const url = branding.url || "elmo.chat";
+	const url = branding.url || "elmohq.com";
 	const displayUrl = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
 	
 	brandingDiv.style.cssText = `
