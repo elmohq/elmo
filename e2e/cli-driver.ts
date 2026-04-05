@@ -32,6 +32,7 @@ const child = spawn("node", [cliPath, "init", "--dev", "--dir", configDir], {
     ELMO_ANTHROPIC_API_KEY: "sk-ant-placeholder-not-used",
     ELMO_DATAFORSEO_LOGIN: "placeholder@e2e.test",
     ELMO_DATAFORSEO_PASSWORD: "placeholder-not-used",
+    ELMO_SCRAPE_TARGETS: "chatgpt:direct:gpt-5-mini:online,claude:direct:claude-sonnet-4,google-ai-mode:dataforseo:online",
   },
   stdio: "inherit",
 });
