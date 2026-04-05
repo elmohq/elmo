@@ -8,16 +8,20 @@ import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import {
-	getAdminRunsOverTime,
-	getAdminBrandRunStats,
-	getAdminActiveBrandsOverTime,
-} from "@/lib/postgres-read";
+import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
 import { analyzeWebsite, getCompetitors, generateCandidatePromptsForReports } from "@workspace/lib/wizard-helpers";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import {
+	parseScrapeTargets,
+	getAvailableProviders,
+	getAllProviders,
+	getProvider,
+	resolveProviderId,
+	getEngineMeta,
+} from "@workspace/lib/providers";
+import type { TestResult } from "@workspace/lib/providers";
 
 // ============================================================================
 // Admin guard helper
@@ -62,55 +66,49 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const [
-		allBrands,
-		brandsOverTime,
-		promptsOverTime,
-		runsOverTimeData,
-		brandRunStats,
-		activeBrandsData,
-	] = await Promise.all([
-		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
+	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+		await Promise.all([
+			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-		// Cumulative brand count over time (last 30 days)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				count: sql<number>`COUNT(${brands.id})::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative brand count over time (last 30 days)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					count: sql<number>`COUNT(${brands.id})::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Cumulative prompts count over time (enabled vs disabled)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
-				disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative prompts count over time (enabled vs disabled)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
+					disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		getAdminRunsOverTime(),
-		getAdminBrandRunStats(),
-		getAdminActiveBrandsOverTime(),
-	]);
+			getAdminRunsOverTime(),
+			getAdminBrandRunStats(),
+			getAdminActiveBrandsOverTime(),
+		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
 
@@ -637,7 +635,10 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		const engineList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.engine);
 		const promptStatuses = brandPrompts.map((prompt) => {
 			const lastRuns = lastRunsMap[prompt.id] || {};
-			const lastRunsByEngine: Record<string, { lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }> = {};
+			const lastRunsByEngine: Record<
+				string,
+				{ lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }
+			> = {};
 
 			let anyOverdue = false;
 
@@ -829,11 +830,68 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		if (job.output) {
 			try {
 				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(job.state === "failed" ? `Error: ${JSON.stringify(output, null, 2)}` : `Output: ${JSON.stringify(output, null, 2)}`);
+				logs.push(
+					job.state === "failed"
+						? `Error: ${JSON.stringify(output, null, 2)}`
+						: `Output: ${JSON.stringify(output, null, 2)}`,
+				);
 			} catch {
 				logs.push(`Output: ${String(job.output)}`);
 			}
 		}
 
 		return { jobId: data.jobId, logs, count: logs.length };
+	});
+
+// ============================================================================
+// Admin Providers - Status & Connectivity
+// ============================================================================
+
+/**
+ * Get provider configuration status: active engines and available providers.
+ */
+export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(async () => {
+	await requireAdmin();
+
+	const engineConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+
+	const activeEngines = engineConfigs.map((cfg) => {
+		const meta = getEngineMeta(cfg.engine);
+		return {
+			engine: cfg.engine,
+			provider: cfg.provider,
+			model: cfg.model ?? null,
+			webSearch: cfg.webSearch,
+			engineLabel: meta.label,
+			engineIconId: meta.iconId,
+		};
+	});
+
+	const allProviders = getAllProviders();
+	const availableProviders = allProviders.map((p) => ({
+		id: p.id,
+		name: p.name,
+		configured: p.isConfigured(),
+		supportedEngines: p.supportedEngines(),
+	}));
+
+	return { activeEngines, availableProviders };
+});
+
+/**
+ * Test connectivity for a specific engine/provider combination.
+ */
+export const testProviderFn = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({
+			engine: z.string(),
+			provider: z.string(),
+		}),
+	)
+	.handler(async ({ data }): Promise<TestResult> => {
+		await requireAdmin();
+
+		const resolvedId = resolveProviderId(data.provider, data.engine);
+		const provider = getProvider(resolvedId);
+		return provider.testConnection(data.engine);
 	});

@@ -12,6 +12,7 @@ import {
 	IconReport,
 	IconTimeline,
 	IconTool,
+	IconPlugConnected,
 } from "@tabler/icons-react";
 
 import {
@@ -38,7 +39,13 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
-export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, brand, ...props }: AppSidebarProps) {
+export function AppSidebar({
+	isAdmin = false,
+	hasReportAccess = false,
+	adminOnly = false,
+	brand,
+	...props
+}: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 
 	const showAdminSection = isAdmin || hasReportAccess;
@@ -129,6 +136,12 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						absolute: true,
 					},
 					{
+						title: "Providers",
+						url: "/admin/providers",
+						icon: IconPlugConnected,
+						absolute: true,
+					},
+					{
 						title: "Tools",
 						url: "/admin/tools",
 						icon: IconTool,
@@ -155,11 +168,11 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-					<SidebarMenuButton size="lg" asChild>
-						<Link to="/app" onClick={() => setOpenMobile(false)}>
-							<Logo iconClassName="!size-5" />
-						</Link>
-					</SidebarMenuButton>
+						<SidebarMenuButton size="lg" asChild>
+							<Link to="/app" onClick={() => setOpenMobile(false)}>
+								<Logo iconClassName="!size-5" />
+							</Link>
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
