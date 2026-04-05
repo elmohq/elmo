@@ -22,7 +22,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			days: z.number().optional().default(7),
 			tags: z.string().optional(),
-			modelGroup: z.string().optional(),
+			model: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -131,11 +131,11 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 
 		const [domainStats, urlStats, perPromptCitations, prevDomainStats, prevUrlStats] = await Promise.all([
-			getCitationDomainStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
-			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
-			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.modelGroup),
-			getCitationDomainStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.modelGroup),
-			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.modelGroup),
+		getCitationDomainStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+		getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+		getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+		getCitationDomainStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
+		getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
 		]);
 
 		function categorizeDomain(domain: string): CitationCategory {

@@ -1,40 +1,35 @@
-// Helper functions for extracting text content from different AI model outputs
+/**
+ * Functions for extracting text content and citations from stored rawOutput.
+ *
+ * Each provider stores rawOutput in a different format. These functions handle
+ * re-reading that stored data for display in the UI (prompt detail pages, reports).
+ *
+ * For new prompt runs, the Provider.run() method normalizes output into ScrapeResult
+ * at write time, so these functions are primarily for reading historical data.
+ */
 
-export function extractTextFromOpenAI(rawOutput: any): string {
+// ============================================================================
+// Text extraction by provider
+// ============================================================================
+
+export function extractTextFromDirectOpenAI(rawOutput: any): string {
 	try {
-		// For OpenAI Responses API, check the output array for message content
-		if (rawOutput && rawOutput.output && Array.isArray(rawOutput.output)) {
+		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
 			const messageOutputs = rawOutput.output.filter((item: any) => item.type === "message");
 			if (messageOutputs.length > 0) {
 				const texts: string[] = [];
 				for (const messageOutput of messageOutputs) {
 					if (messageOutput.content && Array.isArray(messageOutput.content)) {
-						const textContents = messageOutput.content.filter((content: any) => content.type === "output_text");
-						for (const textContent of textContents) {
-							if (textContent.text) {
-								texts.push(textContent.text);
-							}
+						for (const c of messageOutput.content) {
+							if (c.type === "output_text" && c.text) texts.push(c.text);
 						}
 					}
 				}
-				if (texts.length > 0) {
-					return texts.join("\n");
-				}
+				if (texts.length > 0) return texts.join("\n");
 			}
 		}
-
-		// Check for other possible structures in response body
-		if (rawOutput && rawOutput.choices && Array.isArray(rawOutput.choices)) {
-			if (rawOutput.choices[0]?.message?.content) {
-				return rawOutput.choices[0].message.content;
-			}
-		}
-
-		// Fallback: check if there's a direct text property
-		if (rawOutput && typeof rawOutput.text === "string") {
-			return rawOutput.text;
-		}
-
+		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
+		if (typeof rawOutput?.text === "string") return rawOutput.text;
 		return "No text content found in OpenAI output.";
 	} catch (error) {
 		console.error("Error extracting text from OpenAI output:", error);
@@ -42,14 +37,12 @@ export function extractTextFromOpenAI(rawOutput: any): string {
 	}
 }
 
-export function extractTextFromAnthropic(rawOutput: any): string {
+export function extractTextFromDirectAnthropic(rawOutput: any): string {
 	try {
-		// Anthropic uses response.content with text blocks
 		if (rawOutput && Array.isArray(rawOutput.content)) {
 			const textBlocks = rawOutput.content.filter((block: any) => block.type === "text");
 			return textBlocks.map((block: any) => block.text).join("\n");
 		}
-
 		return "No text content found in Anthropic output.";
 	} catch (error) {
 		console.error("Error extracting text from Anthropic output:", error);
@@ -57,42 +50,112 @@ export function extractTextFromAnthropic(rawOutput: any): string {
 	}
 }
 
-export function extractTextFromGoogle(rawOutput: any): string {
+export function extractTextFromDataforseo(rawOutput: any): string {
 	try {
-		// DataForSEO uses AI overview markdown
-		if (rawOutput && rawOutput.tasks && rawOutput.tasks.length > 0) {
-			const task = rawOutput.tasks[0];
-			if (task.result && task.result.length > 0) {
-				const result = task.result[0];
-				const items = result.items || [];
-				const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
-
-				if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
-					return aiOverviewItems[0].markdown;
-				}
+		if (rawOutput?.tasks?.[0]?.result?.[0]) {
+			const items = rawOutput.tasks[0].result[0].items || [];
+			const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
+			if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
+				return aiOverviewItems[0].markdown;
 			}
 		}
 		return "No AI overview content found.";
 	} catch (error) {
-		console.error("Error extracting text from Google output:", error);
+		console.error("Error extracting text from DataForSEO output:", error);
 		return "Error extracting text content.";
 	}
 }
 
-export function extractTextContent(rawOutput: any, modelGroup: string): string {
-	switch (modelGroup) {
-		case "openai":
-			return extractTextFromOpenAI(rawOutput);
-		case "anthropic":
-			return extractTextFromAnthropic(rawOutput);
-		case "google":
-			return extractTextFromGoogle(rawOutput);
-		default:
-			return "Unknown model group - cannot extract text content.";
+export function extractTextFromOpenRouter(rawOutput: any): string {
+	try {
+		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
+		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
+			const texts: string[] = [];
+			for (const msg of rawOutput.output.filter((i: any) => i.type === "message")) {
+				for (const c of msg.content ?? []) {
+					if (c.type === "output_text" && c.text) texts.push(c.text);
+				}
+			}
+			if (texts.length) return texts.join("\n");
+		}
+		return "No text content found in OpenRouter output.";
+	} catch {
+		return "Error extracting text content.";
 	}
 }
 
-// Citation extraction types
+export function extractTextFromOlostep(rawOutput: any): string {
+	try {
+		const parsed = rawOutput?.result?.json_content ? JSON.parse(rawOutput.result.json_content) : rawOutput;
+		if (parsed?.result?.markdown_content) return parsed.result.markdown_content;
+		if (parsed?.answer_markdown) return parsed.answer_markdown;
+		if (parsed?.result?.text_content) return parsed.result.text_content;
+		if (typeof parsed?.answer === "string") return parsed.answer;
+		return "No text content found in Olostep output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
+export function extractTextFromBrightdata(rawOutput: any): string {
+	try {
+		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
+		if (!record) return "No content in BrightData output.";
+		for (const key of ["answer_text", "answer_text_markdown", "answer", "response_raw", "response", "text", "content"]) {
+			if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
+		}
+		return "No text content found in BrightData output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
+/**
+ * Extract text content from stored rawOutput.
+ * Dispatches based on provider (how data was fetched), falling back to engine
+ * (for old data where provider column may be null).
+ */
+export function extractTextContent(rawOutput: any, providerOrEngine: string): string {
+	switch (providerOrEngine) {
+		case "direct-openai":
+		case "direct":
+		case "openai":
+		case "chatgpt":
+			return extractTextFromDirectOpenAI(rawOutput);
+		case "direct-anthropic":
+		case "anthropic":
+		case "claude":
+			return extractTextFromDirectAnthropic(rawOutput);
+		case "dataforseo":
+		case "google":
+		case "google-ai-mode":
+		case "google-ai-overview":
+			return extractTextFromDataforseo(rawOutput);
+		case "openrouter":
+			return extractTextFromOpenRouter(rawOutput);
+		case "olostep":
+			return extractTextFromOlostep(rawOutput);
+		case "brightdata":
+			return extractTextFromBrightdata(rawOutput);
+		default:
+			return tryGenericExtraction(rawOutput);
+	}
+}
+
+function tryGenericExtraction(rawOutput: any): string {
+	if (!rawOutput) return "No content.";
+	if (typeof rawOutput === "string") return rawOutput;
+	if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
+	if (rawOutput?.answer_markdown) return rawOutput.answer_markdown;
+	if (rawOutput?.answer_text) return rawOutput.answer_text;
+	if (rawOutput?.content?.[0]?.text) return rawOutput.content[0].text;
+	return "Unknown provider format - cannot extract text content.";
+}
+
+// ============================================================================
+// Citation extraction by provider
+// ============================================================================
+
 export type Citation = {
 	url: string;
 	title?: string;
@@ -100,99 +163,155 @@ export type Citation = {
 	citationIndex: number;
 };
 
-export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
+function parseCitationUrl(url: string, title: string | undefined, idx: number): Citation | null {
+	try {
+		const parsed = new URL(url);
+		return {
+			url,
+			title: title || undefined,
+			domain: parsed.hostname.replace(/^www\./, ""),
+			citationIndex: idx,
+		};
+	} catch {
+		return null;
+	}
+}
+
+export function extractCitationsFromDirectOpenAI(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
 		let idx = 0;
-		
-		if (rawOutput && rawOutput.output && Array.isArray(rawOutput.output)) {
-			const messageOutputs = rawOutput.output.filter((item: any) => item.type === "message");
-			
-			for (const messageOutput of messageOutputs) {
-				if (messageOutput.content && Array.isArray(messageOutput.content)) {
-					for (const content of messageOutput.content) {
-						if (content.type === "output_text" && content.annotations && Array.isArray(content.annotations)) {
-							for (const annotation of content.annotations) {
-								if (annotation.type === "url_citation" && annotation.url) {
-									try {
-										const url = new URL(annotation.url);
-										citations.push({
-											url: annotation.url,
-											title: annotation.title || undefined,
-											domain: url.hostname.replace(/^www\./, ''),
-											citationIndex: idx,
-										});
-										idx++;
-									} catch (e) {
-										console.warn("Invalid citation URL:", annotation.url);
-									}
-								}
+		if (rawOutput?.output && Array.isArray(rawOutput.output)) {
+			for (const msg of rawOutput.output.filter((i: any) => i.type === "message")) {
+				for (const content of msg.content ?? []) {
+					if (content.type === "output_text" && Array.isArray(content.annotations)) {
+						for (const ann of content.annotations) {
+							if (ann.type === "url_citation" && ann.url) {
+								const c = parseCitationUrl(ann.url, ann.title, idx);
+								if (c) { citations.push(c); idx++; }
 							}
 						}
 					}
 				}
 			}
 		}
-		
 		return citations;
-	} catch (error) {
-		console.error("Error extracting citations from OpenAI output:", error);
+	} catch {
 		return [];
 	}
 }
 
-export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
+export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
 		let idx = 0;
-		
-		if (rawOutput && rawOutput.tasks && rawOutput.tasks.length > 0) {
-			const task = rawOutput.tasks[0];
-			if (task.result && task.result.length > 0) {
-				const result = task.result[0];
-				const items = result.items || [];
-				const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
-				
-				for (const aiOverview of aiOverviewItems) {
-					if (aiOverview.references && Array.isArray(aiOverview.references)) {
-						for (const ref of aiOverview.references) {
-							if (ref.url) {
-								try {
-									const url = new URL(ref.url);
-									citations.push({
-										url: ref.url,
-										title: ref.title || undefined,
-										domain: url.hostname.replace(/^www\./, ''),
-										citationIndex: idx,
-									});
-									idx++;
-								} catch (e) {
-									console.warn("Invalid citation URL:", ref.url);
-								}
-							}
-						}
-					}
+		const items = rawOutput?.tasks?.[0]?.result?.[0]?.items ?? [];
+		for (const aiOverview of items.filter((i: any) => i.type === "ai_overview")) {
+			for (const ref of aiOverview.references ?? []) {
+				if (ref.url) {
+					const c = parseCitationUrl(ref.url, ref.title, idx);
+					if (c) { citations.push(c); idx++; }
 				}
 			}
 		}
-		
 		return citations;
-	} catch (error) {
-		console.error("Error extracting citations from Google output:", error);
+	} catch {
 		return [];
 	}
 }
 
-export function extractCitations(rawOutput: any, modelGroup: string): Citation[] {
-	switch (modelGroup) {
+export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
+	try {
+		const citations: Citation[] = [];
+		let idx = 0;
+		for (const ann of rawOutput?.choices?.[0]?.message?.annotations ?? []) {
+			if (ann?.type === "url_citation" && ann.url) {
+				const c = parseCitationUrl(ann.url, ann.title, idx);
+				if (c) { citations.push(c); idx++; }
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
+	try {
+		const parsed = rawOutput?.result?.json_content ? JSON.parse(rawOutput.result.json_content) : rawOutput;
+		const citations: Citation[] = [];
+		let idx = 0;
+		for (const source of parsed?.sources ?? parsed?.result?.links_on_page ?? parsed?.inline_references ?? []) {
+			const url = typeof source === "string" ? source : source?.url;
+			if (url && typeof url === "string") {
+				const c = parseCitationUrl(url, source?.title ?? source?.label, idx);
+				if (c) { citations.push(c); idx++; }
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
+	try {
+		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
+		if (!record) return [];
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+		for (const field of ["citations", "links_attached", "sources"]) {
+			if (!Array.isArray(record[field])) continue;
+			for (const item of record[field]) {
+				const url = typeof item === "string" ? item : item?.url;
+				if (!url || typeof url !== "string" || !url.startsWith("http") || seen.has(url)) continue;
+				seen.add(url);
+				const c = parseCitationUrl(url, item?.title, idx);
+				if (c) { citations.push(c); idx++; }
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Extract citations from stored rawOutput.
+ * Dispatches based on provider (how data was fetched), falling back to engine
+ * (for old data where provider column may be null).
+ */
+export function extractCitations(rawOutput: any, providerOrEngine: string): Citation[] {
+	switch (providerOrEngine) {
+		case "direct-openai":
+		case "direct":
 		case "openai":
-			return extractCitationsFromOpenAI(rawOutput);
+		case "chatgpt":
+			return extractCitationsFromDirectOpenAI(rawOutput);
+		case "dataforseo":
 		case "google":
-			return extractCitationsFromGoogle(rawOutput);
+		case "google-ai-mode":
+		case "google-ai-overview":
+			return extractCitationsFromDataforseo(rawOutput);
+		case "openrouter":
+			return extractCitationsFromOpenRouter(rawOutput);
+		case "olostep":
+			return extractCitationsFromOlostep(rawOutput);
+		case "brightdata":
+			return extractCitationsFromBrightdata(rawOutput);
+		case "direct-anthropic":
 		case "anthropic":
-			// Anthropic doesn't provide citations in a structured way currently
+		case "claude":
 			return [];
 		default:
 			return [];
 	}
 }
+
+// Legacy aliases for backward compatibility
+export const extractTextFromOpenAI = extractTextFromDirectOpenAI;
+export const extractTextFromAnthropic = extractTextFromDirectAnthropic;
+export const extractTextFromGoogle = extractTextFromDataforseo;
+export const extractCitationsFromOpenAI = extractCitationsFromDirectOpenAI;
+export const extractCitationsFromGoogle = extractCitationsFromDataforseo;

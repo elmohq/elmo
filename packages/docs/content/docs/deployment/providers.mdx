@@ -1,0 +1,199 @@
+---
+title: AI Providers
+description: Configure which AI models to track and which providers to use for scraping.
+---
+
+## Quick Start
+
+The fastest way to get started is with [Olostep](https://olostep.com), which can scrape ChatGPT, Google AI Mode, and Copilot — the three most valuable models for visibility tracking.
+
+Set a single environment variable:
+
+```
+OLOSTEP_API_KEY=your-key-here
+SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online
+```
+
+This tells Elmo to track three models, all using Olostep as the scraping provider, all with web search enabled.
+
+import { Callout } from "fumadocs-ui/components/callout";
+
+<Callout type="info">
+It is almost always more valuable to track more prompts across the top 3 models than to add more models. Focus on prompt coverage first, model breadth second.
+</Callout>
+
+## SCRAPE_TARGETS Format
+
+The `SCRAPE_TARGETS` environment variable is a comma-separated list of scrape targets. Each target follows the format:
+
+```
+model:provider[:version][:online]
+```
+
+| Position | Required | Description |
+|----------|----------|-------------|
+| 1 — `model` | Yes | AI model to track (`chatgpt`, `google-ai-mode`, `copilot`, etc.) |
+| 2 — `provider` | Yes | How to reach it (`olostep`, `brightdata`, `direct`, `openrouter`, `dataforseo`) |
+| 3 — `version` | For `direct` and `openrouter` | Model version slug (e.g. `gpt-5-mini`, `anthropic/claude-sonnet-4`). May contain colons for OpenRouter variants. |
+| 4 — `:online` | No | Append to enable web search. Omit for no web search. |
+
+### Examples
+
+```bash
+# Scraping providers (no version needed)
+chatgpt:olostep:online
+google-ai-mode:brightdata:online
+
+# Direct API (version required)
+chatgpt:direct:gpt-5-mini:online
+claude:direct:claude-sonnet-4
+
+# OpenRouter (version required, may include variant suffix)
+chatgpt:openrouter:openai/gpt-5-mini:online
+perplexity:openrouter:perplexity/sonar-pro:online
+```
+
+## Pricing Comparison
+
+Costs per query vary significantly by provider and model. Use these tables to estimate your monthly spend.
+
+### Scraping Providers (with Web Search)
+
+Scraping providers load the actual AI model web UI, so results always reflect the real consumer experience including web search.
+
+| Model | Olostep | BrightData |
+|--------|---------|------------|
+| ChatGPT | ~$0.05 (5 credits) | ~$0.03 |
+| Google AI Mode | ~$0.03 (3 credits) | ~$0.03 |
+| Google AI Overview | ~$0.03 (3 credits) | ~$0.03 |
+| Copilot | ~$0.03 (3 credits) | ~$0.03 |
+| Perplexity | ~$0.03 (3 credits) | ~$0.03 |
+| Gemini | ~$0.03 (3 credits) | ~$0.03 |
+| Grok | ~$0.03 (3 credits) | ~$0.03 |
+
+### API Providers with Web Search
+
+API providers call the model's API directly. Web search adds cost because the model performs live searches.
+
+| Model | Direct API | OpenRouter |
+|--------|-----------|------------|
+| ChatGPT | ~$0.01–0.03 | ~$0.01–0.04 |
+| Claude | ~$0.05–0.15 | ~$0.05–0.15 |
+| Perplexity | — | ~$0.005 |
+| Gemini | — | ~$0.01 |
+| Grok | — | ~$0.02 |
+
+### API Providers without Web Search
+
+Without web search, API calls are cheaper but results may not reflect what users see in the actual product.
+
+| Model | Direct API | OpenRouter |
+|--------|-----------|------------|
+| ChatGPT | ~$0.005 | ~$0.005 |
+| Claude | ~$0.01 | ~$0.01 |
+| Perplexity | — | ~$0.003 |
+| Gemini | — | ~$0.005 |
+| Grok | — | ~$0.01 |
+
+<Callout type="warn">
+Pricing is approximate and based on typical query lengths (~500 tokens in, ~1000 tokens out). Actual costs depend on response length, model version, and provider pricing changes. Check each provider's pricing page for current rates.
+</Callout>
+
+## What to Track
+
+### Essential (Top 3)
+
+These models cover the vast majority of AI-assisted search traffic and should be tracked by every deployment:
+
+- **ChatGPT** with web search — the largest AI assistant by usage. Use `:online` to match the real user experience.
+- **Google AI Mode** — Google's AI-generated answers are shown to billions of search users. Always uses web search.
+- **Copilot** — Microsoft's AI assistant, integrated into Bing and Edge. Use `:online`.
+
+### Sometimes Worth Tracking
+
+- **Perplexity** — a popular AI search engine. Lower volume than the top 3, but growing. Inexpensive via OpenRouter.
+
+### Usually Not Worth the Cost
+
+- **Claude** — expensive, especially with web search enabled (~$0.05/query). Most users interact with Claude for writing/coding, not web search.
+- **Gemini** — largely redundant with Google AI Mode for visibility tracking purposes.
+- **Grok** — low market share. Track only if your audience skews toward X/Twitter users.
+
+## Provider Details
+
+### Olostep (recommended)
+
+The easiest way to get started. Olostep scrapes the actual AI product web UIs, so results match exactly what end users see — including web search, citations, and formatting.
+
+- Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
+- Requires: `OLOSTEP_API_KEY`
+- Credit-based pricing (3–5 credits per query depending on model)
+- Used by leading AEO tools (Profound, Peec, etc.)
+
+### BrightData
+
+A solid alternative to Olostep. BrightData is a more established company with a longer track record in web data. Slightly slower scrape times than Olostep, but comparable pricing and coverage.
+
+- Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
+- Requires: `BRIGHTDATA_API_TOKEN` and per-model dataset IDs passed as the version slug (e.g., `chatgpt:brightdata:gd_abc123:online`)
+- Same scraping approach as Olostep — loads the real AI product UI
+- Requires creating dataset scrapers in the BrightData dashboard, which adds setup overhead
+
+### OpenRouter
+
+Best for versatility. OpenRouter gives you access to the long tail of AI models through a single API key — useful if you want to track niche or emerging models. Also convenient if you want API-level access to the major models without managing separate API keys for each.
+
+- Supports: Any model available on OpenRouter (ChatGPT, Claude, Perplexity, Gemini, Grok, and hundreds more)
+- Requires: `OPENROUTER_API_KEY`
+- Calls model APIs, not web UIs — results may differ from what end users see in the browser
+- Web search available via the `:online` version variant
+- Less rate limiting than calling providers directly
+
+### Direct APIs
+
+Best if you already have API keys for convenience. Direct API calls give you the most control over model version and parameters, but are **significantly more expensive** than scraping options. They also face provider rate limits and may not be representative of what actually shows in the browser (e.g., ChatGPT's web UI uses different system prompts and web search behavior than the API).
+
+- **Direct OpenAI** (`direct` or `direct-openai`): Requires `OPENAI_API_KEY`. ChatGPT only.
+- **Direct Anthropic** (`direct-anthropic`): Requires `ANTHROPIC_API_KEY`. Claude only.
+- Web search supported on both (OpenAI via `web_search_preview` tool, Anthropic via `web_search` tool)
+
+### DataForSEO (deprecated)
+
+<Callout type="warn">
+DataForSEO support is maintained for existing users but is not recommended for new deployments. Use Olostep or BrightData instead for better coverage and pricing.
+</Callout>
+
+- Supports: Google AI Mode only
+- Requires: `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD`
+
+## Web Search Configuration
+
+The `:online` suffix in `SCRAPE_TARGETS` enables web search for that target. This is important because AI models behave differently with and without web access:
+
+- **With web search** (`:online`): The model searches the web before answering. Results include citations and reflect what users see when they ask questions in the real product. **Recommended for visibility tracking.**
+- **Without web search**: The model answers from its training data only. Cheaper, but doesn't represent the real user experience for most models.
+
+### Recommendations Per Model
+
+| Model | Web Search Recommended? | Notes |
+|--------|------------------------|-------|
+| ChatGPT | Yes | Most users have web search enabled by default |
+| Google AI Mode | Always on | AI Mode inherently uses web search |
+| Copilot | Yes | Bing-powered web search is core to Copilot |
+| Perplexity | Yes | Perplexity is fundamentally a search engine |
+| Claude | Optional | Claude is often used without web search; track with `:online` only if you want to measure web-search-mode visibility |
+| Gemini | Yes | Most Gemini users interact via Google, which includes search |
+| Grok | Optional | Depends on your audience |
+
+For Olostep, web search is inherent in the scrape — the `:online` flag is required for consistency but the scrape always reflects the real UI which includes search. For BrightData, the `:online` flag is optional and controls whether web search is enabled for the scrape.
+
+## Brand-Level Overrides
+
+By default, every brand in your workspace is evaluated against all configured `SCRAPE_TARGETS` models. You can narrow this per brand using the `enabled_models` column on the brands table.
+
+When `enabled_models` is set for a brand (e.g. `["chatgpt", "google-ai-mode"]`), only those models will be used for that brand's prompts. When `NULL` (the default), all configured models apply.
+
+This is useful when:
+- Different brands operate in different markets where certain models matter more
+- You want to reduce costs by only tracking the most relevant models per brand
+- Some brands are experimental and only need limited tracking

@@ -83,16 +83,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			modelGroup: z.string().optional(),
-			tags: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		model: z.string().optional(),
+		tags: z.string().optional(),
+	}),
+)
+.handler(async ({ data }) => {
+	const session = await requireAuthSession();
+	await requireOrgAccess(session.user.id, data.brandId);
 
-		// Get all prompts for the brand from DB
-		const allPrompts = await db
+	// Get all prompts for the brand from DB
+	const allPrompts = await db
 			.select()
 			.from(prompts)
 			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
@@ -133,9 +133,9 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 				fromDateStr,
 				toDateStr,
 				timezone,
-				webSearchEnabled,
-				data.modelGroup,
-				promptIds,
+			webSearchEnabled,
+			data.model,
+			promptIds,
 			),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 		]);
@@ -279,7 +279,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 				// Web query stats
 				db
-					.select({ modelGroup: promptRuns.modelGroup, webQueries: promptRuns.webQueries })
+					.select({ model: promptRuns.model, webQueries: promptRuns.webQueries })
 					.from(promptRuns)
 					.where(
 						and(
@@ -357,31 +357,29 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const allQueries: Record<string, number> = {};
 		const modelQueries: Record<string, Record<string, number>> = {};
 
-		webQueryStatsResult.forEach((row: any) => {
-			const queries = row.webQueries || [];
-			const modelGroup = row.modelGroup;
-			if (!modelQueries[modelGroup]) modelQueries[modelGroup] = {};
-			queries.forEach((query: string) => {
-				if (query?.trim()) {
-					allQueries[query] = (allQueries[query] || 0) + 1;
-					modelQueries[modelGroup][query] = (modelQueries[modelGroup][query] || 0) + 1;
-				}
-			});
-		});
-
-		const webQueryStats: {
-			overall: { name: string; count: number }[];
-			byModel: Record<string, { name: string; count: number }[]>;
-		} = { overall: [], byModel: {} };
-
-		["openai", "anthropic", "google"].forEach((mg) => {
-			if (modelQueries[mg]) {
-				webQueryStats.byModel[mg] = Object.entries(modelQueries[mg])
-					.map(([name, cnt]) => ({ name, count: cnt }))
-					.sort((a, b) => b.count - a.count)
-					.slice(0, 15);
+	webQueryStatsResult.forEach((row: any) => {
+		const queries = row.webQueries || [];
+		const model = row.model;
+		if (!modelQueries[model]) modelQueries[model] = {};
+		queries.forEach((query: string) => {
+			if (query?.trim()) {
+				allQueries[query] = (allQueries[query] || 0) + 1;
+				modelQueries[model][query] = (modelQueries[model][query] || 0) + 1;
 			}
 		});
+	});
+
+	const webQueryStats: {
+		overall: { name: string; count: number }[];
+		byModel: Record<string, { name: string; count: number }[]>;
+	} = { overall: [], byModel: {} };
+
+	for (const model of Object.keys(modelQueries)) {
+		webQueryStats.byModel[model] = Object.entries(modelQueries[model])
+			.map(([name, cnt]) => ({ name, count: cnt }))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 15);
+	}
 
 		webQueryStats.overall = Object.entries(allQueries)
 			.map(([name, cnt]) => ({ name, count: cnt }))
@@ -613,15 +611,15 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			modelGroup: z.string().optional(),
-			timezone: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		model: z.string().optional(),
+		timezone: z.string().optional(),
+	}),
+)
+.handler(async ({ data }) => {
+	const session = await requireAuthSession();
+	await requireOrgAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
 
 		// Calculate date range
@@ -671,8 +669,8 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
-			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
+		getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
+		getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
 			getPromptWebQueriesForMapping(data.promptId, fromDateStr, toDateStr, timezone),
 		]);
 
@@ -746,21 +744,22 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 				if (oldestQueries.length > 0) webQueryMapping[data.promptId] = oldestQueries[0];
 			}
 
-			for (const modelGroup of ["openai", "anthropic", "google"]) {
-				const modelQueries = webQueryData.filter((q) => q.model_group === modelGroup);
-				if (modelQueries.length > 0) {
-					const oldest = modelQueries[0];
-					const oldestTime = new Date(oldest.created_at_iso).getTime();
-					const sorted = modelQueries
-						.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
-						.map((q) => q.web_query)
-						.sort();
-					if (sorted.length > 0) {
-						if (!modelWebQueryMappings[modelGroup]) modelWebQueryMappings[modelGroup] = {};
-						modelWebQueryMappings[modelGroup][data.promptId] = sorted[0];
-					}
+		const seenModels = new Set(webQueryData.map((q) => q.model));
+		for (const model of seenModels) {
+			const modelQueries = webQueryData.filter((q) => q.model === model);
+			if (modelQueries.length > 0) {
+				const oldest = modelQueries[0];
+				const oldestTime = new Date(oldest.created_at_iso).getTime();
+				const sorted = modelQueries
+					.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
+					.map((q) => q.web_query)
+					.sort();
+				if (sorted.length > 0) {
+					if (!modelWebQueryMappings[model]) modelWebQueryMappings[model] = {};
+					modelWebQueryMappings[model][data.promptId] = sorted[0];
 				}
 			}
+		}
 		}
 
 		return {
@@ -786,16 +785,16 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
-			modelGroup: z.string().optional(),
-			timezone: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		model: z.string().optional(),
+		timezone: z.string().optional(),
+	}),
+)
+.handler(async ({ data }) => {
+	const session = await requireAuthSession();
+	await requireOrgAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || "UTC";
-		const now = new Date();
+	const timezone = data.timezone || "UTC";
+	const now = new Date();
 		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
 		const toDateStr = todayStr;
 		let fromDateStr: string | null = null;
@@ -813,20 +812,20 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		}
 
 		const webQueryData = await getPromptWebQueryCounts(
-			data.promptId,
-			fromDateStr,
-			toDateStr,
-			timezone,
-			data.modelGroup,
-		);
+		data.promptId,
+		fromDateStr,
+		toDateStr,
+		timezone,
+		data.model,
+	);
 
 		let webQuery: string | null = null;
 		const modelWebQueries: Record<string, string> = {};
 		let maxOverallCount = 0;
 
 		for (const row of webQueryData) {
-			if (!modelWebQueries[row.model_group]) {
-				modelWebQueries[row.model_group] = row.web_query;
+			if (!modelWebQueries[row.model]) {
+				modelWebQueries[row.model] = row.web_query;
 			}
 			if (row.query_count > maxOverallCount) {
 				maxOverallCount = row.query_count;

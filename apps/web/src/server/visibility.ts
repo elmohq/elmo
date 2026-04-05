@@ -74,12 +74,12 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
-			modelGroup: z.string().optional(),
-			promptIds: z.array(z.string()),
-			timezone: z.string().default("UTC"),
-		}),
-	)
-	.handler(async ({ data }): Promise<BatchChartDataResponse> => {
+		model: z.string().optional(),
+		promptIds: z.array(z.string()),
+		timezone: z.string().default("UTC"),
+	}),
+)
+.handler(async ({ data }): Promise<BatchChartDataResponse> => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
@@ -130,8 +130,8 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 				fromDateStr,
 				toDateStr,
 				timezone,
-				undefined,
-				data.modelGroup,
+			undefined,
+			data.model,
 			),
 			getBatchVisibilityData(
 				data.brandId,
@@ -169,12 +169,12 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
-			modelGroup: z.string().optional(),
-			promptIds: z.array(z.string()).default([]),
-			timezone: z.string().default("UTC"),
-		}),
-	)
-	.handler(async ({ data }): Promise<FilteredVisibilityResponse> => {
+		model: z.string().optional(),
+		promptIds: z.array(z.string()).default([]),
+		timezone: z.string().default("UTC"),
+	}),
+)
+.handler(async ({ data }): Promise<FilteredVisibilityResponse> => {
 		const session = await requireAuthSession();
 		const lookbackParam = data.lookback as LookbackPeriod;
 
@@ -235,11 +235,11 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 				fromDateStr,
 				toDateStr,
 				timezone,
-				data.promptIds,
-				data.modelGroup,
-			),
-			fromDateStr && toDateStr
-				? getDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, data.promptIds, data.modelGroup)
+		data.promptIds,
+		data.model,
+	),
+	fromDateStr && toDateStr
+		? getDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, data.promptIds, data.model)
 				: Promise.resolve([]),
 		]);
 

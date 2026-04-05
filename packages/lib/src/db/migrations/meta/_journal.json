@@ -50,6 +50,13 @@
       "when": 1773200000000,
       "tag": "0006_multi_domain_aliases",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775600000000,
+      "tag": "0007_provider_engines",
+      "breakpoints": true
     }
   ]
 }

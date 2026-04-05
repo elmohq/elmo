@@ -28,6 +28,7 @@ import { Route as AuthedAppBrandRouteImport } from './routes/_authed/app/$brand'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
 import { Route as AuthedAdminWizardTestRouteImport } from './routes/_authed/admin/wizard-test'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
+import { Route as AuthedAdminProvidersRouteImport } from './routes/_authed/admin/providers'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
 import { Route as ApiV1DocsIndexRouteImport } from './routes/api/v1/docs/index'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
@@ -140,6 +141,11 @@ const AuthedAdminWizardTestRoute = AuthedAdminWizardTestRouteImport.update({
 const AuthedAdminToolsRoute = AuthedAdminToolsRouteImport.update({
   id: '/tools',
   path: '/tools',
+  getParentRoute: () => AuthedAdminRoute,
+} as any)
+const AuthedAdminProvidersRoute = AuthedAdminProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
   getParentRoute: () => AuthedAdminRoute,
 } as any)
 const ApiV1PromptsIndexRoute = ApiV1PromptsIndexRouteImport.update({
@@ -258,6 +264,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/admin/providers': typeof AuthedAdminProvidersRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/admin/providers': typeof AuthedAdminProvidersRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/_authed/admin/providers': typeof AuthedAdminProvidersRoute
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
   '/_authed/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
@@ -375,6 +384,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/auth/register'
+    | '/admin/providers'
     | '/admin/tools'
     | '/admin/wizard-test'
     | '/admin/workflows'
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/auth/register'
+    | '/admin/providers'
     | '/admin/tools'
     | '/admin/wizard-test'
     | '/admin/workflows'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/logout'
     | '/auth/register'
+    | '/_authed/admin/providers'
     | '/_authed/admin/tools'
     | '/_authed/admin/wizard-test'
     | '/_authed/admin/workflows'
@@ -634,6 +646,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminToolsRouteImport
       parentRoute: typeof AuthedAdminRoute
     }
+    '/_authed/admin/providers': {
+      id: '/_authed/admin/providers'
+      path: '/providers'
+      fullPath: '/admin/providers'
+      preLoaderRoute: typeof AuthedAdminProvidersRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
     '/api/v1/prompts/': {
       id: '/api/v1/prompts/'
       path: '/api/v1/prompts'
@@ -771,6 +790,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedAdminRouteChildren {
+  AuthedAdminProvidersRoute: typeof AuthedAdminProvidersRoute
   AuthedAdminToolsRoute: typeof AuthedAdminToolsRoute
   AuthedAdminWizardTestRoute: typeof AuthedAdminWizardTestRoute
   AuthedAdminWorkflowsRoute: typeof AuthedAdminWorkflowsRoute
@@ -778,6 +798,7 @@ interface AuthedAdminRouteChildren {
 }
 
 const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
+  AuthedAdminProvidersRoute: AuthedAdminProvidersRoute,
   AuthedAdminToolsRoute: AuthedAdminToolsRoute,
   AuthedAdminWizardTestRoute: AuthedAdminWizardTestRoute,
   AuthedAdminWorkflowsRoute: AuthedAdminWorkflowsRoute,

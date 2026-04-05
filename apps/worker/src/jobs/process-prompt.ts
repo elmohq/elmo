@@ -1,10 +1,23 @@
-import type { Job } from "pg-boss";
+import { DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
+import {
+	type Brand,
+	brands,
+	type Competitor,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+} from "@workspace/lib/db/schema";
+import type { Citation } from "@workspace/lib/text-extraction";
+import type { Provider, ProviderOptions } from "@workspace/lib/providers";
+import {
+	getProvider,
+	parseScrapeTargets,
+	resolveProviderId,
+} from "@workspace/lib/providers";
 import { eq } from "drizzle-orm";
-import { AI_MODELS, DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
-import { extractCitations } from "@workspace/lib/text-extraction";
+import type { Job } from "pg-boss";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -42,7 +55,6 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
 		console.log(`Scheduled next run for prompt ${promptId} in ${cadenceHours}h`);
 	} catch (error) {
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
-		// Don't throw - we don't want to fail the job just because rescheduling failed
 	}
 }
 
@@ -120,16 +132,13 @@ function analyzeMentions(
 		...(brand.additionalDomains || []).map(extractDomainFromUrl),
 	];
 	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
+		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
 			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
 			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
+			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
 			return nameMatch || domainMatch;
 		})
 		.map((competitor) => competitor.name);
@@ -140,8 +149,9 @@ function analyzeMentions(
 async function savePromptRun(
 	promptId: string,
 	brandId: string,
-	modelGroup: "openai" | "anthropic" | "google",
 	model: string,
+	provider: string | null,
+	version: string,
 	webSearchEnabled: boolean,
 	rawOutput: unknown,
 	webQueries: string[],
@@ -153,8 +163,9 @@ async function savePromptRun(
 		.values({
 			promptId,
 			brandId,
-			modelGroup,
 			model,
+			provider,
+			version,
 			webSearchEnabled,
 			rawOutput,
 			webQueries,
@@ -170,19 +181,18 @@ async function saveCitations(
 	promptRunId: string,
 	promptId: string,
 	brandId: string,
-	modelGroup: "openai" | "anthropic" | "google",
-	rawOutput: unknown,
+	model: string,
+	extractedCitations: Citation[],
 	createdAt: Date,
 ): Promise<void> {
-	const extracted = extractCitations(rawOutput, modelGroup);
-	if (extracted.length === 0) return;
+	if (extractedCitations.length === 0) return;
 
 	await db.insert(citations).values(
-		extracted.map((c) => ({
+		extractedCitations.map((c) => ({
 			promptRunId,
 			promptId,
 			brandId,
-			modelGroup,
+			model,
 			url: c.url,
 			domain: c.domain,
 			title: c.title || null,
@@ -192,53 +202,46 @@ async function saveCitations(
 	);
 }
 
-
 async function runModelIteration({
 	promptId,
 	promptValue,
 	brand,
 	competitorsList,
-	modelGroup,
 	model,
+	version,
 	webSearchEnabled,
 	runIndex,
+	providerImpl,
+	providerOptions,
 }: {
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
 	competitorsList: Competitor[];
-	modelGroup: "openai" | "anthropic" | "google";
 	model: string;
+	version: string;
 	webSearchEnabled: boolean;
 	runIndex: number;
+	providerImpl: Provider;
+	providerOptions: ProviderOptions;
 }): Promise<void> {
-	const logPrefix = `[${modelGroup}_${runIndex}]`;
+	const logPrefix = `[${model}_${runIndex}]`;
 
-	// Run the AI call
-	let result: { rawOutput: unknown; webQueries: string[]; textContent: string };
-	if (modelGroup === "openai") {
-		result = await runWithOpenAI(promptValue);
-	} else if (modelGroup === "anthropic") {
-		result = await runWithAnthropic(promptValue);
-	} else {
-		result = await runWithDataForSEO(promptValue);
-	}
+	const result = await providerImpl.run(model, promptValue, providerOptions);
 
-	const { rawOutput, webQueries, textContent } = result;
+	const { rawOutput, webQueries, textContent, modelVersion } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-	// Ensure textContent is a string
 	const safeTextContent = typeof textContent === "string" ? textContent : "";
 
-	// Analyze mentions
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
 
-	// Save to database
 	const { id: promptRunId, createdAt } = await savePromptRun(
 		promptId,
 		brand.id,
-		modelGroup,
 		model,
+		providerImpl.id,
+		modelVersion ?? version,
 		webSearchEnabled,
 		rawOutput,
 		webQueries,
@@ -247,7 +250,7 @@ async function runModelIteration({
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	await saveCitations(promptRunId, promptId, brand.id, modelGroup, rawOutput, createdAt);
+	await saveCitations(promptRunId, promptId, brand.id, model, result.citations, createdAt);
 }
 
 /**
@@ -256,79 +259,53 @@ async function runModelIteration({
  * After successful completion, schedules the next run.
  */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
-	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		const { promptId, cadenceHours: providedCadence } = job.data;
 		console.log(`Processing prompt ${promptId}`);
 
-		// Get cadence hours - use provided value or look it up
 		const cadenceHours = providedCadence ?? (await getCadenceHours(promptId));
 
-		// Get prompt context
 		const context = await getPromptContext(promptId);
 		if (!context) {
 			console.log(`Prompt ${promptId} not found, skipping (no reschedule)`);
-			continue; // Job completes successfully - prompt was deleted, don't reschedule
+			continue;
 		}
 
 		const { prompt, brand, competitors: competitorsList } = context;
 
-		// Check if prompt and brand are enabled
 		if (!prompt.enabled || !brand.enabled) {
 			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-			// Still reschedule - the prompt might be enabled later
 			await scheduleNextRun(promptId, cadenceHours);
 			continue;
 		}
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
-		// Run all model iterations in parallel
+		const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const brandModels = brand.enabledModels;
+		const effectiveModels = brandModels ? allModels.filter((cfg) => brandModels.includes(cfg.model)) : allModels;
+
 		const runPromises: Promise<void>[] = [];
 
-		for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-			runPromises.push(
-				runModelIteration({
-					promptId,
-					promptValue: prompt.value,
-					brand,
-					competitorsList,
-					modelGroup: "openai",
-					model: AI_MODELS.OPENAI.MODEL,
-					webSearchEnabled: true,
-					runIndex: i + 1,
-				}),
-			);
-		}
-
-		for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-			runPromises.push(
-				runModelIteration({
-					promptId,
-					promptValue: prompt.value,
-					brand,
-					competitorsList,
-					modelGroup: "anthropic",
-					model: AI_MODELS.ANTHROPIC.MODEL,
-					webSearchEnabled: false,
-					runIndex: i + 1,
-				}),
-			);
-		}
-
-		for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-			runPromises.push(
-				runModelIteration({
-					promptId,
-					promptValue: prompt.value,
-					brand,
-					competitorsList,
-					modelGroup: "google",
-					model: "dataforseo",
-					webSearchEnabled: true,
-					runIndex: i + 1,
-				}),
-			);
+		for (const cfg of effectiveModels) {
+			const resolvedProvider = resolveProviderId(cfg.provider, cfg.model);
+			const provider = getProvider(resolvedProvider);
+			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+				runPromises.push(
+					runModelIteration({
+						promptId,
+						promptValue: prompt.value,
+						brand,
+						competitorsList,
+						model: cfg.model,
+						version: cfg.version ?? provider.id,
+						webSearchEnabled: cfg.webSearch,
+						runIndex: i + 1,
+						providerImpl: provider,
+						providerOptions: { webSearch: cfg.webSearch, version: cfg.version },
+					}),
+				);
+			}
 		}
 
 		const results = await Promise.allSettled(runPromises);
@@ -339,10 +316,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 				.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
 				.join("; ");
 
-			// Log failures but don't throw if some succeeded
 			console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
 
-			// If ALL runs failed, throw to trigger retry
 			if (failures.length === runPromises.length) {
 				throw new Error(`All runs failed for prompt ${promptId}: ${errorMessages}`);
 			}
@@ -353,14 +328,13 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			model_groups: ["openai", "anthropic", "google"],
-			models: [AI_MODELS.OPENAI.MODEL, AI_MODELS.ANTHROPIC.MODEL, "dataforseo"],
+			engines: effectiveModels.map((cfg) => cfg.model),
+			providers: effectiveModels.map((cfg) => cfg.provider),
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,
 		});
 
-		// Schedule the next run
 		await scheduleNextRun(promptId, cadenceHours);
 	}
 }

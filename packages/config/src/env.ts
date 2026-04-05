@@ -2,6 +2,64 @@ import type { DeploymentMode, EnvRequirement } from "./types";
 
 export type EnvMap = Record<string, string | undefined>;
 
+const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
+	olostep: { keys: ["OLOSTEP_API_KEY"], label: "OLOSTEP_API_KEY" },
+	brightdata: { keys: ["BRIGHTDATA_API_TOKEN"], label: "BRIGHTDATA_API_TOKEN" },
+	openrouter: { keys: ["OPENROUTER_API_KEY"], label: "OPENROUTER_API_KEY" },
+	"direct-openai": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
+	"direct-anthropic": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
+	dataforseo: { keys: ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"], label: "DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD" },
+};
+
+/**
+ * Parse SCRAPE_TARGETS to determine which resolved provider IDs are needed.
+ * Resolves "direct" to "direct-openai" or "direct-anthropic" based on the model.
+ */
+function parseResolvedProviders(scrapeTargets: string | undefined): string[] {
+	if (!scrapeTargets) return [];
+	const providers = new Set<string>();
+	for (const entry of scrapeTargets.split(",")) {
+		const parts = entry.trim().split(":");
+		if (parts.length < 2) continue;
+		const model = parts[0];
+		const provider = parts[1];
+		if (provider === "direct") {
+			providers.add(model === "claude" ? "direct-anthropic" : "direct-openai");
+		} else {
+			providers.add(provider);
+		}
+	}
+	return [...providers];
+}
+
+/**
+ * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
+ */
+function buildProviderKeyRequirements(): EnvRequirement[] {
+	const scrapeTargets = process.env.SCRAPE_TARGETS;
+	if (!scrapeTargets) return [];
+
+	const providers = parseResolvedProviders(scrapeTargets);
+	const requirements: EnvRequirement[] = [];
+	const seen = new Set<string>();
+
+	for (const provider of providers) {
+		const mapping = PROVIDER_KEY_MAP[provider];
+		if (!mapping || seen.has(mapping.label)) continue;
+		seen.add(mapping.label);
+
+		const useRequireAll = provider === "dataforseo";
+		requirements.push({
+			id: `PROVIDER_${provider.toUpperCase().replace("-", "_")}`,
+			label: mapping.label,
+			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
+			isSatisfied: useRequireAll ? requireAll(mapping.keys) : requireAny(mapping.keys),
+		});
+	}
+
+	return requirements;
+}
+
 export interface MissingEnvVar {
 	id: string;
 	label: string;
@@ -11,8 +69,7 @@ export interface MissingEnvVar {
 /**
  * Check if an environment variable has a non-empty value
  */
-export const hasValue = (value: string | undefined): boolean =>
-	typeof value === "string" && value.trim().length > 0;
+export const hasValue = (value: string | undefined): boolean => typeof value === "string" && value.trim().length > 0;
 
 /**
  * Create a requirement checker that requires all specified keys to have values
@@ -33,10 +90,7 @@ export const requireAny =
 /**
  * Create a simple env requirement for a single key
  */
-export function createEnvRequirement(
-	key: string,
-	description?: string
-): EnvRequirement {
+export function createEnvRequirement(key: string, description?: string): EnvRequirement {
 	return {
 		id: key,
 		label: key,
@@ -62,29 +116,12 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 		isSatisfied: requireAll(["DATABASE_URL"]),
 	},
 	{
-		id: "ANTHROPIC_API_KEY",
-		label: "ANTHROPIC_API_KEY",
-		description: "Anthropic API key.",
-		isSatisfied: requireAll(["ANTHROPIC_API_KEY"]),
+		id: "SCRAPE_TARGETS",
+		label: "SCRAPE_TARGETS",
+		description: "Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+		isSatisfied: requireAll(["SCRAPE_TARGETS"]),
 	},
-	{
-		id: "OPENAI_API_KEY",
-		label: "OPENAI_API_KEY",
-		description: "OpenAI API key.",
-		isSatisfied: requireAll(["OPENAI_API_KEY"]),
-	},
-	{
-		id: "DATAFORSEO_LOGIN",
-		label: "DATAFORSEO_LOGIN",
-		description: "DataForSEO username.",
-		isSatisfied: requireAll(["DATAFORSEO_LOGIN"]),
-	},
-	{
-		id: "DATAFORSEO_PASSWORD",
-		label: "DATAFORSEO_PASSWORD",
-		description: "DataForSEO password.",
-		isSatisfied: requireAll(["DATAFORSEO_PASSWORD"]),
-	},
+	...buildProviderKeyRequirements(),
 ];
 
 /**
@@ -170,7 +207,8 @@ export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "VITE_OPTIMIZATION_URL_TEMPLATE",
 		label: "VITE_OPTIMIZATION_URL_TEMPLATE",
-		description: "URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
+		description:
+			"URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
 		isSatisfied: requireAll(["VITE_OPTIMIZATION_URL_TEMPLATE"]),
 	},
 	// VITE_ONBOARDING_REDIRECT_URL_TEMPLATE is optional - only needed if you want to redirect
@@ -186,25 +224,23 @@ export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 
 /**
  * Get the deployment mode from environment variables
- * 
+ *
  * Defaults to "local" for OSS builds. The build system should set
  * DEPLOYMENT_MODE appropriately for each environment.
  */
 const VALID_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
 
-export function getDeploymentModeFromEnv(
-	env: EnvMap = process.env,
-): DeploymentMode {
+export function getDeploymentModeFromEnv(env: EnvMap = process.env): DeploymentMode {
 	const mode = env.DEPLOYMENT_MODE?.toLowerCase();
-	
+
 	if (!mode) {
 		throw new Error("DEPLOYMENT_MODE environment variable is required");
 	}
-	
+
 	if (!VALID_MODES.includes(mode as DeploymentMode)) {
 		throw new Error(`Invalid DEPLOYMENT_MODE: "${mode}". Must be one of: ${VALID_MODES.join(", ")}`);
 	}
-	
+
 	return mode as DeploymentMode;
 }
 
@@ -242,7 +278,7 @@ export function getEnvValidationState(env: EnvMap = process.env): {
  */
 export function validateEnvRequirements(
 	requirements: EnvRequirement[],
-	env: EnvMap = process.env
+	env: EnvMap = process.env,
 ): {
 	missing: MissingEnvVar[];
 	isValid: boolean;
@@ -275,11 +311,7 @@ export function requireEnv(key: string, env: EnvMap = process.env): string {
 /**
  * Get an optional environment variable with a default value
  */
-export function getEnv(
-	key: string,
-	defaultValue: string,
-	env: EnvMap = process.env
-): string {
+export function getEnv(key: string, defaultValue: string, env: EnvMap = process.env): string {
 	const value = env[key];
 	return hasValue(value) ? value! : defaultValue;
 }

@@ -81,6 +81,52 @@ Each deployment mode is implemented as a separate package in `packages/`:
 
 The `packages/deployment` package resolves the active mode at runtime based on `DEPLOYMENT_MODE` and provides the correct implementation.
 
+## Provider Abstraction Layer
+
+The `packages/lib/src/providers/` directory implements a pluggable provider system that decouples **what** Elmo tracks (models) from **how** it reaches them (providers).
+
+### Key Concepts
+
+| Concept | Description | Examples |
+|---------|-------------|----------|
+| **Model** | An AI product that end users interact with | `chatgpt`, `google-ai-mode`, `copilot`, `perplexity` |
+| **Provider** | The mechanism used to query a model | `olostep`, `brightdata`, `direct`, `openrouter`, `dataforseo` |
+| **Version** | A specific model version slug (required for API providers) | `gpt-5-mini`, `anthropic/claude-sonnet-4` |
+
+### SCRAPE_TARGETS
+
+The `SCRAPE_TARGETS` environment variable drives the entire scraping pipeline. It is parsed at startup by `parseScrapeTargets()` in `packages/lib/src/providers/config.ts` into an array of `ModelConfig` objects:
+
+```ts
+interface ModelConfig {
+  model: string;
+  provider: string;
+  version?: string;
+  webSearch: boolean;
+}
+```
+
+`SCRAPE_TARGETS` is a required environment variable. If not set, the application will throw an error at startup with an example of the expected format.
+
+### Provider Interface
+
+Every provider implements the `Provider` interface (`packages/lib/src/providers/types.ts`):
+
+```ts
+interface Provider {
+  id: string;
+  name: string;
+  isConfigured(): boolean;
+  run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+}
+```
+
+Providers are registered in the `providerMap` in `packages/lib/src/providers/index.ts`. The `resolveProviderId()` function handles the `direct` shorthand, mapping it to `direct-openai` or `direct-anthropic` based on the model.
+
+### Model Registry
+
+Known models and their display metadata are defined in `packages/lib/src/providers/models.ts`. The `KNOWN_MODELS` map provides labels and icon IDs for the UI. Unknown model strings are auto-formatted (hyphen-separated words are title-cased).
+
 ## Database
 
 The database schema is defined with Drizzle ORM in `packages/lib/src/db/`. Key tables include:
