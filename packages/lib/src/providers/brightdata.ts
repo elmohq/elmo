@@ -92,12 +92,12 @@ export const brightdata: Provider = {
 		return !!process.env.BRIGHTDATA_API_TOKEN;
 	},
 
-	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const datasetId = options?.model;
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		const datasetId = options?.version;
 		if (!datasetId) {
 			throw new Error(
-				`BrightData requires a dataset ID as the model slug in SCRAPE_TARGETS. ` +
-				`Example: ${engine}:brightdata:gd_abc123:online`,
+				`BrightData requires a dataset ID as the version slug in SCRAPE_TARGETS. ` +
+				`Example: ${model}:brightdata:gd_abc123:online`,
 			);
 		}
 
@@ -109,7 +109,7 @@ export const brightdata: Provider = {
 			{
 				method: "POST",
 				headers: authHeaders(),
-				body: JSON.stringify({ input: [{ url: BD_BASE_URL[engine] ?? "", prompt, index: 1 }] }),
+				body: JSON.stringify({ input: [{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }] }),
 			},
 		);
 

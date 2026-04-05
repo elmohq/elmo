@@ -86,9 +86,9 @@ export const olostep: Provider = {
 		return !!process.env.OLOSTEP_API_KEY;
 	},
 
-	async run(engine: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
-		const parserConfig = OLOSTEP_PARSERS[engine];
-		if (!parserConfig) throw new Error(`Olostep does not support engine "${engine}"`);
+	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
+		const parserConfig = OLOSTEP_PARSERS[model];
+		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
 		const response = await fetch("https://api.olostep.com/v1/scrapes", {
 			method: "POST",

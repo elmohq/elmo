@@ -186,12 +186,12 @@ async function runPrompt(
 	const allEngines = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
 	const runPromises = allEngines.flatMap((cfg) => {
-		const resolvedProvider = resolveProviderId(cfg.provider, cfg.engine);
+		const resolvedProvider = resolveProviderId(cfg.provider, cfg.model);
 		const provider = getProvider(resolvedProvider);
-		const runsPerEngine = cfg.engine === "google-ai-mode" ? 1 : 2;
+		const runsPerEngine = cfg.model === "google-ai-mode" ? 1 : 2;
 
 		return Array.from({ length: runsPerEngine }, () =>
-			runEngineCall(cfg.engine, provider, promptValue, { webSearch: cfg.webSearch, model: cfg.model }).then((result: ScrapeResult) => {
+			runEngineCall(cfg.model, provider, promptValue, { webSearch: cfg.webSearch, version: cfg.version }).then((result: ScrapeResult) => {
 				const { brandMentioned, competitorsMentioned } = analyzeMentions(
 					result.textContent,
 					brandName,
@@ -199,9 +199,9 @@ async function runPrompt(
 					competitors,
 				);
 				return {
-					engine: cfg.engine,
+					engine: cfg.model,
 					provider: provider.id,
-					model: result.modelVersion ?? cfg.model ?? provider.id,
+					model: result.modelVersion ?? cfg.version ?? provider.id,
 					webSearchEnabled: cfg.webSearch,
 					rawOutput: result.rawOutput as any,
 					webQueries: result.webQueries,

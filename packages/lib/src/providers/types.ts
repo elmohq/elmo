@@ -11,14 +11,14 @@ export interface ScrapeResult {
 export interface ProviderOptions {
 	webSearch?: boolean;
 	country?: string;
-	model?: string;
+	version?: string;
 }
 
 export interface Provider {
 	id: string;
 	name: string;
 	isConfigured(): boolean;
-	run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
 }
 
 export interface TestResult {
@@ -28,9 +28,9 @@ export interface TestResult {
 	sampleOutput?: string;
 }
 
-export interface EngineConfig {
-	engine: string;
+export interface ModelConfig {
+	model: string;
 	provider: string;
-	model?: string;
+	version?: string;
 	webSearch: boolean;
 }

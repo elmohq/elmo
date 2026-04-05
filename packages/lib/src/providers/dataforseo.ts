@@ -27,7 +27,7 @@ export const dataforseo: Provider = {
 		return !!process.env.DATAFORSEO_LOGIN && !!process.env.DATAFORSEO_PASSWORD;
 	},
 
-	async run(engine: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
+	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
 		const api = createDfsSerpApi();
 		const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 			keyword: prompt,

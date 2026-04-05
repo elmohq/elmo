@@ -6,9 +6,9 @@ import { directAnthropic } from "./direct-anthropic";
 import { dataforseo } from "./dataforseo";
 import { openrouter } from "./openrouter";
 
-export type { Provider, ScrapeResult, ProviderOptions, TestResult, EngineConfig } from "./types";
-export { KNOWN_ENGINES, getEngineMeta, ENGINE_TO_LEGACY_MODEL_GROUP, LEGACY_MODEL_GROUP_TO_ENGINE } from "./engines";
-export type { EngineMeta } from "./engines";
+export type { Provider, ScrapeResult, ProviderOptions, TestResult, ModelConfig } from "./types";
+export { KNOWN_MODELS, getModelMeta, MODEL_TO_LEGACY_MODEL_GROUP, LEGACY_MODEL_GROUP_TO_MODEL } from "./models";
+export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
 
 const providerMap: Record<string, Provider> = {
@@ -22,12 +22,12 @@ const providerMap: Record<string, Provider> = {
 };
 
 /**
- * Resolve "direct" to the engine-specific direct provider.
+ * Resolve "direct" to the model-specific direct provider.
  * "direct" auto-maps to "direct-openai" for chatgpt or "direct-anthropic" for claude.
  */
-export function resolveProviderId(providerId: string, engine: string): string {
+export function resolveProviderId(providerId: string, model: string): string {
 	if (providerId !== "direct") return providerId;
-	switch (engine) {
+	switch (model) {
 		case "claude":
 			return "direct-anthropic";
 		default:

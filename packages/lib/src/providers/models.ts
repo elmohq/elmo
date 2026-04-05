@@ -1,9 +1,9 @@
-export interface EngineMeta {
+export interface ModelMeta {
 	label: string;
 	iconId: string;
 }
 
-export const KNOWN_ENGINES: Record<string, EngineMeta> = {
+export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	chatgpt: { label: "ChatGPT", iconId: "openai" },
 	claude: { label: "Claude", iconId: "anthropic" },
 	"google-ai-mode": { label: "Google AI Mode", iconId: "google" },
@@ -14,22 +14,22 @@ export const KNOWN_ENGINES: Record<string, EngineMeta> = {
 	grok: { label: "Grok", iconId: "x" },
 };
 
-export function getEngineMeta(engine: string): EngineMeta {
-	if (KNOWN_ENGINES[engine]) return KNOWN_ENGINES[engine];
-	const label = engine
+export function getModelMeta(model: string): ModelMeta {
+	if (KNOWN_MODELS[model]) return KNOWN_MODELS[model];
+	const label = model
 		.split("-")
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(" ");
 	return { label, iconId: "generic" };
 }
 
-export const ENGINE_TO_LEGACY_MODEL_GROUP: Record<string, string> = {
+export const MODEL_TO_LEGACY_MODEL_GROUP: Record<string, string> = {
 	chatgpt: "openai",
 	claude: "anthropic",
 	"google-ai-mode": "google",
 };
 
-export const LEGACY_MODEL_GROUP_TO_ENGINE: Record<string, string> = {
+export const LEGACY_MODEL_GROUP_TO_MODEL: Record<string, string> = {
 	openai: "chatgpt",
 	anthropic: "claude",
 	google: "google-ai-mode",

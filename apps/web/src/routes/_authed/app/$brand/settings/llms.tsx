@@ -19,7 +19,7 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { parseScrapeTargets, getEngineMeta } from "@workspace/lib/providers";
+import { parseScrapeTargets, getModelMeta } from "@workspace/lib/providers";
 
 // ============================================================================
 // Server functions
@@ -31,13 +31,13 @@ const getEngineConfigFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const engineConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const activeEngines = engineConfigs.map((cfg) => {
-			const meta = getEngineMeta(cfg.engine);
+		const modelConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const activeEngines = modelConfigs.map((cfg) => {
+			const meta = getModelMeta(cfg.model);
 			return {
-				engine: cfg.engine,
+				engine: cfg.model,
 				provider: cfg.provider,
-				model: cfg.model ?? null,
+				model: cfg.version ?? null,
 				webSearch: cfg.webSearch,
 				label: meta.label,
 				iconId: meta.iconId,

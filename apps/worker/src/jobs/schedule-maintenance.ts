@@ -60,8 +60,8 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	const allEngines = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-	const engineNames = allEngines.map((cfg) => cfg.engine);
+	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const engineNames = allModels.map((cfg) => cfg.model);
 
 	// Get last runs per prompt per engine (matches dashboard overdue logic)
 	const lastRunsQuery = await db

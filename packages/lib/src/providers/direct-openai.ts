@@ -50,8 +50,8 @@ export const directOpenai: Provider = {
 		return !!process.env.OPENAI_API_KEY;
 	},
 
-	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const model = options?.model ?? "gpt-5-mini";
-		return runOpenAI(prompt, model, options);
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		const version = options?.version ?? "gpt-5-mini";
+		return runOpenAI(prompt, version, options);
 	},
 };

@@ -281,14 +281,14 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
-		const allEngines = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 		const brandEngines = brand.enabledEngines;
-		const effectiveEngines = brandEngines ? allEngines.filter((cfg) => brandEngines.includes(cfg.engine)) : allEngines;
+		const effectiveModels = brandEngines ? allModels.filter((cfg) => brandEngines.includes(cfg.model)) : allModels;
 
 		const runPromises: Promise<void>[] = [];
 
-		for (const cfg of effectiveEngines) {
-			const resolvedProvider = resolveProviderId(cfg.provider, cfg.engine);
+		for (const cfg of effectiveModels) {
+			const resolvedProvider = resolveProviderId(cfg.provider, cfg.model);
 			const provider = getProvider(resolvedProvider);
 			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
 				runPromises.push(
@@ -297,12 +297,12 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 						promptValue: prompt.value,
 						brand,
 						competitorsList,
-						engine: cfg.engine,
-						model: cfg.model ?? provider.id,
+						engine: cfg.model,
+						model: cfg.version ?? provider.id,
 						webSearchEnabled: cfg.webSearch,
 						runIndex: i + 1,
 						providerImpl: provider,
-						providerOptions: { webSearch: cfg.webSearch, model: cfg.model },
+						providerOptions: { webSearch: cfg.webSearch, version: cfg.version },
 					}),
 				);
 			}
@@ -328,8 +328,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			engines: effectiveEngines.map((cfg) => cfg.engine),
-			providers: effectiveEngines.map((cfg) => cfg.provider),
+			engines: effectiveModels.map((cfg) => cfg.model),
+			providers: effectiveModels.map((cfg) => cfg.provider),
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,

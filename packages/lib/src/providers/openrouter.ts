@@ -46,12 +46,12 @@ export const openrouter: Provider = {
 		return !!process.env.OPENROUTER_API_KEY;
 	},
 
-	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		let modelSlug = options?.model;
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		let modelSlug = options?.version;
 		if (!modelSlug) {
 			throw new Error(
-				`OpenRouter requires a model slug in SCRAPE_TARGETS. ` +
-				`Example: ${engine}:openrouter:openai/gpt-5-mini:online`,
+				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
+				`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
 		}
 

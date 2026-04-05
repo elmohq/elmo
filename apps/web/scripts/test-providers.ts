@@ -16,8 +16,8 @@ import {
 	parseScrapeTargets,
 	getProvider,
 	resolveProviderId,
-	getEngineMeta,
-	type EngineConfig,
+	getModelMeta,
+	type ModelConfig,
 	type ScrapeResult,
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
@@ -166,23 +166,23 @@ function validateResult(result: ScrapeResult, providerId: string): ValidationIss
 	return issues;
 }
 
-async function runFull(config: EngineConfig): Promise<RunResult> {
-	const providerId = resolveProviderId(config.provider, config.engine);
+async function runFull(config: ModelConfig): Promise<RunResult> {
+	const providerId = resolveProviderId(config.provider, config.model);
 	const provider = getProvider(providerId);
 	const start = Date.now();
 	try {
-		const result: ScrapeResult = await provider.run(config.engine, TEST_PROMPT, {
+		const result: ScrapeResult = await provider.run(config.model, TEST_PROMPT, {
 			webSearch: config.webSearch,
-			model: config.model,
+			version: config.version,
 		});
 		const latencyMs = Date.now() - start;
 		const issues = validateResult(result, providerId);
 		const hasErrors = issues.some((i) => i.severity === "error");
 
 		return {
-			engine: config.engine,
+			engine: config.model,
 			provider: providerId,
-			model: config.model,
+			model: config.version,
 			success: !hasErrors,
 			latencyMs,
 			textLength: result.textContent?.length ?? 0,
@@ -192,9 +192,9 @@ async function runFull(config: EngineConfig): Promise<RunResult> {
 		};
 	} catch (error) {
 		return {
-			engine: config.engine,
+			engine: config.model,
 			provider: providerId,
-			model: config.model,
+			model: config.version,
 			success: false,
 			latencyMs: Date.now() - start,
 			error: error instanceof Error ? error.message : String(error),
@@ -203,21 +203,21 @@ async function runFull(config: EngineConfig): Promise<RunResult> {
 	}
 }
 
-async function runPing(config: EngineConfig): Promise<RunResult> {
-	const providerId = resolveProviderId(config.provider, config.engine);
+async function runPing(config: ModelConfig): Promise<RunResult> {
+	const providerId = resolveProviderId(config.provider, config.model);
 	const provider = getProvider(providerId);
 	const start = Date.now();
 	try {
-		const result = await provider.run(config.engine, "What is 2+2?", {
+		const result = await provider.run(config.model, "What is 2+2?", {
 			webSearch: false,
-			model: config.model,
+			version: config.version,
 		});
 		const latencyMs = Date.now() - start;
 		const ok = !!result.textContent && result.textContent.length > 5;
 		return {
-			engine: config.engine,
+			engine: config.model,
 			provider: providerId,
-			model: config.model,
+			model: config.version,
 			success: ok,
 			latencyMs,
 			sampleOutput: result.textContent?.slice(0, 100),
@@ -225,9 +225,9 @@ async function runPing(config: EngineConfig): Promise<RunResult> {
 		};
 	} catch (error) {
 		return {
-			engine: config.engine,
+			engine: config.model,
 			provider: providerId,
-			model: config.model,
+			model: config.version,
 			success: false,
 			latencyMs: Date.now() - start,
 			error: error instanceof Error ? error.message : String(error),
@@ -237,7 +237,7 @@ async function runPing(config: EngineConfig): Promise<RunResult> {
 }
 
 function printResult(r: RunResult, ping: boolean) {
-	const meta = getEngineMeta(r.engine);
+	const meta = getModelMeta(r.engine);
 	const status = r.success ? `${colors.green}PASS${colors.reset}` : `${colors.red}FAIL${colors.reset}`;
 	const modelStr = r.model ? ` (${r.model})` : "";
 
@@ -325,8 +325,8 @@ async function main() {
 	const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
 	const filtered = configs.filter((c) => {
-		if (args.engine && c.engine !== args.engine) return false;
-		const resolved = resolveProviderId(c.provider, c.engine);
+		if (args.engine && c.model !== args.engine) return false;
+		const resolved = resolveProviderId(c.provider, c.model);
 		if (args.provider && resolved !== args.provider && c.provider !== args.provider) return false;
 		return true;
 	});

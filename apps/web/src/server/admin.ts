@@ -19,7 +19,7 @@ import {
 	getAllProviders,
 	getProvider,
 	resolveProviderId,
-	getEngineMeta,
+	getModelMeta,
 } from "@workspace/lib/providers";
 import type { TestResult } from "@workspace/lib/providers";
 
@@ -632,7 +632,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		let onSchedulePrompts = 0;
 		let scheduledCount = 0;
 
-		const engineList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.engine);
+		const engineList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
 		const promptStatuses = brandPrompts.map((prompt) => {
 			const lastRuns = lastRunsMap[prompt.id] || {};
 			const lastRunsByEngine: Record<
@@ -853,14 +853,14 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(async () => {
 	await requireAdmin();
 
-	const engineConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const modelConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-	const activeEngines = engineConfigs.map((cfg) => {
-		const meta = getEngineMeta(cfg.engine);
+	const activeEngines = modelConfigs.map((cfg) => {
+		const meta = getModelMeta(cfg.model);
 		return {
-			engine: cfg.engine,
+			engine: cfg.model,
 			provider: cfg.provider,
-			model: cfg.model ?? null,
+			model: cfg.version ?? null,
 			webSearch: cfg.webSearch,
 			engineLabel: meta.label,
 			engineIconId: meta.iconId,
@@ -897,7 +897,7 @@ export const testProviderFn = createServerFn({ method: "POST" })
 		try {
 			const result = await provider.run(data.engine, "What is 2+2?", {
 				webSearch: false,
-				model: data.model,
+				version: data.model,
 			});
 			return {
 				success: true,

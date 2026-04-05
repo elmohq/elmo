@@ -52,8 +52,8 @@ export const directAnthropic: Provider = {
 		return !!process.env.ANTHROPIC_API_KEY;
 	},
 
-	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const model = options?.model ?? "claude-sonnet-4-20250514";
-		return runAnthropic(prompt, model, options);
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		const version = options?.version ?? "claude-sonnet-4-20250514";
+		return runAnthropic(prompt, version, options);
 	},
 };
