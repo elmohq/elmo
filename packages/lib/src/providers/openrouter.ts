@@ -1,5 +1,18 @@
+import { OpenRouter } from "@openrouter/sdk";
 import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 import type { Citation } from "../text-extraction";
+
+let _client: OpenRouter | null = null;
+function getClient(): OpenRouter {
+	if (!_client) {
+		_client = new OpenRouter({
+			apiKey: process.env.OPENROUTER_API_KEY,
+			httpReferer: process.env.APP_URL ?? "https://github.com/elmohq/elmo",
+			appTitle: "Elmo AEO",
+		});
+	}
+	return _client;
+}
 
 function extractTextFromOpenRouterResponse(data: any): string {
 	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -16,6 +29,10 @@ function extractTextFromOpenRouterResponse(data: any): string {
 	return "No text content found in OpenRouter response.";
 }
 
+// The SDK's Zod schema strips unknown fields from the response, so the
+// `annotations` array on the assistant message may not survive parsing.
+// We still attempt extraction via an `any` cast so citations work if the
+// SDK adds annotation support or passes them through.
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 	const citations: Citation[] = [];
 	let idx = 0;
@@ -59,26 +76,15 @@ export const openrouter: Provider = {
 			modelSlug = `${modelSlug}:online`;
 		}
 
-		const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-				"Content-Type": "application/json",
-				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
-				"X-Title": "Elmo AEO",
-			},
-			body: JSON.stringify({
+		const client = getClient();
+		const result = await client.chat.send({
+			chatRequest: {
 				model: modelSlug,
-				messages: [{ role: "user", content: prompt }],
-			}),
+				messages: [{ role: "user" as const, content: prompt }],
+			},
 		});
 
-		if (!response.ok) {
-			const text = await response.text();
-			throw new Error(`OpenRouter API error (${response.status}): ${text}`);
-		}
-
-		const data: any = await response.json();
+		const data: any = result;
 
 		return {
 			rawOutput: data,

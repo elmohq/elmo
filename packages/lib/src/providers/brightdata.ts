@@ -1,3 +1,4 @@
+import { bdclient } from "@brightdata/sdk";
 import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 import type { Citation } from "../text-extraction";
 
@@ -11,41 +12,12 @@ const BD_BASE_URL: Record<string, string> = {
 	grok: "https://grok.com/",
 };
 
-function getApiKey(): string {
-	const key = process.env.BRIGHTDATA_API_TOKEN;
-	if (!key) throw new Error("Missing BRIGHTDATA_API_TOKEN");
-	return key;
-}
-
-function authHeaders() {
-	return {
-		Authorization: `Bearer ${getApiKey()}`,
-		"Content-Type": "application/json",
-	};
-}
-
-async function pollForCompletion(snapshotId: string): Promise<void> {
-	const maxAttempts = 60;
-	const BASE_DELAY = 2000;
-	const MAX_DELAY = 10000;
-
-	for (let attempt = 0; attempt < maxAttempts; attempt++) {
-		const res = await fetch(`https://api.brightdata.com/datasets/v3/progress/${snapshotId}`, {
-			method: "GET",
-			headers: authHeaders(),
-		});
-
-		if (!res.ok) throw new Error(`BrightData progress check failed (${res.status})`);
-
-		const json = (await res.json()) as { status: string };
-		if (json.status === "ready") return;
-		if (json.status === "failed") throw new Error("BrightData snapshot failed");
-
-		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
-		await new Promise((resolve) => setTimeout(resolve, delay));
+let _client: bdclient | null = null;
+function getClient(): bdclient {
+	if (!_client) {
+		_client = new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
 	}
-
-	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+	return _client;
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
@@ -101,14 +73,19 @@ export const brightdata: Provider = {
 			);
 		}
 
-		// Always send a single item per request.
-		// Batches of 2+ items change BrightData's expected response time from seconds to ~5-30 minutes,
-		// even for just 2 items. This is a BrightData API behavior, not a rate limit.
+		const client = getClient();
+
+		// The SDK's platform scrapers (chatGPT, perplexity, etc.) use hardcoded dataset IDs.
+		// Since we accept arbitrary dataset IDs via the version slug, we must trigger via
+		// the raw datasets API. We still use the SDK's snapshot API for polling and fetching.
 		const scrapeRes = await fetch(
 			`https://api.brightdata.com/datasets/v3/scrape?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
 			{
 				method: "POST",
-				headers: authHeaders(),
+				headers: {
+					Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+					"Content-Type": "application/json",
+				},
 				body: JSON.stringify({ input: [{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }] }),
 			},
 		);
@@ -116,13 +93,10 @@ export const brightdata: Provider = {
 		let payload: any;
 		if (scrapeRes.status === 202) {
 			const pending = (await scrapeRes.json()) as { snapshot_id: string };
-			await pollForCompletion(pending.snapshot_id);
-			const downloadRes = await fetch(
-				`https://api.brightdata.com/datasets/v3/snapshot/${pending.snapshot_id}?format=json`,
-				{ method: "GET", headers: authHeaders() },
-			);
-			if (!downloadRes.ok) throw new Error(`BrightData download failed (${downloadRes.status})`);
-			payload = await downloadRes.json();
+			const snapshotId = pending.snapshot_id;
+
+			await pollUntilReady(client, snapshotId);
+			payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 		} else if (scrapeRes.ok) {
 			payload = await scrapeRes.json();
 		} else {
@@ -141,3 +115,22 @@ export const brightdata: Provider = {
 		};
 	},
 };
+
+async function pollUntilReady(client: bdclient, snapshotId: string): Promise<void> {
+	const maxAttempts = 60;
+	const BASE_DELAY = 2000;
+	const MAX_DELAY = 10000;
+
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		const status = await client.scrape.snapshot.getStatus(snapshotId);
+		if (status.status === "ready") return;
+		if (status.status === "failed" || status.status === "cancelled") {
+			throw new Error(`BrightData snapshot ${snapshotId} ${status.status}`);
+		}
+
+		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
+		await new Promise((resolve) => setTimeout(resolve, delay));
+	}
+
+	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+}

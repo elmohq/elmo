@@ -1,3 +1,4 @@
+import Olostep from "olostep";
 import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 import type { Citation } from "../text-extraction";
 
@@ -38,6 +39,14 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 		credits: 3,
 	},
 };
+
+let _client: Olostep | null = null;
+function getClient(): Olostep {
+	if (!_client) {
+		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY });
+	}
+	return _client;
+}
 
 function extractTextFromOlostep(data: any): string {
 	if (data?.result?.markdown_content) return data.result.markdown_content;
@@ -90,29 +99,19 @@ export const olostep: Provider = {
 		const parserConfig = OLOSTEP_PARSERS[model];
 		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
-		const response = await fetch("https://api.olostep.com/v1/scrapes", {
-			method: "POST",
-			headers: {
-				Authorization: `Bearer ${process.env.OLOSTEP_API_KEY}`,
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({
-				url_to_scrape: parserConfig.urlTemplate(prompt),
-				formats: ["json"],
-				parser: { id: parserConfig.parserId },
-			}),
+		const client = getClient();
+		const scrape = await client.scrapes.create({
+			url: parserConfig.urlTemplate(prompt),
+			formats: ["json"],
+			parser: { id: parserConfig.parserId },
 		});
 
-		if (!response.ok) {
-			const text = await response.text();
-			throw new Error(`Olostep API error (${response.status}): ${text}`);
-		}
-
-		const data: any = await response.json();
-		const parsed = data?.result?.json_content ? JSON.parse(data.result.json_content) : data;
+		const jsonContent = scrape.json_content;
+		const parsed =
+			typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? scrape);
 
 		return {
-			rawOutput: data,
+			rawOutput: scrape,
 			textContent: extractTextFromOlostep(parsed),
 			webQueries: extractWebQueries(parsed),
 			citations: extractCitationsFromOlostep(parsed),
