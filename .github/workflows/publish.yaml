@@ -10,6 +10,7 @@
 # - NPM_TOKEN: npm access token with publish permissions
 # - DOCKERHUB_USERNAME: Docker Hub username
 # - DOCKERHUB_TOKEN: Docker Hub access token
+# - Provider keys (for integration tests): SCRAPE_TARGETS, OLOSTEP_API_KEY, etc.
 
 name: Release
 
@@ -17,8 +18,49 @@ on:
   workflow_dispatch:
 
 jobs:
+  test-providers:
+    name: Provider Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Write .env for test script
+        working-directory: apps/web
+        run: |
+          cat <<'EOF' > .env
+          OLOSTEP_API_KEY=${{ secrets.OLOSTEP_API_KEY }}
+          OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          DATAFORSEO_LOGIN=${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD=${{ secrets.DATAFORSEO_PASSWORD }}
+          BRIGHTDATA_API_TOKEN=${{ secrets.BRIGHTDATA_API_TOKEN }}
+          SCRAPE_TARGETS=${{ secrets.SCRAPE_TARGETS }}
+          EOF
+
+      - name: Run provider integration tests
+        working-directory: apps/web
+        run: pnpm tsx --env-file=.env scripts/test-providers.ts
+
   release:
     name: Release
+    needs: [test-providers]
     runs-on: ubuntu-latest
     permissions:
       contents: write
