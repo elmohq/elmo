@@ -465,6 +465,10 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 		email ? { $email: email, wants_updates: true } : undefined,
 	);
 
+	p.log.message(
+		`If you find Elmo useful, star us on GitHub!\n  ${link(pc.cyan("https://github.com/elmohq/elmo"), "https://github.com/elmohq/elmo")}`,
+	);
+
 	p.outro(pc.green("Setup complete!"));
 }
 
