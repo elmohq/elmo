@@ -1,4 +1,4 @@
-import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
+import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 import type { Citation } from "../text-extraction";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
@@ -86,14 +86,6 @@ export const olostep: Provider = {
 		return !!process.env.OLOSTEP_API_KEY;
 	},
 
-	supportedEngines() {
-		return Object.keys(OLOSTEP_PARSERS);
-	},
-
-	supportsWebSearchToggle(_engine: string) {
-		return true;
-	},
-
 	async run(engine: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
 		const parserConfig = OLOSTEP_PARSERS[engine];
 		if (!parserConfig) throw new Error(`Olostep does not support engine "${engine}"`);
@@ -126,23 +118,5 @@ export const olostep: Provider = {
 			citations: extractCitationsFromOlostep(parsed),
 			modelVersion: parsed?.model ?? undefined,
 		};
-	},
-
-	async testConnection(engine: string): Promise<TestResult> {
-		const start = Date.now();
-		try {
-			const result = await this.run(engine, "What is 2+2?");
-			return {
-				success: true,
-				latencyMs: Date.now() - start,
-				sampleOutput: result.textContent.slice(0, 200),
-			};
-		} catch (error) {
-			return {
-				success: false,
-				latencyMs: Date.now() - start,
-				error: error instanceof Error ? error.message : String(error),
-			};
-		}
 	},
 };

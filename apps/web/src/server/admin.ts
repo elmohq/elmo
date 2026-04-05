@@ -872,7 +872,6 @@ export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(asy
 		id: p.id,
 		name: p.name,
 		configured: p.isConfigured(),
-		supportedEngines: p.supportedEngines(),
 	}));
 
 	return { activeEngines, availableProviders };

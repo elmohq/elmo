@@ -29,7 +29,6 @@ interface AvailableProvider {
 	id: string;
 	name: string;
 	configured: boolean;
-	supportedEngines: string[];
 }
 
 interface ProviderStatus {
@@ -295,10 +294,6 @@ function ProvidersPage() {
 								<CardContent className="pt-0">
 									<div className="text-sm text-muted-foreground">
 										<span className="font-medium">ID:</span> <span className="font-mono">{provider.id}</span>
-									</div>
-									<div className="text-sm text-muted-foreground mt-1">
-										<span className="font-medium">Engines:</span>{" "}
-										{provider.supportedEngines.length > 0 ? provider.supportedEngines.join(", ") : "any"}
 									</div>
 								</CardContent>
 							</Card>

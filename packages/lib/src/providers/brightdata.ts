@@ -1,4 +1,4 @@
-import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
+import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 import type { Citation } from "../text-extraction";
 
 const BD_BASE_URL: Record<string, string> = {
@@ -92,14 +92,6 @@ export const brightdata: Provider = {
 		return !!process.env.BRIGHTDATA_API_TOKEN;
 	},
 
-	supportedEngines() {
-		return Object.keys(BD_BASE_URL);
-	},
-
-	supportsWebSearchToggle() {
-		return true;
-	},
-
 	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const datasetId = options?.model;
 		if (!datasetId) {
@@ -146,14 +138,6 @@ export const brightdata: Provider = {
 			webQueries: record?.prompt ? [record.prompt] : [prompt],
 			citations: extractSources(record),
 			modelVersion: record?.model ?? undefined,
-		};
-	},
-
-	async testConnection(engine: string): Promise<TestResult> {
-		return {
-			success: false,
-			latencyMs: 0,
-			error: "BrightData requires a dataset ID — use the admin providers page or test-providers.ts with SCRAPE_TARGETS configured",
 		};
 	},
 };

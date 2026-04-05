@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { extractTextFromAnthropic } from "../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
+import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -52,34 +52,8 @@ export const directAnthropic: Provider = {
 		return !!process.env.ANTHROPIC_API_KEY;
 	},
 
-	supportedEngines() {
-		return ["claude"];
-	},
-
-	supportsWebSearchToggle() {
-		return true;
-	},
-
 	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const model = options?.model ?? "claude-sonnet-4-20250514";
 		return runAnthropic(prompt, model, options);
-	},
-
-	async testConnection(engine: string): Promise<TestResult> {
-		const start = Date.now();
-		try {
-			const result = await this.run(engine, "What is 2+2?", { webSearch: false });
-			return {
-				success: true,
-				latencyMs: Date.now() - start,
-				sampleOutput: result.textContent.slice(0, 200),
-			};
-		} catch (error) {
-			return {
-				success: false,
-				latencyMs: Date.now() - start,
-				error: error instanceof Error ? error.message : String(error),
-			};
-		}
 	},
 };

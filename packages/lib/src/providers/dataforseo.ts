@@ -1,6 +1,6 @@
 import * as client from "dataforseo-client";
 import { extractTextFromGoogle, extractCitationsFromGoogle } from "../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
+import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -25,14 +25,6 @@ export const dataforseo: Provider = {
 
 	isConfigured() {
 		return !!process.env.DATAFORSEO_LOGIN && !!process.env.DATAFORSEO_PASSWORD;
-	},
-
-	supportedEngines() {
-		return ["google-ai-mode"];
-	},
-
-	supportsWebSearchToggle() {
-		return false;
 	},
 
 	async run(engine: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
@@ -62,23 +54,5 @@ export const dataforseo: Provider = {
 			citations: extractCitationsFromGoogle(response),
 			modelVersion: "dataforseo",
 		};
-	},
-
-	async testConnection(engine: string): Promise<TestResult> {
-		const start = Date.now();
-		try {
-			const result = await this.run(engine, "What is 2+2?");
-			return {
-				success: true,
-				latencyMs: Date.now() - start,
-				sampleOutput: result.textContent.slice(0, 200),
-			};
-		} catch (error) {
-			return {
-				success: false,
-				latencyMs: Date.now() - start,
-				error: error instanceof Error ? error.message : String(error),
-			};
-		}
 	},
 };

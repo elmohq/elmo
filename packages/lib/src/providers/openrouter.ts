@@ -1,4 +1,4 @@
-import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
+import type { Provider, ScrapeResult, ProviderOptions } from "./types";
 import type { Citation } from "../text-extraction";
 
 function extractTextFromOpenRouterResponse(data: any): string {
@@ -46,14 +46,6 @@ export const openrouter: Provider = {
 		return !!process.env.OPENROUTER_API_KEY;
 	},
 
-	supportedEngines() {
-		return [];
-	},
-
-	supportsWebSearchToggle() {
-		return true;
-	},
-
 	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		let modelSlug = options?.model;
 		if (!modelSlug) {
@@ -94,14 +86,6 @@ export const openrouter: Provider = {
 			webQueries: [],
 			citations: extractCitationsFromOpenRouterResponse(data),
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
-		};
-	},
-
-	async testConnection(engine: string): Promise<TestResult> {
-		return {
-			success: false,
-			latencyMs: 0,
-			error: "OpenRouter requires a model slug — use the admin providers page or test-providers.ts with SCRAPE_TARGETS configured",
 		};
 	},
 };
