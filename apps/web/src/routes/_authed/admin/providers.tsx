@@ -16,13 +16,13 @@ import { getProviderStatusFn, testProviderFn } from "@/server/admin";
 // Types
 // ============================================================================
 
-interface ActiveEngine {
+interface ActiveModel {
 	engine: string;
 	provider: string;
 	model: string | null;
 	webSearch: boolean;
-	engineLabel: string;
-	engineIconId: string;
+	modelLabel: string;
+	modelIconId: string;
 }
 
 interface AvailableProvider {
@@ -32,7 +32,7 @@ interface AvailableProvider {
 }
 
 interface ProviderStatus {
-	activeEngines: ActiveEngine[];
+	activeModels: ActiveModel[];
 	availableProviders: AvailableProvider[];
 }
 
@@ -115,7 +115,7 @@ function ProvidersPage() {
 
 	const runAllTests = async () => {
 		if (!data) return;
-		for (const eng of data.activeEngines) {
+		for (const eng of data.activeModels) {
 			runTest(eng.engine, eng.provider, eng.model ?? undefined);
 		}
 	};
@@ -178,39 +178,39 @@ function ProvidersPage() {
 				</div>
 			</div>
 
-			{/* Active Engines Table */}
-			<Card>
-				<CardHeader>
-					<CardTitle>Active Engines</CardTitle>
-					<CardDescription>Engines configured via SCRAPE_TARGETS environment variable</CardDescription>
-				</CardHeader>
+		{/* Active Models Table */}
+		<Card>
+			<CardHeader>
+				<CardTitle>Active Models</CardTitle>
+				<CardDescription>Models configured via SCRAPE_TARGETS environment variable</CardDescription>
+			</CardHeader>
 				<CardContent>
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead>Engine</TableHead>
-								<TableHead>Provider</TableHead>
 								<TableHead>Model</TableHead>
+								<TableHead>Provider</TableHead>
+								<TableHead>Version</TableHead>
 								<TableHead className="text-center">Web Search</TableHead>
 								<TableHead className="text-center">Actions</TableHead>
 								<TableHead>Test Result</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{data.activeEngines.map((eng) => {
-								const key = testKey(eng.engine, eng.provider);
-								const test = testResults[key];
+						{data.activeModels.map((eng) => {
+							const key = testKey(eng.engine, eng.provider);
+							const test = testResults[key];
 
-								return (
-									<TableRow key={key}>
-										<TableCell>
-											<div className="flex items-center gap-2">
-												<span className="font-medium">{eng.engineLabel}</span>
-												<Badge variant="outline" className="text-xs">
-													{eng.engine}
-												</Badge>
-											</div>
-										</TableCell>
+							return (
+								<TableRow key={key}>
+									<TableCell>
+										<div className="flex items-center gap-2">
+											<span className="font-medium">{eng.modelLabel}</span>
+											<Badge variant="outline" className="text-xs">
+												{eng.engine}
+											</Badge>
+										</div>
+									</TableCell>
 										<TableCell>
 											<span className="font-mono text-sm">{eng.provider}</span>
 										</TableCell>
@@ -250,13 +250,13 @@ function ProvidersPage() {
 									</TableRow>
 								);
 							})}
-							{data.activeEngines.length === 0 && (
-								<TableRow>
-									<TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-										No active engines configured. Set the SCRAPE_TARGETS environment variable.
-									</TableCell>
-								</TableRow>
-							)}
+						{data.activeModels.length === 0 && (
+							<TableRow>
+								<TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+									No active models configured. Set the SCRAPE_TARGETS environment variable.
+								</TableCell>
+							</TableRow>
+						)}
 						</TableBody>
 					</Table>
 				</CardContent>

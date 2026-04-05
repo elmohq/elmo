@@ -620,12 +620,12 @@ function ResponsesTab({
 					<CardHeader className="pb-0 gap-y-0">
 						<div className="grid grid-cols-3 gap-x-4 text-sm">
 							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Engine</span>
-								<span>{getModelDisplayName(run.engine)}</span>
+							<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
+							<span>{getModelDisplayName(run.engine)}</span>
 							</div>
 							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
-								<span>{run.model}</span>
+							<span className="text-muted-foreground block text-xs mb-0.5">Version</span>
+							<span>{run.model}</span>
 							</div>
 							<div>
 								<span className="text-muted-foreground block text-xs mb-0.5">Evaluated</span>

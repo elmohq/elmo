@@ -6,7 +6,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
-	engine?: string;
+	model?: string;
 	promptIds: string[];
 }
 
@@ -21,7 +21,7 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 			"batch-chart-data",
 			resolvedBrandId,
 			filters?.lookback,
-			filters?.engine,
+			filters?.model,
 			filters?.promptIds?.join(","),
 		],
 		queryFn: () =>
@@ -29,7 +29,7 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 				data: {
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback || "1m",
-					engine: filters?.engine,
+					model: filters?.model,
 					promptIds: filters?.promptIds || [],
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},

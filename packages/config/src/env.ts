@@ -13,7 +13,7 @@ const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
 
 /**
  * Parse SCRAPE_TARGETS to determine which resolved provider IDs are needed.
- * Resolves "direct" to "direct-openai" or "direct-anthropic" based on engine.
+ * Resolves "direct" to "direct-openai" or "direct-anthropic" based on model.
  */
 function parseResolvedProviders(scrapeTargets: string | undefined): string[] {
 	if (!scrapeTargets) return [];
@@ -21,10 +21,10 @@ function parseResolvedProviders(scrapeTargets: string | undefined): string[] {
 	for (const entry of scrapeTargets.split(",")) {
 		const parts = entry.trim().split(":");
 		if (parts.length < 2) continue;
-		const engine = parts[0];
+		const model = parts[0];
 		const provider = parts[1];
 		if (provider === "direct") {
-			providers.add(engine === "claude" ? "direct-anthropic" : "direct-openai");
+			providers.add(model === "claude" ? "direct-anthropic" : "direct-openai");
 		} else {
 			providers.add(provider);
 		}

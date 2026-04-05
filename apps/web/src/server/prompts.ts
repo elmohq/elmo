@@ -83,16 +83,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			engine: z.string().optional(),
-			tags: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		model: z.string().optional(),
+		tags: z.string().optional(),
+	}),
+)
+.handler(async ({ data }) => {
+	const session = await requireAuthSession();
+	await requireOrgAccess(session.user.id, data.brandId);
 
-		// Get all prompts for the brand from DB
-		const allPrompts = await db
+	// Get all prompts for the brand from DB
+	const allPrompts = await db
 			.select()
 			.from(prompts)
 			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
@@ -133,9 +133,9 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 				fromDateStr,
 				toDateStr,
 				timezone,
-				webSearchEnabled,
-				data.engine,
-				promptIds,
+			webSearchEnabled,
+			data.model,
+			promptIds,
 			),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 		]);
@@ -611,15 +611,15 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			engine: z.string().optional(),
-			timezone: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		model: z.string().optional(),
+		timezone: z.string().optional(),
+	}),
+)
+.handler(async ({ data }) => {
+	const session = await requireAuthSession();
+	await requireOrgAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
 
 		// Calculate date range
@@ -669,8 +669,8 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.engine),
-			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.engine),
+		getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
+		getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
 			getPromptWebQueriesForMapping(data.promptId, fromDateStr, toDateStr, timezone),
 		]);
 
@@ -785,16 +785,16 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
-			engine: z.string().optional(),
-			timezone: z.string().optional(),
-		}),
-	)
-	.handler(async ({ data }) => {
-		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		model: z.string().optional(),
+		timezone: z.string().optional(),
+	}),
+)
+.handler(async ({ data }) => {
+	const session = await requireAuthSession();
+	await requireOrgAccess(session.user.id, data.brandId);
 
-		const timezone = data.timezone || "UTC";
-		const now = new Date();
+	const timezone = data.timezone || "UTC";
+	const now = new Date();
 		const todayStr = now.toLocaleDateString("en-CA", { timeZone: timezone });
 		const toDateStr = todayStr;
 		let fromDateStr: string | null = null;
@@ -812,12 +812,12 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		}
 
 		const webQueryData = await getPromptWebQueryCounts(
-			data.promptId,
-			fromDateStr,
-			toDateStr,
-			timezone,
-			data.engine,
-		);
+		data.promptId,
+		fromDateStr,
+		toDateStr,
+		timezone,
+		data.model,
+	);
 
 		let webQuery: string | null = null;
 		const modelWebQueries: Record<string, string> = {};

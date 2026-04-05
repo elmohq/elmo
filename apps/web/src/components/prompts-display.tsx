@@ -92,14 +92,14 @@ export function PromptsDisplay({
 		availableIndividualModels.length > 1 ? ["all", ...availableIndividualModels] : availableIndividualModels;
 
 	// Use the optimized summary hook
-	const engineParam = selectedModel === "all" ? undefined : selectedModel;
+	const modelParam = selectedModel === "all" ? undefined : selectedModel;
 	const {
 		promptsSummary,
 		isLoading: isLoadingSummary,
 		isError: summaryError,
 	} = usePromptsSummary(brand?.id, {
 		lookback: selectedLookback,
-		engine: engineParam,
+		model: modelParam,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
 	});
 
@@ -127,7 +127,7 @@ export function PromptsDisplay({
 	} = useFilteredVisibility(brand?.id, {
 		lookback: selectedLookback,
 		promptIds: filteredPromptIds.length > 0 ? filteredPromptIds : undefined,
-		engine: engineParam,
+		model: modelParam,
 	});
 
 	// Cache visibility data to prevent flash
@@ -140,7 +140,7 @@ export function PromptsDisplay({
 	// Fetch ALL chart data in a single batch request
 	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brand?.id, {
 		lookback: selectedLookback,
-		engine: engineParam,
+		model: modelParam,
 		promptIds: filteredPromptIds,
 	});
 
@@ -171,7 +171,7 @@ export function PromptsDisplay({
 				enabled: true,
 				onboarded: true,
 				delayOverrideHours: null,
-				enabledEngines: null,
+				enabledModels: null,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			}

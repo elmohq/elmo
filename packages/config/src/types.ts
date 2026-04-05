@@ -130,7 +130,7 @@ export interface OptimizeButtonProps {
   promptId?: string;
   parentName?: string;
   optimizationUrlTemplate?: string;
-  fetchWebQuery?: (promptId: string, lookback: string, engine?: string) => Promise<WebQueryResult>;
+  fetchWebQuery?: (promptId: string, lookback: string, model?: string) => Promise<WebQueryResult>;
 }
 
 // ============================================================================

@@ -282,8 +282,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
 		const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const brandEngines = brand.enabledEngines;
-		const effectiveModels = brandEngines ? allModels.filter((cfg) => brandEngines.includes(cfg.model)) : allModels;
+		const brandModels = brand.enabledModels;
+		const effectiveModels = brandModels ? allModels.filter((cfg) => brandModels.includes(cfg.model)) : allModels;
 
 		const runPromises: Promise<void>[] = [];
 

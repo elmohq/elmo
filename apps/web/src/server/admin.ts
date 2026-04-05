@@ -632,18 +632,18 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		let onSchedulePrompts = 0;
 		let scheduledCount = 0;
 
-		const engineList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
+		const modelList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
 		const promptStatuses = brandPrompts.map((prompt) => {
 			const lastRuns = lastRunsMap[prompt.id] || {};
-			const lastRunsByEngine: Record<
+			const lastRunsByModel: Record<
 				string,
 				{ lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }
 			> = {};
 
 			let anyOverdue = false;
 
-			for (const engine of engineList) {
-				const lastRunAt = lastRuns[engine] || null;
+			for (const model of modelList) {
+				const lastRunAt = lastRuns[model] || null;
 				let isOverdue = false;
 				let overdueByMs: number | null = null;
 
@@ -661,7 +661,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 					}
 				}
 
-				lastRunsByEngine[engine] = { lastRunAt, isOverdue, overdueByMs };
+				lastRunsByModel[model] = { lastRunAt, isOverdue, overdueByMs };
 			}
 
 			const scheduleInfo = scheduleMap.get(prompt.id);
@@ -689,7 +689,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 				brandName: brand.name,
 				enabled: prompt.enabled,
 				runFrequencyMs,
-				lastRunsByEngine,
+				lastRunsByModel,
 				schedulerInfo,
 				recentFailures: failuresByPrompt.get(prompt.id) || 0,
 				jobStatus,
@@ -855,15 +855,15 @@ export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(asy
 
 	const modelConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-	const activeEngines = modelConfigs.map((cfg) => {
+	const activeModels = modelConfigs.map((cfg) => {
 		const meta = getModelMeta(cfg.model);
 		return {
 			engine: cfg.model,
 			provider: cfg.provider,
 			model: cfg.version ?? null,
 			webSearch: cfg.webSearch,
-			engineLabel: meta.label,
-			engineIconId: meta.iconId,
+			modelLabel: meta.label,
+			modelIconId: meta.iconId,
 		};
 	});
 
@@ -874,7 +874,7 @@ export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(asy
 		configured: p.isConfigured(),
 	}));
 
-	return { activeEngines, availableProviders };
+	return { activeModels, availableProviders };
 });
 
 /**

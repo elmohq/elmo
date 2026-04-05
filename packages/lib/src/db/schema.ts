@@ -19,7 +19,7 @@ export const brands = pgTable("brands", {
 	enabled: boolean("enabled").default(true).notNull(),
 	onboarded: boolean("onboarded").default(false).notNull(),
 	delayOverrideHours: integer("delay_override_hours"),
-	enabledEngines: text("enabled_engines").array(),
+	enabledModels: text("enabled_engines").array(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()

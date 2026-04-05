@@ -43,7 +43,7 @@ interface SchedulerInfo {
 	cadenceHours: number | null;
 }
 
-interface LastRunByEngine {
+interface LastRunByModel {
 	lastRunAt: string | null;
 	isOverdue: boolean;
 	overdueByMs: number | null;
@@ -56,7 +56,7 @@ interface PromptScheduleStatus {
 	brandName: string;
 	enabled: boolean;
 	runFrequencyMs: number;
-	lastRunsByEngine: Record<string, LastRunByEngine>;
+	lastRunsByModel: Record<string, LastRunByModel>;
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
 	jobStatus: "active" | "created" | "retry" | "none";
@@ -215,7 +215,7 @@ function SchedulerCell({ info }: { info: SchedulerInfo }) {
 	);
 }
 
-function EngineStatus({ status }: { status?: LastRunByEngine }) {
+function ModelStatus({ status }: { status?: LastRunByModel }) {
 	if (!status) {
 		return <span className="text-muted-foreground">-</span>;
 	}
@@ -474,8 +474,8 @@ function BrandRow({
 									<TableRow>
 										<TableHead className="w-[250px]">Prompt</TableHead>
 										<TableHead className="text-center">Status</TableHead>
-										{Object.keys(brand.prompts[0]?.lastRunsByEngine || {}).map((engine) => (
-											<TableHead key={engine} className="text-center capitalize">{engine}</TableHead>
+										{Object.keys(brand.prompts[0]?.lastRunsByModel || {}).map((model) => (
+											<TableHead key={model} className="text-center capitalize">{model}</TableHead>
 										))}
 										<TableHead className="text-center">Prod Scheduler</TableHead>
 										<TableHead className="text-center">Last Job</TableHead>
@@ -486,9 +486,9 @@ function BrandRow({
 									{[...brand.prompts]
 										.sort((a, b) => {
 											const getCategory = (p: typeof a) => {
-												const isOverdue =
-													p.enabled &&
-													Object.values(p.lastRunsByEngine).some((e) => e?.isOverdue);
+										const isOverdue =
+												p.enabled &&
+												Object.values(p.lastRunsByModel).some((e) => e?.isOverdue);
 												if (isOverdue) return 0;
 												if (p.enabled) return 1;
 												return 2;
@@ -496,9 +496,9 @@ function BrandRow({
 											return getCategory(a) - getCategory(b);
 										})
 										.map((prompt) => {
-											const isStuck =
-												prompt.enabled &&
-												Object.values(prompt.lastRunsByEngine).some((e) => e?.isOverdue);
+										const isStuck =
+											prompt.enabled &&
+											Object.values(prompt.lastRunsByModel).some((e) => e?.isOverdue);
 											const promptJobs = recentJobs
 												.filter((j) => j.data?.promptId === prompt.promptId)
 												.sort((a, b) => b.timestamp - a.timestamp);
@@ -540,11 +540,11 @@ function BrandRow({
 															</div>
 														)}
 													</TableCell>
-													{Object.entries(prompt.lastRunsByEngine).map(([engine, status]) => (
-														<TableCell key={engine} className="text-center">
-															<EngineStatus status={status} />
-														</TableCell>
-													))}
+												{Object.entries(prompt.lastRunsByModel).map(([model, status]) => (
+													<TableCell key={model} className="text-center">
+														<ModelStatus status={status} />
+													</TableCell>
+												))}
 													<TableCell className="text-center">
 														<SchedulerCell info={prompt.schedulerInfo} />
 													</TableCell>
@@ -675,9 +675,9 @@ function WorkflowsPage() {
 		(acc, brand) => {
 		for (const prompt of brand.prompts) {
 			if (!prompt.enabled) continue;
-			const engines = Object.values(prompt.lastRunsByEngine);
-			const isOverdue = engines.some((e) => e?.isOverdue);
-			const isSeverelyOverdue = engines.some((e) => e?.isOverdue && e.overdueByMs && e.overdueByMs > THIRTY_MIN_MS);
+			const models = Object.values(prompt.lastRunsByModel);
+			const isOverdue = models.some((e) => e?.isOverdue);
+			const isSeverelyOverdue = models.some((e) => e?.isOverdue && e.overdueByMs && e.overdueByMs > THIRTY_MIN_MS);
 				if (isOverdue) acc.total++;
 				if (isSeverelyOverdue) acc.severe++;
 			}

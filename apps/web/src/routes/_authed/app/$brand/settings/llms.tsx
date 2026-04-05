@@ -2,7 +2,7 @@
  * /app/$brand/settings/llms - LLM configuration page
  *
  * Shows dynamically configured AI engines from SCRAPE_TARGETS and lets
- * brand admins toggle individual engines on/off via brands.enabledEngines.
+ * brand admins toggle individual models on/off via brands.enabledModels.
  */
 import { useState, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -32,7 +32,7 @@ const getEngineConfigFn = createServerFn({ method: "GET" })
 		await requireOrgAccess(session.user.id, data.brandId);
 
 		const modelConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const activeEngines = modelConfigs.map((cfg) => {
+		const activeModels = modelConfigs.map((cfg) => {
 			const meta = getModelMeta(cfg.model);
 			return {
 				engine: cfg.model,
@@ -46,20 +46,20 @@ const getEngineConfigFn = createServerFn({ method: "GET" })
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
-			columns: { enabledEngines: true },
+			columns: { enabledModels: true },
 		});
 
 		return {
-			engines: activeEngines,
-			enabledEngines: brand?.enabledEngines ?? null,
+			engines: activeModels,
+			enabledModels: brand?.enabledModels ?? null,
 		};
 	});
 
-const updateBrandEnabledEnginesFn = createServerFn({ method: "POST" })
+const updateBrandEnabledModelsFn = createServerFn({ method: "POST" })
 	.inputValidator(
 		z.object({
 			brandId: z.string(),
-			enabledEngines: z.array(z.string()).nullable(),
+			enabledModels: z.array(z.string()).nullable(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -68,12 +68,12 @@ const updateBrandEnabledEnginesFn = createServerFn({ method: "POST" })
 
 		const result = await db
 			.update(brands)
-			.set({ enabledEngines: data.enabledEngines, updatedAt: new Date() })
+			.set({ enabledModels: data.enabledModels, updatedAt: new Date() })
 			.where(eq(brands.id, data.brandId))
-			.returning({ enabledEngines: brands.enabledEngines });
+			.returning({ enabledModels: brands.enabledModels });
 
 		if (!result[0]) throw new Error("Brand not found");
-		return { enabledEngines: result[0].enabledEngines };
+		return { enabledModels: result[0].enabledModels };
 	});
 
 // ============================================================================
@@ -123,18 +123,18 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 // ============================================================================
 
 function LlmsSettingsPage() {
-	const { engines, enabledEngines: initialEnabledEngines } = Route.useLoaderData();
+	const { engines, enabledModels: initialEnabledModels } = Route.useLoaderData();
 	const { brand: brandId } = Route.useParams();
 
-	const [enabledEngines, setEnabledEngines] = useState<string[] | null>(initialEnabledEngines);
+	const [enabledModels, setEnabledModels] = useState<string[] | null>(initialEnabledModels);
 	const [saving, setSaving] = useState(false);
 
-	const isEngineEnabled = useCallback(
+	const isModelEnabled = useCallback(
 		(engine: string) => {
-			if (enabledEngines === null) return true;
-			return enabledEngines.includes(engine);
+			if (enabledModels === null) return true;
+			return enabledModels.includes(engine);
 		},
-		[enabledEngines],
+		[enabledModels],
 	);
 
 	const handleToggle = useCallback(
@@ -142,26 +142,26 @@ function LlmsSettingsPage() {
 			const allEngineIds = engines.map((e) => e.engine);
 			let next: string[];
 
-			if (enabledEngines === null) {
+			if (enabledModels === null) {
 				next = checked ? allEngineIds : allEngineIds.filter((e) => e !== engine);
 			} else {
-				next = checked ? [...enabledEngines, engine] : enabledEngines.filter((e) => e !== engine);
+				next = checked ? [...enabledModels, engine] : enabledModels.filter((e) => e !== engine);
 			}
 
 			const isAllEnabled = allEngineIds.every((e) => next.includes(e));
 			const newValue = isAllEnabled ? null : next;
 
-			setEnabledEngines(newValue);
+			setEnabledModels(newValue);
 			setSaving(true);
 			try {
-				await updateBrandEnabledEnginesFn({
-					data: { brandId, enabledEngines: newValue },
+				await updateBrandEnabledModelsFn({
+					data: { brandId, enabledModels: newValue },
 				});
 			} finally {
 				setSaving(false);
 			}
 		},
-		[enabledEngines, engines, brandId],
+		[enabledModels, engines, brandId],
 	);
 
 	return (
@@ -186,7 +186,7 @@ function LlmsSettingsPage() {
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{engines.map((engine) => {
-						const enabled = isEngineEnabled(engine.engine);
+						const enabled = isModelEnabled(engine.engine);
 						return (
 							<Card key={engine.engine} className={`h-full transition-opacity ${enabled ? "" : "opacity-60"}`}>
 								<CardHeader className="py-2 border-b">

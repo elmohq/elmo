@@ -7,7 +7,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 export interface PromptChartDataFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
-	engine?: string;
+	model?: string;
 }
 
 export interface PromptChartDataResponse {
@@ -47,7 +47,7 @@ export function usePromptChartData(
 					promptId,
 					lookback: filters?.lookback || "1m",
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
-					engine: filters?.engine,
+					model: filters?.model,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
