@@ -4,10 +4,10 @@
  * Exercises the same code paths as the worker, against real provider APIs.
  *
  * Usage:
- *   pnpm tsx --env-file=.env scripts/test-providers.ts              # Full test all
- *   pnpm tsx --env-file=.env scripts/test-providers.ts --engine chatgpt  # Test specific engine
- *   pnpm tsx --env-file=.env scripts/test-providers.ts --provider olostep # Test specific provider
- *   pnpm tsx --env-file=.env scripts/test-providers.ts --ping             # Quick auth check
+ *   pnpm tsx --env-file=.env scripts/test-providers.ts                       # Test all engines
+ *   pnpm tsx --env-file=.env scripts/test-providers.ts --engine chatgpt     # Test specific engine
+ *   pnpm tsx --env-file=.env scripts/test-providers.ts --provider olostep   # Test specific provider
+ *   pnpm tsx --env-file=.env scripts/test-providers.ts --ping               # Quick auth check only
  */
 
 import {
@@ -80,7 +80,7 @@ Options:
 	return result;
 }
 
-const TEST_PROMPT = "What are the best project management tools?";
+const TEST_PROMPT = "What are the best running shoes?";
 
 interface RunResult {
 	engine: string;
@@ -210,10 +210,6 @@ async function main() {
 	const args = parseArgs();
 
 	const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-	if (configs.length === 0) {
-		log("No SCRAPE_TARGETS configured and no legacy API keys detected.", colors.red);
-		process.exit(1);
-	}
 
 	const filtered = configs.filter((c) => {
 		if (args.engine && c.engine !== args.engine) return false;

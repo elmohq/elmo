@@ -11,9 +11,9 @@ on:
 
 jobs:
   test-providers:
-    name: Provider ping check
+    name: Provider integration tests
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -41,10 +41,10 @@ jobs:
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
           DATAFORSEO_LOGIN=${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD=${{ secrets.DATAFORSEO_PASSWORD }}
-          BRIGHTDATA_API_KEY=${{ secrets.BRIGHTDATA_API_KEY }}
+          BRIGHTDATA_API_TOKEN=${{ secrets.BRIGHTDATA_API_TOKEN }}
           SCRAPE_TARGETS=${{ secrets.SCRAPE_TARGETS }}
           EOF
 
-      - name: Run provider ping tests
+      - name: Run provider integration tests
         working-directory: apps/web
-        run: pnpm tsx --env-file=.env scripts/test-providers.ts --ping
+        run: pnpm tsx --env-file=.env scripts/test-providers.ts
