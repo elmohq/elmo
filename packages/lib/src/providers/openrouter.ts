@@ -91,7 +91,7 @@ export const openrouter: Provider = {
 			throw new Error(`OpenRouter API error (${response.status}): ${text}`);
 		}
 
-		const data = await response.json();
+		const data: any = await response.json();
 
 		return {
 			rawOutput: data,

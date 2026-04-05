@@ -196,8 +196,8 @@ describe("text-extraction", () => {
 			expect(extractTextContent(googleOutput, "google")).toBe("Google text");
 		});
 
-		it("should handle unknown model group", () => {
-			expect(extractTextContent({}, "unknown")).toBe("Unknown model group - cannot extract text content.");
+		it("should handle unknown engine", () => {
+			expect(extractTextContent({}, "unknown")).toBe("Unknown engine - cannot extract text content.");
 		});
 	});
 
@@ -229,6 +229,7 @@ describe("text-extraction", () => {
 				url: "https://example.com/article",
 				title: "Example Article",
 				domain: "example.com",
+				citationIndex: 0,
 			});
 		});
 
@@ -339,6 +340,7 @@ describe("text-extraction", () => {
 				url: "https://example.com/source",
 				title: "Source Article",
 				domain: "example.com",
+				citationIndex: 0,
 			});
 		});
 

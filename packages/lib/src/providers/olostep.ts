@@ -116,7 +116,7 @@ export const olostep: Provider = {
 			throw new Error(`Olostep API error (${response.status}): ${text}`);
 		}
 
-		const data = await response.json();
+		const data: any = await response.json();
 		const parsed = data?.result?.json_content ? JSON.parse(data.result.json_content) : data;
 
 		return {
