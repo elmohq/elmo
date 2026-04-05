@@ -146,7 +146,7 @@ async function seed() {
       {
         id: RUN_IDS[0],
         promptId: PROMPT_IDS.branded1,
-        modelGroup: "openai",
+        engine: "chatgpt",
         model: "gpt-4o",
         webSearchEnabled: false,
         rawOutput: {
@@ -167,7 +167,7 @@ async function seed() {
       {
         id: RUN_IDS[1],
         promptId: PROMPT_IDS.branded1,
-        modelGroup: "anthropic",
+        engine: "claude",
         model: "claude-sonnet-4-20250514",
         webSearchEnabled: false,
         rawOutput: {
@@ -188,7 +188,7 @@ async function seed() {
       {
         id: RUN_IDS[2],
         promptId: PROMPT_IDS.branded1,
-        modelGroup: "google",
+        engine: "google-ai-mode",
         model: "gemini-2.5-pro",
         webSearchEnabled: true,
         rawOutput: {
@@ -210,7 +210,7 @@ async function seed() {
       {
         id: RUN_IDS[3],
         promptId: PROMPT_IDS.branded1,
-        modelGroup: "openai",
+        engine: "chatgpt",
         model: "gpt-4o",
         webSearchEnabled: true,
         rawOutput: {
@@ -228,7 +228,7 @@ async function seed() {
       {
         id: RUN_IDS[4],
         promptId: PROMPT_IDS.branded2,
-        modelGroup: "openai",
+        engine: "chatgpt",
         model: "gpt-4o",
         webSearchEnabled: false,
         rawOutput: {
@@ -248,7 +248,7 @@ async function seed() {
       {
         id: RUN_IDS[5],
         promptId: PROMPT_IDS.branded2,
-        modelGroup: "anthropic",
+        engine: "claude",
         model: "claude-sonnet-4-20250514",
         webSearchEnabled: false,
         rawOutput: {
@@ -269,7 +269,7 @@ async function seed() {
       {
         id: RUN_IDS[6],
         promptId: PROMPT_IDS.unbranded1,
-        modelGroup: "openai",
+        engine: "chatgpt",
         model: "gpt-4o-mini",
         webSearchEnabled: false,
         rawOutput: {
@@ -289,7 +289,7 @@ async function seed() {
       {
         id: RUN_IDS[7],
         promptId: PROMPT_IDS.unbranded1,
-        modelGroup: "anthropic",
+        engine: "claude",
         model: "claude-sonnet-4-20250514",
         webSearchEnabled: true,
         rawOutput: {
@@ -311,13 +311,13 @@ async function seed() {
 
     for (const run of promptRuns) {
       await client.query(
-        `INSERT INTO prompt_runs (id, prompt_id, brand_id, "modelGroup", model, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
+        `INSERT INTO prompt_runs (id, prompt_id, brand_id, engine, model, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           run.id,
           run.promptId,
           TEST_BRAND_ID,
-          run.modelGroup,
+          run.engine,
           run.model,
           run.webSearchEnabled,
           JSON.stringify(run.rawOutput),
@@ -338,13 +338,13 @@ async function seed() {
       for (let i = 0; i < run.citations.length; i++) {
         const c = run.citations[i];
         await client.query(
-          `INSERT INTO citations (prompt_run_id, prompt_id, brand_id, "modelGroup", url, domain, title, citation_index, created_at)
+          `INSERT INTO citations (prompt_run_id, prompt_id, brand_id, engine, url, domain, title, citation_index, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
           [
             run.id,
             run.promptId,
             TEST_BRAND_ID,
-            run.modelGroup,
+            run.engine,
             c.url,
             c.domain,
             c.title,

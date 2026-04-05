@@ -5,7 +5,7 @@ import { getCitationsFn } from "@/server/citations";
 export interface CitationFilters {
 	days?: number;
 	tags?: string[];
-	modelGroup?: string;
+	engine?: string;
 }
 
 export const citationKeys = {
@@ -26,7 +26,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 					brandId: resolvedBrandId!,
 					days: filters?.days || 7,
 					tags: filters?.tags?.join(","),
-					modelGroup: filters?.modelGroup,
+					engine: filters?.engine,
 				},
 			}),
 		enabled: !!resolvedBrandId,

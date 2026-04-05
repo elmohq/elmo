@@ -620,8 +620,8 @@ function ResponsesTab({
 					<CardHeader className="pb-0 gap-y-0">
 						<div className="grid grid-cols-3 gap-x-4 text-sm">
 							<div>
-								<span className="text-muted-foreground block text-xs mb-0.5">Model Group</span>
-								<span>{getModelDisplayName(run.modelGroup)}</span>
+								<span className="text-muted-foreground block text-xs mb-0.5">Engine</span>
+								<span>{getModelDisplayName(run.engine)}</span>
 							</div>
 							<div>
 								<span className="text-muted-foreground block text-xs mb-0.5">Model</span>
@@ -666,7 +666,7 @@ function ResponsesTab({
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
 							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
-								<ReactMarkdown>{extractTextContent(run.rawOutput, run.modelGroup)}</ReactMarkdown>
+								<ReactMarkdown>{extractTextContent(run.rawOutput, run.engine)}</ReactMarkdown>
 							</div>
 						</div>
 

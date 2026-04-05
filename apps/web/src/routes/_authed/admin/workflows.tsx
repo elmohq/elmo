@@ -43,7 +43,7 @@ interface SchedulerInfo {
 	cadenceHours: number | null;
 }
 
-interface LastRunByModelGroup {
+interface LastRunByEngine {
 	lastRunAt: string | null;
 	isOverdue: boolean;
 	overdueByMs: number | null;
@@ -56,11 +56,7 @@ interface PromptScheduleStatus {
 	brandName: string;
 	enabled: boolean;
 	runFrequencyMs: number;
-	lastRunsByModelGroup: {
-		openai?: LastRunByModelGroup;
-		anthropic?: LastRunByModelGroup;
-		google?: LastRunByModelGroup;
-	};
+	lastRunsByEngine: Record<string, LastRunByEngine>;
 	schedulerInfo: SchedulerInfo;
 	recentFailures: number;
 	jobStatus: "active" | "created" | "retry" | "none";
@@ -219,7 +215,7 @@ function SchedulerCell({ info }: { info: SchedulerInfo }) {
 	);
 }
 
-function ModelGroupStatus({ status }: { status?: LastRunByModelGroup }) {
+function EngineStatus({ status }: { status?: LastRunByEngine }) {
 	if (!status) {
 		return <span className="text-muted-foreground">-</span>;
 	}
@@ -478,9 +474,9 @@ function BrandRow({
 									<TableRow>
 										<TableHead className="w-[250px]">Prompt</TableHead>
 										<TableHead className="text-center">Status</TableHead>
-										<TableHead className="text-center">OpenAI</TableHead>
-										<TableHead className="text-center">Anthropic</TableHead>
-										<TableHead className="text-center">Google</TableHead>
+										{Object.keys(brand.prompts[0]?.lastRunsByEngine || {}).map((engine) => (
+											<TableHead key={engine} className="text-center capitalize">{engine}</TableHead>
+										))}
 										<TableHead className="text-center">Prod Scheduler</TableHead>
 										<TableHead className="text-center">Last Job</TableHead>
 										<TableHead className="text-center">Actions</TableHead>
@@ -492,9 +488,7 @@ function BrandRow({
 											const getCategory = (p: typeof a) => {
 												const isOverdue =
 													p.enabled &&
-													(p.lastRunsByModelGroup.openai?.isOverdue ||
-														p.lastRunsByModelGroup.anthropic?.isOverdue ||
-														p.lastRunsByModelGroup.google?.isOverdue);
+													Object.values(p.lastRunsByEngine).some((e) => e?.isOverdue);
 												if (isOverdue) return 0;
 												if (p.enabled) return 1;
 												return 2;
@@ -504,9 +498,7 @@ function BrandRow({
 										.map((prompt) => {
 											const isStuck =
 												prompt.enabled &&
-												(prompt.lastRunsByModelGroup.openai?.isOverdue ||
-													prompt.lastRunsByModelGroup.anthropic?.isOverdue ||
-													prompt.lastRunsByModelGroup.google?.isOverdue);
+												Object.values(prompt.lastRunsByEngine).some((e) => e?.isOverdue);
 											const promptJobs = recentJobs
 												.filter((j) => j.data?.promptId === prompt.promptId)
 												.sort((a, b) => b.timestamp - a.timestamp);
@@ -548,15 +540,11 @@ function BrandRow({
 															</div>
 														)}
 													</TableCell>
-													<TableCell className="text-center">
-														<ModelGroupStatus status={prompt.lastRunsByModelGroup.openai} />
-													</TableCell>
-													<TableCell className="text-center">
-														<ModelGroupStatus status={prompt.lastRunsByModelGroup.anthropic} />
-													</TableCell>
-													<TableCell className="text-center">
-														<ModelGroupStatus status={prompt.lastRunsByModelGroup.google} />
-													</TableCell>
+													{Object.entries(prompt.lastRunsByEngine).map(([engine, status]) => (
+														<TableCell key={engine} className="text-center">
+															<EngineStatus status={status} />
+														</TableCell>
+													))}
 													<TableCell className="text-center">
 														<SchedulerCell info={prompt.schedulerInfo} />
 													</TableCell>
@@ -685,11 +673,11 @@ function WorkflowsPage() {
 	const THIRTY_MIN_MS = 30 * 60 * 1000;
 	const overdueBreakdown = data.brands.reduce(
 		(acc, brand) => {
-			for (const prompt of brand.prompts) {
-				if (!prompt.enabled) continue;
-				const modelGroups = Object.values(prompt.lastRunsByModelGroup);
-				const isOverdue = modelGroups.some((mg) => mg?.isOverdue);
-				const isSeverelyOverdue = modelGroups.some((mg) => mg?.isOverdue && mg.overdueByMs && mg.overdueByMs > THIRTY_MIN_MS);
+		for (const prompt of brand.prompts) {
+			if (!prompt.enabled) continue;
+			const engines = Object.values(prompt.lastRunsByEngine);
+			const isOverdue = engines.some((e) => e?.isOverdue);
+			const isSeverelyOverdue = engines.some((e) => e?.isOverdue && e.overdueByMs && e.overdueByMs > THIRTY_MIN_MS);
 				if (isOverdue) acc.total++;
 				if (isSeverelyOverdue) acc.severe++;
 			}

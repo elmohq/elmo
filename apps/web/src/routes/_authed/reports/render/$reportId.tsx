@@ -40,7 +40,7 @@ interface PromptData {
 interface PromptRunResult {
 	promptValue: string;
 	runs: Array<{
-		modelGroup: "openai" | "anthropic" | "google";
+		engine: string;
 		model: string;
 		webSearchEnabled: boolean;
 		rawOutput: any;
@@ -262,14 +262,14 @@ function ReportRenderPage() {
 				createdAt: new Date(),
 			};
 
-			const fullPromptRunData = {
-				...promptRunData,
-				modelGroup: run.modelGroup,
-				model: run.model,
-				webSearchEnabled: run.webSearchEnabled,
-				rawOutput: run.rawOutput,
-				webQueries: run.webQueries,
-			};
+		const fullPromptRunData = {
+			...promptRunData,
+			engine: run.engine,
+			model: run.model,
+			webSearchEnabled: run.webSearchEnabled,
+			rawOutput: run.rawOutput,
+			webQueries: run.webQueries,
+		};
 
 			mockPromptRuns.push(promptRunData);
 			fullPromptRuns.push(fullPromptRunData);

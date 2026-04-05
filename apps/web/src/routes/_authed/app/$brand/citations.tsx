@@ -43,7 +43,7 @@ function CitationsPage() {
 
 
 	// Get citation data with tag and model filter
-	const modelGroupParam = selectedModel === "all" ? undefined : selectedModel;
+	const engineParam = selectedModel === "all" ? undefined : selectedModel;
 	const {
 		citations: citationData,
 		isLoading,
@@ -52,7 +52,7 @@ function CitationsPage() {
 	} = useCitations(brandId, {
 		days,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
-		modelGroup: modelGroupParam,
+		engine: engineParam,
 	});
 
 	const availableTags = citationData?.availableTags || [];

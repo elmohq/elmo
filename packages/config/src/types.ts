@@ -123,14 +123,14 @@ export interface WebQueryResult {
 
 export interface OptimizeButtonProps {
   brandId?: string;
-  selectedModel?: "openai" | "anthropic" | "google" | "all";
-  availableModels?: ("openai" | "anthropic" | "google")[];
+  selectedModel?: string;
+  availableModels?: string[];
   lookback?: "1w" | "1m" | "3m" | "6m" | "1y" | "all";
   promptName?: string;
   promptId?: string;
   parentName?: string;
   optimizationUrlTemplate?: string;
-  fetchWebQuery?: (promptId: string, lookback: string, modelGroup?: string) => Promise<WebQueryResult>;
+  fetchWebQuery?: (promptId: string, lookback: string, engine?: string) => Promise<WebQueryResult>;
 }
 
 // ============================================================================

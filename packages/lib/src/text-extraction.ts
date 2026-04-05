@@ -79,16 +79,20 @@ export function extractTextFromGoogle(rawOutput: any): string {
 	}
 }
 
-export function extractTextContent(rawOutput: any, modelGroup: string): string {
-	switch (modelGroup) {
+export function extractTextContent(rawOutput: any, engine: string): string {
+	switch (engine) {
 		case "openai":
+		case "chatgpt":
 			return extractTextFromOpenAI(rawOutput);
 		case "anthropic":
+		case "claude":
 			return extractTextFromAnthropic(rawOutput);
 		case "google":
+		case "google-ai-mode":
+		case "google-ai-overview":
 			return extractTextFromGoogle(rawOutput);
 		default:
-			return "Unknown model group - cannot extract text content.";
+			return "Unknown engine - cannot extract text content.";
 	}
 }
 
@@ -183,14 +187,17 @@ export function extractCitationsFromGoogle(rawOutput: any): Citation[] {
 	}
 }
 
-export function extractCitations(rawOutput: any, modelGroup: string): Citation[] {
-	switch (modelGroup) {
+export function extractCitations(rawOutput: any, engine: string): Citation[] {
+	switch (engine) {
 		case "openai":
+		case "chatgpt":
 			return extractCitationsFromOpenAI(rawOutput);
 		case "google":
+		case "google-ai-mode":
+		case "google-ai-overview":
 			return extractCitationsFromGoogle(rawOutput);
 		case "anthropic":
-			// Anthropic doesn't provide citations in a structured way currently
+		case "claude":
 			return [];
 		default:
 			return [];

@@ -17,6 +17,7 @@ import { analyzeWebsite, getCompetitors, generateCandidatePromptsForReports } fr
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
+import { parseScrapeTargets } from "@workspace/lib/providers";
 
 // ============================================================================
 // Admin guard helper
@@ -593,18 +594,18 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
-			modelGroup: promptRuns.modelGroup,
+			engine: promptRuns.engine,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.modelGroup);
+		.groupBy(promptRuns.promptId, promptRuns.engine);
 
 	const lastRunsMap: Record<string, Record<string, Date>> = {};
 	for (const run of lastRunsQuery) {
 		if (!lastRunsMap[run.promptId]) {
 			lastRunsMap[run.promptId] = {};
 		}
-		lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
+		lastRunsMap[run.promptId][run.engine] = run.lastRunAt;
 	}
 
 	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
@@ -633,14 +634,15 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		let onSchedulePrompts = 0;
 		let scheduledCount = 0;
 
+		const engineList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.engine);
 		const promptStatuses = brandPrompts.map((prompt) => {
 			const lastRuns = lastRunsMap[prompt.id] || {};
-			const lastRunsByModelGroup: Record<string, { lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }> = {};
+			const lastRunsByEngine: Record<string, { lastRunAt: Date | null; isOverdue: boolean; overdueByMs: number | null }> = {};
 
 			let anyOverdue = false;
 
-			for (const modelGroup of ["openai", "anthropic", "google"] as const) {
-				const lastRunAt = lastRuns[modelGroup] || null;
+			for (const engine of engineList) {
+				const lastRunAt = lastRuns[engine] || null;
 				let isOverdue = false;
 				let overdueByMs: number | null = null;
 
@@ -658,7 +660,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 					}
 				}
 
-				lastRunsByModelGroup[modelGroup] = { lastRunAt, isOverdue, overdueByMs };
+				lastRunsByEngine[engine] = { lastRunAt, isOverdue, overdueByMs };
 			}
 
 			const scheduleInfo = scheduleMap.get(prompt.id);
@@ -686,7 +688,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 				brandName: brand.name,
 				enabled: prompt.enabled,
 				runFrequencyMs,
-				lastRunsByModelGroup,
+				lastRunsByEngine,
 				schedulerInfo,
 				recentFailures: failuresByPrompt.get(prompt.id) || 0,
 				jobStatus,

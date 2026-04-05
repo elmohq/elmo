@@ -45,14 +45,14 @@ export function ChartActionsFooter({
 	const OptimizeButton = getOptimizeButtonForMode(mode);
 
 	const fetchWebQuery = useCallback(
-		async (pId: string, lb: string, modelGroup?: string) => {
+		async (pId: string, lb: string, engine?: string) => {
 			if (!brandId) throw new Error("No brand ID");
 			return getPromptWebQueryFn({
 				data: {
 					brandId,
 					promptId: pId,
 					lookback: lb,
-					modelGroup,
+					engine,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			});

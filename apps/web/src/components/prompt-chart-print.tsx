@@ -21,7 +21,8 @@ interface PromptRunData {
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
 	createdAt: Date;
-	modelGroup: "openai" | "anthropic" | "google";
+	engine: string;
+	provider: string | null;
 	model: string;
 	webSearchEnabled: boolean;
 	rawOutput: any;

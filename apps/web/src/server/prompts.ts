@@ -83,7 +83,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			modelGroup: z.string().optional(),
+			engine: z.string().optional(),
 			tags: z.string().optional(),
 		}),
 	)
@@ -134,7 +134,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 				toDateStr,
 				timezone,
 				webSearchEnabled,
-				data.modelGroup,
+				data.engine,
 				promptIds,
 			),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
@@ -279,7 +279,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 				// Web query stats
 				db
-					.select({ modelGroup: promptRuns.modelGroup, webQueries: promptRuns.webQueries })
+					.select({ engine: promptRuns.engine, webQueries: promptRuns.webQueries })
 					.from(promptRuns)
 					.where(
 						and(
@@ -357,31 +357,29 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const allQueries: Record<string, number> = {};
 		const modelQueries: Record<string, Record<string, number>> = {};
 
-		webQueryStatsResult.forEach((row: any) => {
-			const queries = row.webQueries || [];
-			const modelGroup = row.modelGroup;
-			if (!modelQueries[modelGroup]) modelQueries[modelGroup] = {};
-			queries.forEach((query: string) => {
-				if (query?.trim()) {
-					allQueries[query] = (allQueries[query] || 0) + 1;
-					modelQueries[modelGroup][query] = (modelQueries[modelGroup][query] || 0) + 1;
-				}
-			});
-		});
-
-		const webQueryStats: {
-			overall: { name: string; count: number }[];
-			byModel: Record<string, { name: string; count: number }[]>;
-		} = { overall: [], byModel: {} };
-
-		["openai", "anthropic", "google"].forEach((mg) => {
-			if (modelQueries[mg]) {
-				webQueryStats.byModel[mg] = Object.entries(modelQueries[mg])
-					.map(([name, cnt]) => ({ name, count: cnt }))
-					.sort((a, b) => b.count - a.count)
-					.slice(0, 15);
+	webQueryStatsResult.forEach((row: any) => {
+		const queries = row.webQueries || [];
+		const engine = row.engine;
+		if (!modelQueries[engine]) modelQueries[engine] = {};
+		queries.forEach((query: string) => {
+			if (query?.trim()) {
+				allQueries[query] = (allQueries[query] || 0) + 1;
+				modelQueries[engine][query] = (modelQueries[engine][query] || 0) + 1;
 			}
 		});
+	});
+
+	const webQueryStats: {
+		overall: { name: string; count: number }[];
+		byModel: Record<string, { name: string; count: number }[]>;
+	} = { overall: [], byModel: {} };
+
+	for (const engine of Object.keys(modelQueries)) {
+		webQueryStats.byModel[engine] = Object.entries(modelQueries[engine])
+			.map(([name, cnt]) => ({ name, count: cnt }))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 15);
+	}
 
 		webQueryStats.overall = Object.entries(allQueries)
 			.map(([name, cnt]) => ({ name, count: cnt }))
@@ -613,7 +611,7 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			modelGroup: z.string().optional(),
+			engine: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -671,8 +669,8 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
-			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
+			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.engine),
+			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.engine),
 			getPromptWebQueriesForMapping(data.promptId, fromDateStr, toDateStr, timezone),
 		]);
 
@@ -746,21 +744,22 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 				if (oldestQueries.length > 0) webQueryMapping[data.promptId] = oldestQueries[0];
 			}
 
-			for (const modelGroup of ["openai", "anthropic", "google"]) {
-				const modelQueries = webQueryData.filter((q) => q.model_group === modelGroup);
-				if (modelQueries.length > 0) {
-					const oldest = modelQueries[0];
-					const oldestTime = new Date(oldest.created_at_iso).getTime();
-					const sorted = modelQueries
-						.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
-						.map((q) => q.web_query)
-						.sort();
-					if (sorted.length > 0) {
-						if (!modelWebQueryMappings[modelGroup]) modelWebQueryMappings[modelGroup] = {};
-						modelWebQueryMappings[modelGroup][data.promptId] = sorted[0];
-					}
+		const seenEngines = new Set(webQueryData.map((q) => q.engine));
+		for (const engine of seenEngines) {
+			const engineQueries = webQueryData.filter((q) => q.engine === engine);
+			if (engineQueries.length > 0) {
+				const oldest = engineQueries[0];
+				const oldestTime = new Date(oldest.created_at_iso).getTime();
+				const sorted = engineQueries
+					.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
+					.map((q) => q.web_query)
+					.sort();
+				if (sorted.length > 0) {
+					if (!modelWebQueryMappings[engine]) modelWebQueryMappings[engine] = {};
+					modelWebQueryMappings[engine][data.promptId] = sorted[0];
 				}
 			}
+		}
 		}
 
 		return {
@@ -786,7 +785,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
-			modelGroup: z.string().optional(),
+			engine: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -817,7 +816,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			fromDateStr,
 			toDateStr,
 			timezone,
-			data.modelGroup,
+			data.engine,
 		);
 
 		let webQuery: string | null = null;
@@ -825,8 +824,8 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		let maxOverallCount = 0;
 
 		for (const row of webQueryData) {
-			if (!modelWebQueries[row.model_group]) {
-				modelWebQueries[row.model_group] = row.web_query;
+			if (!modelWebQueries[row.engine]) {
+				modelWebQueries[row.engine] = row.web_query;
 			}
 			if (row.query_count > maxOverallCount) {
 				maxOverallCount = row.query_count;
