@@ -18,7 +18,11 @@
     "./dataforseo": "./src/dataforseo.ts",
     "./wizard-helpers": "./src/wizard-helpers.ts",
     "./tag-utils": "./src/tag-utils.ts",
-    "./website-excerpt": "./src/website-excerpt.ts"
+    "./website-excerpt": "./src/website-excerpt.ts",
+    "./providers": "./src/providers/index.ts",
+    "./providers/config": "./src/providers/config.ts",
+    "./providers/engines": "./src/providers/engines.ts",
+    "./providers/types": "./src/providers/types.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.64",
