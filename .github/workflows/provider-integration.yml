@@ -1,4 +1,6 @@
 name: Provider Integration Tests
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
