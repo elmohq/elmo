@@ -35,9 +35,9 @@ export interface ReportJobContext {
 interface PromptRunResult {
 	promptValue: string;
 	runs: Array<{
-		engine: string;
-		provider: string;
 		model: string;
+		provider: string;
+		version: string;
 		webSearchEnabled: boolean;
 		rawOutput: any;
 		webQueries: string[];
@@ -199,9 +199,9 @@ async function runPrompt(
 					competitors,
 				);
 				return {
-					engine: cfg.model,
+					model: cfg.model,
 					provider: provider.id,
-					model: result.modelVersion ?? cfg.version ?? provider.id,
+					version: result.modelVersion ?? cfg.version ?? provider.id,
 					webSearchEnabled: cfg.webSearch,
 					rawOutput: result.rawOutput as any,
 					webQueries: result.webQueries,
@@ -330,9 +330,9 @@ export async function processReportJob(job: ReportJobContext) {
 			promptValue: string;
 			brandedPrompt: boolean;
 			runs: Array<{
-				engine: string;
-				provider: string;
 				model: string;
+				provider: string;
+				version: string;
 				webSearchEnabled: boolean;
 				rawOutput: any;
 				webQueries: string[];

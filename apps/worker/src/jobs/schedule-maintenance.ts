@@ -63,22 +63,22 @@ async function runMaintenanceCheck(): Promise<void> {
 	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 	const engineNames = allModels.map((cfg) => cfg.model);
 
-	// Get last runs per prompt per engine (matches dashboard overdue logic)
+	// Get last runs per prompt per model (matches dashboard overdue logic)
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
-			engine: promptRuns.engine,
+			model: promptRuns.model,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.engine);
+		.groupBy(promptRuns.promptId, promptRuns.model);
 
 	const lastRunsMap: Record<string, Record<string, Date>> = {};
 	for (const run of lastRunsQuery) {
 		if (!lastRunsMap[run.promptId]) {
 			lastRunsMap[run.promptId] = {};
 		}
-		lastRunsMap[run.promptId][run.engine] = run.lastRunAt;
+		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
 	}
 
 	// Get all pending jobs with their state info

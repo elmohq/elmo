@@ -40,8 +40,8 @@ interface PromptData {
 interface PromptRunResult {
 	promptValue: string;
 	runs: Array<{
-		engine: string;
 		model: string;
+		version: string;
 		webSearchEnabled: boolean;
 		rawOutput: any;
 		webQueries: string[];
@@ -264,8 +264,8 @@ function ReportRenderPage() {
 
 		const fullPromptRunData = {
 			...promptRunData,
-			engine: run.engine,
 			model: run.model,
+			version: run.version,
 			webSearchEnabled: run.webSearchEnabled,
 			rawOutput: run.rawOutput,
 			webQueries: run.webQueries,

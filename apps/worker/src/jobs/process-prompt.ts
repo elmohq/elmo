@@ -149,9 +149,9 @@ function analyzeMentions(
 async function savePromptRun(
 	promptId: string,
 	brandId: string,
-	engine: string,
-	provider: string | null,
 	model: string,
+	provider: string | null,
+	version: string,
 	webSearchEnabled: boolean,
 	rawOutput: unknown,
 	webQueries: string[],
@@ -163,9 +163,9 @@ async function savePromptRun(
 		.values({
 			promptId,
 			brandId,
-			engine,
-			provider,
 			model,
+			provider,
+			version,
 			webSearchEnabled,
 			rawOutput,
 			webQueries,
@@ -181,7 +181,7 @@ async function saveCitations(
 	promptRunId: string,
 	promptId: string,
 	brandId: string,
-	engine: string,
+	model: string,
 	extractedCitations: Citation[],
 	createdAt: Date,
 ): Promise<void> {
@@ -192,7 +192,7 @@ async function saveCitations(
 			promptRunId,
 			promptId,
 			brandId,
-			engine,
+			model,
 			url: c.url,
 			domain: c.domain,
 			title: c.title || null,
@@ -207,8 +207,8 @@ async function runModelIteration({
 	promptValue,
 	brand,
 	competitorsList,
-	engine,
 	model,
+	version,
 	webSearchEnabled,
 	runIndex,
 	providerImpl,
@@ -218,16 +218,16 @@ async function runModelIteration({
 	promptValue: string;
 	brand: Brand;
 	competitorsList: Competitor[];
-	engine: string;
 	model: string;
+	version: string;
 	webSearchEnabled: boolean;
 	runIndex: number;
 	providerImpl: Provider;
 	providerOptions: ProviderOptions;
 }): Promise<void> {
-	const logPrefix = `[${engine}_${runIndex}]`;
+	const logPrefix = `[${model}_${runIndex}]`;
 
-	const result = await providerImpl.run(engine, promptValue, providerOptions);
+	const result = await providerImpl.run(model, promptValue, providerOptions);
 
 	const { rawOutput, webQueries, textContent, modelVersion } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
@@ -239,9 +239,9 @@ async function runModelIteration({
 	const { id: promptRunId, createdAt } = await savePromptRun(
 		promptId,
 		brand.id,
-		engine,
+		model,
 		providerImpl.id,
-		modelVersion ?? model,
+		modelVersion ?? version,
 		webSearchEnabled,
 		rawOutput,
 		webQueries,
@@ -250,7 +250,7 @@ async function runModelIteration({
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	await saveCitations(promptRunId, promptId, brand.id, engine, result.citations, createdAt);
+	await saveCitations(promptRunId, promptId, brand.id, model, result.citations, createdAt);
 }
 
 /**
@@ -297,8 +297,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 						promptValue: prompt.value,
 						brand,
 						competitorsList,
-						engine: cfg.model,
-						model: cfg.version ?? provider.id,
+						model: cfg.model,
+						version: cfg.version ?? provider.id,
 						webSearchEnabled: cfg.webSearch,
 						runIndex: i + 1,
 						providerImpl: provider,

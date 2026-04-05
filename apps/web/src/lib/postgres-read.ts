@@ -56,7 +56,7 @@ export interface PromptCompetitorDailyStats {
 }
 
 export interface WebQueryMapping {
-	engine: string;
+	model: string;
 	web_query: string;
 	created_at_iso: string;
 }
@@ -154,7 +154,7 @@ function promptIdFilter(enabledPromptIds?: string[]): SQL {
 
 function modelFilter(model?: string): SQL {
 	if (!model) return sql``;
-	return sql`AND engine = ${model}`;
+	return sql`AND model = ${model}`;
 }
 
 function webSearchFilter(webSearchEnabled?: boolean): SQL {
@@ -377,7 +377,7 @@ export async function getPromptWebQueriesForMapping(
 ): Promise<WebQueryMapping[]> {
 	const rows = await queryPg<WebQueryMapping>(sql`
 		SELECT
-			engine,
+			model,
 			web_query,
 			to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS created_at_iso
 		FROM prompt_runs, unnest(web_queries) AS web_query
@@ -394,7 +394,7 @@ export async function getPromptWebQueriesForMapping(
 // ============================================================================
 
 export interface WebQueryCount {
-	engine: string;
+	model: string;
 	web_query: string;
 	query_count: number;
 }
@@ -408,7 +408,7 @@ export async function getPromptWebQueryCounts(
 ): Promise<WebQueryCount[]> {
 	const rows = await queryPg<WebQueryCount>(sql`
 		SELECT
-			engine,
+			model,
 			web_query,
 			count(*)::int AS query_count
 		FROM prompt_runs, unnest(web_queries) AS web_query
@@ -416,8 +416,8 @@ export async function getPromptWebQueryCounts(
 			AND array_length(web_queries, 1) > 0
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
-		GROUP BY engine, web_query
-		ORDER BY engine, query_count DESC
+		GROUP BY model, web_query
+		ORDER BY model, query_count DESC
 	`);
 	return rows;
 }

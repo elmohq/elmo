@@ -35,9 +35,9 @@ const getEngineConfigFn = createServerFn({ method: "GET" })
 		const activeModels = modelConfigs.map((cfg) => {
 			const meta = getModelMeta(cfg.model);
 			return {
-				engine: cfg.model,
+				model: cfg.model,
 				provider: cfg.provider,
-				model: cfg.version ?? null,
+				version: cfg.version ?? null,
 				webSearch: cfg.webSearch,
 				label: meta.label,
 				iconId: meta.iconId,
@@ -130,25 +130,25 @@ function LlmsSettingsPage() {
 	const [saving, setSaving] = useState(false);
 
 	const isModelEnabled = useCallback(
-		(engine: string) => {
+		(model: string) => {
 			if (enabledModels === null) return true;
-			return enabledModels.includes(engine);
+			return enabledModels.includes(model);
 		},
 		[enabledModels],
 	);
 
 	const handleToggle = useCallback(
-		async (engine: string, checked: boolean) => {
-			const allEngineIds = engines.map((e) => e.engine);
+		async (model: string, checked: boolean) => {
+			const allModelIds = engines.map((e) => e.model);
 			let next: string[];
 
 			if (enabledModels === null) {
-				next = checked ? allEngineIds : allEngineIds.filter((e) => e !== engine);
+				next = checked ? allModelIds : allModelIds.filter((e) => e !== model);
 			} else {
-				next = checked ? [...enabledModels, engine] : enabledModels.filter((e) => e !== engine);
+				next = checked ? [...enabledModels, model] : enabledModels.filter((e) => e !== model);
 			}
 
-			const isAllEnabled = allEngineIds.every((e) => next.includes(e));
+			const isAllEnabled = allModelIds.every((e) => next.includes(e));
 			const newValue = isAllEnabled ? null : next;
 
 			setEnabledModels(newValue);
@@ -186,9 +186,9 @@ function LlmsSettingsPage() {
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{engines.map((engine) => {
-						const enabled = isModelEnabled(engine.engine);
+						const enabled = isModelEnabled(engine.model);
 						return (
-							<Card key={engine.engine} className={`h-full transition-opacity ${enabled ? "" : "opacity-60"}`}>
+							<Card key={engine.model} className={`h-full transition-opacity ${enabled ? "" : "opacity-60"}`}>
 								<CardHeader className="py-2 border-b">
 									<div className="flex items-center justify-between gap-2">
 										<div className="flex items-center gap-3">
@@ -198,7 +198,7 @@ function LlmsSettingsPage() {
 										<Checkbox
 											checked={enabled}
 											disabled={saving}
-											onCheckedChange={(checked) => handleToggle(engine.engine, !!checked)}
+											onCheckedChange={(checked) => handleToggle(engine.model, !!checked)}
 											aria-label={`Toggle ${engine.label}`}
 										/>
 									</div>
@@ -209,20 +209,20 @@ function LlmsSettingsPage() {
 											<span className="text-xs uppercase tracking-wide text-muted-foreground">Provider</span>
 											<span className="text-xs text-foreground">{engine.provider}</span>
 										</div>
-										{engine.model && (
+										{engine.version && (
 											<div className="flex items-center justify-between py-2">
 												<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-													<span>Model</span>
+													<span>Version</span>
 													<Tooltip>
 														<TooltipTrigger asChild>
 															<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
 														</TooltipTrigger>
 														<TooltipContent className="max-w-xs text-xs font-normal">
-															Exact model slug used for this engine.
+															Exact model version slug used for this engine.
 														</TooltipContent>
 													</Tooltip>
 												</div>
-												<span className="font-mono text-xs text-foreground">{engine.model}</span>
+												<span className="font-mono text-xs text-foreground">{engine.version}</span>
 											</div>
 										)}
 										<div className="flex items-center justify-between py-2">

@@ -592,18 +592,18 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
-			engine: promptRuns.engine,
+			model: promptRuns.model,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.engine);
+		.groupBy(promptRuns.promptId, promptRuns.model);
 
 	const lastRunsMap: Record<string, Record<string, Date>> = {};
 	for (const run of lastRunsQuery) {
 		if (!lastRunsMap[run.promptId]) {
 			lastRunsMap[run.promptId] = {};
 		}
-		lastRunsMap[run.promptId][run.engine] = run.lastRunAt;
+		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
 	}
 
 	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
@@ -858,9 +858,9 @@ export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(asy
 	const activeModels = modelConfigs.map((cfg) => {
 		const meta = getModelMeta(cfg.model);
 		return {
-			engine: cfg.model,
+			model: cfg.model,
 			provider: cfg.provider,
-			model: cfg.version ?? null,
+			version: cfg.version ?? null,
 			webSearch: cfg.webSearch,
 			modelLabel: meta.label,
 			modelIconId: meta.iconId,
@@ -883,21 +883,21 @@ export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(asy
 export const testProviderFn = createServerFn({ method: "POST" })
 	.inputValidator(
 		z.object({
-			engine: z.string(),
+			model: z.string(),
 			provider: z.string(),
-			model: z.string().optional(),
+			version: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }): Promise<TestResult> => {
 		await requireAdmin();
 
-		const resolvedId = resolveProviderId(data.provider, data.engine);
+		const resolvedId = resolveProviderId(data.provider, data.model);
 		const provider = getProvider(resolvedId);
 		const start = Date.now();
 		try {
-			const result = await provider.run(data.engine, "What is 2+2?", {
+			const result = await provider.run(data.model, "What is 2+2?", {
 				webSearch: false,
-				version: data.model,
+				version: data.version,
 			});
 			return {
 				success: true,

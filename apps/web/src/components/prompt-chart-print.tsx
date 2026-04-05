@@ -21,9 +21,9 @@ interface PromptRunData {
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
 	createdAt: Date;
-	engine: string;
-	provider: string | null;
 	model: string;
+	provider: string | null;
+	version: string;
 	webSearchEnabled: boolean;
 	rawOutput: any;
 	webQueries: string[];

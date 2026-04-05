@@ -17,9 +17,9 @@ import { getProviderStatusFn, testProviderFn } from "@/server/admin";
 // ============================================================================
 
 interface ActiveModel {
-	engine: string;
+	model: string;
 	provider: string;
-	model: string | null;
+	version: string | null;
 	webSearch: boolean;
 	modelLabel: string;
 	modelIconId: string;
@@ -90,13 +90,13 @@ function ProvidersPage() {
 		fetchData();
 	}, []);
 
-	const testKey = (engine: string, provider: string) => `${engine}:${provider}`;
+	const testKey = (model: string, provider: string) => `${model}:${provider}`;
 
-	const runTest = async (engine: string, provider: string, model?: string) => {
-		const key = testKey(engine, provider);
+	const runTest = async (model: string, provider: string, version?: string) => {
+		const key = testKey(model, provider);
 		setTestResults((prev) => ({ ...prev, [key]: { loading: true } }));
 		try {
-			const result = await testProviderFn({ data: { engine, provider, model } });
+			const result = await testProviderFn({ data: { model, provider, version } });
 			setTestResults((prev) => ({ ...prev, [key]: { loading: false, result } }));
 		} catch (err) {
 			setTestResults((prev) => ({
@@ -116,7 +116,7 @@ function ProvidersPage() {
 	const runAllTests = async () => {
 		if (!data) return;
 		for (const eng of data.activeModels) {
-			runTest(eng.engine, eng.provider, eng.model ?? undefined);
+			runTest(eng.model, eng.provider, eng.version ?? undefined);
 		}
 	};
 
@@ -198,7 +198,7 @@ function ProvidersPage() {
 						</TableHeader>
 						<TableBody>
 						{data.activeModels.map((eng) => {
-							const key = testKey(eng.engine, eng.provider);
+							const key = testKey(eng.model, eng.provider);
 							const test = testResults[key];
 
 							return (
@@ -207,7 +207,7 @@ function ProvidersPage() {
 										<div className="flex items-center gap-2">
 											<span className="font-medium">{eng.modelLabel}</span>
 											<Badge variant="outline" className="text-xs">
-												{eng.engine}
+												{eng.model}
 											</Badge>
 										</div>
 									</TableCell>
@@ -215,8 +215,8 @@ function ProvidersPage() {
 											<span className="font-mono text-sm">{eng.provider}</span>
 										</TableCell>
 										<TableCell>
-											{eng.model ? (
-												<span className="font-mono text-sm">{eng.model}</span>
+											{eng.version ? (
+												<span className="font-mono text-sm">{eng.version}</span>
 											) : (
 												<span className="text-muted-foreground">&mdash;</span>
 											)}
@@ -236,7 +236,7 @@ function ProvidersPage() {
 											<Button
 												size="sm"
 												variant="outline"
-												onClick={() => runTest(eng.engine, eng.provider, eng.model ?? undefined)}
+												onClick={() => runTest(eng.model, eng.provider, eng.version ?? undefined)}
 												disabled={test?.loading}
 												className="cursor-pointer"
 											>

@@ -279,7 +279,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 				// Web query stats
 				db
-					.select({ engine: promptRuns.engine, webQueries: promptRuns.webQueries })
+					.select({ model: promptRuns.model, webQueries: promptRuns.webQueries })
 					.from(promptRuns)
 					.where(
 						and(
@@ -359,12 +359,12 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 	webQueryStatsResult.forEach((row: any) => {
 		const queries = row.webQueries || [];
-		const engine = row.engine;
-		if (!modelQueries[engine]) modelQueries[engine] = {};
+		const model = row.model;
+		if (!modelQueries[model]) modelQueries[model] = {};
 		queries.forEach((query: string) => {
 			if (query?.trim()) {
 				allQueries[query] = (allQueries[query] || 0) + 1;
-				modelQueries[engine][query] = (modelQueries[engine][query] || 0) + 1;
+				modelQueries[model][query] = (modelQueries[model][query] || 0) + 1;
 			}
 		});
 	});
@@ -374,8 +374,8 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		byModel: Record<string, { name: string; count: number }[]>;
 	} = { overall: [], byModel: {} };
 
-	for (const engine of Object.keys(modelQueries)) {
-		webQueryStats.byModel[engine] = Object.entries(modelQueries[engine])
+	for (const model of Object.keys(modelQueries)) {
+		webQueryStats.byModel[model] = Object.entries(modelQueries[model])
 			.map(([name, cnt]) => ({ name, count: cnt }))
 			.sort((a, b) => b.count - a.count)
 			.slice(0, 15);
@@ -744,19 +744,19 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 				if (oldestQueries.length > 0) webQueryMapping[data.promptId] = oldestQueries[0];
 			}
 
-		const seenEngines = new Set(webQueryData.map((q) => q.engine));
-		for (const engine of seenEngines) {
-			const engineQueries = webQueryData.filter((q) => q.engine === engine);
-			if (engineQueries.length > 0) {
-				const oldest = engineQueries[0];
+		const seenModels = new Set(webQueryData.map((q) => q.model));
+		for (const model of seenModels) {
+			const modelQueries = webQueryData.filter((q) => q.model === model);
+			if (modelQueries.length > 0) {
+				const oldest = modelQueries[0];
 				const oldestTime = new Date(oldest.created_at_iso).getTime();
-				const sorted = engineQueries
+				const sorted = modelQueries
 					.filter((q) => new Date(q.created_at_iso).getTime() === oldestTime)
 					.map((q) => q.web_query)
 					.sort();
 				if (sorted.length > 0) {
-					if (!modelWebQueryMappings[engine]) modelWebQueryMappings[engine] = {};
-					modelWebQueryMappings[engine][data.promptId] = sorted[0];
+					if (!modelWebQueryMappings[model]) modelWebQueryMappings[model] = {};
+					modelWebQueryMappings[model][data.promptId] = sorted[0];
 				}
 			}
 		}
@@ -824,8 +824,8 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		let maxOverallCount = 0;
 
 		for (const row of webQueryData) {
-			if (!modelWebQueries[row.engine]) {
-				modelWebQueries[row.engine] = row.web_query;
+			if (!modelWebQueries[row.model]) {
+				modelWebQueries[row.model] = row.web_query;
 			}
 			if (row.query_count > maxOverallCount) {
 				maxOverallCount = row.query_count;
