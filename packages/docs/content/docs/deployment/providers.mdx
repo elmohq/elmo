@@ -61,15 +61,15 @@ Costs per query vary significantly by provider and model. Use these tables to es
 
 Scraping providers load the actual AI model web UI, so results always reflect the real consumer experience including web search.
 
-| Model | Olostep | BrightData | DataForSEO |
-|--------|---------|------------|------------|
-| ChatGPT | ~$0.05 (5 credits) | ~$0.03 | — |
-| Google AI Mode | ~$0.03 (3 credits) | ~$0.03 | ~$0.04 |
-| Google AI Overview | ~$0.03 (3 credits) | ~$0.03 | — |
-| Copilot | ~$0.03 (3 credits) | ~$0.03 | — |
-| Perplexity | ~$0.03 (3 credits) | ~$0.03 | — |
-| Gemini | ~$0.03 (3 credits) | ~$0.03 | — |
-| Grok | ~$0.03 (3 credits) | ~$0.03 | — |
+| Model | Olostep | BrightData |
+|--------|---------|------------|
+| ChatGPT | ~$0.05 (5 credits) | ~$0.03 |
+| Google AI Mode | ~$0.03 (3 credits) | ~$0.03 |
+| Google AI Overview | ~$0.03 (3 credits) | ~$0.03 |
+| Copilot | ~$0.03 (3 credits) | ~$0.03 |
+| Perplexity | ~$0.03 (3 credits) | ~$0.03 |
+| Gemini | ~$0.03 (3 credits) | ~$0.03 |
+| Grok | ~$0.03 (3 credits) | ~$0.03 |
 
 ### API Providers with Web Search
 
@@ -121,51 +121,50 @@ These models cover the vast majority of AI-assisted search traffic and should be
 
 ## Provider Details
 
-### Olostep
+### Olostep (recommended)
 
-**Best for**: Most deployments. Broad model support, simple setup.
+The easiest way to get started. Olostep scrapes the actual AI product web UIs, so results match exactly what end users see — including web search, citations, and formatting.
 
 - Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
 - Requires: `OLOSTEP_API_KEY`
-- Scrapes the actual web UI, so results match the real user experience
 - Credit-based pricing (3–5 credits per query depending on model)
+- Used by leading AEO tools (Profound, Peec, etc.)
 
 ### BrightData
 
-**Best for**: High-volume deployments that need per-model dataset control.
+A solid alternative to Olostep. BrightData is a more established company with a longer track record in web data. Slightly slower scrape times than Olostep, but comparable pricing and coverage.
 
 - Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
-- Requires: `BRIGHTDATA_API_TOKEN` and dataset IDs passed as the version slug in `SCRAPE_TARGETS` (e.g., `chatgpt:brightdata:gd_abc123:online`)
-- Uses BrightData's Web Scraper API with model-specific datasets
-- More configuration overhead but competitive per-query pricing
+- Requires: `BRIGHTDATA_API_TOKEN` and per-model dataset IDs passed as the version slug (e.g., `chatgpt:brightdata:gd_abc123:online`)
+- Same scraping approach as Olostep — loads the real AI product UI
+- Requires creating dataset scrapers in the BrightData dashboard, which adds setup overhead
 
 ### OpenRouter
 
-**Best for**: Accessing multiple AI models through a single API key.
+Best for versatility. OpenRouter gives you access to the long tail of AI models through a single API key — useful if you want to track niche or emerging models. Also convenient if you want API-level access to the major models without managing separate API keys for each.
 
-- Supports: ChatGPT, Claude, Perplexity, Gemini, Grok (and any model on OpenRouter)
+- Supports: Any model available on OpenRouter (ChatGPT, Claude, Perplexity, Gemini, Grok, and hundreds more)
 - Requires: `OPENROUTER_API_KEY`
-- Calls model APIs, not web UIs — results may differ from what end users see
+- Calls model APIs, not web UIs — results may differ from what end users see in the browser
 - Web search available via the `:online` version variant
-- Default versions: `openai/gpt-5-mini`, `anthropic/claude-sonnet-4`, `perplexity/sonar-pro`, `google/gemini-2.5-flash`, `x-ai/grok-3-mini`
+- Less rate limiting than calling providers directly
 
 ### Direct APIs
 
-**Best for**: When you already have API keys and want the lowest latency.
+Best if you already have API keys for convenience. Direct API calls give you the most control over model version and parameters, but are **significantly more expensive** than scraping options. They also face provider rate limits and may not be representative of what actually shows in the browser (e.g., ChatGPT's web UI uses different system prompts and web search behavior than the API).
 
-- **Direct OpenAI** (`direct` or `direct-openai`): Requires `OPENAI_API_KEY`. Supports ChatGPT model only.
-- **Direct Anthropic** (`direct-anthropic`): Requires `ANTHROPIC_API_KEY`. Supports Claude model only.
-- Lowest latency since there's no intermediary
-- Web search is supported on both (OpenAI via `web_search_preview` tool, Anthropic via `web_search` tool)
+- **Direct OpenAI** (`direct` or `direct-openai`): Requires `OPENAI_API_KEY`. ChatGPT only.
+- **Direct Anthropic** (`direct-anthropic`): Requires `ANTHROPIC_API_KEY`. Claude only.
+- Web search supported on both (OpenAI via `web_search_preview` tool, Anthropic via `web_search` tool)
 
-### DataForSEO
+### DataForSEO (deprecated)
 
-**Best for**: Google AI Mode tracking specifically, or if you already use DataForSEO for SEO data.
+<Callout type="warn">
+DataForSEO support is maintained for existing users but is not recommended for new deployments. Use Olostep or BrightData instead for better coverage and pricing.
+</Callout>
 
 - Supports: Google AI Mode only
 - Requires: `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD`
-- Uses DataForSEO's SERP API for structured AI Mode results
-- Does not support web search toggle (always includes search context)
 
 ## Web Search Configuration
 
