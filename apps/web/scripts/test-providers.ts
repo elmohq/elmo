@@ -2,6 +2,8 @@
 /**
  * Integration test script for scraping providers.
  * Exercises the same code paths as the worker, against real provider APIs.
+ * Validates that each provider returns meaningful text content and citations,
+ * and that the rawOutput can be re-extracted correctly.
  *
  * Usage:
  *   pnpm tsx --env-file=.env scripts/test-providers.ts                       # Test all engines
@@ -16,9 +18,9 @@ import {
 	resolveProviderId,
 	getEngineMeta,
 	type EngineConfig,
-	type TestResult,
 	type ScrapeResult,
 } from "@workspace/lib/providers";
+import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
 
 const colors = {
 	reset: "\x1b[0m",
@@ -28,7 +30,6 @@ const colors = {
 	green: "\x1b[32m",
 	yellow: "\x1b[33m",
 	blue: "\x1b[34m",
-	magenta: "\x1b[35m",
 	cyan: "\x1b[36m",
 };
 
@@ -51,7 +52,6 @@ interface Args {
 function parseArgs(): Args {
 	const argv = process.argv.slice(2);
 	const result: Args = { engine: null, provider: null, ping: false };
-
 	for (let i = 0; i < argv.length; i++) {
 		switch (argv[i]) {
 			case "--engine":
@@ -81,6 +81,13 @@ Options:
 }
 
 const TEST_PROMPT = "What are the best running shoes?";
+const MIN_TEXT_LENGTH = 50;
+
+interface ValidationIssue {
+	field: string;
+	message: string;
+	severity: "error" | "warning";
+}
 
 interface RunResult {
 	engine: string;
@@ -89,23 +96,74 @@ interface RunResult {
 	success: boolean;
 	latencyMs: number;
 	error?: string;
+	textLength?: number;
 	citationCount?: number;
 	sampleOutput?: string;
+	issues: ValidationIssue[];
 }
 
-async function runPing(config: EngineConfig): Promise<RunResult> {
-	const providerId = resolveProviderId(config.provider, config.engine);
-	const provider = getProvider(providerId);
-	const result: TestResult = await provider.testConnection(config.engine);
-	return {
-		engine: config.engine,
-		provider: providerId,
-		model: config.model,
-		success: result.success,
-		latencyMs: result.latencyMs,
-		error: result.error,
-		sampleOutput: result.sampleOutput,
-	};
+function validateResult(result: ScrapeResult, providerId: string): ValidationIssue[] {
+	const issues: ValidationIssue[] = [];
+
+	if (!result.textContent || result.textContent.length < MIN_TEXT_LENGTH) {
+		issues.push({
+			field: "textContent",
+			message: `Text too short (${result.textContent?.length ?? 0} chars, need ${MIN_TEXT_LENGTH}+)`,
+			severity: "error",
+		});
+	}
+
+	if (result.textContent?.startsWith("No text content") || result.textContent?.startsWith("Error extracting")) {
+		issues.push({
+			field: "textContent",
+			message: `Extraction returned placeholder: "${result.textContent.slice(0, 60)}"`,
+			severity: "error",
+		});
+	}
+
+	if (result.rawOutput == null) {
+		issues.push({ field: "rawOutput", message: "rawOutput is null", severity: "error" });
+	}
+
+	// Validate that rawOutput can be re-extracted using text-extraction.ts
+	if (result.rawOutput != null) {
+		const reExtracted = extractTextContent(result.rawOutput, providerId);
+		if (reExtracted.startsWith("No text content") || reExtracted.startsWith("Unknown") || reExtracted.startsWith("Error")) {
+			issues.push({
+				field: "rawOutput re-extraction",
+				message: `extractTextContent(rawOutput, "${providerId}") returned: "${reExtracted.slice(0, 80)}"`,
+				severity: "error",
+			});
+		}
+
+		const reExtractedCitations = extractCitations(result.rawOutput, providerId);
+		if (result.citations.length > 0 && reExtractedCitations.length === 0) {
+			issues.push({
+				field: "rawOutput citation re-extraction",
+				message: `Provider returned ${result.citations.length} citations but extractCitations(rawOutput, "${providerId}") found 0`,
+				severity: "warning",
+			});
+		}
+	}
+
+	if (result.citations.length === 0) {
+		issues.push({
+			field: "citations",
+			message: "No citations returned (may be expected for some engines/prompts)",
+			severity: "warning",
+		});
+	}
+
+	for (const [i, cit] of result.citations.entries()) {
+		if (!cit.url || !cit.url.startsWith("http")) {
+			issues.push({ field: `citations[${i}].url`, message: `Invalid URL: "${cit.url}"`, severity: "error" });
+		}
+		if (!cit.domain) {
+			issues.push({ field: `citations[${i}].domain`, message: "Missing domain", severity: "error" });
+		}
+	}
+
+	return issues;
 }
 
 async function runFull(config: EngineConfig): Promise<RunResult> {
@@ -118,14 +176,19 @@ async function runFull(config: EngineConfig): Promise<RunResult> {
 			model: config.model,
 		});
 		const latencyMs = Date.now() - start;
+		const issues = validateResult(result, providerId);
+		const hasErrors = issues.some((i) => i.severity === "error");
+
 		return {
 			engine: config.engine,
 			provider: providerId,
 			model: config.model,
-			success: true,
+			success: !hasErrors,
 			latencyMs,
+			textLength: result.textContent?.length ?? 0,
 			citationCount: result.citations.length,
-			sampleOutput: result.textContent.slice(0, 200),
+			sampleOutput: result.textContent?.slice(0, 200),
+			issues,
 		};
 	} catch (error) {
 		return {
@@ -135,23 +198,58 @@ async function runFull(config: EngineConfig): Promise<RunResult> {
 			success: false,
 			latencyMs: Date.now() - start,
 			error: error instanceof Error ? error.message : String(error),
+			issues: [{ field: "run", message: String(error), severity: "error" }],
+		};
+	}
+}
+
+async function runPing(config: EngineConfig): Promise<RunResult> {
+	const providerId = resolveProviderId(config.provider, config.engine);
+	const provider = getProvider(providerId);
+	const start = Date.now();
+	try {
+		const result = await provider.run(config.engine, "What is 2+2?", {
+			webSearch: false,
+			model: config.model,
+		});
+		const latencyMs = Date.now() - start;
+		const ok = !!result.textContent && result.textContent.length > 5;
+		return {
+			engine: config.engine,
+			provider: providerId,
+			model: config.model,
+			success: ok,
+			latencyMs,
+			sampleOutput: result.textContent?.slice(0, 100),
+			issues: ok ? [] : [{ field: "textContent", message: "Empty or too short response", severity: "error" }],
+		};
+	} catch (error) {
+		return {
+			engine: config.engine,
+			provider: providerId,
+			model: config.model,
+			success: false,
+			latencyMs: Date.now() - start,
+			error: error instanceof Error ? error.message : String(error),
+			issues: [{ field: "ping", message: String(error), severity: "error" }],
 		};
 	}
 }
 
 function printResult(r: RunResult, ping: boolean) {
 	const meta = getEngineMeta(r.engine);
-	const status = r.success
-		? `${colors.green}PASS${colors.reset}`
-		: `${colors.red}FAIL${colors.reset}`;
+	const status = r.success ? `${colors.green}PASS${colors.reset}` : `${colors.red}FAIL${colors.reset}`;
 	const modelStr = r.model ? ` (${r.model})` : "";
 
 	logSection(`${meta.label} via ${r.provider}${modelStr}`);
-	log(`  Status:  ${status}`);
-	log(`  Latency: ${r.latencyMs}ms`, colors.dim);
+	log(`  Status:   ${status}`);
+	log(`  Latency:  ${r.latencyMs}ms`, colors.dim);
 
 	if (r.error) {
-		log(`  Error:   ${r.error}`, colors.red);
+		log(`  Error:    ${r.error}`, colors.red);
+	}
+	if (r.textLength !== undefined) {
+		log(`  Text:     ${r.textLength} chars`, colors.dim);
 	}
 	if (r.sampleOutput) {
 		log("  Sample:", colors.dim);
@@ -159,6 +257,12 @@ function printResult(r: RunResult, ping: boolean) {
 	}
 	if (!ping && r.citationCount !== undefined) {
 		log(`  Citations: ${r.citationCount}`, colors.blue);
+	}
+
+	for (const issue of r.issues) {
+		const color = issue.severity === "error" ? colors.red : colors.yellow;
+		const prefix = issue.severity === "error" ? "ERROR" : "WARN";
+		log(`  ${prefix}: [${issue.field}] ${issue.message}`, color);
 	}
 }
 
@@ -172,11 +276,13 @@ function printSummary(results: RunResult[], ping: boolean) {
 	const modelCol = 22;
 	const statusCol = 8;
 	const latencyCol = 10;
+	const textCol = 10;
 	const citCol = 10;
+	const issueCol = 8;
 
 	const header = ping
 		? `${"Engine".padEnd(engineCol)}${"Provider".padEnd(providerCol)}${"Model".padEnd(modelCol)}${"Status".padEnd(statusCol)}${"Latency".padEnd(latencyCol)}`
-		: `${"Engine".padEnd(engineCol)}${"Provider".padEnd(providerCol)}${"Model".padEnd(modelCol)}${"Status".padEnd(statusCol)}${"Latency".padEnd(latencyCol)}${"Citations".padEnd(citCol)}`;
+		: `${"Engine".padEnd(engineCol)}${"Provider".padEnd(providerCol)}${"Model".padEnd(modelCol)}${"Status".padEnd(statusCol)}${"Latency".padEnd(latencyCol)}${"Text".padEnd(textCol)}${"Cites".padEnd(citCol)}${"Issues".padEnd(issueCol)}`;
 
 	log(header, colors.bright);
 	console.log("-".repeat(header.length));
@@ -184,32 +290,38 @@ function printSummary(results: RunResult[], ping: boolean) {
 	for (const r of results) {
 		const status = r.success ? "PASS" : "FAIL";
 		const statusColor = r.success ? colors.green : colors.red;
-		const model = r.model ?? "-";
+		const model = (r.model ?? "-").slice(0, modelCol - 2);
 		const latency = `${r.latencyMs}ms`;
+		const text = r.textLength !== undefined ? `${r.textLength}ch` : "-";
 		const citations = r.citationCount !== undefined ? String(r.citationCount) : "-";
+		const errorCount = r.issues.filter((i) => i.severity === "error").length;
+		const warnCount = r.issues.filter((i) => i.severity === "warning").length;
+		const issueStr = errorCount > 0 ? `${errorCount}E` : warnCount > 0 ? `${warnCount}W` : "0";
 
 		const line = ping
 			? `${r.engine.padEnd(engineCol)}${r.provider.padEnd(providerCol)}${model.padEnd(modelCol)}${statusColor}${status.padEnd(statusCol)}${colors.reset}${latency.padEnd(latencyCol)}`
-			: `${r.engine.padEnd(engineCol)}${r.provider.padEnd(providerCol)}${model.padEnd(modelCol)}${statusColor}${status.padEnd(statusCol)}${colors.reset}${latency.padEnd(latencyCol)}${citations.padEnd(citCol)}`;
+			: `${r.engine.padEnd(engineCol)}${r.provider.padEnd(providerCol)}${model.padEnd(modelCol)}${statusColor}${status.padEnd(statusCol)}${colors.reset}${latency.padEnd(latencyCol)}${text.padEnd(textCol)}${citations.padEnd(citCol)}${issueStr.padEnd(issueCol)}`;
 
 		console.log(line);
 	}
 
 	const passed = results.filter((r) => r.success).length;
 	const total = results.length;
-	const allPassed = passed === total;
+	const totalErrors = results.reduce((sum, r) => sum + r.issues.filter((i) => i.severity === "error").length, 0);
+	const totalWarnings = results.reduce((sum, r) => sum + r.issues.filter((i) => i.severity === "warning").length, 0);
 
 	console.log("-".repeat(header.length));
 	log(
-		`${passed}/${total} passed`,
-		allPassed ? colors.green : colors.red,
+		`${passed}/${total} passed` +
+			(totalErrors > 0 ? `, ${totalErrors} error(s)` : "") +
+			(totalWarnings > 0 ? `, ${totalWarnings} warning(s)` : ""),
+		passed === total ? colors.green : colors.red,
 	);
 	console.log();
 }
 
 async function main() {
 	const args = parseArgs();
-
 	const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
 	const filtered = configs.filter((c) => {
@@ -228,6 +340,7 @@ async function main() {
 	log(`\nRunning ${mode} tests against ${filtered.length} config(s)...`, colors.bright);
 	if (!args.ping) {
 		log(`Test prompt: "${TEST_PROMPT}"`, colors.dim);
+		log(`Validating: text content (${MIN_TEXT_LENGTH}+ chars), citations, rawOutput re-extraction`, colors.dim);
 	}
 
 	const results: RunResult[] = [];
