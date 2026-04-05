@@ -178,7 +178,7 @@ describe("text-extraction", () => {
 	});
 
 	describe("extractTextContent", () => {
-		it("should route to correct extractor based on model group", () => {
+		it("should route by provider name", () => {
 			const openaiOutput = {
 				output: [
 					{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] },
@@ -191,13 +191,26 @@ describe("text-extraction", () => {
 				tasks: [{ result: [{ items: [{ type: "ai_overview", markdown: "Google text" }] }] }],
 			};
 
-			expect(extractTextContent(openaiOutput, "openai")).toBe("OpenAI text");
-			expect(extractTextContent(anthropicOutput, "anthropic")).toBe("Anthropic text");
-			expect(extractTextContent(googleOutput, "google")).toBe("Google text");
+			expect(extractTextContent(openaiOutput, "direct-openai")).toBe("OpenAI text");
+			expect(extractTextContent(anthropicOutput, "direct-anthropic")).toBe("Anthropic text");
+			expect(extractTextContent(googleOutput, "dataforseo")).toBe("Google text");
 		});
 
-		it("should handle unknown engine", () => {
-			expect(extractTextContent({}, "unknown")).toBe("Unknown engine - cannot extract text content.");
+		it("should route by legacy engine names for old data", () => {
+			const openaiOutput = {
+				output: [
+					{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] },
+				],
+			};
+			expect(extractTextContent(openaiOutput, "openai")).toBe("OpenAI text");
+			expect(extractTextContent(openaiOutput, "chatgpt")).toBe("OpenAI text");
+			expect(extractTextContent({ content: [{ type: "text", text: "Anthropic" }] }, "anthropic")).toBe("Anthropic");
+			expect(extractTextContent({ content: [{ type: "text", text: "Anthropic" }] }, "claude")).toBe("Anthropic");
+		});
+
+		it("should attempt generic extraction for unknown providers", () => {
+			expect(extractTextContent({ choices: [{ message: { content: "generic" } }] }, "unknown")).toBe("generic");
+			expect(extractTextContent({ answer_markdown: "md content" }, "unknown")).toBe("md content");
 		});
 	});
 

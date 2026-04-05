@@ -9,14 +9,13 @@ import {
 	promptRuns,
 	prompts,
 } from "@workspace/lib/db/schema";
+import type { Citation } from "@workspace/lib/text-extraction";
 import type { Provider, ProviderOptions } from "@workspace/lib/providers";
 import {
-	ENGINE_TO_LEGACY_MODEL_GROUP,
 	getProvider,
 	parseScrapeTargets,
 	resolveProviderId,
 } from "@workspace/lib/providers";
-import { extractCitations } from "@workspace/lib/text-extraction";
 import { eq } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
@@ -183,15 +182,13 @@ async function saveCitations(
 	promptId: string,
 	brandId: string,
 	engine: string,
-	rawOutput: unknown,
+	extractedCitations: Citation[],
 	createdAt: Date,
 ): Promise<void> {
-	const legacyGroup = ENGINE_TO_LEGACY_MODEL_GROUP[engine] ?? engine;
-	const extracted = extractCitations(rawOutput, legacyGroup);
-	if (extracted.length === 0) return;
+	if (extractedCitations.length === 0) return;
 
 	await db.insert(citations).values(
-		extracted.map((c) => ({
+		extractedCitations.map((c) => ({
 			promptRunId,
 			promptId,
 			brandId,
@@ -253,7 +250,7 @@ async function runModelIteration({
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	await saveCitations(promptRunId, promptId, brand.id, engine, rawOutput, createdAt);
+	await saveCitations(promptRunId, promptId, brand.id, engine, result.citations, createdAt);
 }
 
 /**
