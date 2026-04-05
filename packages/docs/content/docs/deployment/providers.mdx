@@ -53,18 +53,6 @@ chatgpt:openrouter:openai/gpt-5-mini:online
 perplexity:openrouter:perplexity/sonar-pro:online
 ```
 
-### Migration from Previous Versions
-
-If you're upgrading from a version that used `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` directly, you now need to add a `SCRAPE_TARGETS` variable. Here are the equivalent values:
-
-| Previous Setup | SCRAPE_TARGETS Value |
-|---|---|
-| OpenAI + Anthropic + DataForSEO | `chatgpt:direct:gpt-5-mini:online,claude:direct:claude-sonnet-4,google-ai-mode:dataforseo:online` |
-| OpenAI + DataForSEO | `chatgpt:direct:gpt-5-mini:online,google-ai-mode:dataforseo:online` |
-| OpenAI only | `chatgpt:direct:gpt-5-mini:online` |
-
-The API key environment variables are still needed -- `SCRAPE_TARGETS` tells Elmo *what* to track, and the API keys authenticate *how* to reach each provider.
-
 ## Pricing Comparison
 
 Costs per query vary significantly by provider and model. Use these tables to estimate your monthly spend.
