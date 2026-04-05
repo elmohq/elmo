@@ -42,7 +42,11 @@
     "SENTRY_AUTH_TOKEN",
     "VITE_SENTRY_DSN",
     "VITE_POSTHOG_KEY",
-    "DISABLE_TELEMETRY"
+    "DISABLE_TELEMETRY",
+    "SCRAPE_TARGETS",
+    "OLOSTEP_API_KEY",
+    "OPENROUTER_API_KEY",
+    "BRIGHTDATA_API_TOKEN"
   ],
   "tasks": {
     "build": {
