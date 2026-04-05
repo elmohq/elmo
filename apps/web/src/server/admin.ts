@@ -886,6 +886,7 @@ export const testProviderFn = createServerFn({ method: "POST" })
 		z.object({
 			engine: z.string(),
 			provider: z.string(),
+			model: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }): Promise<TestResult> => {
@@ -893,5 +894,22 @@ export const testProviderFn = createServerFn({ method: "POST" })
 
 		const resolvedId = resolveProviderId(data.provider, data.engine);
 		const provider = getProvider(resolvedId);
-		return provider.testConnection(data.engine);
+		const start = Date.now();
+		try {
+			const result = await provider.run(data.engine, "What is 2+2?", {
+				webSearch: false,
+				model: data.model,
+			});
+			return {
+				success: true,
+				latencyMs: Date.now() - start,
+				sampleOutput: result.textContent.slice(0, 200),
+			};
+		} catch (error) {
+			return {
+				success: false,
+				latencyMs: Date.now() - start,
+				error: error instanceof Error ? error.message : String(error),
+			};
+		}
 	});

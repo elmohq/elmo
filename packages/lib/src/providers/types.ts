@@ -11,6 +11,7 @@ export interface ScrapeResult {
 export interface ProviderOptions {
 	webSearch?: boolean;
 	country?: string;
+	model?: string;
 }
 
 export interface Provider {

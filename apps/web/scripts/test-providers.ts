@@ -115,6 +115,7 @@ async function runFull(config: EngineConfig): Promise<RunResult> {
 	try {
 		const result: ScrapeResult = await provider.run(config.engine, TEST_PROMPT, {
 			webSearch: config.webSearch,
+			model: config.model,
 		});
 		const latencyMs = Date.now() - start;
 		return {

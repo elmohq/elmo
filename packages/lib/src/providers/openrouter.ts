@@ -1,14 +1,6 @@
 import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
 import type { Citation } from "../text-extraction";
 
-const DEFAULT_MODELS: Record<string, string> = {
-	chatgpt: "openai/gpt-5-mini",
-	claude: "anthropic/claude-sonnet-4",
-	perplexity: "perplexity/sonar-pro",
-	gemini: "google/gemini-2.5-flash",
-	grok: "x-ai/grok-3-mini",
-};
-
 function extractTextFromOpenRouterResponse(data: any): string {
 	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
 	if (data?.output) {
@@ -55,7 +47,7 @@ export const openrouter: Provider = {
 	},
 
 	supportedEngines() {
-		return Object.keys(DEFAULT_MODELS);
+		return [];
 	},
 
 	supportsWebSearchToggle() {
@@ -63,13 +55,16 @@ export const openrouter: Provider = {
 	},
 
 	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		let modelSlug = DEFAULT_MODELS[engine];
-		if (!modelSlug) throw new Error(`OpenRouter: no default model for engine "${engine}". Pass a model slug via SCRAPE_TARGETS.`);
+		let modelSlug = options?.model;
+		if (!modelSlug) {
+			throw new Error(
+				`OpenRouter requires a model slug in SCRAPE_TARGETS. ` +
+				`Example: ${engine}:openrouter:openai/gpt-5-mini:online`,
+			);
+		}
 
-		if (options?.webSearch) {
-			if (!modelSlug.includes(":online")) {
-				modelSlug = `${modelSlug}:online`;
-			}
+		if (options?.webSearch && !modelSlug.includes(":online")) {
+			modelSlug = `${modelSlug}:online`;
 		}
 
 		const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -103,20 +98,10 @@ export const openrouter: Provider = {
 	},
 
 	async testConnection(engine: string): Promise<TestResult> {
-		const start = Date.now();
-		try {
-			const result = await this.run(engine, "What is 2+2?", { webSearch: false });
-			return {
-				success: true,
-				latencyMs: Date.now() - start,
-				sampleOutput: result.textContent.slice(0, 200),
-			};
-		} catch (error) {
-			return {
-				success: false,
-				latencyMs: Date.now() - start,
-				error: error instanceof Error ? error.message : String(error),
-			};
-		}
+		return {
+			success: false,
+			latencyMs: 0,
+			error: "OpenRouter requires a model slug — use the admin providers page or test-providers.ts with SCRAPE_TARGETS configured",
+		};
 	},
 };

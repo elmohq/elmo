@@ -191,7 +191,7 @@ async function runPrompt(
 		const runsPerEngine = cfg.engine === "google-ai-mode" ? 1 : 2;
 
 		return Array.from({ length: runsPerEngine }, () =>
-			runEngineCall(cfg.engine, provider, promptValue, { webSearch: cfg.webSearch }).then((result: ScrapeResult) => {
+			runEngineCall(cfg.engine, provider, promptValue, { webSearch: cfg.webSearch, model: cfg.model }).then((result: ScrapeResult) => {
 				const { brandMentioned, competitorsMentioned } = analyzeMentions(
 					result.textContent,
 					brandName,

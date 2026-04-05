@@ -1,16 +1,6 @@
 import type { Provider, ScrapeResult, ProviderOptions, TestResult } from "./types";
 import type { Citation } from "../text-extraction";
 
-const BD_DATASET_ENV: Record<string, string> = {
-	chatgpt: "BRIGHTDATA_DATASET_CHATGPT",
-	"google-ai-mode": "BRIGHTDATA_DATASET_GOOGLE_AI_MODE",
-	"google-ai-overview": "BRIGHTDATA_DATASET_GOOGLE_AI_OVERVIEW",
-	gemini: "BRIGHTDATA_DATASET_GEMINI",
-	copilot: "BRIGHTDATA_DATASET_COPILOT",
-	perplexity: "BRIGHTDATA_DATASET_PERPLEXITY",
-	grok: "BRIGHTDATA_DATASET_GROK",
-};
-
 const BD_BASE_URL: Record<string, string> = {
 	chatgpt: "https://chatgpt.com/",
 	"google-ai-mode": "https://www.google.com/",
@@ -25,11 +15,6 @@ function getApiKey(): string {
 	const key = process.env.BRIGHTDATA_API_TOKEN;
 	if (!key) throw new Error("Missing BRIGHTDATA_API_TOKEN");
 	return key;
-}
-
-function getDatasetId(engine: string): string | undefined {
-	const envKey = BD_DATASET_ENV[engine];
-	return envKey ? process.env[envKey] : undefined;
 }
 
 function authHeaders() {
@@ -70,7 +55,7 @@ function normalizeAnswer(record: Record<string, any>): string {
 	return JSON.stringify(record).slice(0, 2000);
 }
 
-function extractSources(record: Record<string, any>, answer: string): Citation[] {
+function extractSources(record: Record<string, any>): Citation[] {
 	const citations: Citation[] = [];
 	const seen = new Set<string>();
 	let idx = 0;
@@ -108,16 +93,21 @@ export const brightdata: Provider = {
 	},
 
 	supportedEngines() {
-		return Object.keys(BD_DATASET_ENV).filter((engine) => getDatasetId(engine));
+		return Object.keys(BD_BASE_URL);
 	},
 
 	supportsWebSearchToggle() {
 		return true;
 	},
 
-	async run(engine: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
-		const datasetId = getDatasetId(engine);
-		if (!datasetId) throw new Error(`BrightData: missing dataset ID env var for engine "${engine}" (${BD_DATASET_ENV[engine]})`);
+	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		const datasetId = options?.model;
+		if (!datasetId) {
+			throw new Error(
+				`BrightData requires a dataset ID as the model slug in SCRAPE_TARGETS. ` +
+				`Example: ${engine}:brightdata:gd_abc123:online`,
+			);
+		}
 
 		// Always send a single item per request.
 		// Batches of 2+ items change BrightData's expected response time from seconds to ~5-30 minutes,
@@ -154,26 +144,16 @@ export const brightdata: Provider = {
 			rawOutput: payload,
 			textContent: answer,
 			webQueries: record?.prompt ? [record.prompt] : [prompt],
-			citations: extractSources(record, answer),
+			citations: extractSources(record),
 			modelVersion: record?.model ?? undefined,
 		};
 	},
 
 	async testConnection(engine: string): Promise<TestResult> {
-		const start = Date.now();
-		try {
-			const result = await this.run(engine, "What is 2+2?");
-			return {
-				success: true,
-				latencyMs: Date.now() - start,
-				sampleOutput: result.textContent.slice(0, 200),
-			};
-		} catch (error) {
-			return {
-				success: false,
-				latencyMs: Date.now() - start,
-				error: error instanceof Error ? error.message : String(error),
-			};
-		}
+		return {
+			success: false,
+			latencyMs: 0,
+			error: "BrightData requires a dataset ID — use the admin providers page or test-providers.ts with SCRAPE_TARGETS configured",
+		};
 	},
 };

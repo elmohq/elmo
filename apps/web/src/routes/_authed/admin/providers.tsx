@@ -93,11 +93,11 @@ function ProvidersPage() {
 
 	const testKey = (engine: string, provider: string) => `${engine}:${provider}`;
 
-	const runTest = async (engine: string, provider: string) => {
+	const runTest = async (engine: string, provider: string, model?: string) => {
 		const key = testKey(engine, provider);
 		setTestResults((prev) => ({ ...prev, [key]: { loading: true } }));
 		try {
-			const result = await testProviderFn({ data: { engine, provider } });
+			const result = await testProviderFn({ data: { engine, provider, model } });
 			setTestResults((prev) => ({ ...prev, [key]: { loading: false, result } }));
 		} catch (err) {
 			setTestResults((prev) => ({
@@ -117,7 +117,7 @@ function ProvidersPage() {
 	const runAllTests = async () => {
 		if (!data) return;
 		for (const eng of data.activeEngines) {
-			runTest(eng.engine, eng.provider);
+			runTest(eng.engine, eng.provider, eng.model ?? undefined);
 		}
 	};
 
@@ -237,7 +237,7 @@ function ProvidersPage() {
 											<Button
 												size="sm"
 												variant="outline"
-												onClick={() => runTest(eng.engine, eng.provider)}
+												onClick={() => runTest(eng.engine, eng.provider, eng.model ?? undefined)}
 												disabled={test?.loading}
 												className="cursor-pointer"
 											>

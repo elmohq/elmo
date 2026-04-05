@@ -421,15 +421,19 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 		assertNotCancelled(token);
 		env.BRIGHTDATA_API_TOKEN = token;
 
-		const datasetId = await p.text({
-			message: "BrightData dataset ID (optional, press Enter to skip)",
-			placeholder: "",
+		const chatgptDatasetId = await p.text({
+			message: "BrightData ChatGPT dataset ID (e.g., gd_abc123)",
+			validate: (v) => (!v ? "Required — get this from your BrightData dashboard" : undefined),
 		});
-		if (!p.isCancel(datasetId) && datasetId) {
-			env.BRIGHTDATA_DATASET_ID = datasetId;
-		}
+		assertNotCancelled(chatgptDatasetId);
 
-		env.SCRAPE_TARGETS = "chatgpt:brightdata:online,google-ai-mode:brightdata:online";
+		const googleDatasetId = await p.text({
+			message: "BrightData Google AI Mode dataset ID (e.g., gd_def456)",
+			validate: (v) => (!v ? "Required — get this from your BrightData dashboard" : undefined),
+		});
+		assertNotCancelled(googleDatasetId);
+
+		env.SCRAPE_TARGETS = `chatgpt:brightdata:${chatgptDatasetId}:online,google-ai-mode:brightdata:${googleDatasetId}:online`;
 	} else {
 		p.log.info("Set SCRAPE_TARGETS in your .env file manually to configure providers.");
 		p.log.info("Format: engine:provider:model_or_mode separated by commas.");

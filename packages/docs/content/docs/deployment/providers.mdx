@@ -147,7 +147,7 @@ These engines cover the vast majority of AI-assisted search traffic and should b
 **Best for**: High-volume deployments that need per-engine dataset control.
 
 - Supports: ChatGPT, Google AI Mode, Google AI Overview, Gemini, Copilot, Perplexity, Grok
-- Requires: `BRIGHTDATA_API_TOKEN` plus per-engine dataset IDs (e.g. `BRIGHTDATA_DATASET_CHATGPT`)
+- Requires: `BRIGHTDATA_API_TOKEN` and dataset IDs passed as the model slug in `SCRAPE_TARGETS` (e.g., `chatgpt:brightdata:gd_abc123:online`)
 - Uses BrightData's Web Scraper API with engine-specific datasets
 - More configuration overhead but competitive per-query pricing
 

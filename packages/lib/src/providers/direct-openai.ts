@@ -59,7 +59,7 @@ export const directOpenai: Provider = {
 	},
 
 	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const model = options?.webSearch !== false ? "gpt-5-mini" : "gpt-5-mini";
+		const model = options?.model ?? "gpt-5-mini";
 		return runOpenAI(prompt, model, options);
 	},
 

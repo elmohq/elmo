@@ -305,7 +305,7 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 						webSearchEnabled: cfg.webSearch,
 						runIndex: i + 1,
 						providerImpl: provider,
-						providerOptions: { webSearch: cfg.webSearch },
+						providerOptions: { webSearch: cfg.webSearch, model: cfg.model },
 					}),
 				);
 			}

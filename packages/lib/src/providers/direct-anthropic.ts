@@ -61,7 +61,7 @@ export const directAnthropic: Provider = {
 	},
 
 	async run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const model = "claude-sonnet-4-20250514";
+		const model = options?.model ?? "claude-sonnet-4-20250514";
 		return runAnthropic(prompt, model, options);
 	},
 
