@@ -8,7 +8,6 @@ export * from "./schema-auth";
 // Application tables
 // ============================================================================
 
-export const modelGroupsEnum = pgEnum("model_groups", ["openai", "anthropic", "google"]);
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
 export const brands = pgTable("brands", {
@@ -20,6 +19,7 @@ export const brands = pgTable("brands", {
 	enabled: boolean("enabled").default(true).notNull(),
 	onboarded: boolean("onboarded").default(false).notNull(),
 	delayOverrideHours: integer("delay_override_hours"),
+	enabledEngines: text("enabled_engines").array(),
 	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true })
 		.defaultNow()
@@ -73,7 +73,8 @@ export const promptRuns = pgTable(
 			.references(() => prompts.id)
 			.notNull(),
 		brandId: text("brand_id").references(() => brands.id).notNull(),
-		modelGroup: modelGroupsEnum().notNull(),
+		engine: text("engine").notNull(),
+		provider: text("provider"),
 		model: text("model").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
 		rawOutput: json("raw_output").notNull(),
@@ -86,7 +87,9 @@ export const promptRuns = pgTable(
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
 		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
-		webSearchModelGroupCreatedAtIdx: index("prompt_runs_web_search_model_group_created_at_idx").on(table.webSearchEnabled, table.modelGroup, table.createdAt),
+		webSearchEngineCreatedAtIdx: index("prompt_runs_web_search_engine_created_at_idx").on(table.webSearchEnabled, table.engine, table.createdAt),
+		providerIdx: index("prompt_runs_provider_idx").on(table.provider),
+		engineCreatedAtIdx: index("prompt_runs_engine_created_at_idx").on(table.engine, table.createdAt),
 	}),
 ).enableRLS();
 
@@ -103,7 +106,7 @@ export const citations = pgTable(
 		brandId: text("brand_id")
 			.references(() => brands.id)
 			.notNull(),
-		modelGroup: modelGroupsEnum().notNull(),
+		engine: text("engine").notNull(),
 		url: text("url").notNull(),
 		domain: text("domain").notNull(),
 		title: text("title"),
@@ -111,7 +114,7 @@ export const citations = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(table.brandId, table.createdAt, table.url, table.domain, table.title, table.promptId, table.modelGroup),
+		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(table.brandId, table.createdAt, table.url, table.domain, table.title, table.promptId, table.engine),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
