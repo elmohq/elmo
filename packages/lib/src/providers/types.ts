@@ -18,10 +18,7 @@ export interface Provider {
 	id: string;
 	name: string;
 	isConfigured(): boolean;
-	supportedEngines(): string[];
-	supportsWebSearchToggle(engine: string): boolean;
 	run(engine: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
-	testConnection(engine: string): Promise<TestResult>;
 }
 
 export interface TestResult {
