@@ -190,7 +190,7 @@ const EditableTagsInput = memo(
 	}) => {
 		return (
 			<div className="space-y-2">
-				<TagsInput value={items} onValueChange={onValueChange} placeholder={placeholder} maxItems={maxItems} />
+				<TagsInput value={items} onValueChange={onValueChange} placeholder={placeholder} searchPlaceholder={placeholder} maxItems={maxItems} />
 				<p className="text-xs text-muted-foreground">
 					<strong>
 						{items.length}/{maxItems}

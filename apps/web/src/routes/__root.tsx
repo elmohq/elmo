@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { useEffect } from "react";
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { NuqsAdapter } from "nuqs/adapters/react";
@@ -11,7 +11,6 @@ import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
 import MissingEnvPage from "@/components/missing-env-page";
 import queryDevtools from "@/integrations/tanstack-query/devtools";
-import { initClarity } from "@/lib/clarity";
 import { initPostHog } from "@/lib/posthog";
 import appCss from "../styles.css?url";
 
@@ -42,6 +41,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const branding = match.context?.clientConfig?.branding;
 		const analytics = match.context?.clientConfig?.analytics;
 		const scripts = [];
+		if (analytics?.clarityProjectId) {
+			scripts.push({
+				src: `https://www.clarity.ms/tag/${analytics.clarityProjectId}`,
+				async: true,
+			});
+		}
 		if (analytics?.plausibleDomain) {
 			scripts.push({
 				src: "/api/plausible/js/script",
@@ -91,16 +96,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
 	const { envValidation, clientConfig } = Route.useRouteContext();
+	const clarityProjectId = clientConfig?.analytics?.clarityProjectId;
 
 	useEffect(() => {
 		const key = clientConfig?.analytics?.posthogKey;
 		if (key) initPostHog(key);
 	}, [clientConfig?.analytics?.posthogKey]);
 
-	useEffect(() => {
-		const id = clientConfig?.analytics?.clarityProjectId;
-		if (id) initClarity(id);
-	}, [clientConfig?.analytics?.clarityProjectId]);
+	const clarityQueueScript = `window.clarity=window.clarity||function(){(window.clarity.q=window.clarity.q||[]).push(arguments)};`;
 
 	if (!envValidation.isValid) {
 		return (
@@ -119,6 +122,7 @@ function RootComponent() {
 	return (
 		<html lang="en">
 			<head>
+				{clarityProjectId && <ScriptOnce>{clarityQueueScript}</ScriptOnce>}
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased">

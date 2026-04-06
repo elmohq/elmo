@@ -27,15 +27,6 @@ interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
 
-declare module "@microsoft/clarity" {
-	interface ClarityApi {
-		init(projectId: string): void;
-	}
-
-	const clarity: ClarityApi;
-	export default clarity;
-}
-
 // Server-side environment variables (accessed via process.env in server functions)
 // and Vite define globals
 declare global {

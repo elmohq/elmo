@@ -53,8 +53,6 @@ function CompetitorsSettingsPage() {
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 	const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
-	const [domainErrors, setDomainErrors] = useState<Record<string, string>>({});
-
 	useEffect(() => {
 		if (existingCompetitors.length > 0) {
 			setCompetitors(
@@ -84,26 +82,13 @@ function CompetitorsSettingsPage() {
 	}, []);
 
 	const updateDomains = useCallback((key: string, domains: string[]) => {
-		setCompetitors((prev) => {
-			const existing = prev.find((c) => c._key === key);
-			if (!existing) return prev;
+		setCompetitors((prev) => prev.map((c) => (c._key === key ? { ...c, domains } : c)));
+	}, []);
 
-			const last = domains[domains.length - 1];
-			const isAdding = domains.length > existing.domains.filter(Boolean).length;
-			if (isAdding && last) {
-				const cleaned = cleanAndValidateDomain(last);
-				if (!cleaned) {
-					setDomainErrors((e) => ({ ...e, [key]: `"${last}" is not a valid domain` }));
-					return prev;
-				}
-				setDomainErrors((e) => { const next = { ...e }; delete next[key]; return next; });
-				const newDomains = [...domains.slice(0, -1), cleaned];
-				return prev.map((c) => (c._key === key ? { ...c, domains: newDomains } : c));
-			}
-
-			setDomainErrors((e) => { const next = { ...e }; delete next[key]; return next; });
-			return prev.map((c) => (c._key === key ? { ...c, domains } : c));
-		});
+	const validateDomain = useCallback((val: string): true | string => {
+		const cleaned = cleanAndValidateDomain(val);
+		if (!cleaned) return `"${val}" is not a valid domain`;
+		return true;
 	}, []);
 
 	const updateAliases = useCallback((key: string, aliases: string[]) => {
@@ -262,8 +247,9 @@ function CompetitorsSettingsPage() {
 											onValueChange={(values) => updateDomains(competitor._key, values.length > 0 ? values : [""])}
 											placeholder="Add domain..."
 											maxItems={10}
+											normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+											onValidate={validateDomain}
 										/>
-										{domainErrors[competitor._key] && <p className="text-xs text-destructive">{domainErrors[competitor._key]}</p>}
 									</div>
 
 									<div className="space-y-1.5">
