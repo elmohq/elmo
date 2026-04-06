@@ -35,7 +35,7 @@
 		"lucide-react": "^0.575.0",
 		"motion": "^12.38.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
-		"posthog-js": "^1.364.5",
+		"posthog-js": "^1.364.6",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
 		"react-use-measure": "^2.1.7",
@@ -48,7 +48,7 @@
 		"@types/node": "^24.10.13",
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
-		"@vercel/blob": "^2.3.2",
+		"@vercel/blob": "^2.3.3",
 		"@vitejs/plugin-react": "^6.0.1",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.5"

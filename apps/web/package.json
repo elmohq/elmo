@@ -48,7 +48,7 @@
 		"nuqs": "^2.8.9",
 		"pg": "^8.20.0",
 		"pg-boss": "^12.15.0",
-		"posthog-js": "^1.364.5",
+		"posthog-js": "^1.364.6",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
 		"react-icons": "^5.6.0",
@@ -61,7 +61,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.10",
-		"@storybook/react-vite": "^10.3.3",
+		"@storybook/react-vite": "^10.3.4",
 		"@types/archiver": "^7.0.0",
 		"@types/node": "^24.10.13",
 		"@types/pg": "^8.20.0",
@@ -70,7 +70,7 @@
 		"@vitejs/plugin-react": "^6.0.1",
 		"archiver": "^7.0.1",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
-		"storybook": "^10.3.3",
+		"storybook": "^10.3.4",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.5",
 		"vitest": "^4.1.2"
