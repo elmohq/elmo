@@ -25,6 +25,7 @@ const config: StorybookConfig = {
 					{ find: /^@\/hooks\/use-brands(\.tsx)?$/, replacement: path.resolve(mocksDir, "use-brands.tsx") },
 					{ find: /^@\/hooks\/use-auth(\.tsx)?$/, replacement: path.resolve(mocksDir, "use-auth.tsx") },
 					{ find: /^@\/hooks\/use-chart-download(\.tsx)?$/, replacement: path.resolve(mocksDir, "use-chart-download.tsx") },
+					{ find: /^@\/hooks\/use-chart-export(\.tsx)?$/, replacement: path.resolve(mocksDir, "use-chart-export.tsx") },
 					{ find: /^@\/contexts\/chart-data-context(\.tsx)?$/, replacement: path.resolve(mocksDir, "chart-data-context.tsx") },
 					{ find: /^@\/lib\/config\/client(\.ts)?$/, replacement: path.resolve(mocksDir, "config-client.ts") },
 					{ find: /^@tanstack\/react-router$/, replacement: path.resolve(mocksDir, "tanstack-router.tsx") },

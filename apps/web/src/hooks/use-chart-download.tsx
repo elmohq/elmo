@@ -15,7 +15,6 @@ export function useChartDownload(fileName: string) {
 				backgroundColor: "#ffffff",
 				logging: false,
 				onclone: (clonedDoc) => {
-					// Remove all print:hidden elements (download footers)
 					const printHiddenElements = clonedDoc.querySelectorAll(".print\\:hidden");
 					printHiddenElements.forEach((el) => el.remove());
 				},
