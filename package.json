@@ -25,7 +25,6 @@
     },
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",
-      "core-js",
       "esbuild",
       "msgpackr-extract",
       "puppeteer",
@@ -35,6 +34,7 @@
     "ignoredBuiltDependencies": [
       "@scarf/scarf",
       "@tree-sitter-grammars/tree-sitter-yaml",
+      "core-js",
       "core-js-pure",
       "tree-sitter",
       "tree-sitter-json"
