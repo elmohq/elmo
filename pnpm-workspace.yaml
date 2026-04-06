@@ -4,5 +4,10 @@ packages:
   - "e2e"
 
 blockExoticSubdeps: true
-minimumReleaseAge: 10080
+minimumReleaseAge: 5760
+minimumReleaseAgeExclude:
+  - nitro
+  - srvx
+  - vite
 trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 129600
