@@ -1,5 +1,5 @@
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Badge } from "@workspace/ui/components/badge";
@@ -7,7 +7,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { BaseChart } from "./base-chart";
 import { ChartActionsFooter } from "./chart-actions-footer";
 import { TextHighlighter } from "./text-highlighter";
-import { useChartDownload } from "@/hooks/use-chart-download";
+import { useChartExport } from "@/hooks/use-chart-export";
 import { useOptionalChartDataContext } from "@/contexts/chart-data-context";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 import {
@@ -64,11 +64,30 @@ export function CachedPromptChart({
 		return chartContext.getChartDataForPrompt(promptId);
 	}, [chartContext, promptId]);
 
-	// Setup download functionality
+	// Setup export functionality
 	const fileName = chartContext?.brand 
 		? `${chartContext.brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`
 		: `chart-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
-	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
+	const { isExporting, handleExport, portal: exportPortal } = useChartExport(fileName);
+
+	const brand = chartContext?.brand ?? null;
+	const competitors = chartContext?.competitors;
+	const data = chartData?.chartData;
+	const totalRuns = chartData?.totalRuns ?? 0;
+	const hasVisibilityData = chartData?.hasVisibilityData ?? false;
+	const lastBrandVisibility = chartData?.lastBrandVisibility ?? null;
+
+	const handleDownload = useCallback(() => {
+		if (!brand || !data || !competitors) return;
+		handleExport({
+			promptName,
+			visibility: lastBrandVisibility,
+			data,
+			lookback,
+			brand,
+			competitors,
+		});
+	}, [handleExport, promptName, lastBrandVisibility, data, lookback, brand, competitors]);
 
 	// Loading state — structure matches the success state card exactly:
 	// CardHeader (title + badge), Separator, CardContent (pl-0 pr-6, h-[250px]), footer
@@ -103,9 +122,6 @@ export function CachedPromptChart({
 			</Card>
 		);
 	}
-
-	const { brand, competitors } = chartContext;
-	const { chartData: data, totalRuns, hasVisibilityData, lastBrandVisibility } = chartData;
 
 	// No runs state - distinguish between "never evaluated" vs "no data in selected window"
 	if (totalRuns === 0) {
@@ -165,31 +181,76 @@ export function CachedPromptChart({
 	// No visibility data state
 	if (!hasVisibilityData) {
 		return (
+			<>
+				{exportPortal}
+				<Card className="py-3 gap-3">
+					<CardHeader className="flex justify-between items-center px-3">
+						<PromptTitle name={promptName} highlight={searchHighlight} />
+					</CardHeader>
+					<Separator className="py-0 my-0" />
+					<CardContent className="px-3">
+						<div className="h-[250px] flex items-center justify-center">
+							<div className="flex flex-col items-center text-center max-w-xs">
+								<div className="h-16 w-full mb-3 flex items-end justify-center gap-[3px]">
+								{PLACEHOLDER_BARS_NO_VISIBILITY.map((bar) => (
+									<div
+										key={bar.key}
+										className="w-1.5 rounded-sm bg-muted-foreground/10"
+										style={{ height: `${bar.h}%` }}
+									/>
+								))}
+								</div>
+								<p className="text-sm font-medium text-muted-foreground">
+									No brands found in responses
+								</p>
+								<p className="text-xs text-muted-foreground/70 mt-1">
+									Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
+								</p>
+							</div>
+						</div>
+					</CardContent>
+					<div className="print:hidden">
+						<ChartActionsFooter 
+							promptId={promptId} 
+							brandId={brandId}
+							promptName={promptName}
+							onDownload={handleDownload}
+							isDownloading={isExporting}
+							selectedModel={selectedModel}
+							availableModels={availableModels}
+							lookback={lookback}
+						/>
+					</div>
+				</Card>
+			</>
+		);
+	}
+
+	// Success state with chart
+	return (
+		<>
+			{exportPortal}
 			<Card className="py-3 gap-3">
 				<CardHeader className="flex justify-between items-center px-3">
 					<PromptTitle name={promptName} highlight={searchHighlight} />
+					{lastBrandVisibility !== null && (
+						<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
+							{lastBrandVisibility}% Visibility
+						</Badge>
+					)}
 				</CardHeader>
 				<Separator className="py-0 my-0" />
-				<CardContent className="px-3">
-					<div className="h-[250px] flex items-center justify-center">
-						<div className="flex flex-col items-center text-center max-w-xs">
-							<div className="h-16 w-full mb-3 flex items-end justify-center gap-[3px]">
-							{PLACEHOLDER_BARS_NO_VISIBILITY.map((bar) => (
-								<div
-									key={bar.key}
-									className="w-1.5 rounded-sm bg-muted-foreground/10"
-									style={{ height: `${bar.h}%` }}
-								/>
-							))}
-							</div>
-							<p className="text-sm font-medium text-muted-foreground">
-								No brands found in responses
-							</p>
-							<p className="text-xs text-muted-foreground/70 mt-1">
-								Your brand and competitors weren't mentioned in the evaluated responses for this prompt.
-							</p>
-						</div>
-					</div>
+				<CardContent className="pl-0 pr-6">
+					{brand && data && competitors && (
+						<BaseChart
+							data={data}
+							lookback={lookback}
+							brand={brand}
+							competitors={competitors}
+							isAnimationActive={false}
+							chartType="line"
+						/>
+					)}
 				</CardContent>
 				<div className="print:hidden">
 					<ChartActionsFooter 
@@ -197,52 +258,13 @@ export function CachedPromptChart({
 						brandId={brandId}
 						promptName={promptName}
 						onDownload={handleDownload}
-						isDownloading={isDownloading}
+						isDownloading={isExporting}
 						selectedModel={selectedModel}
 						availableModels={availableModels}
 						lookback={lookback}
 					/>
 				</div>
 			</Card>
-		);
-	}
-
-	// Success state with chart
-	return (
-		<Card ref={chartRef} className="py-3 gap-3">
-			<CardHeader className="flex justify-between items-center px-3">
-				<PromptTitle name={promptName} highlight={searchHighlight} />
-				{lastBrandVisibility !== null && (
-					<Badge variant={getBadgeVariant(lastBrandVisibility)} className={getBadgeClassName(lastBrandVisibility)}>
-						{lastBrandVisibility}% Visibility
-					</Badge>
-				)}
-			</CardHeader>
-			<Separator className="py-0 my-0" />
-			<CardContent className="pl-0 pr-6">
-				{brand && (
-					<BaseChart
-						data={data}
-						lookback={lookback}
-						brand={brand}
-						competitors={competitors}
-						isAnimationActive={false}
-						chartType="line"
-					/>
-				)}
-			</CardContent>
-			<div className="print:hidden">
-				<ChartActionsFooter 
-					promptId={promptId} 
-					brandId={brandId}
-					promptName={promptName}
-					onDownload={handleDownload}
-					isDownloading={isDownloading}
-					selectedModel={selectedModel}
-					availableModels={availableModels}
-					lookback={lookback}
-				/>
-			</div>
-		</Card>
+		</>
 	);
 }

@@ -35,6 +35,8 @@ interface BaseChartProps {
 	competitors: Competitor[];
 	isAnimationActive?: boolean;
 	chartType?: "bar" | "line";
+	chartColors?: string[];
+	chartHeight?: string;
 }
 
 export function BaseChart({
@@ -48,6 +50,8 @@ export function BaseChart({
 	competitors,
 	isAnimationActive = false,
 	chartType = "line",
+	chartColors: chartColorsProp,
+	chartHeight = "250px",
 }: BaseChartProps) {
 	const completeData = filterAndCompleteChartData(data, lookback);
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -62,7 +66,7 @@ export function BaseChart({
 	const sortedSelectedCompetitors = [...selectedCompetitors].sort((a, b) => a.name.localeCompare(b.name));
 
 	// Create dynamic chart config based on brand and ALL competitors (for consistent colors)
-	const chartColors = context.clientConfig?.branding.chartColors ?? [];
+	const chartColors = chartColorsProp ?? context.clientConfig?.branding.chartColors ?? [];
 	const chartConfig: ChartConfig = {
 		visitors: {
 			label: "Visibility",
@@ -133,7 +137,7 @@ export function BaseChart({
 				</div>
 			)}
 		{chartType === "bar" ? (
-			<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+			<ChartContainer config={chartConfig} className="aspect-auto w-full" style={{ height: chartHeight }}>
 				<BarChart data={chartData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
@@ -210,7 +214,7 @@ export function BaseChart({
 					</BarChart>
 				</ChartContainer>
 		) : (
-			<ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+			<ChartContainer config={chartConfig} className="aspect-auto w-full" style={{ height: chartHeight }}>
 				<LineChart data={chartData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
