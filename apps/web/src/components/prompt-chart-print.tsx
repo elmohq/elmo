@@ -13,6 +13,7 @@ import {
 	calculateVisibilityPercentages,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
+import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 
 interface PromptRunData {
 	id: string;
@@ -38,6 +39,8 @@ interface PromptChartPrintProps {
 	// Whether this prompt has ever been evaluated (all-time)
 	// Used to distinguish "never evaluated" vs "no data in selected window"
 	hasEverBeenEvaluated?: boolean;
+	// Optional category for report display
+	category?: PromptCategory;
 }
 
 export function PromptChartPrint({
@@ -48,6 +51,7 @@ export function PromptChartPrint({
 	competitors,
 	promptRuns,
 	hasEverBeenEvaluated = false,
+	category,
 }: PromptChartPrintProps) {
 	const fileName = `${brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
 	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
@@ -79,9 +83,27 @@ export function PromptChartPrint({
 		});
 	});
 
-	// Get the last visibility value for the badge (brand visibility)
+	// Get the last visibility value for the badge (brand visibility / SoV)
 	const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
 	const lastBrandVisibility = lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
+
+	// Compute SoV for this prompt when category is provided (report context)
+	const promptSoV = (() => {
+		if (!category) return null;
+		const runs = promptSpecificRuns;
+		if (runs.length === 0) return null;
+		const brandMentions = runs.filter((r) => r.brandMentioned).length;
+		let compMentions = 0;
+		for (const run of runs) {
+			if (run.competitorsMentioned) {
+				compMentions += run.competitorsMentioned.filter((m) =>
+					competitors.some((c) => c.name === m),
+				).length;
+			}
+		}
+		const denom = brandMentions + compMentions;
+		return denom === 0 ? null : Math.round((brandMentions / denom) * 100);
+	})();
 
 	if (hasNoRuns) {
 		const message = hasEverBeenEvaluated
@@ -136,7 +158,14 @@ export function PromptChartPrint({
 		<CardHeader className="flex justify-between items-center px-3">
 			<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
 			<div className="flex items-center gap-2">
-				{lastBrandVisibility !== null && (
+				{category && promptSoV !== null ? (
+					<Badge
+						variant={getSoVBadgeClasses(promptSoV).variant}
+						className={`${getSoVBadgeClasses(promptSoV).className} print:text-xs`}
+					>
+						{promptSoV}% SoV
+					</Badge>
+				) : lastBrandVisibility !== null && (
 					<Badge
 						variant={getBadgeVariant(lastBrandVisibility)}
 						className={`${getBadgeClassName(lastBrandVisibility)} print:text-xs`}

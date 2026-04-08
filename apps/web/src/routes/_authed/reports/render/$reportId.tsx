@@ -1,23 +1,32 @@
 /**
  * /reports/render/$reportId - Standalone report rendering page
  *
- * Displays a completed report with charts, analysis tables, and branding.
- * Designed for printing / PDF export.
- * Replicates: apps/web/src/app/reports/render/[reportId]/page.tsx
+ * Displays a completed report with Share of Voice metrics, charts, and analysis.
+ * Designed as production-quality printable marketing material.
  */
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuthSession, hasReportAccess } from "@/lib/auth/helpers";
 import { getReportByIdFn } from "@/server/reports";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
 import { Logo } from "@/components/logo";
-import { Target, BarChart3, Rocket } from "lucide-react";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
+import {
+	computeOverallSoV,
+	computePromptSoV,
+	computeCompetitorSoVs,
+	selectRepresentativePrompts,
+	getSoVColor,
+	getSoVBadgeClasses,
+	getSoVLevel,
+	type ReportPromptRun,
+	type PromptSoV,
+	type PromptCategory,
+	type CompetitorSoV,
+} from "@workspace/lib/report-metrics";
 
-// ---------- Types matching the report worker output ----------
+// ---------- Types ----------
 
 interface ReportData {
 	websiteAnalysis: any;
@@ -51,7 +60,6 @@ interface PromptRunResult {
 	}>;
 }
 
-// Mock structures to match frontend component types
 interface MockPrompt {
 	id: string;
 	brandId: string;
@@ -68,16 +76,6 @@ interface MockPromptRun {
 	createdAt: Date;
 }
 
-type DisplayItem = {
-	type: "individual";
-	mentionScore: number;
-	brandVisibility: number;
-	hasRuns: boolean;
-	isBranded: boolean;
-	hasCompetitorMentions: boolean;
-	data: MockPrompt;
-};
-
 // ---------- Server function ----------
 
 const loadReportData = createServerFn({ method: "GET" })
@@ -91,81 +89,7 @@ const loadReportData = createServerFn({ method: "GET" })
 		return report;
 	});
 
-// ---------- Helper functions ----------
-
-function calculateAverageVisibility(
-	prompts: MockPrompt[],
-	promptRuns: MockPromptRun[],
-	_brandName: string,
-	_competitors: CompetitorResult[],
-): number {
-	if (!prompts || prompts.length === 0) return 0;
-
-	const enabledPrompts = prompts.filter((prompt) => prompt.enabled);
-	if (enabledPrompts.length === 0) return 0;
-
-	const enabledPromptIds = new Set(enabledPrompts.map((prompt) => prompt.id));
-	const recentRuns = promptRuns.filter((run) => enabledPromptIds.has(run.promptId));
-	if (recentRuns.length === 0) return 0;
-
-	const runsByPrompt = new Map<string, MockPromptRun[]>();
-	for (const run of recentRuns) {
-		if (!runsByPrompt.has(run.promptId)) {
-			runsByPrompt.set(run.promptId, []);
-		}
-		runsByPrompt.get(run.promptId)!.push(run);
-	}
-
-	const qualifyingRuns: MockPromptRun[] = [];
-	for (const [, runs] of runsByPrompt) {
-		const hasAnyMentions = runs.some(
-			(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
-		);
-		if (hasAnyMentions) {
-			qualifyingRuns.push(...runs);
-		}
-	}
-	if (qualifyingRuns.length === 0) return 0;
-
-	const brandMentionedCount = qualifyingRuns.filter((run) => run.brandMentioned).length;
-	return Math.round((brandMentionedCount / qualifyingRuns.length) * 100);
-}
-
-function calculatePromptMentionScore(
-	promptId: string,
-	promptRuns: MockPromptRun[],
-	competitors: CompetitorResult[],
-): number {
-	const runs = promptRuns.filter((run) => run.promptId === promptId);
-	if (runs.length === 0) return 0;
-
-	const totalMentions = runs.reduce((total, run) => {
-		let mentions = 0;
-		if (run.brandMentioned) mentions += 2;
-		if (run.competitorsMentioned && run.competitorsMentioned.length > 0) {
-			const matchingCompetitorMentions = run.competitorsMentioned.filter((mentionedName) =>
-				competitors.some((competitor) => competitor.name === mentionedName),
-			);
-			mentions += matchingCompetitorMentions.length;
-		}
-		return total + mentions;
-	}, 0);
-
-	return totalMentions / runs.length;
-}
-
-function calculatePromptBrandVisibility(promptId: string, promptRuns: MockPromptRun[]): number {
-	const runs = promptRuns.filter((run) => run.promptId === promptId);
-	if (runs.length === 0) return 0;
-	const brandMentionedCount = runs.filter((run) => run.brandMentioned).length;
-	return Math.round((brandMentionedCount / runs.length) * 100);
-}
-
-function getVisibilityTextColor(value: number): string {
-	if (value > 75) return "text-emerald-600";
-	if (value > 45) return "text-amber-500";
-	return "text-rose-500";
-}
+// ---------- Helpers ----------
 
 function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
 	const promptLower = promptValue.toLowerCase();
@@ -191,7 +115,7 @@ export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 	},
 	head: () => ({
 		meta: [
-			{ title: "AI Visibility Report" },
+			{ title: "AI Share of Voice Report" },
 			{ name: "robots", content: "noindex, nofollow" },
 		],
 	}),
@@ -206,13 +130,11 @@ function ReportRenderPage() {
 	if (report.status !== "completed") {
 		return (
 			<div className="max-w-4xl mx-auto p-8">
-				<Card>
-					<CardContent className="py-8 text-center">
-						<p className="text-muted-foreground">
-							Report is not completed yet. Status: {report.status}
-						</p>
-					</CardContent>
-				</Card>
+				<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+					<p className="text-gray-500 text-lg">
+						Report is not completed yet. Status: <span className="font-medium">{report.status}</span>
+					</p>
+				</div>
 			</div>
 		);
 	}
@@ -248,7 +170,7 @@ function ReportRenderPage() {
 		createdAt: new Date(),
 	}));
 
-	// Create prompt runs from report data
+	// Create prompt runs
 	const mockPromptRuns: MockPromptRun[] = [];
 	const fullPromptRuns: any[] = [];
 
@@ -276,303 +198,311 @@ function ReportRenderPage() {
 		});
 	});
 
-	// Calculate overall AI visibility
-	const averageVisibility = calculateAverageVisibility(
-		mockPrompts,
-		mockPromptRuns,
-		report.brandName,
-		parsedReportData.competitors,
+	// Compute SoV metrics using shared module
+	const reportRuns: ReportPromptRun[] = mockPromptRuns.map((r) => ({
+		promptId: r.promptId,
+		brandMentioned: r.brandMentioned,
+		competitorsMentioned: r.competitorsMentioned,
+	}));
+
+	const overallSoV = computeOverallSoV(reportRuns, parsedReportData.competitors);
+	const competitorSoVs = computeCompetitorSoVs(reportRuns, parsedReportData.competitors);
+
+	// Compute per-prompt SoV
+	const promptSoVs: PromptSoV[] = mockPrompts.map((prompt) =>
+		computePromptSoV(prompt.id, reportRuns, parsedReportData.competitors),
 	);
 
-	// Create display items for all prompts
-	const individualItems: DisplayItem[] = mockPrompts.map((prompt) => {
-		const runs = mockPromptRuns.filter((run) => run.promptId === prompt.id);
-		const hasRuns = runs.length > 0;
-		const mentionScore = calculatePromptMentionScore(prompt.id, mockPromptRuns, parsedReportData.competitors);
-		const brandVisibility = calculatePromptBrandVisibility(prompt.id, mockPromptRuns);
-		const isBranded = isPromptBranded(prompt.value, report.brandName, report.brandWebsite);
-		const hasCompetitorMentions = runs.some(
-			(run) => run.competitorsMentioned && run.competitorsMentioned.length > 0,
-		);
+	// Build prompt lookup
+	const promptMap = new Map(mockPrompts.map((p) => [p.id, p]));
+	const promptSoVMap = new Map(promptSoVs.map((s) => [s.promptId, s]));
 
-		return {
-			type: "individual" as const,
-			mentionScore,
-			brandVisibility,
-			hasRuns,
-			isBranded,
-			hasCompetitorMentions,
-			data: prompt,
-		};
-	});
+	// Select representative prompts (2 strengths + 2 opportunities)
+	const selectedPrompts = selectRepresentativePrompts(
+		promptSoVs,
+		(id: string) => {
+			const prompt = promptMap.get(id);
+			return prompt ? isPromptBranded(prompt.value, report.brandName, report.brandWebsite) : false;
+		},
+	);
 
-	// Sort all items by mention score (descending), then alphabetically
-	const allDisplayItems = [...individualItems].sort((a, b) => {
-		if (a.mentionScore !== b.mentionScore) return b.mentionScore - a.mentionScore;
-		return a.data.value.localeCompare(b.data.value);
-	});
+	const sovLevel = getSoVLevel(overallSoV);
+	const sovColor = getSoVColor(overallSoV);
 
-	const hasSimpleVisibilityData = (item: DisplayItem): boolean => {
-		const runs = mockPromptRuns.filter((run) => run.promptId === item.data.id);
-		return runs.some(
-			(run) => run.brandMentioned || (run.competitorsMentioned && run.competitorsMentioned.length > 0),
-		);
-	};
-
-	const itemsWithVisibility = allDisplayItems.filter(hasSimpleVisibilityData);
-
-	// Smart selection: prefer non-branded prompts with both brand and competitor mentions
-	const selectedDisplayItems: DisplayItem[] = [];
-	const brandedItems: DisplayItem[] = [];
-	const nonBrandedItems: DisplayItem[] = [];
-
-	for (const item of itemsWithVisibility) {
-		if (item.isBranded) {
-			brandedItems.push(item);
-		} else {
-			nonBrandedItems.push(item);
-		}
-	}
-
-	nonBrandedItems.sort((a, b) => {
-		const aHasBrand = a.brandVisibility > 0;
-		const bHasBrand = b.brandVisibility > 0;
-		if (aHasBrand !== bHasBrand) return aHasBrand ? -1 : 1;
-		if (a.hasCompetitorMentions !== b.hasCompetitorMentions) return a.hasCompetitorMentions ? -1 : 1;
-		if (Math.abs(a.mentionScore - b.mentionScore) > 0.1) return b.mentionScore - a.mentionScore;
-		return b.brandVisibility - a.brandVisibility;
-	});
-
-	brandedItems.sort((a, b) => {
-		if (Math.abs(a.brandVisibility - b.brandVisibility) > 5) return b.brandVisibility - a.brandVisibility;
-		return b.mentionScore - a.mentionScore;
-	});
-
-	selectedDisplayItems.push(...nonBrandedItems.slice(0, 3));
-	const hasBrandMentionInFirst3 = selectedDisplayItems.some((item) => item.brandVisibility > 0);
-	if (!hasBrandMentionInFirst3 && brandedItems.length > 0) {
-		selectedDisplayItems.push(brandedItems[0]);
-	} else if (selectedDisplayItems.length < 4) {
-		const remainingNonBranded = nonBrandedItems.slice(selectedDisplayItems.length);
-		const allRemaining = [...remainingNonBranded, ...brandedItems];
-		if (allRemaining.length > 0) {
-			selectedDisplayItems.push(allRemaining[0]);
-		}
-	}
-
-	const topDisplayItems = selectedDisplayItems.slice(0, 4);
+	// Summary stats
+	const totalPrompts = mockPrompts.length;
+	const promptsWithMentions = promptSoVs.filter((p) => p.brandMentionCount > 0).length;
 
 	return (
-		<div className="max-w-4xl mx-auto p-6 print:pt-8">
-			{/* Header with White Label Branding */}
-			<div className="flex items-center justify-between mb-32 print:mb-8">
-				<h1 className="text-3xl font-bold text-gray-900">AI Visibility Report</h1>
-				<div className="flex items-center space-x-3">
-					<Logo iconClassName="!size-6" textClassName="text-base font-semibold" />
+		<div className="max-w-[816px] mx-auto bg-white print:shadow-none">
+			{/* ===== PAGE 1: Cover ===== */}
+			<div className="p-12 print:p-10 min-h-screen flex flex-col">
+				{/* Header */}
+				<div className="flex items-center justify-between mb-16 print:mb-10">
+					<Logo iconClassName="!size-5" textClassName="text-sm font-semibold text-gray-400" />
+					<span className="text-xs text-gray-400 tracking-wide uppercase">Confidential</span>
+				</div>
+
+				{/* Hero Section */}
+				<div className="flex-1 flex flex-col justify-center">
+					<div className="mb-2">
+						<span className="text-xs font-semibold tracking-widest uppercase text-gray-400">
+							AI Share of Voice Report
+						</span>
+					</div>
+					<h1 className="text-5xl font-bold text-gray-900 tracking-tight mb-6 print:text-4xl">
+						{report.brandName}
+					</h1>
+					<div className="w-16 h-1 bg-gray-900 mb-8" />
+
+					{/* Key Metric */}
+					<div className="flex items-baseline gap-4 mb-10">
+						<span className={`text-7xl font-bold tracking-tight ${sovColor} print:text-6xl`}>
+							{overallSoV !== null ? `${overallSoV}%` : "N/A"}
+						</span>
+						<div className="flex flex-col">
+							<span className="text-lg font-semibold text-gray-900">Share of Voice</span>
+							<span className="text-sm text-gray-500">{sovLevel.label} &mdash; {sovLevel.description}</span>
+						</div>
+					</div>
+
+					{/* Quick Stats Row */}
+					<div className="grid grid-cols-3 gap-6">
+						<div className="border-t-2 border-gray-900 pt-4">
+							<div className="text-2xl font-bold text-gray-900">{totalPrompts}</div>
+							<div className="text-xs text-gray-500 mt-1">Prompts Tested</div>
+						</div>
+						<div className="border-t-2 border-gray-900 pt-4">
+							<div className="text-2xl font-bold text-gray-900">{promptsWithMentions}</div>
+							<div className="text-xs text-gray-500 mt-1">With Brand Mentions</div>
+						</div>
+						<div className="border-t-2 border-gray-900 pt-4">
+							<div className="text-2xl font-bold text-gray-900">{parsedReportData.competitors.length}</div>
+							<div className="text-xs text-gray-500 mt-1">Competitors Tracked</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Footer */}
+				<div className="mt-auto pt-8 border-t border-gray-100 flex justify-between items-center">
+					<span className="text-xs text-gray-400">
+						Generated {new Date(report.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+					</span>
+					<span className="text-xs text-gray-400">{branding?.url || "elmo.chat"}</span>
 				</div>
 			</div>
 
-			{/* Metrics Grid */}
-			<div className="grid grid-cols-2 gap-4 mb-8">
-				<Card className="print:shadow-none">
-					<CardHeader>
-						<CardDescription>Brand</CardDescription>
-						<CardTitle className="text-3xl">{report.brandName}</CardTitle>
-					</CardHeader>
-				</Card>
-				<Card className="print:shadow-none">
-					<CardHeader>
-						<CardDescription>AI Visibility</CardDescription>
-						<CardTitle className="text-3xl">
-							<span className={`font-bold ${getVisibilityTextColor(averageVisibility)}`}>
-								{averageVisibility}%
-							</span>
-						</CardTitle>
-					</CardHeader>
-				</Card>
+			{/* ===== PAGE 2: What is Share of Voice + Competitive Landscape ===== */}
+			<div className="p-12 print:p-10 print:break-before-page min-h-screen flex flex-col">
+				<SectionHeader number="01" title="Understanding Share of Voice" />
+
+				<div className="mb-8">
+					<p className="text-gray-600 text-sm leading-relaxed mb-4">
+						<strong className="text-gray-900">Share of Voice (SoV)</strong> measures your brand's
+						presence relative to competitors in AI-generated responses. When users ask questions,
+						AI engines like ChatGPT, Claude, Perplexity, and Google's AI Overviews synthesize
+						information and recommend brands. SoV tells you what percentage of those recommendations
+						belong to you.
+					</p>
+					<p className="text-gray-600 text-sm leading-relaxed">
+						Unlike raw mention counts, SoV normalizes for prompt difficulty and volume. A 40% SoV
+						means that for every 10 brand recommendations AI makes in your category, 4 are for you.
+					</p>
+				</div>
+
+				{/* SoV Scale */}
+				<div className="mb-10">
+					<div className="flex gap-0 rounded-lg overflow-hidden h-3 mb-3">
+						<div className="flex-1 bg-rose-400" />
+						<div className="flex-1 bg-amber-400" />
+						<div className="flex-1 bg-emerald-500" />
+					</div>
+					<div className="flex text-xs text-gray-500">
+						<div className="flex-1">
+							<span className="font-semibold text-rose-600">0-19%</span> Low
+						</div>
+						<div className="flex-1 text-center">
+							<span className="font-semibold text-amber-600">20-39%</span> Moderate
+						</div>
+						<div className="flex-1 text-right">
+							<span className="font-semibold text-emerald-600">40%+</span> Strong
+						</div>
+					</div>
+				</div>
+
+				{/* Competitive Landscape */}
+				<SectionHeader number="02" title="Competitive Landscape" />
+
+				<div className="mb-4">
+					<p className="text-gray-600 text-sm leading-relaxed mb-6">
+						How your brand's AI share of voice compares to the competition across {totalPrompts} prompts
+						tested against ChatGPT, Claude, and Google AI.
+					</p>
+				</div>
+
+				{/* SoV Comparison Table */}
+				<div className="rounded-xl border border-gray-200 overflow-hidden mb-6">
+					<table className="w-full text-sm">
+						<thead>
+							<tr className="bg-gray-50">
+								<th className="text-left py-3 px-5 font-semibold text-gray-600 text-xs tracking-wide uppercase">Brand</th>
+								<th className="text-right py-3 px-5 font-semibold text-gray-600 text-xs tracking-wide uppercase">Share of Voice</th>
+								<th className="py-3 px-5 font-semibold text-gray-600 text-xs tracking-wide uppercase w-1/2">Distribution</th>
+							</tr>
+						</thead>
+						<tbody>
+							{/* Brand row */}
+							<tr className="border-t border-gray-100 bg-blue-50/30">
+								<td className="py-3 px-5">
+									<span className="font-semibold text-gray-900">{report.brandName}</span>
+								</td>
+								<td className="py-3 px-5 text-right">
+									<span className={`font-bold text-lg ${sovColor}`}>
+										{overallSoV !== null ? `${overallSoV}%` : "N/A"}
+									</span>
+								</td>
+								<td className="py-3 px-5">
+									<SoVBar value={overallSoV} color="bg-blue-500" />
+								</td>
+							</tr>
+							{/* Competitor rows */}
+							{competitorSoVs.map((comp) => (
+								<tr key={comp.name} className="border-t border-gray-100">
+									<td className="py-3 px-5">
+										<span className="text-gray-700">{comp.name}</span>
+									</td>
+									<td className="py-3 px-5 text-right">
+										<span className="font-semibold text-gray-700">{comp.sov}%</span>
+									</td>
+									<td className="py-3 px-5">
+										<SoVBar value={comp.sov} color="bg-gray-400" />
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+
+				<div className="mt-auto pt-6 border-t border-gray-100">
+					<PageFooter branding={branding} />
+				</div>
 			</div>
 
-			{/* What is AEO Section */}
-			<Card className="print:shadow-none mb-6">
-				<CardContent className="space-y-3">
-					<p className="text-gray-700 text-sm leading-normal">
-						<strong>Answer Engine Optimization (AEO)</strong>, also known as Generative Engine
-						Optimization (GEO), is the practice of optimizing content to be discovered and cited by
-						AI-powered search engines and chatbots like ChatGPT, Claude, Perplexity, and Google's AI
-						Overviews.
+			{/* ===== PAGE 3: Prompt Analysis Charts ===== */}
+			{selectedPrompts.length > 0 && (
+				<div className="p-12 print:p-10 print:break-before-page min-h-screen flex flex-col">
+					<SectionHeader number="03" title="Prompt Analysis" />
+					<p className="text-gray-600 text-sm leading-relaxed mb-8">
+						A representative sample of prompts showing where {report.brandName} is
+						performing well and where opportunities exist.
 					</p>
-					<p className="text-gray-700 text-sm leading-normal">
-						Unlike traditional SEO which focuses on ranking websites in search results, AEO aims to
-						have your brand mentioned directly in AI-generated responses. When users ask questions, AI
-						engines synthesize information from the web and provide conversational answers. AEO ensures
-						your brand is part of those answers.
-					</p>
-					<div className="bg-blue-50 border-l-4 border-blue-400 p-3">
-						<p className="text-blue-800 font-medium text-sm">
-							Only around 12% of sources cited by ChatGPT overlap with traditional Google search
-							results, meaning most traditional SEO strategies may not translate to AI visibility.
-						</p>
-					</div>
-				</CardContent>
-			</Card>
 
-			{/* AI Visibility Section */}
-			<Card className="print:shadow-none mb-6">
-				<CardContent className="space-y-3">
-					<p className="text-gray-700 text-sm leading-normal">
-						<strong>AI Visibility</strong> measures how often your brand appears in AI-generated
-						responses. It's calculated by running relevant prompts through major AI engines and
-						tracking brand mentions.
-					</p>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-						<div className="text-center p-3 bg-emerald-50 rounded-lg">
-							<div className="text-xl font-bold text-emerald-600 mb-1">75%+</div>
-							<div className="text-xs text-emerald-700 font-semibold">Excellent Visibility</div>
-							<div className="text-xs text-emerald-700">AI finds your brand.</div>
-						</div>
-						<div className="text-center p-3 bg-amber-50 rounded-lg">
-							<div className="text-xl font-bold text-amber-600 mb-1">45-75%</div>
-							<div className="text-xs text-amber-700 font-semibold">Good Visibility</div>
-							<div className="text-xs text-amber-700">Room for improvement.</div>
-						</div>
-						<div className="text-center p-3 bg-rose-50 rounded-lg">
-							<div className="text-xl font-bold text-rose-600 mb-1">&lt;45%</div>
-							<div className="text-xs text-rose-700 font-semibold">Low Visibility</div>
-							<div className="text-xs text-rose-700">Optimization needed.</div>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
+					<div className="space-y-6 flex-1">
+						{selectedPrompts.map((selected) => {
+							const prompt = promptMap.get(selected.promptId);
+							const sov = promptSoVMap.get(selected.promptId);
+							if (!prompt) return null;
 
-			{/* Charts */}
-			{topDisplayItems.length === 0 ? (
-				<Card className="print:shadow-none">
-					<CardContent className="py-8 text-center">
-						<p className="text-muted-foreground">No prompts with visibility data found.</p>
-					</CardContent>
-				</Card>
-			) : (
-				<div className="space-y-6 print:break-before-page">
-					<h2 className="text-xl font-bold text-gray-900 mb-4">Top Prompt Visibility Charts</h2>
-					{topDisplayItems.map((item) => (
-						<div key={item.data.id} className="print:break-inside-avoid">
-							<PromptChartPrint
-								lookback="1m"
-								promptName={item.data.value}
-								promptId={item.data.id}
-								brand={mockBrand as any}
-								competitors={mockCompetitors as any}
-								promptRuns={fullPromptRuns}
-							/>
-						</div>
-					))}
+							return (
+								<div key={selected.promptId} className="print:break-inside-avoid">
+									<div className="flex items-center gap-2 mb-2">
+										<CategoryBadge category={selected.category} />
+										{selected.sov !== null && (
+											<span className={`text-xs font-semibold ${getSoVColor(selected.sov)}`}>
+												{selected.sov}% SoV
+											</span>
+										)}
+									</div>
+									<PromptChartPrint
+										lookback="1m"
+										promptName={prompt.value}
+										promptId={prompt.id}
+										brand={mockBrand as any}
+										competitors={mockCompetitors as any}
+										promptRuns={fullPromptRuns}
+										category={selected.category}
+									/>
+								</div>
+							);
+						})}
+					</div>
+
+					<div className="mt-auto pt-6 border-t border-gray-100">
+						<PageFooter branding={branding} />
+					</div>
 				</div>
 			)}
 
-			{/* AEO Opportunity and Optimization Sections Container */}
-			<div className="print:break-before-page print:h-screen print:flex print:items-center print:justify-center">
-				<div className="print:w-full space-y-8">
-					{/* AEO Opportunity Section */}
-					<div className="mt-8 print:mt-0">
-						<Card className="print:shadow-none">
-							<CardHeader>
-								<CardTitle className="text-xl text-slate-800">AEO Opportunity</CardTitle>
-								<CardDescription className="text-slate-700">
-									Overview of your current AI visibility performance and growth potential.
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<AEOOpportunityTable
-									itemsWithVisibility={itemsWithVisibility}
-								/>
-							</CardContent>
-						</Card>
-					</div>
+			{/* ===== PAGE 4: Opportunities + CTA ===== */}
+			<div className="p-12 print:p-10 print:break-before-page min-h-screen flex flex-col">
+				<SectionHeader number="04" title="Growth Opportunities" />
+				<p className="text-gray-600 text-sm leading-relaxed mb-8">
+					Prompts where competitors are outperforming {report.brandName} represent your biggest
+					opportunities to increase AI share of voice.
+				</p>
 
-					{/* Optimization Opportunities Section */}
-					<div>
-						<Card className="print:shadow-none">
-							<CardHeader>
-								<CardTitle className="text-xl text-slate-800">
-									What should I do next?
-								</CardTitle>
-								<CardDescription className="text-slate-700">
-									Prompts where competitors are outperforming {report.brandName} are your
-									biggest opportunities for improvement.
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<OptimizationTable
-									itemsWithVisibility={itemsWithVisibility}
-									mockPromptRuns={mockPromptRuns}
-									competitors={parsedReportData.competitors}
-								/>
-							</CardContent>
-						</Card>
+				<OpportunitiesTable
+					promptSoVs={promptSoVs}
+					promptMap={promptMap}
+					mockPromptRuns={reportRuns}
+					competitors={parsedReportData.competitors}
+					brandName={report.brandName}
+				/>
+
+				{/* Summary Stats */}
+				<div className="mt-10 rounded-xl bg-gray-50 p-6">
+					<h3 className="text-sm font-semibold text-gray-900 mb-4">Report Summary</h3>
+					<div className="grid grid-cols-2 gap-4 text-sm">
+						<div>
+							<span className="text-gray-500">Total prompts tested</span>
+							<span className="float-right font-semibold text-gray-900">{totalPrompts}</span>
+						</div>
+						<div>
+							<span className="text-gray-500">Prompts with brand mentions</span>
+							<span className="float-right font-semibold text-gray-900">{promptsWithMentions}</span>
+						</div>
+						<div>
+							<span className="text-gray-500">AI engines tested</span>
+							<span className="float-right font-semibold text-gray-900">ChatGPT, Claude, Google AI</span>
+						</div>
+						<div>
+							<span className="text-gray-500">Competitors tracked</span>
+							<span className="float-right font-semibold text-gray-900">{parsedReportData.competitors.length}</span>
+						</div>
 					</div>
 				</div>
-			</div>
 
-			{/* Call to Action Section */}
-			<div className="mt-8 print:mt-0 print:break-before-page print:flex print:items-center print:justify-center print:mt-48">
-				<Card className="print:shadow-none bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 print:w-full">
-					<CardHeader className="text-center">
-						<CardTitle className="text-2xl text-slate-800">
-							Ready to Optimize Your AI Visibility?
-						</CardTitle>
-						<CardDescription className="text-slate-700 text-base">
-							Take your brand's AI presence to the next level with{" "}
-							{branding?.name || "Elmo"}
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-6">
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-							<div className="text-center p-4">
-								<div className="flex justify-center mb-2">
-									<Target className="h-8 w-8 text-slate-600" />
-								</div>
-								<h3 className="font-semibold text-slate-800 mb-2">
-									Strategic Optimization
-								</h3>
-								<p className="text-sm text-slate-700">
-									Develop content strategies that increase your brand mentions in AI
-									responses
-								</p>
+				{/* CTA */}
+				<div className="mt-auto pt-10">
+					<div className="rounded-xl bg-gradient-to-br from-gray-900 to-gray-800 p-8 text-white">
+						<h2 className="text-xl font-bold mb-2">
+							Ready to grow your AI share of voice?
+						</h2>
+						<p className="text-gray-300 text-sm mb-6 leading-relaxed">
+							{branding?.name || "Elmo"} continuously monitors your brand across AI engines
+							and provides actionable strategies to increase your share of voice.
+						</p>
+						<div className="grid grid-cols-3 gap-6 text-center">
+							<div>
+								<div className="text-2xl font-bold mb-1">24/7</div>
+								<div className="text-xs text-gray-400">AI Monitoring</div>
 							</div>
-							<div className="text-center p-4">
-								<div className="flex justify-center mb-2">
-									<BarChart3 className="h-8 w-8 text-slate-600" />
-								</div>
-								<h3 className="font-semibold text-slate-800 mb-2">
-									Continuous Monitoring
-								</h3>
-								<p className="text-sm text-slate-700">
-									Track your AI visibility across hundreds of relevant prompts and topics
-								</p>
+							<div>
+								<div className="text-2xl font-bold mb-1">3+</div>
+								<div className="text-xs text-gray-400">AI Engines</div>
 							</div>
-							<div className="text-center p-4">
-								<div className="flex justify-center mb-2">
-									<Rocket className="h-8 w-8 text-slate-600" />
-								</div>
-								<h3 className="font-semibold text-slate-800 mb-2">
-									Competitive Advantage
-								</h3>
-								<p className="text-sm text-slate-700">
-									Stay ahead of competitors in the rapidly evolving AI search landscape
-								</p>
+							<div>
+								<div className="text-2xl font-bold mb-1">Real-time</div>
+								<div className="text-xs text-gray-400">Competitive Intel</div>
 							</div>
 						</div>
-						<div className="text-center pt-4 border-t border-blue-200">
-							<p className="text-slate-800 font-medium mb-2">
-								Get started with {branding?.name || "Elmo"} today
-							</p>
-							<p className="text-slate-700 text-sm">
-								Visit <strong>{branding?.url || "elmo.chat"}</strong> to learn more about
-								our AEO platform and services.
-							</p>
+						<div className="mt-6 pt-4 border-t border-gray-700 text-center">
+							<span className="text-sm text-gray-300">
+								Learn more at <strong className="text-white">{branding?.url || "elmo.chat"}</strong>
+							</span>
 						</div>
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
@@ -580,168 +510,159 @@ function ReportRenderPage() {
 
 // ---------- Sub-components ----------
 
-function AEOOpportunityTable({ itemsWithVisibility }: { itemsWithVisibility: DisplayItem[] }) {
-	const totalPromptsTracked = itemsWithVisibility.length;
-	const promptsWithBrandMentions = itemsWithVisibility.filter(
-		(item) => item.brandVisibility > 0,
-	).length;
-
+function SectionHeader({ number, title }: { number: string; title: string }) {
 	return (
-		<div className="overflow-x-auto">
-			<table className="w-full text-sm">
-				<thead>
-					<tr className="border-b">
-						<th className="text-center py-3 px-2 font-semibold">Prompts With Mentions</th>
-						<th className="text-center py-3 px-2 font-semibold">Total Prompts Tracked</th>
-						<th className="text-center py-3 px-2 font-semibold">Opportunity</th>
-						<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr className="border-b border-gray-100">
-						<td className="text-center py-3 px-2">
-							<span className="text-sm font-semibold text-gray-700">
-								{(promptsWithBrandMentions * 15).toLocaleString()}
-							</span>
-						</td>
-						<td className="text-center py-3 px-2">
-							<span className="text-sm text-gray-700">
-								{(totalPromptsTracked * 15).toLocaleString()}
-							</span>
-						</td>
-						<td className="text-center py-3 px-2">
-							<Badge className="text-xs">High</Badge>
-						</td>
-						<td className="py-3 px-2 text-sm text-gray-700">
-							Generate content to increase brand visibility
-						</td>
-					</tr>
-				</tbody>
-			</table>
+		<div className="flex items-baseline gap-3 mb-6">
+			<span className="text-xs font-bold text-gray-300 tracking-wider">{number}</span>
+			<h2 className="text-xl font-bold text-gray-900 tracking-tight">{title}</h2>
 		</div>
 	);
 }
 
-function OptimizationTable({
-	itemsWithVisibility,
+function SoVBar({ value, color }: { value: number | null; color: string }) {
+	const width = value !== null ? Math.max(2, value) : 0;
+	return (
+		<div className="w-full bg-gray-100 rounded-full h-2.5">
+			<div
+				className={`${color} h-2.5 rounded-full transition-all`}
+				style={{ width: `${width}%` }}
+			/>
+		</div>
+	);
+}
+
+function CategoryBadge({ category }: { category: PromptCategory }) {
+	if (category === "strength") {
+		return (
+			<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+				Strength
+			</span>
+		);
+	}
+	return (
+		<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+			Opportunity
+		</span>
+	);
+}
+
+function PageFooter({ branding }: { branding?: ClientConfig["branding"] }) {
+	return (
+		<div className="flex justify-between items-center text-xs text-gray-400">
+			<Logo iconClassName="!size-4" textClassName="text-xs font-medium text-gray-400" />
+			<span>{branding?.url || "elmo.chat"}</span>
+		</div>
+	);
+}
+
+function OpportunitiesTable({
+	promptSoVs,
+	promptMap,
 	mockPromptRuns,
 	competitors,
+	brandName,
 }: {
-	itemsWithVisibility: DisplayItem[];
-	mockPromptRuns: MockPromptRun[];
+	promptSoVs: PromptSoV[];
+	promptMap: Map<string, MockPrompt>;
+	mockPromptRuns: ReportPromptRun[];
 	competitors: CompetitorResult[];
+	brandName: string;
 }) {
-	const topPromptsSubset = itemsWithVisibility.slice(0, 20);
+	// Find prompts where competitors outperform the brand
+	const opportunities = promptSoVs
+		.map((promptSoV) => {
+			const prompt = promptMap.get(promptSoV.promptId);
+			if (!prompt) return null;
 
-	const competitiveAnalysis = topPromptsSubset
-		.map((item) => {
-			const prompt = item.data;
-			const runs = mockPromptRuns.filter((run) => run.promptId === prompt.id);
-			if (runs.length === 0) return null;
+			const brandSoV = promptSoV.sov ?? 0;
 
-			const brandVisibility = item.brandVisibility;
+			// Find the highest competitor SoV for this prompt
+			const promptRuns = mockPromptRuns.filter((r) => r.promptId === promptSoV.promptId);
+			let bestCompetitorName = "";
+			let bestCompetitorMentions = 0;
 
-			const competitorVisibilities: number[] = [];
-			for (const competitor of competitors) {
-				const competitorMentions = runs.filter(
-					(run) =>
-						run.competitorsMentioned && run.competitorsMentioned.includes(competitor.name),
+			for (const comp of competitors) {
+				const mentions = promptRuns.filter(
+					(r) => r.competitorsMentioned?.includes(comp.name),
 				).length;
-				competitorVisibilities.push(Math.round((competitorMentions / runs.length) * 100));
+				if (mentions > bestCompetitorMentions) {
+					bestCompetitorMentions = mentions;
+					bestCompetitorName = comp.name;
+				}
 			}
 
-			const higherCompetitorVisibilities = competitorVisibilities.filter(
-				(vis) => vis > brandVisibility,
-			);
-			if (higherCompetitorVisibilities.length === 0) return null;
+			if (bestCompetitorMentions === 0) return null;
 
-			const avgCompetitorVisibility = Math.round(
-				higherCompetitorVisibilities.reduce((sum, vis) => sum + vis, 0) /
-					higherCompetitorVisibilities.length,
-			);
-			const visibilityGap = avgCompetitorVisibility - brandVisibility;
+			const totalMentions = promptSoV.brandMentionCount + promptSoV.totalCompetitorMentions;
+			const competitorSoV = totalMentions > 0
+				? Math.round((bestCompetitorMentions / totalMentions) * 100)
+				: 0;
 
-			const goalIncrease = Math.floor(Math.random() * 11) + 5;
-			const goalVisibility = Math.min(100, avgCompetitorVisibility + goalIncrease);
+			const gap = competitorSoV - brandSoV;
+			if (gap <= 0) return null;
 
 			return {
 				prompt: prompt.value,
-				brandVisibility,
-				avgCompetitorVisibility,
-				goalVisibility,
-				visibilityGap,
+				brandSoV,
+				competitorName: bestCompetitorName,
+				competitorSoV,
+				gap,
 			};
 		})
-		.filter(Boolean) as Array<{
-		prompt: string;
-		brandVisibility: number;
-		avgCompetitorVisibility: number;
-		goalVisibility: number;
-		visibilityGap: number;
-	}>;
+		.filter(Boolean)
+		.sort((a, b) => b!.gap - a!.gap)
+		.slice(0, 5) as Array<{
+			prompt: string;
+			brandSoV: number;
+			competitorName: string;
+			competitorSoV: number;
+			gap: number;
+		}>;
 
-	const topOpportunities = competitiveAnalysis
-		.sort((a, b) => {
-			if (a.brandVisibility > 0 && b.brandVisibility === 0) return -1;
-			if (a.brandVisibility === 0 && b.brandVisibility > 0) return 1;
-			return b.visibilityGap - a.visibilityGap;
-		})
-		.slice(0, 5);
-
-	if (topOpportunities.length === 0) {
+	if (opportunities.length === 0) {
 		return (
-			<div className="text-center py-8">
-				<p className="text-muted-foreground">No competitive optimization opportunities found.</p>
+			<div className="rounded-xl border border-gray-200 p-8 text-center">
+				<p className="text-gray-500 text-sm">
+					{brandName} is performing well across all tracked prompts. No significant competitive gaps found.
+				</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="overflow-x-auto">
+		<div className="rounded-xl border border-gray-200 overflow-hidden">
 			<table className="w-full text-sm">
 				<thead>
-					<tr className="border-b">
-						<th className="text-left py-3 px-2 font-semibold">Prompt</th>
-						<th className="text-center py-3 px-2 font-semibold">Current Visibility</th>
-						<th className="text-center py-3 px-2 font-semibold">Competitor Visibility</th>
-						<th className="text-center py-3 px-2 font-semibold">Goal Visibility</th>
-						<th className="text-left py-3 px-2 font-semibold">Recommendation</th>
+					<tr className="bg-gray-50">
+						<th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase">Prompt</th>
+						<th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase whitespace-nowrap">Your SoV</th>
+						<th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase whitespace-nowrap">Top Competitor</th>
+						<th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase">Gap</th>
 					</tr>
 				</thead>
 				<tbody>
-					{topOpportunities.map((opportunity) => (
-						<tr key={opportunity.prompt} className="border-b border-gray-100">
-							<td className="py-3 px-2 max-w-xs">
-								<div className="text-xs text-gray-700 break-words">
-									{opportunity.prompt}
+					{opportunities.map((opp) => (
+						<tr key={opp.prompt} className="border-t border-gray-100">
+							<td className="py-3 px-4 max-w-[280px]">
+								<div className="text-xs text-gray-700 break-words leading-relaxed">
+									{opp.prompt}
 								</div>
 							</td>
-							<td className="text-center py-3 px-2">
-								<span className="text-xs text-gray-700">
-									{opportunity.brandVisibility}%
+							<td className="text-center py-3 px-4">
+								<span className={`text-xs font-semibold ${getSoVColor(opp.brandSoV)}`}>
+									{opp.brandSoV}%
 								</span>
 							</td>
-							<td className="text-center py-3 px-2">
-								<span className="text-xs text-gray-700">
-									{opportunity.avgCompetitorVisibility}%
-								</span>
+							<td className="text-center py-3 px-4">
+								<div className="text-xs text-gray-700">
+									<span className="font-semibold">{opp.competitorSoV}%</span>
+									<span className="text-gray-400 block text-[10px]">{opp.competitorName}</span>
+								</div>
 							</td>
-							<td className="text-center py-3 px-2">
-								<span className="text-xs text-gray-700">
-									{opportunity.goalVisibility}%
+							<td className="text-center py-3 px-4">
+								<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600">
+									-{opp.gap}%
 								</span>
-							</td>
-							<td className="py-3 px-2 text-xs text-gray-700">
-								Write{" "}
-								{Math.max(
-									1,
-									Math.round(
-										Math.sqrt(
-											opportunity.goalVisibility - opportunity.brandVisibility,
-										),
-									),
-								)}{" "}
-								LLM-friendly articles on "{opportunity.prompt}"
 							</td>
 						</tr>
 					))}

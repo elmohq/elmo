@@ -1,5 +1,8 @@
 import type { Job } from "pg-boss";
 import { processReportJob, type ReportJobData } from "../report-worker";
+import { db } from "@workspace/lib/db/db";
+import { reports } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 export interface GenerateReportData extends ReportJobData {}
 
@@ -15,7 +18,17 @@ export async function generateReportJob(jobs: Job<GenerateReportData>[]): Promis
 		console.log(`Generating report ${reportId} for ${brandName}`);
 
 		const log = (message: string) => console.log(`[Report ${reportId}] ${message}`);
-		const updateProgress = (progress: number) => console.log(`[Report ${reportId}] Progress: ${progress}%`);
+		const updateProgress = async (progress: number) => {
+			console.log(`[Report ${reportId}] Progress: ${progress}%`);
+			try {
+				await db
+					.update(reports)
+					.set({ progress: Math.round(progress) })
+					.where(eq(reports.id, reportId));
+			} catch (err) {
+				console.error(`[Report ${reportId}] Failed to persist progress:`, err);
+			}
+		};
 
 		await processReportJob({
 			data: {
