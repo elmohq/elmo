@@ -1995,6 +1995,39 @@ export const competitors: Competitor[] = [
 		notes:
 			"Blog post with official optimization guidance, not a competitor product",
 	},
+	{
+		slug: "geo-aeo-tracker",
+		name: "GEO/AEO Tracker",
+		domain: "github.com",
+		url: "https://github.com/danishashko/geo-aeo-tracker",
+		tagline: "Open-source, self-hosted AI visibility dashboard",
+		description:
+			"GEO/AEO Tracker is an open-source, local-first dashboard for monitoring brand visibility across six AI platforms: ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, and Grok. It stores data client-side in IndexedDB with no external database required. Users provide their own API keys for data fetching (Bright Data) and LLM inference (OpenRouter/Gemini).",
+		category: "open-source",
+		ahrefsDR: 97,
+		ahrefsTraffic: 37615600,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			openSource: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Self-hosted with local-first data storage (IndexedDB)",
+			"Tracks 6 AI platforms including Grok and Google AI Overview",
+			"MIT-licensed with BYO API keys model",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -2076,6 +2109,7 @@ const aeoPopularityRanking: string[] = [
 	"omnia",              // AI visibility tracking
 	"lorelight",          // AI visibility tracking
 	"getcito",            // Open-source citation tracker
+	"geo-aeo-tracker",    // Open-source self-hosted AEO dashboard, 80 GitHub stars
 	"meridian",           // AI search tracking
 	"peasy",              // AI visibility tracking
 	"flip-aeo",           // AEO tracking
