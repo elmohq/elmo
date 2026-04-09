@@ -164,10 +164,16 @@ export function selectRepresentativePrompts(
 	const nonBranded = promptSoVs.filter((p) => !isBrandedFn(p.promptId));
 	const pool = nonBranded.length >= 4 ? nonBranded : promptSoVs;
 
-	// Strengths: highest SoV, must have brand mentions
+	// Strengths: highest SoV, prefer prompts where competitors are also active (more compelling)
 	const strengths = pool
 		.filter((p) => p.sov !== null && p.sov > 0)
-		.sort((a, b) => (b.sov ?? 0) - (a.sov ?? 0));
+		.sort((a, b) => {
+			// Prefer prompts with competitor activity — winning against nobody isn't compelling
+			const aHasComp = a.totalCompetitorMentions > 0 ? 1 : 0;
+			const bHasComp = b.totalCompetitorMentions > 0 ? 1 : 0;
+			if (bHasComp !== aHasComp) return bHasComp - aHasComp;
+			return (b.sov ?? 0) - (a.sov ?? 0);
+		});
 
 	// Opportunities: have competitor mentions, sorted to prefer non-zero SoV first
 	const nonZeroOpportunities = pool

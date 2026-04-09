@@ -162,10 +162,21 @@ function ReportRenderPage() {
 		});
 	});
 
+	// Deduplicate competitors by name (case-insensitive) and filter out brand
+	const brandNameLower = report.brandName.toLowerCase().trim();
+	const isBrandName = (name: string) => name.toLowerCase().trim() === brandNameLower;
+	const seenCompetitorNames = new Set<string>();
+	const filteredCompetitors = data.competitors.filter((c) => {
+		const key = c.name.toLowerCase().trim();
+		if (isBrandName(c.name) || seenCompetitorNames.has(key)) return false;
+		seenCompetitorNames.add(key);
+		return true;
+	});
+
 	// Core metrics
-	const overallSoV = computeOverallSoV(simpleRuns, data.competitors);
-	const competitorSoVs = computeCompetitorSoVs(simpleRuns, data.competitors).slice(0, 3);
-	const promptSoVs = mockPrompts.map((p) => computePromptSoV(p.id, simpleRuns, data.competitors));
+	const overallSoV = computeOverallSoV(simpleRuns, filteredCompetitors);
+	const competitorSoVs = computeCompetitorSoVs(simpleRuns, filteredCompetitors);
+	const promptSoVs = mockPrompts.map((p) => computePromptSoV(p.id, simpleRuns, filteredCompetitors));
 	const promptMap = new Map(mockPrompts.map((p) => [p.id, p]));
 
 	const selectedPrompts = selectRepresentativePrompts(
@@ -179,7 +190,7 @@ function ReportRenderPage() {
 	// Rich analysis
 	const contentGaps = findContentGaps(fullRuns, 5);
 	const allWebQueries = analyzeWebQueries(fullRuns, 1000);
-	const competitorFreq = analyzeCompetitorFrequency(fullRuns, data.competitors).slice(0, 3);
+	const competitorFreq = analyzeCompetitorFrequency(fullRuns, filteredCompetitors);
 	const engineBreakdown = analyzeByEngine(fullRuns);
 
 	// Enrich web queries with competitor mention data
@@ -278,7 +289,7 @@ function ReportRenderPage() {
 					<div className="grid grid-cols-3 gap-6 max-w-lg">
 						<CoverStat value={String(totalPrompts)} label="Prompts Tested" />
 						<CoverStat value={String(promptsWithMentions)} label="Brand Mentions" />
-						<CoverStat value={String(data.competitors.length)} label="Competitors" />
+						<CoverStat value={String(filteredCompetitors.length)} label="Competitors" />
 					</div>
 				</div>
 
@@ -316,11 +327,11 @@ function ReportRenderPage() {
 						<tbody className="divide-y divide-slate-100">
 							{[
 								{ name: report.brandName, sov: overallSoV ?? 0, isBrand: true },
-								...competitorSoVs.map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
+								...competitorSoVs.filter((c) => !isBrandName(c.name)).slice(0, 3).map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
 							]
 								.sort((a, b) => b.sov - a.sov)
-								.map((row) => (
-								<tr key={row.name} className={row.isBrand ? "bg-blue-50/30" : ""}>
+								.map((row, i) => (
+								<tr key={`sov-${i}`} className={row.isBrand ? "bg-blue-50/30" : ""}>
 									<td className={`py-2.5 px-4 text-sm ${row.isBrand ? "font-semibold" : "text-slate-600"}`}>{row.name}</td>
 									<td className="py-2.5 px-4 text-right">
 										<span className={`text-sm font-bold ${row.isBrand ? sovColor : "text-slate-500"}`}>{row.sov}%</span>
@@ -347,11 +358,11 @@ function ReportRenderPage() {
 								<tbody className="divide-y divide-slate-100">
 									{[
 										{ name: report.brandName, mentionCount: simpleRuns.filter((r) => r.brandMentioned).length, promptCount: promptsWithMentions, isBrand: true },
-										...competitorFreq.map((c) => ({ ...c, isBrand: false })),
+										...competitorFreq.filter((c) => !isBrandName(c.name)).slice(0, 3).map((c) => ({ ...c, isBrand: false })),
 									]
 										.sort((a, b) => b.mentionCount - a.mentionCount)
-										.map((c) => (
-										<tr key={c.name} className={c.isBrand ? "bg-blue-50/30" : ""}>
+										.map((c, i) => (
+										<tr key={`mention-${i}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
 											<td className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}>{c.name}</td>
 											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.mentionCount}</td>
 											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.promptCount}</td>
