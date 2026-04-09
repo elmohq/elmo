@@ -4,11 +4,16 @@ import {
 	computeOverallSoV,
 	computeCompetitorSoVs,
 	selectRepresentativePrompts,
+	findContentGaps,
+	analyzeWebQueries,
+	analyzeCompetitorFrequency,
+	analyzeByEngine,
 	getSoVColor,
 	getSoVLevel,
 	type ReportPromptRun,
 	type ReportCompetitor,
 	type PromptSoV,
+	type FullPromptRun,
 } from "./report-metrics";
 
 const competitors: ReportCompetitor[] = [
@@ -180,8 +185,8 @@ describe("selectRepresentativePrompts", () => {
 
 		// Strengths should be p1 (80%) and p2 (60%)
 		expect(strengths.map((s) => s.promptId)).toEqual(["p1", "p2"]);
-		// Opportunities should be p4 (0%) and p3 (10%) — lowest SoV first
-		expect(opportunities.map((o) => o.promptId)).toEqual(["p4", "p3"]);
+		// Opportunities: p3 (10% - non-zero, preferred) then p4 (0% - at most 1 zero allowed)
+		expect(opportunities.map((o) => o.promptId)).toEqual(["p3", "p4"]);
 	});
 
 	it("fills from other bucket when one has fewer than 2", () => {
@@ -210,6 +215,34 @@ describe("selectRepresentativePrompts", () => {
 		expect(result.every((r) => r.promptId !== "branded1")).toBe(true);
 	});
 
+	it("allows at most 1 zero-SoV prompt", () => {
+		const sovs: PromptSoV[] = [
+			{ promptId: "p1", sov: 80, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
+			{ promptId: "p2", sov: 60, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 2, competitorMentions: { CompA: 2 } },
+			{ promptId: "p3", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 5, competitorMentions: { CompA: 5 } },
+			{ promptId: "p4", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 4, competitorMentions: { CompA: 4 } },
+			{ promptId: "p5", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 3, competitorMentions: { CompA: 3 } },
+		];
+
+		const result = selectRepresentativePrompts(sovs, isBranded);
+		const zeroSovCount = result.filter((r) => r.sov === 0 || r.sov === null).length;
+		expect(zeroSovCount).toBeLessThanOrEqual(1);
+	});
+
+	it("prefers non-zero SoV opportunities over zero SoV", () => {
+		const sovs: PromptSoV[] = [
+			{ promptId: "p1", sov: 80, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
+			{ promptId: "p2", sov: 70, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
+			{ promptId: "p3", sov: 15, brandMentionCount: 1, totalRuns: 5, totalCompetitorMentions: 6, competitorMentions: { CompA: 6 } },
+			{ promptId: "p4", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 10, competitorMentions: { CompA: 10 } },
+		];
+
+		const result = selectRepresentativePrompts(sovs, isBranded);
+		const opportunities = result.filter((r) => r.category === "opportunity");
+		// p3 (15% SoV, non-zero) should be picked before p4 (0%)
+		expect(opportunities[0].promptId).toBe("p3");
+	});
+
 	it("returns empty array when no prompts", () => {
 		expect(selectRepresentativePrompts([], isBranded)).toEqual([]);
 	});
@@ -221,6 +254,237 @@ describe("selectRepresentativePrompts", () => {
 		];
 		const result = selectRepresentativePrompts(sovs, isBranded);
 		expect(result).toEqual([]);
+	});
+});
+
+// ---------- Rich Analysis Tests ----------
+
+function makeFullRun(overrides: Partial<FullPromptRun> & { promptId: string }): FullPromptRun {
+	return {
+		promptValue: "test prompt",
+		brandMentioned: false,
+		competitorsMentioned: [],
+		webQueries: [],
+		textContent: "",
+		modelGroup: "openai",
+		...overrides,
+	};
+}
+
+describe("findContentGaps", () => {
+	it("finds prompts where competitors mentioned but brand is not", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", promptValue: "best crm", competitorsMentioned: ["CompA", "CompB"] }),
+			makeFullRun({ promptId: "p1", promptValue: "best crm", competitorsMentioned: ["CompA"] }),
+			makeFullRun({ promptId: "p2", promptValue: "top tools", brandMentioned: true, competitorsMentioned: ["CompA"] }),
+		];
+		const gaps = findContentGaps(runs);
+		expect(gaps).toHaveLength(1);
+		expect(gaps[0].promptId).toBe("p1");
+		expect(gaps[0].competitorsMentioned).toEqual(expect.arrayContaining(["CompA", "CompB"]));
+		expect(gaps[0].competitorCount).toBe(2);
+	});
+
+	it("returns empty when brand is mentioned in all prompts", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", brandMentioned: true, competitorsMentioned: ["CompA"] }),
+			makeFullRun({ promptId: "p2", brandMentioned: true }),
+		];
+		expect(findContentGaps(runs)).toEqual([]);
+	});
+
+	it("excludes prompts with no competitor mentions", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1" }),
+			makeFullRun({ promptId: "p1" }),
+		];
+		expect(findContentGaps(runs)).toEqual([]);
+	});
+
+	it("sorts by competitor count descending and respects maxResults", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", promptValue: "q1", competitorsMentioned: ["CompA"] }),
+			makeFullRun({ promptId: "p2", promptValue: "q2", competitorsMentioned: ["CompA", "CompB", "CompC"] }),
+			makeFullRun({ promptId: "p3", promptValue: "q3", competitorsMentioned: ["CompA", "CompB"] }),
+		];
+		const gaps = findContentGaps(runs, 2);
+		expect(gaps).toHaveLength(2);
+		expect(gaps[0].promptId).toBe("p2");
+		expect(gaps[1].promptId).toBe("p3");
+	});
+
+	it("deduplicates competitors across runs for same prompt", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", promptValue: "q", competitorsMentioned: ["CompA", "CompB"] }),
+			makeFullRun({ promptId: "p1", promptValue: "q", competitorsMentioned: ["CompA", "CompC"] }),
+		];
+		const gaps = findContentGaps(runs);
+		expect(gaps[0].competitorCount).toBe(3);
+		expect(gaps[0].competitorsMentioned).toHaveLength(3);
+	});
+});
+
+describe("analyzeWebQueries", () => {
+	it("counts and ranks queries by frequency", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", webQueries: ["best crm software", "top crm tools"] }),
+			makeFullRun({ promptId: "p2", webQueries: ["best crm software", "best crm software"] }),
+			makeFullRun({ promptId: "p3", webQueries: ["enterprise solutions"] }),
+		];
+		const insights = analyzeWebQueries(runs);
+		expect(insights[0].query).toBe("best crm software");
+		expect(insights[0].count).toBe(3);
+		expect(insights[1].query).toBe("top crm tools");
+		expect(insights[1].count).toBe(1);
+	});
+
+	it("computes brand mention rate per query", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", brandMentioned: true, webQueries: ["best crm"] }),
+			makeFullRun({ promptId: "p2", brandMentioned: false, webQueries: ["best crm"] }),
+			makeFullRun({ promptId: "p3", brandMentioned: true, webQueries: ["best crm"] }),
+		];
+		const insights = analyzeWebQueries(runs);
+		expect(insights[0].query).toBe("best crm");
+		expect(insights[0].brandMentionRate).toBe(67); // 2/3 rounded
+	});
+
+	it("normalizes queries to lowercase", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", webQueries: ["Best CRM"] }),
+			makeFullRun({ promptId: "p2", webQueries: ["best crm"] }),
+		];
+		const insights = analyzeWebQueries(runs);
+		expect(insights).toHaveLength(1);
+		expect(insights[0].count).toBe(2);
+	});
+
+	it("skips short queries (< 3 chars)", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", webQueries: ["ab", "", "valid query"] }),
+		];
+		const insights = analyzeWebQueries(runs);
+		expect(insights).toHaveLength(1);
+		expect(insights[0].query).toBe("valid query");
+	});
+
+	it("returns empty for runs with no web queries", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", webQueries: [] }),
+			makeFullRun({ promptId: "p2" }),
+		];
+		expect(analyzeWebQueries(runs)).toEqual([]);
+	});
+
+	it("respects maxResults", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", webQueries: ["query a", "query b", "query c"] }),
+		];
+		const insights = analyzeWebQueries(runs, 2);
+		expect(insights).toHaveLength(2);
+	});
+});
+
+describe("analyzeCompetitorFrequency", () => {
+	it("counts mentions and unique prompts per competitor", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", competitorsMentioned: ["CompA", "CompB"] }),
+			makeFullRun({ promptId: "p1", competitorsMentioned: ["CompA"] }),
+			makeFullRun({ promptId: "p2", competitorsMentioned: ["CompA"] }),
+		];
+		const result = analyzeCompetitorFrequency(runs, competitors);
+		const compA = result.find((c) => c.name === "CompA")!;
+		expect(compA.mentionCount).toBe(3);
+		expect(compA.promptCount).toBe(2);
+		const compB = result.find((c) => c.name === "CompB")!;
+		expect(compB.mentionCount).toBe(1);
+		expect(compB.promptCount).toBe(1);
+	});
+
+	it("sorts by mention count descending", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", competitorsMentioned: ["CompB", "CompB"] }),
+			makeFullRun({ promptId: "p2", competitorsMentioned: ["CompA"] }),
+		];
+		const result = analyzeCompetitorFrequency(runs, competitors);
+		expect(result[0].name).toBe("CompB");
+	});
+
+	it("computes co-mention rate (competitor mentioned alongside brand)", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", brandMentioned: true, competitorsMentioned: ["CompA"] }),
+			makeFullRun({ promptId: "p2", brandMentioned: false, competitorsMentioned: ["CompA"] }),
+			makeFullRun({ promptId: "p3", brandMentioned: true, competitorsMentioned: ["CompA"] }),
+		];
+		const result = analyzeCompetitorFrequency(runs, competitors);
+		const compA = result.find((c) => c.name === "CompA")!;
+		expect(compA.coMentionRate).toBe(67); // 2/3
+	});
+
+	it("handles competitors with zero mentions", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", competitorsMentioned: ["CompA"] }),
+		];
+		const result = analyzeCompetitorFrequency(runs, competitors);
+		const compB = result.find((c) => c.name === "CompB")!;
+		expect(compB.mentionCount).toBe(0);
+		expect(compB.promptCount).toBe(0);
+		expect(compB.coMentionRate).toBe(0);
+	});
+
+	it("ignores competitors not in the list", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", competitorsMentioned: ["Unknown"] }),
+		];
+		const result = analyzeCompetitorFrequency(runs, competitors);
+		expect(result.every((c) => c.mentionCount === 0)).toBe(true);
+	});
+});
+
+describe("analyzeByEngine", () => {
+	it("computes mention rate per engine", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", modelGroup: "openai", brandMentioned: true }),
+			makeFullRun({ promptId: "p2", modelGroup: "openai", brandMentioned: false }),
+			makeFullRun({ promptId: "p3", modelGroup: "anthropic", brandMentioned: true }),
+			makeFullRun({ promptId: "p4", modelGroup: "anthropic", brandMentioned: true }),
+			makeFullRun({ promptId: "p5", modelGroup: "google", brandMentioned: false }),
+		];
+		const result = analyzeByEngine(runs);
+		const claude = result.find((e) => e.engine === "Claude")!;
+		expect(claude.totalRuns).toBe(2);
+		expect(claude.brandMentions).toBe(2);
+		expect(claude.mentionRate).toBe(100);
+
+		const chatgpt = result.find((e) => e.engine === "ChatGPT")!;
+		expect(chatgpt.totalRuns).toBe(2);
+		expect(chatgpt.brandMentions).toBe(1);
+		expect(chatgpt.mentionRate).toBe(50);
+
+		const google = result.find((e) => e.engine === "Google AI")!;
+		expect(google.mentionRate).toBe(0);
+	});
+
+	it("sorts by mention rate descending", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", modelGroup: "openai", brandMentioned: false }),
+			makeFullRun({ promptId: "p2", modelGroup: "anthropic", brandMentioned: true }),
+		];
+		const result = analyzeByEngine(runs);
+		expect(result[0].engine).toBe("Claude");
+		expect(result[1].engine).toBe("ChatGPT");
+	});
+
+	it("returns empty for no runs", () => {
+		expect(analyzeByEngine([])).toEqual([]);
+	});
+
+	it("handles unknown engine names", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", modelGroup: "perplexity", brandMentioned: true }),
+		];
+		const result = analyzeByEngine(runs);
+		expect(result[0].engine).toBe("perplexity");
 	});
 });
 

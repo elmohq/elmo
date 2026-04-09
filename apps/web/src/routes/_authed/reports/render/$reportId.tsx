@@ -1,14 +1,15 @@
 /**
  * /reports/render/$reportId - Standalone report rendering page
  *
- * Displays a completed report with Share of Voice metrics, charts, and analysis.
- * Designed as production-quality printable marketing material.
+ * Production-quality printable report (US Letter 8.5 x 11 in).
+ * Uses Share of Voice as the primary metric with rich competitive analysis.
  */
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuthSession, hasReportAccess } from "@/lib/auth/helpers";
 import { getReportByIdFn } from "@/server/reports";
 import { PromptChartPrint } from "@/components/prompt-chart-print";
+import { Target, BarChart3, Rocket } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
@@ -17,13 +18,15 @@ import {
 	computePromptSoV,
 	computeCompetitorSoVs,
 	selectRepresentativePrompts,
+	findContentGaps,
+	analyzeWebQueries,
+	analyzeCompetitorFrequency,
+	analyzeByEngine,
 	getSoVColor,
-	getSoVBadgeClasses,
 	getSoVLevel,
 	type ReportPromptRun,
-	type PromptSoV,
+	type FullPromptRun,
 	type PromptCategory,
-	type CompetitorSoV,
 } from "@workspace/lib/report-metrics";
 
 // ---------- Types ----------
@@ -37,14 +40,8 @@ interface ReportData {
 	promptRuns: PromptRunResult[];
 }
 
-interface CompetitorResult {
-	name: string;
-	domain: string;
-}
-
-interface PromptData {
-	value: string;
-}
+interface CompetitorResult { name: string; domain: string; }
+interface PromptData { value: string; }
 
 interface PromptRunResult {
 	promptValue: string;
@@ -60,21 +57,7 @@ interface PromptRunResult {
 	}>;
 }
 
-interface MockPrompt {
-	id: string;
-	brandId: string;
-	value: string;
-	enabled: boolean;
-	createdAt: Date;
-}
-
-interface MockPromptRun {
-	id: string;
-	promptId: string;
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-	createdAt: Date;
-}
+interface MockPrompt { id: string; brandId: string; value: string; enabled: boolean; createdAt: Date; }
 
 // ---------- Server function ----------
 
@@ -82,19 +65,13 @@ const loadReportData = createServerFn({ method: "GET" })
 	.inputValidator((d: string) => d)
 	.handler(async ({ data: reportId }) => {
 		const session = await requireAuthSession();
-		const hasAccess = hasReportAccess(session);
-		if (!hasAccess) throw new Error("Not authorized");
-
-		const report = await getReportByIdFn({ data: { reportId } });
-		return report;
+		if (!hasReportAccess(session)) throw new Error("Not authorized");
+		return getReportByIdFn({ data: { reportId } });
 	});
-
-// ---------- Helpers ----------
 
 function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
 	const promptLower = promptValue.toLowerCase();
 	const brandNameLower = brandName.toLowerCase();
-
 	try {
 		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
 		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
@@ -122,6 +99,17 @@ export const Route = createFileRoute("/_authed/reports/render/$reportId")({
 	component: ReportRenderPage,
 });
 
+// ---------- Color helpers ----------
+
+function sovBgColor(sov: number | null): string {
+	if (sov === null) return "bg-slate-300";
+	if (sov >= 40) return "bg-emerald-500";
+	if (sov >= 20) return "bg-amber-500";
+	return "bg-rose-500";
+}
+
+// ---------- Main component ----------
+
 function ReportRenderPage() {
 	const { report } = Route.useLoaderData();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
@@ -129,297 +117,265 @@ function ReportRenderPage() {
 
 	if (report.status !== "completed") {
 		return (
-			<div className="max-w-4xl mx-auto p-8">
-				<div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-					<p className="text-gray-500 text-lg">
-						Report is not completed yet. Status: <span className="font-medium">{report.status}</span>
-					</p>
-				</div>
+			<div className="max-w-3xl mx-auto p-8 text-center">
+				<p className="text-slate-500">Report status: <span className="font-medium">{report.status}</span></p>
 			</div>
 		);
 	}
 
-	const parsedReportData: ReportData = report.rawOutput as ReportData;
+	const data: ReportData = report.rawOutput as ReportData;
 
-	// Transform data to match frontend types
+	// Build mock data structures for chart component compatibility
 	const mockBrand = {
-		id: "brand-1",
-		name: report.brandName,
-		website: report.brandWebsite,
-		enabled: true,
-		onboarded: true,
-		delayOverrideHours: null,
-		createdAt: new Date(),
-		updatedAt: new Date(),
+		id: "brand-1", name: report.brandName, website: report.brandWebsite,
+		enabled: true, onboarded: true, delayOverrideHours: null,
+		createdAt: new Date(), updatedAt: new Date(),
 	};
-
-	const mockCompetitors = parsedReportData.competitors.map((comp, index) => ({
-		id: `comp-${index + 1}`,
-		name: comp.name,
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		brandId: mockBrand.id,
-		domain: comp.domain,
+	const mockCompetitors = data.competitors.map((comp, i) => ({
+		id: `comp-${i + 1}`, name: comp.name, domain: comp.domain,
+		brandId: mockBrand.id, createdAt: new Date(), updatedAt: new Date(),
+	}));
+	const mockPrompts: MockPrompt[] = data.prompts.map((p, i) => ({
+		id: `prompt-${i + 1}`, brandId: mockBrand.id, value: p.value, enabled: true, createdAt: new Date(),
 	}));
 
-	const mockPrompts: MockPrompt[] = parsedReportData.prompts.map((prompt, index) => ({
-		id: `prompt-${index + 1}`,
-		brandId: mockBrand.id,
-		value: prompt.value,
-		enabled: true,
-		createdAt: new Date(),
-	}));
+	// Build run arrays
+	const simpleRuns: ReportPromptRun[] = [];
+	const fullRuns: FullPromptRun[] = [];
+	const chartRuns: any[] = [];
 
-	// Create prompt runs
-	const mockPromptRuns: MockPromptRun[] = [];
-	const fullPromptRuns: any[] = [];
-
-	parsedReportData.promptRuns.forEach((promptRunResult, promptIndex) => {
-		(promptRunResult.runs as any[]).forEach((run, runIndex) => {
-			const promptRunData = {
-				id: `run-${promptIndex}-${runIndex}`,
-				promptId: `prompt-${promptIndex + 1}`,
-				brandMentioned: run.brandMentioned,
-				competitorsMentioned: run.competitorsMentioned,
-				createdAt: new Date(),
-			};
-
-			const fullPromptRunData = {
-				...promptRunData,
-				modelGroup: run.modelGroup,
-				model: run.model,
-				webSearchEnabled: run.webSearchEnabled,
-				rawOutput: run.rawOutput,
-				webQueries: run.webQueries,
-			};
-
-			mockPromptRuns.push(promptRunData);
-			fullPromptRuns.push(fullPromptRunData);
+	data.promptRuns.forEach((pr, pi) => {
+		pr.runs.forEach((run, ri) => {
+			const promptId = `prompt-${pi + 1}`;
+			simpleRuns.push({ promptId, brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned });
+			fullRuns.push({
+				promptId, promptValue: pr.promptValue,
+				brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned,
+				webQueries: run.webQueries || [], textContent: run.textContent || "", modelGroup: run.modelGroup,
+			});
+			chartRuns.push({
+				id: `run-${pi}-${ri}`, promptId, brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned, createdAt: new Date(),
+				modelGroup: run.modelGroup, model: run.model,
+				webSearchEnabled: run.webSearchEnabled, rawOutput: run.rawOutput, webQueries: run.webQueries,
+			});
 		});
 	});
 
-	// Compute SoV metrics using shared module
-	const reportRuns: ReportPromptRun[] = mockPromptRuns.map((r) => ({
-		promptId: r.promptId,
-		brandMentioned: r.brandMentioned,
-		competitorsMentioned: r.competitorsMentioned,
-	}));
-
-	const overallSoV = computeOverallSoV(reportRuns, parsedReportData.competitors);
-	const competitorSoVs = computeCompetitorSoVs(reportRuns, parsedReportData.competitors);
-
-	// Compute per-prompt SoV
-	const promptSoVs: PromptSoV[] = mockPrompts.map((prompt) =>
-		computePromptSoV(prompt.id, reportRuns, parsedReportData.competitors),
-	);
-
-	// Build prompt lookup
+	// Core metrics
+	const overallSoV = computeOverallSoV(simpleRuns, data.competitors);
+	const competitorSoVs = computeCompetitorSoVs(simpleRuns, data.competitors).slice(0, 5);
+	const promptSoVs = mockPrompts.map((p) => computePromptSoV(p.id, simpleRuns, data.competitors));
 	const promptMap = new Map(mockPrompts.map((p) => [p.id, p]));
-	const promptSoVMap = new Map(promptSoVs.map((s) => [s.promptId, s]));
 
-	// Select representative prompts (2 strengths + 2 opportunities)
 	const selectedPrompts = selectRepresentativePrompts(
 		promptSoVs,
 		(id: string) => {
-			const prompt = promptMap.get(id);
-			return prompt ? isPromptBranded(prompt.value, report.brandName, report.brandWebsite) : false;
+			const p = promptMap.get(id);
+			return p ? isPromptBranded(p.value, report.brandName, report.brandWebsite) : false;
 		},
 	);
 
+	// Rich analysis
+	const contentGaps = findContentGaps(fullRuns, 5);
+	const allWebQueries = analyzeWebQueries(fullRuns, 1000);
+	const competitorFreq = analyzeCompetitorFrequency(fullRuns, data.competitors).slice(0, 5);
+	const engineBreakdown = analyzeByEngine(fullRuns);
+
+	// Show queries with brand mentions, sampled across distinct rate buckets (high to low)
+	const queriesWithMentions = allWebQueries
+		.filter((q) => q.brandMentionRate > 0)
+		.sort((a, b) => b.brandMentionRate - a.brandMentionRate);
+	const brandDiscoveryQueries: typeof queriesWithMentions = [];
+	if (queriesWithMentions.length > 0) {
+		const byRate = new Map<number, typeof queriesWithMentions>();
+		for (const q of queriesWithMentions) {
+			if (!byRate.has(q.brandMentionRate)) byRate.set(q.brandMentionRate, []);
+			byRate.get(q.brandMentionRate)!.push(q);
+		}
+		const rates = [...byRate.keys()].sort((a, b) => b - a);
+		const maxQueries = 6;
+		if (rates.length <= maxQueries) {
+			for (const rate of rates) {
+				brandDiscoveryQueries.push(byRate.get(rate)![0]);
+			}
+		} else {
+			for (let i = 0; i < maxQueries; i++) {
+				const idx = Math.round((i / (maxQueries - 1)) * (rates.length - 1));
+				brandDiscoveryQueries.push(byRate.get(rates[idx])![0]);
+			}
+		}
+	}
+
 	const sovLevel = getSoVLevel(overallSoV);
 	const sovColor = getSoVColor(overallSoV);
-
-	// Summary stats
 	const totalPrompts = mockPrompts.length;
 	const promptsWithMentions = promptSoVs.filter((p) => p.brandMentionCount > 0).length;
+	const mentionRate = totalPrompts > 0 ? Math.round((promptsWithMentions / totalPrompts) * 100) : 0;
+
+	// Charts: 2 per page
+	const chartPairs: Array<typeof selectedPrompts> = [];
+	for (let i = 0; i < selectedPrompts.length; i += 2) {
+		chartPairs.push(selectedPrompts.slice(i, i + 2));
+	}
 
 	return (
-		<div className="max-w-[816px] mx-auto bg-white print:shadow-none">
-			{/* ===== PAGE 1: Cover ===== */}
-			<div className="p-12 print:p-10 min-h-screen flex flex-col">
-				{/* Header */}
-				<div className="flex items-center justify-between mb-16 print:mb-10">
-					<Logo iconClassName="!size-5" textClassName="text-sm font-semibold text-gray-400" />
-					<span className="text-xs text-gray-400 tracking-wide uppercase">Confidential</span>
-				</div>
+		<div className="max-w-[780px] mx-auto bg-white print:max-w-none text-slate-900">
+			<style dangerouslySetInnerHTML={{ __html: `
+				@media print {
+					@page { size: letter; margin: 0.5in 0.6in; }
+					body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+				}
+			`}} />
 
-				{/* Hero Section */}
-				<div className="flex-1 flex flex-col justify-center">
-					<div className="mb-2">
-						<span className="text-xs font-semibold tracking-widest uppercase text-gray-400">
-							AI Share of Voice Report
-						</span>
-					</div>
-					<h1 className="text-5xl font-bold text-gray-900 tracking-tight mb-6 print:text-4xl">
-						{report.brandName}
-					</h1>
-					<div className="w-16 h-1 bg-gray-900 mb-8" />
+			{/* ===== PAGE 1: COVER ===== */}
+			<div className="print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+				<div className="h-[3px] bg-slate-800 -mx-10 print:-mx-0 mb-8" />
 
-					{/* Key Metric */}
-					<div className="flex items-baseline gap-4 mb-10">
-						<span className={`text-7xl font-bold tracking-tight ${sovColor} print:text-6xl`}>
-							{overallSoV !== null ? `${overallSoV}%` : "N/A"}
-						</span>
-						<div className="flex flex-col">
-							<span className="text-lg font-semibold text-gray-900">Share of Voice</span>
-							<span className="text-sm text-gray-500">{sovLevel.label} &mdash; {sovLevel.description}</span>
-						</div>
-					</div>
-
-					{/* Quick Stats Row */}
-					<div className="grid grid-cols-3 gap-6">
-						<div className="border-t-2 border-gray-900 pt-4">
-							<div className="text-2xl font-bold text-gray-900">{totalPrompts}</div>
-							<div className="text-xs text-gray-500 mt-1">Prompts Tested</div>
-						</div>
-						<div className="border-t-2 border-gray-900 pt-4">
-							<div className="text-2xl font-bold text-gray-900">{promptsWithMentions}</div>
-							<div className="text-xs text-gray-500 mt-1">With Brand Mentions</div>
-						</div>
-						<div className="border-t-2 border-gray-900 pt-4">
-							<div className="text-2xl font-bold text-gray-900">{parsedReportData.competitors.length}</div>
-							<div className="text-xs text-gray-500 mt-1">Competitors Tracked</div>
-						</div>
-					</div>
-				</div>
-
-				{/* Footer */}
-				<div className="mt-auto pt-8 border-t border-gray-100 flex justify-between items-center">
-					<span className="text-xs text-gray-400">
-						Generated {new Date(report.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+				<div className="flex items-center justify-between mb-16">
+					<Logo iconClassName="!size-5" textClassName="text-sm font-semibold text-slate-400" />
+					<span className="text-xs tracking-wide text-slate-400">
+						{new Date(report.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
 					</span>
-					<span className="text-xs text-gray-400">{branding?.url || "elmo.chat"}</span>
 				</div>
+
+				<div className="flex-1 flex flex-col justify-center">
+					<div className="text-[10px] font-semibold tracking-[0.25em] uppercase text-slate-400 mb-4">
+						AI Share of Voice Report
+					</div>
+					<h1 className="text-4xl font-bold tracking-tight mb-2">{report.brandName}</h1>
+					<div className="w-16 h-[2px] bg-slate-800 mb-12" />
+
+					<div className="bg-slate-50 rounded-xl p-8 max-w-md mb-12">
+						<div className="flex items-baseline gap-4">
+							<span className={`text-6xl font-extrabold tracking-tighter ${sovColor}`}>
+								{overallSoV !== null ? `${overallSoV}%` : "N/A"}
+							</span>
+							<div>
+								<div className="text-sm font-semibold">Share of Voice</div>
+								<div className="text-xs text-slate-500">{sovLevel.label} &mdash; {sovLevel.description}</div>
+							</div>
+						</div>
+						<div className="mt-4 w-full bg-slate-200 rounded-full h-2">
+							<div className={`h-2 rounded-full ${sovBgColor(overallSoV)}`} style={{ width: `${Math.max(2, overallSoV ?? 0)}%` }} />
+						</div>
+					</div>
+
+					<div className="grid grid-cols-3 gap-6 max-w-lg">
+						<CoverStat value={String(totalPrompts)} label="Prompts Tested" />
+						<CoverStat value={String(promptsWithMentions)} label="Brand Mentions" />
+						<CoverStat value={String(data.competitors.length)} label="Competitors" />
+					</div>
+				</div>
+
+				<PageFooter branding={branding} />
 			</div>
 
-			{/* ===== PAGE 2: What is Share of Voice + Competitive Landscape ===== */}
-			<div className="p-12 print:p-10 print:break-before-page min-h-screen flex flex-col">
-				<SectionHeader number="01" title="Understanding Share of Voice" />
+			{/* ===== PAGE 2: COMPETITIVE OVERVIEW ===== */}
+			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+				<RunningHeader brand={report.brandName} />
 
-				<div className="mb-8">
-					<p className="text-gray-600 text-sm leading-relaxed mb-4">
-						<strong className="text-gray-900">Share of Voice (SoV)</strong> measures your brand's
-						presence relative to competitors in AI-generated responses. When users ask questions,
-						AI engines like ChatGPT, Claude, Perplexity, and Google's AI Overviews synthesize
-						information and recommend brands. SoV tells you what percentage of those recommendations
-						belong to you.
-					</p>
-					<p className="text-gray-600 text-sm leading-relaxed">
-						Unlike raw mention counts, SoV normalizes for prompt difficulty and volume. A 40% SoV
-						means that for every 10 brand recommendations AI makes in your category, 4 are for you.
-					</p>
+				<Section title="AI Engine Performance" subtitle={`Brand mention rate across ${engineBreakdown.reduce((s, e) => s + e.totalRuns, 0)} evaluations`} />
+				<div className="grid grid-cols-3 gap-3 mb-8">
+					{engineBreakdown.map((eng) => (
+						<div key={eng.engine} className="border border-slate-200 rounded-lg p-4">
+							<div className="text-[11px] font-medium text-slate-500 mb-2">{eng.engine}</div>
+							<div className={`text-3xl font-bold ${getSoVColor(eng.mentionRate)}`}>{eng.mentionRate}%</div>
+							<div className="text-[10px] text-slate-400 mt-1">{eng.brandMentions} of {eng.totalRuns} runs</div>
+							<div className="mt-2.5 w-full bg-slate-100 rounded-full h-1.5">
+								<div className={`h-1.5 rounded-full ${sovBgColor(eng.mentionRate)}`} style={{ width: `${Math.max(2, eng.mentionRate)}%` }} />
+							</div>
+						</div>
+					))}
 				</div>
 
-				{/* SoV Scale */}
-				<div className="mb-10">
-					<div className="flex gap-0 rounded-lg overflow-hidden h-3 mb-3">
-						<div className="flex-1 bg-rose-400" />
-						<div className="flex-1 bg-amber-400" />
-						<div className="flex-1 bg-emerald-500" />
-					</div>
-					<div className="flex text-xs text-gray-500">
-						<div className="flex-1">
-							<span className="font-semibold text-rose-600">0-19%</span> Low
-						</div>
-						<div className="flex-1 text-center">
-							<span className="font-semibold text-amber-600">20-39%</span> Moderate
-						</div>
-						<div className="flex-1 text-right">
-							<span className="font-semibold text-emerald-600">40%+</span> Strong
-						</div>
-					</div>
-				</div>
-
-				{/* Competitive Landscape */}
-				<SectionHeader number="02" title="Competitive Landscape" />
-
-				<div className="mb-4">
-					<p className="text-gray-600 text-sm leading-relaxed mb-6">
-						How your brand's AI share of voice compares to the competition across {totalPrompts} prompts
-						tested against ChatGPT, Claude, and Google AI.
-					</p>
-				</div>
-
-				{/* SoV Comparison Table */}
-				<div className="rounded-xl border border-gray-200 overflow-hidden mb-6">
-					<table className="w-full text-sm">
+				<Section title="Competitive Landscape" subtitle="Share of voice comparison across all tested prompts" />
+				<div className="border border-slate-200 rounded-lg overflow-hidden mb-8">
+					<table className="w-full">
 						<thead>
-							<tr className="bg-gray-50">
-								<th className="text-left py-3 px-5 font-semibold text-gray-600 text-xs tracking-wide uppercase">Brand</th>
-								<th className="text-right py-3 px-5 font-semibold text-gray-600 text-xs tracking-wide uppercase">Share of Voice</th>
-								<th className="py-3 px-5 font-semibold text-gray-600 text-xs tracking-wide uppercase w-1/2">Distribution</th>
+							<tr className="bg-slate-50 border-b border-slate-200">
+								<TH align="left">Brand</TH>
+								<TH align="right" className="w-16">SoV</TH>
+								<TH align="left" className="w-[40%]">Share</TH>
 							</tr>
 						</thead>
-						<tbody>
-							{/* Brand row */}
-							<tr className="border-t border-gray-100 bg-blue-50/30">
-								<td className="py-3 px-5">
-									<span className="font-semibold text-gray-900">{report.brandName}</span>
-								</td>
-								<td className="py-3 px-5 text-right">
-									<span className={`font-bold text-lg ${sovColor}`}>
-										{overallSoV !== null ? `${overallSoV}%` : "N/A"}
-									</span>
-								</td>
-								<td className="py-3 px-5">
-									<SoVBar value={overallSoV} color="bg-blue-500" />
-								</td>
-							</tr>
-							{/* Competitor rows */}
-							{competitorSoVs.map((comp) => (
-								<tr key={comp.name} className="border-t border-gray-100">
-									<td className="py-3 px-5">
-										<span className="text-gray-700">{comp.name}</span>
+						<tbody className="divide-y divide-slate-100">
+							{[
+								{ name: report.brandName, sov: overallSoV ?? 0, isBrand: true },
+								...competitorSoVs.map((c) => ({ name: c.name, sov: c.sov, isBrand: false })),
+							]
+								.sort((a, b) => b.sov - a.sov)
+								.map((row) => (
+								<tr key={row.name} className={row.isBrand ? "bg-blue-50/30" : ""}>
+									<td className={`py-2.5 px-4 text-sm ${row.isBrand ? "font-semibold" : "text-slate-600"}`}>{row.name}</td>
+									<td className="py-2.5 px-4 text-right">
+										<span className={`text-sm font-bold ${row.isBrand ? sovColor : "text-slate-500"}`}>{row.sov}%</span>
 									</td>
-									<td className="py-3 px-5 text-right">
-										<span className="font-semibold text-gray-700">{comp.sov}%</span>
-									</td>
-									<td className="py-3 px-5">
-										<SoVBar value={comp.sov} color="bg-gray-400" />
-									</td>
+									<td className="py-2.5 px-4"><Bar value={row.sov} color={row.isBrand ? "bg-blue-500" : "bg-slate-300"} /></td>
 								</tr>
 							))}
 						</tbody>
 					</table>
 				</div>
 
-				<div className="mt-auto pt-6 border-t border-gray-100">
-					<PageFooter branding={branding} />
-				</div>
+				{competitorFreq.length > 0 && (
+					<>
+						<Section title="Mention Rate" subtitle="How often each brand is mentioned across all tested prompts" />
+						<div className="border border-slate-200 rounded-lg overflow-hidden">
+							<table className="w-full">
+								<thead>
+									<tr className="bg-slate-50 border-b border-slate-200">
+										<TH align="left">Brand</TH>
+										<TH align="center">Mentions</TH>
+										<TH align="center">Across Prompts</TH>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-slate-100">
+									{[
+										{ name: report.brandName, mentionCount: simpleRuns.filter((r) => r.brandMentioned).length, promptCount: promptsWithMentions, isBrand: true },
+										...competitorFreq.map((c) => ({ ...c, isBrand: false })),
+									]
+										.sort((a, b) => b.mentionCount - a.mentionCount)
+										.map((c) => (
+										<tr key={c.name} className={c.isBrand ? "bg-blue-50/30" : ""}>
+											<td className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}>{c.name}</td>
+											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.mentionCount}</td>
+											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.promptCount}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</>
+				)}
+
+				<div className="mt-auto"><PageFooter branding={branding} /></div>
 			</div>
 
-			{/* ===== PAGE 3: Prompt Analysis Charts ===== */}
-			{selectedPrompts.length > 0 && (
-				<div className="p-12 print:p-10 print:break-before-page min-h-screen flex flex-col">
-					<SectionHeader number="03" title="Prompt Analysis" />
-					<p className="text-gray-600 text-sm leading-relaxed mb-8">
-						A representative sample of prompts showing where {report.brandName} is
-						performing well and where opportunities exist.
-					</p>
+			{/* ===== CHART PAGES ===== */}
+			{chartPairs.map((pair, pageIdx) => (
+				<div key={pageIdx} className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+					<RunningHeader brand={report.brandName} />
 
-					<div className="space-y-6 flex-1">
-						{selectedPrompts.map((selected) => {
+					{pageIdx === 0 ? (
+						<Section title="Prompt Analysis" subtitle="Share of voice for representative prompts — strengths and growth opportunities" />
+					) : (
+						<div className="text-xs text-slate-400 italic mb-4">Prompt Analysis (continued)</div>
+					)}
+
+					<div className="flex-1 flex flex-col gap-5">
+						{pair.map((selected) => {
 							const prompt = promptMap.get(selected.promptId);
-							const sov = promptSoVMap.get(selected.promptId);
 							if (!prompt) return null;
-
 							return (
-								<div key={selected.promptId} className="print:break-inside-avoid">
-									<div className="flex items-center gap-2 mb-2">
-										<CategoryBadge category={selected.category} />
-										{selected.sov !== null && (
-											<span className={`text-xs font-semibold ${getSoVColor(selected.sov)}`}>
-												{selected.sov}% SoV
-											</span>
-										)}
-									</div>
+								<div key={selected.promptId} className="flex-1 flex flex-col">
 									<PromptChartPrint
 										lookback="1m"
 										promptName={prompt.value}
 										promptId={prompt.id}
 										brand={mockBrand as any}
 										competitors={mockCompetitors as any}
-										promptRuns={fullPromptRuns}
+										promptRuns={chartRuns}
 										category={selected.category}
 									/>
 								</div>
@@ -427,80 +383,242 @@ function ReportRenderPage() {
 						})}
 					</div>
 
-					<div className="mt-auto pt-6 border-t border-gray-100">
-						<PageFooter branding={branding} />
-					</div>
+					<div className="mt-auto"><PageFooter branding={branding} /></div>
 				</div>
-			)}
+			))}
 
-			{/* ===== PAGE 4: Opportunities + CTA ===== */}
-			<div className="p-12 print:p-10 print:break-before-page min-h-screen flex flex-col">
-				<SectionHeader number="04" title="Growth Opportunities" />
-				<p className="text-gray-600 text-sm leading-relaxed mb-8">
-					Prompts where competitors are outperforming {report.brandName} represent your biggest
-					opportunities to increase AI share of voice.
-				</p>
+			{/* ===== OPPORTUNITIES ===== */}
+			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+				<RunningHeader brand={report.brandName} />
 
-				<OpportunitiesTable
-					promptSoVs={promptSoVs}
-					promptMap={promptMap}
-					mockPromptRuns={reportRuns}
-					competitors={parsedReportData.competitors}
-					brandName={report.brandName}
-				/>
+				<Section title="Content Gaps" subtitle={`Prompts where competitors appear but ${report.brandName} does not — highest-value opportunities`} />
 
-				{/* Summary Stats */}
-				<div className="mt-10 rounded-xl bg-gray-50 p-6">
-					<h3 className="text-sm font-semibold text-gray-900 mb-4">Report Summary</h3>
-					<div className="grid grid-cols-2 gap-4 text-sm">
-						<div>
-							<span className="text-gray-500">Total prompts tested</span>
-							<span className="float-right font-semibold text-gray-900">{totalPrompts}</span>
-						</div>
-						<div>
-							<span className="text-gray-500">Prompts with brand mentions</span>
-							<span className="float-right font-semibold text-gray-900">{promptsWithMentions}</span>
-						</div>
-						<div>
-							<span className="text-gray-500">AI engines tested</span>
-							<span className="float-right font-semibold text-gray-900">ChatGPT, Claude, Google AI</span>
-						</div>
-						<div>
-							<span className="text-gray-500">Competitors tracked</span>
-							<span className="float-right font-semibold text-gray-900">{parsedReportData.competitors.length}</span>
-						</div>
+				{contentGaps.length > 0 ? (
+					<div className="border border-slate-200 rounded-lg overflow-hidden mb-8">
+						<table className="w-full">
+							<thead>
+								<tr className="bg-slate-50 border-b border-slate-200">
+									<TH align="left">Prompt</TH>
+									<TH align="left" className="w-[50%]">Competitors Found</TH>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-slate-100">
+								{contentGaps.map((gap) => (
+									<tr key={gap.promptId}>
+										<td className="py-2.5 px-4 text-xs text-slate-700 leading-relaxed max-w-[320px]">{gap.promptValue}</td>
+										<td className="py-2.5 px-4">
+											<div className="flex flex-wrap gap-1">
+												{gap.competitorsMentioned.slice(0, 3).map((c) => (
+													<span key={c} className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-medium">{c}</span>
+												))}
+												{gap.competitorsMentioned.length > 3 && (
+													<span className="text-[10px] text-slate-400">+{gap.competitorsMentioned.length - 3}</span>
+												)}
+											</div>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
 					</div>
+				) : (
+					<div className="border border-slate-200 rounded-lg p-6 text-center mb-8">
+						<p className="text-slate-500 text-sm">{report.brandName} appears in all prompts where competitors are mentioned.</p>
+					</div>
+				)}
+
+				{brandDiscoveryQueries.length > 0 && (
+					<>
+						<Section title="Brand Discovery Queries" subtitle={`Search queries AI models use that lead to ${report.brandName} being mentioned`} />
+						<div className="border border-slate-200 rounded-lg overflow-hidden">
+							<table className="w-full">
+								<thead>
+									<tr className="bg-slate-50 border-b border-slate-200">
+										<TH align="left">Query</TH>
+										<TH align="center" className="w-28">Brand Mention Rate</TH>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-slate-100">
+									{brandDiscoveryQueries.map((q) => (
+										<tr key={q.query}>
+											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[400px] break-words">{q.query}</td>
+											<td className="py-2.5 px-4 text-center">
+												<span className={`text-xs font-semibold ${getSoVColor(q.brandMentionRate)}`}>{q.brandMentionRate}%</span>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</>
+				)}
+
+				<div className="mt-auto"><PageFooter branding={branding} /></div>
+			</div>
+
+			{/* ===== SoV OPPORTUNITY + WHAT TO DO NEXT ===== */}
+			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col p-10 print:p-0">
+				<RunningHeader brand={report.brandName} />
+
+				<Section title="Share of Voice Opportunity" subtitle="Overview of your current AI share of voice and growth potential" />
+
+				<div className="border border-slate-200 rounded-lg overflow-hidden mb-8">
+					<table className="w-full">
+						<thead>
+							<tr className="bg-slate-50 border-b border-slate-200">
+								<TH align="center">Prompts With Mentions</TH>
+								<TH align="center">Total Prompts Tested</TH>
+								<TH align="center">Overall SoV</TH>
+								<TH align="center">Opportunity</TH>
+								<TH align="left">Recommendation</TH>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td className="text-center py-3 px-4 text-sm font-semibold">{promptsWithMentions}</td>
+								<td className="text-center py-3 px-4 text-sm text-slate-600">{totalPrompts}</td>
+								<td className="text-center py-3 px-4"><span className={`text-sm font-bold ${sovColor}`}>{overallSoV ?? 0}%</span></td>
+								<td className="text-center py-3 px-4">
+									<span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-semibold ${(overallSoV ?? 0) < 20 ? "bg-rose-50 text-rose-700" : (overallSoV ?? 0) < 40 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}`}>
+										{(overallSoV ?? 0) < 20 ? "High" : (overallSoV ?? 0) < 40 ? "Medium" : "Low"}
+									</span>
+								</td>
+								<td className="py-3 px-4 text-xs text-slate-600">
+									{(overallSoV ?? 0) < 20
+										? "Prioritize content creation to establish AI presence"
+										: (overallSoV ?? 0) < 40
+											? "Expand content to increase brand share of voice"
+											: "Maintain leadership and defend competitive position"}
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 
-				{/* CTA */}
-				<div className="mt-auto pt-10">
-					<div className="rounded-xl bg-gradient-to-br from-gray-900 to-gray-800 p-8 text-white">
-						<h2 className="text-xl font-bold mb-2">
-							Ready to grow your AI share of voice?
-						</h2>
-						<p className="text-gray-300 text-sm mb-6 leading-relaxed">
-							{branding?.name || "Elmo"} continuously monitors your brand across AI engines
-							and provides actionable strategies to increase your share of voice.
+				<Section title="What Should I Do Next?" subtitle={`Prompts where competitors outperform ${report.brandName} — your biggest growth opportunities`} />
+
+				{(() => {
+					const opportunities = promptSoVs
+						.filter((p) => p.totalCompetitorMentions > 0)
+						.map((p) => {
+							const prompt = promptMap.get(p.promptId);
+							const brandSoV = p.sov ?? 0;
+							const competitorSoV = p.totalCompetitorMentions > 0
+								? Math.round((p.totalCompetitorMentions / (p.brandMentionCount + p.totalCompetitorMentions)) * 100)
+								: 0;
+							const gap = competitorSoV - brandSoV;
+							// Goal: beat competitor avg by a margin based on gap size
+							const margin = gap > 40 ? 5 : gap > 20 ? 8 : 10;
+							const goalSoV = Math.min(100, competitorSoV + margin);
+							// Article count scales with gap
+							const articleCount = gap > 50 ? 8 : gap > 30 ? 6 : gap > 15 ? 5 : 4;
+							return {
+								promptValue: prompt?.value ?? p.promptId,
+								brandSoV,
+								competitorSoV,
+								gap,
+								goalSoV,
+								articleCount,
+							};
+						})
+						.filter((o) => o.gap > 0)
+						// Prefer prompts where brand has SOME presence (more actionable), then by gap
+						.sort((a, b) => {
+							if (a.brandSoV > 0 && b.brandSoV === 0) return -1;
+							if (a.brandSoV === 0 && b.brandSoV > 0) return 1;
+							return b.gap - a.gap;
+						})
+						.slice(0, 5);
+
+					if (opportunities.length === 0) {
+						return (
+							<div className="border border-slate-200 rounded-lg p-6 text-center">
+								<p className="text-slate-500 text-sm">{report.brandName} leads or matches competitors across all tested prompts.</p>
+							</div>
+						);
+					}
+
+					return (
+						<div className="border border-slate-200 rounded-lg overflow-hidden">
+							<table className="w-full">
+								<thead>
+									<tr className="bg-slate-50 border-b border-slate-200">
+										<TH align="left">Prompt</TH>
+										<TH align="center">Current SoV</TH>
+										<TH align="center">Competitor SoV</TH>
+										<TH align="center">Goal SoV</TH>
+										<TH align="left">Recommendation</TH>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-slate-100">
+									{opportunities.map((o) => (
+										<tr key={o.promptValue}>
+											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[200px] break-words leading-relaxed">{o.promptValue}</td>
+											<td className="py-2.5 px-4 text-center">
+												<span className={`text-xs font-semibold ${getSoVColor(o.brandSoV)}`}>{o.brandSoV}%</span>
+											</td>
+											<td className="py-2.5 px-4 text-center text-xs font-semibold text-slate-600">{o.competitorSoV}%</td>
+											<td className="py-2.5 px-4 text-center text-xs font-semibold text-emerald-600">{o.goalSoV}%</td>
+											<td className="py-2.5 px-4 text-xs text-slate-600">
+												Write {o.articleCount} LLM-friendly articles on &ldquo;{o.promptValue}&rdquo;
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					);
+				})()}
+
+				<div className="mt-auto"><PageFooter branding={branding} /></div>
+			</div>
+
+			{/* ===== CTA ===== */}
+			<div className="print:break-before-page print:h-[9.5in] print:flex print:flex-col print:justify-center p-10 print:p-0">
+				<div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-10 text-center">
+					<h2 className="text-2xl font-bold text-slate-800 mb-2">Ready to Optimize Your AI Visibility?</h2>
+					<p className="text-slate-600 text-base mb-8">
+						Take your brand's AI presence to the next level with {branding?.name || "Elmo"}
+					</p>
+
+					<div className="grid grid-cols-3 gap-6 mb-8">
+						<div className="text-center p-4">
+							<div className="flex justify-center mb-3">
+								<Target className="h-8 w-8 text-slate-600" />
+							</div>
+							<h3 className="font-semibold text-slate-800 mb-2">Strategic Optimization</h3>
+							<p className="text-sm text-slate-600 leading-relaxed">
+								Develop content strategies that increase your brand's share of voice in AI responses
+							</p>
+						</div>
+						<div className="text-center p-4">
+							<div className="flex justify-center mb-3">
+								<BarChart3 className="h-8 w-8 text-slate-600" />
+							</div>
+							<h3 className="font-semibold text-slate-800 mb-2">Continuous Monitoring</h3>
+							<p className="text-sm text-slate-600 leading-relaxed">
+								Track your AI share of voice across hundreds of relevant prompts and topics
+							</p>
+						</div>
+						<div className="text-center p-4">
+							<div className="flex justify-center mb-3">
+								<Rocket className="h-8 w-8 text-slate-600" />
+							</div>
+							<h3 className="font-semibold text-slate-800 mb-2">Competitive Advantage</h3>
+							<p className="text-sm text-slate-600 leading-relaxed">
+								Stay ahead of competitors in the rapidly evolving AI search landscape
+							</p>
+						</div>
+					</div>
+
+					<div className="pt-6 border-t border-blue-200">
+						<p className="text-slate-800 font-medium mb-2">
+							Get started with {branding?.name || "Elmo"} today
 						</p>
-						<div className="grid grid-cols-3 gap-6 text-center">
-							<div>
-								<div className="text-2xl font-bold mb-1">24/7</div>
-								<div className="text-xs text-gray-400">AI Monitoring</div>
-							</div>
-							<div>
-								<div className="text-2xl font-bold mb-1">3+</div>
-								<div className="text-xs text-gray-400">AI Engines</div>
-							</div>
-							<div>
-								<div className="text-2xl font-bold mb-1">Real-time</div>
-								<div className="text-xs text-gray-400">Competitive Intel</div>
-							</div>
-						</div>
-						<div className="mt-6 pt-4 border-t border-gray-700 text-center">
-							<span className="text-sm text-gray-300">
-								Learn more at <strong className="text-white">{branding?.url || "elmo.chat"}</strong>
-							</span>
-						</div>
+						<p className="text-slate-600 text-sm text-balance">
+							Visit <strong>{branding?.url || "elmo.chat"}</strong> to learn more about
+							our AI visibility platform and services.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -510,164 +628,84 @@ function ReportRenderPage() {
 
 // ---------- Sub-components ----------
 
-function SectionHeader({ number, title }: { number: string; title: string }) {
+function RunningHeader({ brand }: { brand: string }) {
 	return (
-		<div className="flex items-baseline gap-3 mb-6">
-			<span className="text-xs font-bold text-gray-300 tracking-wider">{number}</span>
-			<h2 className="text-xl font-bold text-gray-900 tracking-tight">{title}</h2>
+		<div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
+			<span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-slate-400">AI Share of Voice Report</span>
+			<span className="text-[10px] font-medium text-slate-400">{brand}</span>
 		</div>
 	);
 }
 
-function SoVBar({ value, color }: { value: number | null; color: string }) {
-	const width = value !== null ? Math.max(2, value) : 0;
+function Section({ title, subtitle }: { title: string; subtitle?: string }) {
 	return (
-		<div className="w-full bg-gray-100 rounded-full h-2.5">
-			<div
-				className={`${color} h-2.5 rounded-full transition-all`}
-				style={{ width: `${width}%` }}
-			/>
+		<div className="border-l-[3px] border-slate-800 pl-3 mb-4">
+			<h2 className="text-base font-semibold">{title}</h2>
+			{subtitle && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{subtitle}</p>}
 		</div>
 	);
 }
 
-function CategoryBadge({ category }: { category: PromptCategory }) {
-	if (category === "strength") {
-		return (
-			<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-				Strength
-			</span>
-		);
-	}
+function TH({ children, align, className = "" }: { children: React.ReactNode; align: "left" | "center" | "right"; className?: string }) {
+	const alignCls = align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
 	return (
-		<span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-			Opportunity
+		<th className={`py-2.5 px-4 text-[10px] font-semibold uppercase tracking-wider text-slate-500 ${alignCls} ${className}`}>
+			{children}
+		</th>
+	);
+}
+
+function CoverStat({ value, label }: { value: string; label: string }) {
+	return (
+		<div className="border-t-2 border-slate-800 pt-3">
+			<div className="text-2xl font-bold">{value}</div>
+			<div className="text-[10px] text-slate-500 mt-0.5">{label}</div>
+		</div>
+	);
+}
+
+function Bar({ value, color }: { value: number | null; color: string }) {
+	return (
+		<div className="w-full bg-slate-100 rounded-full h-2.5">
+			<div className={`${color} h-2.5 rounded-full`} style={{ width: `${Math.max(2, value ?? 0)}%` }} />
+		</div>
+	);
+}
+
+function Badge({ category }: { category: PromptCategory }) {
+	const cls = category === "strength"
+		? "bg-emerald-50 text-emerald-700 border-emerald-200"
+		: "bg-amber-50 text-amber-700 border-amber-200";
+	return (
+		<span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border ${cls}`}>
+			{category === "strength" ? "Strength" : "Opportunity"}
 		</span>
+	);
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex justify-between items-center">
+			<span className="text-xs text-slate-500">{label}</span>
+			<span className="text-xs font-semibold">{value}</span>
+		</div>
+	);
+}
+
+function Finding({ children }: { children: React.ReactNode }) {
+	return (
+		<div className="flex gap-3 items-start">
+			<div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-[7px] shrink-0" />
+			<p className="text-sm text-slate-700 leading-relaxed">{children}</p>
+		</div>
 	);
 }
 
 function PageFooter({ branding }: { branding?: ClientConfig["branding"] }) {
 	return (
-		<div className="flex justify-between items-center text-xs text-gray-400">
-			<Logo iconClassName="!size-4" textClassName="text-xs font-medium text-gray-400" />
+		<div className="pt-4 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400">
+			<Logo iconClassName="!size-3" textClassName="text-[10px] font-medium text-slate-400" />
 			<span>{branding?.url || "elmo.chat"}</span>
-		</div>
-	);
-}
-
-function OpportunitiesTable({
-	promptSoVs,
-	promptMap,
-	mockPromptRuns,
-	competitors,
-	brandName,
-}: {
-	promptSoVs: PromptSoV[];
-	promptMap: Map<string, MockPrompt>;
-	mockPromptRuns: ReportPromptRun[];
-	competitors: CompetitorResult[];
-	brandName: string;
-}) {
-	// Find prompts where competitors outperform the brand
-	const opportunities = promptSoVs
-		.map((promptSoV) => {
-			const prompt = promptMap.get(promptSoV.promptId);
-			if (!prompt) return null;
-
-			const brandSoV = promptSoV.sov ?? 0;
-
-			// Find the highest competitor SoV for this prompt
-			const promptRuns = mockPromptRuns.filter((r) => r.promptId === promptSoV.promptId);
-			let bestCompetitorName = "";
-			let bestCompetitorMentions = 0;
-
-			for (const comp of competitors) {
-				const mentions = promptRuns.filter(
-					(r) => r.competitorsMentioned?.includes(comp.name),
-				).length;
-				if (mentions > bestCompetitorMentions) {
-					bestCompetitorMentions = mentions;
-					bestCompetitorName = comp.name;
-				}
-			}
-
-			if (bestCompetitorMentions === 0) return null;
-
-			const totalMentions = promptSoV.brandMentionCount + promptSoV.totalCompetitorMentions;
-			const competitorSoV = totalMentions > 0
-				? Math.round((bestCompetitorMentions / totalMentions) * 100)
-				: 0;
-
-			const gap = competitorSoV - brandSoV;
-			if (gap <= 0) return null;
-
-			return {
-				prompt: prompt.value,
-				brandSoV,
-				competitorName: bestCompetitorName,
-				competitorSoV,
-				gap,
-			};
-		})
-		.filter(Boolean)
-		.sort((a, b) => b!.gap - a!.gap)
-		.slice(0, 5) as Array<{
-			prompt: string;
-			brandSoV: number;
-			competitorName: string;
-			competitorSoV: number;
-			gap: number;
-		}>;
-
-	if (opportunities.length === 0) {
-		return (
-			<div className="rounded-xl border border-gray-200 p-8 text-center">
-				<p className="text-gray-500 text-sm">
-					{brandName} is performing well across all tracked prompts. No significant competitive gaps found.
-				</p>
-			</div>
-		);
-	}
-
-	return (
-		<div className="rounded-xl border border-gray-200 overflow-hidden">
-			<table className="w-full text-sm">
-				<thead>
-					<tr className="bg-gray-50">
-						<th className="text-left py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase">Prompt</th>
-						<th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase whitespace-nowrap">Your SoV</th>
-						<th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase whitespace-nowrap">Top Competitor</th>
-						<th className="text-center py-3 px-4 font-semibold text-gray-600 text-xs tracking-wide uppercase">Gap</th>
-					</tr>
-				</thead>
-				<tbody>
-					{opportunities.map((opp) => (
-						<tr key={opp.prompt} className="border-t border-gray-100">
-							<td className="py-3 px-4 max-w-[280px]">
-								<div className="text-xs text-gray-700 break-words leading-relaxed">
-									{opp.prompt}
-								</div>
-							</td>
-							<td className="text-center py-3 px-4">
-								<span className={`text-xs font-semibold ${getSoVColor(opp.brandSoV)}`}>
-									{opp.brandSoV}%
-								</span>
-							</td>
-							<td className="text-center py-3 px-4">
-								<div className="text-xs text-gray-700">
-									<span className="font-semibold">{opp.competitorSoV}%</span>
-									<span className="text-gray-400 block text-[10px]">{opp.competitorName}</span>
-								</div>
-							</td>
-							<td className="text-center py-3 px-4">
-								<span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-600">
-									-{opp.gap}%
-								</span>
-							</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
 		</div>
 	);
 }

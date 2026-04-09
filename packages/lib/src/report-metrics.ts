@@ -150,7 +150,9 @@ export function computeCompetitorSoVs(
  * Select a representative mix of prompts: 2 strengths + 2 opportunities.
  *
  * Strengths: highest SoV prompts (brand is performing well).
- * Opportunities: prompts with competitor mentions but low/zero brand SoV (biggest gaps).
+ * Opportunities: prompts where competitors are active and brand has room to grow.
+ *   - Prefer non-zero SoV opportunities (brand has some presence but competitors lead).
+ *   - At most 1 zero-SoV prompt to avoid making the brand look invisible.
  *
  * If fewer than 2 in either bucket, fills from the other.
  */
@@ -167,15 +169,19 @@ export function selectRepresentativePrompts(
 		.filter((p) => p.sov !== null && p.sov > 0)
 		.sort((a, b) => (b.sov ?? 0) - (a.sov ?? 0));
 
-	// Opportunities: have competitor mentions but low/no brand SoV
-	const opportunities = pool
-		.filter((p) => p.totalCompetitorMentions > 0)
+	// Opportunities: have competitor mentions, sorted to prefer non-zero SoV first
+	const nonZeroOpportunities = pool
+		.filter((p) => p.totalCompetitorMentions > 0 && p.sov !== null && p.sov > 0)
 		.sort((a, b) => {
-			// Sort by lowest brand SoV first (biggest opportunity), then by most competitor activity
+			// Lowest brand SoV first (biggest room to grow), then most competitor activity
 			const sovDiff = (a.sov ?? 0) - (b.sov ?? 0);
 			if (sovDiff !== 0) return sovDiff;
 			return b.totalCompetitorMentions - a.totalCompetitorMentions;
 		});
+
+	const zeroSovOpportunities = pool
+		.filter((p) => p.totalCompetitorMentions > 0 && (p.sov === null || p.sov === 0))
+		.sort((a, b) => b.totalCompetitorMentions - a.totalCompetitorMentions);
 
 	const selected: SelectedPrompt[] = [];
 	const usedIds = new Set<string>();
@@ -188,20 +194,29 @@ export function selectRepresentativePrompts(
 		usedIds.add(s.promptId);
 	}
 
-	// Pick up to 2 opportunities
-	for (const o of opportunities) {
+	// Pick opportunities: prefer non-zero SoV, allow at most 1 zero-SoV
+	let zeroSovCount = 0;
+	const opportunityCandidates = [...nonZeroOpportunities, ...zeroSovOpportunities];
+
+	for (const o of opportunityCandidates) {
 		if (selected.filter((s) => s.category === "opportunity").length >= 2) break;
 		if (usedIds.has(o.promptId)) continue;
+		const isZero = o.sov === null || o.sov === 0;
+		if (isZero && zeroSovCount >= 1) continue;
+		if (isZero) zeroSovCount++;
 		selected.push({ promptId: o.promptId, category: "opportunity", sov: o.sov });
 		usedIds.add(o.promptId);
 	}
 
 	// Fill remaining slots if we have fewer than 4
 	if (selected.length < 4) {
-		const remaining = [...strengths, ...opportunities];
+		const remaining = [...strengths, ...nonZeroOpportunities, ...zeroSovOpportunities];
 		for (const r of remaining) {
 			if (selected.length >= 4) break;
 			if (usedIds.has(r.promptId)) continue;
+			const isZero = r.sov === null || r.sov === 0;
+			if (isZero && zeroSovCount >= 1) continue;
+			if (isZero) zeroSovCount++;
 			const category: PromptCategory = (r.sov ?? 0) > 0 ? "strength" : "opportunity";
 			selected.push({ promptId: r.promptId, category, sov: r.sov });
 			usedIds.add(r.promptId);
@@ -209,6 +224,177 @@ export function selectRepresentativePrompts(
 	}
 
 	return selected.slice(0, 4);
+}
+
+// ---------- Rich Analysis ----------
+
+/** A prompt run with full response data for deeper analysis. */
+export interface FullPromptRun {
+	promptId: string;
+	promptValue: string;
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	webQueries: string[];
+	textContent: string;
+	modelGroup: string;
+}
+
+export interface ContentGap {
+	promptValue: string;
+	promptId: string;
+	competitorsMentioned: string[];
+	competitorCount: number;
+}
+
+export interface WebQueryInsight {
+	query: string;
+	count: number;
+	brandMentionRate: number;
+}
+
+/**
+ * Find content gaps: prompts where competitors are mentioned but the brand is not.
+ * These are the highest-value opportunities for content creation.
+ */
+export function findContentGaps(
+	runs: FullPromptRun[],
+	maxResults: number = 5,
+): ContentGap[] {
+	// Group by promptId
+	const byPrompt = new Map<string, FullPromptRun[]>();
+	for (const run of runs) {
+		if (!byPrompt.has(run.promptId)) byPrompt.set(run.promptId, []);
+		byPrompt.get(run.promptId)!.push(run);
+	}
+
+	const gaps: ContentGap[] = [];
+
+	for (const [promptId, promptRuns] of byPrompt) {
+		const hasBrandMention = promptRuns.some((r) => r.brandMentioned);
+		if (hasBrandMention) continue;
+
+		const allCompetitors = new Set<string>();
+		for (const run of promptRuns) {
+			for (const comp of run.competitorsMentioned) {
+				allCompetitors.add(comp);
+			}
+		}
+
+		if (allCompetitors.size === 0) continue;
+
+		gaps.push({
+			promptValue: promptRuns[0].promptValue,
+			promptId,
+			competitorsMentioned: [...allCompetitors],
+			competitorCount: allCompetitors.size,
+		});
+	}
+
+	return gaps
+		.sort((a, b) => b.competitorCount - a.competitorCount)
+		.slice(0, maxResults);
+}
+
+/**
+ * Extract top web search queries used by AI models and how often they led to brand mentions.
+ */
+export function analyzeWebQueries(
+	runs: FullPromptRun[],
+	maxResults: number = 10,
+): WebQueryInsight[] {
+	const queryStats = new Map<string, { count: number; brandMentions: number }>();
+
+	for (const run of runs) {
+		if (!run.webQueries) continue;
+		for (const query of run.webQueries) {
+			const normalized = query.toLowerCase().trim();
+			if (!normalized || normalized.length < 3) continue;
+			if (!queryStats.has(normalized)) {
+				queryStats.set(normalized, { count: 0, brandMentions: 0 });
+			}
+			const stats = queryStats.get(normalized)!;
+			stats.count++;
+			if (run.brandMentioned) stats.brandMentions++;
+		}
+	}
+
+	return [...queryStats.entries()]
+		.map(([query, stats]) => ({
+			query,
+			count: stats.count,
+			brandMentionRate: stats.count > 0 ? Math.round((stats.brandMentions / stats.count) * 100) : 0,
+		}))
+		.sort((a, b) => b.count - a.count)
+		.slice(0, maxResults);
+}
+
+/**
+ * Analyze which competitors are mentioned most frequently and in which contexts.
+ */
+export function analyzeCompetitorFrequency(
+	runs: FullPromptRun[],
+	competitors: ReportCompetitor[],
+): Array<{ name: string; mentionCount: number; promptCount: number; coMentionRate: number }> {
+	const competitorStats = new Map<string, { mentions: number; prompts: Set<string>; coMentions: number }>();
+
+	for (const comp of competitors) {
+		competitorStats.set(comp.name, { mentions: 0, prompts: new Set(), coMentions: 0 });
+	}
+
+	for (const run of runs) {
+		if (!run.competitorsMentioned) continue;
+		for (const mentioned of run.competitorsMentioned) {
+			const stats = competitorStats.get(mentioned);
+			if (!stats) continue;
+			stats.mentions++;
+			stats.prompts.add(run.promptId);
+			if (run.brandMentioned) stats.coMentions++;
+		}
+	}
+
+	return competitors
+		.map((comp) => {
+			const stats = competitorStats.get(comp.name)!;
+			return {
+				name: comp.name,
+				mentionCount: stats.mentions,
+				promptCount: stats.prompts.size,
+				coMentionRate: stats.mentions > 0 ? Math.round((stats.coMentions / stats.mentions) * 100) : 0,
+			};
+		})
+		.sort((a, b) => b.mentionCount - a.mentionCount);
+}
+
+/**
+ * Compute mention rate by AI engine (how often each engine mentions the brand).
+ */
+export function analyzeByEngine(
+	runs: FullPromptRun[],
+): Array<{ engine: string; totalRuns: number; brandMentions: number; mentionRate: number }> {
+	const engineStats = new Map<string, { total: number; mentions: number }>();
+
+	for (const run of runs) {
+		const engine = run.modelGroup;
+		if (!engineStats.has(engine)) engineStats.set(engine, { total: 0, mentions: 0 });
+		const stats = engineStats.get(engine)!;
+		stats.total++;
+		if (run.brandMentioned) stats.mentions++;
+	}
+
+	const engineNames: Record<string, string> = {
+		openai: "ChatGPT",
+		anthropic: "Claude",
+		google: "Google AI",
+	};
+
+	return [...engineStats.entries()]
+		.map(([engine, stats]) => ({
+			engine: engineNames[engine] || engine,
+			totalRuns: stats.total,
+			brandMentions: stats.mentions,
+			mentionRate: stats.total > 0 ? Math.round((stats.mentions / stats.total) * 100) : 0,
+		}))
+		.sort((a, b) => b.mentionRate - a.mentionRate);
 }
 
 // ---------- Display Helpers ----------
