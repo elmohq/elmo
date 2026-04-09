@@ -164,7 +164,7 @@ function ReportRenderPage() {
 
 	// Core metrics
 	const overallSoV = computeOverallSoV(simpleRuns, data.competitors);
-	const competitorSoVs = computeCompetitorSoVs(simpleRuns, data.competitors).slice(0, 5);
+	const competitorSoVs = computeCompetitorSoVs(simpleRuns, data.competitors).slice(0, 3);
 	const promptSoVs = mockPrompts.map((p) => computePromptSoV(p.id, simpleRuns, data.competitors));
 	const promptMap = new Map(mockPrompts.map((p) => [p.id, p]));
 
@@ -179,33 +179,47 @@ function ReportRenderPage() {
 	// Rich analysis
 	const contentGaps = findContentGaps(fullRuns, 5);
 	const allWebQueries = analyzeWebQueries(fullRuns, 1000);
-	const competitorFreq = analyzeCompetitorFrequency(fullRuns, data.competitors).slice(0, 5);
+	const competitorFreq = analyzeCompetitorFrequency(fullRuns, data.competitors).slice(0, 3);
 	const engineBreakdown = analyzeByEngine(fullRuns);
 
-	// Show queries with brand mentions, sampled across distinct rate buckets (high to low)
-	const queriesWithMentions = allWebQueries
-		.filter((q) => q.brandMentionRate > 0)
-		.sort((a, b) => b.brandMentionRate - a.brandMentionRate);
-	const brandDiscoveryQueries: typeof queriesWithMentions = [];
-	if (queriesWithMentions.length > 0) {
-		const byRate = new Map<number, typeof queriesWithMentions>();
-		for (const q of queriesWithMentions) {
-			if (!byRate.has(q.brandMentionRate)) byRate.set(q.brandMentionRate, []);
-			byRate.get(q.brandMentionRate)!.push(q);
-		}
-		const rates = [...byRate.keys()].sort((a, b) => b - a);
-		const maxQueries = 6;
-		if (rates.length <= maxQueries) {
-			for (const rate of rates) {
-				brandDiscoveryQueries.push(byRate.get(rate)![0]);
-			}
-		} else {
-			for (let i = 0; i < maxQueries; i++) {
-				const idx = Math.round((i / (maxQueries - 1)) * (rates.length - 1));
-				brandDiscoveryQueries.push(byRate.get(rates[idx])![0]);
+	// Enrich web queries with competitor mention data
+	const queryCompetitorMap = new Map<string, { brandMentioned: boolean; competitorCount: number }>();
+	for (const run of fullRuns) {
+		for (const query of (run.webQueries || [])) {
+			const normalized = query.toLowerCase().trim();
+			if (!normalized || normalized.length < 3) continue;
+			const existing = queryCompetitorMap.get(normalized);
+			const compCount = run.competitorsMentioned.length;
+			if (!existing) {
+				queryCompetitorMap.set(normalized, { brandMentioned: run.brandMentioned, competitorCount: compCount });
+			} else {
+				if (run.brandMentioned) existing.brandMentioned = true;
+				existing.competitorCount = Math.max(existing.competitorCount, compCount);
 			}
 		}
 	}
+	// Mix of top-frequency + brand-mentioned queries
+	const enrichedQueries = allWebQueries.map((q) => {
+		const extra = queryCompetitorMap.get(q.query);
+		return { ...q, brandMentioned: extra?.brandMentioned ?? false, competitorCount: extra?.competitorCount ?? 0 };
+	});
+	const topSearchQueries: typeof enrichedQueries = [];
+	const usedQueries = new Set<string>();
+	const byFrequency = [...enrichedQueries].sort((a, b) => b.count - a.count);
+	const withBrand = enrichedQueries.filter((q) => q.brandMentioned).sort((a, b) => b.count - a.count);
+	for (const q of byFrequency) {
+		if (topSearchQueries.length >= 3) break;
+		if (!usedQueries.has(q.query)) { topSearchQueries.push(q); usedQueries.add(q.query); }
+	}
+	for (const q of withBrand) {
+		if (topSearchQueries.length >= 6) break;
+		if (!usedQueries.has(q.query)) { topSearchQueries.push(q); usedQueries.add(q.query); }
+	}
+	for (const q of byFrequency) {
+		if (topSearchQueries.length >= 6) break;
+		if (!usedQueries.has(q.query)) { topSearchQueries.push(q); usedQueries.add(q.query); }
+	}
+	topSearchQueries.sort((a, b) => b.competitorCount - a.competitorCount);
 
 	const sovLevel = getSoVLevel(overallSoV);
 	const sovColor = getSoVColor(overallSoV);
@@ -290,7 +304,7 @@ function ReportRenderPage() {
 				</div>
 
 				<Section title="Competitive Landscape" subtitle="Share of voice comparison across all tested prompts" />
-				<div className="border border-slate-200 rounded-lg overflow-hidden mb-8">
+				<div className="border border-slate-200 rounded-lg overflow-hidden mb-8 print:pb-px">
 					<table className="w-full">
 						<thead>
 							<tr className="bg-slate-50 border-b border-slate-200">
@@ -321,7 +335,7 @@ function ReportRenderPage() {
 				{competitorFreq.length > 0 && (
 					<>
 						<Section title="Mention Rate" subtitle="How often each brand is mentioned across all tested prompts" />
-						<div className="border border-slate-200 rounded-lg overflow-hidden">
+						<div className="border border-slate-200 rounded-lg overflow-hidden print:pb-px">
 							<table className="w-full">
 								<thead>
 									<tr className="bg-slate-50 border-b border-slate-200">
@@ -427,23 +441,27 @@ function ReportRenderPage() {
 					</div>
 				)}
 
-				{brandDiscoveryQueries.length > 0 && (
+				{topSearchQueries.length > 0 && (
 					<>
-						<Section title="Brand Discovery Queries" subtitle={`Search queries AI models use that lead to ${report.brandName} being mentioned`} />
+						<Section title="Top AI Search Queries" subtitle="Common web search queries AI models run when answering prompts in your category" />
 						<div className="border border-slate-200 rounded-lg overflow-hidden">
 							<table className="w-full">
 								<thead>
 									<tr className="bg-slate-50 border-b border-slate-200">
 										<TH align="left">Query</TH>
-										<TH align="center" className="w-28">Brand Mention Rate</TH>
+										<TH align="center" className="w-28">Competitors Found</TH>
+										<TH align="center" className="w-24">Brand Mentioned</TH>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
-									{brandDiscoveryQueries.map((q) => (
+									{topSearchQueries.map((q) => (
 										<tr key={q.query}>
-											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[400px] break-words">{q.query}</td>
+											<td className="py-2.5 px-4 text-xs text-slate-700 max-w-[350px] break-words">{q.query}</td>
+											<td className="py-2.5 px-4 text-center text-xs text-slate-600">{q.competitorCount}</td>
 											<td className="py-2.5 px-4 text-center">
-												<span className={`text-xs font-semibold ${getSoVColor(q.brandMentionRate)}`}>{q.brandMentionRate}%</span>
+												{q.brandMentioned
+													? <span className="text-emerald-600 font-semibold text-xs">&#10003;</span>
+													: <span className="text-slate-300 text-xs">&mdash;</span>}
 											</td>
 										</tr>
 									))}
@@ -503,19 +521,20 @@ function ReportRenderPage() {
 						.map((p) => {
 							const prompt = promptMap.get(p.promptId);
 							const brandSoV = p.sov ?? 0;
-							const competitorSoV = p.totalCompetitorMentions > 0
-								? Math.round((p.totalCompetitorMentions / (p.brandMentionCount + p.totalCompetitorMentions)) * 100)
-								: 0;
-							const gap = competitorSoV - brandSoV;
-							// Goal: beat competitor avg by a margin based on gap size
-							const margin = gap > 40 ? 5 : gap > 20 ? 8 : 10;
-							const goalSoV = Math.min(100, competitorSoV + margin);
+							// Find the single highest competitor's SoV for this prompt
+							const topCompMentions = Math.max(...Object.values(p.competitorMentions), 0);
+							const denom = p.brandMentionCount + p.totalCompetitorMentions;
+							const maxCompSoV = denom > 0 ? Math.round((topCompMentions / denom) * 100) : 0;
+							const gap = maxCompSoV - brandSoV;
+							// Goal: match or slightly beat the top competitor
+							const margin = gap > 30 ? 5 : gap > 15 ? 8 : 10;
+							const goalSoV = Math.min(100, maxCompSoV + margin);
 							// Article count scales with gap
-							const articleCount = gap > 50 ? 8 : gap > 30 ? 6 : gap > 15 ? 5 : 4;
+							const articleCount = gap > 40 ? 8 : gap > 25 ? 6 : gap > 10 ? 5 : 4;
 							return {
 								promptValue: prompt?.value ?? p.promptId,
 								brandSoV,
-								competitorSoV,
+								maxCompSoV,
 								gap,
 								goalSoV,
 								articleCount,
@@ -545,7 +564,7 @@ function ReportRenderPage() {
 									<tr className="bg-slate-50 border-b border-slate-200">
 										<TH align="left">Prompt</TH>
 										<TH align="center">Current SoV</TH>
-										<TH align="center">Competitor SoV</TH>
+										<TH align="center">Top Competitor SoV</TH>
 										<TH align="center">Goal SoV</TH>
 										<TH align="left">Recommendation</TH>
 									</tr>
@@ -557,7 +576,7 @@ function ReportRenderPage() {
 											<td className="py-2.5 px-4 text-center">
 												<span className={`text-xs font-semibold ${getSoVColor(o.brandSoV)}`}>{o.brandSoV}%</span>
 											</td>
-											<td className="py-2.5 px-4 text-center text-xs font-semibold text-slate-600">{o.competitorSoV}%</td>
+											<td className="py-2.5 px-4 text-center text-xs font-semibold text-slate-600">{o.maxCompSoV}%</td>
 											<td className="py-2.5 px-4 text-center text-xs font-semibold text-emerald-600">{o.goalSoV}%</td>
 											<td className="py-2.5 px-4 text-xs text-slate-600">
 												Write {o.articleCount} LLM-friendly articles on &ldquo;{o.promptValue}&rdquo;

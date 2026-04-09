@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "API",
-		"description": "API for managing prompts.",
+		"description": "API for managing prompts and generating AI Share of Voice reports.",
 		"version": "1.0.0",
 		"contact": {
 			"name": "API Support"
@@ -145,6 +145,172 @@
 					}
 				},
 				"required": ["message"]
+			},
+			"CreateReportRequest": {
+				"type": "object",
+				"properties": {
+					"brandName": {
+						"type": "string",
+						"description": "The brand name to analyze",
+						"minLength": 1
+					},
+					"brandWebsite": {
+						"type": "string",
+						"description": "The brand's website URL",
+						"minLength": 1
+					},
+					"manualPrompts": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						},
+						"description": "Optional list of custom prompts to include in the report"
+					}
+				},
+				"required": ["brandName", "brandWebsite"]
+			},
+			"ReportSummary": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "Unique identifier for the report"
+					},
+					"brandName": {
+						"type": "string",
+						"description": "Brand name analyzed"
+					},
+					"brandWebsite": {
+						"type": "string",
+						"description": "Brand website URL"
+					},
+					"status": {
+						"type": "string",
+						"enum": ["pending", "processing", "completed", "failed"],
+						"description": "Current report status"
+					},
+					"createdAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "Timestamp when the report was created"
+					},
+					"completedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "Timestamp when the report completed"
+					}
+				},
+				"required": ["id", "brandName", "brandWebsite", "status", "createdAt"]
+			},
+			"ReportCompetitorSoV": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string",
+						"description": "Competitor name"
+					},
+					"sov": {
+						"type": "integer",
+						"description": "Share of voice percentage"
+					},
+					"mentionCount": {
+						"type": "integer",
+						"description": "Total number of mentions"
+					}
+				},
+				"required": ["name", "sov", "mentionCount"]
+			},
+			"ReportPromptResult": {
+				"type": "object",
+				"properties": {
+					"value": {
+						"type": "string",
+						"description": "The prompt text"
+					},
+					"isBranded": {
+						"type": "boolean",
+						"description": "Whether the prompt contains the brand name"
+					},
+					"sov": {
+						"type": "integer",
+						"nullable": true,
+						"description": "Share of voice percentage for this prompt (null if no mentions)"
+					},
+					"totalRuns": {
+						"type": "integer",
+						"description": "Number of evaluation runs for this prompt"
+					},
+					"brandMentionCount": {
+						"type": "integer",
+						"description": "Number of runs where the brand was mentioned"
+					},
+					"competitorMentions": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "integer"
+						},
+						"description": "Map of competitor name to mention count"
+					},
+					"category": {
+						"type": "string",
+						"enum": ["strength", "opportunity", "neutral"],
+						"description": "Classification of this prompt (strength = high SoV, opportunity = room to grow)"
+					}
+				},
+				"required": ["value", "isBranded", "sov", "totalRuns", "brandMentionCount", "competitorMentions", "category"]
+			},
+			"ReportData": {
+				"type": "object",
+				"properties": {
+					"overallSoV": {
+						"type": "integer",
+						"nullable": true,
+						"description": "Overall share of voice across all prompts"
+					},
+					"competitors": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ReportCompetitorSoV"
+						},
+						"description": "Per-competitor SoV breakdown"
+					},
+					"prompts": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ReportPromptResult"
+						},
+						"description": "Per-prompt results with SoV and category"
+					},
+					"summary": {
+						"type": "object",
+						"properties": {
+							"totalPromptsTested": {
+								"type": "integer",
+								"description": "Total number of prompts evaluated"
+							},
+							"promptsWithBrandMentions": {
+								"type": "integer",
+								"description": "Number of prompts where the brand was mentioned"
+							},
+							"topCompetitors": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"name": { "type": "string" },
+										"sov": { "type": "integer" }
+									},
+									"required": ["name", "sov"]
+								},
+								"description": "Top 5 competitors by SoV"
+							}
+						},
+						"required": ["totalPromptsTested", "promptsWithBrandMentions", "topCompetitors"]
+					}
+				},
+				"required": ["overallSoV", "competitors", "prompts", "summary"]
 			},
 			"MentionEntry": {
 				"type": "object",
@@ -680,6 +846,245 @@
 					}
 				}
 			}
+		},
+		"/reports": {
+			"post": {
+				"summary": "Create a report",
+				"description": "Create a new AI Share of Voice report and queue it for generation. The report will evaluate the brand across multiple AI engines (ChatGPT, Claude, Google AI) using generated and optional custom prompts.",
+				"operationId": "createReport",
+				"tags": ["Reports"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateReportRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Report created and queued for generation",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"reportId": {
+											"type": "string",
+											"format": "uuid",
+											"description": "Unique identifier for the created report"
+										},
+										"status": {
+											"type": "string",
+											"enum": ["pending"],
+											"description": "Initial report status"
+										},
+										"brandName": {
+											"type": "string"
+										},
+										"brandWebsite": {
+											"type": "string"
+										},
+										"createdAt": {
+											"type": "string",
+											"format": "date-time"
+										}
+									},
+									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt"]
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			},
+			"get": {
+				"summary": "List reports",
+				"description": "Retrieve a paginated list of all reports, ordered by creation date (newest first).",
+				"operationId": "listReports",
+				"tags": ["Reports"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"description": "Page number for pagination (1-based)",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"description": "Number of items per page",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 20
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Paginated list of reports",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"reports": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/ReportSummary"
+											}
+										},
+										"pagination": {
+											"type": "object",
+											"properties": {
+												"page": { "type": "integer" },
+												"limit": { "type": "integer" },
+												"total": { "type": "integer" },
+												"totalPages": { "type": "integer" }
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
+		},
+		"/reports/{reportId}": {
+			"get": {
+				"summary": "Get report status and data",
+				"description": "Poll a report's status. When the report is completed, returns structured JSON with Share of Voice metrics, per-prompt results, and competitive analysis.",
+				"operationId": "getReport",
+				"tags": ["Reports"],
+				"parameters": [
+					{
+						"name": "reportId",
+						"in": "path",
+						"required": true,
+						"description": "The ID of the report",
+						"schema": {
+							"type": "string",
+							"format": "uuid"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Report status and data. When status is 'completed', the `data` field contains SoV metrics.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"reportId": {
+											"type": "string",
+											"format": "uuid"
+										},
+										"status": {
+											"type": "string",
+											"enum": ["pending", "processing", "completed", "failed"]
+										},
+										"progress": {
+											"type": "integer",
+											"description": "Generation progress percentage (0-100). Available while processing."
+										},
+										"brandName": {
+											"type": "string"
+										},
+										"brandWebsite": {
+											"type": "string"
+										},
+										"createdAt": {
+											"type": "string",
+											"format": "date-time"
+										},
+										"completedAt": {
+											"type": "string",
+											"format": "date-time",
+											"nullable": true
+										},
+										"data": {
+											"$ref": "#/components/schemas/ReportData",
+											"description": "SoV metrics and analysis. Only present when status is 'completed'."
+										}
+									},
+									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt"]
+								},
+								"example": {
+									"reportId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+									"status": "completed",
+									"brandName": "Acme Corp",
+									"brandWebsite": "acme.com",
+									"createdAt": "2026-04-08T10:00:00Z",
+									"completedAt": "2026-04-08T10:05:00Z",
+									"data": {
+										"overallSoV": 42,
+										"competitors": [
+											{ "name": "Competitor A", "sov": 35, "mentionCount": 28 },
+											{ "name": "Competitor B", "sov": 15, "mentionCount": 12 }
+										],
+										"prompts": [
+											{
+												"value": "best project management tools",
+												"isBranded": false,
+												"sov": 60,
+												"totalRuns": 4,
+												"brandMentionCount": 3,
+												"competitorMentions": { "Competitor A": 2 },
+												"category": "strength"
+											}
+										],
+										"summary": {
+											"totalPromptsTested": 70,
+											"promptsWithBrandMentions": 28,
+											"topCompetitors": [
+												{ "name": "Competitor A", "sov": 35 }
+											]
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
+					"401": {
+						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFoundError"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalServerError"
+					}
+				}
+			}
 		}
 	},
 	"tags": [
@@ -690,6 +1095,10 @@
 		{
 			"name": "Snapshots",
 			"description": "Aggregated analytics snapshots for prompts"
+		},
+		{
+			"name": "Reports",
+			"description": "Generate and retrieve AI Share of Voice reports"
 		}
 	]
 }
