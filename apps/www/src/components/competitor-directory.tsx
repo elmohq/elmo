@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Check, X } from "lucide-react";
 import {
-	competitors,
+	sortedCompetitors,
 	FEATURE_CATEGORIES,
 	ELMO_FEATURES,
 	CATEGORY_LABELS,
@@ -23,7 +23,7 @@ function FeatureIcon({ has }: { has: boolean }) {
 	);
 }
 
-const visibleCompetitors = competitors.filter(
+const visibleCompetitors = sortedCompetitors.filter(
 	(c) => c.status !== "shutting-down" && c.category !== "other",
 );
 

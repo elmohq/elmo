@@ -50,6 +50,7 @@ export interface Competitor {
 	description: string;
 	category: CompetitorCategory;
 	ahrefsDR: number;
+	ahrefsTraffic: number;
 	status: "active" | "shutting-down" | "acquired" | "beta";
 	features: Partial<Record<FeatureKey, boolean>>;
 	pricing?: {

@@ -1,6 +1,6 @@
 import type { Competitor } from "./types";
 
-// Sorted by descending Ahrefs Domain Rating
+// Raw list — use sortedCompetitors for display order
 export const competitors: Competitor[] = [
 	{
 		slug: "hubspot-aeo-grader",
@@ -12,6 +12,7 @@ export const competitors: Competitor[] = [
 			"HubSpot's AEO Grader is a free tool that analyzes how well your website is optimized for AI search engines. It checks content structure, schema markup, and AI readability to provide actionable recommendations. As part of HubSpot's broader marketing platform, it benefits from deep integration with their CRM and content tools.",
 		category: "seo-traditional",
 		ahrefsDR: 93,
+		ahrefsTraffic: 3636335,
 		status: "active",
 		features: {
 			visibilityScore: true,
@@ -36,6 +37,7 @@ export const competitors: Competitor[] = [
 			"Semrush's AI SEO toolkit adds AI visibility tracking to their established SEO platform. Their Brand Performance tool monitors how AI search engines mention and recommend your brand, with integration into their keyword database and competitive intelligence tools.",
 		category: "seo-traditional",
 		ahrefsDR: 92,
+		ahrefsTraffic: 8834233,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -75,6 +77,7 @@ export const competitors: Competitor[] = [
 			"Ahrefs Brand Radar adds AI visibility tracking to their established SEO platform. It monitors how AI chatbots mention your brand, tracks sentiment, and identifies citation sources. Integrates with Ahrefs' backlink and keyword database for competitive analysis.",
 		category: "seo-traditional",
 		ahrefsDR: 91,
+		ahrefsTraffic: 4382530,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -108,6 +111,7 @@ export const competitors: Competitor[] = [
 			"Amplitude, a product analytics platform, has announced AEO features that extend their analytics capabilities into AI search visibility. Their background in behavioral analytics informs their approach to understanding how AI platforms surface brands and products.",
 		category: "tracking",
 		ahrefsDR: 86,
+		ahrefsTraffic: 197332,
 		status: "active",
 		features: {
 			brandMentionTracking: true,
@@ -134,6 +138,7 @@ export const competitors: Competitor[] = [
 			"SE Ranking adds AI visibility tracking to their comprehensive SEO toolkit, offering both an AI Overviews Tracker and a ChatGPT Visibility Tracker. Monitors how your brand appears in Google's AI-generated results and ChatGPT responses, with integration into their keyword tracking and competitive analysis tools.",
 		category: "seo-traditional",
 		ahrefsDR: 84,
+		ahrefsTraffic: 809093,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -164,6 +169,7 @@ export const competitors: Competitor[] = [
 			"Writesonic combines AI content generation with AI search optimization, powered by a proprietary dataset of over 120 million AI conversations. Their platform tracks visibility across AI platforms and uses their conversation data to provide prompt volume estimates and content recommendations.",
 		category: "content",
 		ahrefsDR: 84,
+		ahrefsTraffic: 129581,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -194,6 +200,7 @@ export const competitors: Competitor[] = [
 			"Frase has evolved from a content optimization platform into an Agentic SEO and GEO platform with over 80 AI-powered tools. Their approach includes content atomization, programmatic SEO from data, and AI crawler analytics. Covers both content creation and AI visibility tracking.",
 		category: "content",
 		ahrefsDR: 79,
+		ahrefsTraffic: 15355,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -223,6 +230,7 @@ export const competitors: Competitor[] = [
 			"BabyLoveGrowth offers a fully automated approach to AI visibility, combining content creation, backlink exchange through a network of 2,500+ partner sites, and a Reddit engagement agent. Positioned as an all-in-one autopilot for increasing AI citations through content distribution and link building.",
 		category: "content",
 		ahrefsDR: 76,
+		ahrefsTraffic: 1457,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -248,6 +256,7 @@ export const competitors: Competitor[] = [
 			"Profound was named the G2 AEO Leader in the inaugural G2 Grid report. They offer prompt volume estimates, Agent Analytics for tracking AI crawler behavior, and count enterprise customers including MongoDB, Figma, Zapier, and Ramp among their users. Featured in Fortune, WSJ, NYT, TechCrunch, and Financial Times.",
 		category: "tracking",
 		ahrefsDR: 75,
+		ahrefsTraffic: 23237,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -262,6 +271,7 @@ export const competitors: Competitor[] = [
 			emailAlerts: true,
 			dataExportApi: true,
 			contentGeneration: true,
+			whiteLabelAgency: true,
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
@@ -281,6 +291,7 @@ export const competitors: Competitor[] = [
 			"DataForSEO is an SEO data API provider that offers AI search tracking capabilities through their API. Their AEO offering provides programmatic access to AI search results, visibility metrics, and citation data. Built for developers and platforms that need to integrate AI visibility data into their own products.",
 		category: "api-developer",
 		ahrefsDR: 74,
+		ahrefsTraffic: 39908,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -307,6 +318,7 @@ export const competitors: Competitor[] = [
 			"Rankability combines traditional SEO expertise with AI search analysis, using NLP and entity extraction to understand how AI platforms interpret and recommend content. Their AI Search Analyzer evaluates content against AI ranking factors and provides optimization recommendations. Primarily agency-focused.",
 		category: "content",
 		ahrefsDR: 73,
+		ahrefsTraffic: 39532,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -335,6 +347,7 @@ export const competitors: Competitor[] = [
 			"AirOps is a Content Engineering platform that helps enterprises create AI-optimized content at scale. Their Page360 feature analyzes content performance in AI search, while their workflow automation handles content refresh, creation, and optimization. Focused on enterprise content operations with brand kits and team collaboration.",
 		category: "content",
 		ahrefsDR: 73,
+		ahrefsTraffic: 10127,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -362,6 +375,7 @@ export const competitors: Competitor[] = [
 			"Peec AI raised $29M in Series A funding. Based in Berlin, they offer prompt volume estimates, sentiment analysis, Looker Studio connectors, and AI visibility tracking across multiple LLMs.",
 		category: "tracking",
 		ahrefsDR: 71,
+		ahrefsTraffic: 1055,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -394,6 +408,7 @@ export const competitors: Competitor[] = [
 			"Nightwatch is an established SEO rank tracking platform that has added AI visibility tracking to their toolkit. With 190,000 tracking locations worldwide, they offer unified traditional SEO + AI search monitoring. Their Prompt Research feature helps discover relevant AI search queries.",
 		category: "seo-traditional",
 		ahrefsDR: 71,
+		ahrefsTraffic: 75823,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -425,6 +440,7 @@ export const competitors: Competitor[] = [
 			"Local Falcon was an early entrant in local SEO + AI visibility tracking, introducing the SAIV (Share of AI Visibility) metric. They combine geo-grid rank tracking for local search with AI visibility monitoring, targeting local businesses and multi-location brands. Available for purchase on Microns.",
 		category: "tracking",
 		ahrefsDR: 71,
+		ahrefsTraffic: 10792,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -455,6 +471,7 @@ export const competitors: Competitor[] = [
 			"OtterlyAI was named a Gartner Cool Vendor 2025 and reports over 20,000 users. Their GEO Audit evaluates 25+ on-page factors for AI readability. They also offer AI keyword research, crawler simulation, and industry benchmarks.",
 		category: "tracking",
 		ahrefsDR: 70,
+		ahrefsTraffic: 1726,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -487,6 +504,7 @@ export const competitors: Competitor[] = [
 			"Scrunch positions itself as an Agent Experience Platform (AXP), reformatting and optimizing content specifically for AI consumption. Their approach focuses on making content easily digestible by AI crawlers and language models, with site audit capabilities and AI-ready content recommendations.",
 		category: "content",
 		ahrefsDR: 70,
+		ahrefsTraffic: 1513,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -515,6 +533,7 @@ export const competitors: Competitor[] = [
 			"AthenaHQ focuses on detecting AI blindspots and turning visibility data into content workflows. Their conversation explorer lets you browse AI responses, while their persona-based auto-tagging and action recommendations help teams prioritize content creation.",
 		category: "tracking",
 		ahrefsDR: 58,
+		ahrefsTraffic: 464,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -545,6 +564,7 @@ export const competitors: Competitor[] = [
 			"Promptwatch scrapes actual AI user interfaces rather than using APIs, which they say provides \"real user experience\" data. They report tracking over 630 million citations and 5,700+ brands. Featured in WSJ and Axios, they offer tracking including shopping and geographic features.",
 		category: "tracking",
 		ahrefsDR: 56,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -578,6 +598,7 @@ export const competitors: Competitor[] = [
 			"LLMrefs takes a keyword-first approach to AI visibility tracking, automatically generating relevant prompts from your keywords (fan-out). This makes it more familiar for SEO professionals transitioning to AEO. Lists eBay, HubSpot, and NVIDIA among its users.",
 		category: "tracking",
 		ahrefsDR: 55,
+		ahrefsTraffic: 9988,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -609,6 +630,7 @@ export const competitors: Competitor[] = [
 			"Geneo provides AI visibility tracking with a focus on actionable optimization recommendations. Their platform monitors how AI search engines surface your brand and provides concrete steps to improve visibility. Includes content optimization features to help implement recommendations.",
 		category: "tracking",
 		ahrefsDR: 54,
+		ahrefsTraffic: 155,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -634,6 +656,7 @@ export const competitors: Competitor[] = [
 			"Gushwork raised $9M and offers an AI-powered SEO platform with a slightly different positioning than pure AEO tools. Their approach combines AI content creation with search optimization, using AI agents to handle SEO workflows end-to-end.",
 		category: "content",
 		ahrefsDR: 54,
+		ahrefsTraffic: 4149,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -658,6 +681,7 @@ export const competitors: Competitor[] = [
 			"Goodie (HiGoodie) offers AI visibility tracking with a focus on Amazon Rufus tracking for e-commerce brands. They also offer educational courses on AEO methodology.",
 		category: "tracking",
 		ahrefsDR: 51,
+		ahrefsTraffic: 1030,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -684,6 +708,7 @@ export const competitors: Competitor[] = [
 			"AEO Engine focuses on AI search optimization specifically for e-commerce businesses. Their platform helps online retailers optimize product pages, implement JSON-LD schema, and track visibility in AI shopping features. Tailored for Shopify and WooCommerce stores.",
 		category: "ecommerce",
 		ahrefsDR: 50,
+		ahrefsTraffic: 4766,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -710,6 +735,7 @@ export const competitors: Competitor[] = [
 			"Rebel Growth offers AEO tracking and consulting services, combining tooling with strategic guidance. Their approach focuses on growth outcomes rather than just visibility metrics, helping brands understand and improve their presence in AI search results.",
 		category: "tracking",
 		ahrefsDR: 50,
+		ahrefsTraffic: 254,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -734,6 +760,7 @@ export const competitors: Competitor[] = [
 			"Knowatoa offers AI visibility tracking built around their proprietary BISCUIT Framework methodology for understanding AI rankings. They provide multi-language and multi-location tracking, sentiment analysis, and Looker Studio / NinjaCat integrations.",
 		category: "tracking",
 		ahrefsDR: 48,
+		ahrefsTraffic: 37,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -763,6 +790,7 @@ export const competitors: Competitor[] = [
 			"AISEOTracker reports monitoring over 249,000 brands. Their Page Inspector shows how AI crawlers see your content (stripped HTML view), helping identify invisible content like dynamic pricing or JS-heavy elements. Offers a free visibility report.",
 		category: "tracking",
 		ahrefsDR: 48,
+		ahrefsTraffic: 213,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -789,6 +817,7 @@ export const competitors: Competitor[] = [
 			"Promptmonitor offers geographic tracking across 200+ countries, AI bot analytics, and bundled privacy-first web analytics. Their platform monitors AI visibility while also tracking when AI crawlers visit your site. Sold for $85,000 in a notable acquisition. Known for their privacy-first analytics bundle.",
 		category: "tracking",
 		ahrefsDR: 47,
+		ahrefsTraffic: 19,
 		status: "acquired",
 		features: {
 			multiLlmTracking: true,
@@ -821,6 +850,7 @@ export const competitors: Competitor[] = [
 			"Rank.ai combines AI content generation with rank tracking, offering tools to create content optimized for both traditional search and AI platforms. Their focus is on helping brands publish content that gets cited by AI search engines.",
 		category: "content",
 		ahrefsDR: 47,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -845,6 +875,7 @@ export const competitors: Competitor[] = [
 			"Quattr offers a unified SEO, AEO, and GEO platform powered by their GIGA AI Agent. Their approach combines traditional search optimization with AI visibility tracking and content generation. The GIGA agent automates content analysis, optimization, and creation workflows.",
 		category: "content",
 		ahrefsDR: 46,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -871,6 +902,7 @@ export const competitors: Competitor[] = [
 			"Gumshoe provides AI visibility intelligence, helping brands understand how they appear across AI search platforms. Their platform monitors mentions, tracks citations, and provides competitive analysis for AI search results.",
 		category: "tracking",
 		ahrefsDR: 45,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -892,6 +924,7 @@ export const competitors: Competitor[] = [
 			"Limy introduces the B2A (Business to Agents) concept, focusing on tracking revenue from AI referrals rather than just visibility. Their platform measures AI traffic attribution, conversion tracking, and provides optimization steps to improve AI-driven revenue. Unique in tying visibility directly to business outcomes.",
 		category: "tracking",
 		ahrefsDR: 44,
+		ahrefsTraffic: 14,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -917,6 +950,7 @@ export const competitors: Competitor[] = [
 			"Bear AI offers a Blog Agent that creates AI-optimized content designed to be cited by language models. Their platform combines content generation with visibility tracking, helping brands produce and monitor content that improves AI search presence.",
 		category: "content",
 		ahrefsDR: 41,
+		ahrefsTraffic: 792,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -931,6 +965,45 @@ export const competitors: Competitor[] = [
 		],
 	},
 	{
+		slug: "gauge",
+		name: "Gauge",
+		domain: "withgauge.com",
+		url: "https://www.withgauge.com/",
+		tagline: "AI visibility platform combining tracking, analysis, and content generation",
+		description:
+			"Gauge monitors and optimizes brand presence across ChatGPT, Gemini, Perplexity, Claude, Copilot, and more. It combines prompt tracking, citation intelligence, competitor analysis, and a content engine that generates AI-optimized articles. Their Action Center provides prioritized recommendations, and an agentic AI assistant helps develop strategy from the data.",
+		category: "tracking",
+		ahrefsDR: 40,
+		ahrefsTraffic: 165,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			promptVolumeEstimates: true,
+			socialMediaTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			biConnectors: true,
+			contentGeneration: true,
+		},
+		pricing: {
+			hasFree: true,
+			startingPrice: "$100/mo",
+			hasEnterprise: true,
+		},
+		highlights: [
+			"End-to-end platform: tracking, analysis, content generation, and action items",
+			"Agentic AI assistant for strategy development",
+			"Integrates with GA4, Google Search Console, Slack, and S3",
+		],
+	},
+	{
 		slug: "getmint",
 		name: "GetMint",
 		domain: "getmint.ai",
@@ -940,6 +1013,7 @@ export const competitors: Competitor[] = [
 			"GetMint takes a unique approach to AI visibility by offering content distribution through a network of 150,000+ partner media outlets. Their theory: publishing content through trusted media channels influences which sources AI models cite. Combines tracking with active citation building through media distribution.",
 		category: "content",
 		ahrefsDR: 39,
+		ahrefsTraffic: 96,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -964,6 +1038,7 @@ export const competitors: Competitor[] = [
 			"AIclicks provides done-for-you action plans powered by AI agents that identify visibility gaps and competitor opportunities. Their full-service approach means they don't just show you data — they create specific action plans for improving AI search presence.",
 		category: "tracking",
 		ahrefsDR: 38,
+		ahrefsTraffic: 5718,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -980,6 +1055,34 @@ export const competitors: Competitor[] = [
 		],
 	},
 	{
+		slug: "wildcard",
+		name: "Wildcard",
+		domain: "wild-card.ai",
+		url: "https://wild-card.ai/",
+		tagline:
+			"AI SEO platform for retail and ecommerce brands",
+		description:
+			"Wildcard is a Y Combinator-backed GEO platform that helps ecommerce brands track and optimize product visibility across AI shopping assistants like ChatGPT, Gemini, Amazon Rufus, and Perplexity. It offers product data enrichment, query intelligence, competitive positioning tracking, and agentic commerce protocols for instant AI-powered checkout.",
+		category: "ecommerce",
+		ahrefsDR: 38,
+		ahrefsTraffic: 5,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			shoppingTracking: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Y Combinator-backed, focused exclusively on AI commerce",
+			"Tracks product rankings across ChatGPT, Gemini, Amazon Rufus, and more",
+			"Agentic Commerce Protocol for instant checkout in AI assistants",
+		],
+	},
+	{
 		slug: "searchable",
 		name: "Searchable",
 		domain: "searchable.com",
@@ -989,6 +1092,7 @@ export const competitors: Competitor[] = [
 			"Searchable offers an AI search visibility platform that monitors how brands appear across AI-powered search engines. Their platform tracks mentions, citations, and competitive positioning in AI search results.",
 		category: "tracking",
 		ahrefsDR: 37,
+		ahrefsTraffic: 420,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1009,6 +1113,7 @@ export const competitors: Competitor[] = [
 			"LLM Pulse tracks AI visibility with AI prompt suggestions, sentiment tracking, and a Looker Studio connector for custom reporting. Their platform provides real-time alerts when visibility changes and helps discover relevant prompts to track.",
 		category: "tracking",
 		ahrefsDR: 37,
+		ahrefsTraffic: 3587,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1037,6 +1142,7 @@ export const competitors: Competitor[] = [
 			"AI Peekaboo offers white-label reports and GEO competitive intelligence designed for agencies and brand+agency partnerships. Their platform provides AI visibility tracking with branded reporting capabilities.",
 		category: "tracking",
 		ahrefsDR: 37,
+		ahrefsTraffic: 567,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1062,6 +1168,7 @@ export const competitors: Competitor[] = [
 			"CheckThat offers AI visibility tracking with the key advantage of no cold start — you get data from the first query. Built as a lead generation tool for GrowthX, their consulting service. Includes SEO-focused features alongside AI tracking.",
 		category: "tracking",
 		ahrefsDR: 36,
+		ahrefsTraffic: 5139,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1088,6 +1195,7 @@ export const competitors: Competitor[] = [
 			"BluefishAI focuses on enterprise AI commerce, helping Fortune 500 brands optimize their presence in AI-powered shopping experiences. Their platform monitors product visibility in AI shopping features and helps optimize product data for AI consumption.",
 		category: "ecommerce",
 		ahrefsDR: 35,
+		ahrefsTraffic: 445,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1112,6 +1220,7 @@ export const competitors: Competitor[] = [
 			"Parse maintains a database of over 219,000 brands, providing peer visibility analysis that shows how you compare against similar brands in AI search. Their large tracking dataset enables industry-level benchmarking and competitive analysis.",
 		category: "tracking",
 		ahrefsDR: 35,
+		ahrefsTraffic: 213,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1136,6 +1245,7 @@ export const competitors: Competitor[] = [
 			"AmIOnAI serves 7,000+ marketers with AI visibility tracking centered around actionable weekly plans. Their standout features include 'The Index' — public AI visibility leaderboards by category — and action plans with specific Reddit/LinkedIn/content recommendations and impact tracking.",
 		category: "tracking",
 		ahrefsDR: 34,
+		ahrefsTraffic: 2,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1166,6 +1276,7 @@ export const competitors: Competitor[] = [
 			"Lorelight was an AI visibility tracking platform that is shutting down. Their experience highlights the challenges of building in the AEO space — despite growing interest in AI search optimization, the competitive dynamics and unit economics proved difficult.",
 		category: "tracking",
 		ahrefsDR: 33,
+		ahrefsTraffic: 814,
 		status: "shutting-down",
 		features: {
 			multiLlmTracking: true,
@@ -1186,6 +1297,7 @@ export const competitors: Competitor[] = [
 			"ShowUpInAI takes a unique approach by focusing on getting your content indexed by AI search engines faster. Their core feature is automatic IndexNow submission to Bing (which powers ChatGPT, Copilot, and Perplexity). Also offers an AI View feature showing how AI crawlers see your pages.",
 		category: "tracking",
 		ahrefsDR: 33,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1201,6 +1313,46 @@ export const competitors: Competitor[] = [
 		],
 	},
 	{
+		slug: "omnia",
+		name: "Omnia",
+		domain: "useomnia.com",
+		url: "https://www.useomnia.com/",
+		tagline: "AI visibility platform to track and improve brand presence in AI answers",
+		description:
+			"Omnia helps marketing teams track and improve their brand visibility across ChatGPT, Perplexity, Google AI Overviews, and Google AI Mode. It discovers which prompts users ask AI engines, monitors brand positioning in responses, analyzes citation patterns, and provides personalized AI visibility roadmaps with prioritized action items.",
+		category: "tracking",
+		ahrefsDR: 31,
+		ahrefsTraffic: 1162,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			promptVolumeEstimates: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			keywordResearch: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+			contentGeneration: true,
+		},
+		pricing: {
+			hasFree: true,
+			startingPrice: "€79/mo",
+			hasEnterprise: true,
+		},
+		highlights: [
+			"Simulates real user behavior rather than API-only testing",
+			"Multi-language and multi-region tracking support",
+			"Trusted Agencies program for white-label partnerships",
+		],
+	},
+	{
 		slug: "getcito",
 		name: "GetCito",
 		domain: "getcito.com",
@@ -1210,6 +1362,7 @@ export const competitors: Competitor[] = [
 			"GetCito is one of the few open-source AEO tools, licensed under MIT. Their AI Crawlability Clinic evaluates how well AI bots can access and understand your content. They also offer GEO playbooks and consulting services for agencies.",
 		category: "open-source",
 		ahrefsDR: 27,
+		ahrefsTraffic: 34,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1238,6 +1391,7 @@ export const competitors: Competitor[] = [
 			"Meridian offers AI visibility tracking with a focus on content optimization and geographic targeting. Their platform helps brands understand how AI search results vary by location and provides content recommendations tailored to regional audiences.",
 		category: "tracking",
 		ahrefsDR: 25,
+		ahrefsTraffic: 194,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1263,6 +1417,7 @@ export const competitors: Competitor[] = [
 			"Peasy focuses on server-side AI traffic analytics, providing cookie-free and GDPR-compliant tracking of visitors arriving from AI platforms. Their privacy-first approach measures AI referral traffic and conversions without cookies or client-side scripts.",
 		category: "tracking",
 		ahrefsDR: 25,
+		ahrefsTraffic: 1,
 		status: "active",
 		features: {
 			visibilityScore: true,
@@ -1286,6 +1441,7 @@ export const competitors: Competitor[] = [
 			"Flip AEO provides AI visibility tracking and optimization tools, helping brands monitor and improve their presence in AI search results. Their platform covers the core AEO tracking features with an optimization-focused approach.",
 		category: "tracking",
 		ahrefsDR: 20,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1306,6 +1462,7 @@ export const competitors: Competitor[] = [
 			"Radarkit offers AI visibility tracking across 50+ countries with LLM referral traffic measurement. Their platform includes sentiment analysis, multi-language content tracking, and content crafting from citation analysis. Provides visibility into how AI platforms recommend your brand globally.",
 		category: "tracking",
 		ahrefsDR: 16,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1334,6 +1491,7 @@ export const competitors: Competitor[] = [
 			"SEOzast offers one of the most affordable AEO platforms at $19.99/month, targeting developers and small businesses. Includes AI content generation, Bing auto-indexing, and GitHub publishing integration. Developer-focused approach to AEO.",
 		category: "content",
 		ahrefsDR: 10,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1359,6 +1517,7 @@ export const competitors: Competitor[] = [
 			"Anvil provides AI visibility tracking and optimization for brands looking to improve their presence in AI search results. Their platform offers core AEO tracking features with a focus on brand visibility metrics.",
 		category: "tracking",
 		ahrefsDR: 10,
+		ahrefsTraffic: 13,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1379,6 +1538,7 @@ export const competitors: Competitor[] = [
 			"Petra Labs offers an AI visibility monitoring platform that tracks how brands appear in AI-powered search engines. Their platform provides visibility scoring and brand mention tracking across major AI platforms.",
 		category: "tracking",
 		ahrefsDR: 7,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1398,6 +1558,7 @@ export const competitors: Competitor[] = [
 			"Searchify provides an AI Search Score API supporting 30+ languages. Their developer-focused approach provides programmatic access to AI visibility metrics with extensive language coverage.",
 		category: "api-developer",
 		ahrefsDR: 5,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1424,6 +1585,7 @@ export const competitors: Competitor[] = [
 			"Datagum offers free tools including a JSON-LD schema generator, citation analyzer, and auto brand book generator. Their affordable approach to AEO focuses on helping brands improve their structured data and AI discoverability through free audit tools.",
 		category: "tracking",
 		ahrefsDR: 4,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1449,6 +1611,7 @@ export const competitors: Competitor[] = [
 			"Ecom.ai specializes in AEO for e-commerce businesses, offering done-for-you services including schema injection, product data optimization, and AI shopping visibility tracking. Their approach combines tooling with managed services for online retailers.",
 		category: "ecommerce",
 		ahrefsDR: 3,
+		ahrefsTraffic: 21,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1474,6 +1637,7 @@ export const competitors: Competitor[] = [
 			"Lantern focuses on AI traffic attribution, helping brands understand and measure website visitors arriving from AI platforms. Their platform combines AI referral tracking with traditional SEO metrics for a unified view of search performance.",
 		category: "tracking",
 		ahrefsDR: 3,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			visibilityScore: true,
@@ -1497,6 +1661,7 @@ export const competitors: Competitor[] = [
 			"Thirdeye focuses on real-time monitoring with visibility spike alerts and negative mention detection. Their platform tracks AI visibility across major platforms and provides instant alerts when significant changes occur, helping brands respond quickly to visibility shifts.",
 		category: "tracking",
 		ahrefsDR: 3,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1522,6 +1687,7 @@ export const competitors: Competitor[] = [
 			"Heeb offers an LLM Mentions API designed for developers and tool builders who want to integrate AI visibility data into their own products. Their API-first approach provides programmatic access to brand mention data with sentiment analysis and location-targeted queries.",
 		category: "api-developer",
 		ahrefsDR: 3,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1549,6 +1715,7 @@ export const competitors: Competitor[] = [
 			"EspyGo provides content strategy tools with an SEO score alongside AEO tracking capabilities. Their platform helps brands understand content performance in both traditional and AI search, with optimization recommendations.",
 		category: "content",
 		ahrefsDR: 2,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1573,6 +1740,7 @@ export const competitors: Competitor[] = [
 			"Bourd is a developer-focused AEO monitoring tool that provides AI visibility tracking through a technical, code-first interface. Designed for developers who want to integrate AI search monitoring into their workflows.",
 		category: "tracking",
 		ahrefsDR: 1,
+		ahrefsTraffic: 1,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1593,6 +1761,7 @@ export const competitors: Competitor[] = [
 			"Visble offers an AEO experimentation lab where brands can test and measure different content strategies' impact on AI visibility. Their affordable $29 starter plan and AI content analysis features make them accessible for smaller teams. Also offers a free visibility report.",
 		category: "tracking",
 		ahrefsDR: 1,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1618,6 +1787,7 @@ export const competitors: Competitor[] = [
 			"AI SERP Tracker monitors brand positions in AI-generated search results. Their platform tracks how your brand appears in AI Overviews, featured snippets, and other AI-enhanced search features.",
 		category: "tracking",
 		ahrefsDR: 0,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1637,6 +1807,7 @@ export const competitors: Competitor[] = [
 			"Sixthshop focuses on AI shopping visibility, offering an AI Shopping Visibility Index for e-commerce platforms. They track product visibility across Shopify, Amazon, and WooCommerce when AI platforms recommend shopping options.",
 		category: "ecommerce",
 		ahrefsDR: 0,
+		ahrefsTraffic: 1,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1661,6 +1832,7 @@ export const competitors: Competitor[] = [
 			"ChatGEO provides a hybrid SEO and GEO engine that optimizes content for both traditional and AI search through entity density analysis. Their free GEO scan helps brands understand their current AI visibility status.",
 		category: "content",
 		ahrefsDR: 0,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1687,6 +1859,7 @@ export const competitors: Competitor[] = [
 			"AllSearch provides AI visibility tracking with a focus on identifying GEO opportunities and actionable alerts. Their prompt intelligence features help discover relevant queries, while their alert system notifies teams of significant visibility changes.",
 		category: "tracking",
 		ahrefsDR: 0,
+		ahrefsTraffic: 1,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1713,6 +1886,7 @@ export const competitors: Competitor[] = [
 			"MentionStack combines GEO optimization with social media management for Reddit and Quora — two platforms that heavily influence AI search citations. Their approach recognizes that managing your brand presence on these forums directly impacts AI visibility.",
 		category: "tracking",
 		ahrefsDR: 0,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1736,6 +1910,7 @@ export const competitors: Competitor[] = [
 			"SearchOne offers a GEO proxy tool and AI crawler visibility checker that helps brands understand how AI search engines access and interpret their content. Their approach focuses on the technical aspects of AI discoverability.",
 		category: "tracking",
 		ahrefsDR: 0,
+		ahrefsTraffic: 6,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1760,6 +1935,7 @@ export const competitors: Competitor[] = [
 			"RankGPT combines AI visibility tracking with a citation builder that automatically publishes content designed to be cited by AI platforms. Their auto-publish feature creates and distributes content at scale to build AI citations.",
 		category: "content",
 		ahrefsDR: 0,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1784,6 +1960,7 @@ export const competitors: Competitor[] = [
 			"Gego Analytics is an open-source AEO analytics tool hosted on GitHub. It provides basic AI visibility tracking capabilities for developers who want to self-host their own AEO monitoring without proprietary dependencies.",
 		category: "open-source",
 		ahrefsDR: 0,
+		ahrefsTraffic: 0,
 		status: "active",
 		features: {
 			multiLlmTracking: true,
@@ -1808,6 +1985,7 @@ export const competitors: Competitor[] = [
 			"Microsoft Ads has published official guidance on optimizing content for inclusion in AI search answers, covering Copilot and Bing AI. While not a standalone product, their recommendations carry weight as they directly control the AI search engine that powers multiple AI assistants.",
 		category: "other",
 		ahrefsDR: 0,
+		ahrefsTraffic: 23238,
 		status: "active",
 		features: {},
 		highlights: [
@@ -1816,6 +1994,39 @@ export const competitors: Competitor[] = [
 		],
 		notes:
 			"Blog post with official optimization guidance, not a competitor product",
+	},
+	{
+		slug: "geo-aeo-tracker",
+		name: "GEO/AEO Tracker",
+		domain: "github.com",
+		url: "https://github.com/danishashko/geo-aeo-tracker",
+		tagline: "Open-source, self-hosted AI visibility dashboard",
+		description:
+			"GEO/AEO Tracker is an open-source, local-first dashboard for monitoring brand visibility across six AI platforms: ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, and Grok. It stores data client-side in IndexedDB with no external database required. Users provide their own API keys for data fetching (Bright Data) and LLM inference (OpenRouter/Gemini).",
+		category: "open-source",
+		ahrefsDR: 97,
+		ahrefsTraffic: 37615600,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			openSource: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Self-hosted with local-first data storage (IndexedDB)",
+			"Tracks 6 AI platforms including Grok and Google AI Overview",
+			"MIT-licensed with BYO API keys model",
+		],
 	},
 ];
 
@@ -1827,34 +2038,140 @@ export function getComparisonSlug(competitor: Competitor): string {
 	return `elmo-vs-${competitor.slug}`;
 }
 
-const maxDRSquared = Math.max(...competitors.map((c) => c.ahrefsDR * c.ahrefsDR));
+/**
+ * Hardcoded AEO popularity ranking — most popular/prominent AI visibility
+ * tools first. This determines both display order and the A–F grade.
+ *
+ * Ranking criteria (in priority order):
+ *   1. Is AI visibility / AEO the tool's PRIMARY product? Pure AEO trackers
+ *      rank above SEO suites or content platforms that added AEO features.
+ *   2. Market traction as an AEO tool specifically — funding, notable
+ *      customers, press coverage, user counts, industry recognition.
+ *   3. Feature depth in core AEO capabilities (multi-LLM tracking,
+ *      visibility scores, citation analytics, competitor benchmarking).
+ *   4. General web authority (DR/traffic) is a minor tiebreaker only.
+ *
+ * Grade thresholds (by position in this list):
+ *   A = top ~8%   B = next ~13%   C = next ~22%   D = next ~27%   F = rest
+ *
+ * When adding a new tool, insert its slug at the appropriate position
+ * based on the criteria above. Do NOT append to the end.
+ */
+const aeoPopularityRanking: string[] = [
+	// --- Tier A: Well-known, established AEO-focused tools with real traction ---
+	"profound",           // G2 AEO Leader, enterprise (MongoDB, Figma, Zapier), Fortune/WSJ/NYT press
+	"otterly-ai",         // Gartner Cool Vendor 2025, 20k+ users, comprehensive feature set
+	"peec-ai",            // $29M Series A, Looker Studio connector, Berlin-based
+	"writesonic",         // 120M AI conversation dataset, combined tracking + content
 
-const popularityMap = new Map(
-	competitors.map((c) => [
-		c.slug,
-		maxDRSquared > 0
-			? ((c.ahrefsDR * c.ahrefsDR) / maxDRSquared) * 5
-			: 0,
-	]),
+	// --- Tier B: Known/growing AEO tools ---
+	"se-ranking",         // All-in-one SEO with dedicated AI Overviews + ChatGPT trackers
+	"local-falcon",       // Early AEO entrant, SAIV metric, Looker Studio integration
+	"nightwatch",         // Traditional rank tracker with AI search tracking
+	"athenahq",           // AI search analytics with prompt-level insights
+	"promptwatch",        // Focused prompt monitoring tool
+	"amplitude",          // Product analytics giant adding AEO features
+	"frase",              // Agentic SEO/GEO platform, 80+ AI tools
+
+	// --- Tier C: Niche/emerging AEO tools with some traction ---
+	"llmrefs",            // Citation tracking specialist
+	"goodie",             // AI visibility tracking with content optimization
+	"knowatoa",           // Multi-LLM tracking with competitor benchmarking
+	"aiseotracker",       // Dedicated AEO tracker
+	"geneo",              // AI visibility platform
+	"scrunch",            // Content + AI tracking platform
+	"airops",             // Content engineering with Page360 AI analysis
+	"rankability",        // AI Search Analyzer with NLP/entity focus
+	"promptmonitor",      // Prompt monitoring and brand tracking
+	"gumshoe",            // AI search monitoring
+	"gauge",              // AI visibility measurement
+	"quattr",             // SEO + AEO content platform
+	"rank-ai",            // AI-powered content optimization
+	"aeo-engine",         // E-commerce focused AEO
+	"rebel-growth",       // AI visibility tracking
+	"gushwork",           // Content + AI optimization
+	"babylovegrowth",     // Autopilot content + backlinks for AI citations
+
+	// --- Tier D: Early/small AEO tools ---
+	"aiclicks",           // AI click tracking
+	"searchable",         // AI search visibility
+	"llm-pulse",          // LLM monitoring
+	"ai-peekaboo",        // AI visibility checker
+	"checkthat",          // AI mention checking
+	"bluefish-ai",        // E-commerce AI visibility
+	"parse",              // AI search tracking
+	"amionai",            // "Am I on AI?" checker
+	"limy",               // AI visibility tracking
+	"bear-ai",            // AI content optimization
+	"getmint",            // Content + AI platform
+	"wildcard",           // E-commerce AI visibility
+	"showupinai",         // AI presence checker
+	"omnia",              // AI visibility tracking
+	"lorelight",          // AI visibility tracking
+	"getcito",            // Open-source citation tracker
+	"geo-aeo-tracker",    // Open-source self-hosted AEO dashboard, 80 GitHub stars
+	"meridian",           // AI search tracking
+	"peasy",              // AI visibility tracking
+	"flip-aeo",           // AEO tracking
+
+	// --- Tier F: Very new or minimal traction ---
+	"radarkit",
+	"seozast",
+	"anvil",
+	"petra-labs",
+	"searchify",
+	"datagum",
+	"ecom-ai",
+	"lantern",
+	"thirdeye",
+	"heeb",
+	"espygo",
+	"bourd",
+	"visble",
+	"ai-serp-tracker",
+	"sixthshop",
+	"chatgeo",
+	"allsearch",
+	"mentionstack",
+	"searchone",
+	"rankgpt",
+	"gego-analytics",
+];
+
+/**
+ * Tools where AI visibility is NOT the primary product — large platforms
+ * that added AEO features. Graded "N/A" and sorted after all ranked tools.
+ */
+const aeoNotApplicable = new Set([
+	"semrush-ai-toolkit",
+	"ahrefs-brand-radar",
+	"dataforseo",
+	"hubspot-aeo-grader",
+]);
+
+const rankingIndex = new Map(
+	aeoPopularityRanking.map((slug, i) => [slug, i]),
 );
 
-/** Popularity score normalized to 0–5, derived from squared domain authority. */
-export function getPopularity(competitor: Competitor): number {
-	return popularityMap.get(competitor.slug) ?? 0;
-}
-
-export function formatPopularity(competitor: Competitor): string {
-	const score = getPopularity(competitor);
-	if (score >= 0.1) return score.toFixed(1);
-	if (score >= 0.01) return score.toFixed(2);
-	return "<0.01";
+/** Position in the AEO popularity ranking (0-based). N/A and unranked tools sort last. */
+export function getPopularityRank(competitor: Competitor): number {
+	if (aeoNotApplicable.has(competitor.slug)) return aeoPopularityRanking.length + 1;
+	return rankingIndex.get(competitor.slug) ?? aeoPopularityRanking.length + 2;
 }
 
 export function getPopularityGrade(competitor: Competitor): string {
-	const score = getPopularity(competitor);
-	if (score >= 3) return "A";
-	if (score >= 1.5) return "B";
-	if (score >= 0.5) return "C";
-	if (score >= 0.1) return "D";
+	if (aeoNotApplicable.has(competitor.slug)) return "N/A";
+	const rank = rankingIndex.get(competitor.slug);
+	if (rank == null) return "F";
+	const total = aeoPopularityRanking.length;
+	if (rank < total * 0.08) return "A";
+	if (rank < total * 0.21) return "B";
+	if (rank < total * 0.43) return "C";
+	if (rank < total * 0.70) return "D";
 	return "F";
 }
+
+/** Competitors sorted by AEO popularity ranking. N/A tools appear last. */
+export const sortedCompetitors: Competitor[] = [...competitors].sort(
+	(a, b) => getPopularityRank(a) - getPopularityRank(b),
+);
