@@ -77,3 +77,5 @@ features/
 .cursor/
 apps/www/dist/
 apps/web/storybook-static/
+
+.claude/settings.local.json

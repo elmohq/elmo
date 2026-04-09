@@ -17,9 +17,9 @@ export {
 
 export {
 	competitors,
+	sortedCompetitors,
 	getCompetitorBySlug,
 	getComparisonSlug,
-	getPopularity,
-	formatPopularity,
+	getPopularityRank,
 	getPopularityGrade,
 } from "./data";
