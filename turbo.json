@@ -42,6 +42,7 @@
     "SENTRY_AUTH_TOKEN",
     "VITE_SENTRY_DSN",
     "VITE_POSTHOG_KEY",
+    "VITE_CHART_COLORS",
     "DISABLE_TELEMETRY"
   ],
   "tasks": {

@@ -12,6 +12,7 @@ import {
 	getBadgeClassName,
 	calculateVisibilityPercentages,
 	selectCompetitorsToDisplay,
+	type ChartDataPoint,
 } from "@/lib/chart-utils";
 import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 
@@ -51,7 +52,7 @@ function computeSoVChartData(
 	runs: PromptRunData[],
 	brand: Brand,
 	competitors: Competitor[],
-) {
+): ChartDataPoint[] | null {
 	if (runs.length === 0) return null;
 
 	// Count mentions
@@ -77,7 +78,7 @@ function computeSoVChartData(
 	if (totalMentions === 0) return null;
 
 	// Build chart data point with SoV percentages
-	const dataPoint: Record<string, number | string | null> = { date: "sov" };
+	const dataPoint: ChartDataPoint = { date: "sov" };
 	dataPoint[brand.id] = Math.round((brandMentions / totalMentions) * 100);
 	for (const comp of competitors) {
 		dataPoint[comp.id] = Math.round((competitorMentions[comp.id] / totalMentions) * 100);
