@@ -28,10 +28,12 @@ import { Route as AuthedAppBrandRouteImport } from './routes/_authed/app/$brand'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
 import { Route as AuthedAdminWizardTestRouteImport } from './routes/_authed/admin/wizard-test'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
+import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
 import { Route as ApiV1DocsIndexRouteImport } from './routes/api/v1/docs/index'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
 import { Route as AuthedAppBrandIndexRouteImport } from './routes/_authed/app/$brand/index'
+import { Route as ApiV1ReportsReportIdRouteImport } from './routes/api/v1/reports/$reportId'
 import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompts/$promptId'
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
@@ -142,6 +144,11 @@ const AuthedAdminToolsRoute = AuthedAdminToolsRouteImport.update({
   path: '/tools',
   getParentRoute: () => AuthedAdminRoute,
 } as any)
+const ApiV1ReportsIndexRoute = ApiV1ReportsIndexRouteImport.update({
+  id: '/api/v1/reports/',
+  path: '/api/v1/reports/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1PromptsIndexRoute = ApiV1PromptsIndexRouteImport.update({
   id: '/api/v1/prompts/',
   path: '/api/v1/prompts/',
@@ -161,6 +168,11 @@ const AuthedAppBrandIndexRoute = AuthedAppBrandIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthedAppBrandRoute,
+} as any)
+const ApiV1ReportsReportIdRoute = ApiV1ReportsReportIdRouteImport.update({
+  id: '/api/v1/reports/$reportId',
+  path: '/api/v1/reports/$reportId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1PromptsPromptIdRoute = ApiV1PromptsPromptIdRouteImport.update({
   id: '/api/v1/prompts/$promptId',
@@ -274,10 +286,12 @@ export interface FileRoutesByFullPath {
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
+  '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
+  '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
   '/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
@@ -309,10 +323,12 @@ export interface FileRoutesByTo {
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
+  '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/app/$brand': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
   '/api/v1/docs': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts': typeof ApiV1PromptsIndexRoute
+  '/api/v1/reports': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
   '/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
@@ -350,10 +366,12 @@ export interface FileRoutesById {
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
+  '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/_authed/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
+  '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/_authed/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/_authed/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
   '/_authed/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
@@ -391,10 +409,12 @@ export interface FileRouteTypes {
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
     | '/api/v1/prompts/$promptId'
+    | '/api/v1/reports/$reportId'
     | '/app/$brand/'
     | '/api/plausible/event/'
     | '/api/v1/docs/'
     | '/api/v1/prompts/'
+    | '/api/v1/reports/'
     | '/app/$brand/prompts/$promptId'
     | '/app/$brand/prompts/edit'
     | '/app/$brand/settings/brand'
@@ -426,10 +446,12 @@ export interface FileRouteTypes {
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
     | '/api/v1/prompts/$promptId'
+    | '/api/v1/reports/$reportId'
     | '/app/$brand'
     | '/api/plausible/event'
     | '/api/v1/docs'
     | '/api/v1/prompts'
+    | '/api/v1/reports'
     | '/app/$brand/prompts/$promptId'
     | '/app/$brand/prompts/edit'
     | '/app/$brand/settings/brand'
@@ -466,10 +488,12 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
     | '/api/v1/prompts/$promptId'
+    | '/api/v1/reports/$reportId'
     | '/_authed/app/$brand/'
     | '/api/plausible/event/'
     | '/api/v1/docs/'
     | '/api/v1/prompts/'
+    | '/api/v1/reports/'
     | '/_authed/app/$brand/prompts/$promptId'
     | '/_authed/app/$brand/prompts/edit'
     | '/_authed/app/$brand/settings/brand'
@@ -493,9 +517,11 @@ export interface RootRouteChildren {
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
+  ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
   ApiV1DocsIndexRoute: typeof ApiV1DocsIndexRoute
   ApiV1PromptsIndexRoute: typeof ApiV1PromptsIndexRoute
+  ApiV1ReportsIndexRoute: typeof ApiV1ReportsIndexRoute
   ApiPlausibleJsScriptIndexRoute: typeof ApiPlausibleJsScriptIndexRoute
 }
 
@@ -634,6 +660,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminToolsRouteImport
       parentRoute: typeof AuthedAdminRoute
     }
+    '/api/v1/reports/': {
+      id: '/api/v1/reports/'
+      path: '/api/v1/reports'
+      fullPath: '/api/v1/reports/'
+      preLoaderRoute: typeof ApiV1ReportsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/prompts/': {
       id: '/api/v1/prompts/'
       path: '/api/v1/prompts'
@@ -661,6 +694,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/$brand/'
       preLoaderRoute: typeof AuthedAppBrandIndexRouteImport
       parentRoute: typeof AuthedAppBrandRoute
+    }
+    '/api/v1/reports/$reportId': {
+      id: '/api/v1/reports/$reportId'
+      path: '/api/v1/reports/$reportId'
+      fullPath: '/api/v1/reports/$reportId'
+      preLoaderRoute: typeof ApiV1ReportsReportIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/v1/prompts/$promptId': {
       id: '/api/v1/prompts/$promptId'
@@ -888,9 +928,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
+  ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
   ApiV1DocsIndexRoute: ApiV1DocsIndexRoute,
   ApiV1PromptsIndexRoute: ApiV1PromptsIndexRoute,
+  ApiV1ReportsIndexRoute: ApiV1ReportsIndexRoute,
   ApiPlausibleJsScriptIndexRoute: ApiPlausibleJsScriptIndexRoute,
 }
 export const routeTree = rootRouteImport

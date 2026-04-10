@@ -42,7 +42,7 @@ export interface ReportJobData {
 export interface ReportJobContext {
 	data: ReportJobData;
 	log: (message: string) => void;
-	updateProgress: (progress: number) => void;
+	updateProgress: (progress: number) => void | Promise<void>;
 }
 
 interface PromptRunResult {
@@ -340,7 +340,7 @@ async function runPrompt(
 		competitorsMentioned: string[];
 	}> = [];
 
-	// Run 2 OpenAI, 2 Anthropic, 1 Google for each prompt (5 total runs)
+	// Run 2 OpenAI, 1 Anthropic, 1 Google for each prompt (4 total runs)
 	const runPromises = [
 		// 2 OpenAI runs
 		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
@@ -369,20 +369,7 @@ async function runPrompt(
 				competitorsMentioned,
 			};
 		}),
-		// 2 Anthropic runs
-		runWithAnthropic(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
-			return {
-				modelGroup: AI_MODELS.ANTHROPIC.GROUP as "anthropic",
-				model: AI_MODELS.ANTHROPIC.MODEL,
-				webSearchEnabled: true,
-				rawOutput,
-				webQueries,
-				textContent,
-				brandMentioned,
-				competitorsMentioned,
-			};
-		}),
+		// 1 Anthropic run
 		runWithAnthropic(promptValue).then(({ rawOutput, webQueries, textContent }) => {
 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
@@ -416,7 +403,7 @@ async function runPrompt(
 	const runResults = await Promise.all(runPromises);
 	runs.push(...runResults);
 
-	job.log(`Completed 5 runs for prompt: "${promptValue}"`);
+	job.log(`Completed 4 runs for prompt: "${promptValue}"`);
 
 	return {
 		promptValue,
@@ -553,7 +540,7 @@ export async function processReportJob(job: ReportJobContext) {
 		let completedCandidates = 0;
 
 		// Run candidates in batches
-		const batchSize = 10;
+		const batchSize = 20;
 		for (let i = 0; i < candidatePrompts.length; i += batchSize) {
 			const batch = candidatePrompts.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (candidate) => {

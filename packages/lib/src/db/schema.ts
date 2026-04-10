@@ -124,6 +124,7 @@ export const reports = pgTable(
 		brandName: text("brand_name").notNull(),
 		brandWebsite: text("brand_website").notNull(),
 		status: reportStatusEnum().notNull().default("pending"),
+		progress: integer("progress").notNull().default(0),
 		rawOutput: json("raw_output"),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 		completedAt: timestamp("completed_at", { withTimezone: true }),

@@ -13,6 +13,7 @@ import {
 	calculateVisibilityPercentages,
 	selectCompetitorsToDisplay,
 } from "@/lib/chart-utils";
+import { getSoVBadgeClasses, type PromptCategory } from "@workspace/lib/report-metrics";
 
 interface PromptRunData {
 	id: string;
@@ -38,6 +39,51 @@ interface PromptChartPrintProps {
 	// Whether this prompt has ever been evaluated (all-time)
 	// Used to distinguish "never evaluated" vs "no data in selected window"
 	hasEverBeenEvaluated?: boolean;
+	// Optional category for report display
+	category?: PromptCategory;
+}
+
+/**
+ * Compute SoV for each entity (brand + competitors) from prompt runs.
+ * Returns data shaped for BaseChartPrint: one data point with entity IDs as keys.
+ */
+function computeSoVChartData(
+	runs: PromptRunData[],
+	brand: Brand,
+	competitors: Competitor[],
+) {
+	if (runs.length === 0) return null;
+
+	// Count mentions
+	let brandMentions = 0;
+	const competitorMentions: Record<string, number> = {};
+	for (const comp of competitors) {
+		competitorMentions[comp.id] = 0;
+	}
+
+	for (const run of runs) {
+		if (run.brandMentioned) brandMentions++;
+		if (run.competitorsMentioned) {
+			for (const comp of competitors) {
+				if (run.competitorsMentioned.includes(comp.name)) {
+					competitorMentions[comp.id]++;
+				}
+			}
+		}
+	}
+
+	// Total mentions across all entities
+	const totalMentions = brandMentions + Object.values(competitorMentions).reduce((s, c) => s + c, 0);
+	if (totalMentions === 0) return null;
+
+	// Build chart data point with SoV percentages
+	const dataPoint: Record<string, number | string | null> = { date: "sov" };
+	dataPoint[brand.id] = Math.round((brandMentions / totalMentions) * 100);
+	for (const comp of competitors) {
+		dataPoint[comp.id] = Math.round((competitorMentions[comp.id] / totalMentions) * 100);
+	}
+
+	return [dataPoint];
 }
 
 export function PromptChartPrint({
@@ -48,6 +94,7 @@ export function PromptChartPrint({
 	competitors,
 	promptRuns,
 	hasEverBeenEvaluated = false,
+	category,
 }: PromptChartPrintProps) {
 	const fileName = `${brand.name}-${promptName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)}`;
 	const { chartRef, isDownloading, handleDownload } = useChartDownload(fileName);
@@ -58,30 +105,37 @@ export function PromptChartPrint({
 	// Check if we have no prompt runs
 	const hasNoRuns = promptSpecificRuns.length === 0;
 
-	// Calculate chart data from real prompt runs
-	const chartData = calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
+	// For report context: use SoV-based chart data. For dashboard: use visibility time-series.
+	const isReportContext = !!category;
+	const sovChartData = isReportContext ? computeSoVChartData(promptSpecificRuns, brand, competitors) : null;
+
+	// Dashboard mode: time-series visibility
+	const chartData = isReportContext ? (sovChartData ?? []) : calculateVisibilityPercentages(promptSpecificRuns, brand, competitors, lookback);
 
 	// Select top competitors by visibility, filling with alphabetical order if needed
 	const selectedCompetitors = selectCompetitorsToDisplay(competitors, chartData, 5);
 
-	// Check if there's any non-zero visibility data for brand or selected competitors
+	// Check if there's any non-zero data for brand or selected competitors
 	const hasVisibilityData = chartData.some((dataPoint) => {
-		// Check brand visibility
-		const brandVisibility = dataPoint[brand.id] as number;
-		if (brandVisibility !== null && brandVisibility !== undefined && Number(brandVisibility) > 0) {
+		const brandValue = dataPoint[brand.id] as number;
+		if (brandValue !== null && brandValue !== undefined && Number(brandValue) > 0) {
 			return true;
 		}
-
-		// Check selected competitor visibility
 		return selectedCompetitors.some((competitor) => {
-			const visibility = dataPoint[competitor.id] as number;
-			return visibility !== null && visibility !== undefined && Number(visibility) > 0;
+			const value = dataPoint[competitor.id] as number;
+			return value !== null && value !== undefined && Number(value) > 0;
 		});
 	});
 
-	// Get the last visibility value for the badge (brand visibility)
-	const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
-	const lastBrandVisibility = lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
+	// Badge value: SoV for reports, visibility for dashboard
+	const badgeValue = isReportContext
+		? (sovChartData ? (sovChartData[0][brand.id] as number) : null)
+		: (() => {
+			const lastDataPoint = chartData.filter((point) => brand && point[brand.id] !== null).pop();
+			return lastDataPoint && brand ? (lastDataPoint[brand.id] as number) : null;
+		})();
+
+	const badgeLabel = isReportContext ? "SoV" : "Visibility";
 
 	if (hasNoRuns) {
 		const message = hasEverBeenEvaluated
@@ -106,7 +160,7 @@ export function PromptChartPrint({
 		);
 	}
 
-	// Show "No brands found" message when there's no visibility data
+	// Show "No brands found" message when there's no data
 	if (!hasVisibilityData) {
 		return (
 			<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border">
@@ -131,17 +185,23 @@ export function PromptChartPrint({
 		);
 	}
 
+	const badgeClasses = isReportContext && badgeValue !== null
+		? getSoVBadgeClasses(badgeValue)
+		: badgeValue !== null
+			? { variant: getBadgeVariant(badgeValue) as "default" | "secondary" | "destructive", className: getBadgeClassName(badgeValue) }
+			: null;
+
 	return (
-	<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print-break-inside-avoid">
+	<Card ref={chartRef} className="py-3 gap-3 print:shadow-none print:border print:break-inside-avoid">
 		<CardHeader className="flex justify-between items-center px-3">
 			<CardTitle className="text-sm print:text-xs">{promptName}</CardTitle>
 			<div className="flex items-center gap-2">
-				{lastBrandVisibility !== null && (
+				{badgeClasses && badgeValue !== null && (
 					<Badge
-						variant={getBadgeVariant(lastBrandVisibility)}
-						className={`${getBadgeClassName(lastBrandVisibility)} print:text-xs`}
+						variant={badgeClasses.variant}
+						className={`${badgeClasses.className} print:text-xs`}
 					>
-						{lastBrandVisibility}% Visibility
+						{badgeValue}% {badgeLabel}
 					</Badge>
 				)}
 			</div>
