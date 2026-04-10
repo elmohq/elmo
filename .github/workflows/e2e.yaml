@@ -62,6 +62,9 @@ jobs:
       - name: Type check
         run: pnpm turbo check-types
 
+      - name: Unit tests
+        run: pnpm turbo test
+
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
 

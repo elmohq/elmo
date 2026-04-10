@@ -2,6 +2,64 @@ import type { DeploymentMode, EnvRequirement } from "./types";
 
 export type EnvMap = Record<string, string | undefined>;
 
+const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
+	olostep: { keys: ["OLOSTEP_API_KEY"], label: "OLOSTEP_API_KEY" },
+	brightdata: { keys: ["BRIGHTDATA_API_TOKEN"], label: "BRIGHTDATA_API_TOKEN" },
+	openrouter: { keys: ["OPENROUTER_API_KEY"], label: "OPENROUTER_API_KEY" },
+	"direct-openai": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
+	"direct-anthropic": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
+	dataforseo: { keys: ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"], label: "DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD" },
+};
+
+/**
+ * Parse SCRAPE_TARGETS to determine which resolved provider IDs are needed.
+ * Resolves "direct" to "direct-openai" or "direct-anthropic" based on the model.
+ */
+function parseResolvedProviders(scrapeTargets: string | undefined): string[] {
+	if (!scrapeTargets) return [];
+	const providers = new Set<string>();
+	for (const entry of scrapeTargets.split(",")) {
+		const parts = entry.trim().split(":");
+		if (parts.length < 2) continue;
+		const model = parts[0];
+		const provider = parts[1];
+		if (provider === "direct") {
+			providers.add(model === "claude" ? "direct-anthropic" : "direct-openai");
+		} else {
+			providers.add(provider);
+		}
+	}
+	return [...providers];
+}
+
+/**
+ * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
+ */
+function buildProviderKeyRequirements(): EnvRequirement[] {
+	const scrapeTargets = process.env.SCRAPE_TARGETS;
+	if (!scrapeTargets) return [];
+
+	const providers = parseResolvedProviders(scrapeTargets);
+	const requirements: EnvRequirement[] = [];
+	const seen = new Set<string>();
+
+	for (const provider of providers) {
+		const mapping = PROVIDER_KEY_MAP[provider];
+		if (!mapping || seen.has(mapping.label)) continue;
+		seen.add(mapping.label);
+
+		const useRequireAll = provider === "dataforseo";
+		requirements.push({
+			id: `PROVIDER_${provider.toUpperCase().replace("-", "_")}`,
+			label: mapping.label,
+			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
+			isSatisfied: useRequireAll ? requireAll(mapping.keys) : requireAny(mapping.keys),
+		});
+	}
+
+	return requirements;
+}
+
 export interface MissingEnvVar {
 	id: string;
 	label: string;
@@ -62,29 +120,12 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 		isSatisfied: requireAll(["DATABASE_URL"]),
 	},
 	{
-		id: "ANTHROPIC_API_KEY",
-		label: "ANTHROPIC_API_KEY",
-		description: "Anthropic API key.",
-		isSatisfied: requireAll(["ANTHROPIC_API_KEY"]),
+		id: "SCRAPE_TARGETS",
+		label: "SCRAPE_TARGETS",
+		description: "Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+		isSatisfied: requireAll(["SCRAPE_TARGETS"]),
 	},
-	{
-		id: "OPENAI_API_KEY",
-		label: "OPENAI_API_KEY",
-		description: "OpenAI API key.",
-		isSatisfied: requireAll(["OPENAI_API_KEY"]),
-	},
-	{
-		id: "DATAFORSEO_LOGIN",
-		label: "DATAFORSEO_LOGIN",
-		description: "DataForSEO username.",
-		isSatisfied: requireAll(["DATAFORSEO_LOGIN"]),
-	},
-	{
-		id: "DATAFORSEO_PASSWORD",
-		label: "DATAFORSEO_PASSWORD",
-		description: "DataForSEO password.",
-		isSatisfied: requireAll(["DATAFORSEO_PASSWORD"]),
-	},
+	...buildProviderKeyRequirements(),
 ];
 
 /**
