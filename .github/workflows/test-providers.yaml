@@ -32,7 +32,7 @@ jobs:
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: pnpm tsx apps/web/scripts/test-provider.ts --target "${{ inputs.target }}"
+        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ inputs.target }}"
 
   # When no target is provided, test all main targets in parallel
   matrix:
@@ -71,4 +71,4 @@ jobs:
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: pnpm tsx apps/web/scripts/test-provider.ts --target "${{ matrix.target }}"
+        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ matrix.target }}"
