@@ -23,26 +23,36 @@ Use it to see the target implementation for every file. `git diff main...jrhizor
 | `packages/lib/src/providers/types.ts` | `Provider`, `ScrapeResult`, `ProviderOptions`, `TestResult`, `ModelConfig` interfaces |
 | `packages/lib/src/providers/config.ts` | `parseScrapeTargets()` and `validateScrapeTargets()` — parse the `SCRAPE_TARGETS` env var format `model:provider[:version][:online]` |
 | `packages/lib/src/providers/config.test.ts` | Unit tests: basic parsing, multiple entries, OpenRouter colon-heavy version slugs, `online` flag, whitespace, error cases, validation |
-| `packages/lib/src/providers/models.ts` | `KNOWN_MODELS` map (chatgpt, claude, google-ai-mode, google-ai-overview, gemini, copilot, perplexity, grok), `getModelMeta()`, legacy migration helpers (`MODEL_TO_LEGACY_MODEL_GROUP`, `LEGACY_MODEL_GROUP_TO_MODEL`) |
-| `packages/lib/src/providers/models.test.ts` | Unit tests for model metadata and legacy mapping helpers |
-| `packages/lib/src/providers/index.ts` | Provider registry: `getProvider()`, `resolveProviderId()` ("direct" -> "direct-openai" or "direct-anthropic" based on model), `getAvailableProviders()`, `getAllProviders()`. Re-exports all types and config functions. Initially import stubs or skip provider implementations (they come in PR 2). |
+| `packages/lib/src/providers/models.ts` | `KNOWN_MODELS` map (chatgpt, claude, google-ai-mode, google-ai-overview, gemini, copilot, perplexity, grok), `getModelMeta()` |
+| `packages/lib/src/providers/models.test.ts` | Unit tests for model metadata |
+| `packages/lib/src/providers/index.ts` | Provider registry: `getProvider()`, `getAvailableProviders()`, `getAllProviders()`. Re-exports all types, models, and config functions. Imports provider stubs from `registry/` subdirectory (they get filled in PR 2). |
+| `packages/lib/src/providers/registry/olostep.ts` | Stub: `{ id: "olostep", name: "Olostep", isConfigured: () => false, run: () => throw }` |
+| `packages/lib/src/providers/registry/brightdata.ts` | Stub: `{ id: "brightdata", name: "BrightData", ... }` |
+| `packages/lib/src/providers/registry/openai-api.ts` | Stub: `{ id: "openai-api", name: "OpenAI API", ... }` |
+| `packages/lib/src/providers/registry/anthropic-api.ts` | Stub: `{ id: "anthropic-api", name: "Anthropic API", ... }` |
+| `packages/lib/src/providers/registry/dataforseo.ts` | Stub: `{ id: "dataforseo", name: "DataForSEO", ... }` |
+| `packages/lib/src/providers/registry/openrouter.ts` | Stub: `{ id: "openrouter", name: "OpenRouter", ... }` |
 
 ### Files to modify
 
 | File | What changes |
 |------|-------------|
-| `packages/config/src/env.ts` | Add `PROVIDER_KEY_MAP`, `parseResolvedProviders()`, `buildProviderKeyRequirements()`. Add `SCRAPE_TARGETS` to `COMMON_REQUIREMENTS`. Replace the 4 hardcoded provider key requirements (ANTHROPIC_API_KEY, OPENAI_API_KEY, DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD) with dynamic requirements derived from SCRAPE_TARGETS via `buildProviderKeyRequirements()`. |
+| `packages/config/src/env.ts` | Add `PROVIDER_KEY_MAP`, `parseProviders()`, `buildProviderKeyRequirements()`. Add `SCRAPE_TARGETS` to `COMMON_REQUIREMENTS`. Replace the 4 hardcoded provider key requirements (ANTHROPIC_API_KEY, OPENAI_API_KEY, DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD) with dynamic requirements derived from SCRAPE_TARGETS via `buildProviderKeyRequirements()`. |
 | `packages/config/src/types.ts` | If any type changes are needed for the new env requirement structure |
 
 ### Notes
 
-- `packages/lib/src/providers/index.ts` needs to export everything but the actual provider implementations (olostep, brightdata, etc.) don't exist yet. The registry map can either be empty or import placeholder stubs that throw "not implemented". The simplest approach: create index.ts with the full import list but wrap each import in a try/catch or simply add all 6 provider imports — and include the implementation files as empty stubs that will be filled in PR 2. Either approach works since nothing calls these providers yet.
-- **Preferred approach:** Create index.ts with all 6 provider imports, and create minimal stub files for each provider (just exporting an object with `id`, `name`, `isConfigured: () => false`, and `run: () => { throw new Error("not implemented") }`). This way index.ts has no conditional logic and PR 2 just fills in the real implementations.
+- Provider implementations live in `providers/registry/` as stubs. PR 2 fills in the real implementations.
+- Each stub exports `{ id, name, isConfigured: () => false, run: () => { throw new Error("not implemented") } }`.
 - The env.ts changes should be backward compatible: if `SCRAPE_TARGETS` is not set, `buildProviderKeyRequirements()` returns an empty array. However, `SCRAPE_TARGETS` is added as a required env var in COMMON_REQUIREMENTS, so deployments will need it going forward.
+- `turbo.json` gets new env vars added to `globalPassThroughEnv`: `SCRAPE_TARGETS`, `OLOSTEP_API_KEY`, `BRIGHTDATA_API_TOKEN`, `OPENROUTER_API_KEY`.
+- `packages/lib/package.json` gets a `"test": "vitest run"` script and a `"./providers"` export.
+- `packages/config/src/types.ts` widens `OptimizeButtonProps` from hardcoded model group unions to `string`.
+- Unit tests are added to CI in `.github/workflows/e2e.yaml` (`pnpm turbo test` step before the E2E tests).
 
 ### Acceptance criteria
 
-- `parseScrapeTargets("chatgpt:olostep:online,claude:direct:claude-sonnet-4")` returns the correct `ModelConfig[]`
+- `parseScrapeTargets("chatgpt:olostep:online,claude:anthropic-api:claude-sonnet-4")` returns the correct `ModelConfig[]`
 - All unit tests pass
 - Existing app still builds and runs (nothing references the new code yet)
 - `pnpm build` succeeds across the monorepo
@@ -59,30 +69,30 @@ Use it to see the target implementation for every file. `git diff main...jrhizor
 
 | File | What it does |
 |------|-------------|
-| `packages/lib/src/providers/olostep.ts` | Olostep provider: uses `olostep` SDK, supports chatgpt/google-ai-mode/google-ai-overview/gemini/copilot/perplexity/grok via parser IDs. Extracts text from `markdown_content`/`answer_markdown`/`text_content`. Extracts citations from `sources`/`links_on_page`/`inline_references`. Extracts web queries from `network_search_calls`/`search_model_queries`. |
-| `packages/lib/src/providers/brightdata.ts` | BrightData provider: uses `@brightdata/sdk`, version slug = dataset ID. Triggers dataset collection, polls via snapshot API with exponential backoff (2s-10s, 60 max attempts). Normalizes answer from multiple possible field names. |
-| `packages/lib/src/providers/direct-openai.ts` | Direct OpenAI: uses `@ai-sdk/openai` + `ai` SDK's `generateText`. Conditionally enables `webSearchPreview` tool based on `options.webSearch`. Default version: `gpt-5-mini`. |
-| `packages/lib/src/providers/direct-anthropic.ts` | Direct Anthropic: uses `@anthropic-ai/sdk`. Conditionally enables `web_search_20250305` tool. Default version: `claude-sonnet-4-20250514`. |
-| `packages/lib/src/providers/openrouter.ts` | OpenRouter: uses `@openrouter/sdk`. Version slug required (e.g., `openai/gpt-5-mini`). Appends `:online` to version slug when `webSearch` is true. |
-| `packages/lib/src/providers/dataforseo.ts` | DataForSEO: uses `dataforseo-client`. Google AI Mode only. Uses existing `dfsSerpApi` helper. |
+| `packages/lib/src/providers/registry/olostep.ts` | Olostep provider: uses `olostep` SDK, supports chatgpt/google-ai-mode/google-ai-overview/gemini/copilot/perplexity/grok via parser IDs. Extracts text from `markdown_content`/`answer_markdown`/`text_content`. Extracts citations from `sources`/`links_on_page`/`inline_references`. Extracts web queries from `network_search_calls`/`search_model_queries`. |
+| `packages/lib/src/providers/registry/brightdata.ts` | BrightData provider: uses `@brightdata/sdk`, version slug = dataset ID. Triggers dataset collection, polls via snapshot API with exponential backoff (2s-10s, 60 max attempts). Normalizes answer from multiple possible field names. |
+| `packages/lib/src/providers/registry/openai-api.ts` | OpenAI API: uses `@ai-sdk/openai` + `ai` SDK's `generateText`. Conditionally enables `webSearchPreview` tool based on `options.webSearch`. Default version: `gpt-5-mini`. |
+| `packages/lib/src/providers/registry/anthropic-api.ts` | Anthropic API: uses `@anthropic-ai/sdk`. Conditionally enables `web_search_20250305` tool. Default version: `claude-sonnet-4-20250514`. |
+| `packages/lib/src/providers/registry/openrouter.ts` | OpenRouter: uses `@openrouter/sdk`. Version slug required (e.g., `openai/gpt-5-mini`). Appends `:online` to version slug when `webSearch` is true. |
+| `packages/lib/src/providers/registry/dataforseo.ts` | DataForSEO: uses `dataforseo-client`. Google AI Mode only. Uses existing `dfsSerpApi` helper. |
 
 ### Files to modify
 
 | File | What changes |
 |------|-------------|
-| `packages/lib/src/providers/index.ts` | Replace stub imports with real provider implementations. The `providerMap` now points to working providers. |
-| `packages/lib/src/text-extraction.ts` | Add provider-specific extraction functions: `extractTextFromDirectOpenAI`, `extractTextFromDirectAnthropic`, `extractTextFromDataforseo`, `extractTextFromOpenRouter`, `extractTextFromOlostep`, `extractTextFromBrightdata`. Same for citations: `extractCitationsFromDirectOpenAI`, `extractCitationsFromDirectAnthropic`, etc. Update the `extractTextContent(rawOutput, providerOrEngine)` dispatcher to handle both new provider names and old engine names (backward compat). Same for `extractCitations()`. |
+| `packages/lib/src/providers/index.ts` | No changes needed — already imports from `registry/`. The stubs get replaced with real implementations in-place. |
+| `packages/lib/src/text-extraction.ts` | Add provider-specific extraction functions: `extractTextFromOpenAIAPI`, `extractTextFromAnthropicAPI`, `extractTextFromDataforseo`, `extractTextFromOpenRouter`, `extractTextFromOlostep`, `extractTextFromBrightdata`. Same for citations. Update the `extractTextContent(rawOutput, providerOrEngine)` dispatcher to handle both new provider names and old engine names (backward compat). Same for `extractCitations()`. |
 | `packages/lib/src/text-extraction.test.ts` | Update tests for new dispatcher paths |
 | `packages/lib/package.json` | Add dependencies: `@anthropic-ai/sdk`, `@ai-sdk/openai` (may already exist), `olostep`, `@brightdata/sdk`, `@openrouter/sdk` |
 | `package.json` (root) | Add workspace dependencies if needed: `olostep`, `@brightdata/sdk`, `@openrouter/sdk` |
 | `pnpm-lock.yaml` | Updated by install |
-| `turbo.json` | Add any new env vars to the `globalPassThroughEnv` list (OLOSTEP_API_KEY, BRIGHTDATA_API_TOKEN, OPENROUTER_API_KEY) |
+| `turbo.json` | Already updated in PR 1 — no changes needed. |
 
 ### Notes
 
 - Each provider's `run()` method returns a normalized `ScrapeResult` with `textContent`, `rawOutput`, `webQueries`, `citations`, and optional `modelVersion`.
-- The text extraction refactor adds **new** functions alongside the existing ones. The existing `extractTextFromOpenAI`, `extractTextFromAnthropic`, `extractTextFromGoogle` functions should be renamed to `extractTextFromDirectOpenAI`, `extractTextFromDirectAnthropic`, `extractTextFromDataforseo` respectively, and new functions added for `extractTextFromOlostep`, `extractTextFromBrightdata`, `extractTextFromOpenRouter`.
-- The `extractTextContent(rawOutput, providerOrEngine)` dispatcher should handle BOTH old values (`"openai"`, `"anthropic"`, `"google"`) and new values (`"direct-openai"`, `"direct-anthropic"`, `"dataforseo"`, `"olostep"`, etc.) for backward compatibility with stored data. Old code still passes the old engine names.
+- The text extraction refactor adds **new** functions alongside the existing ones. The existing `extractTextFromOpenAI`, `extractTextFromAnthropic`, `extractTextFromGoogle` functions should be renamed to `extractTextFromOpenAIAPI`, `extractTextFromAnthropicAPI`, `extractTextFromDataforseo` respectively, and new functions added for `extractTextFromOlostep`, `extractTextFromBrightdata`, `extractTextFromOpenRouter`.
+- The `extractTextContent(rawOutput, providerOrEngine)` dispatcher should handle BOTH old values (`"openai"`, `"anthropic"`, `"google"`) and new values (`"openai-api"`, `"anthropic-api"`, `"dataforseo"`, `"olostep"`, etc.) for backward compatibility with stored data. Old code still passes the old engine names.
 - The existing `ai-providers.ts` remains untouched — it still works for the current worker.
 
 ### Acceptance criteria
@@ -147,7 +157,7 @@ These are all mechanical `modelGroup`→`model` renames in function parameters a
 
 | File | What changes |
 |------|-------------|
-| `apps/worker/src/jobs/process-prompt.ts` | **Naming changes only.** Update `savePromptRun()` to accept `model`, `provider`, `version` instead of `modelGroup`, `model`. In `runModelIteration`, write `model: 'chatgpt'` (instead of `modelGroup: 'openai'`), `version: AI_MODELS.OPENAI.MODEL`, `provider: 'direct'`, etc. Keep calling `runWithOpenAI`, `runWithAnthropic`, `runWithDataForSEO` from `ai-providers.ts`. Keep iterating the hardcoded three model groups. In `saveCitations`, pass `model` instead of `modelGroup`. |
+| `apps/worker/src/jobs/process-prompt.ts` | **Naming changes only.** Update `savePromptRun()` to accept `model`, `provider`, `version` instead of `modelGroup`, `model`. In `runModelIteration`, write `model: 'chatgpt'` (instead of `modelGroup: 'openai'`), `version: AI_MODELS.OPENAI.MODEL`, `provider: 'openai-api'`, etc. Keep calling `runWithOpenAI`, `runWithAnthropic`, `runWithDataForSEO` from `ai-providers.ts`. Keep iterating the hardcoded three model groups. In `saveCitations`, pass `model` instead of `modelGroup`. |
 | `apps/worker/src/jobs/schedule-maintenance.ts` | Change `promptRuns.modelGroup` → `promptRuns.model` in queries. Change hardcoded `["openai", "anthropic", "google"]` to use `parseScrapeTargets()` to get model list (import from providers). |
 | `apps/worker/src/report-worker.ts` | Update the `PromptRunResult` interface: `modelGroup` → `model`, add `provider`, `model` → `version`. Update the code that constructs run results. Keep the inline `runWithOpenAI`/`runWithAnthropic`/`runWithDataForSEO` functions for now — they'll be replaced in PR 4. |
 
@@ -192,7 +202,7 @@ These are all mechanical `modelGroup`→`model` renames in function parameters a
 
 | File | What changes |
 |------|-------------|
-| `apps/worker/src/jobs/process-prompt.ts` | **Full refactor to use providers.** Import `Provider`, `ProviderOptions`, `parseScrapeTargets`, `resolveProviderId`, `getProvider` from `@workspace/lib/providers`. Replace the three hardcoded model group loops with: `parseScrapeTargets(process.env.SCRAPE_TARGETS)` → iterate `ModelConfig[]` → `resolveProviderId()` → `getProvider()` → `provider.run(model, prompt, options)`. Add brand-level `enabledModels` filtering: if `brand.enabledModels` is set, filter `allModels` to only those models. Update `runModelIteration` to accept `providerImpl: Provider` and `providerOptions: ProviderOptions` instead of separate model group params. Use `result.citations` from the provider's ScrapeResult directly instead of calling `extractCitations()` separately. Remove `modelGroup` parameter from `savePromptRun`/`saveCitations`. |
+| `apps/worker/src/jobs/process-prompt.ts` | **Full refactor to use providers.** Import `Provider`, `ProviderOptions`, `parseScrapeTargets`, `getProvider` from `@workspace/lib/providers`. Replace the three hardcoded model group loops with: `parseScrapeTargets(process.env.SCRAPE_TARGETS)` → iterate `ModelConfig[]` → `getProvider(config.provider)` → `provider.run(model, prompt, options)`. Add brand-level `enabledModels` filtering: if `brand.enabledModels` is set, filter `allModels` to only those models. Update `runModelIteration` to accept `providerImpl: Provider` and `providerOptions: ProviderOptions` instead of separate model group params. Use `result.citations` from the provider's ScrapeResult directly instead of calling `extractCitations()` separately. Remove `modelGroup` parameter from `savePromptRun`/`saveCitations`. |
 | `apps/worker/src/report-worker.ts` | Replace inline `runWithOpenAI`/`runWithAnthropic`/`runWithDataForSEO` functions with provider abstraction calls. Import providers, parse SCRAPE_TARGETS, use provider.run(). Remove direct Anthropic/OpenAI/DataForSEO SDK imports. This removes ~130 lines of duplicated API call code. |
 | `packages/lib/src/ai-providers.ts` | Gut this file — either remove it entirely or reduce to a thin re-export facade that maps old function names to new provider calls. The worker and report-worker no longer need it. Check if anything else imports from it; if not, delete it. |
 
@@ -263,7 +273,7 @@ These are all mechanical `modelGroup`→`model` renames in function parameters a
 
 | File | What changes |
 |------|-------------|
-| `apps/cli/src/index.ts` | New multi-provider setup flow. Present provider choices: Olostep (recommended), Direct APIs (OpenAI + Anthropic), BrightData, Custom/Manual. For each choice, prompt for relevant API keys and auto-generate SCRAPE_TARGETS. Set SCRAPE_TARGETS in the `.env` file. Remove the old individual-provider key prompts. |
+| `apps/cli/src/index.ts` | New multi-provider setup flow. Present provider choices: Olostep (recommended), OpenAI API + Anthropic API, BrightData, Custom/Manual. For each choice, prompt for relevant API keys and auto-generate SCRAPE_TARGETS. Set SCRAPE_TARGETS in the `.env` file. Remove the old individual-provider key prompts. |
 | `e2e/cli-driver.ts` | Update E2E test driver for new CLI flow if needed |
 
 ### Files to create (new)
