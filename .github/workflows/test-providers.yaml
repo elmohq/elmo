@@ -8,6 +8,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   # When a specific target is provided, run just that one
   single:
