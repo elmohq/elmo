@@ -28,16 +28,16 @@ describe("parseScrapeTargets", () => {
 		});
 
 		it("parses model:provider:version", () => {
-			const result = parseScrapeTargets("chatgpt:direct:gpt-5-mini");
+			const result = parseScrapeTargets("chatgpt:openai-api:gpt-5-mini");
 			expect(result).toEqual([
-				{ model: "chatgpt", provider: "direct", version: "gpt-5-mini", webSearch: false },
+				{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: false },
 			]);
 		});
 
 		it("parses model:provider:version:online", () => {
-			const result = parseScrapeTargets("chatgpt:direct:gpt-5-mini:online");
+			const result = parseScrapeTargets("chatgpt:openai-api:gpt-5-mini:online");
 			expect(result).toEqual([
-				{ model: "chatgpt", provider: "direct", version: "gpt-5-mini", webSearch: true },
+				{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: true },
 			]);
 		});
 	});
@@ -163,10 +163,17 @@ describe("validateScrapeTargets", () => {
 		).toThrow("requires API key");
 	});
 
-	it("throws when direct provider has no version", () => {
-		const configs = [{ model: "chatgpt", provider: "direct", webSearch: true }];
+	it("throws when openai-api provider has no version", () => {
+		const configs = [{ model: "chatgpt", provider: "openai-api", webSearch: true }];
 		expect(() =>
-			validateScrapeTargets(configs, makeGetProvider({ direct: configuredProvider })),
+			validateScrapeTargets(configs, makeGetProvider({ "openai-api": configuredProvider })),
+		).toThrow("requires a version slug");
+	});
+
+	it("throws when anthropic-api provider has no version", () => {
+		const configs = [{ model: "claude", provider: "anthropic-api", webSearch: true }];
+		expect(() =>
+			validateScrapeTargets(configs, makeGetProvider({ "anthropic-api": configuredProvider })),
 		).toThrow("requires a version slug");
 	});
 
@@ -177,10 +184,17 @@ describe("validateScrapeTargets", () => {
 		).toThrow("requires a version slug");
 	});
 
-	it("passes when direct provider has a version", () => {
-		const configs = [{ model: "chatgpt", provider: "direct", version: "gpt-5-mini", webSearch: true }];
+	it("passes when openai-api provider has a version", () => {
+		const configs = [{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: true }];
 		expect(() =>
-			validateScrapeTargets(configs, makeGetProvider({ direct: configuredProvider })),
+			validateScrapeTargets(configs, makeGetProvider({ "openai-api": configuredProvider })),
+		).not.toThrow();
+	});
+
+	it("passes when anthropic-api provider has a version", () => {
+		const configs = [{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-4", webSearch: true }];
+		expect(() =>
+			validateScrapeTargets(configs, makeGetProvider({ "anthropic-api": configuredProvider })),
 		).not.toThrow();
 	});
 

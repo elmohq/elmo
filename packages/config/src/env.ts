@@ -6,28 +6,21 @@ const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
 	olostep: { keys: ["OLOSTEP_API_KEY"], label: "OLOSTEP_API_KEY" },
 	brightdata: { keys: ["BRIGHTDATA_API_TOKEN"], label: "BRIGHTDATA_API_TOKEN" },
 	openrouter: { keys: ["OPENROUTER_API_KEY"], label: "OPENROUTER_API_KEY" },
-	"direct-openai": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
-	"direct-anthropic": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
+	"openai-api": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
+	"anthropic-api": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
 	dataforseo: { keys: ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"], label: "DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD" },
 };
 
 /**
- * Parse SCRAPE_TARGETS to determine which resolved provider IDs are needed.
- * Resolves "direct" to "direct-openai" or "direct-anthropic" based on the model.
+ * Parse SCRAPE_TARGETS to extract the unique provider IDs.
  */
-function parseResolvedProviders(scrapeTargets: string | undefined): string[] {
+function parseProviders(scrapeTargets: string | undefined): string[] {
 	if (!scrapeTargets) return [];
 	const providers = new Set<string>();
 	for (const entry of scrapeTargets.split(",")) {
 		const parts = entry.trim().split(":");
 		if (parts.length < 2) continue;
-		const model = parts[0];
-		const provider = parts[1];
-		if (provider === "direct") {
-			providers.add(model === "claude" ? "direct-anthropic" : "direct-openai");
-		} else {
-			providers.add(provider);
-		}
+		providers.add(parts[1]);
 	}
 	return [...providers];
 }
@@ -39,7 +32,7 @@ function buildProviderKeyRequirements(): EnvRequirement[] {
 	const scrapeTargets = process.env.SCRAPE_TARGETS;
 	if (!scrapeTargets) return [];
 
-	const providers = parseResolvedProviders(scrapeTargets);
+	const providers = parseProviders(scrapeTargets);
 	const requirements: EnvRequirement[] = [];
 	const seen = new Set<string>();
 

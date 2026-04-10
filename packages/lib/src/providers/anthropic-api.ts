@@ -1,8 +1,8 @@
 import type { Provider } from "./types";
 
-export const directAnthropic: Provider = {
-	id: "direct-anthropic",
-	name: "Direct Anthropic",
+export const anthropicApi: Provider = {
+	id: "anthropic-api",
+	name: "Anthropic API",
 	isConfigured: () => false,
 	run: () => { throw new Error("not implemented"); },
 };
