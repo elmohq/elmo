@@ -3,9 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "playwright test",
-    "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed",
+    "test:e2e": "playwright test",
     "seed": "tsx seed.ts"
   },
   "devDependencies": {

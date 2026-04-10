@@ -229,6 +229,7 @@ describe("text-extraction", () => {
 				url: "https://example.com/article",
 				title: "Example Article",
 				domain: "example.com",
+				citationIndex: 0,
 			});
 		});
 
@@ -339,6 +340,7 @@ describe("text-extraction", () => {
 				url: "https://example.com/source",
 				title: "Source Article",
 				domain: "example.com",
+				citationIndex: 0,
 			});
 		});
 

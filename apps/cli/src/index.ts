@@ -398,6 +398,23 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 		env.DATAFORSEO_PASSWORD = pwd;
 	}
 
+	// ── Scrape targets ──────────────────────────────────────────────────
+	// Default based on which API keys were provided
+	const defaultTargets = [
+		env.OPENAI_API_KEY ? "chatgpt:openai-api:gpt-5-mini:online" : null,
+		env.ANTHROPIC_API_KEY ? "claude:anthropic-api:claude-sonnet-4" : null,
+		env.DATAFORSEO_LOGIN ? "google-ai-mode:dataforseo:online" : null,
+	].filter(Boolean).join(",");
+
+	const scrapeTargets = await p.text({
+		message: "SCRAPE_TARGETS (model:provider[:version][:online], comma-separated)",
+		initialValue: defaultTargets || undefined,
+		placeholder: "chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4,google-ai-mode:dataforseo:online",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(scrapeTargets);
+	env.SCRAPE_TARGETS = scrapeTargets;
+
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
 		message: "Enter your email to receive product updates (optional)",
@@ -527,6 +544,12 @@ async function runInitCI(options: InitOptions, version: string): Promise<void> {
 		env.DATAFORSEO_LOGIN = process.env.ELMO_DATAFORSEO_LOGIN;
 		env.DATAFORSEO_PASSWORD =
 			process.env.ELMO_DATAFORSEO_PASSWORD ?? "";
+	}
+	if (process.env.ELMO_SCRAPE_TARGETS) {
+		env.SCRAPE_TARGETS = process.env.ELMO_SCRAPE_TARGETS;
+	} else {
+		// Default: use the direct API providers matching the old hardcoded behavior
+		env.SCRAPE_TARGETS = "chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4,google-ai-mode:dataforseo:online";
 	}
 
 	const composeYaml = buildComposeYaml({
