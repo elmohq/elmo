@@ -11,7 +11,7 @@
 #
 # Usage:
 #   bash e2e/run-local.sh          # Run the full E2E job
-#   pnpm test:e2e                  # Same thing via package.json
+#   pnpm test:e2e-local             # Same thing via package.json
 #
 set -euo pipefail
 

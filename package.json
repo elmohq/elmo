@@ -53,7 +53,8 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
-    "test:e2e": "bash e2e/run-local.sh",
+    "test:e2e": "pnpm --filter e2e test:e2e",
+    "test:e2e-local": "bash e2e/run-local.sh",
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
