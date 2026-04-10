@@ -2,20 +2,16 @@
  * /api/v1/reports/:reportId - External API endpoint for report status/data
  * Protected by API key authentication.
  *
- * GET: Poll report status. Returns structured JSON with SoV metrics when completed.
+ * GET: Poll report status. When completed, returns per-prompt snapshot data
+ *      (mentions with top-K competitors).
+ *      Consumers are responsible for computing SoV and other derived metrics.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import {
-	computeOverallSoV,
-	computePromptSoV,
-	computeCompetitorSoVs,
-	selectRepresentativePrompts,
-	type ReportPromptRun,
-} from "@workspace/lib/report-metrics";
+import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
 
 function isValidUUID(id: string): boolean {
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,19 +21,6 @@ function isValidUUID(id: string): boolean {
 function getReportIdFromPath(request: Request): string {
 	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
 	return decodeURIComponent(segments[segments.length - 1] || "");
-}
-
-function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-	try {
-		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-		const domainWithoutTld = domain.split(".")[0];
-		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
-	} catch {
-		return promptLower.includes(brandNameLower);
-	}
 }
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
@@ -74,56 +57,61 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						});
 					}
 
-					// Parse raw output and compute SoV metrics
+					const { searchParams } = new URL(request.url);
+
+					// Top-K params applied to each prompt's snapshot
+					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
+					const kMentions = Number.isNaN(kMentionsParam) ? 5 : Math.max(1, Math.min(50, kMentionsParam));
+
+					// Parse raw output
 					const rawOutput = report.rawOutput as {
 						competitors: Array<{ name: string; domain: string }>;
 						prompts: Array<{ value: string }>;
 						promptRuns: Array<{
 							promptValue: string;
 							runs: Array<{
+								modelGroup: string;
 								brandMentioned: boolean;
 								competitorsMentioned: string[];
 							}>;
 						}>;
 					};
 
-					// Build runs array
-					const runs: (ReportPromptRun & { promptValue: string })[] = [];
-					rawOutput.promptRuns.forEach((pr, promptIndex) => {
+					// Build per-prompt snapshot data
+					const allPromptSnapshots = rawOutput.promptRuns.map((pr) => {
+						const totalRuns = pr.runs.length;
+						let brandMentionsTotal = 0;
+						let competitorMentionsTotal = 0;
+						const competitorCounts: Record<string, number> = {};
+
 						for (const run of pr.runs) {
-							runs.push({
-								promptId: `prompt-${promptIndex + 1}`,
-								promptValue: pr.promptValue,
-								brandMentioned: run.brandMentioned,
-								competitorsMentioned: run.competitorsMentioned,
-							});
+							if (run.brandMentioned) brandMentionsTotal++;
+							for (const comp of run.competitorsMentioned) {
+								competitorCounts[comp] = (competitorCounts[comp] || 0) + 1;
+								competitorMentionsTotal++;
+							}
 						}
-					});
 
-					const overallSoV = computeOverallSoV(runs, rawOutput.competitors);
-					const competitorSoVs = computeCompetitorSoVs(runs, rawOutput.competitors);
+						// Sort competitors by count descending, take top K
+						const mentionsTopK = Object.entries(competitorCounts)
+							.map(([entity, count]) => ({ entity, count }))
+							.sort((a, b) => b.count - a.count)
+							.slice(0, kMentions);
 
-					// Compute per-prompt SoV
-					const promptSoVs = rawOutput.prompts.map((prompt, index) => {
-						const promptId = `prompt-${index + 1}`;
 						return {
-							...computePromptSoV(promptId, runs, rawOutput.competitors),
-							value: prompt.value,
-							isBranded: isPromptBranded(prompt.value, report.brandName, report.brandWebsite),
+							promptValue: pr.promptValue,
+							totalRuns,
+							mentions: {
+								mentionsTotal: brandMentionsTotal + competitorMentionsTotal,
+								brandMentionsTotal,
+								competitorMentionsTotal,
+								mentionsTopK,
+							},
 						};
 					});
 
-					// Select representative prompts
-					const selectedPrompts = selectRepresentativePrompts(
-						promptSoVs,
-						(id: string) => {
-							const idx = parseInt(id.replace("prompt-", "")) - 1;
-							const prompt = rawOutput.prompts[idx];
-							return prompt ? isPromptBranded(prompt.value, report.brandName, report.brandWebsite) : false;
-						},
-					);
-
-					const promptsWithMentions = promptSoVs.filter((p) => p.brandMentionCount > 0).length;
+					// Compute unstable derived stats
+					const unstable = computeReportUnstableStats(rawOutput);
 
 					return Response.json({
 						reportId: report.id,
@@ -132,31 +120,8 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						brandWebsite: report.brandWebsite,
 						createdAt: report.createdAt,
 						completedAt: report.completedAt,
-						data: {
-							overallSoV,
-							competitors: competitorSoVs.map((c) => ({
-								name: c.name,
-								sov: c.sov,
-								mentionCount: c.mentionCount,
-							})),
-							prompts: promptSoVs.map((p) => ({
-								value: p.value,
-								isBranded: p.isBranded,
-								sov: p.sov,
-								totalRuns: p.totalRuns,
-								brandMentionCount: p.brandMentionCount,
-								competitorMentions: p.competitorMentions,
-								category: selectedPrompts.find((s) => s.promptId === p.promptId)?.category ?? "neutral",
-							})),
-							summary: {
-								totalPromptsTested: rawOutput.prompts.length,
-								promptsWithBrandMentions: promptsWithMentions,
-								topCompetitors: competitorSoVs.slice(0, 5).map((c) => ({
-									name: c.name,
-									sov: c.sov,
-								})),
-							},
-						},
+						prompts: allPromptSnapshots,
+						unstable,
 					});
 				} catch (error) {
 					console.error("Error fetching report:", error);

@@ -403,6 +403,87 @@ export function analyzeByEngine(
 		.sort((a, b) => b.mentionRate - a.mentionRate);
 }
 
+// ---------- Report Unstable Stats ----------
+
+/** Input shape for computing unstable report stats from rawOutput. */
+export interface ReportRawPromptRuns {
+	competitors: ReportCompetitor[];
+	promptRuns: Array<{
+		promptValue: string;
+		runs: Array<{
+			brandMentioned: boolean;
+			competitorsMentioned: string[];
+		}>;
+	}>;
+}
+
+export interface UnstableCompetitorStats {
+	name: string;
+	sov: number;
+	mentionCount: number;
+}
+
+export interface ReportUnstableStats {
+	sov: number | null;
+	visibility: number;
+	totalPrompts: number;
+	totalPromptRuns: number;
+	promptsWithBrandMentions: number;
+	promptRunsWithBrandMentions: number;
+	competitors: UnstableCompetitorStats[];
+}
+
+/**
+ * Compute derived stats from report raw output.
+ * These are marked "unstable" because the format may change.
+ *
+ * - sov: brand_mentions / (brand_mentions + competitor_mentions), 0-1 float
+ * - visibility: brand_mentions / total_prompt_runs, 0-1 float (how often the brand appears at all)
+ * - competitors[].sov: competitor_mentions / total_mentions, 0-1 float
+ * - competitors[].mentionCount: number of prompt runs where this competitor was mentioned
+ */
+export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnstableStats {
+	// Flatten all runs into ReportPromptRun[]
+	const runs: ReportPromptRun[] = [];
+	let totalPromptRuns = 0;
+	const promptsWithBrand = new Set<number>();
+
+	raw.promptRuns.forEach((pr, promptIndex) => {
+		let promptHasBrand = false;
+		for (const run of pr.runs) {
+			runs.push({
+				promptId: `prompt-${promptIndex + 1}`,
+				brandMentioned: run.brandMentioned,
+				competitorsMentioned: run.competitorsMentioned,
+			});
+			totalPromptRuns++;
+			if (run.brandMentioned) promptHasBrand = true;
+		}
+		if (promptHasBrand) promptsWithBrand.add(promptIndex);
+	});
+
+	// Compute using internal helpers (which return 0-100 integers), then convert to 0-1 floats
+	const overallSoVPct = computeOverallSoV(runs, raw.competitors);
+	const competitorSoVs = computeCompetitorSoVs(runs, raw.competitors);
+
+	const brandMentionCount = runs.filter((r) => r.brandMentioned).length;
+	const visibility = totalPromptRuns === 0 ? 0 : brandMentionCount / totalPromptRuns;
+
+	return {
+		sov: overallSoVPct === null ? null : overallSoVPct / 100,
+		visibility,
+		totalPrompts: raw.promptRuns.length,
+		totalPromptRuns,
+		promptsWithBrandMentions: promptsWithBrand.size,
+		promptRunsWithBrandMentions: brandMentionCount,
+		competitors: competitorSoVs.map((c) => ({
+			name: c.name,
+			sov: c.sov / 100,
+			mentionCount: c.mentionCount,
+		})),
+	};
+}
+
 // ---------- Display Helpers ----------
 
 export function getSoVColor(sov: number | null): string {

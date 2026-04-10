@@ -8,12 +8,14 @@ import {
 	analyzeWebQueries,
 	analyzeCompetitorFrequency,
 	analyzeByEngine,
+	computeReportUnstableStats,
 	getSoVColor,
 	getSoVLevel,
 	type ReportPromptRun,
 	type ReportCompetitor,
 	type PromptSoV,
 	type FullPromptRun,
+	type ReportRawPromptRuns,
 } from "./report-metrics";
 
 const competitors: ReportCompetitor[] = [
@@ -485,6 +487,139 @@ describe("analyzeByEngine", () => {
 		];
 		const result = analyzeByEngine(runs);
 		expect(result[0].engine).toBe("perplexity");
+	});
+});
+
+describe("computeReportUnstableStats", () => {
+	it("computes all stats from raw prompt runs", () => {
+		const raw: ReportRawPromptRuns = {
+			competitors: [
+				{ name: "CompA", domain: "compa.com" },
+				{ name: "CompB", domain: "compb.com" },
+			],
+			promptRuns: [
+				{
+					promptValue: "best tools",
+					runs: [
+						{ brandMentioned: true, competitorsMentioned: ["CompA"] },
+						{ brandMentioned: false, competitorsMentioned: ["CompA", "CompB"] },
+						{ brandMentioned: true, competitorsMentioned: [] },
+					],
+				},
+				{
+					promptValue: "top software",
+					runs: [
+						{ brandMentioned: false, competitorsMentioned: ["CompB"] },
+						{ brandMentioned: false, competitorsMentioned: [] },
+					],
+				},
+			],
+		};
+
+		const stats = computeReportUnstableStats(raw);
+
+		expect(stats.totalPrompts).toBe(2);
+		expect(stats.totalPromptRuns).toBe(5);
+		expect(stats.promptsWithBrandMentions).toBe(1); // only first prompt has brand mentions
+		expect(stats.promptRunsWithBrandMentions).toBe(2); // 2 individual runs had brand mentioned
+
+		// visibility = brandMentions / totalPromptRuns = 2/5 = 0.4
+		expect(stats.visibility).toBe(2 / 5);
+
+		// sov = brandMentions / (brandMentions + competitorMentions) = 2 / (2 + 4) = 0.33
+		expect(stats.sov).toBe(33 / 100);
+
+		// Competitors should be sorted by SoV descending
+		expect(stats.competitors).toHaveLength(2);
+		const compA = stats.competitors.find((c) => c.name === "CompA")!;
+		const compB = stats.competitors.find((c) => c.name === "CompB")!;
+		expect(compA.mentionCount).toBe(2);
+		expect(compB.mentionCount).toBe(2);
+		// competitor sov values are 0-1 floats
+		expect(compA.sov).toBe(33 / 100);
+		expect(compB.sov).toBe(33 / 100);
+	});
+
+	it("returns null sov and 0 visibility when no mentions", () => {
+		const raw: ReportRawPromptRuns = {
+			competitors: [{ name: "CompA", domain: "compa.com" }],
+			promptRuns: [
+				{
+					promptValue: "test",
+					runs: [
+						{ brandMentioned: false, competitorsMentioned: [] },
+						{ brandMentioned: false, competitorsMentioned: [] },
+					],
+				},
+			],
+		};
+
+		const stats = computeReportUnstableStats(raw);
+		expect(stats.sov).toBeNull();
+		expect(stats.visibility).toBe(0);
+		expect(stats.promptsWithBrandMentions).toBe(0);
+		expect(stats.promptRunsWithBrandMentions).toBe(0);
+	});
+
+	it("handles empty prompt runs", () => {
+		const raw: ReportRawPromptRuns = {
+			competitors: [],
+			promptRuns: [],
+		};
+
+		const stats = computeReportUnstableStats(raw);
+		expect(stats.totalPrompts).toBe(0);
+		expect(stats.totalPromptRuns).toBe(0);
+		expect(stats.visibility).toBe(0);
+		expect(stats.sov).toBeNull();
+		expect(stats.competitors).toEqual([]);
+	});
+
+	it("returns 1.0 visibility and sov when only brand mentioned", () => {
+		const raw: ReportRawPromptRuns = {
+			competitors: [{ name: "CompA", domain: "compa.com" }],
+			promptRuns: [
+				{
+					promptValue: "brand query",
+					runs: [
+						{ brandMentioned: true, competitorsMentioned: [] },
+						{ brandMentioned: true, competitorsMentioned: [] },
+					],
+				},
+			],
+		};
+
+		const stats = computeReportUnstableStats(raw);
+		expect(stats.visibility).toBe(1);
+		expect(stats.sov).toBe(1);
+		expect(stats.promptsWithBrandMentions).toBe(1);
+	});
+
+	it("counts promptsWithBrandMentions correctly across multiple prompts", () => {
+		const raw: ReportRawPromptRuns = {
+			competitors: [],
+			promptRuns: [
+				{
+					promptValue: "p1",
+					runs: [{ brandMentioned: true, competitorsMentioned: [] }],
+				},
+				{
+					promptValue: "p2",
+					runs: [{ brandMentioned: false, competitorsMentioned: [] }],
+				},
+				{
+					promptValue: "p3",
+					runs: [
+						{ brandMentioned: false, competitorsMentioned: [] },
+						{ brandMentioned: true, competitorsMentioned: [] },
+					],
+				},
+			],
+		};
+
+		const stats = computeReportUnstableStats(raw);
+		expect(stats.totalPrompts).toBe(3);
+		expect(stats.promptsWithBrandMentions).toBe(2); // p1 and p3
 	});
 });
 

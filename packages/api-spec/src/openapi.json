@@ -204,113 +204,49 @@
 				},
 				"required": ["id", "brandName", "brandWebsite", "status", "createdAt"]
 			},
-			"ReportCompetitorSoV": {
+			"ReportPromptSnapshot": {
 				"type": "object",
+				"description": "Per-prompt snapshot of raw mention data from a report. Consumers compute SoV and other derived metrics.",
 				"properties": {
-					"name": {
+					"promptValue": {
 						"type": "string",
-						"description": "Competitor name"
-					},
-					"sov": {
-						"type": "integer",
-						"description": "Share of voice percentage"
-					},
-					"mentionCount": {
-						"type": "integer",
-						"description": "Total number of mentions"
-					}
-				},
-				"required": ["name", "sov", "mentionCount"]
-			},
-			"ReportPromptResult": {
-				"type": "object",
-				"properties": {
-					"value": {
-						"type": "string",
-						"description": "The prompt text"
-					},
-					"isBranded": {
-						"type": "boolean",
-						"description": "Whether the prompt contains the brand name"
-					},
-					"sov": {
-						"type": "integer",
-						"nullable": true,
-						"description": "Share of voice percentage for this prompt (null if no mentions)"
+						"description": "The prompt text that was evaluated"
 					},
 					"totalRuns": {
 						"type": "integer",
 						"description": "Number of evaluation runs for this prompt"
 					},
-					"brandMentionCount": {
+					"mentions": {
+						"$ref": "#/components/schemas/MentionsSummary"
+					}
+				},
+				"required": ["promptValue", "totalRuns", "mentions"]
+			},
+			"MentionsSummary": {
+				"type": "object",
+				"description": "Aggregated mention counts for a prompt across its evaluation runs.",
+				"properties": {
+					"mentionsTotal": {
+						"type": "integer",
+						"description": "Total brand + competitor mentions across all runs"
+					},
+					"brandMentionsTotal": {
 						"type": "integer",
 						"description": "Number of runs where the brand was mentioned"
 					},
-					"competitorMentions": {
-						"type": "object",
-						"additionalProperties": {
-							"type": "integer"
-						},
-						"description": "Map of competitor name to mention count"
-					},
-					"category": {
-						"type": "string",
-						"enum": ["strength", "opportunity", "neutral"],
-						"description": "Classification of this prompt (strength = high SoV, opportunity = room to grow)"
-					}
-				},
-				"required": ["value", "isBranded", "sov", "totalRuns", "brandMentionCount", "competitorMentions", "category"]
-			},
-			"ReportData": {
-				"type": "object",
-				"properties": {
-					"overallSoV": {
+					"competitorMentionsTotal": {
 						"type": "integer",
-						"nullable": true,
-						"description": "Overall share of voice across all prompts"
+						"description": "Total count of individual competitor mentions across all runs (a single run mentioning 3 competitors counts as 3)"
 					},
-					"competitors": {
+					"mentionsTopK": {
 						"type": "array",
 						"items": {
-							"$ref": "#/components/schemas/ReportCompetitorSoV"
+							"$ref": "#/components/schemas/MentionEntry"
 						},
-						"description": "Per-competitor SoV breakdown"
-					},
-					"prompts": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/ReportPromptResult"
-						},
-						"description": "Per-prompt results with SoV and category"
-					},
-					"summary": {
-						"type": "object",
-						"properties": {
-							"totalPromptsTested": {
-								"type": "integer",
-								"description": "Total number of prompts evaluated"
-							},
-							"promptsWithBrandMentions": {
-								"type": "integer",
-								"description": "Number of prompts where the brand was mentioned"
-							},
-							"topCompetitors": {
-								"type": "array",
-								"items": {
-									"type": "object",
-									"properties": {
-										"name": { "type": "string" },
-										"sov": { "type": "integer" }
-									},
-									"required": ["name", "sov"]
-								},
-								"description": "Top 5 competitors by SoV"
-							}
-						},
-						"required": ["totalPromptsTested", "promptsWithBrandMentions", "topCompetitors"]
+						"description": "Top-K competitor entities ranked by mention count"
 					}
 				},
-				"required": ["overallSoV", "competitors", "prompts", "summary"]
+				"required": ["mentionsTotal", "brandMentionsTotal", "competitorMentionsTotal", "mentionsTopK"]
 			},
 			"MentionEntry": {
 				"type": "object",
@@ -372,29 +308,7 @@
 						"description": "End of the queried date range (YYYY-MM-DD)"
 					},
 					"mentions": {
-						"type": "object",
-						"properties": {
-							"mentionsTotal": {
-								"type": "integer",
-								"description": "Total number of prompt evaluation runs in the date range"
-							},
-							"brandMentionsTotal": {
-								"type": "integer",
-								"description": "Number of runs where the brand was mentioned"
-							},
-							"competitorMentionsTotal": {
-								"type": "integer",
-								"description": "Number of runs where at least one competitor was mentioned"
-							},
-							"mentionsTopK": {
-								"type": "array",
-								"items": {
-									"$ref": "#/components/schemas/MentionEntry"
-								},
-								"description": "Top-K competitor entities ranked by mention count"
-							}
-						},
-						"required": ["mentionsTotal", "brandMentionsTotal", "competitorMentionsTotal", "mentionsTopK"]
+						"$ref": "#/components/schemas/MentionsSummary"
 					},
 					"citations": {
 						"type": "object",
@@ -978,7 +892,7 @@
 		"/reports/{reportId}": {
 			"get": {
 				"summary": "Get report status and data",
-				"description": "Poll a report's status. When the report is completed, returns structured JSON with Share of Voice metrics, per-prompt results, and competitive analysis.",
+				"description": "Poll a report's status. When completed, returns per-prompt snapshot data with raw mention counts. Consumers are responsible for computing SoV and other derived metrics from the raw data.",
 				"operationId": "getReport",
 				"tags": ["Reports"],
 				"parameters": [
@@ -991,11 +905,23 @@
 							"type": "string",
 							"format": "uuid"
 						}
+					},
+					{
+						"name": "kMentions",
+						"in": "query",
+						"required": false,
+						"description": "Number of top competitor entities to return in each prompt's mentionsTopK",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 50,
+							"default": 5
+						}
 					}
 				],
 				"responses": {
 					"200": {
-						"description": "Report status and data. When status is 'completed', the `data` field contains SoV metrics.",
+						"description": "Report status and data. When status is 'completed', includes per-prompt snapshot data with raw mention counts.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1028,9 +954,60 @@
 											"format": "date-time",
 											"nullable": true
 										},
-										"data": {
-											"$ref": "#/components/schemas/ReportData",
-											"description": "SoV metrics and analysis. Only present when status is 'completed'."
+										"prompts": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/ReportPromptSnapshot"
+											},
+											"description": "Per-prompt snapshot data. Only present when status is 'completed'."
+										},
+										"unstable": {
+											"type": "object",
+											"description": "Derived stats (SoV, visibility, etc.). Format may change between versions. Only present when status is 'completed'.",
+											"properties": {
+												"sov": {
+													"type": "number",
+													"nullable": true,
+													"minimum": 0,
+													"maximum": 1,
+													"description": "Overall share of voice (0-1): brand_mentions / (brand_mentions + competitor_mentions). Null when no mentions at all."
+												},
+												"visibility": {
+													"type": "number",
+													"minimum": 0,
+													"maximum": 1,
+													"description": "Brand visibility (0-1): brand_mentions / total_prompt_runs (how often the brand appears at all across all prompt runs)"
+												},
+												"totalPrompts": {
+													"type": "integer",
+													"description": "Total number of prompts evaluated"
+												},
+												"totalPromptRuns": {
+													"type": "integer",
+													"description": "Total number of prompt runs across all prompts (each prompt is executed multiple times across different AI engines)"
+												},
+												"promptsWithBrandMentions": {
+													"type": "integer",
+													"description": "Number of prompts where the brand was mentioned in at least one prompt run"
+												},
+												"promptRunsWithBrandMentions": {
+													"type": "integer",
+													"description": "Number of individual prompt runs where the brand was mentioned"
+												},
+												"competitors": {
+													"type": "array",
+													"items": {
+														"type": "object",
+														"properties": {
+															"name": { "type": "string", "description": "Competitor name" },
+															"sov": { "type": "number", "minimum": 0, "maximum": 1, "description": "Share of voice (0-1): this competitor's mentions / total mentions (brand + all competitors)" },
+															"mentionCount": { "type": "integer", "description": "Number of prompt runs where this competitor was mentioned" }
+														},
+														"required": ["name", "sov", "mentionCount"]
+													},
+													"description": "Per-competitor SoV breakdown, sorted by SoV descending"
+												}
+											}
 										}
 									},
 									"required": ["reportId", "status", "brandName", "brandWebsite", "createdAt"]
@@ -1042,30 +1019,32 @@
 									"brandWebsite": "acme.com",
 									"createdAt": "2026-04-08T10:00:00Z",
 									"completedAt": "2026-04-08T10:05:00Z",
-									"data": {
-										"overallSoV": 42,
-										"competitors": [
-											{ "name": "Competitor A", "sov": 35, "mentionCount": 28 },
-											{ "name": "Competitor B", "sov": 15, "mentionCount": 12 }
-										],
-										"prompts": [
-											{
-												"value": "best project management tools",
-												"isBranded": false,
-												"sov": 60,
-												"totalRuns": 4,
-												"brandMentionCount": 3,
-												"competitorMentions": { "Competitor A": 2 },
-												"category": "strength"
+									"prompts": [
+										{
+											"promptValue": "best project management tools",
+											"totalRuns": 4,
+											"mentions": {
+												"mentionsTotal": 7,
+												"brandMentionsTotal": 3,
+												"competitorMentionsTotal": 4,
+												"mentionsTopK": [
+													{ "entity": "Competitor A", "count": 2 },
+													{ "entity": "Competitor B", "count": 2 }
+												]
 											}
-										],
-										"summary": {
-											"totalPromptsTested": 70,
-											"promptsWithBrandMentions": 28,
-											"topCompetitors": [
-												{ "name": "Competitor A", "sov": 35 }
-											]
 										}
+									],
+									"unstable": {
+										"sov": 0.42,
+										"visibility": 0.6,
+										"totalPrompts": 70,
+										"totalPromptRuns": 280,
+										"promptsWithBrandMentions": 28,
+										"promptRunsWithBrandMentions": 168,
+										"competitors": [
+											{ "name": "Competitor A", "sov": 0.35, "mentionCount": 98 },
+											{ "name": "Competitor B", "sov": 0.15, "mentionCount": 42 }
+										]
 									}
 								}
 							}
