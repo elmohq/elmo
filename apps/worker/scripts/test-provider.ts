@@ -62,7 +62,7 @@ interface ValidationIssue {
 	severity: "error" | "warning";
 }
 
-function validateResult(result: ScrapeResult, providerId: string): ValidationIssue[] {
+function validateResult(result: ScrapeResult, providerId: string, webSearch: boolean): ValidationIssue[] {
 	const issues: ValidationIssue[] = [];
 
 	if (!result.textContent || result.textContent.length < MIN_TEXT_LENGTH) {
@@ -108,8 +108,18 @@ function validateResult(result: ScrapeResult, providerId: string): ValidationIss
 	if (result.citations.length === 0) {
 		issues.push({
 			field: "citations",
-			message: "No citations returned (may be expected for some engines/prompts)",
-			severity: "warning",
+			message: webSearch
+				? "No citations returned (expected when online is enabled)"
+				: "No citations returned (may be expected for some engines/prompts)",
+			severity: webSearch ? "error" : "warning",
+		});
+	}
+
+	if (webSearch && result.webQueries.length === 0) {
+		issues.push({
+			field: "webQueries",
+			message: "No web queries returned (expected when online is enabled)",
+			severity: "error",
 		});
 	}
 
@@ -153,7 +163,7 @@ async function main() {
 	}
 
 	const latency = Date.now() - start;
-	const issues = validateResult(result, providerId);
+	const issues = validateResult(result, providerId, config.webSearch);
 	const hasErrors = issues.some((i) => i.severity === "error");
 
 	log(`Latency:    ${latency}ms`, colors.dim);
