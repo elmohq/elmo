@@ -1,0 +1,74 @@
+name: Test Providers
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Single scrape target to test (e.g. "chatgpt:olostep:online"). Leave empty to test all.'
+        required: false
+        type: string
+
+jobs:
+  # When a specific target is provided, run just that one
+  single:
+    if: inputs.target != ''
+    name: "Test: ${{ inputs.target }}"
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - name: Test provider
+        env:
+          OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
+          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: pnpm tsx apps/web/scripts/test-provider.ts --target "${{ inputs.target }}"
+
+  # When no target is provided, test all main targets in parallel
+  matrix:
+    if: inputs.target == ''
+    name: "Test: ${{ matrix.target }}"
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - "chatgpt:olostep:online"
+          - "google-ai-mode:olostep:online"
+          - "google-ai-overview:olostep:online"
+          - "gemini:olostep:online"
+          - "copilot:olostep:online"
+          - "perplexity:olostep:online"
+          - "grok:olostep:online"
+          - "google-ai-mode:dataforseo:online"
+          - "chatgpt:openai-api:gpt-5-mini:online"
+          - "claude:anthropic-api:claude-sonnet-4-20250514"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - name: Test provider
+        env:
+          OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
+          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: pnpm tsx apps/web/scripts/test-provider.ts --target "${{ matrix.target }}"
