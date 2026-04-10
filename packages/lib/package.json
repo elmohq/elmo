@@ -21,6 +21,7 @@
     "./tag-utils": "./src/tag-utils.ts",
     "./website-excerpt": "./src/website-excerpt.ts",
     "./report-metrics": "./src/report-metrics.ts",
+    "./models": "./src/models/index.ts",
     "./providers": "./src/providers/index.ts"
   },
   "dependencies": {
