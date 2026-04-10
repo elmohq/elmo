@@ -20,6 +20,15 @@ const providerMap: Record<string, Provider> = {
 	openrouter,
 };
 
+/**
+ * Resolve a provider ID, handling any aliases.
+ * Currently a pass-through, but allows SCRAPE_TARGETS configs
+ * to be resolved consistently before calling getProvider().
+ */
+export function resolveProviderId(providerId: string, _model: string): string {
+	return providerId;
+}
+
 export function getProvider(id: string): Provider {
 	const p = providerMap[id];
 	if (!p) throw new Error(`Unknown provider: "${id}"`);
