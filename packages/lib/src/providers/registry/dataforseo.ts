@@ -1,4 +1,4 @@
-import type { Provider } from "./types";
+import type { Provider } from "../types";
 
 export const dataforseo: Provider = {
 	id: "dataforseo",

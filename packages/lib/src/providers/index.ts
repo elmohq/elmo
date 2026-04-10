@@ -1,14 +1,14 @@
 import type { Provider } from "./types";
-import { olostep } from "./olostep";
-import { brightdata } from "./brightdata";
-import { openaiApi } from "./openai-api";
-import { anthropicApi } from "./anthropic-api";
-import { dataforseo } from "./dataforseo";
-import { openrouter } from "./openrouter";
+import { olostep } from "./registry/olostep";
+import { brightdata } from "./registry/brightdata";
+import { openaiApi } from "./registry/openai-api";
+import { anthropicApi } from "./registry/anthropic-api";
+import { dataforseo } from "./registry/dataforseo";
+import { openrouter } from "./registry/openrouter";
 
 export type { Provider, ScrapeResult, ProviderOptions, TestResult, ModelConfig } from "./types";
-export { KNOWN_MODELS, getModelMeta } from "../models";
-export type { ModelMeta } from "../models";
+export { KNOWN_MODELS, getModelMeta } from "./models";
+export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
 
 const providerMap: Record<string, Provider> = {

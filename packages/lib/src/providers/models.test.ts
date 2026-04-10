@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getModelMeta } from ".";
+import { getModelMeta } from "./models";
 
 describe("getModelMeta", () => {
 	it("generates label and generic icon for unknown models", () => {
