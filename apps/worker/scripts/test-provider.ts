@@ -1,12 +1,13 @@
 #!/usr/bin/env tsx
 /**
- * Integration test for a scraping provider target.
+ * Integration test for scraping provider targets.
  * Exercises the same code paths as the worker against real provider APIs.
  * Validates text content, citations, and rawOutput round-trip re-extraction.
  *
  * Usage:
  *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online"
  *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online,gemini:olostep:online"
+ *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
  */
 
 import {
@@ -16,7 +17,7 @@ import {
 	type ScrapeResult,
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 
 const colors = {
 	reset: "\x1b[0m",
@@ -33,26 +34,39 @@ function log(message: string, color?: string) {
 	console.log(`${color || ""}${message}${colors.reset}`);
 }
 
-function parseArgs(): string {
+interface ParsedArgs {
+	target: string;
+	outputJson?: string;
+}
+
+function parseArgs(): ParsedArgs {
 	const argv = process.argv.slice(2);
+	let target: string | undefined;
+	let outputJson: string | undefined;
+
 	for (let i = 0; i < argv.length; i++) {
-		if (argv[i] === "--target" && argv[i + 1]) return argv[i + 1];
+		if (argv[i] === "--target" && argv[i + 1]) { target = argv[++i]; continue; }
+		if (argv[i] === "--output-json" && argv[i + 1]) { outputJson = argv[++i]; continue; }
 		if (argv[i] === "--help" || argv[i] === "-h") {
 			console.log(`
-Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets>
+Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets> [--output-json <path>]
 
   <scrape-targets>  Comma-separated SCRAPE_TARGETS entries, e.g. "chatgpt:olostep:online,gemini:olostep:online"
+  --output-json     Write results as JSON to the given path (for CI artifact collection)
 
 Examples:
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online"
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online,gemini:olostep:online"
-  pnpm tsx --env-file=.env scripts/test-provider.ts --target "claude:anthropic-api:claude-sonnet-4-20250514"
+  pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
 `);
 			process.exit(0);
 		}
 	}
-	console.error("Error: --target is required. Run with --help for usage.");
-	process.exit(1);
+	if (!target) {
+		console.error("Error: --target is required. Run with --help for usage.");
+		process.exit(1);
+	}
+	return { target, outputJson };
 }
 
 const TEST_PROMPT = "What are the most popular brands of running shoes?";
@@ -62,6 +76,19 @@ interface ValidationIssue {
 	field: string;
 	message: string;
 	severity: "error" | "warning";
+}
+
+export interface TargetResult {
+	target: string;
+	status: "pass" | "fail";
+	latency: number;
+	error?: string;
+	textLength: number;
+	citations: number;
+	webQueries: number;
+	webSearch: boolean;
+	sampleOutput: string;
+	issues: ValidationIssue[];
 }
 
 function validateResult(result: ScrapeResult, providerId: string, webSearch: boolean): ValidationIssue[] {
@@ -137,7 +164,7 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 	return issues;
 }
 
-async function runTarget(target: string): Promise<boolean> {
+async function runTarget(target: string): Promise<TargetResult> {
 	const [config] = parseScrapeTargets(target);
 	const providerId = config.provider;
 	const provider = getProvider(providerId);
@@ -161,19 +188,18 @@ async function runTarget(target: string): Promise<boolean> {
 		const errorMsg = error instanceof Error ? error.message : String(error);
 		log(`FAIL (${latency}ms)`, colors.red);
 		log(`  Error: ${errorMsg}`, colors.red);
-		if (process.env.GITHUB_STEP_SUMMARY) {
-			appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
-				`### :x: FAIL ${meta.label} via \`${providerId}\`${versionStr}`,
-				"",
-				`| Metric | Value |`,
-				`|--------|-------|`,
-				`| Target | \`${target}\` |`,
-				`| Latency | ${latency}ms |`,
-				`| Error | ${errorMsg.slice(0, 200)} |`,
-				"",
-			].join("\n"));
-		}
-		return false;
+		return {
+			target,
+			status: "fail",
+			latency,
+			error: errorMsg,
+			textLength: 0,
+			citations: 0,
+			webQueries: 0,
+			webSearch: config.webSearch,
+			sampleOutput: "",
+			issues: [],
+		};
 	}
 
 	const latency = Date.now() - start;
@@ -201,71 +227,90 @@ async function runTarget(target: string): Promise<boolean> {
 
 	console.log();
 
-	if (process.env.GITHUB_STEP_SUMMARY) {
-		const status = hasErrors ? ":x: FAIL" : ":white_check_mark: PASS";
-		const errors = issues.filter((i) => i.severity === "error");
-		const warnings = issues.filter((i) => i.severity === "warning");
-		const issueLines = [
-			...errors.map((i) => `| :x: | \`${i.field}\` | ${i.message} |`),
-			...warnings.map((i) => `| :warning: | \`${i.field}\` | ${i.message} |`),
-		];
-
-		const md = [
-			`### ${status} ${meta.label} via \`${providerId}\`${versionStr}`,
-			"",
-			`| Metric | Value |`,
-			`|--------|-------|`,
-			`| Target | \`${target}\` |`,
-			`| Latency | ${latency}ms |`,
-			`| Text length | ${result.textContent?.length ?? 0} chars |`,
-			`| Citations | ${result.citations.length} |`,
-			`| Web queries | ${result.webQueries.length} |`,
-			`| Web search | ${config.webSearch ? "enabled" : "disabled"} |`,
-			"",
-			...(issueLines.length > 0
-				? [
-					"| | Field | Issue |",
-					"|--|-------|-------|",
-					...issueLines,
-					"",
-				  ]
-				: []),
-			"<details><summary>Sample output</summary>",
-			"",
-			"```",
-			result.textContent?.slice(0, 500) ?? "(empty)",
-			"```",
-			"</details>",
-			"",
-		].join("\n");
-
-		appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
-	}
-
 	if (hasErrors) {
 		log("FAIL", colors.red);
-		return false;
 	} else {
 		log("PASS", colors.green);
-		return true;
 	}
+
+	return {
+		target,
+		status: hasErrors ? "fail" : "pass",
+		latency,
+		textLength: result.textContent?.length ?? 0,
+		citations: result.citations.length,
+		webQueries: result.webQueries.length,
+		webSearch: config.webSearch,
+		sampleOutput: result.textContent?.slice(0, 500) ?? "",
+		issues,
+	};
+}
+
+function writeGitHubSummary(results: TargetResult[]) {
+	if (!process.env.GITHUB_STEP_SUMMARY) return;
+
+	const passed = results.filter((r) => r.status === "pass").length;
+	const failed = results.filter((r) => r.status === "fail").length;
+	const total = results.length;
+	const overallStatus = failed > 0 ? `:x: ${failed} failed` : `:white_check_mark: All passed`;
+
+	const lines: string[] = [
+		`## Provider Test Results — ${overallStatus} (${passed}/${total})`,
+		"",
+		"| Status | Target | Latency | Error | Text Length | Citations | Web Queries | Web Search | Sample Output |",
+		"|--------|--------|---------|-------|-------------|-----------|-------------|------------|---------------|",
+	];
+
+	for (const r of results) {
+		const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
+		const error = r.error ? r.error.slice(0, 100).replace(/\|/g, "\\|") : "";
+		const sample = r.sampleOutput
+			? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
+			: "";
+		lines.push(
+			`| ${status} | \`${r.target}\` | ${r.latency}ms | ${error} | ${r.textLength} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
+		);
+	}
+
+	const allIssues = results.flatMap((r) =>
+		r.issues.map((i) => ({ target: r.target, ...i })),
+	);
+
+	if (allIssues.length > 0) {
+		lines.push("", "### Validation Issues", "");
+		lines.push("| Severity | Target | Field | Issue |");
+		lines.push("|----------|--------|-------|-------|");
+		for (const i of allIssues) {
+			const icon = i.severity === "error" ? ":x:" : ":warning:";
+			lines.push(`| ${icon} | \`${i.target}\` | \`${i.field}\` | ${i.message} |`);
+		}
+	}
+
+	lines.push("");
+	appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"));
 }
 
 async function main() {
-	const targetArg = parseArgs();
+	const { target: targetArg, outputJson } = parseArgs();
 	const targets = targetArg.split(",").map((t) => t.trim()).filter(Boolean);
 
-	let passed = 0;
-	let failed = 0;
+	const results: TargetResult[] = [];
 	for (const target of targets) {
-		const ok = await runTarget(target);
-		if (ok) passed++;
-		else failed++;
+		results.push(await runTarget(target));
 	}
+
+	const passed = results.filter((r) => r.status === "pass").length;
+	const failed = results.filter((r) => r.status === "fail").length;
 
 	if (targets.length > 1) {
 		log(`\n${"=".repeat(40)}`, colors.bright);
 		log(`Results: ${passed} passed, ${failed} failed out of ${targets.length} targets`, failed > 0 ? colors.red : colors.green);
+	}
+
+	if (outputJson) {
+		writeFileSync(outputJson, JSON.stringify(results, null, 2));
+	} else {
+		writeGitHubSummary(results);
 	}
 
 	if (failed > 0) process.exit(1);

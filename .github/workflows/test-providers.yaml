@@ -92,4 +92,86 @@ jobs:
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ matrix.target }}"
+        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ matrix.target }}" --output-json result.json
+      - name: Sanitize artifact name
+        if: always()
+        id: artifact
+        run: echo "name=result-$(echo '${{ matrix.target }}' | tr ':' '-')" >> $GITHUB_OUTPUT
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: result.json
+          retention-days: 1
+
+  summary:
+    if: inputs.target == '' && always()
+    needs: [matrix]
+    name: Summary
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - name: Download results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: results
+      - name: Generate summary
+        run: |
+          node -e '
+          const fs = require("fs");
+          const path = require("path");
+
+          const resultsDir = "results";
+          const allResults = [];
+
+          for (const dir of fs.readdirSync(resultsDir)) {
+            const file = path.join(resultsDir, dir, "result.json");
+            if (!fs.existsSync(file)) continue;
+            const data = JSON.parse(fs.readFileSync(file, "utf8"));
+            allResults.push(...(Array.isArray(data) ? data : [data]));
+          }
+
+          allResults.sort((a, b) => a.target.localeCompare(b.target));
+
+          const passed = allResults.filter(r => r.status === "pass").length;
+          const failed = allResults.filter(r => r.status === "fail").length;
+          const total = allResults.length;
+          const overall = failed > 0 ? `:x: ${failed} failed` : `:white_check_mark: All passed`;
+
+          const lines = [
+            `## Provider Test Results — ${overall} (${passed}/${total})`,
+            "",
+            "| Status | Target | Latency | Error | Text Length | Citations | Web Queries | Web Search | Sample Output |",
+            "|--------|--------|---------|-------|-------------|-----------|-------------|------------|---------------|",
+          ];
+
+          for (const r of allResults) {
+            const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
+            const error = (r.error || "").slice(0, 100).replace(/\|/g, "\\|");
+            const sample = r.sampleOutput
+              ? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
+              : "";
+            lines.push(
+              `| ${status} | \`${r.target}\` | ${r.latency}ms | ${error} | ${r.textLength} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`
+            );
+          }
+
+          const allIssues = allResults.flatMap(r =>
+            (r.issues || []).map(i => ({ target: r.target, ...i }))
+          );
+
+          if (allIssues.length > 0) {
+            lines.push("", "### Validation Issues", "");
+            lines.push("| Severity | Target | Field | Issue |");
+            lines.push("|----------|--------|-------|-------|");
+            for (const i of allIssues) {
+              const icon = i.severity === "error" ? ":x:" : ":warning:";
+              lines.push(`| ${icon} | \`${i.target}\` | \`${i.field}\` | ${i.message} |`);
+            }
+          }
+
+          lines.push("");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"));
+          console.log(`Wrote summary for ${total} targets (${passed} passed, ${failed} failed)`);
+          '
