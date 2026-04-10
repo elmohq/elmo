@@ -345,14 +345,14 @@ function ReportRenderPage() {
 
 				{competitorFreq.length > 0 && (
 					<>
-						<Section title="Mention Rate" subtitle="How often each brand is mentioned across all tested prompts" />
+						<Section title="Mention Rate" subtitle="Each prompt is evaluated multiple times across AI engines — mentions show total appearances, unique prompts show how many distinct prompts include the brand" />
 						<div className="border border-slate-200 rounded-lg overflow-hidden print:pb-px">
 							<table className="w-full">
 								<thead>
 									<tr className="bg-slate-50 border-b border-slate-200">
 										<TH align="left">Brand</TH>
 										<TH align="center">Mentions</TH>
-										<TH align="center">Across Prompts</TH>
+										<TH align="center">Unique Prompts</TH>
 									</tr>
 								</thead>
 								<tbody className="divide-y divide-slate-100">
@@ -364,8 +364,8 @@ function ReportRenderPage() {
 										.map((c, i) => (
 										<tr key={`mention-${i}`} className={c.isBrand ? "bg-blue-50/30" : ""}>
 											<td className={`py-2 px-4 text-xs font-medium ${c.isBrand ? "text-slate-900" : "text-slate-700"}`}>{c.name}</td>
-											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.mentionCount}</td>
-											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.promptCount}</td>
+											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.mentionCount}<span className="text-slate-400">/{simpleRuns.length}</span></td>
+											<td className="py-2 px-4 text-center text-xs text-slate-600">{c.promptCount}<span className="text-slate-400">/{totalPrompts}</span></td>
 										</tr>
 									))}
 								</tbody>
