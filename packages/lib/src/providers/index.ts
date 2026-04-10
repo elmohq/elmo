@@ -27,19 +27,9 @@ export function getProvider(id: string): Provider {
 }
 
 export function getAvailableProviders(): Provider[] {
-	const seen = new Set<string>();
-	return Object.values(providerMap).filter((p) => {
-		if (seen.has(p.id)) return false;
-		seen.add(p.id);
-		return p.isConfigured();
-	});
+	return Object.values(providerMap).filter((p) => p.isConfigured());
 }
 
 export function getAllProviders(): Provider[] {
-	const seen = new Set<string>();
-	return Object.values(providerMap).filter((p) => {
-		if (seen.has(p.id)) return false;
-		seen.add(p.id);
-		return true;
-	});
+	return Object.values(providerMap);
 }
