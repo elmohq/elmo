@@ -1001,9 +1001,11 @@
 														"properties": {
 															"name": { "type": "string", "description": "Competitor name" },
 															"sov": { "type": "number", "minimum": 0, "maximum": 1, "description": "Share of voice (0-1): this competitor's mentions / total mentions (brand + all competitors)" },
-															"mentionCount": { "type": "integer", "description": "Number of prompt runs where this competitor was mentioned" }
+															"visibility": { "type": "number", "minimum": 0, "maximum": 1, "description": "Visibility (0-1): prompt runs mentioning this competitor / total prompt runs" },
+															"promptsWithMentions": { "type": "integer", "description": "Number of prompts where this competitor was mentioned in at least one run" },
+															"promptRunsWithMentions": { "type": "integer", "description": "Number of individual prompt runs where this competitor was mentioned" }
 														},
-														"required": ["name", "sov", "mentionCount"]
+														"required": ["name", "sov", "visibility", "promptsWithMentions", "promptRunsWithMentions"]
 													},
 													"description": "Per-competitor SoV breakdown, sorted by SoV descending"
 												}
@@ -1042,8 +1044,8 @@
 										"promptsWithBrandMentions": 28,
 										"promptRunsWithBrandMentions": 168,
 										"competitors": [
-											{ "name": "Competitor A", "sov": 0.35, "mentionCount": 98 },
-											{ "name": "Competitor B", "sov": 0.15, "mentionCount": 42 }
+											{ "name": "Competitor A", "sov": 0.35, "visibility": 0.35, "promptsWithMentions": 45, "promptRunsWithMentions": 98 },
+											{ "name": "Competitor B", "sov": 0.15, "visibility": 0.15, "promptsWithMentions": 20, "promptRunsWithMentions": 42 }
 										]
 									}
 								}

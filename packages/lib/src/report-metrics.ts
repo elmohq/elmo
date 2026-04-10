@@ -420,7 +420,9 @@ export interface ReportRawPromptRuns {
 export interface UnstableCompetitorStats {
 	name: string;
 	sov: number;
-	mentionCount: number;
+	visibility: number;
+	promptsWithMentions: number;
+	promptRunsWithMentions: number;
 }
 
 export interface ReportUnstableStats {
@@ -440,13 +442,19 @@ export interface ReportUnstableStats {
  * - sov: brand_mentions / (brand_mentions + competitor_mentions), 0-1 float
  * - visibility: brand_mentions / total_prompt_runs, 0-1 float (how often the brand appears at all)
  * - competitors[].sov: competitor_mentions / total_mentions, 0-1 float
- * - competitors[].mentionCount: number of prompt runs where this competitor was mentioned
+ * - competitors[].promptsWithMentions: number of prompts where this competitor was mentioned
+ * - competitors[].promptRunsWithMentions: number of prompt runs where this competitor was mentioned
+ * - competitors[].visibility: prompt runs with this competitor / total prompt runs, 0-1 float
  */
 export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnstableStats {
 	// Flatten all runs into ReportPromptRun[]
 	const runs: ReportPromptRun[] = [];
 	let totalPromptRuns = 0;
 	const promptsWithBrand = new Set<number>();
+
+	// Track per-competitor: which prompts and how many runs mention them
+	const competitorPrompts = new Map<string, Set<number>>();
+	const competitorRunCounts = new Map<string, number>();
 
 	raw.promptRuns.forEach((pr, promptIndex) => {
 		let promptHasBrand = false;
@@ -458,29 +466,47 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 			});
 			totalPromptRuns++;
 			if (run.brandMentioned) promptHasBrand = true;
+			for (const comp of run.competitorsMentioned) {
+				if (!competitorPrompts.has(comp)) competitorPrompts.set(comp, new Set());
+				competitorPrompts.get(comp)!.add(promptIndex);
+				competitorRunCounts.set(comp, (competitorRunCounts.get(comp) || 0) + 1);
+			}
 		}
 		if (promptHasBrand) promptsWithBrand.add(promptIndex);
 	});
 
-	// Compute using internal helpers (which return 0-100 integers), then convert to 0-1 floats
-	const overallSoVPct = computeOverallSoV(runs, raw.competitors);
-	const competitorSoVs = computeCompetitorSoVs(runs, raw.competitors);
-
+	// Compute SoV directly as 0-1 floats (avoid intermediate integer rounding)
 	const brandMentionCount = runs.filter((r) => r.brandMentioned).length;
+	let totalCompetitorMentions = 0;
+	for (const run of runs) {
+		for (const mentioned of run.competitorsMentioned) {
+			if (raw.competitors.some((c) => c.name === mentioned)) {
+				totalCompetitorMentions++;
+			}
+		}
+	}
+	const totalAllMentions = brandMentionCount + totalCompetitorMentions;
+
+	const sov = totalAllMentions === 0 ? null : brandMentionCount / totalAllMentions;
 	const visibility = totalPromptRuns === 0 ? 0 : brandMentionCount / totalPromptRuns;
 
 	return {
-		sov: overallSoVPct === null ? null : overallSoVPct / 100,
+		sov,
 		visibility,
 		totalPrompts: raw.promptRuns.length,
 		totalPromptRuns,
 		promptsWithBrandMentions: promptsWithBrand.size,
 		promptRunsWithBrandMentions: brandMentionCount,
-		competitors: competitorSoVs.map((c) => ({
-			name: c.name,
-			sov: c.sov / 100,
-			mentionCount: c.mentionCount,
-		})),
+		competitors: totalAllMentions === 0 ? [] : raw.competitors.map((comp) => {
+			const promptRunsWithMentions = competitorRunCounts.get(comp.name) || 0;
+			return {
+				name: comp.name,
+				sov: promptRunsWithMentions / totalAllMentions,
+				visibility: totalPromptRuns === 0 ? 0 : promptRunsWithMentions / totalPromptRuns,
+				promptsWithMentions: competitorPrompts.get(comp.name)?.size || 0,
+				promptRunsWithMentions,
+			};
+		}).sort((a, b) => b.sov - a.sov),
 	};
 }
 

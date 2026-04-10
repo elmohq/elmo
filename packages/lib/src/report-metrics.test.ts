@@ -526,18 +526,24 @@ describe("computeReportUnstableStats", () => {
 		// visibility = brandMentions / totalPromptRuns = 2/5 = 0.4
 		expect(stats.visibility).toBe(2 / 5);
 
-		// sov = brandMentions / (brandMentions + competitorMentions) = 2 / (2 + 4) = 0.33
-		expect(stats.sov).toBe(33 / 100);
+		// sov = brandMentions / (brandMentions + competitorMentions) = 2 / (2 + 4)
+		expect(stats.sov).toBe(2 / 6);
 
 		// Competitors should be sorted by SoV descending
 		expect(stats.competitors).toHaveLength(2);
 		const compA = stats.competitors.find((c) => c.name === "CompA")!;
 		const compB = stats.competitors.find((c) => c.name === "CompB")!;
-		expect(compA.mentionCount).toBe(2);
-		expect(compB.mentionCount).toBe(2);
-		// competitor sov values are 0-1 floats
-		expect(compA.sov).toBe(33 / 100);
-		expect(compB.sov).toBe(33 / 100);
+		// competitor sov = mentions / totalAllMentions = 2 / 6
+		expect(compA.sov).toBe(2 / 6);
+		expect(compB.sov).toBe(2 / 6);
+		// CompA mentioned in 2 runs across 1 prompt, CompB in 2 runs across 2 prompts
+		expect(compA.promptRunsWithMentions).toBe(2);
+		expect(compA.promptsWithMentions).toBe(1);
+		expect(compB.promptRunsWithMentions).toBe(2);
+		expect(compB.promptsWithMentions).toBe(2);
+		// visibility = runs with this competitor / total runs
+		expect(compA.visibility).toBe(2 / 5);
+		expect(compB.visibility).toBe(2 / 5);
 	});
 
 	it("returns null sov and 0 visibility when no mentions", () => {
