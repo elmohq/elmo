@@ -53,7 +53,7 @@ Examples:
 	process.exit(1);
 }
 
-const TEST_PROMPT = "What are the best running shoes?";
+const TEST_PROMPT = "What are the most popular brands of running shoes?";
 const MIN_TEXT_LENGTH = 50;
 
 interface ValidationIssue {
