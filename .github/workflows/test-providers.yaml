@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: 'Single scrape target to test (e.g. "chatgpt:olostep:online"). Leave empty to test all.'
+        description: 'Comma-separated scrape targets to test (e.g. "chatgpt:olostep:online,gemini:olostep:online"). Leave empty to test all.'
         required: false
         type: string
 
@@ -72,6 +72,8 @@ jobs:
           - "google-ai-mode:dataforseo:online"
           # Direct API
           - "chatgpt:openai-api:gpt-5-mini"
+          - "chatgpt:openai-api:gpt-5-mini:online"
+          - "claude:anthropic-api:claude-sonnet-4-20250514"
           - "claude:anthropic-api:claude-sonnet-4-20250514:online"
     steps:
       - uses: actions/checkout@v6

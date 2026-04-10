@@ -43,7 +43,7 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 let _client: Olostep | null = null;
 function getClient(): Olostep {
 	if (!_client) {
-		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY });
+		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY, maxRetries: 5, initialDelayMs: 2000 });
 	}
 	return _client;
 }

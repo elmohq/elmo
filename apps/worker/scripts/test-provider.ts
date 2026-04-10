@@ -6,6 +6,7 @@
  *
  * Usage:
  *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online"
+ *   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online,gemini:olostep:online"
  */
 
 import {
@@ -38,13 +39,13 @@ function parseArgs(): string {
 		if (argv[i] === "--target" && argv[i + 1]) return argv[i + 1];
 		if (argv[i] === "--help" || argv[i] === "-h") {
 			console.log(`
-Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-target>
+Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets>
 
-  <scrape-target>  A SCRAPE_TARGETS entry, e.g. "chatgpt:olostep:online"
+  <scrape-targets>  Comma-separated SCRAPE_TARGETS entries, e.g. "chatgpt:olostep:online,gemini:olostep:online"
 
 Examples:
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online"
-  pnpm tsx --env-file=.env scripts/test-provider.ts --target "google-ai-mode:dataforseo"
+  pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online,gemini:olostep:online"
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "claude:anthropic-api:claude-sonnet-4-20250514"
 `);
 			process.exit(0);
@@ -136,8 +137,7 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 	return issues;
 }
 
-async function main() {
-	const target = parseArgs();
+async function runTarget(target: string): Promise<boolean> {
 	const [config] = parseScrapeTargets(target);
 	const providerId = config.provider;
 	const provider = getProvider(providerId);
@@ -173,7 +173,7 @@ async function main() {
 				"",
 			].join("\n"));
 		}
-		process.exit(1);
+		return false;
 	}
 
 	const latency = Date.now() - start;
@@ -201,7 +201,6 @@ async function main() {
 
 	console.log();
 
-	// Write GitHub Actions job summary when running in CI
 	if (process.env.GITHUB_STEP_SUMMARY) {
 		const status = hasErrors ? ":x: FAIL" : ":white_check_mark: PASS";
 		const errors = issues.filter((i) => i.severity === "error");
@@ -245,10 +244,31 @@ async function main() {
 
 	if (hasErrors) {
 		log("FAIL", colors.red);
-		process.exit(1);
+		return false;
 	} else {
 		log("PASS", colors.green);
+		return true;
 	}
+}
+
+async function main() {
+	const targetArg = parseArgs();
+	const targets = targetArg.split(",").map((t) => t.trim()).filter(Boolean);
+
+	let passed = 0;
+	let failed = 0;
+	for (const target of targets) {
+		const ok = await runTarget(target);
+		if (ok) passed++;
+		else failed++;
+	}
+
+	if (targets.length > 1) {
+		log(`\n${"=".repeat(40)}`, colors.bright);
+		log(`Results: ${passed} passed, ${failed} failed out of ${targets.length} targets`, failed > 0 ? colors.red : colors.green);
+	}
+
+	if (failed > 0) process.exit(1);
 }
 
 main().catch((err) => {

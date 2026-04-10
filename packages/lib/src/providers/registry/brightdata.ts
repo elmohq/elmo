@@ -85,30 +85,25 @@ export const brightdata: Provider = {
 
 		const client = getClient();
 
-		const scrapeRes = await fetch(
-			`https://api.brightdata.com/datasets/v3/scrape?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+		const triggerRes = await fetch(
+			`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
 			{
 				method: "POST",
 				headers: {
 					Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ input: [{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }] }),
+				body: JSON.stringify([{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }]),
 			},
 		);
 
-		let payload: any;
-		if (scrapeRes.status === 202) {
-			const pending = (await scrapeRes.json()) as { snapshot_id: string };
-			const snapshotId = pending.snapshot_id;
-
-			await pollUntilReady(client, snapshotId);
-			payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
-		} else if (scrapeRes.ok) {
-			payload = await scrapeRes.json();
-		} else {
-			throw new Error(`BrightData scrape failed (${scrapeRes.status}): ${await scrapeRes.text()}`);
+		if (!triggerRes.ok) {
+			throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
 		}
+
+		const { snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string };
+		await pollUntilReady(client, snapshotId);
+		const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
 
 		const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
 		const answer = normalizeAnswer(record);
