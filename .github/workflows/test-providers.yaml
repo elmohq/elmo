@@ -44,6 +44,7 @@ jobs:
       fail-fast: false
       matrix:
         target:
+          # Olostep
           - "chatgpt:olostep:online"
           - "google-ai-mode:olostep:online"
           - "google-ai-overview:olostep:online"
@@ -51,9 +52,16 @@ jobs:
           - "copilot:olostep:online"
           - "perplexity:olostep:online"
           - "grok:olostep:online"
+          # BrightData (dataset IDs from SDK)
+          - "chatgpt:brightdata:gd_m7aof0k82r803d5bjm"
+          - "chatgpt:brightdata:gd_m7aof0k82r803d5bjm:online"
+          - "perplexity:brightdata:gd_m0ci4ikq4icr52snty"
+          - "perplexity:brightdata:gd_m0ci4ikq4icr52snty:online"
+          # DataForSEO
           - "google-ai-mode:dataforseo:online"
-          - "chatgpt:openai-api:gpt-5-mini:online"
-          - "claude:anthropic-api:claude-sonnet-4-20250514"
+          # Direct API
+          - "chatgpt:openai-api:gpt-5-mini"
+          - "claude:anthropic-api:claude-sonnet-4-20250514:online"
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v5
