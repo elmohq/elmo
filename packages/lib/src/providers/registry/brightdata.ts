@@ -1,8 +1,143 @@
-import type { Provider } from "../types";
+import { bdclient } from "@brightdata/sdk";
+import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Citation } from "../../text-extraction";
+
+const BD_DATASET_IDS: Record<string, string> = {
+	chatgpt: "gd_m7aof0k82r803d5bjm",
+	perplexity: "gd_m7dhdot1vw9a7gc1n",
+	copilot: "gd_m7di5jy6s9geokz8w",
+	gemini: "gd_mbz66arm2mf9cu856y",
+	grok: "gd_m8ve0u141icu75ae74",
+	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
+};
+
+const BD_BASE_URL: Record<string, string> = {
+	chatgpt: "https://chatgpt.com/",
+	"google-ai-mode": "https://google.com/aimode",
+	"google-ai-overview": "https://www.google.com/",
+	gemini: "https://gemini.google.com/",
+	copilot: "https://copilot.microsoft.com/chats",
+	perplexity: "https://www.perplexity.ai/",
+	grok: "https://grok.com/",
+};
+
+let _client: bdclient | null = null;
+function getClient(): bdclient {
+	if (!_client) {
+		_client = new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
+	}
+	return _client;
+}
+
+function normalizeAnswer(record: Record<string, any>): string {
+	for (const key of ["answer_text", "answer_text_markdown", "answer", "response_raw", "response", "text", "content"]) {
+		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
+	}
+	return JSON.stringify(record).slice(0, 2000);
+}
+
+function extractSources(record: Record<string, any>): Citation[] {
+	const citations: Citation[] = [];
+	const seen = new Set<string>();
+	let idx = 0;
+
+	for (const field of ["citations", "links_attached", "sources"]) {
+		const arr = record[field];
+		if (!Array.isArray(arr)) continue;
+		for (const item of arr) {
+			const url = typeof item === "string" ? item : item?.url;
+			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
+			if (seen.has(url)) continue;
+			seen.add(url);
+			try {
+				const parsed = new URL(url);
+				citations.push({
+					url,
+					title: item?.title ?? undefined,
+					domain: parsed.hostname.replace(/^www\./, ""),
+					citationIndex: idx++,
+				});
+			} catch {
+				// skip invalid
+			}
+		}
+	}
+	return citations;
+}
 
 export const brightdata: Provider = {
 	id: "brightdata",
 	name: "BrightData",
-	isConfigured: () => false,
-	run: () => { throw new Error("not implemented"); },
+
+	isConfigured() {
+		return !!process.env.BRIGHTDATA_API_TOKEN;
+	},
+
+	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		const datasetId = options?.version ?? BD_DATASET_IDS[model];
+		if (!datasetId) {
+			throw new Error(
+				`BrightData: no dataset ID for model "${model}". ` +
+				`Either use a known model (${Object.keys(BD_DATASET_IDS).join(", ")}) ` +
+				`or pass a dataset ID as the version slug: ${model}:brightdata:gd_abc123`,
+			);
+		}
+
+		const client = getClient();
+
+		const scrapeRes = await fetch(
+			`https://api.brightdata.com/datasets/v3/scrape?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ input: [{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }] }),
+			},
+		);
+
+		let payload: any;
+		if (scrapeRes.status === 202) {
+			const pending = (await scrapeRes.json()) as { snapshot_id: string };
+			const snapshotId = pending.snapshot_id;
+
+			await pollUntilReady(client, snapshotId);
+			payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
+		} else if (scrapeRes.ok) {
+			payload = await scrapeRes.json();
+		} else {
+			throw new Error(`BrightData scrape failed (${scrapeRes.status}): ${await scrapeRes.text()}`);
+		}
+
+		const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
+		const answer = normalizeAnswer(record);
+
+		return {
+			rawOutput: payload,
+			textContent: answer,
+			webQueries: record?.prompt ? [record.prompt] : [prompt],
+			citations: extractSources(record),
+			modelVersion: record?.model ?? undefined,
+		};
+	},
 };
+
+async function pollUntilReady(client: bdclient, snapshotId: string): Promise<void> {
+	const maxAttempts = 60;
+	const BASE_DELAY = 2000;
+	const MAX_DELAY = 10000;
+
+	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		const status = await client.scrape.snapshot.getStatus(snapshotId);
+		if (status.status === "ready") return;
+		if (status.status === "failed" || status.status === "cancelled") {
+			throw new Error(`BrightData snapshot ${snapshotId} ${status.status}`);
+		}
+
+		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
+		await new Promise((resolve) => setTimeout(resolve, delay));
+	}
+
+	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+}
