@@ -15,6 +15,7 @@ import {
 	type ScrapeResult,
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
+import { appendFileSync } from "node:fs";
 
 const colors = {
 	reset: "\x1b[0m",
@@ -157,8 +158,21 @@ async function main() {
 		});
 	} catch (error) {
 		const latency = Date.now() - start;
+		const errorMsg = error instanceof Error ? error.message : String(error);
 		log(`FAIL (${latency}ms)`, colors.red);
-		log(`  Error: ${error instanceof Error ? error.message : String(error)}`, colors.red);
+		log(`  Error: ${errorMsg}`, colors.red);
+		if (process.env.GITHUB_STEP_SUMMARY) {
+			appendFileSync(process.env.GITHUB_STEP_SUMMARY, [
+				`### :x: FAIL ${meta.label} via \`${providerId}\`${versionStr}`,
+				"",
+				`| Metric | Value |`,
+				`|--------|-------|`,
+				`| Target | \`${target}\` |`,
+				`| Latency | ${latency}ms |`,
+				`| Error | ${errorMsg.slice(0, 200)} |`,
+				"",
+			].join("\n"));
+		}
 		process.exit(1);
 	}
 
@@ -186,6 +200,49 @@ async function main() {
 	}
 
 	console.log();
+
+	// Write GitHub Actions job summary when running in CI
+	if (process.env.GITHUB_STEP_SUMMARY) {
+		const status = hasErrors ? ":x: FAIL" : ":white_check_mark: PASS";
+		const errors = issues.filter((i) => i.severity === "error");
+		const warnings = issues.filter((i) => i.severity === "warning");
+		const issueLines = [
+			...errors.map((i) => `| :x: | \`${i.field}\` | ${i.message} |`),
+			...warnings.map((i) => `| :warning: | \`${i.field}\` | ${i.message} |`),
+		];
+
+		const md = [
+			`### ${status} ${meta.label} via \`${providerId}\`${versionStr}`,
+			"",
+			`| Metric | Value |`,
+			`|--------|-------|`,
+			`| Target | \`${target}\` |`,
+			`| Latency | ${latency}ms |`,
+			`| Text length | ${result.textContent?.length ?? 0} chars |`,
+			`| Citations | ${result.citations.length} |`,
+			`| Web queries | ${result.webQueries.length} |`,
+			`| Web search | ${config.webSearch ? "enabled" : "disabled"} |`,
+			"",
+			...(issueLines.length > 0
+				? [
+					"| | Field | Issue |",
+					"|--|-------|-------|",
+					...issueLines,
+					"",
+				  ]
+				: []),
+			"<details><summary>Sample output</summary>",
+			"",
+			"```",
+			result.textContent?.slice(0, 500) ?? "(empty)",
+			"```",
+			"</details>",
+			"",
+		].join("\n");
+
+		appendFileSync(process.env.GITHUB_STEP_SUMMARY, md);
+	}
+
 	if (hasErrors) {
 		log("FAIL", colors.red);
 		process.exit(1);
