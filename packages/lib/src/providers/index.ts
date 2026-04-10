@@ -7,7 +7,7 @@ import { dataforseo } from "./dataforseo";
 import { openrouter } from "./openrouter";
 
 export type { Provider, ScrapeResult, ProviderOptions, TestResult, ModelConfig } from "./types";
-export { KNOWN_MODELS, getModelMeta, MODEL_TO_LEGACY_MODEL_GROUP, LEGACY_MODEL_GROUP_TO_MODEL } from "./models";
+export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
 

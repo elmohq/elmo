@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
 	KNOWN_MODELS,
 	getModelMeta,
-	MODEL_TO_LEGACY_MODEL_GROUP,
-	LEGACY_MODEL_GROUP_TO_MODEL,
 } from "./models";
 
 describe("KNOWN_MODELS", () => {
@@ -64,22 +62,3 @@ describe("getModelMeta", () => {
 	});
 });
 
-describe("legacy mapping constants", () => {
-	it("maps models to legacy model groups", () => {
-		expect(MODEL_TO_LEGACY_MODEL_GROUP.chatgpt).toBe("openai");
-		expect(MODEL_TO_LEGACY_MODEL_GROUP.claude).toBe("anthropic");
-		expect(MODEL_TO_LEGACY_MODEL_GROUP["google-ai-mode"]).toBe("google");
-	});
-
-	it("maps legacy model groups back to models", () => {
-		expect(LEGACY_MODEL_GROUP_TO_MODEL.openai).toBe("chatgpt");
-		expect(LEGACY_MODEL_GROUP_TO_MODEL.anthropic).toBe("claude");
-		expect(LEGACY_MODEL_GROUP_TO_MODEL.google).toBe("google-ai-mode");
-	});
-
-	it("has consistent bidirectional mapping", () => {
-		for (const [model, group] of Object.entries(MODEL_TO_LEGACY_MODEL_GROUP)) {
-			expect(LEGACY_MODEL_GROUP_TO_MODEL[group]).toBe(model);
-		}
-	});
-});

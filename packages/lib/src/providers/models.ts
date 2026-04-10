@@ -22,15 +22,3 @@ export function getModelMeta(model: string): ModelMeta {
 		.join(" ");
 	return { label, iconId: "generic" };
 }
-
-export const MODEL_TO_LEGACY_MODEL_GROUP: Record<string, string> = {
-	chatgpt: "openai",
-	claude: "anthropic",
-	"google-ai-mode": "google",
-};
-
-export const LEGACY_MODEL_GROUP_TO_MODEL: Record<string, string> = {
-	openai: "chatgpt",
-	anthropic: "claude",
-	google: "google-ai-mode",
-};
