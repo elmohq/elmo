@@ -83,7 +83,7 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
-const TEST_PROMPT = "What is the current most expensive running shoe?";
+const TEST_PROMPT = "Look up the best running shoes for women in their 30s";
 const MIN_TEXT_LENGTH = 50;
 
 // Provider/model combos where web queries aren't reported even though web search happens
