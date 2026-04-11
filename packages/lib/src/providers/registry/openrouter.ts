@@ -39,8 +39,8 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
-		} catch {
-			// skip
+		} catch (e) {
+			console.warn(`OpenRouter: skipping invalid citation URL: ${url}`, e);
 		}
 	}
 	return citations;

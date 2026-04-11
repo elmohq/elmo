@@ -71,8 +71,8 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 				domain: parsed.hostname.replace(/^www\./, ""),
 				citationIndex: idx++,
 			});
-		} catch {
-			// skip invalid URLs
+		} catch (e) {
+			console.warn(`Olostep: skipping invalid citation URL: ${url}`, e);
 		}
 	}
 	return citations;

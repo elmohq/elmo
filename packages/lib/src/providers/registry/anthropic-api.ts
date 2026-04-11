@@ -67,7 +67,7 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 							domain: parsed.hostname.replace(/^www\./, ""),
 							citationIndex: idx++,
 						});
-					} catch { /* skip invalid */ }
+					} catch (e) { console.warn(`Anthropic: skipping invalid citation URL: ${cit.url}`, e); }
 				}
 			}
 		}
@@ -85,7 +85,7 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 							domain: parsed.hostname.replace(/^www\./, ""),
 							citationIndex: idx++,
 						});
-					} catch { /* skip invalid */ }
+					} catch (e) { console.warn(`Anthropic: skipping invalid search result URL: ${result.url}`, e); }
 				}
 			}
 		}

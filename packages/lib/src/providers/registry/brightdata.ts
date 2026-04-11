@@ -55,8 +55,8 @@ function extractSources(record: Record<string, any>): Citation[] {
 					domain: parsed.hostname.replace(/^www\./, ""),
 					citationIndex: idx++,
 				});
-			} catch {
-				// skip invalid
+			} catch (e) {
+				console.warn(`BrightData: skipping invalid citation URL: ${url}`, e);
 			}
 		}
 	}
