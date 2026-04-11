@@ -38,8 +38,22 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 
 	const citations = extractAnthropicCitations(response.content);
 
+	// Strip full page text from web search results to reduce storage.
+	// Only url/title are used for citation extraction.
+	const trimmedContent = response.content.map((block: any) => {
+		if (block.type !== "web_search_tool_result") return block;
+		return {
+			...block,
+			content: (block.content ?? []).map((r: any) =>
+				r.type === "web_search_result"
+					? { type: r.type, url: r.url, title: r.title }
+					: r,
+			),
+		};
+	});
+
 	return {
-		rawOutput: sanitizeForJson(response),
+		rawOutput: sanitizeForJson({ ...response, content: trimmedContent }),
 		webQueries,
 		textContent,
 		citations,

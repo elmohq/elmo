@@ -133,7 +133,7 @@ export const olostep: Provider = {
 			{ parser: { id: parserConfig.parserId } },
 		);
 
-		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 300 });
+		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 600 });
 
 		let retrieveId: string | undefined;
 		for await (const item of batch.items()) {
@@ -155,7 +155,9 @@ export const olostep: Provider = {
 		const citations = extractCitationsFromOlostep(parsed);
 
 		return {
-			rawOutput: retrieved,
+			// Store the parsed content directly instead of the full retrieved
+			// wrapper (which double-encodes json_content as a string).
+			rawOutput: parsed,
 			textContent: extractTextFromOlostep(parsed),
 			// Mark as "unavailable" only when citations prove a search happened
 			// but the API didn't expose the query strings

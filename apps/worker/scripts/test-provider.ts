@@ -17,7 +17,7 @@ import {
 	type ScrapeResult,
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, writeFileSync, mkdirSync } from "node:fs";
 
 const colors = {
 	reset: "\x1b[0m",
@@ -37,27 +37,32 @@ function log(message: string, color?: string) {
 interface ParsedArgs {
 	target: string;
 	outputJson?: string;
+	dump?: string;
 }
 
 function parseArgs(): ParsedArgs {
 	const argv = process.argv.slice(2);
 	let target: string | undefined;
 	let outputJson: string | undefined;
+	let dump: string | undefined;
 
 	for (let i = 0; i < argv.length; i++) {
 		if (argv[i] === "--target" && argv[i + 1]) { target = argv[++i]; continue; }
 		if (argv[i] === "--output-json" && argv[i + 1]) { outputJson = argv[++i]; continue; }
+		if (argv[i] === "--dump" && argv[i + 1]) { dump = argv[++i]; continue; }
 		if (argv[i] === "--help" || argv[i] === "-h") {
 			console.log(`
-Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets> [--output-json <path>]
+Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets> [--output-json <path>] [--dump <path>]
 
   <scrape-targets>  Comma-separated SCRAPE_TARGETS entries, e.g. "chatgpt:olostep:online,gemini:olostep:online"
   --output-json     Write results as JSON to the given path (for CI artifact collection)
+  --dump            Write full raw output for each target to the given directory
 
 Examples:
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online"
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online,gemini:olostep:online"
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
+  pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:brightdata:online" --dump ./dumps
 `);
 			process.exit(0);
 		}
@@ -66,7 +71,7 @@ Examples:
 		console.error("Error: --target is required. Run with --help for usage.");
 		process.exit(1);
 	}
-	return { target, outputJson };
+	return { target, outputJson, dump };
 }
 
 function formatLatency(ms: number): string {
@@ -78,7 +83,7 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
-const TEST_PROMPT = "What are the most popular brands of running shoes?";
+const TEST_PROMPT = "What is the current most expensive running shoe?";
 const MIN_TEXT_LENGTH = 50;
 
 // Provider/model combos where web queries aren't reported even though web search happens
@@ -182,7 +187,7 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 	return issues;
 }
 
-async function runTarget(target: string): Promise<TargetResult> {
+async function runTarget(target: string, dumpDir?: string): Promise<TargetResult> {
 	const [config] = parseScrapeTargets(target);
 	const providerId = config.provider;
 	const provider = getProvider(providerId);
@@ -222,9 +227,17 @@ async function runTarget(target: string): Promise<TargetResult> {
 	}
 
 	const latency = Date.now() - start;
-	const rawOutputBytes = Buffer.byteLength(JSON.stringify(result.rawOutput ?? null));
+	const rawJson = JSON.stringify(result.rawOutput ?? null, null, 2);
+	const rawOutputBytes = Buffer.byteLength(rawJson);
 	const issues = validateResult(result, providerId, config.webSearch);
 	const hasErrors = issues.some((i) => i.severity === "error");
+
+	if (dumpDir) {
+		mkdirSync(dumpDir, { recursive: true });
+		const filename = `${dumpDir}/${target.replace(/[/:]/g, "-")}.json`;
+		writeFileSync(filename, rawJson);
+		log(`Dumped raw output to ${filename}`, colors.dim);
+	}
 
 	log(`Latency:      ${formatLatency(latency)}`, colors.dim);
 	log(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
@@ -314,12 +327,12 @@ function writeGitHubSummary(results: TargetResult[]) {
 }
 
 async function main() {
-	const { target: targetArg, outputJson } = parseArgs();
+	const { target: targetArg, outputJson, dump } = parseArgs();
 	const targets = targetArg.split(",").map((t) => t.trim()).filter(Boolean);
 
 	const results: TargetResult[] = [];
 	for (const target of targets) {
-		results.push(await runTarget(target));
+		results.push(await runTarget(target, dump));
 	}
 
 	const passed = results.filter((r) => r.status === "pass").length;

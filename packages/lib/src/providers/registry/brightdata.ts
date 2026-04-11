@@ -133,8 +133,13 @@ export const brightdata: Provider = {
 			const webQueries = extractWebQueries(record);
 			const citations = extractSources(record);
 
+			// Drop large HTML fields that aren't used for extraction.
+			// Keeps all structured data (shopping, recommendations, citations, etc.)
+			const { answer_html, response_raw, answer_section_html, ...trimmed } = record;
+			const rawOutput = Array.isArray(payload) ? [trimmed] : trimmed;
+
 			return {
-				rawOutput: payload,
+				rawOutput,
 				textContent: answer,
 				// Mark as "unavailable" only when citations prove a search happened
 				// but the API didn't expose the query strings
