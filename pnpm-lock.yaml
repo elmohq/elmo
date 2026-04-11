@@ -500,9 +500,6 @@ importers:
       '@brightdata/sdk':
         specifier: ^1.0.0
         version: 1.0.0
-      '@openrouter/sdk':
-        specifier: ^0.11.2
-        version: 0.11.2
       ai:
         specifier: ^6.0.146
         version: 6.0.146(zod@4.3.6)
@@ -1956,9 +1953,6 @@ packages:
 
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
-
-  '@openrouter/sdk@0.11.2':
-    resolution: {integrity: sha512-uu8zu7vd4hA2l4vUD1UiZuefxqaH2/ixFcUG8GIO9+qcEJkWX4AYAil7SpGmZOTgy8STLFTEk4M4MmyUW0YMLg==}
 
   '@opentelemetry/api-logs@0.207.0':
     resolution: {integrity: sha512-lAb0jQRVyleQQGiuuvCOTDVspc14nx6XJjP4FspJ1sNARo3Regq4ZZbrc3rN4b1TYSuUCvgH+UXUPug4SLOqEQ==}
@@ -9037,7 +9031,7 @@ snapshots:
       '@babel/helper-compilation-targets': 7.28.6
       '@babel/helper-module-transforms': 7.28.6(@babel/core@7.29.0)
       '@babel/helpers': 7.28.6
-      '@babel/parser': 7.29.0
+      '@babel/parser': 7.29.2
       '@babel/template': 7.28.6
       '@babel/traverse': 7.29.0
       '@babel/types': 7.29.0
@@ -9052,7 +9046,7 @@ snapshots:
 
   '@babel/generator@7.29.1':
     dependencies:
-      '@babel/parser': 7.29.0
+      '@babel/parser': 7.29.2
       '@babel/types': 7.29.0
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
@@ -9128,7 +9122,7 @@ snapshots:
       '@babel/code-frame': 7.29.0
       '@babel/generator': 7.29.1
       '@babel/helper-globals': 7.28.0
-      '@babel/parser': 7.29.0
+      '@babel/parser': 7.29.2
       '@babel/template': 7.28.6
       '@babel/types': 7.29.0
       debug: 4.4.3
@@ -10170,10 +10164,6 @@ snapshots:
 
   '@open-draft/until@2.1.0':
     optional: true
-
-  '@openrouter/sdk@0.11.2':
-    dependencies:
-      zod: 4.3.6
 
   '@opentelemetry/api-logs@0.207.0':
     dependencies:
@@ -12787,8 +12777,8 @@ snapshots:
     dependencies:
       '@tanstack/history': 1.161.6
       cookie-es: 2.0.1
-      seroval: 1.5.1
-      seroval-plugins: 1.5.1(seroval@1.5.1)
+      seroval: 1.5.2
+      seroval-plugins: 1.5.2(seroval@1.5.2)
 
   '@tanstack/router-generator@1.166.24':
     dependencies:
@@ -12848,7 +12838,7 @@ snapshots:
       '@tanstack/router-core': 1.168.9
       '@tanstack/start-fn-stubs': 1.161.6
       '@tanstack/start-storage-context': 1.166.23
-      seroval: 1.5.1
+      seroval: 1.5.2
 
   '@tanstack/start-fn-stubs@1.161.6': {}
 
@@ -12901,7 +12891,7 @@ snapshots:
       pathe: 2.0.3
       picomatch: 4.0.4
       source-map: 0.7.6
-      srvx: 0.11.14
+      srvx: 0.11.15
       tinyglobby: 0.2.15
       ufo: 1.6.3
       vite: 8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -12934,7 +12924,7 @@ snapshots:
       '@tanstack/start-client-core': 1.167.9
       '@tanstack/start-storage-context': 1.166.23
       h3-v2: h3@2.0.1-rc.20(crossws@0.4.4(srvx@0.11.15))
-      seroval: 1.5.1
+      seroval: 1.5.2
     transitivePeerDependencies:
       - crossws
 

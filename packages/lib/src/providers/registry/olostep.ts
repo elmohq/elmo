@@ -1,5 +1,5 @@
 import Olostep from "olostep";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import type { Citation } from "../../text-extraction";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
@@ -108,6 +108,16 @@ export const olostep: Provider = {
 
 	isConfigured() {
 		return !!process.env.OLOSTEP_API_KEY;
+	},
+
+	validateTarget(config: ModelConfig) {
+		if (!OLOSTEP_PARSERS[config.model]) {
+			return `Olostep does not support model "${config.model}". Supported: ${Object.keys(OLOSTEP_PARSERS).join(", ")}`;
+		}
+		if (!config.webSearch) {
+			return `${config.model}:olostep requires :online — these chatbots always use web search`;
+		}
+		return null;
 	},
 
 	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {

@@ -1,5 +1,5 @@
 import { bdclient } from "@brightdata/sdk";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import type { Citation } from "../../text-extraction";
 
 const BD_DATASET_IDS: Record<string, string> = {
@@ -81,6 +81,18 @@ export const brightdata: Provider = {
 
 	isConfigured() {
 		return !!process.env.BRIGHTDATA_API_TOKEN;
+	},
+
+	validateTarget(config: ModelConfig) {
+		// Allow custom dataset IDs via version slug (e.g. chatgpt:brightdata:gd_abc123)
+		if (!config.version && !BD_DATASET_IDS[config.model]) {
+			return `BrightData does not support model "${config.model}". Supported: ${Object.keys(BD_DATASET_IDS).join(", ")}`;
+		}
+		// ChatGPT has a web search toggle; all other chatbots always search
+		if (!config.webSearch && config.model !== "chatgpt") {
+			return `${config.model}:brightdata requires :online — this chatbot always uses web search`;
+		}
+		return null;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

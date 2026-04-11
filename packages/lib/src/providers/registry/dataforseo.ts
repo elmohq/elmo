@@ -1,6 +1,8 @@
 import * as client from "dataforseo-client";
 import { extractTextFromGoogle, extractCitationsFromGoogle } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
+
+const SUPPORTED_MODELS = new Set(["google-ai-mode"]);
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -25,6 +27,16 @@ export const dataforseo: Provider = {
 
 	isConfigured() {
 		return !!process.env.DATAFORSEO_LOGIN && !!process.env.DATAFORSEO_PASSWORD;
+	},
+
+	validateTarget(config: ModelConfig) {
+		if (!SUPPORTED_MODELS.has(config.model)) {
+			return `DataForSEO only supports: ${[...SUPPORTED_MODELS].join(", ")}`;
+		}
+		if (!config.webSearch) {
+			return `${config.model}:dataforseo requires :online — Google AI Mode always uses web search`;
+		}
+		return null;
 	},
 
 	async run(model: string, prompt: string, _options?: ProviderOptions): Promise<ScrapeResult> {
