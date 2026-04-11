@@ -19,12 +19,8 @@ const BD_BASE_URL: Record<string, string> = {
 	grok: "https://grok.com/",
 };
 
-let _client: bdclient | null = null;
-function getClient(): bdclient {
-	if (!_client) {
-		_client = new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
-	}
-	return _client;
+function createClient(): bdclient {
+	return new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
@@ -97,43 +93,46 @@ export const brightdata: Provider = {
 			);
 		}
 
-		const client = getClient();
-
-		const triggerRes = await fetch(
-			`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
-			{
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
-					"Content-Type": "application/json",
+		const client = createClient();
+		try {
+			const triggerRes = await fetch(
+				`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify([{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }]),
 				},
-				body: JSON.stringify([{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }]),
-			},
-		);
+			);
 
-		if (!triggerRes.ok) {
-			throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
+			if (!triggerRes.ok) {
+				throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
+			}
+
+			const { snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string };
+			await pollUntilReady(client, snapshotId);
+			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
+
+			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
+			const answer = normalizeAnswer(record);
+
+			const webQueries = extractWebQueries(record);
+			const citations = extractSources(record);
+
+			return {
+				rawOutput: payload,
+				textContent: answer,
+				// Mark as "unavailable" only when citations prove a search happened
+				// but the API didn't expose the query strings
+				webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
+				citations,
+				modelVersion: record?.model ?? undefined,
+			};
+		} finally {
+			await client.close();
 		}
-
-		const { snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string };
-		await pollUntilReady(client, snapshotId);
-		const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
-
-		const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-		const answer = normalizeAnswer(record);
-
-		const webQueries = extractWebQueries(record);
-		const citations = extractSources(record);
-
-		return {
-			rawOutput: payload,
-			textContent: answer,
-			// Mark as "unavailable" only when citations prove a search happened
-			// but the API didn't expose the query strings
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
-			citations,
-			modelVersion: record?.model ?? undefined,
-		};
 	},
 };
 
