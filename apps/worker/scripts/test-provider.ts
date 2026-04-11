@@ -69,6 +69,15 @@ Examples:
 	return { target, outputJson };
 }
 
+function formatLatency(ms: number): string {
+	if (ms < 10_000) return `${(ms / 1000).toFixed(3)}s`;
+	const totalSeconds = Math.floor(ms / 1000);
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	if (minutes === 0) return `${seconds}s`;
+	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
+}
+
 const TEST_PROMPT = "What are the most popular brands of running shoes?";
 const MIN_TEXT_LENGTH = 50;
 
@@ -195,7 +204,7 @@ async function runTarget(target: string): Promise<TargetResult> {
 	} catch (error) {
 		const latency = Date.now() - start;
 		const errorMsg = error instanceof Error ? error.message : String(error);
-		log(`FAIL (${latency}ms)`, colors.red);
+		log(`FAIL (${formatLatency(latency)})`, colors.red);
 		log(`  Error: ${errorMsg}`, colors.red);
 		return {
 			target,
@@ -217,7 +226,7 @@ async function runTarget(target: string): Promise<TargetResult> {
 	const issues = validateResult(result, providerId, config.webSearch);
 	const hasErrors = issues.some((i) => i.severity === "error");
 
-	log(`Latency:      ${latency}ms`, colors.dim);
+	log(`Latency:      ${formatLatency(latency)}`, colors.dim);
 	log(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
 	log(`Raw output:   ${(rawOutputBytes / 1024).toFixed(1)} KB`, colors.dim);
 	log(`Citations:    ${result.citations.length}`, colors.blue);
@@ -282,7 +291,7 @@ function writeGitHubSummary(results: TargetResult[]) {
 			? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
 			: "";
 		lines.push(
-			`| ${status} | \`${r.target}\` | ${r.latency}ms | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
+			`| ${status} | \`${r.target}\` | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
 		);
 	}
 
