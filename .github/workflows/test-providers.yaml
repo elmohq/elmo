@@ -97,7 +97,7 @@ jobs:
       - name: Sanitize artifact name
         if: always()
         id: artifact
-        run: echo "name=result-$(echo '${{ matrix.target }}' | tr ':' '-')" >> $GITHUB_OUTPUT
+        run: echo "name=result-$(echo '${{ matrix.target }}' | tr ':/\\' '-')" >> $GITHUB_OUTPUT
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
