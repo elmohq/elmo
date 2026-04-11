@@ -1,11 +1,10 @@
 import { bdclient } from "@brightdata/sdk";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import type { Citation } from "../../text-extraction";
 
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
 	perplexity: "gd_m7dhdot1vw9a7gc1n",
-	copilot: "gd_m7di5jy6s9geokz8w",
 	gemini: "gd_mbz66arm2mf9cu856y",
 	grok: "gd_m8ve0u141icu75ae74",
 	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
@@ -16,17 +15,12 @@ const BD_BASE_URL: Record<string, string> = {
 	"google-ai-mode": "https://google.com/aimode",
 	"google-ai-overview": "https://www.google.com/",
 	gemini: "https://gemini.google.com/",
-	copilot: "https://copilot.microsoft.com/chats",
 	perplexity: "https://www.perplexity.ai/",
 	grok: "https://grok.com/",
 };
 
-let _client: bdclient | null = null;
-function getClient(): bdclient {
-	if (!_client) {
-		_client = new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
-	}
-	return _client;
+function createClient(): bdclient {
+	return new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
@@ -57,12 +51,28 @@ function extractSources(record: Record<string, any>): Citation[] {
 					domain: parsed.hostname.replace(/^www\./, ""),
 					citationIndex: idx++,
 				});
-			} catch {
-				// skip invalid
+			} catch (e) {
+				console.warn(`BrightData: skipping invalid citation URL: ${url}`, e);
 			}
 		}
 	}
 	return citations;
+}
+
+function extractWebQueries(record: Record<string, any>): string[] {
+	// web_search_query is a direct array of strings (e.g. grok)
+	if (Array.isArray(record.web_search_query)) {
+		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
+	}
+	// search_model_queries may be nested in metadata (e.g. chatgpt)
+	const smq = record.metadata?.search_model_queries ?? record.search_model_queries;
+	if (smq?.queries && Array.isArray(smq.queries)) {
+		return smq.queries.filter((q: any) => typeof q === "string" && q.trim());
+	}
+	if (Array.isArray(smq)) {
+		return smq.filter((q: any) => typeof q === "string" && q.trim());
+	}
+	return [];
 }
 
 export const brightdata: Provider = {
@@ -71,6 +81,18 @@ export const brightdata: Provider = {
 
 	isConfigured() {
 		return !!process.env.BRIGHTDATA_API_TOKEN;
+	},
+
+	validateTarget(config: ModelConfig) {
+		// Allow custom dataset IDs via version slug (e.g. chatgpt:brightdata:gd_abc123)
+		if (!config.version && !BD_DATASET_IDS[config.model]) {
+			return `BrightData does not support model "${config.model}". Supported: ${Object.keys(BD_DATASET_IDS).join(", ")}`;
+		}
+		// ChatGPT has a web search toggle; all other chatbots always search
+		if (!config.webSearch && config.model !== "chatgpt") {
+			return `${config.model}:brightdata requires :online — this chatbot always uses web search`;
+		}
+		return null;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -83,38 +105,46 @@ export const brightdata: Provider = {
 			);
 		}
 
-		const client = getClient();
-
-		const triggerRes = await fetch(
-			`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
-			{
-				method: "POST",
-				headers: {
-					Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
-					"Content-Type": "application/json",
+		const client = createClient();
+		try {
+			const triggerRes = await fetch(
+				`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify([{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }]),
 				},
-				body: JSON.stringify([{ url: BD_BASE_URL[model] ?? "", prompt, index: 1 }]),
-			},
-		);
+			);
 
-		if (!triggerRes.ok) {
-			throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
+			if (!triggerRes.ok) {
+				throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
+			}
+
+			const { snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string };
+			await pollUntilReady(client, snapshotId);
+			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
+
+			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
+			const answer = normalizeAnswer(record);
+
+			const webQueries = extractWebQueries(record);
+			const citations = extractSources(record);
+
+			return {
+				rawOutput: payload,
+				textContent: answer,
+				// Mark as "unavailable" only when citations prove a search happened
+				// but the API didn't expose the query strings
+				webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
+				citations,
+				modelVersion: record?.model ?? undefined,
+			};
+		} finally {
+			await client.close();
 		}
-
-		const { snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string };
-		await pollUntilReady(client, snapshotId);
-		const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
-
-		const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
-		const answer = normalizeAnswer(record);
-
-		return {
-			rawOutput: payload,
-			textContent: answer,
-			webQueries: record?.prompt ? [record.prompt] : [prompt],
-			citations: extractSources(record),
-			modelVersion: record?.model ?? undefined,
-		};
 	},
 };
 

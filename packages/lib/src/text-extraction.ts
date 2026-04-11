@@ -90,7 +90,8 @@ export function extractTextFromOpenRouter(rawOutput: any): string {
 
 export function extractTextFromOlostep(rawOutput: any): string {
 	try {
-		const parsed = rawOutput?.result?.json_content ? JSON.parse(rawOutput.result.json_content) : rawOutput;
+		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
+		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
 		if (parsed?.result?.markdown_content) return parsed.result.markdown_content;
 		if (parsed?.answer_markdown) return parsed.answer_markdown;
 		if (parsed?.result?.text_content) return parsed.result.text_content;
@@ -230,12 +231,17 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
+		const seen = new Set<string>();
 		let idx = 0;
 		for (const ann of rawOutput?.choices?.[0]?.message?.annotations ?? []) {
-			if (ann?.type === "url_citation" && ann.url) {
-				const c = parseCitationUrl(ann.url, ann.title, idx);
-				if (c) { citations.push(c); idx++; }
-			}
+			if (ann?.type !== "url_citation") continue;
+			const cite = ann.url_citation ?? ann;
+			const url = cite.url;
+			if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
+			if (seen.has(url)) continue;
+			seen.add(url);
+			const c = parseCitationUrl(url, cite.title, idx);
+			if (c) { citations.push(c); idx++; }
 		}
 		return citations;
 	} catch {
@@ -245,7 +251,8 @@ export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
 
 export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
 	try {
-		const parsed = rawOutput?.result?.json_content ? JSON.parse(rawOutput.result.json_content) : rawOutput;
+		const jsonStr = rawOutput?.json_content ?? rawOutput?.result?.json_content;
+		const parsed = typeof jsonStr === "string" ? JSON.parse(jsonStr) : rawOutput;
 		const citations: Citation[] = [];
 		let idx = 0;
 		for (const source of parsed?.sources ?? parsed?.result?.links_on_page ?? parsed?.inline_references ?? []) {
@@ -255,6 +262,40 @@ export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
 				if (c) { citations.push(c); idx++; }
 			}
 		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
+	try {
+		const content = rawOutput?.content ?? [];
+		const seen = new Set<string>();
+		const citations: Citation[] = [];
+		let idx = 0;
+
+		for (const block of content) {
+			if (block.type === "text") {
+				for (const cit of block.citations ?? []) {
+					if (cit.type === "web_search_result_location" && cit.url && !seen.has(cit.url)) {
+						seen.add(cit.url);
+						const c = parseCitationUrl(cit.url, cit.title, idx);
+						if (c) { citations.push(c); idx++; }
+					}
+				}
+			}
+			if (block.type === "web_search_tool_result") {
+				for (const result of block.content ?? []) {
+					if (result.type === "web_search_result" && result.url && !seen.has(result.url)) {
+						seen.add(result.url);
+						const c = parseCitationUrl(result.url, result.title, idx);
+						if (c) { citations.push(c); idx++; }
+					}
+				}
+			}
+		}
+
 		return citations;
 	} catch {
 		return [];
@@ -309,7 +350,7 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 		case "anthropic-api":
 		case "anthropic":
 		case "claude":
-			return [];
+			return extractCitationsFromAnthropic(rawOutput);
 		default:
 			return [];
 	}

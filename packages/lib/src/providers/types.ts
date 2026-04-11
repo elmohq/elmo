@@ -19,6 +19,9 @@ export interface Provider {
 	name: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+	/** Validate a target config. Returns an error message if invalid, null if valid.
+	 *  Omit for providers that accept any model (runtime validation only). */
+	validateTarget?(config: ModelConfig): string | null;
 }
 
 export interface TestResult {

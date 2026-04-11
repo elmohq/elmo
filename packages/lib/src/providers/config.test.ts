@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { parseScrapeTargets, validateScrapeTargets } from "./config";
+import { olostep } from "./registry/olostep";
+import { brightdata } from "./registry/brightdata";
+import { dataforseo } from "./registry/dataforseo";
+import type { ModelConfig } from "./types";
 
 describe("parseScrapeTargets", () => {
 	describe("basic parsing", () => {
@@ -167,5 +171,67 @@ describe("validateScrapeTargets", () => {
 				}),
 			),
 		).not.toThrow();
+	});
+});
+
+describe("provider validateTarget", () => {
+	function config(model: string, provider: string, webSearch: boolean, version?: string): ModelConfig {
+		return { model, provider, version, webSearch };
+	}
+
+	describe("olostep", () => {
+		it("accepts valid online targets", () => {
+			for (const model of ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity", "grok"]) {
+				expect(olostep.validateTarget!(config(model, "olostep", true))).toBeNull();
+			}
+		});
+
+		it("rejects targets without :online", () => {
+			expect(olostep.validateTarget!(config("chatgpt", "olostep", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unknown models", () => {
+			expect(olostep.validateTarget!(config("unknown", "olostep", true))).toMatch(/does not support/);
+		});
+	});
+
+	describe("brightdata", () => {
+		it("accepts chatgpt with and without :online", () => {
+			expect(brightdata.validateTarget!(config("chatgpt", "brightdata", true))).toBeNull();
+			expect(brightdata.validateTarget!(config("chatgpt", "brightdata", false))).toBeNull();
+		});
+
+		it("accepts other models with :online", () => {
+			for (const model of ["perplexity", "gemini", "grok", "google-ai-mode"]) {
+				expect(brightdata.validateTarget!(config(model, "brightdata", true))).toBeNull();
+			}
+		});
+
+		it("rejects non-chatgpt models without :online", () => {
+			expect(brightdata.validateTarget!(config("grok", "brightdata", false))).toMatch(/requires :online/);
+			expect(brightdata.validateTarget!(config("perplexity", "brightdata", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unknown models", () => {
+			expect(brightdata.validateTarget!(config("unknown", "brightdata", true))).toMatch(/does not support/);
+		});
+
+		it("accepts unknown models with custom dataset ID", () => {
+			expect(brightdata.validateTarget!(config("unknown", "brightdata", true, "gd_custom123"))).toBeNull();
+		});
+	});
+
+	describe("dataforseo", () => {
+		it("accepts google-ai-mode:online", () => {
+			expect(dataforseo.validateTarget!(config("google-ai-mode", "dataforseo", true))).toBeNull();
+		});
+
+		it("rejects without :online", () => {
+			expect(dataforseo.validateTarget!(config("google-ai-mode", "dataforseo", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unsupported models", () => {
+			expect(dataforseo.validateTarget!(config("chatgpt", "dataforseo", true))).toMatch(/only supports/);
+		});
 	});
 });

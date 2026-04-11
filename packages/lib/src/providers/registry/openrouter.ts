@@ -1,18 +1,7 @@
-import { OpenRouter } from "@openrouter/sdk";
 import type { Provider, ScrapeResult, ProviderOptions } from "../types";
 import type { Citation } from "../../text-extraction";
 
-let _client: OpenRouter | null = null;
-function getClient(): OpenRouter {
-	if (!_client) {
-		_client = new OpenRouter({
-			apiKey: process.env.OPENROUTER_API_KEY,
-			httpReferer: process.env.APP_URL ?? "https://github.com/elmohq/elmo",
-			appTitle: "Elmo AEO",
-		});
-	}
-	return _client;
-}
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function extractTextFromOpenRouterResponse(data: any): string {
 	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -32,20 +21,26 @@ function extractTextFromOpenRouterResponse(data: any): string {
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 	const citations: Citation[] = [];
 	let idx = 0;
+	const seen = new Set<string>();
 	const annotations = data?.choices?.[0]?.message?.annotations ?? [];
 	for (const ann of annotations) {
-		if (ann?.type === "url_citation" && ann.url) {
-			try {
-				const parsed = new URL(ann.url);
-				citations.push({
-					url: ann.url,
-					title: ann.title ?? undefined,
-					domain: parsed.hostname.replace(/^www\./, ""),
-					citationIndex: idx++,
-				});
-			} catch {
-				// skip
-			}
+		if (ann?.type !== "url_citation") continue;
+		// OpenRouter nests citation data under url_citation, but also support flat layout
+		const cite = ann.url_citation ?? ann;
+		const url = cite.url;
+		if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
+		if (seen.has(url)) continue;
+		seen.add(url);
+		try {
+			const parsed = new URL(url);
+			citations.push({
+				url,
+				title: cite.title ?? undefined,
+				domain: parsed.hostname.replace(/^www\./, ""),
+				citationIndex: idx++,
+			});
+		} catch (e) {
+			console.warn(`OpenRouter: skipping invalid citation URL: ${url}`, e);
 		}
 	}
 	return citations;
@@ -72,21 +67,41 @@ export const openrouter: Provider = {
 			modelSlug = `${modelSlug}:online`;
 		}
 
-		const client = getClient();
-		const result = await client.chat.send({
-			chatRequest: {
-				model: modelSlug,
-				messages: [{ role: "user" as const, content: prompt }],
+		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
+		// strips annotations from responses, which contain web search citations.
+		// The SDK's Responses API (client.responses.send()) does preserve annotations
+		// via ResponseOutputText, but it's currently in beta. Consider switching to
+		// the Responses API + SDK when it's stable.
+		const res = await fetch(OPENROUTER_API_URL, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+				"Content-Type": "application/json",
+				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
+				"X-Title": "Elmo AEO",
 			},
+			body: JSON.stringify({
+				model: modelSlug,
+				messages: [{ role: "user", content: prompt }],
+			}),
 		});
 
-		const data: any = result;
+		if (!res.ok) {
+			throw new Error(`OpenRouter API error (${res.status}): ${await res.text()}`);
+		}
+
+		const data: any = await res.json();
+
+		const citations = extractCitationsFromOpenRouterResponse(data);
+		// OpenRouter doesn't expose what search queries the model made internally.
+		// Only mark as "unavailable" when citations prove a web search happened.
+		const webQueries = citations.length > 0 ? ["unavailable"] : [];
 
 		return {
 			rawOutput: data,
 			textContent: extractTextFromOpenRouterResponse(data),
-			webQueries: [],
-			citations: extractCitationsFromOpenRouterResponse(data),
+			webQueries,
+			citations,
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
 		};
 	},

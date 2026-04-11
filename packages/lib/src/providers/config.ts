@@ -39,7 +39,7 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 
 export function validateScrapeTargets(
 	configs: ModelConfig[],
-	getProvider: (id: string) => { isConfigured(): boolean } | undefined,
+	getProvider: (id: string) => { isConfigured(): boolean; validateTarget?(config: ModelConfig): string | null } | undefined,
 ): void {
 	for (const config of configs) {
 		const provider = getProvider(config.provider);
@@ -50,5 +50,8 @@ export function validateScrapeTargets(
 			);
 		if ((config.provider === "openai-api" || config.provider === "anthropic-api" || config.provider === "openrouter") && !config.version)
 			throw new Error(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
+		const targetError = provider.validateTarget?.(config);
+		if (targetError)
+			throw new Error(`SCRAPE_TARGETS: invalid target "${config.model}:${config.provider}": ${targetError}`);
 	}
 }
