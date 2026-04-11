@@ -72,6 +72,11 @@ Examples:
 const TEST_PROMPT = "What are the most popular brands of running shoes?";
 const MIN_TEXT_LENGTH = 50;
 
+// Provider/model combos where web queries aren't reported even though web search happens
+function hasRealWebQueries(queries: string[]): boolean {
+	return queries.length > 0 && !queries.every((q) => q === "unavailable");
+}
+
 interface ValidationIssue {
 	field: string;
 	message: string;
@@ -84,6 +89,7 @@ export interface TargetResult {
 	latency: number;
 	error?: string;
 	textLength: number;
+	rawOutputBytes: number;
 	citations: number;
 	webQueries: number;
 	webSearch: boolean;
@@ -138,17 +144,20 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 		issues.push({
 			field: "citations",
 			message: webSearch
-				? "No citations returned (expected when online is enabled)"
+				? "No citations returned (expected when online)"
 				: "No citations returned (may be expected for some engines/prompts)",
 			severity: webSearch ? "error" : "warning",
 		});
 	}
 
-	if (webSearch && result.webQueries.length === 0) {
+	if (webSearch && !hasRealWebQueries(result.webQueries)) {
+		const isUnavailable = result.webQueries.some((q) => q === "unavailable");
 		issues.push({
 			field: "webQueries",
-			message: "No web queries returned (expected when online is enabled)",
-			severity: "error",
+			message: isUnavailable
+				? "Web queries unavailable (not exposed by this provider)"
+				: "No web queries returned (expected when online)",
+			severity: isUnavailable ? "warning" : "error",
 		});
 	}
 
@@ -194,6 +203,7 @@ async function runTarget(target: string): Promise<TargetResult> {
 			latency,
 			error: errorMsg,
 			textLength: 0,
+			rawOutputBytes: 0,
 			citations: 0,
 			webQueries: 0,
 			webSearch: config.webSearch,
@@ -203,13 +213,15 @@ async function runTarget(target: string): Promise<TargetResult> {
 	}
 
 	const latency = Date.now() - start;
+	const rawOutputBytes = Buffer.byteLength(JSON.stringify(result.rawOutput ?? null));
 	const issues = validateResult(result, providerId, config.webSearch);
 	const hasErrors = issues.some((i) => i.severity === "error");
 
-	log(`Latency:    ${latency}ms`, colors.dim);
-	log(`Text:       ${result.textContent?.length ?? 0} chars`, colors.dim);
-	log(`Citations:  ${result.citations.length}`, colors.blue);
-	log(`Web queries: ${result.webQueries.length}`, colors.dim);
+	log(`Latency:      ${latency}ms`, colors.dim);
+	log(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
+	log(`Raw output:   ${(rawOutputBytes / 1024).toFixed(1)} KB`, colors.dim);
+	log(`Citations:    ${result.citations.length}`, colors.blue);
+	log(`Web queries:  ${result.webQueries.length}`, colors.dim);
 
 	if (result.textContent) {
 		log("\nSample output:", colors.dim);
@@ -238,6 +250,7 @@ async function runTarget(target: string): Promise<TargetResult> {
 		status: hasErrors ? "fail" : "pass",
 		latency,
 		textLength: result.textContent?.length ?? 0,
+		rawOutputBytes,
 		citations: result.citations.length,
 		webQueries: result.webQueries.length,
 		webSearch: config.webSearch,
@@ -257,18 +270,19 @@ function writeGitHubSummary(results: TargetResult[]) {
 	const lines: string[] = [
 		`## Provider Test Results — ${overallStatus} (${passed}/${total})`,
 		"",
-		"| Status | Target | Latency | Error | Text Length | Citations | Web Queries | Web Search | Sample Output |",
-		"|--------|--------|---------|-------|-------------|-----------|-------------|------------|---------------|",
+		"| Status | Target | Latency | Error | Text | Raw Output | Citations | Web Queries | Web Search | Sample Output |",
+		"|--------|--------|---------|-------|------|------------|-----------|-------------|------------|---------------|",
 	];
 
 	for (const r of results) {
 		const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
 		const error = r.error ? r.error.slice(0, 100).replace(/\|/g, "\\|") : "";
+		const rawKB = (r.rawOutputBytes / 1024).toFixed(1) + " KB";
 		const sample = r.sampleOutput
 			? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
 			: "";
 		lines.push(
-			`| ${status} | \`${r.target}\` | ${r.latency}ms | ${error} | ${r.textLength} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
+			`| ${status} | \`${r.target}\` | ${r.latency}ms | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
 		);
 	}
 

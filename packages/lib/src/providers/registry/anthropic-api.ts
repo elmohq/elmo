@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { extractTextFromAnthropic } from "../../text-extraction";
 import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Citation } from "../../text-extraction";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -35,13 +36,62 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		.map((block) => (block as any).input?.query)
 		.filter(Boolean);
 
+	const citations = extractAnthropicCitations(response.content);
+
 	return {
 		rawOutput: sanitizeForJson(response),
 		webQueries,
 		textContent,
-		citations: [],
+		citations,
 		modelVersion: model,
 	};
+}
+
+function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): Citation[] {
+	const seen = new Set<string>();
+	const citations: Citation[] = [];
+	let idx = 0;
+
+	for (const block of content) {
+		// Citations from text blocks
+		if (block.type === "text") {
+			for (const cit of (block as any).citations ?? []) {
+				if (cit.type === "web_search_result_location" && cit.url) {
+					if (seen.has(cit.url)) continue;
+					seen.add(cit.url);
+					try {
+						const parsed = new URL(cit.url);
+						citations.push({
+							url: cit.url,
+							title: cit.title ?? undefined,
+							domain: parsed.hostname.replace(/^www\./, ""),
+							citationIndex: idx++,
+						});
+					} catch { /* skip invalid */ }
+				}
+			}
+		}
+		// Citations from web search results
+		if (block.type === "web_search_tool_result") {
+			for (const result of (block as any).content ?? []) {
+				if (result.type === "web_search_result" && result.url) {
+					if (seen.has(result.url)) continue;
+					seen.add(result.url);
+					try {
+						const parsed = new URL(result.url);
+						citations.push({
+							url: result.url,
+							title: result.title ?? undefined,
+							domain: parsed.hostname.replace(/^www\./, ""),
+							citationIndex: idx++,
+						});
+					} catch { /* skip invalid */ }
+				}
+			}
+		}
+	}
+
+	return citations;
 }
 
 export const anthropicApi: Provider = {

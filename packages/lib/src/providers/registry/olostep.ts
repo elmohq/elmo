@@ -43,7 +43,7 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 let _client: Olostep | null = null;
 function getClient(): Olostep {
 	if (!_client) {
-		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY, maxRetries: 5, initialDelayMs: 2000 });
+		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY, retry: { maxRetries: 3, initialDelayMs: 2000 } });
 	}
 	return _client;
 }
@@ -58,7 +58,7 @@ function extractTextFromOlostep(data: any): string {
 
 function extractCitationsFromOlostep(data: any): Citation[] {
 	const citations: Citation[] = [];
-	const sources = data?.sources ?? data?.result?.links_on_page ?? data?.inline_references ?? [];
+	const sources = data?.sources ?? data?.citations ?? data?.result?.links_on_page ?? data?.inline_references ?? [];
 	let idx = 0;
 	for (const source of Array.isArray(sources) ? sources : []) {
 		const url = typeof source === "string" ? source : source?.url;
@@ -80,10 +80,25 @@ function extractCitationsFromOlostep(data: any): Citation[] {
 
 function extractWebQueries(data: any): string[] {
 	const queries: string[] = [];
-	const searchCalls = data?.network_search_calls?.search_queries ?? data?.search_model_queries ?? [];
-	for (const call of Array.isArray(searchCalls) ? searchCalls : []) {
-		if (call?.query) queries.push(call.query);
+
+	// Batch API returns a flat string array at data.search_queries
+	const flat = data?.search_queries;
+	if (Array.isArray(flat)) {
+		for (const q of flat) {
+			if (typeof q === "string" && q.trim()) queries.push(q);
+		}
 	}
+
+	// Scrape API nests queries under network_search_calls or search_model_queries
+	if (queries.length === 0) {
+		const searchCalls = data?.network_search_calls?.search_queries ?? data?.search_model_queries ?? [];
+		for (const call of Array.isArray(searchCalls) ? searchCalls : []) {
+			// May be a string (flat array) or an object with .query
+			if (typeof call === "string" && call.trim()) queries.push(call);
+			else if (call?.query) queries.push(call.query);
+		}
+	}
+
 	return queries;
 }
 
@@ -100,21 +115,42 @@ export const olostep: Provider = {
 		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
 		const client = getClient();
-		const scrape = await client.scrapes.create({
-			url: parserConfig.urlTemplate(prompt),
-			formats: ["json"],
-			parser: { id: parserConfig.parserId },
-		});
+		const url = parserConfig.urlTemplate(prompt);
 
-		const jsonContent = scrape.json_content;
+		// Use batch API — the /scrapes endpoint doesn't support all parsers
+		const batch = await client.batches.create(
+			[{ url, customId: "1" }],
+			{ parser: { id: parserConfig.parserId } },
+		);
+
+		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 300 });
+
+		let retrieveId: string | undefined;
+		for await (const item of batch.items()) {
+			retrieveId = item.retrieve_id;
+			break; // single item batch
+		}
+
+		if (!retrieveId) throw new Error("Olostep batch completed but no items returned");
+
+		// Use client.retrieve (GET) instead of item.retrieve (POST) — the
+		// SDK's BatchItem.retrieve uses POST which the API rejects with 403.
+		const retrieved = await client.retrieve(retrieveId, ["json"]);
+
+		const jsonContent = retrieved.json_content;
 		const parsed =
-			typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? scrape);
+			typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
+
+		const webQueries = extractWebQueries(parsed);
+		const citations = extractCitationsFromOlostep(parsed);
 
 		return {
-			rawOutput: scrape,
+			rawOutput: retrieved,
 			textContent: extractTextFromOlostep(parsed),
-			webQueries: extractWebQueries(parsed),
-			citations: extractCitationsFromOlostep(parsed),
+			// Mark as "unavailable" only when citations prove a search happened
+			// but the API didn't expose the query strings
+			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
+			citations,
 			modelVersion: parsed?.model ?? undefined,
 		};
 	},

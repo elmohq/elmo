@@ -5,7 +5,6 @@ import type { Citation } from "../../text-extraction";
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
 	perplexity: "gd_m7dhdot1vw9a7gc1n",
-	copilot: "gd_m7di5jy6s9geokz8w",
 	gemini: "gd_mbz66arm2mf9cu856y",
 	grok: "gd_m8ve0u141icu75ae74",
 	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
@@ -16,7 +15,6 @@ const BD_BASE_URL: Record<string, string> = {
 	"google-ai-mode": "https://google.com/aimode",
 	"google-ai-overview": "https://www.google.com/",
 	gemini: "https://gemini.google.com/",
-	copilot: "https://copilot.microsoft.com/chats",
 	perplexity: "https://www.perplexity.ai/",
 	grok: "https://grok.com/",
 };
@@ -65,6 +63,22 @@ function extractSources(record: Record<string, any>): Citation[] {
 	return citations;
 }
 
+function extractWebQueries(record: Record<string, any>): string[] {
+	// web_search_query is a direct array of strings (e.g. grok)
+	if (Array.isArray(record.web_search_query)) {
+		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
+	}
+	// search_model_queries may be nested in metadata (e.g. chatgpt)
+	const smq = record.metadata?.search_model_queries ?? record.search_model_queries;
+	if (smq?.queries && Array.isArray(smq.queries)) {
+		return smq.queries.filter((q: any) => typeof q === "string" && q.trim());
+	}
+	if (Array.isArray(smq)) {
+		return smq.filter((q: any) => typeof q === "string" && q.trim());
+	}
+	return [];
+}
+
 export const brightdata: Provider = {
 	id: "brightdata",
 	name: "BrightData",
@@ -108,11 +122,16 @@ export const brightdata: Provider = {
 		const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
 		const answer = normalizeAnswer(record);
 
+		const webQueries = extractWebQueries(record);
+		const citations = extractSources(record);
+
 		return {
 			rawOutput: payload,
 			textContent: answer,
-			webQueries: record?.prompt ? [record.prompt] : [prompt],
-			citations: extractSources(record),
+			// Mark as "unavailable" only when citations prove a search happened
+			// but the API didn't expose the query strings
+			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
+			citations,
 			modelVersion: record?.model ?? undefined,
 		};
 	},
