@@ -83,7 +83,7 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
-const TEST_PROMPT = "What was the number one app on the App Store yesterday?";
+const TEST_PROMPT = "What was the top free app on the US App Store yesterday?";
 const MIN_TEXT_LENGTH = 50;
 
 // Provider/model combos where web queries aren't reported even though web search happens
