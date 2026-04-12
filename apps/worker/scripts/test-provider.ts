@@ -83,7 +83,7 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
-const TEST_PROMPT = "What was the weather in San Francisco yesterday?";
+const TEST_PROMPT = "Where is the best place to buy sheet music for the Otamatone?";
 const MIN_TEXT_LENGTH = 50;
 
 // Provider/model combos where web queries aren't reported even though web search happens
