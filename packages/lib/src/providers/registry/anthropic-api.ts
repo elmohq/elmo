@@ -22,12 +22,25 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		} as any);
 	}
 
-	const response = await client.messages.create({
+	const makeRequest = () => client.messages.create({
 		model,
 		max_tokens: 4000,
 		messages: [{ role: "user", content: prompt }],
 		...(tools.length > 0 ? { tools } : {}),
 	});
+
+	let response = await makeRequest();
+
+	// Check for web search errors like max_uses_exceeded and retry once
+	for (const block of response.content) {
+		const b = block as any;
+		if (b.type === "web_search_tool_result" && b.content?.type === "web_search_tool_result_error") {
+			console.warn(`[anthropic-api] web search error: ${b.content.error_code}, retrying in 10s...`);
+			await new Promise((r) => setTimeout(r, 10_000));
+			response = await makeRequest();
+			break;
+		}
+	}
 
 	const textContent = extractTextFromAnthropic(response);
 
@@ -41,10 +54,10 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 	// Strip full page text from web search results to reduce storage.
 	// Only url/title are used for citation extraction.
 	const trimmedContent = response.content.map((block: any) => {
-		if (block.type !== "web_search_tool_result") return block;
+		if (block.type !== "web_search_tool_result" || !Array.isArray(block.content)) return block;
 		return {
 			...block,
-			content: (block.content ?? []).map((r: any) =>
+			content: block.content.map((r: any) =>
 				r.type === "web_search_result"
 					? { type: r.type, url: r.url, title: r.title }
 					: r,
@@ -69,7 +82,7 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 	for (const block of content) {
 		// Citations from text blocks
 		if (block.type === "text") {
-			for (const cit of (block as any).citations ?? []) {
+			for (const cit of Array.isArray((block as any).citations) ? (block as any).citations : []) {
 				if (cit.type === "web_search_result_location" && cit.url) {
 					if (seen.has(cit.url)) continue;
 					seen.add(cit.url);
@@ -87,7 +100,7 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 		}
 		// Citations from web search results
 		if (block.type === "web_search_tool_result") {
-			for (const result of (block as any).content ?? []) {
+			for (const result of Array.isArray((block as any).content) ? (block as any).content : []) {
 				if (result.type === "web_search_result" && result.url) {
 					if (seen.has(result.url)) continue;
 					seen.add(result.url);
