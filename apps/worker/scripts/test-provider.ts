@@ -83,7 +83,7 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
-const TEST_PROMPT = "Search the web and report on the top 3 news stories in AI for today";
+const TEST_PROMPT = "What is a well-reviewed speaker that was released last month?";
 const MIN_TEXT_LENGTH = 50;
 
 // Provider/model combos where web queries aren't reported even though web search happens
@@ -224,6 +224,21 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 			sampleOutput: "",
 			issues: [],
 		};
+	}
+
+	// Retry once if web search was expected but no citations/queries came back
+	const missingWebData = config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries);
+	if (missingWebData) {
+		log("No citations or web queries — retrying once...", colors.yellow);
+		try {
+			const retry = await provider.run(config.model, TEST_PROMPT, {
+				webSearch: config.webSearch,
+				version: config.version,
+			});
+			if (retry.citations.length > 0 || hasRealWebQueries(retry.webQueries)) {
+				result = retry;
+			}
+		} catch { /* keep first result */ }
 	}
 
 	const latency = Date.now() - start;
