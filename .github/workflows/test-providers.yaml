@@ -100,7 +100,7 @@ jobs:
         run: echo "name=result-$(echo '${{ matrix.target }}' | tr ':/\\' '-')" >> $GITHUB_OUTPUT
       - name: Upload result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: result.json
@@ -113,7 +113,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Download results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: result-*
           path: results
