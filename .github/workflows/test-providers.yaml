@@ -29,6 +29,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --no-frozen-lockfile
       - name: Test provider
+        timeout-minutes: 30
         env:
           OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
@@ -88,6 +89,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --no-frozen-lockfile
       - name: Test provider
+        timeout-minutes: 30
         env:
           OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
