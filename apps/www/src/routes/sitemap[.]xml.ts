@@ -13,6 +13,7 @@ const staticPages = [
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
+	{ path: "/status", changefreq: "daily", priority: 0.5 },
 ];
 
 export const Route = createFileRoute("/sitemap.xml")({

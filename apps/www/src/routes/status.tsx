@@ -513,7 +513,8 @@ function StatusPage() {
 					<p className="text-muted-foreground mt-2">
 						Status of the third-party AI providers and scraping services Elmo
 						uses to track your brand's visibility and citations. Tests run
-						automatically 4 times per day.
+						automatically 4 times per day. Latencies shown are for individual
+						prompt evaluations; batches can vary significantly.
 					</p>
 				</div>
 
