@@ -130,11 +130,10 @@ function dedupeEntries(entries: StatusEntry[]): StatusEntry[] {
 // ─── Components ───────────────────────────────────────────────────────────
 
 function UptimeBadge({ entries }: { entries: StatusEntry[] }) {
-	const uptime = getUptime(entries);
-	if (uptime === null) return <Badge variant="outline">No data</Badge>;
-	if (uptime >= 99) return <Badge className="bg-green-600 text-white">Operational</Badge>;
-	if (uptime >= 90) return <Badge className="bg-yellow-500 text-white">Degraded</Badge>;
-	return <Badge className="bg-red-600 text-white">Issues</Badge>;
+	if (entries.length === 0) return <Badge variant="outline">No data</Badge>;
+	const latest = entries[entries.length - 1];
+	if (latest.status === "fail") return <Badge className="bg-red-600 text-white">Failing</Badge>;
+	return <Badge className="bg-green-600 text-white">Operational</Badge>;
 }
 
 function UptimeBar({ entries }: { entries: StatusEntry[] }) {
@@ -146,15 +145,16 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 	const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
 
 	// Bucket into 6-hour windows (28 buckets for 7 days)
-	const buckets: ("pass" | "fail" | "none")[] = Array(28).fill("none");
+	// Track both the latest status and whether there was a mix of pass/fail
+	const buckets: { latest: "pass" | "fail" | "none"; hadFail: boolean }[] =
+		Array.from({ length: 28 }, () => ({ latest: "none", hadFail: false }));
 	for (const entry of deduped) {
 		const t = new Date(entry.ts).getTime();
 		if (t < sevenDaysAgo) continue;
 		const idx = Math.floor(((t - sevenDaysAgo) / (7 * 24 * 60 * 60 * 1000)) * 28);
 		const bi = Math.min(idx, 27);
-		if (buckets[bi] === "none" || entry.status === "fail") {
-			buckets[bi] = entry.status;
-		}
+		if (entry.status === "fail") buckets[bi].hadFail = true;
+		buckets[bi].latest = entry.status;
 	}
 
 	return (
@@ -163,11 +163,13 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 				<div
 					key={i}
 					className={`h-6 flex-1 rounded-sm ${
-						b === "pass"
-							? "bg-green-500"
-							: b === "fail"
+						b.latest === "none"
+							? "bg-muted"
+							: b.latest === "fail"
 								? "bg-red-500"
-								: "bg-muted"
+								: b.hadFail
+									? "bg-orange-400"
+									: "bg-green-500"
 					}`}
 				/>
 			))}
