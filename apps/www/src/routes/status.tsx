@@ -11,6 +11,7 @@ import {
 } from "@workspace/ui/components/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
+import { useState, useRef } from "react";
 import {
 	LineChart,
 	Line,
@@ -255,7 +256,12 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 				<ChartTooltip
 					content={
 						<ChartTooltipContent
-							formatter={(value) => formatLatency(value as number)}
+							formatter={(value, name) => (
+								<>
+									<span className="text-muted-foreground flex-1">{name}</span>
+									<span className="font-mono font-medium tabular-nums">{formatLatency(value as number)}</span>
+								</>
+							)}
 						/>
 					}
 				/>
@@ -275,30 +281,135 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	);
 }
 
+function Sparkline({ data, color = "currentColor" }: { data: number[]; color?: string }) {
+	if (data.length < 2) return null;
+	const min = Math.min(...data);
+	const max = Math.max(...data);
+	const range = max - min || 1;
+	const w = 120;
+	const h = 32;
+	const pad = 2;
+	const points = data
+		.map((v, i) => {
+			const x = pad + (i / (data.length - 1)) * (w - 2 * pad);
+			const y = h - pad - ((v - min) / range) * (h - 2 * pad);
+			return `${x},${y}`;
+		})
+		.join(" ");
+
+	return (
+		<svg width={w} height={h} className="block">
+			<polyline
+				points={points}
+				fill="none"
+				stroke={color}
+				strokeWidth={1.5}
+				strokeLinejoin="round"
+				strokeLinecap="round"
+			/>
+		</svg>
+	);
+}
+
+function StatWithSparkline({
+	label,
+	value,
+	sparkData,
+	sparkColor,
+	formatFn,
+}: {
+	label: string;
+	value: string;
+	sparkData: number[];
+	sparkColor?: string;
+	formatFn?: (v: number) => string;
+}) {
+	const [show, setShow] = useState(false);
+	const ref = useRef<HTMLSpanElement>(null);
+
+	return (
+		<span
+			ref={ref}
+			className="relative cursor-default"
+			onMouseEnter={() => setShow(true)}
+			onMouseLeave={() => setShow(false)}
+		>
+			{label}: {value}
+			{show && sparkData.length >= 2 && (
+				<span className="border-border/50 bg-background absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md border p-2 shadow-lg">
+					<span className="text-muted-foreground mb-1 block text-center text-[10px]">Last 7 days</span>
+					<Sparkline data={sparkData} color={sparkColor} />
+					<span className="text-muted-foreground mt-1 flex justify-between text-[10px]">
+						<span>{formatFn ? formatFn(Math.min(...sparkData)) : Math.min(...sparkData)}</span>
+						<span>{formatFn ? formatFn(Math.max(...sparkData)) : Math.max(...sparkData)}</span>
+					</span>
+				</span>
+			)}
+		</span>
+	);
+}
+
 function ProviderRow({ data }: { data: TargetStatus }) {
 	const { model, provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
 	const latest = getLatest(deduped);
 	const uptime = getUptime(deduped);
 
+	// Build sparkline data from deduped entries (only passes)
+	const passEntries = deduped.filter((e) => e.status === "pass");
+	const latencyData = passEntries.map((e) => e.latency);
+	const citationData = passEntries.map((e) => e.citations);
+	const textData = passEntries.map((e) => e.textLength);
+
+	// Rolling uptime: compute uptime % over sliding windows
+	const uptimeData: number[] = [];
+	const windowSize = Math.max(3, Math.floor(deduped.length / 10));
+	for (let i = windowSize; i <= deduped.length; i++) {
+		const window = deduped.slice(i - windowSize, i);
+		const passes = window.filter((e) => e.status === "pass").length;
+		uptimeData.push((passes / window.length) * 100);
+	}
+
 	return (
 		<div className="space-y-2 rounded-lg border p-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<span className="font-medium">{formatModel(model)}</span>
-					<span className="text-muted-foreground"> via {formatProvider(provider)}</span>
-					{rest && <span className="text-muted-foreground text-xs"> ({rest})</span>}
+					<span className="font-medium">{formatProvider(provider)}</span>
+					{rest && <span className="text-muted-foreground"> ({provider === "openrouter" ? rest : rest.replace(/online/g, "web search")})</span>}
 				</div>
 				<UptimeBadge entries={deduped} />
 			</div>
 			<UptimeBar entries={deduped} />
-			<div className="text-muted-foreground flex gap-4 text-xs">
+			<div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
 				{latest && (
 					<>
-						<span>Latency: {formatLatency(latest.latency)}</span>
-						<span>Uptime: {uptime !== null ? `${uptime.toFixed(1)}%` : "—"}</span>
-						<span>Citations: {latest.citations}</span>
-						<span>Text: {latest.textLength} chars</span>
+						<StatWithSparkline
+							label="Latency"
+							value={formatLatency(latest.latency)}
+							sparkData={latencyData}
+							sparkColor="hsl(221, 83%, 53%)"
+							formatFn={formatLatency}
+						/>
+						<StatWithSparkline
+							label="Uptime"
+							value={uptime !== null ? `${uptime.toFixed(1)}%` : "—"}
+							sparkData={uptimeData}
+							sparkColor="hsl(142, 71%, 45%)"
+							formatFn={(v) => `${v.toFixed(0)}%`}
+						/>
+						<StatWithSparkline
+							label="Citations"
+							value={String(latest.citations)}
+							sparkData={citationData}
+							sparkColor="hsl(262, 83%, 58%)"
+						/>
+						<StatWithSparkline
+							label="Text"
+							value={`${latest.textLength} chars`}
+							sparkData={textData}
+							sparkColor="hsl(38, 92%, 50%)"
+							formatFn={(v) => `${v}`}
+						/>
 						{latest.retries > 0 && <span>Retries: {latest.retries}</span>}
 						{latest.error && <span className="text-red-500">Error: {latest.error.slice(0, 60)}</span>}
 					</>
@@ -335,13 +446,20 @@ function StatusPage() {
 				</div>
 
 				{/* Overall status banner */}
-				<Card className="mb-8">
-					<CardContent className="flex items-center gap-4 py-6">
-						<div
-							className={`size-4 rounded-full ${allOperational ? "bg-green-500" : failCount > 0 ? "bg-red-500" : "bg-muted"}`}
-						/>
+				<Card className={`mb-8 border-2 ${allOperational ? "border-green-500/30" : failCount > 0 ? "border-red-500/30" : "border-border"}`}>
+					<CardContent className="flex items-center gap-5 py-8">
+						<div className="relative flex items-center justify-center">
+							<div
+								className={`size-5 rounded-full ${allOperational ? "bg-green-500" : failCount > 0 ? "bg-red-500" : "bg-muted"}`}
+							/>
+							{(allOperational || failCount > 0) && (
+								<div
+									className={`absolute size-5 animate-ping rounded-full opacity-30 ${allOperational ? "bg-green-500" : "bg-red-500"}`}
+								/>
+							)}
+						</div>
 						<div>
-							<p className="font-medium">
+							<p className="text-xl font-semibold">
 								{allLatest.length === 0
 									? "Waiting for data"
 									: allOperational
@@ -349,8 +467,8 @@ function StatusPage() {
 										: `${failCount} provider${failCount !== 1 ? "s" : ""} experiencing issues`}
 							</p>
 							{allLatest.length > 0 && (
-								<p className="text-muted-foreground text-sm">
-									Last checked:{" "}
+								<p className="text-muted-foreground mt-1 text-sm">
+									Last checked{" "}
 									{new Date(
 										Math.max(...allLatest.map((e) => new Date(e.ts).getTime())),
 									).toLocaleString()}

@@ -46,7 +46,7 @@ export function Footer() {
 								<Link to="/ai-visibility-tools">AI Visibility Tool Directory</Link>
 							</li>
 							<li>
-								<Link to="/status">Status</Link>
+								<Link to="/status">AI Provider Status</Link>
 							</li>
 							<li>
 								<a
