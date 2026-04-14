@@ -11,7 +11,8 @@ import {
 } from "@workspace/ui/components/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
 	LineChart,
 	Line,
@@ -133,7 +134,7 @@ function UptimeBadge({ entries }: { entries: StatusEntry[] }) {
 	if (uptime === null) return <Badge variant="outline">No data</Badge>;
 	if (uptime >= 99) return <Badge className="bg-green-600 text-white">Operational</Badge>;
 	if (uptime >= 90) return <Badge className="bg-yellow-500 text-white">Degraded</Badge>;
-	return <Badge className="bg-red-600 text-white">Down</Badge>;
+	return <Badge className="bg-red-600 text-white">Issues</Badge>;
 }
 
 function UptimeBar({ entries }: { entries: StatusEntry[] }) {
@@ -254,16 +255,24 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 					label={{ value: "Latency", angle: -90, position: "insideLeft", style: { fontSize: 12 } }}
 				/>
 				<ChartTooltip
-					content={
-						<ChartTooltipContent
-							formatter={(value, name) => (
-								<>
-									<span className="text-muted-foreground flex-1">{name}</span>
-									<span className="font-mono font-medium tabular-nums">{formatLatency(value as number)}</span>
-								</>
-							)}
-						/>
-					}
+					content={({ active, payload, label }: any) => {
+						if (!active || !payload?.length) return null;
+						const sorted = [...payload].sort((a: any, b: any) => (b.value ?? 0) - (a.value ?? 0));
+						return (
+							<div className="border-border/50 bg-background min-w-[10rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+								<div className="font-medium mb-1.5">{label}</div>
+								<div className="grid gap-1.5">
+									{sorted.map((item: any) => (
+										<div key={item.dataKey} className="flex items-center gap-2">
+											<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
+											<span className="text-muted-foreground flex-1">{item.name}</span>
+											<span className="font-mono font-medium tabular-nums">{formatLatency(item.value as number)}</span>
+										</div>
+									))}
+								</div>
+							</div>
+						);
+					}}
 				/>
 				{uniqueNames.map((name, i) => (
 					<Line
@@ -281,71 +290,127 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	);
 }
 
-function Sparkline({ data, color = "currentColor" }: { data: number[]; color?: string }) {
-	if (data.length < 2) return null;
-	const min = Math.min(...data);
-	const max = Math.max(...data);
-	const range = max - min || 1;
-	const w = 120;
-	const h = 32;
-	const pad = 2;
-	const points = data
-		.map((v, i) => {
-			const x = pad + (i / (data.length - 1)) * (w - 2 * pad);
-			const y = h - pad - ((v - min) / range) * (h - 2 * pad);
-			return `${x},${y}`;
-		})
-		.join(" ");
-
-	return (
-		<svg width={w} height={h} className="block">
-			<polyline
-				points={points}
-				fill="none"
-				stroke={color}
-				strokeWidth={1.5}
-				strokeLinejoin="round"
-				strokeLinecap="round"
-			/>
-		</svg>
-	);
-}
 
 function StatWithSparkline({
 	label,
 	value,
 	sparkData,
-	sparkColor,
+	timestamps,
+	sparkColor = "hsl(221, 83%, 53%)",
 	formatFn,
 }: {
 	label: string;
 	value: string;
 	sparkData: number[];
+	timestamps: string[];
 	sparkColor?: string;
 	formatFn?: (v: number) => string;
 }) {
 	const [show, setShow] = useState(false);
-	const ref = useRef<HTMLSpanElement>(null);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const [pos, setPos] = useState({ x: 0, y: 0 });
+
+	useEffect(() => {
+		if (show && triggerRef.current) {
+			const rect = triggerRef.current.getBoundingClientRect();
+			setPos({ x: rect.left + rect.width / 2, y: rect.top });
+		}
+	}, [show]);
+
+	if (sparkData.length === 0) {
+		return <span>{label}: {value}</span>;
+	}
+
+	const isInteger = sparkData.every((v) => Number.isInteger(v));
+	const yTickFmt = (v: number) => {
+		if (formatFn) return formatFn(v);
+		if (isInteger) return String(Math.round(v));
+		return String(v);
+	};
+
+	// For a single data point, pad with a synthetic earlier point to create a dotted line
+	let chartData: { ts: string; v: number; synthetic?: boolean }[];
+	if (sparkData.length === 1) {
+		const realTs = timestamps[0];
+		const syntheticTs = new Date(new Date(realTs).getTime() - 24 * 60 * 60 * 1000).toISOString();
+		chartData = [
+			{ ts: syntheticTs, v: sparkData[0], synthetic: true },
+			{ ts: realTs, v: sparkData[0] },
+		];
+	} else {
+		chartData = sparkData.map((v, i) => ({ ts: timestamps[i], v }));
+	}
+
+	// Y-axis: representative range with some padding
+	const vals = sparkData;
+	const min = Math.min(...vals);
+	const max = Math.max(...vals);
+	const padding = max === min ? Math.max(1, max * 0.2) : (max - min) * 0.1;
+	const yMin = Math.max(0, min - padding);
+	const yMax = max + padding;
 
 	return (
-		<span
-			ref={ref}
-			className="relative cursor-default"
-			onMouseEnter={() => setShow(true)}
-			onMouseLeave={() => setShow(false)}
-		>
-			{label}: {value}
-			{show && sparkData.length >= 2 && (
-				<span className="border-border/50 bg-background absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md border p-2 shadow-lg">
-					<span className="text-muted-foreground mb-1 block text-center text-[10px]">Last 7 days</span>
-					<Sparkline data={sparkData} color={sparkColor} />
-					<span className="text-muted-foreground mt-1 flex justify-between text-[10px]">
-						<span>{formatFn ? formatFn(Math.min(...sparkData)) : Math.min(...sparkData)}</span>
-						<span>{formatFn ? formatFn(Math.max(...sparkData)) : Math.max(...sparkData)}</span>
-					</span>
-				</span>
+		<>
+			<button
+				ref={triggerRef}
+				type="button"
+				className="cursor-default underline decoration-dotted underline-offset-2 opacity-70 hover:opacity-100 transition-opacity"
+				onMouseEnter={() => setShow(true)}
+				onMouseLeave={() => setShow(false)}
+			>
+				{label}: {value}
+			</button>
+			{show && createPortal(
+				<div
+					className="bg-background text-foreground border-border/50 pointer-events-none fixed z-50 rounded-md border px-2 pt-3 pb-1 shadow-lg"
+					style={{ left: pos.x, top: pos.y, transform: "translate(-50%, calc(-100% - 6px))" }}
+				>
+					<div style={{ width: 220, height: 90 }}>
+						<ResponsiveContainer width="100%" height="100%">
+							<LineChart data={chartData} margin={{ top: 4, right: 30, bottom: 2, left: 4 }}>
+								<CartesianGrid strokeDasharray="3 3" vertical={false} />
+								<XAxis
+									dataKey="ts"
+									ticks={[chartData[0].ts, chartData[chartData.length - 1].ts]}
+									interval={0}
+									tick={(props: any) => {
+										const { x, y, payload } = props;
+										const d = new Date(payload.value);
+										const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+										const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+										return (
+											<g transform={`translate(${x},${y})`}>
+												<text x={0} y={0} dy={11} textAnchor="middle" fontSize={10} fill="currentColor" className="fill-muted-foreground">{date}</text>
+												<text x={0} y={0} dy={22} textAnchor="middle" fontSize={9} fill="currentColor" className="fill-muted-foreground">{time}</text>
+											</g>
+										);
+									}}
+									height={32}
+								/>
+								<YAxis
+									tick={{ fontSize: 9 }}
+									tickFormatter={yTickFmt}
+									width={40}
+									domain={[isInteger ? Math.floor(yMin) : yMin, isInteger ? Math.ceil(yMax) : yMax]}
+									allowDecimals={!isInteger}
+								/>
+								<Line
+									type="monotone"
+									dataKey="v"
+									stroke={sparkColor}
+									strokeWidth={1.5}
+									dot={sparkData.length <= 3}
+									connectNulls
+									isAnimationActive={false}
+									strokeDasharray={sparkData.length === 1 ? "4 3" : undefined}
+								/>
+							</LineChart>
+						</ResponsiveContainer>
+					</div>
+				</div>,
+				document.body,
 			)}
-		</span>
+		</>
 	);
 }
 
@@ -355,20 +420,14 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 	const latest = getLatest(deduped);
 	const uptime = getUptime(deduped);
 
-	// Build sparkline data from deduped entries (only passes)
-	const passEntries = deduped.filter((e) => e.status === "pass");
-	const latencyData = passEntries.map((e) => e.latency);
-	const citationData = passEntries.map((e) => e.citations);
-	const textData = passEntries.map((e) => e.textLength);
+	// Build sparkline data from all deduped entries
+	const allTimestamps = deduped.map((e) => e.ts);
+	const latencyData = deduped.map((e) => e.latency);
+	const citationData = deduped.map((e) => e.citations);
+	const webQueryData = deduped.map((e) => e.webQueries);
+	const textData = deduped.map((e) => e.textLength);
+	const retryData = deduped.map((e) => e.retries);
 
-	// Rolling uptime: compute uptime % over sliding windows
-	const uptimeData: number[] = [];
-	const windowSize = Math.max(3, Math.floor(deduped.length / 10));
-	for (let i = windowSize; i <= deduped.length; i++) {
-		const window = deduped.slice(i - windowSize, i);
-		const passes = window.filter((e) => e.status === "pass").length;
-		uptimeData.push((passes / window.length) * 100);
-	}
 
 	return (
 		<div className="space-y-2 rounded-lg border p-4">
@@ -383,39 +442,51 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 			<div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
 				{latest && (
 					<>
+						<span>Uptime: {uptime !== null ? `${uptime.toFixed(1)}%` : "—"}</span>
 						<StatWithSparkline
 							label="Latency"
 							value={formatLatency(latest.latency)}
 							sparkData={latencyData}
+							timestamps={allTimestamps}
 							sparkColor="hsl(221, 83%, 53%)"
 							formatFn={formatLatency}
-						/>
-						<StatWithSparkline
-							label="Uptime"
-							value={uptime !== null ? `${uptime.toFixed(1)}%` : "—"}
-							sparkData={uptimeData}
-							sparkColor="hsl(142, 71%, 45%)"
-							formatFn={(v) => `${v.toFixed(0)}%`}
 						/>
 						<StatWithSparkline
 							label="Citations"
 							value={String(latest.citations)}
 							sparkData={citationData}
+							timestamps={allTimestamps}
 							sparkColor="hsl(262, 83%, 58%)"
+						/>
+						<StatWithSparkline
+							label="Web Queries"
+							value={String(latest.webQueries)}
+							sparkData={webQueryData}
+							timestamps={allTimestamps}
+							sparkColor="hsl(174, 72%, 40%)"
 						/>
 						<StatWithSparkline
 							label="Text"
 							value={`${latest.textLength} chars`}
 							sparkData={textData}
+							timestamps={allTimestamps}
 							sparkColor="hsl(38, 92%, 50%)"
 							formatFn={(v) => `${v}`}
 						/>
-						{latest.retries > 0 && <span>Retries: {latest.retries}</span>}
-						{latest.error && <span className="text-red-500">Error: {latest.error.slice(0, 60)}</span>}
+						<StatWithSparkline
+							label="Retries"
+							value={String(latest.retries)}
+							sparkData={retryData}
+							timestamps={allTimestamps}
+							sparkColor="hsl(0, 84%, 60%)"
+						/>
 					</>
 				)}
 				{!latest && <span>No data yet</span>}
 			</div>
+			{latest?.error && (
+				<div className="text-xs text-red-500">Error: {latest.error.slice(0, 120)}</div>
+			)}
 		</div>
 	);
 }
@@ -440,7 +511,8 @@ function StatusPage() {
 				<div className="mb-8">
 					<h1 className="font-heading text-3xl md:text-4xl">Provider Status</h1>
 					<p className="text-muted-foreground mt-2">
-						Real-time monitoring of AI search provider integrations. Tests run
+						Status of the third-party AI providers and scraping services Elmo
+						uses to track your brand's visibility and citations. Tests run
 						automatically 4 times per day.
 					</p>
 				</div>
@@ -497,7 +569,7 @@ function StatusPage() {
 				{/* Latency chart */}
 				<Card className="mt-10">
 					<CardHeader>
-						<CardTitle>Latency Over Time (7 days)</CardTitle>
+						<CardTitle>Evaluation Latency</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<LatencyChart data={data} />
