@@ -83,7 +83,12 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
-const TEST_PROMPT = "What is a well-reviewed speaker that was released last month?";
+const TEST_PROMPTS = [
+	"What is a well-reviewed speaker that was released last month?",
+	"What were the biggest tech news stories this week?",
+	"What is the current price of Bitcoin today?",
+	"Who won the most recent Formula 1 race?",
+];
 const MIN_TEXT_LENGTH = 50;
 
 // Provider/model combos where web queries aren't reported even though web search happens
@@ -196,13 +201,13 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 
 	log(`\nTesting: ${meta.label} via ${providerId}${versionStr}`, colors.bright);
 	log(`Web search: ${config.webSearch ? "enabled" : "disabled"}`, colors.dim);
-	log(`Test prompt: "${TEST_PROMPT}"`, colors.dim);
+	log(`Test prompt: "${TEST_PROMPTS[0]}"`, colors.dim);
 	log(`Validating: text content (${MIN_TEXT_LENGTH}+ chars), citations, rawOutput re-extraction\n`, colors.dim);
 
 	const start = Date.now();
 	let result: ScrapeResult;
 	try {
-		result = await provider.run(config.model, TEST_PROMPT, {
+		result = await provider.run(config.model, TEST_PROMPTS[0], {
 			webSearch: config.webSearch,
 			version: config.version,
 		});
@@ -226,19 +231,21 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 		};
 	}
 
-	// Retry once if web search was expected but no citations/queries came back
-	const missingWebData = config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries);
-	if (missingWebData) {
-		log("No citations or web queries — retrying once...", colors.yellow);
-		try {
-			const retry = await provider.run(config.model, TEST_PROMPT, {
-				webSearch: config.webSearch,
-				version: config.version,
-			});
-			if (retry.citations.length > 0 || hasRealWebQueries(retry.webQueries)) {
-				result = retry;
-			}
-		} catch { /* keep first result */ }
+	// Retry up to 4 times with different prompts if web search was expected but no citations/queries came back
+	if (config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries)) {
+		for (let i = 1; i < TEST_PROMPTS.length; i++) {
+			log(`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`, colors.yellow);
+			try {
+				const retry = await provider.run(config.model, TEST_PROMPTS[i], {
+					webSearch: config.webSearch,
+					version: config.version,
+				});
+				if (retry.citations.length > 0 || hasRealWebQueries(retry.webQueries)) {
+					result = retry;
+					break;
+				}
+			} catch { /* keep previous result */ }
+		}
 	}
 
 	const latency = Date.now() - start;
