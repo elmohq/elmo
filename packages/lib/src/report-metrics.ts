@@ -242,7 +242,7 @@ export interface FullPromptRun {
 	competitorsMentioned: string[];
 	webQueries: string[];
 	textContent: string;
-	modelGroup: string;
+	model: string;
 }
 
 export interface ContentGap {
@@ -380,7 +380,7 @@ export function analyzeByEngine(
 	const engineStats = new Map<string, { total: number; mentions: number }>();
 
 	for (const run of runs) {
-		const engine = run.modelGroup;
+		const engine = run.model;
 		if (!engineStats.has(engine)) engineStats.set(engine, { total: 0, mentions: 0 });
 		const stats = engineStats.get(engine)!;
 		stats.total++;
@@ -388,6 +388,10 @@ export function analyzeByEngine(
 	}
 
 	const engineNames: Record<string, string> = {
+		chatgpt: "ChatGPT",
+		claude: "Claude",
+		"google-ai-mode": "Google AI",
+		// Legacy names for existing reports
 		openai: "ChatGPT",
 		anthropic: "Claude",
 		google: "Google AI",

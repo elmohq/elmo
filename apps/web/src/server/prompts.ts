@@ -83,7 +83,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			modelGroup: z.string().optional(),
+			model: z.string().optional(),
 			tags: z.string().optional(),
 		}),
 	)
@@ -134,7 +134,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 				toDateStr,
 				timezone,
 				webSearchEnabled,
-				data.modelGroup,
+				data.model,
 				promptIds,
 			),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
@@ -279,7 +279,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 				// Web query stats
 				db
-					.select({ modelGroup: promptRuns.modelGroup, webQueries: promptRuns.webQueries })
+					.select({ model: promptRuns.model, webQueries: promptRuns.webQueries })
 					.from(promptRuns)
 					.where(
 						and(
@@ -359,12 +359,12 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		webQueryStatsResult.forEach((row: any) => {
 			const queries = row.webQueries || [];
-			const modelGroup = row.modelGroup;
-			if (!modelQueries[modelGroup]) modelQueries[modelGroup] = {};
+			const model = row.model;
+			if (!modelQueries[model]) modelQueries[model] = {};
 			queries.forEach((query: string) => {
 				if (query?.trim()) {
 					allQueries[query] = (allQueries[query] || 0) + 1;
-					modelQueries[modelGroup][query] = (modelQueries[modelGroup][query] || 0) + 1;
+					modelQueries[model][query] = (modelQueries[model][query] || 0) + 1;
 				}
 			});
 		});
@@ -374,14 +374,12 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			byModel: Record<string, { name: string; count: number }[]>;
 		} = { overall: [], byModel: {} };
 
-		["openai", "anthropic", "google"].forEach((mg) => {
-			if (modelQueries[mg]) {
-				webQueryStats.byModel[mg] = Object.entries(modelQueries[mg])
-					.map(([name, cnt]) => ({ name, count: cnt }))
-					.sort((a, b) => b.count - a.count)
-					.slice(0, 15);
-			}
-		});
+		for (const model of Object.keys(modelQueries)) {
+			webQueryStats.byModel[model] = Object.entries(modelQueries[model])
+				.map(([name, cnt]) => ({ name, count: cnt }))
+				.sort((a, b) => b.count - a.count)
+				.slice(0, 15);
+		}
 
 		webQueryStats.overall = Object.entries(allQueries)
 			.map(([name, cnt]) => ({ name, count: cnt }))
@@ -613,7 +611,7 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
 			webSearchEnabled: z.string().optional(),
-			modelGroup: z.string().optional(),
+			model: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -671,8 +669,8 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [dailyStats, competitorStats, webQueryData] = await Promise.all([
-			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
-			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.modelGroup),
+			getPromptDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
+			getPromptCompetitorDailyStats(data.promptId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model),
 			getPromptWebQueriesForMapping(data.promptId, fromDateStr, toDateStr, timezone),
 		]);
 
@@ -746,8 +744,9 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 				if (oldestQueries.length > 0) webQueryMapping[data.promptId] = oldestQueries[0];
 			}
 
-			for (const modelGroup of ["openai", "anthropic", "google"]) {
-				const modelQueries = webQueryData.filter((q) => q.model_group === modelGroup);
+			const seenModels = new Set(webQueryData.map((q) => q.model));
+			for (const model of seenModels) {
+				const modelQueries = webQueryData.filter((q) => q.model === model);
 				if (modelQueries.length > 0) {
 					const oldest = modelQueries[0];
 					const oldestTime = new Date(oldest.created_at_iso).getTime();
@@ -756,8 +755,8 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 						.map((q) => q.web_query)
 						.sort();
 					if (sorted.length > 0) {
-						if (!modelWebQueryMappings[modelGroup]) modelWebQueryMappings[modelGroup] = {};
-						modelWebQueryMappings[modelGroup][data.promptId] = sorted[0];
+						if (!modelWebQueryMappings[model]) modelWebQueryMappings[model] = {};
+						modelWebQueryMappings[model][data.promptId] = sorted[0];
 					}
 				}
 			}
@@ -786,7 +785,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			promptId: z.string(),
 			lookback: z.string().optional().default("1m"),
-			modelGroup: z.string().optional(),
+			model: z.string().optional(),
 			timezone: z.string().optional(),
 		}),
 	)
@@ -817,7 +816,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 			fromDateStr,
 			toDateStr,
 			timezone,
-			data.modelGroup,
+			data.model,
 		);
 
 		let webQuery: string | null = null;
@@ -825,8 +824,8 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		let maxOverallCount = 0;
 
 		for (const row of webQueryData) {
-			if (!modelWebQueries[row.model_group]) {
-				modelWebQueries[row.model_group] = row.web_query;
+			if (!modelWebQueries[row.model]) {
+				modelWebQueries[row.model] = row.web_query;
 			}
 			if (row.query_count > maxOverallCount) {
 				maxOverallCount = row.query_count;

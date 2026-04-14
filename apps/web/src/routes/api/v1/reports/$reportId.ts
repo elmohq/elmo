@@ -70,7 +70,7 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						promptRuns: Array<{
 							promptValue: string;
 							runs: Array<{
-								modelGroup: string;
+								model: string;
 								brandMentioned: boolean;
 								competitorsMentioned: string[];
 							}>;

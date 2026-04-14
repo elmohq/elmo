@@ -48,8 +48,8 @@ export interface ReportJobContext {
 interface PromptRunResult {
 	promptValue: string;
 	runs: Array<{
-		modelGroup: "openai" | "anthropic" | "google";
 		model: string;
+		version: string;
 		webSearchEnabled: boolean;
 		rawOutput: any;
 		webQueries: string[];
@@ -321,7 +321,7 @@ function analyzeMentions(
 	return { brandMentioned, competitorsMentioned };
 }
 
-// Function to run a prompt 5 times across different models and return results
+// Function to run a prompt across different models and return results
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
@@ -329,25 +329,14 @@ async function runPrompt(
 	competitors: CompetitorResult[],
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	const runs: Array<{
-		modelGroup: "openai" | "anthropic" | "google";
-		model: string;
-		webSearchEnabled: boolean;
-		rawOutput: any;
-		webQueries: string[];
-		textContent: string;
-		brandMentioned: boolean;
-		competitorsMentioned: string[];
-	}> = [];
-
 	// Run 2 OpenAI, 1 Anthropic, 1 Google for each prompt (4 total runs)
 	const runPromises = [
 		// 2 OpenAI runs
 		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
-				modelGroup: AI_MODELS.OPENAI.GROUP as "openai",
-				model: AI_MODELS.OPENAI.MODEL,
+				model: "chatgpt",
+				version: AI_MODELS.OPENAI.MODEL,
 				webSearchEnabled: true,
 				rawOutput,
 				webQueries,
@@ -359,8 +348,8 @@ async function runPrompt(
 		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
-				modelGroup: AI_MODELS.OPENAI.GROUP as "openai",
-				model: AI_MODELS.OPENAI.MODEL,
+				model: "chatgpt",
+				version: AI_MODELS.OPENAI.MODEL,
 				webSearchEnabled: true,
 				rawOutput,
 				webQueries,
@@ -373,8 +362,8 @@ async function runPrompt(
 		runWithAnthropic(promptValue).then(({ rawOutput, webQueries, textContent }) => {
 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
-				modelGroup: AI_MODELS.ANTHROPIC.GROUP as "anthropic",
-				model: AI_MODELS.ANTHROPIC.MODEL,
+				model: "claude",
+				version: AI_MODELS.ANTHROPIC.MODEL,
 				webSearchEnabled: true,
 				rawOutput,
 				webQueries,
@@ -387,8 +376,8 @@ async function runPrompt(
 		runWithDataForSEO(promptValue).then(({ rawOutput, webQueries, textContent }) => {
 			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
 			return {
-				modelGroup: "google" as "google",
-				model: "dataforseo",
+				model: "google-ai-mode",
+				version: "dataforseo",
 				webSearchEnabled: true,
 				rawOutput,
 				webQueries,
@@ -399,15 +388,13 @@ async function runPrompt(
 		}),
 	];
 
-	// Execute all runs in parallel
 	const runResults = await Promise.all(runPromises);
-	runs.push(...runResults);
 
-	job.log(`Completed 4 runs for prompt: "${promptValue}"`);
+	job.log(`Completed ${runResults.length} runs for prompt: "${promptValue}"`);
 
 	return {
 		promptValue,
-		runs,
+		runs: runResults,
 	};
 }
 
@@ -525,8 +512,8 @@ export async function processReportJob(job: ReportJobContext) {
 			promptValue: string;
 			brandedPrompt: boolean;
 			runs: Array<{
-				modelGroup: "openai" | "anthropic" | "google";
 				model: string;
+				version: string;
 				webSearchEnabled: boolean;
 				rawOutput: any;
 				webQueries: string[];

@@ -74,7 +74,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
-			modelGroup: z.string().optional(),
+			model: z.string().optional(),
 			promptIds: z.array(z.string()),
 			timezone: z.string().default("UTC"),
 		}),
@@ -131,7 +131,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 				toDateStr,
 				timezone,
 				undefined,
-				data.modelGroup,
+				data.model,
 			),
 			getBatchVisibilityData(
 				data.brandId,
@@ -169,7 +169,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
-			modelGroup: z.string().optional(),
+			model: z.string().optional(),
 			promptIds: z.array(z.string()).default([]),
 			timezone: z.string().default("UTC"),
 		}),
@@ -236,10 +236,10 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 				toDateStr,
 				timezone,
 				data.promptIds,
-				data.modelGroup,
+				data.model,
 			),
 			fromDateStr && toDateStr
-				? getDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, data.promptIds, data.modelGroup)
+				? getDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, data.promptIds, data.model)
 				: Promise.resolve([]),
 		]);
 

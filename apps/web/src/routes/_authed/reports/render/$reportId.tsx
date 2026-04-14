@@ -46,8 +46,8 @@ interface PromptData { value: string; }
 interface PromptRunResult {
 	promptValue: string;
 	runs: Array<{
-		modelGroup: "openai" | "anthropic" | "google";
 		model: string;
+		version: string;
 		webSearchEnabled: boolean;
 		rawOutput: any;
 		webQueries: string[];
@@ -151,12 +151,12 @@ function ReportRenderPage() {
 			fullRuns.push({
 				promptId, promptValue: pr.promptValue,
 				brandMentioned: run.brandMentioned, competitorsMentioned: run.competitorsMentioned,
-				webQueries: run.webQueries || [], textContent: run.textContent || "", modelGroup: run.modelGroup,
+				webQueries: run.webQueries || [], textContent: run.textContent || "", model: run.model,
 			});
 			chartRuns.push({
 				id: `run-${pi}-${ri}`, promptId, brandMentioned: run.brandMentioned,
 				competitorsMentioned: run.competitorsMentioned, createdAt: new Date(),
-				modelGroup: run.modelGroup, model: run.model,
+				model: run.model, version: run.version,
 				webSearchEnabled: run.webSearchEnabled, rawOutput: run.rawOutput, webQueries: run.webQueries,
 			});
 		});
