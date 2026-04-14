@@ -117,7 +117,12 @@ export const brightdata: Provider = {
 						Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify([{ url: BD_BASE_URL[model] ?? "", prompt, index: 1, web_search: options?.webSearch ?? false }]),
+					body: JSON.stringify([{
+						url: BD_BASE_URL[model] ?? "",
+						prompt,
+						index: 1,
+						...(model === "chatgpt" ? { web_search: options?.webSearch ?? false } : {}),
+					}]),
 				},
 			);
 
