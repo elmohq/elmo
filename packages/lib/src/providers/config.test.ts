@@ -202,7 +202,7 @@ describe("provider validateTarget", () => {
 		});
 
 		it("accepts other models with :online", () => {
-			for (const model of ["perplexity", "gemini", "grok", "google-ai-mode"]) {
+			for (const model of ["perplexity", "copilot", "gemini", "grok", "google-ai-mode"]) {
 				expect(brightdata.validateTarget!(config(model, "brightdata", true))).toBeNull();
 			}
 		});

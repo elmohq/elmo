@@ -106,6 +106,7 @@ export interface TargetResult {
 	target: string;
 	status: "pass" | "fail";
 	latency: number;
+	retries: number;
 	error?: string;
 	textLength: number;
 	rawOutputBytes: number;
@@ -114,6 +115,7 @@ export interface TargetResult {
 	webSearch: boolean;
 	sampleOutput: string;
 	issues: ValidationIssue[];
+	timestamp: string;
 }
 
 function validateResult(result: ScrapeResult, providerId: string, webSearch: boolean): ValidationIssue[] {
@@ -204,15 +206,16 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 	log(`Test prompt: "${TEST_PROMPTS[0]}"`, colors.dim);
 	log(`Validating: text content (${MIN_TEXT_LENGTH}+ chars), citations, rawOutput re-extraction\n`, colors.dim);
 
-	const start = Date.now();
+	let attemptStart = Date.now();
 	let result: ScrapeResult;
+	let retries = 0;
 	try {
 		result = await provider.run(config.model, TEST_PROMPTS[0], {
 			webSearch: config.webSearch,
 			version: config.version,
 		});
 	} catch (error) {
-		const latency = Date.now() - start;
+		const latency = Date.now() - attemptStart;
 		const errorMsg = error instanceof Error ? error.message : String(error);
 		log(`FAIL (${formatLatency(latency)})`, colors.red);
 		log(`  Error: ${errorMsg}`, colors.red);
@@ -220,6 +223,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 			target,
 			status: "fail",
 			latency,
+			retries: 0,
 			error: errorMsg,
 			textLength: 0,
 			rawOutputBytes: 0,
@@ -228,14 +232,17 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 			webSearch: config.webSearch,
 			sampleOutput: "",
 			issues: [],
+			timestamp: new Date().toISOString(),
 		};
 	}
 
-	// Retry up to 4 times with different prompts if web search was expected but no citations/queries came back
+	// Retry with different prompts if web search was expected but no citations/queries came back
 	if (config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries)) {
 		for (let i = 1; i < TEST_PROMPTS.length; i++) {
 			log(`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`, colors.yellow);
+			retries++;
 			try {
+				attemptStart = Date.now();
 				const retry = await provider.run(config.model, TEST_PROMPTS[i], {
 					webSearch: config.webSearch,
 					version: config.version,
@@ -248,7 +255,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 		}
 	}
 
-	const latency = Date.now() - start;
+	const latency = Date.now() - attemptStart;
 	const rawJson = JSON.stringify(result.rawOutput ?? null, null, 2);
 	const rawOutputBytes = Buffer.byteLength(rawJson);
 	const issues = validateResult(result, providerId, config.webSearch);
@@ -293,6 +300,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 		target,
 		status: hasErrors ? "fail" : "pass",
 		latency,
+		retries,
 		textLength: result.textContent?.length ?? 0,
 		rawOutputBytes,
 		citations: result.citations.length,
@@ -300,6 +308,7 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 		webSearch: config.webSearch,
 		sampleOutput: result.textContent?.slice(0, 500) ?? "",
 		issues,
+		timestamp: new Date().toISOString(),
 	};
 }
 

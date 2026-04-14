@@ -46,6 +46,9 @@ export function Footer() {
 								<Link to="/ai-visibility-tools">AI Visibility Tool Directory</Link>
 							</li>
 							<li>
+								<Link to="/status">Status</Link>
+							</li>
+							<li>
 								<a
 									href="https://github.com/elmohq/elmo/issues"
 									target="_blank"

@@ -1,6 +1,8 @@
 name: Test Providers
 
 on:
+  schedule:
+    - cron: "0 0,6,12,18 * * *"
   workflow_dispatch:
     inputs:
       target:
@@ -62,6 +64,7 @@ jobs:
           - "gemini:brightdata:online"
           - "perplexity:brightdata:online"
           - "grok:brightdata:online"
+          - "copilot:brightdata:online"
           # DataForSEO
           - "google-ai-mode:dataforseo:online"
           # Direct API
@@ -94,6 +97,52 @@ jobs:
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ matrix.target }}" --output-json result.json
+      - name: Push results to Upstash Redis
+        if: always() && hashFiles('result.json') != ''
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: |
+          node -e '
+          const fs = require("fs");
+          if (!fs.existsSync("result.json")) process.exit(0);
+          const results = JSON.parse(fs.readFileSync("result.json", "utf8"));
+          const url = process.env.UPSTASH_REDIS_REST_URL;
+          const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+          if (!url || !token) { console.log("No Upstash credentials, skipping"); process.exit(0); }
+
+          async function push() {
+            for (const r of Array.isArray(results) ? results : [results]) {
+              const ts = Date.now();
+              const key = `provider-status:${r.target}`;
+              const value = JSON.stringify({
+                ts: r.timestamp || new Date().toISOString(),
+                status: r.status,
+                latency: r.latency,
+                retries: r.retries || 0,
+                textLength: r.textLength,
+                rawOutputBytes: r.rawOutputBytes,
+                citations: r.citations,
+                webQueries: r.webQueries,
+                webSearch: r.webSearch,
+                error: r.error || null,
+              });
+              // ZADD with timestamp score
+              const res = await fetch(`${url}/zadd/${encodeURIComponent(key)}/${ts}/${encodeURIComponent(value)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!res.ok) console.error(`Failed to push ${r.target}:`, await res.text());
+              else console.log(`Pushed ${r.target} to Redis`);
+
+              // Trim to last 30 days (remove entries older than 30d)
+              const cutoff = ts - 30 * 24 * 60 * 60 * 1000;
+              await fetch(`${url}/zremrangebyscore/${encodeURIComponent(key)}/0/${cutoff}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+            }
+          }
+          push().catch(e => { console.error(e); process.exit(1); });
+          '
       - name: Sanitize artifact name
         if: always()
         id: artifact
