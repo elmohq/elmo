@@ -442,7 +442,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 			<div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
 				{latest && (
 					<>
-						<span>Uptime: {uptime !== null ? `${uptime.toFixed(1)}%` : "—"}</span>
+						<span>Success: {uptime !== null ? `${uptime.toFixed(1)}%` : "—"}</span>
 						<StatWithSparkline
 							label="Latency"
 							value={formatLatency(latest.latency)}
