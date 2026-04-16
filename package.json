@@ -58,11 +58,11 @@
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.10",
+    "@biomejs/biome": "2.4.11",
     "@changesets/cli": "^2.30.0",
-    "knip": "^6.3.0",
+    "knip": "^6.4.0",
     "tsx": "^4.21.0",
-    "turbo": "^2.9.3",
+    "turbo": "^2.9.6",
     "typescript": "^5.9.3"
   }
 }
