@@ -33,7 +33,7 @@
 		"fumadocs-mdx": "^14.2.11",
 		"fumadocs-openapi": "^10.6.6",
 		"fumadocs-ui": "^16.7.10",
-		"lucide-react": "^0.575.0",
+		"lucide-react": "^1.8.0",
 		"motion": "^12.38.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"posthog-js": "^1.364.7",
