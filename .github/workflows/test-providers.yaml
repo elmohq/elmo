@@ -164,7 +164,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Download results
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: result-*
           path: results
