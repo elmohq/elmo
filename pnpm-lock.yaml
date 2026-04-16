@@ -519,8 +519,8 @@ importers:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.20.0)(@upstash/redis@1.37.0)(kysely@0.28.14)(pg@8.20.0)
       olostep:
-        specifier: ^0.1.3
-        version: 0.1.3
+        specifier: ^1.0.0
+        version: 1.0.0
       pg:
         specifier: ^8.20.0
         version: 8.20.0
@@ -7353,8 +7353,8 @@ packages:
   ohash@2.0.11:
     resolution: {integrity: sha512-RdR9FQrFwNBNXAr4GixM8YaRZRJ5PUWbKYbE5eOsrwAjJW0q2REGcf79oYPsLyskQCZG1PLN+S/K1V00joZAoQ==}
 
-  olostep@0.1.3:
-    resolution: {integrity: sha512-2UfTTwLmUq0RUoj2MhR9H46F4KLBndIY4qGjkz5iMFqyJvCQWh2akCXo9klgH8c3QsbkagH/gaKl29BwgATnKA==}
+  olostep@1.0.0:
+    resolution: {integrity: sha512-ENxoOGbsJ8N87rboZI5SryF60pqz6yDCcsOKW6OqGOKgPehl/dmw4sW+UiepiBO+VPsOz+GYddAEmnInsKCsjg==}
     engines: {node: '>=18'}
 
   oniguruma-parser@0.12.1:
@@ -16172,7 +16172,7 @@ snapshots:
 
   ohash@2.0.11: {}
 
-  olostep@0.1.3:
+  olostep@1.0.0:
     dependencies:
       node-fetch: 3.3.2
 
