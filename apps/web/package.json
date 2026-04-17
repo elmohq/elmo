@@ -24,6 +24,7 @@
 		"@tabler/icons-react": "^3.41.1",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
+		"@takumi-rs/core": "^1.0.4",
 		"@takumi-rs/image-response": "^1.0.4",
 		"@takumi-rs/wasm": "^1.0.4",
 		"@tanstack/devtools-vite": "^0.6.0",

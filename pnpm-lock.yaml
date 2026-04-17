@@ -94,6 +94,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+      '@takumi-rs/core':
+        specifier: ^1.0.4
+        version: 1.0.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@takumi-rs/image-response':
         specifier: ^1.0.4
         version: 1.0.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -312,6 +315,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.5(@emnapi/core@1.8.1)(@emnapi/runtime@1.8.1)(@types/node@25.5.2)(esbuild@0.27.7)(jiti@2.6.1)(tsx@4.21.0)(yaml@2.8.3))
+      '@takumi-rs/core':
+        specifier: ^1.0.4
+        version: 1.0.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@takumi-rs/image-response':
         specifier: ^1.0.4
         version: 1.0.9(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

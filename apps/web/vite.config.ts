@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -9,8 +12,18 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
-const takumiCoreStub = fileURLToPath(
-	import.meta.resolve("@workspace/og/takumi-core-stub"),
+const require = createRequire(import.meta.url);
+const takumiCorePkgPath = resolve(
+	dirname(require.resolve("@takumi-rs/core")),
+	"..",
+	"package.json",
+);
+const takumiNativeBindings = Object.keys(
+	(
+		JSON.parse(readFileSync(takumiCorePkgPath, "utf8")) as {
+			optionalDependencies?: Record<string, string>;
+		}
+	).optionalDependencies ?? {},
 );
 
 const sentryPlugins = await (async () => {
@@ -39,7 +52,6 @@ export default defineConfig({
 		alias: {
 			"@/": new URL("./src/", import.meta.url).pathname,
 			tslib: tslibEsm,
-			"@takumi-rs/core": takumiCoreStub,
 		},
 	},
 	plugins: [
@@ -51,13 +63,13 @@ export default defineConfig({
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
-				"@takumi-rs/core": takumiCoreStub,
 			},
 			noExternals: [
 				"@opentelemetry/instrumentation",
 				"@opentelemetry/api",
 				"@prisma/instrumentation",
 			],
+			traceDeps: ["@takumi-rs/core", ...takumiNativeBindings],
 			rollupConfig: {
 				external: ["fsevents"],
 			},

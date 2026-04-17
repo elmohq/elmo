@@ -6,8 +6,7 @@
 	"exports": {
 		"./render": "./src/render.ts",
 		"./vite-plugin": "./src/vite-plugin.ts",
-		"./virtual": "./src/virtual.d.ts",
-		"./takumi-core-stub": "./src/takumi-core-stub.ts"
+		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
 		"@workspace/config": "workspace:*",
