@@ -55,6 +55,7 @@ function parseArgs(): ParsedArgs {
 Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets> [--output-json <path>] [--dump <path>]
 
   <scrape-targets>  Comma-separated SCRAPE_TARGETS entries, e.g. "chatgpt:olostep:online,gemini:olostep:online"
+                    When multiple targets are provided, they are all tested in parallel.
   --output-json     Write results as JSON to the given path (for CI artifact collection)
   --dump            Write full raw output for each target to the given directory
 
@@ -194,17 +195,22 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 	return issues;
 }
 
-async function runTarget(target: string, dumpDir?: string): Promise<TargetResult> {
+async function runTarget(target: string, dumpDir?: string): Promise<{ result: TargetResult; logs: string }> {
+	const buffered: string[] = [];
+	const tlog = (message: string, color?: string) => {
+		buffered.push(`${color || ""}${message}${colors.reset}`);
+	};
+
 	const [config] = parseScrapeTargets(target);
 	const providerId = config.provider;
 	const provider = getProvider(providerId);
 	const meta = getModelMeta(config.model);
 	const versionStr = config.version ? ` (${config.version})` : "";
 
-	log(`\nTesting: ${meta.label} via ${providerId}${versionStr}`, colors.bright);
-	log(`Web search: ${config.webSearch ? "enabled" : "disabled"}`, colors.dim);
-	log(`Test prompt: "${TEST_PROMPTS[0]}"`, colors.dim);
-	log(`Validating: text content (${MIN_TEXT_LENGTH}+ chars), citations, rawOutput re-extraction\n`, colors.dim);
+	tlog(`\nTesting: ${meta.label} via ${providerId}${versionStr}`, colors.bright);
+	tlog(`Web search: ${config.webSearch ? "enabled" : "disabled"}`, colors.dim);
+	tlog(`Test prompt: "${TEST_PROMPTS[0]}"`, colors.dim);
+	tlog(`Validating: text content (${MIN_TEXT_LENGTH}+ chars), citations, rawOutput re-extraction\n`, colors.dim);
 
 	let attemptStart = Date.now();
 	let result: ScrapeResult;
@@ -217,29 +223,32 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 	} catch (error) {
 		const latency = Date.now() - attemptStart;
 		const errorMsg = error instanceof Error ? error.message : String(error);
-		log(`FAIL (${formatLatency(latency)})`, colors.red);
-		log(`  Error: ${errorMsg}`, colors.red);
+		tlog(`FAIL (${formatLatency(latency)})`, colors.red);
+		tlog(`  Error: ${errorMsg}`, colors.red);
 		return {
-			target,
-			status: "fail",
-			latency,
-			retries: 0,
-			error: errorMsg,
-			textLength: 0,
-			rawOutputBytes: 0,
-			citations: 0,
-			webQueries: 0,
-			webSearch: config.webSearch,
-			sampleOutput: "",
-			issues: [],
-			timestamp: new Date().toISOString(),
+			result: {
+				target,
+				status: "fail",
+				latency,
+				retries: 0,
+				error: errorMsg,
+				textLength: 0,
+				rawOutputBytes: 0,
+				citations: 0,
+				webQueries: 0,
+				webSearch: config.webSearch,
+				sampleOutput: "",
+				issues: [],
+				timestamp: new Date().toISOString(),
+			},
+			logs: buffered.join("\n"),
 		};
 	}
 
 	// Retry with different prompts if web search was expected but no citations/queries came back
 	if (config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries)) {
 		for (let i = 1; i < TEST_PROMPTS.length; i++) {
-			log(`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`, colors.yellow);
+			tlog(`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`, colors.yellow);
 			retries++;
 			try {
 				attemptStart = Date.now();
@@ -265,50 +274,53 @@ async function runTarget(target: string, dumpDir?: string): Promise<TargetResult
 		mkdirSync(dumpDir, { recursive: true });
 		const filename = `${dumpDir}/${target.replace(/[/:]/g, "-")}.json`;
 		writeFileSync(filename, rawJson);
-		log(`Dumped raw output to ${filename}`, colors.dim);
+		tlog(`Dumped raw output to ${filename}`, colors.dim);
 	}
 
-	log(`Latency:      ${formatLatency(latency)}`, colors.dim);
-	log(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
-	log(`Raw output:   ${(rawOutputBytes / 1024).toFixed(1)} KB`, colors.dim);
-	log(`Citations:    ${result.citations.length}`, colors.blue);
-	log(`Web queries:  ${result.webQueries.length}`, colors.dim);
+	tlog(`Latency:      ${formatLatency(latency)}`, colors.dim);
+	tlog(`Text:         ${result.textContent?.length ?? 0} chars`, colors.dim);
+	tlog(`Raw output:   ${(rawOutputBytes / 1024).toFixed(1)} KB`, colors.dim);
+	tlog(`Citations:    ${result.citations.length}`, colors.blue);
+	tlog(`Web queries:  ${result.webQueries.length}`, colors.dim);
 
 	if (result.textContent) {
-		log("\nSample output:", colors.dim);
-		log(`  ${result.textContent.slice(0, 300).replace(/\n/g, "\n  ")}`, colors.dim);
+		tlog("\nSample output:", colors.dim);
+		tlog(`  ${result.textContent.slice(0, 300).replace(/\n/g, "\n  ")}`, colors.dim);
 	}
 
 	if (issues.length > 0) {
-		log("\nIssues:", colors.bright);
+		tlog("\nIssues:", colors.bright);
 		for (const issue of issues) {
 			const color = issue.severity === "error" ? colors.red : colors.yellow;
 			const prefix = issue.severity === "error" ? "ERROR" : "WARN";
-			log(`  ${prefix}: [${issue.field}] ${issue.message}`, color);
+			tlog(`  ${prefix}: [${issue.field}] ${issue.message}`, color);
 		}
 	}
 
-	console.log();
+	tlog("");
 
 	if (hasErrors) {
-		log("FAIL", colors.red);
+		tlog("FAIL", colors.red);
 	} else {
-		log("PASS", colors.green);
+		tlog("PASS", colors.green);
 	}
 
 	return {
-		target,
-		status: hasErrors ? "fail" : "pass",
-		latency,
-		retries,
-		textLength: result.textContent?.length ?? 0,
-		rawOutputBytes,
-		citations: result.citations.length,
-		webQueries: result.webQueries.length,
-		webSearch: config.webSearch,
-		sampleOutput: result.textContent?.slice(0, 500) ?? "",
-		issues,
-		timestamp: new Date().toISOString(),
+		result: {
+			target,
+			status: hasErrors ? "fail" : "pass",
+			latency,
+			retries,
+			textLength: result.textContent?.length ?? 0,
+			rawOutputBytes,
+			citations: result.citations.length,
+			webQueries: result.webQueries.length,
+			webSearch: config.webSearch,
+			sampleOutput: result.textContent?.slice(0, 500) ?? "",
+			issues,
+			timestamp: new Date().toISOString(),
+		},
+		logs: buffered.join("\n"),
 	};
 }
 
@@ -361,10 +373,16 @@ async function main() {
 	const { target: targetArg, outputJson, dump } = parseArgs();
 	const targets = targetArg.split(",").map((t) => t.trim()).filter(Boolean);
 
-	const results: TargetResult[] = [];
-	for (const target of targets) {
-		results.push(await runTarget(target, dump));
-	}
+	// Run all targets in parallel. Each is almost entirely waiting on an external
+	// HTTP call, so there's no benefit to throttling. Logs are buffered per target
+	// and flushed as a coherent block when that target finishes, so output from
+	// concurrent targets doesn't interleave.
+	const pending = targets.map(async (target) => {
+		const { result, logs } = await runTarget(target, dump);
+		process.stdout.write(`${logs}\n`);
+		return result;
+	});
+	const results = await Promise.all(pending);
 
 	const passed = results.filter((r) => r.status === "pass").length;
 	const failed = results.filter((r) => r.status === "fail").length;
@@ -376,9 +394,8 @@ async function main() {
 
 	if (outputJson) {
 		writeFileSync(outputJson, JSON.stringify(results, null, 2));
-	} else {
-		writeGitHubSummary(results);
 	}
+	writeGitHubSummary(results);
 
 	if (failed > 0) process.exit(1);
 }
