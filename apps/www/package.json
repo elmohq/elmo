@@ -19,7 +19,7 @@
 		"@scalar/api-reference-react": "^0.9.20",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
-		"@takumi-rs/image-response": "^0.73.1",
+		"@takumi-rs/image-response": "^1.0.9",
 		"@takumi-rs/wasm": "^0.73.1",
 		"@tanstack/react-router": "^1.168.10",
 		"@tanstack/react-start": "^1.167.16",
