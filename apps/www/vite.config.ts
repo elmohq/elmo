@@ -9,6 +9,9 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import * as MdxConfig from "./source.config";
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
+const takumiCoreStub = fileURLToPath(
+	import.meta.resolve("@workspace/og/takumi-core-stub"),
+);
 
 export default defineConfig({
 	server: {
@@ -19,6 +22,7 @@ export default defineConfig({
 		alias: {
 			"@/": new URL("./src/", import.meta.url).pathname,
 			tslib: tslibEsm,
+			"@takumi-rs/core": takumiCoreStub,
 		},
 	},
 	plugins: [
@@ -29,6 +33,7 @@ export default defineConfig({
 		nitro({
 			alias: {
 				tslib: tslibEsm,
+				"@takumi-rs/core": takumiCoreStub,
 			},
 		}),
 		viteReact(),

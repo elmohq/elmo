@@ -9,6 +9,9 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
+const takumiCoreStub = fileURLToPath(
+	import.meta.resolve("@workspace/og/takumi-core-stub"),
+);
 
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
@@ -36,6 +39,7 @@ export default defineConfig({
 		alias: {
 			"@/": new URL("./src/", import.meta.url).pathname,
 			tslib: tslibEsm,
+			"@takumi-rs/core": takumiCoreStub,
 		},
 	},
 	plugins: [
@@ -47,6 +51,7 @@ export default defineConfig({
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
+				"@takumi-rs/core": takumiCoreStub,
 			},
 			noExternals: [
 				"@opentelemetry/instrumentation",
