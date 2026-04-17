@@ -133,7 +133,7 @@ export const olostep: Provider = {
 			{ parser: { id: parserConfig.parserId } },
 		);
 
-		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 600 });
+		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
 
 		let retrieveId: string | undefined;
 		for await (const item of batch.items()) {

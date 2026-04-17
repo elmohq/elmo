@@ -142,13 +142,20 @@ export const createBrandFn = createServerFn({ method: "POST" })
 				enabled: true,
 				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 			})
+			.onConflictDoNothing()
 			.returning();
 
-		if (!result[0]) {
+		const brand =
+			result[0] ??
+			(await db.query.brands.findFirst({
+				where: eq(brands.id, data.brandId),
+			}));
+
+		if (!brand) {
 			throw new Error("Failed to create brand");
 		}
 
-		return { success: true, brand: result[0] };
+		return { success: true, brand };
 	});
 
 /**

@@ -14,21 +14,65 @@ permissions:
   contents: read
 
 jobs:
-  # When a specific target is provided, run just that one
-  single:
-    if: inputs.target != ''
-    name: "Test: ${{ inputs.target }}"
+  test:
+    name: Test Providers
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 10
+    # All targets run in parallel on a single runner (they're I/O-bound waiting
+    # on external provider APIs), so the job wall-clock is ~the slowest target.
+    timeout-minutes: 40
+    env:
+      # Full set of targets run on the schedule. workflow_dispatch can override
+      # via inputs.target to run just a subset.
+      ALL_TARGETS: >-
+        chatgpt:olostep:online,
+        google-ai-mode:olostep:online,
+        google-ai-overview:olostep:online,
+        gemini:olostep:online,
+        copilot:olostep:online,
+        perplexity:olostep:online,
+        grok:olostep:online,
+        chatgpt:brightdata,
+        chatgpt:brightdata:online,
+        google-ai-mode:brightdata:online,
+        gemini:brightdata:online,
+        perplexity:brightdata:online,
+        grok:brightdata:online,
+        copilot:brightdata:online,
+        google-ai-mode:dataforseo:online,
+        chatgpt:openai-api:gpt-5-mini,
+        chatgpt:openai-api:gpt-5-mini:online,
+        claude:anthropic-api:claude-sonnet-4-20250514,
+        claude:anthropic-api:claude-sonnet-4-20250514:online,
+        claude:openrouter:anthropic/claude-sonnet-4.6,
+        claude:openrouter:anthropic/claude-sonnet-4.6:online,
+        chatgpt:openrouter:openai/gpt-5-mini,
+        chatgpt:openrouter:openai/gpt-5-mini:online,
+        deepseek:openrouter:deepseek/deepseek-v3.2,
+        mistral:openrouter:mistralai/mistral-small-2603
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --no-frozen-lockfile
-      - name: Test provider
+      - name: Resolve target list
+        id: targets
+        env:
+          OVERRIDE: ${{ inputs.target }}
+        run: |
+          if [ -n "$OVERRIDE" ]; then
+            TARGETS="$OVERRIDE"
+          else
+            # Strip whitespace from the YAML-folded ALL_TARGETS list.
+            TARGETS="$(printf '%s' "$ALL_TARGETS" | tr -d '[:space:]')"
+          fi
+          echo "value=$TARGETS" >> "$GITHUB_OUTPUT"
+      - name: Test providers
+        id: test
+        timeout-minutes: 35
+        continue-on-error: true
         env:
           OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
@@ -37,66 +81,7 @@ jobs:
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ inputs.target }}"
-
-  # When no target is provided, test all main targets in parallel
-  matrix:
-    if: inputs.target == ''
-    name: "Test: ${{ matrix.target }}"
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          # Olostep
-          - "chatgpt:olostep:online"
-          - "google-ai-mode:olostep:online"
-          - "google-ai-overview:olostep:online"
-          - "gemini:olostep:online"
-          - "copilot:olostep:online"
-          - "perplexity:olostep:online"
-          - "grok:olostep:online"
-          # BrightData
-          - "chatgpt:brightdata"
-          - "chatgpt:brightdata:online"
-          - "google-ai-mode:brightdata:online"
-          - "gemini:brightdata:online"
-          - "perplexity:brightdata:online"
-          - "grok:brightdata:online"
-          - "copilot:brightdata:online"
-          # DataForSEO
-          - "google-ai-mode:dataforseo:online"
-          # Direct API
-          - "chatgpt:openai-api:gpt-5-mini"
-          - "chatgpt:openai-api:gpt-5-mini:online"
-          - "claude:anthropic-api:claude-sonnet-4-20250514"
-          - "claude:anthropic-api:claude-sonnet-4-20250514:online"
-          # OpenRouter
-          - "claude:openrouter:anthropic/claude-sonnet-4.6"
-          - "claude:openrouter:anthropic/claude-sonnet-4.6:online"
-          - "chatgpt:openrouter:openai/gpt-5-mini"
-          - "chatgpt:openrouter:openai/gpt-5-mini:online"
-          - "deepseek:openrouter:deepseek/deepseek-v3.2"
-          - "mistral:openrouter:mistralai/mistral-small-2603"
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --no-frozen-lockfile
-      - name: Test provider
-        env:
-          OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
-          BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
-          DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ matrix.target }}" --output-json result.json
+        run: pnpm tsx apps/worker/scripts/test-provider.ts --target "${{ steps.targets.outputs.value }}" --output-json result.json
       - name: Push results to Upstash Redis
         if: always() && hashFiles('result.json') != ''
         env:
@@ -143,86 +128,15 @@ jobs:
           }
           push().catch(e => { console.error(e); process.exit(1); });
           '
-      - name: Sanitize artifact name
-        if: always()
-        id: artifact
-        run: echo "name=result-$(echo '${{ matrix.target }}' | tr ':/\\' '-')" >> $GITHUB_OUTPUT
-      - name: Upload result
-        if: always()
-        uses: actions/upload-artifact@v5
+      - name: Upload results artifact
+        if: always() && hashFiles('result.json') != ''
+        uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.artifact.outputs.name }}
+          name: provider-results
           path: result.json
-          retention-days: 1
-
-  summary:
-    if: inputs.target == '' && always()
-    needs: [matrix]
-    name: Summary
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    steps:
-      - name: Download results
-        uses: actions/download-artifact@v5
-        with:
-          pattern: result-*
-          path: results
-      - name: Generate summary
+          retention-days: 7
+      - name: Fail job if any target failed
+        if: always() && steps.test.outcome == 'failure'
         run: |
-          node -e '
-          const fs = require("fs");
-          const path = require("path");
-
-          const resultsDir = "results";
-          const allResults = [];
-
-          for (const dir of fs.readdirSync(resultsDir)) {
-            const file = path.join(resultsDir, dir, "result.json");
-            if (!fs.existsSync(file)) continue;
-            const data = JSON.parse(fs.readFileSync(file, "utf8"));
-            allResults.push(...(Array.isArray(data) ? data : [data]));
-          }
-
-          allResults.sort((a, b) => a.target.localeCompare(b.target));
-
-          const passed = allResults.filter(r => r.status === "pass").length;
-          const failed = allResults.filter(r => r.status === "fail").length;
-          const total = allResults.length;
-          const overall = failed > 0 ? `:x: ${failed} failed` : `:white_check_mark: All passed`;
-
-          const lines = [
-            `## Provider Test Results — ${overall} (${passed}/${total})`,
-            "",
-            "| Status | Target | Latency | Error | Text | Raw Output | Citations | Web Queries | Web Search | Sample Output |",
-            "|--------|--------|---------|-------|------|------------|-----------|-------------|------------|---------------|",
-          ];
-
-          for (const r of allResults) {
-            const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
-            const error = (r.error || "").slice(0, 100).replace(/\|/g, "\\|");
-            const rawKB = ((r.rawOutputBytes || 0) / 1024).toFixed(1) + " KB";
-            const sample = r.sampleOutput
-              ? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
-              : "";
-            lines.push(
-              `| ${status} | \`${r.target}\` | ${r.latency}ms | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`
-            );
-          }
-
-          const allIssues = allResults.flatMap(r =>
-            (r.issues || []).map(i => ({ target: r.target, ...i }))
-          );
-
-          if (allIssues.length > 0) {
-            lines.push("", "### Validation Issues", "");
-            lines.push("| Severity | Target | Field | Issue |");
-            lines.push("|----------|--------|-------|-------|");
-            for (const i of allIssues) {
-              const icon = i.severity === "error" ? ":x:" : ":warning:";
-              lines.push(`| ${icon} | \`${i.target}\` | \`${i.field}\` | ${i.message} |`);
-            }
-          }
-
-          lines.push("");
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n"));
-          console.log(`Wrote summary for ${total} targets (${passed} passed, ${failed} failed)`);
-          '
+          echo "One or more provider targets failed — see the summary for details."
+          exit 1

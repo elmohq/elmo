@@ -436,7 +436,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 			<div className="flex items-center justify-between">
 				<div>
 					<span className="font-medium">{formatProvider(provider)}</span>
-					{rest && <span className="text-muted-foreground"> ({provider === "openrouter" ? rest : rest.replace(/online/g, "web search")})</span>}
+					{rest && <span className="text-muted-foreground"> ({["openrouter", "openai-api", "anthropic-api"].includes(provider) ? rest : rest.replace(/online/g, "web search")})</span>}
 				</div>
 				<UptimeBadge entries={deduped} />
 			</div>

@@ -148,9 +148,12 @@ export const brightdata: Provider = {
 			return {
 				rawOutput,
 				textContent: answer,
-				// Mark as "unavailable" only when citations prove a search happened
-				// but the API didn't expose the query strings
-				webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
+				// Only mark web queries as "unavailable" when web search was enabled
+				// and citations exist but no query strings were exposed.
+				// When web search is disabled, webQueries is always empty.
+				webQueries: options?.webSearch
+					? (webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [])
+					: [],
 				citations,
 				modelVersion: record?.model ?? undefined,
 			};
