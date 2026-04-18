@@ -22,7 +22,7 @@ Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across
 
 ### BrightData
 
-```env
+```bash
 BRIGHTDATA_API_TOKEN=...
 ```
 
@@ -41,7 +41,7 @@ You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:g
 
 ### Olostep
 
-```env
+```bash
 OLOSTEP_API_KEY=...
 ```
 
@@ -94,21 +94,21 @@ If you skip DataForSEO, the onboarding wizard just leaves the keyword/persona su
 
 **Starter (scrape the two that matter).** Pick one scraper and you're done:
 
-```env
+```bash
 BRIGHTDATA_API_TOKEN=...
 SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online
 ```
 
 or
 
-```env
+```bash
 OLOSTEP_API_KEY=...
 SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online
 ```
 
 **Starter + Claude.** Add Anthropic direct for cheap Claude coverage:
 
-```env
+```bash
 BRIGHTDATA_API_TOKEN=...
 ANTHROPIC_API_KEY=...
 SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude:anthropic-api:claude-sonnet-4-20250514
@@ -116,7 +116,7 @@ SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude
 
 **No scraper (APIs only).** Cheapest option, but you're tracking model APIs instead of the real consumer surfaces:
 
-```env
+```bash
 OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
 SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4-20250514
