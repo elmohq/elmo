@@ -1,9 +1,7 @@
-# @workspace/lib
+# @workspace/api-spec
 
 ## 0.2.0
 
 ### Minor Changes
 
 - 95b71db: Replace visibility % with Share of Voice metric across reports, add reports API, and redesign report for print
-
-## 0.1.2

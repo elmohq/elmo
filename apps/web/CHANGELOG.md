@@ -1,5 +1,26 @@
 # @workspace/web
 
+## 0.2.0
+
+### Minor Changes
+
+- 95b71db: Replace visibility % with Share of Voice metric across reports, add reports API, and redesign report for print
+
+### Patch Changes
+
+- 4ce1911: show opportunities where prompts have competitor but not brand citations
+- 7acf16a: Keep the brand sidebar visible when navigating to a non-existent route under `/app/:brand/*`.
+- 1dcaf44: Chart PNG exports now include deployment branding and use a cleaner fixed-size layout
+- 37e9e16: Prompt Details now shows when the prompt is scheduled to run next.
+- Updated dependencies [95b71db]
+  - @workspace/lib@0.2.0
+  - @workspace/api-spec@0.2.0
+  - @workspace/whitelabel@0.2.0
+  - @workspace/deployment@0.2.0
+  - @workspace/config@0.2.0
+  - @workspace/og@0.2.0
+  - @workspace/ui@0.2.0
+
 ## 0.1.2
 
 ### Patch Changes
