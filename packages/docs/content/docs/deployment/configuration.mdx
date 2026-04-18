@@ -29,14 +29,18 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 
 ### AI Provider Keys
 
-At least one AI provider is required for Elmo to track visibility.
+At least one provider is required for Elmo to track visibility. See [Providers](/docs/deployment/providers) for a full cost/capability breakdown and recommended setups.
 
 | Variable | Description |
 |----------|-------------|
-| `OPENAI_API_KEY` | OpenAI API key — enables ChatGPT tracking with web search |
+| `BRIGHTDATA_API_TOKEN` | BrightData token — recommended scraper for ChatGPT + Google AI Mode. [Sign up](https://get.brightdata.com/67h1b7h0shcn) |
+| `OLOSTEP_API_KEY` | Olostep key — recommended scraper, powers most large-scale trackers. [Sign up](https://olostep.com/?ref=elmo) |
+| `OPENAI_API_KEY` | OpenAI API key — enables ChatGPT (via API, not the consumer UI) |
 | `ANTHROPIC_API_KEY` | Anthropic API key — enables Claude tracking |
-| `DATAFORSEO_LOGIN` | DataForSEO login — enables Google AI Overviews tracking |
+| `OPENROUTER_API_KEY` | OpenRouter key — one key for Claude + other hosted models |
+| `DATAFORSEO_LOGIN` | DataForSEO login — optional, unlocks Google AI Mode scraping and keyword brainstorming in the onboarding wizard |
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
+| `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/deployment/providers#scrape_targets-format). |
 
 ### Branding (White Label)
 

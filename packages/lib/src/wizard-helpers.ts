@@ -68,6 +68,10 @@ async function retryWithBackoff<T>(
 
 // Function to check domain traffic using DataForSEO Labs Bulk Traffic Estimation API
 export async function checkDomainTraffic(domain: string): Promise<number> {
+	if (!process.env.DATAFORSEO_LOGIN || !process.env.DATAFORSEO_PASSWORD) {
+		console.log("Skipping domain traffic check — DATAFORSEO_LOGIN/PASSWORD not configured.");
+		return 0;
+	}
 	try {
 		return await retryWithBackoff(async () => {
 			// Clean domain (remove protocol and www)
@@ -591,8 +595,19 @@ Format the output as JSON within <out> xml tags.
 	}
 }
 
+// DataForSEO powers every phase in this file that brainstorms keywords or
+// personas. When it isn't configured, callers should skip those phases.
+export function isDataForSEOConfigured(): boolean {
+	return Boolean(process.env.DATAFORSEO_LOGIN && process.env.DATAFORSEO_PASSWORD);
+}
+
 // Get keywords for domain and products
 export async function getKeywords(domain: string, products: string[]): Promise<KeywordResult[]> {
+	if (!isDataForSEOConfigured()) {
+		console.log("Skipping keyword brainstorming — DATAFORSEO_LOGIN/PASSWORD not configured.");
+		return [];
+	}
+
 	console.log("Getting keyword ideas for domain:", domain, "with products:", products);
 
 	const [keywordIdeas, keywordsForSite] = await Promise.all([getKeywordIdeas(products), getKeywordsForSite(domain)]);
@@ -613,6 +628,11 @@ export async function getKeywords(domain: string, products: string[]): Promise<K
 
 // Get personas for products and website
 export async function getPersonas(products: string[], website: string): Promise<PersonaGroup[]> {
+	if (!isDataForSEOConfigured()) {
+		console.log("Skipping persona brainstorming — DATAFORSEO_LOGIN/PASSWORD not configured.");
+		return [];
+	}
+
 	// Take the first 2-3 product categories for autocomplete queries
 	const topProducts = products.slice(0, 5);
 	const allSuggestions: string[] = [];

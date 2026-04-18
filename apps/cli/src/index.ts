@@ -349,71 +349,7 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 	}
 
 	// ── AI providers ─────────────────────────────────────────────────────
-	const setOpenai = await p.confirm({
-		message: "Set OpenAI credentials?",
-		initialValue: true,
-	});
-	assertNotCancelled(setOpenai);
-	if (setOpenai) {
-		const key = await p.text({
-			message: "OPENAI_API_KEY",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(key);
-		env.OPENAI_API_KEY = key;
-	}
-
-	const setAnthropic = await p.confirm({
-		message: "Set Anthropic credentials?",
-		initialValue: true,
-	});
-	assertNotCancelled(setAnthropic);
-	if (setAnthropic) {
-		const key = await p.text({
-			message: "ANTHROPIC_API_KEY",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(key);
-		env.ANTHROPIC_API_KEY = key;
-	}
-
-	const setDataforseo = await p.confirm({
-		message: "Set DataForSEO credentials?",
-		initialValue: false,
-	});
-	assertNotCancelled(setDataforseo);
-	if (setDataforseo) {
-		const login = await p.text({
-			message: "DATAFORSEO_LOGIN",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(login);
-		env.DATAFORSEO_LOGIN = login;
-
-		const pwd = await p.text({
-			message: "DATAFORSEO_PASSWORD",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(pwd);
-		env.DATAFORSEO_PASSWORD = pwd;
-	}
-
-	// ── Scrape targets ──────────────────────────────────────────────────
-	// Default based on which API keys were provided
-	const defaultTargets = [
-		env.OPENAI_API_KEY ? "chatgpt:openai-api:gpt-5-mini:online" : null,
-		env.ANTHROPIC_API_KEY ? "claude:anthropic-api:claude-sonnet-4" : null,
-		env.DATAFORSEO_LOGIN ? "google-ai-mode:dataforseo:online" : null,
-	].filter(Boolean).join(",");
-
-	const scrapeTargets = await p.text({
-		message: "SCRAPE_TARGETS (model:provider[:version][:online], comma-separated)",
-		initialValue: defaultTargets || undefined,
-		placeholder: "chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4,google-ai-mode:dataforseo:online",
-		validate: (v) => (!v ? "Required" : undefined),
-	});
-	assertNotCancelled(scrapeTargets);
-	env.SCRAPE_TARGETS = scrapeTargets;
+	await configureProvidersInteractive(env);
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
@@ -489,6 +425,226 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 	p.outro(pc.green("Setup complete!"));
 }
 
+// ── Provider Configuration ───────────────────────────────────────────────────
+
+const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
+const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
+const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/deployment/providers";
+
+type ScrapeProvider = "brightdata" | "olostep" | "api-only" | "custom";
+
+async function configureProvidersInteractive(env: EnvMap): Promise<void> {
+	p.note(
+		[
+			"Elmo tracks which AI answer engines mention your brand. Most of",
+			"that traffic comes from ChatGPT and Google AI Mode — neither has",
+			"a public API, so tracking them requires a scraper.",
+			"",
+			pc.bold("Recommended scrapers (cover ChatGPT + Google AI Mode):"),
+			`  • ${pc.cyan("BrightData")} — cheapest solid option, ~$0.01–0.03 per prompt/month`,
+			`  • ${pc.cyan("Olostep")}    — powers most large-scale trackers, ~$0.03–0.10 per prompt/month`,
+			"",
+			"Either works end-to-end. Pick the one whose pricing/signup you prefer.",
+		].join("\n"),
+		"AI visibility scrapers",
+	);
+
+	const scrapeProvider = (await p.select({
+		message: "Which scraper do you want to use?",
+		options: [
+			{
+				value: "brightdata" as const,
+				label: "BrightData (recommended — cheapest solid option)",
+				hint: BRIGHTDATA_AFFILIATE,
+			},
+			{
+				value: "olostep" as const,
+				label: "Olostep (recommended — powers most large-scale trackers)",
+				hint: OLOSTEP_AFFILIATE,
+			},
+			{
+				value: "api-only" as const,
+				label: "No scraper — only direct APIs (OpenAI / Anthropic / OpenRouter)",
+				hint: "skips real ChatGPT + Google AI Mode tracking",
+			},
+			{
+				value: "custom" as const,
+				label: "I'll configure SCRAPE_TARGETS manually later",
+				hint: "advanced",
+			},
+		],
+		initialValue: "brightdata" as ScrapeProvider,
+	})) as ScrapeProvider | symbol;
+	assertNotCancelled(scrapeProvider);
+
+	const scrapeModels: string[] = [];
+
+	if (scrapeProvider === "brightdata") {
+		p.log.info(
+			`Sign up / grab an API token: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`,
+		);
+		const key = await p.text({
+			message: "BRIGHTDATA_API_TOKEN",
+			placeholder: "Paste your BrightData API token",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.BRIGHTDATA_API_TOKEN = key;
+		scrapeModels.push("chatgpt:brightdata:online", "google-ai-mode:brightdata:online");
+	} else if (scrapeProvider === "olostep") {
+		p.log.info(
+			`Sign up / grab an API key: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`,
+		);
+		const key = await p.text({
+			message: "OLOSTEP_API_KEY",
+			placeholder: "Paste your Olostep API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OLOSTEP_API_KEY = key;
+		scrapeModels.push("chatgpt:olostep:online", "google-ai-mode:olostep:online");
+	}
+
+	// ── Optional direct APIs ────────────────────────────────────────────
+	const extras = (await p.multiselect({
+		message: "Add direct model APIs? (optional — great for tracking Claude)",
+		options: [
+			{
+				value: "anthropic",
+				label: "Anthropic API (adds Claude, ~$0.10 per prompt/month)",
+			},
+			{
+				value: "openai",
+				label: "OpenAI API (gpt-5-mini with web search, ~$0.02 per prompt/month)",
+				hint: scrapeProvider === "brightdata" || scrapeProvider === "olostep"
+					? "you already have ChatGPT via scraper"
+					: undefined,
+			},
+			{
+				value: "openrouter",
+				label: "OpenRouter (one key for Claude + other hosted models)",
+			},
+		],
+		required: false,
+		initialValues: ["anthropic"],
+	})) as string[] | symbol;
+	assertNotCancelled(extras);
+	const selectedExtras = new Set(extras);
+
+	if (selectedExtras.has("anthropic")) {
+		const key = await p.text({
+			message: "ANTHROPIC_API_KEY",
+			placeholder: "sk-ant-...",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.ANTHROPIC_API_KEY = key;
+		scrapeModels.push("claude:anthropic-api:claude-sonnet-4-20250514");
+	}
+	if (selectedExtras.has("openai")) {
+		const key = await p.text({
+			message: "OPENAI_API_KEY",
+			placeholder: "sk-...",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENAI_API_KEY = key;
+		// Only add chatgpt direct API if the scraper isn't already covering it.
+		if (scrapeProvider === "api-only" || scrapeProvider === "custom") {
+			scrapeModels.push("chatgpt:openai-api:gpt-5-mini:online");
+		}
+	}
+	if (selectedExtras.has("openrouter")) {
+		const key = await p.text({
+			message: "OPENROUTER_API_KEY",
+			placeholder: "sk-or-...",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENROUTER_API_KEY = key;
+		if (!selectedExtras.has("anthropic")) {
+			scrapeModels.push("claude:openrouter:anthropic/claude-sonnet-4.6");
+		}
+	}
+
+	// ── Optional DataForSEO (keyword brainstorming only) ────────────────
+	const setDataforseo = await p.confirm({
+		message: "Configure DataForSEO? (optional — only used to suggest SEO keywords in the onboarding wizard)",
+		initialValue: false,
+	});
+	assertNotCancelled(setDataforseo);
+	if (setDataforseo) {
+		const login = await p.text({
+			message: "DATAFORSEO_LOGIN",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(login);
+		env.DATAFORSEO_LOGIN = login;
+
+		const pwd = await p.text({
+			message: "DATAFORSEO_PASSWORD",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(pwd);
+		env.DATAFORSEO_PASSWORD = pwd;
+		scrapeModels.push("google-ai-mode:dataforseo:online");
+	}
+
+	// ── Build / confirm SCRAPE_TARGETS ──────────────────────────────────
+	if (scrapeProvider === "custom") {
+		const scrapeTargets = await p.text({
+			message: "SCRAPE_TARGETS (model:provider[:version][:online], comma-separated)",
+			placeholder:
+				"chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude:anthropic-api:claude-sonnet-4-20250514",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(scrapeTargets);
+		env.SCRAPE_TARGETS = scrapeTargets;
+		p.log.info(`See ${link(pc.cyan(PROVIDERS_DOC_URL), PROVIDERS_DOC_URL)} for the full list.`);
+		return;
+	}
+
+	if (scrapeModels.length === 0) {
+		p.log.warn(
+			"No providers configured. Elmo will not be able to run scheduled checks until you set SCRAPE_TARGETS and provider keys.",
+		);
+		p.log.info(`See ${link(pc.cyan(PROVIDERS_DOC_URL), PROVIDERS_DOC_URL)}`);
+		return;
+	}
+
+	const defaultTargets = dedupeTargets(scrapeModels);
+	p.log.step(`Recommended SCRAPE_TARGETS:\n  ${pc.cyan(defaultTargets)}`);
+
+	const customize = await p.confirm({
+		message: "Customize SCRAPE_TARGETS?",
+		initialValue: false,
+	});
+	assertNotCancelled(customize);
+
+	if (customize) {
+		const scrapeTargets = await p.text({
+			message: "SCRAPE_TARGETS",
+			initialValue: defaultTargets,
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(scrapeTargets);
+		env.SCRAPE_TARGETS = scrapeTargets;
+	} else {
+		env.SCRAPE_TARGETS = defaultTargets;
+	}
+}
+
+function dedupeTargets(targets: string[]): string {
+	const seen = new Set<string>();
+	const out: string[] = [];
+	for (const t of targets) {
+		if (seen.has(t)) continue;
+		seen.add(t);
+		out.push(t);
+	}
+	return out.join(",");
+}
+
 async function runInitCI(options: InitOptions, version: string): Promise<void> {
 	const cwd = process.cwd();
 
@@ -540,6 +696,15 @@ async function runInitCI(options: InitOptions, version: string): Promise<void> {
 	if (process.env.ELMO_ANTHROPIC_API_KEY) {
 		env.ANTHROPIC_API_KEY = process.env.ELMO_ANTHROPIC_API_KEY;
 	}
+	if (process.env.ELMO_BRIGHTDATA_API_TOKEN) {
+		env.BRIGHTDATA_API_TOKEN = process.env.ELMO_BRIGHTDATA_API_TOKEN;
+	}
+	if (process.env.ELMO_OLOSTEP_API_KEY) {
+		env.OLOSTEP_API_KEY = process.env.ELMO_OLOSTEP_API_KEY;
+	}
+	if (process.env.ELMO_OPENROUTER_API_KEY) {
+		env.OPENROUTER_API_KEY = process.env.ELMO_OPENROUTER_API_KEY;
+	}
 	if (process.env.ELMO_DATAFORSEO_LOGIN) {
 		env.DATAFORSEO_LOGIN = process.env.ELMO_DATAFORSEO_LOGIN;
 		env.DATAFORSEO_PASSWORD =
@@ -548,8 +713,24 @@ async function runInitCI(options: InitOptions, version: string): Promise<void> {
 	if (process.env.ELMO_SCRAPE_TARGETS) {
 		env.SCRAPE_TARGETS = process.env.ELMO_SCRAPE_TARGETS;
 	} else {
-		// Default: use the direct API providers matching the old hardcoded behavior
-		env.SCRAPE_TARGETS = "chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4,google-ai-mode:dataforseo:online";
+		// Default: prefer scrapers when configured, otherwise fall back to direct APIs.
+		const targets: string[] = [];
+		if (env.BRIGHTDATA_API_TOKEN) {
+			targets.push("chatgpt:brightdata:online", "google-ai-mode:brightdata:online");
+		} else if (env.OLOSTEP_API_KEY) {
+			targets.push("chatgpt:olostep:online", "google-ai-mode:olostep:online");
+		} else if (env.OPENAI_API_KEY) {
+			targets.push("chatgpt:openai-api:gpt-5-mini:online");
+		}
+		if (env.ANTHROPIC_API_KEY) {
+			targets.push("claude:anthropic-api:claude-sonnet-4-20250514");
+		}
+		if (env.DATAFORSEO_LOGIN && !targets.some((t) => t.startsWith("google-ai-mode:"))) {
+			targets.push("google-ai-mode:dataforseo:online");
+		}
+		if (targets.length > 0) {
+			env.SCRAPE_TARGETS = targets.join(",");
+		}
 	}
 
 	const composeYaml = buildComposeYaml({
