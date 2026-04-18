@@ -410,7 +410,7 @@ function WebQueriesTab({
 		return <div className="py-12 text-center text-muted-foreground text-sm">No web query data available for this time period.</div>;
 	}
 
-	const modelOrder = ["openai", "anthropic", "google"];
+	const modelOrder = ["chatgpt", "claude", "google-ai-mode"];
 
 	return (
 		<Card>

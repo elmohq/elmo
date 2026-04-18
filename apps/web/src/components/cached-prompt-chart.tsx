@@ -22,7 +22,7 @@ const PLACEHOLDER_BARS_NO_VISIBILITY = [10, 15, 8, 12, 10, 14, 8, 12, 10, 15, 12
 	(h, i) => ({ key: String(i), h }),
 );
 
-type ModelType = "openai" | "anthropic" | "google" | "all";
+type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
 
 function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 	return (
@@ -38,7 +38,7 @@ export interface CachedPromptChartProps {
 	brandId: string;
 	lookback: LookbackPeriod;
 	selectedModel?: ModelType;
-	availableModels?: ("openai" | "anthropic" | "google")[];
+	availableModels?: ("chatgpt" | "claude" | "google-ai-mode")[];
 	searchHighlight?: string;
 	// Whether this prompt has ever been evaluated (all-time)
 	// Used to distinguish "never evaluated" vs "no data in selected window"
@@ -51,7 +51,7 @@ export function CachedPromptChart({
 	brandId,
 	lookback = "1m",
 	selectedModel = "all",
-	availableModels = ["openai", "anthropic", "google"],
+	availableModels = ["chatgpt", "claude", "google-ai-mode"],
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {

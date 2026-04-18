@@ -175,9 +175,9 @@ export function ProgressBarChart({
 export { DOMAIN_CATEGORY_COLORS } from "@/lib/domain-categories";
 
 export const MODEL_COLORS: ColorMapping = {
-	openai: "#10b981", // green
-	anthropic: "#f59e0b", // amber/orange
-	google: "#3b82f6", // blue
+	chatgpt: "#10b981", // green
+	claude: "#f59e0b", // amber/orange
+	"google-ai-mode": "#3b82f6", // blue
 	all: "#8b5cf6", // purple
 };
 
