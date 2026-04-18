@@ -13,11 +13,11 @@ These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI r
 
 | Provider | Why | Rough cost per prompt/month* | Sign up |
 |---|---|---|---|
-| **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.01–0.03 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
-| **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$0.03–0.10 | [olostep.com](https://olostep.com/?ref=elmo) |
+| **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
+| **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
 
 <Callout>
-Prices assume Elmo's default 72-hour cadence (~10 runs per prompt per month) and public list pricing. Actual cost depends on volume tier and provider promos. The sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
+Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that. Actual cost depends on volume tier and provider promos. The sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
 </Callout>
 
 ### BrightData
@@ -65,9 +65,11 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 
 | Provider | Tracks | Cost per prompt/month* |
 |---|---|---|
-| **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$0.10 |
-| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$0.02 |
+| **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
+| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
 | **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
+
+\*Direct-API estimates also assume ~5 runs/day × 30 days = 150 calls/mo per tracked model, with typical prompt/response lengths. Prompt length drives real cost.
 
 Example scrape targets:
 
