@@ -21,8 +21,8 @@ interface ChartActionsFooterProps {
 	isDownloading?: boolean;
 	
 	// For optimization
-	selectedModel?: "openai" | "anthropic" | "google" | "all";
-	availableModels?: ("openai" | "anthropic" | "google")[];
+	selectedModel?: "chatgpt" | "claude" | "google-ai-mode" | "all";
+	availableModels?: ("chatgpt" | "claude" | "google-ai-mode")[];
 	lookback?: LookbackPeriod;
 }
 
@@ -33,7 +33,7 @@ export function ChartActionsFooter({
 	onDownload,
 	isDownloading = false,
 	selectedModel = "all",
-	availableModels = ["openai", "anthropic", "google"],
+	availableModels = ["chatgpt", "claude", "google-ai-mode"],
 	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);

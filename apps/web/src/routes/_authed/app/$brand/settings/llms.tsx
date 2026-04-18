@@ -25,7 +25,7 @@ interface ModelGroupInfo {
 
 const MODEL_GROUPS: ModelGroupInfo[] = [
 	{
-		id: "openai",
+		id: "chatgpt",
 		name: "ChatGPT",
 		provider: "OpenAI",
 		currentModel: "gpt-5-mini",
@@ -39,7 +39,7 @@ const MODEL_GROUPS: ModelGroupInfo[] = [
 			"Responses include real-time information from the web, making visibility here especially impactful for brand discovery.",
 	},
 	{
-		id: "anthropic",
+		id: "claude",
 		name: "Claude",
 		provider: "Anthropic",
 		currentModel: "claude-sonnet-4-20250514",
@@ -53,7 +53,7 @@ const MODEL_GROUPS: ModelGroupInfo[] = [
 			"Responses are based on Claude's training data. Brand mentions reflect how well your brand is represented in publicly available content.",
 	},
 	{
-		id: "google",
+		id: "google-ai-mode",
 		name: "Google AI Overviews",
 		provider: "Google",
 		currentModel: "AI Mode",

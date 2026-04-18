@@ -11,20 +11,20 @@ import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/comp
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { useBrand } from "@/hooks/use-brands";
 
-export type ModelType = "openai" | "anthropic" | "google" | "all";
+export type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
 
-const modelParser = parseAsStringLiteral(["openai", "anthropic", "google", "all"] as const);
+const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const);
 const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
 const tagsParser = parseAsArrayOf(parseAsString, ",");
 const searchParser = parseAsString;
 
 function getModelIcon(modelType: ModelType) {
 	switch (modelType) {
-		case "openai":
+		case "chatgpt":
 			return <SiOpenai className="size-3" />;
-		case "anthropic":
+		case "claude":
 			return <SiAnthropic className="size-3" />;
-		case "google":
+		case "google-ai-mode":
 			return <SiGoogle className="size-3" />;
 		case "all":
 			return <MdSelectAll className="size-3" />;
@@ -132,7 +132,7 @@ export function PageHeader({
 	showSearch = false,
 	showModelSelector = false,
 	showVisibilityBar = false,
-	availableModels = ["all", "openai", "anthropic", "google"],
+	availableModels = ["all", "chatgpt", "claude", "google-ai-mode"],
 	defaultModel = "all",
 	onModelChange,
 	selectedModel: controlledModel,
@@ -228,19 +228,19 @@ export function PageHeader({
 										{getModelIcon("all")} <span className="sr-only sm:not-sr-only">All</span>
 									</TabsTrigger>
 								)}
-								{availableModels.includes("openai") && (
-									<TabsTrigger value="openai" className="cursor-pointer">
-										{getModelIcon("openai")} <span className="sr-only sm:not-sr-only">OpenAI</span>
+								{availableModels.includes("chatgpt") && (
+									<TabsTrigger value="chatgpt" className="cursor-pointer">
+										{getModelIcon("chatgpt")} <span className="sr-only sm:not-sr-only">ChatGPT</span>
 									</TabsTrigger>
 								)}
-								{availableModels.includes("anthropic") && (
-									<TabsTrigger value="anthropic" className="cursor-pointer">
-										{getModelIcon("anthropic")} <span className="sr-only sm:not-sr-only">Anthropic</span>
+								{availableModels.includes("claude") && (
+									<TabsTrigger value="claude" className="cursor-pointer">
+										{getModelIcon("claude")} <span className="sr-only sm:not-sr-only">Claude</span>
 									</TabsTrigger>
 								)}
-								{availableModels.includes("google") && (
-									<TabsTrigger value="google" className="cursor-pointer">
-										{getModelIcon("google")} <span className="sr-only sm:not-sr-only">Google</span>
+								{availableModels.includes("google-ai-mode") && (
+									<TabsTrigger value="google-ai-mode" className="cursor-pointer">
+										{getModelIcon("google-ai-mode")} <span className="sr-only sm:not-sr-only">Google</span>
 									</TabsTrigger>
 								)}
 							</TabsList>

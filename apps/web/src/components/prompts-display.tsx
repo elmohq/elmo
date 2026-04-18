@@ -84,8 +84,8 @@ export function PromptsDisplay({
 
 
 	// Filter available models based on excludeModels prop
-	const availableIndividualModels: ("openai" | "anthropic" | "google")[] = (
-		["openai", "anthropic", "google"] as const
+	const availableIndividualModels: ("chatgpt" | "claude" | "google-ai-mode")[] = (
+		["chatgpt", "claude", "google-ai-mode"] as const
 	).filter((model) => !excludeModels.includes(model));
 
 	const availableModels: ModelType[] =

@@ -118,7 +118,7 @@ const baseProps = {
 	brandId: "brand-1",
 	lookback: "1m" as const,
 	selectedModel: "all" as const,
-	availableModels: ["openai", "anthropic", "google"] as ("openai" | "anthropic" | "google")[],
+	availableModels: ["chatgpt", "claude", "google-ai-mode"] as ("chatgpt" | "claude" | "google-ai-mode")[],
 	hasEverBeenEvaluated: true,
 };
 

@@ -25,13 +25,6 @@ export function getModelDisplayName(model: string): string {
 			return "Perplexity";
 		case "grok":
 			return "Grok";
-		// Legacy names for backward compatibility with stored data
-		case "openai":
-			return "ChatGPT";
-		case "anthropic":
-			return "Claude";
-		case "google":
-			return "Google AI Mode";
 		default:
 			return model;
 	}
