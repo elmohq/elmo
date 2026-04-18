@@ -76,16 +76,11 @@ function printBanner(): void {
 // ── Logging ──────────────────────────────────────────────────────────────────
 
 const log = {
-	info: (msg: string) =>
-		isCI() ? console.log(msg) : p.log.info(msg),
-	warn: (msg: string) =>
-		isCI() ? console.warn(pc.yellow(msg)) : p.log.warn(msg),
-	error: (msg: string) =>
-		isCI() ? console.error(pc.red(msg)) : p.log.error(msg),
-	success: (msg: string) =>
-		isCI() ? console.log(pc.green(msg)) : p.log.success(msg),
-	step: (msg: string) =>
-		isCI() ? console.log(msg) : p.log.step(msg),
+	info: (msg: string) => p.log.info(msg),
+	warn: (msg: string) => p.log.warn(msg),
+	error: (msg: string) => p.log.error(msg),
+	success: (msg: string) => p.log.success(msg),
+	step: (msg: string) => p.log.step(msg),
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -95,10 +90,6 @@ function assertNotCancelled<T>(value: T | symbol): asserts value is T {
 		p.cancel("Setup cancelled.");
 		process.exit(0);
 	}
-}
-
-function isCI(): boolean {
-	return Boolean(process.env.ELMO_CI);
 }
 
 function generateSecret(bytes = 32): string {
@@ -229,16 +220,6 @@ async function withVersionCheck(
 
 async function runInit(options: InitOptions, version: string): Promise<void> {
 	printBanner();
-
-	if (isCI()) {
-		await runInitCI(options, version);
-		return;
-	}
-
-	await runInitInteractive(options, version);
-}
-
-async function runInitInteractive(options: InitOptions, version: string): Promise<void> {
 	p.intro(pc.bold("Setting up Elmo"));
 
 	const cwd = process.cwd();
@@ -349,71 +330,7 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 	}
 
 	// ── AI providers ─────────────────────────────────────────────────────
-	const setOpenai = await p.confirm({
-		message: "Set OpenAI credentials?",
-		initialValue: true,
-	});
-	assertNotCancelled(setOpenai);
-	if (setOpenai) {
-		const key = await p.text({
-			message: "OPENAI_API_KEY",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(key);
-		env.OPENAI_API_KEY = key;
-	}
-
-	const setAnthropic = await p.confirm({
-		message: "Set Anthropic credentials?",
-		initialValue: true,
-	});
-	assertNotCancelled(setAnthropic);
-	if (setAnthropic) {
-		const key = await p.text({
-			message: "ANTHROPIC_API_KEY",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(key);
-		env.ANTHROPIC_API_KEY = key;
-	}
-
-	const setDataforseo = await p.confirm({
-		message: "Set DataForSEO credentials?",
-		initialValue: false,
-	});
-	assertNotCancelled(setDataforseo);
-	if (setDataforseo) {
-		const login = await p.text({
-			message: "DATAFORSEO_LOGIN",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(login);
-		env.DATAFORSEO_LOGIN = login;
-
-		const pwd = await p.text({
-			message: "DATAFORSEO_PASSWORD",
-			validate: (v) => (!v ? "Required" : undefined),
-		});
-		assertNotCancelled(pwd);
-		env.DATAFORSEO_PASSWORD = pwd;
-	}
-
-	// ── Scrape targets ──────────────────────────────────────────────────
-	// Default based on which API keys were provided
-	const defaultTargets = [
-		env.OPENAI_API_KEY ? "chatgpt:openai-api:gpt-5-mini:online" : null,
-		env.ANTHROPIC_API_KEY ? "claude:anthropic-api:claude-sonnet-4" : null,
-		env.DATAFORSEO_LOGIN ? "google-ai-mode:dataforseo:online" : null,
-	].filter(Boolean).join(",");
-
-	const scrapeTargets = await p.text({
-		message: "SCRAPE_TARGETS (model:provider[:version][:online], comma-separated)",
-		initialValue: defaultTargets || undefined,
-		placeholder: "chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4,google-ai-mode:dataforseo:online",
-		validate: (v) => (!v ? "Required" : undefined),
-	});
-	assertNotCancelled(scrapeTargets);
-	env.SCRAPE_TARGETS = scrapeTargets;
+	await configureProvidersInteractive(env);
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
@@ -489,101 +406,346 @@ async function runInitInteractive(options: InitOptions, version: string): Promis
 	p.outro(pc.green("Setup complete!"));
 }
 
-async function runInitCI(options: InitOptions, version: string): Promise<void> {
-	const cwd = process.cwd();
+// ── Provider Configuration ───────────────────────────────────────────────────
 
-	// Resolve config directory — --dir flag or ELMO_CONFIG_DIR or cwd
-	const dirArg =
-		options.dir ?? process.env.ELMO_CONFIG_DIR ?? cwd;
-	const configDir = path.resolve(cwd, dirArg);
+const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
+const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
+const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/deployment/providers";
 
-	// Resolve docker directory for dev mode
-	let dockerDir: string | undefined;
-	let repoRoot: string;
+// Surfaces each scraper can track — the first two are the "recommended starter" set.
+const BRIGHTDATA_MODELS = [
+	"chatgpt",
+	"google-ai-mode",
+	"perplexity",
+	"copilot",
+	"gemini",
+	"grok",
+] as const;
 
-	if (options.dev) {
-		const explicitDockerDir =
-			options.dockerDir ?? process.env.ELMO_DOCKER_DIR;
-		dockerDir = await resolveDockerDirAuto(cwd, explicitDockerDir);
-		repoRoot = path.resolve(dockerDir, "..");
+const OLOSTEP_MODELS = [
+	"chatgpt",
+	"google-ai-mode",
+	"google-ai-overview",
+	"perplexity",
+	"copilot",
+	"gemini",
+	"grok",
+] as const;
+
+const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
+
+const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
+
+async function configureProvidersInteractive(env: EnvMap): Promise<void> {
+	p.note(
+		[
+			"Elmo tracks which AI answer engines mention your brand. Most of",
+			"that traffic comes from ChatGPT and Google AI Mode — neither has",
+			"a public API, so tracking them requires a scraper.",
+			"",
+			pc.bold("Recommended scrapers (cover ChatGPT + Google AI Mode):"),
+			`  • ${pc.cyan("BrightData")} — cheapest solid option, ~$0.45/mo per prompt`,
+			`  • ${pc.cyan("Olostep")}    — powers most large-scale trackers, ~$2.25/mo per prompt`,
+			"",
+			"Pricing assumes Elmo's default cadence (5 runs/day × 2 surfaces).",
+			"Configure any combination below — every target is opt-in.",
+		].join("\n"),
+		"AI visibility providers",
+	);
+
+	const targets: string[] = [];
+
+	await collectBrightData(env, targets);
+	await collectOlostep(env, targets);
+	await collectAnthropic(env, targets);
+	await collectOpenAI(env, targets);
+	await collectOpenRouter(env, targets);
+	await collectDataForSEO(env, targets);
+
+	await finalizeScrapeTargets(env, targets);
+}
+
+async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("BrightData")}? (recommended scraper — ~$0.45/mo per prompt)`,
+		initialValue: true,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	p.log.info(
+		`Grab an API token: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`,
+	);
+	const key = await p.text({
+		message: "BrightData API token",
+		placeholder: "Paste your BRIGHTDATA_API_TOKEN",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.BRIGHTDATA_API_TOKEN = key;
+
+	await pickScraperTargets({
+		providerLabel: "BrightData",
+		providerId: "brightdata",
+		allModels: BRIGHTDATA_MODELS as readonly string[],
+		targets,
+	});
+}
+
+async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("Olostep")}? (recommended scraper — ~$2.25/mo per prompt)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	p.log.info(
+		`Grab an API key: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`,
+	);
+	const key = await p.text({
+		message: "Olostep API key",
+		placeholder: "Paste your OLOSTEP_API_KEY",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.OLOSTEP_API_KEY = key;
+
+	await pickScraperTargets({
+		providerLabel: "Olostep",
+		providerId: "olostep",
+		allModels: OLOSTEP_MODELS as readonly string[],
+		targets,
+	});
+}
+
+async function pickScraperTargets(args: {
+	providerLabel: string;
+	providerId: "brightdata" | "olostep";
+	allModels: readonly string[];
+	targets: string[];
+}): Promise<void> {
+	const { providerLabel, providerId, allModels, targets } = args;
+
+	const useDefault = await p.confirm({
+		message: `Track the recommended ${providerLabel} targets (ChatGPT + Google AI Mode)?`,
+		initialValue: true,
+	});
+	assertNotCancelled(useDefault);
+
+	if (useDefault) {
+		for (const model of DEFAULT_SCRAPER_MODELS) {
+			targets.push(`${model}:${providerId}:online`);
+		}
+		return;
+	}
+
+	const selected = (await p.multiselect({
+		message: `Pick which surfaces to track via ${providerLabel}`,
+		options: allModels.map((model) => ({
+			value: model,
+			label: model,
+		})),
+		required: true,
+		initialValues: [...DEFAULT_SCRAPER_MODELS],
+	})) as string[] | symbol;
+	assertNotCancelled(selected);
+
+	for (const model of selected) {
+		targets.push(`${model}:${providerId}:online`);
+	}
+}
+
+async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("Anthropic API")}? (direct Claude — ~$4–5/mo per prompt per model)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const key = await p.text({
+		message: "Anthropic API key",
+		placeholder: "sk-ant-...",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.ANTHROPIC_API_KEY = key;
+
+	const model = await p.text({
+		message: "Claude model",
+		placeholder: DEFAULT_ANTHROPIC_MODEL,
+		defaultValue: DEFAULT_ANTHROPIC_MODEL,
+	});
+	assertNotCancelled(model);
+	const slug = model || DEFAULT_ANTHROPIC_MODEL;
+
+	const webSearch = await p.confirm({
+		message: "Enable Claude's web search tool? (reflects real browsing behavior)",
+		initialValue: true,
+	});
+	assertNotCancelled(webSearch);
+
+	targets.push(webSearch ? `claude:anthropic-api:${slug}:online` : `claude:anthropic-api:${slug}`);
+}
+
+async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("OpenAI API")}? (gpt-* with web search — not the real ChatGPT UI)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const key = await p.text({
+		message: "OpenAI API key",
+		placeholder: "sk-...",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.OPENAI_API_KEY = key;
+
+	const model = await p.text({
+		message: "OpenAI model",
+		placeholder: DEFAULT_OPENAI_MODEL,
+		defaultValue: DEFAULT_OPENAI_MODEL,
+	});
+	assertNotCancelled(model);
+	const slug = model || DEFAULT_OPENAI_MODEL;
+
+	const webSearch = await p.confirm({
+		message: "Enable the web_search_preview tool?",
+		initialValue: true,
+	});
+	assertNotCancelled(webSearch);
+
+	targets.push(webSearch ? `chatgpt:openai-api:${slug}:online` : `chatgpt:openai-api:${slug}`);
+}
+
+async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("OpenRouter")}? (one key, many hosted models)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const key = await p.text({
+		message: "OpenRouter API key",
+		placeholder: "sk-or-...",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.OPENROUTER_API_KEY = key;
+
+	const model = await p.text({
+		message: "OpenRouter model slug",
+		placeholder: DEFAULT_OPENROUTER_MODEL,
+		defaultValue: DEFAULT_OPENROUTER_MODEL,
+	});
+	assertNotCancelled(model);
+	const slug = model || DEFAULT_OPENROUTER_MODEL;
+
+	const webSearch = await p.confirm({
+		message: "Append :online for web search?",
+		initialValue: true,
+	});
+	assertNotCancelled(webSearch);
+
+	targets.push(webSearch ? `claude:openrouter:${slug}:online` : `claude:openrouter:${slug}`);
+}
+
+async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode scraping + keyword/persona suggestions in the web wizard)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const login = await p.text({
+		message: "DataForSEO login",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(login);
+	env.DATAFORSEO_LOGIN = login;
+
+	const pwd = await p.text({
+		message: "DataForSEO password",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(pwd);
+	env.DATAFORSEO_PASSWORD = pwd;
+
+	const addTarget = await p.confirm({
+		message: "Also scrape Google AI Mode via DataForSEO? (google-ai-mode:dataforseo:online)",
+		initialValue: false,
+	});
+	assertNotCancelled(addTarget);
+	if (addTarget) {
+		targets.push("google-ai-mode:dataforseo:online");
+	}
+}
+
+async function finalizeScrapeTargets(env: EnvMap, targets: string[]): Promise<void> {
+	const deduped = dedupeTargets(targets);
+
+	if (!deduped) {
+		p.log.warn(
+			"No SCRAPE_TARGETS configured. Elmo will not run scheduled checks until you set them.",
+		);
+		p.log.info(`Reference: ${link(pc.cyan(PROVIDERS_DOC_URL), PROVIDERS_DOC_URL)}`);
+
+		const addManual = await p.confirm({
+			message: "Enter SCRAPE_TARGETS manually now?",
+			initialValue: false,
+		});
+		assertNotCancelled(addManual);
+		if (addManual) {
+			const manual = await p.text({
+				message: "SCRAPE_TARGETS (model:provider[:version][:online], comma-separated)",
+				placeholder: "chatgpt:brightdata:online,google-ai-mode:brightdata:online",
+				validate: (v) => (!v ? "Required" : undefined),
+			});
+			assertNotCancelled(manual);
+			env.SCRAPE_TARGETS = manual;
+		}
+		return;
+	}
+
+	p.log.step(`SCRAPE_TARGETS:\n  ${pc.cyan(deduped)}`);
+
+	const customize = await p.confirm({
+		message: "Edit SCRAPE_TARGETS before saving?",
+		initialValue: false,
+	});
+	assertNotCancelled(customize);
+
+	if (customize) {
+		p.log.info(`Reference: ${link(pc.cyan(PROVIDERS_DOC_URL), PROVIDERS_DOC_URL)}`);
+		const manual = await p.text({
+			message: "SCRAPE_TARGETS",
+			initialValue: deduped,
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(manual);
+		env.SCRAPE_TARGETS = manual;
 	} else {
-		repoRoot = cwd;
+		env.SCRAPE_TARGETS = deduped;
 	}
+}
 
-	// Build env from defaults and env vars
-	const postgresMode: PostgresMode =
-		(process.env.ELMO_POSTGRES_MODE as PostgresMode) ?? "docker";
-
-	const env: EnvMap = {};
-	env.DEPLOYMENT_MODE = "local";
-	env.VITE_DEPLOYMENT_MODE = "local";
-	env.BETTER_AUTH_SECRET = generateSecret();
-	env.DEFAULT_ORG_ID = DEFAULT_ORG_ID;
-	env.DEFAULT_ORG_NAME = DEFAULT_ORG_NAME;
-	env.APP_NAME = DEFAULT_APP_NAME;
-	env.APP_ICON = DEFAULT_APP_ICON;
-	env.APP_URL = DEFAULT_APP_URL;
-	env.VITE_APP_NAME = DEFAULT_APP_NAME;
-	env.VITE_APP_ICON = DEFAULT_APP_ICON;
-	env.VITE_APP_URL = DEFAULT_APP_URL;
-
-	if (postgresMode === "external") {
-		env.DATABASE_URL = process.env.ELMO_DATABASE_URL ?? "";
-	} else {
-		env.DATABASE_URL = LOCAL_DATABASE_URL;
+function dedupeTargets(targets: string[]): string {
+	const seen = new Set<string>();
+	const out: string[] = [];
+	for (const t of targets) {
+		if (seen.has(t)) continue;
+		seen.add(t);
+		out.push(t);
 	}
-
-	// AI providers from env vars
-	if (process.env.ELMO_OPENAI_API_KEY) {
-		env.OPENAI_API_KEY = process.env.ELMO_OPENAI_API_KEY;
-	}
-	if (process.env.ELMO_ANTHROPIC_API_KEY) {
-		env.ANTHROPIC_API_KEY = process.env.ELMO_ANTHROPIC_API_KEY;
-	}
-	if (process.env.ELMO_DATAFORSEO_LOGIN) {
-		env.DATAFORSEO_LOGIN = process.env.ELMO_DATAFORSEO_LOGIN;
-		env.DATAFORSEO_PASSWORD =
-			process.env.ELMO_DATAFORSEO_PASSWORD ?? "";
-	}
-	if (process.env.ELMO_SCRAPE_TARGETS) {
-		env.SCRAPE_TARGETS = process.env.ELMO_SCRAPE_TARGETS;
-	} else {
-		// Default: use the direct API providers matching the old hardcoded behavior
-		env.SCRAPE_TARGETS = "chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4,google-ai-mode:dataforseo:online";
-	}
-
-	const composeYaml = buildComposeYaml({
-		dev: Boolean(options.dev),
-		postgresMode,
-		repoRoot,
-		dockerDir,
-	});
-
-	await ensureDir(configDir);
-	await writeConfigFiles(configDir, {
-		env,
-		composeYaml,
-		postgresMode,
-		dev: Boolean(options.dev),
-	});
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev: Boolean(options.dev),
-		postgresMode,
-		repoRoot,
-	});
-
-	console.log(`Config written to ${configDir}`);
-
-	await trackCliEvent("cli_init", {
-		version,
-		os: process.platform,
-		arch: process.arch,
-		node_version: process.version,
-		postgres_mode: postgresMode,
-		dev_mode: Boolean(options.dev),
-	});
+	return out.join(",");
 }
 
 // ── Command: update ──────────────────────────────────────────────────────────
@@ -646,28 +808,14 @@ async function doStart(configDir: string): Promise<void> {
 	log.step("Starting Docker Compose stack...");
 	await runDockerCompose(configDir, ["up", "-d"]);
 
-	if (!isCI()) {
-		const s = p.spinner();
-		s.start("Waiting for services to become healthy...");
-		const ok = await waitForHealthy(configDir, 180_000);
-		if (ok) {
-			s.stop("All services healthy!");
-		} else {
-			s.stop("Health check timed out.");
-			p.log.warn(
-				"Some services did not report healthy status.",
-			);
-		}
+	const s = p.spinner();
+	s.start("Waiting for services to become healthy...");
+	const ok = await waitForHealthy(configDir, 180_000);
+	if (ok) {
+		s.stop("All services healthy!");
 	} else {
-		console.log("Waiting for services to become healthy...");
-		const ok = await waitForHealthy(configDir, 180_000);
-		if (ok) {
-			console.log("All services healthy.");
-		} else {
-			console.warn(
-				"Some services did not report healthy status.",
-			);
-		}
+		s.stop("Health check timed out.");
+		p.log.warn("Some services did not report healthy status.");
 	}
 
 	log.info("Examples:");

@@ -1,0 +1,136 @@
+---
+title: Providers
+description: Choose how Elmo tracks each AI answer engine — scrapers, direct APIs, or both.
+---
+
+Elmo tracks which AI answer engines mention your brand. Most of that traffic comes from **ChatGPT** and **Google AI Mode** — neither exposes a public API, so tracking them requires a scraper. Direct model APIs (OpenAI, Anthropic, OpenRouter) only cover the programmatic endpoints, not the real consumer UIs.
+
+If you have a BrightData or Olostep key, `elmo init` walks you through the whole setup. This page explains what each provider costs and when to pick it.
+
+## Recommended scrapers
+
+These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI referral traffic.
+
+| Provider | Why | Rough cost per prompt/month* | Sign up |
+|---|---|---|---|
+| **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
+| **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
+
+<Callout>
+Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that. Actual cost depends on volume tier and provider promos. The sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
+</Callout>
+
+### BrightData
+
+```bash
+BRIGHTDATA_API_TOKEN=...
+```
+
+Supported scrape targets out of the box:
+
+```
+chatgpt:brightdata:online
+google-ai-mode:brightdata:online
+perplexity:brightdata:online
+copilot:brightdata:online
+gemini:brightdata:online
+grok:brightdata:online
+```
+
+You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:gd_abc123`.
+
+### Olostep
+
+```bash
+OLOSTEP_API_KEY=...
+```
+
+Supported scrape targets:
+
+```
+chatgpt:olostep:online
+google-ai-mode:olostep:online
+google-ai-overview:olostep:online
+gemini:olostep:online
+copilot:olostep:online
+perplexity:olostep:online
+grok:olostep:online
+```
+
+Olostep models always use web search, so the `:online` suffix is required.
+
+## Direct model APIs
+
+These hit the provider API directly — cheaper per token than scrapers, but they don't represent the actual ChatGPT / Google AI Mode experience. Use them alongside a scraper when you want extra Claude or OSS model coverage.
+
+| Provider | Tracks | Cost per prompt/month* |
+|---|---|---|
+| **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
+| **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
+| **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
+
+\*Direct-API estimates also assume ~5 runs/day × 30 days = 150 calls/mo per tracked model, with typical prompt/response lengths. Prompt length drives real cost.
+
+Example scrape targets:
+
+```
+claude:anthropic-api:claude-sonnet-4-20250514
+chatgpt:openai-api:gpt-5-mini:online
+claude:openrouter:anthropic/claude-sonnet-4.6
+```
+
+OpenAI/Anthropic/OpenRouter entries all require a version slug as the third segment.
+
+## DataForSEO (optional)
+
+`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` unlock two optional features:
+
+1. **Google AI Mode** scraping via `google-ai-mode:dataforseo:online` (alternative to BrightData/Olostep).
+2. **Keyword + persona brainstorming** in the onboarding wizard, which suggests prompts to track based on your domain and products.
+
+If you skip DataForSEO, the onboarding wizard just leaves the keyword/persona suggestions empty — you can still enter prompts manually and everything else works.
+
+## Recommended setups
+
+**Starter (scrape the two that matter).** Pick one scraper and you're done:
+
+```bash
+BRIGHTDATA_API_TOKEN=...
+SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online
+```
+
+or
+
+```bash
+OLOSTEP_API_KEY=...
+SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online
+```
+
+**Starter + Claude.** Add Anthropic direct for cheap Claude coverage:
+
+```bash
+BRIGHTDATA_API_TOKEN=...
+ANTHROPIC_API_KEY=...
+SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude:anthropic-api:claude-sonnet-4-20250514
+```
+
+**No scraper (APIs only).** Cheapest option, but you're tracking model APIs instead of the real consumer surfaces:
+
+```bash
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4-20250514
+```
+
+## SCRAPE_TARGETS format
+
+```
+model:provider[:version][:online]
+```
+
+- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `gemini`, `perplexity`, `copilot`, `grok`).
+- `provider` — how to reach it (`brightdata`, `olostep`, `openai-api`, `anthropic-api`, `openrouter`, `dataforseo`).
+- `version` — required for `openai-api`, `anthropic-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
+- `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
+
+Entries are comma-separated.
