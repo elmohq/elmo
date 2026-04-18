@@ -27,6 +27,7 @@
       "@tailwindcss/oxide",
       "esbuild",
       "msgpackr-extract",
+      "node-pty",
       "puppeteer",
       "sharp",
       "unrs-resolver"

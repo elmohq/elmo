@@ -76,16 +76,11 @@ function printBanner(): void {
 // ── Logging ──────────────────────────────────────────────────────────────────
 
 const log = {
-	info: (msg: string) =>
-		isCI() ? console.log(msg) : p.log.info(msg),
-	warn: (msg: string) =>
-		isCI() ? console.warn(pc.yellow(msg)) : p.log.warn(msg),
-	error: (msg: string) =>
-		isCI() ? console.error(pc.red(msg)) : p.log.error(msg),
-	success: (msg: string) =>
-		isCI() ? console.log(pc.green(msg)) : p.log.success(msg),
-	step: (msg: string) =>
-		isCI() ? console.log(msg) : p.log.step(msg),
+	info: (msg: string) => p.log.info(msg),
+	warn: (msg: string) => p.log.warn(msg),
+	error: (msg: string) => p.log.error(msg),
+	success: (msg: string) => p.log.success(msg),
+	step: (msg: string) => p.log.step(msg),
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -95,10 +90,6 @@ function assertNotCancelled<T>(value: T | symbol): asserts value is T {
 		p.cancel("Setup cancelled.");
 		process.exit(0);
 	}
-}
-
-function isCI(): boolean {
-	return Boolean(process.env.ELMO_CI);
 }
 
 function generateSecret(bytes = 32): string {
@@ -229,16 +220,6 @@ async function withVersionCheck(
 
 async function runInit(options: InitOptions, version: string): Promise<void> {
 	printBanner();
-
-	if (isCI()) {
-		await runInitCI(options, version);
-		return;
-	}
-
-	await runInitInteractive(options, version);
-}
-
-async function runInitInteractive(options: InitOptions, version: string): Promise<void> {
 	p.intro(pc.bold("Setting up Elmo"));
 
 	const cwd = process.cwd();
@@ -767,80 +748,6 @@ function dedupeTargets(targets: string[]): string {
 	return out.join(",");
 }
 
-async function runInitCI(options: InitOptions, version: string): Promise<void> {
-	const cwd = process.cwd();
-
-	// Resolve config directory — --dir flag or ELMO_CONFIG_DIR or cwd
-	const dirArg =
-		options.dir ?? process.env.ELMO_CONFIG_DIR ?? cwd;
-	const configDir = path.resolve(cwd, dirArg);
-
-	// Resolve docker directory for dev mode
-	let dockerDir: string | undefined;
-	let repoRoot: string;
-
-	if (options.dev) {
-		const explicitDockerDir =
-			options.dockerDir ?? process.env.ELMO_DOCKER_DIR;
-		dockerDir = await resolveDockerDirAuto(cwd, explicitDockerDir);
-		repoRoot = path.resolve(dockerDir, "..");
-	} else {
-		repoRoot = cwd;
-	}
-
-	// CI mode: docker Postgres only, no provider keys, no SCRAPE_TARGETS.
-	// Provider keys come from interactive prompts; callers that need them in
-	// non-interactive flows should append to the generated .env themselves.
-	const postgresMode: PostgresMode = "docker";
-
-	const env: EnvMap = {};
-	env.DEPLOYMENT_MODE = "local";
-	env.VITE_DEPLOYMENT_MODE = "local";
-	env.BETTER_AUTH_SECRET = generateSecret();
-	env.DEFAULT_ORG_ID = DEFAULT_ORG_ID;
-	env.DEFAULT_ORG_NAME = DEFAULT_ORG_NAME;
-	env.APP_NAME = DEFAULT_APP_NAME;
-	env.APP_ICON = DEFAULT_APP_ICON;
-	env.APP_URL = DEFAULT_APP_URL;
-	env.VITE_APP_NAME = DEFAULT_APP_NAME;
-	env.VITE_APP_ICON = DEFAULT_APP_ICON;
-	env.VITE_APP_URL = DEFAULT_APP_URL;
-	env.DATABASE_URL = LOCAL_DATABASE_URL;
-
-	const composeYaml = buildComposeYaml({
-		dev: Boolean(options.dev),
-		postgresMode,
-		repoRoot,
-		dockerDir,
-	});
-
-	await ensureDir(configDir);
-	await writeConfigFiles(configDir, {
-		env,
-		composeYaml,
-		postgresMode,
-		dev: Boolean(options.dev),
-	});
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev: Boolean(options.dev),
-		postgresMode,
-		repoRoot,
-	});
-
-	console.log(`Config written to ${configDir}`);
-
-	await trackCliEvent("cli_init", {
-		version,
-		os: process.platform,
-		arch: process.arch,
-		node_version: process.version,
-		postgres_mode: postgresMode,
-		dev_mode: Boolean(options.dev),
-	});
-}
-
 // ── Command: update ──────────────────────────────────────────────────────────
 
 async function runRegen(options: DirOption): Promise<void> {
@@ -901,28 +808,14 @@ async function doStart(configDir: string): Promise<void> {
 	log.step("Starting Docker Compose stack...");
 	await runDockerCompose(configDir, ["up", "-d"]);
 
-	if (!isCI()) {
-		const s = p.spinner();
-		s.start("Waiting for services to become healthy...");
-		const ok = await waitForHealthy(configDir, 180_000);
-		if (ok) {
-			s.stop("All services healthy!");
-		} else {
-			s.stop("Health check timed out.");
-			p.log.warn(
-				"Some services did not report healthy status.",
-			);
-		}
+	const s = p.spinner();
+	s.start("Waiting for services to become healthy...");
+	const ok = await waitForHealthy(configDir, 180_000);
+	if (ok) {
+		s.stop("All services healthy!");
 	} else {
-		console.log("Waiting for services to become healthy...");
-		const ok = await waitForHealthy(configDir, 180_000);
-		if (ok) {
-			console.log("All services healthy.");
-		} else {
-			console.warn(
-				"Some services did not report healthy status.",
-			);
-		}
+		s.stop("Health check timed out.");
+		p.log.warn("Some services did not report healthy status.");
 	}
 
 	log.info("Examples:");
