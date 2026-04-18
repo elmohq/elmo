@@ -6,46 +6,57 @@
 --
 -- NOTE: The original Drizzle schema used camelCase column names (modelGroup, not model_group).
 
--- Step 1: prompt_runs — rename modelGroup (enum) to model (text), rename model to version, add provider
+-- Fail fast rather than queue behind a long-running query / worker insert.
+SET lock_timeout = '5s';
+SET statement_timeout = '15min';
+
+-- Step 1: prompt_runs — rename old model column to version (metadata-only, instant)
 ALTER TABLE "prompt_runs" RENAME COLUMN "model" TO "version";
-ALTER TABLE "prompt_runs" ALTER COLUMN "modelGroup" TYPE text USING "modelGroup"::text;
+
+-- Step 2: Combine enum→text conversion with value remap in a SINGLE table rewrite
+-- (saves a second full-table UPDATE pass).
+ALTER TABLE "prompt_runs" ALTER COLUMN "modelGroup" TYPE text USING (
+  CASE "modelGroup"::text
+    WHEN 'openai' THEN 'chatgpt'
+    WHEN 'anthropic' THEN 'claude'
+    WHEN 'google' THEN 'google-ai-mode'
+    ELSE "modelGroup"::text
+  END
+);
 ALTER TABLE "prompt_runs" RENAME COLUMN "modelGroup" TO "model";
+
+-- Step 3: Add provider column. No default → metadata-only in PG11+, instant.
 ALTER TABLE "prompt_runs" ADD COLUMN "provider" text;
 
--- Step 2: citations — rename modelGroup to model
-ALTER TABLE "citations" ALTER COLUMN "modelGroup" TYPE text USING "modelGroup"::text;
+-- Step 4: citations — same combined type + value remap in one rewrite.
+ALTER TABLE "citations" ALTER COLUMN "modelGroup" TYPE text USING (
+  CASE "modelGroup"::text
+    WHEN 'openai' THEN 'chatgpt'
+    WHEN 'anthropic' THEN 'claude'
+    WHEN 'google' THEN 'google-ai-mode'
+    ELSE "modelGroup"::text
+  END
+);
 ALTER TABLE "citations" RENAME COLUMN "modelGroup" TO "model";
 
--- Step 3: Drop the now-unused enum type
+-- Step 5: Drop the now-unused enum type
 DROP TYPE IF EXISTS "model_groups";
 
--- Step 4: Migrate model values from old names to new names
-UPDATE "prompt_runs" SET "model" = CASE
-  WHEN "model" = 'openai' THEN 'chatgpt'
-  WHEN "model" = 'anthropic' THEN 'claude'
-  WHEN "model" = 'google' THEN 'google-ai-mode'
-  ELSE "model"
-END;
-
-UPDATE "citations" SET "model" = CASE
-  WHEN "model" = 'openai' THEN 'chatgpt'
-  WHEN "model" = 'anthropic' THEN 'claude'
-  WHEN "model" = 'google' THEN 'google-ai-mode'
-  ELSE "model"
-END;
-
--- Step 5: Backfill provider for existing data
+-- Step 6: Backfill provider for existing rows (one UPDATE pass — provider
+-- references the new model values so this can't be folded into the ALTER TYPE).
 UPDATE "prompt_runs" SET "provider" = CASE
-  WHEN "model" = 'chatgpt' THEN 'direct'
-  WHEN "model" = 'claude' THEN 'direct'
+  WHEN "model" IN ('chatgpt', 'claude') THEN 'direct'
   WHEN "model" = 'google-ai-mode' THEN 'dataforseo'
   ELSE NULL
-END
-WHERE "provider" IS NULL;
+END;
 
--- Step 6: Add enabled_models column to brands for per-brand model filtering
+-- Step 7: Add enabled_models column to brands for per-brand model filtering
 ALTER TABLE "brands" ADD COLUMN "enabled_models" text[];
 
--- Step 7: Create indexes
+-- Step 8: Create indexes (non-concurrent — holds AccessExclusiveLock during build).
 CREATE INDEX IF NOT EXISTS "prompt_runs_provider_idx" ON "prompt_runs" ("provider");
 CREATE INDEX IF NOT EXISTS "prompt_runs_model_created_at_idx" ON "prompt_runs" ("model", "created_at");
+
+-- Step 9: Refresh planner stats for the rewritten tables.
+ANALYZE "prompt_runs";
+ANALYZE "citations";

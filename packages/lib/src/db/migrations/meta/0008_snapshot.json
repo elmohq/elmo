@@ -148,10 +148,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "engine": {
-          "name": "engine",
+        "model": {
+          "name": "model",
           "type": "text",
-          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         }
@@ -197,7 +196,7 @@
               "nulls": "last"
             },
             {
-              "expression": "engine",
+              "expression": "model",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -434,18 +433,17 @@
           "notNull": true,
           "default": "now()"
         },
-        "engine": {
-          "name": "engine",
-          "type": "text",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
         "provider": {
           "name": "provider",
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -506,8 +504,8 @@
           "method": "btree",
           "with": {}
         },
-        "prompt_runs_web_search_engine_created_at_idx": {
-          "name": "prompt_runs_web_search_engine_created_at_idx",
+        "prompt_runs_web_search_model_created_at_idx": {
+          "name": "prompt_runs_web_search_model_created_at_idx",
           "columns": [
             {
               "expression": "web_search_enabled",
@@ -516,7 +514,7 @@
               "nulls": "last"
             },
             {
-              "expression": "engine",
+              "expression": "model",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -548,11 +546,11 @@
           "method": "btree",
           "with": {}
         },
-        "prompt_runs_engine_created_at_idx": {
-          "name": "prompt_runs_engine_created_at_idx",
+        "prompt_runs_model_created_at_idx": {
+          "name": "prompt_runs_model_created_at_idx",
           "columns": [
             {
-              "expression": "engine",
+              "expression": "model",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
