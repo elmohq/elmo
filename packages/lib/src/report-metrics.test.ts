@@ -268,7 +268,7 @@ function makeFullRun(overrides: Partial<FullPromptRun> & { promptId: string }): 
 		competitorsMentioned: [],
 		webQueries: [],
 		textContent: "",
-		modelGroup: "openai",
+		model: "openai",
 		...overrides,
 	};
 }
@@ -446,11 +446,11 @@ describe("analyzeCompetitorFrequency", () => {
 describe("analyzeByEngine", () => {
 	it("computes mention rate per engine", () => {
 		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", modelGroup: "openai", brandMentioned: true }),
-			makeFullRun({ promptId: "p2", modelGroup: "openai", brandMentioned: false }),
-			makeFullRun({ promptId: "p3", modelGroup: "anthropic", brandMentioned: true }),
-			makeFullRun({ promptId: "p4", modelGroup: "anthropic", brandMentioned: true }),
-			makeFullRun({ promptId: "p5", modelGroup: "google", brandMentioned: false }),
+			makeFullRun({ promptId: "p1", model: "openai", brandMentioned: true }),
+			makeFullRun({ promptId: "p2", model: "openai", brandMentioned: false }),
+			makeFullRun({ promptId: "p3", model: "anthropic", brandMentioned: true }),
+			makeFullRun({ promptId: "p4", model: "anthropic", brandMentioned: true }),
+			makeFullRun({ promptId: "p5", model: "google", brandMentioned: false }),
 		];
 		const result = analyzeByEngine(runs);
 		const claude = result.find((e) => e.engine === "Claude")!;
@@ -469,8 +469,8 @@ describe("analyzeByEngine", () => {
 
 	it("sorts by mention rate descending", () => {
 		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", modelGroup: "openai", brandMentioned: false }),
-			makeFullRun({ promptId: "p2", modelGroup: "anthropic", brandMentioned: true }),
+			makeFullRun({ promptId: "p1", model: "openai", brandMentioned: false }),
+			makeFullRun({ promptId: "p2", model: "anthropic", brandMentioned: true }),
 		];
 		const result = analyzeByEngine(runs);
 		expect(result[0].engine).toBe("Claude");
@@ -483,7 +483,7 @@ describe("analyzeByEngine", () => {
 
 	it("handles unknown engine names", () => {
 		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", modelGroup: "perplexity", brandMentioned: true }),
+			makeFullRun({ promptId: "p1", model: "perplexity", brandMentioned: true }),
 		];
 		const result = analyzeByEngine(runs);
 		expect(result[0].engine).toBe("perplexity");

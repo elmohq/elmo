@@ -9,12 +9,29 @@ export { cn } from "@workspace/ui/lib/utils";
  */
 export function getModelDisplayName(model: string): string {
 	switch (model) {
+		case "chatgpt":
+			return "ChatGPT";
+		case "claude":
+			return "Claude";
+		case "google-ai-mode":
+			return "Google AI Mode";
+		case "google-ai-overview":
+			return "Google AI Overview";
+		case "gemini":
+			return "Gemini";
+		case "copilot":
+			return "Copilot";
+		case "perplexity":
+			return "Perplexity";
+		case "grok":
+			return "Grok";
+		// Legacy names for backward compatibility with stored data
 		case "openai":
-			return "OpenAI";
+			return "ChatGPT";
 		case "anthropic":
-			return "Anthropic";
+			return "Claude";
 		case "google":
-			return "Google";
+			return "Google AI Mode";
 		default:
 			return model;
 	}

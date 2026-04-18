@@ -57,6 +57,13 @@
       "when": 1775800000000,
       "tag": "0007_report_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776000000000,
+      "tag": "0008_provider_engines",
+      "breakpoints": true
     }
   ]
 }

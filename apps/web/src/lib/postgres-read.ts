@@ -56,7 +56,7 @@ export interface PromptCompetitorDailyStats {
 }
 
 export interface WebQueryMapping {
-	model_group: string;
+	model: string;
 	web_query: string;
 	created_at_iso: string;
 }
@@ -152,9 +152,9 @@ function promptIdFilter(enabledPromptIds?: string[]): SQL {
 	return sql`AND prompt_id IN (${uuidList(enabledPromptIds)})`;
 }
 
-function modelGroupFilter(modelGroup?: string): SQL {
-	if (!modelGroup) return sql``;
-	return sql`AND "modelGroup" = ${modelGroup}`;
+function modelFilter(model?: string): SQL {
+	if (!model) return sql``;
+	return sql`AND model = ${model}`;
 }
 
 function webSearchFilter(webSearchEnabled?: boolean): SQL {
@@ -205,7 +205,7 @@ export async function getPerPromptVisibilityTimeSeries(
 	toDate: string | null,
 	timezone: string,
 	enabledPromptIds?: string[],
-	modelGroup?: string,
+	model?: string,
 ): Promise<PerPromptVisibilityPoint[]> {
 	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptVisibilityPoint>(sql`
@@ -218,7 +218,7 @@ export async function getPerPromptVisibilityTimeSeries(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY prompt_id, date
 		ORDER BY prompt_id, date
 	`);
@@ -236,7 +236,7 @@ export async function getVisibilityTimeSeries(
 	timezone: string,
 	brandedPromptIds: string[],
 	enabledPromptIds?: string[],
-	modelGroup?: string,
+	model?: string,
 ): Promise<VisibilityTimeSeriesPoint[]> {
 	const isBranded = brandedPromptIds.length > 0
 		? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))`
@@ -251,7 +251,7 @@ export async function getVisibilityTimeSeries(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY date, is_branded
 		ORDER BY date
 	`);
@@ -286,7 +286,7 @@ export async function getPromptsSummary(
 	toDate: string | null,
 	timezone: string,
 	webSearchEnabled?: boolean,
-	modelGroup?: string,
+	model?: string,
 	enabledPromptIds?: string[],
 ): Promise<PromptSummary[]> {
 	const rows = await queryPg<PromptSummary>(sql`
@@ -301,7 +301,7 @@ export async function getPromptsSummary(
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 			${promptIdFilter(enabledPromptIds)}
 		GROUP BY prompt_id
 		ORDER BY total_runs DESC
@@ -319,7 +319,7 @@ export async function getPromptDailyStats(
 	toDate: string | null,
 	timezone: string,
 	webSearchEnabled?: boolean,
-	modelGroup?: string,
+	model?: string,
 ): Promise<PromptDailyStats[]> {
 	const rows = await queryPg<PromptDailyStats>(sql`
 		SELECT
@@ -330,7 +330,7 @@ export async function getPromptDailyStats(
 		WHERE prompt_id = ${promptId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY date
 		ORDER BY date
 	`);
@@ -347,7 +347,7 @@ export async function getPromptCompetitorDailyStats(
 	toDate: string | null,
 	timezone: string,
 	webSearchEnabled?: boolean,
-	modelGroup?: string,
+	model?: string,
 ): Promise<PromptCompetitorDailyStats[]> {
 	const rows = await queryPg<PromptCompetitorDailyStats>(sql`
 		SELECT
@@ -358,7 +358,7 @@ export async function getPromptCompetitorDailyStats(
 		WHERE prompt_id = ${promptId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY date, competitor_name
 		ORDER BY date, competitor_name
 	`);
@@ -377,7 +377,7 @@ export async function getPromptWebQueriesForMapping(
 ): Promise<WebQueryMapping[]> {
 	const rows = await queryPg<WebQueryMapping>(sql`
 		SELECT
-			"modelGroup" AS model_group,
+			model,
 			web_query,
 			to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS created_at_iso
 		FROM prompt_runs, unnest(web_queries) AS web_query
@@ -394,7 +394,7 @@ export async function getPromptWebQueriesForMapping(
 // ============================================================================
 
 export interface WebQueryCount {
-	model_group: string;
+	model: string;
 	web_query: string;
 	query_count: number;
 }
@@ -404,20 +404,20 @@ export async function getPromptWebQueryCounts(
 	fromDate: string | null,
 	toDate: string | null,
 	timezone: string,
-	modelGroup?: string,
+	model?: string,
 ): Promise<WebQueryCount[]> {
 	const rows = await queryPg<WebQueryCount>(sql`
 		SELECT
-			"modelGroup" AS model_group,
+			model,
 			web_query,
 			count(*)::int AS query_count
 		FROM prompt_runs, unnest(web_queries) AS web_query
 		WHERE prompt_id = ${promptId}
 			AND array_length(web_queries, 1) > 0
 			${dateFilter(fromDate, toDate, timezone)}
-			${modelGroupFilter(modelGroup)}
-		GROUP BY model_group, web_query
-		ORDER BY model_group, query_count DESC
+			${modelFilter(model)}
+		GROUP BY model, web_query
+		ORDER BY model, query_count DESC
 	`);
 	return rows;
 }
@@ -432,7 +432,7 @@ export async function getCitationDomainStats(
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
-	modelGroup?: string,
+	model?: string,
 ): Promise<CitationDomainStats[]> {
 	const rows = await queryPg<CitationDomainStats>(sql`
 		SELECT
@@ -444,7 +444,7 @@ export async function getCitationDomainStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY domain
 		ORDER BY count DESC
 	`);
@@ -461,7 +461,7 @@ export async function getCitationUrlStats(
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
-	modelGroup?: string,
+	model?: string,
 ): Promise<CitationUrlStats[]> {
 	const rows = await queryPg<CitationUrlStats>(sql`
 		SELECT
@@ -476,7 +476,7 @@ export async function getCitationUrlStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY url, domain
 		ORDER BY count DESC
 	`);
@@ -587,7 +587,7 @@ export async function getDailyCitationStats(
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
-	modelGroup?: string,
+	model?: string,
 ): Promise<DailyCitationStats[]> {
 	const rows = await queryPg<DailyCitationStats>(sql`
 		SELECT
@@ -599,7 +599,7 @@ export async function getDailyCitationStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY date, domain
 		ORDER BY date
 	`);
@@ -623,7 +623,7 @@ export async function getPerPromptDailyCitationStats(
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
-	modelGroup?: string,
+	model?: string,
 ): Promise<PerPromptDailyCitationStats[]> {
 	if (!enabledPromptIds?.length) return [];
 	const rows = await queryPg<PerPromptDailyCitationStats>(sql`
@@ -637,7 +637,7 @@ export async function getPerPromptDailyCitationStats(
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
-			${modelGroupFilter(modelGroup)}
+			${modelFilter(model)}
 		GROUP BY prompt_id, date, domain
 		ORDER BY prompt_id, date
 	`);
@@ -670,7 +670,7 @@ export async function getBatchChartData(
 	toDate: string | null,
 	timezone: string,
 	webSearchEnabled?: boolean,
-	modelGroup?: string,
+	model?: string,
 ): Promise<ProcessedBatchChartDataPoint[]> {
 	if (promptIds.length === 0) return [];
 
@@ -691,7 +691,7 @@ export async function getBatchChartData(
 				AND prompt_id IN (${uuidList(promptIds)})
 				${dateFilter(fromDate, toDate, timezone)}
 				${webSearchFilter(webSearchEnabled)}
-				${modelGroupFilter(modelGroup)}
+				${modelFilter(model)}
 			GROUP BY prompt_id, date
 			ORDER BY prompt_id, date
 		`),
@@ -711,7 +711,7 @@ export async function getBatchChartData(
 				AND prompt_id IN (${uuidList(promptIds)})
 				${dateFilter(fromDate, toDate, timezone)}
 				${webSearchFilter(webSearchEnabled)}
-				${modelGroupFilter(modelGroup)}
+				${modelFilter(model)}
 			GROUP BY prompt_id, date, competitor_name
 			ORDER BY prompt_id, date, competitor_name
 		`),

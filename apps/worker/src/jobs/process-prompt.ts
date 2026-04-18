@@ -140,8 +140,9 @@ function analyzeMentions(
 async function savePromptRun(
 	promptId: string,
 	brandId: string,
-	modelGroup: "openai" | "anthropic" | "google",
 	model: string,
+	provider: string | null,
+	version: string,
 	webSearchEnabled: boolean,
 	rawOutput: unknown,
 	webQueries: string[],
@@ -153,8 +154,9 @@ async function savePromptRun(
 		.values({
 			promptId,
 			brandId,
-			modelGroup,
 			model,
+			provider,
+			version,
 			webSearchEnabled,
 			rawOutput,
 			webQueries,
@@ -170,11 +172,11 @@ async function saveCitations(
 	promptRunId: string,
 	promptId: string,
 	brandId: string,
-	modelGroup: "openai" | "anthropic" | "google",
+	model: string,
 	rawOutput: unknown,
 	createdAt: Date,
 ): Promise<void> {
-	const extracted = extractCitations(rawOutput, modelGroup);
+	const extracted = extractCitations(rawOutput, model);
 	if (extracted.length === 0) return;
 
 	await db.insert(citations).values(
@@ -182,7 +184,7 @@ async function saveCitations(
 			promptRunId,
 			promptId,
 			brandId,
-			modelGroup,
+			model,
 			url: c.url,
 			domain: c.domain,
 			title: c.title || null,
@@ -198,47 +200,41 @@ async function runModelIteration({
 	promptValue,
 	brand,
 	competitorsList,
-	modelGroup,
 	model,
+	provider,
+	version,
 	webSearchEnabled,
 	runIndex,
+	runFn,
 }: {
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
 	competitorsList: Competitor[];
-	modelGroup: "openai" | "anthropic" | "google";
 	model: string;
+	provider: string;
+	version: string;
 	webSearchEnabled: boolean;
 	runIndex: number;
+	runFn: (prompt: string) => Promise<{ rawOutput: unknown; webQueries: string[]; textContent: string }>;
 }): Promise<void> {
-	const logPrefix = `[${modelGroup}_${runIndex}]`;
+	const logPrefix = `[${model}_${runIndex}]`;
 
-	// Run the AI call
-	let result: { rawOutput: unknown; webQueries: string[]; textContent: string };
-	if (modelGroup === "openai") {
-		result = await runWithOpenAI(promptValue);
-	} else if (modelGroup === "anthropic") {
-		result = await runWithAnthropic(promptValue);
-	} else {
-		result = await runWithDataForSEO(promptValue);
-	}
+	const result = await runFn(promptValue);
 
 	const { rawOutput, webQueries, textContent } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-	// Ensure textContent is a string
 	const safeTextContent = typeof textContent === "string" ? textContent : "";
 
-	// Analyze mentions
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
 
-	// Save to database
 	const { id: promptRunId, createdAt } = await savePromptRun(
 		promptId,
 		brand.id,
-		modelGroup,
 		model,
+		provider,
+		version,
 		webSearchEnabled,
 		rawOutput,
 		webQueries,
@@ -247,7 +243,7 @@ async function runModelIteration({
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	await saveCitations(promptRunId, promptId, brand.id, modelGroup, rawOutput, createdAt);
+	await saveCitations(promptRunId, promptId, brand.id, model, rawOutput, createdAt);
 }
 
 /**
@@ -293,10 +289,12 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 					promptValue: prompt.value,
 					brand,
 					competitorsList,
-					modelGroup: "openai",
-					model: AI_MODELS.OPENAI.MODEL,
+					model: "chatgpt",
+					provider: "openai-api",
+					version: AI_MODELS.OPENAI.MODEL,
 					webSearchEnabled: true,
 					runIndex: i + 1,
+					runFn: runWithOpenAI,
 				}),
 			);
 		}
@@ -308,10 +306,12 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 					promptValue: prompt.value,
 					brand,
 					competitorsList,
-					modelGroup: "anthropic",
-					model: AI_MODELS.ANTHROPIC.MODEL,
+					model: "claude",
+					provider: "anthropic-api",
+					version: AI_MODELS.ANTHROPIC.MODEL,
 					webSearchEnabled: false,
 					runIndex: i + 1,
+					runFn: runWithAnthropic,
 				}),
 			);
 		}
@@ -323,10 +323,12 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 					promptValue: prompt.value,
 					brand,
 					competitorsList,
-					modelGroup: "google",
-					model: "dataforseo",
+					model: "google-ai-mode",
+					provider: "dataforseo",
+					version: "dataforseo",
 					webSearchEnabled: true,
 					runIndex: i + 1,
+					runFn: runWithDataForSEO,
 				}),
 			);
 		}
@@ -353,8 +355,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			model_groups: ["openai", "anthropic", "google"],
-			models: [AI_MODELS.OPENAI.MODEL, AI_MODELS.ANTHROPIC.MODEL, "dataforseo"],
+			models: ["chatgpt", "claude", "google-ai-mode"],
+			providers: ["openai-api", "anthropic-api", "dataforseo"],
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,

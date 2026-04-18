@@ -1,8 +1,9 @@
-import type { Job } from "pg-boss";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
-import { eq, sql, and, inArray } from "drizzle-orm";
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { parseScrapeTargets } from "@workspace/lib/providers";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import type { Job } from "pg-boss";
 import boss from "../boss";
 
 export interface ScheduleMaintenanceData {
@@ -59,22 +60,25 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	// Get last runs per prompt per model group (matches dashboard overdue logic)
+	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const modelNames = allModels.map((cfg) => cfg.model);
+
+	// Get last runs per prompt per model (matches dashboard overdue logic)
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
-			modelGroup: promptRuns.modelGroup,
+			model: promptRuns.model,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.modelGroup);
+		.groupBy(promptRuns.promptId, promptRuns.model);
 
 	const lastRunsMap: Record<string, Record<string, Date>> = {};
 	for (const run of lastRunsQuery) {
 		if (!lastRunsMap[run.promptId]) {
 			lastRunsMap[run.promptId] = {};
 		}
-		lastRunsMap[run.promptId][run.modelGroup] = run.lastRunAt;
+		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
 	}
 
 	// Get all pending jobs with their state info
@@ -96,10 +100,10 @@ async function runMaintenanceCheck(): Promise<void> {
 		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
 		const lastRuns = lastRunsMap[prompt.id] || {};
 
-		// Check if any model group is overdue (matches dashboard logic)
+		// Check if any model is overdue (matches dashboard logic)
 		let isOverdue = false;
-		for (const modelGroup of ["openai", "anthropic", "google"] as const) {
-			const lastRunAt = lastRuns[modelGroup];
+		for (const model of modelNames) {
+			const lastRunAt = lastRuns[model];
 			if (!lastRunAt) {
 				isOverdue = true;
 				break;

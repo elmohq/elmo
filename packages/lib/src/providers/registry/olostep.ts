@@ -145,7 +145,7 @@ export const olostep: Provider = {
 
 		// Use client.retrieve (GET) instead of item.retrieve (POST) — the
 		// SDK's BatchItem.retrieve uses POST which the API rejects with 403.
-		const retrieved = await client.retrieve(retrieveId, ["json"]);
+		const retrieved = await client.retrieve(retrieveId, ["json" as any]);
 
 		const jsonContent = retrieved.json_content;
 		const parsed =

@@ -7,7 +7,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 export interface PromptsSummaryFilters {
 	lookback?: LookbackPeriod;
 	webSearchEnabled?: boolean;
-	modelGroup?: "openai" | "anthropic" | "google";
+	model?: string;
 	tags?: string[];
 }
 
@@ -29,7 +29,7 @@ export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilt
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback || "1m",
 					webSearchEnabled: filters?.webSearchEnabled?.toString(),
-					modelGroup: filters?.modelGroup,
+					model: filters?.model,
 					tags: filters?.tags?.join(","),
 				},
 			}),
