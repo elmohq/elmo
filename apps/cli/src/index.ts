@@ -334,7 +334,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
-		message: "Enter your email to receive product updates (optional)",
+		message: "Enter your work email to receive product updates (optional)",
 		placeholder: "you@example.com",
 	});
 	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
@@ -364,7 +364,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 	p.log.success(`Config written to ${configDir}`);
 	p.log.warn(
-		"Your .env contains secrets — do not commit it to version control.",
+		"Your generated .env file contains secrets — do not commit it to version control.",
 	);
 
 	if (options.dev) {
@@ -445,9 +445,9 @@ async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 			"that traffic comes from ChatGPT and Google AI Mode — neither has",
 			"a public API, so tracking them requires a scraper.",
 			"",
-			pc.bold("Recommended scrapers (cover ChatGPT + Google AI Mode):"),
-			`  • ${pc.cyan("BrightData")} — cheapest solid option, ~$0.45/mo per prompt`,
-			`  • ${pc.cyan("Olostep")}    — powers most large-scale trackers, ~$2.25/mo per prompt`,
+			pc.bold("Recommended scrapers:"),
+			`  • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
+			`  • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
 			"",
 			"Pricing assumes Elmo's default cadence (5 runs/day × 2 surfaces).",
 			"Configure any combination below — every target is opt-in.",
@@ -457,8 +457,16 @@ async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 
 	const targets: string[] = [];
 
-	await collectBrightData(env, targets);
-	await collectOlostep(env, targets);
+	const brightDataTookDefaults = await collectBrightData(env, targets);
+	if (brightDataTookDefaults) {
+		await finalizeScrapeTargets(env, targets, { skipEdit: true });
+		return;
+	}
+	const olostepTookDefaults = await collectOlostep(env, targets);
+	if (olostepTookDefaults) {
+		await finalizeScrapeTargets(env, targets, { skipEdit: true });
+		return;
+	}
 	await collectAnthropic(env, targets);
 	await collectOpenAI(env, targets);
 	await collectOpenRouter(env, targets);
@@ -467,26 +475,25 @@ async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 	await finalizeScrapeTargets(env, targets);
 }
 
-async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> {
+async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolean> {
 	const enable = await p.confirm({
 		message: `Configure ${pc.bold("BrightData")}? (recommended scraper — ~$0.45/mo per prompt)`,
 		initialValue: true,
 	});
 	assertNotCancelled(enable);
-	if (!enable) return;
+	if (!enable) return false;
 
 	p.log.info(
-		`Grab an API token: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`,
+		`Sign up and generate an API token: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`,
 	);
-	const key = await p.text({
+	const key = await p.password({
 		message: "BrightData API token",
-		placeholder: "Paste your BRIGHTDATA_API_TOKEN",
 		validate: (v) => (!v ? "Required" : undefined),
 	});
 	assertNotCancelled(key);
 	env.BRIGHTDATA_API_TOKEN = key;
 
-	await pickScraperTargets({
+	return await pickScraperTargets({
 		providerLabel: "BrightData",
 		providerId: "brightdata",
 		allModels: BRIGHTDATA_MODELS as readonly string[],
@@ -494,26 +501,25 @@ async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> 
 	});
 }
 
-async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
+async function collectOlostep(env: EnvMap, targets: string[]): Promise<boolean> {
 	const enable = await p.confirm({
 		message: `Configure ${pc.bold("Olostep")}? (recommended scraper — ~$2.25/mo per prompt)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
-	if (!enable) return;
+	if (!enable) return false;
 
 	p.log.info(
 		`Grab an API key: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`,
 	);
-	const key = await p.text({
+	const key = await p.password({
 		message: "Olostep API key",
-		placeholder: "Paste your OLOSTEP_API_KEY",
 		validate: (v) => (!v ? "Required" : undefined),
 	});
 	assertNotCancelled(key);
 	env.OLOSTEP_API_KEY = key;
 
-	await pickScraperTargets({
+	return await pickScraperTargets({
 		providerLabel: "Olostep",
 		providerId: "olostep",
 		allModels: OLOSTEP_MODELS as readonly string[],
@@ -526,11 +532,11 @@ async function pickScraperTargets(args: {
 	providerId: "brightdata" | "olostep";
 	allModels: readonly string[];
 	targets: string[];
-}): Promise<void> {
+}): Promise<boolean> {
 	const { providerLabel, providerId, allModels, targets } = args;
 
 	const useDefault = await p.confirm({
-		message: `Track the recommended ${providerLabel} targets (ChatGPT + Google AI Mode)?`,
+		message: `Track ChatGPT and Google AI Mode via ${providerLabel}? (recommended)`,
 		initialValue: true,
 	});
 	assertNotCancelled(useDefault);
@@ -539,7 +545,7 @@ async function pickScraperTargets(args: {
 		for (const model of DEFAULT_SCRAPER_MODELS) {
 			targets.push(`${model}:${providerId}:online`);
 		}
-		return;
+		return true;
 	}
 
 	const selected = (await p.multiselect({
@@ -556,6 +562,7 @@ async function pickScraperTargets(args: {
 	for (const model of selected) {
 		targets.push(`${model}:${providerId}:online`);
 	}
+	return false;
 }
 
 async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
@@ -566,9 +573,8 @@ async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	const key = await p.text({
+	const key = await p.password({
 		message: "Anthropic API key",
-		placeholder: "sk-ant-...",
 		validate: (v) => (!v ? "Required" : undefined),
 	});
 	assertNotCancelled(key);
@@ -599,9 +605,8 @@ async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	const key = await p.text({
+	const key = await p.password({
 		message: "OpenAI API key",
-		placeholder: "sk-...",
 		validate: (v) => (!v ? "Required" : undefined),
 	});
 	assertNotCancelled(key);
@@ -632,9 +637,8 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	const key = await p.text({
+	const key = await p.password({
 		message: "OpenRouter API key",
-		placeholder: "sk-or-...",
 		validate: (v) => (!v ? "Required" : undefined),
 	});
 	assertNotCancelled(key);
@@ -672,7 +676,7 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 	assertNotCancelled(login);
 	env.DATAFORSEO_LOGIN = login;
 
-	const pwd = await p.text({
+	const pwd = await p.password({
 		message: "DataForSEO password",
 		validate: (v) => (!v ? "Required" : undefined),
 	});
@@ -689,7 +693,11 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 	}
 }
 
-async function finalizeScrapeTargets(env: EnvMap, targets: string[]): Promise<void> {
+async function finalizeScrapeTargets(
+	env: EnvMap,
+	targets: string[],
+	options: { skipEdit?: boolean } = {},
+): Promise<void> {
 	const deduped = dedupeTargets(targets);
 
 	if (!deduped) {
@@ -715,7 +723,10 @@ async function finalizeScrapeTargets(env: EnvMap, targets: string[]): Promise<vo
 		return;
 	}
 
-	p.log.step(`SCRAPE_TARGETS:\n  ${pc.cyan(deduped)}`);
+	if (options.skipEdit) {
+		env.SCRAPE_TARGETS = deduped;
+		return;
+	}
 
 	const customize = await p.confirm({
 		message: "Edit SCRAPE_TARGETS before saving?",
@@ -732,6 +743,7 @@ async function finalizeScrapeTargets(env: EnvMap, targets: string[]): Promise<vo
 		});
 		assertNotCancelled(manual);
 		env.SCRAPE_TARGETS = manual;
+		p.log.step(`SCRAPE_TARGETS:\n  ${pc.cyan(manual)}`);
 	} else {
 		env.SCRAPE_TARGETS = deduped;
 	}
