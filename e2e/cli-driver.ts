@@ -1,37 +1,18 @@
 /**
  * CLI Driver for E2E Tests
  *
- * Drives `elmo init --dev` through a real pseudo-terminal (node-pty) so we
- * exercise the same interactive wizard a human would see. Matches prompt
- * substrings and sends keystrokes — no skeleton `.env`, no CI shortcut path.
+ * Drives `elmo init --dev` through a real PTY by wrapping the CLI in
+ * script(1). script(1) is preinstalled on Ubuntu (util-linux) and macOS
+ * (BSD), so we avoid native addons / node-gyp / prebuild-binary forks.
+ *
+ * The driver pattern-matches on prompt substrings and writes keystrokes
+ * to the child's stdin, so we exercise the same interactive wizard a
+ * human user would see.
  *
  * Usage: tsx cli-driver.ts <config-dir> <repo-root>
  */
-import * as pty from "node-pty";
-import { createRequire } from "node:module";
-import fs from "node:fs";
+import { spawn } from "node:child_process";
 import path from "node:path";
-
-// node-pty ships `spawn-helper` as a prebuilt binary, but pnpm's tarball
-// unpack drops the executable bit on some setups. Without +x, posix_spawnp
-// fails at term creation. Fix it before we touch pty.spawn.
-(function ensureSpawnHelperExecutable() {
-	if (process.platform === "win32") return;
-	try {
-		const require_ = createRequire(import.meta.url);
-		const ptyDir = path.dirname(require_.resolve("node-pty"));
-		const helper = path.join(
-			ptyDir,
-			"..",
-			"prebuilds",
-			`${process.platform}-${process.arch}`,
-			"spawn-helper",
-		);
-		if (fs.existsSync(helper)) fs.chmodSync(helper, 0o755);
-	} catch {
-		// If we can't chmod, let the spawn fail with its own error.
-	}
-})();
 
 const configDir = process.argv[2];
 const repoRoot = process.argv[3];
@@ -42,6 +23,7 @@ if (!configDir || !repoRoot) {
 }
 
 const cliPath = path.join(repoRoot, "apps/cli/dist/index.js");
+const nodeBin = process.execPath;
 
 console.error(`  [driver] config-dir: ${configDir}`);
 console.error(`  [driver] repo-root:  ${repoRoot}`);
@@ -57,25 +39,57 @@ function stripAnsi(s: string): string {
 		.replace(/\x1b\][^\x07]*(\x07|\x1b\\)/g, "");
 }
 
-const term = pty.spawn("node", [cliPath, "init", "--dev", "--dir", configDir], {
-	name: "xterm-256color",
-	cols: 120,
-	rows: 40,
-	cwd: repoRoot,
-	env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
-});
+function shEscape(s: string): string {
+	return `'${s.replace(/'/g, `'\\''`)}'`;
+}
 
+// Wrap the CLI in script(1). BSD (macOS) and util-linux (Ubuntu) script
+// take different args for running a command, so split on platform.
+function spawnViaScript() {
+	const env = {
+		...process.env,
+		FORCE_COLOR: "0",
+		NO_COLOR: "1",
+		TERM: "xterm-256color",
+	};
+	const cliArgs = [nodeBin, cliPath, "init", "--dev", "--dir", configDir];
+
+	if (process.platform === "darwin") {
+		// BSD script: `script [-q] file command...` — propagates child exit code.
+		return spawn("script", ["-q", "/dev/null", ...cliArgs], {
+			cwd: repoRoot,
+			env,
+			stdio: ["pipe", "pipe", "pipe"],
+		});
+	}
+	// util-linux script: `script -q -e -f -c "cmd" file`
+	//   -e returns the child's exit status, -f flushes output on each write.
+	// When script's own stdout is a pipe the PTY gets sized 0x0, which makes
+	// clack wrap every char — `stty rows/cols` inside the PTY fixes that.
+	const cmd = `stty rows 40 cols 120; exec ${cliArgs.map(shEscape).join(" ")}`;
+	return spawn(
+		"script",
+		["-q", "-e", "-f", "-c", cmd, "/dev/null"],
+		{ cwd: repoRoot, env, stdio: ["pipe", "pipe", "pipe"] },
+	);
+}
+
+const child = spawnViaScript();
 let buffer = "";
+let exited: { code: number | null; signal: NodeJS.Signals | null } | null = null;
 
-term.onData((data) => {
+child.stdout?.on("data", (data: Buffer) => {
 	process.stderr.write(data);
-	buffer += stripAnsi(data);
+	buffer += stripAnsi(data.toString("utf8"));
 	if (buffer.length > 32_000) buffer = buffer.slice(-16_000);
 });
-
-let exited: { exitCode: number; signal?: number } | null = null;
-term.onExit((evt) => {
-	exited = evt;
+child.stderr?.on("data", (data: Buffer) => process.stderr.write(data));
+child.on("exit", (code, signal) => {
+	exited = { code, signal };
+});
+child.on("error", (err) => {
+	console.error(`\n  [driver] spawn error: ${err.message}`);
+	process.exit(1);
 });
 
 async function waitFor(pattern: string, timeoutMs = 60_000): Promise<void> {
@@ -83,12 +97,11 @@ async function waitFor(pattern: string, timeoutMs = 60_000): Promise<void> {
 	while (Date.now() - start < timeoutMs) {
 		if (exited) {
 			throw new Error(
-				`CLI exited (code=${exited.exitCode}) before prompt: "${pattern}"`,
+				`CLI exited (code=${exited.code}) before prompt: "${pattern}"`,
 			);
 		}
 		const idx = buffer.indexOf(pattern);
 		if (idx !== -1) {
-			// Drop everything up to and including the match so we don't re-match it.
 			buffer = buffer.slice(idx + pattern.length);
 			return;
 		}
@@ -101,15 +114,14 @@ async function waitFor(pattern: string, timeoutMs = 60_000): Promise<void> {
 }
 
 async function send(s: string, settleMs = 120): Promise<void> {
-	term.write(s);
-	// Let clack render the answer + move to the next prompt before we match again.
+	child.stdin?.write(s);
 	await new Promise((r) => setTimeout(r, settleMs));
 }
 
 async function waitForExit(timeoutMs = 30_000): Promise<number> {
 	const start = Date.now();
 	while (Date.now() - start < timeoutMs) {
-		if (exited) return exited.exitCode;
+		if (exited) return exited.code ?? 0;
 		await new Promise((r) => setTimeout(r, 50));
 	}
 	throw new Error("CLI did not exit within timeout");
@@ -194,16 +206,18 @@ async function main(): Promise<void> {
 const overallTimeout = setTimeout(() => {
 	console.error("\n  [driver] TIMEOUT: wizard did not complete within 120s");
 	try {
-		term.kill();
+		child.kill("SIGTERM");
 	} catch {}
 	process.exit(1);
 }, 120_000);
 overallTimeout.unref();
 
 main().catch((err) => {
-	console.error(`\n  [driver] ERROR: ${err instanceof Error ? err.message : err}`);
+	console.error(
+		`\n  [driver] ERROR: ${err instanceof Error ? err.message : err}`,
+	);
 	try {
-		term.kill();
+		child.kill("SIGTERM");
 	} catch {}
 	process.exit(1);
 });
