@@ -3,9 +3,7 @@ title: Providers
 description: Choose how Elmo tracks each AI answer engine — scrapers, direct APIs, or both.
 ---
 
-Elmo tracks which AI answer engines mention your brand. Most of that traffic comes from **ChatGPT** and **Google AI Mode** — neither exposes a public API, so tracking them requires a scraper. Direct model APIs (OpenAI, Anthropic, OpenRouter) only cover the programmatic endpoints, not the real consumer UIs.
-
-If you have a BrightData or Olostep key, `elmo init` walks you through the whole setup. This page explains what each provider costs and when to pick it.
+Elmo tracks which AI answer engines mention your brand. Most of that traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
 
 ## Recommended scrapers
 
