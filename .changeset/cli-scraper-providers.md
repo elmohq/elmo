@@ -1,5 +1,5 @@
 ---
-"@elmohq/cli": minor
+"@elmohq/cli": patch
 "@workspace/lib": patch
 "@workspace/docs": patch
 ---
