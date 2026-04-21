@@ -1,4 +1,4 @@
 {
 	"title": "Deployment",
-	"pages": ["configuration", "white-label"]
+	"pages": ["configuration", "providers", "white-label"]
 }
