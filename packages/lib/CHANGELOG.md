@@ -1,5 +1,11 @@
 # @workspace/lib
 
+## 0.2.1
+
+### Patch Changes
+
+- adf7642: CLI `elmo init` now walks through each provider one at a time.
+
 ## 0.2.0
 
 ### Minor Changes

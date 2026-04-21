@@ -1,5 +1,13 @@
 # @workspace/worker
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [adf7642]
+  - @workspace/lib@0.2.1
+  - @workspace/whitelabel@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
