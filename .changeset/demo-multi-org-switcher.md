@@ -3,4 +3,4 @@
 "@workspace/web": patch
 ---
 
-Demo deployments now surface the brand switcher when the signed-in user has memberships in multiple organizations. `supportsMultiOrg` is enabled for demo mode, and `/app` always renders the switcher for users with 2+ brands (falling back to the previous single-org redirect otherwise).
+Demo deployments (`READ_ONLY=true`) now enable `supportsMultiOrg`, so the `/app` brand switcher renders when the demo user is seeded into multiple organizations. Pure local deployments continue to auto-redirect to the default org.

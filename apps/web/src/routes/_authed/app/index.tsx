@@ -57,11 +57,6 @@ export const Route = createFileRoute("/_authed/app/")({
 	loader: async () => {
 		const result = await getOrganizations();
 
-		// Always show the switcher when the user has multiple brands, regardless of deployment flag.
-		if (result.organizations.length >= 2) {
-			return result;
-		}
-
 		// Single-org mode: redirect to default org
 		if (!result.supportsMultiOrg && result.defaultOrgId) {
 			throw redirect({ to: "/app/$brand", params: { brand: result.defaultOrgId } });
