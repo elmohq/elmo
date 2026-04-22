@@ -286,7 +286,7 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		const selectedConfigs = selectTargetsForBrand(scrapeConfigs, brand.enabledModels);
 		if (selectedConfigs.length === 0) {
 			console.log(
-				`Prompt ${promptId} has no matching targets (brand.enabledModels=${JSON.stringify(brand.enabledModels)}, SCRAPE_TARGETS models=${scrapeConfigs.map((c) => c.model).join(",")}), skipping but rescheduling`,
+				`Prompt ${promptId} for brand ${brand.id} has brand.enabledModels=[] (explicit opt-out), skipping but rescheduling`,
 			);
 			await scheduleNextRun(promptId, cadenceHours);
 			continue;

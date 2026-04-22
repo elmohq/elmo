@@ -17,8 +17,8 @@ describe("selectTargetsForBrand", () => {
 		expect(selectTargetsForBrand(configs, undefined)).toEqual(configs);
 	});
 
-	it("returns all configs when enabledModels is an empty array", () => {
-		expect(selectTargetsForBrand(configs, [])).toEqual(configs);
+	it("returns empty array when enabledModels is an empty array (explicit opt-out)", () => {
+		expect(selectTargetsForBrand(configs, [])).toEqual([]);
 	});
 
 	it("filters to the intersection when enabledModels is set", () => {
@@ -27,14 +27,16 @@ describe("selectTargetsForBrand", () => {
 		expect(result.map((c) => c.model)).toEqual(["chatgpt", "google-ai-mode"]);
 	});
 
-	it("returns empty array when enabledModels does not intersect configs", () => {
-		expect(selectTargetsForBrand(configs, ["perplexity"])).toEqual([]);
+	it("throws when enabledModels contains a model not in configs", () => {
+		expect(() => selectTargetsForBrand(configs, ["perplexity"])).toThrow(
+			/brand\.enabledModels references models not in SCRAPE_TARGETS: perplexity/,
+		);
 	});
 
-	it("silently ignores unknown models in enabledModels", () => {
-		const result = selectTargetsForBrand(configs, ["chatgpt", "does-not-exist"]);
-		expect(result).toHaveLength(1);
-		expect(result[0].model).toBe("chatgpt");
+	it("throws when enabledModels mixes known and unknown models", () => {
+		expect(() => selectTargetsForBrand(configs, ["chatgpt", "does-not-exist"])).toThrow(
+			/does-not-exist/,
+		);
 	});
 
 	it("keeps duplicates in configs when the model is allowed (multi-sample case)", () => {

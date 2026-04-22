@@ -23,9 +23,10 @@ const MIN_BRAND_MENTIONS = 14;
 const MAX_BRAND_MENTIONS = 28;
 
 // Whitelabel deployments preserve the legacy asymmetric per-candidate sample
-// counts used before SCRAPE_TARGETS drove dispatch. Any model not listed falls
-// back to 1 run per candidate. Other deployment modes use RUNS_PER_PROMPT
-// (same frequency as day-to-day prompt tracking).
+// counts used before SCRAPE_TARGETS drove dispatch. Any model outside this map
+// on a whitelabel deployment is a configuration error (the legacy report flow
+// only knew how to sample these three). Other deployment modes use
+// RUNS_PER_PROMPT (same frequency as day-to-day prompt tracking).
 const WHITELABEL_REPORT_RUNS_PER_MODEL: Record<string, number> = {
 	chatgpt: 2,
 	claude: 1,
@@ -34,7 +35,14 @@ const WHITELABEL_REPORT_RUNS_PER_MODEL: Record<string, number> = {
 
 function getReportRunsForModel(model: string): number {
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
-		return WHITELABEL_REPORT_RUNS_PER_MODEL[model] ?? 1;
+		const count = WHITELABEL_REPORT_RUNS_PER_MODEL[model];
+		if (count === undefined) {
+			throw new Error(
+				`Whitelabel report generation has no run count configured for model "${model}". ` +
+					`Known models: ${Object.keys(WHITELABEL_REPORT_RUNS_PER_MODEL).join(", ")}.`,
+			);
+		}
+		return count;
 	}
 	return RUNS_PER_PROMPT;
 }

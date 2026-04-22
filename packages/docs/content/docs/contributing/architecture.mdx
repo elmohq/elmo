@@ -100,6 +100,4 @@ All AI scraping flows through a single `Provider` interface in `packages/lib/src
 2. `parseScrapeTargets()` turns the string into `ModelConfig[]`.
 3. `getProvider(providerId).run(model, prompt, { webSearch, version })` dispatches to a concrete `registry/` implementation and returns a normalized `ScrapeResult` (`textContent`, `rawOutput`, `webQueries`, `citations`, `modelVersion`).
 
-The worker iterates `SCRAPE_TARGETS` on every prompt — there are no hardcoded model lists. Adding a new provider means adding a file under `packages/lib/src/providers/registry/`, registering it in `providers/index.ts`, and teaching `packages/config/src/env.ts` which API keys it requires. The worker validates `SCRAPE_TARGETS` at startup via `validateScrapeTargets`, so misconfiguration fails fast instead of per-prompt.
-
 User-facing setup is documented in [Providers](/docs/deployment/providers).
