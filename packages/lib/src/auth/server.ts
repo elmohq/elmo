@@ -20,6 +20,8 @@ export interface CreateAuthOptions {
 	trustedOrigins?: string[];
 	/** Set to false to disable email/password auth (e.g. whitelabel SSO-only). */
 	emailAndPasswordEnabled?: boolean;
+	/** Override better-auth's default minimum password length (8). */
+	minPasswordLength?: number;
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -54,6 +56,9 @@ export function createAuth(options?: CreateAuthOptions) {
 		emailAndPassword: {
 			enabled: options?.emailAndPasswordEnabled !== false,
 			requireEmailVerification: false,
+			...(options?.minPasswordLength !== undefined && {
+				minPasswordLength: options.minPasswordLength,
+			}),
 		},
 
 		user: {

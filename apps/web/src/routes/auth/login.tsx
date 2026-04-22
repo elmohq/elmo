@@ -44,7 +44,7 @@ function LoginPage() {
 		return <SSOLogin returnTo={returnTo} />;
 	}
 
-	return <EmailPasswordLogin returnTo={returnTo} />;
+	return <EmailPasswordLogin returnTo={returnTo} isDemo={mode === "demo"} />;
 }
 
 function SSOLogin({ returnTo }: { returnTo?: string }) {
@@ -90,10 +90,10 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 	);
 }
 
-function EmailPasswordLogin({ returnTo }: { returnTo?: string }) {
+function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: boolean }) {
 	const navigate = useNavigate();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
+	const [email, setEmail] = useState(isDemo ? "demo@elmohq.com" : "");
+	const [password, setPassword] = useState(isDemo ? "demo" : "");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
@@ -124,6 +124,13 @@ function EmailPasswordLogin({ returnTo }: { returnTo?: string }) {
 	return (
 		<FullPageCard title="Sign in" subtitle="Enter your email and password to continue">
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
+				{isDemo && (
+					<Alert>
+						<AlertDescription>
+							Demo mode — sign in with <strong>demo@elmohq.com</strong> / <strong>demo</strong>.
+						</AlertDescription>
+					</Alert>
+				)}
 				{error && (
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>

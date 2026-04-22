@@ -14,6 +14,9 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 	switch (process.env.DEPLOYMENT_MODE) {
 		case "whitelabel":
 			return getWhitelabelAuthOptions();
+		case "demo":
+			// Seeded demo user has a 4-char password; allow it only here.
+			return { minPasswordLength: 4 };
 		default:
 			return undefined;
 	}

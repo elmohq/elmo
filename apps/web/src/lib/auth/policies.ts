@@ -52,10 +52,13 @@ export function evaluateDeploymentPolicy(
 
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
+	// Better-auth endpoints (sign-in, sign-out, etc.) must stay reachable
+	// even in read-only demo mode so visitors can actually authenticate.
+	const isAuthRoute = pathname.startsWith("/api/auth/");
 
 	// 1. Read-only mode: Block write requests to API + server-function paths
 	if (features.readOnly && isWriteMethod) {
-		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute) {
+		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAuthRoute) {
 			return {
 				action: "block",
 				status: 403,
