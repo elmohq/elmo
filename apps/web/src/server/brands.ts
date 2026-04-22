@@ -10,6 +10,7 @@ import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from 
 import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { parseScrapeTargets } from "@workspace/lib/providers";
 
 function getDefaultBrandDomains(): string[] {
 	const raw = process.env.DEFAULT_BRAND_DOMAINS;
@@ -216,6 +217,50 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		}
 
 		return result[0];
+	});
+
+/**
+ * Update the set of models that should run for this brand.
+ *
+ * Semantics (must match `selectTargetsForBrand` in packages/lib):
+ *   - `null` clears the override; every configured SCRAPE_TARGETS model runs.
+ *   - `[]` is an explicit opt-out; no models run for this brand.
+ *   - `[...]` is an opt-in list; every entry must be a model currently in
+ *     SCRAPE_TARGETS, else the worker throws on the next dispatch. Validated
+ *     here so the save surfaces the error instead of a silent future break.
+ */
+export const updateBrandEnabledModelsFn = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({
+			brandId: z.string(),
+			enabledModels: z.array(z.string()).nullable(),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+		await requireOrgAccess(session.user.id, data.brandId);
+
+		if (data.enabledModels && data.enabledModels.length > 0) {
+			const activeModels = new Set(
+				parseScrapeTargets(process.env.SCRAPE_TARGETS).map((c) => c.model),
+			);
+			const unknown = data.enabledModels.filter((m) => !activeModels.has(m));
+			if (unknown.length > 0) {
+				throw new Error(
+					`Cannot enable model(s) not in SCRAPE_TARGETS: ${unknown.join(", ")}. ` +
+						`Available models: ${[...activeModels].join(", ") || "(none)"}.`,
+				);
+			}
+		}
+
+		const [result] = await db
+			.update(brands)
+			.set({ enabledModels: data.enabledModels, updatedAt: new Date() })
+			.where(eq(brands.id, data.brandId))
+			.returning();
+
+		if (!result) throw new Error("Brand not found");
+		return result;
 	});
 
 /**

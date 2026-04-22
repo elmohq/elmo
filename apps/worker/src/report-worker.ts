@@ -2,7 +2,12 @@ import { db } from "@workspace/lib/db/db";
 import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
+import {
+	getProvider,
+	parseScrapeTargets,
+	WHITELABEL_REPORT_RUNS_PER_MODEL,
+	type ModelConfig,
+} from "@workspace/lib/providers";
 import {
 	analyzeWebsite,
 	getCompetitors,
@@ -21,17 +26,6 @@ import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
 const TARGET_PROMPTS_COUNT = 70;
 const MIN_BRAND_MENTIONS = 14;
 const MAX_BRAND_MENTIONS = 28;
-
-// Whitelabel deployments preserve the legacy asymmetric per-candidate sample
-// counts used before SCRAPE_TARGETS drove dispatch. Any model outside this map
-// on a whitelabel deployment is a configuration error (the legacy report flow
-// only knew how to sample these three). Other deployment modes use
-// RUNS_PER_PROMPT (same frequency as day-to-day prompt tracking).
-const WHITELABEL_REPORT_RUNS_PER_MODEL: Record<string, number> = {
-	chatgpt: 2,
-	claude: 1,
-	"google-ai-mode": 1,
-};
 
 function getReportRunsForModel(model: string): number {
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {

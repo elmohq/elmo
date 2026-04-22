@@ -12,6 +12,7 @@ import {
 	IconReport,
 	IconTimeline,
 	IconTool,
+	IconPlugConnected,
 } from "@tabler/icons-react";
 
 import {
@@ -126,6 +127,12 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						title: "Workflows",
 						url: "/admin/workflows",
 						icon: IconTimeline,
+						absolute: true,
+					},
+					{
+						title: "Providers",
+						url: "/admin/providers",
+						icon: IconPlugConnected,
 						absolute: true,
 					},
 					{

@@ -11,6 +11,7 @@ export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
 export { selectTargetsForBrand } from "./runner";
+export { WHITELABEL_REPORT_RUNS_PER_MODEL } from "./report-runs";
 
 const providerMap: Record<string, Provider> = {
 	olostep,
