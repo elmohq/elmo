@@ -64,33 +64,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          node <<'EOF'
-          const fs = require('fs');
-          const path = require('path');
-          const version = process.env.VERSION;
-          const sections = [];
-          for (const root of ['apps', 'packages']) {
-            if (!fs.existsSync(root)) continue;
-            for (const dir of fs.readdirSync(root)) {
-              const pkgPath = path.join(root, dir, 'package.json');
-              const clPath = path.join(root, dir, 'CHANGELOG.md');
-              if (!fs.existsSync(pkgPath) || !fs.existsSync(clPath)) continue;
-              const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-              const lines = fs.readFileSync(clPath, 'utf8').split('\n');
-              let start = -1, end = lines.length;
-              for (let i = 0; i < lines.length; i++) {
-                if (lines[i].trim() === `## ${version}`) { start = i + 1; continue; }
-                if (start >= 0 && lines[i].startsWith('## ')) { end = i; break; }
-              }
-              if (start < 0) continue;
-              const body = lines.slice(start, end).join('\n').trim();
-              if (!body) continue;
-              sections.push(`## ${pkg.name}\n\n${body}`);
-            }
-          }
-          const notes = sections.length ? sections.join('\n\n') : `Release v${version}`;
-          fs.writeFileSync('release-notes.md', notes);
-          EOF
+          node scripts/generate-release-notes.mjs "$VERSION" > release-notes.md
           gh release create "v$VERSION" --title "v$VERSION" --notes-file release-notes.md
 
       - name: Setup Blacksmith Builder
