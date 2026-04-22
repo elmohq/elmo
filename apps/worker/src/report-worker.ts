@@ -1,13 +1,8 @@
 import { db } from "@workspace/lib/db/db";
 import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { AI_MODELS } from "@workspace/lib/constants";
-import Anthropic from "@anthropic-ai/sdk";
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
-import { dfsSerpApi } from "@workspace/lib/dataforseo";
-import * as client from "dataforseo-client";
-import { extractTextContent } from "@workspace/lib/text-extraction";
+import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
 import {
 	analyzeWebsite,
 	getCompetitors,
@@ -22,15 +17,27 @@ import {
 } from "@workspace/lib/wizard-helpers";
 import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
 
-// Initialize Anthropic client for direct API calls (for tool usage)
-const anthropic = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY!,
-});
-
 // Report constants
 const TARGET_PROMPTS_COUNT = 70;
 const MIN_BRAND_MENTIONS = 14;
 const MAX_BRAND_MENTIONS = 28;
+
+// Whitelabel deployments preserve the legacy asymmetric per-candidate sample
+// counts used before SCRAPE_TARGETS drove dispatch. Any model not listed falls
+// back to 1 run per candidate. Other deployment modes use RUNS_PER_PROMPT
+// (same frequency as day-to-day prompt tracking).
+const WHITELABEL_REPORT_RUNS_PER_MODEL: Record<string, number> = {
+	chatgpt: 2,
+	claude: 1,
+	"google-ai-mode": 1,
+};
+
+function getReportRunsForModel(model: string): number {
+	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
+		return WHITELABEL_REPORT_RUNS_PER_MODEL[model] ?? 1;
+	}
+	return RUNS_PER_PROMPT;
+}
 
 export interface ReportJobData {
 	reportId: string;
@@ -66,135 +73,6 @@ interface ReportData {
 	personaGroups: PersonaGroup[];
 	prompts: PromptData[];
 	promptRuns: PromptRunResult[];
-}
-
-// Function to run prompt with OpenAI using Vercel AI SDK with web search
-async function runWithOpenAI(promptValue: string): Promise<{
-	rawOutput: any;
-	webQueries: string[];
-	textContent: string;
-}> {
-	try {
-		// Generate text with web search using OpenAI Responses API
-		const result = await generateText({
-			model: openai.responses(AI_MODELS.OPENAI.MODEL),
-			prompt: promptValue,
-			toolChoice: "auto",
-			tools: {
-				web_search_preview: openai.tools.webSearchPreview({
-					searchContextSize: "low",
-				}) as any,
-			},
-		});
-
-		// Extract web search queries from OpenAI Responses API output
-		const webQueries: string[] = [];
-
-		const responseBody = result.response?.body as any;
-		if (responseBody?.output) {
-			for (const outputItem of responseBody.output) {
-				if (outputItem.type === "web_search_call" && outputItem.action?.query) {
-					webQueries.push(outputItem.action.query);
-				}
-			}
-		}
-
-		return {
-			rawOutput: responseBody,
-			webQueries,
-			textContent: extractTextContent(responseBody, "openai"), // Extract text content for mention analysis
-		};
-	} catch (error) {
-		console.error("Error running OpenAI prompt:", error);
-		throw error;
-	}
-}
-
-// Function to run prompt with Anthropic
-async function runWithAnthropic(promptValue: string): Promise<{
-	rawOutput: any;
-	webQueries: string[];
-	textContent: string;
-}> {
-	try {
-		const response = await anthropic.messages.create({
-			model: AI_MODELS.ANTHROPIC.MODEL,
-			max_tokens: 4000,
-			messages: [
-				{
-					role: "user",
-					content: promptValue,
-				},
-			],
-			tools: [
-				{
-					type: "web_search_20250305",
-					name: "web_search",
-					max_uses: 1,
-				},
-			],
-		});
-
-		// Extract text content from response using helper
-		const textContent = extractTextContent(response, "anthropic");
-
-		// Extract web search queries
-		const webQueries = response.content
-			.filter((block) => block.type === "server_tool_use" && block.name === "web_search")
-			.map((block) => (block as any).input?.query)
-			.filter(Boolean);
-
-		return {
-			rawOutput: response,
-			webQueries,
-			textContent,
-		};
-	} catch (error) {
-		console.error("Error running Anthropic prompt:", error);
-		throw error;
-	}
-}
-
-// Function to run prompt with DataForSEO (simulating a search query)
-async function runWithDataForSEO(promptValue: string): Promise<{
-	rawOutput: any;
-	webQueries: string[];
-	textContent: string;
-}> {
-	try {
-		// Use DataForSEO AI Mode Live Advanced endpoint to get AI-powered search results
-		const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
-			keyword: promptValue,
-			location_code: 2840, // United States
-			language_code: "en",
-			depth: 10,
-		});
-
-		const response = await dfsSerpApi.googleAiModeLiveAdvanced([requestInfo]);
-
-		if (!response || !response.tasks || response.tasks.length === 0) {
-			throw new Error("DataForSEO API Error: No response or tasks");
-		}
-
-		const task = response.tasks[0];
-		if (task.status_code !== 20000 || !task.result || task.result.length === 0) {
-			throw new Error(`DataForSEO API Error: ${task.status_message}`);
-		}
-
-		const textContent = extractTextContent(response, "google");
-
-		// There aren't separate web queries for Google AI Mode
-		const webQueries = [promptValue];
-
-		return {
-			rawOutput: response,
-			webQueries,
-			textContent,
-		};
-	} catch (error) {
-		console.error("Error running DataForSEO search:", error);
-		throw error;
-	}
 }
 
 // Function to select optimal prompts from candidates based on test results
@@ -321,72 +199,46 @@ function analyzeMentions(
 	return { brandMentioned, competitorsMentioned };
 }
 
-// Function to run a prompt across different models and return results
+// Function to run a prompt across different models and return results.
+// Iterates SCRAPE_TARGETS; per-model run count comes from getReportRunsForModel
+// (whitelabel preserves the legacy 2+1+1 mapping; other modes match day-to-day
+// tracking frequency).
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
 	brandWebsite: string,
 	competitors: CompetitorResult[],
+	scrapeConfigs: ModelConfig[],
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	// Run 2 OpenAI, 1 Anthropic, 1 Google for each prompt (4 total runs)
-	const runPromises = [
-		// 2 OpenAI runs
-		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
-			return {
-				model: "chatgpt",
-				version: AI_MODELS.OPENAI.MODEL,
-				webSearchEnabled: true,
-				rawOutput,
-				webQueries,
-				textContent,
-				brandMentioned,
-				competitorsMentioned,
-			};
-		}),
-		runWithOpenAI(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
-			return {
-				model: "chatgpt",
-				version: AI_MODELS.OPENAI.MODEL,
-				webSearchEnabled: true,
-				rawOutput,
-				webQueries,
-				textContent,
-				brandMentioned,
-				competitorsMentioned,
-			};
-		}),
-		// 1 Anthropic run
-		runWithAnthropic(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
-			return {
-				model: "claude",
-				version: AI_MODELS.ANTHROPIC.MODEL,
-				webSearchEnabled: true,
-				rawOutput,
-				webQueries,
-				textContent,
-				brandMentioned,
-				competitorsMentioned,
-			};
-		}),
-		// 1 Google run
-		runWithDataForSEO(promptValue).then(({ rawOutput, webQueries, textContent }) => {
-			const { brandMentioned, competitorsMentioned } = analyzeMentions(textContent, brandName, brandWebsite, competitors);
-			return {
-				model: "google-ai-mode",
-				version: "dataforseo",
-				webSearchEnabled: true,
-				rawOutput,
-				webQueries,
-				textContent,
-				brandMentioned,
-				competitorsMentioned,
-			};
-		}),
-	];
+	const runOne = async (config: ModelConfig) => {
+		const providerImpl = getProvider(config.provider);
+		const result = await providerImpl.run(config.model, promptValue, {
+			webSearch: config.webSearch,
+			version: config.version,
+		});
+		const { brandMentioned, competitorsMentioned } = analyzeMentions(
+			result.textContent,
+			brandName,
+			brandWebsite,
+			competitors,
+		);
+		return {
+			model: config.model,
+			version: result.modelVersion ?? config.version ?? config.provider,
+			webSearchEnabled: config.webSearch,
+			rawOutput: result.rawOutput,
+			webQueries: result.webQueries,
+			textContent: result.textContent,
+			brandMentioned,
+			competitorsMentioned,
+		};
+	};
+
+	const runPromises = scrapeConfigs.flatMap((config) => {
+		const count = getReportRunsForModel(config.model);
+		return Array.from({ length: count }, () => runOne(config));
+	});
 
 	const runResults = await Promise.all(runPromises);
 
@@ -403,7 +255,9 @@ export async function processReportJob(job: ReportJobContext) {
 	const { reportId, brandName, brandWebsite, manualPrompts } = job.data;
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
-	
+
+	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+
 	// Determine if we're using manual prompts
 	const useManualPrompts = manualPrompts && manualPrompts.length > 0;
 	if (useManualPrompts) {
@@ -532,7 +386,7 @@ export async function processReportJob(job: ReportJobContext) {
 			const batch = candidatePrompts.slice(i, i + batchSize);
 			const batchPromises = batch.map(async (candidate) => {
 				try {
-					const result = await runPrompt(candidate.prompt, brandName, brandWebsite, competitors, job);
+					const result = await runPrompt(candidate.prompt, brandName, brandWebsite, competitors, scrapeConfigs, job);
 					completedCandidates++;
 					const progress = 40 + (completedCandidates / totalCandidates) * 30; // 40-70% for testing
 					job.updateProgress(progress);

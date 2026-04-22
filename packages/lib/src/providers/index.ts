@@ -10,6 +10,7 @@ export type { Provider, ScrapeResult, ProviderOptions, TestResult, ModelConfig }
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export { selectTargetsForBrand } from "./runner";
 
 const providerMap: Record<string, Provider> = {
 	olostep,
