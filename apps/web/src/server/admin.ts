@@ -17,7 +17,13 @@ import { analyzeWebsite, getCompetitors, generateCandidatePromptsForReports } fr
 import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import {
+	parseScrapeTargets,
+	getAllProviders,
+	getProvider,
+	type ModelConfig,
+	type TestResult,
+} from "@workspace/lib/providers";
 
 // ============================================================================
 // Admin guard helper
@@ -839,4 +845,75 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		}
 
 		return { jobId: data.jobId, logs, count: logs.length };
+	});
+
+// ============================================================================
+// Admin Providers - SCRAPE_TARGETS status + per-target smoke test
+// ============================================================================
+
+export interface ProviderStatus {
+	activeTargets: ModelConfig[];
+	providers: { id: string; name: string; configured: boolean }[];
+	deploymentMode: string;
+}
+
+/**
+ * Snapshot of what the worker will dispatch: the parsed SCRAPE_TARGETS plus
+ * which registered providers have credentials configured. Used by
+ * /admin/providers to render the current configuration.
+ */
+export const getProviderStatusFn = createServerFn({ method: "GET" }).handler(
+	async (): Promise<ProviderStatus> => {
+		await requireAdmin();
+
+		const activeTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const providers = getAllProviders().map((p) => ({
+			id: p.id,
+			name: p.name,
+			configured: p.isConfigured(),
+		}));
+
+		return {
+			activeTargets,
+			providers,
+			deploymentMode: process.env.DEPLOYMENT_MODE ?? "local",
+		};
+	},
+);
+
+/**
+ * Run a single SCRAPE_TARGETS entry through its provider with a canned prompt.
+ * Surfaces credential and connectivity problems before prompts start failing.
+ */
+export const testProviderFn = createServerFn({ method: "POST" })
+	.inputValidator(z.object({ target: z.string() }))
+	.handler(async ({ data }): Promise<TestResult> => {
+		await requireAdmin();
+
+		const configs = parseScrapeTargets(data.target);
+		if (configs.length !== 1) {
+			throw new Error(
+				`testProviderFn expects a single target; got ${configs.length} from "${data.target}"`,
+			);
+		}
+		const cfg = configs[0];
+		const provider = getProvider(cfg.provider);
+
+		const start = Date.now();
+		try {
+			const result = await provider.run(cfg.model, "What is 2+2?", {
+				webSearch: cfg.webSearch,
+				version: cfg.version,
+			});
+			const latencyMs = Date.now() - start;
+			const sample = result.textContent.trim().slice(0, 240);
+			return { success: true, latencyMs, sampleOutput: sample };
+		} catch (err) {
+			const latencyMs = Date.now() - start;
+			return {
+				success: false,
+				latencyMs,
+				error: err instanceof Error ? err.message : String(err),
+			};
+		}
 	});
