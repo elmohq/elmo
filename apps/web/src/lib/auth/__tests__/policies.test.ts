@@ -179,6 +179,22 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
+		it("exempts better-auth sign-in from read-only (so visitors can log in)", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("POST", "/api/auth/sign-in/email"),
+			);
+			expect(result.action).toBe("allow");
+		});
+
+		it("exempts better-auth sign-out from read-only", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("POST", "/api/auth/sign-out"),
+			);
+			expect(result.action).toBe("allow");
+		});
+
 		it("blocks POST to /api/v1 before reaching key check (read-only takes priority)", () => {
 			const result = evaluateDeploymentPolicy(
 				features,
