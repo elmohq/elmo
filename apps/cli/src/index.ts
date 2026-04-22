@@ -319,7 +319,11 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	env.VITE_APP_URL = DEFAULT_APP_URL;
 
 	if (postgresMode === "external") {
-		const url = await p.text({
+		p.note(
+			"Must be an IPv4-compatible direct connection or database pooler.",
+			"DATABASE_URL",
+		);
+		const url = await p.password({
 			message: "DATABASE_URL",
 			validate: (v) => (!v ? "Required" : undefined),
 		});
