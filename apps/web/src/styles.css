@@ -1,11 +1,15 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "@fontsource/titan-one";
 
 @import "tw-animate-css";
 
 @plugin "@tailwindcss/typography";
 
-/* Scan app components and pages for Tailwind classes */
+/* Explicit @source scanning only. source(none) on the import above disables
+   @tailwindcss/vite's module-graph-based class detection, which yields
+   different CSS between the client and SSR Vite builds (so the SSR-rendered
+   <link href> points at a hashed file the client build never wrote). See
+   tailwindlabs/tailwindcss#16389 and TanStack/router#4959. */
 @source "../src";
 @source "../../../packages/ui/src";
 
