@@ -11,7 +11,7 @@
 		"test": "vitest run",
 		"lint": "biome lint",
 		"check-types": "tsc --noEmit",
-		"generate-icons": "tsx scripts/generate-brand-icons.ts",
+		"generate-icons": "tsx scripts/generate-brand-icons.tsx",
 		"generate-brand-kit": "tsx scripts/generate-brand-kit.tsx",
 		"storybook": "storybook dev -p 6006",
 		"storybook:build": "storybook build"
