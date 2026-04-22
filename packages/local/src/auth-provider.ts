@@ -25,7 +25,7 @@ export function createLocalDeployment(
 		features: {
 			readOnly,
 			showOptimizeButton: false,
-			supportsMultiOrg: false,
+			supportsMultiOrg: readOnly,
 		},
 		branding: {
 			name: getEnv("APP_NAME", DEFAULT_APP_NAME, env),
