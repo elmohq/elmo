@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
 import { shutdownTelemetry } from "./telemetry";
@@ -13,6 +14,11 @@ if (process.env.SENTRY_DSN) {
 
 async function main() {
 	console.log("Starting pg-boss worker...");
+
+	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
+	// missing API keys, and per-provider target errors before any job runs.
+	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
+	console.log("SCRAPE_TARGETS validated");
 
 	// Start pg-boss (creates schema if needed)
 	await boss.start();

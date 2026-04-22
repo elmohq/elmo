@@ -91,3 +91,13 @@ The database schema is defined with Drizzle ORM in `packages/lib/src/db/`. Key t
 - **citations** — URLs cited by AI models in their responses
 
 Migrations are generated with `drizzle-kit generate` and applied with `drizzle-kit migrate`.
+
+## Provider Abstraction
+
+All AI scraping flows through a single `Provider` interface in `packages/lib/src/providers/`. The runtime wiring:
+
+1. `SCRAPE_TARGETS` (env var) holds comma-separated `model:provider[:version][:online]` entries.
+2. `parseScrapeTargets()` turns the string into `ModelConfig[]`.
+3. `getProvider(providerId).run(model, prompt, { webSearch, version })` dispatches to a concrete `registry/` implementation and returns a normalized `ScrapeResult` (`textContent`, `rawOutput`, `webQueries`, `citations`, `modelVersion`).
+
+User-facing setup is documented in [Providers](/docs/deployment/providers).

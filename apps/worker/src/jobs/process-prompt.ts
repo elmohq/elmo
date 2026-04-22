@@ -2,9 +2,15 @@ import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { AI_MODELS, DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { runWithAnthropic, runWithDataForSEO, runWithOpenAI } from "@workspace/lib/ai-providers";
-import { extractCitations } from "@workspace/lib/text-extraction";
+import { DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import {
+	getProvider,
+	parseScrapeTargets,
+	selectTargetsForBrand,
+	type ModelConfig,
+	type Provider,
+} from "@workspace/lib/providers";
+import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -173,10 +179,9 @@ async function saveCitations(
 	promptId: string,
 	brandId: string,
 	model: string,
-	rawOutput: unknown,
+	extracted: Citation[],
 	createdAt: Date,
 ): Promise<void> {
-	const extracted = extractCitations(rawOutput, model);
 	if (extracted.length === 0) return;
 
 	await db.insert(citations).values(
@@ -200,42 +205,41 @@ async function runModelIteration({
 	promptValue,
 	brand,
 	competitorsList,
-	model,
-	provider,
-	version,
-	webSearchEnabled,
+	config,
+	providerImpl,
 	runIndex,
-	runFn,
 }: {
 	promptId: string;
 	promptValue: string;
 	brand: Brand;
 	competitorsList: Competitor[];
-	model: string;
-	provider: string;
-	version: string;
-	webSearchEnabled: boolean;
+	config: ModelConfig;
+	providerImpl: Provider;
 	runIndex: number;
-	runFn: (prompt: string) => Promise<{ rawOutput: unknown; webQueries: string[]; textContent: string }>;
 }): Promise<void> {
-	const logPrefix = `[${model}_${runIndex}]`;
+	const logPrefix = `[${config.model}_${runIndex}]`;
 
-	const result = await runFn(promptValue);
+	const result = await providerImpl.run(config.model, promptValue, {
+		webSearch: config.webSearch,
+		version: config.version,
+	});
 
-	const { rawOutput, webQueries, textContent } = result;
+	const { rawOutput, webQueries, textContent, citations: extractedCitations, modelVersion } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
 	const safeTextContent = typeof textContent === "string" ? textContent : "";
 
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
 
+	const recordedVersion = modelVersion ?? config.version ?? config.provider;
+
 	const { id: promptRunId, createdAt } = await savePromptRun(
 		promptId,
 		brand.id,
-		model,
-		provider,
-		version,
-		webSearchEnabled,
+		config.model,
+		config.provider,
+		recordedVersion,
+		config.webSearch,
 		rawOutput,
 		webQueries,
 		brandMentioned,
@@ -243,7 +247,7 @@ async function runModelIteration({
 	);
 	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	await saveCitations(promptRunId, promptId, brand.id, model, rawOutput, createdAt);
+	await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
 }
 
 /**
@@ -252,6 +256,8 @@ async function runModelIteration({
  * After successful completion, schedules the next run.
  */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
+	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		const { promptId, cadenceHours: providedCadence } = job.data;
@@ -277,60 +283,31 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 			continue;
 		}
 
+		const selectedConfigs = selectTargetsForBrand(scrapeConfigs, brand.enabledModels);
+		if (selectedConfigs.length === 0) {
+			console.log(`Prompt ${promptId} for brand ${brand.id} has no targets (brand.enabledModels=[])`);
+		}
+
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
 		// Run all model iterations in parallel
 		const runPromises: Promise<void>[] = [];
 
-		for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-			runPromises.push(
-				runModelIteration({
-					promptId,
-					promptValue: prompt.value,
-					brand,
-					competitorsList,
-					model: "chatgpt",
-					provider: "openai-api",
-					version: AI_MODELS.OPENAI.MODEL,
-					webSearchEnabled: true,
-					runIndex: i + 1,
-					runFn: runWithOpenAI,
-				}),
-			);
-		}
-
-		for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-			runPromises.push(
-				runModelIteration({
-					promptId,
-					promptValue: prompt.value,
-					brand,
-					competitorsList,
-					model: "claude",
-					provider: "anthropic-api",
-					version: AI_MODELS.ANTHROPIC.MODEL,
-					webSearchEnabled: false,
-					runIndex: i + 1,
-					runFn: runWithAnthropic,
-				}),
-			);
-		}
-
-		for (let i = 0; i < RUNS_PER_PROMPT; i++) {
-			runPromises.push(
-				runModelIteration({
-					promptId,
-					promptValue: prompt.value,
-					brand,
-					competitorsList,
-					model: "google-ai-mode",
-					provider: "dataforseo",
-					version: "dataforseo",
-					webSearchEnabled: true,
-					runIndex: i + 1,
-					runFn: runWithDataForSEO,
-				}),
-			);
+		for (const config of selectedConfigs) {
+			const providerImpl = getProvider(config.provider);
+			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+				runPromises.push(
+					runModelIteration({
+						promptId,
+						promptValue: prompt.value,
+						brand,
+						competitorsList,
+						config,
+						providerImpl,
+						runIndex: i + 1,
+					}),
+				);
+			}
 		}
 
 		const results = await Promise.allSettled(runPromises);
@@ -355,8 +332,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			models: ["chatgpt", "claude", "google-ai-mode"],
-			providers: ["openai-api", "anthropic-api", "dataforseo"],
+			models: [...new Set(selectedConfigs.map((c) => c.model))],
+			providers: [...new Set(selectedConfigs.map((c) => c.provider))],
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,
