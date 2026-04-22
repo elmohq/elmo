@@ -1,5 +1,15 @@
 # @workspace/whitelabel
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [63a6c22]
+- Updated dependencies [06fb190]
+  - @workspace/lib@0.2.2
+  - @workspace/config@0.2.2
+  - @workspace/ui@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

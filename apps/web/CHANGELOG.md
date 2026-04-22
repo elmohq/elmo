@@ -1,5 +1,23 @@
 # @workspace/web
 
+## 0.2.2
+
+### Patch Changes
+
+- 63a6c22: Demo mode: visitors can now actually sign in — better-auth endpoints are exempt from the read-only write-block, and the login form pre-fills the seeded demo credentials.
+- d3839b1: Demo deployments (`READ_ONLY=true`) now enable `supportsMultiOrg`, so the `/app` brand switcher renders when the demo user is seeded into multiple organizations. Pure local deployments continue to auto-redirect to the default org.
+- 0ae9fc1: Fix missing stylesheet and favicon in Docker builds caused by `@tailwindcss/vite` emitting different CSS hashes in the client and SSR passes.
+- 06fb190: Worker dispatch now reads `SCRAPE_TARGETS` end-to-end via the provider registry. Deployments that configure non-default providers no longer hit `AI_LoadAPIKeyError` for providers they never set up, the worker fails fast at startup on misconfigured `SCRAPE_TARGETS`, and `brand.enabledModels` filters per brand.
+- Updated dependencies [63a6c22]
+- Updated dependencies [06fb190]
+  - @workspace/lib@0.2.2
+  - @workspace/whitelabel@0.2.2
+  - @workspace/deployment@0.2.2
+  - @workspace/api-spec@0.2.2
+  - @workspace/config@0.2.2
+  - @workspace/og@0.2.2
+  - @workspace/ui@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@workspace/worker",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "scripts": {
     "dev": "tsx --env-file=../web/.env src/index.ts",

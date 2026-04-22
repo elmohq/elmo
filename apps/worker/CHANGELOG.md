@@ -1,5 +1,15 @@
 # @workspace/worker
 
+## 0.2.2
+
+### Patch Changes
+
+- 06fb190: Worker dispatch now reads `SCRAPE_TARGETS` end-to-end via the provider registry. Deployments that configure non-default providers no longer hit `AI_LoadAPIKeyError` for providers they never set up, the worker fails fast at startup on misconfigured `SCRAPE_TARGETS`, and `brand.enabledModels` filters per brand.
+- Updated dependencies [63a6c22]
+- Updated dependencies [06fb190]
+  - @workspace/lib@0.2.2
+  - @workspace/whitelabel@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

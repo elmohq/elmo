@@ -1,5 +1,14 @@
 # @workspace/deployment
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [d3839b1]
+  - @workspace/local@0.2.2
+  - @workspace/whitelabel@0.2.2
+  - @workspace/config@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes
