@@ -161,7 +161,7 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						<Link to="/app" onClick={() => setOpenMobile(false)}>
 							<Logo iconClassName="!size-5" />
 							<div className="ml-auto group-data-[collapsible=icon]:hidden">
-								<DemoModeBanner variant="sidebar-pill" />
+								<DemoModeBanner />
 							</div>
 						</Link>
 					</SidebarMenuButton>
