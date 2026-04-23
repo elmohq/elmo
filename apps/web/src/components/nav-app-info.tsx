@@ -1,4 +1,4 @@
-import { IconBrandGithub, IconLink } from "@tabler/icons-react";
+import { IconBrandGithub, IconWorld } from "@tabler/icons-react";
 import { useRouteContext } from "@tanstack/react-router";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
@@ -12,28 +12,31 @@ export function NavAppInfo() {
 	if (mode !== "local" && mode !== "demo") return null;
 
 	const linkClass =
-		"text-muted-foreground hover:text-foreground inline-flex size-6 items-center justify-center rounded-md transition-colors";
+		"text-muted-foreground hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors";
 
 	return (
-		<div className="flex items-center justify-center gap-2 px-2 pt-1 pb-0.5 text-[11px] text-muted-foreground">
-			<span className="font-mono">v{__APP_VERSION__}</span>
-			<span className="text-muted-foreground/50">·</span>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<a href="https://www.elmohq.com/" target="_blank" rel="noreferrer" className={linkClass}>
-						<IconLink className="size-3.5" />
-					</a>
-				</TooltipTrigger>
-				<TooltipContent>elmohq.com</TooltipContent>
-			</Tooltip>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass}>
-						<IconBrandGithub className="size-3.5" />
-					</a>
-				</TooltipTrigger>
-				<TooltipContent>View on GitHub</TooltipContent>
-			</Tooltip>
+		<div className="mx-2 mt-1 flex items-center gap-2 border-t border-sidebar-border/60 px-1 pt-2">
+			<span className="flex-1 text-xs font-medium text-muted-foreground">
+				v{__APP_VERSION__}
+			</span>
+			<div className="flex items-center gap-1">
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<a href="https://www.elmohq.com/" target="_blank" rel="noreferrer" className={linkClass}>
+							<IconWorld className="size-4" />
+						</a>
+					</TooltipTrigger>
+					<TooltipContent>elmohq.com</TooltipContent>
+				</Tooltip>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass}>
+							<IconBrandGithub className="size-4" />
+						</a>
+					</TooltipTrigger>
+					<TooltipContent>View on GitHub</TooltipContent>
+				</Tooltip>
+			</div>
 		</div>
 	);
 }
