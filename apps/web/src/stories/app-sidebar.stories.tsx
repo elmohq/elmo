@@ -128,14 +128,6 @@ const authedUser = (name: string, email: string, seed: string) => ({
 	logoutUrl: "/auth/logout",
 });
 
-const noAuth = {
-	user: null,
-	isLoading: false,
-	isAuthenticated: false,
-	loginUrl: undefined,
-	logoutUrl: undefined,
-};
-
 /**
  * Wrapper that contains the sidebar within a bounded box.
  *
@@ -191,12 +183,16 @@ export default {
 	title: "App Sidebar",
 } satisfies Meta;
 
-/** Local (self-hosted) — all nav visible, admin access, no auth */
+/** Local (self-hosted) — all nav visible, admin access, self-registered user */
 export const Local = () => {
-	configureMocks(localConfig, onboardedBrand, noAuth);
+	configureMocks(
+		localConfig,
+		onboardedBrand,
+		authedUser("Local Admin", "admin@localhost", "local-admin"),
+	);
 
 	return (
-		<SidebarFrame label="Local — Self-hosted, full admin, no auth">
+		<SidebarFrame label="Local — Self-hosted, full admin">
 			<AppSidebar isAdmin={true} hasReportAccess={true} />
 		</SidebarFrame>
 	);
