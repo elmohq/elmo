@@ -173,9 +173,12 @@ const appleTouch = await renderPng(<StandardIcon bg="#ffffff" size={180} />, 180
 writeFileSync(resolve(PUBLIC_DIR, "apple-touch-icon.png"), appleTouch);
 console.log("  ✓ apple-touch-icon.png");
 
+// Transparent background — browsers rasterize this onto the tab strip, which
+// is often dark-themed. apple-touch-icon above keeps its white bg because iOS
+// would otherwise composite it onto its own (usually dark) background.
 const icoPngs: Buffer[] = [];
 for (const size of [16, 32, 48]) {
-	icoPngs.push(await renderPng(<StandardIcon bg="#ffffff" size={size} />, size));
+	icoPngs.push(await renderPng(<StandardIcon size={size} />, size));
 }
 writeFileSync(resolve(PUBLIC_DIR, "favicon.ico"), await pngToIco(icoPngs));
 console.log("  ✓ favicon.ico");

@@ -188,9 +188,12 @@ for (const { name, element, size } of pngIcons) {
 // deployments don't end up serving Elmo's ICO for default browser requests.
 // ---------------------------------------------------------------------------
 
+// Transparent background — browsers rasterize this onto the tab strip, which
+// is often dark-themed. apple-touch-icon above keeps its white bg because iOS
+// would otherwise composite it onto its own (usually dark) background.
 const icoPngs: Buffer[] = [];
 for (const size of [16, 32, 48]) {
-	icoPngs.push(await renderPng(<StandardIcon bg="#ffffff" size={size} />, size));
+	icoPngs.push(await renderPng(<StandardIcon size={size} />, size));
 }
 writeFileSync(resolve(OUTPUT_DIR, "favicon.ico"), await pngToIco(icoPngs));
 console.log("  ✓ favicon.ico");
