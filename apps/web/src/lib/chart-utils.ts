@@ -1,5 +1,5 @@
 import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
-import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -176,7 +176,7 @@ export function applyPerPromptCitationLVCF(
 	cadenceHours: number | null | undefined,
 	categorizeDomain: (domain: string) => "brand" | "competitor" | "social_media" | "google" | "institutional" | "other",
 ): Map<string, CitationCategories> {
-	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? DEFAULT_DELAY_HOURS) / 24));
+	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
 
 	// Group by prompt_id -> date -> category totals
 	const byPrompt = new Map<string, Map<string, CitationCategories>>();

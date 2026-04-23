@@ -128,14 +128,6 @@ const authedUser = (name: string, email: string, seed: string) => ({
 	logoutUrl: "/auth/logout",
 });
 
-const noAuth = {
-	user: null,
-	isLoading: false,
-	isAuthenticated: false,
-	loginUrl: undefined,
-	logoutUrl: undefined,
-};
-
 /**
  * Wrapper that contains the sidebar within a bounded box.
  *
@@ -191,23 +183,29 @@ export default {
 	title: "App Sidebar",
 } satisfies Meta;
 
-/** Local (self-hosted) — all nav visible, admin access, no auth */
+/** Local (self-hosted) — all nav visible, admin access, self-registered user */
 export const Local = () => {
-	configureMocks(localConfig, onboardedBrand, noAuth);
+	configureMocks(
+		localConfig,
+		onboardedBrand,
+		authedUser("Local Admin", "admin@localhost", "local-admin"),
+	);
 
 	return (
-		<SidebarFrame label="Local — Self-hosted, full admin, no auth">
+		<SidebarFrame label="Local — Self-hosted, full admin">
 			<AppSidebar isAdmin={true} hasReportAccess={true} />
 		</SidebarFrame>
 	);
 };
 
-/** Demo — read-only preview, no admin, no auth */
+/** Demo — read-only preview, seeded user, no admin */
 export const Demo = () => {
-	configureMocks(demoConfig, onboardedBrand, noAuth);
+	const demoUser = authedUser("Demo User", "demo@elmohq.com", "demo");
+	demoUser.user.picture = "https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adrian";
+	configureMocks(demoConfig, onboardedBrand, demoUser);
 
 	return (
-		<SidebarFrame label="Demo — Read-only, no admin">
+		<SidebarFrame label="Demo — Read-only, seeded user">
 			<AppSidebar isAdmin={false} hasReportAccess={false} />
 		</SidebarFrame>
 	);

@@ -9,14 +9,14 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.52",
-    "@anthropic-ai/sdk": "^0.88.0",
-    "@sentry/node": "^10.48.0",
+    "@ai-sdk/openai": "^3.0.53",
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@sentry/node": "^10.49.0",
     "@workspace/lib": "workspace:*",
     "@workspace/whitelabel": "workspace:*",
-    "ai": "^6.0.159",
+    "ai": "^6.0.168",
     "auth0": "^5.6.0",
-    "dataforseo-client": "^2.0.21",
+    "dataforseo-client": "^2.0.22",
     "drizzle-orm": "^0.45.2",
     "pg": "^8.20.0",
     "pg-boss": "^12.15.0",
@@ -27,6 +27,6 @@
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }

@@ -1,38 +1,46 @@
-import { IconBrandGithub, IconLink } from "@tabler/icons-react";
-import { SidebarMenu, SidebarMenuItem } from "@workspace/ui/components/sidebar";
+import { IconBrandGithub, IconWorld } from "@tabler/icons-react";
+import { useRouteContext } from "@tanstack/react-router";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import type { ClientConfig } from "@workspace/config/types";
 
 export function NavAppInfo() {
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const mode = context.clientConfig?.mode;
+
+	// Whitelabel deployments hide the version/website/github links.
+	if (mode === "whitelabel") return null;
+
+	const linkClass =
+		"text-muted-foreground hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors";
+
 	return (
-		<SidebarMenu>
-			<SidebarMenuItem>
-				<div className="flex w-full items-center gap-2 rounded-md px-2 py-2 pb-0 mb-0">
-					<div className="grid flex-1 text-left text-xs leading-tight">
-						<span className="text-muted-foreground font-medium">
-							v{__APP_VERSION__}
-						</span>
-					</div>
-					<div className="flex items-center gap-1">
-						<a
-							href="https://www.elmohq.com/"
-							target="_blank"
-							rel="noreferrer"
-							className="text-muted-foreground hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors"
-							title="elmohq.com"
-						>
-							<IconLink className="size-4" />
+		<div className="mx-2 mt-1 flex items-center gap-2 border-t border-sidebar-border/60 px-1 pt-2">
+			<a
+				href={`https://github.com/elmohq/elmo/releases/tag/v${__APP_VERSION__}`}
+				target="_blank"
+				rel="noreferrer"
+				className="flex-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+			>
+				v{__APP_VERSION__}
+			</a>
+			<div className="flex items-center gap-1">
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<a href="https://www.elmohq.com/" target="_blank" className={linkClass}>
+							<IconWorld className="size-4" />
 						</a>
-						<a
-							href="https://github.com/elmohq/elmo"
-							target="_blank"
-							rel="noreferrer"
-							className="text-muted-foreground hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors"
-							title="View on GitHub"
-						>
+					</TooltipTrigger>
+					<TooltipContent>elmohq.com</TooltipContent>
+				</Tooltip>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass}>
 							<IconBrandGithub className="size-4" />
 						</a>
-					</div>
-				</div>
-			</SidebarMenuItem>
-		</SidebarMenu>
+					</TooltipTrigger>
+					<TooltipContent>View on GitHub</TooltipContent>
+				</Tooltip>
+			</div>
+		</div>
 	);
 }

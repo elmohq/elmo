@@ -1,4 +1,4 @@
-import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { parseScrapeTargets } from "@workspace/lib/providers";
@@ -43,9 +43,10 @@ async function runMaintenanceCheck(): Promise<void> {
 	}
 
 	const brandIds = enabledBrands.map((b) => b.id);
+	const defaultDelayHours = getDefaultDelayHours();
 	const brandDelayMap: Record<string, number> = {};
 	for (const brand of enabledBrands) {
-		brandDelayMap[brand.id] = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+		brandDelayMap[brand.id] = brand.delayOverrideHours ?? defaultDelayHours;
 	}
 
 	// Get all enabled prompts for enabled brands
@@ -96,7 +97,7 @@ async function runMaintenanceCheck(): Promise<void> {
 			continue;
 		}
 
-		const cadenceHours = brandDelayMap[prompt.brandId] ?? DEFAULT_DELAY_HOURS;
+		const cadenceHours = brandDelayMap[prompt.brandId] ?? defaultDelayHours;
 		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
 		const lastRuns = lastRunsMap[prompt.id] || {};
 

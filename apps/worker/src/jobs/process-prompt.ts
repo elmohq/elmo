@@ -2,7 +2,7 @@ import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { DEFAULT_DELAY_HOURS, RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
 import {
 	getProvider,
 	parseScrapeTargets,
@@ -56,19 +56,20 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
  * Get the cadence hours for a prompt based on its brand's delay override.
  */
 async function getCadenceHours(promptId: string): Promise<number> {
+	const defaultDelayHours = getDefaultDelayHours();
 	const prompt = await db.query.prompts.findFirst({
 		where: eq(prompts.id, promptId),
 	});
 
-	if (!prompt) return DEFAULT_DELAY_HOURS;
+	if (!prompt) return defaultDelayHours;
 
 	const brand = await db.query.brands.findFirst({
 		where: eq(brands.id, prompt.brandId),
 	});
 
-	if (!brand) return DEFAULT_DELAY_HOURS;
+	if (!brand) return defaultDelayHours;
 
-	return brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+	return brand.delayOverrideHours ?? defaultDelayHours;
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
