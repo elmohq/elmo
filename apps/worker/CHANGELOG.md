@@ -1,5 +1,12 @@
 # @workspace/worker
 
+## 0.2.3
+
+### Patch Changes
+
+- @workspace/lib@0.2.3
+- @workspace/whitelabel@0.2.3
+
 ## 0.2.2
 
 ### Patch Changes
