@@ -206,7 +206,7 @@ export const Local = () => {
 export const Demo = () => {
 	const demoUser = authedUser("Demo User", "demo@elmohq.com", "demo");
 	demoUser.user.picture =
-		"https://api.dicebear.com/9.x/avataaars-neutral/svg?eyebrows=default&eyes=surprised,default&mouth=smile,default&seed=Liam";
+		"https://api.dicebear.com/9.x/avataaars-neutral/svg?eyebrows=default&eyes=default,default&mouth=smile,default&seed=Liam";
 	configureMocks(demoConfig, onboardedBrand, demoUser);
 
 	return (
