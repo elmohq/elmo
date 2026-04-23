@@ -1,14 +1,9 @@
 import { useRouteContext } from "@tanstack/react-router";
 import { IconInfoCircle } from "@tabler/icons-react";
-import {
-	SidebarGroup,
-	SidebarGroupContent,
-	SidebarGroupLabel,
-} from "@workspace/ui/components/sidebar";
 import type { ClientConfig } from "@workspace/config/types";
 
 interface DemoModeBannerProps {
-	variant?: "page" | "sidebar";
+	variant?: "page" | "sidebar-pill";
 }
 
 export function DemoModeBanner({ variant = "page" }: DemoModeBannerProps = {}) {
@@ -17,16 +12,14 @@ export function DemoModeBanner({ variant = "page" }: DemoModeBannerProps = {}) {
 
 	if (!isReadOnly) return null;
 
-	if (variant === "sidebar") {
+	if (variant === "sidebar-pill") {
 		return (
-			<SidebarGroup>
-				<SidebarGroupLabel>Demo Mode</SidebarGroupLabel>
-				<SidebarGroupContent>
-					<p className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-700 dark:text-amber-400">
-						Edits will fail. Only reading data is supported.
-					</p>
-				</SidebarGroupContent>
-			</SidebarGroup>
+			<span
+				className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400"
+				title="Read-only demo — edits will fail"
+			>
+				Demo
+			</span>
 		);
 	}
 

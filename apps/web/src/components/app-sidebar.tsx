@@ -160,13 +160,15 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 					<SidebarMenuButton size="lg" asChild>
 						<Link to="/app" onClick={() => setOpenMobile(false)}>
 							<Logo iconClassName="!size-5" />
+							<div className="ml-auto group-data-[collapsible=icon]:hidden">
+								<DemoModeBanner variant="sidebar-pill" />
+							</div>
 						</Link>
 					</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<DemoModeBanner variant="sidebar" />
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
