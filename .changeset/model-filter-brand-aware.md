@@ -2,4 +2,6 @@
 "@workspace/web": patch
 ---
 
-The model filter on Visibility and Citations now reflects the brand's `enabledModels` instead of the hardcoded four-button bar. Brands that track every model keep today's All/ChatGPT/Claude/Google toggle, brands with 2+ models see just those plus "All", and brands with a single model no longer see a filter at all (since there's nothing to switch between).
+Model filters on Visibility, Citations, and prompt detail pages now reflect the brand's `enabledModels` instead of a hardcoded list. Brands that track every model keep the full set of options, brands with 2+ models see just those plus "All", and brands with a single model no longer see a filter at all. The prompt detail "Web Queries" tab also only breaks out per-model sections for models the brand actually runs.
+
+The Visibility/Citations filter bar is redesigned around dropdowns (model, tags, lookback) on the left with a right-aligned search field, replacing the former tab row + popover + segmented lookback bar.

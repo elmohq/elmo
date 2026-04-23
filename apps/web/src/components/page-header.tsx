@@ -1,11 +1,22 @@
-import { ReactNode, useEffect, useRef, useState, useMemo } from "react";
+import { ReactNode, useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
-import { Tabs, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
-import { PromptFilters } from "@/components/prompt-filters";
+import { Button } from "@workspace/ui/components/button";
+import { Input } from "@workspace/ui/components/input";
+import { Checkbox } from "@workspace/ui/components/checkbox";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { ChevronDown, Search, Tag as TagIcon, Clock, Pencil, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/components/visibility-bar";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
@@ -37,34 +48,43 @@ const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"
 const tagsParser = parseAsArrayOf(parseAsString, ",");
 const searchParser = parseAsString;
 
-function getModelIcon(modelType: ModelType) {
+function getModelIcon(modelType: ModelType, className = "size-3.5") {
 	switch (modelType) {
 		case "chatgpt":
-			return <SiOpenai className="size-3" />;
+			return <SiOpenai className={className} />;
 		case "claude":
-			return <SiAnthropic className="size-3" />;
+			return <SiAnthropic className={className} />;
 		case "google-ai-mode":
-			return <SiGoogle className="size-3" />;
+			return <SiGoogle className={className} />;
 		case "all":
-			return <MdSelectAll className="size-3" />;
+			return <MdSelectAll className={className} />;
 	}
 }
 
-function getLookbackLabel(lookback: LookbackPeriod): string {
-	switch (lookback) {
-		case "1w":
-			return "1w";
-		case "1m":
-			return "1mo";
-		case "3m":
-			return "3mo";
-		case "6m":
-			return "6mo";
-		case "1y":
-			return "1yr";
+function getModelLabel(modelType: ModelType): string {
+	switch (modelType) {
+		case "chatgpt":
+			return "ChatGPT";
+		case "claude":
+			return "Claude";
+		case "google-ai-mode":
+			return "Google";
 		case "all":
-			return "all";
+			return "All models";
 	}
+}
+
+const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
+	{ value: "1w", label: "Last 7 days" },
+	{ value: "1m", label: "Last 30 days" },
+	{ value: "3m", label: "Last 3 months" },
+	{ value: "6m", label: "Last 6 months" },
+	{ value: "1y", label: "Last 12 months" },
+	{ value: "all", label: "All time" },
+];
+
+function getLookbackLabel(lookback: LookbackPeriod): string {
+	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
 }
 
 interface VisibilityTimeSeriesPoint {
@@ -113,24 +133,13 @@ export function PageHeaderSkeleton() {
 
 			{/* Controls skeleton */}
 			<div className="sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 shadow-[0_4px_6px_0px_rgba(255,255,255,1),0_10px_15px_-3px_rgba(255,255,255,1),0_20px_25px_-5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_6px_0px_rgba(9,9,11,1),0_10px_15px_-3px_rgba(9,9,11,1),0_20px_25px_-5px_rgba(9,9,11,0.9)]">
-				<div className="flex justify-between items-center">
-					<div className="flex space-x-1 bg-muted rounded-md p-1">
-						<Skeleton className="h-8 w-16" />
-						<Skeleton className="h-8 w-16" />
-						<Skeleton className="h-8 w-16" />
-						<Skeleton className="h-8 w-16" />
+				<div className="flex justify-between items-center gap-2">
+					<div className="flex gap-1.5">
+						<Skeleton className="h-8 w-28" />
+						<Skeleton className="h-8 w-24" />
+						<Skeleton className="h-8 w-32" />
 					</div>
-					<div className="flex items-center gap-2">
-						<Skeleton className="h-8 w-20" />
-						<div className="flex space-x-1 bg-muted rounded-md p-1">
-							<Skeleton className="h-8 w-12" />
-							<Skeleton className="h-8 w-12" />
-							<Skeleton className="h-8 w-12" />
-							<Skeleton className="h-8 w-12" />
-							<Skeleton className="h-8 w-12" />
-							<Skeleton className="h-8 w-12" />
-						</div>
-					</div>
+					<Skeleton className="h-8 w-56" />
 				</div>
 
 				{/* Visibility bar skeleton — reserves space so charts don't jump when real bar appears */}
@@ -178,8 +187,8 @@ export function PageHeader({
 	// because the brand only tracks a single model.
 	const effectiveDefaultModel: ModelType =
 		defaultModel ?? (availableModels.includes("all") ? "all" : (availableModels[0] ?? "all"));
-	// A filter with one option is just noise — hide the tabs in that case.
-	const shouldShowModelTabs = showModelSelector && availableModels.length > 1;
+	// A filter with one option is just noise — hide the selector in that case.
+	const shouldShowModelSelector = showModelSelector && availableModels.length > 1;
 
 	const [internalModelRaw, setInternalModel] = useQueryState("model", modelParser.withDefault(effectiveDefaultModel));
 	const internalModel = internalModelRaw ?? effectiveDefaultModel;
@@ -209,7 +218,6 @@ export function PageHeader({
 		return () => observer.disconnect();
 	}, []);
 
-	// Use controlled model if provided, otherwise use internal state (fallback to default)
 	const selectedModel = controlledModel ?? internalModel ?? effectiveDefaultModel;
 	const handleModelChange = (model: ModelType) => {
 		setInternalModel(model);
@@ -221,6 +229,7 @@ export function PageHeader({
 	}
 
 	const stuckShadow = "shadow-[0_4px_6px_0px_rgba(255,255,255,1),0_10px_15px_-3px_rgba(255,255,255,1),0_20px_25px_-5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_6px_0px_rgba(9,9,11,1),0_10px_15px_-3px_rgba(9,9,11,1),0_20px_25px_-5px_rgba(9,9,11,0.9)]";
+	const hasTagsFilter = selectedTags.length > 0;
 
 	return (
 		<div className="space-y-0">
@@ -247,72 +256,37 @@ export function PageHeader({
 
 			{/* Sticky controls bar - shadow only appears when stuck */}
 			<div className={`sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 ${isStuck ? stuckShadow : ''}`}>
-				<div className="flex flex-wrap justify-between items-center gap-2">
-					{/* Left side - Model selector or spacer */}
-					{shouldShowModelTabs ? (
-						<Tabs
-							value={selectedModel}
-							onValueChange={(value) => handleModelChange(value as ModelType)}
-							className="w-auto"
-						>
-							<TabsList>
-								{availableModels.includes("all") && (
-									<TabsTrigger value="all" className="cursor-pointer">
-										{getModelIcon("all")} <span className="sr-only sm:not-sr-only">All</span>
-									</TabsTrigger>
-								)}
-								{availableModels.includes("chatgpt") && (
-									<TabsTrigger value="chatgpt" className="cursor-pointer">
-										{getModelIcon("chatgpt")} <span className="sr-only sm:not-sr-only">ChatGPT</span>
-									</TabsTrigger>
-								)}
-								{availableModels.includes("claude") && (
-									<TabsTrigger value="claude" className="cursor-pointer">
-										{getModelIcon("claude")} <span className="sr-only sm:not-sr-only">Claude</span>
-									</TabsTrigger>
-								)}
-								{availableModels.includes("google-ai-mode") && (
-									<TabsTrigger value="google-ai-mode" className="cursor-pointer">
-										{getModelIcon("google-ai-mode")} <span className="sr-only sm:not-sr-only">Google</span>
-									</TabsTrigger>
-								)}
-							</TabsList>
-						</Tabs>
-					) : (
-						<div /> // Spacer
-					)}
-
-					{/* Right side - Filters and lookback grouped together */}
-					<div className="flex items-center gap-1">
-						{/* Filters */}
-						<PromptFilters
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					{/* Left side — filter dropdowns */}
+					<div className="flex flex-wrap items-center gap-1.5">
+						{shouldShowModelSelector && (
+							<ModelDropdown
+								availableModels={availableModels}
+								selectedModel={selectedModel}
+								onChange={handleModelChange}
+							/>
+						)}
+						<TagsDropdown
 							availableTags={availableTags}
 							selectedTags={selectedTags}
-							onTagsChange={setSelectedTags}
-							searchQuery={showSearch ? searchQuery : undefined}
-							onSearchChange={showSearch ? setSearchQuery : undefined}
+							onChange={setSelectedTags}
 							editTagsLink={editTagsLink}
-							resultCount={resultCount}
 						/>
-
-						{/* Time Period Selector */}
-						<div className="flex rounded-md bg-muted p-1">
-							{(["1w", "1m", "3m", "6m", "1y", "all"] as LookbackPeriod[]).map((period) => (
-								<button
-									key={period}
-									onClick={() => setSelectedLookback(period)}
-									className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded cursor-pointer ${
-										selectedLookback === period
-											? "bg-background text-foreground shadow-sm"
-											: "text-muted-foreground hover:text-foreground"
-									}`}
-									type="button"
-								>
-									{getLookbackLabel(period)}
-								</button>
-							))}
-						</div>
+						<LookbackDropdown
+							selected={selectedLookback}
+							onChange={(lb) => setSelectedLookback(lb)}
+						/>
+						{(hasTagsFilter || searchQuery) && resultCount !== undefined && (
+							<span className="text-xs text-muted-foreground tabular-nums ml-1">
+								{resultCount.toLocaleString()} {resultCount === 1 ? "result" : "results"}
+							</span>
+						)}
 					</div>
+
+					{/* Right side — search */}
+					{showSearch && (
+						<SearchInput value={searchQuery} onChange={setSearchQuery} />
+					)}
 				</div>
 
 				{/* Visibility summary bar - skeleton stays in DOM (grid overlay) for stable height; opacity-0 hides it once real bar loads */}
@@ -345,6 +319,273 @@ export function PageHeader({
 			<div className="space-y-6">
 				{children}
 			</div>
+		</div>
+	);
+}
+
+// ------------------------------------------------------------------
+// Filter-bar subcomponents
+// ------------------------------------------------------------------
+
+function FilterTriggerButton({
+	icon,
+	label,
+	active,
+	badgeCount,
+}: {
+	icon: ReactNode;
+	label: string;
+	active?: boolean;
+	badgeCount?: number;
+}) {
+	return (
+		<Button
+			variant="outline"
+			size="sm"
+			className={`h-8 gap-1.5 cursor-pointer font-normal ${
+				active ? "border-foreground/30 bg-accent/50" : ""
+			}`}
+		>
+			<span className="text-muted-foreground flex items-center">{icon}</span>
+			<span className="text-foreground">{label}</span>
+			{badgeCount !== undefined && badgeCount > 0 && (
+				<span className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+					{badgeCount}
+				</span>
+			)}
+			<ChevronDown className="size-3.5 text-muted-foreground" />
+		</Button>
+	);
+}
+
+function ModelDropdown({
+	availableModels,
+	selectedModel,
+	onChange,
+}: {
+	availableModels: ModelType[];
+	selectedModel: ModelType;
+	onChange: (model: ModelType) => void;
+}) {
+	const isFiltered = selectedModel !== "all";
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<div>
+					<FilterTriggerButton
+						icon={getModelIcon(selectedModel, "size-3.5")}
+						label={getModelLabel(selectedModel)}
+						active={isFiltered}
+					/>
+				</div>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="w-48">
+				<DropdownMenuRadioGroup
+					value={selectedModel}
+					onValueChange={(v) => onChange(v as ModelType)}
+				>
+					{availableModels.map((model) => (
+						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
+							{getModelIcon(model, "size-3.5")}
+							{getModelLabel(model)}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function LookbackDropdown({
+	selected,
+	onChange,
+}: {
+	selected: LookbackPeriod;
+	onChange: (lookback: LookbackPeriod) => void;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<div>
+					<FilterTriggerButton
+						icon={<Clock className="size-3.5" />}
+						label={getLookbackLabel(selected)}
+					/>
+				</div>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="start" className="w-48">
+				<DropdownMenuRadioGroup
+					value={selected}
+					onValueChange={(v) => onChange(v as LookbackPeriod)}
+				>
+					{LOOKBACK_OPTIONS.map((opt) => (
+						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
+							{opt.label}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function TagsDropdown({
+	availableTags,
+	selectedTags,
+	onChange,
+	editTagsLink,
+}: {
+	availableTags: string[];
+	selectedTags: string[];
+	onChange: (tags: string[]) => void;
+	editTagsLink?: string;
+}) {
+	const [open, setOpen] = useState(false);
+	const toggle = (tag: string) => {
+		if (selectedTags.includes(tag)) {
+			onChange(selectedTags.filter((t) => t !== tag));
+		} else {
+			onChange([...selectedTags, tag]);
+		}
+	};
+	const label =
+		selectedTags.length === 0
+			? "Tags"
+			: selectedTags.length === 1
+				? selectedTags[0]
+				: "Tags";
+
+	return (
+		<Popover open={open} onOpenChange={setOpen} modal={false}>
+			<PopoverTrigger asChild>
+				<div>
+					<FilterTriggerButton
+						icon={<TagIcon className="size-3.5" />}
+						label={label}
+						active={selectedTags.length > 0}
+						badgeCount={selectedTags.length > 1 ? selectedTags.length : undefined}
+					/>
+				</div>
+			</PopoverTrigger>
+			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+				<div className="flex items-center justify-between px-3 h-10 border-b">
+					<span className="font-medium text-sm">Tags</span>
+					<div className="flex items-center gap-3">
+						{selectedTags.length > 0 && (
+							<button
+								type="button"
+								onClick={() => onChange([])}
+								className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+							>
+								Clear
+							</button>
+						)}
+						{editTagsLink && (
+							<Link
+								to={editTagsLink}
+								className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+							>
+								<Pencil className="h-3 w-3" />
+								Edit
+							</Link>
+						)}
+					</div>
+				</div>
+				{availableTags.length === 0 ? (
+					<p className="text-sm text-muted-foreground py-6 text-center">No tags available</p>
+				) : (
+					<div className="py-1 max-h-64 overflow-y-auto">
+						{availableTags.map((tag) => {
+							const checked = selectedTags.includes(tag);
+							return (
+								<div
+									key={tag}
+									role="button"
+									tabIndex={0}
+									onClick={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										toggle(tag);
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											toggle(tag);
+										}
+									}}
+									className={`flex items-center gap-2.5 py-1.5 px-3 cursor-pointer text-left text-sm ${
+										checked ? "bg-accent" : "hover:bg-muted"
+									}`}
+								>
+									<Checkbox checked={checked} className="pointer-events-none" />
+									<span className="capitalize flex-1">{tag}</span>
+								</div>
+							);
+						})}
+					</div>
+				)}
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function SearchInput({
+	value,
+	onChange,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+}) {
+	const [local, setLocal] = useState(value);
+	const debounceRef = useRef<NodeJS.Timeout | null>(null);
+	const lastCommitted = useRef(value);
+
+	// Sync external changes (e.g., filters cleared elsewhere) into the local input.
+	if (value !== lastCommitted.current) {
+		lastCommitted.current = value;
+		if (value !== local) setLocal(value);
+	}
+
+	const commit = useCallback(
+		(next: string) => {
+			lastCommitted.current = next;
+			onChange(next);
+		},
+		[onChange],
+	);
+
+	useEffect(() => {
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(() => {
+			if (local !== lastCommitted.current) commit(local);
+		}, 250);
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, [local, commit]);
+
+	return (
+		<div className="relative w-full sm:w-64">
+			<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+			<Input
+				value={local}
+				onChange={(e) => setLocal(e.target.value)}
+				placeholder="Search prompts..."
+				className="h-8 pl-8 pr-8 text-sm"
+			/>
+			{local && (
+				<button
+					type="button"
+					onClick={() => {
+						setLocal("");
+						commit("");
+					}}
+					className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+					aria-label="Clear search"
+				>
+					<X className="h-3.5 w-3.5" />
+				</button>
+			)}
 		</div>
 	);
 }
@@ -389,4 +630,3 @@ export function usePageFilterSetters() {
 		},
 	};
 }
-

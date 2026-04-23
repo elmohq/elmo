@@ -287,7 +287,12 @@ function PromptHistoryPage() {
 				)}
 
 				{activeTab === "web-queries" && (
-					<WebQueriesTab isLoading={isStatsLoading} webQueryStats={webQueryStats} totalRuns={aggregations?.totalRuns || 0} />
+					<WebQueriesTab
+						isLoading={isStatsLoading}
+						webQueryStats={webQueryStats}
+						totalRuns={aggregations?.totalRuns || 0}
+						enabledModels={brand?.enabledModels ?? null}
+					/>
 				)}
 
 				{activeTab === "citations" && (
@@ -394,6 +399,7 @@ function WebQueriesTab({
 	isLoading,
 	webQueryStats,
 	totalRuns,
+	enabledModels,
 }: {
 	isLoading: boolean;
 	webQueryStats: {
@@ -401,6 +407,7 @@ function WebQueriesTab({
 		byModel: Record<string, { name: string; count: number }[]>;
 	};
 	totalRuns: number;
+	enabledModels: readonly string[] | null;
 }) {
 	if (isLoading) return <TabLoadingSkeleton lines={6} />;
 
@@ -410,7 +417,12 @@ function WebQueriesTab({
 		return <div className="py-12 text-center text-muted-foreground text-sm">No web query data available for this time period.</div>;
 	}
 
-	const modelOrder = ["chatgpt", "claude", "google-ai-mode"];
+	// Only break out per-model sections for models this brand actually runs.
+	// Use the brand's config when set, otherwise fall back to whichever models
+	// returned data (keeps behavior stable for brands with no config).
+	const modelOrder = enabledModels?.length
+		? [...enabledModels]
+		: Object.keys(webQueryStats.byModel);
 
 	return (
 		<Card>
