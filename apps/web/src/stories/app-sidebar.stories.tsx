@@ -204,7 +204,10 @@ export const Local = () => {
 
 /** Demo — read-only preview, seeded user, no admin */
 export const Demo = () => {
-	configureMocks(demoConfig, onboardedBrand, authedUser("Demo User", "demo@elmohq.com", "demo"));
+	const demoUser = authedUser("Demo User", "demo@elmohq.com", "demo");
+	demoUser.user.picture =
+		"https://api.dicebear.com/9.x/avataaars-neutral/svg?eyebrows=default&eyes=surprised,default&mouth=smile,default&seed=Liam";
+	configureMocks(demoConfig, onboardedBrand, demoUser);
 
 	return (
 		<SidebarFrame label="Demo — Read-only, seeded user">
