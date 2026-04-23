@@ -25,59 +25,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { resetPostHog } from "@/lib/posthog";
 
 export function NavUser() {
-	const { user, isLoading, loginUrl, logoutUrl } = useAuth();
+	const { user } = useAuth();
 	const { isMobile, setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
+
+	// NavUser only renders inside _authed routes, which redirect to /auth/login
+	// when there's no session — so `user` is always present at this point.
+	if (!user) return null;
+
 	const isNameEmailSame =
-		user?.name?.trim().toLowerCase() === user?.email?.trim().toLowerCase();
-
-	// In local/demo mode there's no auth — AppSidebar renders NavAppInfo separately,
-	// so render nothing here.
-	if (!loginUrl && !logoutUrl) {
-		return null;
-	}
-
-	if (isLoading) {
-		return (
-			<SidebarMenu>
-				<SidebarMenuItem>
-					<SidebarMenuButton size="lg" disabled>
-						<Avatar className="h-8 w-8 rounded-lg grayscale">
-							<AvatarFallback className="rounded-lg bg-muted text-muted-foreground">
-								<IconUser className="size-4" />
-							</AvatarFallback>
-						</Avatar>
-						<div className="grid flex-1 text-left text-sm leading-tight">
-							<span className="truncate font-medium">Loading...</span>
-						</div>
-					</SidebarMenuButton>
-				</SidebarMenuItem>
-			</SidebarMenu>
-		);
-	}
-
-	if (!user) {
-		if (!loginUrl) return null;
-		return (
-			<SidebarMenu>
-				<SidebarMenuItem>
-					<SidebarMenuButton size="lg" asChild>
-						<a href={loginUrl}>
-							<Avatar className="h-8 w-8 rounded-lg">
-								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-									<IconUser className="size-4" />
-								</AvatarFallback>
-							</Avatar>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-medium">Sign In</span>
-							</div>
-						</a>
-					</SidebarMenuButton>
-				</SidebarMenuItem>
-			</SidebarMenu>
-		);
-	}
+		user.name?.trim().toLowerCase() === user.email?.trim().toLowerCase();
 
 	return (
 		<SidebarMenu>
@@ -138,27 +96,23 @@ export function NavUser() {
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
-					{logoutUrl && (
-						<>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="cursor-pointer"
-								onClick={() => {
-									authClient.signOut({
-										fetchOptions: {
-											onSuccess: () => {
-												resetPostHog();
-												window.location.href = "/auth/logout";
-											},
-										},
-									});
-								}}
-							>
-								<IconLogout />
-								Log out
-							</DropdownMenuItem>
-						</>
-					)}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						className="cursor-pointer"
+						onClick={() => {
+							authClient.signOut({
+								fetchOptions: {
+									onSuccess: () => {
+										resetPostHog();
+										window.location.href = "/auth/logout";
+									},
+								},
+							});
+						}}
+					>
+						<IconLogout />
+						Log out
+					</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
