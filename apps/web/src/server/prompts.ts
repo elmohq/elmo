@@ -150,13 +150,16 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 
 		const promptSummaries = allPrompts.map((p) => {
 			const stats = summaryMap.get(p.id);
-			const effectiveTags = [...(p.tags || [])];
-			const effectiveStatus = getEffectiveBrandedStatus(p.systemTags || [], p.tags || []);
-			if (effectiveStatus.isBranded) {
-				effectiveTags.push(SYSTEM_TAGS.BRANDED);
-			}
+			const userTags = p.tags || [];
+			const effectiveStatus = getEffectiveBrandedStatus(p.systemTags || [], userTags);
+			const systemTag = effectiveStatus.isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
+			// Push whichever system tag reflects the effective status so the
+			// tag filter on the visibility page matches "unbranded" too, not
+			// just "branded". Previously only BRANDED was pushed, so the
+			// unbranded filter silently matched nothing.
+			const effectiveTags = userTags.includes(systemTag) ? [...userTags] : [...userTags, systemTag];
 
-			for (const tag of (p.tags || [])) allUserTags.add(tag);
+			for (const tag of userTags) allUserTags.add(tag);
 
 			const totalRuns = stats ? Number(stats.total_runs) : 0;
 			const totalWeightedMentions = stats ? Number(stats.total_weighted_mentions) : 0;

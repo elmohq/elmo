@@ -363,12 +363,15 @@ function FilterTriggerButton({
 	);
 }
 
-// Defer a state write past the current paint so the click that triggered it
-// (e.g. a dropdown selection) renders instantly. Without this, the heavy
-// downstream work (SWR refetches, chart re-renders) happens in the same
-// commit as the Radix close animation and the whole interaction feels slow.
+// Defer a state write to a task (macrotask) so the current paint — which
+// includes the Radix close animation and the optimistic trigger/checkbox
+// update — completes *before* the heavy downstream work (nuqs URL write
+// + useQueryState propagation + chart re-renders) starts. rAF runs inside
+// the render step before paint, so it would still block the paint we want
+// to see first; setTimeout(0) queues a task that the browser runs after
+// rendering the current frame.
 function deferCommit(fn: () => void) {
-	requestAnimationFrame(fn);
+	setTimeout(fn, 0);
 }
 
 // Shallow equality for string[] — tag lists are short so the O(n) scan is fine.
