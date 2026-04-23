@@ -27,7 +27,7 @@ import {
 import { NavMain, type NavGroup } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { NavAppInfo } from "@/components/nav-app-info";
-import { DemoModeBanner } from "@/components/demo-mode-banner";
+import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
@@ -161,7 +161,7 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						<Link to="/app" onClick={() => setOpenMobile(false)}>
 							<Logo iconClassName="!size-5" />
 							<div className="ml-auto group-data-[collapsible=icon]:hidden">
-								<DemoModeBanner />
+								<DemoModePill />
 							</div>
 						</Link>
 					</SidebarMenuButton>

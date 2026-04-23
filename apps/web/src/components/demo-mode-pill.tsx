@@ -3,7 +3,7 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import type { ClientConfig } from "@workspace/config/types";
 
-export function DemoModeBanner() {
+export function DemoModePill() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const isReadOnly = context.clientConfig?.features.readOnly ?? false;
 
