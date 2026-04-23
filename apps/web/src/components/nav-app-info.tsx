@@ -26,7 +26,7 @@ export function NavAppInfo() {
 			<div className="flex items-center gap-1">
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<a href="https://www.elmohq.com/" target="_blank" rel="noreferrer" className={linkClass}>
+						<a href="https://www.elmohq.com/" target="_blank" className={linkClass}>
 							<IconWorld className="size-4" />
 						</a>
 					</TooltipTrigger>
