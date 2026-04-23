@@ -13,6 +13,25 @@ import { useBrand } from "@/hooks/use-brands";
 
 export type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
 
+/** All individual models Elmo tracks. Used as the fallback when a brand has
+ *  no per-brand model config. Keep in sync with the visibility/citations
+ *  backend so the filter stays a pure display concern. */
+const ALL_MODEL_IDS = ["chatgpt", "claude", "google-ai-mode"] as const satisfies readonly Exclude<ModelType, "all">[];
+
+/** Compute the filter options to show for a brand.
+ *  - Unconfigured (`null`/empty): every known model + "All" (matches pre-config behavior).
+ *  - 2+ configured: those specific models + "All".
+ *  - 1 configured: just that model — hides the "All" toggle since it's redundant.
+ *  Callers decide whether to render a selector when only one model is returned. */
+export function getAvailableModelsForBrand(
+	enabledModels: readonly string[] | null | undefined,
+): ModelType[] {
+	const configured = enabledModels?.length
+		? ALL_MODEL_IDS.filter((m) => enabledModels.includes(m))
+		: [...ALL_MODEL_IDS];
+	return configured.length > 1 ? ["all", ...configured] : configured;
+}
+
 const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const);
 const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
 const tagsParser = parseAsArrayOf(parseAsString, ",");
@@ -132,8 +151,8 @@ export function PageHeader({
 	showSearch = false,
 	showModelSelector = false,
 	showVisibilityBar = false,
-	availableModels = ["all", "chatgpt", "claude", "google-ai-mode"],
-	defaultModel = "all",
+	availableModels: availableModelsProp,
+	defaultModel,
 	onModelChange,
 	selectedModel: controlledModel,
 	isLoading = false,
@@ -148,8 +167,22 @@ export function PageHeader({
 		[brand?.earliestDataDate]
 	);
 
-	const [internalModelRaw, setInternalModel] = useQueryState("model", modelParser.withDefault(defaultModel));
-	const internalModel = internalModelRaw ?? defaultModel;
+	// Default the filter options to what this brand actually runs; callers can
+	// still pass `availableModels` explicitly to override (e.g. prompt-details).
+	const brandModels = useMemo(
+		() => getAvailableModelsForBrand(brand?.enabledModels),
+		[brand?.enabledModels],
+	);
+	const availableModels = availableModelsProp ?? brandModels;
+	// Fall back to the first available option when "all" has been hidden
+	// because the brand only tracks a single model.
+	const effectiveDefaultModel: ModelType =
+		defaultModel ?? (availableModels.includes("all") ? "all" : (availableModels[0] ?? "all"));
+	// A filter with one option is just noise — hide the tabs in that case.
+	const shouldShowModelTabs = showModelSelector && availableModels.length > 1;
+
+	const [internalModelRaw, setInternalModel] = useQueryState("model", modelParser.withDefault(effectiveDefaultModel));
+	const internalModel = internalModelRaw ?? effectiveDefaultModel;
 	const [selectedLookbackRaw, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
 	const selectedLookback = selectedLookbackRaw ?? defaultLookback;
 	const [selectedTagsRaw, setSelectedTags] = useQueryState("tags", tagsParser.withDefault([]));
@@ -177,7 +210,7 @@ export function PageHeader({
 	}, []);
 
 	// Use controlled model if provided, otherwise use internal state (fallback to default)
-	const selectedModel = controlledModel ?? internalModel ?? defaultModel;
+	const selectedModel = controlledModel ?? internalModel ?? effectiveDefaultModel;
 	const handleModelChange = (model: ModelType) => {
 		setInternalModel(model);
 		onModelChange?.(model);
@@ -216,7 +249,7 @@ export function PageHeader({
 			<div className={`sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 ${isStuck ? stuckShadow : ''}`}>
 				<div className="flex flex-wrap justify-between items-center gap-2">
 					{/* Left side - Model selector or spacer */}
-					{showModelSelector ? (
+					{shouldShowModelTabs ? (
 						<Tabs
 							value={selectedModel}
 							onValueChange={(value) => handleModelChange(value as ModelType)}

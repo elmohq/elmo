@@ -12,7 +12,7 @@ import { Link } from "@tanstack/react-router";
 import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
 import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PageHeader, usePageFilters, usePageFilterSetters, type ModelType } from "@/components/page-header";
+import { PageHeader, usePageFilters, usePageFilterSetters, getAvailableModelsForBrand } from "@/components/page-header";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
 
@@ -30,7 +30,6 @@ interface PromptsDisplayProps {
 	pageDescription: string;
 	pageInfoContent?: React.ReactNode;
 	editLink: string;
-	excludeModels?: ModelType[];
 }
 
 // Loading skeleton for the content area
@@ -76,20 +75,20 @@ export function PromptsDisplay({
 	pageDescription,
 	pageInfoContent,
 	editLink,
-	excludeModels = [],
 }: PromptsDisplayProps) {
 	const { brand } = useBrand();
 	const { selectedModel, selectedLookback, selectedTags, searchQuery } = usePageFilters();
 	const { clearFilters } = usePageFilterSetters();
 
-
-	// Filter available models based on excludeModels prop
-	const availableIndividualModels: ("chatgpt" | "claude" | "google-ai-mode")[] = (
-		["chatgpt", "claude", "google-ai-mode"] as const
-	).filter((model) => !excludeModels.includes(model));
-
-	const availableModels: ModelType[] =
-		availableIndividualModels.length > 1 ? ["all", ...availableIndividualModels] : availableIndividualModels;
+	// Derived from `brand.enabledModels` — null/empty means "show every model".
+	const availableModels = useMemo(
+		() => getAvailableModelsForBrand(brand?.enabledModels),
+		[brand?.enabledModels],
+	);
+	const availableIndividualModels = useMemo(
+		() => availableModels.filter((m): m is "chatgpt" | "claude" | "google-ai-mode" => m !== "all"),
+		[availableModels],
+	);
 
 	// Use the optimized summary hook
 	const modelParam = selectedModel === "all" ? undefined : selectedModel;
