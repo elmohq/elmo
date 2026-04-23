@@ -11,6 +11,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { IconInfoCircle } from "@tabler/icons-react";
 import FullPageCard from "@/components/full-page-card";
 import { authClient } from "@workspace/lib/auth/client";
 import type { ClientConfig } from "@workspace/config/types";
@@ -90,7 +91,7 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 	);
 }
 
-function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: boolean }) {
+export function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: boolean }) {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState(isDemo ? "demo@elmohq.com" : "");
 	const [password, setPassword] = useState(isDemo ? "demo" : "");
@@ -122,59 +123,86 @@ function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: 
 	}
 
 	return (
-		<FullPageCard title="Sign in" subtitle="Enter your email and password to continue">
+		<FullPageCard title="Sign in" subtitle={isDemo ? undefined : "Enter your email and password to continue"}>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
-				{isDemo && (
-					<Alert>
-						<AlertDescription>
-							Demo mode — sign in with <strong>demo@elmohq.com</strong> / <strong>demo</strong>.
-						</AlertDescription>
-					</Alert>
-				)}
+				{isDemo && <DemoCredentialsCallout />}
 				{error && (
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
-				<div className="space-y-2">
-					<Label htmlFor="email">Email</Label>
-					<Input
-						id="email"
-						type="email"
-						placeholder="you@example.com"
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
-						required
-						autoComplete="email"
-						autoFocus
-					/>
-				</div>
-				<div className="space-y-2">
-					<Label htmlFor="password">Password</Label>
-					<Input
-						id="password"
-						type="password"
-						placeholder="Password"
-						value={password}
-						onChange={(e) => setPassword(e.target.value)}
-						required
-						autoComplete="current-password"
-					/>
-				</div>
+				{!isDemo && (
+					<>
+						<div className="space-y-2">
+							<Label htmlFor="email">Email</Label>
+							<Input
+								id="email"
+								type="email"
+								placeholder="you@example.com"
+								value={email}
+								onChange={(e) => setEmail(e.target.value)}
+								required
+								autoComplete="email"
+								autoFocus
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="password">Password</Label>
+							<Input
+								id="password"
+								type="password"
+								placeholder="Password"
+								value={password}
+								onChange={(e) => setPassword(e.target.value)}
+								required
+								autoComplete="current-password"
+							/>
+						</div>
+					</>
+				)}
 				<Button type="submit" className="w-full" disabled={loading}>
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
-			<p className="text-center text-sm text-muted-foreground">
-				Don't have an account?{" "}
-				<Link
-					to="/auth/register"
-					search={returnTo ? { returnTo } : {}}
-					className="text-primary hover:underline font-medium"
-				>
-					Create one
-				</Link>
-			</p>
+			{!isDemo && (
+				<p className="text-center text-sm text-muted-foreground pt-4">
+					Don't have an account?{" "}
+					<Link
+						to="/auth/register"
+						search={returnTo ? { returnTo } : {}}
+						className="text-primary hover:underline font-medium"
+					>
+						Create one
+					</Link>
+				</p>
+			)}
 		</FullPageCard>
+	);
+}
+
+function DemoCredentialsCallout() {
+	return (
+		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+			<div className="space-y-2">
+				<p className="font-medium text-amber-900 dark:text-amber-100">
+					Demo Account
+				</p>
+				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
+					<div className="flex items-center gap-1.5">
+						<dt className="opacity-70">Email</dt>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">
+							demo@elmohq.com
+						</dd>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<dt className="opacity-70">Password</dt>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">
+							demo
+						</dd>
+					</div>
+				</dl>
+			</div>
+		</div>
 	);
 }
