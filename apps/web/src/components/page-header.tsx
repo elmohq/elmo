@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState, useMemo, useCallback, startTransition } from "react";
+import { ReactNode, useEffect, useRef, useState, useMemo } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -363,6 +363,22 @@ function FilterTriggerButton({
 	);
 }
 
+// Defer a state write past the current paint so the click that triggered it
+// (e.g. a dropdown selection) renders instantly. Without this, the heavy
+// downstream work (SWR refetches, chart re-renders) happens in the same
+// commit as the Radix close animation and the whole interaction feels slow.
+function deferCommit(fn: () => void) {
+	requestAnimationFrame(fn);
+}
+
+// Shallow equality for string[] — tag lists are short so the O(n) scan is fine.
+function arraysEqual(a: readonly string[], b: readonly string[]) {
+	if (a === b) return true;
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+	return true;
+}
+
 function ModelDropdown({
 	availableModels,
 	selectedModel,
@@ -372,22 +388,39 @@ function ModelDropdown({
 	selectedModel: ModelType;
 	onChange: (model: ModelType) => void;
 }) {
-	const isFiltered = selectedModel !== "all";
+	// Optimistic local copy so the trigger label flips the instant the user
+	// clicks, even while the URL round-trip and downstream re-renders are
+	// still in flight. `pushedRef` distinguishes our own commits (echo — skip)
+	// from external resets (e.g. clearFilters — adopt).
+	const [optimistic, setOptimistic] = useState(selectedModel);
+	const pushedRef = useRef(selectedModel);
+
+	useEffect(() => {
+		if (selectedModel === pushedRef.current) return;
+		pushedRef.current = selectedModel;
+		setOptimistic(selectedModel);
+	}, [selectedModel]);
+
+	const handleChange = (next: ModelType) => {
+		setOptimistic(next);
+		pushedRef.current = next;
+		deferCommit(() => onChange(next));
+	};
+
+	const isFiltered = optimistic !== "all";
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<FilterTriggerButton
-					icon={getModelIcon(selectedModel, "size-3.5")}
-					label={getModelLabel(selectedModel)}
+					icon={getModelIcon(optimistic, "size-3.5")}
+					label={getModelLabel(optimistic)}
 					active={isFiltered}
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup
-					value={selectedModel}
-					// `startTransition` keeps the radix close animation smooth when
-					// the downstream effects (SWR refetches, chart rerenders) are heavy.
-					onValueChange={(v) => startTransition(() => onChange(v as ModelType))}
+					value={optimistic}
+					onValueChange={(v) => handleChange(v as ModelType)}
 				>
 					{availableModels.map((model) => (
 						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
@@ -408,18 +441,33 @@ function LookbackDropdown({
 	selected: LookbackPeriod;
 	onChange: (lookback: LookbackPeriod) => void;
 }) {
+	const [optimistic, setOptimistic] = useState(selected);
+	const pushedRef = useRef(selected);
+
+	useEffect(() => {
+		if (selected === pushedRef.current) return;
+		pushedRef.current = selected;
+		setOptimistic(selected);
+	}, [selected]);
+
+	const handleChange = (next: LookbackPeriod) => {
+		setOptimistic(next);
+		pushedRef.current = next;
+		deferCommit(() => onChange(next));
+	};
+
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<FilterTriggerButton
 					icon={<Clock className="size-3.5" />}
-					label={getLookbackLabel(selected)}
+					label={getLookbackLabel(optimistic)}
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup
-					value={selected}
-					onValueChange={(v) => startTransition(() => onChange(v as LookbackPeriod))}
+					value={optimistic}
+					onValueChange={(v) => handleChange(v as LookbackPeriod)}
 				>
 					{LOOKBACK_OPTIONS.map((opt) => (
 						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
@@ -442,11 +490,27 @@ function TagsDropdown({
 	onChange: (tags: string[]) => void;
 }) {
 	const [open, setOpen] = useState(false);
+	const [optimistic, setOptimistic] = useState<string[]>(selectedTags);
+	const pushedRef = useRef(selectedTags);
+
+	useEffect(() => {
+		if (arraysEqual(selectedTags, pushedRef.current)) return;
+		pushedRef.current = selectedTags;
+		setOptimistic(selectedTags);
+	}, [selectedTags]);
+
+	const commit = (next: string[]) => {
+		setOptimistic(next);
+		pushedRef.current = next;
+		deferCommit(() => onChange(next));
+	};
+
 	const toggle = (tag: string) => {
-		const next = selectedTags.includes(tag)
-			? selectedTags.filter((t) => t !== tag)
-			: [...selectedTags, tag];
-		startTransition(() => onChange(next));
+		commit(
+			optimistic.includes(tag)
+				? optimistic.filter((t) => t !== tag)
+				: [...optimistic, tag],
+		);
 	};
 
 	return (
@@ -455,17 +519,17 @@ function TagsDropdown({
 				<FilterTriggerButton
 					icon={<TagIcon className="size-3.5" />}
 					label="Tags"
-					active={selectedTags.length > 0}
-					badgeCount={selectedTags.length > 0 ? selectedTags.length : undefined}
+					active={optimistic.length > 0}
+					badgeCount={optimistic.length > 0 ? optimistic.length : undefined}
 				/>
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
-					{selectedTags.length > 0 && (
+					{optimistic.length > 0 && (
 						<button
 							type="button"
-							onClick={() => startTransition(() => onChange([]))}
+							onClick={() => commit([])}
 							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
 						>
 							Clear
@@ -477,7 +541,7 @@ function TagsDropdown({
 				) : (
 					<div className="py-1 max-h-64 overflow-y-auto">
 						{availableTags.map((tag) => {
-							const checked = selectedTags.includes(tag);
+							const checked = optimistic.includes(tag);
 							return (
 								<div
 									key={tag}
@@ -518,32 +582,34 @@ function SearchInput({
 	onChange: (value: string) => void;
 }) {
 	const [local, setLocal] = useState(value);
-	const debounceRef = useRef<NodeJS.Timeout | null>(null);
-	const lastCommitted = useRef(value);
+	const pushedRef = useRef(value);
 
-	// Sync external changes (e.g., filters cleared elsewhere) into the local input.
-	if (value !== lastCommitted.current) {
-		lastCommitted.current = value;
-		if (value !== local) setLocal(value);
-	}
-
-	const commit = useCallback(
-		(next: string) => {
-			lastCommitted.current = next;
-			startTransition(() => onChange(next));
-		},
-		[onChange],
-	);
-
+	// Sync external resets (e.g. clearFilters()) into the input. The
+	// `pushedRef` guard skips the echo from our own debounced commit, which
+	// otherwise races with in-flight keystrokes and flashes the input empty.
 	useEffect(() => {
-		if (debounceRef.current) clearTimeout(debounceRef.current);
-		debounceRef.current = setTimeout(() => {
-			if (local !== lastCommitted.current) commit(local);
+		if (value === pushedRef.current) return;
+		pushedRef.current = value;
+		setLocal(value);
+	}, [value]);
+
+	// Debounced commit. No transition wrapper: nuqs's URL update already runs
+	// synchronously, and letting it commit at default priority keeps
+	// downstream reads (useBatchChartData's queryKey) in sync with the URL.
+	useEffect(() => {
+		if (local === pushedRef.current) return;
+		const timer = setTimeout(() => {
+			pushedRef.current = local;
+			onChange(local);
 		}, 250);
-		return () => {
-			if (debounceRef.current) clearTimeout(debounceRef.current);
-		};
-	}, [local, commit]);
+		return () => clearTimeout(timer);
+	}, [local, onChange]);
+
+	const clear = () => {
+		setLocal("");
+		pushedRef.current = "";
+		onChange("");
+	};
 
 	return (
 		<div className="relative w-full sm:w-64">
@@ -557,10 +623,7 @@ function SearchInput({
 			{local && (
 				<button
 					type="button"
-					onClick={() => {
-						setLocal("");
-						commit("");
-					}}
+					onClick={clear}
 					className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
 					aria-label="Clear search"
 				>
