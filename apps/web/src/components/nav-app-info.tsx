@@ -7,9 +7,9 @@ export function NavAppInfo() {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
 
-	// Version/website/github links are only meaningful for open-source self-host
-	// and the public demo — whitelabel/cloud deployments hide them.
-	if (mode !== "local" && mode !== "demo") return null;
+	// Version/website/github links are only meaningful for open-source
+	// deployments — whitelabel and cloud hide them.
+	if (mode === "whitelabel" || mode === "cloud") return null;
 
 	const linkClass =
 		"text-muted-foreground hover:text-foreground inline-flex size-7 items-center justify-center rounded-md transition-colors";
