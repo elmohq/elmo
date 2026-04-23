@@ -11,11 +11,11 @@
 		"strictNullChecks": true,
 		"skipLibCheck": true,
 		"noEmit": true,
-		"baseUrl": ".",
+		"types": ["node"],
 		"paths": {
 			"@/*": ["./src/*"],
 			"@workspace/ui/*": ["../../packages/ui/src/*"],
-			"collections/*": [".source/*"]
+			"collections/*": ["./.source/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx", "content/**/*.ts"],

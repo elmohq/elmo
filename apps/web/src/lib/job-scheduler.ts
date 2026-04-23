@@ -1,7 +1,7 @@
 import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { getBoss } from "@/lib/boss-client";
 
 /**
@@ -15,6 +15,7 @@ export function hoursToMs(hours: number): number {
  * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
  */
 export async function getPromptCadenceHours(promptId: string): Promise<number> {
+	const defaultDelayHours = getDefaultDelayHours();
 	try {
 		// Get the prompt to find its brand
 		const prompt = await db.query.prompts.findFirst({
@@ -23,7 +24,7 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 
 		if (!prompt) {
 			console.warn(`Prompt ${promptId} not found, using default cadence`);
-			return DEFAULT_DELAY_HOURS;
+			return defaultDelayHours;
 		}
 
 		// Get the brand to check for delay override
@@ -33,7 +34,7 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 
 		if (!brand) {
 			console.warn(`Brand ${prompt.brandId} not found, using default cadence`);
-			return DEFAULT_DELAY_HOURS;
+			return defaultDelayHours;
 		}
 
 		// Use override if set, otherwise use default
@@ -42,10 +43,10 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 			return brand.delayOverrideHours;
 		}
 
-		return DEFAULT_DELAY_HOURS;
+		return defaultDelayHours;
 	} catch (error) {
 		console.error(`Error fetching cadence for prompt ${promptId}:`, error);
-		return DEFAULT_DELAY_HOURS;
+		return defaultDelayHours;
 	}
 }
 

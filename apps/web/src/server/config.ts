@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getDeployment } from "@/lib/config/server";
 import type { ClientConfig } from "@workspace/config/types";
 import { getEnvValidationState } from "@workspace/config/env";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
 	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;
@@ -41,6 +42,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 			posthogKey: resolvePosthogKey(),
 		},
 		defaultOrganization: deployment.defaultOrganization,
+		defaultDelayHours: getDefaultDelayHours(),
 	};
 });
 
