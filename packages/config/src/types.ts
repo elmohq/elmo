@@ -110,6 +110,8 @@ export interface ClientConfig {
   analytics: AnalyticsConfig;
   /** Default organization (for local/demo modes) */
   defaultOrganization?: DefaultOrganization;
+  /** Resolved default prompt cadence (hours) for brands without a delayOverrideHours */
+  defaultDelayHours: number;
 }
 
 // ============================================================================

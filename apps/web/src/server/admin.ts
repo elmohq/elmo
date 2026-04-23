@@ -14,7 +14,7 @@ import {
 	getAdminActiveBrandsOverTime,
 } from "@/lib/postgres-read";
 import { analyzeWebsite, getCompetitors, generateCandidatePromptsForReports } from "@workspace/lib/wizard-helpers";
-import { DEFAULT_DELAY_HOURS } from "@workspace/lib/constants";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
 import { parseScrapeTargets } from "@workspace/lib/providers";
@@ -623,11 +623,12 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const now = Date.now();
+	const defaultDelayHours = getDefaultDelayHours();
 	const defaultSchedulerInfo = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
 
 	const brandSummaries = allBrands.map((brand) => {
 		const brandPrompts = promptsByBrand[brand.id] || [];
-		const delayHours = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+		const delayHours = brand.delayOverrideHours ?? defaultDelayHours;
 		const runFrequencyMs = delayHours * 60 * 60 * 1000;
 
 		let overduePrompts = 0;
