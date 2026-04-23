@@ -35,6 +35,7 @@ export interface ClientConfig {
 	branding: BrandingConfig;
 	analytics: AnalyticsConfig;
 	defaultOrganization?: string;
+	defaultDelayHours: number;
 }
 
 const DEFAULT_CHART_COLORS = [
@@ -64,6 +65,7 @@ let _config: ClientConfig = {
 		chartColors: DEFAULT_CHART_COLORS,
 	},
 	analytics: {},
+	defaultDelayHours: 24,
 };
 
 export function setMockClientConfig(config: ClientConfig) {

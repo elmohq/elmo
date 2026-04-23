@@ -2,7 +2,8 @@
  * /admin - Admin dashboard with brand statistics and charts
  */
 import { useEffect, useState, type ReactNode } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import { getAppName } from "@/lib/route-head";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
@@ -44,7 +45,10 @@ interface BrandStats {
 	promptsRemovedLast30Days: number;
 }
 
-const DEFAULT_DELAY_HOURS = 72;
+function useDefaultDelayHours(): number {
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	return context.clientConfig?.defaultDelayHours ?? 24;
+}
 
 function formatDelayHours(hours: number): string {
 	const weeks = Math.floor(hours / (7 * 24));
@@ -70,11 +74,12 @@ function timeUnitsToHours(units: { weeks: number; days: number; hours: number })
 }
 
 function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate: () => void }) {
+	const defaultDelayHours = useDefaultDelayHours();
 	const [open, setOpen] = useState(false);
 	const [timeUnits, setTimeUnits] = useState({ weeks: 0, days: 0, hours: 0 });
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const currentDelay = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+	const currentDelay = brand.delayOverrideHours ?? defaultDelayHours;
 
 	useEffect(() => {
 		if (open) {
@@ -127,7 +132,7 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
 					<DialogTitle>Configure Job Delay for {brand.name}</DialogTitle>
-					<DialogDescription>Set a custom delay for how often prompt jobs run. Default is {formatDelayHours(DEFAULT_DELAY_HOURS)}.</DialogDescription>
+					<DialogDescription>Set a custom delay for how often prompt jobs run. Default is {formatDelayHours(defaultDelayHours)}.</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4 py-4">
 					<div className="space-y-3">
@@ -188,7 +193,7 @@ export const Route = createFileRoute("/_authed/admin/")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Admin | ${appName}` },
+				{ title: `Admin · ${appName}` },
 				{ name: "description", content: "Monitor and manage brands, prompts, and scheduling." },
 			],
 		};
@@ -197,6 +202,7 @@ export const Route = createFileRoute("/_authed/admin/")({
 });
 
 function AdminDashboard() {
+	const defaultDelayHours = useDefaultDelayHours();
 	const [brands, setBrands] = useState<BrandStats[]>([]);
 	const [brandsOverTime, setBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
 	const [activeBrandsOverTime, setActiveBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
@@ -373,7 +379,7 @@ function AdminDashboard() {
 							</TableHeader>
 							<TableBody>
 								{brands.map((brand) => {
-									const currentDelayHours = brand.delayOverrideHours ?? DEFAULT_DELAY_HOURS;
+									const currentDelayHours = brand.delayOverrideHours ?? defaultDelayHours;
 									const currentDelayMs = currentDelayHours * 60 * 60 * 1000;
 									const isOverdue = brand.lastPromptRunAt && brand.activePrompts > 0
 										? new Date().getTime() - new Date(brand.lastPromptRunAt).getTime() > currentDelayMs

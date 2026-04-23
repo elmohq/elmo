@@ -30,17 +30,17 @@ export function getBrandName(
 
 /**
  * Build a page title following the convention:
- *   "PageName - BrandName | AppName"  (with brand context)
- *   "PageName | AppName"              (without brand context)
+ *   "PageName | BrandName · AppName"  (with brand context)
+ *   "PageName · AppName"              (without brand context)
  */
 export function buildTitle(
 	pageName: string,
 	opts: { appName: string; brandName?: string },
 ): string {
 	if (opts.brandName) {
-		return `${pageName} - ${opts.brandName} | ${opts.appName}`;
+		return `${pageName} | ${opts.brandName} · ${opts.appName}`;
 	}
-	return `${pageName} | ${opts.appName}`;
+	return `${pageName} · ${opts.appName}`;
 }
 
 /**

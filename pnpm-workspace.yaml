@@ -3,6 +3,9 @@ packages:
   - "packages/*"
   - "e2e"
 
+publicHoistPattern:
+  - "@takumi-rs/core-*"
+
 blockExoticSubdeps: true
 minimumReleaseAge: 5760
 minimumReleaseAgeExclude:

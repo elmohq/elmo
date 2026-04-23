@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
-const title = "Brand — Elmo";
+const title = "Brand · Elmo";
 const description =
 	"Download Elmo logos, icons, and brand assets. Everything you need to represent the Elmo brand.";
 

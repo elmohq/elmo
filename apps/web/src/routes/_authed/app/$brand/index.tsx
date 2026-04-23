@@ -199,8 +199,6 @@ function formatRelativeTime(dateString: string | null): string {
 	return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-const DEFAULT_DELAY_HOURS = 72;
-
 function formatRunFrequency(hours: number): string {
 	const weeks = Math.floor(hours / (7 * 24));
 	const days = Math.floor((hours % (7 * 24)) / 24);
@@ -732,8 +730,8 @@ function DashboardPage() {
 							<StatWithTooltip
 								icon={IconClock}
 								label="run frequency"
-								value={formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS)}
-								tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? DEFAULT_DELAY_HOURS).replace("~", "")} on average to track changes in AI model responses over time.`}
+								value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
+								tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
 							/>
 							<StatWithTooltip
 								icon={IconRefresh}

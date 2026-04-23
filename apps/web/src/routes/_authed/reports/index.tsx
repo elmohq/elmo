@@ -43,7 +43,7 @@ export const Route = createFileRoute("/_authed/reports/")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Reports | ${appName}` },
+				{ title: `Reports · ${appName}` },
 				{ name: "description", content: "Generate and view one-time brand reports." },
 			],
 		};

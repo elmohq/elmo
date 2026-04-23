@@ -5,7 +5,7 @@ import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
-const title = "Pricing — Elmo";
+const title = "Pricing · Elmo";
 const description =
 	"Elmo is free and open source to self-host. Managed cloud hosting coming soon. White-label available for agencies.";
 

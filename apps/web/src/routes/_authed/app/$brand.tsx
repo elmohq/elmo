@@ -18,7 +18,6 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { DemoModeBanner } from "@/components/demo-mode-banner";
 import BrandOnboarding from "@/components/brand-onboarding";
 
 const getBrandData = createServerFn({ method: "GET" })
@@ -137,7 +136,7 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 		const brandName = (loaderData as { brandName?: string | null } | undefined)?.brandName;
 		return {
 			meta: [
-				{ title: brandName ? `${brandName} | ${appName}` : appName },
+				{ title: brandName ? `${brandName} · ${appName}` : appName },
 				{
 					name: "description",
 					content: brandName
@@ -166,7 +165,6 @@ function BrandLayout() {
 		<SidebarProvider>
 			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} />
 			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
-				<DemoModeBanner />
 				<SiteHeader />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">

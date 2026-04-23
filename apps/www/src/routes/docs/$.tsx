@@ -44,7 +44,7 @@ export const Route = createFileRoute("/docs/$")({
 		if (!data) return {};
 
 		const { title, description, slugs } = data;
-		const pageTitle = `${title} — ${SITE_NAME} Docs`;
+		const pageTitle = `${title} · ${SITE_NAME} Docs`;
 		const pageDescription = description || `${title} documentation for ${SITE_NAME}.`;
 		const path = `/docs/${slugs.join("/")}`;
 		const image = getPageImage(slugs).url;
