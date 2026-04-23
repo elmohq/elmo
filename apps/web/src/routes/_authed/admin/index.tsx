@@ -193,7 +193,7 @@ export const Route = createFileRoute("/_authed/admin/")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Admin | ${appName}` },
+				{ title: `Admin · ${appName}` },
 				{ name: "description", content: "Monitor and manage brands, prompts, and scheduling." },
 			],
 		};

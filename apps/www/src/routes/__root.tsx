@@ -25,7 +25,7 @@ export const Route = createRootRoute({
 				name: "viewport",
 				content: "width=device-width, initial-scale=1",
 			},
-			{ title: `${SITE_NAME} — Open Source AI Visibility Platform` },
+			{ title: `${SITE_NAME} · Open Source AI Visibility Platform` },
 			{ name: "description", content: SITE_DESCRIPTION },
 			{ property: "og:site_name", content: SITE_NAME },
 			{ property: "og:locale", content: "en_US" },

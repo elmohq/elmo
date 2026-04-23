@@ -386,7 +386,7 @@ export const Route = createFileRoute("/_authed/admin/tools")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Tools | ${appName}` },
+				{ title: `Tools · ${appName}` },
 				{ name: "description", content: "Domain analysis and prompt generation utilities." },
 			],
 		};

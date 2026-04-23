@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
-const title = "Roadmap — Elmo";
+const title = "Roadmap · Elmo";
 const description =
 	"See what's coming next for Elmo. React or comment on GitHub issues to help prioritize.";
 

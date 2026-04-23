@@ -136,7 +136,7 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 		const brandName = (loaderData as { brandName?: string | null } | undefined)?.brandName;
 		return {
 			meta: [
-				{ title: brandName ? `${brandName} | ${appName}` : appName },
+				{ title: brandName ? `${brandName} · ${appName}` : appName },
 				{
 					name: "description",
 					content: brandName

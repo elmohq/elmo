@@ -17,10 +17,10 @@ import {
 export const Route = createFileRoute("/")({
 	head: () => ({
 		meta: [
-			{ title: `${SITE_NAME} — Open Source AI Visibility Platform` },
+			{ title: `${SITE_NAME} · Open Source AI Visibility Platform` },
 			{ name: "description", content: SITE_DESCRIPTION },
 			...ogMeta({
-				title: `${SITE_NAME} — Open Source AI Visibility Platform`,
+				title: `${SITE_NAME} · Open Source AI Visibility Platform`,
 				description: SITE_DESCRIPTION,
 				path: "/",
 			}),
