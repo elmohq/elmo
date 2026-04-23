@@ -27,14 +27,6 @@ export interface FeaturesConfig {
 }
 
 /**
- * Default organization configuration for local/demo modes
- */
-export interface DefaultOrganization {
-  id: string;
-  name: string;
-}
-
-/**
  * Analytics configuration
  */
 export interface AnalyticsConfig {
@@ -87,8 +79,6 @@ export interface Deployment {
   features: FeaturesConfig;
   /** Branding configuration */
   branding: BrandingConfig;
-  /** Default organization (for local/demo modes) */
-  defaultOrganization?: DefaultOrganization;
 }
 
 // ============================================================================
@@ -108,8 +98,6 @@ export interface ClientConfig {
   branding: BrandingConfig;
   /** Analytics configuration */
   analytics: AnalyticsConfig;
-  /** Default organization (for local/demo modes) */
-  defaultOrganization?: DefaultOrganization;
 }
 
 // ============================================================================

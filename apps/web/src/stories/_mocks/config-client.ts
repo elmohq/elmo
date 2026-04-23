@@ -34,7 +34,6 @@ export interface ClientConfig {
 	features: FeaturesConfig;
 	branding: BrandingConfig;
 	analytics: AnalyticsConfig;
-	defaultOrganization?: string;
 }
 
 const DEFAULT_CHART_COLORS = [

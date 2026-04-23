@@ -122,25 +122,6 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 ];
 
 /**
- * Environment requirements specific to local/demo modes
- */
-export const LOCAL_DEMO_REQUIREMENTS: EnvRequirement[] = [
-	{
-		id: "DEFAULT_ORG_ID",
-		label: "DEFAULT_ORG_ID",
-		description: "Default organization ID.",
-		isSatisfied: requireAll(["DEFAULT_ORG_ID"]),
-	},
-	{
-		id: "DEFAULT_ORG_NAME",
-		label: "DEFAULT_ORG_NAME",
-		description: "Default organization name.",
-		isSatisfied: requireAll(["DEFAULT_ORG_NAME"]),
-	},
-	// APP_NAME, APP_ICON, APP_URL are optional with defaults (see constants.ts)
-];
-
-/**
  * Environment requirements specific to Auth0/whitelabel mode
  */
 export const AUTH0_REQUIREMENTS: EnvRequirement[] = [
@@ -212,8 +193,8 @@ export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
 ];
 
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
-	local: [...COMMON_REQUIREMENTS, ...LOCAL_DEMO_REQUIREMENTS],
-	demo: [...COMMON_REQUIREMENTS, ...LOCAL_DEMO_REQUIREMENTS],
+	local: [...COMMON_REQUIREMENTS],
+	demo: [...COMMON_REQUIREMENTS],
 	whitelabel: [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS, ...WHITELABEL_BRANDING_REQUIREMENTS],
 	cloud: [], // todo
 };

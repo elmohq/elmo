@@ -11,7 +11,7 @@
  * Local mode does NOT need seeding: users register their own accounts.
  *
  * Usage:
- *   DATABASE_URL=... DEPLOYMENT_MODE=demo DEFAULT_ORG_ID=xxx DEFAULT_ORG_NAME=yyy \
+ *   DATABASE_URL=... DEPLOYMENT_MODE=demo \
  *     npx tsx packages/lib/src/db/seed-auth.ts
  */
 import { db } from "./db";
@@ -104,8 +104,8 @@ export async function seedAuth(mode: string): Promise<void> {
 		return;
 	}
 
-	const orgId = process.env.DEFAULT_ORG_ID || "demo-org";
-	const orgName = process.env.DEFAULT_ORG_NAME || "Demo Organization";
+	const orgId = "demo-org";
+	const orgName = "Demo Organization";
 
 	console.log(`[seed-auth] Seeding demo data...`);
 	const auth = createAuth();

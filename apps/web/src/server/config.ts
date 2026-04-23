@@ -40,7 +40,6 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 			clarityProjectId: process.env.VITE_CLARITY_PROJECT_ID,
 			posthogKey: resolvePosthogKey(),
 		},
-		defaultOrganization: deployment.defaultOrganization,
 	};
 });
 

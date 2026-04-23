@@ -47,8 +47,6 @@ type EnvMap = Record<string, string>;
 
 const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
 const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
-const DEFAULT_ORG_ID = "default";
-const DEFAULT_ORG_NAME = "Default Organization";
 const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
@@ -309,8 +307,6 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	env.DEPLOYMENT_MODE = "local";
 	env.VITE_DEPLOYMENT_MODE = "local";
 	env.BETTER_AUTH_SECRET = generateSecret();
-	env.DEFAULT_ORG_ID = DEFAULT_ORG_ID;
-	env.DEFAULT_ORG_NAME = DEFAULT_ORG_NAME;
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;
 	env.APP_URL = DEFAULT_APP_URL;

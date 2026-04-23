@@ -41,8 +41,6 @@ declare global {
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
 			readonly BETTER_AUTH_SECRET?: string;
-			readonly DEFAULT_ORG_ID?: string;
-			readonly DEFAULT_ORG_NAME?: string;
 			readonly AUTH0_MGMT_API_DOMAIN?: string;
 			readonly AUTH0_CLIENT_ID?: string;
 			readonly AUTH0_CLIENT_SECRET?: string;
