@@ -28,7 +28,9 @@ export interface UseAuthResult {
  */
 export function useAuth(): UseAuthResult {
 	const context = useRouteContext({ strict: false }) as {
-		session?: { user: { id: string; name?: string; email?: string; picture?: string } } | null;
+		session?: {
+			user: { id: string; name?: string; email?: string; image?: string | null };
+		} | null;
 	};
 	const session = context.session;
 	return {
@@ -37,7 +39,7 @@ export function useAuth(): UseAuthResult {
 					id: session.user.id,
 					name: session.user.name,
 					email: session.user.email,
-					picture: session.user.picture,
+					picture: session.user.image ?? undefined,
 				}
 			: null,
 		isLoading: false,
