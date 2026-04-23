@@ -96,7 +96,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 							{ rel: "apple-touch-icon", href: branding.icon },
 						]
 					: [
+							// Icons live under /icons/ (not the root) so browsers' default
+							// probes for /favicon.ico and /apple-touch-icon.png 404 on
+							// whitelabel deployments instead of picking up Elmo assets.
 							{ rel: "icon", type: "image/svg+xml", href: "/icons/elmo-icon.svg" },
+							{ rel: "icon", type: "image/png", sizes: "96x96", href: "/icons/elmo-icon-96.png" },
+							{ rel: "icon", type: "image/x-icon", href: "/icons/favicon.ico" },
 							{ rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
 						]),
 			],

@@ -1,31 +1,28 @@
 #!/usr/bin/env tsx
 /**
- * Generates static Elmo brand icon assets served from /icons/*.
+ * Generates favicon + PWA icon assets for the apps/www marketing site.
  *
- * Output directory: apps/web/public/icons/
+ * Output directories:
+ *   - apps/www/public/            favicon.ico, apple-touch-icon.png (root — so
+ *                                 default browser probes for /favicon.ico and
+ *                                 /apple-touch-icon.png resolve without needing
+ *                                 explicit <link> tags). www is always Elmo-
+ *                                 branded, so there's no whitelabel concern
+ *                                 about these being served from the root.
+ *   - apps/www/public/icons/      elmo-icon.svg, elmo-icon-maskable.svg,
+ *                                 elmo-icon-96.png, elmo-icon-192.png,
+ *                                 elmo-icon-512.png, elmo-icon-maskable-192.png,
+ *                                 elmo-icon-maskable-512.png
  *
- * SVG (vector, used by modern browsers as `<link rel="icon">`):
- *   - elmo-icon.svg           Standard "e" icon (transparent background)
- *   - elmo-icon-maskable.svg  Maskable variant with extra padding for safe-zone
- *
- * PNG (raster, required by the PWA manifest + iOS touch icon):
- *   - elmo-icon-96.png               Standard, 96×96 (desktop PNG favicon)
- *   - elmo-icon-192.png              Standard, 192×192 (PWA manifest)
- *   - elmo-icon-512.png              Standard, 512×512 (PWA manifest)
- *   - elmo-icon-maskable-192.png     Maskable, 192×192 (PWA manifest)
- *   - elmo-icon-maskable-512.png     Maskable, 512×512 (PWA manifest)
- *   - apple-touch-icon.png           iOS home-screen icon, 180×180, opaque bg
- *
- * ICO (classic Windows favicon, referenced as `/icons/favicon.ico`):
- *   - favicon.ico   Multi-resolution (16, 32, 48) PNG-in-ICO
- *
- * SVGs embed the Titan One WOFF2 font as base64 so they render without any
- * external fetches. PNGs are rasterized with Takumi (same pipeline used by
- * the brand-kit generator) so the glyph matches across formats.
+ * Mirrors apps/web/scripts/generate-brand-icons.tsx — SVG built by embedding the
+ * Titan One WOFF2 as base64, PNGs rasterized via Takumi, ICO packaged by
+ * png-to-ico.
  *
  * Usage:
- *   npx tsx apps/web/scripts/generate-brand-icons.tsx
+ *   pnpm -F @workspace/www generate-icons
  */
+// biome-ignore lint/correctness/noUnusedImports: classic JSX transform needs React in scope
+import React from "react";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
@@ -37,10 +34,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 const BRAND_COLOR = "#2563eb";
-const OUTPUT_DIR = resolve(__dirname, "../public/icons");
+const PUBLIC_DIR = resolve(__dirname, "../public");
+const ICONS_DIR = resolve(PUBLIC_DIR, "icons");
 
 // ---------------------------------------------------------------------------
-// SVG icons — hand-built strings with Titan One embedded as base64
+// SVG icons — hand-built with Titan One embedded as base64
 // ---------------------------------------------------------------------------
 
 function loadFontBase64(): string {
@@ -54,13 +52,6 @@ function fontFaceRule(base64: string): string {
 	return `@font-face { font-family: 'Titan One'; src: url(data:font/woff2;base64,${base64}) format('woff2'); }`;
 }
 
-/**
- * Standard icon — "e" filling nearly the entire 128×128 viewBox, transparent bg.
- *
- * Titan One's lowercase "e" x-height is ~62% of the em size.
- * At font-size 190 the glyph is ~118px tall — nearly filling the 128 box.
- * The y baseline is set so the glyph is vertically centered.
- */
 function buildStandardSvg(fontBase64: string): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <style>${fontFaceRule(fontBase64)}</style>
@@ -68,11 +59,6 @@ function buildStandardSvg(fontBase64: string): string {
 </svg>`;
 }
 
-/**
- * Maskable icon — "e" inside the safe-zone (inner ~80%) of a 128×128 box.
- * White background so adaptive icon contexts have a clean fill.
- * The glyph is sized to nearly fill the safe area.
- */
 function buildMaskableSvg(fontBase64: string): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <style>${fontFaceRule(fontBase64)}</style>
@@ -82,7 +68,7 @@ function buildMaskableSvg(fontBase64: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PNG icons — rendered via Takumi (JSX → image), matches brand-kit sizing
+// PNG icons — rendered via Takumi (JSX → image)
 // ---------------------------------------------------------------------------
 
 function loadFont(path: string): ArrayBuffer {
@@ -152,7 +138,7 @@ function MaskableIcon({ size }: { size: number }) {
 // Main
 // ---------------------------------------------------------------------------
 
-mkdirSync(OUTPUT_DIR, { recursive: true });
+mkdirSync(ICONS_DIR, { recursive: true });
 
 const fontBase64 = loadFontBase64();
 
@@ -162,37 +148,36 @@ const svgIcons = [
 ];
 
 for (const { name, build } of svgIcons) {
-	writeFileSync(resolve(OUTPUT_DIR, name), build(fontBase64), "utf-8");
-	console.log(`  ✓ ${name}`);
+	writeFileSync(resolve(ICONS_DIR, name), build(fontBase64), "utf-8");
+	console.log(`  ✓ icons/${name}`);
 }
 
-const pngIcons = [
+const iconPngs = [
 	{ name: "elmo-icon-96.png", element: <StandardIcon size={96} />, size: 96 },
 	{ name: "elmo-icon-192.png", element: <StandardIcon size={192} />, size: 192 },
 	{ name: "elmo-icon-512.png", element: <StandardIcon size={512} />, size: 512 },
 	{ name: "elmo-icon-maskable-192.png", element: <MaskableIcon size={192} />, size: 192 },
 	{ name: "elmo-icon-maskable-512.png", element: <MaskableIcon size={512} />, size: 512 },
-	// Apple touch icons must be opaque — iOS otherwise adds its own background.
-	{ name: "apple-touch-icon.png", element: <StandardIcon bg="#ffffff" size={180} />, size: 180 },
 ];
 
-for (const { name, element, size } of pngIcons) {
+for (const { name, element, size } of iconPngs) {
 	const buffer = await renderPng(element, size);
-	writeFileSync(resolve(OUTPUT_DIR, name), buffer);
-	console.log(`  ✓ ${name}`);
+	writeFileSync(resolve(ICONS_DIR, name), buffer);
+	console.log(`  ✓ icons/${name}`);
 }
 
-// ---------------------------------------------------------------------------
-// ICO — multi-resolution PNG-in-ICO built from Takumi-rendered PNGs.
-// Kept at /icons/favicon.ico (not /favicon.ico at the root) so whitelabel
-// deployments don't end up serving Elmo's ICO for default browser requests.
-// ---------------------------------------------------------------------------
+// Root-level assets — served at conventional paths so browser defaults pick
+// them up without relying on <link> tags.
+// Apple touch icons must be opaque — iOS otherwise adds its own background.
+const appleTouch = await renderPng(<StandardIcon bg="#ffffff" size={180} />, 180);
+writeFileSync(resolve(PUBLIC_DIR, "apple-touch-icon.png"), appleTouch);
+console.log("  ✓ apple-touch-icon.png");
 
 const icoPngs: Buffer[] = [];
 for (const size of [16, 32, 48]) {
 	icoPngs.push(await renderPng(<StandardIcon bg="#ffffff" size={size} />, size));
 }
-writeFileSync(resolve(OUTPUT_DIR, "favicon.ico"), await pngToIco(icoPngs));
+writeFileSync(resolve(PUBLIC_DIR, "favicon.ico"), await pngToIco(icoPngs));
 console.log("  ✓ favicon.ico");
 
-console.log(`\nIcons written to ${OUTPUT_DIR}`);
+console.log(`\nIcons written to ${PUBLIC_DIR}`);
