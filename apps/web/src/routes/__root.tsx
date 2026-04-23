@@ -5,7 +5,7 @@ import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { NuqsAdapter } from "nuqs/adapters/react";
 import type { QueryClient } from "@tanstack/react-query";
-import { DEFAULT_APP_ICON } from "@workspace/config/constants";
+import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
 import type { DeploymentMode } from "@workspace/config/types";
 import type { MissingEnvVar } from "@workspace/config/env";
 import { getClientConfig, getEnvValidationStateFn, type PublicClientConfig } from "@/server/config";
@@ -57,6 +57,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		}
 
 		const hasCustomIcon = Boolean(branding?.icon && branding.icon !== DEFAULT_APP_ICON);
+		const appName = branding?.name || "Elmo";
+		const themeColor = hasCustomIcon ? "#000000" : ELMO_THEME_COLOR;
 
 		const title = branding?.name
 			? `${branding.name} - AI Search Optimization`
@@ -70,6 +72,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "description", content: description },
 				{ charSet: "utf-8" },
 				{ name: "viewport", content: "width=device-width, initial-scale=1" },
+				{ name: "theme-color", content: themeColor },
+				{ name: "apple-mobile-web-app-title", content: appName },
 				{ property: "og:title", content: title },
 				{ property: "og:description", content: description },
 				{ property: "og:image", content: ogImage },
@@ -84,9 +88,22 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 			links: [
 				{ rel: "stylesheet", href: appCss },
 				{ rel: "manifest", href: "/api/manifest" },
+				// Whitelabel uses its own icon URL for both favicon and iOS touch;
+				// Elmo default uses the committed SVG + opaque 180×180 PNG.
 				...(hasCustomIcon && branding?.icon
-					? [{ rel: "icon", type: "image/png", href: branding.icon }]
-					: [{ rel: "icon", type: "image/svg+xml", href: "/icons/elmo-icon.svg" }]),
+					? [
+							{ rel: "icon", type: "image/png", href: branding.icon },
+							{ rel: "apple-touch-icon", href: branding.icon },
+						]
+					: [
+							// Icons live under /icons/ (not the root) so browsers' default
+							// probes for /favicon.ico and /apple-touch-icon.png 404 on
+							// whitelabel deployments instead of picking up Elmo assets.
+							{ rel: "icon", type: "image/svg+xml", href: "/icons/elmo-icon.svg" },
+							{ rel: "icon", type: "image/png", sizes: "96x96", href: "/icons/elmo-icon-96.png" },
+							{ rel: "icon", type: "image/x-icon", href: "/icons/favicon.ico" },
+							{ rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
+						]),
 			],
 			scripts,
 		};

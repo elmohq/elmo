@@ -30,25 +30,17 @@ export const Route = createRootRoute({
 			{ property: "og:site_name", content: SITE_NAME },
 			{ property: "og:locale", content: "en_US" },
 			{ name: "twitter:card", content: "summary_large_image" },
+			{ name: "theme-color", content: "#2563eb" },
+			{ name: "apple-mobile-web-app-title", content: SITE_NAME },
 		],
 		links: [
-			{
-				rel: "icon",
-				type: "image/png",
-				href: "/brand/icons/elmo-icon-512.png",
-			},
-			{
-				rel: "apple-touch-icon",
-				href: "/brand/icons/elmo-icon-512.png",
-			},
-			{
-				rel: "canonical",
-				href: SITE_URL,
-			},
-		{
-			rel: "stylesheet",
-			href: appCss,
-		},
+			{ rel: "icon", type: "image/svg+xml", href: "/icons/elmo-icon.svg" },
+			{ rel: "icon", type: "image/png", sizes: "96x96", href: "/icons/elmo-icon-96.png" },
+			{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+			{ rel: "manifest", href: "/site.webmanifest" },
+			{ rel: "canonical", href: SITE_URL },
+			{ rel: "stylesheet", href: appCss },
 		],
 		scripts: [
 			websiteJsonLd(),
