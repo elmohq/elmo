@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { ReactNode, useEffect, useRef, useState, useMemo, useCallback, startTransition } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -15,8 +15,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
-import { ChevronDown, Search, Tag as TagIcon, Clock, Pencil, X } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { ChevronDown, Search, Tag as TagIcon, Clock, X } from "lucide-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/components/visibility-bar";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
@@ -106,7 +105,6 @@ interface PageHeaderProps {
 	subtitle: string;
 	infoContent?: ReactNode;
 	availableTags?: string[];
-	editTagsLink?: string;
 	showSearch?: boolean;
 	showModelSelector?: boolean;
 	showVisibilityBar?: boolean;
@@ -156,7 +154,6 @@ export function PageHeader({
 	subtitle,
 	infoContent,
 	availableTags = [],
-	editTagsLink,
 	showSearch = false,
 	showModelSelector = false,
 	showVisibilityBar = false,
@@ -270,7 +267,6 @@ export function PageHeader({
 							availableTags={availableTags}
 							selectedTags={selectedTags}
 							onChange={setSelectedTags}
-							editTagsLink={editTagsLink}
 						/>
 						<LookbackDropdown
 							selected={selectedLookback}
@@ -327,24 +323,33 @@ export function PageHeader({
 // Filter-bar subcomponents
 // ------------------------------------------------------------------
 
+// Props forward to the underlying Button so `<DropdownMenuTrigger asChild>` /
+// `<PopoverTrigger asChild>` can hand their ref + data-state directly to the
+// button element (wrapping in a div would make Slot target the div instead
+// and introduce a stale focus target).
+type FilterTriggerButtonProps = {
+	icon: ReactNode;
+	label: string;
+	active?: boolean;
+	badgeCount?: number;
+} & React.ComponentProps<"button">;
+
 function FilterTriggerButton({
 	icon,
 	label,
 	active,
 	badgeCount,
-}: {
-	icon: ReactNode;
-	label: string;
-	active?: boolean;
-	badgeCount?: number;
-}) {
+	className,
+	...props
+}: FilterTriggerButtonProps) {
 	return (
 		<Button
 			variant="outline"
 			size="sm"
+			{...props}
 			className={`h-8 gap-1.5 cursor-pointer font-normal ${
 				active ? "border-foreground/30 bg-accent/50" : ""
-			}`}
+			} ${className ?? ""}`}
 		>
 			<span className="text-muted-foreground flex items-center">{icon}</span>
 			<span className="text-foreground">{label}</span>
@@ -371,18 +376,18 @@ function ModelDropdown({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<div>
-					<FilterTriggerButton
-						icon={getModelIcon(selectedModel, "size-3.5")}
-						label={getModelLabel(selectedModel)}
-						active={isFiltered}
-					/>
-				</div>
+				<FilterTriggerButton
+					icon={getModelIcon(selectedModel, "size-3.5")}
+					label={getModelLabel(selectedModel)}
+					active={isFiltered}
+				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup
 					value={selectedModel}
-					onValueChange={(v) => onChange(v as ModelType)}
+					// `startTransition` keeps the radix close animation smooth when
+					// the downstream effects (SWR refetches, chart rerenders) are heavy.
+					onValueChange={(v) => startTransition(() => onChange(v as ModelType))}
 				>
 					{availableModels.map((model) => (
 						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
@@ -406,17 +411,15 @@ function LookbackDropdown({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<div>
-					<FilterTriggerButton
-						icon={<Clock className="size-3.5" />}
-						label={getLookbackLabel(selected)}
-					/>
-				</div>
+				<FilterTriggerButton
+					icon={<Clock className="size-3.5" />}
+					label={getLookbackLabel(selected)}
+				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup
 					value={selected}
-					onValueChange={(v) => onChange(v as LookbackPeriod)}
+					onValueChange={(v) => startTransition(() => onChange(v as LookbackPeriod))}
 				>
 					{LOOKBACK_OPTIONS.map((opt) => (
 						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
@@ -433,63 +436,41 @@ function TagsDropdown({
 	availableTags,
 	selectedTags,
 	onChange,
-	editTagsLink,
 }: {
 	availableTags: string[];
 	selectedTags: string[];
 	onChange: (tags: string[]) => void;
-	editTagsLink?: string;
 }) {
 	const [open, setOpen] = useState(false);
 	const toggle = (tag: string) => {
-		if (selectedTags.includes(tag)) {
-			onChange(selectedTags.filter((t) => t !== tag));
-		} else {
-			onChange([...selectedTags, tag]);
-		}
+		const next = selectedTags.includes(tag)
+			? selectedTags.filter((t) => t !== tag)
+			: [...selectedTags, tag];
+		startTransition(() => onChange(next));
 	};
-	const label =
-		selectedTags.length === 0
-			? "Tags"
-			: selectedTags.length === 1
-				? selectedTags[0]
-				: "Tags";
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal={false}>
 			<PopoverTrigger asChild>
-				<div>
-					<FilterTriggerButton
-						icon={<TagIcon className="size-3.5" />}
-						label={label}
-						active={selectedTags.length > 0}
-						badgeCount={selectedTags.length > 1 ? selectedTags.length : undefined}
-					/>
-				</div>
+				<FilterTriggerButton
+					icon={<TagIcon className="size-3.5" />}
+					label="Tags"
+					active={selectedTags.length > 0}
+					badgeCount={selectedTags.length > 0 ? selectedTags.length : undefined}
+				/>
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
-					<div className="flex items-center gap-3">
-						{selectedTags.length > 0 && (
-							<button
-								type="button"
-								onClick={() => onChange([])}
-								className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-							>
-								Clear
-							</button>
-						)}
-						{editTagsLink && (
-							<Link
-								to={editTagsLink}
-								className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
-							>
-								<Pencil className="h-3 w-3" />
-								Edit
-							</Link>
-						)}
-					</div>
+					{selectedTags.length > 0 && (
+						<button
+							type="button"
+							onClick={() => startTransition(() => onChange([]))}
+							className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+						>
+							Clear
+						</button>
+					)}
 				</div>
 				{availableTags.length === 0 ? (
 					<p className="text-sm text-muted-foreground py-6 text-center">No tags available</p>
@@ -549,7 +530,7 @@ function SearchInput({
 	const commit = useCallback(
 		(next: string) => {
 			lastCommitted.current = next;
-			onChange(next);
+			startTransition(() => onChange(next));
 		},
 		[onChange],
 	);

@@ -12,7 +12,7 @@ export function TextHighlighter({
 	text,
 	highlight,
 	className = "",
-	highlightClassName = "bg-yellow-200 dark:bg-yellow-800 rounded px-0.5",
+	highlightClassName = "bg-yellow-200 dark:bg-yellow-800 rounded-sm",
 }: TextHighlighterProps) {
 	if (!highlight || highlight.trim() === "") {
 		return <span className={className}>{text}</span>;

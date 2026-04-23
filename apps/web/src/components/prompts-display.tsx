@@ -256,7 +256,6 @@ export function PromptsDisplay({
 			subtitle={pageDescription}
 			infoContent={pageInfoContent}
 			availableTags={availableTags}
-			editTagsLink={editLink}
 			showSearch
 			showModelSelector
 			showVisibilityBar
