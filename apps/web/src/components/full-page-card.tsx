@@ -34,7 +34,7 @@ export default function FullPageCard({
 				</div>
 				<Card className="my-8">
 					{(title || subtitle) && (
-						<CardHeader className="text-center">
+						<CardHeader className={subtitle ? "text-center" : "text-center grid-rows-1 gap-0"}>
 							{title && <CardTitle className="text-xl">{title}</CardTitle>}
 							{subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
 						</CardHeader>
