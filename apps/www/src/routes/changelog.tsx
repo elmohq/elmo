@@ -5,7 +5,7 @@ import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 import type { GitHubIssue, GitHubRelease } from "@/lib/github";
 
-const title = "Changelog — Elmo";
+const title = "Changelog · Elmo";
 const description =
 	"See what's new in Elmo. Track recent improvements, bug fixes, and completed features.";
 

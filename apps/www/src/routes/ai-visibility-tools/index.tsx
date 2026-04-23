@@ -4,7 +4,7 @@ import { Footer } from "@/components/footer";
 import { CompetitorDirectory } from "@/components/competitor-directory";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
-const title = "AI Visibility Tool Directory — Compare AI Search Tools | Elmo";
+const title = "AI Visibility Tool Directory | Compare AI Search Tools · Elmo";
 const description =
 	"Compare 70+ AI visibility and Answer Engine Optimization tools. Feature matrix, pricing, and head-to-head comparisons with Elmo.";
 

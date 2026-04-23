@@ -19,7 +19,7 @@ export const Route = createFileRoute("/docs/")({
 		const data = loaderData as DocsLoaderData | undefined;
 		if (!data) return {};
 
-		const pageTitle = `Documentation — ${SITE_NAME}`;
+		const pageTitle = `Documentation · ${SITE_NAME}`;
 		const pageDescription =
 			data.description || `${SITE_NAME} documentation and guides.`;
 		const image = getPageImage([]).url;

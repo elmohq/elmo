@@ -11,7 +11,7 @@ export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 			(c) => getComparisonSlug(c) === params.slug,
 		);
 		if (!competitor) return {};
-		const title = `Elmo vs ${competitor.name} — AI Visibility Tool Comparison | Elmo`;
+		const title = `Elmo vs ${competitor.name} | AI Visibility Tool Comparison · Elmo`;
 		const description = `Compare Elmo and ${competitor.name} for AI visibility tracking. Feature-by-feature breakdown, pricing, and key differences.`;
 		const path = `/ai-visibility-tools/${params.slug}`;
 		const meta = [

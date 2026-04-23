@@ -22,7 +22,7 @@ import {
 	ResponsiveContainer,
 } from "recharts";
 
-const title = "Provider Status — Elmo";
+const title = "Provider Status · Elmo";
 const description =
 	"Real-time status and performance monitoring for AI search provider integrations.";
 

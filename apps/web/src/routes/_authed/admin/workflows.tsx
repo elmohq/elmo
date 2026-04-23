@@ -579,7 +579,7 @@ export const Route = createFileRoute("/_authed/admin/workflows")({
 		const appName = getAppName(match);
 		return {
 			meta: [
-				{ title: `Workflows | ${appName}` },
+				{ title: `Workflows · ${appName}` },
 				{ name: "description", content: "Monitor prompt scheduling and job execution." },
 			],
 		};

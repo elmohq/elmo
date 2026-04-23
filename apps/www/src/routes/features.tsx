@@ -5,7 +5,7 @@ import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
 
-const title = "Features — Elmo";
+const title = "Features · Elmo";
 const description =
 	"AI visibility tracking, citation analysis, competitor intelligence, and more. Everything you need to monitor your brand in AI search.";
 
