@@ -11,6 +11,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { IconInfoCircle } from "@tabler/icons-react";
 import FullPageCard from "@/components/full-page-card";
 import { authClient } from "@workspace/lib/auth/client";
 import type { ClientConfig } from "@workspace/config/types";
@@ -124,13 +125,7 @@ function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: 
 	return (
 		<FullPageCard title="Sign in" subtitle="Enter your email and password to continue">
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
-				{isDemo && (
-					<Alert>
-						<AlertDescription>
-							Demo mode — sign in with <strong>demo@elmohq.com</strong> / <strong>demo</strong>.
-						</AlertDescription>
-					</Alert>
-				)}
+				{isDemo && <DemoCredentialsCallout />}
 				{error && (
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
@@ -176,5 +171,32 @@ function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: 
 				</Link>
 			</p>
 		</FullPageCard>
+	);
+}
+
+function DemoCredentialsCallout() {
+	return (
+		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+			<div className="space-y-2">
+				<p className="font-medium text-amber-900 dark:text-amber-100">
+					Demo mode — credentials pre-filled
+				</p>
+				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
+					<div className="flex items-center gap-1.5">
+						<dt className="opacity-70">Email</dt>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">
+							demo@elmohq.com
+						</dd>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<dt className="opacity-70">Password</dt>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">
+							demo
+						</dd>
+					</div>
+				</dl>
+			</div>
+		</div>
 	);
 }
