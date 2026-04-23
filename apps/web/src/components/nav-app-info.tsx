@@ -16,9 +16,14 @@ export function NavAppInfo() {
 
 	return (
 		<div className="mx-2 mt-1 flex items-center gap-2 border-t border-sidebar-border/60 px-1 pt-2">
-			<span className="flex-1 text-xs font-medium text-muted-foreground">
+			<a
+				href={`https://github.com/elmohq/elmo/releases/tag/v${__APP_VERSION__}`}
+				target="_blank"
+				rel="noreferrer"
+				className="flex-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+			>
 				v{__APP_VERSION__}
-			</span>
+			</a>
 			<div className="flex items-center gap-1">
 				<Tooltip>
 					<TooltipTrigger asChild>
