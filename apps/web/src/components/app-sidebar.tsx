@@ -26,6 +26,8 @@ import {
 } from "@workspace/ui/components/sidebar";
 import { NavMain, type NavGroup } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
+import { NavAppInfo } from "@/components/nav-app-info";
+import { DemoModeBanner } from "@/components/demo-mode-banner";
 import { Logo } from "@/components/logo";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
@@ -164,10 +166,12 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
+				<DemoModeBanner variant="sidebar" />
 				<NavMain groups={groups} />
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser />
+				<NavAppInfo />
 			</SidebarFooter>
 		</Sidebar>
 	);

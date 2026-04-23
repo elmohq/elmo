@@ -202,12 +202,12 @@ export const Local = () => {
 	);
 };
 
-/** Demo — read-only preview, no admin, no auth */
+/** Demo — read-only preview, seeded user, no admin */
 export const Demo = () => {
-	configureMocks(demoConfig, onboardedBrand, noAuth);
+	configureMocks(demoConfig, onboardedBrand, authedUser("Demo User", "demo@elmohq.com", "demo"));
 
 	return (
-		<SidebarFrame label="Demo — Read-only, no admin">
+		<SidebarFrame label="Demo — Read-only, seeded user">
 			<AppSidebar isAdmin={false} hasReportAccess={false} />
 		</SidebarFrame>
 	);

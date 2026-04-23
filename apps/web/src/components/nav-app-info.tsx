@@ -1,7 +1,16 @@
 import { IconBrandGithub, IconLink } from "@tabler/icons-react";
+import { useRouteContext } from "@tanstack/react-router";
 import { SidebarMenu, SidebarMenuItem } from "@workspace/ui/components/sidebar";
+import type { ClientConfig } from "@workspace/config/types";
 
 export function NavAppInfo() {
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const mode = context.clientConfig?.mode;
+
+	// Version/website/github links are only meaningful for open-source self-host
+	// and the public demo — whitelabel/cloud deployments hide them.
+	if (mode !== "local" && mode !== "demo") return null;
+
 	return (
 		<SidebarMenu>
 			<SidebarMenuItem>

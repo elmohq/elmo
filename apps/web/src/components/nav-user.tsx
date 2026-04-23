@@ -22,7 +22,6 @@ import { Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { useAuth } from "@/hooks/use-auth";
-import { NavAppInfo } from "@/components/nav-app-info";
 import { resetPostHog } from "@/lib/posthog";
 
 export function NavUser() {
@@ -33,9 +32,10 @@ export function NavUser() {
 	const isNameEmailSame =
 		user?.name?.trim().toLowerCase() === user?.email?.trim().toLowerCase();
 
-	// In local/demo mode, there's no auth system — show app info instead
+	// In local/demo mode there's no auth — AppSidebar renders NavAppInfo separately,
+	// so render nothing here.
 	if (!loginUrl && !logoutUrl) {
-		return <NavAppInfo />;
+		return null;
 	}
 
 	if (isLoading) {
@@ -58,10 +58,7 @@ export function NavUser() {
 	}
 
 	if (!user) {
-		// If no login URL (local/demo mode), show app info instead
-		if (!loginUrl) {
-			return <NavAppInfo />;
-		}
+		if (!loginUrl) return null;
 		return (
 			<SidebarMenu>
 				<SidebarMenuItem>
