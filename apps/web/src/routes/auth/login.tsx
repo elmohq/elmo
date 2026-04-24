@@ -172,7 +172,7 @@ export function EmailPasswordLogin({
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
-			{!isDemo && canRegister && (
+			{canRegister && (
 				<p className="text-center text-sm text-muted-foreground pt-4">
 					Don't have an account?{" "}
 					<Link
