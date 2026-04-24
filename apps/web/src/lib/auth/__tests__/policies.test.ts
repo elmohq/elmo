@@ -272,6 +272,55 @@ describe("evaluateDeploymentPolicy", () => {
 	});
 
 	// ────────────────────────────────────────────────────────────
+	// Better-auth organization plugin mutations (blocked in all modes)
+	// ────────────────────────────────────────────────────────────
+	describe("org plugin mutations", () => {
+		for (const [name, features] of [
+			["local", LOCAL_FEATURES],
+			["demo", DEMO_FEATURES],
+			["whitelabel", WHITELABEL_FEATURES],
+		] as const) {
+			describe(`${name} mode`, () => {
+				it("blocks POST /api/auth/organization/create", () => {
+					const result = evaluateDeploymentPolicy(
+						features,
+						req("POST", "/api/auth/organization/create"),
+					);
+					expect(result).toMatchObject({
+						action: "block",
+						status: 403,
+						error: "Forbidden",
+					});
+				});
+
+				it("blocks DELETE /api/auth/organization/:id", () => {
+					const result = evaluateDeploymentPolicy(
+						features,
+						req("DELETE", "/api/auth/organization/abc"),
+					);
+					expect(result).toMatchObject({ action: "block", status: 403 });
+				});
+
+				it("blocks POST /api/auth/organization/invite-member", () => {
+					const result = evaluateDeploymentPolicy(
+						features,
+						req("POST", "/api/auth/organization/invite-member"),
+					);
+					expect(result).toMatchObject({ action: "block", status: 403 });
+				});
+
+				it("allows GET /api/auth/organization/list (read endpoints unchanged)", () => {
+					const result = evaluateDeploymentPolicy(
+						features,
+						req("GET", "/api/auth/organization/list"),
+					);
+					expect(result.action).toBe("allow");
+				});
+			});
+		}
+	});
+
+	// ────────────────────────────────────────────────────────────
 	// Custom / edge-case feature combos
 	// ────────────────────────────────────────────────────────────
 	describe("custom feature combinations", () => {

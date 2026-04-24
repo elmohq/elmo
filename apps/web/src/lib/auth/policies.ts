@@ -55,6 +55,20 @@ export function evaluateDeploymentPolicy(
 	// Better-auth endpoints (sign-in, sign-out, etc.) must stay reachable
 	// even in read-only demo mode so visitors can actually authenticate.
 	const isAuthRoute = pathname.startsWith("/api/auth/");
+	const isOrgPluginMutation =
+		pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+
+	// 0. Better-auth org plugin mutations are blocked everywhere. Orgs are
+	// created server-side only — via the provisioning module (local/demo)
+	// or via Auth0 sync (whitelabel). No mode needs these endpoints.
+	if (isOrgPluginMutation) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "Organization mutations are not available via the API",
+		};
+	}
 
 	// 1. Read-only mode: Block write requests to API + server-function paths
 	if (features.readOnly && isWriteMethod) {
