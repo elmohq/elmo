@@ -1,4 +1,4 @@
-import { useDeferredValue, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Button } from "@workspace/ui/components/button";
@@ -80,22 +80,6 @@ export function PromptsDisplay({
 	const { selectedModel, selectedLookback, selectedTags, searchQuery } = usePageFilters();
 	const { clearFilters } = usePageFilterSetters();
 
-	// Deferred versions of every filter so the URL / optimistic trigger update
-	// paints immediately on click, and the expensive downstream work
-	// (re-render 30+ CachedPromptCharts, kick off SWR refetches, walk the
-	// virtualizer) runs at low priority — non-blocking for further input.
-	// `selectedTagsKey` collapses the array to a primitive so useDeferredValue
-	// can track it with Object.is; the array identity from nuqs is unstable.
-	const deferredModel = useDeferredValue(selectedModel);
-	const deferredLookback = useDeferredValue(selectedLookback);
-	const deferredSearch = useDeferredValue(searchQuery);
-	const selectedTagsKey = selectedTags.join(",");
-	const deferredTagsKey = useDeferredValue(selectedTagsKey);
-	const deferredTags = useMemo(
-		() => (deferredTagsKey ? deferredTagsKey.split(",") : []),
-		[deferredTagsKey],
-	);
-
 	// Derived from `brand.enabledModels` — null/empty means "show every model".
 	const availableModels = useMemo(
 		() => getAvailableModelsForBrand(brand?.enabledModels),
@@ -107,15 +91,15 @@ export function PromptsDisplay({
 	);
 
 	// Use the optimized summary hook
-	const modelParam = deferredModel === "all" ? undefined : deferredModel;
+	const modelParam = selectedModel === "all" ? undefined : selectedModel;
 	const {
 		promptsSummary,
 		isLoading: isLoadingSummary,
 		isError: summaryError,
 	} = usePromptsSummary(brand?.id, {
-		lookback: deferredLookback,
+		lookback: selectedLookback,
 		model: modelParam,
-		tags: deferredTags.length > 0 ? deferredTags : undefined,
+		tags: selectedTags.length > 0 ? selectedTags : undefined,
 	});
 
 	// Compute filtered prompts
@@ -124,11 +108,11 @@ export function PromptsDisplay({
 			return { sortedPrompts: [], availableTags: [] as string[] };
 		}
 		const { prompts: allPrompts, availableTags = [] } = promptsSummary;
-		const filtered = deferredSearch
-			? allPrompts.filter((p: { value: string }) => p.value.toLowerCase().includes(deferredSearch.toLowerCase()))
+		const filtered = searchQuery
+			? allPrompts.filter((p: { value: string }) => p.value.toLowerCase().includes(searchQuery.toLowerCase()))
 			: allPrompts;
 		return { sortedPrompts: filtered, availableTags };
-	}, [promptsSummary, deferredSearch]);
+	}, [promptsSummary, searchQuery]);
 
 	const filteredPromptIds = useMemo(() => {
 		return sortedPrompts.map((p: { id: string }) => p.id);
@@ -140,7 +124,7 @@ export function PromptsDisplay({
 		isLoading: isLoadingVisibility,
 		isValidating: isValidatingVisibility,
 	} = useFilteredVisibility(brand?.id, {
-		lookback: deferredLookback,
+		lookback: selectedLookback,
 		promptIds: filteredPromptIds.length > 0 ? filteredPromptIds : undefined,
 		model: modelParam,
 	});
@@ -154,7 +138,7 @@ export function PromptsDisplay({
 
 	// Fetch ALL chart data in a single batch request
 	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brand?.id, {
-		lookback: deferredLookback,
+		lookback: selectedLookback,
 		model: modelParam,
 		promptIds: filteredPromptIds,
 	});
@@ -173,7 +157,7 @@ export function PromptsDisplay({
 	const isInitialLoad = isLoadingSummary && !promptsSummary;
 
 	const hasNoPromptsAtAll =
-		!isInitialLoad && (promptsSummary?.prompts?.length ?? 0) === 0 && deferredTags.length === 0 && !deferredSearch;
+		!isInitialLoad && (promptsSummary?.prompts?.length ?? 0) === 0 && selectedTags.length === 0 && !searchQuery;
 
 	// Convert batch data to Brand/Competitor types for the provider
 	const brandForProvider: Brand | null = batchChartData?.brand
@@ -257,10 +241,10 @@ export function PromptsDisplay({
 				<VirtualizedPromptList
 					prompts={sortedPrompts}
 					brandId={brand?.id || ""}
-					lookback={deferredLookback}
-					selectedModel={deferredModel}
+					lookback={selectedLookback}
+					selectedModel={selectedModel}
 					availableModels={availableIndividualModels}
-					searchHighlight={deferredSearch}
+					searchHighlight={searchQuery}
 				/>
 			</ChartDataProvider>
 		);

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState, useMemo } from "react";
+import { ReactNode, useEffect, useRef, useState, useMemo, startTransition } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
@@ -42,10 +42,16 @@ export function getAvailableModelsForBrand(
 	return configured.length > 1 ? ["all", ...configured] : configured;
 }
 
-const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const);
-const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
-const tagsParser = parseAsArrayOf(parseAsString, ",");
-const searchParser = parseAsString;
+// Every URL setter runs its React state update through React.startTransition,
+// which makes the resulting re-render (PageHeader + prompts-display + 30
+// chart cards + SWR refetches) interruptible. Urgent work — dropdown close
+// animation, the next click, typing — cuts in front and the filter
+// interaction feels instant. nuqs documents this option explicitly at
+// https://nuqs.47ng.com/docs/options.
+const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const).withOptions({ startTransition });
+const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const).withOptions({ startTransition });
+const tagsParser = parseAsArrayOf(parseAsString, ",").withOptions({ startTransition });
+const searchParser = parseAsString.withOptions({ startTransition });
 
 function getModelIcon(modelType: ModelType, className = "size-3.5") {
 	switch (modelType) {
@@ -363,17 +369,6 @@ function FilterTriggerButton({
 	);
 }
 
-// Defer a state write to a task (macrotask) so the current paint — which
-// includes the Radix close animation and the optimistic trigger/checkbox
-// update — completes *before* the heavy downstream work (nuqs URL write
-// + useQueryState propagation + chart re-renders) starts. rAF runs inside
-// the render step before paint, so it would still block the paint we want
-// to see first; setTimeout(0) queues a task that the browser runs after
-// rendering the current frame.
-function deferCommit(fn: () => void) {
-	setTimeout(fn, 0);
-}
-
 // Shallow equality for string[] — tag lists are short so the O(n) scan is fine.
 function arraysEqual(a: readonly string[], b: readonly string[]) {
 	if (a === b) return true;
@@ -407,7 +402,7 @@ function ModelDropdown({
 	const handleChange = (next: ModelType) => {
 		setOptimistic(next);
 		pushedRef.current = next;
-		deferCommit(() => onChange(next));
+		onChange(next);
 	};
 
 	const isFiltered = optimistic !== "all";
@@ -456,7 +451,7 @@ function LookbackDropdown({
 	const handleChange = (next: LookbackPeriod) => {
 		setOptimistic(next);
 		pushedRef.current = next;
-		deferCommit(() => onChange(next));
+		onChange(next);
 	};
 
 	return (
@@ -505,7 +500,7 @@ function TagsDropdown({
 	const commit = (next: string[]) => {
 		setOptimistic(next);
 		pushedRef.current = next;
-		deferCommit(() => onChange(next));
+		onChange(next);
 	};
 
 	const toggle = (tag: string) => {

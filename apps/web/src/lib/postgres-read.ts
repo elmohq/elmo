@@ -226,6 +226,167 @@ export async function getPerPromptVisibilityTimeSeries(
 }
 
 // ============================================================================
+// Aggregated Visibility With SQL-Side LVCF
+// ============================================================================
+
+export interface VisibilityDailyAggregate {
+	date: string;
+	/** Raw observation totals — do not include carried-forward values, so period totals stay faithful. */
+	actual_branded_runs: number;
+	actual_branded_mentioned: number;
+	actual_nonbranded_runs: number;
+	actual_nonbranded_mentioned: number;
+	/** LVCF-smoothed totals used to draw the visibility time-series. */
+	lvcf_branded_runs: number;
+	lvcf_branded_mentioned: number;
+	lvcf_nonbranded_runs: number;
+	lvcf_nonbranded_mentioned: number;
+}
+
+/**
+ * Single-query replacement for `getPerPromptVisibilityTimeSeries` + JS
+ * `applyPerPromptLVCF`.
+ *
+ * Builds a (prompt × date) grid in-database, left-joins raw daily observations,
+ * and uses the `count(non_null) OVER (PARTITION BY prompt ORDER BY date)`
+ * "grouper" trick to carry the last observation forward. Leading-null dates
+ * (before a prompt's first observation) are back-seeded with the prompt's
+ * earliest value to mirror the existing JS behavior. The result is already
+ * aggregated by day and bucketed by branded / non-branded.
+ *
+ * Returns one row per date in [fromDate, toDate], which is O(days) transfer
+ * rather than O(prompts × days), and drops the JS LVCF pass entirely.
+ */
+export async function getVisibilityDailyAggregate(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds: string[],
+	brandedPromptIds: string[],
+	model?: string,
+): Promise<VisibilityDailyAggregate[]> {
+	if (enabledPromptIds.length === 0) return [];
+	const promptIdsSql = sql.join(
+		enabledPromptIds.map((id) => sql`${id}::uuid`),
+		sql`, `,
+	);
+	const brandedIdsSql = brandedPromptIds.length
+		? sql.join(
+				brandedPromptIds.map((id) => sql`${id}::uuid`),
+				sql`, `,
+			)
+		: sql`NULL::uuid`;
+
+	const rows = await queryPg<VisibilityDailyAggregate>(sql`
+		WITH
+			date_range AS (
+				SELECT d::date AS date
+				FROM generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS d
+			),
+			prompts_list AS (
+				SELECT
+					pid AS prompt_id,
+					pid = ANY(ARRAY[${brandedIdsSql}]::uuid[]) AS is_branded
+				FROM unnest(ARRAY[${promptIdsSql}]::uuid[]) AS pid
+			),
+			observations AS (
+				SELECT
+					prompt_id,
+					(created_at AT TIME ZONE ${timezone})::date AS date,
+					count(*)::int AS total_runs,
+					count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
+				FROM prompt_runs
+				WHERE brand_id = ${brandId}
+					AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+					AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+					AND prompt_id = ANY(ARRAY[${promptIdsSql}]::uuid[])
+					${modelFilter(model)}
+				GROUP BY prompt_id, (created_at AT TIME ZONE ${timezone})::date
+			),
+			first_obs AS (
+				SELECT DISTINCT ON (prompt_id)
+					prompt_id,
+					total_runs AS first_runs,
+					brand_mentioned_count AS first_mentioned
+				FROM observations
+				ORDER BY prompt_id, date
+			),
+			joined AS (
+				SELECT
+					p.prompt_id,
+					p.is_branded,
+					d.date,
+					o.total_runs AS actual_runs,
+					o.brand_mentioned_count AS actual_mentioned,
+					count(o.total_runs) OVER (PARTITION BY p.prompt_id ORDER BY d.date) AS fwd_grp
+				FROM prompts_list p
+				CROSS JOIN date_range d
+				LEFT JOIN observations o ON o.prompt_id = p.prompt_id AND o.date = d.date
+			),
+			lvcf AS (
+				SELECT
+					j.prompt_id,
+					j.is_branded,
+					j.date,
+					j.actual_runs,
+					j.actual_mentioned,
+					coalesce(
+						max(j.actual_runs) OVER (PARTITION BY j.prompt_id, j.fwd_grp),
+						f.first_runs
+					) AS lvcf_runs,
+					coalesce(
+						max(j.actual_mentioned) OVER (PARTITION BY j.prompt_id, j.fwd_grp),
+						f.first_mentioned
+					) AS lvcf_mentioned
+				FROM joined j
+				LEFT JOIN first_obs f ON f.prompt_id = j.prompt_id
+			)
+		SELECT
+			to_char(date, 'YYYY-MM-DD') AS date,
+			coalesce(sum(CASE WHEN is_branded THEN actual_runs END), 0)::int AS actual_branded_runs,
+			coalesce(sum(CASE WHEN is_branded THEN actual_mentioned END), 0)::int AS actual_branded_mentioned,
+			coalesce(sum(CASE WHEN NOT is_branded THEN actual_runs END), 0)::int AS actual_nonbranded_runs,
+			coalesce(sum(CASE WHEN NOT is_branded THEN actual_mentioned END), 0)::int AS actual_nonbranded_mentioned,
+			coalesce(sum(CASE WHEN is_branded THEN lvcf_runs END), 0)::int AS lvcf_branded_runs,
+			coalesce(sum(CASE WHEN is_branded THEN lvcf_mentioned END), 0)::int AS lvcf_branded_mentioned,
+			coalesce(sum(CASE WHEN NOT is_branded THEN lvcf_runs END), 0)::int AS lvcf_nonbranded_runs,
+			coalesce(sum(CASE WHEN NOT is_branded THEN lvcf_mentioned END), 0)::int AS lvcf_nonbranded_mentioned
+		FROM lvcf
+		GROUP BY date
+		ORDER BY date
+	`);
+	return rows;
+}
+
+/**
+ * Plain count of citations for the filter window. Used by the visibility bar,
+ * which only needs the scalar total — the old `getDailyCitationStats` call
+ * there returned one row per (date × domain) and we reduced to a single
+ * number client-side, which is wasteful on large tables.
+ */
+export async function getCitationsTotalCount(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<number> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return 0;
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+	`);
+	return Number(rows[0]?.total ?? 0);
+}
+
+// ============================================================================
 // Visibility Time Series
 // ============================================================================
 

@@ -1,5 +1,5 @@
 
-import { useMemo, useCallback } from "react";
+import { memo, useMemo, useCallback } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Badge } from "@workspace/ui/components/badge";
@@ -45,7 +45,10 @@ export interface CachedPromptChartProps {
 	hasEverBeenEvaluated?: boolean;
 }
 
-export function CachedPromptChart({
+// Memoized: when a sibling filter / react-query state change re-renders
+// VirtualizedPromptList with identical props, 30+ of these don't need to
+// walk their internal useMemos again.
+export const CachedPromptChart = memo(function CachedPromptChart({
 	promptId,
 	promptName,
 	brandId,
@@ -267,4 +270,4 @@ export function CachedPromptChart({
 			</Card>
 		</>
 	);
-}
+});
