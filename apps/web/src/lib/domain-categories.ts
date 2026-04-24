@@ -75,9 +75,13 @@ export function normalizeUrl(url: string): string {
 			urlObj.searchParams.delete("utm_source");
 		}
 		urlObj.search = urlObj.searchParams.toString();
-		// Strip scroll-to-text fragments (#:~:text=...) — these don't identify distinct pages
 		urlObj.hash = urlObj.hash.replace(/:~:text=[^&]*/, "");
 		if (urlObj.hash === "#") urlObj.hash = "";
+		urlObj.protocol = "https:";
+		urlObj.hostname = urlObj.hostname.replace(/^www\./, "").toLowerCase();
+		if (urlObj.pathname.length > 1 && urlObj.pathname.endsWith("/")) {
+			urlObj.pathname = urlObj.pathname.slice(0, -1);
+		}
 		return urlObj.toString();
 	} catch {
 		return url;

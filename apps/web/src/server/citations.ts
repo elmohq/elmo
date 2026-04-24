@@ -178,32 +178,39 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 
 		// Categorize and normalize specific URLs with new fields
-		const urlCounts = new Map<string, { count: number; title?: string; domain: string; avgPosition: number | null; promptCount: number }>();
+		const urlCounts = new Map<string, { count: number; title?: string; domain: string; positionSum: number; positionCount: number; promptCount: number }>();
 		for (const { url, domain, title, count, avg_position, prompt_count } of urlStats) {
 			const normalizedUrl = normalizeUrl(url);
+			const c = Number(count);
+			const positionSum = avg_position != null ? Number(avg_position) * c : 0;
+			const positionCount = avg_position != null ? c : 0;
 			const existing = urlCounts.get(normalizedUrl);
 			if (existing) {
-				existing.count += Number(count);
+				existing.count += c;
+				existing.positionSum += positionSum;
+				existing.positionCount += positionCount;
+				existing.promptCount = Math.max(existing.promptCount, Number(prompt_count));
 				if (!existing.title && title) existing.title = title;
 			} else {
 				urlCounts.set(normalizedUrl, {
-					count: Number(count),
+					count: c,
 					title: title || undefined,
 					domain,
-					avgPosition: avg_position != null ? Number(avg_position) : null,
+					positionSum,
+					positionCount,
 					promptCount: Number(prompt_count),
 				});
 			}
 		}
 
 		const specificUrls = Array.from(urlCounts.entries())
-			.map(([url, { count, title, domain, avgPosition, promptCount }]) => ({
+			.map(([url, { count, title, domain, positionSum, positionCount, promptCount }]) => ({
 				url,
 				title,
 				domain,
 				count,
 				category: categorizeDomain(domain),
-				avgPosition,
+				avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
 				promptCount,
 				isNew: !prevUrlMap.has(url),
 			}))
