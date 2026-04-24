@@ -159,6 +159,41 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
+		it("blocks POST /api/auth/change-password (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/change-password"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/change-email (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/change-email"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/update-user (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/update-user"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/delete-user (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/delete-user"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/forget-password (spam risk + not on whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/forget-password"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/admin/create-user (admin plugin)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/admin/create-user"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("still allows GET /api/auth/get-session (reads are unaffected)", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/auth/get-session"));
+			expect(result.action).toBe("allow");
+		});
+
 		it("blocks POST to /api/v1 before reaching key check (read-only takes priority)", () => {
 			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
 				adminApiKeys: API_KEYS,
