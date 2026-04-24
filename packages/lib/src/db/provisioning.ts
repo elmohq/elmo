@@ -7,14 +7,16 @@
  * provisioning path — the public demo box is just a read-only view over
  * that already-bootstrapped data.
  *
- * The primitives (`upsertOrganization`, `ensureMembership`) live in
- * `auth-sync.ts`; this file composes them into the higher-level
- * provisioning flow.
+ * Everything here is one-shot: the better-auth `user.create.before` hook
+ * rejects any signup when a user already exists, so these inserts only
+ * ever run once against a given database. The SQL is plain INSERTs (no
+ * upsert, no existence checks) to make that intent obvious — a second
+ * call is a bug and should fail at the database layer rather than
+ * silently rewriting rows.
  */
 import { count } from "drizzle-orm";
-import { ensureMembership, upsertOrganization } from "./auth-sync";
 import { db } from "./db";
-import { user } from "./schema";
+import { member, organization, user } from "./schema";
 
 /**
  * Number of users in the database.
@@ -34,7 +36,8 @@ export async function countUsers(): Promise<number> {
  * database hook so the user always lands in exactly one org with admin
  * rights.
  *
- * Org ID is a generated UUID — no env-var-driven default.
+ * Org ID is a generated UUID; the slug embeds the first 8 hex chars so
+ * it's unique by construction without a lookup round-trip.
  */
 export async function provisionLocalOrg(input: {
 	userId: string;
@@ -42,9 +45,22 @@ export async function provisionLocalOrg(input: {
 }): Promise<{ orgId: string; orgName: string }> {
 	const orgId = crypto.randomUUID();
 	const orgName = normalizeWorkspaceName(input.workspaceName);
+	const slug = buildSlug(orgName, orgId);
 
-	await upsertOrganization({ id: orgId, name: orgName });
-	await ensureMembership(input.userId, orgId, "admin");
+	await db.insert(organization).values({
+		id: orgId,
+		name: orgName,
+		slug,
+		createdAt: new Date(),
+	});
+
+	await db.insert(member).values({
+		id: crypto.randomUUID(),
+		organizationId: orgId,
+		userId: input.userId,
+		role: "admin",
+		createdAt: new Date(),
+	});
 
 	return { orgId, orgName };
 }
@@ -52,4 +68,13 @@ export async function provisionLocalOrg(input: {
 function normalizeWorkspaceName(raw: string | undefined): string {
 	const trimmed = (raw ?? "").trim();
 	return trimmed.length > 0 ? trimmed : "Workspace";
+}
+
+function buildSlug(name: string, orgId: string): string {
+	const base = name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "");
+	const prefix = base.length > 0 ? base : "workspace";
+	return `${prefix}-${orgId.slice(0, 8)}`;
 }
