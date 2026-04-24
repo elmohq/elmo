@@ -57,8 +57,28 @@ export default async function globalSetup(config: FullConfig) {
 
 			const userId = userResult.rows[0].id;
 
-			// The better-auth `organization` table must contain the default org
-			// for member FK and for listUserOrganizations() queries to work.
+			// The local-mode signup hook auto-creates an organization with a
+			// random UUID and a membership linking the new user to it. Tests
+			// want the fixed TEST_BRAND_ID, so replace any auto-created orgs
+			// the user is a member of with the canonical test org.
+			const memberships = await client.query(
+				`SELECT organization_id FROM member WHERE user_id = $1`,
+				[userId],
+			);
+			const orgIdsToDrop = memberships.rows
+				.map((r) => r.organization_id as string)
+				.filter((id) => id !== TEST_BRAND_ID);
+
+			if (orgIdsToDrop.length > 0) {
+				await client.query(
+					`DELETE FROM member WHERE user_id = $1 AND organization_id = ANY($2::text[])`,
+					[userId, orgIdsToDrop],
+				);
+				await client.query(`DELETE FROM organization WHERE id = ANY($1::text[])`, [
+					orgIdsToDrop,
+				]);
+			}
+
 			await client.query(
 				`INSERT INTO organization (id, name, slug, created_at)
 				 VALUES ($1, $2, $3, NOW())
@@ -66,7 +86,6 @@ export default async function globalSetup(config: FullConfig) {
 				[TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_ID],
 			);
 
-			// Ensure membership (no unique constraint on org+user, so check first)
 			const existingMember = await client.query(
 				`SELECT id FROM member WHERE organization_id = $1 AND user_id = $2 LIMIT 1`,
 				[TEST_BRAND_ID, userId],

@@ -100,9 +100,16 @@ export function EmailPasswordLogin({
 	isDemo?: boolean;
 	canRegister?: boolean;
 }) {
+	// Demo deployments can optionally publish the shared credentials on the
+	// login page. Set both VITE_DEMO_EMAIL and VITE_DEMO_PASSWORD to enable
+	// the pre-fill + callout; leave them unset for a plain login form.
+	const demoEmail = import.meta.env.VITE_DEMO_EMAIL;
+	const demoPassword = import.meta.env.VITE_DEMO_PASSWORD;
+	const showDemoCredentials = Boolean(isDemo && demoEmail && demoPassword);
+
 	const navigate = useNavigate();
-	const [email, setEmail] = useState(isDemo ? "demo@elmohq.com" : "");
-	const [password, setPassword] = useState(isDemo ? "demo" : "");
+	const [email, setEmail] = useState(showDemoCredentials ? (demoEmail ?? "") : "");
+	const [password, setPassword] = useState(showDemoCredentials ? (demoPassword ?? "") : "");
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
@@ -131,15 +138,18 @@ export function EmailPasswordLogin({
 	}
 
 	return (
-		<FullPageCard title="Sign in" subtitle={isDemo ? undefined : "Enter your email and password to continue"}>
+		<FullPageCard
+			title="Sign in"
+			subtitle={showDemoCredentials ? undefined : "Enter your email and password to continue"}
+		>
 			<form onSubmit={handleSubmit} className="space-y-4 w-full">
-				{isDemo && <DemoCredentialsCallout />}
+				{showDemoCredentials && <DemoCredentialsCallout email={demoEmail!} password={demoPassword!} />}
 				{error && (
 					<Alert variant="destructive">
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				)}
-				{!isDemo && (
+				{!showDemoCredentials && (
 					<>
 						<div className="space-y-2">
 							<Label htmlFor="email">Email</Label>
@@ -188,7 +198,7 @@ export function EmailPasswordLogin({
 	);
 }
 
-function DemoCredentialsCallout() {
+function DemoCredentialsCallout({ email, password }: { email: string; password: string }) {
 	return (
 		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
 			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -197,11 +207,11 @@ function DemoCredentialsCallout() {
 				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
 					<div className="flex items-center gap-1.5">
 						<dt className="opacity-70">Email</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo@elmohq.com</dd>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">{email}</dd>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<dt className="opacity-70">Password</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo</dd>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">{password}</dd>
 					</div>
 				</dl>
 			</div>

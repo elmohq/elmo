@@ -48,10 +48,10 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 		case "whitelabel":
 			return getWhitelabelAuthOptions();
 		case "demo":
-			// Seeded demo user has a 4-char password; allow it only here.
-			// Signup is disabled — demo users are created by the seed script,
-			// never by visitors.
-			return { minPasswordLength: 4, disableSignUp: true };
+			// Signup is disabled. Demo deployments reuse a database previously
+			// bootstrapped in local mode; visitors can only sign in as that
+			// pre-existing user.
+			return { disableSignUp: true };
 		default:
 			return getLocalAuthOptions();
 	}

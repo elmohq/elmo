@@ -15,9 +15,6 @@
     "e2e": {
       "entry": ["*.ts"],
       "project": ["**/*.ts"]
-    },
-    "packages/lib": {
-      "entry": ["src/db/seed-auth.ts"]
     }
   }
 }
