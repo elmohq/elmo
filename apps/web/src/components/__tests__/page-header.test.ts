@@ -1,49 +1,33 @@
 import { describe, it, expect } from "vitest";
-import { getAvailableModelsForBrand } from "@/components/filter-bar";
+import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
 
-describe("getAvailableModelsForBrand", () => {
-	it("falls back to every known model when enabledModels is null", () => {
-		expect(getAvailableModelsForBrand(null)).toEqual([
-			"all",
-			"chatgpt",
-			"claude",
-			"google-ai-mode",
+describe("getAvailableModels", () => {
+	it("returns an empty list for an empty input", () => {
+		expect(getAvailableModels([])).toEqual([]);
+	});
+
+	it("returns just the model when only one is configured (no 'all' sentinel)", () => {
+		expect(getAvailableModels(["chatgpt"])).toEqual(["chatgpt"]);
+	});
+
+	it("prepends 'all' when multiple models are configured", () => {
+		expect(getAvailableModels(["chatgpt", "claude"])).toEqual([ALL_MODELS_VALUE, "chatgpt", "claude"]);
+	});
+
+	it("preserves the caller's ordering of concrete models", () => {
+		expect(getAvailableModels(["perplexity", "grok", "gemini"])).toEqual([
+			ALL_MODELS_VALUE,
+			"perplexity",
+			"grok",
+			"gemini",
 		]);
 	});
 
-	it("falls back to every known model when enabledModels is undefined", () => {
-		expect(getAvailableModelsForBrand(undefined)).toEqual([
-			"all",
-			"chatgpt",
-			"claude",
-			"google-ai-mode",
-		]);
-	});
-
-	it("treats an empty enabledModels array as unconfigured", () => {
-		expect(getAvailableModelsForBrand([])).toEqual([
-			"all",
-			"chatgpt",
-			"claude",
-			"google-ai-mode",
-		]);
-	});
-
-	it("includes 'all' plus configured models when 2+ are enabled", () => {
-		expect(getAvailableModelsForBrand(["chatgpt", "claude"])).toEqual([
-			"all",
-			"chatgpt",
-			"claude",
-		]);
-	});
-
-	it("drops 'all' when only one model is configured", () => {
-		expect(getAvailableModelsForBrand(["chatgpt"])).toEqual(["chatgpt"]);
-	});
-
-	it("ignores unknown model ids so stale db rows don't render mystery tabs", () => {
-		expect(getAvailableModelsForBrand(["chatgpt", "gpt-5-turbo-ultra"])).toEqual([
-			"chatgpt",
+	it("works for arbitrary deployment-configured model ids, not just the ones Elmo knows about", () => {
+		expect(getAvailableModels(["my-custom-model", "another-model"])).toEqual([
+			ALL_MODELS_VALUE,
+			"my-custom-model",
+			"another-model",
 		]);
 	});
 });

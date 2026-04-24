@@ -1,7 +1,8 @@
 import { ReactNode, useEffect, useOptimistic, useRef, useState, useMemo, startTransition } from "react";
-import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
-import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
+import { useQueryState, parseAsArrayOf, parseAsString } from "nuqs";
+import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
+import { Sparkles } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
@@ -16,26 +17,21 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 import { ChevronDown, Search, Tag as TagIcon, Clock, X } from "lucide-react";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { useBrand } from "@/hooks/use-brands";
+import { getModelMeta } from "@workspace/lib/providers";
 
-export type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
+/** "all" is the no-filter sentinel; any other string is a concrete model id
+ *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
+ *  model ids, so we don't constrain this to a literal union. */
+export type ModelFilterValue = string;
+export const ALL_MODELS_VALUE = "all";
 
-/** All individual models Elmo tracks. Used as the fallback when a brand has
- *  no per-brand model config. Keep in sync with the visibility/citations
- *  backend so the filter stays a pure display concern. */
-const ALL_MODEL_IDS = ["chatgpt", "claude", "google-ai-mode"] as const satisfies readonly Exclude<ModelType, "all">[];
-
-/** Compute the filter options to show for a brand.
- *  - Unconfigured (`null`/empty): every known model + "All" (matches pre-config behavior).
- *  - 2+ configured: those specific models + "All".
- *  - 1 configured: just that model — hides the "All" toggle since it's redundant.
- *  Callers decide whether to render a selector when only one model is returned. */
-export function getAvailableModelsForBrand(
-	enabledModels: readonly string[] | null | undefined,
-): ModelType[] {
-	const configured = enabledModels?.length
-		? ALL_MODEL_IDS.filter((m) => enabledModels.includes(m))
-		: [...ALL_MODEL_IDS];
-	return configured.length > 1 ? ["all", ...configured] : configured;
+/** Build the dropdown option list from the brand's effective models.
+ *  The server resolves `brand.enabledModels` against `SCRAPE_TARGETS` and
+ *  hands us the list this brand actually runs — we just layer "All" on top
+ *  when there's more than one option. A single-model brand gets no "all"
+ *  entry since the filter is redundant (callers hide the dropdown entirely). */
+export function getAvailableModels(effectiveModels: readonly string[]): string[] {
+	return effectiveModels.length > 1 ? [ALL_MODELS_VALUE, ...effectiveModels] : [...effectiveModels];
 }
 
 // Parsers stay plain — each interactive handler opens its own
@@ -45,35 +41,46 @@ export function getAvailableModelsForBrand(
 // urgent while the URL setter was transition-priority, so a sync
 // effect fired in the urgent render (with URL still stale) and
 // snapped the optimistic value back.
-const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const);
-const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
+const modelParser = parseAsString;
+const lookbackParser = parseAsString;
 const tagsParser = parseAsArrayOf(parseAsString, ",");
 const searchParser = parseAsString;
 
-function getModelIcon(modelType: ModelType, className = "size-3.5") {
-	switch (modelType) {
-		case "chatgpt":
+const LOOKBACK_VALUES = ["1w", "1m", "3m", "6m", "1y", "all"] as const;
+function coerceLookback(raw: string | null | undefined, fallback: LookbackPeriod): LookbackPeriod {
+	return (LOOKBACK_VALUES as readonly string[]).includes(raw ?? "")
+		? (raw as LookbackPeriod)
+		: fallback;
+}
+
+/** Map a provider `iconId` (see `getModelMeta`) to the react-icons component
+ *  that renders it. `generic` and any unknown id fall through to a sparkle,
+ *  so a deployment that configures a new model id we haven't seen still gets
+ *  a reasonable trigger glyph. */
+function iconForModel(model: string, className = "size-3.5") {
+	if (model === ALL_MODELS_VALUE) return <MdSelectAll className={className} />;
+	const { iconId } = getModelMeta(model);
+	switch (iconId) {
+		case "openai":
 			return <SiOpenai className={className} />;
-		case "claude":
+		case "anthropic":
 			return <SiAnthropic className={className} />;
-		case "google-ai-mode":
+		case "google":
 			return <SiGoogle className={className} />;
-		case "all":
-			return <MdSelectAll className={className} />;
+		case "microsoft":
+			return <SiGithubcopilot className={className} />;
+		case "perplexity":
+			return <SiPerplexity className={className} />;
+		case "x":
+			return <SiX className={className} />;
+		default:
+			return <Sparkles className={className} />;
 	}
 }
 
-function getModelLabel(modelType: ModelType): string {
-	switch (modelType) {
-		case "chatgpt":
-			return "ChatGPT";
-		case "claude":
-			return "Claude";
-		case "google-ai-mode":
-			return "Google";
-		case "all":
-			return "All models";
-	}
+function labelForModel(model: string): string {
+	if (model === ALL_MODELS_VALUE) return "All models";
+	return getModelMeta(model).label;
 }
 
 const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
@@ -136,20 +143,23 @@ function FilterTriggerButton({
 // Model dropdown — subscribes to only the "model" URL key.
 // ------------------------------------------------------------------
 
-export function ModelDropdown({ availableModels }: { availableModels: ModelType[] }) {
-	const defaultModel: ModelType = availableModels.includes("all")
-		? "all"
-		: (availableModels[0] ?? "all");
+export function ModelDropdown({ availableModels }: { availableModels: string[] }) {
+	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
+		? ALL_MODELS_VALUE
+		: (availableModels[0] ?? ALL_MODELS_VALUE);
 	const [urlModel, setUrlModel] = useQueryState("model", modelParser.withDefault(defaultModel));
-	const selected = urlModel ?? defaultModel;
+	// If the URL has a model that isn't valid for this brand (e.g. stale deep
+	// link after a deployment change), fall back to the default rather than
+	// showing a trigger with an unknown value.
+	const selected = urlModel && availableModels.includes(urlModel) ? urlModel : defaultModel;
 
 	// `useOptimistic` renders `optimistic` as the dispatched value during
 	// the transition and snaps back to `selected` automatically once the
 	// URL setter's state update commits. No manual pushedRef sync — the
 	// optimistic lifecycle is tied to the transition itself.
-	const [optimistic, addOptimistic] = useOptimistic<ModelType, ModelType>(selected, (_, next) => next);
+	const [optimistic, addOptimistic] = useOptimistic<string, string>(selected, (_, next) => next);
 
-	const handleChange = (next: ModelType) => {
+	const handleChange = (next: string) => {
 		startTransition(() => {
 			addOptimistic(next);
 			setUrlModel(next);
@@ -157,25 +167,22 @@ export function ModelDropdown({ availableModels }: { availableModels: ModelType[
 	};
 
 	if (availableModels.length <= 1) return null;
-	const isFiltered = optimistic !== "all";
+	const isFiltered = optimistic !== ALL_MODELS_VALUE;
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<FilterTriggerButton
-					icon={getModelIcon(optimistic)}
-					label={getModelLabel(optimistic)}
+					icon={iconForModel(optimistic)}
+					label={labelForModel(optimistic)}
 					active={isFiltered}
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup
-					value={optimistic}
-					onValueChange={(v) => handleChange(v as ModelType)}
-				>
+				<DropdownMenuRadioGroup value={optimistic} onValueChange={handleChange}>
 					{availableModels.map((model) => (
 						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
-							{getModelIcon(model)}
-							{getModelLabel(model)}
+							{iconForModel(model)}
+							{labelForModel(model)}
 						</DropdownMenuRadioItem>
 					))}
 				</DropdownMenuRadioGroup>
@@ -195,7 +202,7 @@ export function LookbackDropdown() {
 		[brand?.earliestDataDate],
 	);
 	const [urlLookback, setUrlLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
-	const selected = urlLookback ?? defaultLookback;
+	const selected = coerceLookback(urlLookback, defaultLookback);
 
 	const [optimistic, addOptimistic] = useOptimistic<LookbackPeriod, LookbackPeriod>(selected, (_, next) => next);
 
@@ -428,7 +435,7 @@ export function FilterBar({
 	resultCount,
 }: {
 	availableTags: readonly string[];
-	availableModels: ModelType[];
+	availableModels: string[];
 	showSearch: boolean;
 	showModelSelector: boolean;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
@@ -460,14 +467,14 @@ export function usePageFilters() {
 		[brand?.earliestDataDate],
 	);
 
-	const [selectedModel] = useQueryState("model", modelParser.withDefault("all"));
+	const [selectedModel] = useQueryState("model", modelParser.withDefault(ALL_MODELS_VALUE));
 	const [selectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
 	const [selectedTags] = useQueryState("tags", tagsParser.withDefault([]));
 	const [searchQuery] = useQueryState("q", searchParser.withDefault(""));
 
 	return {
-		selectedModel: (selectedModel ?? "all") as ModelType,
-		selectedLookback: (selectedLookback ?? defaultLookback) as LookbackPeriod,
+		selectedModel: selectedModel ?? ALL_MODELS_VALUE,
+		selectedLookback: coerceLookback(selectedLookback, defaultLookback),
 		selectedTags: selectedTags ?? [],
 		searchQuery: searchQuery ?? "",
 	};
@@ -480,7 +487,7 @@ export function usePageFilterSetters() {
 	const [, setSearchQuery] = useQueryState("q", searchParser);
 
 	return {
-		setSelectedModel: (model: ModelType) => setSelectedModel(model),
+		setSelectedModel: (model: string) => setSelectedModel(model),
 		setSelectedLookback: (lookback: LookbackPeriod) => setSelectedLookback(lookback),
 		setSelectedTags,
 		setSearchQuery,

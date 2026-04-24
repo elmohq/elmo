@@ -15,7 +15,7 @@ import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, FilterSection } from "@/components/page-header";
-import { FilterBar, getAvailableModelsForBrand, usePageFilters, usePageFilterSetters } from "@/components/filter-bar";
+import { FilterBar, getAvailableModels, usePageFilters, usePageFilterSetters } from "@/components/filter-bar";
 
 
 export const Route = createFileRoute("/_authed/app/$brand/citations")({
@@ -41,7 +41,7 @@ function CitationsPage() {
 	const days = getDaysFromLookback(selectedLookback);
 
 	const { brand } = useBrand(brandId);
-	const availableModels = getAvailableModelsForBrand(brand?.enabledModels);
+	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
 
 	// Get citation data with tag and model filter
 	const modelParam = selectedModel === "all" ? undefined : selectedModel;

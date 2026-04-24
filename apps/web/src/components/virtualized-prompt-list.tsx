@@ -4,8 +4,6 @@ import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { CachedPromptChart } from "./cached-prompt-chart";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
 
-type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
-
 interface PromptItem {
 	id: string;
 	value: string;
@@ -18,8 +16,10 @@ interface VirtualizedPromptListProps {
 	prompts: PromptItem[];
 	brandId: string;
 	lookback: LookbackPeriod;
-	selectedModel: ModelType;
-	availableModels: ("chatgpt" | "claude" | "google-ai-mode")[];
+	/** Current model filter ("all" means no filter). */
+	selectedModel: string;
+	/** Concrete model ids this brand runs — no "all" sentinel. */
+	availableModels: string[];
 	searchHighlight?: string;
 }
 

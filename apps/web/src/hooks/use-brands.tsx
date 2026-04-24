@@ -5,6 +5,10 @@ import { getBrands, getBrand, getCompetitors } from "@/server/brands";
 
 export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
+	/** Deployment-configured model ids this brand actually runs, after
+	 *  `brand.enabledModels` is applied. Comes from the server so the UI
+	 *  doesn't have to hardcode a model list. */
+	effectiveModels: string[];
 };
 
 // ============================================================================

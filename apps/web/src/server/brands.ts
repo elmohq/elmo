@@ -10,6 +10,26 @@ import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from 
 import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+
+/**
+ * Deployment-configured model ids this brand actually runs, after applying
+ * the brand's `enabledModels` override. The filter bar + any other UI that
+ * shows "which models is this brand tracking?" should read from here
+ * instead of hardcoding a list — different deployments can configure any
+ * arbitrary set of models via `SCRAPE_TARGETS`.
+ */
+function computeEffectiveModels(brand: Brand): string[] {
+	try {
+		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		return selectTargetsForBrand(configs, brand.enabledModels).map((c) => c.model);
+	} catch {
+		// A misconfigured SCRAPE_TARGETS would already be surfacing via
+		// `validateScrapeTargets` at boot; here we'd rather degrade to an
+		// empty list than crash the brand fetch.
+		return [];
+	}
+}
 
 function getDefaultBrandDomains(): string[] {
 	const raw = process.env.DEFAULT_BRAND_DOMAINS;
@@ -26,7 +46,9 @@ function getDefaultBrandDomains(): string[] {
 // Helper functions (migrated from apps/web/src/lib/metadata.ts)
 // ============================================================================
 
-async function getBrandWithPromptsFromDb(brandId: string): Promise<BrandWithPrompts | undefined> {
+async function getBrandWithPromptsFromDb(
+	brandId: string,
+): Promise<(BrandWithPrompts & { effectiveModels: string[] }) | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
@@ -40,7 +62,12 @@ async function getBrandWithPromptsFromDb(brandId: string): Promise<BrandWithProm
 			where: eq(competitors.brandId, brandId),
 		});
 
-		return { ...brand, prompts: brandPrompts, competitors: brandCompetitors };
+		return {
+			...brand,
+			prompts: brandPrompts,
+			competitors: brandCompetitors,
+			effectiveModels: computeEffectiveModels(brand),
+		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
 		return undefined;
@@ -91,7 +118,9 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 		}),
 	);
 
-	return brandsData.filter((brand): brand is BrandWithPrompts => brand !== null);
+	return brandsData.filter(
+		(brand): brand is BrandWithPrompts & { effectiveModels: string[] } => brand !== null,
+	);
 });
 
 /**

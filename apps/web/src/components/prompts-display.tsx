@@ -14,7 +14,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import {
 	FilterBar,
-	getAvailableModelsForBrand,
+	getAvailableModels,
 	usePageFilters,
 	usePageFilterSetters,
 } from "@/components/filter-bar";
@@ -52,14 +52,13 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 	const { selectedModel, selectedLookback, selectedTags, searchQuery } = usePageFilters();
 	const { clearFilters } = usePageFilterSetters();
 
-	const availableModels = useMemo(
-		() => getAvailableModelsForBrand(brand?.enabledModels),
-		[brand?.enabledModels],
-	);
-	const availableIndividualModels = useMemo(
-		() => availableModels.filter((m): m is "chatgpt" | "claude" | "google-ai-mode" => m !== "all"),
-		[availableModels],
-	);
+	// Server hands us `effectiveModels` — the deployment-configured model ids
+	// this brand actually runs, after applying `enabledModels`. FilterBar
+	// adds the "all" sentinel on top; per-prompt chart controls only care
+	// about the concrete list.
+	const effectiveModels = brand?.effectiveModels ?? [];
+	const availableModels = useMemo(() => getAvailableModels(effectiveModels), [effectiveModels]);
+	const availableIndividualModels = effectiveModels;
 
 	const modelParam = selectedModel === "all" ? undefined : selectedModel;
 	const {
@@ -178,7 +177,7 @@ function ChartSection({
 	searchQuery: string;
 	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
 	filteredPromptIds: string[];
-	availableIndividualModels: ("chatgpt" | "claude" | "google-ai-mode")[];
+	availableIndividualModels: string[];
 }) {
 	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
 		lookback,

@@ -291,7 +291,7 @@ function PromptHistoryPage() {
 						isLoading={isStatsLoading}
 						webQueryStats={webQueryStats}
 						totalRuns={aggregations?.totalRuns || 0}
-						enabledModels={brand?.enabledModels ?? null}
+						effectiveModels={brand?.effectiveModels ?? []}
 					/>
 				)}
 
@@ -399,7 +399,7 @@ function WebQueriesTab({
 	isLoading,
 	webQueryStats,
 	totalRuns,
-	enabledModels,
+	effectiveModels,
 }: {
 	isLoading: boolean;
 	webQueryStats: {
@@ -407,7 +407,9 @@ function WebQueriesTab({
 		byModel: Record<string, { name: string; count: number }[]>;
 	};
 	totalRuns: number;
-	enabledModels: readonly string[] | null;
+	/** Deployment-resolved model ids this brand runs — server-computed from
+	 *  `SCRAPE_TARGETS` + `brand.enabledModels`. */
+	effectiveModels: readonly string[];
 }) {
 	if (isLoading) return <TabLoadingSkeleton lines={6} />;
 
@@ -417,12 +419,10 @@ function WebQueriesTab({
 		return <div className="py-12 text-center text-muted-foreground text-sm">No web query data available for this time period.</div>;
 	}
 
-	// Only break out per-model sections for models this brand actually runs.
-	// Use the brand's config when set, otherwise fall back to whichever models
-	// returned data (keeps behavior stable for brands with no config).
-	const modelOrder = enabledModels?.length
-		? [...enabledModels]
-		: Object.keys(webQueryStats.byModel);
+	// Render sections for the brand's effective models, falling back to whichever
+	// models the query actually returned data for when the server didn't tell us
+	// (defensive — effectiveModels should always be populated).
+	const modelOrder = effectiveModels.length > 0 ? [...effectiveModels] : Object.keys(webQueryStats.byModel);
 
 	return (
 		<Card>

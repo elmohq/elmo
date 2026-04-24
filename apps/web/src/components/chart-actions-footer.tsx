@@ -15,25 +15,27 @@ interface ChartActionsFooterProps {
 	promptId?: string;
 	promptName?: string;
 	brandId?: string;
-	
+
 	// For export
 	onDownload?: () => void;
 	isDownloading?: boolean;
-	
+
 	// For optimization
-	selectedModel?: "chatgpt" | "claude" | "google-ai-mode" | "all";
-	availableModels?: ("chatgpt" | "claude" | "google-ai-mode")[];
+	/** Current model filter ("all" = no filter). */
+	selectedModel?: string;
+	/** Concrete model ids this brand runs — no "all" sentinel. */
+	availableModels?: string[];
 	lookback?: LookbackPeriod;
 }
 
-export function ChartActionsFooter({ 
-	promptId, 
+export function ChartActionsFooter({
+	promptId,
 	promptName,
-	brandId, 
+	brandId,
 	onDownload,
 	isDownloading = false,
 	selectedModel = "all",
-	availableModels = ["chatgpt", "claude", "google-ai-mode"],
+	availableModels = [],
 	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);
