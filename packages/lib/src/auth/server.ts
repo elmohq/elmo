@@ -5,10 +5,11 @@
  * Exports a factory function so deployment-specific hooks (e.g. whitelabel
  * Auth0 org sync, cloud webhook handlers) can be injected.
  */
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+
+import { type SSOOptions, sso } from "@better-auth/sso";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { organization, admin, customSession } from "better-auth/plugins";
-import { sso, type SSOOptions } from "@better-auth/sso";
+import { admin, customSession, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
@@ -22,6 +23,13 @@ export interface CreateAuthOptions {
 	emailAndPasswordEnabled?: boolean;
 	/** Override better-auth's default minimum password length (8). */
 	minPasswordLength?: number;
+	/**
+	 * Reject POST /api/auth/sign-up/email at the better-auth layer.
+	 * Used by demo (no user-initiated signup at all) and whitelabel (SSO only).
+	 * Local mode keeps this false and enforces "first signup only" via a
+	 * `databaseHooks.user.create.before` guard instead.
+	 */
+	disableSignUp?: boolean;
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -30,9 +38,8 @@ export function createAuth(options?: CreateAuthOptions) {
 		throw new Error("APP_URL or VITE_APP_URL must be set for Better Auth");
 	}
 
-	const localOrigin = process.env.NODE_ENV !== "production"
-		? `http://localhost:${process.env.PORT ?? "3000"}`
-		: undefined;
+	const localOrigin =
+		process.env.NODE_ENV !== "production" ? `http://localhost:${process.env.PORT ?? "3000"}` : undefined;
 	const baseURL = localOrigin ?? appUrl;
 
 	const origins = options?.trustedOrigins ?? [];
@@ -59,6 +66,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			...(options?.minPasswordLength !== undefined && {
 				minPasswordLength: options.minPasswordLength,
 			}),
+			...(options?.disableSignUp === true && { disableSignUp: true }),
 		},
 
 		user: {

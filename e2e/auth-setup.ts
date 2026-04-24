@@ -57,16 +57,18 @@ export default async function globalSetup(config: FullConfig) {
 
 			const userId = userResult.rows[0].id;
 
-			// The better-auth `organization` table must contain the default org
-			// for member FK and for listUserOrganizations() queries to work.
+			// The local-mode signup hook creates the "default" org + admin
+			// membership on first register (matches TEST_BRAND_ID). On the
+			// sign-in path those rows already exist; the idempotent writes
+			// below cover DBs populated before the hook existed and let us
+			// tweak TEST_BRAND_NAME without a full reset.
 			await client.query(
 				`INSERT INTO organization (id, name, slug, created_at)
 				 VALUES ($1, $2, $3, NOW())
-				 ON CONFLICT (id) DO NOTHING`,
+				 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
 				[TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_ID],
 			);
 
-			// Ensure membership (no unique constraint on org+user, so check first)
 			const existingMember = await client.query(
 				`SELECT id FROM member WHERE organization_id = $1 AND user_id = $2 LIMIT 1`,
 				[TEST_BRAND_ID, userId],

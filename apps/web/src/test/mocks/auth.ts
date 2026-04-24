@@ -35,9 +35,7 @@ export const WHITELABEL_FEATURES: FeaturesConfig = {
 // Mock Session (for tests that need a user object)
 // ============================================================================
 
-export function createMockSession(
-	overrides: Partial<{ id: string; name: string; email: string; image: string }> = {},
-) {
+export function createMockSession(overrides: Partial<{ id: string; name: string; email: string; image: string }> = {}) {
 	return {
 		user: {
 			id: overrides.id ?? "test-user-id",
@@ -64,10 +62,7 @@ export interface MockDeploymentOptions {
 	featureOverrides?: Partial<FeaturesConfig>;
 }
 
-export function createMockDeployment(
-	mode: DeploymentMode,
-	options: MockDeploymentOptions = {},
-): Deployment {
+export function createMockDeployment(mode: DeploymentMode, options: MockDeploymentOptions = {}): Deployment {
 	return {
 		mode,
 		features: { ...FEATURES_BY_MODE[mode], ...options.featureOverrides },
@@ -77,10 +72,5 @@ export function createMockDeployment(
 			url: "http://localhost:3000",
 			chartColors: ["#3b82f6", "#10b981", "#f59e0b"],
 		},
-		defaultOrganization:
-			mode !== "whitelabel"
-				? { id: "default-org", name: "Default Org" }
-				: undefined,
 	};
 }
-

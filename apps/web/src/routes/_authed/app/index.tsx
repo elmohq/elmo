@@ -5,40 +5,39 @@
  * In multi-org mode (whitelabel): shows brand switcher
  */
 
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getDeployment } from "@/lib/config/server";
-import { requireAuthSession, listUserOrganizations } from "@/lib/auth/helpers";
-import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
+import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
+import { getDeployment } from "@/lib/config/server";
 
+const getOrganizations = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{
+		organizations: { id: string; name: string }[];
+		supportsMultiOrg: boolean;
+	}> => {
+		const session = await requireAuthSession();
+		const deployment = getDeployment();
 
-const getOrganizations = createServerFn({ method: "GET" }).handler(async (): Promise<{
-	organizations: { id: string; name: string }[];
-	supportsMultiOrg: boolean;
-	defaultOrgId?: string;
-}> => {
-	const session = await requireAuthSession();
-	const deployment = getDeployment();
-
-	if (deployment.mode === "whitelabel") {
-		// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
-		try {
-			await syncAuth0UserById(session.user.id);
-		} catch (error) {
-			console.error("[auth0-sync] Failed to sync user on /app load; continuing with cached memberships", error);
+		if (deployment.mode === "whitelabel") {
+			// Keep /app usable during Auth0 Management API incidents; background sync will reconcile memberships later.
+			try {
+				await syncAuth0UserById(session.user.id);
+			} catch (error) {
+				console.error("[auth0-sync] Failed to sync user on /app load; continuing with cached memberships", error);
+			}
 		}
-	}
 
-	const organizations = await listUserOrganizations(session.user.id);
-	return {
-		organizations,
-		supportsMultiOrg: deployment.features.supportsMultiOrg,
-		defaultOrgId: deployment.defaultOrganization?.id,
-	};
-});
+		const organizations = await listUserOrganizations(session.user.id);
+		return {
+			organizations,
+			supportsMultiOrg: deployment.features.supportsMultiOrg,
+		};
+	},
+);
 
 function OrgSwitcherSkeleton() {
 	return (
@@ -57,12 +56,7 @@ export const Route = createFileRoute("/_authed/app/")({
 	loader: async () => {
 		const result = await getOrganizations();
 
-		// Single-org mode: redirect to default org
-		if (!result.supportsMultiOrg && result.defaultOrgId) {
-			throw redirect({ to: "/app/$brand", params: { brand: result.defaultOrgId } });
-		}
-
-		// Single-org mode with orgs but no default: redirect to first available
+		// Single-org mode: redirect to the user's one org (created on signup).
 		if (!result.supportsMultiOrg && result.organizations.length > 0) {
 			throw redirect({ to: "/app/$brand", params: { brand: result.organizations[0].id } });
 		}

@@ -62,8 +62,7 @@ export interface MissingEnvVar {
 /**
  * Check if an environment variable has a non-empty value
  */
-export const hasValue = (value: string | undefined): boolean =>
-	typeof value === "string" && value.trim().length > 0;
+export const hasValue = (value: string | undefined): boolean => typeof value === "string" && value.trim().length > 0;
 
 /**
  * Create a requirement checker that requires all specified keys to have values
@@ -84,10 +83,7 @@ export const requireAny =
 /**
  * Create a simple env requirement for a single key
  */
-export function createEnvRequirement(
-	key: string,
-	description?: string
-): EnvRequirement {
+export function createEnvRequirement(key: string, description?: string): EnvRequirement {
 	return {
 		id: key,
 		label: key,
@@ -115,29 +111,11 @@ export const COMMON_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "SCRAPE_TARGETS",
 		label: "SCRAPE_TARGETS",
-		description: "Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+		description:
+			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 		isSatisfied: requireAll(["SCRAPE_TARGETS"]),
 	},
 	...buildProviderKeyRequirements(),
-];
-
-/**
- * Environment requirements specific to local/demo modes
- */
-export const LOCAL_DEMO_REQUIREMENTS: EnvRequirement[] = [
-	{
-		id: "DEFAULT_ORG_ID",
-		label: "DEFAULT_ORG_ID",
-		description: "Default organization ID.",
-		isSatisfied: requireAll(["DEFAULT_ORG_ID"]),
-	},
-	{
-		id: "DEFAULT_ORG_NAME",
-		label: "DEFAULT_ORG_NAME",
-		description: "Default organization name.",
-		isSatisfied: requireAll(["DEFAULT_ORG_NAME"]),
-	},
-	// APP_NAME, APP_ICON, APP_URL are optional with defaults (see constants.ts)
 ];
 
 /**
@@ -204,7 +182,8 @@ export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
 	{
 		id: "VITE_OPTIMIZATION_URL_TEMPLATE",
 		label: "VITE_OPTIMIZATION_URL_TEMPLATE",
-		description: "URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
+		description:
+			"URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
 		isSatisfied: requireAll(["VITE_OPTIMIZATION_URL_TEMPLATE"]),
 	},
 	// VITE_ONBOARDING_REDIRECT_URL_TEMPLATE is optional - only needed if you want to redirect
@@ -212,33 +191,31 @@ export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
 ];
 
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
-	local: [...COMMON_REQUIREMENTS, ...LOCAL_DEMO_REQUIREMENTS],
-	demo: [...COMMON_REQUIREMENTS, ...LOCAL_DEMO_REQUIREMENTS],
+	local: [...COMMON_REQUIREMENTS],
+	demo: [...COMMON_REQUIREMENTS],
 	whitelabel: [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS, ...WHITELABEL_BRANDING_REQUIREMENTS],
 	cloud: [], // todo
 };
 
 /**
  * Get the deployment mode from environment variables
- * 
+ *
  * Defaults to "local" for OSS builds. The build system should set
  * DEPLOYMENT_MODE appropriately for each environment.
  */
 const VALID_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
 
-export function getDeploymentModeFromEnv(
-	env: EnvMap = process.env,
-): DeploymentMode {
+export function getDeploymentModeFromEnv(env: EnvMap = process.env): DeploymentMode {
 	const mode = env.DEPLOYMENT_MODE?.toLowerCase();
-	
+
 	if (!mode) {
 		throw new Error("DEPLOYMENT_MODE environment variable is required");
 	}
-	
+
 	if (!VALID_MODES.includes(mode as DeploymentMode)) {
 		throw new Error(`Invalid DEPLOYMENT_MODE: "${mode}". Must be one of: ${VALID_MODES.join(", ")}`);
 	}
-	
+
 	return mode as DeploymentMode;
 }
 
@@ -276,7 +253,7 @@ export function getEnvValidationState(env: EnvMap = process.env): {
  */
 export function validateEnvRequirements(
 	requirements: EnvRequirement[],
-	env: EnvMap = process.env
+	env: EnvMap = process.env,
 ): {
 	missing: MissingEnvVar[];
 	isValid: boolean;
@@ -309,11 +286,7 @@ export function requireEnv(key: string, env: EnvMap = process.env): string {
 /**
  * Get an optional environment variable with a default value
  */
-export function getEnv(
-	key: string,
-	defaultValue: string,
-	env: EnvMap = process.env
-): string {
+export function getEnv(key: string, defaultValue: string, env: EnvMap = process.env): string {
 	const value = env[key];
 	return hasValue(value) ? value! : defaultValue;
 }

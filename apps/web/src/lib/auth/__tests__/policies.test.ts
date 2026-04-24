@@ -12,34 +12,25 @@
  *   4. API key authentication
  *   5. Read-only enforcement
  */
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	evaluateDeploymentPolicy,
+	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
+	evaluateAuthedRouteGuard,
+	evaluateBrandRouteGuard,
+	evaluateDeploymentPolicy,
+	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireOrgAccess,
-	evaluateReadOnly,
-	evaluateAuthedRouteGuard,
-	evaluateAdminRouteGuard,
-	evaluateBrandRouteGuard,
 	type RequestInfo,
 } from "@/lib/auth/policies";
-import {
-	LOCAL_FEATURES,
-	DEMO_FEATURES,
-	WHITELABEL_FEATURES,
-	createMockSession,
-} from "@/test/mocks/auth";
+import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
 // ============================================================================
 // Helpers
 // ============================================================================
 
-function req(
-	method: string,
-	pathname: string,
-	authorizationHeader?: string,
-): RequestInfo {
+function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
 	return { pathname, method, authorizationHeader };
 }
 
@@ -84,46 +75,31 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks API v1 without key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/prompts"),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"), { adminApiKeys: API_KEYS });
 			expect(result).toMatchObject({ action: "block", status: 401 });
 		});
 
 		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result.action).toBe("allow");
 		});
 
 		it("blocks API v1 with invalid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/prompts", `Bearer ${INVALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${INVALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result).toMatchObject({ action: "block", status: 401 });
 		});
 
 		it("allows API v1 docs without key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/docs"),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"), { adminApiKeys: API_KEYS });
 			expect(result.action).toBe("allow");
 		});
 
 		it("serves OpenAPI spec", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/openapi.json"),
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/openapi.json"));
 			expect(result.action).toBe("serve-openapi");
 		});
 	});
@@ -164,43 +140,64 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("exempts plausible events from read-only", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/plausible/event"),
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/plausible/event"));
 			expect(result.action).toBe("allow");
 		});
 
 		it("exempts plausible events with trailing slash", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/plausible/event/"),
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/plausible/event/"));
 			expect(result.action).toBe("allow");
 		});
 
 		it("exempts better-auth sign-in from read-only (so visitors can log in)", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/auth/sign-in/email"),
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/sign-in/email"));
 			expect(result.action).toBe("allow");
 		});
 
 		it("exempts better-auth sign-out from read-only", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/auth/sign-out"),
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/sign-out"));
+			expect(result.action).toBe("allow");
+		});
+
+		it("blocks POST /api/auth/change-password (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/change-password"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/change-email (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/change-email"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/update-user (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/update-user"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/delete-user (not on the whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/delete-user"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/forget-password (spam risk + not on whitelist)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/forget-password"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/auth/admin/create-user (admin plugin)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/admin/create-user"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("still allows GET /api/auth/get-session (reads are unaffected)", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/auth/get-session"));
 			expect(result.action).toBe("allow");
 		});
 
 		it("blocks POST to /api/v1 before reaching key check (read-only takes priority)", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result).toMatchObject({
 				action: "block",
 				status: 403,
@@ -209,19 +206,14 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("allows GET to /api/v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result.action).toBe("allow");
 		});
 
 		it("serves OpenAPI spec in demo mode", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/openapi.json"),
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/openapi.json"));
 			expect(result.action).toBe("serve-openapi");
 		});
 	});
@@ -253,22 +245,53 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks API v1 without key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/prompts"),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"), { adminApiKeys: API_KEYS });
 			expect(result).toMatchObject({ action: "block", status: 401 });
 		});
 
 		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result.action).toBe("allow");
 		});
+	});
+
+	// ────────────────────────────────────────────────────────────
+	// Better-auth organization plugin mutations (blocked in all modes)
+	// ────────────────────────────────────────────────────────────
+	describe("org plugin mutations", () => {
+		for (const [name, features] of [
+			["local", LOCAL_FEATURES],
+			["demo", DEMO_FEATURES],
+			["whitelabel", WHITELABEL_FEATURES],
+		] as const) {
+			describe(`${name} mode`, () => {
+				it("blocks POST /api/auth/organization/create", () => {
+					const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/organization/create"));
+					expect(result).toMatchObject({
+						action: "block",
+						status: 403,
+						error: "Forbidden",
+					});
+				});
+
+				it("blocks DELETE /api/auth/organization/:id", () => {
+					const result = evaluateDeploymentPolicy(features, req("DELETE", "/api/auth/organization/abc"));
+					expect(result).toMatchObject({ action: "block", status: 403 });
+				});
+
+				it("blocks POST /api/auth/organization/invite-member", () => {
+					const result = evaluateDeploymentPolicy(features, req("POST", "/api/auth/organization/invite-member"));
+					expect(result).toMatchObject({ action: "block", status: 403 });
+				});
+
+				it("allows GET /api/auth/organization/list (read endpoints unchanged)", () => {
+					const result = evaluateDeploymentPolicy(features, req("GET", "/api/auth/organization/list"));
+					expect(result.action).toBe("allow");
+				});
+			});
+		}
 	});
 
 	// ────────────────────────────────────────────────────────────
@@ -285,27 +308,17 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("handles /api/v1/openapi.json with trailing slash", () => {
-			const result = evaluateDeploymentPolicy(
-				LOCAL_FEATURES,
-				req("GET", "/api/v1/openapi.json/"),
-			);
+			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json/"));
 			expect(result.action).toBe("serve-openapi");
 		});
 
 		it("allows /api/v1/docs with trailing slash", () => {
-			const result = evaluateDeploymentPolicy(
-				LOCAL_FEATURES,
-				req("GET", "/api/v1/docs/"),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs/"), { adminApiKeys: API_KEYS });
 			expect(result.action).toBe("allow");
 		});
 
 		it("blocks TanStack server-function POST routes in read-only mode", () => {
-			const result = evaluateDeploymentPolicy(
-				DEMO_FEATURES,
-				req("POST", "/_server"),
-			);
+			const result = evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/_server"));
 			expect(result).toMatchObject({
 				action: "block",
 				status: 403,
@@ -515,5 +528,4 @@ describe("full access-control scenarios", () => {
 			expect(evaluateBrandRouteGuard(false)).toBe("not-found");
 		});
 	});
-
 });

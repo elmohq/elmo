@@ -18,6 +18,24 @@ import type { FeaturesConfig } from "@workspace/config/types";
 /** HTTP methods that mutate state */
 const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Exact better-auth endpoints that remain writable in read-only mode.
+ *
+ * Whitelist rather than blacklist: every other `/api/auth/**` write is
+ * rejected in demo, so new better-auth endpoints (from plugins we add or
+ * library upgrades) are blocked by default instead of silently becoming
+ * reachable. Only sign-in and sign-out need to work for a demo visitor
+ * — everything else (change-password, change-email, update-user,
+ * delete-user, forget-password, admin plugin endpoints, etc.) has no
+ * business mutating the shared demo account.
+ */
+const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
+	"/api/auth/sign-in/email",
+	"/api/auth/sign-in/email/",
+	"/api/auth/sign-out",
+	"/api/auth/sign-out/",
+]);
+
 export type DeploymentPolicyResult =
 	| { action: "allow" }
 	| { action: "block"; status: 401 | 403; error: string; message: string }
@@ -52,13 +70,26 @@ export function evaluateDeploymentPolicy(
 
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
-	// Better-auth endpoints (sign-in, sign-out, etc.) must stay reachable
-	// even in read-only demo mode so visitors can actually authenticate.
-	const isAuthRoute = pathname.startsWith("/api/auth/");
+	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
+	const isOrgPluginMutation =
+		pathname.startsWith("/api/auth/organization/") && isWriteMethod;
 
-	// 1. Read-only mode: Block write requests to API + server-function paths
+	// 0. Better-auth org plugin mutations are blocked everywhere. Orgs are
+	// created server-side only — via the provisioning module (local/demo)
+	// or via Auth0 sync (whitelabel). No mode needs these endpoints.
+	if (isOrgPluginMutation) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "Organization mutations are not available via the API",
+		};
+	}
+
+	// 1. Read-only mode: block every write except the explicit allowlist
+	// (analytics events + the two auth endpoints a visitor needs to use).
 	if (features.readOnly && isWriteMethod) {
-		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAuthRoute) {
+		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
 			return {
 				action: "block",
 				status: 403,

@@ -6,18 +6,11 @@
  *
  * Auth is fully handled by better-auth — this only provides static config.
  */
-import {
-	DEFAULT_APP_ICON,
-	DEFAULT_APP_NAME,
-	DEFAULT_APP_URL,
-	DEFAULT_CHART_COLORS,
-} from "@workspace/config/constants";
-import { getEnv, requireEnv } from "@workspace/config/env";
+import { DEFAULT_APP_ICON, DEFAULT_APP_NAME, DEFAULT_APP_URL, DEFAULT_CHART_COLORS } from "@workspace/config/constants";
+import { getEnv } from "@workspace/config/env";
 import type { Deployment } from "@workspace/config/types";
 
-export function createLocalDeployment(
-	env: Record<string, string | undefined> = process.env,
-): Deployment {
+export function createLocalDeployment(env: Record<string, string | undefined> = process.env): Deployment {
 	const readOnly = env.READ_ONLY === "true";
 
 	return {
@@ -34,10 +27,6 @@ export function createLocalDeployment(
 			parentName: env.APP_PARENT_NAME,
 			parentUrl: env.APP_PARENT_URL,
 			chartColors: DEFAULT_CHART_COLORS,
-		},
-		defaultOrganization: {
-			id: requireEnv("DEFAULT_ORG_ID", env),
-			name: requireEnv("DEFAULT_ORG_NAME", env),
 		},
 	};
 }
