@@ -14,10 +14,6 @@ interface ImportMetaEnv {
 	readonly VITE_ONBOARDING_REDIRECT_URL_TEMPLATE?: string;
 	readonly VITE_CHART_COLORS?: string;
 
-	// Demo deployments: optional shared credentials surfaced on the login page.
-	readonly VITE_DEMO_EMAIL?: string;
-	readonly VITE_DEMO_PASSWORD?: string;
-
 	// Analytics
 	readonly VITE_PLAUSIBLE_DOMAIN?: string;
 	readonly VITE_CLARITY_PROJECT_ID?: string;

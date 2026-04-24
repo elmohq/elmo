@@ -11,11 +11,7 @@ export default {
 	title: "Auth / Login",
 } satisfies Meta;
 
-/**
- * Demo mode. The credentials callout + pre-fill only render when both
- * VITE_DEMO_EMAIL and VITE_DEMO_PASSWORD are set; in Storybook (where
- * those env vars are unset) this renders a plain login form.
- */
+/** Demo mode — shows the pre-filled credentials callout. */
 export const Demo = () => <EmailPasswordLogin isDemo />;
 
 /** Local — empty fields, "Create one" register link visible (instance unbootstrapped). */
