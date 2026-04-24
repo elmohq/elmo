@@ -22,6 +22,13 @@ export interface CreateAuthOptions {
 	emailAndPasswordEnabled?: boolean;
 	/** Override better-auth's default minimum password length (8). */
 	minPasswordLength?: number;
+	/**
+	 * Reject POST /api/auth/sign-up/email at the better-auth layer.
+	 * Used by demo (no user-initiated signup at all) and whitelabel (SSO only).
+	 * Local mode keeps this false and enforces "first signup only" via a
+	 * `databaseHooks.user.create.before` guard instead.
+	 */
+	disableSignUp?: boolean;
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -59,6 +66,7 @@ export function createAuth(options?: CreateAuthOptions) {
 			...(options?.minPasswordLength !== undefined && {
 				minPasswordLength: options.minPasswordLength,
 			}),
+			...(options?.disableSignUp === true && { disableSignUp: true }),
 		},
 
 		user: {
