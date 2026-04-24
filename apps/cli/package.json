@@ -1,6 +1,23 @@
 {
   "name": "@elmohq/cli",
   "version": "0.2.2",
+  "keywords": [
+    "marketing",
+    "typescript",
+    "tools",
+    "aio",
+    "seo",
+    "geo",
+    "gemini",
+    "copilot",
+    "grok",
+    "aso",
+    "perplexity",
+    "aeo",
+    "llmo",
+    "chatgpt",
+    "ai-visibility"
+  ],
   "bin": {
     "elmo": "dist/index.js"
   },
