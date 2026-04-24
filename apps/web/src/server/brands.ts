@@ -11,23 +11,35 @@ import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import type { ModelConfig } from "@workspace/lib/providers";
 
 /**
- * Deployment-configured model ids this brand actually runs, after applying
- * the brand's `enabledModels` override. The filter bar + any other UI that
- * shows "which models is this brand tracking?" should read from here
- * instead of hardcoding a list — different deployments can configure any
- * arbitrary set of models via `SCRAPE_TARGETS`.
+ * Deployment-configured models this brand actually runs, after applying
+ * the brand's `enabledModels` override. The filter bar + LLMs info page +
+ * any other UI that shows "which models is this brand tracking?" should
+ * read from here instead of hardcoding a list — different deployments can
+ * configure any arbitrary set of models via `SCRAPE_TARGETS`.
+ *
+ * `effectiveModels` is the flat id list that most callers want; the full
+ * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
+ * object for pages that render per-model metadata (e.g. settings/llms).
  */
-function computeEffectiveModels(brand: Brand): string[] {
+function computeEffectiveModels(brand: Brand): {
+	effectiveModels: string[];
+	effectiveModelConfigs: ModelConfig[];
+} {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		return selectTargetsForBrand(configs, brand.enabledModels).map((c) => c.model);
+		const effective = selectTargetsForBrand(configs, brand.enabledModels);
+		return {
+			effectiveModels: effective.map((c) => c.model),
+			effectiveModelConfigs: effective,
+		};
 	} catch {
 		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to an
-		// empty list than crash the brand fetch.
-		return [];
+		// `validateScrapeTargets` at boot; here we'd rather degrade to empty
+		// lists than crash the brand fetch.
+		return { effectiveModels: [], effectiveModelConfigs: [] };
 	}
 }
 
@@ -48,7 +60,10 @@ function getDefaultBrandDomains(): string[] {
 
 async function getBrandWithPromptsFromDb(
 	brandId: string,
-): Promise<(BrandWithPrompts & { effectiveModels: string[] }) | undefined> {
+): Promise<
+	| (BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] })
+	| undefined
+> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
@@ -66,7 +81,7 @@ async function getBrandWithPromptsFromDb(
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			effectiveModels: computeEffectiveModels(brand),
+			...computeEffectiveModels(brand),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -119,7 +134,8 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 	);
 
 	return brandsData.filter(
-		(brand): brand is BrandWithPrompts & { effectiveModels: string[] } => brand !== null,
+		(brand): brand is BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] } =>
+			brand !== null,
 	);
 });
 
