@@ -4,7 +4,7 @@
  */
 export { cn } from "@workspace/ui/lib/utils";
 
-import { getModelMeta } from "@workspace/lib/providers";
+import { getModelMeta } from "@workspace/lib/providers/models";
 
 /**
  * Display name for a model id. Thin wrapper over `getModelMeta` so the UI

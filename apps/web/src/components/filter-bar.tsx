@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/component
 import { ChevronDown, Search, Tag as TagIcon, Clock, X } from "lucide-react";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { useBrand } from "@/hooks/use-brands";
-import { getModelMeta } from "@workspace/lib/providers";
+import { getModelMeta } from "@workspace/lib/providers/models";
 
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary

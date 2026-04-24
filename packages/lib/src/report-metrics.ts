@@ -3,7 +3,7 @@
  * Provides Share of Voice (SoV) calculations and representative prompt selection
  * for both the report renderer and the report API.
  */
-import { getModelMeta } from "./providers";
+import { getModelMeta } from "./providers/models";
 
 // ---------- Types ----------
 
