@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getAvailableModelsForBrand } from "@/components/page-header";
+import { getAvailableModelsForBrand } from "@/components/filter-bar";
 
 describe("getAvailableModelsForBrand", () => {
 	it("falls back to every known model when enabledModels is null", () => {

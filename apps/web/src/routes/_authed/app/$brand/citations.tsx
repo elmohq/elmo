@@ -14,7 +14,8 @@ import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
 import { getDaysFromLookback } from "@/lib/chart-utils";
-import { PageHeader, usePageFilters, usePageFilterSetters } from "@/components/page-header";
+import { PageHeader, StickyFilterSection } from "@/components/page-header";
+import { FilterBar, getAvailableModelsForBrand, usePageFilters, usePageFilterSetters } from "@/components/filter-bar";
 
 
 export const Route = createFileRoute("/_authed/app/$brand/citations")({
@@ -40,7 +41,7 @@ function CitationsPage() {
 	const days = getDaysFromLookback(selectedLookback);
 
 	const { brand } = useBrand(brandId);
-
+	const availableModels = getAvailableModelsForBrand(brand?.enabledModels);
 
 	// Get citation data with tag and model filter
 	const modelParam = selectedModel === "all" ? undefined : selectedModel;
@@ -72,52 +73,70 @@ function CitationsPage() {
 		</>
 	);
 
-	// Only show full loading skeleton on initial load
 	const showFullSkeleton = isLoading && !citationData;
+	let content: React.ReactNode;
 	if (showFullSkeleton) {
-		return (
-			<PageHeader
-				title="Citations"
-				subtitle="See which sources LLMs cite when responding to your prompts."
-				infoContent={infoContent}
-				availableTags={[]}
-				editTagsLink={`/app/${brandId}/settings/prompts`}
-				showModelSelector
-			>
-				<Card>
-					<CardHeader>
-						<Skeleton className="h-6 w-48" />
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-4">
-							<Skeleton className="h-4 w-3/4" />
-							<Skeleton className="h-4 w-1/2" />
-							<Skeleton className="h-4 w-2/3" />
-						</div>
-					</CardContent>
-				</Card>
-			</PageHeader>
+		content = (
+			<Card>
+				<CardHeader>
+					<Skeleton className="h-6 w-48" />
+				</CardHeader>
+				<CardContent>
+					<div className="space-y-4">
+						<Skeleton className="h-4 w-3/4" />
+						<Skeleton className="h-4 w-1/2" />
+						<Skeleton className="h-4 w-2/3" />
+					</div>
+				</CardContent>
+			</Card>
 		);
-	}
-
-	if (isError || !citationData) {
-		return (
-			<PageHeader
-				title="Citations"
-				subtitle="See which sources LLMs cite when responding to your prompts."
-				infoContent={infoContent}
-				availableTags={[]}
-				editTagsLink={`/app/${brandId}/settings/prompts`}
-				showModelSelector
-			>
-				<Card>
-					<CardContent className="pt-6">
-						<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-							Failed to load citation data. Please try again.
-						</div>
-					</CardContent>
-				</Card>
-			</PageHeader>
+	} else if (isError || !citationData) {
+		content = (
+			<Card>
+				<CardContent className="pt-6">
+					<div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+						Failed to load citation data. Please try again.
+					</div>
+				</CardContent>
+			</Card>
+		);
+	} else if (citationData.totalCitations === 0) {
+		content = (
+			<Card>
+				<CardContent className="pt-6">
+					<div className="text-muted-foreground text-center py-8">
+						{selectedTags.length > 0 || selectedModel !== "all" ? (
+							<>
+								<p className="mb-2">No citations found for the selected filters.</p>
+								<p className="text-sm mb-4">Try adjusting your filters or time period.</p>
+								<Button variant="outline" size="sm" onClick={clearFilters} className="cursor-pointer">
+									Clear filters
+								</Button>
+							</>
+						) : (
+							"No citations found. Citations are only available from prompts evaluated with web search enabled."
+						)}
+					</div>
+				</CardContent>
+			</Card>
+		);
+	} else {
+		content = (
+			<CitationsDisplay
+				citationData={citationData}
+				brandId={brandId}
+				brandName={brand?.name}
+				showStats={true}
+				maxDomains={20}
+				maxUrls={20}
+				days={days}
+				onCompetitorAdded={() => {
+					revalidateCitations();
+					queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+					queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
+					queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
+				}}
+			/>
 		);
 	}
 
@@ -126,45 +145,17 @@ function CitationsPage() {
 			title="Citations"
 			subtitle="See which sources LLMs cite when responding to your prompts."
 			infoContent={infoContent}
-			availableTags={availableTags}
-			editTagsLink={`/app/${brandId}/settings/prompts`}
-			showModelSelector
 		>
-			{citationData.totalCitations === 0 ? (
-				<Card>
-					<CardContent className="pt-6">
-						<div className="text-muted-foreground text-center py-8">
-							{selectedTags.length > 0 || selectedModel !== "all" ? (
-								<>
-									<p className="mb-2">No citations found for the selected filters.</p>
-									<p className="text-sm mb-4">Try adjusting your filters or time period.</p>
-									<Button variant="outline" size="sm" onClick={clearFilters} className="cursor-pointer">
-										Clear filters
-									</Button>
-								</>
-							) : (
-								"No citations found. Citations are only available from prompts evaluated with web search enabled."
-							)}
-						</div>
-					</CardContent>
-				</Card>
-			) : (
-				<CitationsDisplay
-					citationData={citationData}
-					brandId={brandId}
-					brandName={brand?.name}
-					showStats={true}
-					maxDomains={20}
-					maxUrls={20}
-					days={days}
-					onCompetitorAdded={() => {
-						revalidateCitations();
-						queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-						queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
-						queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
-					}}
+			<StickyFilterSection>
+				<FilterBar
+					availableTags={availableTags}
+					availableModels={availableModels}
+					showSearch={false}
+					showModelSelector
+					resultCount={undefined}
 				/>
-			)}
+			</StickyFilterSection>
+			<div className="space-y-6">{content}</div>
 		</PageHeader>
 	);
 }
