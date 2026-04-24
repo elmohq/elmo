@@ -267,16 +267,21 @@ export async function getVisibilityDailyAggregate(
 	model?: string,
 ): Promise<VisibilityDailyAggregate[]> {
 	if (enabledPromptIds.length === 0) return [];
-	const promptIdsSql = sql.join(
+	const promptIdsArraySql = sql`ARRAY[${sql.join(
 		enabledPromptIds.map((id) => sql`${id}::uuid`),
 		sql`, `,
-	);
-	const brandedIdsSql = brandedPromptIds.length
-		? sql.join(
+	)}]::uuid[]`;
+	// Empty branded list must be a real empty array literal, not
+	// `ARRAY[NULL]::uuid[]` — comparing `pid = ANY(ARRAY[NULL])` returns
+	// NULL (not false), which makes `is_branded` NULL for every prompt
+	// and zero-es out every sum in the final aggregation. That was the
+	// "visibility bar permanently shows no data" regression.
+	const brandedIdsArraySql = brandedPromptIds.length
+		? sql`ARRAY[${sql.join(
 				brandedPromptIds.map((id) => sql`${id}::uuid`),
 				sql`, `,
-			)
-		: sql`NULL::uuid`;
+			)}]::uuid[]`
+		: sql`'{}'::uuid[]`;
 
 	const rows = await queryPg<VisibilityDailyAggregate>(sql`
 		WITH
@@ -287,8 +292,8 @@ export async function getVisibilityDailyAggregate(
 			prompts_list AS (
 				SELECT
 					pid AS prompt_id,
-					pid = ANY(ARRAY[${brandedIdsSql}]::uuid[]) AS is_branded
-				FROM unnest(ARRAY[${promptIdsSql}]::uuid[]) AS pid
+					pid = ANY(${brandedIdsArraySql}) AS is_branded
+				FROM unnest(${promptIdsArraySql}) AS pid
 			),
 			observations AS (
 				SELECT
@@ -300,7 +305,7 @@ export async function getVisibilityDailyAggregate(
 				WHERE brand_id = ${brandId}
 					AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 					AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-					AND prompt_id = ANY(ARRAY[${promptIdsSql}]::uuid[])
+					AND prompt_id = ANY(${promptIdsArraySql})
 					${modelFilter(model)}
 				GROUP BY prompt_id, (created_at AT TIME ZONE ${timezone})::date
 			),

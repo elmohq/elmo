@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState, useMemo, startTransition } from "react";
+import { ReactNode, useEffect, useOptimistic, useRef, useState, useMemo, startTransition } from "react";
 import { useQueryState, parseAsStringLiteral, parseAsArrayOf, parseAsString } from "nuqs";
 import { SiOpenai, SiGoogle, SiAnthropic } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
@@ -38,15 +38,17 @@ export function getAvailableModelsForBrand(
 	return configured.length > 1 ? ["all", ...configured] : configured;
 }
 
-// Every URL setter runs its React state update through React.startTransition,
-// which makes the resulting re-render (data consumers, chart cards, SWR
-// refetches) interruptible. Urgent work — dropdown close animations, the
-// next click, typing — cuts in front and the filter interaction feels
-// instant. nuqs documents this option at https://nuqs.47ng.com/docs/options.
-const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const).withOptions({ startTransition });
-const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const).withOptions({ startTransition });
-const tagsParser = parseAsArrayOf(parseAsString, ",").withOptions({ startTransition });
-const searchParser = parseAsString.withOptions({ startTransition });
+// Parsers stay plain — each interactive handler opens its own
+// `startTransition` scope so the URL update *and* the `useOptimistic`
+// dispatch ride together in one transition. Using nuqs's parser-level
+// `startTransition` option gave us an ugly race: `setOptimistic` was
+// urgent while the URL setter was transition-priority, so a sync
+// effect fired in the urgent render (with URL still stale) and
+// snapped the optimistic value back.
+const modelParser = parseAsStringLiteral(["chatgpt", "claude", "google-ai-mode", "all"] as const);
+const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
+const tagsParser = parseAsArrayOf(parseAsString, ",");
+const searchParser = parseAsString;
 
 function getModelIcon(modelType: ModelType, className = "size-3.5") {
 	switch (modelType) {
@@ -85,14 +87,6 @@ const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
 
 function getLookbackLabel(lookback: LookbackPeriod): string {
 	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
-}
-
-// Shallow equality for string[] — tag lists are short so the O(n) scan is fine.
-function arraysEqual(a: readonly string[], b: readonly string[]) {
-	if (a === b) return true;
-	if (a.length !== b.length) return false;
-	for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-	return true;
 }
 
 // ------------------------------------------------------------------
@@ -149,20 +143,17 @@ export function ModelDropdown({ availableModels }: { availableModels: ModelType[
 	const [urlModel, setUrlModel] = useQueryState("model", modelParser.withDefault(defaultModel));
 	const selected = urlModel ?? defaultModel;
 
-	// Optimistic local copy so the trigger label flips on click, without
-	// waiting for the URL round-trip or any downstream re-render.
-	const [optimistic, setOptimistic] = useState<ModelType>(selected);
-	const pushedRef = useRef(selected);
-	useEffect(() => {
-		if (selected === pushedRef.current) return;
-		pushedRef.current = selected;
-		setOptimistic(selected);
-	}, [selected]);
+	// `useOptimistic` renders `optimistic` as the dispatched value during
+	// the transition and snaps back to `selected` automatically once the
+	// URL setter's state update commits. No manual pushedRef sync — the
+	// optimistic lifecycle is tied to the transition itself.
+	const [optimistic, addOptimistic] = useOptimistic<ModelType, ModelType>(selected, (_, next) => next);
 
 	const handleChange = (next: ModelType) => {
-		setOptimistic(next);
-		pushedRef.current = next;
-		setUrlModel(next);
+		startTransition(() => {
+			addOptimistic(next);
+			setUrlModel(next);
+		});
 	};
 
 	if (availableModels.length <= 1) return null;
@@ -206,18 +197,13 @@ export function LookbackDropdown() {
 	const [urlLookback, setUrlLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
 	const selected = urlLookback ?? defaultLookback;
 
-	const [optimistic, setOptimistic] = useState<LookbackPeriod>(selected);
-	const pushedRef = useRef<LookbackPeriod>(selected);
-	useEffect(() => {
-		if (selected === pushedRef.current) return;
-		pushedRef.current = selected;
-		setOptimistic(selected);
-	}, [selected]);
+	const [optimistic, addOptimistic] = useOptimistic<LookbackPeriod, LookbackPeriod>(selected, (_, next) => next);
 
 	const handleChange = (next: LookbackPeriod) => {
-		setOptimistic(next);
-		pushedRef.current = next;
-		setUrlLookback(next);
+		startTransition(() => {
+			addOptimistic(next);
+			setUrlLookback(next);
+		});
 	};
 
 	return (
@@ -254,18 +240,13 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 	const [urlTags, setUrlTags] = useQueryState("tags", tagsParser.withDefault([]));
 	const selected = urlTags ?? [];
 
-	const [optimistic, setOptimistic] = useState<string[]>(selected);
-	const pushedRef = useRef<readonly string[]>(selected);
-	useEffect(() => {
-		if (arraysEqual(selected, pushedRef.current)) return;
-		pushedRef.current = selected;
-		setOptimistic([...selected]);
-	}, [selected]);
+	const [optimistic, addOptimistic] = useOptimistic<string[], string[]>(selected, (_, next) => next);
 
 	const commit = (next: string[]) => {
-		setOptimistic(next);
-		pushedRef.current = next;
-		setUrlTags(next.length ? next : null);
+		startTransition(() => {
+			addOptimistic(next);
+			setUrlTags(next.length ? next : null);
+		});
 	};
 	const toggle = (tag: string) => {
 		commit(
@@ -347,27 +328,51 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 	const value = urlValue ?? "";
 
 	const [local, setLocal] = useState(value);
-	const pushedRef = useRef(value);
+	// `pendingTargetRef` holds the value we're currently pushing to the URL
+	// while the `setUrlValue` transition is in flight. While set, the sync
+	// effect ignores the stale `value` — without this, an urgent re-render
+	// that fires after `setLocal("")` but before the transition commits
+	// would see `value='abc'` and snap `local` back to 'abc'. That's what
+	// caused the "empty → abc → empty" flash when clicking the X.
+	const pendingTargetRef = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (value === pushedRef.current) return;
-		pushedRef.current = value;
-		setLocal(value);
-	}, [value]);
+		if (pendingTargetRef.current !== null) {
+			if (value === pendingTargetRef.current) {
+				pendingTargetRef.current = null; // our push committed
+				return;
+			}
+			// The URL moved to something other than what we were pushing —
+			// an external clearFilters() or direct navigation wins.
+			pendingTargetRef.current = null;
+			setLocal(value);
+			return;
+		}
+		if (value !== local) setLocal(value);
+	}, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	useEffect(() => {
-		if (local === pushedRef.current) return;
+		if (local === value) return;
+		if (local === pendingTargetRef.current) return;
 		const timer = setTimeout(() => {
-			pushedRef.current = local;
-			setUrlValue(local.length ? local : null);
+			pendingTargetRef.current = local;
+			startTransition(() => {
+				setUrlValue(local.length ? local : null);
+			});
 		}, 250);
 		return () => clearTimeout(timer);
-	}, [local, setUrlValue]);
+	}, [local, value, setUrlValue]);
 
 	const clear = () => {
 		setLocal("");
-		pushedRef.current = "";
-		setUrlValue(null);
+		if (value !== "") {
+			pendingTargetRef.current = "";
+			startTransition(() => {
+				setUrlValue(null);
+			});
+		} else {
+			pendingTargetRef.current = null;
+		}
 	};
 
 	return (
