@@ -1,6 +1,6 @@
 {
   "name": "@workspace/config",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "exports": {
     "./types": "./src/types.ts",

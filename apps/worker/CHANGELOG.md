@@ -1,5 +1,13 @@
 # @workspace/worker
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies [67a0389]
+  - @workspace/lib@0.2.4
+  - @workspace/whitelabel@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes

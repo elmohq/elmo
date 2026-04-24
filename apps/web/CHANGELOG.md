@@ -1,5 +1,20 @@
 # @workspace/web
 
+## 0.2.4
+
+### Patch Changes
+
+- 67a0389: Fix local-mode registration end-to-end and lock down the auth surface. The first `/auth/register` submission in local mode now atomically creates the default org + admin membership, so register → brand onboarding works in one pass; any subsequent signup is rejected. Demo mode narrows writable `/api/auth/**` endpoints to a whitelist of just sign-in and sign-out. Drops the unused `DEFAULT_ORG_ID` and `DEFAULT_ORG_NAME` env vars.
+- d0b2925: Redesign the Visibility and Citations filter bar (model / tags / lookback dropdowns + search), wire model filters to `brand.enabledModels`, and move the visibility-bar rollup into a single SQL query — cuts load time from ~10s to under 1s on large brands. Also fixes the "unbranded" tag filter and a search clear-X flicker.
+- Updated dependencies [67a0389]
+  - @workspace/lib@0.2.4
+  - @workspace/config@0.2.4
+  - @workspace/whitelabel@0.2.4
+  - @workspace/deployment@0.2.4
+  - @workspace/og@0.2.4
+  - @workspace/api-spec@0.2.4
+  - @workspace/ui@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes
