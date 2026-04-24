@@ -87,4 +87,3 @@ Elmo is built in the open and we'd love your help.
 - ⭐ **[Star us on GitHub](https://github.com/elmohq/elmo)** — it genuinely helps more people find the project.
 - 💬 **[Join the Discord](https://discord.gg/s24nubCtKz)** — get help, share what you're building, and talk to the team.
 - 🐛 **[File an issue](https://github.com/elmohq/elmo/issues)** if something breaks or you have a feature request.
-- 🛠️ **[Read the contributing guide](https://github.com/elmohq/elmo/blob/main/README.md#versioning-and-releases)** to send a PR.
