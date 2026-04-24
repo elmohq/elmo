@@ -145,6 +145,7 @@ export function getWhitelabelAuthOptions(): CreateAuthOptions {
 	const domain = process.env.AUTH0_DOMAIN!;
 	return {
 		emailAndPasswordEnabled: false,
+		disableSignUp: true,
 		trustedOrigins: [`https://${domain}`],
 		sso: {
 			defaultSSO: [{

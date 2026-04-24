@@ -16,7 +16,9 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			return getWhitelabelAuthOptions();
 		case "demo":
 			// Seeded demo user has a 4-char password; allow it only here.
-			return { minPasswordLength: 4 };
+			// Signup is disabled — demo users are created by the seed script,
+			// never by visitors.
+			return { minPasswordLength: 4, disableSignUp: true };
 		default:
 			return undefined;
 	}
