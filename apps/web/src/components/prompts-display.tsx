@@ -11,7 +11,7 @@ import { Link } from "@tanstack/react-router";
 import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
 import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PageHeader, StickyFilterSection } from "@/components/page-header";
+import { PageHeader, FilterSection } from "@/components/page-header";
 import {
 	FilterBar,
 	getAvailableModelsForBrand,
@@ -95,7 +95,7 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 
 	return (
 		<>
-			<StickyFilterSection>
+			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
 					availableModels={availableModels}
@@ -104,7 +104,7 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					resultCount={isInitialLoad ? undefined : sortedPrompts.length}
 				/>
 				<VisibilityBarSection brandId={brandId} promptIds={filteredPromptIds} />
-			</StickyFilterSection>
+			</FilterSection>
 
 			<div className="space-y-6">
 				{isInitialLoad ? (

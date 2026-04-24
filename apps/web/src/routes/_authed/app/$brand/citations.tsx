@@ -14,7 +14,7 @@ import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
 import { getDaysFromLookback } from "@/lib/chart-utils";
-import { PageHeader, StickyFilterSection } from "@/components/page-header";
+import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModelsForBrand, usePageFilters, usePageFilterSetters } from "@/components/filter-bar";
 
 
@@ -146,15 +146,14 @@ function CitationsPage() {
 			subtitle="See which sources LLMs cite when responding to your prompts."
 			infoContent={infoContent}
 		>
-			<StickyFilterSection>
+			<FilterSection>
 				<FilterBar
 					availableTags={availableTags}
 					availableModels={availableModels}
 					showSearch={false}
 					showModelSelector
-					resultCount={undefined}
 				/>
-			</StickyFilterSection>
+			</FilterSection>
 			<div className="space-y-6">{content}</div>
 		</PageHeader>
 	);

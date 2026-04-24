@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode } from "react";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -26,7 +26,7 @@ interface PageHeaderProps {
 }
 
 /** Title + subtitle block. No filter state, no data fetching — callers
- *  compose the sticky filter section and content as children. */
+ *  compose the filter section and content as children. */
 export function PageHeader({ title, subtitle, infoContent, children }: PageHeaderProps) {
 	return (
 		<div className="space-y-0">
@@ -60,33 +60,7 @@ export function PageHeaderTitleSkeleton() {
 	);
 }
 
-/** Sticky wrapper for the filter bar + visibility bar. Uses an
- *  IntersectionObserver sentinel to draw a shadow once the bar is
- *  scrolled past the page header. */
-export function StickyFilterSection({ children }: { children: ReactNode }) {
-	const [isStuck, setIsStuck] = useState(false);
-	const sentinelRef = useRef<HTMLDivElement>(null);
-
-	useEffect(() => {
-		const sentinel = sentinelRef.current;
-		if (!sentinel) return;
-		const observer = new IntersectionObserver(
-			([entry]) => setIsStuck(!entry.isIntersecting),
-			{ threshold: 0 },
-		);
-		observer.observe(sentinel);
-		return () => observer.disconnect();
-	}, []);
-
-	const stuckShadow =
-		"shadow-[0_4px_6px_0px_rgba(255,255,255,1),0_10px_15px_-3px_rgba(255,255,255,1),0_20px_25px_-5px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_6px_0px_rgba(9,9,11,1),0_10px_15px_-3px_rgba(9,9,11,1),0_20px_25px_-5px_rgba(9,9,11,0.9)]";
-
-	return (
-		<>
-			<div ref={sentinelRef} className="h-0" />
-			<div className={`sticky top-[var(--header-height)] z-10 pt-2 pb-4 bg-white dark:bg-zinc-950 ${isStuck ? stuckShadow : ""}`}>
-				{children}
-			</div>
-		</>
-	);
+/** Wrapper for the filter bar + visibility bar sitting under the page title. */
+export function FilterSection({ children }: { children: ReactNode }) {
+	return <div className="pt-2 pb-4">{children}</div>;
 }

@@ -431,7 +431,8 @@ export function FilterBar({
 	availableModels: ModelType[];
 	showSearch: boolean;
 	showModelSelector: boolean;
-	resultCount: number | undefined;
+	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
+	resultCount?: number;
 }) {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
