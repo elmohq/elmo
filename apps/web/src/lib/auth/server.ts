@@ -32,10 +32,7 @@ function getLocalAuthOptions(): CreateAuthOptions {
 						}
 					},
 					after: async (user) => {
-						await provisionLocalOrg({
-							userId: user.id,
-							workspaceName: user.name,
-						});
+						await provisionLocalOrg({ userId: user.id });
 					},
 				},
 			},

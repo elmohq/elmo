@@ -31,50 +31,40 @@ export async function countUsers(): Promise<number> {
 }
 
 /**
+ * The single organization created in local mode.
+ *
+ * Hardcoded because local mode has exactly one org per install, the user
+ * never sees or interacts with this identity (they pick a brand in the
+ * onboarding wizard, which is what the UI actually surfaces), and a
+ * stable id makes URLs like `/app/default` predictable.
+ */
+const LOCAL_ORG = {
+	id: "default",
+	name: "Default",
+	slug: "default",
+} as const;
+
+/**
  * Create the organization + admin membership for a freshly-created
  * local-mode user. Called from the better-auth `user.create.after`
  * database hook so the user always lands in exactly one org with admin
  * rights.
- *
- * Org ID is a generated UUID; the slug embeds the first 8 hex chars so
- * it's unique by construction without a lookup round-trip.
  */
-export async function provisionLocalOrg(input: {
-	userId: string;
-	workspaceName: string;
-}): Promise<{ orgId: string; orgName: string }> {
-	const orgId = crypto.randomUUID();
-	const orgName = normalizeWorkspaceName(input.workspaceName);
-	const slug = buildSlug(orgName, orgId);
-
+export async function provisionLocalOrg(input: { userId: string }): Promise<{ orgId: string }> {
 	await db.insert(organization).values({
-		id: orgId,
-		name: orgName,
-		slug,
+		id: LOCAL_ORG.id,
+		name: LOCAL_ORG.name,
+		slug: LOCAL_ORG.slug,
 		createdAt: new Date(),
 	});
 
 	await db.insert(member).values({
 		id: crypto.randomUUID(),
-		organizationId: orgId,
+		organizationId: LOCAL_ORG.id,
 		userId: input.userId,
 		role: "admin",
 		createdAt: new Date(),
 	});
 
-	return { orgId, orgName };
-}
-
-function normalizeWorkspaceName(raw: string | undefined): string {
-	const trimmed = (raw ?? "").trim();
-	return trimmed.length > 0 ? trimmed : "Workspace";
-}
-
-function buildSlug(name: string, orgId: string): string {
-	const base = name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-|-$/g, "");
-	const prefix = base.length > 0 ? base : "workspace";
-	return `${prefix}-${orgId.slice(0, 8)}`;
+	return { orgId: LOCAL_ORG.id };
 }

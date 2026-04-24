@@ -57,32 +57,15 @@ export default async function globalSetup(config: FullConfig) {
 
 			const userId = userResult.rows[0].id;
 
-			// The local-mode signup hook auto-creates an organization with a
-			// random UUID and a membership linking the new user to it. Tests
-			// want the fixed TEST_BRAND_ID, so replace any auto-created orgs
-			// the user is a member of with the canonical test org.
-			const memberships = await client.query(
-				`SELECT organization_id FROM member WHERE user_id = $1`,
-				[userId],
-			);
-			const orgIdsToDrop = memberships.rows
-				.map((r) => r.organization_id as string)
-				.filter((id) => id !== TEST_BRAND_ID);
-
-			if (orgIdsToDrop.length > 0) {
-				await client.query(
-					`DELETE FROM member WHERE user_id = $1 AND organization_id = ANY($2::text[])`,
-					[userId, orgIdsToDrop],
-				);
-				await client.query(`DELETE FROM organization WHERE id = ANY($1::text[])`, [
-					orgIdsToDrop,
-				]);
-			}
-
+			// The local-mode signup hook creates the "default" org + admin
+			// membership on first register (matches TEST_BRAND_ID). On the
+			// sign-in path those rows already exist; the idempotent writes
+			// below cover DBs populated before the hook existed and let us
+			// tweak TEST_BRAND_NAME without a full reset.
 			await client.query(
 				`INSERT INTO organization (id, name, slug, created_at)
 				 VALUES ($1, $2, $3, NOW())
-				 ON CONFLICT (id) DO NOTHING`,
+				 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
 				[TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_ID],
 			);
 
