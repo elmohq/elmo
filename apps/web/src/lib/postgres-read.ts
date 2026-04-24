@@ -226,6 +226,181 @@ export async function getPerPromptVisibilityTimeSeries(
 }
 
 // ============================================================================
+// Aggregated Visibility With SQL-Side LVCF
+// ============================================================================
+
+export interface VisibilityDailyAggregate {
+	date: string;
+	/** Raw observation totals — do not include carried-forward values, so period totals stay faithful. */
+	actual_branded_runs: number;
+	actual_branded_mentioned: number;
+	actual_nonbranded_runs: number;
+	actual_nonbranded_mentioned: number;
+	/** LVCF-smoothed totals used to draw the visibility time-series. */
+	lvcf_branded_runs: number;
+	lvcf_branded_mentioned: number;
+	lvcf_nonbranded_runs: number;
+	lvcf_nonbranded_mentioned: number;
+}
+
+/**
+ * Single-query replacement for `getPerPromptVisibilityTimeSeries` + JS
+ * `applyPerPromptLVCF`.
+ *
+ * Builds a (prompt × date) grid in-database, left-joins raw daily observations,
+ * and uses the `count(non_null) OVER (PARTITION BY prompt ORDER BY date)`
+ * "grouper" trick to carry the last observation forward. Leading-null dates
+ * (before a prompt's first observation) are back-seeded with the prompt's
+ * earliest value to mirror the existing JS behavior. The result is already
+ * aggregated by day and bucketed by branded / non-branded.
+ *
+ * Returns one row per date in [fromDate, toDate], which is O(days) transfer
+ * rather than O(prompts × days), and drops the JS LVCF pass entirely.
+ */
+export async function getVisibilityDailyAggregate(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds: string[],
+	brandedPromptIds: string[],
+	model?: string,
+): Promise<VisibilityDailyAggregate[]> {
+	if (enabledPromptIds.length === 0) return [];
+
+	// `brandedIdsRelation` is a subquery that yields one row per branded
+	// prompt id. Joining prompts_list against it and checking `IS NOT NULL`
+	// lets us classify branded prompts *without* relying on `pid = ANY(...)`
+	// which has a NULL-element footgun: `ARRAY[]::uuid[]` works fine but
+	// `unnest(ARRAY[]::uuid[])` returned 0 rows in a way that let NULLs
+	// propagate through an earlier attempt. The LEFT JOIN is explicit and
+	// behaves predictably whether the branded set is empty, partial, or all.
+	const brandedIdsRelation = brandedPromptIds.length
+		? sql`(SELECT unnest(ARRAY[${sql.join(
+				brandedPromptIds.map((id) => sql`${id}::uuid`),
+				sql`, `,
+			)}]::uuid[]) AS bid)`
+		: sql`(SELECT NULL::uuid AS bid WHERE FALSE)`;
+
+	const rows = await queryPg<VisibilityDailyAggregate>(sql`
+		WITH
+			date_range AS (
+				SELECT series::date AS day
+				FROM generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS g(series)
+			),
+			prompts_list AS (
+				SELECT
+					p.pid AS prompt_id,
+					bp.bid IS NOT NULL AS is_branded
+				FROM unnest(ARRAY[${sql.join(
+					enabledPromptIds.map((id) => sql`${id}::uuid`),
+					sql`, `,
+				)}]::uuid[]) AS p(pid)
+				LEFT JOIN ${brandedIdsRelation} bp ON bp.bid = p.pid
+			),
+			observations AS (
+				SELECT
+					prompt_id,
+					(created_at AT TIME ZONE ${timezone})::date AS obs_date,
+					count(*)::int AS total_runs,
+					count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
+				FROM prompt_runs
+				WHERE brand_id = ${brandId}
+					AND prompt_id IN (${uuidList(enabledPromptIds)})
+					AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+					AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+					${modelFilter(model)}
+				-- Group by the SELECT alias, not the full expression: drizzle
+				-- emits a fresh $N parameter for every timezone interpolation,
+				-- so the SELECT expression and GROUP BY expression aren't
+				-- recognized as identical by Postgres and the query errors
+				-- with "column prompt_runs.created_at must appear in GROUP BY".
+				GROUP BY prompt_id, obs_date
+			),
+			first_obs AS (
+				SELECT DISTINCT ON (prompt_id)
+					prompt_id,
+					total_runs AS first_runs,
+					brand_mentioned_count AS first_mentioned
+				FROM observations
+				ORDER BY prompt_id, obs_date
+			),
+			grid AS (
+				SELECT
+					pl.prompt_id,
+					pl.is_branded,
+					dr.day AS date,
+					obs.total_runs AS actual_runs,
+					obs.brand_mentioned_count AS actual_mentioned,
+					count(obs.total_runs) OVER (PARTITION BY pl.prompt_id ORDER BY dr.day) AS fwd_grp
+				FROM prompts_list pl
+				CROSS JOIN date_range dr
+				LEFT JOIN observations obs
+					ON obs.prompt_id = pl.prompt_id AND obs.obs_date = dr.day
+			),
+			lvcf AS (
+				SELECT
+					g.prompt_id,
+					g.is_branded,
+					g.date,
+					g.actual_runs,
+					g.actual_mentioned,
+					coalesce(
+						max(g.actual_runs) OVER (PARTITION BY g.prompt_id, g.fwd_grp),
+						fo.first_runs
+					) AS lvcf_runs,
+					coalesce(
+						max(g.actual_mentioned) OVER (PARTITION BY g.prompt_id, g.fwd_grp),
+						fo.first_mentioned
+					) AS lvcf_mentioned
+				FROM grid g
+				LEFT JOIN first_obs fo ON fo.prompt_id = g.prompt_id
+			)
+		SELECT
+			to_char(date, 'YYYY-MM-DD') AS date,
+			coalesce(sum(actual_runs) FILTER (WHERE is_branded), 0)::int AS actual_branded_runs,
+			coalesce(sum(actual_mentioned) FILTER (WHERE is_branded), 0)::int AS actual_branded_mentioned,
+			coalesce(sum(actual_runs) FILTER (WHERE NOT is_branded), 0)::int AS actual_nonbranded_runs,
+			coalesce(sum(actual_mentioned) FILTER (WHERE NOT is_branded), 0)::int AS actual_nonbranded_mentioned,
+			coalesce(sum(lvcf_runs) FILTER (WHERE is_branded), 0)::int AS lvcf_branded_runs,
+			coalesce(sum(lvcf_mentioned) FILTER (WHERE is_branded), 0)::int AS lvcf_branded_mentioned,
+			coalesce(sum(lvcf_runs) FILTER (WHERE NOT is_branded), 0)::int AS lvcf_nonbranded_runs,
+			coalesce(sum(lvcf_mentioned) FILTER (WHERE NOT is_branded), 0)::int AS lvcf_nonbranded_mentioned
+		FROM lvcf
+		GROUP BY date
+		ORDER BY date
+	`);
+	return rows;
+}
+
+/**
+ * Plain count of citations for the filter window. Used by the visibility bar,
+ * which only needs the scalar total — the old `getDailyCitationStats` call
+ * there returned one row per (date × domain) and we reduced to a single
+ * number client-side, which is wasteful on large tables.
+ */
+export async function getCitationsTotalCount(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<number> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return 0;
+	const rows = await queryPg<{ total: number }>(sql`
+		SELECT count(*)::int AS total
+		FROM citations
+		WHERE brand_id = ${brandId}
+			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+	`);
+	return Number(rows[0]?.total ?? 0);
+}
+
+// ============================================================================
 // Visibility Time Series
 // ============================================================================
 

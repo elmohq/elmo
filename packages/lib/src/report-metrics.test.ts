@@ -481,12 +481,21 @@ describe("analyzeByEngine", () => {
 		expect(analyzeByEngine([])).toEqual([]);
 	});
 
-	it("handles unknown engine names", () => {
+	it("title-cases unknown engine ids via getModelMeta", () => {
+		const runs: FullPromptRun[] = [
+			makeFullRun({ promptId: "p1", model: "my-custom-engine", brandMentioned: true }),
+		];
+		const result = analyzeByEngine(runs);
+		// `getModelMeta` turns unknown ids into title-cased labels.
+		expect(result[0].engine).toBe("My Custom Engine");
+	});
+
+	it("renames known engine ids to their display labels", () => {
 		const runs: FullPromptRun[] = [
 			makeFullRun({ promptId: "p1", model: "perplexity", brandMentioned: true }),
 		];
 		const result = analyzeByEngine(runs);
-		expect(result[0].engine).toBe("perplexity");
+		expect(result[0].engine).toBe("Perplexity");
 	});
 });
 

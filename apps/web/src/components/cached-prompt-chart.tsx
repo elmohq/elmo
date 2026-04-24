@@ -1,5 +1,5 @@
 
-import { useMemo, useCallback } from "react";
+import { memo, useMemo, useCallback } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Badge } from "@workspace/ui/components/badge";
@@ -22,8 +22,6 @@ const PLACEHOLDER_BARS_NO_VISIBILITY = [10, 15, 8, 12, 10, 14, 8, 12, 10, 15, 12
 	(h, i) => ({ key: String(i), h }),
 );
 
-type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
-
 function PromptTitle({ name, highlight }: { name: string; highlight: string }) {
 	return (
 		<CardTitle className="text-sm">
@@ -37,21 +35,27 @@ export interface CachedPromptChartProps {
 	promptName: string;
 	brandId: string;
 	lookback: LookbackPeriod;
-	selectedModel?: ModelType;
-	availableModels?: ("chatgpt" | "claude" | "google-ai-mode")[];
+	/** Current model filter from the URL. "all" = no filter. */
+	selectedModel?: string;
+	/** Concrete model ids this brand runs — passed down so the export / optimize
+	 *  button can offer them; don't include the "all" sentinel here. */
+	availableModels?: string[];
 	searchHighlight?: string;
 	// Whether this prompt has ever been evaluated (all-time)
 	// Used to distinguish "never evaluated" vs "no data in selected window"
 	hasEverBeenEvaluated?: boolean;
 }
 
-export function CachedPromptChart({
+// Memoized: when a sibling filter / react-query state change re-renders
+// VirtualizedPromptList with identical props, 30+ of these don't need to
+// walk their internal useMemos again.
+export const CachedPromptChart = memo(function CachedPromptChart({
 	promptId,
 	promptName,
 	brandId,
 	lookback = "1m",
 	selectedModel = "all",
-	availableModels = ["chatgpt", "claude", "google-ai-mode"],
+	availableModels = [],
 	searchHighlight = "",
 	hasEverBeenEvaluated = false,
 }: CachedPromptChartProps) {
@@ -267,4 +271,4 @@ export function CachedPromptChart({
 			</Card>
 		</>
 	);
-}
+});

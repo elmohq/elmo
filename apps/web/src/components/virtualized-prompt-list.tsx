@@ -1,10 +1,8 @@
 
-import { useRef, useMemo, useState, useCallback, useLayoutEffect, useEffect } from "react";
+import { memo, useRef, useMemo, useState, useCallback, useLayoutEffect, useEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { CachedPromptChart } from "./cached-prompt-chart";
 import type { LookbackPeriod } from "@/hooks/use-prompt-chart-data";
-
-type ModelType = "chatgpt" | "claude" | "google-ai-mode" | "all";
 
 interface PromptItem {
 	id: string;
@@ -18,8 +16,10 @@ interface VirtualizedPromptListProps {
 	prompts: PromptItem[];
 	brandId: string;
 	lookback: LookbackPeriod;
-	selectedModel: ModelType;
-	availableModels: ("chatgpt" | "claude" | "google-ai-mode")[];
+	/** Current model filter ("all" means no filter). */
+	selectedModel: string;
+	/** Concrete model ids this brand runs — no "all" sentinel. */
+	availableModels: string[];
 	searchHighlight?: string;
 }
 
@@ -27,7 +27,10 @@ interface VirtualizedPromptListProps {
 const CHART_CARD_HEIGHT = 380;
 const CHART_GAP = 24; // px - gap between cards (space-y-6)
 
-export function VirtualizedPromptList({
+// Memoized so react-query `isFetching` state changes on the parent
+// (which re-render prompts-display but leave these props untouched) don't
+// cascade into 30+ CachedPromptChart re-renders.
+export const VirtualizedPromptList = memo(function VirtualizedPromptList({
 	prompts,
 	brandId,
 	lookback,
@@ -116,4 +119,4 @@ export function VirtualizedPromptList({
 			</div>
 		</div>
 	);
-}
+});

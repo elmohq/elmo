@@ -3,6 +3,7 @@
  * Provides Share of Voice (SoV) calculations and representative prompt selection
  * for both the report renderer and the report API.
  */
+import { getModelMeta } from "./providers/models";
 
 // ---------- Types ----------
 
@@ -387,11 +388,8 @@ export function analyzeByEngine(
 		if (run.brandMentioned) stats.mentions++;
 	}
 
-	const engineNames: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		"google-ai-mode": "Google AI",
-		// Legacy names for existing reports
+	// Legacy names from old reports, before model ids were normalized.
+	const legacyAliases: Record<string, string> = {
 		openai: "ChatGPT",
 		anthropic: "Claude",
 		google: "Google AI",
@@ -399,7 +397,7 @@ export function analyzeByEngine(
 
 	return [...engineStats.entries()]
 		.map(([engine, stats]) => ({
-			engine: engineNames[engine] || engine,
+			engine: legacyAliases[engine] ?? getModelMeta(engine).label,
 			totalRuns: stats.total,
 			brandMentions: stats.mentions,
 			mentionRate: stats.total > 0 ? Math.round((stats.mentions / stats.total) * 100) : 0,

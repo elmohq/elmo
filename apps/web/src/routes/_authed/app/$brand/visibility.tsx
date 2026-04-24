@@ -38,7 +38,6 @@ function VisibilityPage() {
 
 	return (
 		<PromptsDisplay
-			prompts={[]}
 			pageTitle="Visibility"
 			pageDescription="See how LLMs are evaluating prompts related to your brand."
 			pageInfoContent={infoContent}

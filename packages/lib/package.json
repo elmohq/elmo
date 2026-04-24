@@ -22,7 +22,9 @@
     "./tag-utils": "./src/tag-utils.ts",
     "./website-excerpt": "./src/website-excerpt.ts",
     "./report-metrics": "./src/report-metrics.ts",
-    "./providers": "./src/providers/index.ts"
+    "./providers": "./src/providers/index.ts",
+    "./providers/models": "./src/providers/models.ts",
+    "./providers/types": "./src/providers/types.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",

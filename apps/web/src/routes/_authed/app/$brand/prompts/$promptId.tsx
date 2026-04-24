@@ -287,7 +287,12 @@ function PromptHistoryPage() {
 				)}
 
 				{activeTab === "web-queries" && (
-					<WebQueriesTab isLoading={isStatsLoading} webQueryStats={webQueryStats} totalRuns={aggregations?.totalRuns || 0} />
+					<WebQueriesTab
+						isLoading={isStatsLoading}
+						webQueryStats={webQueryStats}
+						totalRuns={aggregations?.totalRuns || 0}
+						effectiveModels={brand?.effectiveModels ?? []}
+					/>
 				)}
 
 				{activeTab === "citations" && (
@@ -394,6 +399,7 @@ function WebQueriesTab({
 	isLoading,
 	webQueryStats,
 	totalRuns,
+	effectiveModels,
 }: {
 	isLoading: boolean;
 	webQueryStats: {
@@ -401,6 +407,9 @@ function WebQueriesTab({
 		byModel: Record<string, { name: string; count: number }[]>;
 	};
 	totalRuns: number;
+	/** Deployment-resolved model ids this brand runs — server-computed from
+	 *  `SCRAPE_TARGETS` + `brand.enabledModels`. */
+	effectiveModels: readonly string[];
 }) {
 	if (isLoading) return <TabLoadingSkeleton lines={6} />;
 
@@ -410,7 +419,10 @@ function WebQueriesTab({
 		return <div className="py-12 text-center text-muted-foreground text-sm">No web query data available for this time period.</div>;
 	}
 
-	const modelOrder = ["chatgpt", "claude", "google-ai-mode"];
+	// Render sections for the brand's effective models, falling back to whichever
+	// models the query actually returned data for when the server didn't tell us
+	// (defensive — effectiveModels should always be populated).
+	const modelOrder = effectiveModels.length > 0 ? [...effectiveModels] : Object.keys(webQueryStats.byModel);
 
 	return (
 		<Card>

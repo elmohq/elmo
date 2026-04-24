@@ -4,28 +4,13 @@
  */
 export { cn } from "@workspace/ui/lib/utils";
 
+import { getModelMeta } from "@workspace/lib/providers/models";
+
 /**
- * Get the display name for a model with proper capitalization
+ * Display name for a model id. Thin wrapper over `getModelMeta` so the UI
+ * works for any deployment-configured model, not just the ones we happen
+ * to have hardcoded in a switch. Unknown ids get a title-cased fallback.
  */
 export function getModelDisplayName(model: string): string {
-	switch (model) {
-		case "chatgpt":
-			return "ChatGPT";
-		case "claude":
-			return "Claude";
-		case "google-ai-mode":
-			return "Google AI Mode";
-		case "google-ai-overview":
-			return "Google AI Overview";
-		case "gemini":
-			return "Gemini";
-		case "copilot":
-			return "Copilot";
-		case "perplexity":
-			return "Perplexity";
-		case "grok":
-			return "Grok";
-		default:
-			return model;
-	}
+	return getModelMeta(model).label;
 }
