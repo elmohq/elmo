@@ -1,5 +1,13 @@
 # @workspace/deployment
 
+## 0.2.3
+
+### Patch Changes
+
+- @workspace/config@0.2.3
+- @workspace/local@0.2.3
+- @workspace/whitelabel@0.2.3
+
 ## 0.2.2
 
 ### Patch Changes
