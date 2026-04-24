@@ -228,24 +228,15 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			})
 			.map((p) => p.id);
 
-		// `getTimezoneLookbackRange` returns null bounds for "all"; the chart
-		// side caps that to a one-year window via allStrategy, and the
-		// visibility bar matches so the two panels agree.
+		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so
+		// the visibility bar matches the chart section. Every other lookback
+		// already returns concrete bounds, so we can destructure without
+		// null-checking.
 		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(
 			lookbackParam,
 			timezone,
 			{ allStrategy: "1y" },
-		);
-		if (!fromDate || !toDate) {
-			return {
-				currentVisibility: 0,
-				totalRuns: 0,
-				totalPrompts,
-				totalCitations: 0,
-				visibilityTimeSeries: [],
-				lookback: lookbackParam,
-			};
-		}
+		) as { fromDateStr: string; toDateStr: string };
 
 		const [daily, totalCitations] = await Promise.all([
 			getVisibilityDailyAggregate(
