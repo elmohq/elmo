@@ -3,21 +3,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/component
 import { IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 
-// Re-exports for callers that still import filter primitives from the old
-// location. The canonical source is now `@/components/filter-bar`.
-export {
-	FilterBar,
-	ModelDropdown,
-	TagsDropdown,
-	LookbackDropdown,
-	SearchInput,
-	ResultCount,
-	usePageFilters,
-	usePageFilterSetters,
-	getAvailableModelsForBrand,
-	type ModelType,
-} from "@/components/filter-bar";
-
 interface PageHeaderProps {
 	title: string;
 	subtitle: string;
