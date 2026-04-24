@@ -5,10 +5,11 @@
  * Exports a factory function so deployment-specific hooks (e.g. whitelabel
  * Auth0 org sync, cloud webhook handlers) can be injected.
  */
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+
+import { type SSOOptions, sso } from "@better-auth/sso";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { organization, admin, customSession } from "better-auth/plugins";
-import { sso, type SSOOptions } from "@better-auth/sso";
+import { admin, customSession, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
@@ -37,9 +38,8 @@ export function createAuth(options?: CreateAuthOptions) {
 		throw new Error("APP_URL or VITE_APP_URL must be set for Better Auth");
 	}
 
-	const localOrigin = process.env.NODE_ENV !== "production"
-		? `http://localhost:${process.env.PORT ?? "3000"}`
-		: undefined;
+	const localOrigin =
+		process.env.NODE_ENV !== "production" ? `http://localhost:${process.env.PORT ?? "3000"}` : undefined;
 	const baseURL = localOrigin ?? appUrl;
 
 	const origins = options?.trustedOrigins ?? [];

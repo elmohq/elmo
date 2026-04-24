@@ -4,17 +4,18 @@
  * Local/cloud modes: email/password form.
  * Whitelabel mode: auto-redirects to Auth0 SSO (no form shown).
  */
-import { useState, useEffect } from "react";
-import { createFileRoute, useNavigate, Link, useRouteContext } from "@tanstack/react-router";
-import { z } from "zod";
+
+import { IconInfoCircle } from "@tabler/icons-react";
+import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { authClient } from "@workspace/lib/auth/client";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { Alert, AlertDescription } from "@workspace/ui/components/alert";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
-import { authClient } from "@workspace/lib/auth/client";
-import type { ClientConfig } from "@workspace/config/types";
 
 export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
@@ -46,13 +47,7 @@ function LoginPage() {
 		return <SSOLogin returnTo={returnTo} />;
 	}
 
-	return (
-		<EmailPasswordLogin
-			returnTo={returnTo}
-			isDemo={mode === "demo"}
-			canRegister={canRegister}
-		/>
-	);
+	return <EmailPasswordLogin returnTo={returnTo} isDemo={mode === "demo"} canRegister={canRegister} />;
 }
 
 function SSOLogin({ returnTo }: { returnTo?: string }) {
@@ -93,9 +88,7 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 		);
 	}
 
-	return (
-		<FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />
-	);
+	return <FullPageCard title="Signing in..." subtitle="Redirecting to your identity provider" />;
 }
 
 export function EmailPasswordLogin({
@@ -200,21 +193,15 @@ function DemoCredentialsCallout() {
 		<div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
 			<IconInfoCircle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
 			<div className="space-y-2">
-				<p className="font-medium text-amber-900 dark:text-amber-100">
-					Demo Account
-				</p>
+				<p className="font-medium text-amber-900 dark:text-amber-100">Demo Account</p>
 				<dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-900/90 dark:text-amber-100/80">
 					<div className="flex items-center gap-1.5">
 						<dt className="opacity-70">Email</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">
-							demo@elmohq.com
-						</dd>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo@elmohq.com</dd>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<dt className="opacity-70">Password</dt>
-						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">
-							demo
-						</dd>
+						<dd className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[11px]">demo</dd>
 					</div>
 				</dl>
 			</div>

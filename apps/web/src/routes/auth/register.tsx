@@ -4,16 +4,17 @@
  * Available in local/demo modes for self-service signup.
  * No email verification required.
  */
-import { useState } from "react";
-import { createFileRoute, useNavigate, Link, useRouteContext } from "@tanstack/react-router";
-import { z } from "zod";
+
+import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { authClient } from "@workspace/lib/auth/client";
+import { Alert, AlertDescription } from "@workspace/ui/components/alert";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
-import { Alert, AlertDescription } from "@workspace/ui/components/alert";
+import { useState } from "react";
+import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
-import { authClient } from "@workspace/lib/auth/client";
-import type { ClientConfig } from "@workspace/config/types";
 
 export const Route = createFileRoute("/auth/register")({
 	validateSearch: z.object({

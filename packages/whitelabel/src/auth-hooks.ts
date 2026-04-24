@@ -12,15 +12,16 @@
  * 5. Sets user admin role and report generator access flags
  * 6. Mutates the user object so the session cookie has correct data
  */
-import { ManagementClient } from "auth0";
-import { z } from "zod";
+
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
 import {
-	upsertOrganization,
+	findAccountByProvider,
 	syncMemberships,
 	updateUserFlags,
-	findAccountByProvider,
+	upsertOrganization,
 } from "@workspace/lib/db/auth-sync";
+import { ManagementClient } from "auth0";
+import { z } from "zod";
 
 interface Auth0AppMetadata {
 	elmo_orgs: Array<{ id: string; name: string }>;
@@ -77,15 +78,15 @@ async function fetchAuth0AppMetadata(auth0UserId: string): Promise<Auth0AppMetad
 	return parsed.data;
 }
 
-async function syncOrganizations(
-	userId: string,
-	orgs: Array<{ id: string; name: string }>,
-): Promise<void> {
+async function syncOrganizations(userId: string, orgs: Array<{ id: string; name: string }>): Promise<void> {
 	for (const org of orgs) {
 		await upsertOrganization(org);
 	}
 	const orgNameById = new Map(orgs.map((o) => [o.id, o.name]));
-	const { added, removed } = await syncMemberships(userId, orgs.map((o) => o.id));
+	const { added, removed } = await syncMemberships(
+		userId,
+		orgs.map((o) => o.id),
+	);
 	if (added.length > 0 || removed.length > 0) {
 		const parts: string[] = [];
 		if (added.length > 0) parts.push(`added=[${added.map((id) => orgNameById.get(id) ?? id).join(", ")}]`);
@@ -148,22 +149,24 @@ export function getWhitelabelAuthOptions(): CreateAuthOptions {
 		disableSignUp: true,
 		trustedOrigins: [`https://${domain}`],
 		sso: {
-			defaultSSO: [{
-				providerId: "auth0-whitelabel",
-				domain,
-				oidcConfig: {
-					clientId: process.env.AUTH0_CLIENT_ID!,
-					clientSecret: process.env.AUTH0_CLIENT_SECRET!,
-					issuer: `https://${domain}/`,
-					discoveryEndpoint: `https://${domain}/.well-known/openid-configuration`,
-					authorizationEndpoint: `https://${domain}/authorize`,
-					tokenEndpoint: `https://${domain}/oauth/token`,
-					userInfoEndpoint: `https://${domain}/userinfo`,
-					jwksEndpoint: `https://${domain}/.well-known/jwks.json`,
-					tokenEndpointAuthentication: "client_secret_post",
-					pkce: true,
+			defaultSSO: [
+				{
+					providerId: "auth0-whitelabel",
+					domain,
+					oidcConfig: {
+						clientId: process.env.AUTH0_CLIENT_ID!,
+						clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+						issuer: `https://${domain}/`,
+						discoveryEndpoint: `https://${domain}/.well-known/openid-configuration`,
+						authorizationEndpoint: `https://${domain}/authorize`,
+						tokenEndpoint: `https://${domain}/oauth/token`,
+						userInfoEndpoint: `https://${domain}/userinfo`,
+						jwksEndpoint: `https://${domain}/.well-known/jwks.json`,
+						tokenEndpointAuthentication: "client_secret_post",
+						pkce: true,
+					},
 				},
-			}],
+			],
 			provisionUser: async ({ user, userInfo }: { user: { id: string }; userInfo: Record<string, any> }) => {
 				const flags = await syncAuth0User(user.id, userInfo.id);
 				Object.assign(user, flags);

@@ -12,10 +12,10 @@
  * provisioning flows.
  */
 import { count, eq } from "drizzle-orm";
+import { createAuth } from "../auth/server";
+import { ensureMembership, updateUserFlags, upsertOrganization } from "./auth-sync";
 import { db } from "./db";
 import { user } from "./schema";
-import { ensureMembership, upsertOrganization, updateUserFlags } from "./auth-sync";
-import { createAuth } from "../auth/server";
 
 /**
  * Number of users in the database.
@@ -87,16 +87,8 @@ export async function provisionDemoUser(input: {
 	return { userId, orgId: input.orgId };
 }
 
-async function findOrCreateUser(input: {
-	email: string;
-	password: string;
-	name: string;
-}): Promise<string> {
-	const existing = await db
-		.select({ id: user.id })
-		.from(user)
-		.where(eq(user.email, input.email))
-		.limit(1);
+async function findOrCreateUser(input: { email: string; password: string; name: string }): Promise<string> {
+	const existing = await db.select({ id: user.id }).from(user).where(eq(user.email, input.email)).limit(1);
 	if (existing.length > 0) return existing[0].id;
 
 	const auth = createAuth({ minPasswordLength: 4 });

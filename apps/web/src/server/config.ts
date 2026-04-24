@@ -2,11 +2,11 @@
  * Server functions for providing deployment configuration to the client.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { getDeployment } from "@/lib/config/server";
-import type { ClientConfig } from "@workspace/config/types";
 import { getEnvValidationState } from "@workspace/config/env";
+import type { ClientConfig } from "@workspace/config/types";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { countUsers } from "@workspace/lib/db/provisioning";
+import { getDeployment } from "@/lib/config/server";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
 	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;
