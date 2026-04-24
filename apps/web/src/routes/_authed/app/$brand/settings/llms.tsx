@@ -70,62 +70,70 @@ function LlmsSettingsPage() {
 					{configs.map((config) => (
 						<Card key={config.model} className="h-full">
 							<CardHeader className="py-2 border-b">
-								<div className="flex items-center gap-3">
-									{iconForModel(config.model, "h-6 w-6")}
-									<span className="font-medium">{labelForModel(config.model)}</span>
-								</div>
+								{iconForModel(config.model, "h-6 w-6")}
 							</CardHeader>
 							<CardContent className="pt-2">
 								<div className="divide-y text-sm">
-									<div className="flex items-center justify-between py-2">
-										<span className="text-xs uppercase tracking-wide text-muted-foreground">Provider</span>
+									<ConfigRow label="Provider">
 										<span className="text-xs text-foreground">{publisherForModel(config.model)}</span>
-									</div>
-									{config.version && (
-										<div className="flex items-center justify-between py-2">
-											<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-												<span>Model</span>
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-													</TooltipTrigger>
-													<TooltipContent className="max-w-xs text-xs font-normal">
-														Exact model version used for this group.
-													</TooltipContent>
-												</Tooltip>
-											</div>
-											<span className="font-mono text-xs text-foreground">{config.version}</span>
-										</div>
-									)}
-									<div className="flex items-center justify-between py-2">
-										<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-											<span>Web search</span>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-												</TooltipTrigger>
-												<TooltipContent className="max-w-xs text-xs font-normal">
-													{config.webSearch
-														? "Responses include real-time information from the web."
-														: "Responses are based on the model's training data only."}
-												</TooltipContent>
-											</Tooltip>
-										</div>
-										<div className="flex items-center gap-2 text-xs text-foreground">
-											{config.webSearch ? (
-												<IconCircleCheck className="h-4 w-4 text-emerald-600" />
-											) : (
-												<IconCircleX className="h-4 w-4 text-red-600" />
-											)}
-											<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
-										</div>
-									</div>
+									</ConfigRow>
+									<ConfigRow label="Model">
+										<span className="text-xs text-foreground">{labelForModel(config.model)}</span>
+									</ConfigRow>
+									<ConfigRow
+										label="Version"
+										tooltip="Exact upstream model version used by the scraping provider."
+									>
+										<span className="font-mono text-xs text-foreground">{config.version ?? "—"}</span>
+									</ConfigRow>
+									<ConfigRow
+										label="Web search"
+										tooltip={
+											config.webSearch
+												? "Responses include real-time information from the web."
+												: "Responses are based on the model's training data only."
+										}
+									>
+										{config.webSearch ? (
+											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
+										) : (
+											<IconCircleX className="h-4 w-4 text-red-600" />
+										)}
+										<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
+									</ConfigRow>
 								</div>
 							</CardContent>
 						</Card>
 					))}
 				</div>
 			)}
+		</div>
+	);
+}
+
+function ConfigRow({
+	label,
+	tooltip,
+	children,
+}: {
+	label: string;
+	tooltip?: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="flex items-center justify-between py-2">
+			<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+				<span>{label}</span>
+				{tooltip && (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
+						</TooltipTrigger>
+						<TooltipContent className="max-w-xs text-xs font-normal">{tooltip}</TooltipContent>
+					</Tooltip>
+				)}
+			</div>
+			<div className="flex items-center gap-2">{children}</div>
 		</div>
 	);
 }
