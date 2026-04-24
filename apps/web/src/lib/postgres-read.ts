@@ -267,47 +267,55 @@ export async function getVisibilityDailyAggregate(
 	model?: string,
 ): Promise<VisibilityDailyAggregate[]> {
 	if (enabledPromptIds.length === 0) return [];
-	const promptIdsArraySql = sql`ARRAY[${sql.join(
-		enabledPromptIds.map((id) => sql`${id}::uuid`),
-		sql`, `,
-	)}]::uuid[]`;
-	// Empty branded list must be a real empty array literal, not
-	// `ARRAY[NULL]::uuid[]` — comparing `pid = ANY(ARRAY[NULL])` returns
-	// NULL (not false), which makes `is_branded` NULL for every prompt
-	// and zero-es out every sum in the final aggregation. That was the
-	// "visibility bar permanently shows no data" regression.
-	const brandedIdsArraySql = brandedPromptIds.length
-		? sql`ARRAY[${sql.join(
+
+	// `brandedIdsRelation` is a subquery that yields one row per branded
+	// prompt id. Joining prompts_list against it and checking `IS NOT NULL`
+	// lets us classify branded prompts *without* relying on `pid = ANY(...)`
+	// which has a NULL-element footgun: `ARRAY[]::uuid[]` works fine but
+	// `unnest(ARRAY[]::uuid[])` returned 0 rows in a way that let NULLs
+	// propagate through an earlier attempt. The LEFT JOIN is explicit and
+	// behaves predictably whether the branded set is empty, partial, or all.
+	const brandedIdsRelation = brandedPromptIds.length
+		? sql`(SELECT unnest(ARRAY[${sql.join(
 				brandedPromptIds.map((id) => sql`${id}::uuid`),
 				sql`, `,
-			)}]::uuid[]`
-		: sql`'{}'::uuid[]`;
+			)}]::uuid[]) AS bid)`
+		: sql`(SELECT NULL::uuid AS bid WHERE FALSE)`;
 
 	const rows = await queryPg<VisibilityDailyAggregate>(sql`
 		WITH
 			date_range AS (
-				SELECT d::date AS date
-				FROM generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS d
+				SELECT series::date AS day
+				FROM generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS g(series)
 			),
 			prompts_list AS (
 				SELECT
-					pid AS prompt_id,
-					pid = ANY(${brandedIdsArraySql}) AS is_branded
-				FROM unnest(${promptIdsArraySql}) AS pid
+					p.pid AS prompt_id,
+					bp.bid IS NOT NULL AS is_branded
+				FROM unnest(ARRAY[${sql.join(
+					enabledPromptIds.map((id) => sql`${id}::uuid`),
+					sql`, `,
+				)}]::uuid[]) AS p(pid)
+				LEFT JOIN ${brandedIdsRelation} bp ON bp.bid = p.pid
 			),
 			observations AS (
 				SELECT
 					prompt_id,
-					(created_at AT TIME ZONE ${timezone})::date AS date,
+					(created_at AT TIME ZONE ${timezone})::date AS obs_date,
 					count(*)::int AS total_runs,
 					count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
 				FROM prompt_runs
 				WHERE brand_id = ${brandId}
+					AND prompt_id IN (${uuidList(enabledPromptIds)})
 					AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 					AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-					AND prompt_id = ANY(${promptIdsArraySql})
 					${modelFilter(model)}
-				GROUP BY prompt_id, (created_at AT TIME ZONE ${timezone})::date
+				-- Group by the SELECT alias, not the full expression: drizzle
+				-- emits a fresh $N parameter for every timezone interpolation,
+				-- so the SELECT expression and GROUP BY expression aren't
+				-- recognized as identical by Postgres and the query errors
+				-- with "column prompt_runs.created_at must appear in GROUP BY".
+				GROUP BY prompt_id, obs_date
 			),
 			first_obs AS (
 				SELECT DISTINCT ON (prompt_id)
@@ -315,48 +323,49 @@ export async function getVisibilityDailyAggregate(
 					total_runs AS first_runs,
 					brand_mentioned_count AS first_mentioned
 				FROM observations
-				ORDER BY prompt_id, date
+				ORDER BY prompt_id, obs_date
 			),
-			joined AS (
+			grid AS (
 				SELECT
-					p.prompt_id,
-					p.is_branded,
-					d.date,
-					o.total_runs AS actual_runs,
-					o.brand_mentioned_count AS actual_mentioned,
-					count(o.total_runs) OVER (PARTITION BY p.prompt_id ORDER BY d.date) AS fwd_grp
-				FROM prompts_list p
-				CROSS JOIN date_range d
-				LEFT JOIN observations o ON o.prompt_id = p.prompt_id AND o.date = d.date
+					pl.prompt_id,
+					pl.is_branded,
+					dr.day AS date,
+					obs.total_runs AS actual_runs,
+					obs.brand_mentioned_count AS actual_mentioned,
+					count(obs.total_runs) OVER (PARTITION BY pl.prompt_id ORDER BY dr.day) AS fwd_grp
+				FROM prompts_list pl
+				CROSS JOIN date_range dr
+				LEFT JOIN observations obs
+					ON obs.prompt_id = pl.prompt_id AND obs.obs_date = dr.day
 			),
 			lvcf AS (
 				SELECT
-					j.prompt_id,
-					j.is_branded,
-					j.date,
-					j.actual_runs,
-					j.actual_mentioned,
+					g.prompt_id,
+					g.is_branded,
+					g.date,
+					g.actual_runs,
+					g.actual_mentioned,
 					coalesce(
-						max(j.actual_runs) OVER (PARTITION BY j.prompt_id, j.fwd_grp),
-						f.first_runs
+						max(g.actual_runs) OVER (PARTITION BY g.prompt_id, g.fwd_grp),
+						fo.first_runs
 					) AS lvcf_runs,
 					coalesce(
-						max(j.actual_mentioned) OVER (PARTITION BY j.prompt_id, j.fwd_grp),
-						f.first_mentioned
+						max(g.actual_mentioned) OVER (PARTITION BY g.prompt_id, g.fwd_grp),
+						fo.first_mentioned
 					) AS lvcf_mentioned
-				FROM joined j
-				LEFT JOIN first_obs f ON f.prompt_id = j.prompt_id
+				FROM grid g
+				LEFT JOIN first_obs fo ON fo.prompt_id = g.prompt_id
 			)
 		SELECT
 			to_char(date, 'YYYY-MM-DD') AS date,
-			coalesce(sum(CASE WHEN is_branded THEN actual_runs END), 0)::int AS actual_branded_runs,
-			coalesce(sum(CASE WHEN is_branded THEN actual_mentioned END), 0)::int AS actual_branded_mentioned,
-			coalesce(sum(CASE WHEN NOT is_branded THEN actual_runs END), 0)::int AS actual_nonbranded_runs,
-			coalesce(sum(CASE WHEN NOT is_branded THEN actual_mentioned END), 0)::int AS actual_nonbranded_mentioned,
-			coalesce(sum(CASE WHEN is_branded THEN lvcf_runs END), 0)::int AS lvcf_branded_runs,
-			coalesce(sum(CASE WHEN is_branded THEN lvcf_mentioned END), 0)::int AS lvcf_branded_mentioned,
-			coalesce(sum(CASE WHEN NOT is_branded THEN lvcf_runs END), 0)::int AS lvcf_nonbranded_runs,
-			coalesce(sum(CASE WHEN NOT is_branded THEN lvcf_mentioned END), 0)::int AS lvcf_nonbranded_mentioned
+			coalesce(sum(actual_runs) FILTER (WHERE is_branded), 0)::int AS actual_branded_runs,
+			coalesce(sum(actual_mentioned) FILTER (WHERE is_branded), 0)::int AS actual_branded_mentioned,
+			coalesce(sum(actual_runs) FILTER (WHERE NOT is_branded), 0)::int AS actual_nonbranded_runs,
+			coalesce(sum(actual_mentioned) FILTER (WHERE NOT is_branded), 0)::int AS actual_nonbranded_mentioned,
+			coalesce(sum(lvcf_runs) FILTER (WHERE is_branded), 0)::int AS lvcf_branded_runs,
+			coalesce(sum(lvcf_mentioned) FILTER (WHERE is_branded), 0)::int AS lvcf_branded_mentioned,
+			coalesce(sum(lvcf_runs) FILTER (WHERE NOT is_branded), 0)::int AS lvcf_nonbranded_runs,
+			coalesce(sum(lvcf_mentioned) FILTER (WHERE NOT is_branded), 0)::int AS lvcf_nonbranded_mentioned
 		FROM lvcf
 		GROUP BY date
 		ORDER BY date

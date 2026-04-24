@@ -10,12 +10,12 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { generateDateRange, getDaysFromLookback, applyPerPromptLVCF, type LookbackPeriod } from "@/lib/chart-utils";
+import { type LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
 	getBatchChartData,
 	getBatchVisibilityData,
-	getPerPromptVisibilityTimeSeries,
+	getVisibilityDailyAggregate,
 	getCitationsTotalCount,
 	type ProcessedBatchChartDataPoint,
 } from "@/lib/postgres-read";
@@ -228,62 +228,58 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			})
 			.map((p) => p.id);
 
-		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone);
-
-		const [perPromptVisibility, totalCitations] = await Promise.all([
-			getPerPromptVisibilityTimeSeries(
-				data.brandId,
-				fromDateStr,
-				toDateStr,
-				timezone,
-				data.promptIds,
-				data.model,
-			),
-			fromDateStr && toDateStr
-				? getCitationsTotalCount(data.brandId, fromDateStr, toDateStr, timezone, data.promptIds, data.model)
-				: Promise.resolve(0),
-		]);
-
-		// Generate date range (needed before LVCF)
-		const rawDates = perPromptVisibility.map((r) => String(r.date)).sort();
-		let startDate: Date;
-		let endDate: Date;
-
-		if (lookbackParam === "all" && rawDates.length > 0) {
-			startDate = new Date(rawDates[0]);
-			endDate = new Date(rawDates[rawDates.length - 1]);
-		} else {
-			const daysToSubtract = getDaysFromLookback(lookbackParam);
-			const currentDateInTimezone = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
-			endDate = new Date(currentDateInTimezone);
-			startDate = new Date(endDate);
-			startDate.setDate(startDate.getDate() - (daysToSubtract - 1));
+		// `getTimezoneLookbackRange` returns null bounds for "all"; the chart
+		// side caps that to a one-year window via allStrategy, and the
+		// visibility bar matches so the two panels agree.
+		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(
+			lookbackParam,
+			timezone,
+			{ allStrategy: "1y" },
+		);
+		if (!fromDate || !toDate) {
+			return {
+				currentVisibility: 0,
+				totalRuns: 0,
+				totalPrompts,
+				totalCitations: 0,
+				visibilityTimeSeries: [],
+				lookback: lookbackParam,
+			};
 		}
 
-		const dateRange = generateDateRange(startDate, endDate);
+		const [daily, totalCitations] = await Promise.all([
+			getVisibilityDailyAggregate(
+				data.brandId,
+				fromDate,
+				toDate,
+				timezone,
+				data.promptIds,
+				brandedPromptIds,
+				data.model,
+			),
+			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, data.promptIds, data.model),
+		]);
 
-		// Process visibility via per-prompt LVCF smoothing
-		const {
-			dailyVisibilityMap,
-			totalBrandedRuns,
-			totalBrandedMentioned,
-			totalNonBrandedRuns,
-			totalNonBrandedMentioned,
-		} = applyPerPromptLVCF(perPromptVisibility, dateRange, brandedPromptIds);
+		// Roll the period totals from the raw observation sums (actual_*);
+		// the visibility time-series uses the per-day LVCF sums so gaps in
+		// individual prompt schedules don't scallop the line.
+		let totalBrandedRuns = 0;
+		let totalBrandedMentioned = 0;
+		let totalNonBrandedRuns = 0;
+		let totalNonBrandedMentioned = 0;
+		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
+			totalBrandedRuns += row.actual_branded_runs;
+			totalBrandedMentioned += row.actual_branded_mentioned;
+			totalNonBrandedRuns += row.actual_nonbranded_runs;
+			totalNonBrandedMentioned += row.actual_nonbranded_mentioned;
+			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
+			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
+			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
+		});
 
 		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
 		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
 		const currentVisibility = totalRuns > 0 ? Math.round((totalMentioned / totalRuns) * 100) : 0;
-
-		// Build visibility time series directly from LVCF-smoothed data
-		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = dateRange.map((date) => {
-			const d = dailyVisibilityMap.get(date);
-			if (!d) return { date, visibility: null };
-			const t = d.branded.total + d.nonBranded.total;
-			const m = d.branded.mentioned + d.nonBranded.mentioned;
-			if (t === 0) return { date, visibility: null };
-			return { date, visibility: Math.round((m / t) * 100) };
-		});
 
 		return {
 			currentVisibility,
