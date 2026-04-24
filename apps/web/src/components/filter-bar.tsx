@@ -18,21 +18,13 @@ import { ChevronDown, Search, Tag as TagIcon, Clock, X } from "lucide-react";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { useBrand } from "@/hooks/use-brands";
 import { getModelMeta } from "@workspace/lib/providers/models";
+export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
+import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
  *  model ids, so we don't constrain this to a literal union. */
 export type ModelFilterValue = string;
-export const ALL_MODELS_VALUE = "all";
-
-/** Build the dropdown option list from the brand's effective models.
- *  The server resolves `brand.enabledModels` against `SCRAPE_TARGETS` and
- *  hands us the list this brand actually runs — we just layer "All" on top
- *  when there's more than one option. A single-model brand gets no "all"
- *  entry since the filter is redundant (callers hide the dropdown entirely). */
-export function getAvailableModels(effectiveModels: readonly string[]): string[] {
-	return effectiveModels.length > 1 ? [ALL_MODELS_VALUE, ...effectiveModels] : [...effectiveModels];
-}
 
 // Parsers stay plain — each interactive handler opens its own
 // `startTransition` scope so the URL update *and* the `useOptimistic`

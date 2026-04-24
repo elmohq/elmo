@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { getAvailableModels, ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 describe("getAvailableModels", () => {
 	it("returns an empty list for an empty input", () => {
