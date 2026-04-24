@@ -100,6 +100,11 @@ export interface ClientConfig {
   analytics: AnalyticsConfig;
   /** Resolved default prompt cadence (hours) for brands without a delayOverrideHours */
   defaultDelayHours: number;
+  /**
+   * Whether /auth/register should be reachable. True only in local mode
+   * when no user exists yet. Demo/whitelabel always false.
+   */
+  canRegister: boolean;
 }
 
 // ============================================================================

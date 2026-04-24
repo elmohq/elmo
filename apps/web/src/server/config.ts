@@ -6,6 +6,7 @@ import { getDeployment } from "@/lib/config/server";
 import type { ClientConfig } from "@workspace/config/types";
 import { getEnvValidationState } from "@workspace/config/env";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { countUsers } from "@workspace/lib/db/provisioning";
 
 export type PublicClientConfig = Omit<ClientConfig, "branding"> & {
 	branding: Omit<ClientConfig["branding"], "onboardingRedirectUrl">;
@@ -32,6 +33,10 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 
 	const { onboardingRedirectUrl, ...serializableBranding } = deployment.branding;
 
+	// Register is only reachable in local mode before the first user signs up.
+	// Once the instance is bootstrapped, both the UI and API reject signups.
+	const canRegister = deployment.mode === "local" && (await countUsers()) === 0;
+
 	return {
 		mode: deployment.mode,
 		features: deployment.features,
@@ -42,6 +47,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 			posthogKey: resolvePosthogKey(),
 		},
 		defaultDelayHours: getDefaultDelayHours(),
+		canRegister,
 	};
 });
 

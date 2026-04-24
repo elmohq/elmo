@@ -40,12 +40,19 @@ function LoginPage() {
 	const { returnTo } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode;
+	const canRegister = context.clientConfig?.canRegister ?? false;
 
 	if (mode === "whitelabel") {
 		return <SSOLogin returnTo={returnTo} />;
 	}
 
-	return <EmailPasswordLogin returnTo={returnTo} isDemo={mode === "demo"} />;
+	return (
+		<EmailPasswordLogin
+			returnTo={returnTo}
+			isDemo={mode === "demo"}
+			canRegister={canRegister}
+		/>
+	);
 }
 
 function SSOLogin({ returnTo }: { returnTo?: string }) {
@@ -91,7 +98,15 @@ function SSOLogin({ returnTo }: { returnTo?: string }) {
 	);
 }
 
-export function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; isDemo?: boolean }) {
+export function EmailPasswordLogin({
+	returnTo,
+	isDemo,
+	canRegister,
+}: {
+	returnTo?: string;
+	isDemo?: boolean;
+	canRegister?: boolean;
+}) {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState(isDemo ? "demo@elmohq.com" : "");
 	const [password, setPassword] = useState(isDemo ? "demo" : "");
@@ -164,7 +179,7 @@ export function EmailPasswordLogin({ returnTo, isDemo }: { returnTo?: string; is
 					{loading ? "Signing in..." : "Sign in"}
 				</Button>
 			</form>
-			{!isDemo && (
+			{!isDemo && canRegister && (
 				<p className="text-center text-sm text-muted-foreground pt-4">
 					Don't have an account?{" "}
 					<Link

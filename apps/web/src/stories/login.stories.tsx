@@ -14,5 +14,8 @@ export default {
 /** Demo mode — shows the pre-filled credentials callout. */
 export const Demo = () => <EmailPasswordLogin isDemo />;
 
-/** Standard (local/cloud) — no demo callout, empty fields. */
-export const Standard = () => <EmailPasswordLogin />;
+/** Local — empty fields, "Create one" register link visible (instance unbootstrapped). */
+export const StandardUnbootstrapped = () => <EmailPasswordLogin canRegister />;
+
+/** Local — after the single user has signed up; register link hidden. */
+export const StandardBootstrapped = () => <EmailPasswordLogin />;

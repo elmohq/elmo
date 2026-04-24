@@ -32,7 +32,7 @@ function RegisterPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
-	if (context.clientConfig?.mode === "whitelabel") {
+	if (!context.clientConfig?.canRegister) {
 		window.location.href = "/auth/login";
 		return null;
 	}
