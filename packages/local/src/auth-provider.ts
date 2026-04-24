@@ -12,7 +12,7 @@ import {
 	DEFAULT_APP_URL,
 	DEFAULT_CHART_COLORS,
 } from "@workspace/config/constants";
-import { getEnv, requireEnv } from "@workspace/config/env";
+import { getEnv } from "@workspace/config/env";
 import type { Deployment } from "@workspace/config/types";
 
 export function createLocalDeployment(
@@ -34,10 +34,6 @@ export function createLocalDeployment(
 			parentName: env.APP_PARENT_NAME,
 			parentUrl: env.APP_PARENT_URL,
 			chartColors: DEFAULT_CHART_COLORS,
-		},
-		defaultOrganization: {
-			id: requireEnv("DEFAULT_ORG_ID", env),
-			name: requireEnv("DEFAULT_ORG_NAME", env),
 		},
 	};
 }

@@ -77,10 +77,6 @@ export function createMockDeployment(
 			url: "http://localhost:3000",
 			chartColors: ["#3b82f6", "#10b981", "#f59e0b"],
 		},
-		defaultOrganization:
-			mode !== "whitelabel"
-				? { id: "default-org", name: "Default Org" }
-				: undefined,
 	};
 }
 

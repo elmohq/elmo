@@ -18,7 +18,6 @@ import FullPageCard from "@/components/full-page-card";
 const getOrganizations = createServerFn({ method: "GET" }).handler(async (): Promise<{
 	organizations: { id: string; name: string }[];
 	supportsMultiOrg: boolean;
-	defaultOrgId?: string;
 }> => {
 	const session = await requireAuthSession();
 	const deployment = getDeployment();
@@ -36,7 +35,6 @@ const getOrganizations = createServerFn({ method: "GET" }).handler(async (): Pro
 	return {
 		organizations,
 		supportsMultiOrg: deployment.features.supportsMultiOrg,
-		defaultOrgId: deployment.defaultOrganization?.id,
 	};
 });
 
@@ -57,12 +55,7 @@ export const Route = createFileRoute("/_authed/app/")({
 	loader: async () => {
 		const result = await getOrganizations();
 
-		// Single-org mode: redirect to default org
-		if (!result.supportsMultiOrg && result.defaultOrgId) {
-			throw redirect({ to: "/app/$brand", params: { brand: result.defaultOrgId } });
-		}
-
-		// Single-org mode with orgs but no default: redirect to first available
+		// Single-org mode: redirect to the user's one org (created on signup).
 		if (!result.supportsMultiOrg && result.organizations.length > 0) {
 			throw redirect({ to: "/app/$brand", params: { brand: result.organizations[0].id } });
 		}
