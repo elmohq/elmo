@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/component
 import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-react";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { useBrand } from "@/hooks/use-brands";
-import { iconForModel, labelForModel, publisherForModel } from "@/components/filter-bar";
+import { iconForModel } from "@/components/filter-bar";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 	head: ({ matches, match }) => {
@@ -74,30 +74,20 @@ function LlmsSettingsPage() {
 							</CardHeader>
 							<CardContent className="pt-2">
 								<div className="divide-y text-sm">
-									<ConfigRow label="Provider">
-										<span className="text-xs text-foreground">{publisherForModel(config.model)}</span>
+									<ConfigRow label="Model" tooltip="Which AI model this card covers.">
+										<span className="font-mono text-xs text-foreground">{config.model}</span>
 									</ConfigRow>
-									<ConfigRow label="Model">
-										<span className="text-xs text-foreground">{labelForModel(config.model)}</span>
+									<ConfigRow label="Provider" tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc.">
+										<span className="font-mono text-xs text-foreground">{config.provider}</span>
 									</ConfigRow>
-									<ConfigRow
-										label="Version"
-										tooltip="Exact upstream model version used by the scraping provider."
-									>
+									<ConfigRow label="Version" tooltip="Exact upstream model version requested from the provider.">
 										<span className="font-mono text-xs text-foreground">{config.version ?? "—"}</span>
 									</ConfigRow>
-									<ConfigRow
-										label="Web search"
-										tooltip={
-											config.webSearch
-												? "Responses include real-time information from the web."
-												: "Responses are based on the model's training data only."
-										}
-									>
+									<ConfigRow label="Web search" tooltip="Is web search used to answer prompts?">
 										{config.webSearch ? (
 											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
 										) : (
-											<IconCircleX className="h-4 w-4 text-red-600" />
+											<IconCircleX className="h-4 w-4 text-muted-foreground" />
 										)}
 										<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
 									</ConfigRow>

@@ -83,27 +83,6 @@ export function labelForModel(model: string): string {
 	return getModelMeta(model).label;
 }
 
-/** Human-readable publisher/vendor name for a model, derived from its iconId
- *  family. Unknown ids fall back to "Custom" since we don't know who made them. */
-export function publisherForModel(model: string): string {
-	const { iconId } = getModelMeta(model);
-	switch (iconId) {
-		case "openai":
-			return "OpenAI";
-		case "anthropic":
-			return "Anthropic";
-		case "google":
-			return "Google";
-		case "microsoft":
-			return "Microsoft";
-		case "perplexity":
-			return "Perplexity";
-		case "x":
-			return "xAI";
-		default:
-			return "Custom";
-	}
-}
 
 const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
 	{ value: "1w", label: "Last 7 days" },
