@@ -48,7 +48,9 @@ jobs:
         chatgpt:openrouter:openai/gpt-5-mini,
         chatgpt:openrouter:openai/gpt-5-mini:online,
         deepseek:openrouter:deepseek/deepseek-v3.2,
-        mistral:openrouter:mistralai/mistral-small-2603
+        mistral:openrouter:mistralai/mistral-small-2603,
+        mistral:mistral-api:mistral-medium-latest,
+        mistral:mistral-api:mistral-medium-latest:online
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
@@ -78,6 +80,7 @@ jobs:
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           DATAFORSEO_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
           DATAFORSEO_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
