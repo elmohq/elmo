@@ -14,7 +14,7 @@ The cost is one new minute-cadence worker job, four new tables + one state row, 
 
 ## Why we're doing this and not something else
 
-We benchmarked five other approaches against the production data; none of them broke the floor. Recapping briefly so the trade-off is on record:
+We benchmarked five query-layer approaches against production data; none of them broke the floor. Recapping briefly so the trade-off is on record:
 
 | Approach | What it does | Result |
 |---|---|---|
@@ -28,6 +28,20 @@ We benchmarked five other approaches against the production data; none of them b
 The pattern is consistent: we are CPU- and IO-bound on materializing the same row set on every request. The only way out is to stop materializing it on every request.
 
 Pre-aggregated tables are a one-line answer to that — keep the answer around so requests just look it up. Everything else is window-dressing.
+
+### Why a worker, not a Postgres materialized view
+
+Postgres materialized views are the obvious "Postgres-native" alternative to a worker-maintained table. We're not using them because:
+
+1. **`REFRESH MATERIALIZED VIEW` rebuilds the entire view from scratch.** There's no incremental refresh in vanilla Postgres — extensions like `pg_ivm` exist but Supabase doesn't ship them. Refreshing a view that aggregates 12.6 M source rows every minute would scan 12.6 M rows every minute. Our worker only re-aggregates `(brand, date)` buckets that actually had inserts since the last tick — typically 1–3 buckets per minute, ~150 ms of work. The whole performance argument depends on this scoping; matviews can't do it.
+2. **`REFRESH … CONCURRENTLY` requires a UNIQUE index and is slow.** It computes the new contents and diffs against the old, so it's actually *more* work than a non-concurrent refresh, just without the read lock. For our row counts it would still take many seconds per refresh.
+3. **Non-CONCURRENT `REFRESH` takes an `ACCESS EXCLUSIVE` lock on the view.** Every analytics page would hang waiting for the refresh to finish. Acceptable nightly, not at the per-minute cadence we want.
+4. **No partial state, no resumable backfill.** A matview is fully populated or empty. We need to backfill the historical rows for ~80 brands × hundreds of days each, and need it to be resumable across crashes / deploys / rate-limit pauses. With a regular table we own the cursor and the per-bucket transactions; with a matview, "backfill" is just one giant `REFRESH` that runs to completion or doesn't.
+5. **Schema evolution is destructive.** Adding a column to a matview means `DROP MATERIALIZED VIEW … CREATE MATERIALIZED VIEW … REFRESH MATERIALIZED VIEW …`, which loses the existing data and re-computes from scratch. With a regular table, `ALTER TABLE` adds the column nullable and the worker fills it on subsequent ticks.
+6. **Four derived datasets, one source-side scan budget.** We have aggregates at four different grains (per-(brand, prompt, hour, model, web_search), per-competitor, per-domain, per-URL). Four matviews would each refresh independently, each scanning the source from scratch. The worker does all four DELETE+INSERTs for a given `(brand, date)` bucket against the same already-warm source pages.
+7. **Observability and ops control.** The worker emits structured logs per tick, has an explicit state row, and we can reason about its cost (bounded by buckets-touched-per-minute). A matview refresh is a single opaque operation whose cost grows forever with the source table.
+
+Trigger-based incremental matviews (writing the per-row aggregate updates inline with `INSERT INTO prompt_runs`) would solve the staleness and the scan-cost problems, but at the cost of slowing down the write path on every prompt-run insert, plus a non-trivial trigger that has to handle all the edge cases the worker's `DELETE+INSERT` handles for free. Goal #3 (no changes to the write path) rules this out.
 
 ## Goals
 
@@ -384,22 +398,32 @@ Why not store category directly? The brand/competitor portion of the categorizat
 
 ## Backfill
 
-One-time job to populate the four tables from existing data. Safe to run while the system is live (it only inserts; no source rows are touched).
+One-time CLI script (`apps/worker/src/scripts/backfill-hourly-aggregates.ts`) that populates the four tables from existing data. Safe to run while the system is live — it only inserts into the new tables, no source rows are touched.
 
-```text
-For each brand_id (in order of total citation count, descending):
-    For each date in [brand's earliest run, today], batched into 7-day chunks:
-        Run the same aggregate-rebuild SQL the worker uses, but for the
-        whole 7-day chunk in one transaction.
-```
+**Resumable.** Progress is tracked in `aggregate_refresh_state`:
 
-Estimated runtime: at ~50 ms per (brand, date) bucket and ~80 brands × ~200 active days per brand on average × 1 day per bucket ≈ 16 K bucket-equivalents, so roughly **15–20 minutes** off-peak. Progress is reported to logs and to `aggregate_refresh_state`.
+- `backfill_started_at` — set on the first invocation; subsequent runs detect this and resume.
+- `backfill_cursor_brand_id` / `backfill_cursor_date` — advanced after each successfully-committed bucket.
+- `backfill_completed_at` — set when the iterator is exhausted; subsequent runs become no-ops.
 
-After the backfill completes:
+If the script crashes, gets killed by a deploy, hits a rate limit, etc., re-running it picks up at the next `(brand_id, date)` tuple after the cursor. The bucket-rebuild SQL is the same DELETE+INSERT shape the worker uses, so even if a tuple gets re-processed (e.g. cursor advance failed for a transient reason), the result is identical.
 
-1. Set `aggregate_refresh_state.last_refreshed_through = now()`.
-2. Enable the recurring worker job.
-3. Deploy the `postgres-read.ts` rewrites that point at the new tables.
+Iteration order is `ORDER BY brand_id, date` so the resume predicate is a tuple comparison `(brand_id, d) > (cursor_brand_id, cursor_date)`. This is deterministic across resumes because the snapshot cutoff (`backfill_started_at - 30 s`) is sticky once set, so the input set doesn't shift under us when source rows arrive during a long backfill.
+
+Estimated runtime: at ~50 ms per `(brand, date)` bucket and ~80 brands × ~200 active days per brand on average ≈ 16 K bucket-equivalents, so roughly **15–20 minutes** off-peak. Progress is logged at every 50 buckets.
+
+After the backfill completes the script:
+
+1. Sets `aggregate_refresh_state.backfill_completed_at = now()`.
+2. Sets `aggregate_refresh_state.last_refreshed_through = backfill_started_at`, so the live worker's first tick catches up the (typically small) gap from backfill start to deploy.
+
+Deploy ordering:
+
+1. Apply migration `0009_hourly_aggregates.sql` (creates the tables; seeds the singleton state row).
+2. Run the backfill script to completion.
+3. Merge the PR — deploys the worker (which schedules the per-minute refresh) and the read-path changes.
+
+The worker only starts after deploy, so no aggregate-vs-read-path race exists during backfill. Steps 1–2 can happen any time before step 3.
 
 ## Edge cases and invariants
 
@@ -441,4 +465,4 @@ The schema migration, backfill, and worker can all ship before the read-path cut
 
 ## Open questions
 
-1. Do we want the backfill script to run brand-by-brand and produce a runbook ("brand X is migrated") so a partial backfill can power the read path for early-migrated brands? Or treat backfill as all-or-nothing?
+(none — see "Backfill" above for the resilience approach, "Why a worker, not a Postgres materialized view" for the matview comparison.)

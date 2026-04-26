@@ -4,6 +4,7 @@ import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt"
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
 import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
 import { syncAuth0MembershipsJob, type SyncAuth0MembershipsData } from "./jobs/sync-auth0-memberships";
+import { refreshHourlyAggregatesJob, type RefreshHourlyAggregatesData } from "./jobs/refresh-hourly-aggregates";
 
 /** Wraps a pg-boss handler to report errors to Sentry before re-throwing. */
 function withSentry<T>(
@@ -47,6 +48,13 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("schedule-maintenance", scheduleMaintenanceJob),
 	);
 	console.log("Registered handler: schedule-maintenance");
+
+	await boss.work<RefreshHourlyAggregatesData>(
+		"refresh-hourly-aggregates",
+		{ localConcurrency: 1 },
+		withSentry("refresh-hourly-aggregates", refreshHourlyAggregatesJob),
+	);
+	console.log("Registered handler: refresh-hourly-aggregates");
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(
