@@ -456,6 +456,25 @@ The schema migration, backfill, and worker can all ship before the read-path cut
 - Worker emits structured logs per tick: `{ event: "refresh-hourly-aggregates.tick", buckets: N, ms: M, status }`. Errors are logged with the failing bucket so a partial failure can be investigated.
 - One Grafana / Datadog panel: `lag_seconds` over time. We expect it to oscillate around ~30 s.
 
+## Required follow-up
+
+**Drop the backfill cursor columns.** Once the one-time backfill has run successfully and we've confirmed correctness via the benchmark script (see `scripts/perf/bench-aggregate-vs-raw.ts`), the four `aggregate_refresh_state.backfill_*` columns no longer serve any purpose — the live worker never reads or writes them. Schedule a follow-up migration to drop them:
+
+```sql
+ALTER TABLE aggregate_refresh_state
+    DROP COLUMN backfill_started_at,
+    DROP COLUMN backfill_completed_at,
+    DROP COLUMN backfill_cursor_brand_id,
+    DROP COLUMN backfill_cursor_date;
+```
+
+Recommended ordering for shipping the whole change:
+1. Apply migration `0009_hourly_aggregates.sql`.
+2. Run the backfill to completion.
+3. Run `scripts/perf/bench-aggregate-vs-raw.ts` to confirm equivalence and measure speedup.
+4. Apply the column-drop migration.
+5. Merge the read-path cutover.
+
 ## Future enhancements (out of scope for v1)
 
 - **Move admin queries to aggregates.** Same pattern, slight schema additions (no `prompt_id` filter; brand-level aggregates).
