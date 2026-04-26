@@ -26,7 +26,6 @@ import { Route as AuthedAdminIndexRouteImport } from './routes/_authed/admin/ind
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedAppBrandRouteImport } from './routes/_authed/app/$brand'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
-import { Route as AuthedAdminWizardTestRouteImport } from './routes/_authed/admin/wizard-test'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
 import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
@@ -35,6 +34,8 @@ import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausib
 import { Route as AuthedAppBrandIndexRouteImport } from './routes/_authed/app/$brand/index'
 import { Route as ApiV1ReportsReportIdRouteImport } from './routes/api/v1/reports/$reportId'
 import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompts/$promptId'
+import { Route as ApiV1OnboardingBrandsRouteImport } from './routes/api/v1/onboarding/brands'
+import { Route as ApiV1OnboardingAnalyzeRouteImport } from './routes/api/v1/onboarding/analyze'
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
@@ -134,11 +135,6 @@ const AuthedAdminWorkflowsRoute = AuthedAdminWorkflowsRouteImport.update({
   path: '/workflows',
   getParentRoute: () => AuthedAdminRoute,
 } as any)
-const AuthedAdminWizardTestRoute = AuthedAdminWizardTestRouteImport.update({
-  id: '/wizard-test',
-  path: '/wizard-test',
-  getParentRoute: () => AuthedAdminRoute,
-} as any)
 const AuthedAdminToolsRoute = AuthedAdminToolsRouteImport.update({
   id: '/tools',
   path: '/tools',
@@ -177,6 +173,16 @@ const ApiV1ReportsReportIdRoute = ApiV1ReportsReportIdRouteImport.update({
 const ApiV1PromptsPromptIdRoute = ApiV1PromptsPromptIdRouteImport.update({
   id: '/api/v1/prompts/$promptId',
   path: '/api/v1/prompts/$promptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1OnboardingBrandsRoute = ApiV1OnboardingBrandsRouteImport.update({
+  id: '/api/v1/onboarding/brands',
+  path: '/api/v1/onboarding/brands',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1OnboardingAnalyzeRoute = ApiV1OnboardingAnalyzeRouteImport.update({
+  id: '/api/v1/onboarding/analyze',
+  path: '/api/v1/onboarding/analyze',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedReportsRenderReportIdRoute =
@@ -271,7 +277,6 @@ export interface FileRoutesByFullPath {
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
-  '/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -285,6 +290,8 @@ export interface FileRoutesByFullPath {
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
+  '/api/v1/onboarding/analyze': typeof ApiV1OnboardingAnalyzeRoute
+  '/api/v1/onboarding/brands': typeof ApiV1OnboardingBrandsRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/app/$brand/': typeof AuthedAppBrandIndexRoute
@@ -309,7 +316,6 @@ export interface FileRoutesByTo {
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
-  '/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin': typeof AuthedAdminIndexRoute
@@ -322,6 +328,8 @@ export interface FileRoutesByTo {
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
+  '/api/v1/onboarding/analyze': typeof ApiV1OnboardingAnalyzeRoute
+  '/api/v1/onboarding/brands': typeof ApiV1OnboardingBrandsRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/app/$brand': typeof AuthedAppBrandIndexRoute
@@ -351,7 +359,6 @@ export interface FileRoutesById {
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
-  '/_authed/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/_authed/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -365,6 +372,8 @@ export interface FileRoutesById {
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
+  '/api/v1/onboarding/analyze': typeof ApiV1OnboardingAnalyzeRoute
+  '/api/v1/onboarding/brands': typeof ApiV1OnboardingBrandsRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
   '/_authed/app/$brand/': typeof AuthedAppBrandIndexRoute
@@ -394,7 +403,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/auth/register'
     | '/admin/tools'
-    | '/admin/wizard-test'
     | '/admin/workflows'
     | '/app/$brand'
     | '/api/auth/$'
@@ -408,6 +416,8 @@ export interface FileRouteTypes {
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
+    | '/api/v1/onboarding/analyze'
+    | '/api/v1/onboarding/brands'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
     | '/app/$brand/'
@@ -432,7 +442,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/auth/register'
     | '/admin/tools'
-    | '/admin/wizard-test'
     | '/admin/workflows'
     | '/api/auth/$'
     | '/admin'
@@ -445,6 +454,8 @@ export interface FileRouteTypes {
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
+    | '/api/v1/onboarding/analyze'
+    | '/api/v1/onboarding/brands'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
     | '/app/$brand'
@@ -473,7 +484,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/auth/register'
     | '/_authed/admin/tools'
-    | '/_authed/admin/wizard-test'
     | '/_authed/admin/workflows'
     | '/_authed/app/$brand'
     | '/api/auth/$'
@@ -487,6 +497,8 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/citations'
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
+    | '/api/v1/onboarding/analyze'
+    | '/api/v1/onboarding/brands'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
     | '/_authed/app/$brand/'
@@ -516,6 +528,8 @@ export interface RootRouteChildren {
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
+  ApiV1OnboardingAnalyzeRoute: typeof ApiV1OnboardingAnalyzeRoute
+  ApiV1OnboardingBrandsRoute: typeof ApiV1OnboardingBrandsRoute
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
   ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
@@ -646,13 +660,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminWorkflowsRouteImport
       parentRoute: typeof AuthedAdminRoute
     }
-    '/_authed/admin/wizard-test': {
-      id: '/_authed/admin/wizard-test'
-      path: '/wizard-test'
-      fullPath: '/admin/wizard-test'
-      preLoaderRoute: typeof AuthedAdminWizardTestRouteImport
-      parentRoute: typeof AuthedAdminRoute
-    }
     '/_authed/admin/tools': {
       id: '/_authed/admin/tools'
       path: '/tools'
@@ -707,6 +714,20 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/prompts/$promptId'
       fullPath: '/api/v1/prompts/$promptId'
       preLoaderRoute: typeof ApiV1PromptsPromptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/onboarding/brands': {
+      id: '/api/v1/onboarding/brands'
+      path: '/api/v1/onboarding/brands'
+      fullPath: '/api/v1/onboarding/brands'
+      preLoaderRoute: typeof ApiV1OnboardingBrandsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/onboarding/analyze': {
+      id: '/api/v1/onboarding/analyze'
+      path: '/api/v1/onboarding/analyze'
+      fullPath: '/api/v1/onboarding/analyze'
+      preLoaderRoute: typeof ApiV1OnboardingAnalyzeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/reports/render/$reportId': {
@@ -812,14 +833,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthedAdminRouteChildren {
   AuthedAdminToolsRoute: typeof AuthedAdminToolsRoute
-  AuthedAdminWizardTestRoute: typeof AuthedAdminWizardTestRoute
   AuthedAdminWorkflowsRoute: typeof AuthedAdminWorkflowsRoute
   AuthedAdminIndexRoute: typeof AuthedAdminIndexRoute
 }
 
 const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
   AuthedAdminToolsRoute: AuthedAdminToolsRoute,
-  AuthedAdminWizardTestRoute: AuthedAdminWizardTestRoute,
   AuthedAdminWorkflowsRoute: AuthedAdminWorkflowsRoute,
   AuthedAdminIndexRoute: AuthedAdminIndexRoute,
 }
@@ -927,6 +946,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
+  ApiV1OnboardingAnalyzeRoute: ApiV1OnboardingAnalyzeRoute,
+  ApiV1OnboardingBrandsRoute: ApiV1OnboardingBrandsRoute,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
   ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,

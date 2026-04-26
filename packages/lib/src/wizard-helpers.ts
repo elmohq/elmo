@@ -1,15 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { anthropic } from "@ai-sdk/anthropic";
-import { generateText } from "ai";
 import * as client from "dataforseo-client";
 import { dfsLabsApi, dfsSerpApi } from "./dataforseo";
 import { getWebsiteExcerpt } from "./website-excerpt";
 import { MAX_COMPETITORS } from "./constants";
 import { isPromptBranded, computeSystemTags } from "./tag-utils";
-
-const anthropicClient = new Anthropic({
-	apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { runResearchPrompt, extractJsonFromText } from "./onboarding/llm";
 
 export interface AnalyzeWebsiteResult {
 	products: string[];
@@ -117,54 +111,30 @@ export async function checkDomainTraffic(domain: string): Promise<number> {
 	}
 }
 
-// Extract products from website analysis
+// Extract products from website analysis. Delegates to the provider-agnostic
+// onboarding research path so deployments without ANTHROPIC_API_KEY (e.g.
+// Olostep- or BrightData-only setups) still get product info.
 async function extractProducts(website: string): Promise<string[]> {
-	// Get website excerpt for additional context
 	const websiteExcerpt = await getWebsiteExcerpt(website);
 	const excerptContext = websiteExcerpt
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 		: "\n\n";
 
-	const prompt = `What kinds of products does ${website} sell? 
+	const prompt = `What kinds of products does ${website} sell?
 ${excerptContext}
 Use general categories, not branded names. For example, converse.com should return:
 <out>shoes,hi-tops,casual shoes</out>
 
 Be concise and output to a comma separated list contained within <out> xml tags. List up to 4.`;
 
-	const response = await anthropicClient.messages.create({
-		model: "claude-sonnet-4-20250514",
-		max_tokens: 1000,
-		messages: [
-			{
-				role: "user",
-				content: prompt,
-			},
-		],
-		tools: [
-			{
-				type: "web_search_20250305",
-				name: "web_search",
-				max_uses: 5,
-			},
-		],
-	});
-
-	// Extract text content from all text blocks in response
-	const textBlocks = response.content.filter((block) => block.type === "text");
-	const allTextContent = textBlocks.map((block) => block.text).join("\n");
-
-	// Extract content between <out> tags
-	const match = allTextContent.match(/<out>([\s\S]*?)<\/out>/);
-	const products = match
-		? match[1]
-				.split(",")
-				.map((p) => p.trim())
-				.filter((p) => p.length > 0)
-				.slice(0, 4)
-		: [];
-
-	return products;
+	const text = await runResearchPrompt(prompt);
+	const match = text.match(/<out>([\s\S]*?)<\/out>/);
+	if (!match) return [];
+	return match[1]
+		.split(",")
+		.map((p) => p.trim())
+		.filter((p) => p.length > 0)
+		.slice(0, 4);
 }
 
 // Analyze website to get products
@@ -220,24 +190,23 @@ function cleanDomain(domain: string): string {
 	}
 }
 
-// Get competitors for products and website
+// Get competitors for products and website. Provider-agnostic — uses whichever
+// LLM the deployment has configured (resolved by the onboarding module).
 export async function getCompetitors(products: string[], website: string): Promise<CompetitorResult[]> {
 	const productList = products.join(", ");
-
-	// Get website excerpt for additional context
 	const websiteExcerpt = await getWebsiteExcerpt(website);
 	const excerptContext = websiteExcerpt
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 		: "\n\n";
 
-	const prompt = `What are up to ${MAX_COMPETITORS} direct to consumer competitors of ${website} (which sells ${productList}). 
+	const prompt = `What are up to ${MAX_COMPETITORS} direct to consumer competitors of ${website} (which sells ${productList}).
 		${excerptContext}
 The competitors should sell similar products in a similar way to a similar audience.
 
-Please search for current market information to identify direct competitors. 
-For each competitor, provide both the company name and their website domain. 
-Format the output as a JSON array where each competitor is an object with "name" and "domain" fields. 
-The domain should be the main website domain (e.g., "example.com") without "https://" or "www.". 
+Please search for current market information to identify direct competitors.
+For each competitor, provide both the company name and their website domain.
+Format the output as a JSON array where each competitor is an object with "name" and "domain" fields.
+The domain should be the main website domain (e.g., "example.com") without "https://" or "www.".
 Contain the JSON within <out> xml tags. List up to ${MAX_COMPETITORS} competitors.
 
 Do not include competitors that sell similar types of products but would not be considered as direct competitors to ${website}.
@@ -251,55 +220,21 @@ Example format:
 ]
 </out>`;
 
-	const response = await anthropicClient.messages.create({
-		model: "claude-sonnet-4-20250514",
-		max_tokens: 10000,
-		messages: [
-			{
-				role: "user",
-				content: prompt,
-			},
-		],
-		tools: [
-			{
-				type: "web_search_20250305",
-				name: "web_search",
-				max_uses: 2,
-			},
-		],
-	});
-
-	// Extract text content from all text blocks in response
-	const textBlocks = response.content.filter((block) => block.type === "text");
-	const allTextContent = textBlocks.map((block) => block.text).join("\n");
-
-	// Extract content between <out> tags
-	const match = allTextContent.match(/<out>([\s\S]*?)<\/out>/);
 	let competitors: CompetitorResult[] = [];
-
-	if (match) {
-		try {
-			// Parse as JSON
-			const parsedCompetitors = JSON.parse(match[1].trim());
-			if (Array.isArray(parsedCompetitors)) {
-				competitors = parsedCompetitors
-					.filter((c) => c && typeof c === "object" && c.name && c.domain)
-					.map((c) => ({
-						name: c.name.trim(),
-						domain: cleanDomain(c.domain.trim()),
-					}))
-					.slice(0, MAX_COMPETITORS);
-			}
-		} catch (parseError) {
-			// Log error and return empty list
-			console.error("Failed to parse competitors JSON:", parseError);
-			console.error("Raw content:", match[1]);
-			competitors = [];
+	try {
+		const text = await runResearchPrompt(prompt);
+		const parsed = extractJsonFromText(text);
+		if (Array.isArray(parsed)) {
+			competitors = parsed
+				.filter((c) => c && typeof c === "object" && c.name && c.domain)
+				.map((c) => ({ name: String(c.name).trim(), domain: cleanDomain(String(c.domain).trim()) }))
+				.slice(0, MAX_COMPETITORS);
 		}
+	} catch (err) {
+		console.error("Failed to parse competitors JSON:", err);
 	}
 
 	console.log("GET-COMPETITORS OUTPUT:", { competitors });
-
 	return competitors;
 }
 
@@ -537,50 +472,29 @@ Format the output as JSON within <out> xml tags.
 </out>`;
 
 	try {
-		const response = await anthropicClient.messages.create({
-			model: "claude-sonnet-4-20250514",
-			max_tokens: 4000,
-			messages: [
-				{
-					role: "user",
-					content: prompt,
-				},
-			],
-		});
-
-		// Extract text content from all text blocks in response
-		const textBlocks = response.content.filter((block) => block.type === "text");
-		const allTextContent = textBlocks.map((block) => block.text).join("\n");
-
-		// Extract content between <out> tags
-		const match = allTextContent.match(/<out>([\s\S]*?)<\/out>/);
+		const text = await runResearchPrompt(prompt);
 		let relevantKeywords: KeywordResult[] = [];
 
-		if (match) {
-			try {
-				// Parse as JSON
-				const selectedKeywords = JSON.parse(match[1].trim());
-				if (Array.isArray(selectedKeywords)) {
-					// Map selected keywords back to original objects with volume/difficulty
-					relevantKeywords = selectedKeywords
-						.filter((keyword) => typeof keyword === "string")
-						.map((keyword) => {
-							const originalKeyword = allKeywords.find((k) => k.keyword === keyword.trim());
-							return originalKeyword
-								? {
-										keyword: originalKeyword.keyword,
-										search_volume: originalKeyword.search_volume,
-										difficulty: originalKeyword.difficulty,
-									}
-								: null;
-						})
-						.filter((k) => k !== null);
-				}
-			} catch (parseError) {
-				console.error("Failed to parse relevant keywords JSON:", parseError);
-				console.error("Raw content:", match[1]);
-				relevantKeywords = allKeywords;
+		try {
+			const selectedKeywords = extractJsonFromText(text);
+			if (Array.isArray(selectedKeywords)) {
+				relevantKeywords = selectedKeywords
+					.filter((keyword) => typeof keyword === "string")
+					.map((keyword) => {
+						const originalKeyword = allKeywords.find((k) => k.keyword === (keyword as string).trim());
+						return originalKeyword
+							? {
+									keyword: originalKeyword.keyword,
+									search_volume: originalKeyword.search_volume,
+									difficulty: originalKeyword.difficulty,
+								}
+							: null;
+					})
+					.filter((k): k is KeywordResult => k !== null);
 			}
+		} catch (parseError) {
+			console.error("Failed to parse relevant keywords JSON:", parseError);
+			relevantKeywords = allKeywords;
 		}
 
 		console.log("GET-RELEVANT-KEYWORDS OUTPUT:", {
@@ -590,7 +504,7 @@ Format the output as JSON within <out> xml tags.
 
 		return relevantKeywords;
 	} catch (error) {
-		console.error("Error getting relevant keywords from Anthropic:", error);
+		console.error("Error getting relevant keywords:", error);
 		return [];
 	}
 }
@@ -738,10 +652,7 @@ Format your response as:
 
 Only include suffixes that clearly fit into strategic categories. Ignore overly specific or unclear terms.`;
 
-	const { text } = await generateText({
-		model: anthropic("claude-sonnet-4-20250514"),
-		prompt,
-	});
+	const text = await runResearchPrompt(prompt);
 
 	console.log("text", text);
 
@@ -809,20 +720,7 @@ best affordable shoes,45,85
 ${brandName.toLowerCase()} best products,95,60`;
 
 	try {
-		const response = await anthropicClient.messages.create({
-			model: "claude-sonnet-4-20250514",
-			max_tokens: 8000,
-			messages: [
-				{
-					role: "user",
-					content: prompt,
-				},
-			],
-		});
-
-	// Extract text content from all text blocks in response
-	const textBlocks = response.content.filter((block) => block.type === "text");
-	const allTextContent = textBlocks.map((block) => block.text).join("\n");
+		const allTextContent = await runResearchPrompt(prompt);
 
 	// Extract CSV from markdown code blocks if present
 	let csvContent = allTextContent;

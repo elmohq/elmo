@@ -13,7 +13,7 @@ import {
 	getAdminBrandRunStats,
 	getAdminActiveBrandsOverTime,
 } from "@/lib/postgres-read";
-import { analyzeWebsite, getCompetitors, generateCandidatePromptsForReports } from "@workspace/lib/wizard-helpers";
+import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
@@ -192,74 +192,31 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	});
 
 // ============================================================================
-// Admin Tools - Analyze Domain
+// Admin Tools - Analyze Brand
 // ============================================================================
 
 /**
- * Analyze a domain: get products, traffic, and competitors.
+ * Provider-agnostic brand analysis. Returns brand info, competitors, and
+ * suggested prompts in a single LLM round-trip — same pipeline that the
+ * onboarding wizard and `/api/v1/onboarding/*` endpoints use.
  */
-export const adminAnalyzeDomainFn = createServerFn({ method: "POST" })
-	.inputValidator(z.object({ website: z.string().min(1) }))
-	.handler(async ({ data }) => {
-		await requireAdmin();
-		const analysisResult = await analyzeWebsite(data.website);
-		const competitors = await getCompetitors(analysisResult.products, data.website);
-		return {
-			products: analysisResult.products,
-			domainTraffic: analysisResult.domainTraffic,
-			skipDetailedAnalysis: analysisResult.skipDetailedAnalysis,
-			competitors,
-		};
-	});
-
-// ============================================================================
-// Admin Tools - Generate Prompts
-// ============================================================================
-
-function extractBrandName(website: string): string {
-	try {
-		const url = new URL(website.startsWith("http") ? website : `https://${website}`);
-		const hostname = url.hostname.replace(/^www\./, "");
-		const parts = hostname.split(".");
-		if (parts.length >= 2) {
-			return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-		}
-		return hostname;
-	} catch {
-		return website;
-	}
-}
-
-/**
- * Generate candidate prompts for a domain.
- */
-export const adminGeneratePromptsFn = createServerFn({ method: "POST" })
+export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.inputValidator(
 		z.object({
 			website: z.string().min(1),
 			brandName: z.string().optional(),
+			includeCompetitors: z.boolean().optional().default(true),
+			includePrompts: z.boolean().optional().default(true),
 		}),
 	)
 	.handler(async ({ data }) => {
 		await requireAdmin();
-
-		const analysisResult = await analyzeWebsite(data.website);
-		const competitors = await getCompetitors(analysisResult.products, data.website);
-		const name = data.brandName || extractBrandName(data.website);
-		const generatedPrompts = await generateCandidatePromptsForReports(
-			name,
-			data.website,
-			analysisResult.products,
-			competitors,
-		);
-
-		return {
-			brandName: name,
-			products: analysisResult.products,
-			domainTraffic: analysisResult.domainTraffic,
-			competitors,
-			prompts: generatedPrompts,
-		};
+		return analyzeBrand({
+			website: data.website,
+			brandName: data.brandName,
+			includeCompetitors: data.includeCompetitors,
+			includePrompts: data.includePrompts,
+		});
 	});
 
 // ============================================================================
