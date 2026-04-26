@@ -77,10 +77,12 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 
 	const outputs = Array.isArray(data?.outputs) ? data.outputs : [];
 	for (const entry of outputs) {
-		// Tool execution entries surface the search query when available.
-		if (entry?.type === "tool.execution" || entry?.type === "tool_execution") {
-			const query = entry?.arguments?.query ?? entry?.input?.query ?? entry?.query;
-			if (typeof query === "string" && query.trim()) webQueries.push(query);
+		// Tool execution entries surface the search query. `arguments` is a JSON-encoded
+		// string in the live response, but we also handle the parsed-object form defensively.
+		if ((entry?.type === "tool.execution" || entry?.type === "tool_execution") &&
+			(entry?.name === "web_search" || entry?.function === "web_search")) {
+			const query = extractMistralQuery(entry);
+			if (query) webQueries.push(query);
 		}
 
 		// Message output entries hold the model's text + reference chunks.
@@ -108,6 +110,16 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 
 	const textContent = texts.length > 0 ? texts.join("\n") : "No text content found in Mistral response.";
 	return { textContent, citations, webQueries };
+}
+
+function extractMistralQuery(entry: any): string | null {
+	const args = entry?.arguments;
+	let parsed: any = args;
+	if (typeof args === "string") {
+		try { parsed = JSON.parse(args); } catch { parsed = null; }
+	}
+	const query = parsed?.query ?? entry?.input?.query;
+	return typeof query === "string" && query.trim() ? query : null;
 }
 
 export const mistralApi: Provider = {
