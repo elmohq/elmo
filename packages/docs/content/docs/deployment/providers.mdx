@@ -3,7 +3,7 @@ title: Providers
 description: Choose how Elmo tracks each AI answer engine — scrapers, direct APIs, or both.
 ---
 
-Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
+Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, Mistral, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
 
 ## Recommended scrapers
 
@@ -65,6 +65,7 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 |---|---|---|
 | **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
 | **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
+| **Mistral API** (`MISTRAL_API_KEY`) | Mistral Small / Medium / Large, optional web search via the beta Conversations API | pass-through |
 | **OpenRouter** (`OPENROUTER_API_KEY`) | Any OpenRouter-hosted model (Claude, Llama, Mistral, etc.) | pass-through |
 
 \*Direct-API estimates also assume ~5 runs/day × 30 days = 150 calls/mo per tracked model, with typical prompt/response lengths. Prompt length drives real cost.
@@ -74,10 +75,11 @@ Example scrape targets:
 ```
 claude:anthropic-api:claude-sonnet-4-20250514
 chatgpt:openai-api:gpt-5-mini:online
+mistral:mistral-api:mistral-medium-latest:online
 claude:openrouter:anthropic/claude-sonnet-4.6
 ```
 
-OpenAI/Anthropic/OpenRouter entries all require a version slug as the third segment.
+OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
 
 ## DataForSEO (optional)
 
@@ -127,8 +129,8 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `gemini`, `perplexity`, `copilot`, `grok`).
-- `provider` — how to reach it (`brightdata`, `olostep`, `openai-api`, `anthropic-api`, `openrouter`, `dataforseo`).
-- `version` — required for `openai-api`, `anthropic-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
+- `provider` — how to reach it (`brightdata`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
+- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
 Entries are comma-separated.

@@ -48,7 +48,7 @@ export function validateScrapeTargets(
 			throw new Error(
 				`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured (see docs)`,
 			);
-		if ((config.provider === "openai-api" || config.provider === "anthropic-api" || config.provider === "openrouter") && !config.version)
+		if ((config.provider === "openai-api" || config.provider === "anthropic-api" || config.provider === "mistral-api" || config.provider === "openrouter") && !config.version)
 			throw new Error(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
 		const targetError = provider.validateTarget?.(config);
 		if (targetError)

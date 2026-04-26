@@ -78,6 +78,7 @@ function formatProvider(provider: string) {
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
+		"mistral-api": "Mistral API",
 		openrouter: "OpenRouter",
 	};
 	return names[provider] || provider;
@@ -436,7 +437,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 			<div className="flex items-center justify-between">
 				<div>
 					<span className="font-medium">{formatProvider(provider)}</span>
-					{rest && <span className="text-muted-foreground"> ({["openrouter", "openai-api", "anthropic-api"].includes(provider) ? rest : rest.replace(/online/g, "web search")})</span>}
+					{rest && <span className="text-muted-foreground"> ({["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider) ? rest : rest.replace(/online/g, "web search")})</span>}
 				</div>
 				<UptimeBadge entries={deduped} />
 			</div>

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useOptimistic, useRef, useState, useMemo, startTransition } from "react";
 import { useQueryState, parseAsArrayOf, parseAsString } from "nuqs";
-import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot } from "react-icons/si";
+import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot, SiMistralai } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
 import { Sparkles } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
@@ -65,6 +65,8 @@ export function iconForModel(model: string, className = "size-3.5") {
 			return <SiPerplexity className={className} />;
 		case "x":
 			return <SiX className={className} />;
+		case "mistral":
+			return <SiMistralai className={className} />;
 		default:
 			return <Sparkles className={className} />;
 	}
