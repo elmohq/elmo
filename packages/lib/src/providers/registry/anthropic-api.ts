@@ -1,7 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
+import type { LanguageModel } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
 import type { Provider, ScrapeResult, ProviderOptions } from "../types";
 import type { Citation } from "../../text-extraction";
+
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-20250514";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -124,13 +128,24 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 export const anthropicApi: Provider = {
 	id: "anthropic-api",
 	name: "Anthropic API",
+	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.ANTHROPIC_API_KEY;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const version = options?.version ?? "claude-sonnet-4-20250514";
+		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
 		return runAnthropic(prompt, version, options);
+	},
+
+	languageModel(model = DEFAULT_RESEARCH_MODEL): LanguageModel {
+		// Use the default exported provider when the env var matches what
+		// `@ai-sdk/anthropic` reads at import time; otherwise instantiate one
+		// explicitly so tests / non-standard envs still work.
+		if (process.env.ANTHROPIC_API_KEY) {
+			return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model);
+		}
+		return anthropic(model);
 	},
 };

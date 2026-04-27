@@ -1,7 +1,9 @@
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { openai, createOpenAI } from "@ai-sdk/openai";
+import { generateText, type LanguageModel } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
 import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+
+const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -45,13 +47,21 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 export const openaiApi: Provider = {
 	id: "openai-api",
 	name: "OpenAI API",
+	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.OPENAI_API_KEY;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const version = options?.version ?? "gpt-5-mini";
+		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
 		return runOpenAI(prompt, version, options);
+	},
+
+	languageModel(model = DEFAULT_RESEARCH_MODEL): LanguageModel {
+		if (process.env.OPENAI_API_KEY) {
+			return createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(model);
+		}
+		return openai(model);
 	},
 };

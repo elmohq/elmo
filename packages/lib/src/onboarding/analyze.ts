@@ -13,9 +13,8 @@
  * stay for the report worker but no longer block onboarding.
  */
 import { z } from "zod";
-import type { ModelConfig } from "../providers";
 import { getWebsiteExcerpt } from "../website-excerpt";
-import { runStructuredResearchPrompt, resolveOnboardingTarget } from "./llm";
+import { runStructuredResearchPrompt, resolveResearchTarget, type ResearchTarget } from "./llm";
 import {
 	cleanAndValidateDomain,
 	cleanDomain,
@@ -86,7 +85,7 @@ export interface AnalyzeBrandOptions {
 	includePrompts?: boolean;
 	maxCompetitors?: number;
 	maxPrompts?: number;
-	target?: ModelConfig;
+	target?: ResearchTarget;
 }
 
 const DEFAULT_MAX_COMPETITORS = 10;
@@ -121,7 +120,7 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 		maxPrompts,
 	});
 
-	const resolvedTarget = target ?? resolveOnboardingTarget();
+	const resolvedTarget = target ?? resolveResearchTarget();
 	const raw = await runStructuredResearchPrompt(prompt, {
 		schema: onboardingSuggestionSchema,
 		target: resolvedTarget,

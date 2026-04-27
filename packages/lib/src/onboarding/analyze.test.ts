@@ -2,11 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 // Mock the LLM and excerpt modules so the test exercises only normalization.
 vi.mock("./llm", () => ({
-	resolveOnboardingTarget: vi.fn(() => ({
-		model: "claude",
-		provider: "anthropic-api",
-		version: "claude-sonnet-4-20250514",
-		webSearch: true,
+	resolveResearchTarget: vi.fn(() => ({
+		provider: { id: "anthropic-api", isConfigured: () => true } as any,
+		model: "claude-sonnet-4-20250514",
 	})),
 	runStructuredResearchPrompt: vi.fn(),
 }));

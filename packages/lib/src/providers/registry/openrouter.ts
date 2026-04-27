@@ -1,7 +1,11 @@
+import { createOpenAI } from "@ai-sdk/openai";
+import type { LanguageModel } from "ai";
 import type { Provider, ScrapeResult, ProviderOptions } from "../types";
 import type { Citation } from "../../text-extraction";
 
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
+const DEFAULT_RESEARCH_MODEL = "google/gemini-2.5-flash";
 
 function extractTextFromOpenRouterResponse(data: any): string {
 	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -49,9 +53,26 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 export const openrouter: Provider = {
 	id: "openrouter",
 	name: "OpenRouter",
+	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.OPENROUTER_API_KEY;
+	},
+
+	languageModel(model = DEFAULT_RESEARCH_MODEL): LanguageModel {
+		// OpenRouter is OpenAI-compatible — feed the AI SDK's OpenAI provider
+		// at the OpenRouter baseURL. Modern routes (GPT-5, Claude, Gemini 2.5)
+		// all support `response_format: json_schema`, which is what the AI SDK
+		// uses for `generateObject` under the hood.
+		const provider = createOpenAI({
+			baseURL: OPENROUTER_BASE_URL,
+			apiKey: process.env.OPENROUTER_API_KEY,
+			headers: {
+				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
+				"X-Title": "Elmo AEO",
+			},
+		});
+		return provider(model);
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

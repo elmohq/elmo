@@ -1,10 +1,36 @@
-import { describe, expect, it } from "vitest";
-import { extractJsonFromText, resolveOnboardingTarget } from "./llm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractJsonFromText, resolveResearchTarget } from "./llm";
+
+const ENV_KEYS = [
+	"ONBOARDING_LLM_TARGET",
+	"ANTHROPIC_API_KEY",
+	"OPENAI_API_KEY",
+	"OPENROUTER_API_KEY",
+	"OLOSTEP_API_KEY",
+	"BRIGHTDATA_API_TOKEN",
+];
+
+const savedEnv: Record<string, string | undefined> = {};
+
+beforeEach(() => {
+	// Snapshot then clear so each test gets a clean slate.
+	for (const key of ENV_KEYS) {
+		savedEnv[key] = process.env[key];
+		delete process.env[key];
+	}
+});
+
+afterEach(() => {
+	for (const key of ENV_KEYS) {
+		const v = savedEnv[key];
+		if (v === undefined) delete process.env[key];
+		else process.env[key] = v;
+	}
+});
 
 describe("extractJsonFromText", () => {
 	it("extracts JSON from <out> tags", () => {
-		const text = `Here is your data:\n<out>\n{ "foo": "bar" }\n</out>\nDone.`;
-		expect(extractJsonFromText(text)).toEqual({ foo: "bar" });
+		expect(extractJsonFromText(`<out>{"foo":"bar"}</out>`)).toEqual({ foo: "bar" });
 	});
 
 	it("extracts JSON from a fenced code block", () => {
@@ -36,54 +62,68 @@ describe("extractJsonFromText", () => {
 	});
 });
 
-describe("resolveOnboardingTarget", () => {
+describe("resolveResearchTarget", () => {
 	it("uses the explicit env override when set", () => {
-		const target = resolveOnboardingTarget({
-			ONBOARDING_LLM_TARGET: "claude:anthropic-api:claude-sonnet-4-20250514:online",
+		process.env.ANTHROPIC_API_KEY = "x"; // ONBOARDING_LLM_TARGET points at this provider
+		const target = resolveResearchTarget({
+			ANTHROPIC_API_KEY: "x",
+			ONBOARDING_LLM_TARGET: "claude:anthropic-api:claude-3-5-haiku-20241022",
 		});
-		expect(target).toEqual({
-			model: "claude",
-			provider: "anthropic-api",
-			version: "claude-sonnet-4-20250514",
-			webSearch: true,
-		});
+		expect(target.provider.id).toBe("anthropic-api");
+		expect(target.model).toBe("claude-3-5-haiku-20241022");
 	});
 
-	it("prefers Anthropic when only ANTHROPIC_API_KEY is set", () => {
-		const target = resolveOnboardingTarget({ ANTHROPIC_API_KEY: "x" });
-		expect(target.provider).toBe("anthropic-api");
-		expect(target.webSearch).toBe(true);
+	it("throws when ONBOARDING_LLM_TARGET points at an unconfigured provider", () => {
+		expect(() =>
+			resolveResearchTarget({
+				ONBOARDING_LLM_TARGET: "chatgpt:openai-api:gpt-5-mini",
+			}),
+		).toThrow(/isn't configured/);
 	});
 
-	it("falls back to OpenAI when only OPENAI_API_KEY is set", () => {
-		const target = resolveOnboardingTarget({ OPENAI_API_KEY: "x" });
-		expect(target.provider).toBe("openai-api");
+	it("prefers Anthropic when ANTHROPIC_API_KEY is set", () => {
+		process.env.ANTHROPIC_API_KEY = "x";
+		const target = resolveResearchTarget({ ANTHROPIC_API_KEY: "x" });
+		expect(target.provider.id).toBe("anthropic-api");
+		expect(target.model).toBe("claude-sonnet-4-20250514");
 	});
 
-	it("falls back to OpenRouter Gemini when only OPENROUTER_API_KEY is set", () => {
-		const target = resolveOnboardingTarget({ OPENROUTER_API_KEY: "x" });
-		expect(target).toMatchObject({ provider: "openrouter", model: "gemini" });
+	it("prefers OpenAI over OpenRouter when both are set but Anthropic isn't", () => {
+		process.env.OPENAI_API_KEY = "x";
+		process.env.OPENROUTER_API_KEY = "y";
+		const target = resolveResearchTarget({ OPENAI_API_KEY: "x", OPENROUTER_API_KEY: "y" });
+		expect(target.provider.id).toBe("openai-api");
 	});
 
-	it("falls back to Olostep Gemini when only OLOSTEP_API_KEY is set", () => {
-		const target = resolveOnboardingTarget({ OLOSTEP_API_KEY: "x" });
-		expect(target).toMatchObject({ provider: "olostep", model: "gemini" });
+	it("falls back to OpenRouter Gemini when only OpenRouter is set", () => {
+		process.env.OPENROUTER_API_KEY = "x";
+		const target = resolveResearchTarget({ OPENROUTER_API_KEY: "x" });
+		expect(target.provider.id).toBe("openrouter");
+		expect(target.model).toBe("google/gemini-2.5-flash");
 	});
 
-	it("falls back to BrightData Gemini when only BRIGHTDATA_API_TOKEN is set", () => {
-		const target = resolveOnboardingTarget({ BRIGHTDATA_API_TOKEN: "x" });
-		expect(target).toMatchObject({ provider: "brightdata", model: "gemini" });
+	it("falls back to Olostep Gemini when only Olostep is set", () => {
+		process.env.OLOSTEP_API_KEY = "x";
+		const target = resolveResearchTarget({ OLOSTEP_API_KEY: "x" });
+		expect(target.provider.id).toBe("olostep");
+		expect(target.model).toBe("gemini");
+	});
+
+	it("falls back to BrightData Gemini when only BrightData is set", () => {
+		process.env.BRIGHTDATA_API_TOKEN = "x";
+		const target = resolveResearchTarget({ BRIGHTDATA_API_TOKEN: "x" });
+		expect(target.provider.id).toBe("brightdata");
+		expect(target.model).toBe("gemini");
+	});
+
+	it("prefers direct APIs over scrapers", () => {
+		process.env.OPENROUTER_API_KEY = "x";
+		process.env.OLOSTEP_API_KEY = "y";
+		const target = resolveResearchTarget({ OPENROUTER_API_KEY: "x", OLOSTEP_API_KEY: "y" });
+		expect(target.provider.id).toBe("openrouter");
 	});
 
 	it("throws when no provider is configured", () => {
-		expect(() => resolveOnboardingTarget({})).toThrow(/at least one LLM provider/);
-	});
-
-	it("respects the ONBOARDING_ANTHROPIC_MODEL override", () => {
-		const target = resolveOnboardingTarget({
-			ANTHROPIC_API_KEY: "x",
-			ONBOARDING_ANTHROPIC_MODEL: "claude-3-5-haiku-20241022",
-		});
-		expect(target.version).toBe("claude-3-5-haiku-20241022");
+		expect(() => resolveResearchTarget({})).toThrow(/at least one LLM provider/);
 	});
 });

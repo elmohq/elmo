@@ -6,10 +6,11 @@ export {
 	type OnboardingSuggestion,
 } from "./analyze";
 export {
-	resolveOnboardingTarget,
+	resolveResearchTarget,
 	runResearchPrompt,
 	runStructuredResearchPrompt,
 	extractJsonFromText,
+	type ResearchTarget,
 } from "./llm";
 export {
 	cleanAndValidateDomain as cleanAndValidateOnboardingDomain,
