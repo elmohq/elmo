@@ -168,6 +168,10 @@ async function main(): Promise<void> {
 	await waitFor("Enable the web_search_preview tool?");
 	await send(ENTER); // Yes — chatgpt:openai-api:gpt-5-mini:online
 
+	// Mistral confirm (default No) → No
+	await waitFor("Configure Mistral API?");
+	await send(ENTER);
+
 	// OpenRouter confirm (default No) → No
 	await waitFor("Configure OpenRouter?");
 	await send(ENTER);

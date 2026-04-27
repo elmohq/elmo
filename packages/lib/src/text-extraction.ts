@@ -70,6 +70,26 @@ export function extractTextFromDataforseo(rawOutput: any): string {
 	}
 }
 
+export function extractTextFromMistral(rawOutput: any): string {
+	try {
+		// Conversations API (web search enabled): outputs[].content[].text chunks.
+		if (Array.isArray(rawOutput?.outputs)) {
+			const texts: string[] = [];
+			for (const entry of rawOutput.outputs) {
+				for (const chunk of entry?.content ?? []) {
+					if (chunk?.type === "text" && typeof chunk.text === "string") texts.push(chunk.text);
+				}
+			}
+			if (texts.length) return texts.join("\n");
+		}
+		// Chat Completions API (no web search): OpenAI-shaped.
+		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
+		return "No text content found in Mistral output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
 export function extractTextFromOpenRouter(rawOutput: any): string {
 	try {
 		if (rawOutput?.choices?.[0]?.message?.content) return rawOutput.choices[0].message.content;
@@ -130,6 +150,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 		case "anthropic":
 		case "claude":
 			return extractTextFromAnthropic(rawOutput);
+		case "mistral-api":
+			return extractTextFromMistral(rawOutput);
 		case "dataforseo":
 		case "google":
 		case "google-ai-mode":
@@ -220,6 +242,27 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 					const c = parseCitationUrl(ref.url, ref.title, idx);
 					if (c) { citations.push(c); idx++; }
 				}
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+export function extractCitationsFromMistral(rawOutput: any): Citation[] {
+	try {
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+		const outputs = Array.isArray(rawOutput?.outputs) ? rawOutput.outputs : [];
+		for (const entry of outputs) {
+			for (const chunk of entry?.content ?? []) {
+				if (chunk?.type !== "tool_reference" || typeof chunk.url !== "string") continue;
+				if (seen.has(chunk.url)) continue;
+				seen.add(chunk.url);
+				const c = parseCitationUrl(chunk.url, chunk.title, idx);
+				if (c) { citations.push(c); idx++; }
 			}
 		}
 		return citations;
@@ -351,6 +394,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 		case "anthropic":
 		case "claude":
 			return extractCitationsFromAnthropic(rawOutput);
+		case "mistral-api":
+			return extractCitationsFromMistral(rawOutput);
 		default:
 			return [];
 	}

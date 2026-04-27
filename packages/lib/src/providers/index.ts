@@ -3,6 +3,7 @@ import { olostep } from "./registry/olostep";
 import { brightdata } from "./registry/brightdata";
 import { openaiApi } from "./registry/openai-api";
 import { anthropicApi } from "./registry/anthropic-api";
+import { mistralApi } from "./registry/mistral-api";
 import { dataforseo } from "./registry/dataforseo";
 import { openrouter } from "./registry/openrouter";
 
@@ -17,6 +18,7 @@ const providerMap: Record<string, Provider> = {
 	brightdata,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
+	"mistral-api": mistralApi,
 	dataforseo,
 	openrouter,
 };

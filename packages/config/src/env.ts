@@ -8,6 +8,7 @@ const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
 	openrouter: { keys: ["OPENROUTER_API_KEY"], label: "OPENROUTER_API_KEY" },
 	"openai-api": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
 	"anthropic-api": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
+	"mistral-api": { keys: ["MISTRAL_API_KEY"], label: "MISTRAL_API_KEY" },
 	dataforseo: { keys: ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"], label: "DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD" },
 };
 

@@ -404,6 +404,7 @@ const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
+const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
 async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 	p.note(
@@ -436,6 +437,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 	}
 	await collectAnthropic(env, targets);
 	await collectOpenAI(env, targets);
+	await collectMistral(env, targets);
 	await collectOpenRouter(env, targets);
 	await collectDataForSEO(env, targets);
 
@@ -590,6 +592,38 @@ async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
 	assertNotCancelled(webSearch);
 
 	targets.push(webSearch ? `chatgpt:openai-api:${slug}:online` : `chatgpt:openai-api:${slug}`);
+}
+
+async function collectMistral(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("Mistral API")}? (direct Mistral models)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const key = await p.password({
+		message: "Mistral API key",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.MISTRAL_API_KEY = key;
+
+	const model = await p.text({
+		message: "Mistral model",
+		placeholder: DEFAULT_MISTRAL_MODEL,
+		defaultValue: DEFAULT_MISTRAL_MODEL,
+	});
+	assertNotCancelled(model);
+	const slug = model || DEFAULT_MISTRAL_MODEL;
+
+	const webSearch = await p.confirm({
+		message: "Enable Mistral's web search tool? (uses the beta Conversations API)",
+		initialValue: true,
+	});
+	assertNotCancelled(webSearch);
+
+	targets.push(webSearch ? `mistral:mistral-api:${slug}:online` : `mistral:mistral-api:${slug}`);
 }
 
 async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> {
