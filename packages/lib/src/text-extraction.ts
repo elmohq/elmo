@@ -151,7 +151,6 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 		case "claude":
 			return extractTextFromAnthropic(rawOutput);
 		case "mistral-api":
-		case "mistral":
 			return extractTextFromMistral(rawOutput);
 		case "dataforseo":
 		case "google":
@@ -396,7 +395,6 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 		case "claude":
 			return extractCitationsFromAnthropic(rawOutput);
 		case "mistral-api":
-		case "mistral":
 			return extractCitationsFromMistral(rawOutput);
 		default:
 			return [];
