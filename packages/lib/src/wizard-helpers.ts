@@ -3,7 +3,7 @@ import { dfsLabsApi, dfsSerpApi } from "./dataforseo";
 import { getWebsiteExcerpt } from "./website-excerpt";
 import { MAX_COMPETITORS } from "./constants";
 import { isPromptBranded, computeSystemTags } from "./tag-utils";
-import { runResearchPrompt, extractJsonFromText } from "./onboarding/llm";
+import { runResearchPrompt, parseRobustJson } from "./onboarding/llm";
 
 export interface AnalyzeWebsiteResult {
 	products: string[];
@@ -223,7 +223,7 @@ Example format:
 	let competitors: CompetitorResult[] = [];
 	try {
 		const text = await runResearchPrompt(prompt);
-		const parsed = extractJsonFromText(text);
+		const parsed = await parseRobustJson(text);
 		if (Array.isArray(parsed)) {
 			competitors = parsed
 				.filter((c) => c && typeof c === "object" && c.name && c.domain)
@@ -476,7 +476,7 @@ Format the output as JSON within <out> xml tags.
 		let relevantKeywords: KeywordResult[] = [];
 
 		try {
-			const selectedKeywords = extractJsonFromText(text);
+			const selectedKeywords = await parseRobustJson(text);
 			if (Array.isArray(selectedKeywords)) {
 				relevantKeywords = selectedKeywords
 					.filter((keyword) => typeof keyword === "string")

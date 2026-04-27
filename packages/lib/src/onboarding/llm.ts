@@ -1,21 +1,36 @@
 /**
  * Provider-agnostic onboarding research.
  *
- * Picks the first configured provider in the preference order below and
- * runs a structured research call against it:
+ * Two structured-output strategies live behind one call:
  *
- *   1. Direct API providers (Anthropic / OpenAI / OpenRouter) get native
- *      structured outputs via the AI SDK's `generateObject`. The schema is
- *      passed straight through; there's no JSON regex on the response.
- *   2. Screen-scraper providers (Olostep / BrightData) don't have a native
- *      structured-output mode — we ask the chatbot for `<out>{...}</out>`
- *      JSON and parse it out of the reply text. This is the only path that
- *      keeps the (small, contained) text-extraction fallback.
+ *   - Direct API providers (Anthropic / OpenAI / OpenRouter) get native
+ *     structured outputs via the AI SDK's `generateObject`. The schema is
+ *     enforced by the provider; there's no JSON parsing on our side.
+ *
+ *   - Screen-scraper providers (Olostep / BrightData) drive consumer
+ *     chatbots that have no schema mode. Asking the chatbot to research AND
+ *     emit JSON in one shot is unreliable — JSON discipline drops as the
+ *     model juggles web search, citations, and formatting at the same time.
+ *     Instead we do a TWO-PASS scrape:
+ *
+ *       Pass 1 — research: send the brand-analysis prompt and let the
+ *                chatbot answer freely (prose markdown, web search,
+ *                citations). No JSON pressure.
+ *       Pass 2 — format:   send the research back with a tight "convert
+ *                this to JSON matching the schema" prompt. No web search;
+ *                pure transformation, which consumer chatbots are reliably
+ *                good at.
+ *
+ *     Pass 2's response goes through AI SDK's `parsePartialJson`, which
+ *     repairs trailing prose / unbalanced braces / fence artifacts before
+ *     Zod validation. The two-pass costs one extra scraper credit per
+ *     onboarding (cheap; runs once per brand) in exchange for far higher
+ *     parse-success rates.
  *
  * `ONBOARDING_LLM_TARGET` (parsed like a SCRAPE_TARGETS entry) overrides the
- * automatic preference if the deployment wants a specific provider.
+ * preference order if a deployment wants a specific provider.
  */
-import { generateObject, NoObjectGeneratedError, type LanguageModel } from "ai";
+import { generateObject, NoObjectGeneratedError, parsePartialJson, type LanguageModel } from "ai";
 import { z } from "zod";
 import { getProvider, parseScrapeTargets, type Provider } from "../providers";
 
@@ -76,46 +91,90 @@ export function resolveResearchTarget(env: Record<string, string | undefined> = 
 export interface RunStructuredOptions<T> {
 	schema: z.ZodType<T>;
 	target?: ResearchTarget;
-	/** Forwarded to AI SDK; useful for nudging models that occasionally truncate. */
+	/** Forwarded to AI SDK; only meaningful on the direct-API path. */
 	maxRetries?: number;
 }
 
 /**
  * Run a research prompt and return a Zod-validated structured response.
- * Direct-API providers use AI SDK's `generateObject`; scrapers fall back to
- * text + JSON extraction.
+ * Direct-API providers use `generateObject`; scrapers go through the
+ * two-pass research-then-format chain documented at the top of this file.
  */
 export async function runStructuredResearchPrompt<T>(
 	prompt: string,
 	options: RunStructuredOptions<T>,
 ): Promise<T> {
 	const target = options.target ?? resolveResearchTarget();
-	const { provider, model } = target;
 
-	if (provider.languageModel) {
-		try {
-			const { object } = await generateObject({
-				model: provider.languageModel(model),
-				schema: options.schema,
-				prompt,
-				maxRetries: options.maxRetries ?? 1,
-			});
-			return object;
-		} catch (err) {
-			if (err instanceof NoObjectGeneratedError) {
-				throw new Error(
-					`[${provider.id}:${model}] LLM did not return a parseable object: ${err.message}`,
-				);
-			}
-			throw err;
-		}
+	if (target.provider.languageModel) {
+		return runStructuredViaDirectApi(target, prompt, options);
 	}
+	return runStructuredViaScraper(target, prompt, options);
+}
 
-	// Scraper fallback — wrap the prompt so the chatbot reliably emits JSON.
-	const wrapped = wrapPromptForJsonExtraction(prompt);
-	const result = await provider.run(model, wrapped, { webSearch: true });
-	const json = extractJsonFromText(result.textContent);
+async function runStructuredViaDirectApi<T>(
+	target: ResearchTarget,
+	prompt: string,
+	options: RunStructuredOptions<T>,
+): Promise<T> {
+	const { provider, model } = target;
+	if (!provider.languageModel) {
+		throw new Error(`Provider "${provider.id}" does not expose a languageModel`);
+	}
+	try {
+		const { object } = await generateObject({
+			model: provider.languageModel(model),
+			schema: options.schema,
+			prompt,
+			maxRetries: options.maxRetries ?? 1,
+		});
+		return object;
+	} catch (err) {
+		if (err instanceof NoObjectGeneratedError) {
+			throw new Error(
+				`[${provider.id}:${model}] LLM did not return a parseable object: ${err.message}`,
+			);
+		}
+		throw err;
+	}
+}
+
+async function runStructuredViaScraper<T>(
+	target: ResearchTarget,
+	prompt: string,
+	options: RunStructuredOptions<T>,
+): Promise<T> {
+	const research = await target.provider.run(target.model, buildResearchPrompt(prompt), { webSearch: true });
+	const format = await target.provider.run(
+		target.model,
+		buildFormatPrompt({ originalPrompt: prompt, researchText: research.textContent }),
+		{ webSearch: false },
+	);
+
+	const json = await parseRobustJson(format.textContent);
 	return options.schema.parse(json);
+}
+
+function buildResearchPrompt(originalPrompt: string): string {
+	return `${originalPrompt}
+
+NOTE: For this first pass, focus on producing thorough, accurate research. Use web search if available. Markdown prose is fine — a follow-up step will format the result as JSON, so don't worry about being strict about JSON syntax here.`;
+}
+
+function buildFormatPrompt(args: { originalPrompt: string; researchText: string }): string {
+	return `You are converting a previous research draft into a single strictly-valid JSON object. Do not perform new research — only restructure what's already in the research text into the requested JSON shape.
+
+ORIGINAL INSTRUCTIONS (defines the JSON schema you must produce):
+---
+${args.originalPrompt}
+---
+
+RESEARCH TEXT (your input data):
+---
+${args.researchText}
+---
+
+Output ONLY the JSON object, wrapped in <out>...</out> tags. No prose outside the tags. No markdown fences. No commentary. Use empty arrays for fields you can't fill from the research.`;
 }
 
 /**
@@ -130,30 +189,53 @@ export async function runResearchPrompt(prompt: string, target?: ResearchTarget)
 }
 
 // ---------------------------------------------------------------------------
-// Scraper fallback: text → JSON
+// Robust JSON parser for the scraper pass-2 response.
 // ---------------------------------------------------------------------------
 
-function wrapPromptForJsonExtraction(prompt: string): string {
-	return `${prompt}\n\nIMPORTANT: Reply with ONLY a single JSON value wrapped in <out>...</out> tags. No prose outside the tags.`;
-}
-
 /**
- * Pull a JSON value out of an LLM response. Used only for scraper providers
- * that can't do native structured outputs.
+ * Pull a JSON value out of a chatbot reply. Strips `<out>` wrappers / fences
+ * first, then hands off to AI SDK's `parsePartialJson`, which repairs common
+ * issues (trailing prose, unbalanced braces, half-closed strings) before we
+ * hand the value off to Zod for type-level validation.
+ *
+ * Exported because `wizard-helpers.ts` still has a couple of legacy callers
+ * that build prompts and need to parse the reply themselves.
  */
-export function extractJsonFromText(text: string): unknown {
+export async function parseRobustJson(text: string): Promise<unknown> {
 	if (!text || !text.trim()) throw new Error("Empty LLM response");
 
-	const xmlMatch = text.match(/<out>\s*([\s\S]*?)\s*<\/out>/i);
-	if (xmlMatch) return JSON.parse(stripCodeFence(xmlMatch[1]));
+	const candidates = [
+		extractTagged(text, "out"),
+		extractCodeFence(text),
+		extractFirstJsonBlob(text),
+		text.trim(),
+	].filter((c): c is string => Boolean(c));
 
-	const codeBlock = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-	if (codeBlock) return JSON.parse(codeBlock[1].trim());
+	let lastState = "no-candidates";
+	for (const candidate of candidates) {
+		const result = await parsePartialJson(candidate);
+		if (result.state === "successful-parse" || result.state === "repaired-parse") {
+			return result.value;
+		}
+		lastState = result.state;
+	}
+	throw new Error(`Could not parse JSON from LLM response (last parsePartialJson state: ${lastState}).`);
+}
 
-	const objMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-	if (objMatch) return JSON.parse(objMatch[0]);
+function extractTagged(text: string, tag: string): string | null {
+	const re = new RegExp(`<${tag}>\\s*([\\s\\S]*?)\\s*<\\/${tag}>`, "i");
+	const m = text.match(re);
+	return m ? stripCodeFence(m[1]) : null;
+}
 
-	return JSON.parse(text.trim());
+function extractCodeFence(text: string): string | null {
+	const m = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+	return m ? m[1].trim() : null;
+}
+
+function extractFirstJsonBlob(text: string): string | null {
+	const m = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+	return m ? m[0] : null;
 }
 
 function stripCodeFence(s: string): string {
@@ -162,6 +244,4 @@ function stripCodeFence(s: string): string {
 	return fenced ? fenced[1].trim() : trimmed;
 }
 
-// Re-export for callers that want to grab a language model directly without
-// going through the structured-prompt wrapper (e.g. ad-hoc generateText calls).
 export type { LanguageModel };

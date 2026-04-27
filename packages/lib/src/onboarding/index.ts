@@ -9,7 +9,7 @@ export {
 	resolveResearchTarget,
 	runResearchPrompt,
 	runStructuredResearchPrompt,
-	extractJsonFromText,
+	parseRobustJson,
 	type ResearchTarget,
 } from "./llm";
 export {

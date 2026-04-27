@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { extractJsonFromText, resolveResearchTarget } from "./llm";
+import { parseRobustJson, resolveResearchTarget, runStructuredResearchPrompt } from "./llm";
+import { z } from "zod";
 
 const ENV_KEYS = [
 	"ONBOARDING_LLM_TARGET",
@@ -13,7 +14,6 @@ const ENV_KEYS = [
 const savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
-	// Snapshot then clear so each test gets a clean slate.
 	for (const key of ENV_KEYS) {
 		savedEnv[key] = process.env[key];
 		delete process.env[key];
@@ -28,43 +28,93 @@ afterEach(() => {
 	}
 });
 
-describe("extractJsonFromText", () => {
-	it("extracts JSON from <out> tags", () => {
-		expect(extractJsonFromText(`<out>{"foo":"bar"}</out>`)).toEqual({ foo: "bar" });
+describe("parseRobustJson", () => {
+	it("extracts JSON from <out> tags", async () => {
+		await expect(parseRobustJson(`<out>{"foo":"bar"}</out>`)).resolves.toEqual({ foo: "bar" });
 	});
 
-	it("extracts JSON from a fenced code block", () => {
+	it("extracts JSON from a fenced code block", async () => {
 		const text = "Sure thing!\n```json\n{\"x\": 1}\n```";
-		expect(extractJsonFromText(text)).toEqual({ x: 1 });
+		await expect(parseRobustJson(text)).resolves.toEqual({ x: 1 });
 	});
 
-	it("extracts a bare JSON object embedded in prose", () => {
+	it("extracts a bare JSON object embedded in prose", async () => {
 		const text = `Some preamble. {"hello":"world"} and then some more.`;
-		expect(extractJsonFromText(text)).toEqual({ hello: "world" });
+		await expect(parseRobustJson(text)).resolves.toEqual({ hello: "world" });
 	});
 
-	it("strips a fenced code block nested inside <out>", () => {
+	it("strips a fenced code block nested inside <out>", async () => {
 		const text = "<out>\n```json\n[1,2,3]\n```\n</out>";
-		expect(extractJsonFromText(text)).toEqual([1, 2, 3]);
+		await expect(parseRobustJson(text)).resolves.toEqual([1, 2, 3]);
 	});
 
-	it("handles a pure JSON response", () => {
-		expect(extractJsonFromText('{"a":1}')).toEqual({ a: 1 });
+	it("handles a pure JSON response", async () => {
+		await expect(parseRobustJson('{"a":1}')).resolves.toEqual({ a: 1 });
 	});
 
-	it("throws on empty input", () => {
-		expect(() => extractJsonFromText("")).toThrow();
-		expect(() => extractJsonFromText("   ")).toThrow();
+	it("recovers JSON when there is trailing prose after the closing tag", async () => {
+		const text = `<out>{"foo":"bar"}</out>\n\nhope this helps!`;
+		await expect(parseRobustJson(text)).resolves.toEqual({ foo: "bar" });
 	});
 
-	it("throws on non-JSON text", () => {
-		expect(() => extractJsonFromText("just words, no json here")).toThrow();
+	it("throws on empty input", async () => {
+		await expect(parseRobustJson("")).rejects.toThrow();
+		await expect(parseRobustJson("   ")).rejects.toThrow();
+	});
+
+	it("throws on text with no JSON at all", async () => {
+		await expect(parseRobustJson("just words, no json here")).rejects.toThrow();
+	});
+});
+
+describe("runStructuredResearchPrompt — scraper two-pass", () => {
+	it("does two scraper calls (research + format) and parses the format reply", async () => {
+		const schema = z.object({ name: z.string(), tags: z.array(z.string()) });
+		const calls: Array<{ model: string; prompt: string; webSearch?: boolean }> = [];
+
+		const provider = {
+			id: "fake-scraper",
+			name: "Fake",
+			defaultResearchModel: "gemini",
+			isConfigured: () => true,
+			run: vi.fn(async (model: string, prompt: string, opts?: { webSearch?: boolean }) => {
+				calls.push({ model, prompt, webSearch: opts?.webSearch });
+				if (calls.length === 1) {
+					return {
+						textContent: `# Acme research\n\nName: Acme. Tags: widgets, gadgets.`,
+						rawOutput: {},
+						webQueries: [],
+						citations: [],
+					};
+				}
+				return {
+					textContent: `<out>{"name":"Acme","tags":["widgets","gadgets"]}</out>`,
+					rawOutput: {},
+					webQueries: [],
+					citations: [],
+				};
+			}),
+		} as any;
+
+		const result = await runStructuredResearchPrompt("Tell me about Acme", {
+			schema,
+			target: { provider, model: "gemini" },
+		});
+
+		expect(result).toEqual({ name: "Acme", tags: ["widgets", "gadgets"] });
+		expect(provider.run).toHaveBeenCalledTimes(2);
+		// Pass 1 has web search on; pass 2 has it off.
+		expect(calls[0].webSearch).toBe(true);
+		expect(calls[1].webSearch).toBe(false);
+		// Pass 2 prompt embeds pass 1's research text.
+		expect(calls[1].prompt).toContain("Acme research");
+		expect(calls[1].prompt).toContain("Tell me about Acme");
 	});
 });
 
 describe("resolveResearchTarget", () => {
 	it("uses the explicit env override when set", () => {
-		process.env.ANTHROPIC_API_KEY = "x"; // ONBOARDING_LLM_TARGET points at this provider
+		process.env.ANTHROPIC_API_KEY = "x";
 		const target = resolveResearchTarget({
 			ANTHROPIC_API_KEY: "x",
 			ONBOARDING_LLM_TARGET: "claude:anthropic-api:claude-3-5-haiku-20241022",
