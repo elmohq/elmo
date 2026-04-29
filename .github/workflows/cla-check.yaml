@@ -2,8 +2,9 @@
 #
 # Verifies that the author of every pull request has signed the CLA, either
 # previously (already listed in .github/contributors.txt on the base branch)
-# or in this same PR (the PR adds the author to contributors.txt and the PR
-# body contains the agreement statement).
+# or in this same PR (the PR adds the author's username to
+# contributors.txt). The header of contributors.txt is the click-wrap
+# notice — adding your username to the file is itself the agreement.
 #
 # Security model: this workflow runs as pull_request_target, so the workflow
 # file itself comes from the trusted base branch and cannot be modified by a
