@@ -2,6 +2,7 @@
   "name": "@workspace/config",
   "version": "0.2.4",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "exports": {
     "./types": "./src/types.ts",
     "./constants": "./src/constants.ts",

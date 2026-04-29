@@ -2,6 +2,7 @@
   "name": "@workspace/lib",
   "version": "0.2.4",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "vitest run",
     "generate:auth-schema": "bash scripts/generate-auth-schema.sh"

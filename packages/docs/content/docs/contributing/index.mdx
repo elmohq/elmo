@@ -5,18 +5,39 @@ description: How to contribute to the Elmo open source project.
 
 Elmo is an open source project and we welcome contributions. Whether you're fixing a bug, adding a feature, or improving documentation, this guide will help you get started.
 
+For the full contributor guide — including coding guidelines and security
+reporting — see [`CONTRIBUTING.md`](https://github.com/elmohq/elmo/blob/main/CONTRIBUTING.md)
+in the repository.
+
+## License and CLA
+
+Elmo is licensed under the [GNU Affero General Public License v3.0 or later](https://github.com/elmohq/elmo/blob/main/LICENSE).
+By contributing, you agree that your contributions will be licensed under the same terms.
+
+Before your first pull request can be merged, you must sign our
+[Contributor License Agreement](https://github.com/elmohq/elmo/blob/main/CLA.md).
+The CLA is based on the Apache Software Foundation Individual CLA (v2.2) and grants
+Blue Whale Software, LLC the rights needed to distribute and (if necessary) relicense
+the project. You retain copyright in your contributions.
+
+Signing takes one PR: add your GitHub username to [`.github/contributors.txt`](https://github.com/elmohq/elmo/blob/main/.github/contributors.txt)
+with the agreement statement in the PR description. See
+[`CONTRIBUTING.md`](https://github.com/elmohq/elmo/blob/main/CONTRIBUTING.md#license-and-contributor-license-agreement)
+for the exact wording. You only need to do this once.
+
 ## How to Contribute
 
 1. **Fork the repository** on GitHub
 2. **Create a branch** for your changes
 3. **Set up your development environment** — see [Development Setup](/docs/contributing/development-setup)
-4. **Make your changes** and test them locally
-5. **Add a changeset** describing your changes:
+4. **Sign the CLA** if this is your first contribution (see above)
+5. **Make your changes** and test them locally
+6. **Add a changeset** describing your changes:
    ```bash
    pnpm changeset
    ```
-6. **Commit your changes** along with the generated changeset file
-7. **Open a pull request** against the `main` branch
+7. **Commit your changes** along with the generated changeset file
+8. **Open a pull request** against the `main` branch
 
 A maintainer will review your PR. Once merged, a maintainer will handle the release process.
 

@@ -2,6 +2,7 @@
   "name": "@workspace/worker",
   "version": "0.2.4",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "tsx --env-file=../web/.env src/index.ts",
     "start": "tsx src/index.ts",
