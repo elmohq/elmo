@@ -13,13 +13,15 @@ project managed by Us.
 
 > This Agreement is the [Harmony Individual Contributor License Agreement
 > (HA-CLA-I), version 1.0](https://www.harmonyagreements.org/agreements.html),
-> with the outbound license set to Option Three (any license approved by
-> the Open Source Initiative), the governing-law jurisdiction set to
-> Delaware, USA, and the licenses for Media set to the Creative Commons
-> Attribution-ShareAlike 4.0 International license (CC-BY-SA-4.0). The
-> "[or Your Affiliates]" optional language in Section 2.2 is omitted, as
-> this is an individual agreement. No other substantive changes have been
-> made to the template text.
+> with the outbound license set to Option Five (We may license the
+> Contribution under any license, including copyleft, permissive,
+> commercial, or proprietary, but must also continue to license it under
+> the license in use on the Submission Date), the governing-law
+> jurisdiction set to Delaware, USA, and the licenses for Media set to
+> the Creative Commons Attribution-ShareAlike 4.0 International license
+> (CC-BY-SA-4.0). The "[or Your Affiliates]" optional language in
+> Section 2.2 is omitted, as this is an individual agreement. No other
+> substantive changes have been made to the template text.
 
 ## 1. Definitions
 
@@ -87,13 +89,12 @@ provided that this license is conditioned upon compliance with Section
 
 ### 2.3 Outbound License
 
-As a condition on the grant of rights in Sections 2.1 and 2.2, We agree to
-license the Contribution only under the terms of the license or licenses
-which We are using on the Submission Date for the Material or any licenses
-which are approved by the Open Source Initiative on or after the Effective
-Date, including both permissive and copyleft licenses, whether or not such
-licenses are subsequently disapproved (including any right to adopt any
-future version of a license if permitted).
+Based on the grant of rights in Sections 2.1 and 2.2, if We include Your
+Contribution in a Material, We may license the Contribution under any
+license, including copyleft, permissive, commercial, or proprietary
+licenses. As a condition on the exercise of this right, We agree to also
+license the Contribution under the terms of the license or licenses which
+We are using for the Material on the Submission Date.
 
 In addition, We may use the following licenses for Media in the
 Contribution: Creative Commons Attribution-ShareAlike 4.0 International
