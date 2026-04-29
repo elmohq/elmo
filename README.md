@@ -278,25 +278,13 @@ Key variables:
 
 See `turbo.json` for the full list of global environment variables used across the monorepo.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Versioning and Releases
 
 This monorepo uses [Changesets](https://github.com/changesets/changesets) for version management. All packages in the monorepo are kept on the same version (fixed versioning).
-
-### For External Contributors
-
-1. Fork the repository and create a branch for your changes.
-
-2. Make your changes and add a changeset:
-
-   ```bash
-   pnpm changeset
-   ```
-
-3. Commit both your changes and the generated changeset file.
-
-4. Open a PR against the `main` branch.
-
-5. A maintainer will review your PR. Once merged, a maintainer will handle the release process.
 
 ### Releasing a New Version (Maintainers Only)
 
@@ -348,6 +336,12 @@ Have questions or want to chat about Elmo? [Schedule a call](https://cal.com/jrh
 - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)
 - [Changesets Documentation](https://github.com/changesets/changesets)
+
+## License
+
+Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
+Copyright © 2026 Blue Whale Software, LLC. See [`CLA.md`](CLA.md) for the
+Contributor License Agreement.
 
 ## Repo Activity
 

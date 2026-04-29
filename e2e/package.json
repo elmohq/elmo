@@ -2,6 +2,7 @@
   "name": "e2e",
   "version": "0.2.4",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "test:e2e": "playwright test",
