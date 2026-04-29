@@ -32,11 +32,16 @@ combination of:
   it for approximate geolocation.
 
 If you opt in to product updates during `elmo init` and provide an email
-address, we record a separate `newsletter_signup` event keyed off the
-email itself — it is never linked to your install ID, and it is the only
-path that ever sends an email. This signup runs even if you have disabled
-anonymous telemetry, because typing your email is an explicit action with
-clear intent; the event still goes to the same PostHog project.
+address, we record a `newsletter_signup` event with the email attached as
+a person property. This is the only path that ever sends an email. The
+signup runs even if you have disabled anonymous telemetry, because typing
+your email is an explicit action with clear intent; the event still goes
+to the same PostHog project.
+
+- If telemetry is **enabled**, the event is keyed off your install ID, so
+  the email links to the rest of your anonymous CLI events.
+- If telemetry is **disabled**, the event is keyed off the email itself
+  and is never linked back to your install ID.
 
 ## What is not collected
 
