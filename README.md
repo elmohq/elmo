@@ -15,6 +15,7 @@
 
 <p align="center">
   <a href="https://www.elmohq.com/docs"><img src="https://img.shields.io/badge/Docs-2563eb?style=flat&logo=readthedocs&logoColor=white" alt="Docs"></a>&nbsp;
+  <a href="https://demo.elmohq.com"><img src="https://img.shields.io/badge/Demo-22c55e?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xNSAxNGMuMi0xIC43LTEuNyAxLjUtMi41IDEtLjkgMS41LTIuMiAxLjUtMy41QTYgNiAwIDAgMCA2IDhjMCAxIC4yIDIuMiAxLjUgMy41LjcuNyAxLjMgMS41IDEuNSAyLjUiLz48cGF0aCBkPSJNOSAxOGg2Ii8+PHBhdGggZD0iTTEwIDIyaDQiLz48L3N2Zz4%3D" alt="Demo"></a>&nbsp;
   <a href="https://github.com/elmohq/elmo/issues"><img src="https://img.shields.io/badge/Issues-f95738?style=flat&logo=github&logoColor=white" alt="Issues"></a>&nbsp;
   <a href="https://github.com/orgs/elmohq/projects/3/views/1"><img src="https://img.shields.io/badge/Roadmap-ee964b?style=flat&logo=github&logoColor=white" alt="Roadmap"></a>&nbsp;
   <a href="https://discord.gg/s24nubCtKz"><img src="https://img.shields.io/badge/Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
@@ -277,25 +278,13 @@ Key variables:
 
 See `turbo.json` for the full list of global environment variables used across the monorepo.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Versioning and Releases
 
 This monorepo uses [Changesets](https://github.com/changesets/changesets) for version management. All packages in the monorepo are kept on the same version (fixed versioning).
-
-### For External Contributors
-
-1. Fork the repository and create a branch for your changes.
-
-2. Make your changes and add a changeset:
-
-   ```bash
-   pnpm changeset
-   ```
-
-3. Commit both your changes and the generated changeset file.
-
-4. Open a PR against the `main` branch.
-
-5. A maintainer will review your PR. Once merged, a maintainer will handle the release process.
 
 ### Releasing a New Version (Maintainers Only)
 
@@ -347,6 +336,11 @@ Have questions or want to chat about Elmo? [Schedule a call](https://cal.com/jrh
 - [shadcn/ui Documentation](https://ui.shadcn.com/docs)
 - [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)
 - [Changesets Documentation](https://github.com/changesets/changesets)
+
+## License
+
+Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
+Copyright © 2026 Blue Whale Software, LLC.
 
 ## Repo Activity
 

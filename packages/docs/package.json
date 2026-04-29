@@ -2,6 +2,7 @@
 	"name": "@workspace/docs",
 	"version": "0.2.4",
 	"private": true,
+	"license": "AGPL-3.0-or-later",
 	"type": "module",
 	"exports": {
 		"./components/docs-sidebar": "./src/components/docs-sidebar.tsx",

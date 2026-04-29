@@ -2,6 +2,7 @@
   "name": "@workspace/lib",
   "version": "0.2.4",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "vitest run",
     "generate:auth-schema": "bash scripts/generate-auth-schema.sh"
@@ -30,7 +31,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
     "@ai-sdk/openai": "^3.0.53",
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@better-auth/sso": "^1.6.5",
     "@brightdata/sdk": "^1.0.0",
     "ai": "^6.0.168",

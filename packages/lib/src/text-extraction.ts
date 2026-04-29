@@ -126,7 +126,7 @@ export function extractTextFromBrightdata(rawOutput: any): string {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
 		if (!record) return "No content in BrightData output.";
-		for (const key of ["answer_text", "answer_text_markdown", "answer", "response_raw", "response", "text", "content"]) {
+		for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
 			if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 		}
 		return "No text content found in BrightData output.";

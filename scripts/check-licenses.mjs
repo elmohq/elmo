@@ -4,9 +4,12 @@
  * License compliance checker for the Elmo monorepo.
  *
  * Ensures every dependency uses a license compatible with distributing
- * Elmo itself under MIT. Runs `pnpm licenses list --json` and validates
- * the output against an allow-list of SPDX identifiers plus a set of
- * per-package exceptions for known-safe outliers.
+ * Elmo itself under AGPL-3.0-or-later. Runs `pnpm licenses list --json`
+ * and validates the output against an allow-list of SPDX identifiers plus
+ * a set of per-package exceptions for known-safe outliers. The allow-list
+ * is intentionally limited to permissive licenses so that, if we ever
+ * relicense a subset of the codebase (e.g. an SDK) under MIT, every
+ * dependency is already compatible with both AGPL and MIT.
  *
  * Exit codes:
  *   0 – all packages pass
@@ -16,7 +19,11 @@
 import { execSync } from "node:child_process";
 
 // ── Allowed SPDX license identifiers ────────────────────────────────
-// These are all permissive / MIT-compatible and fine for an MIT project.
+// These are all permissive licenses, compatible with AGPL-3.0-or-later
+// and also MIT (so an SDK package can be relicensed under MIT without
+// pulling in incompatible deps). GPL/LGPL/AGPL deps are intentionally NOT
+// added here even though they would be AGPL-compatible — the dual-target
+// constraint is what keeps the allow-list strict.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
