@@ -3,4 +3,4 @@
 "@workspace/docs": patch
 ---
 
-CLI: ask about anonymous telemetry during `elmo init` and add `elmo telemetry status|enable|disable`. Document exactly what is collected (install UUID, version, OS, command, IP via PostHog) and what is not (secrets, brand/prompt data, emails outside the explicit newsletter signup) in the new [Telemetry](https://docs.elmohq.com/docs/telemetry) doc.
+CLI: telemetry opt-out prompt during `elmo init` and new `elmo telemetry status|enable|disable` subcommand. See [Telemetry](https://elmohq.com/docs/telemetry) for what's collected.

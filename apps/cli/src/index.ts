@@ -51,7 +51,7 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
-const TELEMETRY_DOC_URL = "https://docs.elmohq.com/docs/telemetry";
+const TELEMETRY_DOC_URL = "https://elmohq.com/docs/telemetry";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 

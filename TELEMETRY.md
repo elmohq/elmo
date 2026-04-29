@@ -38,6 +38,8 @@ operate; self-hosted deployments do not phone home beyond the CLI events
 described above. Set `DISABLE_TELEMETRY=1` in your `.env` to disable web and
 worker telemetry as well.
 
+Full doc: <https://elmohq.com/docs/telemetry>
+
 ## How to disable it
 
 The CLI asks during `elmo init` whether you want to share anonymous
