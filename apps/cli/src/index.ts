@@ -196,7 +196,7 @@ async function main() {
 			},
 		);
 
-	const telemetry = program.command("telemetry").description("manage anonymous CLI telemetry");
+	const telemetry = program.command("telemetry").description("manage CLI + local-deployment telemetry");
 
 	telemetry
 		.command("status")
@@ -207,7 +207,7 @@ async function main() {
 
 	telemetry
 		.command("enable")
-		.description("enable anonymous CLI + local-deployment telemetry")
+		.description("enable telemetry")
 		.action(async () => {
 			await setTelemetryEnabled(true);
 			const updated = await updateDeploymentEnvTelemetry(true);
@@ -220,7 +220,7 @@ async function main() {
 
 	telemetry
 		.command("disable")
-		.description("disable anonymous CLI + local-deployment telemetry")
+		.description("disable telemetry")
 		.action(async () => {
 			await setTelemetryEnabled(false);
 			const updated = await updateDeploymentEnvTelemetry(false);
@@ -364,12 +364,12 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	// ── Telemetry ───────────────────────────────────────────────────────
 	p.note(
 		[
-			"Elmo is open source and we run it on a small team. Anonymous",
-			"telemetry from both the CLI and your local deployment (web +",
-			"worker) tells us things like which CLI versions are still in",
-			"use, where `elmo init` drops off, which providers people pick,",
-			"and whether new features actually get used. Without it we are",
-			"flying blind on what to fix or build next.",
+			"Elmo is open source and we run it on a small team. Telemetry",
+			"from both the CLI and your local deployment (web + worker)",
+			"tells us things like which CLI versions are still in use, where",
+			"`elmo init` drops off, which providers people pick, and whether",
+			"new features actually get used. Without it we are flying blind",
+			"on what to fix or build next.",
 			"",
 			pc.bold("What we send:"),
 			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
@@ -385,11 +385,11 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			`Full breakdown: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
 			"Toggle later with `elmo telemetry enable|disable`.",
 		].join("\n"),
-		"Anonymous telemetry",
+		"Telemetry",
 	);
 
 	const telemetryEnabled = await p.confirm({
-		message: "Share anonymous telemetry?",
+		message: "Share telemetry?",
 		initialValue: true,
 	});
 	assertNotCancelled(telemetryEnabled);
@@ -447,7 +447,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		p.log.info("You can start later with `elmo start`.");
 	}
 
-	// Anonymous CLI telemetry — silently dropped if the user opted out above.
+	// CLI telemetry — silently dropped if the user opted out above.
 	await trackCliEvent("cli_init", {
 		version,
 		os: process.platform,
@@ -458,7 +458,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	});
 
 	// Newsletter signup is a separate, explicit opt-in and runs even when
-	// anonymous telemetry is disabled.
+	// telemetry is disabled.
 	if (email) {
 		await submitNewsletterSignup(email);
 	}

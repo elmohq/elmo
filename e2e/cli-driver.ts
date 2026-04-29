@@ -192,7 +192,7 @@ async function main(): Promise<void> {
 	await send(ENTER);
 
 	// Telemetry opt-in (default Yes) → accept default
-	await waitFor("Share anonymous telemetry?");
+	await waitFor("Share telemetry?");
 	await send(ENTER);
 
 	// Product updates email (optional)
