@@ -1,0 +1,70 @@
+---
+title: Telemetry
+description: What the Elmo CLI collects, how it is identified, and how to disable it.
+---
+
+Elmo collects a small amount of anonymous usage data from the CLI to help us
+understand which features get used and prioritize work. This page lists
+exactly what is collected, how it is identified, and how to turn it off.
+
+## What is collected
+
+The CLI sends events to PostHog. Each event includes:
+
+- **Install ID** — a random UUID generated on first run and stored in
+  `~/.config/elmo/config.json`. It is not derived from your machine, email,
+  username, or any other identifier.
+- **CLI version** (e.g. `0.2.4`)
+- **Operating system and architecture** (e.g. `darwin`, `arm64`)
+- **Node.js version**
+- **Command name** and a small set of non-secret options (e.g. whether
+  Postgres runs in Docker or is external, whether `--dev` was passed)
+- **IP address** — captured by PostHog at request time. PostHog uses it for
+  approximate geolocation; we do not store IPs alongside events ourselves.
+
+If you opt in to product updates during `elmo init` and provide an email
+address, that email is attached to your install ID as a PostHog person
+property. This is the only path that ever sends an email, and it only fires
+during `elmo init`.
+
+## What is not collected
+
+- API keys, `.env` contents, or any secrets
+- Brand names, prompts, scrape targets, or any product data from your Elmo
+  instance
+- File paths, repo paths, or hostnames
+- Logs or stack traces
+- Anything from the web app or worker running on your own infrastructure
+
+Self-hosted web and worker deployments do not phone home beyond the CLI
+events described above. Set `DISABLE_TELEMETRY=1` in your `.env` to disable
+web and worker telemetry as well.
+
+## How to disable it
+
+The CLI asks during `elmo init` whether you want to share anonymous
+telemetry. You can change your mind at any time:
+
+```sh
+elmo telemetry status     # show current state and install ID
+elmo telemetry disable    # turn off
+elmo telemetry enable     # turn back on
+```
+
+The choice is stored in `~/.config/elmo/config.json` as
+`"telemetryDisabled": true|false`. You can also set the environment variable
+`DISABLE_TELEMETRY=1`, which overrides the config value.
+
+When telemetry is disabled, the CLI sends no events — including the
+newsletter signup path described above.
+
+## Why we collect this
+
+We use this data to answer questions like: how many people are running the
+current CLI version, how often does `elmo init` succeed end-to-end, which
+Postgres mode is more common. It is not used for marketing, sold to anyone,
+or shared outside the team.
+
+If you have feedback on what we collect (or want to see something added or
+removed), open an issue at
+[github.com/elmohq/elmo](https://github.com/elmohq/elmo).

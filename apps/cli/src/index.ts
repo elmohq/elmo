@@ -9,7 +9,7 @@ import * as p from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
 import semver from "semver";
-import { trackCliEvent } from "./telemetry.js";
+import { getTelemetryStatus, setTelemetryEnabled, trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,7 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
+const TELEMETRY_DOC_URL = "https://docs.elmohq.com/docs/telemetry";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -195,7 +196,49 @@ async function main() {
 			},
 		);
 
+	const telemetry = program.command("telemetry").description("manage anonymous CLI telemetry");
+
+	telemetry
+		.command("status")
+		.description("show whether telemetry is enabled and what is collected")
+		.action(async () => {
+			await runTelemetryStatus();
+		});
+
+	telemetry
+		.command("enable")
+		.description("enable anonymous CLI telemetry")
+		.action(async () => {
+			await setTelemetryEnabled(true);
+			log.success("Telemetry enabled.");
+			console.log(`  Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
+		});
+
+	telemetry
+		.command("disable")
+		.description("disable anonymous CLI telemetry")
+		.action(async () => {
+			await setTelemetryEnabled(false);
+			log.success("Telemetry disabled. No further events will be sent.");
+		});
+
 	await program.parseAsync(process.argv);
+}
+
+async function runTelemetryStatus(): Promise<void> {
+	const status = await getTelemetryStatus();
+	const state = status.enabled ? pc.green("enabled") : pc.yellow("disabled");
+	console.log(`Telemetry: ${state}`);
+	if (status.source === "env") {
+		console.log("  Source: DISABLE_TELEMETRY environment variable");
+	} else if (status.source === "config") {
+		console.log(`  Source: ${CONFIG_FILE}`);
+	}
+	if (status.distinctId) {
+		console.log(`  Install ID: ${status.distinctId}`);
+	}
+	console.log(`  What we collect: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
+	console.log("  Toggle: `elmo telemetry enable` / `elmo telemetry disable`");
 }
 
 async function withVersionCheck(version: string, fn: () => Promise<void>): Promise<void> {
@@ -309,6 +352,31 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 	// ── AI providers ─────────────────────────────────────────────────────
 	await configureProvidersInteractive(env);
+
+	// ── Telemetry ───────────────────────────────────────────────────────
+	p.note(
+		[
+			"Elmo collects anonymous CLI usage to help us prioritize work:",
+			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
+			"  • CLI version, OS, arch, Node version",
+			"  • command names + non-secret options (e.g. postgres mode)",
+			"  • IP address (handled by PostHog; not stored alongside events)",
+			"",
+			"We never collect: API keys, .env contents, brand/prompt data,",
+			"emails (unless you opt in to product updates below).",
+			"",
+			`Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
+			"Toggle later with `elmo telemetry enable|disable`.",
+		].join("\n"),
+		"Anonymous telemetry",
+	);
+
+	const telemetryEnabled = await p.confirm({
+		message: "Share anonymous CLI telemetry?",
+		initialValue: true,
+	});
+	assertNotCancelled(telemetryEnabled);
+	await setTelemetryEnabled(telemetryEnabled);
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
