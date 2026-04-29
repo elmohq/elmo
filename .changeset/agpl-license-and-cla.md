@@ -14,4 +14,4 @@
 "@workspace/whitelabel": patch
 ---
 
-License Elmo under AGPL-3.0-or-later (Blue Whale Software, LLC) and add a lightweight Contributor License Agreement. New contributors sign by adding their GitHub username to `.github/contributors.txt` in their first PR; the CLA check enforces this on `pull_request_target`.
+License Elmo under AGPLv3. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
