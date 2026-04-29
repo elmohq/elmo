@@ -191,6 +191,10 @@ async function main(): Promise<void> {
 	await waitFor("Edit SCRAPE_TARGETS before saving?");
 	await send(ENTER);
 
+	// Telemetry opt-in (default Yes) → accept default
+	await waitFor("Share anonymous CLI telemetry?");
+	await send(ENTER);
+
 	// Product updates email (optional)
 	await waitFor("email to receive product updates");
 	await send(ENTER);
