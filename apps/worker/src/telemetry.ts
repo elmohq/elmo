@@ -1,13 +1,23 @@
-import { getOrCreateDeploymentId } from "@workspace/lib/db/system-settings";
+import crypto from "node:crypto";
 import { PostHog } from "posthog-node";
 
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 const POSTHOG_HOST = "https://us.i.posthog.com";
 
 let client: PostHog | null = null;
+let cachedDistinctId: string | null = null;
 
 function isTelemetryDisabled(): boolean {
 	return Boolean(process.env.DISABLE_TELEMETRY);
+}
+
+// `elmo init` writes a stable per-deployment UUID to .env. Older installs
+// that predate this won't have one; fall back to a per-process UUID so we
+// still get telemetry, just without retention stability across restarts.
+function getDistinctId(): string {
+	if (cachedDistinctId) return cachedDistinctId;
+	cachedDistinctId = `deployment:${process.env.DEPLOYMENT_ID ?? crypto.randomUUID()}`;
+	return cachedDistinctId;
 }
 
 function getClient(): PostHog | null {
@@ -21,17 +31,16 @@ function getClient(): PostHog | null {
 	return client;
 }
 
-export async function trackWorkerEvent(
+export function trackWorkerEvent(
 	eventName: string,
 	properties?: Record<string, string | number | boolean | string[] | undefined>,
-): Promise<void> {
+): void {
 	const ph = getClient();
 	if (!ph) return;
 
 	try {
-		const distinctId = await getOrCreateDeploymentId();
 		ph.capture({
-			distinctId: `deployment:${distinctId}`,
+			distinctId: getDistinctId(),
 			event: eventName,
 			properties: {
 				deployment_mode: process.env.DEPLOYMENT_MODE ?? "local",

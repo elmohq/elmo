@@ -331,7 +331,7 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		const successCount = runPromises.length - failures.length;
 		console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
 
-		await trackWorkerEvent("prompt_processed", {
+		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
 			models: [...new Set(selectedConfigs.map((c) => c.model))],
 			providers: [...new Set(selectedConfigs.map((c) => c.provider))],

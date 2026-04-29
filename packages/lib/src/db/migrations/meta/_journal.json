@@ -64,13 +64,6 @@
       "when": 1776000000000,
       "tag": "0008_provider_engines",
       "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1777503699953,
-      "tag": "0009_system_settings",
-      "breakpoints": true
     }
   ]
 }

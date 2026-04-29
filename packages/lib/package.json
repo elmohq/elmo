@@ -12,7 +12,6 @@
     "./db/schema": "./src/db/schema.ts",
     "./db/auth-sync": "./src/db/auth-sync.ts",
     "./db/provisioning": "./src/db/provisioning.ts",
-    "./db/system-settings": "./src/db/system-settings.ts",
     "./auth/server": "./src/auth/server.ts",
     "./auth/client": "./src/auth/client.ts",
     "./auth/permissions": "./src/auth/permissions.ts",

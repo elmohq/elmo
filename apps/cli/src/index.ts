@@ -338,6 +338,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
 	env.VITE_DEPLOYMENT_MODE = "local";
+	env.DEPLOYMENT_ID = crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;

@@ -155,18 +155,6 @@ export const reports = pgTable(
 	}),
 ).enableRLS();
 
-// Per-deployment key/value store. The first entry is `deployment_id`, a random
-// UUID minted on first worker boot used as the anonymous PostHog distinct id.
-export const systemSettings = pgTable("system_settings", {
-	key: text("key").primaryKey().notNull(),
-	value: text("value").notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull(),
-}).enableRLS();
-
 export type Brand = typeof brands.$inferSelect;
 export type NewBrand = typeof brands.$inferInsert;
 
