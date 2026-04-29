@@ -16,8 +16,8 @@ The CLI sends events to PostHog. Each event includes:
 - **Node.js version**
 - **Command name** and a small set of non-secret options (e.g. whether
   Postgres runs in Docker or is external, whether `--dev` was passed)
-- **IP address** — captured by PostHog at request time. PostHog uses it for
-  approximate geolocation; we do not store IPs alongside events ourselves.
+- **IP address** — PostHog records the request IP on each event and uses it
+  for approximate geolocation.
 
 If you opt in to product updates during `elmo init` and provide an email
 address, that email is attached to your install ID as a PostHog person

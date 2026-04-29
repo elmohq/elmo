@@ -360,7 +360,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
 			"  • CLI version, OS, arch, Node version",
 			"  • command names + non-secret options (e.g. postgres mode)",
-			"  • IP address (handled by PostHog; not stored alongside events)",
+			"  • IP address (recorded on each event by PostHog, used for geolocation)",
 			"",
 			"We never collect: API keys, .env contents, brand/prompt data,",
 			"emails (unless you opt in to product updates below).",
