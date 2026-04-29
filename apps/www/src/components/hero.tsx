@@ -30,7 +30,7 @@ export function Hero() {
 								<a
 									href="https://demo.elmohq.com"
 									target="_blank"
-									rel="noopener noreferrer"
+									rel="noopener"
 								>
 									Try the Live Demo
 									<ArrowUpRight />

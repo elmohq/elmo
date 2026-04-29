@@ -134,7 +134,7 @@ export function Navbar() {
 						<a
 							href="https://demo.elmohq.com"
 							target="_blank"
-							rel="noopener noreferrer"
+							rel="noopener"
 						>
 							Try Demo
 						</a>
