@@ -364,7 +364,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	// ── Telemetry ───────────────────────────────────────────────────────
 	p.note(
 		[
-			"Elmo is open source and we run it on a small team. Telemetry",
+			"Elmo is open source and maintained by a small team. Telemetry",
 			"from both the CLI and your local deployment (web + worker)",
 			"tells us things like which CLI versions are still in use, where",
 			"`elmo init` drops off, which providers people pick, and whether",
