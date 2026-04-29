@@ -16,9 +16,8 @@ Email [security@elmohq.com](mailto:security@elmohq.com) with:
 - The version or commit you tested against
 - Your name or handle if you'd like to be credited in the disclosure
 
-We will acknowledge your report within 72 hours and aim to provide a more
-detailed response within 7 days. Please give us a reasonable amount of time
-to investigate and release a fix before any public disclosure.
+Please give us a reasonable amount of time to investigate and release a fix
+before any public disclosure.
 
 ## Scope
 
