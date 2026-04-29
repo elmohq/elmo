@@ -30,10 +30,6 @@ The Elmo repository maintainers are responsible for enforcing this Code of Condu
 
 If you experience or witness behavior that violates this Code of Conduct, please report it by emailing [conduct@elmohq.com](mailto:conduct@elmohq.com).
 
-## Scope
-
-This Code of Conduct applies within all project spaces — including the repository, issue tracker, pull requests, Discord, and any other official communication channel — and also applies when an individual is officially representing the project in public spaces.
-
 ## Attribution
 
 This Code of Conduct is adapted from the [Contributor Covenant, version 2.0](https://www.contributor-covenant.org/version/2/0/code_of_conduct/), condensed for our project.
