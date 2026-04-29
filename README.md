@@ -338,10 +338,9 @@ Have questions or want to chat about Elmo? [Schedule a call](https://cal.com/jrh
 
 ## License
 
-Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE).
-Copyright © 2026 Blue Whale Software, LLC. See [`NOTICE`](NOTICE) for the
-project copyright notice and [`CLA.md`](CLA.md) for the Contributor License
-Agreement.
+Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
+Copyright © 2026 Blue Whale Software, LLC. See [`CLA.md`](CLA.md) for the
+Contributor License Agreement.
 
 ## Repo Activity
 

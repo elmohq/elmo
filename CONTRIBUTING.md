@@ -7,7 +7,7 @@ setup, architecture, and commands, see the
 
 ## License and Contributor License Agreement
 
-Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE).
+Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
 By contributing, you agree that your contributions will be licensed under the
 same terms.
 
@@ -65,11 +65,17 @@ handles the release.
   [`scripts/check-licenses.mjs`](scripts/check-licenses.mjs) for the
   allow-list.
 
+## Code of Conduct
+
+By participating in this project you agree to abide by our
+[Code of Conduct](CODE_OF_CONDUCT.md). Report violations to
+[conduct@elmohq.com](mailto:conduct@elmohq.com).
+
 ## Reporting Security Issues
 
-Please do not open a public issue for security vulnerabilities. Instead,
-email [security@elmohq.com](mailto:security@elmohq.com) so we can
-investigate and coordinate a fix before disclosure.
+Please do not open a public issue for security vulnerabilities. Email
+[security@elmohq.com](mailto:security@elmohq.com) instead — see
+[`SECURITY.md`](SECURITY.md) for details.
 
 ## Questions?
 
