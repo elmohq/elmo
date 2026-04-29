@@ -130,6 +130,15 @@ export function Navbar() {
 							<span className="sr-only">GitHub</span>
 						</a>
 					</Button>
+					<Button asChild variant="outline" size="sm" className="text-sm">
+						<a
+							href="https://demo.elmohq.com"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							Try Demo
+						</a>
+					</Button>
 					<Button asChild size="sm" className="text-sm">
 						<Link to="/docs">Get Started</Link>
 					</Button>

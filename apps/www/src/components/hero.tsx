@@ -22,9 +22,19 @@ export function Hero() {
 							AI Overviews. Monitor mentions, analyze citations, and benchmark
 							competitors — all self-hosted and open source.
 						</p>
-						<div className="flex justify-center gap-2">
+						<div className="flex flex-wrap justify-center gap-2 lg:justify-start">
 							<Button asChild>
 								<Link to="/docs">Get Started</Link>
+							</Button>
+							<Button asChild variant="outline">
+								<a
+									href="https://demo.elmohq.com"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Try the Live Demo
+									<ArrowUpRight />
+								</a>
 							</Button>
 							<Button asChild variant="outline">
 								<a
