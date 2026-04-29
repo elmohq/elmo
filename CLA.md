@@ -16,12 +16,13 @@ project managed by Us.
 > with the outbound license set to Option Five (We may license the
 > Contribution under any license, including copyleft, permissive,
 > commercial, or proprietary, but must also continue to license it under
-> the license in use on the Submission Date), the governing-law
-> jurisdiction set to Delaware, USA, and the licenses for Media set to
-> the Creative Commons Attribution-ShareAlike 4.0 International license
-> (CC-BY-SA-4.0). The "[or Your Affiliates]" optional language in
-> Section 2.2 is omitted, as this is an individual agreement. No other
-> substantive changes have been made to the template text.
+> the license in use on the Submission Date) and the governing-law
+> jurisdiction set to Delaware, USA. The "[or Your Affiliates]" optional
+> language in Section 2.2 is omitted, as this is an individual agreement.
+> The "Media" definition in Section 1 and the corresponding Media
+> paragraph in Section 2.3 are also omitted, so that Option Five governs
+> the entire Contribution. No other substantive changes have been made to
+> the template text.
 
 ## 1. Definitions
 
@@ -54,8 +55,6 @@ marked or otherwise designated in writing by You as "Not a Contribution."
 
 "Effective Date" means the date You execute this Agreement or the date You
 first Submit a Contribution to Us, whichever is earlier.
-
-"Media" means any portion of a Contribution which is not software.
 
 ## 2. Grant of Rights
 
@@ -95,11 +94,6 @@ license, including copyleft, permissive, commercial, or proprietary
 licenses. As a condition on the exercise of this right, We agree to also
 license the Contribution under the terms of the license or licenses which
 We are using for the Material on the Submission Date.
-
-In addition, We may use the following licenses for Media in the
-Contribution: Creative Commons Attribution-ShareAlike 4.0 International
-(CC-BY-SA-4.0) (including any right to adopt any future version of a
-license if permitted).
 
 ### 2.4 Moral Rights
 
