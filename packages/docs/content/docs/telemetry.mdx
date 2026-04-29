@@ -72,10 +72,15 @@ updates.
 
 ## Why we collect this
 
-We use this data to answer questions like: how many people are running the
-current version, how often does `elmo init` succeed end-to-end, which
-Postgres mode is more common, which providers are most used. It is not
-used for marketing, sold to anyone, or shared outside the team.
+We use this data to answer questions like:
+
+- how many Elmo instances are running in the wild, and on what versions
+- how many total prompts are being tracked across all instances
+- which model providers are most popular, and which ones produce the most
+  errors
+- how often `elmo init` succeeds end-to-end, and where it drops off
+- which Postgres mode (Docker vs. external) is more common
+- whether new features actually get used after we ship them
 
 If you have feedback on what we collect (or want to see something added or
 removed), open an issue at
