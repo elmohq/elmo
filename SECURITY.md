@@ -18,17 +18,3 @@ Email [security@elmohq.com](mailto:security@elmohq.com) with:
 
 Please give us a reasonable amount of time to investigate and release a fix
 before any public disclosure.
-
-## Scope
-
-In scope:
-
-- The Elmo web app, worker, CLI, and published packages in this repository
-- Default deployment configurations shipped with `@elmohq/cli`
-
-Out of scope:
-
-- Issues in third-party dependencies (please report those upstream; we'll
-  pick up fixed versions in a normal release)
-- Self-hosted deployments where the operator has modified Elmo or its
-  configuration in a way that introduces the vulnerability
