@@ -12,10 +12,11 @@ By contributing, you agree that your contributions will be licensed under the
 same terms.
 
 Before your first pull request can be merged, you must sign our
-[Contributor License Agreement](CLA.md). The CLA is based on the Apache
-Software Foundation Individual CLA (v2.2) and grants Blue Whale Software, LLC
-the rights needed to distribute and (if necessary) relicense the project. You
-retain copyright in your contributions.
+[Contributor License Agreement](CLA.md). Our CLA is the
+[Harmony Individual Contributor License Agreement (HA-CLA-I), version 1.0](https://www.harmonyagreements.org/agreements.html)
+and grants Blue Whale Software, LLC the rights needed to distribute and
+(if necessary) relicense the project. You retain copyright in your
+contributions.
 
 **You can sign as part of your first contribution PR — no separate sign-up
 step required.** In your PR:
