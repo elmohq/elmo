@@ -68,8 +68,8 @@ handles the release.
 ## Reporting Security Issues
 
 Please do not open a public issue for security vulnerabilities. Instead,
-[contact us privately](https://cal.com/jrhizor/elmo) so we can investigate
-and coordinate a fix before disclosure.
+email [security@elmohq.com](mailto:security@elmohq.com) so we can
+investigate and coordinate a fix before disclosure.
 
 ## Questions?
 
