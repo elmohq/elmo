@@ -28,7 +28,7 @@ The Elmo repository maintainers are responsible for enforcing this Code of Condu
 
 ## Reporting
 
-If you experience or witness behavior that violates this Code of Conduct, please report it by emailing [conduct@elmohq.com](mailto:conduct@elmohq.com). All reports will be reviewed and investigated promptly and confidentially. The maintainers are obligated to respect the privacy and security of the reporter of any incident.
+If you experience or witness behavior that violates this Code of Conduct, please report it by emailing [conduct@elmohq.com](mailto:conduct@elmohq.com).
 
 ## Scope
 
