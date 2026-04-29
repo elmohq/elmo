@@ -207,19 +207,27 @@ async function main() {
 
 	telemetry
 		.command("enable")
-		.description("enable anonymous CLI telemetry")
+		.description("enable anonymous CLI + local-deployment telemetry")
 		.action(async () => {
 			await setTelemetryEnabled(true);
+			const updated = await updateDeploymentEnvTelemetry(true);
 			log.success("Telemetry enabled.");
+			if (updated) {
+				log.info(`Updated ${updated}. Restart the stack with \`elmo start\` to apply.`);
+			}
 			console.log(`  Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
 		});
 
 	telemetry
 		.command("disable")
-		.description("disable anonymous CLI telemetry")
+		.description("disable anonymous CLI + local-deployment telemetry")
 		.action(async () => {
 			await setTelemetryEnabled(false);
+			const updated = await updateDeploymentEnvTelemetry(false);
 			log.success("Telemetry disabled. No further events will be sent.");
+			if (updated) {
+				log.info(`Updated ${updated}. Restart the stack with \`elmo start\` to apply.`);
+			}
 		});
 
 	await program.parseAsync(process.argv);
@@ -356,14 +364,15 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	// ── Telemetry ───────────────────────────────────────────────────────
 	p.note(
 		[
-			"Elmo collects anonymous CLI usage to help us prioritize work:",
+			"Elmo collects anonymous usage to help us prioritize work. This",
+			"covers both the CLI and your local deployment (web + worker):",
 			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
-			"  • CLI version, OS, arch, Node version",
-			"  • command names + non-secret options (e.g. postgres mode)",
+			"  • CLI/app version, OS, arch, Node version, deployment mode",
+			"  • command/event names + non-secret options (e.g. postgres mode)",
+			"  • feature counts (prompts edited, brands created — never the names or text)",
 			"  • IP address (recorded on each event by PostHog, used for geolocation)",
 			"",
-			"We never collect: API keys, .env contents, brand/prompt data,",
-			"emails (unless you opt in to product updates below).",
+			"We never collect API keys, .env contents, or brand/prompt data.",
 			"",
 			`Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
 			"Toggle later with `elmo telemetry enable|disable`.",
@@ -372,11 +381,14 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	);
 
 	const telemetryEnabled = await p.confirm({
-		message: "Share anonymous CLI telemetry?",
+		message: "Share anonymous telemetry (CLI + local deployment)?",
 		initialValue: true,
 	});
 	assertNotCancelled(telemetryEnabled);
 	await setTelemetryEnabled(telemetryEnabled);
+	if (!telemetryEnabled) {
+		env.DISABLE_TELEMETRY = "1";
+	}
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
@@ -1445,6 +1457,24 @@ async function detectSettingsFromConfig(configDir: string): Promise<{
 	}
 
 	return { dev, postgresMode, repoRoot };
+}
+
+async function updateDeploymentEnvTelemetry(enabled: boolean): Promise<string | null> {
+	const config = await readGlobalConfig();
+	if (!config?.configDir) return null;
+	const envPath = path.join(config.configDir, ".env");
+	if (!(await fileExists(envPath))) return null;
+
+	const contents = await fs.readFile(envPath, "utf8");
+	const lines = contents.split("\n");
+	const filtered = lines.filter((line) => !/^\s*DISABLE_TELEMETRY\s*=/.test(line));
+	if (!enabled) {
+		const insertIdx =
+			filtered.length > 0 && filtered[filtered.length - 1] === "" ? filtered.length - 1 : filtered.length;
+		filtered.splice(insertIdx, 0, "DISABLE_TELEMETRY=1");
+	}
+	await fs.writeFile(envPath, filtered.join("\n"), "utf8");
+	return envPath;
 }
 
 async function readEnvFile(envPath: string): Promise<EnvMap> {
