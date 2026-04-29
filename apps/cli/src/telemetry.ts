@@ -98,3 +98,21 @@ export async function trackCliEvent(
 		// Telemetry should never block the CLI
 	}
 }
+
+// Newsletter signup is an explicit user action with clear intent, so it
+// fires even when anonymous telemetry is disabled. The event uses the email
+// itself as the distinct id, so it is never linked to the install UUID.
+export async function submitNewsletterSignup(email: string): Promise<void> {
+	try {
+		const client = new PostHog(POSTHOG_PUBLIC_KEY, { host: POSTHOG_HOST });
+		client.capture({
+			distinctId: email,
+			event: "newsletter_signup",
+			properties: { source: "cli_init" },
+			...{ $set: { $email: email, wants_updates: true } },
+		});
+		await client.shutdown();
+	} catch {
+		// Newsletter signup should never block the CLI
+	}
+}

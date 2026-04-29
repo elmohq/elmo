@@ -9,7 +9,7 @@ import * as p from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
 import semver from "semver";
-import { getTelemetryStatus, setTelemetryEnabled, trackCliEvent } from "./telemetry.js";
+import { getTelemetryStatus, setTelemetryEnabled, submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -447,19 +447,21 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		p.log.info("You can start later with `elmo start`.");
 	}
 
-	// Fire telemetry in the background — never blocks the CLI
-	await trackCliEvent(
-		"cli_init",
-		{
-			version,
-			os: process.platform,
-			arch: process.arch,
-			node_version: process.version,
-			postgres_mode: postgresMode,
-			dev_mode: Boolean(options.dev),
-		},
-		email ? { $email: email, wants_updates: true } : undefined,
-	);
+	// Anonymous CLI telemetry — silently dropped if the user opted out above.
+	await trackCliEvent("cli_init", {
+		version,
+		os: process.platform,
+		arch: process.arch,
+		node_version: process.version,
+		postgres_mode: postgresMode,
+		dev_mode: Boolean(options.dev),
+	});
+
+	// Newsletter signup is a separate, explicit opt-in and runs even when
+	// anonymous telemetry is disabled.
+	if (email) {
+		await submitNewsletterSignup(email);
+	}
 
 	p.log.message(
 		`If you find Elmo useful, star us on GitHub!\n  ${link(pc.cyan("https://github.com/elmohq/elmo"), "https://github.com/elmohq/elmo")}`,
