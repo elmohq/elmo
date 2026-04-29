@@ -364,24 +364,32 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	// ── Telemetry ───────────────────────────────────────────────────────
 	p.note(
 		[
-			"Elmo collects anonymous usage to help us prioritize work. This",
-			"covers both the CLI and your local deployment (web + worker):",
+			"Elmo is open source and we run it on a small team. Anonymous",
+			"telemetry from both the CLI and your local deployment (web +",
+			"worker) tells us things like which CLI versions are still in",
+			"use, where `elmo init` drops off, which providers people pick,",
+			"and whether new features actually get used. Without it we are",
+			"flying blind on what to fix or build next.",
+			"",
+			pc.bold("What we send:"),
 			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
 			"  • CLI/app version, OS, arch, Node version, deployment mode",
 			"  • command/event names + non-secret options (e.g. postgres mode)",
 			"  • feature counts (prompts edited, brands created — never the names or text)",
 			"  • IP address (recorded on each event by PostHog, used for geolocation)",
 			"",
-			"We never collect API keys, .env contents, or brand/prompt data.",
+			pc.bold("What we never send:"),
+			"  API keys, .env contents, brand names, prompt text, scraped",
+			"  responses, file paths, or anything we host on your behalf.",
 			"",
-			`Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
+			`Full breakdown: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
 			"Toggle later with `elmo telemetry enable|disable`.",
 		].join("\n"),
 		"Anonymous telemetry",
 	);
 
 	const telemetryEnabled = await p.confirm({
-		message: "Share anonymous telemetry (CLI + local deployment)?",
+		message: "Share anonymous telemetry?",
 		initialValue: true,
 	});
 	assertNotCancelled(telemetryEnabled);
