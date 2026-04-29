@@ -5,34 +5,11 @@ to know before opening a pull request. For deeper guides on development
 setup, architecture, and commands, see the
 [contributor docs](https://www.elmohq.com/docs/contributing).
 
-## License and Contributor License Agreement
+## License
 
 Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
 By contributing, you agree that your contributions will be licensed under the
-same terms.
-
-Before your first pull request can be merged, you must sign our
-[Contributor License Agreement](CLA.md). Our CLA is the
-[Harmony Individual Contributor License Agreement (HA-CLA-I), version 1.0](https://www.harmonyagreements.org/agreements.html)
-and grants Blue Whale Software, LLC the rights needed to distribute and
-(if necessary) relicense the project. You retain copyright in your
-contributions.
-
-**You can sign as part of your first contribution PR — no separate sign-up
-step required.** In your PR:
-
-1. Add your GitHub username (lowercase, on its own line) to
-   [`.github/contributors.txt`](.github/contributors.txt). The header of
-   that file explains that adding your username constitutes agreement to
-   the CLA, so the file edit is itself the signature.
-2. The PR must be opened from your own GitHub account. The merged commit is
-   your electronic signature.
-
-The CLA check will then pass for this PR and all your future PRs.
-
-If you are contributing on behalf of an employer or another legal entity,
-please open an issue or [contact us](https://cal.com/jrhizor/elmo) so we can
-arrange an Entity CLA.
+same terms. You retain copyright in your contributions.
 
 ## How to Contribute
 

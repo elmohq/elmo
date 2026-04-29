@@ -14,4 +14,4 @@
 "@workspace/whitelabel": patch
 ---
 
-License Elmo under AGPLv3. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+License Elmo under AGPLv3. Add Code of Conduct, Contributing guide, and Security policy.
