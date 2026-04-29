@@ -2,7 +2,10 @@
  * Home page - / route
  *
  * Redirects authenticated users to /app.
- * Shows sign-in for unauthenticated users.
+ * In demo mode, auto-redirects unauthenticated users to /auth/login
+ * (the login page pre-fills the demo credentials, so the bare home page
+ * is just a redundant extra click).
+ * Shows sign-in for unauthenticated users in other modes.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
@@ -13,11 +16,18 @@ export const Route = createFileRoute("/")({
 	validateSearch: (search: Record<string, unknown>) => ({
 		redirect: typeof search.redirect === "string" ? search.redirect : undefined,
 	}),
-	beforeLoad: async () => {
+	beforeLoad: async ({ context, search }) => {
 		const session = await getSession();
 
 		if (session) {
 			throw redirect({ to: "/app" });
+		}
+
+		if (context.clientConfig?.mode === "demo") {
+			throw redirect({
+				to: "/auth/login",
+				search: search.redirect ? { returnTo: search.redirect } : {},
+			});
 		}
 
 		return { session };

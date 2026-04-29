@@ -9,7 +9,7 @@ import * as p from "@clack/prompts";
 import { Command } from "commander";
 import pc from "picocolors";
 import semver from "semver";
-import { trackCliEvent } from "./telemetry.js";
+import { getTelemetryStatus, setTelemetryEnabled, submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,7 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
+const TELEMETRY_DOC_URL = "https://elmohq.com/docs/telemetry";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -195,7 +196,57 @@ async function main() {
 			},
 		);
 
+	const telemetry = program.command("telemetry").description("manage CLI + local-deployment telemetry");
+
+	telemetry
+		.command("status")
+		.description("show whether telemetry is enabled and what is collected")
+		.action(async () => {
+			await runTelemetryStatus();
+		});
+
+	telemetry
+		.command("enable")
+		.description("enable telemetry")
+		.action(async () => {
+			await setTelemetryEnabled(true);
+			const updated = await updateDeploymentEnvTelemetry(true);
+			log.success("Telemetry enabled.");
+			if (updated) {
+				log.info(`Updated ${updated}. Restart the stack with \`elmo start\` to apply.`);
+			}
+			console.log(`  Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
+		});
+
+	telemetry
+		.command("disable")
+		.description("disable telemetry")
+		.action(async () => {
+			await setTelemetryEnabled(false);
+			const updated = await updateDeploymentEnvTelemetry(false);
+			log.success("Telemetry disabled. No further events will be sent.");
+			if (updated) {
+				log.info(`Updated ${updated}. Restart the stack with \`elmo start\` to apply.`);
+			}
+		});
+
 	await program.parseAsync(process.argv);
+}
+
+async function runTelemetryStatus(): Promise<void> {
+	const status = await getTelemetryStatus();
+	const state = status.enabled ? pc.green("enabled") : pc.yellow("disabled");
+	console.log(`Telemetry: ${state}`);
+	if (status.source === "env") {
+		console.log("  Source: DISABLE_TELEMETRY environment variable");
+	} else if (status.source === "config") {
+		console.log(`  Source: ${CONFIG_FILE}`);
+	}
+	if (status.distinctId) {
+		console.log(`  Install ID: ${status.distinctId}`);
+	}
+	console.log(`  What we collect: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
+	console.log("  Toggle: `elmo telemetry enable` / `elmo telemetry disable`");
 }
 
 async function withVersionCheck(version: string, fn: () => Promise<void>): Promise<void> {
@@ -287,6 +338,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
 	env.VITE_DEPLOYMENT_MODE = "local";
+	env.DEPLOYMENT_ID = crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;
@@ -309,6 +361,42 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 	// ── AI providers ─────────────────────────────────────────────────────
 	await configureProvidersInteractive(env);
+
+	// ── Telemetry ───────────────────────────────────────────────────────
+	p.note(
+		[
+			"Elmo is open source and maintained by a small team. Telemetry",
+			"from both the CLI and your local deployment (web + worker)",
+			"tells us things like which CLI versions are still in use, where",
+			"`elmo init` drops off, which providers people pick, and whether",
+			"new features actually get used. Without it we are flying blind",
+			"on what to fix or build next.",
+			"",
+			pc.bold("What we send:"),
+			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
+			"  • CLI/app version, OS, arch, Node version, deployment mode",
+			"  • command/event names + non-secret options (e.g. postgres mode)",
+			"  • feature counts (prompts edited, brands created — never the names or text)",
+			"  • IP address (recorded on each event by PostHog, used for geolocation)",
+			"",
+			pc.bold("What we never send:"),
+			"  API keys, .env contents, brand names, prompt text, and scraped responses.",
+			"",
+			`Full breakdown: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
+			"Toggle later with `elmo telemetry enable|disable`.",
+		].join("\n"),
+		"Telemetry",
+	);
+
+	const telemetryEnabled = await p.confirm({
+		message: "Share telemetry?",
+		initialValue: true,
+	});
+	assertNotCancelled(telemetryEnabled);
+	await setTelemetryEnabled(telemetryEnabled);
+	if (!telemetryEnabled) {
+		env.DISABLE_TELEMETRY = "1";
+	}
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
@@ -359,19 +447,21 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		p.log.info("You can start later with `elmo start`.");
 	}
 
-	// Fire telemetry in the background — never blocks the CLI
-	await trackCliEvent(
-		"cli_init",
-		{
-			version,
-			os: process.platform,
-			arch: process.arch,
-			node_version: process.version,
-			postgres_mode: postgresMode,
-			dev_mode: Boolean(options.dev),
-		},
-		email ? { $email: email, wants_updates: true } : undefined,
-	);
+	// CLI telemetry — silently dropped if the user opted out above.
+	await trackCliEvent("cli_init", {
+		version,
+		os: process.platform,
+		arch: process.arch,
+		node_version: process.version,
+		postgres_mode: postgresMode,
+		dev_mode: Boolean(options.dev),
+	});
+
+	// Newsletter signup is a separate, explicit opt-in and runs even when
+	// telemetry is disabled.
+	if (email) {
+		await submitNewsletterSignup(email);
+	}
 
 	p.log.message(
 		`If you find Elmo useful, star us on GitHub!\n  ${link(pc.cyan("https://github.com/elmohq/elmo"), "https://github.com/elmohq/elmo")}`,
@@ -404,6 +494,7 @@ const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
+const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
 async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 	p.note(
@@ -436,6 +527,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<void> {
 	}
 	await collectAnthropic(env, targets);
 	await collectOpenAI(env, targets);
+	await collectMistral(env, targets);
 	await collectOpenRouter(env, targets);
 	await collectDataForSEO(env, targets);
 
@@ -590,6 +682,38 @@ async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
 	assertNotCancelled(webSearch);
 
 	targets.push(webSearch ? `chatgpt:openai-api:${slug}:online` : `chatgpt:openai-api:${slug}`);
+}
+
+async function collectMistral(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("Mistral API")}? (direct Mistral models)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const key = await p.password({
+		message: "Mistral API key",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.MISTRAL_API_KEY = key;
+
+	const model = await p.text({
+		message: "Mistral model",
+		placeholder: DEFAULT_MISTRAL_MODEL,
+		defaultValue: DEFAULT_MISTRAL_MODEL,
+	});
+	assertNotCancelled(model);
+	const slug = model || DEFAULT_MISTRAL_MODEL;
+
+	const webSearch = await p.confirm({
+		message: "Enable Mistral's web search tool? (uses the beta Conversations API)",
+		initialValue: true,
+	});
+	assertNotCancelled(webSearch);
+
+	targets.push(webSearch ? `mistral:mistral-api:${slug}:online` : `mistral:mistral-api:${slug}`);
 }
 
 async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> {
@@ -1343,6 +1467,24 @@ async function detectSettingsFromConfig(configDir: string): Promise<{
 	}
 
 	return { dev, postgresMode, repoRoot };
+}
+
+async function updateDeploymentEnvTelemetry(enabled: boolean): Promise<string | null> {
+	const config = await readGlobalConfig();
+	if (!config?.configDir) return null;
+	const envPath = path.join(config.configDir, ".env");
+	if (!(await fileExists(envPath))) return null;
+
+	const contents = await fs.readFile(envPath, "utf8");
+	const lines = contents.split("\n");
+	const filtered = lines.filter((line) => !/^\s*DISABLE_TELEMETRY\s*=/.test(line));
+	if (!enabled) {
+		const insertIdx =
+			filtered.length > 0 && filtered[filtered.length - 1] === "" ? filtered.length - 1 : filtered.length;
+		filtered.splice(insertIdx, 0, "DISABLE_TELEMETRY=1");
+	}
+	await fs.writeFile(envPath, filtered.join("\n"), "utf8");
+	return envPath;
 }
 
 async function readEnvFile(envPath: string): Promise<EnvMap> {
