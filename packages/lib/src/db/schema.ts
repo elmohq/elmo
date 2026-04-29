@@ -1,4 +1,4 @@
-import { boolean, index, integer, json, pgEnum, pgTable, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -72,9 +72,7 @@ export const promptRuns = pgTable(
 		promptId: uuid("prompt_id")
 			.references(() => prompts.id)
 			.notNull(),
-		brandId: text("brand_id")
-			.references(() => brands.id)
-			.notNull(),
+		brandId: text("brand_id").references(() => brands.id).notNull(),
 		model: text("model").notNull(),
 		provider: text("provider"),
 		version: text("version").notNull(),
@@ -89,11 +87,7 @@ export const promptRuns = pgTable(
 		promptIdCreatedAtIdx: index("prompt_runs_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		createdAtIdx: index("prompt_runs_created_at_idx").on(table.createdAt),
 		webSearchCreatedAtIdx: index("prompt_runs_web_search_created_at_idx").on(table.webSearchEnabled, table.createdAt),
-		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(
-			table.webSearchEnabled,
-			table.model,
-			table.createdAt,
-		),
+		webSearchModelCreatedAtIdx: index("prompt_runs_web_search_model_created_at_idx").on(table.webSearchEnabled, table.model, table.createdAt),
 		providerIdx: index("prompt_runs_provider_idx").on(table.provider),
 		modelCreatedAtIdx: index("prompt_runs_model_created_at_idx").on(table.model, table.createdAt),
 	}),
@@ -120,15 +114,7 @@ export const citations = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 	},
 	(table) => ({
-		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(
-			table.brandId,
-			table.createdAt,
-			table.url,
-			table.domain,
-			table.title,
-			table.promptId,
-			table.model,
-		),
+		brandAnalyticsIdx: index("idx_citations_brand_analytics").on(table.brandId, table.createdAt, table.url, table.domain, table.title, table.promptId, table.model),
 		promptCreatedIdx: index("citations_prompt_id_created_at_idx").on(table.promptId, table.createdAt),
 		domainIdx: index("citations_domain_idx").on(table.domain),
 	}),
