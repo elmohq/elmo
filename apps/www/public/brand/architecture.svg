@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#101427"/>
+      <stop offset="100%" stop-color="#0a0d1c"/>
+    </linearGradient>
+    <linearGradient id="userGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fb923c"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="svcGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="dbGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="extGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="960" height="400" rx="20" fill="url(#bgGrad)"/>
+
+  <rect x="200" y="50" width="410" height="300" rx="16" fill="#171b2e" stroke="#2d3553" stroke-width="1.5"/>
+  <text x="220" y="78" fill="#94a3b8" font-size="12" font-weight="700" letter-spacing="3">ELMO</text>
+
+  <path d="M 170 200 C 200 200, 200 125, 228 125" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <line x1="405" y1="150" x2="405" y2="180" stroke="#64748b" stroke-width="2"/>
+  <line x1="405" y1="230" x2="405" y2="260" stroke="#64748b" stroke-width="2"/>
+  <line x1="582" y1="125" x2="658" y2="125" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M 582 285 C 622 285, 622 125, 658 125" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <line x1="582" y1="285" x2="658" y2="285" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="40" y="170" width="130" height="60" rx="30" fill="url(#userGrad)" filter="url(#sh)"/>
+  <text x="105" y="206" text-anchor="middle" fill="white" font-size="16" font-weight="600">User</text>
+
+  <rect x="230" y="100" width="350" height="50" rx="10" fill="url(#svcGrad)" filter="url(#sh)"/>
+  <text x="405" y="131" text-anchor="middle" fill="white" font-size="15" font-weight="600">Web</text>
+
+  <rect x="270" y="180" width="270" height="50" rx="10" fill="url(#dbGrad)" filter="url(#sh)"/>
+  <text x="405" y="211" text-anchor="middle" fill="white" font-size="15" font-weight="600">Postgres</text>
+
+  <rect x="230" y="260" width="350" height="50" rx="10" fill="url(#svcGrad)" filter="url(#sh)"/>
+  <text x="405" y="291" text-anchor="middle" fill="white" font-size="15" font-weight="600">Worker</text>
+
+  <rect x="660" y="100" width="260" height="50" rx="10" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="790" y="131" text-anchor="middle" fill="white" font-size="15" font-weight="600">LLM APIs</text>
+
+  <rect x="660" y="260" width="260" height="50" rx="10" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="790" y="291" text-anchor="middle" fill="white" font-size="15" font-weight="600">LLM Scraper</text>
+</svg>

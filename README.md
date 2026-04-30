@@ -47,33 +47,17 @@ elmo start
 
 ## Tech Stack
 
-- **Runtime:** [Docker Compose](https://docs.docker.com/compose/)
-- **Database:** [PostgreSQL](https://www.postgresql.org/)
-- **Language:** [TypeScript](https://www.typescriptlang.org/)
-- **Web framework:** [TanStack Start](https://tanstack.com/start/latest)
-- **Background jobs:** [pg-boss](https://github.com/timgit/pg-boss)
+- [Docker Compose](https://docs.docker.com/compose/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [TanStack Start](https://tanstack.com/start/latest)
+- [pg-boss](https://github.com/timgit/pg-boss)
 
-```mermaid
-flowchart LR
-    USER([User])
+## Architecture
 
-    subgraph ELMO[Elmo]
-        direction TB
-        WEB[Web]
-        PG[(Postgres)]
-        WORKER[Worker]
-        WEB <--> PG
-        WORKER <--> PG
-    end
-
-    APIS[LLM APIs]
-    SCRAPER[LLM Scraper]
-
-    USER --> WEB
-    WEB --> APIS
-    WORKER --> APIS
-    WORKER --> SCRAPER
-```
+<p align="center">
+  <img src="apps/www/public/brand/architecture.svg" alt="Elmo system architecture" width="100%">
+</p>
 
 ## Contributing
 
