@@ -42,8 +42,6 @@ elmo init
 elmo start
 ```
 
-See the [docs](https://www.elmohq.com/docs) for getting started, deployment, and the full command reference.
-
 > [!TIP]
 > **Watch** this repo's **releases** to get notified of major updates.
 
