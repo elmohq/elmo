@@ -40,7 +40,7 @@ export function Footer() {
 								<Link to="/docs">Documentation</Link>
 							</li>
 							<li>
-								<a href="/docs/user-guide/api-reference">API Reference</a>
+								<a href="/docs/developer-guide/api-reference">API Reference</a>
 							</li>
 							<li>
 								<Link to="/ai-visibility-tools">AI Visibility Tool Directory</Link>

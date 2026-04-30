@@ -1,46 +1,13 @@
 # Contributing to Elmo
 
-Thanks for your interest in contributing! This document covers what you need
-to know before opening a pull request. For deeper guides on development
-setup, architecture, and commands, see the
-[contributor docs](https://www.elmohq.com/docs/contributing).
+Thanks for your interest in contributing! Setup, commands, architecture,
+and the contribution workflow live in the
+[Developer Guide](https://www.elmohq.com/docs/developer-guide).
 
 ## License
 
-Elmo is licensed under [AGPLv3](LICENSE.md). By contributing, you agree that
-your contributions will be licensed under the same terms.
-
-## How to Contribute
-
-1. **Find or open an issue.** For non-trivial changes, please discuss in an
-   issue first so we can agree on the approach before you spend time on it.
-   Browse [open issues](https://github.com/elmohq/elmo/issues) for things to
-   work on.
-2. **Fork** the repository and create a feature branch.
-3. **Set up your environment** — see
-   [Development Setup](https://www.elmohq.com/docs/contributing/development-setup).
-4. **Make your changes** and add tests where applicable.
-5. **Add a changeset** describing user-visible changes:
-   ```bash
-   pnpm changeset
-   ```
-6. **Open a pull request** against the `main` branch. Keep PRs focused —
-   one feature or fix per PR.
-
-A maintainer will review your PR. Once approved and merged, a maintainer
-handles the release.
-
-## Guidelines
-
-- Follow the existing code style — Biome handles linting and formatting
-  (`pnpm lint`, `pnpm format`).
-- Write tests for new features and bug fixes when practical.
-- Read the [AI Contribution Policy](https://www.elmohq.com/docs/contributing/ai-policy)
-  if you use AI tools while contributing.
-- Don't include proprietary or third-party code unless its license is
-  compatible with AGPLv3 — see
-  [`scripts/check-licenses.mjs`](scripts/check-licenses.mjs) for the
-  allow-list.
+Elmo is licensed under [AGPLv3](LICENSE.md). By contributing, you agree
+that your contributions will be licensed under the same terms.
 
 ## Code of Conduct
 

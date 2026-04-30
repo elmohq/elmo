@@ -51,7 +51,7 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_URL = "http://localhost:1515";
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
-const TELEMETRY_DOC_URL = "https://elmohq.com/docs/telemetry";
+const TELEMETRY_DOC_URL = "https://elmohq.com/docs/developer-guide/telemetry";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -474,7 +474,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
-const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/deployment/providers";
+const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
 const BRIGHTDATA_MODELS = ["chatgpt", "google-ai-mode", "perplexity", "copilot", "gemini", "grok"] as const;
