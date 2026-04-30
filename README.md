@@ -45,6 +45,12 @@ elmo start
 > [!TIP]
 > **Watch** this repo's **releases** to get notified of major updates.
 
+## Architecture
+
+<p align="center">
+  <img src="apps/www/public/brand/architecture.svg" alt="Elmo system architecture" width="100%">
+</p>
+
 ## Tech Stack
 
 - [Docker Compose](https://docs.docker.com/compose/)
@@ -53,20 +59,10 @@ elmo start
 - [TanStack Start](https://tanstack.com/start/latest)
 - [pg-boss](https://github.com/timgit/pg-boss)
 
-## Architecture
-
-<p align="center">
-  <img src="apps/www/public/brand/architecture.svg" alt="Elmo system architecture" width="100%">
-</p>
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributor docs](https://www.elmohq.com/docs/contributing) for development setup, commands, architecture, and the release process.
-
 ## Contact
 
 - [Discord](https://discord.gg/s24nubCtKz)
-- [support@elmohq.com](mailto:support@elmohq.com)
+- [Email](mailto:support@elmohq.com)
 - [Schedule a call](https://cal.com/jrhizor/elmo)
 
 ## Repo Activity
