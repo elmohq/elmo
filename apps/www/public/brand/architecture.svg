@@ -4,10 +4,7 @@
             markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
       <path d="M0 0 L14 5 L0 10 z" fill="#a1a1aa"/>
     </marker>
-    <marker id="arrStart" viewBox="0 0 14 10" refX="0" refY="5"
-            markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
-      <path d="M14 0 L0 5 L14 10 z" fill="#a1a1aa"/>
-    </marker>
+
     <filter id="shCard" x="-10%" y="-10%" width="120%" height="120%">
       <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.06"/>
     </filter>
@@ -32,14 +29,18 @@
 
   <!-- Connectors -->
   <line x1="162" y1="100" x2="248" y2="100" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
-  <!-- Postgres ↔ Elmo S-curve (no markers — explicit arrow polygons below) -->
-  <path d="M 162 260 C 190 260, 190 180, 218 180" stroke="#a1a1aa" stroke-width="2" fill="none"/>
+  <!-- Postgres ↔ Elmo S-curve -->
+  <path d="M 162 260 C 190 260, 190 195, 204 195" stroke="#a1a1aa" stroke-width="2" fill="none"/>
   <polygon points="148,260 162,255 162,265" fill="#a1a1aa"/>
-  <polygon points="218,180 204,175 204,185" fill="#a1a1aa"/>
+  <polygon points="218,195 204,190 204,200" fill="#a1a1aa"/>
   <!-- Worker tributary -->
   <path d="M 632 260 C 668 260, 660 100, 690 100" stroke="#a1a1aa" stroke-width="2" fill="none"/>
-  <line x1="632" y1="100" x2="720" y2="100" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
-  <line x1="632" y1="260" x2="720" y2="260" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
+  <!-- Web Server + Worker → LLM APIs -->
+  <line x1="632" y1="100" x2="706" y2="100" stroke="#a1a1aa" stroke-width="2"/>
+  <polygon points="720,100 706,95 706,105" fill="#a1a1aa"/>
+  <!-- Worker → LLM Scrapers -->
+  <line x1="632" y1="260" x2="706" y2="260" stroke="#a1a1aa" stroke-width="2"/>
+  <polygon points="720,260 706,255 706,265" fill="#a1a1aa"/>
 
   <!-- User -->
   <rect x="20" y="70" width="140" height="60" rx="10" fill="#18181b"/>
