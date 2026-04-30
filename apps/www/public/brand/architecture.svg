@@ -39,9 +39,9 @@
   <text x="90" y="106" text-anchor="middle" fill="white" font-size="15" font-weight="600">User</text>
 
   <!-- Postgres (flat cylinder) -->
-  <ellipse cx="90" cy="290" rx="58" ry="11" fill="#0d9488"/>
-  <rect x="32" y="230" width="116" height="60" fill="#0d9488"/>
-  <ellipse cx="90" cy="230" rx="58" ry="11" fill="#14b8a6"/>
+  <ellipse cx="90" cy="285" rx="58" ry="11" fill="#0d9488"/>
+  <rect x="32" y="225" width="116" height="60" fill="#0d9488"/>
+  <ellipse cx="90" cy="225" rx="58" ry="11" fill="#14b8a6"/>
   <text x="90" y="268" text-anchor="middle" fill="white" font-size="15" font-weight="600">Postgres</text>
 
   <!-- Web Server -->
