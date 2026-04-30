@@ -216,6 +216,29 @@ describe("evaluateDeploymentPolicy", () => {
 			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/openapi.json"));
 			expect(result.action).toBe("serve-openapi");
 		});
+
+		it("blocks POST /api/v1/onboarding/analyze even with a valid key (demo can't burn LLM credit)", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("POST", "/api/v1/onboarding/analyze", `Bearer ${VALID_API_KEY}`),
+				{ adminApiKeys: API_KEYS },
+			);
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/v1/onboarding/brands even with a valid key", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("POST", "/api/v1/onboarding/brands", `Bearer ${VALID_API_KEY}`),
+				{ adminApiKeys: API_KEYS },
+			);
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /_server/* analyze server fn (no LLM access via wizard either)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/analyzeBrandFn"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
 	});
 
 	// ────────────────────────────────────────────────────────────

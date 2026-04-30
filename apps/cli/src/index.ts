@@ -575,11 +575,13 @@ async function configureProvidersCustom(env: EnvMap): Promise<void> {
 	const targets: string[] = [];
 
 	p.log.step(pc.bold("Step 1 of 2 — Direct LLM API (at least one is required)"));
+	// Order matches the auto-pick preference in onboarding/llm.ts so the first
+	// provider asked is the one onboarding will reach for by default.
 	while (!hasDirectApiConfigured(env)) {
+		await collectOpenRouter(env, targets);
 		await collectAnthropic(env, targets);
 		await collectOpenAI(env, targets);
 		await collectMistral(env, targets);
-		await collectOpenRouter(env, targets);
 		if (!hasDirectApiConfigured(env)) {
 			p.log.warn(
 				"Onboarding analysis and other low-latency LLM tasks require a direct API. Configure at least one before continuing.",

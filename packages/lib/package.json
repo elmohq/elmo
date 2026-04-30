@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "vitest run",
+    "test:onboarding": "tsx scripts/test-onboarding.ts",
     "generate:auth-schema": "bash scripts/generate-auth-schema.sh"
   },
   "exports": {
