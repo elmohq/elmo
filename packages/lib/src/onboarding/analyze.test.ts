@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe("analyzeBrand", () => {
-	it("normalizes brand fields, dedupes domains, and filters disallowed tags", async () => {
+	it("normalizes brand fields, dedupes domains, and filters self-referential competitors", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",
 			additionalDomains: ["acme.co.uk", "ACME.COM", "acme.de"],
@@ -33,8 +33,8 @@ describe("analyzeBrand", () => {
 				{ name: "Globex Dup", domain: "globex.com", additionalDomains: [], aliases: [] },
 			],
 			suggestedPrompts: [
-				{ prompt: "Best Widgets", tags: ["best-of", "spammy-tag"] },
-				{ prompt: "best widgets", tags: ["comparison"] }, // dup, lowercase
+				{ prompt: "Best Widgets", tags: ["best-of"] },
+				{ prompt: "best widgets", tags: ["comparison"] }, // duplicate after lowercasing
 				{ prompt: "acme alternative", tags: ["alternative", "branded"] },
 			],
 		});
@@ -48,12 +48,10 @@ describe("analyzeBrand", () => {
 
 		expect(result.brandName).toBe("Acme");
 		expect(result.website).toBe("acme.com");
-		// acme.com (primary) is filtered out; remaining unique
 		expect(result.additionalDomains).toEqual(["acme.co.uk", "acme.de"]);
 		expect(result.aliases).toEqual(["Acme Inc"]);
 		expect(result.products).toEqual(["widgets", "industrial supplies"]);
 
-		// Self-reference + invalid + duplicate are filtered
 		expect(result.competitors).toHaveLength(1);
 		expect(result.competitors[0]).toMatchObject({
 			name: "Globex",
@@ -62,7 +60,6 @@ describe("analyzeBrand", () => {
 			aliases: ["GBX"],
 		});
 
-		// Lowercased + deduped + only allowed tags
 		expect(result.suggestedPrompts).toEqual([
 			{ prompt: "best widgets", tags: ["best-of"] },
 			{ prompt: "acme alternative", tags: ["alternative", "branded"] },

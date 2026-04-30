@@ -80,9 +80,6 @@ function extractWebQueries(record: Record<string, any>): string[] {
 export const brightdata: Provider = {
 	id: "brightdata",
 	name: "BrightData",
-	// See olostep — same rationale: Gemini through BrightData's chatbot dataset
-	// is the fallback when no direct LLM API key is available.
-	defaultResearchModel: "gemini",
 
 	isConfigured() {
 		return !!process.env.BRIGHTDATA_API_TOKEN;

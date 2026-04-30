@@ -105,10 +105,6 @@ function extractWebQueries(data: any): string[] {
 export const olostep: Provider = {
 	id: "olostep",
 	name: "Olostep",
-	// Onboarding research falls back to scraping Gemini through Olostep when
-	// no direct LLM API key is configured. Gemini's chat surface bakes web
-	// search in, so this still yields citation-backed brand info.
-	defaultResearchModel: "gemini",
 
 	isConfigured() {
 		return !!process.env.OLOSTEP_API_KEY;

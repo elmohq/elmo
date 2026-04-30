@@ -1,12 +1,19 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
-import { generateText, type LanguageModel } from "ai";
+import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
+}
+
+function getOpenAIResponsesModel(model: string) {
+	const provider = process.env.OPENAI_API_KEY
+		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+		: openai;
+	return provider.responses(model);
 }
 
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -58,10 +65,16 @@ export const openaiApi: Provider = {
 		return runOpenAI(prompt, version, options);
 	},
 
-	languageModel(model = DEFAULT_RESEARCH_MODEL): LanguageModel {
-		if (process.env.OPENAI_API_KEY) {
-			return createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(model);
-		}
-		return openai(model);
+	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+		const slug = model ?? DEFAULT_RESEARCH_MODEL;
+		const result = await generateText({
+			model: getOpenAIResponsesModel(slug),
+			tools: {
+				web_search_preview: openai.tools.webSearchPreview({ searchContextSize: "low" }) as any,
+			},
+			experimental_output: Output.object({ schema }),
+			prompt,
+		});
+		return result.experimental_output as T;
 	},
 };

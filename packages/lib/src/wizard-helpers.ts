@@ -1,9 +1,10 @@
 import * as client from "dataforseo-client";
+import { z } from "zod";
 import { dfsLabsApi, dfsSerpApi } from "./dataforseo";
 import { getWebsiteExcerpt } from "./website-excerpt";
 import { MAX_COMPETITORS } from "./constants";
 import { isPromptBranded, computeSystemTags } from "./tag-utils";
-import { runResearchPrompt, parseRobustJson } from "./onboarding/llm";
+import { runStructuredResearchPrompt } from "./onboarding/llm";
 
 export interface AnalyzeWebsiteResult {
 	products: string[];
@@ -111,30 +112,20 @@ export async function checkDomainTraffic(domain: string): Promise<number> {
 	}
 }
 
-// Extract products from website analysis. Delegates to the provider-agnostic
-// onboarding research path so deployments without ANTHROPIC_API_KEY (e.g.
-// Olostep- or BrightData-only setups) still get product info.
 async function extractProducts(website: string): Promise<string[]> {
 	const websiteExcerpt = await getWebsiteExcerpt(website);
 	const excerptContext = websiteExcerpt
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 		: "\n\n";
 
-	const prompt = `What kinds of products does ${website} sell?
-${excerptContext}
-Use general categories, not branded names. For example, converse.com should return:
-<out>shoes,hi-tops,casual shoes</out>
+	const prompt = `What kinds of products does ${website} sell? Use general categories, not branded names. For example, converse.com would be ["shoes", "hi-tops", "casual shoes"]. Return up to 4 short lowercase categories.${excerptContext}`;
 
-Be concise and output to a comma separated list contained within <out> xml tags. List up to 4.`;
-
-	const text = await runResearchPrompt(prompt);
-	const match = text.match(/<out>([\s\S]*?)<\/out>/);
-	if (!match) return [];
-	return match[1]
-		.split(",")
-		.map((p) => p.trim())
-		.filter((p) => p.length > 0)
-		.slice(0, 4);
+	const result = await runStructuredResearchPrompt(prompt, {
+		schema: z.object({
+			products: z.array(z.string()).describe("Up to 4 short, lowercase, generic product categories"),
+		}),
+	});
+	return result.products.slice(0, 4);
 }
 
 // Analyze website to get products
@@ -190,8 +181,6 @@ function cleanDomain(domain: string): string {
 	}
 }
 
-// Get competitors for products and website. Provider-agnostic — uses whichever
-// LLM the deployment has configured (resolved by the onboarding module).
 export async function getCompetitors(products: string[], website: string): Promise<CompetitorResult[]> {
 	const productList = products.join(", ");
 	const websiteExcerpt = await getWebsiteExcerpt(website);
@@ -199,39 +188,30 @@ export async function getCompetitors(products: string[], website: string): Promi
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 		: "\n\n";
 
-	const prompt = `What are up to ${MAX_COMPETITORS} direct to consumer competitors of ${website} (which sells ${productList}).
-		${excerptContext}
-The competitors should sell similar products in a similar way to a similar audience.
-
-Please search for current market information to identify direct competitors.
-For each competitor, provide both the company name and their website domain.
-Format the output as a JSON array where each competitor is an object with "name" and "domain" fields.
-The domain should be the main website domain (e.g., "example.com") without "https://" or "www.".
-Contain the JSON within <out> xml tags. List up to ${MAX_COMPETITORS} competitors.
-
-Do not include competitors that sell similar types of products but would not be considered as direct competitors to ${website}.
-If ${website} is very small, it may not have any direct competitors. In this case, return an empty array.
-
-Example format:
-<out>
-[
-  {"name": "Company Name", "domain": "example.com"},
-  {"name": "Another Company", "domain": "another.com"}
-]
-</out>`;
+	const prompt = `Identify up to ${MAX_COMPETITORS} direct competitors of ${website}, which sells ${productList}. Competitors should sell similar products in a similar way to a similar audience. Use web search if available to verify current market information. If ${website} is very small or has no clear direct competitors, return an empty array. Do not include competitors that sell similar types of products but would not be considered direct competitors.${excerptContext}`;
 
 	let competitors: CompetitorResult[] = [];
 	try {
-		const text = await runResearchPrompt(prompt);
-		const parsed = await parseRobustJson(text);
-		if (Array.isArray(parsed)) {
-			competitors = parsed
-				.filter((c) => c && typeof c === "object" && c.name && c.domain)
-				.map((c) => ({ name: String(c.name).trim(), domain: cleanDomain(String(c.domain).trim()) }))
-				.slice(0, MAX_COMPETITORS);
-		}
+		const result = await runStructuredResearchPrompt(prompt, {
+			schema: z.object({
+				competitors: z
+					.array(
+						z.object({
+							name: z.string().describe("Company name"),
+							domain: z
+								.string()
+								.describe(`Primary website hostname only — no protocol, no www, no path (e.g. "example.com")`),
+						}),
+					)
+					.describe(`Up to ${MAX_COMPETITORS} direct competitors`),
+			}),
+		});
+		competitors = result.competitors
+			.filter((c) => c.name && c.domain)
+			.map((c) => ({ name: c.name.trim(), domain: cleanDomain(c.domain.trim()) }))
+			.slice(0, MAX_COMPETITORS);
 	} catch (err) {
-		console.error("Failed to parse competitors JSON:", err);
+		console.error("Failed to fetch competitors:", err);
 	}
 
 	console.log("GET-COMPETITORS OUTPUT:", { competitors });
@@ -436,66 +416,25 @@ async function getRelevantKeywords(allKeywords: any[], domain: string, products:
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${domain}:\n\n${websiteExcerpt}\n\n`
 		: "\n\n";
 
-	const prompt = `You are a content marketing expert helping to identify relevant keywords for article writing.
-
-Given the following information:
-- Website domain: ${domain}
+	const prompt = `You are a content marketing expert. Given:
+- Website: ${domain}
 - Products/services: ${productList}
 ${excerptContext}
-- Available keywords:
+- Candidate keywords:
 
 ${keywordList}
 
-Please analyze these keywords and select the most relevant ones for writing articles that would:
-1. Attract readers who are potential customers for the products/services
-2. Be suitable for content marketing and SEO article writing
-3. Have good potential for driving qualified traffic to the website
-4. Cover different aspects of the business (educational, comparison, how-to, etc.)
-
-Focus on keywords that would make sense for articles like:
-- "How to choose the right [product]"
-- "Benefits of [product/service]"
-- "Best practices for [topic related to products]"
-- "[Product] vs alternatives"
-- "Guide to [product category]"
-
-Select up to 100 of the most relevant keywords and return them as a JSON array of keyword strings.
-
-Format the output as JSON within <out> xml tags.
-
-<out>
-[
-  "example keyword",
-  "another keyword",
-  "third keyword"
-]
-</out>`;
+Pick up to 100 of the most relevant keywords for content marketing — readers who are potential customers, suitable for SEO articles, good traffic potential, mix of educational/comparison/how-to. Return ONLY keywords from the candidate list above (verbatim).`;
 
 	try {
-		const text = await runResearchPrompt(prompt);
-		let relevantKeywords: KeywordResult[] = [];
-
-		try {
-			const selectedKeywords = await parseRobustJson(text);
-			if (Array.isArray(selectedKeywords)) {
-				relevantKeywords = selectedKeywords
-					.filter((keyword) => typeof keyword === "string")
-					.map((keyword) => {
-						const originalKeyword = allKeywords.find((k) => k.keyword === (keyword as string).trim());
-						return originalKeyword
-							? {
-									keyword: originalKeyword.keyword,
-									search_volume: originalKeyword.search_volume,
-									difficulty: originalKeyword.difficulty,
-								}
-							: null;
-					})
-					.filter((k): k is KeywordResult => k !== null);
-			}
-		} catch (parseError) {
-			console.error("Failed to parse relevant keywords JSON:", parseError);
-			relevantKeywords = allKeywords;
-		}
+		const result = await runStructuredResearchPrompt(prompt, {
+			schema: z.object({
+				keywords: z.array(z.string()).describe("Verbatim keywords picked from the candidate list above"),
+			}),
+		});
+		const relevantKeywords = result.keywords
+			.map((keyword) => allKeywords.find((k) => k.keyword === keyword.trim()))
+			.filter((k): k is KeywordResult => Boolean(k));
 
 		console.log("GET-RELEVANT-KEYWORDS OUTPUT:", {
 			count: relevantKeywords.length,
@@ -619,72 +558,37 @@ export async function getPersonas(products: string[], website: string): Promise<
 		? `\n\nHere is an excerpt of the first 200 lines of text from ${website}:\n\n${websiteExcerpt}\n\n`
 		: "\n\n";
 
-	const prompt = `You have collected Google autocomplete suggestions for "best [product] for" queries. Here are the unique suffixes (the parts that come after "for"):
+	const prompt = `You have collected Google autocomplete suggestions for "best [product] for" queries. Here are the unique suffixes (parts after "for"):
 
 ${suffixList}
 ${excerptContext}
-Your task is to group these suffixes into 2-3 strategic category groups that would be useful for comparison tracking and market analysis. Each category should represent a key dimension for business decisions and competitive positioning.
+Group these suffixes into up to 3 strategic category groups (with up to 4 items each) useful for comparison tracking and market analysis for ${website} (sells ${products.join(", ")}). Examples of dimensions: Demographic, Use, Customer, Industry, Purpose, Segment, Market, Type, Role, Stage.
 
-Think about broad dimensions that matter for ecommerce brands, such as:
-- Customers (startups, enterprises, small businesses, etc.)
-- Purpose (marketing, sales, analytics, etc.) 
-- Industries (healthcare, fashion, technology, etc.)
-- Models (B2B, B2C, subscription, etc.)
-- Sizes (startup, SMB, enterprise, etc.)
+Constraints:
+- Each group's name MUST be a single non-plural word.
+- Only include suffixes that clearly fit into strategic categories.
+- If you are not confident a group/item is relevant to ${website} or its products, omit it.
+- If the brand is small and the product categories are very broad, return an empty array.`;
 
-Create up to 3 strategic category groups with up to 4 items each. Focus on the most common and strategically valuable groupings from the suffixes provided.
+	const result = await runStructuredResearchPrompt(prompt, {
+		schema: z.object({
+			groups: z
+				.array(
+					z.object({
+						name: z.string().describe("Single non-plural word category name"),
+						personas: z.array(z.string()).max(4).describe("Up to 4 suffixes that fit this category"),
+					}),
+				)
+				.max(3),
+		}),
+	});
 
-The should be a good mix of personas that are relevant to the products for sale (which are ${products.join(", ")}) and the website ${website}.
-
-IMPORTANT: Use only ONE NON-PLURAL WORD for each category group name. Examples: "Demographic", "Use", "Customer", "Industry", "Purpose", "Segment", "Market", "Type", "Role", "Stage".
-
-If you are not confident a group is relevant, do not include it.
-If you are not confident an item in a group is relevant, do not include it.
-If the group or item does not make sense for all of the different products for sale, do not include it.
-If you are not confident a group or item is relevant to the website ${website}, regardless of the products, do not include it.
-If the brand is small and the product categories are very broad, do not include any groups.
-If the groups are not specific to the brand ${website}, do not include them.
-
-Format your response as:
-<group name="Category1">item1,item2,item3,item4</group>
-<group name="Category2">item1,item2,item3,item4</group>
-<group name="Category3">item1,item2,item3,item4</group>
-
-Only include suffixes that clearly fit into strategic categories. Ignore overly specific or unclear terms.`;
-
-	const text = await runResearchPrompt(prompt);
-
-	console.log("text", text);
-
-	// Extract groups with names
-	const groupMatches = text.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/g);
-	const personaGroups = groupMatches
-		? groupMatches
-				.map((groupMatch) => {
-					const fullMatch = groupMatch.match(/<group name="([^"]*?)">([\s\S]*?)<\/group>/);
-					if (fullMatch) {
-						const groupName = fullMatch[1];
-						const personas = fullMatch[2]
-							.split(",")
-							.map((p) => p.trim())
-							.filter((p) => p.length > 0)
-							.slice(0, 4);
-						return {
-							name: groupName,
-							personas: personas,
-						};
-					}
-					return null;
-				})
-				.filter((group) => group !== null)
-		: [];
-
-	console.log("GET-PERSONAS OUTPUT (DATAFORSEO + CLAUDE):", { personaGroups });
-
+	const personaGroups = result.groups.filter((g) => g.name && g.personas.length > 0);
+	console.log("GET-PERSONAS OUTPUT:", { personaGroups });
 	return personaGroups;
 }
 
-// Generate candidate prompts for reports using Claude
+// Generate candidate prompts for reports.
 export async function generateCandidatePromptsForReports(
 	brandName: string,
 	brandWebsite: string,
@@ -693,89 +597,47 @@ export async function generateCandidatePromptsForReports(
 ): Promise<{ prompt: string; brandedPrompt: boolean }[]> {
 	const productList = products.join(", ");
 	const competitorNames = competitors.map((c) => c.name).join(", ");
-	
-	// Get website excerpt for additional context
 	const websiteExcerpt = await getWebsiteExcerpt(brandWebsite);
 	const excerptContext = websiteExcerpt
-		? `\n\nHere is an excerpt of the first 200 lines of text from ${brandWebsite}:\n\n${websiteExcerpt}\n\n`
-		: "\n\n";
+		? `\n\nWebsite excerpt:\n---\n${websiteExcerpt}\n---\n\n`
+		: "\n";
 
-	const prompt = `I want to create a set of 70 simple prompts related to the brand ${brandName} (${brandWebsite}).
-Website excerpt:
----
-${excerptContext}
----
+	const prompt = `Generate a set of 70 short purchasing-decision prompts related to the brand ${brandName} (${brandWebsite}, sells ${productList}). The goal is for 14-28 of these prompts, when evaluated in ChatGPT/Claude/similar, to mention ${brandName} in the response. Ideally each prompt should also tend to surface a major competitor (${competitorNames}). Prompts should be short fragments, not full sentences, lowercase, in the style of "best X", "best X for Y", "good X alternative", "where to buy X". Most prompts should NOT include competitor names directly.
 
-The goal is for 14-28 of these prompts, when evaluated in ChatGPT/Claude/similar, to mention the brand in the response. Ideally all of these prompts should mention at least one major competitor of ${brandName}, like ${competitorNames}, and the prompts should talk about the type of products/services ${brandName} offers (${productList}). The prompts should generally be based on what someone might ask as a purchasing decision ("best X", "best X for Y", "good X alternative", "where to buy X", etc).
-
-The prompts should be pretty short and simple, and not structured as full sentences. Most prompts should NOT include competitor names directly. Use lowercase for the brand name when it appears in prompts.
-
-Output these in a CSV table with a header row. The first column should be the text of the prompt, the second % confidence the brand ${brandName} will be mentioned in response, and the third % confidence one of ${brandName}'s major competitors will be mentioned. Do not output any other surrounding text or metadata.
-
-After the 70 prompts, also generate 14 "fallback" queries that contain the brand's name directly (like "best ${brandName.toLowerCase()} products", "${brandName.toLowerCase()} alternatives", "where to buy from ${brandName.toLowerCase()}", etc). These should be simple branded prompts that are guaranteed to get responses mentioning the brand.
-
-Example format:
-prompt,brand_confidence,competitor_confidence
-best affordable shoes,45,85
-${brandName.toLowerCase()} best products,95,60`;
+Then add 14 "fallback" branded prompts that contain "${brandName.toLowerCase()}" directly (e.g. "${brandName.toLowerCase()} alternatives", "best ${brandName.toLowerCase()} products"), guaranteed to surface the brand.${excerptContext}`;
 
 	try {
-		const allTextContent = await runResearchPrompt(prompt);
-
-	// Extract CSV from markdown code blocks if present
-	let csvContent = allTextContent;
-	const codeBlockMatch = allTextContent.match(/```(?:csv)?\s*\n([\s\S]*?)\n```/);
-	if (codeBlockMatch) {
-		csvContent = codeBlockMatch[1];
-	}
-
-	// Parse CSV output
-	const lines = csvContent
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => {
-			// Filter out empty lines and any remaining markdown artifacts
-			return line.length > 0 && !line.match(/^```/);
+		const result = await runStructuredResearchPrompt(prompt, {
+			schema: z.object({
+				prompts: z
+					.array(
+						z.object({
+							prompt: z.string().describe("Lowercase short prompt fragment"),
+						}),
+					)
+					.describe("84 prompts total: 70 unbranded + 14 branded fallbacks"),
+			}),
 		});
-	const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = [];
 
-	// Skip header row and parse each line
-	for (let i = 1; i < lines.length; i++) {
-		const line = lines[i];
-		if (!line) continue;
+		const candidatePrompts = result.prompts
+			.map((p) => p.prompt.trim())
+			.filter((p) => p.length > 0)
+			.map((p) => ({
+				prompt: p.toLowerCase(),
+				brandedPrompt: isPromptBranded(p, brandName, brandWebsite),
+			}));
 
-		// Simple CSV parsing (handles basic cases)
-		const parts = line.split(",");
-		if (parts.length >= 1) {
-			const promptText = parts[0].trim();
-
-			// Validate prompt text - must have content and not be a header or markdown artifact
-			if (
-				promptText && 
-				promptText.length > 0 &&
-				promptText !== "prompt" &&
-				!promptText.match(/^```/)
-			) {
-				candidatePrompts.push({
-					prompt: promptText.toLowerCase(),
-					brandedPrompt: isPromptBranded(promptText, brandName, brandWebsite),
-				});
-			}
+		if (candidatePrompts.length === 0) {
+			throw new Error("LLM returned no candidate prompts");
 		}
-	}
 
-	if (candidatePrompts.length === 0) {
-		throw new Error("Failed to generate any candidate prompts from Claude response");
-	}
-
-	console.log(
-		`Generated ${candidatePrompts.length} candidate prompts (${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
-	);
-
-	return candidatePrompts;
+		console.log(
+			`Generated ${candidatePrompts.length} candidate prompts (${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
+		);
+		return candidatePrompts;
 	} catch (error) {
 		console.error("Error generating candidate prompts:", error);
-		throw error; // Re-throw to propagate the error
+		throw error;
 	}
 }
 

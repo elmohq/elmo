@@ -1,8 +1,11 @@
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import { createOpenAI } from "@ai-sdk/openai";
+import { generateObject } from "ai";
+import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
 import type { Citation } from "../../text-extraction";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
+const DEFAULT_RESEARCH_MODEL = DEFAULT_MODEL;
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -125,6 +128,7 @@ function extractMistralQuery(entry: any): string | null {
 export const mistralApi: Provider = {
 	id: "mistral-api",
 	name: "Mistral API",
+	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.MISTRAL_API_KEY;
@@ -136,5 +140,20 @@ export const mistralApi: Provider = {
 			? await runConversationsWithWebSearch(prompt, version)
 			: await runChatCompletions(prompt, version);
 		return { ...result, rawOutput: sanitizeForJson(result.rawOutput) };
+	},
+
+	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+		// Mistral's chat completions endpoint is OpenAI-compatible and honors
+		// `response_format: json_schema`. The web-search-enabled Conversations
+		// API isn't on the AI SDK, so onboarding via Mistral runs without web
+		// search — Mistral users who want web-search-backed research should
+		// configure ONBOARDING_LLM_TARGET to point at OpenRouter or Anthropic.
+		const slug = model ?? DEFAULT_RESEARCH_MODEL;
+		const provider = createOpenAI({
+			baseURL: `${MISTRAL_BASE_URL}/v1`,
+			apiKey: process.env.MISTRAL_API_KEY,
+		});
+		const result = await generateObject({ model: provider(slug), schema, prompt });
+		return result.object;
 	},
 };

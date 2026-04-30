@@ -1,5 +1,6 @@
 /**
- * Provider-agnostic brand analysis. One LLM round-trip produces:
+ * Provider-agnostic brand analysis. One direct-API LLM call (with web search
+ * where the provider supports it) returns:
  *   - canonical brand name
  *   - additional brand domains (regional ccTLDs, alt spellings)
  *   - aliases (abbreviations, parent company names)
@@ -7,10 +8,9 @@
  *   - direct competitors (with their own domains/aliases)
  *   - suggested AI tracking prompts (with default tags)
  *
- * The structured output is the new heart of onboarding — both the in-app
- * wizard and the public `/api/v1/onboarding/*` endpoints consume it. The
- * legacy DataForSEO-driven keyword/persona helpers in `wizard-helpers.ts`
- * stay for the report worker but no longer block onboarding.
+ * The Zod schema is the source of truth — `generateObject` derives a JSON
+ * schema from it and hands it to the model, so the prompt itself only needs
+ * to communicate context + quality guidelines, not field-by-field shape.
  */
 import { z } from "zod";
 import { getWebsiteExcerpt } from "../website-excerpt";
@@ -23,7 +23,7 @@ import {
 	uniqueTrim,
 } from "./utils";
 
-const ALLOWED_TAGS = new Set([
+const PROMPT_TAGS = [
 	"comparison",
 	"best-of",
 	"alternative",
@@ -33,28 +33,62 @@ const ALLOWED_TAGS = new Set([
 	"transactional",
 	"informational",
 	"persona",
-]);
+] as const;
 
 const competitorSchema = z.object({
-	name: z.string().min(1),
-	domain: z.string().min(1),
-	additionalDomains: z.array(z.string()).optional().default([]),
-	aliases: z.array(z.string()).optional().default([]),
+	name: z.string().describe("Company name"),
+	domain: z
+		.string()
+		.describe(`Primary website hostname only — no protocol, no www, no path (e.g. "example.com")`),
+	additionalDomains: z
+		.array(z.string())
+		.describe("Other domains the company owns (regional ccTLDs, alternate spellings)"),
+	aliases: z.array(z.string()).describe("Other names the company is commonly known by"),
 });
 
 const promptSchema = z.object({
-	prompt: z.string().min(1),
-	tags: z.array(z.string()).optional().default([]),
+	prompt: z
+		.string()
+		.describe(
+			'Short search-style fragment, lowercase, under ~12 words. NOT a full sentence — the kind of thing people actually type into ChatGPT.',
+		),
+	tags: z
+		.array(z.enum(PROMPT_TAGS))
+		.describe('1-2 tags categorizing the prompt. Always include "branded" when the prompt names the brand.'),
 });
 
-const onboardingSuggestionSchema = z.object({
-	brandName: z.string().optional(),
-	additionalDomains: z.array(z.string()).optional().default([]),
-	aliases: z.array(z.string()).optional().default([]),
-	products: z.array(z.string()).optional().default([]),
-	competitors: z.array(competitorSchema).optional().default([]),
-	suggestedPrompts: z.array(promptSchema).optional().default([]),
-});
+function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
+	return z.object({
+		brandName: z.string().describe("Canonical brand name as commonly written (preserve casing)"),
+		additionalDomains: z
+			.array(z.string())
+			.describe(
+				"Other public domains the brand owns (regional ccTLDs, alternate spellings, parent-company sites). Hostnames only. Do not include the primary website. Empty if uncertain.",
+			),
+		aliases: z
+			.array(z.string())
+			.describe(
+				"Other names users use for this brand (abbreviations, parent-company names, common misspellings). Empty if none are commonly used.",
+			),
+		products: z
+			.array(z.string())
+			.describe(
+				'3-5 short generic product/service categories (lowercase, no brand names). E.g. for converse.com: ["sneakers", "casual shoes", "hi-tops"].',
+			),
+		competitors: z
+			.array(competitorSchema)
+			.describe(
+				`Up to ${args.maxCompetitors} direct competitors that sell similar products to a similar audience. Empty if uncertain.`,
+			),
+		suggestedPrompts: z
+			.array(promptSchema)
+			.describe(
+				`Up to ${args.maxPrompts} suggested AI tracking prompts. Mix shapes: "best [category]", "best [category] for [persona]", "[category] vs alternatives", "[brand] alternative", "where to buy [category]", "is [brand] worth it". Include 3-5 explicitly branded prompts.`,
+			),
+	});
+}
+
+type RawSuggestion = z.infer<ReturnType<typeof buildSchema>>;
 
 export interface OnboardingCompetitor {
 	name: string;
@@ -109,20 +143,18 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 
 	const inferredName = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
 	const websiteExcerpt = await safeGetExcerpt(normalizedWebsite);
+	const resolvedTarget = target ?? resolveResearchTarget();
 
-	const prompt = buildAnalysisPrompt({
+	const prompt = buildPrompt({
 		website: normalizedWebsite,
 		brandNameHint: inferredName,
 		websiteExcerpt,
 		includeCompetitors,
 		includePrompts,
-		maxCompetitors,
-		maxPrompts,
 	});
 
-	const resolvedTarget = target ?? resolveResearchTarget();
 	const raw = await runStructuredResearchPrompt(prompt, {
-		schema: onboardingSuggestionSchema,
+		schema: buildSchema({ maxCompetitors, maxPrompts }),
 		target: resolvedTarget,
 	});
 
@@ -146,83 +178,30 @@ async function safeGetExcerpt(website: string): Promise<string> {
 	}
 }
 
-function buildAnalysisPrompt(args: {
+function buildPrompt(args: {
 	website: string;
 	brandNameHint: string;
 	websiteExcerpt: string;
 	includeCompetitors: boolean;
 	includePrompts: boolean;
-	maxCompetitors: number;
-	maxPrompts: number;
 }): string {
-	const {
-		website,
-		brandNameHint,
-		websiteExcerpt,
-		includeCompetitors,
-		includePrompts,
-		maxCompetitors,
-		maxPrompts,
-	} = args;
-
-	const excerptBlock = websiteExcerpt
-		? `\nText extracted from ${website} (first 200 lines):\n---\n${websiteExcerpt}\n---\n`
+	const excerptBlock = args.websiteExcerpt
+		? `\nText from ${args.website}:\n---\n${args.websiteExcerpt}\n---\n`
 		: "\n";
 
-	const competitorsSection = includeCompetitors
-		? `5. competitors: up to ${maxCompetitors} direct competitors that sell similar products to a similar audience. For each: { name, domain, additionalDomains?, aliases? }. Domains MUST be plain hostnames (no protocol, no www, no path). Only include competitors you are confident in — return [] when unsure.`
-		: `5. competitors: return an empty array.`;
+	const skipNotes: string[] = [];
+	if (!args.includeCompetitors) skipNotes.push("Return an empty array for competitors.");
+	if (!args.includePrompts) skipNotes.push("Return an empty array for suggestedPrompts.");
 
-	const promptsSection = includePrompts
-		? `6. suggestedPrompts: up to ${maxPrompts} short search-style prompts a real user might type into ChatGPT/Claude/Gemini, where the brand or its competitors might plausibly be mentioned. Vary the shape across:
-   - "best [category]"
-   - "best [category] for [persona/use-case]"
-   - "[category] vs alternatives"
-   - "${brandNameHint.toLowerCase()} alternative" / "alternatives to ${brandNameHint.toLowerCase()}"
-   - "where to buy [category]"
-   - "is [brand] worth it" / "[brand] review"
-   - 3-5 branded prompts that contain the brand name directly
-   Each: { prompt, tags }. Prompt MUST be short (under ~12 words), lowercase, NOT a full sentence — the kind of fragment people actually type into search/AI. Tags MUST be 1-2 entries chosen from this exact list: comparison, best-of, alternative, recommendation, use-case, branded, transactional, informational, persona. If a prompt mentions the brand by name, include "branded".`
-		: `6. suggestedPrompts: return an empty array.`;
+	return `Analyze the brand at ${args.website}.
 
-	return `You are a brand intelligence assistant helping configure AI visibility tracking for a brand.
-
-Brand under analysis:
-- Website: ${website}
-- Likely brand name (from domain): ${brandNameHint}
+Likely brand name (from domain): ${args.brandNameHint}
 ${excerptBlock}
-Use web search if available to verify facts. Never invent information — return empty arrays when uncertain.
-
-Produce a single JSON object describing this brand:
-1. brandName: canonical brand name as commonly written (preserve casing).
-2. additionalDomains: other public domains the brand owns (regional ccTLDs, alternate spellings, parent-company sites). Plain hostnames only — no protocol, no www, no path. Do NOT include the primary website (${website}). Only include domains you are highly confident the brand owns; if uncertain, return [].
-3. aliases: other names users might use for this brand (abbreviations, parent-company names, common misspellings). Lowercase strings. Only include if commonly used; otherwise return [].
-4. products: 3-5 short, generic product/service categories (lowercase, no brand names). For example, for converse.com: ["sneakers","casual shoes","hi-tops"].
-${competitorsSection}
-${promptsSection}
-
-Return ONLY a single JSON object inside <out>...</out>. No commentary outside the tags.
-
-Example output shape (do NOT copy these values):
-<out>
-{
-  "brandName": "Acme",
-  "additionalDomains": ["acme.co.uk"],
-  "aliases": ["acme inc", "acme corporation"],
-  "products": ["widgets", "industrial supplies"],
-  "competitors": [
-    { "name": "Globex", "domain": "globex.com", "additionalDomains": ["globex.de"], "aliases": ["globex corp"] }
-  ],
-  "suggestedPrompts": [
-    { "prompt": "best widgets", "tags": ["best-of"] },
-    { "prompt": "acme alternative", "tags": ["alternative", "branded"] }
-  ]
-}
-</out>`;
+Use web search to verify facts. Never invent information — return empty arrays when uncertain. The output schema is enforced; just produce accurate values for each described field.${skipNotes.length > 0 ? `\n\n${skipNotes.join(" ")}` : ""}`;
 }
 
 function normalize(args: {
-	raw: z.infer<typeof onboardingSuggestionSchema>;
+	raw: RawSuggestion;
 	website: string;
 	brandNameHint: string;
 	includeCompetitors: boolean;
@@ -242,7 +221,6 @@ function normalize(args: {
 
 	const dedupedAdditionalDomains = uniqueLowercase(additionalDomains);
 	const aliases = uniqueTrim(raw.aliases ?? []).filter((a) => a.toLowerCase() !== brandName.toLowerCase());
-
 	const products = uniqueLowercase(raw.products ?? []).slice(0, 8);
 
 	const competitors: OnboardingCompetitor[] = [];
@@ -278,8 +256,7 @@ function normalize(args: {
 			const value = p.prompt.trim().toLowerCase();
 			if (!value || seen.has(value)) continue;
 			seen.add(value);
-			const tags = uniqueLowercase(p.tags ?? []).filter((t) => ALLOWED_TAGS.has(t));
-			suggestedPrompts.push({ prompt: value, tags });
+			suggestedPrompts.push({ prompt: value, tags: uniqueLowercase(p.tags ?? []) });
 		}
 	}
 

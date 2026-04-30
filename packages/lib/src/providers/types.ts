@@ -1,4 +1,4 @@
-import type { LanguageModel } from "ai";
+import type { z } from "zod";
 import type { Citation } from "../text-extraction";
 
 export interface ScrapeResult {
@@ -15,6 +15,13 @@ export interface ProviderOptions {
 	version?: string;
 }
 
+export interface StructuredResearchOptions<T> {
+	prompt: string;
+	schema: z.ZodType<T>;
+	/** Override the provider's `defaultResearchModel`. */
+	model?: string;
+}
+
 export interface Provider {
 	id: string;
 	name: string;
@@ -27,19 +34,21 @@ export interface Provider {
 	// ----- research / onboarding capabilities --------------------------------
 
 	/**
-	 * Default model id this provider should use when called for research-style
-	 * work (e.g. brand onboarding analysis). Set on every provider that's
-	 * eligible for that path; omit on providers we never want to use for it.
+	 * Default model id this provider should use for research-style work (brand
+	 * onboarding, ad-hoc LLM tasks). Only set on direct API providers that
+	 * implement `runStructuredResearch`.
 	 */
 	defaultResearchModel?: string;
 	/**
-	 * Returns an AI SDK LanguageModel instance for native structured-output
-	 * calls (e.g. `generateObject({ model, schema })`). Only direct API
-	 * providers implement this — screen-scraper providers (Olostep / BrightData)
-	 * leave it unset, and the onboarding pipeline falls back to running the
-	 * provider's normal `run()` and parsing JSON out of the chatbot's reply.
+	 * Run a single research call that returns a Zod-validated structured value.
+	 * Each direct API provider implements this using the most idiomatic combo
+	 * for its API: `generateText` + web-search tool + `experimental_output`
+	 * for Anthropic/OpenAI; `generateObject` against a `:online`-suffixed slug
+	 * for OpenRouter; OpenAI-compat `generateObject` for Mistral. Screen-
+	 * scraper providers (Olostep / BrightData) don't implement this — the
+	 * onboarding flow always picks a direct API provider.
 	 */
-	languageModel?(model?: string): LanguageModel;
+	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<T>;
 }
 
 export interface TestResult {

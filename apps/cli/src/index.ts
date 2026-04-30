@@ -360,7 +360,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	}
 
 	// ── AI providers ─────────────────────────────────────────────────────
-	await configureProvidersInteractive(env);
+	const setupMode = await configureProvidersInteractive(env);
 
 	// ── Telemetry ───────────────────────────────────────────────────────
 	p.note(
@@ -455,6 +455,9 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		node_version: process.version,
 		postgres_mode: postgresMode,
 		dev_mode: Boolean(options.dev),
+		setup_mode: setupMode,
+		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY),
+		has_direct_api: hasDirectApiConfigured(env),
 	});
 
 	// Newsletter signup is a separate, explicit opt-in and runs even when
@@ -496,51 +499,173 @@ const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
-async function configureProvidersInteractive(env: EnvMap): Promise<void> {
+async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
 	p.note(
 		[
-			"Elmo tracks which AI answer engines mention your brand. Most of",
-			"that traffic comes from ChatGPT and Google AI Mode — neither has",
-			"a public API, so tracking them requires a scraper.",
+			"Elmo needs two kinds of providers:",
 			"",
-			pc.bold("Recommended scrapers:"),
-			`  • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
-			`  • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
+			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
+			`     • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
+			`     • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
+			"",
+			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
+			"   ad-hoc LLM calls). Required:",
+			`     • ${pc.cyan("OpenRouter")} — one key, all major models (recommended)`,
+			`     • ${pc.cyan("Anthropic / OpenAI / Mistral")} — direct provider keys`,
 			"",
 			"Pricing assumes Elmo's default cadence (5 runs/day × 2 surfaces).",
-			"Configure any combination below — every target is opt-in.",
 		].join("\n"),
-		"AI visibility providers",
+		"AI providers",
 	);
 
+	const mode = await p.select({
+		message: "Setup mode",
+		options: [
+			{ value: "recommended" as const, label: "Recommended — one scraper + one direct API (4 prompts)" },
+			{ value: "custom" as const, label: "Custom — pick each provider individually" },
+		],
+		initialValue: "recommended" as const,
+	});
+	assertNotCancelled(mode);
+
+	if (mode === "recommended") {
+		await configureProvidersRecommended(env);
+	} else {
+		await configureProvidersCustom(env);
+	}
+	return mode;
+}
+
+async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 	const targets: string[] = [];
 
-	const brightDataTookDefaults = await collectBrightData(env, targets);
-	if (brightDataTookDefaults) {
-		await finalizeScrapeTargets(env, targets, { skipEdit: true });
-		return;
+	// ── Scraper ─────────────────────────────────────────────────────────────
+	const scraper = await p.select({
+		message: "Scraper (tracks ChatGPT + Google AI Mode)",
+		options: [
+			{ value: "brightdata" as const, label: "BrightData — ~$0.45/mo per prompt (cheaper)" },
+			{ value: "olostep" as const, label: "Olostep — ~$2.25/mo per prompt (premium)" },
+		],
+		initialValue: "brightdata" as const,
+	});
+	assertNotCancelled(scraper);
+	await collectScraperKey(scraper, env);
+	for (const model of DEFAULT_SCRAPER_MODELS) {
+		targets.push(`${model}:${scraper}:online`);
 	}
-	const olostepTookDefaults = await collectOlostep(env, targets);
-	if (olostepTookDefaults) {
-		await finalizeScrapeTargets(env, targets, { skipEdit: true });
-		return;
+
+	// ── Direct API ──────────────────────────────────────────────────────────
+	const direct = await p.select({
+		message: "Direct LLM API (powers onboarding analysis + sentiment scoring)",
+		options: [
+			{ value: "openrouter" as const, label: "OpenRouter — one key, all major models (recommended)" },
+			{ value: "anthropic" as const, label: "Anthropic — direct Claude" },
+			{ value: "openai" as const, label: "OpenAI — direct GPT-* models" },
+			{ value: "mistral" as const, label: "Mistral — direct Mistral models" },
+		],
+		initialValue: "openrouter" as const,
+	});
+	assertNotCancelled(direct);
+	await collectDirectApiQuick(direct, env, targets);
+
+	await finalizeScrapeTargets(env, targets, { skipEdit: true });
+}
+
+async function configureProvidersCustom(env: EnvMap): Promise<void> {
+	const targets: string[] = [];
+
+	p.log.step(pc.bold("Step 1 of 2 — Direct LLM API (at least one is required)"));
+	while (!hasDirectApiConfigured(env)) {
+		await collectAnthropic(env, targets);
+		await collectOpenAI(env, targets);
+		await collectMistral(env, targets);
+		await collectOpenRouter(env, targets);
+		if (!hasDirectApiConfigured(env)) {
+			p.log.warn(
+				"Onboarding analysis and other low-latency LLM tasks require a direct API. Configure at least one before continuing.",
+			);
+		}
 	}
-	await collectAnthropic(env, targets);
-	await collectOpenAI(env, targets);
-	await collectMistral(env, targets);
-	await collectOpenRouter(env, targets);
+
+	p.log.step(pc.bold("Step 2 of 2 — Scrapers (optional, but needed to track ChatGPT / Google AI Mode)"));
+	await collectBrightData(env, targets);
+	await collectOlostep(env, targets);
 	await collectDataForSEO(env, targets);
 
 	await finalizeScrapeTargets(env, targets);
 }
 
-async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolean> {
+function hasDirectApiConfigured(env: EnvMap): boolean {
+	return Boolean(env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY || env.MISTRAL_API_KEY || env.OPENROUTER_API_KEY);
+}
+
+async function collectScraperKey(scraper: "brightdata" | "olostep", env: EnvMap): Promise<void> {
+	if (scraper === "brightdata") {
+		p.log.info(`Sign up: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`);
+		const key = await p.password({
+			message: "BrightData API token",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.BRIGHTDATA_API_TOKEN = key;
+	} else {
+		p.log.info(`Sign up: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`);
+		const key = await p.password({
+			message: "Olostep API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OLOSTEP_API_KEY = key;
+	}
+}
+
+async function collectDirectApiQuick(
+	kind: "openrouter" | "anthropic" | "openai" | "mistral",
+	env: EnvMap,
+	targets: string[],
+): Promise<void> {
+	if (kind === "openrouter") {
+		const key = await p.password({
+			message: "OpenRouter API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENROUTER_API_KEY = key;
+		targets.push(`claude:openrouter:${DEFAULT_OPENROUTER_MODEL}:online`);
+	} else if (kind === "anthropic") {
+		const key = await p.password({
+			message: "Anthropic API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.ANTHROPIC_API_KEY = key;
+		targets.push(`claude:anthropic-api:${DEFAULT_ANTHROPIC_MODEL}:online`);
+	} else if (kind === "openai") {
+		const key = await p.password({
+			message: "OpenAI API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENAI_API_KEY = key;
+		targets.push(`chatgpt:openai-api:${DEFAULT_OPENAI_MODEL}:online`);
+	} else {
+		const key = await p.password({
+			message: "Mistral API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.MISTRAL_API_KEY = key;
+		targets.push(`mistral:mistral-api:${DEFAULT_MISTRAL_MODEL}:online`);
+	}
+}
+
+async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("BrightData")}? (recommended scraper — ~$0.45/mo per prompt)`,
+		message: `Configure ${pc.bold("BrightData")}? (~$0.45/mo per prompt)`,
 		initialValue: true,
 	});
 	assertNotCancelled(enable);
-	if (!enable) return false;
+	if (!enable) return;
 
 	p.log.info(`Sign up and generate an API token: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`);
 	const key = await p.password({
@@ -550,7 +675,7 @@ async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolea
 	assertNotCancelled(key);
 	env.BRIGHTDATA_API_TOKEN = key;
 
-	return await pickScraperTargets({
+	await pickScraperTargets({
 		providerLabel: "BrightData",
 		providerId: "brightdata",
 		allModels: BRIGHTDATA_MODELS as readonly string[],
@@ -558,13 +683,13 @@ async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolea
 	});
 }
 
-async function collectOlostep(env: EnvMap, targets: string[]): Promise<boolean> {
+async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Olostep")}? (recommended scraper — ~$2.25/mo per prompt)`,
+		message: `Configure ${pc.bold("Olostep")}? (~$2.25/mo per prompt)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
-	if (!enable) return false;
+	if (!enable) return;
 
 	p.log.info(`Grab an API key: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`);
 	const key = await p.password({
@@ -574,7 +699,7 @@ async function collectOlostep(env: EnvMap, targets: string[]): Promise<boolean> 
 	assertNotCancelled(key);
 	env.OLOSTEP_API_KEY = key;
 
-	return await pickScraperTargets({
+	await pickScraperTargets({
 		providerLabel: "Olostep",
 		providerId: "olostep",
 		allModels: OLOSTEP_MODELS as readonly string[],
@@ -587,37 +712,18 @@ async function pickScraperTargets(args: {
 	providerId: "brightdata" | "olostep";
 	allModels: readonly string[];
 	targets: string[];
-}): Promise<boolean> {
-	const { providerLabel, providerId, allModels, targets } = args;
-
-	const useDefault = await p.confirm({
-		message: `Track ChatGPT and Google AI Mode via ${providerLabel}? (recommended)`,
-		initialValue: true,
-	});
-	assertNotCancelled(useDefault);
-
-	if (useDefault) {
-		for (const model of DEFAULT_SCRAPER_MODELS) {
-			targets.push(`${model}:${providerId}:online`);
-		}
-		return true;
-	}
-
+}): Promise<void> {
 	const selected = (await p.multiselect({
-		message: `Pick which surfaces to track via ${providerLabel}`,
-		options: allModels.map((model) => ({
-			value: model,
-			label: model,
-		})),
+		message: `Surfaces to track via ${args.providerLabel}`,
+		options: args.allModels.map((model) => ({ value: model, label: model })),
 		required: true,
 		initialValues: [...DEFAULT_SCRAPER_MODELS],
 	})) as string[] | symbol;
 	assertNotCancelled(selected);
 
 	for (const model of selected) {
-		targets.push(`${model}:${providerId}:online`);
+		args.targets.push(`${model}:${args.providerId}:online`);
 	}
-	return false;
 }
 
 async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {

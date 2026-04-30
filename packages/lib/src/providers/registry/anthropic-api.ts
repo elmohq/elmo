@@ -1,11 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
-import type { LanguageModel } from "ai";
+import { generateText, Output } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
 import type { Citation } from "../../text-extraction";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-20250514";
+
+function getAnthropicLanguageModel(model: string) {
+	return process.env.ANTHROPIC_API_KEY
+		? createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model)
+		: anthropic(model);
+}
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -139,13 +145,16 @@ export const anthropicApi: Provider = {
 		return runAnthropic(prompt, version, options);
 	},
 
-	languageModel(model = DEFAULT_RESEARCH_MODEL): LanguageModel {
-		// Use the default exported provider when the env var matches what
-		// `@ai-sdk/anthropic` reads at import time; otherwise instantiate one
-		// explicitly so tests / non-standard envs still work.
-		if (process.env.ANTHROPIC_API_KEY) {
-			return createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model);
-		}
-		return anthropic(model);
+	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+		const slug = model ?? DEFAULT_RESEARCH_MODEL;
+		const result = await generateText({
+			model: getAnthropicLanguageModel(slug),
+			tools: {
+				web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+			},
+			experimental_output: Output.object({ schema }),
+			prompt,
+		});
+		return result.experimental_output as T;
 	},
 };

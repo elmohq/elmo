@@ -1,11 +1,22 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import type { LanguageModel } from "ai";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import { generateObject } from "ai";
+import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
 import type { Citation } from "../../text-extraction";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
 const DEFAULT_RESEARCH_MODEL = "google/gemini-2.5-flash";
+
+function getOpenRouterProvider() {
+	return createOpenAI({
+		baseURL: OPENROUTER_BASE_URL,
+		apiKey: process.env.OPENROUTER_API_KEY,
+		headers: {
+			"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
+			"X-Title": "Elmo AEO",
+		},
+	});
+}
 
 function extractTextFromOpenRouterResponse(data: any): string {
 	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -59,20 +70,18 @@ export const openrouter: Provider = {
 		return !!process.env.OPENROUTER_API_KEY;
 	},
 
-	languageModel(model = DEFAULT_RESEARCH_MODEL): LanguageModel {
-		// OpenRouter is OpenAI-compatible — feed the AI SDK's OpenAI provider
-		// at the OpenRouter baseURL. Modern routes (GPT-5, Claude, Gemini 2.5)
-		// all support `response_format: json_schema`, which is what the AI SDK
-		// uses for `generateObject` under the hood.
-		const provider = createOpenAI({
-			baseURL: OPENROUTER_BASE_URL,
-			apiKey: process.env.OPENROUTER_API_KEY,
-			headers: {
-				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
-				"X-Title": "Elmo AEO",
-			},
+	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+		// `:online` enables web search natively on OpenRouter — no separate
+		// tool to wire up. Modern routes (GPT-5, Claude, Gemini 2.5) honor
+		// `response_format: json_schema`, which is what `generateObject` sends.
+		let slug = model ?? DEFAULT_RESEARCH_MODEL;
+		if (!slug.includes(":online")) slug = `${slug}:online`;
+		const result = await generateObject({
+			model: getOpenRouterProvider()(slug),
+			schema,
+			prompt,
 		});
-		return provider(model);
+		return result.object;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
