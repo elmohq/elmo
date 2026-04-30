@@ -13,9 +13,9 @@
 		"./components/feedback/schema": "./src/components/feedback/schema.ts"
 	},
 	"dependencies": {
-		"@scalar/api-reference-react": "^0.9.24",
+		"@scalar/api-reference-react": "^0.9.27",
 		"@workspace/ui": "workspace:*",
-		"lucide-react": "^1.8.0"
+		"lucide-react": "^1.11.0"
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": ">=1.0.0",
