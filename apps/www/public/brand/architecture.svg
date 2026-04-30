@@ -35,7 +35,7 @@
   <line x1="632" y1="260" x2="718" y2="260" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
 
   <!-- User -->
-  <rect x="20" y="70" width="140" height="60" rx="30" fill="#18181b"/>
+  <rect x="20" y="70" width="140" height="60" rx="10" fill="#18181b"/>
   <text x="90" y="106" text-anchor="middle" fill="white" font-size="15" font-weight="600">User</text>
 
   <!-- Postgres (flat cylinder) -->
