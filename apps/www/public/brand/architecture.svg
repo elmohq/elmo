@@ -28,7 +28,7 @@
 
   <!-- Connectors -->
   <line x1="162" y1="100" x2="248" y2="100" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
-  <line x1="148" y1="260" x2="218" y2="180" stroke="#a1a1aa" stroke-width="2"
+  <path d="M 148 260 C 183 260, 183 180, 218 180" stroke="#a1a1aa" stroke-width="2" fill="none"
         marker-start="url(#arr)" marker-end="url(#arr)"/>
   <path d="M 632 260 C 660 260, 650 100, 675 100" stroke="#a1a1aa" stroke-width="2" fill="none"/>
   <line x1="632" y1="100" x2="718" y2="100" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
