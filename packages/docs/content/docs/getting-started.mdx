@@ -49,26 +49,11 @@ This pulls the Docker images, starts all services, and waits for them to become 
 
 ## System Architecture
 
-<Mermaid chart={`flowchart LR
-    USER([User])
-
-    subgraph ELMO[Elmo]
-        direction TB
-        WEB[Web]
-        PG[(Postgres)]
-        WORKER[Worker]
-        WEB <--> PG
-        WORKER <--> PG
-    end
-
-    APIS[LLM APIs]
-    SCRAPER[LLM Scraper]
-
-    USER --> WEB
-    WEB --> APIS
-    WORKER --> APIS
-    WORKER --> SCRAPER
-`} />
+<img
+  src="/brand/architecture.svg"
+  alt="Elmo system architecture: User connects to Web; Web and Worker share a Postgres database; Web calls LLM APIs; Worker calls both LLM APIs and an LLM Scraper."
+  className="my-6 w-full"
+/>
 
 | Service | Role |
 |---------|------|
