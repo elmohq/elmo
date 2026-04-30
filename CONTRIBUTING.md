@@ -7,9 +7,8 @@ setup, architecture, and commands, see the
 
 ## License
 
-Elmo is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE.md).
-By contributing, you agree that your contributions will be licensed under the
-same terms.
+Elmo is licensed under [AGPLv3](LICENSE.md). By contributing, you agree that
+your contributions will be licensed under the same terms.
 
 ## How to Contribute
 
