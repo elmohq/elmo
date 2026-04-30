@@ -55,19 +55,24 @@ elmo start
 
 ```mermaid
 flowchart LR
-    USER([You])
-    LLM["LLM Providers<br/>OpenAI · Anthropic · Google"]
+    USER([User])
 
-    subgraph STACK["Docker Compose · managed by elmo CLI"]
-        WEB["Web<br/>dashboard + API<br/>:1515"]
-        WORKER["Worker<br/>pg-boss scheduler"]
-        PG[("PostgreSQL")]
+    subgraph ELMO[Elmo]
+        direction TB
+        WEB[Web]
+        PG[(Postgres)]
+        WORKER[Worker]
+        WEB <--> PG
+        WORKER <--> PG
     end
 
-    USER -->|browser| WEB
-    WEB <--> PG
-    WORKER <--> PG
-    WORKER -->|scheduled queries| LLM
+    APIS[LLM APIs]
+    SCRAPER[LLM Scraper]
+
+    USER --> WEB
+    WEB --> APIS
+    WORKER --> APIS
+    WORKER --> SCRAPER
 ```
 
 ## Contributing

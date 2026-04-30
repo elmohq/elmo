@@ -50,28 +50,34 @@ This pulls the Docker images, starts all services, and waits for them to become 
 ## System Architecture
 
 <Mermaid chart={`flowchart LR
-    USER([You])
-    LLM["LLM Providers<br/>OpenAI · Anthropic · Google"]
+    USER([User])
 
-    subgraph STACK["Docker Compose · managed by elmo CLI"]
-        WEB["Web<br/>dashboard + API<br/>:1515"]
-        WORKER["Worker<br/>pg-boss scheduler"]
-        PG[("PostgreSQL")]
+    subgraph ELMO[Elmo]
+        direction TB
+        WEB[Web]
+        PG[(Postgres)]
+        WORKER[Worker]
+        WEB <--> PG
+        WORKER <--> PG
     end
 
-    USER -->|browser| WEB
-    WEB <--> PG
-    WORKER <--> PG
-    WORKER -->|scheduled queries| LLM
+    APIS[LLM APIs]
+    SCRAPER[LLM Scraper]
+
+    USER --> WEB
+    WEB --> APIS
+    WORKER --> APIS
+    WORKER --> SCRAPER
 `} />
 
 | Service | Role |
 |---------|------|
-| **Web** | Dashboard UI and REST API on port 1515 |
-| **Worker** | Background scheduler — queries AI models and processes results |
-| **PostgreSQL** | Shared database for brands, prompts, snapshots, and the job queue |
-| **LLM Providers** | OpenAI, Anthropic, Google — queried by the worker on a schedule |
-| **Elmo CLI** | Generates `elmo.yaml` + `.env` and runs `docker compose` for you |
+| **Web** | Dashboard UI and REST API |
+| **Worker** | Background scheduler that drives prompt runs |
+| **Postgres** | Shared database and job queue |
+| **LLM APIs** | Direct API calls (OpenAI, Anthropic, OpenRouter) |
+| **LLM Scraper** | Scrapers for ChatGPT, Claude, and Google AI Mode (Brightdata, Olostep) |
+| **Elmo CLI** | Generates `elmo.yaml` + `.env` and runs `docker compose` |
 
 ## CLI Commands Reference
 
