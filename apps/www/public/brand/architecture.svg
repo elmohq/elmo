@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" font-family="'Geist Sans', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif">
   <defs>
-    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5"
+    <marker id="arr" viewBox="0 0 14 10" refX="14" refY="5"
             markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
-      <path d="M0 0 L10 5 L0 10 z" fill="#a1a1aa"/>
+      <path d="M0 0 L14 5 L0 10 z" fill="#a1a1aa"/>
     </marker>
-    <marker id="arrStart" viewBox="0 0 10 10" refX="0" refY="5"
+    <marker id="arrStart" viewBox="0 0 14 10" refX="0" refY="5"
             markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
-      <path d="M10 0 L0 5 L10 10 z" fill="#a1a1aa"/>
+      <path d="M14 0 L0 5 L14 10 z" fill="#a1a1aa"/>
     </marker>
     <filter id="shCard" x="-10%" y="-10%" width="120%" height="120%">
       <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.06"/>
