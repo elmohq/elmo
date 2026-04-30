@@ -1,10 +1,13 @@
 {
-	"title": "Contributing",
+	"title": "Developer Guide",
 	"pages": [
 		"index",
 		"development-setup",
 		"commands",
 		"architecture",
+		"configuration",
+		"api-reference",
+		"telemetry",
 		"ai-policy",
 		"releases"
 	]

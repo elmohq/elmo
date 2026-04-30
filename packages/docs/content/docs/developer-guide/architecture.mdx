@@ -91,4 +91,4 @@ All AI scraping flows through a single `Provider` interface in `packages/lib/src
 2. `parseScrapeTargets()` turns the string into `ModelConfig[]`.
 3. `getProvider(providerId).run(model, prompt, { webSearch, version })` dispatches to a concrete `registry/` implementation and returns a normalized `ScrapeResult` (`textContent`, `rawOutput`, `webQueries`, `citations`, `modelVersion`).
 
-User-facing setup is documented in [Providers](/docs/deployment/providers).
+User-facing setup is documented in [Providers](/docs/user-guide/providers).

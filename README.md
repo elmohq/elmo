@@ -61,7 +61,7 @@ elmo start
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [contributor docs](https://www.elmohq.com/docs/contributing) for development setup, commands, architecture, and the release process.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [Developer Guide](https://www.elmohq.com/docs/developer-guide) for development setup, commands, architecture, and the release process.
 
 ## Contact
 
