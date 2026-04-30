@@ -25,7 +25,7 @@
 
 ## Demo
 
-Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how Elmo tracks prompts across ChatGPT, Claude, and Google AI Overviews, analyzes the citations behind those answers, and surfaces how your brand and competitors show up over time.
+Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how Elmo tracks prompts and analyzes citations.
 
 ## Quick Start
 
