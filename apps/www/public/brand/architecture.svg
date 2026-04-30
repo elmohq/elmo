@@ -44,7 +44,7 @@
   <!-- Connectors -->
   <line x1="162" y1="160" x2="248" y2="160" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
   <!-- Diagonal: Postgres center → Elmo center -->
-  <line x1="148" y1="320" x2="218" y2="240" stroke="#a1a1aa" stroke-width="2"
+  <line x1="160" y1="320" x2="218" y2="240" stroke="#a1a1aa" stroke-width="2"
         marker-start="url(#arr)" marker-end="url(#arr)"/>
   <path d="M 632 320 C 660 320, 650 160, 675 160" stroke="#a1a1aa" stroke-width="2" fill="none"/>
   <line x1="632" y1="160" x2="718" y2="160" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
@@ -54,15 +54,9 @@
   <rect x="20" y="130" width="140" height="60" rx="30" fill="url(#userGrad)" filter="url(#sh)"/>
   <text x="90" y="166" text-anchor="middle" fill="white" font-size="15" font-weight="600">User</text>
 
-  <!-- Postgres cylinder -->
-  <g filter="url(#sh)">
-    <ellipse cx="90" cy="350" rx="58" ry="11" fill="url(#dbGrad)"/>
-    <rect x="32" y="290" width="116" height="60" fill="url(#dbGrad)"/>
-    <ellipse cx="90" cy="290" rx="58" ry="11" fill="url(#dbGrad)"/>
-  </g>
-  <ellipse cx="90" cy="290" rx="58" ry="11" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
-  <path d="M 32 350 A 58 11 0 0 0 148 350" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-  <text x="90" y="326" text-anchor="middle" fill="white" font-size="14" font-weight="600">Postgres</text>
+  <!-- Postgres -->
+  <rect x="20" y="290" width="140" height="60" rx="30" fill="url(#dbGrad)" filter="url(#sh)"/>
+  <text x="90" y="326" text-anchor="middle" fill="white" font-size="15" font-weight="600">Postgres</text>
 
   <!-- Web Server -->
   <rect x="250" y="130" width="380" height="60" rx="10" fill="url(#brandGrad)" filter="url(#sh)"/>
