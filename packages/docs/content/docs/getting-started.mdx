@@ -49,31 +49,29 @@ This pulls the Docker images, starts all services, and waits for them to become 
 
 ## System Architecture
 
-<Mermaid chart={`flowchart TD
-    CLI["Elmo CLI"]
-    CONFIG["elmo.yaml + .env"]
-    CLI -->|elmo init| CONFIG
-    CONFIG -->|docker compose up| DOCKER
+<Mermaid chart={`flowchart LR
+    USER([You])
+    LLM["LLM Providers<br/>OpenAI · Anthropic · Google"]
 
-    subgraph DOCKER["Docker Compose Stack"]
-        WEB["Web<br/>Dashboard and API<br/>port 1515"]
+    subgraph STACK["Docker Compose · managed by elmo CLI"]
+        WEB["Web<br/>dashboard + API<br/>:1515"]
         WORKER["Worker<br/>pg-boss scheduler"]
-        PG[("PostgreSQL<br/>port 5432")]
-        WEB <--> PG
-        WORKER <--> PG
+        PG[("PostgreSQL")]
     end
 
-    LLM["External LLM Providers"]
-    WORKER -->|queries| LLM
+    USER -->|browser| WEB
+    WEB <--> PG
+    WORKER <--> PG
+    WORKER -->|scheduled queries| LLM
 `} />
 
 | Service | Role |
 |---------|------|
-| **Elmo CLI** | Generates config files, then runs `docker compose up` |
-| **Web** | Dashboard UI and REST API (port 1515) |
+| **Web** | Dashboard UI and REST API on port 1515 |
 | **Worker** | Background scheduler — queries AI models and processes results |
-| **PostgreSQL** | Shared database for brands, prompts, snapshots, and job queue |
+| **PostgreSQL** | Shared database for brands, prompts, snapshots, and the job queue |
 | **LLM Providers** | OpenAI, Anthropic, Google — queried by the worker on a schedule |
+| **Elmo CLI** | Generates `elmo.yaml` + `.env` and runs `docker compose` for you |
 
 ## CLI Commands Reference
 

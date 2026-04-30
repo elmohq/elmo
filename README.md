@@ -47,7 +47,28 @@ elmo start
 
 ## Tech Stack
 
-Elmo runs with [Docker Compose](https://docs.docker.com/compose/), uses [PostgreSQL](https://www.postgresql.org/) as its database, and is built in [TypeScript](https://www.typescriptlang.org/) on [TanStack Start](https://tanstack.com/start/latest) with [pg-boss](https://github.com/timgit/pg-boss) for background jobs.
+- **Runtime:** [Docker Compose](https://docs.docker.com/compose/)
+- **Database:** [PostgreSQL](https://www.postgresql.org/)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Web framework:** [TanStack Start](https://tanstack.com/start/latest)
+- **Background jobs:** [pg-boss](https://github.com/timgit/pg-boss)
+
+```mermaid
+flowchart LR
+    USER([You])
+    LLM["LLM Providers<br/>OpenAI · Anthropic · Google"]
+
+    subgraph STACK["Docker Compose · managed by elmo CLI"]
+        WEB["Web<br/>dashboard + API<br/>:1515"]
+        WORKER["Worker<br/>pg-boss scheduler"]
+        PG[("PostgreSQL")]
+    end
+
+    USER -->|browser| WEB
+    WEB <--> PG
+    WORKER <--> PG
+    WORKER -->|scheduled queries| LLM
+```
 
 ## Contributing
 

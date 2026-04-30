@@ -30,17 +30,7 @@ elmo start
 
 Once running, the platform periodically queries AI models with your configured prompts and tracks how they mention your brand, competitors, and cited sources over time.
 
-## Architecture
-
-Elmo consists of three main components:
-
-| Component | Description |
-|-----------|-------------|
-| **Web** | The main dashboard for monitoring AI visibility, managing prompts, and viewing reports |
-| **Worker** | Background job runner that queries AI models and processes responses on a schedule |
-| **CLI** | Command-line interface for initializing and managing your Elmo deployment |
-
-These run together via Docker Compose, backed by a PostgreSQL database.
+For a diagram of how the services fit together, see [System Architecture](/docs/getting-started#system-architecture).
 
 ## Next Steps
 
