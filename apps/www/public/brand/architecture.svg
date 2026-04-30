@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 540" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif">
   <defs>
-    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5"
+            markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/>
     </marker>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#101427"/>
@@ -28,33 +29,61 @@
     </filter>
   </defs>
 
-  <rect width="960" height="400" rx="20" fill="url(#bgGrad)"/>
+  <rect width="1100" height="540" rx="20" fill="url(#bgGrad)"/>
 
-  <rect x="200" y="50" width="410" height="300" rx="16" fill="#171b2e" stroke="#2d3553" stroke-width="1.5"/>
-  <text x="220" y="78" fill="#94a3b8" font-size="12" font-weight="700" letter-spacing="3">ELMO</text>
+  <!-- ELMO subgraph -->
+  <rect x="200" y="80" width="440" height="380" rx="16" fill="#171b2e" stroke="#2d3553" stroke-width="1.5"/>
+  <text x="220" y="108" fill="#94a3b8" font-size="12" font-weight="700" letter-spacing="3">ELMO</text>
 
-  <path d="M 170 200 C 200 200, 200 125, 228 125" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
-  <line x1="405" y1="150" x2="405" y2="180" stroke="#64748b" stroke-width="2"/>
-  <line x1="405" y1="230" x2="405" y2="260" stroke="#64748b" stroke-width="2"/>
-  <line x1="582" y1="125" x2="658" y2="125" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
-  <path d="M 582 285 C 622 285, 622 125, 658 125" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arr)"/>
-  <line x1="582" y1="285" x2="658" y2="285" stroke="#64748b" stroke-width="2" marker-end="url(#arr)"/>
+  <!-- LLM APIs group -->
+  <rect x="680" y="100" width="380" height="140" rx="14" fill="#171b2e" stroke="#2d3553" stroke-width="1.5"/>
+  <text x="700" y="128" fill="#94a3b8" font-size="12" font-weight="700" letter-spacing="3">LLM APIs</text>
 
-  <rect x="40" y="170" width="130" height="60" rx="30" fill="url(#userGrad)" filter="url(#sh)"/>
-  <text x="105" y="206" text-anchor="middle" fill="white" font-size="16" font-weight="600">User</text>
+  <!-- LLM Scrapers group -->
+  <rect x="680" y="320" width="380" height="140" rx="14" fill="#171b2e" stroke="#2d3553" stroke-width="1.5"/>
+  <text x="700" y="348" fill="#94a3b8" font-size="12" font-weight="700" letter-spacing="3">LLM SCRAPERS</text>
 
-  <rect x="230" y="100" width="350" height="50" rx="10" fill="url(#svcGrad)" filter="url(#sh)"/>
-  <text x="405" y="131" text-anchor="middle" fill="white" font-size="15" font-weight="600">Web</text>
+  <!-- Connectors (drawn before nodes so nodes layer on top) -->
+  <line x1="172" y1="170" x2="236" y2="170" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="420" y1="197" x2="420" y2="253" stroke="#64748b" stroke-width="2"/>
+  <line x1="420" y1="307" x2="420" y2="363" stroke="#64748b" stroke-width="2"/>
+  <line x1="602" y1="170" x2="676" y2="170" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M 602 390 C 642 390, 642 170, 676 170" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+  <line x1="602" y1="390" x2="676" y2="390" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
 
-  <rect x="270" y="180" width="270" height="50" rx="10" fill="url(#dbGrad)" filter="url(#sh)"/>
-  <text x="405" y="211" text-anchor="middle" fill="white" font-size="15" font-weight="600">Postgres</text>
+  <!-- User -->
+  <rect x="40" y="140" width="130" height="60" rx="30" fill="url(#userGrad)" filter="url(#sh)"/>
+  <text x="105" y="176" text-anchor="middle" fill="white" font-size="16" font-weight="600">User</text>
 
-  <rect x="230" y="260" width="350" height="50" rx="10" fill="url(#svcGrad)" filter="url(#sh)"/>
-  <text x="405" y="291" text-anchor="middle" fill="white" font-size="15" font-weight="600">Worker</text>
+  <!-- Web Server -->
+  <rect x="240" y="145" width="360" height="50" rx="10" fill="url(#svcGrad)" filter="url(#sh)"/>
+  <text x="420" y="176" text-anchor="middle" fill="white" font-size="15" font-weight="600">Web Server</text>
 
-  <rect x="660" y="100" width="260" height="50" rx="10" fill="url(#extGrad)" filter="url(#sh)"/>
-  <text x="790" y="131" text-anchor="middle" fill="white" font-size="15" font-weight="600">LLM APIs</text>
+  <!-- Postgres -->
+  <rect x="290" y="255" width="260" height="50" rx="10" fill="url(#dbGrad)" filter="url(#sh)"/>
+  <text x="420" y="286" text-anchor="middle" fill="white" font-size="15" font-weight="600">Postgres</text>
 
-  <rect x="660" y="260" width="260" height="50" rx="10" fill="url(#extGrad)" filter="url(#sh)"/>
-  <text x="790" y="291" text-anchor="middle" fill="white" font-size="15" font-weight="600">LLM Scraper</text>
+  <!-- Worker -->
+  <rect x="240" y="365" width="360" height="50" rx="10" fill="url(#svcGrad)" filter="url(#sh)"/>
+  <text x="420" y="396" text-anchor="middle" fill="white" font-size="15" font-weight="600">Worker</text>
+
+  <!-- LLM API chips -->
+  <rect x="700" y="148" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="780" y="169" text-anchor="middle" fill="white" font-size="13" font-weight="600">OpenRouter</text>
+  <rect x="880" y="148" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="960" y="169" text-anchor="middle" fill="white" font-size="13" font-weight="600">Anthropic</text>
+  <rect x="700" y="192" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="780" y="213" text-anchor="middle" fill="white" font-size="13" font-weight="600">OpenAI</text>
+  <rect x="880" y="192" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="960" y="213" text-anchor="middle" fill="white" font-size="13" font-weight="600">Mistral</text>
+
+  <!-- LLM Scraper chips -->
+  <rect x="700" y="368" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="780" y="389" text-anchor="middle" fill="white" font-size="13" font-weight="600">ChatGPT</text>
+  <rect x="880" y="368" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="960" y="389" text-anchor="middle" fill="white" font-size="13" font-weight="600">Google AI Mode</text>
+  <rect x="700" y="412" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="780" y="433" text-anchor="middle" fill="white" font-size="13" font-weight="600">Perplexity</text>
+  <rect x="880" y="412" width="160" height="32" rx="8" fill="url(#extGrad)" filter="url(#sh)"/>
+  <text x="960" y="433" text-anchor="middle" fill="white" font-size="13" font-weight="600">Grok</text>
 </svg>
