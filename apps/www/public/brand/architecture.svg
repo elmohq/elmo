@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 360" font-family="'Geist Sans', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, system-ui, sans-serif">
   <defs>
     <marker id="arr" viewBox="0 0 10 10" refX="10" refY="5"
-            markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto-start-reverse">
+            markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
       <path d="M0 0 L10 5 L0 10 z" fill="#a1a1aa"/>
+    </marker>
+    <marker id="arrStart" viewBox="0 0 10 10" refX="0" refY="5"
+            markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="10" orient="auto">
+      <path d="M10 0 L0 5 L10 10 z" fill="#a1a1aa"/>
     </marker>
     <filter id="shCard" x="-10%" y="-10%" width="120%" height="120%">
       <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.06"/>
@@ -29,8 +33,8 @@
   <!-- Connectors -->
   <line x1="162" y1="100" x2="248" y2="100" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
   <path d="M 148 260 C 183 260, 183 180, 218 180" stroke="#a1a1aa" stroke-width="2" fill="none"
-        marker-start="url(#arr)" marker-end="url(#arr)"/>
-  <path d="M 632 260 C 660 260, 650 100, 675 100" stroke="#a1a1aa" stroke-width="2" fill="none"/>
+        marker-start="url(#arrStart)" marker-end="url(#arr)"/>
+  <path d="M 632 260 C 668 260, 660 100, 690 100" stroke="#a1a1aa" stroke-width="2" fill="none"/>
   <line x1="632" y1="100" x2="718" y2="100" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
   <line x1="632" y1="260" x2="718" y2="260" stroke="#a1a1aa" stroke-width="2" marker-end="url(#arr)"/>
 
