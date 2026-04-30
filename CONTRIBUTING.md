@@ -2,8 +2,7 @@
 
 Thanks for your interest in contributing! Setup, commands, architecture,
 and the contribution workflow live in the
-[Developer Guide](https://www.elmohq.com/docs/developer-guide). This
-document covers only what has to live in the repo.
+[Developer Guide](https://www.elmohq.com/docs/developer-guide).
 
 ## License
 
