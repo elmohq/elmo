@@ -1,7 +1,24 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
+import { generateText, Output } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
+import { extractUsage } from "../usage";
 import type { Citation } from "../../text-extraction";
+
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
+
+function getAnthropicLanguageModel(model: string) {
+	return process.env.ANTHROPIC_API_KEY
+		? createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model)
+		: anthropic(model);
+}
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -124,13 +141,43 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 export const anthropicApi: Provider = {
 	id: "anthropic-api",
 	name: "Anthropic API",
+	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.ANTHROPIC_API_KEY;
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const version = options?.version ?? "claude-sonnet-4-20250514";
+		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
 		return runAnthropic(prompt, version, options);
 	},
+
+	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		const slug = model ?? DEFAULT_RESEARCH_MODEL;
+		const result = await generateText({
+			model: getAnthropicLanguageModel(slug),
+			tools: {
+				web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+			},
+			experimental_output: Output.object({ schema }),
+			prompt,
+		});
+		// Anthropic reports cache-write tokens via providerMetadata, not the top-level usage.
+		const cacheWriteTokens = (result.providerMetadata as any)?.anthropic?.cacheCreationInputTokens as number | undefined;
+		const baseUsage = extractUsage(result.usage);
+		const usage = baseUsage
+			? { ...baseUsage, ...(typeof cacheWriteTokens === "number" ? { cacheWriteTokens } : {}) }
+			: baseUsage;
+		const toolCalls = (result.toolCalls ?? []).map((tc: any) => ({
+			name: tc.toolName ?? tc.name ?? "(unknown)",
+			input: tc.input ?? tc.args,
+		}));
+		return {
+			object: result.experimental_output as T,
+			usage,
+			modelVersion: slug,
+			...(toolCalls.length > 0 ? { toolCalls } : {}),
+		};
+	},
 };
+

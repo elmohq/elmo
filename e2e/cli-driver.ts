@@ -31,6 +31,7 @@ console.error(`  [driver] cli-path:   ${cliPath}`);
 
 const ENTER = "\r";
 const ARROW_LEFT = "\x1b[D";
+const ARROW_DOWN = "\x1b[B";
 
 // Strip ANSI CSI + OSC sequences so we can substring-match clack's rendered output.
 function stripAnsi(s: string): string {
@@ -136,13 +137,19 @@ async function main(): Promise<void> {
 	await waitFor("PostgreSQL connection");
 	await send(ENTER);
 
-	// BrightData confirm (default Yes) → No
-	await waitFor("Configure BrightData?");
-	await send(ARROW_LEFT);
+	// Setup mode select — default is "Recommended"; arrow-down to "Custom" so
+	// we exercise the multi-provider path with placeholder keys.
+	await waitFor("Setup mode");
+	await send(ARROW_DOWN);
 	await send(ENTER);
 
-	// Olostep confirm (default No) → No
-	await waitFor("Configure Olostep?");
+	// ── Step 1: Direct LLM APIs (loops until at least one is configured) ──
+	// The loop asks providers in the same order as the auto-pick preference:
+	// OpenRouter → Anthropic → OpenAI → Mistral. We say Yes to Anthropic and
+	// OpenAI to keep the resulting .env close to the pre-refactor shape.
+
+	// OpenRouter confirm (default No) → No
+	await waitFor("Configure OpenRouter?");
 	await send(ENTER);
 
 	// Anthropic confirm (default No) → Yes
@@ -172,8 +179,15 @@ async function main(): Promise<void> {
 	await waitFor("Configure Mistral API?");
 	await send(ENTER);
 
-	// OpenRouter confirm (default No) → No
-	await waitFor("Configure OpenRouter?");
+	// ── Step 2: Scrapers + DataForSEO (optional) ──────────────────────────
+
+	// BrightData confirm (default Yes) → No
+	await waitFor("Configure BrightData?");
+	await send(ARROW_LEFT);
+	await send(ENTER);
+
+	// Olostep confirm (default No) → No
+	await waitFor("Configure Olostep?");
 	await send(ENTER);
 
 	// DataForSEO confirm (default No) → Yes (placeholder creds, no extra target)

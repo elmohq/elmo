@@ -281,6 +281,156 @@
 				},
 				"required": ["url", "title", "count"]
 			},
+			"OnboardingAnalyzeRequest": {
+				"type": "object",
+				"properties": {
+					"website": {
+						"type": "string",
+						"description": "Brand's website URL or hostname",
+						"minLength": 1
+					},
+					"brandName": {
+						"type": "string",
+						"description": "Optional brand name hint. If omitted, inferred from the domain."
+					},
+					"includeCompetitors": {
+						"type": "boolean",
+						"description": "Whether to include competitor suggestions (default true)",
+						"default": true
+					},
+					"includePrompts": {
+						"type": "boolean",
+						"description": "Whether to include prompt suggestions (default true)",
+						"default": true
+					},
+					"maxCompetitors": {
+						"type": "integer",
+						"description": "Maximum number of competitor suggestions",
+						"minimum": 1,
+						"maximum": 100,
+						"default": 10
+					},
+					"maxPrompts": {
+						"type": "integer",
+						"description": "Maximum number of suggested prompts",
+						"minimum": 1,
+						"maximum": 100,
+						"default": 30
+					}
+				},
+				"required": ["website"]
+			},
+			"OnboardingSuggestion": {
+				"type": "object",
+				"properties": {
+					"brandName": { "type": "string" },
+					"website": { "type": "string", "description": "Cleaned hostname" },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"products": { "type": "array", "items": { "type": "string" } },
+					"competitors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": { "type": "string" },
+								"domain": { "type": "string" },
+								"additionalDomains": { "type": "array", "items": { "type": "string" } },
+								"aliases": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["name", "domain", "additionalDomains", "aliases"]
+						}
+					},
+					"suggestedPrompts": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"prompt": { "type": "string" },
+								"tags": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["prompt", "tags"]
+						}
+					}
+				},
+				"required": [
+					"brandName",
+					"website",
+					"additionalDomains",
+					"aliases",
+					"products",
+					"competitors",
+					"suggestedPrompts"
+				]
+			},
+			"OnboardBrandRequest": {
+				"type": "object",
+				"description": "Create a brand and (optionally) auto-generate competitors and prompts. Idempotent on brandId.",
+				"properties": {
+					"brandId": { "type": "string", "minLength": 1 },
+					"brandName": { "type": "string", "minLength": 1 },
+					"website": { "type": "string", "minLength": 1 },
+					"additionalDomains": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Other domains the brand owns. Will be merged with anything the LLM finds."
+					},
+					"aliases": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Other names the brand goes by. Merged with LLM suggestions."
+					},
+					"competitors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": { "type": "string", "minLength": 1 },
+								"domains": { "type": "array", "items": { "type": "string" } },
+								"aliases": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["name"]
+						},
+						"description": "Caller-supplied competitors. If provided, generateCompetitors is ignored."
+					},
+					"prompts": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"value": { "type": "string", "minLength": 1 },
+								"tags": { "type": "array", "items": { "type": "string" } },
+								"enabled": { "type": "boolean", "default": true }
+							},
+							"required": ["value"]
+						},
+						"description": "Caller-supplied prompts. If provided, generatePrompts is ignored."
+					},
+					"generateCompetitors": { "type": "boolean", "default": true },
+					"generatePrompts": { "type": "boolean", "default": true }
+				},
+				"required": ["brandId", "brandName", "website"]
+			},
+			"OnboardBrandResponse": {
+				"type": "object",
+				"properties": {
+					"brandId": { "type": "string" },
+					"brandName": { "type": "string" },
+					"website": { "type": "string" },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"promptsCreated": { "type": "integer" },
+					"competitorsCreated": { "type": "integer" },
+					"suggestion": {
+						"oneOf": [
+							{ "$ref": "#/components/schemas/OnboardingSuggestion" },
+							{ "type": "null" }
+						],
+						"description": "The raw LLM suggestion when generation ran; null when caller supplied everything."
+					}
+				},
+				"required": ["brandId", "brandName", "website", "additionalDomains", "aliases", "promptsCreated", "competitorsCreated"]
+			},
 			"PromptSnapshot": {
 				"type": "object",
 				"properties": {
@@ -383,6 +533,64 @@
 		}
 	},
 	"paths": {
+		"/onboarding/analyze": {
+			"post": {
+				"summary": "Analyze a brand for onboarding",
+				"description": "Run the provider-agnostic brand analysis (products, additional domains, aliases, competitors, suggested prompts) without persisting anything. The LLM is selected automatically based on configured API keys (Anthropic / OpenAI / OpenRouter / Olostep / BrightData).",
+				"operationId": "analyzeBrandForOnboarding",
+				"tags": ["Onboarding"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/OnboardingAnalyzeRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Brand analysis suggestion",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/OnboardingSuggestion" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/onboarding/brands": {
+			"post": {
+				"summary": "Create a brand programmatically",
+				"description": "Create a brand and persist its prompts/competitors. Anything the caller doesn't supply (competitors, prompts) is auto-generated via the onboarding pipeline. Idempotent on brandId — safe to retry. Use generateCompetitors=false / generatePrompts=false to skip generation entirely.",
+				"operationId": "onboardBrand",
+				"tags": ["Onboarding"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/OnboardBrandRequest" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Brand onboarded",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/OnboardBrandResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
 		"/prompts": {
 			"get": {
 				"summary": "List all prompts",
@@ -1069,6 +1277,10 @@
 		}
 	},
 	"tags": [
+		{
+			"name": "Onboarding",
+			"description": "Provider-agnostic brand onboarding (analyze a website, create a brand, generate prompts and competitors)"
+		},
 		{
 			"name": "Prompts",
 			"description": "Manage brand prompts"

@@ -1,5 +1,9 @@
 /**
- * /admin/tools - Admin utilities for domain analysis and prompt generation
+ * /admin/tools — Admin utility for the provider-agnostic brand analysis.
+ *
+ * The legacy "Analyze Domain" + "Generate Prompts" dialogs have been merged
+ * into a single tool backed by the same onboarding pipeline that the wizard
+ * and public API use.
  */
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -17,35 +21,17 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
-import { Search, Sparkles, Loader2, Copy, Check } from "lucide-react";
-import { adminAnalyzeDomainFn, adminGeneratePromptsFn } from "@/server/admin";
+import { Sparkles, Loader2, Copy, Check } from "lucide-react";
+import { adminAnalyzeBrandFn } from "@/server/admin";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 
-interface CompetitorResult {
-	name: string;
-	domain: string;
-}
-
-interface AnalyzeDomainResult {
-	products: string[];
-	domainTraffic: number;
-	skipDetailedAnalysis?: boolean;
-	competitors: CompetitorResult[];
-}
-
-interface GeneratePromptsResult {
-	brandName: string;
-	products: string[];
-	domainTraffic: number;
-	competitors: CompetitorResult[];
-	prompts: { prompt: string; brandedPrompt: boolean }[];
-}
-
-function AnalyzeDomainDialog() {
+function AnalyzeBrandDialog() {
 	const [open, setOpen] = useState(false);
 	const [website, setWebsite] = useState("");
+	const [brandName, setBrandName] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [result, setResult] = useState<AnalyzeDomainResult | null>(null);
+	const [result, setResult] = useState<OnboardingSuggestion | null>(null);
 	const [copied, setCopied] = useState(false);
 
 	const handleAnalyze = async () => {
@@ -53,14 +39,19 @@ function AnalyzeDomainDialog() {
 			setError("Please enter a website URL");
 			return;
 		}
-
 		setError(null);
 		setResult(null);
 		setIsLoading(true);
-
 		try {
-			const data = await adminAnalyzeDomainFn({ data: { website: website.trim() } });
-			setResult(data as AnalyzeDomainResult);
+			const data = await adminAnalyzeBrandFn({
+				data: {
+					website: website.trim(),
+					brandName: brandName.trim() || undefined,
+					includeCompetitors: true,
+					includePrompts: true,
+				},
+			});
+			setResult(data);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {
@@ -70,164 +61,14 @@ function AnalyzeDomainDialog() {
 
 	const handleCopy = async () => {
 		if (!result) return;
-		const text = JSON.stringify(result, null, 2);
-		await navigator.clipboard.writeText(text);
+		await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
-	};
-
-	const handleClose = () => {
-		setOpen(false);
-		setWebsite("");
-		setResult(null);
-		setError(null);
-	};
-
-	return (
-		<Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : handleClose())}>
-			<DialogTrigger asChild>
-				<Button variant="outline" className="cursor-pointer w-full">
-					<Search className="h-4 w-4 mr-2" />
-					Analyze Domain
-				</Button>
-			</DialogTrigger>
-			<DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>Analyze Domain</DialogTitle>
-					<DialogDescription>Get products and competitors for a website domain.</DialogDescription>
-				</DialogHeader>
-
-				<div className="space-y-4 py-4">
-					<div className="space-y-2">
-						<Label htmlFor="analyze-website">Website URL</Label>
-						<div className="flex gap-2">
-							<Input
-								id="analyze-website"
-								placeholder="https://example.com"
-								value={website}
-								onChange={(e) => setWebsite(e.target.value)}
-								disabled={isLoading}
-								onKeyDown={(e) => e.key === "Enter" && !isLoading && handleAnalyze()}
-							/>
-							<Button onClick={handleAnalyze} disabled={isLoading} className="cursor-pointer">
-								{isLoading ? (
-									<>
-										<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-										Analyzing...
-									</>
-								) : (
-									"Analyze"
-								)}
-							</Button>
-						</div>
-					</div>
-
-					{error && <p className="text-sm text-destructive">{error}</p>}
-
-					{result && (
-						<div className="space-y-4">
-							<div className="flex items-center justify-between">
-								<h4 className="font-semibold">Results</h4>
-								<Button variant="ghost" size="sm" onClick={handleCopy} className="cursor-pointer">
-									{copied ? (
-										<>
-											<Check className="h-4 w-4 mr-1" /> Copied
-										</>
-									) : (
-										<>
-											<Copy className="h-4 w-4 mr-1" /> Copy JSON
-										</>
-									)}
-								</Button>
-							</div>
-
-							<div className="space-y-3 text-sm">
-								<div>
-									<Label className="text-muted-foreground">Domain Traffic</Label>
-									<p className="font-medium">{result.domainTraffic.toLocaleString()}</p>
-								</div>
-
-								<div>
-									<Label className="text-muted-foreground">Products ({result.products.length})</Label>
-									<div className="flex flex-wrap gap-1 mt-1">
-										{result.products.map((product) => (
-											<Badge key={product} variant="secondary">
-												{product}
-											</Badge>
-										))}
-									</div>
-								</div>
-
-								<div>
-									<Label className="text-muted-foreground">Competitors ({result.competitors.length})</Label>
-									<div className="mt-1 space-y-1">
-										{result.competitors.length === 0 ? (
-											<p className="text-muted-foreground">No competitors found</p>
-										) : (
-											result.competitors.map((c) => (
-												<div key={c.domain} className="flex items-center gap-2">
-													<span className="font-medium">{c.name}</span>
-													<span className="text-muted-foreground">({c.domain})</span>
-												</div>
-											))
-										)}
-									</div>
-								</div>
-							</div>
-						</div>
-					)}
-				</div>
-			</DialogContent>
-		</Dialog>
-	);
-}
-
-function GeneratePromptsDialog() {
-	const [open, setOpen] = useState(false);
-	const [website, setWebsite] = useState("");
-	const [brandName, setBrandName] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [result, setResult] = useState<GeneratePromptsResult | null>(null);
-	const [copied, setCopied] = useState(false);
-
-	const handleGenerate = async () => {
-		if (!website.trim()) {
-			setError("Please enter a website URL");
-			return;
-		}
-
-		setError(null);
-		setResult(null);
-		setIsLoading(true);
-
-		try {
-			const data = await adminGeneratePromptsFn({
-				data: {
-					website: website.trim(),
-					brandName: brandName.trim() || undefined,
-				},
-			});
-			setResult(data as GeneratePromptsResult);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "An error occurred");
-		} finally {
-			setIsLoading(false);
-		}
 	};
 
 	const handleCopyPrompts = async () => {
 		if (!result) return;
-		const text = result.prompts.map((p) => p.prompt).join("\n");
-		await navigator.clipboard.writeText(text);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 2000);
-	};
-
-	const handleCopyJson = async () => {
-		if (!result) return;
-		const text = JSON.stringify(result, null, 2);
-		await navigator.clipboard.writeText(text);
+		await navigator.clipboard.writeText(result.suggestedPrompts.map((p) => p.prompt).join("\n"));
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	};
@@ -240,31 +81,29 @@ function GeneratePromptsDialog() {
 		setError(null);
 	};
 
-	const brandedCount = result?.prompts.filter((p) => p.brandedPrompt).length ?? 0;
-	const unbrandedCount = result?.prompts.filter((p) => !p.brandedPrompt).length ?? 0;
-
 	return (
 		<Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : handleClose())}>
 			<DialogTrigger asChild>
 				<Button variant="outline" className="cursor-pointer w-full">
 					<Sparkles className="h-4 w-4 mr-2" />
-					Generate Prompts
+					Analyze brand
 				</Button>
 			</DialogTrigger>
 			<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Generate Prompts</DialogTitle>
+					<DialogTitle>Analyze brand</DialogTitle>
 					<DialogDescription>
-						Generate candidate prompts for a domain based on its products and competitors.
+						Run the provider-agnostic onboarding analysis for any website. Uses whichever LLM the deployment has
+						configured (Anthropic / OpenAI / OpenRouter / Olostep / BrightData) with web search.
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 py-4">
 					<div className="grid grid-cols-2 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="generate-website">Website URL</Label>
+							<Label htmlFor="analyze-website">Website URL</Label>
 							<Input
-								id="generate-website"
+								id="analyze-website"
 								placeholder="https://example.com"
 								value={website}
 								onChange={(e) => setWebsite(e.target.value)}
@@ -272,9 +111,9 @@ function GeneratePromptsDialog() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="generate-brand">Brand Name (optional)</Label>
+							<Label htmlFor="analyze-brand">Brand name (optional)</Label>
 							<Input
-								id="generate-brand"
+								id="analyze-brand"
 								placeholder="Auto-detected from URL"
 								value={brandName}
 								onChange={(e) => setBrandName(e.target.value)}
@@ -283,14 +122,14 @@ function GeneratePromptsDialog() {
 						</div>
 					</div>
 
-					<Button onClick={handleGenerate} disabled={isLoading} className="cursor-pointer w-full">
+					<Button onClick={handleAnalyze} disabled={isLoading} className="cursor-pointer w-full">
 						{isLoading ? (
 							<>
 								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-								Generating prompts... (this may take a minute)
+								Analyzing… (this may take a minute)
 							</>
 						) : (
-							"Generate Prompts"
+							"Analyze"
 						)}
 					</Button>
 
@@ -299,9 +138,7 @@ function GeneratePromptsDialog() {
 					{result && (
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
-								<h4 className="font-semibold">
-									Generated {result.prompts.length} prompts for {result.brandName}
-								</h4>
+								<h4 className="font-semibold">{result.brandName}</h4>
 								<div className="flex gap-2">
 									<Button variant="ghost" size="sm" onClick={handleCopyPrompts} className="cursor-pointer">
 										{copied ? (
@@ -310,74 +147,108 @@ function GeneratePromptsDialog() {
 											</>
 										) : (
 											<>
-												<Copy className="h-4 w-4 mr-1" /> Copy Prompts
+												<Copy className="h-4 w-4 mr-1" /> Copy prompts
 											</>
 										)}
 									</Button>
-									<Button variant="ghost" size="sm" onClick={handleCopyJson} className="cursor-pointer">
+									<Button variant="ghost" size="sm" onClick={handleCopy} className="cursor-pointer">
 										<Copy className="h-4 w-4 mr-1" /> Copy JSON
 									</Button>
 								</div>
 							</div>
 
 							<div className="grid grid-cols-3 gap-4 text-sm">
-								<div>
-									<Label className="text-muted-foreground">Traffic</Label>
-									<p className="font-medium">{result.domainTraffic.toLocaleString()}</p>
-								</div>
-								<div>
-									<Label className="text-muted-foreground">Unbranded Prompts</Label>
-									<p className="font-medium">{unbrandedCount.toLocaleString()}</p>
-								</div>
-								<div>
-									<Label className="text-muted-foreground">Branded Prompts</Label>
-									<p className="font-medium">{brandedCount.toLocaleString()}</p>
-								</div>
+								<Stat label="Products" value={result.products.length} />
+								<Stat label="Competitors" value={result.competitors.length} />
+								<Stat label="Prompts" value={result.suggestedPrompts.length} />
 							</div>
 
-							<div className="space-y-2">
-								<Label className="text-muted-foreground">Products</Label>
-								<div className="flex flex-wrap gap-1">
-									{result.products.map((product) => (
-										<Badge key={product} variant="secondary">
-											{product}
-										</Badge>
-									))}
-								</div>
-							</div>
+							{result.additionalDomains.length > 0 && (
+								<TagSection title="Additional domains" items={result.additionalDomains} />
+							)}
+							{result.aliases.length > 0 && <TagSection title="Aliases" items={result.aliases} />}
 
-							<div className="space-y-2">
-								<Label className="text-muted-foreground">Competitors</Label>
-								<div className="flex flex-wrap gap-1">
-									{result.competitors.map((c) => (
-										<Badge key={c.name} variant="outline">
-											{c.name}
-										</Badge>
-									))}
+							{result.products.length > 0 && (
+								<div className="space-y-2">
+									<Label className="text-muted-foreground">Products</Label>
+									<div className="flex flex-wrap gap-1">
+										{result.products.map((p) => (
+											<Badge key={p} variant="secondary">
+												{p}
+											</Badge>
+										))}
+									</div>
 								</div>
-							</div>
+							)}
 
-							<div className="space-y-2">
-								<Label className="text-muted-foreground">Prompts</Label>
-								<div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
-								{result.prompts.map((p, i) => (
-									<div key={p.prompt} className="flex items-start gap-2 py-1 border-b last:border-0">
-										<span className="text-muted-foreground w-6 flex-shrink-0">{i + 1}.</span>
-											<span className={p.brandedPrompt ? "text-blue-600" : ""}>{p.prompt}</span>
-											{p.brandedPrompt && (
-												<Badge variant="secondary" className="text-xs flex-shrink-0">
-													branded
-												</Badge>
-											)}
-										</div>
-									))}
+							{result.competitors.length > 0 && (
+								<div className="space-y-2">
+									<Label className="text-muted-foreground">Competitors</Label>
+									<div className="space-y-1 text-sm">
+										{result.competitors.map((c) => (
+											<div key={c.domain} className="flex items-center gap-2">
+												<span className="font-medium">{c.name}</span>
+												<span className="text-muted-foreground">({c.domain})</span>
+												{c.additionalDomains.length > 0 && (
+													<span className="text-xs text-muted-foreground">
+														+ {c.additionalDomains.join(", ")}
+													</span>
+												)}
+											</div>
+										))}
+									</div>
 								</div>
-							</div>
+							)}
+
+							{result.suggestedPrompts.length > 0 && (
+								<div className="space-y-2">
+									<Label className="text-muted-foreground">Prompts</Label>
+									<div className="max-h-60 overflow-y-auto border rounded-md p-2 space-y-1 text-sm">
+										{result.suggestedPrompts.map((p, i) => (
+											<div key={p.prompt} className="flex items-start gap-2 py-1 border-b last:border-0">
+												<span className="text-muted-foreground w-6 flex-shrink-0">{i + 1}.</span>
+												<span className="flex-1">{p.prompt}</span>
+												<div className="flex flex-wrap gap-1 flex-shrink-0">
+													{p.tags.map((tag) => (
+														<Badge key={tag} variant="outline" className="text-[10px] px-1 py-0">
+															{tag}
+														</Badge>
+													))}
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
 						</div>
 					)}
 				</div>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+	return (
+		<div>
+			<Label className="text-muted-foreground">{label}</Label>
+			<p className="font-medium">{value.toLocaleString()}</p>
+		</div>
+	);
+}
+
+function TagSection({ title, items }: { title: string; items: string[] }) {
+	return (
+		<div className="space-y-1">
+			<Label className="text-muted-foreground">{title}</Label>
+			<div className="flex flex-wrap gap-1">
+				{items.map((it) => (
+					<Badge key={it} variant="secondary">
+						{it}
+					</Badge>
+				))}
+			</div>
+		</div>
 	);
 }
 
@@ -387,7 +258,7 @@ export const Route = createFileRoute("/_authed/admin/tools")({
 		return {
 			meta: [
 				{ title: `Tools · ${appName}` },
-				{ name: "description", content: "Domain analysis and prompt generation utilities." },
+				{ name: "description", content: "Brand onboarding analysis." },
 			],
 		};
 	},
@@ -400,7 +271,8 @@ function ToolsPage() {
 			<div className="space-y-2">
 				<h1 className="text-3xl font-bold tracking-tight">Tools</h1>
 				<p className="text-muted-foreground">
-					Admin utilities for analyzing domains and generating prompt suggestions.
+					Run the onboarding analysis for any brand without creating it. Same pipeline as the wizard and
+					<code className="mx-1 rounded bg-muted px-1">/api/v1/onboarding/*</code>.
 				</p>
 			</div>
 
@@ -408,34 +280,16 @@ function ToolsPage() {
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<Search className="h-5 w-5" />
-							Analyze Domain
-						</CardTitle>
-						<CardDescription>
-							Enter any website URL to discover its products, estimate domain traffic, and identify competitors.
-							This is the same analysis used during brand onboarding to understand a business's competitive
-							landscape.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<AnalyzeDomainDialog />
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
 							<Sparkles className="h-5 w-5" />
-							Generate Prompts
+							Brand analysis
 						</CardTitle>
 						<CardDescription>
-							Automatically generate AI tracking prompts for any brand based on its website analysis. This runs
-							the full pipeline: analyze the domain, find competitors, and generate both branded and unbranded
-							prompts that can be used to track AI visibility.
+							Analyze a website to discover its products, competitors, additional brand domains, aliases, and
+							suggested AI tracking prompts. Works with any configured LLM provider.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<GeneratePromptsDialog />
+						<AnalyzeBrandDialog />
 					</CardContent>
 				</Card>
 			</div>
