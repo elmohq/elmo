@@ -26,6 +26,19 @@ export interface StructuredResearchUsage {
 	inputTokens: number;
 	outputTokens: number;
 	totalTokens: number;
+	/** Reasoning tokens (separately billed on some providers, e.g. OpenAI o-series). */
+	reasoningTokens?: number;
+	/** Cached prompt tokens read at the discounted rate. */
+	cacheReadTokens?: number;
+	/** Cached prompt tokens written this turn (one-time premium). */
+	cacheWriteTokens?: number;
+}
+
+export interface StructuredResearchToolCall {
+	/** Tool name, e.g. `web_search`. */
+	name: string;
+	/** Free-form input the model passed to the tool, when the SDK exposes it. */
+	input?: unknown;
 }
 
 export interface StructuredResearchResult<T> {
@@ -34,6 +47,8 @@ export interface StructuredResearchResult<T> {
 	usage?: StructuredResearchUsage;
 	/** Resolved model id (after any `:online` suffixing etc.). */
 	modelVersion?: string;
+	/** Tool invocations the model performed during the research call (web search, etc.). */
+	toolCalls?: StructuredResearchToolCall[];
 }
 
 export interface Provider {

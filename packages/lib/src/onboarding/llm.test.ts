@@ -58,23 +58,39 @@ describe("resolveResearchTarget", () => {
 		).toThrow(/does not support structured research/);
 	});
 
-	it("prefers OpenRouter first when configured (one key, all models)", () => {
-		process.env.OPENROUTER_API_KEY = "x";
-		const target = resolveResearchTarget({ OPENROUTER_API_KEY: "x" });
-		expect(target.provider.id).toBe("openrouter");
-		expect(target.model).toBe("google/gemini-2.5-flash");
+	it("prefers OpenAI direct first when configured", () => {
+		// provider.isConfigured() reads from process.env, not the function's
+		// env arg — set both so ONBOARDING_LLM_TARGET lookup and the
+		// per-provider config probe see the same world.
+		process.env.OPENAI_API_KEY = "a";
+		process.env.OPENROUTER_API_KEY = "b";
+		process.env.ANTHROPIC_API_KEY = "c";
+		process.env.MISTRAL_API_KEY = "d";
+		const target = resolveResearchTarget();
+		expect(target.provider.id).toBe("openai-api");
 	});
 
-	it("prefers Anthropic over OpenAI when both are set but OpenRouter isn't", () => {
-		process.env.ANTHROPIC_API_KEY = "x";
-		process.env.OPENAI_API_KEY = "y";
-		const target = resolveResearchTarget({ ANTHROPIC_API_KEY: "x", OPENAI_API_KEY: "y" });
+	it("falls back to OpenRouter when OpenAI direct isn't configured", () => {
+		process.env.OPENROUTER_API_KEY = "b";
+		process.env.ANTHROPIC_API_KEY = "c";
+		process.env.MISTRAL_API_KEY = "d";
+		const target = resolveResearchTarget();
+		expect(target.provider.id).toBe("openrouter");
+		// Default routes through gpt-5-mini — OpenRouter's plugins:[{web,native}]
+		// supports OpenAI models, so the same model OpenAI-direct uses.
+		expect(target.model).toBe("openai/gpt-5-mini");
+	});
+
+	it("falls back to Anthropic when OpenAI / OpenRouter aren't configured", () => {
+		process.env.ANTHROPIC_API_KEY = "c";
+		process.env.MISTRAL_API_KEY = "d";
+		const target = resolveResearchTarget();
 		expect(target.provider.id).toBe("anthropic-api");
 	});
 
 	it("falls back to Mistral when only Mistral is set", () => {
 		process.env.MISTRAL_API_KEY = "x";
-		const target = resolveResearchTarget({ MISTRAL_API_KEY: "x" });
+		const target = resolveResearchTarget();
 		expect(target.provider.id).toBe("mistral-api");
 	});
 

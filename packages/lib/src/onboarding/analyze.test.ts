@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./llm", () => ({
 	resolveResearchTarget: vi.fn(() => ({
 		provider: { id: "anthropic-api", isConfigured: () => true } as any,
-		model: "claude-sonnet-4-20250514",
+		model: "claude-sonnet-4-6",
 	})),
 	runStructuredResearchPrompt: vi.fn(),
 }));
@@ -24,18 +24,24 @@ describe("analyzeBrand", () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",
 			additionalDomains: ["acme.co.uk", "ACME.COM", "acme.de"],
-			aliases: ["Acme Inc", "acme inc", "Acme"], // alias matching brand should drop
+			// Aliases containing "Acme" are redundant under substring mention
+			// matching; only "Globex Holdings" (a distinct parent) survives.
+			aliases: ["Acme Inc", "acme inc", "Acme", "Globex Holdings"],
 			products: ["Widgets", "Industrial Supplies", "widgets"],
 			competitors: [
-				{ name: "Globex", domain: "globex.com", additionalDomains: ["globex.de"], aliases: ["GBX"] },
+				// Competitor alias "Globex Worldwide" contains the comp name → drop;
+				// "GBX" stays because it doesn't contain "Globex".
+				{ name: "Globex", domain: "globex.com", additionalDomains: ["globex.de"], aliases: ["GBX", "Globex Worldwide"] },
 				{ name: "Self Reference", domain: "acme.com", additionalDomains: [], aliases: [] },
 				{ name: "Bad Domain", domain: "not a domain", additionalDomains: [], aliases: [] },
 				{ name: "Globex Dup", domain: "globex.com", additionalDomains: [], aliases: [] },
 			],
 			suggestedPrompts: [
-				{ prompt: "Best Widgets", tags: ["best-of"] },
-				{ prompt: "best widgets", tags: ["comparison"] }, // duplicate after lowercasing
-				{ prompt: "acme alternative", tags: ["alternative", "branded"] },
+				// Tags are now free-form / brand-tailored. Normalize step lowercases
+				// + kebab-cases + dedupes + caps at 3 per prompt.
+				{ prompt: "Best Widgets", tags: ["Industrial Supplies", "Manufacturing"] },
+				{ prompt: "best widgets", tags: ["industrial-supplies"] }, // duplicate after lowercasing
+				{ prompt: "acme alternative", tags: ["alternatives", "industrial supplies", "buying guide", "extra-tag"] },
 			],
 		});
 
@@ -49,7 +55,7 @@ describe("analyzeBrand", () => {
 		expect(result.brandName).toBe("Acme");
 		expect(result.website).toBe("acme.com");
 		expect(result.additionalDomains).toEqual(["acme.co.uk", "acme.de"]);
-		expect(result.aliases).toEqual(["Acme Inc"]);
+		expect(result.aliases).toEqual(["Globex Holdings"]);
 		expect(result.products).toEqual(["widgets", "industrial supplies"]);
 
 		expect(result.competitors).toHaveLength(1);
@@ -61,8 +67,12 @@ describe("analyzeBrand", () => {
 		});
 
 		expect(result.suggestedPrompts).toEqual([
-			{ prompt: "best widgets", tags: ["best-of"] },
-			{ prompt: "acme alternative", tags: ["alternative", "branded"] },
+			{ prompt: "best widgets", tags: ["industrial-supplies", "manufacturing"] },
+			{
+				prompt: "acme alternative",
+				// "industrial supplies" → "industrial-supplies", capped at 3 (extra-tag dropped)
+				tags: ["alternatives", "industrial-supplies", "buying-guide"],
+			},
 		]);
 	});
 

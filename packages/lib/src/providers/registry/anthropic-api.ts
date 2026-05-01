@@ -12,7 +12,7 @@ import type {
 import { extractUsage } from "../usage";
 import type { Citation } from "../../text-extraction";
 
-const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
 
 function getAnthropicLanguageModel(model: string) {
 	return process.env.ANTHROPIC_API_KEY
@@ -162,10 +162,21 @@ export const anthropicApi: Provider = {
 			experimental_output: Output.object({ schema }),
 			prompt,
 		});
+		// Anthropic reports cache-write tokens via providerMetadata, not the top-level usage.
+		const cacheWriteTokens = (result.providerMetadata as any)?.anthropic?.cacheCreationInputTokens as number | undefined;
+		const baseUsage = extractUsage(result.usage);
+		const usage = baseUsage
+			? { ...baseUsage, ...(typeof cacheWriteTokens === "number" ? { cacheWriteTokens } : {}) }
+			: baseUsage;
+		const toolCalls = (result.toolCalls ?? []).map((tc: any) => ({
+			name: tc.toolName ?? tc.name ?? "(unknown)",
+			input: tc.input ?? tc.args,
+		}));
 		return {
 			object: result.experimental_output as T,
-			usage: extractUsage(result.usage),
+			usage,
 			modelVersion: slug,
+			...(toolCalls.length > 0 ? { toolCalls } : {}),
 		};
 	},
 };

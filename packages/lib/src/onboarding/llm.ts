@@ -28,20 +28,20 @@ import {
 } from "../providers";
 
 /**
- * Direct-API providers in the order onboarding prefers them. OpenRouter is
- * highest because a single key opens up multiple models (Anthropic, OpenAI,
- * Gemini, Mistral) and gets web search for free via `:online`. Anthropic and
- * OpenAI come next; Mistral last because it has no AI-SDK web-search path.
+ * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was
+ * the cheapest + best-recall in compare-onboarding runs, so we go OpenAI
+ * direct first, then OpenAI via OpenRouter as a fallback (same model, just
+ * different key), then Anthropic, then Mistral.
  */
 const RESEARCH_PROVIDER_PREFERENCE = [
+	"openai-api",
 	"openrouter",
 	"anthropic-api",
-	"openai-api",
 	"mistral-api",
 ] as const;
 
 const ONBOARDING_LLM_TARGET_HELP =
-	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api:claude-sonnet-4-20250514) " +
+	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api:claude-sonnet-4-6) " +
 	"or configure ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / MISTRAL_API_KEY.";
 
 export interface ResearchTarget {

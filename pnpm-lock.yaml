@@ -537,9 +537,6 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@opencode-ai/sdk':
-        specifier: 1.14.27
-        version: 1.14.27
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
@@ -1938,9 +1935,6 @@ packages:
 
   '@open-draft/until@2.1.0':
     resolution: {integrity: sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==}
-
-  '@opencode-ai/sdk@1.14.27':
-    resolution: {integrity: sha512-mpzDFDAGi+8wKEcm4aP0HVtS56rN/q2hVs8Ai6JziPu7NuTMddfFoEvddArYsgkRWUfHL5ypZc1mDmAMEiO1vg==}
 
   '@opentelemetry/api-logs@0.207.0':
     resolution: {integrity: sha512-lAb0jQRVyleQQGiuuvCOTDVspc14nx6XJjP4FspJ1sNARo3Regq4ZZbrc3rN4b1TYSuUCvgH+UXUPug4SLOqEQ==}
@@ -9792,10 +9786,6 @@ snapshots:
 
   '@open-draft/until@2.1.0':
     optional: true
-
-  '@opencode-ai/sdk@1.14.27':
-    dependencies:
-      cross-spawn: 7.0.6
 
   '@opentelemetry/api-logs@0.207.0':
     dependencies:

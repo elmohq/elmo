@@ -5,7 +5,6 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "vitest run",
-    "test:onboarding": "tsx scripts/test-onboarding.ts",
     "compare:onboarding": "tsx scripts/compare-onboarding.ts",
     "generate:auth-schema": "bash scripts/generate-auth-schema.sh"
   },
@@ -45,7 +44,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@opencode-ai/sdk": "1.14.27",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
     "typescript": "^6.0.3",

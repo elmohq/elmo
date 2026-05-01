@@ -23,17 +23,15 @@ import {
 	uniqueTrim,
 } from "./utils";
 
-const PROMPT_TAGS = [
-	"comparison",
-	"best-of",
-	"alternative",
-	"recommendation",
-	"use-case",
-	"branded",
-	"transactional",
-	"informational",
-	"persona",
-] as const;
+// Tags are free-form and brand-tailored: the LLM invents a small vocabulary
+// (≤5 distinct values) that's actually useful for filtering THIS brand's
+// prompts. No tag values are hardcoded here — the LLM picks the entire
+// vocabulary from the brand context.
+const TAG_GUIDANCE =
+	"Tags should be tailored to this specific brand and the prompt set you're producing. Aim for tags that describe WHAT a prompt is about (a product category, audience segment, sub-feature, competitor name) — not WHAT the user wants to do with the answer (compare, evaluate, buy). Goal-style intent tags tend to apply to most prompts in the set and don't discriminate. Prefer single-word tags; only use multi-word tags (lowercase, single hyphens between words) when no single word captures the concept. Each tag should describe ONE axis — don't fuse two ideas into a compound hyphenated label. Don't use 'branded' or 'unbranded' as tag values; the system computes that classification automatically from the prompt text. Pick a small shared vocabulary (no more than 5 distinct values across all prompts), and only attach a tag to a prompt if it actually discriminates that prompt from others — if the same tag would apply to most prompts, don't use it.";
+
+const ALIAS_GUIDANCE =
+	"Skip variants that contain the canonical name as a substring (e.g. don't add \"Asics America\" for \"Asics\" — substring matching catches it already). DO include genuinely distinct names like parent companies or sub-brands the company owns (e.g. \"Converse\" for Nike).";
 
 const competitorSchema = z.object({
 	name: z.string().describe("Company name"),
@@ -43,7 +41,7 @@ const competitorSchema = z.object({
 	additionalDomains: z
 		.array(z.string())
 		.describe("Other domains the company owns (regional ccTLDs, alternate spellings)"),
-	aliases: z.array(z.string()).describe("Other names the company is commonly known by"),
+	aliases: z.array(z.string()).describe(`Other names the company is commonly known by. ${ALIAS_GUIDANCE}`),
 });
 
 const promptSchema = z.object({
@@ -53,13 +51,17 @@ const promptSchema = z.object({
 			'Short search-style fragment, lowercase, under ~12 words. NOT a full sentence — the kind of thing people actually type into ChatGPT.',
 		),
 	tags: z
-		.array(z.enum(PROMPT_TAGS))
-		.describe('1-2 tags categorizing the prompt. Always include "branded" when the prompt names the brand.'),
+		.array(z.string())
+		.describe(`1-3 tags per prompt (ideally 1-2), drawn from the shared brand-tailored vocabulary. ${TAG_GUIDANCE}`),
 });
 
 function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 	return z.object({
-		brandName: z.string().describe("Canonical brand name as commonly written (preserve casing)"),
+		brandName: z
+			.string()
+			.describe(
+				"Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use \"Nike\" (not \"Nike, Inc.\"); for hera.video use \"Hera\" (not \"Hera Video, Inc.\"). Don't include legal entity suffixes like \"Inc.\" or \"Ltd.\"",
+			),
 		additionalDomains: z
 			.array(z.string())
 			.describe(
@@ -68,7 +70,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		aliases: z
 			.array(z.string())
 			.describe(
-				"Other names users use for this brand (abbreviations, parent-company names, common misspellings). Empty if none are commonly used.",
+				`Other names users use for this brand (abbreviations, parent-company names, common misspellings). ${ALIAS_GUIDANCE} Empty if none are commonly used.`,
 			),
 		products: z
 			.array(z.string())
@@ -83,7 +85,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		suggestedPrompts: z
 			.array(promptSchema)
 			.describe(
-				`Up to ${args.maxPrompts} suggested AI tracking prompts. Mix shapes: "best [category]", "best [category] for [persona]", "[category] vs alternatives", "[brand] alternative", "where to buy [category]", "is [brand] worth it". Include 3-5 explicitly branded prompts.`,
+				`Up to ${args.maxPrompts} suggested AI tracking prompts. Mix shapes: "best [category]", "best [category] for [persona]", "[category] vs alternatives", "[brand] alternative", "where to buy [category]", "is [brand] worth it". Include 3-5 explicitly branded prompts. ${TAG_GUIDANCE}`,
 			),
 	});
 }
@@ -169,6 +171,27 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 	});
 }
 
+/** Normalize an LLM-supplied tag to lowercase kebab-case. */
+function toKebabCase(tag: string): string {
+	return tag
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Drop aliases that contain the canonical name as a substring — mention
+ * detection is case-insensitive substring matching, so any text matching
+ * such an alias also matches the canonical name. Keeping them just bloats
+ * the alias list. (See worker/src/jobs/process-prompt.ts: analyzeMentions.)
+ */
+function filterRedundantAliases(aliases: string[], canonicalName: string): string[] {
+	const canonical = canonicalName.trim().toLowerCase();
+	if (!canonical) return aliases;
+	return aliases.filter((a) => !a.toLowerCase().includes(canonical));
+}
+
 async function safeGetExcerpt(website: string): Promise<string> {
 	try {
 		return await getWebsiteExcerpt(website);
@@ -197,7 +220,9 @@ function buildPrompt(args: {
 
 Likely brand name (from domain): ${args.brandNameHint}
 ${excerptBlock}
-Use web search to verify facts. Never invent information — return empty arrays when uncertain. The output schema is enforced; just produce accurate values for each described field.${skipNotes.length > 0 ? `\n\n${skipNotes.join(" ")}` : ""}`;
+Use web search to verify facts. Never invent information — return empty arrays when uncertain.
+
+You MUST return the structured JSON object — even if you can find nothing about this brand. In that case set brandName to the likely name above and return empty arrays for every other field. Refusing to produce JSON, or replying with prose explaining what you don't know, is a failure mode; an object with mostly-empty arrays is the correct answer when information is genuinely unavailable.${skipNotes.length > 0 ? `\n\n${skipNotes.join(" ")}` : ""}`;
 }
 
 function normalize(args: {
@@ -220,7 +245,7 @@ function normalize(args: {
 	for (const d of additionalDomains) ownedDomains.add(d);
 
 	const dedupedAdditionalDomains = uniqueLowercase(additionalDomains);
-	const aliases = uniqueTrim(raw.aliases ?? []).filter((a) => a.toLowerCase() !== brandName.toLowerCase());
+	const aliases = filterRedundantAliases(uniqueTrim(raw.aliases ?? []), brandName);
 	const products = uniqueLowercase(raw.products ?? []).slice(0, 8);
 
 	const competitors: OnboardingCompetitor[] = [];
@@ -239,11 +264,12 @@ function normalize(args: {
 					.map((d) => cleanAndValidateDomain(d))
 					.filter((d): d is string => d !== null && d !== primary && !ownedDomains.has(d)),
 			);
+			const compName = c.name.trim();
 			competitors.push({
-				name: c.name.trim(),
+				name: compName,
 				domain: primary,
 				additionalDomains: extras,
-				aliases: uniqueTrim(c.aliases ?? []),
+				aliases: filterRedundantAliases(uniqueTrim(c.aliases ?? []), compName),
 			});
 		}
 	}
@@ -256,7 +282,8 @@ function normalize(args: {
 			const value = p.prompt.trim().toLowerCase();
 			if (!value || seen.has(value)) continue;
 			seen.add(value);
-			suggestedPrompts.push({ prompt: value, tags: uniqueLowercase(p.tags ?? []) });
+			const tags = uniqueLowercase((p.tags ?? []).map(toKebabCase).filter(Boolean)).slice(0, 3);
+			suggestedPrompts.push({ prompt: value, tags });
 		}
 	}
 
