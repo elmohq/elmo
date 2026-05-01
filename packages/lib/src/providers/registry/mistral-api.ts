@@ -1,6 +1,13 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
-import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
+import { extractUsage } from "../usage";
 import type { Citation } from "../../text-extraction";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
@@ -142,7 +149,11 @@ export const mistralApi: Provider = {
 		return { ...result, rawOutput: sanitizeForJson(result.rawOutput) };
 	},
 
-	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+	async runStructuredResearch<T>({
+		prompt,
+		schema,
+		model,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Mistral's chat completions endpoint is OpenAI-compatible and honors
 		// `response_format: json_schema`. The web-search-enabled Conversations
 		// API isn't on the AI SDK, so onboarding via Mistral runs without web
@@ -154,6 +165,10 @@ export const mistralApi: Provider = {
 			apiKey: process.env.MISTRAL_API_KEY,
 		});
 		const result = await generateObject({ model: provider(slug), schema, prompt });
-		return result.object;
+		return {
+			object: result.object,
+			usage: extractUsage(result.usage),
+			modelVersion: slug,
+		};
 	},
 };

@@ -22,6 +22,20 @@ export interface StructuredResearchOptions<T> {
 	model?: string;
 }
 
+export interface StructuredResearchUsage {
+	inputTokens: number;
+	outputTokens: number;
+	totalTokens: number;
+}
+
+export interface StructuredResearchResult<T> {
+	object: T;
+	/** Token counts when the underlying provider exposes them; undefined otherwise. */
+	usage?: StructuredResearchUsage;
+	/** Resolved model id (after any `:online` suffixing etc.). */
+	modelVersion?: string;
+}
+
 export interface Provider {
 	id: string;
 	name: string;
@@ -48,7 +62,7 @@ export interface Provider {
 	 * scraper providers (Olostep / BrightData) don't implement this — the
 	 * onboarding flow always picks a direct API provider.
 	 */
-	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<T>;
+	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>>;
 }
 
 export interface TestResult {

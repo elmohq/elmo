@@ -2,7 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { generateText, Output } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
+import { extractUsage } from "../usage";
 import type { Citation } from "../../text-extraction";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-20250514";
@@ -145,7 +152,7 @@ export const anthropicApi: Provider = {
 		return runAnthropic(prompt, version, options);
 	},
 
-	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const slug = model ?? DEFAULT_RESEARCH_MODEL;
 		const result = await generateText({
 			model: getAnthropicLanguageModel(slug),
@@ -155,6 +162,11 @@ export const anthropicApi: Provider = {
 			experimental_output: Output.object({ schema }),
 			prompt,
 		});
-		return result.experimental_output as T;
+		return {
+			object: result.experimental_output as T,
+			usage: extractUsage(result.usage),
+			modelVersion: slug,
+		};
 	},
 };
+

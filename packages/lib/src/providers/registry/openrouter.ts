@@ -1,6 +1,13 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateObject } from "ai";
-import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
+import { extractUsage } from "../usage";
 import type { Citation } from "../../text-extraction";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
@@ -70,7 +77,11 @@ export const openrouter: Provider = {
 		return !!process.env.OPENROUTER_API_KEY;
 	},
 
-	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+	async runStructuredResearch<T>({
+		prompt,
+		schema,
+		model,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// `:online` enables web search natively on OpenRouter — no separate
 		// tool to wire up. Modern routes (GPT-5, Claude, Gemini 2.5) honor
 		// `response_format: json_schema`, which is what `generateObject` sends.
@@ -81,7 +92,11 @@ export const openrouter: Provider = {
 			schema,
 			prompt,
 		});
-		return result.object;
+		return {
+			object: result.object,
+			usage: extractUsage(result.usage),
+			modelVersion: slug,
+		};
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

@@ -20,7 +20,12 @@
  * preference order if a deployment wants a specific provider/model.
  */
 import type { z } from "zod";
-import { getProvider, parseScrapeTargets, type Provider } from "../providers";
+import {
+	getProvider,
+	parseScrapeTargets,
+	type Provider,
+	type StructuredResearchResult,
+} from "../providers";
 
 /**
  * Direct-API providers in the order onboarding prefers them. OpenRouter is
@@ -98,6 +103,19 @@ export async function runStructuredResearchPrompt<T>(
 	prompt: string,
 	options: RunStructuredOptions<T>,
 ): Promise<T> {
+	const result = await runStructuredResearchPromptWithMetrics(prompt, options);
+	return result.object;
+}
+
+/**
+ * Same as `runStructuredResearchPrompt` but also returns token usage and the
+ * resolved model version. Used by tooling that needs to report cost (the
+ * compare-onboarding script, future telemetry).
+ */
+export async function runStructuredResearchPromptWithMetrics<T>(
+	prompt: string,
+	options: RunStructuredOptions<T>,
+): Promise<StructuredResearchResult<T>> {
 	const target = options.target ?? resolveResearchTarget();
 	if (!target.provider.runStructuredResearch) {
 		throw new Error(`Provider "${target.provider.id}" does not implement structured research`);

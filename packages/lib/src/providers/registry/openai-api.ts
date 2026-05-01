@@ -1,7 +1,14 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions, StructuredResearchOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
+import { extractUsage } from "../usage";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
@@ -65,7 +72,11 @@ export const openaiApi: Provider = {
 		return runOpenAI(prompt, version, options);
 	},
 
-	async runStructuredResearch<T>({ prompt, schema, model }: StructuredResearchOptions<T>): Promise<T> {
+	async runStructuredResearch<T>({
+		prompt,
+		schema,
+		model,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const slug = model ?? DEFAULT_RESEARCH_MODEL;
 		const result = await generateText({
 			model: getOpenAIResponsesModel(slug),
@@ -75,6 +86,10 @@ export const openaiApi: Provider = {
 			experimental_output: Output.object({ schema }),
 			prompt,
 		});
-		return result.experimental_output as T;
+		return {
+			object: result.experimental_output as T,
+			usage: extractUsage(result.usage),
+			modelVersion: slug,
+		};
 	},
 };

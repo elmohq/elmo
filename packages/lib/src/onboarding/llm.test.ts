@@ -104,7 +104,11 @@ describe("runStructuredResearchPrompt", () => {
 			run: vi.fn(),
 			runStructuredResearch: vi.fn(async (opts: { prompt: string; schema: any; model?: string }) => {
 				calls.push({ prompt: opts.prompt, model: opts.model });
-				return { ok: true };
+				return {
+					object: { ok: true },
+					usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
+					modelVersion: opts.model,
+				};
 			}),
 		} as any;
 
