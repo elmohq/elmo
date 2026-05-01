@@ -43,6 +43,14 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 30, // 30 minute timeout
 	});
+	await boss.createQueue("refresh-hourly-aggregates", {
+		retryLimit: 1,
+		retryDelay: 30,
+		retryBackoff: false,
+		// Each tick is normally <10s; 5 minute hard cap is generous in case
+		// the tick rebuilds many days at once after the worker has been down.
+		expireInSeconds: 60 * 5,
+	});
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.createQueue("sync-auth0-memberships", {
 			retryLimit: 3,
@@ -60,6 +68,16 @@ async function main() {
 		{ tz: "UTC" },
 	);
 	console.log("Scheduled maintenance job (every 5 minutes)");
+
+	await boss.schedule(
+		"refresh-hourly-aggregates",
+		"* * * * *",
+		{ source: "scheduled" },
+		// `singletonKey` makes pg-boss skip a tick if a previous one is still
+		// running, so a long catch-up after worker downtime can't pile up.
+		{ tz: "UTC", singletonKey: "refresh-hourly-aggregates" },
+	);
+	console.log("Scheduled hourly-aggregates refresh (every minute)");
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.schedule(

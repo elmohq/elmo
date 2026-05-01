@@ -57,6 +57,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
+			timezone: z.string().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }): Promise<DashboardSummaryResponse> => {
@@ -64,7 +65,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		await requireOrgAccess(session.user.id, data.brandId);
 
 		const lookbackParam = data.lookback as LookbackPeriod;
-		const timezone = "UTC";
+		// Charts and bucketing happen in the viewer's browser-local timezone.
+		// Hourly aggregates are stored in UTC; the SQL projects to local at read time.
+		const timezone = data.timezone || "UTC";
 
 		let fromDateStr: string | null = null;
 		let toDateStr: string | null = null;

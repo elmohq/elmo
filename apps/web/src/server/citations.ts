@@ -23,6 +23,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			days: z.number().optional().default(7),
 			tags: z.string().optional(),
 			model: z.string().optional(),
+			timezone: z.string().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -35,7 +36,8 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		fromDate.setDate(fromDate.getDate() - data.days);
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
-		const timezone = "UTC";
+		// Charts and bucketing happen in the viewer's browser-local timezone.
+		const timezone = data.timezone || "UTC";
 
 		// Previous period of equal length for comparisons
 		// Current period: [fromDate, toDate] inclusive = (data.days + 1) calendar days
