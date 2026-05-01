@@ -1,7 +1,10 @@
 # Contributing to Elmo
 
-Thanks for your interest in contributing! Setup, commands, architecture,
-and the contribution workflow live in the
+Thanks for your interest in contributing! For minor fixes, feel free to
+open a PR directly. For anything larger, please open an issue first so
+the maintainers can agree on the approach before you start work.
+
+Setup, commands, architecture, and the contribution workflow live in the
 [Developer Guide](https://www.elmohq.com/docs/developer-guide).
 
 ## License
