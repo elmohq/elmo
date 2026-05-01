@@ -12,16 +12,16 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
     "@anthropic-ai/sdk": "^0.91.1",
-    "@sentry/node": "^10.49.0",
+    "@sentry/node": "^10.50.0",
     "@workspace/lib": "workspace:*",
     "@workspace/whitelabel": "workspace:*",
     "ai": "^6.0.168",
-    "auth0": "^5.6.0",
-    "dataforseo-client": "^2.0.22",
+    "auth0": "^5.8.0",
+    "dataforseo-client": "^2.0.23",
     "drizzle-orm": "^0.45.2",
     "pg": "^8.20.0",
-    "pg-boss": "^12.15.0",
-    "posthog-node": "^5.29.2",
+    "pg-boss": "^12.18.0",
+    "posthog-node": "^5.30.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {

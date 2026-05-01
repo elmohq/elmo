@@ -123,3 +123,13 @@
 .prose h6 a:hover {
 	text-decoration: underline !important;
 }
+
+.prose thead th {
+	font-weight: 700;
+}
+
+.prose thead th:first-child,
+.prose tbody td:first-child,
+.prose tfoot td:first-child {
+	padding-inline-start: 0.571429em;
+}

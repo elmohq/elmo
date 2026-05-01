@@ -1,7 +1,6 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
 import { OpenApiReference } from "@workspace/docs/components/openapi-reference";
-import { Mermaid } from "@workspace/docs/components/mermaid";
 import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
 
@@ -22,7 +21,6 @@ export function getMDXComponents(components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
 		OpenApiReference,
-		Mermaid,
 		FeedbackBlock: (props: { id: string; body?: string; children: React.ReactNode }) => (
 			<FeedbackBlock {...props} onSendAction={onBlockFeedback} />
 		),

@@ -50,24 +50,15 @@ Elmo is a pnpm monorepo managed by Turborepo. The codebase is split into **apps*
 
 ## How the Apps Connect
 
-```
-┌─────────────┐       ┌──────────────┐
-│   Web App   │──────▶│  PostgreSQL   │◀──────│   Worker    │
-│  (TanStack) │       │  (Drizzle)   │       │  (pg-boss)  │
-└─────────────┘       └──────────────┘       └─────────────┘
-       │                                            │
-       │              ┌──────────────┐              │
-       └─────────────▶│   packages/  │◀─────────────┘
-                      │   lib/       │
-                      │   config/    │
-                      │   ui/        │
-                      └──────────────┘
-```
+For the runtime topology (web, worker, Postgres, LLM providers), see the
+[System Architecture diagram](/docs/getting-started#system-architecture).
 
-- The **Web App** serves the dashboard UI and the REST API (`/api/v1`)
-- The **Worker** processes background jobs — querying AI models, running evaluations
-- Both import shared code from `packages/lib` (database schema, AI provider config) and `packages/config` (deployment types)
-- The **CLI** generates Docker Compose configurations and manages the deployment lifecycle
+What matters for development:
+
+- The **Web App** serves the dashboard UI and the REST API (`/api/v1`).
+- The **Worker** processes background jobs — querying AI models, running evaluations.
+- Both import shared code from `packages/lib` (database schema, AI provider config) and `packages/config` (deployment types).
+- The **CLI** generates Docker Compose configurations and manages the deployment lifecycle.
 
 ## Deployment Modes
 
@@ -100,4 +91,4 @@ All AI scraping flows through a single `Provider` interface in `packages/lib/src
 2. `parseScrapeTargets()` turns the string into `ModelConfig[]`.
 3. `getProvider(providerId).run(model, prompt, { webSearch, version })` dispatches to a concrete `registry/` implementation and returns a normalized `ScrapeResult` (`textContent`, `rawOutput`, `webQueries`, `citations`, `modelVersion`).
 
-User-facing setup is documented in [Providers](/docs/deployment/providers).
+User-facing setup is documented in [Providers](/docs/user-guide/providers).

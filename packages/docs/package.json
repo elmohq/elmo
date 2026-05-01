@@ -10,14 +10,12 @@
 		"./components/search-dialog": "./src/components/search-dialog.tsx",
 		"./components/openapi-reference": "./src/components/openapi-reference.tsx",
 		"./components/feedback/client": "./src/components/feedback/client.tsx",
-		"./components/feedback/schema": "./src/components/feedback/schema.ts",
-		"./components/mermaid": "./src/components/mermaid.tsx"
+		"./components/feedback/schema": "./src/components/feedback/schema.ts"
 	},
 	"dependencies": {
-		"@scalar/api-reference-react": "^0.9.24",
+		"@scalar/api-reference-react": "^0.9.27",
 		"@workspace/ui": "workspace:*",
-		"lucide-react": "^1.8.0",
-		"mermaid": "^11.14.0"
+		"lucide-react": "^1.11.0"
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": ">=1.0.0",

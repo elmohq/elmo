@@ -20,27 +20,7 @@ Unlike proprietary alternatives, Elmo is fully self-hosted — you own your data
 
 ## How It Works
 
-Elmo runs as a Docker Compose stack on your infrastructure. The CLI sets everything up in minutes:
-
-```bash
-npm install -g @elmohq/cli
-elmo init
-elmo start
-```
-
-Once running, the platform periodically queries AI models with your configured prompts and tracks how they mention your brand, competitors, and cited sources over time.
-
-## Architecture
-
-Elmo consists of three main components:
-
-| Component | Description |
-|-----------|-------------|
-| **Web** | The main dashboard for monitoring AI visibility, managing prompts, and viewing reports |
-| **Worker** | Background job runner that queries AI models and processes responses on a schedule |
-| **CLI** | Command-line interface for initializing and managing your Elmo deployment |
-
-These run together via Docker Compose, backed by a PostgreSQL database.
+Elmo runs as a Docker Compose stack on your infrastructure. Once running, it periodically queries AI models with your configured prompts and tracks how they mention your brand, competitors, and cited sources over time.
 
 ## Next Steps
 
@@ -51,10 +31,7 @@ Install the CLI and get Elmo running in minutes.
 <Card title="User Guide" href="/docs/user-guide">
 Walk through the complete setup — from brand creation to visibility tracking.
 </Card>
-<Card title="Configuration" href="/docs/configuration">
-Configure AI models, deployment modes, and environment variables.
-</Card>
-<Card title="Contributing" href="/docs/contributing">
-Set up a development environment and contribute to Elmo.
+<Card title="Developer Guide" href="/docs/developer-guide">
+Configure your deployment, hit the API, or contribute to Elmo.
 </Card>
 </Cards>
