@@ -11,7 +11,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { count, desc } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { createBrand, createBrandInputSchema, BrandConflictError } from "@/server/onboarding";
+import { createBrand, createBrandInputSchema, buildBrandResult, BrandConflictError } from "@/server/onboarding";
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
@@ -31,25 +31,15 @@ export const Route = createFileRoute("/api/v1/brands/")({
 					const totalCount = totalCountResult?.count || 0;
 					const totalPages = Math.ceil(totalCount / limit);
 
-					const brandsList = await db
-						.select({
-							id: brands.id,
-							name: brands.name,
-							website: brands.website,
-							additionalDomains: brands.additionalDomains,
-							aliases: brands.aliases,
-							enabled: brands.enabled,
-							onboarded: brands.onboarded,
-							createdAt: brands.createdAt,
-							updatedAt: brands.updatedAt,
-						})
+					const rows = await db
+						.select()
 						.from(brands)
 						.orderBy(desc(brands.createdAt))
 						.limit(limit)
 						.offset(offset);
 
 					return Response.json({
-						brands: brandsList,
+						brands: rows.map(buildBrandResult),
 						pagination: { page, limit, total: totalCount, totalPages },
 					});
 				} catch (err) {

@@ -36,13 +36,15 @@ export const analyzeBrandFn = async (_args: { data: unknown }) => {
 export const updateOnboardedBrandFn = async (_args: { data: unknown }) => {
 	if (_delayMs > 0) await new Promise((r) => setTimeout(r, Math.min(_delayMs, 800)));
 	return {
-		brandId: "mock-brand-id",
-		brandName: "Mock",
+		id: "mock-brand-id",
+		name: "Mock",
 		website: "mock.com",
 		additionalDomains: [],
 		aliases: [],
 		enabled: true,
 		onboarded: true,
+		createdAt: new Date(),
+		updatedAt: new Date(),
 	};
 };
 

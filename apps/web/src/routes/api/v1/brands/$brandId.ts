@@ -11,7 +11,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { updateBrand, updateBrandBodySchema, BrandNotFoundError } from "@/server/onboarding";
+import { updateBrand, updateBrandBodySchema, buildBrandResult, BrandNotFoundError } from "@/server/onboarding";
 
 function getBrandIdFromPath(request: Request): string {
 	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
@@ -39,17 +39,7 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 					if (!row) {
 						return Response.json({ error: "Not Found", message: `Brand "${brandId}" not found.` }, { status: 404 });
 					}
-					return Response.json({
-						brandId: row.id,
-						brandName: row.name,
-						website: row.website,
-						additionalDomains: row.additionalDomains,
-						aliases: row.aliases,
-						enabled: row.enabled,
-						onboarded: row.onboarded,
-						createdAt: row.createdAt,
-						updatedAt: row.updatedAt,
-					});
+					return Response.json(buildBrandResult(row));
 				} catch (err) {
 					console.error("[brands GET one] failed:", err);
 					return Response.json({ error: "Internal Server Error" }, { status: 500 });

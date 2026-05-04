@@ -101,13 +101,15 @@ export type UpdateBrandInput = z.infer<typeof updateBrandInputSchema>;
 export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
 
 export interface BrandResult {
-	brandId: string;
-	brandName: string;
+	id: string;
+	name: string;
 	website: string;
 	additionalDomains: string[];
 	aliases: string[];
 	enabled: boolean;
 	onboarded: boolean;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 // ============================================================================
@@ -153,15 +155,17 @@ export function dedupeAliases(values: string[]): string[] {
 	return out;
 }
 
-function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
+export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
 	return {
-		brandId: row.id,
-		brandName: row.name,
+		id: row.id,
+		name: row.name,
 		website: row.website,
 		additionalDomains: row.additionalDomains,
 		aliases: row.aliases,
 		enabled: row.enabled,
 		onboarded: row.onboarded,
+		createdAt: row.createdAt,
+		updatedAt: row.updatedAt,
 	};
 }
 
