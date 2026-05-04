@@ -26,7 +26,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	const tools: Record<string, any> = {};
 	if (options?.webSearch !== false) {
 		tools.web_search = openai.tools.webSearch({
-			searchContextSize: "medium",
+			searchContextSize: "low",
 		}) as any;
 	}
 
