@@ -25,8 +25,8 @@ function getOpenAIResponsesModel(model: string) {
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const tools: Record<string, any> = {};
 	if (options?.webSearch !== false) {
-		tools.web_search_preview = openai.tools.webSearchPreview({
-			searchContextSize: "low",
+		tools.web_search = openai.tools.webSearch({
+			searchContextSize: "medium",
 		}) as any;
 	}
 
@@ -77,7 +77,7 @@ export const openaiApi: Provider = {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
 			tools: {
-				web_search_preview: openai.tools.webSearchPreview({ searchContextSize: "low" }) as any,
+				web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any,
 			},
 			experimental_output: Output.object({ schema }),
 			prompt,
