@@ -287,8 +287,6 @@ export async function processReportJob(job: ReportJobContext) {
 			website: brandWebsite,
 			brandName,
 			includePrompts: !useManualPrompts,
-			// Candidate volume — we run all of them and the selector below picks
-			// the best TARGET_PROMPTS_COUNT.
 			maxPrompts: useManualPrompts ? 0 : 84,
 		});
 		// The report renderer's CompetitorResult expects a single primary domain;
