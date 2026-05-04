@@ -1,14 +1,8 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-const API_DOCS_URL = "https://www.elmohq.com/docs/api";
-
+// Unreachable: deploymentMiddleware (see lib/auth/policies.ts) intercepts
+// GET /api/v1/docs and 302-redirects to the public reference before route
+// matching runs. The file remains so the generated route tree resolves.
 export const Route = createFileRoute("/api/v1/docs/")({
-	beforeLoad: () => {
-		throw redirect({ href: API_DOCS_URL });
-	},
-	server: {
-		handlers: {
-			GET: () => Response.redirect(API_DOCS_URL, 302),
-		},
-	},
+	component: () => null,
 });

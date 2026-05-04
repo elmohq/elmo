@@ -93,9 +93,12 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result).toMatchObject({ action: "block", status: 401 });
 		});
 
-		it("allows API v1 docs without key", () => {
+		it("redirects API v1 docs to the public reference", () => {
 			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"), { adminApiKeys: API_KEYS });
-			expect(result.action).toBe("allow");
+			expect(result).toMatchObject({
+				action: "redirect",
+				url: "https://www.elmohq.com/docs/api",
+			});
 		});
 
 		it("serves OpenAPI spec", () => {
@@ -312,9 +315,12 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("serve-openapi");
 		});
 
-		it("allows /api/v1/docs with trailing slash", () => {
+		it("redirects /api/v1/docs with trailing slash", () => {
 			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs/"), { adminApiKeys: API_KEYS });
-			expect(result.action).toBe("allow");
+			expect(result).toMatchObject({
+				action: "redirect",
+				url: "https://www.elmohq.com/docs/api",
+			});
 		});
 
 		it("blocks TanStack server-function POST routes in read-only mode", () => {

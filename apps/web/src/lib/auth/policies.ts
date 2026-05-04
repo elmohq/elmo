@@ -108,10 +108,19 @@ export function evaluateDeploymentPolicy(
 		return { action: "serve-openapi" };
 	}
 
-	// 3. Public API v1 key authentication (except docs and spec)
-	const isPublicApiV1 = pathname.startsWith("/api/v1/");
+	// 3. Redirect /api/v1/docs to the public API reference
 	const isPublicApiV1Doc =
 		pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
+
+	if (isPublicApiV1Doc && method === "GET") {
+		return {
+			action: "redirect",
+			url: "https://www.elmohq.com/docs/api",
+		};
+	}
+
+	// 4. Public API v1 key authentication (except docs and spec)
+	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 
 	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
 		const keyResult = evaluateApiKeyAuth(
