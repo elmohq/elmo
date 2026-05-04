@@ -2,9 +2,7 @@
  * Stories for the brand-onboarding wizard. Cover the meaningful UI states:
  *   - Idle (the analyze button before the user clicks it).
  *   - Analyzing (the in-flight loader, simulated with a long mock delay).
- *   - Review with rich data (every section populated, prompts pre-tagged).
- *   - Review with a sparse suggestion (no competitors / no prompts) so the
- *     "no suggestions" empty state is exercised.
+ *   - Review (every section populated, prompts pre-tagged).
  *   - Analyze error (the wizard surfaces the message inline).
  *
  * The mocks live in src/stories/_mocks; the storybook alias in
@@ -61,28 +59,10 @@ const RICH_SUGGESTION: OnboardingSuggestion = {
 	],
 };
 
-const SPARSE_SUGGESTION: OnboardingSuggestion = {
-	brandName: "TinyCo",
-	website: "tinyco.local",
-	additionalDomains: [],
-	aliases: [],
-	products: ["niche service"],
-	competitors: [],
-	suggestedPrompts: [],
-};
-
 const MOCK_BRAND = {
 	id: "mock-brand-id",
 	name: "Acme",
 	website: "https://acme.com",
-	prompts: [],
-	competitors: [],
-};
-
-const TINY_BRAND = {
-	id: "mock-tiny-id",
-	name: "TinyCo",
-	website: "https://tinyco.local",
 	prompts: [],
 	competitors: [],
 };
@@ -150,23 +130,8 @@ export const Analyzing = () => {
 };
 
 /** Review with a fully-populated suggestion — every section editable. */
-export const ReviewRich = () => {
+export const Review = () => {
 	useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION });
-	return (
-		<>
-			<PromptWizard onComplete={() => {}} />
-			<AutoAnalyze />
-		</>
-	);
-};
-
-/**
- * Review with no competitors and no prompts. Verifies the "no prompt
- * suggestions returned" empty state and that custom prompts are still
- * usable.
- */
-export const ReviewSparse = () => {
-	useWizardSetup({ brand: TINY_BRAND, suggestion: SPARSE_SUGGESTION });
 	return (
 		<>
 			<PromptWizard onComplete={() => {}} />
