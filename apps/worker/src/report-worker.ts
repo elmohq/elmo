@@ -6,13 +6,9 @@ import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/li
 import {
 	analyzeWebsite,
 	getCompetitors,
-	getKeywords,
-	getPersonas,
 	generateCandidatePromptsForReports,
 	type AnalyzeWebsiteResult,
 	type CompetitorResult,
-	type KeywordResult,
-	type PersonaGroup,
 	type PromptData,
 } from "@workspace/lib/wizard-helpers";
 import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
@@ -77,8 +73,6 @@ interface PromptRunResult {
 interface ReportData {
 	websiteAnalysis: AnalyzeWebsiteResult;
 	competitors: CompetitorResult[];
-	keywords: KeywordResult[];
-	personaGroups: PersonaGroup[];
 	prompts: PromptData[];
 	promptRuns: PromptRunResult[];
 }
@@ -292,8 +286,6 @@ export async function processReportJob(job: ReportJobContext) {
 			const reportData: ReportData = {
 				websiteAnalysis,
 				competitors: [],
-				keywords: [],
-				personaGroups: [],
 				prompts: [],
 				promptRuns: [],
 			};
@@ -316,29 +308,9 @@ export async function processReportJob(job: ReportJobContext) {
 		// Step 2: Get competitors
 		job.log(`Getting competitors for products: ${websiteAnalysis.products.join(", ")}`);
 		const competitors = await getCompetitors(websiteAnalysis.products, brandWebsite);
-		job.updateProgress(25);
+		job.updateProgress(35);
 
-		// Step 3: Get keywords (only if not using manual prompts)
-		let keywords: KeywordResult[] = [];
-		if (!useManualPrompts) {
-			job.log(`Getting keywords for domain and products`);
-			keywords = await getKeywords(brandWebsite, websiteAnalysis.products);
-			job.updateProgress(35);
-		} else {
-			job.updateProgress(35);
-		}
-
-		// Step 4: Get personas (only if not using manual prompts)
-		let personaGroups: PersonaGroup[] = [];
-		if (!useManualPrompts) {
-			job.log(`Getting personas for products and website`);
-			personaGroups = await getPersonas(websiteAnalysis.products, brandWebsite);
-			job.updateProgress(35);
-		} else {
-			job.updateProgress(35);
-		}
-
-		// Step 5: Generate or use provided prompts
+		// Step 3: Generate or use provided prompts
 		let candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
 		
 		if (useManualPrompts) {
@@ -368,7 +340,7 @@ export async function processReportJob(job: ReportJobContext) {
 			job.updateProgress(40);
 		}
 
-		// Step 6: Run all candidate prompts to test them
+		// Step 4: Run all candidate prompts to test them
 		job.log(`Testing ${candidatePrompts.length} candidate prompts`);
 		const candidateResults: Array<{
 			promptValue: string;
@@ -429,12 +401,12 @@ export async function processReportJob(job: ReportJobContext) {
 
 		job.updateProgress(70);
 
-		// Step 7: Select optimal prompts from candidates
+		// Step 5: Select optimal prompts from candidates
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
 		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandWebsite);
 		job.updateProgress(75);
 
-		// Step 8: Re-run selected prompts for final data
+		// Step 6: Re-run selected prompts for final data
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
 		const promptRuns: PromptRunResult[] = [];
 		const totalFinalRuns = selectedPromptValues.length;
@@ -471,8 +443,6 @@ export async function processReportJob(job: ReportJobContext) {
 		const reportData: ReportData = {
 			websiteAnalysis,
 			competitors,
-			keywords,
-			personaGroups,
 			prompts,
 			promptRuns,
 		};
