@@ -281,7 +281,7 @@
 				},
 				"required": ["url", "title", "count"]
 			},
-			"OnboardingAnalyzeRequest": {
+			"AnalyzeBrandRequest": {
 				"type": "object",
 				"properties": {
 					"website": {
@@ -360,23 +360,15 @@
 					"suggestedPrompts"
 				]
 			},
-			"OnboardBrandRequest": {
+			"CreateBrandRequest": {
 				"type": "object",
-				"description": "Create a brand and (optionally) auto-generate competitors and prompts. Fails with 409 if a brand with this brandId already exists — use PATCH /onboarding/brands/{brandId} to update.",
+				"description": "Create a brand.",
 				"properties": {
 					"brandId": { "type": "string", "minLength": 1 },
 					"brandName": { "type": "string", "minLength": 1 },
 					"website": { "type": "string", "minLength": 1 },
-					"additionalDomains": {
-						"type": "array",
-						"items": { "type": "string" },
-						"description": "Other domains the brand owns. Will be merged with anything the LLM finds."
-					},
-					"aliases": {
-						"type": "array",
-						"items": { "type": "string" },
-						"description": "Other names the brand goes by. Merged with LLM suggestions."
-					},
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
 					"competitors": {
 						"type": "array",
 						"items": {
@@ -387,8 +379,7 @@
 								"aliases": { "type": "array", "items": { "type": "string" } }
 							},
 							"required": ["name"]
-						},
-						"description": "Caller-supplied competitors. If provided, generateCompetitors is ignored."
+						}
 					},
 					"prompts": {
 						"type": "array",
@@ -400,61 +391,23 @@
 								"enabled": { "type": "boolean", "default": true }
 							},
 							"required": ["value"]
-						},
-						"description": "Caller-supplied prompts. If provided, generatePrompts is ignored."
-					},
-					"generateCompetitors": { "type": "boolean", "default": true },
-					"generatePrompts": { "type": "boolean", "default": true }
+						}
+					}
 				},
 				"required": ["brandId", "brandName", "website"]
 			},
-			"UpdateOnboardedBrandRequest": {
+			"UpdateBrandRequest": {
 				"type": "object",
-				"description": "Top up an existing brand. brandId comes from the URL path; all body fields are optional. Domains and aliases are merged into the existing arrays. New competitors are deduped against existing ones by domain overlap. New prompts are deduped against existing prompts by lowercased value.",
+				"description": "Update brand-level fields. Provided arrays replace the stored values verbatim. Prompts and competitors are managed via their own endpoints.",
 				"properties": {
-					"brandName": { "type": "string", "minLength": 1, "description": "If provided, replaces the brand's stored name." },
-					"website": { "type": "string", "minLength": 1, "description": "If provided, replaces the brand's stored website." },
-					"additionalDomains": {
-						"type": "array",
-						"items": { "type": "string" },
-						"description": "Other domains the brand owns. Merged into the existing additionalDomains list."
-					},
-					"aliases": {
-						"type": "array",
-						"items": { "type": "string" },
-						"description": "Other names the brand goes by. Merged into the existing aliases list."
-					},
-					"competitors": {
-						"type": "array",
-						"items": {
-							"type": "object",
-							"properties": {
-								"name": { "type": "string", "minLength": 1 },
-								"domains": { "type": "array", "items": { "type": "string" } },
-								"aliases": { "type": "array", "items": { "type": "string" } }
-							},
-							"required": ["name"]
-						},
-						"description": "Net-new competitors to add. Skipped if any of their domains overlap an existing competitor's."
-					},
-					"prompts": {
-						"type": "array",
-						"items": {
-							"type": "object",
-							"properties": {
-								"value": { "type": "string", "minLength": 1 },
-								"tags": { "type": "array", "items": { "type": "string" } },
-								"enabled": { "type": "boolean", "default": true }
-							},
-							"required": ["value"]
-						},
-						"description": "Net-new prompts to add. Skipped if a prompt with the same lowercased value already exists for this brand."
-					},
-					"generateCompetitors": { "type": "boolean", "default": false, "description": "Run analyzeBrand to suggest more competitors. Default false; only runs if `competitors` is empty." },
-					"generatePrompts": { "type": "boolean", "default": false, "description": "Run analyzeBrand to suggest more prompts. Default false; only runs if `prompts` is empty." }
+					"brandName": { "type": "string", "minLength": 1 },
+					"website": { "type": "string", "minLength": 1 },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"enabled": { "type": "boolean" }
 				}
 			},
-			"OnboardBrandResponse": {
+			"Brand": {
 				"type": "object",
 				"properties": {
 					"brandId": { "type": "string" },
@@ -462,17 +415,44 @@
 					"website": { "type": "string" },
 					"additionalDomains": { "type": "array", "items": { "type": "string" } },
 					"aliases": { "type": "array", "items": { "type": "string" } },
-					"promptsCreated": { "type": "integer" },
-					"competitorsCreated": { "type": "integer" },
-					"suggestion": {
-						"oneOf": [
-							{ "$ref": "#/components/schemas/OnboardingSuggestion" },
-							{ "type": "null" }
-						],
-						"description": "The raw LLM suggestion when generation ran; null when caller supplied everything."
+					"enabled": { "type": "boolean" },
+					"onboarded": { "type": "boolean" },
+					"promptsCreated": { "type": "integer", "description": "Number of prompts inserted by the request that produced this response. Always 0 for GET / PATCH responses." },
+					"competitorsCreated": { "type": "integer", "description": "Number of competitors inserted by the request that produced this response. Always 0 for GET / PATCH responses." }
+				},
+				"required": ["brandId", "brandName", "website", "additionalDomains", "aliases", "enabled", "onboarded"]
+			},
+			"BrandSummary": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string" },
+					"name": { "type": "string" },
+					"website": { "type": "string" },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"enabled": { "type": "boolean" },
+					"onboarded": { "type": "boolean" },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["id", "name", "website", "additionalDomains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
+			},
+			"BrandsList": {
+				"type": "object",
+				"properties": {
+					"brands": { "type": "array", "items": { "$ref": "#/components/schemas/BrandSummary" } },
+					"pagination": {
+						"type": "object",
+						"properties": {
+							"page": { "type": "integer" },
+							"limit": { "type": "integer" },
+							"total": { "type": "integer" },
+							"totalPages": { "type": "integer" }
+						},
+						"required": ["page", "limit", "total", "totalPages"]
 					}
 				},
-				"required": ["brandId", "brandName", "website", "additionalDomains", "aliases", "promptsCreated", "competitorsCreated"]
+				"required": ["brands", "pagination"]
 			},
 			"PromptSnapshot": {
 				"type": "object",
@@ -586,17 +566,17 @@
 		}
 	},
 	"paths": {
-		"/onboarding/analyze": {
+		"/tools/analyze": {
 			"post": {
-				"summary": "Analyze a brand for onboarding",
-				"description": "Run the provider-agnostic brand analysis (additional domains, aliases, competitors, suggested prompts) without persisting anything. The LLM is selected automatically based on configured API keys (Anthropic / OpenAI / OpenRouter / Olostep / BrightData).",
-				"operationId": "analyzeBrandForOnboarding",
-				"tags": ["Onboarding"],
+				"summary": "Analyze a website",
+				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.",
+				"operationId": "analyzeBrand",
+				"tags": ["Tools"],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/OnboardingAnalyzeRequest" }
+							"schema": { "$ref": "#/components/schemas/AnalyzeBrandRequest" }
 						}
 					}
 				},
@@ -615,26 +595,56 @@
 				}
 			}
 		},
-		"/onboarding/brands": {
+		"/brands": {
+			"get": {
+				"summary": "List brands",
+				"operationId": "listBrands",
+				"tags": ["Brands"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Paginated list of brands",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/BrandsList" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
 			"post": {
-				"summary": "Create a brand programmatically",
-				"description": "Create a brand and persist its prompts/competitors. Anything the caller doesn't supply (competitors, prompts) is auto-generated via the onboarding pipeline. Pure create — fails with 409 if a brand with this brandId already exists; use PATCH /onboarding/brands/{brandId} to top up an existing one. Use generateCompetitors=false / generatePrompts=false to skip generation entirely.",
-				"operationId": "onboardBrand",
-				"tags": ["Onboarding"],
+				"summary": "Create a brand",
+				"operationId": "createBrand",
+				"tags": ["Brands"],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/OnboardBrandRequest" }
+							"schema": { "$ref": "#/components/schemas/CreateBrandRequest" }
 						}
 					}
 				},
 				"responses": {
 					"201": {
-						"description": "Brand onboarded",
+						"description": "Brand created",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/OnboardBrandResponse" }
+								"schema": { "$ref": "#/components/schemas/Brand" }
 							}
 						}
 					},
@@ -645,26 +655,43 @@
 				}
 			}
 		},
-		"/onboarding/brands/{brandId}": {
+		"/brands/{brandId}": {
+			"parameters": [
+				{
+					"name": "brandId",
+					"in": "path",
+					"required": true,
+					"description": "Brand identifier",
+					"schema": { "type": "string", "minLength": 1 }
+				}
+			],
+			"get": {
+				"summary": "Get a brand",
+				"operationId": "getBrand",
+				"tags": ["Brands"],
+				"responses": {
+					"200": {
+						"description": "Brand",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Brand" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
 			"patch": {
-				"summary": "Update an onboarded brand",
-				"description": "Top up an existing brand with additional domains, aliases, competitors, or prompts. Merges into existing arrays and dedupes net-new competitors/prompts against the database. Returns 404 if the brand doesn't exist — use POST /onboarding/brands to create one.",
-				"operationId": "updateOnboardedBrand",
-				"tags": ["Onboarding"],
-				"parameters": [
-					{
-						"name": "brandId",
-						"in": "path",
-						"required": true,
-						"description": "Brand identifier",
-						"schema": { "type": "string", "minLength": 1 }
-					}
-				],
+				"summary": "Update a brand",
+				"operationId": "updateBrand",
+				"tags": ["Brands"],
 				"requestBody": {
 					"required": true,
 					"content": {
 						"application/json": {
-							"schema": { "$ref": "#/components/schemas/UpdateOnboardedBrandRequest" }
+							"schema": { "$ref": "#/components/schemas/UpdateBrandRequest" }
 						}
 					}
 				},
@@ -673,7 +700,7 @@
 						"description": "Brand updated",
 						"content": {
 							"application/json": {
-								"schema": { "$ref": "#/components/schemas/OnboardBrandResponse" }
+								"schema": { "$ref": "#/components/schemas/Brand" }
 							}
 						}
 					},
@@ -1371,8 +1398,12 @@
 	},
 	"tags": [
 		{
-			"name": "Onboarding",
-			"description": "Provider-agnostic brand onboarding (analyze a website, create a brand, generate prompts and competitors)"
+			"name": "Brands",
+			"description": "Manage brand records"
+		},
+		{
+			"name": "Tools",
+			"description": "One-shot helpers (e.g. brand analysis) that don't persist anything"
 		},
 		{
 			"name": "Prompts",
