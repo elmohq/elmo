@@ -3,7 +3,7 @@ import {
 	serverLoader,
 	clientLoader,
 	DocsPageLayout,
-	type DocsLoaderData,
+	type LoaderData,
 } from "./$";
 import { getPageImage } from "@/lib/og";
 import {
@@ -16,7 +16,7 @@ import {
 export const Route = createFileRoute("/docs/")({
 	component: Page,
 	head: ({ loaderData }) => {
-		const data = loaderData as DocsLoaderData | undefined;
+		const data = loaderData as LoaderData | undefined;
 		if (!data) return {};
 
 		const pageTitle = `Documentation · ${SITE_NAME}`;
@@ -46,12 +46,14 @@ export const Route = createFileRoute("/docs/")({
 	},
 	loader: async () => {
 		const data = await serverLoader({ data: [] });
-		await clientLoader.preload(data.path);
+		if (data.type === "docs") {
+			await clientLoader.preload(data.path);
+		}
 		return data;
 	},
 });
 
 function Page() {
-	const loaderData = Route.useLoaderData() as DocsLoaderData;
+	const loaderData = Route.useLoaderData() as LoaderData;
 	return <DocsPageLayout loaderData={loaderData} />;
 }

@@ -1,30 +1,19 @@
 /**
  * API Documentation Page E2E Tests
  *
- * Tests that the Scalar API reference page is accessible
- * and renders correctly.
+ * Tests that GET /api/v1/docs redirects to the public API reference
+ * on the marketing site.
  */
 import { test, expect } from "@playwright/test";
 
+const PUBLIC_DOCS_URL =
+	"https://www.elmohq.com/docs/developer-guide/api-reference";
+
 test.describe("API Documentation", () => {
-  test("GET /api/v1/docs returns API docs page", async ({ page }) => {
-    const response = await page.goto("/api/v1/docs");
+	test("GET /api/v1/docs redirects to the public API reference", async ({ request }) => {
+		const response = await request.get("/api/v1/docs", { maxRedirects: 0 });
 
-    expect(response?.status()).toBe(200);
-    expect(response?.headers()["content-type"]).toContain("text/html");
-  });
-
-  test("API docs page has correct structure", async ({ page }) => {
-    await page.goto("/api/v1/docs");
-
-    const apiReference = page.locator("#api-reference");
-    await expect(apiReference).toBeVisible();
-  });
-
-  test("API docs load the API spec", async ({ page }) => {
-    await page.goto("/api/v1/docs");
-
-    const apiReference = page.locator("#api-reference");
-    await expect(apiReference).not.toBeEmpty();
-  });
+		expect([301, 302, 307, 308]).toContain(response.status());
+		expect(response.headers().location).toBe(PUBLIC_DOCS_URL);
+	});
 });
