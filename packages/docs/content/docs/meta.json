@@ -3,6 +3,7 @@
 	"pages": [
 		"index",
 		"getting-started",
+		"api",
 		"user-guide",
 		"developer-guide"
 	]

@@ -6,8 +6,7 @@
  */
 import { test, expect } from "@playwright/test";
 
-const PUBLIC_DOCS_URL =
-	"https://www.elmohq.com/docs/developer-guide/api-reference";
+const PUBLIC_DOCS_URL = "https://www.elmohq.com/docs/api";
 
 test.describe("API Documentation", () => {
 	test("GET /api/v1/docs redirects to the public API reference", async ({ request }) => {

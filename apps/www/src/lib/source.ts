@@ -7,7 +7,7 @@ export const source = loader(
 	{
 		docs: docs.toFumadocsSource(),
 		openapi: await openapiSource(openapi, {
-			baseDir: "developer-guide/api-reference",
+			baseDir: "api",
 			groupBy: "tag",
 			meta: true,
 		}),
