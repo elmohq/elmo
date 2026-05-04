@@ -24,7 +24,7 @@ function getOpenAIResponsesModel(model: string) {
 
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const tools: Record<string, any> = {};
-	if (options?.webSearch !== false) {
+	if (options?.webSearch) {
 		tools.web_search = openai.tools.webSearch({
 			searchContextSize: "low",
 		}) as any;

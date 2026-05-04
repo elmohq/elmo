@@ -12,7 +12,7 @@ import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { dedupeDomains, dedupeAliases } from "@/server/onboarding";
+import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 
 function isValidUUID(id: string): boolean {
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

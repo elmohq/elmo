@@ -24,7 +24,7 @@ import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
-import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 // ============================================================================
@@ -63,8 +63,8 @@ const promptInputSchema = z.object({
 
 /** POST /api/v1/brands body. */
 const createBrandInputSchema = z.object({
-	brandId: z.string().min(1),
-	brandName: z.string().min(1),
+	id: z.string().min(1),
+	name: z.string().min(1),
 	website: z.string().min(1),
 	additionalDomains: z.array(z.string()).optional(),
 	aliases: z.array(z.string()).optional(),
@@ -127,32 +127,6 @@ function validateAndFormatWebsite(url: string): string {
 		throw new Error("Website URL must have a valid hostname");
 	}
 	return formatted;
-}
-
-export function dedupeDomains(values: string[]): string[] {
-	const out: string[] = [];
-	const seen = new Set<string>();
-	for (const v of values) {
-		const cleaned = cleanAndValidateDomain(v);
-		if (!cleaned || seen.has(cleaned)) continue;
-		seen.add(cleaned);
-		out.push(cleaned);
-	}
-	return out;
-}
-
-export function dedupeAliases(values: string[]): string[] {
-	const out: string[] = [];
-	const seen = new Set<string>();
-	for (const v of values) {
-		const trimmed = v.trim();
-		if (!trimmed) continue;
-		const key = trimmed.toLowerCase();
-		if (seen.has(key)) continue;
-		seen.add(key);
-		out.push(trimmed);
-	}
-	return out;
 }
 
 export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
@@ -267,25 +241,26 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const formattedWebsite = validateAndFormatWebsite(input.website);
 	const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
 
-	const conflict = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
-	if (conflict) throw new BrandConflictError(input.brandId);
-
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
-	await db.insert(brands).values({
-		id: input.brandId,
-		name: input.brandName,
-		website: formattedWebsite,
-		additionalDomains,
-		aliases,
-		enabled: true,
-		// Programmatic creation skips the in-app onboarding wizard.
-		onboarded: true,
-	});
+	const [inserted] = await db
+		.insert(brands)
+		.values({
+			id: input.id,
+			name: input.name,
+			website: formattedWebsite,
+			additionalDomains,
+			aliases,
+			enabled: true,
+			onboarded: true,
+		})
+		.onConflictDoNothing()
+		.returning({ id: brands.id });
+	if (!inserted) throw new BrandConflictError(input.id);
 
 	await insertCompetitors({
-		brandId: input.brandId,
+		brandId: input.id,
 		websiteHost,
 		source: (input.competitors ?? []).map((c) => ({
 			name: c.name,
@@ -295,8 +270,8 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	});
 
 	await insertPrompts({
-		brandId: input.brandId,
-		brandName: input.brandName,
+		brandId: input.id,
+		brandName: input.name,
 		website: formattedWebsite,
 		source: (input.prompts ?? []).map((p) => ({
 			value: p.value,
@@ -307,7 +282,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 		dedupeAgainstExisting: false,
 	});
 
-	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
+	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.id) });
 	return buildBrandResult(refreshed!);
 }
 
@@ -351,21 +326,21 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 // ============================================================================
 
 async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<BrandResult> {
+	// Use updateBrand for the brand-level fields (replace semantics)
+	await updateBrand({
+		brandId: input.brandId,
+		brandName: input.brandName,
+		website: input.website,
+		additionalDomains: input.additionalDomains,
+		aliases: input.aliases,
+	});
+
+	// Also set onboarded flag (updateBrand doesn't do this)
+	await db.update(brands).set({ onboarded: true, updatedAt: new Date() }).where(eq(brands.id, input.brandId));
+
 	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	if (!existing) throw new BrandNotFoundError(input.brandId);
-
-	const formattedWebsite = input.website ? validateAndFormatWebsite(input.website) : existing.website;
-	const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
-	const brandName = input.brandName?.trim() || existing.name;
-
-	const patch: Partial<typeof brands.$inferInsert> = { updatedAt: new Date(), onboarded: true };
-	if (input.brandName !== undefined && input.brandName.trim() !== existing.name) patch.name = brandName;
-	if (input.website !== undefined && formattedWebsite !== existing.website) patch.website = formattedWebsite;
-	if (input.additionalDomains !== undefined) {
-		patch.additionalDomains = dedupeDomains(input.additionalDomains).filter((d) => d !== websiteHost);
-	}
-	if (input.aliases !== undefined) patch.aliases = dedupeAliases(input.aliases);
-	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
+	const websiteHost = new URL(existing.website).hostname.replace(/^www\./, "");
 
 	await insertCompetitors({
 		brandId: input.brandId,
@@ -379,8 +354,8 @@ async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<Brand
 
 	await insertPrompts({
 		brandId: input.brandId,
-		brandName,
-		website: formattedWebsite,
+		brandName: existing.name,
+		website: existing.website,
 		source: (input.prompts ?? []).map((p) => ({
 			value: p.value,
 			tags: sanitizeUserTags(p.tags ?? []),
@@ -434,5 +409,4 @@ export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
 export {
 	createBrandInputSchema,
 	updateBrandBodySchema,
-	updateBrandInputSchema,
 };

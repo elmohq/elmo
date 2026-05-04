@@ -12,7 +12,7 @@ import { competitors, brands } from "@workspace/lib/db/schema";
 import { eq, count, desc } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { dedupeDomains, dedupeAliases } from "@/server/onboarding";
+import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 
 export const Route = createFileRoute("/api/v1/competitors/")({
 	server: {

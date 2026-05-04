@@ -354,8 +354,8 @@
 				"type": "object",
 				"description": "Create a brand. Skips onboarding.",
 				"properties": {
-					"brandId": { "type": "string", "minLength": 1 },
-					"brandName": { "type": "string", "minLength": 1 },
+					"id": { "type": "string", "minLength": 1 },
+					"name": { "type": "string", "minLength": 1 },
 					"website": { "type": "string", "minLength": 1 },
 					"additionalDomains": { "type": "array", "items": { "type": "string" } },
 					"aliases": { "type": "array", "items": { "type": "string" } },
@@ -384,7 +384,7 @@
 						}
 					}
 				},
-				"required": ["brandId", "brandName", "website"]
+				"required": ["id", "name", "website"]
 			},
 			"UpdateBrandRequest": {
 				"type": "object",
