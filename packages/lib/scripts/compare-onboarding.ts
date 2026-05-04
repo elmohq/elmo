@@ -32,14 +32,12 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { getProvider } from "../src/providers";
+import { RESEARCH_PROVIDER_PREFERENCE, type ResearchProviderId } from "../src/onboarding/llm";
 
-// ---------------------------------------------------------------------------
-// Provider registry — keep in sync with packages/lib/src/providers/registry.
-// Order is the default run order; --only / --skip filter from this list.
-// ---------------------------------------------------------------------------
-
-const PROVIDER_IDS = ["anthropic-api", "openai-api", "mistral-api", "openrouter"] as const;
-type ProviderId = (typeof PROVIDER_IDS)[number];
+// Run order + valid IDs come straight from the production preference stack
+// so the compare harness can't drift from what `analyzeBrand` would actually
+// pick. --only / --skip filter from this list.
+type ProviderId = ResearchProviderId;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -407,7 +405,7 @@ function parseList(value: string | undefined): string[] {
 }
 
 function isProviderId(id: string): id is ProviderId {
-	return (PROVIDER_IDS as readonly string[]).includes(id);
+	return (RESEARCH_PROVIDER_PREFERENCE as readonly string[]).includes(id);
 }
 
 async function main() {
@@ -433,7 +431,7 @@ async function main() {
 		console.error("  --num-prompts N       Total prompts to request (default 20)");
 		console.error("  --num-branded N       How many should be branded (default 5)");
 		console.error("  --num-competitors N   Max competitors to request (default 10)");
-		console.error(`  --only IDS            Comma-separated provider IDs to run (default all of: ${PROVIDER_IDS.join(",")})`);
+		console.error(`  --only IDS            Comma-separated provider IDs to run (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`);
 		console.error("  --skip IDS            Comma-separated provider IDs to skip");
 		console.error("  --env-file PATH       Load API keys from this .env before defaults");
 		console.error("  --timeout SECONDS     Hard timeout per provider (default 180)");
@@ -481,11 +479,11 @@ async function main() {
 	const skipList = parseList(values.skip);
 	for (const id of [...onlyList, ...skipList]) {
 		if (!isProviderId(id)) {
-			console.error(`Unknown provider id: "${id}". Valid: ${PROVIDER_IDS.join(", ")}`);
+			console.error(`Unknown provider id: "${id}". Valid: ${RESEARCH_PROVIDER_PREFERENCE.join(", ")}`);
 			process.exit(1);
 		}
 	}
-	const targets = (onlyList.length > 0 ? onlyList : [...PROVIDER_IDS]).filter(
+	const targets = (onlyList.length > 0 ? onlyList : [...RESEARCH_PROVIDER_PREFERENCE]).filter(
 		(id): id is ProviderId => isProviderId(id) && !skipList.includes(id),
 	);
 	if (targets.length === 0) {

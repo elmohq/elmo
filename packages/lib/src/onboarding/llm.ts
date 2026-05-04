@@ -31,13 +31,18 @@ import {
  * the cheapest + best-recall in compare-onboarding runs, so we go OpenAI
  * direct first, then OpenAI via OpenRouter as a fallback (same model, just
  * different key), then Anthropic, then Mistral.
+ *
+ * Exported so the compare-onboarding script reads from the same source as
+ * production — keeps the two from drifting.
  */
-const RESEARCH_PROVIDER_PREFERENCE = [
+export const RESEARCH_PROVIDER_PREFERENCE = [
 	"openai-api",
 	"openrouter",
 	"anthropic-api",
 	"mistral-api",
 ] as const;
+
+export type ResearchProviderId = (typeof RESEARCH_PROVIDER_PREFERENCE)[number];
 
 const ONBOARDING_LLM_TARGET_HELP =
 	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api) " +
