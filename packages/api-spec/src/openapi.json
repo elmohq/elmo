@@ -656,19 +656,19 @@
 			}
 		},
 		"/brands/{brandId}": {
-			"parameters": [
-				{
-					"name": "brandId",
-					"in": "path",
-					"required": true,
-					"description": "Brand identifier",
-					"schema": { "type": "string", "minLength": 1 }
-				}
-			],
 			"get": {
 				"summary": "Get a brand",
 				"operationId": "getBrand",
 				"tags": ["Brands"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "path",
+						"required": true,
+						"description": "Brand identifier",
+						"schema": { "type": "string", "minLength": 1 }
+					}
+				],
 				"responses": {
 					"200": {
 						"description": "Brand",
@@ -687,6 +687,15 @@
 				"summary": "Update a brand",
 				"operationId": "updateBrand",
 				"tags": ["Brands"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "path",
+						"required": true,
+						"description": "Brand identifier",
+						"schema": { "type": "string", "minLength": 1 }
+					}
+				],
 				"requestBody": {
 					"required": true,
 					"content": {
