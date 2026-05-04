@@ -16,6 +16,7 @@ import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
 import { Plus, Inbox, Check } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
+import { MAX_PROMPTS } from "@workspace/lib/constants";
 
 export interface EditablePrompt {
 	id?: string;
@@ -54,7 +55,12 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
 		onChange(prompts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 	};
-	const add = () => onChange([...prompts, newPromptEntry()]);
+	const add = () => {
+		if (prompts.length >= MAX_PROMPTS) return;
+		onChange([...prompts, newPromptEntry()]);
+	};
+
+	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
 	const gridCols = showSystemTags
 		? "grid-cols-[3rem_1fr_6rem_minmax(14rem,1fr)]"
@@ -144,15 +150,30 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 				</div>
 			)}
 
-			<Button
-				variant="outline"
-				size="sm"
-				type="button"
-				onClick={add}
-				className="flex items-center gap-2 cursor-pointer"
-			>
-				<Plus className="h-4 w-4" /> Add Prompt
-			</Button>
+			{prompts.length < MAX_PROMPTS && (
+				<Button
+					variant="outline"
+					size="sm"
+					type="button"
+					onClick={add}
+					className="flex items-center gap-2 cursor-pointer"
+				>
+					<Plus className="h-4 w-4" /> Add Prompt
+				</Button>
+			)}
+
+			{prompts.length >= MAX_PROMPTS && (
+				<p className="text-xs text-muted-foreground">
+					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
+				</p>
+			)}
+
+			<p className="text-xs text-muted-foreground">
+				<strong>
+					{validCount}/{MAX_PROMPTS}
+				</strong>{" "}
+				prompts configured
+			</p>
 		</div>
 	);
 }

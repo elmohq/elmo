@@ -84,9 +84,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 		}
 	};
 
-	const validPromptCount = prompts.filter((p) => p.value.trim()).length;
-	const enabledPromptCount = prompts.filter((p) => p.value.trim() && p.enabled).length;
-
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
@@ -114,13 +111,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 						</>
 					)}
 				</Button>
-			</div>
-
-			<div className="text-xs text-muted-foreground">
-				<strong>{enabledPromptCount}</strong> enabled prompts
-				{validPromptCount !== enabledPromptCount && (
-					<span className="ml-2">• {validPromptCount - enabledPromptCount} disabled</span>
-				)}
 			</div>
 		</div>
 	);
