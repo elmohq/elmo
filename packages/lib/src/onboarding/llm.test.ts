@@ -34,10 +34,9 @@ describe("resolveResearchTarget", () => {
 		process.env.ANTHROPIC_API_KEY = "x";
 		const target = resolveResearchTarget({
 			ANTHROPIC_API_KEY: "x",
-			ONBOARDING_LLM_TARGET: "claude:anthropic-api:claude-3-5-haiku-20241022",
+			ONBOARDING_LLM_TARGET: "claude:anthropic-api",
 		});
 		expect(target.provider.id).toBe("anthropic-api");
-		expect(target.model).toBe("claude-3-5-haiku-20241022");
 	});
 
 	it("throws when ONBOARDING_LLM_TARGET points at an unconfigured provider", () => {
@@ -76,9 +75,6 @@ describe("resolveResearchTarget", () => {
 		process.env.MISTRAL_API_KEY = "d";
 		const target = resolveResearchTarget();
 		expect(target.provider.id).toBe("openrouter");
-		// Default routes through gpt-5-mini — OpenRouter's plugins:[{web,native}]
-		// supports OpenAI models, so the same model OpenAI-direct uses.
-		expect(target.model).toBe("openai/gpt-5-mini");
 	});
 
 	it("falls back to Anthropic when OpenAI / OpenRouter aren't configured", () => {
@@ -108,41 +104,35 @@ describe("resolveResearchTarget", () => {
 });
 
 describe("runStructuredResearchPrompt", () => {
-	it("forwards prompt + schema + model to the chosen provider's runStructuredResearch", async () => {
+	it("forwards prompt + schema to the chosen provider's runStructuredResearch", async () => {
 		const schema = z.object({ ok: z.boolean() });
-		const calls: Array<{ prompt: string; model?: string }> = [];
+		const calls: Array<{ prompt: string }> = [];
 
 		const provider = {
 			id: "fake-direct-api",
 			name: "Fake",
-			defaultResearchModel: "fake-model-v1",
 			isConfigured: () => true,
 			run: vi.fn(),
-			runStructuredResearch: vi.fn(async (opts: { prompt: string; schema: any; model?: string }) => {
-				calls.push({ prompt: opts.prompt, model: opts.model });
-				return {
-					object: { ok: true },
-					usage: { inputTokens: 100, outputTokens: 50, totalTokens: 150 },
-					modelVersion: opts.model,
-				};
+			runStructuredResearch: vi.fn(async (opts: { prompt: string; schema: any }) => {
+				calls.push({ prompt: opts.prompt });
+				return { object: { ok: true } };
 			}),
 		} as any;
 
 		const result = await runStructuredResearchPrompt("hello", {
 			schema,
-			target: { provider, model: "fake-model-v1" },
+			target: { provider },
 		});
 
 		expect(result).toEqual({ ok: true });
 		expect(calls).toHaveLength(1);
-		expect(calls[0]).toEqual({ prompt: "hello", model: "fake-model-v1" });
+		expect(calls[0]).toEqual({ prompt: "hello" });
 	});
 
 	it("throws when the resolved provider does not implement runStructuredResearch", async () => {
 		const provider = {
 			id: "broken",
 			name: "Broken",
-			defaultResearchModel: "x",
 			isConfigured: () => true,
 			run: vi.fn(),
 		} as any;
@@ -150,7 +140,7 @@ describe("runStructuredResearchPrompt", () => {
 		await expect(
 			runStructuredResearchPrompt("hello", {
 				schema: z.object({ ok: z.boolean() }),
-				target: { provider, model: "x" },
+				target: { provider },
 			}),
 		).rejects.toThrow(/does not implement structured research/);
 	});

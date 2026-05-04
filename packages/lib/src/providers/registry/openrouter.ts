@@ -5,7 +5,6 @@ import type {
 	ProviderOptions,
 	StructuredResearchOptions,
 	StructuredResearchResult,
-	StructuredResearchToolCall,
 } from "../types";
 import type { Citation } from "../../text-extraction";
 
@@ -41,39 +40,6 @@ function extractTextFromOpenRouterResponse(data: any): string {
 	return "No text content found in OpenRouter response.";
 }
 
-/**
- * Extract evidence of web-search tool use from an OpenRouter response. The
- * native plugin can surface results in different fields depending on the
- * upstream provider — annotations (Anthropic-shaped routes), tool_calls
- * (OpenAI-shaped routes), or only via inflated input_tokens (some natives
- * silently fold search context into the prompt). We try every documented
- * path so the comparison report doesn't show "0 tool calls" for a search
- * that actually ran.
- */
-function extractToolCallsFromOpenRouterResponse(data: any): StructuredResearchToolCall[] {
-	const calls: StructuredResearchToolCall[] = [];
-	const seen = new Set<string>();
-
-	// Path 1: choices[0].message.annotations — citation links (Exa, some natives)
-	for (const c of extractCitationsFromOpenRouterResponse(data)) {
-		if (seen.has(c.url)) continue;
-		seen.add(c.url);
-		calls.push({ name: "web_search", input: { url: c.url, title: c.title } });
-	}
-
-	// Path 2: choices[0].message.tool_calls — function-calling style
-	const tcs = data?.choices?.[0]?.message?.tool_calls;
-	if (Array.isArray(tcs)) {
-		for (const tc of tcs) {
-			const name = tc?.function?.name ?? tc?.type ?? tc?.name ?? "tool";
-			const args = tc?.function?.arguments ?? tc?.arguments ?? tc?.input ?? tc;
-			calls.push({ name: String(name), input: args });
-		}
-	}
-
-	return calls;
-}
-
 function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 	const citations: Citation[] = [];
 	let idx = 0;
@@ -105,7 +71,6 @@ function extractCitationsFromOpenRouterResponse(data: any): Citation[] {
 export const openrouter: Provider = {
 	id: "openrouter",
 	name: "OpenRouter",
-	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.OPENROUTER_API_KEY;
@@ -114,17 +79,15 @@ export const openrouter: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
-		model,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
 		// — the AI SDK's OpenAI-compat path doesn't pass it through. We use
 		// `engine: "native"` so the underlying provider's real web-search tool
 		// runs (e.g. Anthropic's web_search_20250305) instead of the Exa
-		// fallback. Strip any legacy `:online` suffix; the plugin replaces it.
-		const slug = (model ?? DEFAULT_RESEARCH_MODEL).replace(/:online$/, "");
+		// fallback.
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
 		const body = {
-			model: slug,
+			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
 			plugins: [{ id: "web", engine: "native" }],
 			response_format: {
@@ -143,48 +106,12 @@ export const openrouter: Provider = {
 		const data: any = await res.json();
 		const content = data?.choices?.[0]?.message?.content;
 		if (typeof content !== "string") {
-			throw new Error(`OpenRouter returned no JSON content (model=${slug})`);
+			throw new Error(`OpenRouter returned no JSON content (model=${DEFAULT_RESEARCH_MODEL})`);
 		}
 		const parsed = (schema as z.ZodType).parse(JSON.parse(content));
-		const usage = data?.usage
-			? {
-					inputTokens: data.usage.prompt_tokens ?? 0,
-					outputTokens: data.usage.completion_tokens ?? 0,
-					totalTokens:
-						data.usage.total_tokens ?? (data.usage.prompt_tokens ?? 0) + (data.usage.completion_tokens ?? 0),
-					...(typeof data.usage.prompt_tokens_details?.cached_tokens === "number"
-						? { cacheReadTokens: data.usage.prompt_tokens_details.cached_tokens }
-						: {}),
-				}
-			: undefined;
-		const toolCalls = extractToolCallsFromOpenRouterResponse(data);
-
-		// Diagnostic: if web search was meant to fire (we set plugins[]) but no
-		// signal of it shows up anywhere, dump the response shape once. The
-		// prompt was tiny (~1-2k tokens); if input_tokens is much larger, the
-		// search added context — somewhere — and our extractor missed it.
-		const inputTokens = data?.usage?.prompt_tokens ?? 0;
-		if (toolCalls.length === 0 && inputTokens > 5000) {
-			console.warn(
-				`[openrouter] ${slug}: 0 tool calls extracted but ${inputTokens} input tokens billed (search content was added somewhere). Response shape: ${JSON.stringify({
-					choice_keys: Object.keys(data?.choices?.[0] ?? {}),
-					message_keys: Object.keys(data?.choices?.[0]?.message ?? {}),
-					annotations_count: Array.isArray(data?.choices?.[0]?.message?.annotations)
-						? data.choices[0].message.annotations.length
-						: undefined,
-					tool_calls_count: Array.isArray(data?.choices?.[0]?.message?.tool_calls)
-						? data.choices[0].message.tool_calls.length
-						: undefined,
-					top_level_keys: Object.keys(data ?? {}),
-				})}`,
-			);
-		}
-
 		return {
 			object: parsed as T,
-			usage,
-			modelVersion: data?.model ?? slug,
-			...(toolCalls.length > 0 ? { toolCalls } : {}),
+			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 		};
 	},
 

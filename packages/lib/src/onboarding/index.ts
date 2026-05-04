@@ -8,7 +8,6 @@ export {
 export {
 	resolveResearchTarget,
 	runStructuredResearchPrompt,
-	runStructuredResearchPromptWithMetrics,
 	type ResearchTarget,
 } from "./llm";
 export {

@@ -24,7 +24,6 @@ import {
 	getProvider,
 	parseScrapeTargets,
 	type Provider,
-	type StructuredResearchResult,
 } from "../providers";
 
 /**
@@ -41,21 +40,24 @@ const RESEARCH_PROVIDER_PREFERENCE = [
 ] as const;
 
 const ONBOARDING_LLM_TARGET_HELP =
-	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api:claude-sonnet-4-6) " +
+	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api) " +
 	"or configure ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / MISTRAL_API_KEY.";
 
 export interface ResearchTarget {
 	provider: Provider;
-	model: string;
 }
 
 /**
- * Resolve which provider + model the onboarding flow should use.
+ * Resolve which provider the onboarding flow should use.
  *
  * Resolution order:
  *   1. `ONBOARDING_LLM_TARGET` env override.
  *   2. First provider in `RESEARCH_PROVIDER_PREFERENCE` that's configured AND
  *      implements `runStructuredResearch`.
+ *
+ * Each provider supplies its own research model internally — there's no way
+ * to override the model via env or option. Operators who want a different
+ * model edit the provider's `DEFAULT_RESEARCH_MODEL` constant in source.
  */
 export function resolveResearchTarget(env: Record<string, string | undefined> = process.env): ResearchTarget {
 	const explicit = env.ONBOARDING_LLM_TARGET?.trim();
@@ -73,17 +75,14 @@ export function resolveResearchTarget(env: Record<string, string | undefined> = 
 				`ONBOARDING_LLM_TARGET points at "${parsed.provider}", which does not support structured research. ${ONBOARDING_LLM_TARGET_HELP}`,
 			);
 		}
-		const model = parsed.version ?? provider.defaultResearchModel ?? parsed.model;
-		return { provider, model };
+		return { provider };
 	}
 
 	for (const id of RESEARCH_PROVIDER_PREFERENCE) {
 		const provider = getProvider(id);
 		if (!provider.isConfigured()) continue;
 		if (!provider.runStructuredResearch) continue;
-		const model = provider.defaultResearchModel;
-		if (!model) continue;
-		return { provider, model };
+		return { provider };
 	}
 
 	throw new Error(`Onboarding requires at least one direct LLM API provider. ${ONBOARDING_LLM_TARGET_HELP}`);
@@ -103,26 +102,13 @@ export async function runStructuredResearchPrompt<T>(
 	prompt: string,
 	options: RunStructuredOptions<T>,
 ): Promise<T> {
-	const result = await runStructuredResearchPromptWithMetrics(prompt, options);
-	return result.object;
-}
-
-/**
- * Same as `runStructuredResearchPrompt` but also returns token usage and the
- * resolved model version. Used by tooling that needs to report cost (the
- * compare-onboarding script, future telemetry).
- */
-export async function runStructuredResearchPromptWithMetrics<T>(
-	prompt: string,
-	options: RunStructuredOptions<T>,
-): Promise<StructuredResearchResult<T>> {
 	const target = options.target ?? resolveResearchTarget();
 	if (!target.provider.runStructuredResearch) {
 		throw new Error(`Provider "${target.provider.id}" does not implement structured research`);
 	}
-	return target.provider.runStructuredResearch({
+	const result = await target.provider.runStructuredResearch({
 		prompt,
 		schema: options.schema,
-		model: target.model,
 	});
+	return result.object;
 }

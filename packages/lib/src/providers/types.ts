@@ -18,37 +18,12 @@ export interface ProviderOptions {
 export interface StructuredResearchOptions<T> {
 	prompt: string;
 	schema: z.ZodType<T>;
-	/** Override the provider's `defaultResearchModel`. */
-	model?: string;
-}
-
-export interface StructuredResearchUsage {
-	inputTokens: number;
-	outputTokens: number;
-	totalTokens: number;
-	/** Reasoning tokens (separately billed on some providers, e.g. OpenAI o-series). */
-	reasoningTokens?: number;
-	/** Cached prompt tokens read at the discounted rate. */
-	cacheReadTokens?: number;
-	/** Cached prompt tokens written this turn (one-time premium). */
-	cacheWriteTokens?: number;
-}
-
-export interface StructuredResearchToolCall {
-	/** Tool name, e.g. `web_search`. */
-	name: string;
-	/** Free-form input the model passed to the tool, when the SDK exposes it. */
-	input?: unknown;
 }
 
 export interface StructuredResearchResult<T> {
 	object: T;
-	/** Token counts when the underlying provider exposes them; undefined otherwise. */
-	usage?: StructuredResearchUsage;
 	/** Resolved model id (after any `:online` suffixing etc.). */
 	modelVersion?: string;
-	/** Tool invocations the model performed during the research call (web search, etc.). */
-	toolCalls?: StructuredResearchToolCall[];
 }
 
 export interface Provider {
@@ -60,22 +35,15 @@ export interface Provider {
 	 *  Omit for providers that accept any model (runtime validation only). */
 	validateTarget?(config: ModelConfig): string | null;
 
-	// ----- research / onboarding capabilities --------------------------------
-
-	/**
-	 * Default model id this provider should use for research-style work (brand
-	 * onboarding, ad-hoc LLM tasks). Only set on direct API providers that
-	 * implement `runStructuredResearch`.
-	 */
-	defaultResearchModel?: string;
 	/**
 	 * Run a single research call that returns a Zod-validated structured value.
 	 * Each direct API provider implements this using the most idiomatic combo
 	 * for its API: `generateText` + web-search tool + `experimental_output`
-	 * for Anthropic/OpenAI; `generateObject` against a `:online`-suffixed slug
-	 * for OpenRouter; OpenAI-compat `generateObject` for Mistral. Screen-
-	 * scraper providers (Olostep / BrightData) don't implement this — the
-	 * onboarding flow always picks a direct API provider.
+	 * for Anthropic/OpenAI; raw fetch + `plugins:[{web,native}]` for OpenRouter;
+	 * raw fetch + `/v1/conversations` + web_search for Mistral. Screen-scraper
+	 * providers (Olostep / BrightData) don't implement this — the onboarding
+	 * flow always picks a direct API provider. The optional `model` argument
+	 * overrides the provider's internal default.
 	 */
 	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>>;
 }

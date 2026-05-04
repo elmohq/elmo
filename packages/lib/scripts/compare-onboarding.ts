@@ -32,7 +32,6 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import { getProvider } from "../src/providers";
-import type { StructuredResearchResult } from "../src/providers";
 
 // ---------------------------------------------------------------------------
 // Provider registry — keep in sync with packages/lib/src/providers/registry.
@@ -92,57 +91,6 @@ async function loadDotEnv(path: string): Promise<void> {
 		}
 		if (process.env[key] === undefined) process.env[key] = value;
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Pricing (USD per million tokens). Best-effort snapshot for sanity-checking
-// — providers don't return a billed cost on these endpoints, so this is the
-// only number we can report. Override via MODEL_PRICING env if rates drift.
-// ---------------------------------------------------------------------------
-
-interface PriceEntry {
-	input: number;
-	output: number;
-}
-
-const DEFAULT_PRICING: Record<string, PriceEntry> = {
-	"claude-sonnet-4-6": { input: 3.0, output: 15.0 },
-	"claude-3-5-haiku-20241022": { input: 0.8, output: 4.0 },
-	"gpt-5-mini": { input: 0.25, output: 2.0 },
-	"gpt-5": { input: 1.25, output: 10.0 },
-	"google/gemini-2.5-flash": { input: 0.075, output: 0.3 },
-	"google/gemini-2.5-pro": { input: 1.25, output: 10.0 },
-	"mistral-medium-latest": { input: 0.4, output: 2.0 },
-	"mistral-large-latest": { input: 2.0, output: 6.0 },
-	"openai/gpt-5-mini": { input: 0.25, output: 2.0 },
-	"anthropic/claude-sonnet-4.6": { input: 3.0, output: 15.0 },
-	// OpenRouter sometimes returns a date-stamped variant with the version
-	// before "sonnet" — keep an alias so cost lookup doesn't fall back to n/a.
-	"anthropic/claude-4.6-sonnet": { input: 3.0, output: 15.0 },
-};
-
-function priceForModel(model: string): PriceEntry | undefined {
-	if (DEFAULT_PRICING[model]) return DEFAULT_PRICING[model];
-	const noOnline = model.replace(/:online$/, "");
-	if (DEFAULT_PRICING[noOnline]) return DEFAULT_PRICING[noOnline];
-	// Strip trailing date stamps in either format providers return:
-	//   -YYYYMMDD   (Anthropic via OpenRouter — claude-4.6-sonnet-20260217)
-	//   -YYYY-MM-DD (OpenAI via OpenRouter   — gpt-5-mini-2025-08-07)
-	const noDate = noOnline.replace(/-\d{4}-\d{2}-\d{2}$/, "").replace(/-\d{8}$/, "");
-	if (DEFAULT_PRICING[noDate]) return DEFAULT_PRICING[noDate];
-	return undefined;
-}
-
-function estimateCost(usage: DetailedUsage, model: string): number | undefined {
-	const price = priceForModel(model);
-	if (!price) return undefined;
-	const cacheRead = (usage.cacheReadTokens ?? 0) * price.input * 0.1;
-	const cacheWrite = (usage.cacheWriteTokens ?? 0) * price.input * 1.25;
-	const reasoning = (usage.reasoningTokens ?? 0) * price.output;
-	return (
-		(usage.inputTokens * price.input + usage.outputTokens * price.output + reasoning + cacheRead + cacheWrite) /
-		1_000_000
-	);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,27 +171,10 @@ Never invent specific facts (real domains, real competitor names) — return emp
 // Result shape + tag normalization
 // ---------------------------------------------------------------------------
 
-interface DetailedUsage {
-	inputTokens: number;
-	outputTokens: number;
-	reasoningTokens?: number;
-	cacheReadTokens?: number;
-	cacheWriteTokens?: number;
-	totalTokens: number;
-}
-
-interface ToolCallSummary {
-	tool: string;
-	count: number;
-}
-
 interface RunResult {
 	providerId: ProviderId;
 	model: string;
 	elapsedMs: number;
-	usage?: DetailedUsage;
-	costUsdEstimated?: number;
-	toolCalls: ToolCallSummary[];
 	suggestion: Suggestion;
 	/** Number of suggestedPrompts production would classify as "branded". */
 	brandedCount: number;
@@ -286,25 +217,6 @@ function normalizeSuggestion(s: Suggestion): Suggestion {
 	};
 }
 
-function summarizeToolCalls(names: string[]): ToolCallSummary[] {
-	const counts = new Map<string, number>();
-	for (const n of names) counts.set(n, (counts.get(n) ?? 0) + 1);
-	return [...counts.entries()].map(([tool, count]) => ({ tool, count })).sort((a, b) => b.count - a.count);
-}
-
-function detailedUsage(result: StructuredResearchResult<unknown>): DetailedUsage | undefined {
-	if (!result.usage) return undefined;
-	const { inputTokens, outputTokens, totalTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens } = result.usage;
-	return {
-		inputTokens,
-		outputTokens,
-		totalTokens,
-		...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
-		...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
-		...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
-	};
-}
-
 // ---------------------------------------------------------------------------
 // Per-provider runner
 // ---------------------------------------------------------------------------
@@ -329,27 +241,15 @@ async function runProvider(providerId: ProviderId, args: RunArgs): Promise<RunRe
 	const prompt = buildUserPrompt(args);
 	const start = Date.now();
 	const result = await withTimeout(
-		provider.runStructuredResearch({ prompt, schema, model: provider.defaultResearchModel }),
+		provider.runStructuredResearch({ prompt, schema }),
 		args.timeoutMs,
 		`${providerId} engine`,
 	);
 	const elapsedMs = Date.now() - start;
-	const usage = detailedUsage(result);
-	const model = result.modelVersion ?? provider.defaultResearchModel ?? "(unknown)";
-	const costUsdEstimated = usage ? estimateCost(usage, model) : undefined;
-	const toolCalls = summarizeToolCalls((result.toolCalls ?? []).map((tc) => tc.name));
+	const model = result.modelVersion ?? "(unknown)";
 	const suggestion = normalizeSuggestion(result.object as Suggestion);
 	const brandedCount = countBrandedPrompts(suggestion, args.website);
-	return {
-		providerId,
-		model,
-		elapsedMs,
-		usage,
-		costUsdEstimated,
-		toolCalls,
-		suggestion,
-		brandedCount,
-	};
+	return { providerId, model, elapsedMs, suggestion, brandedCount };
 }
 
 /**
@@ -383,27 +283,6 @@ function countBrandedPrompts(s: Suggestion, website: string): number {
 // Reporting
 // ---------------------------------------------------------------------------
 
-function formatUsd(cost: number | undefined): string {
-	if (cost === undefined) return "n/a";
-	if (cost < 0.0001) return `$${(cost * 1_000_000).toFixed(2)}µ`;
-	if (cost < 0.01) return `$${(cost * 1000).toFixed(3)}m`;
-	return `$${cost.toFixed(4)}`;
-}
-
-function formatTokens(usage: DetailedUsage | undefined): string {
-	if (!usage) return "n/a";
-	const parts = [`${usage.inputTokens} in`, `${usage.outputTokens} out`];
-	if (usage.reasoningTokens) parts.push(`${usage.reasoningTokens} reasoning`);
-	if (usage.cacheReadTokens) parts.push(`${usage.cacheReadTokens} cache-read`);
-	if (usage.cacheWriteTokens) parts.push(`${usage.cacheWriteTokens} cache-write`);
-	return `${parts.join(" + ")} = ${usage.totalTokens}`;
-}
-
-function formatTools(toolCalls: ToolCallSummary[]): string {
-	if (toolCalls.length === 0) return "none (model answered from training only)";
-	return toolCalls.map((t) => `${t.tool}×${t.count}`).join(", ");
-}
-
 function formatMs(ms: number): string {
 	return `${(ms / 1000).toFixed(2)}s`;
 }
@@ -415,9 +294,6 @@ function summary(r: RunResult): string {
 		`  provider:  ${r.providerId}`,
 		`  model:     ${r.model}`,
 		`  elapsed:   ${formatMs(r.elapsedMs)}`,
-		`  tokens:    ${formatTokens(r.usage)}`,
-		`  est cost:  ${formatUsd(r.costUsdEstimated)}`,
-		`  tools:     ${formatTools(r.toolCalls)}`,
 		`  brand:     ${r.suggestion.brandName}`,
 		`  domains:   ${r.suggestion.additionalDomains.length}`,
 		`  aliases:   ${r.suggestion.aliases.length}`,
@@ -443,14 +319,6 @@ const CSV_HEADERS = [
 	"status",
 	"model",
 	"elapsed_s",
-	"input_tokens",
-	"output_tokens",
-	"reasoning_tokens",
-	"cache_read_tokens",
-	"cache_write_tokens",
-	"total_tokens",
-	"est_cost_usd",
-	"web_searches",
 	"brand",
 	"domains",
 	"aliases",
@@ -464,30 +332,20 @@ const CSV_HEADERS = [
 ] as const;
 
 function rowFromResult(r: RunResult): string {
-	const branded = r.brandedCount;
 	const tagVocab = new Set<string>();
 	for (const p of r.suggestion.suggestedPrompts) for (const t of p.tags) tagVocab.add(t);
-	const webSearches = r.toolCalls.filter((t) => /web.?search|webfetch/i.test(t.tool)).reduce((n, t) => n + t.count, 0);
 	const cells = [
 		r.providerId,
 		"ok",
 		r.model,
 		(r.elapsedMs / 1000).toFixed(2),
-		r.usage?.inputTokens ?? "",
-		r.usage?.outputTokens ?? "",
-		r.usage?.reasoningTokens ?? "",
-		r.usage?.cacheReadTokens ?? "",
-		r.usage?.cacheWriteTokens ?? "",
-		r.usage?.totalTokens ?? "",
-		r.costUsdEstimated !== undefined ? r.costUsdEstimated.toFixed(6) : "",
-		webSearches,
 		r.suggestion.brandName,
 		r.suggestion.additionalDomains.length,
 		r.suggestion.aliases.length,
 		r.suggestion.products.length,
 		r.suggestion.competitors.length,
 		r.suggestion.suggestedPrompts.length,
-		branded,
+		r.brandedCount,
 		tagVocab.size,
 		[...tagVocab].sort().join(","),
 		"",
@@ -496,14 +354,14 @@ function rowFromResult(r: RunResult): string {
 }
 
 function rowFromFailure(f: RunFailure): string {
-	// Header has 22 columns. Cells 1-4 are provider/status/model/elapsed; 5-21
-	// are empty metric cells (17 of them); 22 is the error message.
+	// Header has 14 columns: provider, status, model, elapsed_s, then 9 empty
+	// metric/output cells, then error.
 	const cells: (string | number)[] = [
 		f.providerId,
 		"failed",
 		"", // model
 		(f.elapsedMs / 1000).toFixed(2),
-		...Array(17).fill(""),
+		...Array(9).fill(""),
 		f.error.split("\n")[0],
 	];
 	return cells.map(csvEscape).join(",");
@@ -520,27 +378,18 @@ function promptRowsFromResult(r: RunResult): string[] {
 
 function tabulatedComparison(results: RunResult[]): string {
 	if (results.length === 0) return "";
-	const sorted = [...results].sort((a, b) => (a.costUsdEstimated ?? Infinity) - (b.costUsdEstimated ?? Infinity));
-	const cheapest = sorted[0];
-	const cheapestCost = cheapest.costUsdEstimated;
-	const lines = ["", "----- COMPARISON (sorted by est cost, cheapest first) -----", ""];
+	const sorted = [...results].sort((a, b) => a.elapsedMs - b.elapsedMs);
+	const lines = ["", "----- COMPARISON (sorted by elapsed time, fastest first) -----", ""];
 	const colName = "provider";
 	const nameWidth = Math.max(colName.length, ...sorted.map((r) => r.providerId.length));
 	lines.push(
-		`  ${colName.padEnd(nameWidth)}  ${"time".padStart(8)}  ${"tokens".padStart(8)}  ${"tools".padStart(8)}  ${"est cost".padStart(10)}  vs cheapest`,
+		`  ${colName.padEnd(nameWidth)}  ${"time".padStart(8)}  ${"branded".padStart(8)}  ${"competit".padStart(8)}  ${"tag vocab".padStart(10)}`,
 	);
 	for (const r of sorted) {
-		const tokens = r.usage?.totalTokens ?? 0;
-		const tools = r.toolCalls.reduce((n, t) => n + t.count, 0);
-		const cost = r.costUsdEstimated;
-		const vsCheapest =
-			cost !== undefined && cheapestCost !== undefined && cheapestCost > 0
-				? `${(cost / cheapestCost).toFixed(2)}×`
-				: r === cheapest
-					? "—"
-					: "n/a";
+		const tagVocab = new Set<string>();
+		for (const p of r.suggestion.suggestedPrompts) for (const t of p.tags) tagVocab.add(t);
 		lines.push(
-			`  ${r.providerId.padEnd(nameWidth)}  ${formatMs(r.elapsedMs).padStart(8)}  ${String(tokens).padStart(8)}  ${String(tools).padStart(8)}  ${formatUsd(cost).padStart(10)}  ${vsCheapest}`,
+			`  ${r.providerId.padEnd(nameWidth)}  ${formatMs(r.elapsedMs).padStart(8)}  ${String(r.brandedCount).padStart(8)}  ${String(r.suggestion.competitors.length).padStart(8)}  ${String(tagVocab.size).padStart(10)}`,
 		);
 	}
 	return lines.join("\n");

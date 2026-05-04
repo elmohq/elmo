@@ -5,7 +5,6 @@ import type {
 	ProviderOptions,
 	StructuredResearchOptions,
 	StructuredResearchResult,
-	StructuredResearchToolCall,
 } from "../types";
 import type { Citation } from "../../text-extraction";
 
@@ -166,7 +165,6 @@ function extractMistralQuery(entry: any): string | null {
 export const mistralApi: Provider = {
 	id: "mistral-api",
 	name: "Mistral API",
-	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.MISTRAL_API_KEY;
@@ -183,14 +181,12 @@ export const mistralApi: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
-		model,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Single-call pattern: Mistral's /v1/conversations accepts tools
 		// (web_search) but rejects response_format. We prompt-engineer JSON
 		// output instead — append the JSON Schema and instruct the model to
 		// emit only the matching object. The schema's per-field .describe()
 		// text rides along, so tag/alias guidance still gets through.
-		const slug = model ?? DEFAULT_RESEARCH_MODEL;
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
 		const augmentedPrompt = `${prompt}
 
@@ -202,7 +198,7 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
 			method: "POST",
 			headers: authHeaders(),
 			body: JSON.stringify({
-				model: slug,
+				model: DEFAULT_RESEARCH_MODEL,
 				inputs: augmentedPrompt,
 				tools: [{ type: "web_search" }],
 			}),
@@ -211,7 +207,7 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
 			throw new Error(`Mistral API error (${res.status}): ${await res.text()}`);
 		}
 		const data: any = await res.json();
-		const { textContent, webQueries } = parseConversationsResponse(data);
+		const { textContent } = parseConversationsResponse(data);
 
 		// `parseConversationsResponse` falls back to a sentinel string when it
 		// can't find a text chunk where it expects one. If we hit that, the
@@ -231,26 +227,12 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
 			parsedObject = JSON.parse(jsonText);
 		} catch (err) {
 			const sample = jsonText.length > 400 ? `${jsonText.slice(0, 400)}…` : jsonText;
-			throw new Error(`Mistral returned non-JSON output (model=${slug}). Sample: ${JSON.stringify(sample)}. Parse error: ${err instanceof Error ? err.message : err}`);
+			throw new Error(`Mistral returned non-JSON output (model=${DEFAULT_RESEARCH_MODEL}). Sample: ${JSON.stringify(sample)}. Parse error: ${err instanceof Error ? err.message : err}`);
 		}
 		const parsed = (schema as z.ZodType).parse(parsedObject);
-		const usage = data?.usage
-			? {
-					inputTokens: data.usage.prompt_tokens ?? 0,
-					outputTokens: data.usage.completion_tokens ?? 0,
-					totalTokens:
-						data.usage.total_tokens ?? (data.usage.prompt_tokens ?? 0) + (data.usage.completion_tokens ?? 0),
-				}
-			: undefined;
-		const toolCalls: StructuredResearchToolCall[] = webQueries.map((query) => ({
-			name: "web_search",
-			input: { query },
-		}));
 		return {
 			object: parsed as T,
-			usage,
-			modelVersion: data?.model ?? slug,
-			...(toolCalls.length > 0 ? { toolCalls } : {}),
+			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 		};
 	},
 };

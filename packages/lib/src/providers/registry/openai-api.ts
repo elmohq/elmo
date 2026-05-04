@@ -8,7 +8,6 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import { extractUsage } from "../usage";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
@@ -61,7 +60,6 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 export const openaiApi: Provider = {
 	id: "openai-api",
 	name: "OpenAI API",
-	defaultResearchModel: DEFAULT_RESEARCH_MODEL,
 
 	isConfigured() {
 		return !!process.env.OPENAI_API_KEY;
@@ -75,34 +73,18 @@ export const openaiApi: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
-		model,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		const slug = model ?? DEFAULT_RESEARCH_MODEL;
 		const result = await generateText({
-			model: getOpenAIResponsesModel(slug),
+			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
 			tools: {
 				web_search_preview: openai.tools.webSearchPreview({ searchContextSize: "low" }) as any,
 			},
 			experimental_output: Output.object({ schema }),
 			prompt,
 		});
-		// OpenAI's server-side web_search_preview tool calls don't appear in
-		// result.toolCalls (that field is for client-defined tools). They show
-		// up in the raw Responses API output as type:"web_search_call" items.
-		const responseBody = result.response?.body as any;
-		const toolCalls: { name: string; input?: unknown }[] = [];
-		if (responseBody?.output && Array.isArray(responseBody.output)) {
-			for (const item of responseBody.output) {
-				if (item?.type === "web_search_call") {
-					toolCalls.push({ name: "web_search", input: item.action ?? item });
-				}
-			}
-		}
 		return {
 			object: result.experimental_output as T,
-			usage: extractUsage(result.usage),
-			modelVersion: slug,
-			...(toolCalls.length > 0 ? { toolCalls } : {}),
+			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
 };

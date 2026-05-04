@@ -15,7 +15,6 @@ export type {
 	ModelConfig,
 	StructuredResearchOptions,
 	StructuredResearchResult,
-	StructuredResearchUsage,
 } from "./types";
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
