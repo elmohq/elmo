@@ -28,67 +28,36 @@ function SidebarItem({ item }: { item: Item }) {
 
 function SidebarFolder({ folder }: { folder: Folder }) {
 	const location = useLocation();
-	const indexUrl = folder.index?.url;
-	const indexActive = indexUrl != null && location.pathname === indexUrl;
-	const isActive =
-		indexActive ||
-		folder.children.some(
-			(child) =>
-				(child.type === "page" && location.pathname === child.url) ||
-				(child.type === "folder" &&
-					child.children.some(
-						(c) => c.type === "page" && location.pathname === c.url,
-					)),
-		);
+	const isActive = folder.children.some(
+		(child) =>
+			(child.type === "page" && location.pathname === child.url) ||
+			(child.type === "folder" &&
+				child.children.some(
+					(c) => c.type === "page" && location.pathname === c.url,
+				)),
+	);
 	const [open, setOpen] = useState(
 		folder.defaultOpen ?? isActive ?? false,
 	);
 
-	const chevron = (
-		<ChevronRight
-			className={cn(
-				"size-3 shrink-0 text-muted-foreground transition-transform",
-				open && "rotate-90",
-			)}
-		/>
-	);
-
 	return (
 		<div className="pt-3 first:pt-0">
-			{indexUrl ? (
-				<div className="flex w-full items-center">
-					<button
-						type="button"
-						onClick={() => setOpen(!open)}
-						aria-label={open ? "Collapse section" : "Expand section"}
-						className="flex shrink-0 items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-					>
-						{chevron}
-					</button>
-					<Link
-						to={indexUrl}
-						className={cn(
-							"flex-1 rounded-md px-2 py-1 text-sm font-semibold transition-colors hover:text-foreground",
-							indexActive
-								? "bg-primary/10 text-primary"
-								: "text-foreground",
-						)}
-					>
-						{folder.name}
-					</Link>
-				</div>
-			) : (
-				<button
-					type="button"
-					onClick={() => setOpen(!open)}
-					className="flex w-full items-center gap-1.5 px-3 py-1 text-sm font-semibold transition-colors hover:text-foreground"
-				>
-					{chevron}
-					{folder.name}
-				</button>
-			)}
+			<button
+				type="button"
+				onClick={() => setOpen(!open)}
+				className="flex w-full items-center gap-1.5 px-3 py-1 text-sm font-semibold transition-colors hover:text-foreground"
+			>
+				<ChevronRight
+					className={cn(
+						"size-3 shrink-0 text-muted-foreground transition-transform",
+						open && "rotate-90",
+					)}
+				/>
+				{folder.name}
+			</button>
 			{open && (
 				<div className="ml-3 mt-1 space-y-0.5 border-l pl-2">
+					{folder.index && <SidebarItem item={folder.index} />}
 					<SidebarNodes nodes={folder.children} />
 				</div>
 			)}

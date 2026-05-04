@@ -1,7 +1,23 @@
 import { docs } from "collections/server";
-import { loader } from "fumadocs-core/source";
+import { loader, type LoaderPlugin } from "fumadocs-core/source";
 import { openapiPlugin, openapiSource } from "fumadocs-openapi/server";
 import { openapi } from "@/lib/openapi";
+
+// Default-open the tag folders (Prompts/Snapshots/Reports) under `/docs/api`
+// so the full operation list shows as soon as the user expands "API".
+function apiTagFoldersOpenByDefault(): LoaderPlugin {
+	return {
+		name: "elmo:api-tag-folders-open",
+		transformPageTree: {
+			folder(node, folderPath) {
+				if (folderPath.startsWith("api/")) {
+					node.defaultOpen = true;
+				}
+				return node;
+			},
+		},
+	};
+}
 
 export const source = loader(
 	{
@@ -9,11 +25,10 @@ export const source = loader(
 		openapi: await openapiSource(openapi, {
 			baseDir: "api",
 			groupBy: "tag",
-			meta: true,
 		}),
 	},
 	{
 		baseUrl: "/docs",
-		plugins: [openapiPlugin()],
+		plugins: [openapiPlugin(), apiTagFoldersOpenByDefault()],
 	},
 );
