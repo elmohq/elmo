@@ -6,6 +6,8 @@ import browserCollections from "collections/browser";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
 import { Suspense } from "react";
 import { useMDXComponents } from "@/components/mdx";
+import { ClientAPIPage } from "@/components/api-page";
+import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
 import { Feedback } from "@workspace/docs/components/feedback/client";
 import type {
 	PageFeedback,
@@ -22,25 +24,37 @@ import {
 	articleJsonLd,
 	breadcrumbJsonLd,
 } from "@/lib/seo";
-import type { Root } from "fumadocs-core/page-tree";
+import type { SerializedPageTree } from "fumadocs-core/source/client";
 
 const REPO = "elmohq/elmo";
 const BRANCH = "main";
 const DOCS_DIR = "packages/docs/content/docs";
 
 interface DocsLoaderData {
+	type: "docs";
 	slugs: string[];
 	path: string;
 	title: string;
 	description: string;
 	filePath: string;
-	pageTree: Root;
+	pageTree: SerializedPageTree;
 }
+
+interface OpenApiLoaderData {
+	type: "openapi";
+	slugs: string[];
+	title: string;
+	description: string;
+	pageTree: SerializedPageTree;
+	apiProps: ClientApiPageProps;
+}
+
+type LoaderData = DocsLoaderData | OpenApiLoaderData;
 
 export const Route = createFileRoute("/docs/$")({
 	component: Page,
 	head: ({ loaderData }) => {
-		const data = loaderData as DocsLoaderData | undefined;
+		const data = loaderData as LoaderData | undefined;
 		if (!data) return {};
 
 		const { title, description, slugs } = data;
@@ -74,8 +88,10 @@ export const Route = createFileRoute("/docs/$")({
 	},
 	loader: async ({ params }) => {
 		const slugs = params._splat?.split("/") ?? [];
-		const data = await serverLoader({ data: slugs });
-		await clientLoader.preload(data.path);
+		const data = (await serverLoader({ data: slugs })) as LoaderData;
+		if (data.type === "docs") {
+			await clientLoader.preload(data.path);
+		}
 		return data;
 	},
 });
@@ -84,9 +100,22 @@ export const serverLoader = createServerFn({
 	method: "GET",
 })
 	.inputValidator((slugs: string[]) => slugs)
-	.handler(async ({ data: slugs }) => {
+	.handler(async ({ data: slugs }): Promise<LoaderData> => {
 		const page = source.getPage(slugs);
 		if (!page) throw notFound();
+
+		const pageTree = await source.serializePageTree(source.getPageTree());
+
+		if (page.type === "openapi") {
+			return {
+				type: "openapi",
+				slugs,
+				title: page.data.title ?? "",
+				description: page.data.description ?? "",
+				pageTree,
+				apiProps: await page.data.getClientAPIPageProps(),
+			};
+		}
 
 		const { existsSync } = await import("node:fs");
 		const { resolve } = await import("node:path");
@@ -98,12 +127,13 @@ export const serverLoader = createServerFn({
 			: `${DOCS_DIR}/${slugPath}.mdx`;
 
 		return {
+			type: "docs",
 			slugs,
 			path: page.path,
 			title: page.data.title,
 			description: page.data.description ?? "",
 			filePath,
-			pageTree: await source.serializePageTree(source.getPageTree()),
+			pageTree,
 		};
 	});
 
@@ -117,7 +147,7 @@ async function onFeedback(feedback: PageFeedback): Promise<ActionResponse> {
 	return { success: true };
 }
 
-export type { DocsLoaderData };
+export type { DocsLoaderData, OpenApiLoaderData, LoaderData };
 
 export const clientLoader = browserCollections.docs.createClientLoader({
 	component({ toc, frontmatter, default: MDX }, _props: undefined) {
@@ -194,7 +224,29 @@ function DocsPageActions({ filePath }: { filePath: string }) {
 	);
 }
 
-export function DocsPageLayout({ loaderData }: { loaderData: DocsLoaderData }) {
+function OpenApiContent({
+	title,
+	description,
+	apiProps,
+}: {
+	title: string;
+	description: string;
+	apiProps: ClientApiPageProps;
+}) {
+	return (
+		<article className="prose min-w-0 max-w-none flex-1">
+			<h1>{title}</h1>
+			{description && (
+				<p className="lead text-muted-foreground">{description}</p>
+			)}
+			<div className="not-prose">
+				<ClientAPIPage {...apiProps} />
+			</div>
+		</article>
+	);
+}
+
+export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 	const data = useFumadocsLoader(loaderData);
 
 	return (
@@ -209,10 +261,18 @@ export function DocsPageLayout({ loaderData }: { loaderData: DocsLoaderData }) {
 					</aside>
 
 					<main className="min-w-0 flex-1">
-						<Suspense>
-							{clientLoader.useContent(data.path)}
-						</Suspense>
-						<DocsPageActions filePath={loaderData.filePath} />
+						{data.type === "openapi" ? (
+							<OpenApiContent
+								title={data.title}
+								description={data.description}
+								apiProps={data.apiProps}
+							/>
+						) : (
+							<>
+								<Suspense>{clientLoader.useContent(data.path)}</Suspense>
+								<DocsPageActions filePath={data.filePath} />
+							</>
+						)}
 					</main>
 				</div>
 			</div>
@@ -222,6 +282,6 @@ export function DocsPageLayout({ loaderData }: { loaderData: DocsLoaderData }) {
 }
 
 function Page() {
-	const loaderData = Route.useLoaderData() as DocsLoaderData;
+	const loaderData = Route.useLoaderData() as LoaderData;
 	return <DocsPageLayout loaderData={loaderData} />;
 }

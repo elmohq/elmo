@@ -1,0 +1,26 @@
+---
+title: Overview
+description: Complete REST API documentation for Elmo's administrative API.
+---
+
+Elmo provides a REST API for managing brands, prompts, and snapshots programmatically. All endpoints require Bearer token authentication.
+
+**Base URL:** `/api/v1`
+
+## Authentication
+
+Include your API key in the `Authorization` header:
+
+```http
+Authorization: Bearer YOUR_API_KEY
+```
+
+API keys are configured server-side via the `ADMIN_API_KEYS` environment variable.
+
+## Endpoints
+
+Browse the available endpoints in the sidebar, grouped by resource:
+
+- **Prompts** — manage brand prompts
+- **Snapshots** — aggregated analytics snapshots for prompts
+- **Reports** — generate and retrieve AI Share of Voice reports

@@ -8,12 +8,10 @@
 		"./components/docs-sidebar": "./src/components/docs-sidebar.tsx",
 		"./components/docs-toc": "./src/components/docs-toc.tsx",
 		"./components/search-dialog": "./src/components/search-dialog.tsx",
-		"./components/openapi-reference": "./src/components/openapi-reference.tsx",
 		"./components/feedback/client": "./src/components/feedback/client.tsx",
 		"./components/feedback/schema": "./src/components/feedback/schema.ts"
 	},
 	"dependencies": {
-		"@scalar/api-reference-react": "^0.9.27",
 		"@workspace/ui": "workspace:*",
 		"lucide-react": "^1.11.0"
 	},
