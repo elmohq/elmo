@@ -111,7 +111,10 @@ export const openrouter: Provider = {
 		const parsed = (schema as z.ZodType).parse(JSON.parse(content));
 		return {
 			object: parsed as T,
-			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
+			// Report the alias we sent, not OpenRouter's resolved version
+			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
+			// matches what openai-api and anthropic-api do.
+			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
 
