@@ -1,17 +1,9 @@
 # CLA Check
 #
-# Verifies that the author of every pull request has signed the CLA, either
-# previously (already listed in .github/contributors.txt on the base branch)
-# or in this same PR (the PR adds the author's username to
-# contributors.txt). The header of contributors.txt is the click-wrap
-# notice — adding your username to the file is itself the agreement.
-#
-# Security model: this workflow runs as pull_request_target, so the workflow
-# file itself comes from the trusted base branch and cannot be modified by a
-# fork PR. We do NOT check out the PR head into the workspace. The head
-# version of contributors.txt is fetched read-only via the GitHub API, and
-# we only credit the file's contents if they include the PR author's own
-# username — a fork cannot add someone else and claim they signed.
+# Verifies that the author of every pull request has signed the CLA by
+# being listed in .github/contributors.txt on the PR head. The header of
+# contributors.txt is the click-wrap notice — adding your username to the
+# file is itself the agreement.
 #
 # Org members, repo collaborators, the repo owner, and bot accounts are
 # exempt.
@@ -19,12 +11,11 @@
 name: CLA Check
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -36,10 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Checkout base ref
+      - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
       - name: Verify signer
@@ -47,8 +37,6 @@ jobs:
           AUTHOR: ${{ github.event.pull_request.user.login }}
           AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
           ASSOCIATION: ${{ github.event.pull_request.author_association }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           author_lower="$(echo "$AUTHOR" | tr '[:upper:]' '[:lower:]')"
@@ -75,40 +63,18 @@ jobs:
               ;;
           esac
 
-          # ── Helper: does a file list the author? ──────────────────────
-          contains_author() {
-            local file="$1"
-            [ -f "$file" ] || return 1
-            awk '
-              { sub(/#.*$/, ""); gsub(/[[:space:]]/, "") }
-              tolower($0) == author { found = 1 }
-              END { exit found ? 0 : 1 }
-            ' author="$author_lower" "$file"
-          }
-
-          # ── Already signed on base branch? ────────────────────────────
-          if contains_author .github/contributors.txt; then
-            echo "$AUTHOR has previously signed the CLA."
-            exit 0
-          fi
-
-          # ── Otherwise: is the author signing in this same PR? ─────────
-          # Fetch contributors.txt from the PR head via the API. We do NOT
-          # check out the PR head into the workspace.
-          mkdir -p /tmp/cla
-          if ! gh api \
-              "repos/$GITHUB_REPOSITORY/contents/.github/contributors.txt?ref=$PR_HEAD_SHA" \
-              --jq .content 2>/dev/null \
-              | base64 -d > /tmp/cla/head-contributors.txt; then
+          # ── Check signature ───────────────────────────────────────────
+          if [ ! -f .github/contributors.txt ]; then
             echo "::error::$AUTHOR has not signed the CLA. See CLA.md for instructions."
             exit 1
           fi
 
-          if contains_author /tmp/cla/head-contributors.txt; then
-            # The header of contributors.txt explicitly states that adding
-            # your username to the file constitutes agreement to the CLA,
-            # so the file edit itself is the signature.
-            echo "$AUTHOR is signing the CLA in this PR (added to contributors.txt)."
+          if awk '
+              { sub(/#.*$/, ""); gsub(/[[:space:]]/, "") }
+              tolower($0) == author { found = 1 }
+              END { exit found ? 0 : 1 }
+            ' author="$author_lower" .github/contributors.txt; then
+            echo "$AUTHOR has signed the CLA."
             exit 0
           fi
 
