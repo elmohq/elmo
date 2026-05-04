@@ -108,9 +108,9 @@ export interface OnboardingSuggestion {
 export interface AnalyzeBrandOptions {
 	website: string;
 	brandName?: string;
-	includeCompetitors?: boolean;
-	includePrompts?: boolean;
+	/** 0 disables competitor generation entirely. */
 	maxCompetitors?: number;
+	/** 0 disables prompt generation entirely. */
 	maxPrompts?: number;
 }
 
@@ -128,8 +128,6 @@ export interface AnalysisContext {
 	brandNameHint: string;
 	prompt: string;
 	schema: ReturnType<typeof buildSchema>;
-	includeCompetitors: boolean;
-	includePrompts: boolean;
 	maxCompetitors: number;
 	maxPrompts: number;
 }
@@ -138,8 +136,6 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 	const {
 		website,
 		brandName: providedBrandName,
-		includeCompetitors = true,
-		includePrompts = true,
 		maxCompetitors = DEFAULT_MAX_COMPETITORS,
 		maxPrompts = DEFAULT_MAX_PROMPTS,
 	} = options;
@@ -156,8 +152,8 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 		website: normalizedWebsite,
 		brandNameHint,
 		websiteExcerpt,
-		includeCompetitors,
-		includePrompts,
+		includeCompetitors: maxCompetitors > 0,
+		includePrompts: maxPrompts > 0,
 	});
 
 	return {
@@ -165,8 +161,6 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 		brandNameHint,
 		prompt,
 		schema: buildSchema({ maxCompetitors, maxPrompts }),
-		includeCompetitors,
-		includePrompts,
 		maxCompetitors,
 		maxPrompts,
 	};
@@ -177,8 +171,8 @@ export function normalizeAnalysisResult(raw: RawSuggestion, ctx: AnalysisContext
 		raw,
 		website: ctx.website,
 		brandNameHint: ctx.brandNameHint,
-		includeCompetitors: ctx.includeCompetitors,
-		includePrompts: ctx.includePrompts,
+		includeCompetitors: ctx.maxCompetitors > 0,
+		includePrompts: ctx.maxPrompts > 0,
 		maxCompetitors: ctx.maxCompetitors,
 		maxPrompts: ctx.maxPrompts,
 	});

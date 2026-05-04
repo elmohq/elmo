@@ -85,8 +85,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				data: {
 					website: brand.website,
 					brandName: brand.name,
-					includeCompetitors: true,
-					includePrompts: true,
 				},
 			});
 			setData({

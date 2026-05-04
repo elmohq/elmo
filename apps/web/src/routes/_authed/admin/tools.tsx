@@ -44,8 +44,6 @@ function AnalyzeBrandDialog() {
 				data: {
 					website: website.trim(),
 					brandName: brandName.trim() || undefined,
-					includeCompetitors: true,
-					includePrompts: true,
 				},
 			});
 			setResult(data);

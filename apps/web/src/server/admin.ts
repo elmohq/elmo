@@ -198,15 +198,15 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 /**
  * Provider-agnostic brand analysis. Returns brand info, competitors, and
  * suggested prompts in a single LLM round-trip — same pipeline that the
- * onboarding wizard and `/api/v1/onboarding/*` endpoints use.
+ * onboarding wizard and `POST /api/v1/tools/analyze` use.
  */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.inputValidator(
 		z.object({
 			website: z.string().min(1),
 			brandName: z.string().optional(),
-			includeCompetitors: z.boolean().optional().default(true),
-			includePrompts: z.boolean().optional().default(true),
+			maxCompetitors: z.number().int().min(0).optional(),
+			maxPrompts: z.number().int().min(0).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -214,8 +214,8 @@ export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
 		return analyzeBrand({
 			website: data.website,
 			brandName: data.brandName,
-			includeCompetitors: data.includeCompetitors,
-			includePrompts: data.includePrompts,
+			maxCompetitors: data.maxCompetitors,
+			maxPrompts: data.maxPrompts,
 		});
 	});
 

@@ -33,11 +33,23 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 				}
 
 				const parsed = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
-				const { website, brandName, includeCompetitors, includePrompts, maxCompetitors, maxPrompts } = parsed;
+				const { website, brandName, maxCompetitors, maxPrompts } = parsed;
 
 				if (!website || typeof website !== "string" || !website.trim()) {
 					return Response.json(
 						{ error: "Validation Error", message: "website is required" },
+						{ status: 400 },
+					);
+				}
+				if (maxCompetitors !== undefined && (typeof maxCompetitors !== "number" || !Number.isInteger(maxCompetitors) || maxCompetitors < 0)) {
+					return Response.json(
+						{ error: "Validation Error", message: "maxCompetitors must be a non-negative integer" },
+						{ status: 400 },
+					);
+				}
+				if (maxPrompts !== undefined && (typeof maxPrompts !== "number" || !Number.isInteger(maxPrompts) || maxPrompts < 0)) {
+					return Response.json(
+						{ error: "Validation Error", message: "maxPrompts must be a non-negative integer" },
 						{ status: 400 },
 					);
 				}
@@ -46,9 +58,7 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 					const suggestion = await analyzeBrand({
 						website: website.trim(),
 						brandName: typeof brandName === "string" ? brandName.trim() : undefined,
-						includeCompetitors: includeCompetitors !== false,
-						includePrompts: includePrompts !== false,
-						maxCompetitors: typeof maxCompetitors === "number" ? maxCompetitors : undefined,
+						maxCompetitors: typeof maxCompetitors === "number" ? maxCompetitors : 20,
 						maxPrompts: typeof maxPrompts === "number" ? maxPrompts : undefined,
 					});
 					return Response.json(suggestion);

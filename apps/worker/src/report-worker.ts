@@ -286,7 +286,6 @@ export async function processReportJob(job: ReportJobContext) {
 		const suggestion = await analyzeBrand({
 			website: brandWebsite,
 			brandName,
-			includePrompts: !useManualPrompts,
 			maxPrompts: useManualPrompts ? 0 : 84,
 		});
 		// The report renderer's CompetitorResult expects a single primary domain;

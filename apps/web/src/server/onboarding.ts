@@ -399,8 +399,8 @@ export const analyzeBrandFn = createServerFn({ method: "POST" })
 		z.object({
 			website: z.string().min(1),
 			brandName: z.string().optional(),
-			includeCompetitors: z.boolean().optional().default(true),
-			includePrompts: z.boolean().optional().default(true),
+			maxCompetitors: z.number().int().min(0).optional(),
+			maxPrompts: z.number().int().min(0).optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -408,8 +408,8 @@ export const analyzeBrandFn = createServerFn({ method: "POST" })
 		return analyzeBrand({
 			website: data.website,
 			brandName: data.brandName,
-			includeCompetitors: data.includeCompetitors,
-			includePrompts: data.includePrompts,
+			maxCompetitors: data.maxCompetitors,
+			maxPrompts: data.maxPrompts,
 		});
 	});
 

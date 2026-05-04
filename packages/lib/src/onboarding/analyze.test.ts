@@ -86,7 +86,7 @@ describe("analyzeBrand", () => {
 		expect(result.brandName).toBe("Nike");
 	});
 
-	it("respects includeCompetitors=false / includePrompts=false", async () => {
+	it("respects maxCompetitors=0 / maxPrompts=0", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",
 			additionalDomains: [],
@@ -97,8 +97,8 @@ describe("analyzeBrand", () => {
 
 		const result = await analyzeBrand({
 			website: "acme.com",
-			includeCompetitors: false,
-			includePrompts: false,
+			maxCompetitors: 0,
+			maxPrompts: 0,
 		});
 		expect(result.competitors).toEqual([]);
 		expect(result.suggestedPrompts).toEqual([]);
