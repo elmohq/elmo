@@ -25,8 +25,7 @@ interface PromptWizardProps {
 interface CompetitorDraft {
 	id: string;
 	name: string;
-	domain: string;
-	additionalDomains: string[];
+	domains: string[];
 	aliases: string[];
 }
 
@@ -41,7 +40,6 @@ interface WizardData {
 	brandName: string;
 	additionalDomains: string[];
 	aliases: string[];
-	products: string[];
 	competitors: CompetitorDraft[];
 	prompts: PromptDraft[];
 	customPrompts: string[];
@@ -133,7 +131,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		brandName: "",
 		additionalDomains: [],
 		aliases: [],
-		products: [],
 		competitors: [],
 		prompts: [],
 		customPrompts: [],
@@ -156,12 +153,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				brandName: suggestion.brandName,
 				additionalDomains: suggestion.additionalDomains,
 				aliases: suggestion.aliases,
-				products: suggestion.products,
 				competitors: suggestion.competitors.map((c) => ({
 					id: generateId(),
 					name: c.name,
-					domain: c.domain,
-					additionalDomains: c.additionalDomains,
+					domains: [c.domain, ...c.additionalDomains].filter(Boolean),
 					aliases: c.aliases,
 				})),
 				prompts: suggestion.suggestedPrompts.map((p) => ({
@@ -176,7 +171,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			trackEvent("onboarding_analyzed", {
 				competitor_count: suggestion.competitors.length,
 				prompt_count: suggestion.suggestedPrompts.length,
-				product_count: suggestion.products.length,
 			});
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Analysis failed";
@@ -185,7 +179,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		}
 	}, [brand?.website, brand?.name]);
 
-	const updateProducts = useCallback((products: string[]) => setData((p) => ({ ...p, products })), []);
 	const updateAliases = useCallback((aliases: string[]) => setData((p) => ({ ...p, aliases })), []);
 	const updateAdditionalDomains = useCallback(
 		(additionalDomains: string[]) => setData((p) => ({ ...p, additionalDomains })),
@@ -215,7 +208,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				...p,
 				competitors: [
 					...p.competitors,
-					{ id: generateId(), name: "", domain: "", additionalDomains: [], aliases: [] },
+					{ id: generateId(), name: "", domains: [], aliases: [] },
 				],
 			})),
 		[],
@@ -245,10 +238,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		setIsSaving(true);
 		try {
 			const competitorsPayload = data.competitors
-				.filter((c) => c.name.trim() && c.domain.trim())
+				.filter((c) => c.name.trim() && c.domains.some((d) => d.trim()))
 				.map((c) => ({
 					name: c.name.trim(),
-					domains: [c.domain, ...c.additionalDomains].filter(Boolean),
+					domains: c.domains.filter((d) => d.trim()),
 					aliases: c.aliases,
 				}));
 
@@ -298,8 +291,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<Card>
 					<CardContent className="space-y-3 py-6">
 						<p className="text-sm text-muted-foreground">
-							We'll analyze <strong>{brand?.website}</strong> using web search to suggest products,
-							competitors, additional domains/aliases, and a starter set of AI prompts to track.
+							We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors,
+							additional domains/aliases, and a starter set of AI prompts to track.
 						</p>
 						{error && (
 							<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -360,51 +353,40 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			<Separator />
 
 			<div className="space-y-2">
-				<h2 className="text-2xl font-bold">Product categories</h2>
-				<p className="text-muted-foreground">Used to enrich tracking prompts.</p>
-				<EditableTagsInput
-					items={data.products}
-					onValueChange={updateProducts}
-					placeholder="Add product..."
-					maxItems={8}
-				/>
-			</div>
-
-			<Separator />
-
-			<div className="space-y-2">
 				<h2 className="text-2xl font-bold">Competitors</h2>
 				<p className="text-muted-foreground">Companies you want tracked alongside your brand.</p>
 				<div className="space-y-3">
 					{data.competitors.map((c) => (
-						<div key={c.id} className="space-y-2 rounded-lg border p-3">
-							<div className="flex gap-2">
+						<div key={c.id} className="space-y-3 rounded-lg border p-3">
+							<div className="flex gap-2 items-start">
 								<Input
 									value={c.name}
 									onChange={(e) => updateCompetitor(c.id, { name: e.target.value })}
 									placeholder="Competitor name"
 									className="flex-1"
 								/>
-								<Input
-									value={c.domain}
-									onChange={(e) => updateCompetitor(c.id, { domain: e.target.value })}
-									placeholder="domain.com"
-									className="flex-1"
-								/>
 								<Button variant="outline" size="sm" onClick={() => removeCompetitor(c.id)} className="p-2">
 									<X className="h-4 w-4" />
 								</Button>
 							</div>
-							{(c.additionalDomains.length > 0 || c.aliases.length > 0) && (
-								<div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-									<div>
-										<span className="font-medium">Other domains:</span> {c.additionalDomains.join(", ") || "—"}
-									</div>
-									<div>
-										<span className="font-medium">Aliases:</span> {c.aliases.join(", ") || "—"}
-									</div>
-								</div>
-							)}
+							<div className="space-y-1.5">
+								<p className="text-xs text-muted-foreground">Domains</p>
+								<TagsInput
+									value={c.domains}
+									onValueChange={(domains) => updateCompetitor(c.id, { domains })}
+									placeholder="Add domain..."
+									maxItems={10}
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<p className="text-xs text-muted-foreground">Aliases</p>
+								<TagsInput
+									value={c.aliases}
+									onValueChange={(aliases) => updateCompetitor(c.id, { aliases })}
+									placeholder="Add alias..."
+									maxItems={10}
+								/>
+							</div>
 						</div>
 					))}
 					{data.competitors.length < MAX_COMPETITORS && (
