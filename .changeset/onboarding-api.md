@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-New `POST /api/v1/onboarding/analyze` and `POST /api/v1/onboarding/brands` endpoints for programmatic brand onboarding — useful for white-label deployments. Both support skipping competitor or prompt generation per request.
+REST-style brand management API: `GET/POST /api/v1/brands`, `GET/PATCH /api/v1/brands/{brandId}`, and `POST /api/v1/tools/analyze`. Brand creation no longer runs the LLM analysis under the hood — callers hit `tools/analyze` first if they want suggestions, then create or update brands explicitly.

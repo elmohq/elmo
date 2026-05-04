@@ -1,15 +1,19 @@
 /**
- * Provider-agnostic onboarding server functions + the shared "create / update
- * brand from suggestion" path used by both the in-app wizard and the public
- * `/api/v1/onboarding/*` endpoints.
+ * Brand-onboarding server functions + the shared persistence helpers used by
+ * both the in-app wizard and the public REST endpoints under /api/v1/brands.
  *
- * Two distinct shapes:
- *   • createOnboardedBrand — for POST /api/v1/onboarding/brands. Pure create;
- *     throws BrandConflictError if the brandId already exists.
- *   • updateOnboardedBrand — for PATCH /api/v1/onboarding/brands/:brandId
- *     and the in-app wizard's save step. Merges new domains/aliases, adds
- *     net-new prompts/competitors (deduped against existing DB rows), and
- *     optionally re-runs analyzeBrand if generate flags are set.
+ * Three exported building blocks:
+ *   • createBrand — pure create, no LLM, no merging. Throws BrandConflictError.
+ *   • updateBrand — pure brand-level update (replace semantics on arrays).
+ *     Throws BrandNotFoundError.
+ *   • updateOnboardedBrandFn — server fn used only by the in-app wizard's save
+ *     step. Bundles brand-field replace + net-new prompt/competitor inserts
+ *     (deduped against existing DB rows) into one round-trip. Not exposed via
+ *     the public API.
+ *
+ * The public API never invokes analyzeBrand under the hood. Callers who want
+ * suggestions hit POST /api/v1/tools/analyze first, then feed the result into
+ * POST /api/v1/brands themselves.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -18,10 +22,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors } from "@workspace/lib/db/schema";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import {
-	analyzeBrand,
-	type OnboardingSuggestion,
-} from "@workspace/lib/onboarding";
+import { analyzeBrand } from "@workspace/lib/onboarding";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -32,7 +33,7 @@ import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 export class BrandConflictError extends Error {
 	constructor(public readonly brandId: string) {
-		super(`Brand "${brandId}" already exists. Use PATCH /api/v1/onboarding/brands/${brandId} to update.`);
+		super(`Brand "${brandId}" already exists.`);
 		this.name = "BrandConflictError";
 	}
 }
@@ -45,7 +46,7 @@ export class BrandNotFoundError extends Error {
 }
 
 // ============================================================================
-// Shared schemas
+// Schemas
 // ============================================================================
 
 const competitorInputSchema = z.object({
@@ -60,7 +61,8 @@ const promptInputSchema = z.object({
 	enabled: z.boolean().optional().default(true),
 });
 
-const createOnboardedBrandInputSchema = z.object({
+/** POST /api/v1/brands body. */
+const createBrandInputSchema = z.object({
 	brandId: z.string().min(1),
 	brandName: z.string().min(1),
 	website: z.string().min(1),
@@ -68,42 +70,50 @@ const createOnboardedBrandInputSchema = z.object({
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
-	generateCompetitors: z.boolean().optional().default(true),
-	generatePrompts: z.boolean().optional().default(true),
 });
 
-/** PATCH body — brandId comes from the URL path, not the body. */
-const updateOnboardedBrandBodySchema = z.object({
+/** PATCH /api/v1/brands/:brandId body. brandId comes from the URL. */
+const updateBrandBodySchema = z.object({
+	brandName: z.string().min(1).optional(),
+	website: z.string().min(1).optional(),
+	additionalDomains: z.array(z.string()).optional(),
+	aliases: z.array(z.string()).optional(),
+	enabled: z.boolean().optional(),
+});
+
+const updateBrandInputSchema = updateBrandBodySchema.extend({
+	brandId: z.string().min(1),
+});
+
+/** Wizard save: brand-level fields + new prompts/competitors in one shot. */
+const wizardOnboardingInputSchema = z.object({
+	brandId: z.string().min(1),
 	brandName: z.string().min(1).optional(),
 	website: z.string().min(1).optional(),
 	additionalDomains: z.array(z.string()).optional(),
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
-	generateCompetitors: z.boolean().optional().default(false),
-	generatePrompts: z.boolean().optional().default(false),
 });
 
-const updateOnboardedBrandInputSchema = updateOnboardedBrandBodySchema.extend({
-	brandId: z.string().min(1),
-});
+export type CreateBrandInput = z.infer<typeof createBrandInputSchema>;
+export type UpdateBrandInput = z.infer<typeof updateBrandInputSchema>;
+export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
 
-export type CreateOnboardedBrandInput = z.infer<typeof createOnboardedBrandInputSchema>;
-export type UpdateOnboardedBrandInput = z.infer<typeof updateOnboardedBrandInputSchema>;
-
-export interface OnboardedBrandResult {
+export interface BrandResult {
 	brandId: string;
 	brandName: string;
 	website: string;
 	additionalDomains: string[];
 	aliases: string[];
+	enabled: boolean;
+	onboarded: boolean;
 	promptsCreated: number;
 	competitorsCreated: number;
-	suggestion: OnboardingSuggestion | null;
 }
 
 // ============================================================================
-// URL/domain helpers
+// Helpers
 // ============================================================================
 
 function validateAndFormatWebsite(url: string): string {
@@ -145,41 +155,24 @@ function dedupeAliases(values: string[]): string[] {
 	return out;
 }
 
-// ============================================================================
-// Shared assembly helpers
-// ============================================================================
-
-interface CompetitorSource {
-	name: string;
-	domains: string[];
-	aliases: string[];
-}
-
-interface PromptSource {
-	value: string;
-	tags: string[];
-	enabled: boolean;
-}
-
-async function maybeAnalyzeBrand(args: {
-	website: string;
-	brandName: string;
-	wantCompetitors: boolean;
-	wantPrompts: boolean;
-}): Promise<OnboardingSuggestion | null> {
-	if (!args.wantCompetitors && !args.wantPrompts) return null;
-	return analyzeBrand({
-		website: args.website,
-		brandName: args.brandName,
-		includeCompetitors: args.wantCompetitors,
-		includePrompts: args.wantPrompts,
-	});
+function buildBrandResult(row: typeof brands.$inferSelect, promptsCreated = 0, competitorsCreated = 0): BrandResult {
+	return {
+		brandId: row.id,
+		brandName: row.name,
+		website: row.website,
+		additionalDomains: row.additionalDomains,
+		aliases: row.aliases,
+		enabled: row.enabled,
+		onboarded: row.onboarded,
+		promptsCreated,
+		competitorsCreated,
+	};
 }
 
 async function insertCompetitors(args: {
 	brandId: string;
 	websiteHost: string;
-	source: CompetitorSource[];
+	source: { name: string; domains: string[]; aliases: string[] }[];
 }): Promise<number> {
 	if (args.source.length === 0) return 0;
 
@@ -220,7 +213,7 @@ async function insertPrompts(args: {
 	brandId: string;
 	brandName: string;
 	website: string;
-	source: PromptSource[];
+	source: { value: string; tags: string[]; enabled: boolean }[];
 	dedupeAgainstExisting: boolean;
 }): Promise<number> {
 	if (args.source.length === 0) return 0;
@@ -261,70 +254,24 @@ async function insertPrompts(args: {
 	return inserted.length;
 }
 
-function buildCompetitorSource(
-	explicit: { name: string; domains: string[]; aliases: string[] }[],
-	suggestion: OnboardingSuggestion | null,
-): CompetitorSource[] {
-	if (explicit.length > 0) {
-		return explicit.map((c) => ({ name: c.name, domains: c.domains, aliases: c.aliases }));
-	}
-	return (suggestion?.competitors ?? []).map((c) => ({ name: c.name, domains: c.domains, aliases: c.aliases }));
-}
-
-function buildPromptSource(
-	explicit: { value: string; tags: string[]; enabled: boolean }[],
-	suggestion: OnboardingSuggestion | null,
-): PromptSource[] {
-	const explicitRows = explicit.map((p) => ({
-		value: p.value.trim(),
-		tags: sanitizeUserTags(p.tags ?? []),
-		enabled: p.enabled,
-	}));
-	const generatedRows = (suggestion?.suggestedPrompts ?? []).map((p) => ({
-		value: p.prompt.trim(),
-		tags: sanitizeUserTags(p.tags ?? []),
-		enabled: true,
-	}));
-	return [...explicitRows, ...generatedRows];
-}
-
 // ============================================================================
-// createOnboardedBrand — pure create
+// createBrand — pure create
 // ============================================================================
 
 /**
- * Create a brand and its prompts/competitors. Throws BrandConflictError if a
- * row with this brandId already exists — callers should use updateOnboardedBrand
- * to top up an existing record.
- *
- * Auth + org-access checks are the caller's responsibility; this function
- * trusts that the route/server-fn boundary already enforced them.
+ * Create a brand row (and optional initial competitors/prompts) exactly as
+ * the caller supplied them. No LLM call, no merging with anything else.
+ * Throws BrandConflictError if a brand with this brandId already exists.
  */
-export async function createOnboardedBrand(
-	input: CreateOnboardedBrandInput,
-): Promise<OnboardedBrandResult> {
+export async function createBrand(input: CreateBrandInput): Promise<BrandResult> {
 	const formattedWebsite = validateAndFormatWebsite(input.website);
 	const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
 
 	const conflict = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	if (conflict) throw new BrandConflictError(input.brandId);
 
-	const explicitCompetitors = input.competitors ?? [];
-	const explicitPrompts = input.prompts ?? [];
-
-	const suggestion = await maybeAnalyzeBrand({
-		website: formattedWebsite,
-		brandName: input.brandName,
-		wantCompetitors: input.generateCompetitors !== false && explicitCompetitors.length === 0,
-		wantPrompts: input.generatePrompts !== false && explicitPrompts.length === 0,
-	});
-
-	const additionalDomains = dedupeDomains([
-		...(input.additionalDomains ?? []),
-		...(suggestion?.additionalDomains ?? []),
-	]).filter((d) => d !== websiteHost);
-
-	const aliases = dedupeAliases([...(input.aliases ?? []), ...(suggestion?.aliases ?? [])]);
+	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
+	const aliases = dedupeAliases(input.aliases ?? []);
 
 	await db.insert(brands).values({
 		id: input.brandId,
@@ -333,60 +280,77 @@ export async function createOnboardedBrand(
 		additionalDomains,
 		aliases,
 		enabled: true,
+		// Programmatic creation skips the in-app onboarding wizard.
+		onboarded: true,
 	});
 
 	const competitorsCreated = await insertCompetitors({
 		brandId: input.brandId,
 		websiteHost,
-		source: buildCompetitorSource(
-			explicitCompetitors.map((c) => ({ name: c.name, domains: c.domains ?? [], aliases: c.aliases ?? [] })),
-			suggestion,
-		),
+		source: (input.competitors ?? []).map((c) => ({
+			name: c.name,
+			domains: c.domains ?? [],
+			aliases: c.aliases ?? [],
+		})),
 	});
 
 	const promptsCreated = await insertPrompts({
 		brandId: input.brandId,
 		brandName: input.brandName,
 		website: formattedWebsite,
-		source: buildPromptSource(
-			explicitPrompts.map((p) => ({ value: p.value, tags: p.tags ?? [], enabled: p.enabled ?? true })),
-			suggestion,
-		),
+		source: (input.prompts ?? []).map((p) => ({
+			value: p.value,
+			tags: sanitizeUserTags(p.tags ?? []),
+			enabled: p.enabled ?? true,
+		})),
 		// Brand row was just created — no existing prompts to dedupe against.
 		dedupeAgainstExisting: false,
 	});
 
-	await db.update(brands).set({ onboarded: true, updatedAt: new Date() }).where(eq(brands.id, input.brandId));
-
-	return {
-		brandId: input.brandId,
-		brandName: input.brandName,
-		website: formattedWebsite,
-		additionalDomains,
-		aliases,
-		promptsCreated,
-		competitorsCreated,
-		suggestion,
-	};
+	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
+	return buildBrandResult(refreshed!, promptsCreated, competitorsCreated);
 }
 
 // ============================================================================
-// updateOnboardedBrand — merge into an existing brand
+// updateBrand — pure brand-level update
 // ============================================================================
 
 /**
- * Top up an existing brand with additional domains/aliases/competitors/prompts.
- * Throws BrandNotFoundError if the brandId isn't already in the DB.
- *
- * Domains and aliases are merged into the existing arrays. New competitors are
- * inserted only if their domain set doesn't overlap an existing competitor's
- * domains. New prompts are inserted only if no existing prompt has the same
- * lowercased value — this is the fix for the previous "POST is half-idempotent"
- * behavior where re-posting the same body created duplicate prompts.
+ * Update brand-level fields. Replace semantics: any array field the caller
+ * provides replaces the existing value verbatim. Throws BrandNotFoundError
+ * if the brand doesn't exist. Doesn't touch prompts or competitors — those
+ * are managed via /api/v1/prompts and (TODO) /api/v1/competitors.
  */
-export async function updateOnboardedBrand(
-	input: UpdateOnboardedBrandInput,
-): Promise<OnboardedBrandResult> {
+export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult> {
+	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
+	if (!existing) throw new BrandNotFoundError(input.brandId);
+
+	const formattedWebsite = input.website ? validateAndFormatWebsite(input.website) : null;
+	const websiteHost = formattedWebsite
+		? new URL(formattedWebsite).hostname.replace(/^www\./, "")
+		: existing.website
+			? new URL(existing.website).hostname.replace(/^www\./, "")
+			: null;
+
+	const patch: Partial<typeof brands.$inferInsert> = { updatedAt: new Date() };
+	if (input.brandName !== undefined) patch.name = input.brandName;
+	if (formattedWebsite !== null) patch.website = formattedWebsite;
+	if (input.additionalDomains !== undefined) {
+		patch.additionalDomains = dedupeDomains(input.additionalDomains).filter((d) => d !== websiteHost);
+	}
+	if (input.aliases !== undefined) patch.aliases = dedupeAliases(input.aliases);
+	if (input.enabled !== undefined) patch.enabled = input.enabled;
+
+	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
+	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
+	return buildBrandResult(refreshed!);
+}
+
+// ============================================================================
+// Wizard save — brand fields + new prompts/competitors in one shot
+// ============================================================================
+
+async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<BrandResult> {
 	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	if (!existing) throw new BrandNotFoundError(input.brandId);
 
@@ -394,81 +358,46 @@ export async function updateOnboardedBrand(
 	const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
 	const brandName = input.brandName?.trim() || existing.name;
 
-	const explicitCompetitors = input.competitors ?? [];
-	const explicitPrompts = input.prompts ?? [];
-
-	const suggestion = await maybeAnalyzeBrand({
-		website: formattedWebsite,
-		brandName,
-		wantCompetitors: input.generateCompetitors === true && explicitCompetitors.length === 0,
-		wantPrompts: input.generatePrompts === true && explicitPrompts.length === 0,
-	});
-
-	const incomingDomains = dedupeDomains([
-		...(input.additionalDomains ?? []),
-		...(suggestion?.additionalDomains ?? []),
-	]).filter((d) => d !== websiteHost);
-	const incomingAliases = dedupeAliases([...(input.aliases ?? []), ...(suggestion?.aliases ?? [])]);
-
-	const mergedDomains = dedupeDomains([...existing.additionalDomains, ...incomingDomains]);
-	const mergedAliases = dedupeAliases([...existing.aliases, ...incomingAliases]);
-
-	const brandPatch: Partial<typeof brands.$inferInsert> = { updatedAt: new Date(), onboarded: true };
-	if (input.brandName && input.brandName.trim() !== existing.name) {
-		brandPatch.name = brandName;
+	const patch: Partial<typeof brands.$inferInsert> = { updatedAt: new Date(), onboarded: true };
+	if (input.brandName !== undefined && input.brandName.trim() !== existing.name) patch.name = brandName;
+	if (input.website !== undefined && formattedWebsite !== existing.website) patch.website = formattedWebsite;
+	if (input.additionalDomains !== undefined) {
+		patch.additionalDomains = dedupeDomains(input.additionalDomains).filter((d) => d !== websiteHost);
 	}
-	if (input.website && formattedWebsite !== existing.website) {
-		brandPatch.website = formattedWebsite;
-	}
-	if (mergedDomains.length !== existing.additionalDomains.length) {
-		brandPatch.additionalDomains = mergedDomains;
-	}
-	if (mergedAliases.length !== existing.aliases.length) {
-		brandPatch.aliases = mergedAliases;
-	}
-	await db.update(brands).set(brandPatch).where(eq(brands.id, input.brandId));
+	if (input.aliases !== undefined) patch.aliases = dedupeAliases(input.aliases);
+	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
 
 	const competitorsCreated = await insertCompetitors({
 		brandId: input.brandId,
 		websiteHost,
-		source: buildCompetitorSource(
-			explicitCompetitors.map((c) => ({ name: c.name, domains: c.domains ?? [], aliases: c.aliases ?? [] })),
-			suggestion,
-		),
+		source: (input.competitors ?? []).map((c) => ({
+			name: c.name,
+			domains: c.domains ?? [],
+			aliases: c.aliases ?? [],
+		})),
 	});
 
 	const promptsCreated = await insertPrompts({
 		brandId: input.brandId,
 		brandName,
 		website: formattedWebsite,
-		source: buildPromptSource(
-			explicitPrompts.map((p) => ({ value: p.value, tags: p.tags ?? [], enabled: p.enabled ?? true })),
-			suggestion,
-		),
+		source: (input.prompts ?? []).map((p) => ({
+			value: p.value,
+			tags: sanitizeUserTags(p.tags ?? []),
+			enabled: p.enabled ?? true,
+		})),
 		dedupeAgainstExisting: true,
 	});
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
-	return {
-		brandId: input.brandId,
-		brandName: refreshed?.name ?? brandName,
-		website: refreshed?.website ?? formattedWebsite,
-		additionalDomains: refreshed?.additionalDomains ?? mergedDomains,
-		aliases: refreshed?.aliases ?? mergedAliases,
-		promptsCreated,
-		competitorsCreated,
-		suggestion,
-	};
+	return buildBrandResult(refreshed!, promptsCreated, competitorsCreated);
 }
 
 // ============================================================================
 // Server functions (in-app wizard)
 // ============================================================================
 
-/**
- * Run brand analysis without saving anything. The caller decides what to keep
- * before invoking `updateOnboardedBrandFn`.
- */
+/** Run brand analysis without saving anything. */
 export const analyzeBrandFn = createServerFn({ method: "POST" })
 	.inputValidator(
 		z.object({
@@ -489,17 +418,21 @@ export const analyzeBrandFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Persist the wizard's reviewed onboarding result for a brand the user already
- * has access to. The brand row was created earlier in the signup flow (see
- * BrandOnboarding); this just tops it up with the user-confirmed prompts /
- * competitors / domains / aliases.
+ * Persist the wizard's reviewed onboarding result for a brand the user
+ * already has access to. The brand row was created earlier in the signup
+ * flow (see BrandOnboarding); this just tops it up with the user-confirmed
+ * brand fields, prompts, and competitors.
  */
 export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(updateOnboardedBrandInputSchema)
+	.inputValidator(wizardOnboardingInputSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
-		return updateOnboardedBrand(data);
+		return saveWizardOnboarding(data);
 	});
 
-export { createOnboardedBrandInputSchema, updateOnboardedBrandBodySchema, updateOnboardedBrandInputSchema };
+export {
+	createBrandInputSchema,
+	updateBrandBodySchema,
+	updateBrandInputSchema,
+};

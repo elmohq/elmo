@@ -217,28 +217,28 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("serve-openapi");
 		});
 
-		it("blocks POST /api/v1/onboarding/analyze even with a valid key (demo can't burn LLM credit)", () => {
+		it("blocks POST /api/v1/tools/analyze even with a valid key (demo can't burn LLM credit)", () => {
 			const result = evaluateDeploymentPolicy(
 				features,
-				req("POST", "/api/v1/onboarding/analyze", `Bearer ${VALID_API_KEY}`),
+				req("POST", "/api/v1/tools/analyze", `Bearer ${VALID_API_KEY}`),
 				{ adminApiKeys: API_KEYS },
 			);
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
-		it("blocks POST /api/v1/onboarding/brands even with a valid key", () => {
+		it("blocks POST /api/v1/brands even with a valid key", () => {
 			const result = evaluateDeploymentPolicy(
 				features,
-				req("POST", "/api/v1/onboarding/brands", `Bearer ${VALID_API_KEY}`),
+				req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`),
 				{ adminApiKeys: API_KEYS },
 			);
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
-		it("blocks PATCH /api/v1/onboarding/brands/:brandId even with a valid key", () => {
+		it("blocks PATCH /api/v1/brands/:brandId even with a valid key", () => {
 			const result = evaluateDeploymentPolicy(
 				features,
-				req("PATCH", "/api/v1/onboarding/brands/acme", `Bearer ${VALID_API_KEY}`),
+				req("PATCH", "/api/v1/brands/acme", `Bearer ${VALID_API_KEY}`),
 				{ adminApiKeys: API_KEYS },
 			);
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });

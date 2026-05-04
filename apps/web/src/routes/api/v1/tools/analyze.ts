@@ -1,10 +1,9 @@
 /**
- * POST /api/v1/onboarding/analyze
+ * POST /api/v1/tools/analyze
  *
- * Run the provider-agnostic brand analysis without persisting anything.
- * Returns the suggested additional brand domains, aliases, competitors and
- * prompts so the caller can render a review UI or do its own filtering
- * before posting to /api/v1/onboarding/brands.
+ * Run brand analysis without persisting anything. Returns suggested
+ * additionalDomains, aliases, competitors, and prompts so the caller can
+ * feed the result into POST /api/v1/brands themselves (or filter it first).
  *
  * Protected by API key authentication.
  */
@@ -12,7 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
 
-export const Route = createFileRoute("/api/v1/onboarding/analyze")({
+export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
 		handlers: {
 			POST: async ({ request }) => {
@@ -54,7 +53,7 @@ export const Route = createFileRoute("/api/v1/onboarding/analyze")({
 					});
 					return Response.json(suggestion);
 				} catch (err) {
-					console.error("[onboarding.analyze] failed:", err);
+					console.error("[tools.analyze] failed:", err);
 					const message = err instanceof Error ? err.message : "Analysis failed";
 					return Response.json(
 						{ error: "Internal Server Error", message },

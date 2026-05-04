@@ -250,7 +250,7 @@ function ToolsPage() {
 				<h1 className="text-3xl font-bold tracking-tight">Tools</h1>
 				<p className="text-muted-foreground">
 					Run the onboarding analysis for any brand without creating it. Same pipeline as the wizard and
-					<code className="mx-1 rounded bg-muted px-1">/api/v1/onboarding/*</code>.
+					<code className="mx-1 rounded bg-muted px-1">POST /api/v1/tools/analyze</code>.
 				</p>
 			</div>
 

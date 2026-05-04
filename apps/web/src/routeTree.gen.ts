@@ -30,12 +30,13 @@ import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/too
 import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
 import { Route as ApiV1DocsIndexRouteImport } from './routes/api/v1/docs/index'
+import { Route as ApiV1BrandsIndexRouteImport } from './routes/api/v1/brands/index'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
 import { Route as AuthedAppBrandIndexRouteImport } from './routes/_authed/app/$brand/index'
+import { Route as ApiV1ToolsAnalyzeRouteImport } from './routes/api/v1/tools/analyze'
 import { Route as ApiV1ReportsReportIdRouteImport } from './routes/api/v1/reports/$reportId'
 import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompts/$promptId'
-import { Route as ApiV1OnboardingBrandsRouteImport } from './routes/api/v1/onboarding/brands'
-import { Route as ApiV1OnboardingAnalyzeRouteImport } from './routes/api/v1/onboarding/analyze'
+import { Route as ApiV1BrandsBrandIdRouteImport } from './routes/api/v1/brands/$brandId'
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
@@ -44,7 +45,6 @@ import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plau
 import { Route as AuthedAppBrandSettingsIndexRouteImport } from './routes/_authed/app/$brand/settings/index'
 import { Route as AuthedAppBrandPromptsIndexRouteImport } from './routes/_authed/app/$brand/prompts/index'
 import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v1/prompts/$promptId/snapshot'
-import { Route as ApiV1OnboardingBrandsBrandIdRouteImport } from './routes/api/v1/onboarding/brands/$brandId'
 import { Route as AuthedAppBrandSettingsPromptsRouteImport } from './routes/_authed/app/$brand/settings/prompts'
 import { Route as AuthedAppBrandSettingsLlmsRouteImport } from './routes/_authed/app/$brand/settings/llms'
 import { Route as AuthedAppBrandSettingsCompetitorsRouteImport } from './routes/_authed/app/$brand/settings/competitors'
@@ -156,6 +156,11 @@ const ApiV1DocsIndexRoute = ApiV1DocsIndexRouteImport.update({
   path: '/api/v1/docs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1BrandsIndexRoute = ApiV1BrandsIndexRouteImport.update({
+  id: '/api/v1/brands/',
+  path: '/api/v1/brands/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlausibleEventIndexRoute = ApiPlausibleEventIndexRouteImport.update({
   id: '/api/plausible/event/',
   path: '/api/plausible/event/',
@@ -165,6 +170,11 @@ const AuthedAppBrandIndexRoute = AuthedAppBrandIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthedAppBrandRoute,
+} as any)
+const ApiV1ToolsAnalyzeRoute = ApiV1ToolsAnalyzeRouteImport.update({
+  id: '/api/v1/tools/analyze',
+  path: '/api/v1/tools/analyze',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1ReportsReportIdRoute = ApiV1ReportsReportIdRouteImport.update({
   id: '/api/v1/reports/$reportId',
@@ -176,14 +186,9 @@ const ApiV1PromptsPromptIdRoute = ApiV1PromptsPromptIdRouteImport.update({
   path: '/api/v1/prompts/$promptId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiV1OnboardingBrandsRoute = ApiV1OnboardingBrandsRouteImport.update({
-  id: '/api/v1/onboarding/brands',
-  path: '/api/v1/onboarding/brands',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1OnboardingAnalyzeRoute = ApiV1OnboardingAnalyzeRouteImport.update({
-  id: '/api/v1/onboarding/analyze',
-  path: '/api/v1/onboarding/analyze',
+const ApiV1BrandsBrandIdRoute = ApiV1BrandsBrandIdRouteImport.update({
+  id: '/api/v1/brands/$brandId',
+  path: '/api/v1/brands/$brandId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedReportsRenderReportIdRoute =
@@ -231,12 +236,6 @@ const ApiV1PromptsPromptIdSnapshotRoute =
     id: '/snapshot',
     path: '/snapshot',
     getParentRoute: () => ApiV1PromptsPromptIdRoute,
-  } as any)
-const ApiV1OnboardingBrandsBrandIdRoute =
-  ApiV1OnboardingBrandsBrandIdRouteImport.update({
-    id: '/$brandId',
-    path: '/$brandId',
-    getParentRoute: () => ApiV1OnboardingBrandsRoute,
   } as any)
 const AuthedAppBrandSettingsPromptsRoute =
   AuthedAppBrandSettingsPromptsRouteImport.update({
@@ -297,12 +296,13 @@ export interface FileRoutesByFullPath {
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/onboarding/analyze': typeof ApiV1OnboardingAnalyzeRoute
-  '/api/v1/onboarding/brands': typeof ApiV1OnboardingBrandsRouteWithChildren
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
+  '/api/v1/brands/': typeof ApiV1BrandsIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
@@ -312,7 +312,6 @@ export interface FileRoutesByFullPath {
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
-  '/api/v1/onboarding/brands/$brandId': typeof ApiV1OnboardingBrandsBrandIdRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
@@ -336,12 +335,13 @@ export interface FileRoutesByTo {
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/onboarding/analyze': typeof ApiV1OnboardingAnalyzeRoute
-  '/api/v1/onboarding/brands': typeof ApiV1OnboardingBrandsRouteWithChildren
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/app/$brand': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
+  '/api/v1/brands': typeof ApiV1BrandsIndexRoute
   '/api/v1/docs': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports': typeof ApiV1ReportsIndexRoute
@@ -351,7 +351,6 @@ export interface FileRoutesByTo {
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
-  '/api/v1/onboarding/brands/$brandId': typeof ApiV1OnboardingBrandsBrandIdRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings': typeof AuthedAppBrandSettingsIndexRoute
@@ -381,12 +380,13 @@ export interface FileRoutesById {
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/onboarding/analyze': typeof ApiV1OnboardingAnalyzeRoute
-  '/api/v1/onboarding/brands': typeof ApiV1OnboardingBrandsRouteWithChildren
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/_authed/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
+  '/api/v1/brands/': typeof ApiV1BrandsIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
@@ -396,7 +396,6 @@ export interface FileRoutesById {
   '/_authed/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/_authed/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/_authed/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
-  '/api/v1/onboarding/brands/$brandId': typeof ApiV1OnboardingBrandsBrandIdRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/_authed/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/_authed/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
@@ -426,12 +425,13 @@ export interface FileRouteTypes {
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
-    | '/api/v1/onboarding/analyze'
-    | '/api/v1/onboarding/brands'
+    | '/api/v1/brands/$brandId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/tools/analyze'
     | '/app/$brand/'
     | '/api/plausible/event/'
+    | '/api/v1/brands/'
     | '/api/v1/docs/'
     | '/api/v1/prompts/'
     | '/api/v1/reports/'
@@ -441,7 +441,6 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/prompts'
-    | '/api/v1/onboarding/brands/$brandId'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts/'
     | '/app/$brand/settings/'
@@ -465,12 +464,13 @@ export interface FileRouteTypes {
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
-    | '/api/v1/onboarding/analyze'
-    | '/api/v1/onboarding/brands'
+    | '/api/v1/brands/$brandId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/tools/analyze'
     | '/app/$brand'
     | '/api/plausible/event'
+    | '/api/v1/brands'
     | '/api/v1/docs'
     | '/api/v1/prompts'
     | '/api/v1/reports'
@@ -480,7 +480,6 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/prompts'
-    | '/api/v1/onboarding/brands/$brandId'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts'
     | '/app/$brand/settings'
@@ -509,12 +508,13 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/citations'
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
-    | '/api/v1/onboarding/analyze'
-    | '/api/v1/onboarding/brands'
+    | '/api/v1/brands/$brandId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/tools/analyze'
     | '/_authed/app/$brand/'
     | '/api/plausible/event/'
+    | '/api/v1/brands/'
     | '/api/v1/docs/'
     | '/api/v1/prompts/'
     | '/api/v1/reports/'
@@ -524,7 +524,6 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/settings/competitors'
     | '/_authed/app/$brand/settings/llms'
     | '/_authed/app/$brand/settings/prompts'
-    | '/api/v1/onboarding/brands/$brandId'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/_authed/app/$brand/prompts/'
     | '/_authed/app/$brand/settings/'
@@ -541,11 +540,12 @@ export interface RootRouteChildren {
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
-  ApiV1OnboardingAnalyzeRoute: typeof ApiV1OnboardingAnalyzeRoute
-  ApiV1OnboardingBrandsRoute: typeof ApiV1OnboardingBrandsRouteWithChildren
+  ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRoute
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
   ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
+  ApiV1ToolsAnalyzeRoute: typeof ApiV1ToolsAnalyzeRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
+  ApiV1BrandsIndexRoute: typeof ApiV1BrandsIndexRoute
   ApiV1DocsIndexRoute: typeof ApiV1DocsIndexRoute
   ApiV1PromptsIndexRoute: typeof ApiV1PromptsIndexRoute
   ApiV1ReportsIndexRoute: typeof ApiV1ReportsIndexRoute
@@ -701,6 +701,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1DocsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/brands/': {
+      id: '/api/v1/brands/'
+      path: '/api/v1/brands'
+      fullPath: '/api/v1/brands/'
+      preLoaderRoute: typeof ApiV1BrandsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/plausible/event/': {
       id: '/api/plausible/event/'
       path: '/api/plausible/event'
@@ -714,6 +721,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/$brand/'
       preLoaderRoute: typeof AuthedAppBrandIndexRouteImport
       parentRoute: typeof AuthedAppBrandRoute
+    }
+    '/api/v1/tools/analyze': {
+      id: '/api/v1/tools/analyze'
+      path: '/api/v1/tools/analyze'
+      fullPath: '/api/v1/tools/analyze'
+      preLoaderRoute: typeof ApiV1ToolsAnalyzeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/v1/reports/$reportId': {
       id: '/api/v1/reports/$reportId'
@@ -729,18 +743,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PromptsPromptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/v1/onboarding/brands': {
-      id: '/api/v1/onboarding/brands'
-      path: '/api/v1/onboarding/brands'
-      fullPath: '/api/v1/onboarding/brands'
-      preLoaderRoute: typeof ApiV1OnboardingBrandsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/onboarding/analyze': {
-      id: '/api/v1/onboarding/analyze'
-      path: '/api/v1/onboarding/analyze'
-      fullPath: '/api/v1/onboarding/analyze'
-      preLoaderRoute: typeof ApiV1OnboardingAnalyzeRouteImport
+    '/api/v1/brands/$brandId': {
+      id: '/api/v1/brands/$brandId'
+      path: '/api/v1/brands/$brandId'
+      fullPath: '/api/v1/brands/$brandId'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/reports/render/$reportId': {
@@ -798,13 +805,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/v1/prompts/$promptId/snapshot'
       preLoaderRoute: typeof ApiV1PromptsPromptIdSnapshotRouteImport
       parentRoute: typeof ApiV1PromptsPromptIdRoute
-    }
-    '/api/v1/onboarding/brands/$brandId': {
-      id: '/api/v1/onboarding/brands/$brandId'
-      path: '/$brandId'
-      fullPath: '/api/v1/onboarding/brands/$brandId'
-      preLoaderRoute: typeof ApiV1OnboardingBrandsBrandIdRouteImport
-      parentRoute: typeof ApiV1OnboardingBrandsRoute
     }
     '/_authed/app/$brand/settings/prompts': {
       id: '/_authed/app/$brand/settings/prompts'
@@ -945,19 +945,6 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
-interface ApiV1OnboardingBrandsRouteChildren {
-  ApiV1OnboardingBrandsBrandIdRoute: typeof ApiV1OnboardingBrandsBrandIdRoute
-}
-
-const ApiV1OnboardingBrandsRouteChildren: ApiV1OnboardingBrandsRouteChildren = {
-  ApiV1OnboardingBrandsBrandIdRoute: ApiV1OnboardingBrandsBrandIdRoute,
-}
-
-const ApiV1OnboardingBrandsRouteWithChildren =
-  ApiV1OnboardingBrandsRoute._addFileChildren(
-    ApiV1OnboardingBrandsRouteChildren,
-  )
-
 interface ApiV1PromptsPromptIdRouteChildren {
   ApiV1PromptsPromptIdSnapshotRoute: typeof ApiV1PromptsPromptIdSnapshotRoute
 }
@@ -979,11 +966,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
-  ApiV1OnboardingAnalyzeRoute: ApiV1OnboardingAnalyzeRoute,
-  ApiV1OnboardingBrandsRoute: ApiV1OnboardingBrandsRouteWithChildren,
+  ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRoute,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
   ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,
+  ApiV1ToolsAnalyzeRoute: ApiV1ToolsAnalyzeRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
+  ApiV1BrandsIndexRoute: ApiV1BrandsIndexRoute,
   ApiV1DocsIndexRoute: ApiV1DocsIndexRoute,
   ApiV1PromptsIndexRoute: ApiV1PromptsIndexRoute,
   ApiV1ReportsIndexRoute: ApiV1ReportsIndexRoute,

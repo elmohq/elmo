@@ -165,8 +165,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					aliases: data.aliases,
 					competitors: competitorsPayload,
 					prompts: promptsPayload,
-					generateCompetitors: false,
-					generatePrompts: false,
 				},
 			});
 
