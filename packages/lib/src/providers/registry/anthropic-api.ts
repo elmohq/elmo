@@ -29,13 +29,13 @@ function getClient(): Anthropic {
 
 async function runAnthropic(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const client = getClient();
-	const tools: Anthropic.Messages.Tool[] = [];
+	const tools: Anthropic.Messages.ToolUnion[] = [];
 	if (options?.webSearch) {
 		tools.push({
-			type: "web_search_20250305" as any,
+			type: "web_search_20250305",
 			name: "web_search",
-			max_uses: 1,
-		} as any);
+			max_uses: 5,
+		});
 	}
 
 	const makeRequest = () => client.messages.create({
