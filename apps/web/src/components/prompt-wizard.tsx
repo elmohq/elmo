@@ -17,16 +17,10 @@ import { useBrand } from "@/hooks/use-brands";
 import { analyzeBrandFn, createOnboardedBrandFn } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
+import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
 
 interface PromptWizardProps {
 	onComplete: () => void;
-}
-
-interface PromptDraft {
-	id: string;
-	value: string;
-	tags: string[];
-	selected: boolean;
 }
 
 interface WizardData {
@@ -35,14 +29,8 @@ interface WizardData {
 	additionalDomains: string[];
 	aliases: string[];
 	competitors: CompetitorEntry[];
-	prompts: PromptDraft[];
-	customPrompts: string[];
+	prompts: EditablePrompt[];
 }
-
-const generateId = () => {
-	if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-	return `id-${Math.random().toString(36).slice(2, 11)}-${Date.now().toString(36)}`;
-};
 
 const EditableTagsInput = memo(
 	({
@@ -128,7 +116,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		aliases: [],
 		competitors: [],
 		prompts: [],
-		customPrompts: [],
 	});
 
 	const handleAnalyze = useCallback(async () => {
@@ -157,13 +144,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						expanded: false,
 					}),
 				),
-				prompts: suggestion.suggestedPrompts.map((p) => ({
-					id: generateId(),
-					value: p.prompt,
-					tags: p.tags,
-					selected: true,
-				})),
-				customPrompts: [],
+				prompts: suggestion.suggestedPrompts.map((p) =>
+					newPromptEntry({ value: p.prompt, tags: p.tags, enabled: true }),
+				),
 			});
 			setPhase("review");
 			trackEvent("onboarding_analyzed", {
@@ -184,33 +167,19 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		(additionalDomains: string[]) => setData((p) => ({ ...p, additionalDomains })),
 		[],
 	);
-	const updateCustomPrompts = useCallback(
-		(customPrompts: string[]) => setData((p) => ({ ...p, customPrompts })),
-		[],
-	);
-
 	const updateCompetitors = useCallback(
 		(competitors: CompetitorEntry[]) => setData((p) => ({ ...p, competitors })),
 		[],
 	);
-
-	const togglePrompt = useCallback(
-		(id: string, selected: boolean) =>
-			setData((p) => ({ ...p, prompts: p.prompts.map((pr) => (pr.id === id ? { ...pr, selected } : pr)) })),
-		[],
-	);
-	const setAllPrompts = useCallback(
-		(selected: boolean) =>
-			setData((p) => ({ ...p, prompts: p.prompts.map((pr) => ({ ...pr, selected })) })),
+	const updatePrompts = useCallback(
+		(prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })),
 		[],
 	);
 
 	const previewCounts = useMemo(() => {
-		const selectedPrompts = data.prompts.filter((p) => p.selected).length;
-		const customPrompts = data.customPrompts.filter((p) => p.trim().length > 0).length;
-		const totalNew = selectedPrompts + customPrompts;
-		return { selectedPrompts, customPrompts, totalNew };
-	}, [data.prompts, data.customPrompts]);
+		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
+		return { totalNew: enabled };
+	}, [data.prompts]);
 
 	const handleSubmit = useCallback(async () => {
 		if (!brand?.id) return;
@@ -225,15 +194,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					aliases: c.aliases,
 				}));
 
-			const promptsPayload = [
-				...data.prompts
-					.filter((p) => p.selected && p.value.trim())
-					.map((p) => ({ value: p.value, tags: p.tags, enabled: true })),
-				...data.customPrompts
-					.map((value) => value.trim())
-					.filter(Boolean)
-					.map((value) => ({ value, tags: [], enabled: true })),
-			];
+			const promptsPayload = data.prompts
+				.filter((p) => p.enabled && p.value.trim())
+				.map((p) => ({ value: p.value.trim(), tags: p.tags, enabled: true }));
 
 			await createOnboardedBrandFn({
 				data: {
@@ -361,60 +324,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<div className="space-y-3">
 				<div>
-					<h2 className="text-2xl font-bold">Suggested prompts</h2>
-					<p className="text-muted-foreground">Pick the prompts to start tracking. Each prompt gets default tags.</p>
+					<h2 className="text-2xl font-bold">Prompts</h2>
+					<p className="text-muted-foreground">
+						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the bottom.
+					</p>
 				</div>
-				<div className="flex gap-2">
-					<Button variant="outline" size="sm" onClick={() => setAllPrompts(true)} className="cursor-pointer">
-						Select all
-					</Button>
-					<Button variant="outline" size="sm" onClick={() => setAllPrompts(false)} className="cursor-pointer">
-						Clear all
-					</Button>
-				</div>
-				<div className="space-y-1">
-					{data.prompts.map((p) => (
-						<label
-							key={p.id}
-							className="hover:bg-accent/50 flex items-center gap-3 rounded-lg border p-2.5 has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50 dark:has-[:checked]:border-blue-900 dark:has-[:checked]:bg-blue-950/40 cursor-pointer"
-						>
-							<input
-								type="checkbox"
-								checked={p.selected}
-								onChange={(e) => togglePrompt(p.id, e.target.checked)}
-								className="h-4 w-4"
-							/>
-							<span className="flex-1 text-sm">{p.value}</span>
-							{p.tags.length > 0 && (
-								<div className="flex gap-1 flex-shrink-0">
-									{p.tags.map((tag) => (
-										<Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
-											{tag}
-										</Badge>
-									))}
-								</div>
-							)}
-						</label>
-					))}
-					{data.prompts.length === 0 && (
-						<p className="text-sm text-muted-foreground italic px-2">
-							No prompt suggestions returned. Add custom prompts below.
-						</p>
-					)}
-				</div>
-			</div>
-
-			<Separator />
-
-			<div className="space-y-2">
-				<h2 className="text-2xl font-bold">Custom prompts</h2>
-				<p className="text-muted-foreground">Add anything you want tracked that the suggestions missed.</p>
-				<EditableTagsInput
-					items={data.customPrompts}
-					onValueChange={updateCustomPrompts}
-					placeholder="Add custom prompt..."
-					maxItems={20}
-				/>
+				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
 			</div>
 
 			<Separator />
@@ -428,10 +343,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			>
 				<div className="bg-muted/30 p-3 text-sm space-y-1">
 					<div>
-						<strong>{previewCounts.selectedPrompts}</strong> selected suggestions
-					</div>
-					<div>
-						<strong>{previewCounts.customPrompts}</strong> custom prompts
+						<strong>{previewCounts.totalNew}</strong> prompts (enabled, non-empty)
 					</div>
 					<div>
 						<strong>{data.competitors.length}</strong> competitors

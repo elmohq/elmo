@@ -1,16 +1,11 @@
-
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Checkbox } from "@workspace/ui/components/checkbox";
-import { TagsInput } from "@workspace/ui/components/tags-input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Plus, Save, Inbox, Check } from "lucide-react";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { Save } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
 import { updatePromptsFn } from "@/server/prompts";
 import { trackEvent } from "@/lib/posthog";
+import { PromptsListEditor, type EditablePrompt } from "@/components/prompts-list-editor";
 
 interface Prompt {
 	id: string;
@@ -20,15 +15,6 @@ interface Prompt {
 	tags?: string[];
 	systemTags?: string[];
 	createdAt: Date;
-}
-
-interface EditablePrompt {
-	id?: string; // undefined for new prompts
-	_key: string;
-	value: string;
-	enabled: boolean;
-	tags: string[];
-	systemTags: string[]; // read-only, from initial data
 }
 
 interface PromptsEditorProps {
@@ -53,24 +39,6 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 	const saveInProgress = useRef(false);
 	const navigate = useNavigate();
 	const invalidatePromptsSummary = useInvalidatePromptsSummary();
-
-	const allTagOptions = useMemo(() => {
-		const set = new Set<string>();
-		for (const p of prompts) {
-			for (const t of p.tags) set.add(t);
-		}
-		return [...set].sort().map((t) => ({ value: t }));
-	}, [prompts]);
-
-	const addPrompt = () => {
-		setPrompts([...prompts, { _key: crypto.randomUUID(), value: "", enabled: true, tags: [], systemTags: [] }]);
-	};
-
-	const updatePrompt = (index: number, field: keyof EditablePrompt, value: string | boolean | string[]) => {
-		const updated = [...prompts];
-		updated[index] = { ...updated[index], [field]: value };
-		setPrompts(updated);
-	};
 
 	const savePrompts = async () => {
 		if (saveInProgress.current) {
@@ -128,129 +96,31 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				</div>
 			</div>
 
-			<div className="space-y-4">
-				{/* Header row - always shown */}
-				<div className="grid grid-cols-[3rem_1fr_6rem_minmax(14rem,1fr)] gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-					<div className="flex justify-center">
-						<Check className="h-4 w-4" />
-					</div>
-					<div className="flex items-center gap-1">
-						Prompt Text
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-					<div className="flex items-center gap-1">
-						System
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="max-w-xs">Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-					<div className="flex items-center gap-1">
-						Tags
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
-							</TooltipContent>
-						</Tooltip>
-					</div>
-				</div>
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} />
 
-				{/* Content area - either placeholder or prompt rows */}
-				{prompts.length === 0 ? (
-					<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
-						<div className="text-center py-8 text-muted-foreground">
-							<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-							<p>No prompts yet.</p>
-						</div>
-					</div>
-				) : (
-					<div className="space-y-3">
-						{/* Prompt rows */}
-						{prompts.map((prompt, index) => (
-							<div
-								key={prompt._key}
-								className={`grid grid-cols-[3rem_1fr_6rem_minmax(14rem,1fr)] gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
-							>
-								<div className="flex justify-center pt-2">
-									<Checkbox
-										checked={prompt.enabled}
-										onCheckedChange={(checked) => updatePrompt(index, "enabled", checked === true)}
-									/>
-								</div>
-								<Input
-									value={prompt.value}
-									onChange={(e) => updatePrompt(index, "value", e.target.value)}
-									placeholder="Enter prompt text..."
-								/>
-								{/* System Tags (read-only) */}
-								<TagsInput
-									value={prompt.systemTags}
-									onValueChange={() => {}}
-									disabled
-									placeholder="—"
-								/>
-								{/* User Tags (editable) */}
-								<TagsInput
-									value={prompt.tags}
-									onValueChange={(tags) => updatePrompt(index, "tags", tags)}
-									options={allTagOptions}
-									placeholder="Add tag..."
-									searchPlaceholder="Search or create tag..."
-									normalizeValue={(raw) => raw.toLowerCase().trim()}
-								/>
-							</div>
-						))}
-					</div>
-				)}
-
-				{/* Buttons - always shown */}
-				<div className="flex gap-2 items-center">
-					<Button
-						onClick={savePrompts}
-						disabled={isLoading}
-						size="sm"
-						className="flex items-center gap-2 cursor-pointer"
-					>
-						{isLoading ? (
-							<>Saving...</>
-						) : (
-							<>
-								<Save className="h-4 w-4" />
-								Save Prompts
-							</>
-						)}
-					</Button>
+			<div className="flex gap-2 items-center">
 				<Button
-					variant="outline"
+					onClick={savePrompts}
+					disabled={isLoading}
 					size="sm"
-					onClick={addPrompt}
 					className="flex items-center gap-2 cursor-pointer"
 				>
-					<Plus className="h-4 w-4" /> Add Prompt
+					{isLoading ? (
+						<>Saving...</>
+					) : (
+						<>
+							<Save className="h-4 w-4" />
+							Save Prompts
+						</>
+					)}
 				</Button>
-				</div>
+			</div>
 
-			{/* Count information */}
 			<div className="text-xs text-muted-foreground">
 				<strong>{enabledPromptCount}</strong> enabled prompts
 				{validPromptCount !== enabledPromptCount && (
 					<span className="ml-2">• {validPromptCount - enabledPromptCount} disabled</span>
 				)}
-			</div>
 			</div>
 		</div>
 	);
