@@ -1,9 +1,9 @@
 /**
  * POST /api/v1/onboarding/brands
  *
- * Programmatic brand onboarding for white-label deployments. Creates the
- * brand row plus any prompts / competitors the caller asked for, optionally
- * generating those via the provider-agnostic onboarding pipeline.
+ * Programmatic brand creation for white-label deployments. Pure create — fails
+ * with 409 if a brand row with this brandId already exists. Use
+ * PATCH /api/v1/onboarding/brands/:brandId to top up an existing brand.
  *
  * Body (all fields except brandId / brandName / website are optional):
  * {
@@ -18,9 +18,9 @@
  *   "generatePrompts": true        // default true; only runs if prompts not provided
  * }
  *
- * Idempotent on `brandId` — re-posting will skip the brand insert and just
- * top up domains/aliases plus add new prompts/competitors that don't exist
- * yet.
+ * Demo-mode protection: write methods on /api/v1/* are blocked globally by
+ * the deployment middleware (`evaluateDeploymentPolicy` in
+ * lib/auth/policies.ts). No per-endpoint check needed here.
  *
  * Protected by API key authentication.
  */
@@ -29,6 +29,7 @@ import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies
 import {
 	createOnboardedBrand,
 	createOnboardedBrandInputSchema,
+	BrandConflictError,
 } from "@/server/onboarding";
 
 export const Route = createFileRoute("/api/v1/onboarding/brands")({
@@ -67,7 +68,13 @@ export const Route = createFileRoute("/api/v1/onboarding/brands")({
 					const result = await createOnboardedBrand(parsed.data);
 					return Response.json(result, { status: 201 });
 				} catch (err) {
-					console.error("[onboarding.brands] failed:", err);
+					if (err instanceof BrandConflictError) {
+						return Response.json(
+							{ error: "Conflict", message: err.message },
+							{ status: 409 },
+						);
+					}
+					console.error("[onboarding.brands POST] failed:", err);
 					const message = err instanceof Error ? err.message : "Onboarding failed";
 					return Response.json(
 						{ error: "Internal Server Error", message },

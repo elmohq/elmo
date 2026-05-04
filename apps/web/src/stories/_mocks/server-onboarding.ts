@@ -33,7 +33,7 @@ export const analyzeBrandFn = async (_args: { data: unknown }) => {
 	return _suggestion;
 };
 
-export const createOnboardedBrandFn = async (_args: { data: unknown }) => {
+export const updateOnboardedBrandFn = async (_args: { data: unknown }) => {
 	if (_delayMs > 0) await new Promise((r) => setTimeout(r, Math.min(_delayMs, 800)));
 	return {
 		brandId: "mock-brand-id",

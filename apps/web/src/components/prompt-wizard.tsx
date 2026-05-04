@@ -12,7 +12,7 @@ import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { useBrand } from "@/hooks/use-brands";
-import { analyzeBrandFn, createOnboardedBrandFn } from "@/server/onboarding";
+import { analyzeBrandFn, updateOnboardedBrandFn } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
 import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
@@ -156,7 +156,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				.filter((p) => p.enabled && p.value.trim())
 				.map((p) => ({ value: p.value.trim(), tags: p.tags, enabled: true }));
 
-			await createOnboardedBrandFn({
+			await updateOnboardedBrandFn({
 				data: {
 					brandId: brand.id,
 					brandName: data.brandName.trim() || brand.name,
@@ -167,7 +167,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					prompts: promptsPayload,
 					generateCompetitors: false,
 					generatePrompts: false,
-					autoCreateBrand: false,
 				},
 			});
 
