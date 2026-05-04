@@ -38,6 +38,7 @@ interface PromptDraft {
 
 interface WizardData {
 	brandName: string;
+	website: string;
 	additionalDomains: string[];
 	aliases: string[];
 	competitors: CompetitorDraft[];
@@ -129,6 +130,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const [isSaving, setIsSaving] = useState(false);
 	const [data, setData] = useState<WizardData>({
 		brandName: "",
+		website: "",
 		additionalDomains: [],
 		aliases: [],
 		competitors: [],
@@ -150,7 +152,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				},
 			});
 			setData({
-				brandName: suggestion.brandName,
+				brandName: suggestion.brandName || brand?.name || "",
+				website: brand?.website || suggestion.website || "",
 				additionalDomains: suggestion.additionalDomains,
 				aliases: suggestion.aliases,
 				competitors: suggestion.competitors.map((c) => ({
@@ -179,6 +182,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		}
 	}, [brand?.website, brand?.name]);
 
+	const updateBrandName = useCallback((brandName: string) => setData((p) => ({ ...p, brandName })), []);
+	const updateWebsite = useCallback((website: string) => setData((p) => ({ ...p, website })), []);
 	const updateAliases = useCallback((aliases: string[]) => setData((p) => ({ ...p, aliases })), []);
 	const updateAdditionalDomains = useCallback(
 		(additionalDomains: string[]) => setData((p) => ({ ...p, additionalDomains })),
@@ -258,8 +263,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			await createOnboardedBrandFn({
 				data: {
 					brandId: brand.id,
-					brandName: data.brandName || brand.name,
-					website: brand.website,
+					brandName: data.brandName.trim() || brand.name,
+					website: data.website.trim() || brand.website,
 					additionalDomains: data.additionalDomains,
 					aliases: data.aliases,
 					competitors: competitorsPayload,
@@ -329,6 +334,23 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					Confirm the brand identity, additional domains, and aliases used for tracking.
 				</p>
 				<div className="space-y-3">
+					<div>
+						<p className="text-xs text-muted-foreground">Brand name</p>
+						<Input
+							value={data.brandName}
+							onChange={(e) => updateBrandName(e.target.value)}
+							placeholder="Brand name"
+						/>
+					</div>
+					<div>
+						<p className="text-xs text-muted-foreground">Website URL</p>
+						<Input
+							type="url"
+							value={data.website}
+							onChange={(e) => updateWebsite(e.target.value)}
+							placeholder="https://example.com"
+						/>
+					</div>
 					<div>
 						<p className="text-xs text-muted-foreground">Additional domains</p>
 						<EditableTagsInput
