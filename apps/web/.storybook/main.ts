@@ -29,6 +29,7 @@ const config: StorybookConfig = {
 					{ find: /^@\/contexts\/chart-data-context(\.tsx)?$/, replacement: path.resolve(mocksDir, "chart-data-context.tsx") },
 					{ find: /^@\/lib\/config\/client(\.ts)?$/, replacement: path.resolve(mocksDir, "config-client.ts") },
 					{ find: /^@\/server\/onboarding(\.ts)?$/, replacement: path.resolve(mocksDir, "server-onboarding.ts") },
+					{ find: /^@\/server\/brands(\.ts)?$/, replacement: path.resolve(mocksDir, "server-brands.ts") },
 					{ find: /^@tanstack\/react-router$/, replacement: path.resolve(mocksDir, "tanstack-router.tsx") },
 					{ find: /^@\//, replacement: path.resolve(__dirname, "../src") + "/" },
 				],

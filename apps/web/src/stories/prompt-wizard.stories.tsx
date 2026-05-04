@@ -1,15 +1,19 @@
 /**
- * Stories for the brand-onboarding wizard. Cover the meaningful UI states:
+ * Stories for the brand-onboarding flow. Cover the meaningful UI states:
+ *   - Setup (the BrandOnboarding form that captures the website URL — runs
+ *     before the wizard).
  *   - Idle (the analyze button before the user clicks it).
  *   - Analyzing (the in-flight loader, simulated with a long mock delay).
  *   - Review (every section populated, prompts pre-tagged).
  *   - Analyze error (the wizard surfaces the message inline).
  *
  * The mocks live in src/stories/_mocks; the storybook alias in
- * .storybook/main.ts swaps `@/server/onboarding` for the mock at bundle time.
+ * .storybook/main.ts swaps `@/server/onboarding` and `@/server/brands` for
+ * the mocks at bundle time.
  */
 import { useEffect } from "react";
 import type { Meta } from "@storybook/react";
+import BrandOnboarding from "@/components/brand-onboarding";
 import PromptWizard from "@/components/prompt-wizard";
 import { setMockBrand } from "./_mocks/use-brands";
 import {
@@ -111,6 +115,16 @@ function AutoAnalyze() {
 	}, []);
 	return null;
 }
+
+/**
+ * Step 1 — the website-capture form that runs before the wizard. The real
+ * flow renders this when the auth-side brand exists but no DB row does;
+ * once the user submits, createBrandFn writes the row and the route
+ * re-renders into the wizard.
+ */
+export const Setup = () => (
+	<BrandOnboarding brandId="mock-brand-id" brandName="Acme" />
+);
 
 /** Initial state — analyze button visible, no suggestion fetched yet. */
 export const Idle = () => {
