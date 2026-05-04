@@ -400,20 +400,7 @@
 			"Brand": {
 				"type": "object",
 				"properties": {
-					"brandId": { "type": "string" },
-					"brandName": { "type": "string" },
-					"website": { "type": "string" },
-					"additionalDomains": { "type": "array", "items": { "type": "string" } },
-					"aliases": { "type": "array", "items": { "type": "string" } },
-					"enabled": { "type": "boolean" },
-					"onboarded": { "type": "boolean" }
-				},
-				"required": ["brandId", "brandName", "website", "additionalDomains", "aliases", "enabled", "onboarded"]
-			},
-			"BrandSummary": {
-				"type": "object",
-				"properties": {
-					"id": { "type": "string" },
+					"id": { "type": "string", "description": "User-supplied brand identifier (e.g. \"acme\")" },
 					"name": { "type": "string" },
 					"website": { "type": "string" },
 					"additionalDomains": { "type": "array", "items": { "type": "string" } },
@@ -428,7 +415,7 @@
 			"BrandsList": {
 				"type": "object",
 				"properties": {
-					"brands": { "type": "array", "items": { "$ref": "#/components/schemas/BrandSummary" } },
+					"brands": { "type": "array", "items": { "$ref": "#/components/schemas/Brand" } },
 					"pagination": {
 						"type": "object",
 						"properties": {
@@ -1212,7 +1199,7 @@
 			},
 			"patch": {
 				"summary": "Update a prompt",
-				"description": "Update a prompt's properties. Only provided fields will be updated.",
+				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
 				"operationId": "updatePrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -1285,7 +1272,22 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/SuccessMessage"
+									"type": "object",
+									"properties": {
+										"message": { "type": "string" },
+										"data": {
+											"type": "object",
+											"properties": {
+												"deletedPrompt": { "$ref": "#/components/schemas/Prompt" },
+												"deletedRunsCount": {
+													"type": "integer",
+													"description": "Number of related prompt_runs rows deleted by the cascade."
+												}
+											},
+											"required": ["deletedPrompt", "deletedRunsCount"]
+										}
+									},
+									"required": ["message", "data"]
 								}
 							}
 						}
