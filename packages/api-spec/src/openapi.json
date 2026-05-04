@@ -362,7 +362,7 @@
 			},
 			"OnboardBrandRequest": {
 				"type": "object",
-				"description": "Create a brand and (optionally) auto-generate competitors and prompts. Idempotent on brandId.",
+				"description": "Create a brand and (optionally) auto-generate competitors and prompts. Fails with 409 if a brand with this brandId already exists — use PATCH /onboarding/brands/{brandId} to update.",
 				"properties": {
 					"brandId": { "type": "string", "minLength": 1 },
 					"brandName": { "type": "string", "minLength": 1 },
@@ -407,6 +407,52 @@
 					"generatePrompts": { "type": "boolean", "default": true }
 				},
 				"required": ["brandId", "brandName", "website"]
+			},
+			"UpdateOnboardedBrandRequest": {
+				"type": "object",
+				"description": "Top up an existing brand. brandId comes from the URL path; all body fields are optional. Domains and aliases are merged into the existing arrays. New competitors are deduped against existing ones by domain overlap. New prompts are deduped against existing prompts by lowercased value.",
+				"properties": {
+					"brandName": { "type": "string", "minLength": 1, "description": "If provided, replaces the brand's stored name." },
+					"website": { "type": "string", "minLength": 1, "description": "If provided, replaces the brand's stored website." },
+					"additionalDomains": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Other domains the brand owns. Merged into the existing additionalDomains list."
+					},
+					"aliases": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Other names the brand goes by. Merged into the existing aliases list."
+					},
+					"competitors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": { "type": "string", "minLength": 1 },
+								"domains": { "type": "array", "items": { "type": "string" } },
+								"aliases": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["name"]
+						},
+						"description": "Net-new competitors to add. Skipped if any of their domains overlap an existing competitor's."
+					},
+					"prompts": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"value": { "type": "string", "minLength": 1 },
+								"tags": { "type": "array", "items": { "type": "string" } },
+								"enabled": { "type": "boolean", "default": true }
+							},
+							"required": ["value"]
+						},
+						"description": "Net-new prompts to add. Skipped if a prompt with the same lowercased value already exists for this brand."
+					},
+					"generateCompetitors": { "type": "boolean", "default": false, "description": "Run analyzeBrand to suggest more competitors. Default false; only runs if `competitors` is empty." },
+					"generatePrompts": { "type": "boolean", "default": false, "description": "Run analyzeBrand to suggest more prompts. Default false; only runs if `prompts` is empty." }
+				}
 			},
 			"OnboardBrandResponse": {
 				"type": "object",
@@ -526,6 +572,16 @@
 						}
 					}
 				}
+			},
+			"ConflictError": {
+				"description": "Resource already exists",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
 			}
 		}
 	},
@@ -562,7 +618,7 @@
 		"/onboarding/brands": {
 			"post": {
 				"summary": "Create a brand programmatically",
-				"description": "Create a brand and persist its prompts/competitors. Anything the caller doesn't supply (competitors, prompts) is auto-generated via the onboarding pipeline. Idempotent on brandId — safe to retry. Use generateCompetitors=false / generatePrompts=false to skip generation entirely.",
+				"description": "Create a brand and persist its prompts/competitors. Anything the caller doesn't supply (competitors, prompts) is auto-generated via the onboarding pipeline. Pure create — fails with 409 if a brand with this brandId already exists; use PATCH /onboarding/brands/{brandId} to top up an existing one. Use generateCompetitors=false / generatePrompts=false to skip generation entirely.",
 				"operationId": "onboardBrand",
 				"tags": ["Onboarding"],
 				"requestBody": {
@@ -584,6 +640,46 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"409": { "$ref": "#/components/responses/ConflictError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/onboarding/brands/{brandId}": {
+			"patch": {
+				"summary": "Update an onboarded brand",
+				"description": "Top up an existing brand with additional domains, aliases, competitors, or prompts. Merges into existing arrays and dedupes net-new competitors/prompts against the database. Returns 404 if the brand doesn't exist — use POST /onboarding/brands to create one.",
+				"operationId": "updateOnboardedBrand",
+				"tags": ["Onboarding"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "path",
+						"required": true,
+						"description": "Brand identifier",
+						"schema": { "type": "string", "minLength": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/UpdateOnboardedBrandRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Brand updated",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/OnboardBrandResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			}
