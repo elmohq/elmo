@@ -29,10 +29,6 @@ step required.** In your PR:
 
 The CLA check will then pass for this PR and all your future PRs.
 
-If you are contributing on behalf of an employer or another legal entity,
-please open an issue or [contact us](https://cal.com/jrhizor/elmo) so we can
-arrange an Entity CLA.
-
 ## Code of Conduct
 
 By participating in this project you agree to abide by our
