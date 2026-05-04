@@ -3,11 +3,9 @@ import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
+import { analyzeBrand } from "@workspace/lib/onboarding";
 import {
-	analyzeWebsite,
-	getCompetitors,
 	generateCandidatePromptsForReports,
-	type AnalyzeWebsiteResult,
 	type CompetitorResult,
 	type PromptData,
 } from "@workspace/lib/wizard-helpers";
@@ -71,7 +69,6 @@ interface PromptRunResult {
 }
 
 interface ReportData {
-	websiteAnalysis: AnalyzeWebsiteResult;
 	competitors: CompetitorResult[];
 	prompts: PromptData[];
 	promptRuns: PromptRunResult[];
@@ -273,44 +270,23 @@ export async function processReportJob(job: ReportJobContext) {
 		job.log(`Report ${reportId} marked as processing`);
 		job.updateProgress(5);
 
-		// Step 1: Analyze website
-		job.log(`Analyzing website: ${brandWebsite}`);
-		const websiteAnalysis = await analyzeWebsite(brandWebsite);
-		job.updateProgress(15);
-
-		// Check if we should skip detailed analysis
-		if (websiteAnalysis.skipDetailedAnalysis) {
-			job.log(`Skipping detailed analysis for low-traffic website`);
-
-			// Create minimal report data
-			const reportData: ReportData = {
-				websiteAnalysis,
-				competitors: [],
-				prompts: [],
-				promptRuns: [],
-			};
-
-			// Update report with completed status and minimal data
-			await db
-				.update(reports)
-				.set({
-					status: "completed",
-					completedAt: new Date(),
-					updatedAt: new Date(),
-					rawOutput: JSON.stringify(reportData),
-				})
-				.where(eq(reports.id, reportId));
-
-			job.log(`Successfully completed minimal report ${reportId}`);
-			return { success: true, reportId, minimal: true };
-		}
-
-		// Step 2: Get competitors
-		job.log(`Getting competitors for products: ${websiteAnalysis.products.join(", ")}`);
-		const competitors = await getCompetitors(websiteAnalysis.products, brandWebsite);
+		// Step 1: Analyze brand — products + competitors in one shared LLM call
+		// (same `analyzeBrand` the onboarding flow uses; provider-agnostic with
+		// native web search wired in).
+		job.log(`Analyzing brand: ${brandWebsite}`);
+		const suggestion = await analyzeBrand({
+			website: brandWebsite,
+			brandName,
+			includePrompts: false, // we generate report-shaped prompts in step 3
+		});
+		const competitors: CompetitorResult[] = suggestion.competitors.map((c) => ({
+			name: c.name,
+			domain: c.domain,
+		}));
+		const products = suggestion.products;
 		job.updateProgress(35);
 
-		// Step 3: Generate or use provided prompts
+		// Step 2: Generate or use provided prompts
 		let candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
 		
 		if (useManualPrompts) {
@@ -327,7 +303,7 @@ export async function processReportJob(job: ReportJobContext) {
 			candidatePrompts = await generateCandidatePromptsForReports(
 				brandName,
 				brandWebsite,
-				websiteAnalysis.products,
+				products,
 				competitors,
 			);
 			
@@ -441,7 +417,6 @@ export async function processReportJob(job: ReportJobContext) {
 
 		// Create final report data
 		const reportData: ReportData = {
-			websiteAnalysis,
 			competitors,
 			prompts,
 			promptRuns,
