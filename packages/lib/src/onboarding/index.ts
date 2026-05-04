@@ -5,11 +5,7 @@ export {
 	type OnboardingPrompt,
 	type OnboardingSuggestion,
 } from "./analyze";
-export {
-	resolveResearchTarget,
-	runStructuredResearchPrompt,
-	type ResearchTarget,
-} from "./llm";
+export { runStructuredResearchPrompt } from "./llm";
 export {
 	cleanAndValidateDomain as cleanAndValidateOnboardingDomain,
 	cleanDomain as cleanOnboardingDomain,

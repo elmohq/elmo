@@ -14,7 +14,7 @@
  */
 import { z } from "zod";
 import { getWebsiteExcerpt } from "../website-excerpt";
-import { runStructuredResearchPrompt, resolveResearchTarget, type ResearchTarget } from "./llm";
+import { runStructuredResearchPrompt } from "./llm";
 import {
 	cleanAndValidateDomain,
 	cleanDomain,
@@ -121,7 +121,6 @@ export interface AnalyzeBrandOptions {
 	includePrompts?: boolean;
 	maxCompetitors?: number;
 	maxPrompts?: number;
-	target?: ResearchTarget;
 }
 
 const DEFAULT_MAX_COMPETITORS = 10;
@@ -135,7 +134,6 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 		includePrompts = true,
 		maxCompetitors = DEFAULT_MAX_COMPETITORS,
 		maxPrompts = DEFAULT_MAX_PROMPTS,
-		target,
 	} = options;
 
 	const normalizedWebsite = cleanDomain(website);
@@ -145,7 +143,6 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 
 	const inferredName = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
 	const websiteExcerpt = await safeGetExcerpt(normalizedWebsite);
-	const resolvedTarget = target ?? resolveResearchTarget();
 
 	const prompt = buildPrompt({
 		website: normalizedWebsite,
@@ -155,10 +152,7 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 		includePrompts,
 	});
 
-	const raw = await runStructuredResearchPrompt(prompt, {
-		schema: buildSchema({ maxCompetitors, maxPrompts }),
-		target: resolvedTarget,
-	});
+	const raw = await runStructuredResearchPrompt(prompt, buildSchema({ maxCompetitors, maxPrompts }));
 
 	return normalize({
 		raw,

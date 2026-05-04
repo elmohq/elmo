@@ -43,15 +43,12 @@ const ONBOARDING_LLM_TARGET_HELP =
 	"Set ONBOARDING_LLM_TARGET (e.g. claude:anthropic-api) " +
 	"or configure ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / MISTRAL_API_KEY.";
 
-export interface ResearchTarget {
-	provider: Provider;
-}
-
 /**
- * Resolve which provider the onboarding flow should use.
+ * Pick which direct-API provider the onboarding flow should use.
  *
  * Resolution order:
- *   1. `ONBOARDING_LLM_TARGET` env override.
+ *   1. `ONBOARDING_LLM_TARGET` env override (parsed `model:provider`; only
+ *      the `provider` segment is honored).
  *   2. First provider in `RESEARCH_PROVIDER_PREFERENCE` that's configured AND
  *      implements `runStructuredResearch`.
  *
@@ -59,7 +56,7 @@ export interface ResearchTarget {
  * to override the model via env or option. Operators who want a different
  * model edit the provider's `DEFAULT_RESEARCH_MODEL` constant in source.
  */
-export function resolveResearchTarget(env: Record<string, string | undefined> = process.env): ResearchTarget {
+export function resolveResearchProvider(env: Record<string, string | undefined> = process.env): Provider {
 	const explicit = env.ONBOARDING_LLM_TARGET?.trim();
 	if (explicit) {
 		const [parsed] = parseScrapeTargets(explicit);
@@ -75,40 +72,29 @@ export function resolveResearchTarget(env: Record<string, string | undefined> = 
 				`ONBOARDING_LLM_TARGET points at "${parsed.provider}", which does not support structured research. ${ONBOARDING_LLM_TARGET_HELP}`,
 			);
 		}
-		return { provider };
+		return provider;
 	}
 
 	for (const id of RESEARCH_PROVIDER_PREFERENCE) {
 		const provider = getProvider(id);
 		if (!provider.isConfigured()) continue;
 		if (!provider.runStructuredResearch) continue;
-		return { provider };
+		return provider;
 	}
 
 	throw new Error(`Onboarding requires at least one direct LLM API provider. ${ONBOARDING_LLM_TARGET_HELP}`);
 }
 
-export interface RunStructuredOptions<T> {
-	schema: z.ZodType<T>;
-	target?: ResearchTarget;
-}
-
 /**
  * Run a research prompt and return a Zod-validated structured response. The
  * heavy lifting (web search, structured outputs, retry) lives inside each
- * provider's `runStructuredResearch` impl — we just pick the target.
+ * provider's `runStructuredResearch` impl — we just pick the provider.
  */
-export async function runStructuredResearchPrompt<T>(
-	prompt: string,
-	options: RunStructuredOptions<T>,
-): Promise<T> {
-	const target = options.target ?? resolveResearchTarget();
-	if (!target.provider.runStructuredResearch) {
-		throw new Error(`Provider "${target.provider.id}" does not implement structured research`);
+export async function runStructuredResearchPrompt<T>(prompt: string, schema: z.ZodType<T>): Promise<T> {
+	const provider = resolveResearchProvider();
+	if (!provider.runStructuredResearch) {
+		throw new Error(`Provider "${provider.id}" does not implement structured research`);
 	}
-	const result = await target.provider.runStructuredResearch({
-		prompt,
-		schema: options.schema,
-	});
+	const result = await provider.runStructuredResearch({ prompt, schema });
 	return result.object;
 }

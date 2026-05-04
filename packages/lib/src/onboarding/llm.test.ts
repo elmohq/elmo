@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
-import { resolveResearchTarget, runStructuredResearchPrompt } from "./llm";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { resolveResearchProvider } from "./llm";
 
 const ENV_KEYS = [
 	"ONBOARDING_LLM_TARGET",
@@ -29,19 +28,19 @@ afterEach(() => {
 	}
 });
 
-describe("resolveResearchTarget", () => {
+describe("resolveResearchProvider", () => {
 	it("uses the explicit env override when set", () => {
 		process.env.ANTHROPIC_API_KEY = "x";
-		const target = resolveResearchTarget({
+		const provider = resolveResearchProvider({
 			ANTHROPIC_API_KEY: "x",
 			ONBOARDING_LLM_TARGET: "claude:anthropic-api",
 		});
-		expect(target.provider.id).toBe("anthropic-api");
+		expect(provider.id).toBe("anthropic-api");
 	});
 
 	it("throws when ONBOARDING_LLM_TARGET points at an unconfigured provider", () => {
 		expect(() =>
-			resolveResearchTarget({
+			resolveResearchProvider({
 				ONBOARDING_LLM_TARGET: "chatgpt:openai-api:gpt-5-mini",
 			}),
 		).toThrow(/isn't configured/);
@@ -50,7 +49,7 @@ describe("resolveResearchTarget", () => {
 	it("throws when ONBOARDING_LLM_TARGET points at a scraper", () => {
 		process.env.OLOSTEP_API_KEY = "x";
 		expect(() =>
-			resolveResearchTarget({
+			resolveResearchProvider({
 				OLOSTEP_API_KEY: "x",
 				ONBOARDING_LLM_TARGET: "gemini:olostep:online",
 			}),
@@ -65,83 +64,41 @@ describe("resolveResearchTarget", () => {
 		process.env.OPENROUTER_API_KEY = "b";
 		process.env.ANTHROPIC_API_KEY = "c";
 		process.env.MISTRAL_API_KEY = "d";
-		const target = resolveResearchTarget();
-		expect(target.provider.id).toBe("openai-api");
+		const provider = resolveResearchProvider();
+		expect(provider.id).toBe("openai-api");
 	});
 
 	it("falls back to OpenRouter when OpenAI direct isn't configured", () => {
 		process.env.OPENROUTER_API_KEY = "b";
 		process.env.ANTHROPIC_API_KEY = "c";
 		process.env.MISTRAL_API_KEY = "d";
-		const target = resolveResearchTarget();
-		expect(target.provider.id).toBe("openrouter");
+		const provider = resolveResearchProvider();
+		expect(provider.id).toBe("openrouter");
 	});
 
 	it("falls back to Anthropic when OpenAI / OpenRouter aren't configured", () => {
 		process.env.ANTHROPIC_API_KEY = "c";
 		process.env.MISTRAL_API_KEY = "d";
-		const target = resolveResearchTarget();
-		expect(target.provider.id).toBe("anthropic-api");
+		const provider = resolveResearchProvider();
+		expect(provider.id).toBe("anthropic-api");
 	});
 
 	it("falls back to Mistral when only Mistral is set", () => {
 		process.env.MISTRAL_API_KEY = "x";
-		const target = resolveResearchTarget();
-		expect(target.provider.id).toBe("mistral-api");
+		const provider = resolveResearchProvider();
+		expect(provider.id).toBe("mistral-api");
 	});
 
 	it("ignores scraper providers entirely", () => {
 		process.env.OLOSTEP_API_KEY = "x";
 		process.env.BRIGHTDATA_API_TOKEN = "y";
-		expect(() => resolveResearchTarget({ OLOSTEP_API_KEY: "x", BRIGHTDATA_API_TOKEN: "y" })).toThrow(
+		expect(() => resolveResearchProvider({ OLOSTEP_API_KEY: "x", BRIGHTDATA_API_TOKEN: "y" })).toThrow(
 			/at least one direct LLM API/,
 		);
 	});
 
 	it("throws when no provider is configured", () => {
-		expect(() => resolveResearchTarget({})).toThrow(/at least one direct LLM API/);
+		expect(() => resolveResearchProvider({})).toThrow(/at least one direct LLM API/);
 	});
 });
 
-describe("runStructuredResearchPrompt", () => {
-	it("forwards prompt + schema to the chosen provider's runStructuredResearch", async () => {
-		const schema = z.object({ ok: z.boolean() });
-		const calls: Array<{ prompt: string }> = [];
-
-		const provider = {
-			id: "fake-direct-api",
-			name: "Fake",
-			isConfigured: () => true,
-			run: vi.fn(),
-			runStructuredResearch: vi.fn(async (opts: { prompt: string; schema: any }) => {
-				calls.push({ prompt: opts.prompt });
-				return { object: { ok: true } };
-			}),
-		} as any;
-
-		const result = await runStructuredResearchPrompt("hello", {
-			schema,
-			target: { provider },
-		});
-
-		expect(result).toEqual({ ok: true });
-		expect(calls).toHaveLength(1);
-		expect(calls[0]).toEqual({ prompt: "hello" });
-	});
-
-	it("throws when the resolved provider does not implement runStructuredResearch", async () => {
-		const provider = {
-			id: "broken",
-			name: "Broken",
-			isConfigured: () => true,
-			run: vi.fn(),
-		} as any;
-
-		await expect(
-			runStructuredResearchPrompt("hello", {
-				schema: z.object({ ok: z.boolean() }),
-				target: { provider },
-			}),
-		).rejects.toThrow(/does not implement structured research/);
-	});
-});
