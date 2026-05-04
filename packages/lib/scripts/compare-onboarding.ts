@@ -107,7 +107,7 @@ function buildSchema(args: { numPrompts: number; numBranded: number; numCompetit
 		brandName: z
 			.string()
 			.describe(
-				"Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use \"Nike\" (not \"Nike, Inc.\"); for hera.video use \"Hera\" (not \"Hera Video, Inc.\"). Don't include legal entity suffixes like \"Inc.\" or \"Ltd.\"",
+				"Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use \"Nike\" (not \"Nike, Inc.\"). Don't include legal entity suffixes like \"Inc.\" or \"Ltd.\"",
 			),
 		additionalDomains: z
 			.array(z.string())
