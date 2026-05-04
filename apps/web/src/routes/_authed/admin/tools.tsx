@@ -1,9 +1,6 @@
 /**
- * /admin/tools — Admin utility for the provider-agnostic brand analysis.
- *
- * The legacy "Analyze Domain" + "Generate Prompts" dialogs have been merged
- * into a single tool backed by the same onboarding pipeline that the wizard
- * and public API use.
+ * /admin/tools — Admin utility for running the onboarding analysis against an
+ * arbitrary website without going through the wizard.
  */
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
