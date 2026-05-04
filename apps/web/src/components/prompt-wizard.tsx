@@ -7,7 +7,6 @@
  */
 import { useState, useCallback, memo, useMemo } from "react";
 import { Button } from "@workspace/ui/components/button";
-import { Card, CardContent } from "@workspace/ui/components/card";
 import { Input } from "@workspace/ui/components/input";
 import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
@@ -190,20 +189,16 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	if (phase === "idle" || phase === "analyzing") {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
-				<Card>
-					<CardContent className="space-y-2 py-3">
-						<p className="text-sm text-muted-foreground">
-							We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors,
-							additional domains/aliases, and a starter set of AI prompts to track.
-						</p>
-						{error && (
-							<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-								<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-								<span>{error}</span>
-							</div>
-						)}
-					</CardContent>
-				</Card>
+				<p className="text-sm text-muted-foreground">
+					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors,
+					additional domains/aliases, and a starter set of AI prompts to track.
+				</p>
+				{error && (
+					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+						<span>{error}</span>
+					</div>
+				)}
 				<Button
 					onClick={handleAnalyze}
 					disabled={phase === "analyzing"}
@@ -289,32 +284,6 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 					</p>
 				</div>
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
-			</div>
-
-			<Separator />
-
-			<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
-				<h3 className="text-sm font-semibold uppercase tracking-wide text-blue-900 dark:text-blue-200">
-					Ready to create
-				</h3>
-				<div className="mt-3 grid grid-cols-2 gap-4">
-					<div>
-						<div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-							{previewCounts.totalNew}
-						</div>
-						<div className="text-xs text-blue-800/80 dark:text-blue-200/80">
-							prompts to track
-						</div>
-					</div>
-					<div>
-						<div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-							{data.competitors.length}
-						</div>
-						<div className="text-xs text-blue-800/80 dark:text-blue-200/80">
-							competitors to monitor
-						</div>
-					</div>
-				</div>
 			</div>
 
 			{submitError && (
