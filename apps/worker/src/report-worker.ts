@@ -4,12 +4,20 @@ import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
 import { analyzeBrand } from "@workspace/lib/onboarding";
-import {
-	generateCandidatePromptsForReports,
-	type CompetitorResult,
-	type PromptData,
-} from "@workspace/lib/wizard-helpers";
 import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
+
+interface CompetitorResult {
+	name: string;
+	domain: string;
+}
+
+interface PromptData {
+	brandId: string;
+	value: string;
+	enabled: boolean;
+	tags: string[];
+	systemTags: string[];
+}
 
 // Report constants
 const TARGET_PROMPTS_COUNT = 70;
@@ -270,51 +278,45 @@ export async function processReportJob(job: ReportJobContext) {
 		job.log(`Report ${reportId} marked as processing`);
 		job.updateProgress(5);
 
-		// Step 1: Analyze brand — products + competitors in one shared LLM call
-		// (same `analyzeBrand` the onboarding flow uses; provider-agnostic with
-		// native web search wired in).
+		// Step 1: Analyze brand — competitors + candidate prompts in one shared
+		// LLM call (same `analyzeBrand` the onboarding flow uses; provider-
+		// agnostic with native web search wired in). Manual-prompt path skips
+		// the prompt generation but still needs competitors.
 		job.log(`Analyzing brand: ${brandWebsite}`);
 		const suggestion = await analyzeBrand({
 			website: brandWebsite,
 			brandName,
-			includePrompts: false, // we generate report-shaped prompts in step 3
+			includePrompts: !useManualPrompts,
+			// Candidate volume — we run all of them and the selector below picks
+			// the best TARGET_PROMPTS_COUNT.
+			maxPrompts: useManualPrompts ? 0 : 84,
 		});
 		const competitors: CompetitorResult[] = suggestion.competitors.map((c) => ({
 			name: c.name,
 			domain: c.domain,
 		}));
-		const products = suggestion.products;
 		job.updateProgress(35);
 
-		// Step 2: Generate or use provided prompts
-		let candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
-		
-		if (useManualPrompts) {
-			// Use manual prompts directly
-			job.log(`Using ${manualPrompts.length} manual prompts`);
-			candidatePrompts = manualPrompts.map(prompt => ({
-				prompt: prompt.toLowerCase().trim(),
-				brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
-			}));
-			job.updateProgress(40);
-		} else {
-			// Generate candidate prompts using Claude
-			job.log(`Generating candidate prompts using Claude`);
-			candidatePrompts = await generateCandidatePromptsForReports(
-				brandName,
-				brandWebsite,
-				products,
-				competitors,
-			);
-			
-			if (candidatePrompts.length === 0) {
-				job.log(`Failed to generate candidate prompts, report cannot continue`);
-				throw new Error("Failed to generate candidate prompts");
-			}
-			
-			job.log(`Generated ${candidatePrompts.length} candidate prompts`);
-			job.updateProgress(40);
+		// Step 2: Build candidate prompt list — manual override or analyzeBrand output
+		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
+			? manualPrompts.map((prompt) => ({
+					prompt: prompt.toLowerCase().trim(),
+					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
+				}))
+			: suggestion.suggestedPrompts.map((p) => ({
+					prompt: p.prompt,
+					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite),
+				}));
+
+		if (candidatePrompts.length === 0) {
+			job.log(`No candidate prompts available, report cannot continue`);
+			throw new Error("No candidate prompts available");
 		}
+		job.log(
+			`${useManualPrompts ? "Using" : "Generated"} ${candidatePrompts.length} candidate prompts ` +
+				`(${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
+		);
+		job.updateProgress(40);
 
 		// Step 4: Run all candidate prompts to test them
 		job.log(`Testing ${candidatePrompts.length} candidate prompts`);

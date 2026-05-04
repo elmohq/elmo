@@ -20,7 +20,6 @@
     "./ai-providers": "./src/ai-providers.ts",
     "./text-extraction": "./src/text-extraction.ts",
     "./dataforseo": "./src/dataforseo.ts",
-    "./wizard-helpers": "./src/wizard-helpers.ts",
     "./onboarding": "./src/onboarding/index.ts",
     "./tag-utils": "./src/tag-utils.ts",
     "./website-excerpt": "./src/website-excerpt.ts",
