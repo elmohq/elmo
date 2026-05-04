@@ -8,9 +8,8 @@
 import { useState, useCallback, memo, useMemo } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
-import { Badge } from "@workspace/ui/components/badge";
 import { Input } from "@workspace/ui/components/input";
-import { Loader2, AlertCircle, Play, Rocket, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { useBrand } from "@/hooks/use-brands";
@@ -62,46 +61,6 @@ const EditableTagsInput = memo(
 	),
 );
 EditableTagsInput.displayName = "EditableTagsInput";
-
-const CollapsibleSection = memo(
-	({
-		title,
-		count,
-		badgeColor,
-		subtitle,
-		children,
-		defaultOpen = false,
-	}: {
-		title: string;
-		count: number;
-		badgeColor: string;
-		subtitle?: string;
-		children: React.ReactNode;
-		defaultOpen?: boolean;
-	}) => {
-		const [isOpen, setIsOpen] = useState(defaultOpen);
-		return (
-			<div className="border rounded-lg">
-				<button
-					type="button"
-					onClick={() => setIsOpen(!isOpen)}
-					className="flex w-full items-center justify-between p-3 text-sm font-medium hover:bg-accent/50 transition-colors"
-				>
-					<div className="flex items-center gap-2">
-						<Badge variant="default" className={badgeColor}>
-							{count}
-						</Badge>
-						<span>{title}</span>
-						{subtitle && <span className="text-xs text-muted-foreground font-normal">({subtitle})</span>}
-					</div>
-					{isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-				</button>
-				{isOpen && <div className="border-t">{children}</div>}
-			</div>
-		);
-	},
-);
-CollapsibleSection.displayName = "CollapsibleSection";
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand, revalidate } = useBrand();
@@ -334,22 +293,29 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<Separator />
 
-			<CollapsibleSection
-				title="Summary"
-				count={previewCounts.totalNew}
-				badgeColor="bg-blue-500"
-				subtitle="prompts to create"
-				defaultOpen
-			>
-				<div className="bg-muted/30 p-3 text-sm space-y-1">
+			<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
+				<h3 className="text-sm font-semibold uppercase tracking-wide text-blue-900 dark:text-blue-200">
+					Ready to create
+				</h3>
+				<div className="mt-3 grid grid-cols-2 gap-4">
 					<div>
-						<strong>{previewCounts.totalNew}</strong> prompts (enabled, non-empty)
+						<div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+							{previewCounts.totalNew}
+						</div>
+						<div className="text-xs text-blue-800/80 dark:text-blue-200/80">
+							prompts to track
+						</div>
 					</div>
 					<div>
-						<strong>{data.competitors.length}</strong> competitors
+						<div className="text-3xl font-bold text-blue-900 dark:text-blue-100">
+							{data.competitors.length}
+						</div>
+						<div className="text-xs text-blue-800/80 dark:text-blue-200/80">
+							competitors to monitor
+						</div>
 					</div>
 				</div>
-			</CollapsibleSection>
+			</div>
 
 			{submitError && (
 				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
