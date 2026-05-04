@@ -41,9 +41,8 @@ export const updateOnboardedBrandFn = async (_args: { data: unknown }) => {
 		website: "mock.com",
 		additionalDomains: [],
 		aliases: [],
-		promptsCreated: 0,
-		competitorsCreated: 0,
-		suggestion: null,
+		enabled: true,
+		onboarded: true,
 	};
 };
 

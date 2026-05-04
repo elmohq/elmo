@@ -108,8 +108,6 @@ export interface BrandResult {
 	aliases: string[];
 	enabled: boolean;
 	onboarded: boolean;
-	promptsCreated: number;
-	competitorsCreated: number;
 }
 
 // ============================================================================
@@ -155,7 +153,7 @@ function dedupeAliases(values: string[]): string[] {
 	return out;
 }
 
-function buildBrandResult(row: typeof brands.$inferSelect, promptsCreated = 0, competitorsCreated = 0): BrandResult {
+function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
 	return {
 		brandId: row.id,
 		brandName: row.name,
@@ -164,8 +162,6 @@ function buildBrandResult(row: typeof brands.$inferSelect, promptsCreated = 0, c
 		aliases: row.aliases,
 		enabled: row.enabled,
 		onboarded: row.onboarded,
-		promptsCreated,
-		competitorsCreated,
 	};
 }
 
@@ -284,7 +280,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 		onboarded: true,
 	});
 
-	const competitorsCreated = await insertCompetitors({
+	await insertCompetitors({
 		brandId: input.brandId,
 		websiteHost,
 		source: (input.competitors ?? []).map((c) => ({
@@ -294,7 +290,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 		})),
 	});
 
-	const promptsCreated = await insertPrompts({
+	await insertPrompts({
 		brandId: input.brandId,
 		brandName: input.brandName,
 		website: formattedWebsite,
@@ -308,7 +304,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	});
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
-	return buildBrandResult(refreshed!, promptsCreated, competitorsCreated);
+	return buildBrandResult(refreshed!);
 }
 
 // ============================================================================
@@ -367,7 +363,7 @@ async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<Brand
 	if (input.aliases !== undefined) patch.aliases = dedupeAliases(input.aliases);
 	await db.update(brands).set(patch).where(eq(brands.id, input.brandId));
 
-	const competitorsCreated = await insertCompetitors({
+	await insertCompetitors({
 		brandId: input.brandId,
 		websiteHost,
 		source: (input.competitors ?? []).map((c) => ({
@@ -377,7 +373,7 @@ async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<Brand
 		})),
 	});
 
-	const promptsCreated = await insertPrompts({
+	await insertPrompts({
 		brandId: input.brandId,
 		brandName,
 		website: formattedWebsite,
@@ -390,7 +386,7 @@ async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<Brand
 	});
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
-	return buildBrandResult(refreshed!, promptsCreated, competitorsCreated);
+	return buildBrandResult(refreshed!);
 }
 
 // ============================================================================

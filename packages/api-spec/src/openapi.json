@@ -416,9 +416,7 @@
 					"additionalDomains": { "type": "array", "items": { "type": "string" } },
 					"aliases": { "type": "array", "items": { "type": "string" } },
 					"enabled": { "type": "boolean" },
-					"onboarded": { "type": "boolean" },
-					"promptsCreated": { "type": "integer", "description": "Number of prompts inserted by the request that produced this response. Always 0 for GET / PATCH responses." },
-					"competitorsCreated": { "type": "integer", "description": "Number of competitors inserted by the request that produced this response. Always 0 for GET / PATCH responses." }
+					"onboarded": { "type": "boolean" }
 				},
 				"required": ["brandId", "brandName", "website", "additionalDomains", "aliases", "enabled", "onboarded"]
 			},
