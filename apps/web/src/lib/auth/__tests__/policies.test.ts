@@ -244,6 +244,33 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
+		it("blocks POST /api/v1/competitors even with a valid key", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`),
+				{ adminApiKeys: API_KEYS },
+			);
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks PATCH /api/v1/competitors/:competitorId even with a valid key", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("PATCH", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef", `Bearer ${VALID_API_KEY}`),
+				{ adminApiKeys: API_KEYS },
+			);
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks DELETE /api/v1/competitors/:competitorId even with a valid key", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("DELETE", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef", `Bearer ${VALID_API_KEY}`),
+				{ adminApiKeys: API_KEYS },
+			);
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
 		it("blocks POST /_server/* analyze server fn (no LLM access via wizard either)", () => {
 			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/analyzeBrandFn"));
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });

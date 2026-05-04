@@ -127,7 +127,7 @@ function validateAndFormatWebsite(url: string): string {
 	return formatted;
 }
 
-function dedupeDomains(values: string[]): string[] {
+export function dedupeDomains(values: string[]): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
 	for (const v of values) {
@@ -139,7 +139,7 @@ function dedupeDomains(values: string[]): string[] {
 	return out;
 }
 
-function dedupeAliases(values: string[]): string[] {
+export function dedupeAliases(values: string[]): string[] {
 	const out: string[] = [];
 	const seen = new Set<string>();
 	for (const v of values) {
@@ -315,7 +315,7 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
  * Update brand-level fields. Replace semantics: any array field the caller
  * provides replaces the existing value verbatim. Throws BrandNotFoundError
  * if the brand doesn't exist. Doesn't touch prompts or competitors — those
- * are managed via /api/v1/prompts and (TODO) /api/v1/competitors.
+ * are managed via /api/v1/prompts and /api/v1/competitors.
  */
 export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult> {
 	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
