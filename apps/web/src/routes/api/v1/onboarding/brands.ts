@@ -18,10 +18,6 @@
  *   "generatePrompts": true        // default true; only runs if prompts not provided
  * }
  *
- * Demo-mode protection: write methods on /api/v1/* are blocked globally by
- * the deployment middleware (`evaluateDeploymentPolicy` in
- * lib/auth/policies.ts). No per-endpoint check needed here.
- *
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";

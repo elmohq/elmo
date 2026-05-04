@@ -235,6 +235,15 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
+		it("blocks PATCH /api/v1/onboarding/brands/:brandId even with a valid key", () => {
+			const result = evaluateDeploymentPolicy(
+				features,
+				req("PATCH", "/api/v1/onboarding/brands/acme", `Bearer ${VALID_API_KEY}`),
+				{ adminApiKeys: API_KEYS },
+			);
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
 		it("blocks POST /_server/* analyze server fn (no LLM access via wizard either)", () => {
 			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/analyzeBrandFn"));
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
