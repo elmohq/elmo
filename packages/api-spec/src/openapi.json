@@ -398,7 +398,7 @@
 			},
 			"UpdateBrandRequest": {
 				"type": "object",
-				"description": "Update brand-level fields. Provided arrays replace the stored values verbatim. Prompts and competitors are managed via their own endpoints.",
+				"description": "Update brand-level fields. Provided arrays replace the stored values verbatim. Prompts and competitors are managed via /prompts and /competitors.",
 				"properties": {
 					"brandName": { "type": "string", "minLength": 1 },
 					"website": { "type": "string", "minLength": 1 },
@@ -451,6 +451,56 @@
 					}
 				},
 				"required": ["brands", "pagination"]
+			},
+			"Competitor": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "format": "uuid" },
+					"brandId": { "type": "string" },
+					"name": { "type": "string" },
+					"domains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["id", "brandId", "name", "domains", "aliases", "createdAt", "updatedAt"]
+			},
+			"CompetitorsList": {
+				"type": "object",
+				"properties": {
+					"competitors": { "type": "array", "items": { "$ref": "#/components/schemas/Competitor" } },
+					"pagination": {
+						"type": "object",
+						"properties": {
+							"page": { "type": "integer" },
+							"limit": { "type": "integer" },
+							"total": { "type": "integer" },
+							"totalPages": { "type": "integer" }
+						},
+						"required": ["page", "limit", "total", "totalPages"]
+					}
+				},
+				"required": ["competitors", "pagination"]
+			},
+			"CreateCompetitorRequest": {
+				"type": "object",
+				"description": "Add a competitor to a brand.",
+				"properties": {
+					"brandId": { "type": "string", "minLength": 1 },
+					"name": { "type": "string", "minLength": 1 },
+					"domains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } }
+				},
+				"required": ["brandId", "name"]
+			},
+			"UpdateCompetitorRequest": {
+				"type": "object",
+				"description": "Update a competitor. Provided arrays replace the stored values verbatim.",
+				"properties": {
+					"name": { "type": "string", "minLength": 1 },
+					"domains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } }
+				}
 			},
 			"PromptSnapshot": {
 				"type": "object",
@@ -708,6 +758,172 @@
 						"content": {
 							"application/json": {
 								"schema": { "$ref": "#/components/schemas/Brand" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/competitors": {
+			"get": {
+				"summary": "List competitors",
+				"operationId": "listCompetitors",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Paginated list of competitors",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/CompetitorsList" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"post": {
+				"summary": "Add a competitor",
+				"operationId": "createCompetitor",
+				"tags": ["Competitors"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/CreateCompetitorRequest" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Competitor created",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Competitor" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"409": { "$ref": "#/components/responses/ConflictError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/competitors/{competitorId}": {
+			"get": {
+				"summary": "Get a competitor",
+				"operationId": "getCompetitor",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "competitorId",
+						"in": "path",
+						"required": true,
+						"description": "Competitor identifier (UUID)",
+						"schema": { "type": "string", "format": "uuid" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Competitor",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Competitor" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"patch": {
+				"summary": "Update a competitor",
+				"operationId": "updateCompetitor",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "competitorId",
+						"in": "path",
+						"required": true,
+						"description": "Competitor identifier (UUID)",
+						"schema": { "type": "string", "format": "uuid" }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/UpdateCompetitorRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Competitor updated",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Competitor" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"delete": {
+				"summary": "Delete a competitor",
+				"operationId": "deleteCompetitor",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "competitorId",
+						"in": "path",
+						"required": true,
+						"description": "Competitor identifier (UUID)",
+						"schema": { "type": "string", "format": "uuid" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Competitor deleted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"message": { "type": "string" },
+										"data": { "$ref": "#/components/schemas/Competitor" }
+									},
+									"required": ["message", "data"]
+								}
 							}
 						}
 					},
@@ -1415,6 +1631,10 @@
 		{
 			"name": "Prompts",
 			"description": "Manage brand prompts"
+		},
+		{
+			"name": "Competitors",
+			"description": "Manage brand competitors"
 		},
 		{
 			"name": "Snapshots",
