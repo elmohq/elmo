@@ -120,11 +120,12 @@ async function extractProducts(website: string): Promise<string[]> {
 
 	const prompt = `What kinds of products does ${website} sell? Use general categories, not branded names. For example, converse.com would be ["shoes", "hi-tops", "casual shoes"]. Return up to 4 short lowercase categories.${excerptContext}`;
 
-	const result = await runStructuredResearchPrompt(prompt, {
-		schema: z.object({
+	const result = await runStructuredResearchPrompt(
+		prompt,
+		z.object({
 			products: z.array(z.string()).describe("Up to 4 short, lowercase, generic product categories"),
 		}),
-	});
+	);
 	return result.products.slice(0, 4);
 }
 
@@ -192,8 +193,9 @@ export async function getCompetitors(products: string[], website: string): Promi
 
 	let competitors: CompetitorResult[] = [];
 	try {
-		const result = await runStructuredResearchPrompt(prompt, {
-			schema: z.object({
+		const result = await runStructuredResearchPrompt(
+			prompt,
+			z.object({
 				competitors: z
 					.array(
 						z.object({
@@ -205,7 +207,7 @@ export async function getCompetitors(products: string[], website: string): Promi
 					)
 					.describe(`Up to ${MAX_COMPETITORS} direct competitors`),
 			}),
-		});
+		);
 		competitors = result.competitors
 			.filter((c) => c.name && c.domain)
 			.map((c) => ({ name: c.name.trim(), domain: cleanDomain(c.domain.trim()) }))
@@ -427,11 +429,12 @@ ${keywordList}
 Pick up to 100 of the most relevant keywords for content marketing — readers who are potential customers, suitable for SEO articles, good traffic potential, mix of educational/comparison/how-to. Return ONLY keywords from the candidate list above (verbatim).`;
 
 	try {
-		const result = await runStructuredResearchPrompt(prompt, {
-			schema: z.object({
+		const result = await runStructuredResearchPrompt(
+			prompt,
+			z.object({
 				keywords: z.array(z.string()).describe("Verbatim keywords picked from the candidate list above"),
 			}),
-		});
+		);
 		const relevantKeywords = result.keywords
 			.map((keyword) => allKeywords.find((k) => k.keyword === keyword.trim()))
 			.filter((k): k is KeywordResult => Boolean(k));
@@ -570,8 +573,9 @@ Constraints:
 - If you are not confident a group/item is relevant to ${website} or its products, omit it.
 - If the brand is small and the product categories are very broad, return an empty array.`;
 
-	const result = await runStructuredResearchPrompt(prompt, {
-		schema: z.object({
+	const result = await runStructuredResearchPrompt(
+		prompt,
+		z.object({
 			groups: z
 				.array(
 					z.object({
@@ -581,7 +585,7 @@ Constraints:
 				)
 				.max(3),
 		}),
-	});
+	);
 
 	const personaGroups = result.groups.filter((g) => g.name && g.personas.length > 0);
 	console.log("GET-PERSONAS OUTPUT:", { personaGroups });
@@ -607,8 +611,9 @@ export async function generateCandidatePromptsForReports(
 Then add 14 "fallback" branded prompts that contain "${brandName.toLowerCase()}" directly (e.g. "${brandName.toLowerCase()} alternatives", "best ${brandName.toLowerCase()} products"), guaranteed to surface the brand.${excerptContext}`;
 
 	try {
-		const result = await runStructuredResearchPrompt(prompt, {
-			schema: z.object({
+		const result = await runStructuredResearchPrompt(
+			prompt,
+			z.object({
 				prompts: z
 					.array(
 						z.object({
@@ -617,7 +622,7 @@ Then add 14 "fallback" branded prompts that contain "${brandName.toLowerCase()}"
 					)
 					.describe("84 prompts total: 70 unbranded + 14 branded fallbacks"),
 			}),
-		});
+		);
 
 		const candidatePrompts = result.prompts
 			.map((p) => p.prompt.trim())
