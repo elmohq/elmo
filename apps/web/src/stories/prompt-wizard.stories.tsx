@@ -30,24 +30,9 @@ const RICH_SUGGESTION: OnboardingSuggestion = {
 	aliases: ["Acme Inc", "Acme Corporation"],
 	products: ["widgets", "industrial supplies", "gadgets"],
 	competitors: [
-		{
-			name: "Globex",
-			domain: "globex.com",
-			additionalDomains: ["globex.de"],
-			aliases: ["Globex Corp"],
-		},
-		{
-			name: "Initech",
-			domain: "initech.com",
-			additionalDomains: [],
-			aliases: ["Initech Industries"],
-		},
-		{
-			name: "Soylent",
-			domain: "soylent.com",
-			additionalDomains: [],
-			aliases: [],
-		},
+		{ name: "Globex", domains: ["globex.com", "globex.de"], aliases: ["Globex Corp"] },
+		{ name: "Initech", domains: ["initech.com"], aliases: ["Initech Industries"] },
+		{ name: "Soylent", domains: ["soylent.com"], aliases: [] },
 	],
 	suggestedPrompts: [
 		{ prompt: "best widgets", tags: ["best-of"] },

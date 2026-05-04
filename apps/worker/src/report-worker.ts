@@ -291,10 +291,12 @@ export async function processReportJob(job: ReportJobContext) {
 			// the best TARGET_PROMPTS_COUNT.
 			maxPrompts: useManualPrompts ? 0 : 84,
 		});
-		const competitors: CompetitorResult[] = suggestion.competitors.map((c) => ({
-			name: c.name,
-			domain: c.domain,
-		}));
+		// The report renderer's CompetitorResult expects a single primary domain;
+		// analyzeBrand returns the full list now. Take the first as the canonical
+		// one for the report's UI (which doesn't display the rest anyway).
+		const competitors: CompetitorResult[] = suggestion.competitors
+			.filter((c) => c.domains.length > 0)
+			.map((c) => ({ name: c.name, domain: c.domains[0] }));
 		job.updateProgress(35);
 
 		// Step 2: Build candidate prompt list — manual override or analyzeBrand output

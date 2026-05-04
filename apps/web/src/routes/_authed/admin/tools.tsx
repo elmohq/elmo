@@ -186,14 +186,9 @@ function AnalyzeBrandDialog() {
 									<Label className="text-muted-foreground">Competitors</Label>
 									<div className="space-y-1 text-sm">
 										{result.competitors.map((c) => (
-											<div key={c.domain} className="flex items-center gap-2">
+											<div key={c.name} className="flex items-center gap-2">
 												<span className="font-medium">{c.name}</span>
-												<span className="text-muted-foreground">({c.domain})</span>
-												{c.additionalDomains.length > 0 && (
-													<span className="text-xs text-muted-foreground">
-														+ {c.additionalDomains.join(", ")}
-													</span>
-												)}
+												<span className="text-muted-foreground">({c.domains.join(", ") || "—"})</span>
 											</div>
 										))}
 									</div>

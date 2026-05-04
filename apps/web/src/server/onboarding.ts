@@ -207,7 +207,7 @@ export async function createOnboardedBrand(
 				}))
 			: (suggestion?.competitors ?? []).map((c) => ({
 					name: c.name,
-					domains: [c.domain, ...c.additionalDomains],
+					domains: c.domains,
 					aliases: c.aliases,
 				}));
 

@@ -35,12 +35,11 @@ const ALIAS_GUIDANCE =
 
 const competitorSchema = z.object({
 	name: z.string().describe("Company name"),
-	domain: z
-		.string()
-		.describe(`Primary website hostname only — no protocol, no www, no path (e.g. "example.com")`),
-	additionalDomains: z
+	domains: z
 		.array(z.string())
-		.describe("Other domains the company owns (regional ccTLDs, alternate spellings)"),
+		.describe(
+			`All domains owned by this company — hostnames only, no protocol, no www, no path (e.g. "example.com"). Include the primary website plus any regional ccTLDs or alternate spellings the company also uses. At least one domain.`,
+		),
 	aliases: z.array(z.string()).describe(`Other names the company is commonly known by. ${ALIAS_GUIDANCE}`),
 });
 
@@ -94,8 +93,7 @@ type RawSuggestion = z.infer<ReturnType<typeof buildSchema>>;
 
 export interface OnboardingCompetitor {
 	name: string;
-	domain: string;
-	additionalDomains: string[];
+	domains: string[];
 	aliases: string[];
 }
 
@@ -244,25 +242,24 @@ function normalize(args: {
 
 	const competitors: OnboardingCompetitor[] = [];
 	if (includeCompetitors) {
-		const seenDomains = new Set<string>();
+		const seenCompetitorDomains = new Set<string>();
 		for (const c of raw.competitors ?? []) {
 			if (competitors.length >= maxCompetitors) break;
-			const primary = cleanAndValidateDomain(c.domain);
-			if (!primary) continue;
-			if (ownedDomains.has(primary)) continue;
-			if (seenDomains.has(primary)) continue;
-			seenDomains.add(primary);
-
-			const extras = uniqueLowercase(
-				(c.additionalDomains ?? [])
+			const cleaned = uniqueLowercase(
+				(c.domains ?? [])
 					.map((d) => cleanAndValidateDomain(d))
-					.filter((d): d is string => d !== null && d !== primary && !ownedDomains.has(d)),
+					.filter((d): d is string => d !== null && !ownedDomains.has(d)),
 			);
+			if (cleaned.length === 0) continue;
+			// Dedupe at the competitor level: if any of this competitor's domains
+			// already belong to a competitor we kept, skip the whole entry.
+			if (cleaned.some((d) => seenCompetitorDomains.has(d))) continue;
+			for (const d of cleaned) seenCompetitorDomains.add(d);
+
 			const compName = c.name.trim();
 			competitors.push({
 				name: compName,
-				domain: primary,
-				additionalDomains: extras,
+				domains: cleaned,
 				aliases: filterRedundantAliases(uniqueTrim(c.aliases ?? []), compName),
 			});
 		}

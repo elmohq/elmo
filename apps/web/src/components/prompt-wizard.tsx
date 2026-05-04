@@ -156,7 +156,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				competitors: suggestion.competitors.map((c) => ({
 					id: generateId(),
 					name: c.name,
-					domains: [c.domain, ...c.additionalDomains].filter(Boolean),
+					domains: c.domains,
 					aliases: c.aliases,
 				})),
 				prompts: suggestion.suggestedPrompts.map((p) => ({

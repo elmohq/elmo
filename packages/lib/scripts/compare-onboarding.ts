@@ -122,8 +122,11 @@ function buildSchema(args: { numPrompts: number; numBranded: number; numCompetit
 			.array(
 				z.object({
 					name: z.string(),
-					domain: z.string().describe(`Hostname only — no protocol, no www, no path (e.g. "example.com")`),
-					additionalDomains: z.array(z.string()),
+					domains: z
+						.array(z.string())
+						.describe(
+							`All domains owned by this competitor — hostnames only (no protocol, no www, no path). At least one.`,
+						),
 					aliases: z.array(z.string()).describe(`Other names the company is commonly known by. ${ALIAS_GUIDANCE}`),
 				}),
 			)
@@ -153,7 +156,7 @@ function buildUserPrompt(args: { website: string; numPrompts: number; numBranded
 Use web search if available to verify current market info. Return:
   - the canonical brand name, additional domains the brand owns, and any common aliases
   - 3-5 short generic product categories
-  - up to ${args.numCompetitors} direct competitors (with their own primary domain, additional domains, and aliases)
+  - up to ${args.numCompetitors} direct competitors (with their domains and aliases)
   - the ${args.numPrompts} suggested AI tracking prompts (${args.numBranded} branded + ${args.numPrompts - args.numBranded} unbranded), each tagged with 1-3 (ideally 1-2) tags from a shared brand-tailored vocabulary you invent.
 
 Tag guidelines: ${TAG_GUIDANCE}

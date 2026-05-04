@@ -31,10 +31,10 @@ describe("analyzeBrand", () => {
 			competitors: [
 				// Competitor alias "Globex Worldwide" contains the comp name → drop;
 				// "GBX" stays because it doesn't contain "Globex".
-				{ name: "Globex", domain: "globex.com", additionalDomains: ["globex.de"], aliases: ["GBX", "Globex Worldwide"] },
-				{ name: "Self Reference", domain: "acme.com", additionalDomains: [], aliases: [] },
-				{ name: "Bad Domain", domain: "not a domain", additionalDomains: [], aliases: [] },
-				{ name: "Globex Dup", domain: "globex.com", additionalDomains: [], aliases: [] },
+				{ name: "Globex", domains: ["globex.com", "globex.de"], aliases: ["GBX", "Globex Worldwide"] },
+				{ name: "Self Reference", domains: ["acme.com"], aliases: [] },
+				{ name: "Bad Domain", domains: ["not a domain"], aliases: [] },
+				{ name: "Globex Dup", domains: ["globex.com"], aliases: [] },
 			],
 			suggestedPrompts: [
 				// Tags are now free-form / brand-tailored. Normalize step lowercases
@@ -61,8 +61,7 @@ describe("analyzeBrand", () => {
 		expect(result.competitors).toHaveLength(1);
 		expect(result.competitors[0]).toMatchObject({
 			name: "Globex",
-			domain: "globex.com",
-			additionalDomains: ["globex.de"],
+			domains: ["globex.com", "globex.de"],
 			aliases: ["GBX"],
 		});
 
@@ -96,7 +95,7 @@ describe("analyzeBrand", () => {
 			additionalDomains: [],
 			aliases: [],
 			products: ["widgets"],
-			competitors: [{ name: "Globex", domain: "globex.com", additionalDomains: [], aliases: [] }],
+			competitors: [{ name: "Globex", domains: ["globex.com"], aliases: [] }],
 			suggestedPrompts: [{ prompt: "best widgets", tags: ["best-of"] }],
 		});
 
@@ -117,8 +116,7 @@ describe("analyzeBrand", () => {
 			products: [],
 			competitors: Array.from({ length: 20 }, (_, i) => ({
 				name: `Comp ${i}`,
-				domain: `comp${i}.com`,
-				additionalDomains: [],
+				domains: [`comp${i}.com`],
 				aliases: [],
 			})),
 			suggestedPrompts: Array.from({ length: 50 }, (_, i) => ({
