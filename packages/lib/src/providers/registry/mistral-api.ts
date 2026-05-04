@@ -10,11 +10,10 @@ import type { Citation } from "../../text-extraction";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
-// Reasoning model — non-reasoning Mistral models produced poor tag taxonomies
-// in compare-onboarding runs (medium collapsed to one tag, large blew past
-// the distinct-tag cap). Magistral follows multi-constraint prompts more
-// reliably and prices similarly to mistral-large.
-const DEFAULT_RESEARCH_MODEL = "magistral-medium-latest";
+// `mistral-large-latest` aliases to Mistral Large 3 (released Dec 2025).
+// Tracked as `-latest` so the alias rolls forward when newer Large
+// generations ship.
+const DEFAULT_RESEARCH_MODEL = "mistral-large-latest";
 
 async function mistralPost(path: string, body: object): Promise<any> {
 	const res = await fetch(`${MISTRAL_BASE_URL}${path}`, {
@@ -39,10 +38,16 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 	let idx = 0;
 
 	for (const entry of data?.outputs ?? []) {
-		if (entry?.type === "tool.execution" && entry?.name === "web_search") {
-			const raw = entry.arguments;
-			const parsed = typeof raw === "string" ? safeJsonParse(raw) : raw;
-			if (parsed?.query) webQueries.push(parsed.query);
+		// Tool-execution entries carry the search query as a JSON-encoded string
+		// in `arguments`. Best-effort parse — webQueries is a reporting signal,
+		// not load-bearing, so a malformed payload shouldn't blow up the response.
+		if (entry?.type === "tool.execution" && entry?.name === "web_search" && typeof entry.arguments === "string") {
+			try {
+				const args = JSON.parse(entry.arguments);
+				if (args?.query) webQueries.push(args.query);
+			} catch {
+				// ignore — keep going
+			}
 		}
 
 		// Conversations API returns message content as either a plain string
@@ -71,22 +76,6 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 	}
 
 	return { textContent: texts.join("\n"), citations, webQueries };
-}
-
-function safeJsonParse(s: string): any {
-	try { return JSON.parse(s); } catch { return null; }
-}
-
-// Pull a JSON object out of a model's free-form text reply, in case the
-// model wraps it in markdown fences despite the prompt saying not to.
-function extractJson(text: string): string {
-	const trimmed = text.trim();
-	if (trimmed.startsWith("{") || trimmed.startsWith("[")) return trimmed;
-	const fence = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-	if (fence) return fence[1].trim();
-	const start = trimmed.indexOf("{");
-	const end = trimmed.lastIndexOf("}");
-	return start >= 0 && end > start ? trimmed.slice(start, end + 1) : trimmed;
 }
 
 export const mistralApi: Provider = {
@@ -127,35 +116,24 @@ export const mistralApi: Provider = {
 		prompt,
 		schema,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
-		// /v1/conversations gives us web_search but rejects response_format,
-		// so we prompt-engineer JSON output. Per-field .describe() text from
-		// the schema rides along.
+		// /v1/conversations forwards completion_args.response_format through to
+		// the underlying chat completion, so we can have web_search AND
+		// server-validated json_schema output in a single call.
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
-		const augmentedPrompt = `${prompt}
-
-OUTPUT FORMAT: Reply with a single JSON object matching this JSON Schema. Output ONLY the JSON object — no prose, no explanation, no markdown code fences:
-
-${JSON.stringify(jsonSchema, null, 2)}`;
-
 		const data = await mistralPost("/v1/conversations", {
 			model: DEFAULT_RESEARCH_MODEL,
-			inputs: augmentedPrompt,
+			inputs: prompt,
 			tools: [{ type: "web_search" }],
+			completion_args: {
+				response_format: {
+					type: "json_schema",
+					json_schema: { name: "research_output", strict: true, schema: jsonSchema },
+				},
+			},
 		});
 		const { textContent } = parseConversationsResponse(data);
-		const jsonText = extractJson(textContent);
-
-		let parsedObject: unknown;
-		try {
-			parsedObject = JSON.parse(jsonText);
-		} catch (err) {
-			const sample = jsonText.length > 400 ? `${jsonText.slice(0, 400)}…` : jsonText;
-			throw new Error(
-				`Mistral returned non-JSON output (model=${DEFAULT_RESEARCH_MODEL}). Sample: ${JSON.stringify(sample)}. Parse error: ${err instanceof Error ? err.message : err}`,
-			);
-		}
 		return {
-			object: (schema as z.ZodType).parse(parsedObject) as T,
+			object: (schema as z.ZodType).parse(JSON.parse(textContent)) as T,
 			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
 		};
 	},
