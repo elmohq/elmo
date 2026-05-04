@@ -158,7 +158,6 @@ function summary(r: RunResult): string {
 		`  brand:     ${r.suggestion.brandName}`,
 		`  domains:   ${r.suggestion.additionalDomains.length}`,
 		`  aliases:   ${r.suggestion.aliases.length}`,
-		`  products:  ${r.suggestion.products.length}`,
 		`  competit:  ${r.suggestion.competitors.length}`,
 		`  prompts:   ${r.suggestion.suggestedPrompts.length} (${r.brandedCount} branded by name)`,
 		`  tag vocab: ${tags.length} distinct — ${tags.join(", ") || "(none)"}`,
@@ -183,7 +182,6 @@ const CSV_HEADERS = [
 	"brand",
 	"domains",
 	"aliases",
-	"products",
 	"competitors",
 	"prompts",
 	"branded_by_name",
@@ -202,7 +200,6 @@ function rowFromResult(r: RunResult): string {
 		r.suggestion.brandName,
 		r.suggestion.additionalDomains.length,
 		r.suggestion.aliases.length,
-		r.suggestion.products.length,
 		r.suggestion.competitors.length,
 		r.suggestion.suggestedPrompts.length,
 		r.brandedCount,
@@ -214,14 +211,14 @@ function rowFromResult(r: RunResult): string {
 }
 
 function rowFromFailure(f: RunFailure): string {
-	// Header has 14 columns: provider, status, model, elapsed_s, then 9 empty
+	// Header has 13 columns: provider, status, model, elapsed_s, then 8 empty
 	// metric/output cells, then error.
 	const cells: (string | number)[] = [
 		f.providerId,
 		"failed",
 		"", // model
 		(f.elapsedMs / 1000).toFixed(2),
-		...Array(9).fill(""),
+		...Array(8).fill(""),
 		f.error.split("\n")[0],
 	];
 	return cells.map(csvEscape).join(",");

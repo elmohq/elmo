@@ -327,7 +327,6 @@
 					"website": { "type": "string", "description": "Cleaned hostname" },
 					"additionalDomains": { "type": "array", "items": { "type": "string" } },
 					"aliases": { "type": "array", "items": { "type": "string" } },
-					"products": { "type": "array", "items": { "type": "string" } },
 					"competitors": {
 						"type": "array",
 						"items": {
@@ -358,7 +357,6 @@
 					"website",
 					"additionalDomains",
 					"aliases",
-					"products",
 					"competitors",
 					"suggestedPrompts"
 				]
@@ -536,7 +534,7 @@
 		"/onboarding/analyze": {
 			"post": {
 				"summary": "Analyze a brand for onboarding",
-				"description": "Run the provider-agnostic brand analysis (products, additional domains, aliases, competitors, suggested prompts) without persisting anything. The LLM is selected automatically based on configured API keys (Anthropic / OpenAI / OpenRouter / Olostep / BrightData).",
+				"description": "Run the provider-agnostic brand analysis (additional domains, aliases, competitors, suggested prompts) without persisting anything. The LLM is selected automatically based on configured API keys (Anthropic / OpenAI / OpenRouter / Olostep / BrightData).",
 				"operationId": "analyzeBrandForOnboarding",
 				"tags": ["Onboarding"],
 				"requestBody": {

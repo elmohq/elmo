@@ -4,7 +4,6 @@
  *   - canonical brand name
  *   - additional brand domains (regional ccTLDs, alt spellings)
  *   - aliases (abbreviations, parent company names)
- *   - product/service categories
  *   - direct competitors (with their own domains/aliases)
  *   - suggested AI tracking prompts (with default tags)
  *
@@ -71,11 +70,6 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 			.describe(
 				`Other names users use for this brand (abbreviations, parent-company names, common misspellings). ${ALIAS_GUIDANCE} Empty if none are commonly used.`,
 			),
-		products: z
-			.array(z.string())
-			.describe(
-				'3-5 short generic product/service categories (lowercase, no brand names). E.g. for converse.com: ["sneakers", "casual shoes", "hi-tops"].',
-			),
 		competitors: z
 			.array(competitorSchema)
 			.describe(
@@ -107,7 +101,6 @@ export interface OnboardingSuggestion {
 	website: string;
 	additionalDomains: string[];
 	aliases: string[];
-	products: string[];
 	competitors: OnboardingCompetitor[];
 	suggestedPrompts: OnboardingPrompt[];
 }
@@ -272,7 +265,6 @@ function normalize(args: {
 
 	const dedupedAdditionalDomains = uniqueLowercase(additionalDomains);
 	const aliases = filterRedundantAliases(uniqueTrim(raw.aliases ?? []), brandName);
-	const products = uniqueLowercase(raw.products ?? []).slice(0, 8);
 
 	const competitors: OnboardingCompetitor[] = [];
 	if (includeCompetitors) {
@@ -317,7 +309,6 @@ function normalize(args: {
 		website,
 		additionalDomains: dedupedAdditionalDomains,
 		aliases,
-		products,
 		competitors,
 		suggestedPrompts,
 	};

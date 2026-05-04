@@ -2,9 +2,9 @@
  * POST /api/v1/onboarding/analyze
  *
  * Run the provider-agnostic brand analysis without persisting anything.
- * Returns the suggested products, additional brand domains, aliases,
- * competitors and prompts so the caller can render a review UI or do its
- * own filtering before posting to /api/v1/onboarding/brands.
+ * Returns the suggested additional brand domains, aliases, competitors and
+ * prompts so the caller can render a review UI or do its own filtering
+ * before posting to /api/v1/onboarding/brands.
  *
  * Protected by API key authentication.
  */

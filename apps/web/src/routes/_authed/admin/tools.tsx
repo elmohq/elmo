@@ -154,8 +154,7 @@ function AnalyzeBrandDialog() {
 								</div>
 							</div>
 
-							<div className="grid grid-cols-3 gap-4 text-sm">
-								<Stat label="Products" value={result.products.length} />
+							<div className="grid grid-cols-2 gap-4 text-sm">
 								<Stat label="Competitors" value={result.competitors.length} />
 								<Stat label="Prompts" value={result.suggestedPrompts.length} />
 							</div>
@@ -164,19 +163,6 @@ function AnalyzeBrandDialog() {
 								<TagSection title="Additional domains" items={result.additionalDomains} />
 							)}
 							{result.aliases.length > 0 && <TagSection title="Aliases" items={result.aliases} />}
-
-							{result.products.length > 0 && (
-								<div className="space-y-2">
-									<Label className="text-muted-foreground">Products</Label>
-									<div className="flex flex-wrap gap-1">
-										{result.products.map((p) => (
-											<Badge key={p} variant="secondary">
-												{p}
-											</Badge>
-										))}
-									</div>
-								</div>
-							)}
 
 							{result.competitors.length > 0 && (
 								<div className="space-y-2">
@@ -276,7 +262,7 @@ function ToolsPage() {
 							Brand analysis
 						</CardTitle>
 						<CardDescription>
-							Analyze a website to discover its products, competitors, additional brand domains, aliases, and
+							Analyze a website to discover its competitors, additional brand domains, aliases, and
 							suggested AI tracking prompts. Works with any configured LLM provider.
 						</CardDescription>
 					</CardHeader>

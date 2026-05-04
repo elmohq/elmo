@@ -27,7 +27,6 @@ describe("analyzeBrand", () => {
 			// Aliases containing "Acme" are redundant under substring mention
 			// matching; only "Globex Holdings" (a distinct parent) survives.
 			aliases: ["Acme Inc", "acme inc", "Acme", "Globex Holdings"],
-			products: ["Widgets", "Industrial Supplies", "widgets"],
 			competitors: [
 				// Competitor alias "Globex Worldwide" contains the comp name → drop;
 				// "GBX" stays because it doesn't contain "Globex".
@@ -56,7 +55,6 @@ describe("analyzeBrand", () => {
 		expect(result.website).toBe("acme.com");
 		expect(result.additionalDomains).toEqual(["acme.co.uk", "acme.de"]);
 		expect(result.aliases).toEqual(["Globex Holdings"]);
-		expect(result.products).toEqual(["widgets", "industrial supplies"]);
 
 		expect(result.competitors).toHaveLength(1);
 		expect(result.competitors[0]).toMatchObject({
@@ -80,7 +78,6 @@ describe("analyzeBrand", () => {
 			brandName: "",
 			additionalDomains: [],
 			aliases: [],
-			products: [],
 			competitors: [],
 			suggestedPrompts: [],
 		});
@@ -94,7 +91,6 @@ describe("analyzeBrand", () => {
 			brandName: "Acme",
 			additionalDomains: [],
 			aliases: [],
-			products: ["widgets"],
 			competitors: [{ name: "Globex", domains: ["globex.com"], aliases: [] }],
 			suggestedPrompts: [{ prompt: "best widgets", tags: ["best-of"] }],
 		});
@@ -113,7 +109,6 @@ describe("analyzeBrand", () => {
 			brandName: "Acme",
 			additionalDomains: [],
 			aliases: [],
-			products: [],
 			competitors: Array.from({ length: 20 }, (_, i) => ({
 				name: `Comp ${i}`,
 				domains: [`comp${i}.com`],

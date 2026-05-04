@@ -28,7 +28,6 @@ const RICH_SUGGESTION: OnboardingSuggestion = {
 	website: "acme.com",
 	additionalDomains: ["acme.co.uk", "acme.de"],
 	aliases: ["Acme Inc", "Acme Corporation"],
-	products: ["widgets", "industrial supplies", "gadgets"],
 	competitors: [
 		{ name: "Globex", domains: ["globex.com", "globex.de"], aliases: ["Globex Corp"] },
 		{ name: "Initech", domains: ["initech.com"], aliases: ["Initech Industries"] },
