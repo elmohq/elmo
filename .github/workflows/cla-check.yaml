@@ -36,7 +36,6 @@ jobs:
         env:
           AUTHOR: ${{ github.event.pull_request.user.login }}
           AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
-          ASSOCIATION: ${{ github.event.pull_request.author_association }}
         run: |
           set -euo pipefail
           author_lower="$(echo "$AUTHOR" | tr '[:upper:]' '[:lower:]')"
@@ -51,14 +50,6 @@ jobs:
           case "$author_lower" in
             'dependabot[bot]'|'github-actions[bot]'|'renovate[bot]'|dependabot|renovate)
               echo "Bot account $AUTHOR is exempt from CLA check."
-              exit 0
-              ;;
-          esac
-
-          # Org members, repo collaborators, and the repo owner
-          case "$ASSOCIATION" in
-            OWNER|MEMBER|COLLABORATOR)
-              echo "$AUTHOR ($ASSOCIATION) is exempt from CLA check."
               exit 0
               ;;
           esac
