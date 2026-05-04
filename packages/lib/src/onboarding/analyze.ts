@@ -124,7 +124,24 @@ export interface AnalyzeBrandOptions {
 const DEFAULT_MAX_COMPETITORS = 10;
 const DEFAULT_MAX_PROMPTS = 30;
 
-export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<OnboardingSuggestion> {
+/**
+ * Resolved inputs for one analysis run: the prompt the LLM sees, the schema
+ * its output is validated against, and the post-processing inputs the
+ * normalizer needs. Built once and reused across providers in the
+ * compare-onboarding script so every provider sees identical input.
+ */
+export interface AnalysisContext {
+	website: string;
+	brandNameHint: string;
+	prompt: string;
+	schema: ReturnType<typeof buildSchema>;
+	includeCompetitors: boolean;
+	includePrompts: boolean;
+	maxCompetitors: number;
+	maxPrompts: number;
+}
+
+export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promise<AnalysisContext> {
 	const {
 		website,
 		brandName: providedBrandName,
@@ -139,28 +156,45 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 		throw new Error(`Could not parse website "${website}"`);
 	}
 
-	const inferredName = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
+	const brandNameHint = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
 	const websiteExcerpt = await safeGetExcerpt(normalizedWebsite);
 
 	const prompt = buildPrompt({
 		website: normalizedWebsite,
-		brandNameHint: inferredName,
+		brandNameHint,
 		websiteExcerpt,
 		includeCompetitors,
 		includePrompts,
 	});
 
-	const raw = await runStructuredResearchPrompt(prompt, buildSchema({ maxCompetitors, maxPrompts }));
-
-	return normalize({
-		raw,
+	return {
 		website: normalizedWebsite,
-		brandNameHint: inferredName,
+		brandNameHint,
+		prompt,
+		schema: buildSchema({ maxCompetitors, maxPrompts }),
 		includeCompetitors,
 		includePrompts,
 		maxCompetitors,
 		maxPrompts,
+	};
+}
+
+export function normalizeAnalysisResult(raw: RawSuggestion, ctx: AnalysisContext): OnboardingSuggestion {
+	return normalize({
+		raw,
+		website: ctx.website,
+		brandNameHint: ctx.brandNameHint,
+		includeCompetitors: ctx.includeCompetitors,
+		includePrompts: ctx.includePrompts,
+		maxCompetitors: ctx.maxCompetitors,
+		maxPrompts: ctx.maxPrompts,
 	});
+}
+
+export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<OnboardingSuggestion> {
+	const ctx = await buildAnalysisContext(options);
+	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema);
+	return normalizeAnalysisResult(raw, ctx);
 }
 
 /** Normalize an LLM-supplied tag to lowercase kebab-case. */
