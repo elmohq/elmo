@@ -1,24 +1,21 @@
 #!/usr/bin/env tsx
 /**
  * Multi-provider comparison harness for the brand-analysis (onboarding)
- * pipeline. Runs the same prompt + Zod schema through each configured direct
- * API provider in parallel and reports cost, latency, tokens (with cache /
- * reasoning breakdown), tool calls, and the resulting structured output.
+ * pipeline. Builds the production analysis context once (same prompt, same
+ * schema, same website excerpt that `analyzeBrand` would use) and runs every
+ * configured direct-API provider in parallel against it. Reports elapsed
+ * time, model, branded-prompt count, and tag vocabulary so you can compare
+ * providers without prompt drift.
  *
  * Providers compared (each must have its API key in env to participate):
- *   - anthropic-api: Anthropic native API + web_search_20250305 tool
- *   - openai-api:    OpenAI Responses API + web_search_preview tool
+ *   - openai-api:    OpenAI Responses API + native web_search tool
+ *   - openrouter:    OpenRouter chat/completions + plugins:[{web,native}]
+ *   - anthropic-api: Anthropic Messages API + web_search_20250305 tool
  *   - mistral-api:   Mistral Conversations API + web_search tool
- *   - openrouter:    OpenRouter chat/completions + plugins:[{web,native}],
- *                    routed to openai/gpt-5-mini
- *
- * Every path uses the underlying provider's *native* web search — no Exa
- * fallbacks, no plain-LLM-from-training mode.
  *
  * Usage:
  *   pnpm --filter @workspace/lib compare:onboarding nike.com
- *   pnpm --filter @workspace/lib compare:onboarding nike.com \
- *     --num-prompts 30 --num-branded 8 --num-competitors 12
+ *   pnpm --filter @workspace/lib compare:onboarding nike.com --max-prompts 30 --max-competitors 12
  *   pnpm --filter @workspace/lib compare:onboarding nike.com --only anthropic-api,openrouter
  *   pnpm --filter @workspace/lib compare:onboarding nike.com --skip mistral-api
  *   pnpm --filter @workspace/lib compare:onboarding nike.com --env-file ~/code/elmo/apps/web/.env
@@ -30,13 +27,16 @@ import { parseArgs } from "node:util";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { z } from "zod";
 import { getProvider } from "../src/providers";
 import { RESEARCH_PROVIDER_PREFERENCE, type ResearchProviderId } from "../src/onboarding/llm";
+import {
+	buildAnalysisContext,
+	normalizeAnalysisResult,
+	type AnalysisContext,
+	type OnboardingSuggestion,
+} from "../src/onboarding/analyze";
+import { isPromptBranded } from "../src/tag-utils";
 
-// Run order + valid IDs come straight from the production preference stack
-// so the compare harness can't drift from what `analyzeBrand` would actually
-// pick. --only / --skip filter from this list.
 type ProviderId = ResearchProviderId;
 
 // ---------------------------------------------------------------------------
@@ -92,91 +92,14 @@ async function loadDotEnv(path: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Shared schema + prompt — each provider gets identical input so the
-// comparison reflects model/provider differences, not prompt drift.
-// ---------------------------------------------------------------------------
-
-const TAG_GUIDANCE =
-	"Tags should be tailored to this specific brand and the prompt set you're producing. Aim for tags that describe WHAT a prompt is about (a product category, audience segment, sub-feature, competitor name) — not WHAT the user wants to do with the answer (compare, evaluate, buy). Goal-style intent tags tend to apply to most prompts in the set and don't discriminate. Prefer single-word tags; only use multi-word tags (lowercase, single hyphens between words) when no single word captures the concept. Each tag should describe ONE axis — don't fuse two ideas into a compound hyphenated label. Don't use 'branded' or 'unbranded' as tag values; the system computes that classification automatically from the prompt text. Pick a small shared vocabulary (no more than 5 distinct values across all prompts), and only attach a tag to a prompt if it actually discriminates that prompt from others — if the same tag would apply to most prompts, don't use it.";
-
-const ALIAS_GUIDANCE =
-	"Skip variants that contain the canonical name as a substring (e.g. don't add \"Asics America\" for \"Asics\" — substring matching catches it already). DO include genuinely distinct names like parent companies or sub-brands the company owns (e.g. \"Converse\" for Nike).";
-
-function buildSchema(args: { numPrompts: number; numBranded: number; numCompetitors: number }) {
-	return z.object({
-		brandName: z
-			.string()
-			.describe(
-				"Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use \"Nike\" (not \"Nike, Inc.\"). Don't include legal entity suffixes like \"Inc.\" or \"Ltd.\"",
-			),
-		additionalDomains: z
-			.array(z.string())
-			.describe(
-				"Other public domains the brand owns (regional ccTLDs, alt spellings, parent-company sites). Hostnames only.",
-			),
-		aliases: z.array(z.string()).describe(`Other names the brand is commonly known by. ${ALIAS_GUIDANCE} Empty if none.`),
-		products: z
-			.array(z.string())
-			.describe('3-5 short generic product/service categories (lowercase, no brand names).'),
-		competitors: z
-			.array(
-				z.object({
-					name: z.string(),
-					domains: z
-						.array(z.string())
-						.describe(
-							`All domains owned by this competitor — hostnames only (no protocol, no www, no path). At least one.`,
-						),
-					aliases: z.array(z.string()).describe(`Other names the company is commonly known by. ${ALIAS_GUIDANCE}`),
-				}),
-			)
-			.describe(`Up to ${args.numCompetitors} direct competitors. Empty if uncertain.`),
-		suggestedPrompts: z
-			.array(
-				z.object({
-					prompt: z
-						.string()
-						.describe("Lowercase fragment, under ~12 words, NOT a full sentence — the kind users type into ChatGPT."),
-					tags: z
-						.array(z.string())
-						.describe(`1-3 tags per prompt (ideally 1-2), drawn from the shared brand-tailored vocabulary. ${TAG_GUIDANCE}`),
-				}),
-			)
-			.describe(
-				`Exactly ${args.numPrompts} prompts. ${args.numBranded} of them MUST include the brand name directly. The rest should be unbranded — category, persona, or audience-targeted prompts. ${TAG_GUIDANCE}`,
-			),
-	});
-}
-
-type Suggestion = z.infer<ReturnType<typeof buildSchema>>;
-
-function buildUserPrompt(args: { website: string; numPrompts: number; numBranded: number; numCompetitors: number }): string {
-	return `I'm the owner of ${args.website}. I want to track ${args.numPrompts} AEO/AI-visibility-related prompts in tools like ChatGPT, Claude, and Gemini. ${args.numBranded} of those prompts should include the brand's name (e.g. "${args.website} alternative"). The remaining ${args.numPrompts - args.numBranded} should be unbranded — category, persona, or audience-targeted prompts that someone making a purchasing decision might type into an AI assistant.
-
-Use web search if available to verify current market info. Return:
-  - the canonical brand name, additional domains the brand owns, and any common aliases
-  - 3-5 short generic product categories
-  - up to ${args.numCompetitors} direct competitors (with their domains and aliases)
-  - the ${args.numPrompts} suggested AI tracking prompts (${args.numBranded} branded + ${args.numPrompts - args.numBranded} unbranded), each tagged with 1-3 (ideally 1-2) tags from a shared brand-tailored vocabulary you invent.
-
-Tag guidelines: ${TAG_GUIDANCE}
-
-Alias guidelines: ${ALIAS_GUIDANCE}
-
-You MUST return the structured JSON object — even if web search and your training data have nothing on this brand. In that case set brandName to your best guess from the domain, return empty arrays for additionalDomains/aliases/competitors, and infer products + suggestedPrompts from the domain TLD or any text snippet you can find. Refusing to produce JSON, or replying with prose explaining what you don't know, is a failure; an object with mostly-empty arrays is the correct response when information is genuinely unavailable.
-
-Never invent specific facts (real domains, real competitor names) — return empty arrays for those when uncertain. But the suggestedPrompts list is generative, not factual: you can still produce 20 plausible AEO prompts for a category even when the brand itself is obscure.`;
-}
-
-// ---------------------------------------------------------------------------
-// Result shape + tag normalization
+// Per-provider runner
 // ---------------------------------------------------------------------------
 
 interface RunResult {
 	providerId: ProviderId;
 	model: string;
 	elapsedMs: number;
-	suggestion: Suggestion;
+	suggestion: OnboardingSuggestion;
 	/** Number of suggestedPrompts production would classify as "branded". */
 	brandedCount: number;
 }
@@ -187,97 +110,29 @@ interface RunFailure {
 	elapsedMs: number;
 }
 
-/**
- * Mirror packages/lib/src/onboarding/analyze.ts so the comparison reflects
- * what production would actually store — kebab-case tags, deduped, capped at
- * 3 per prompt.
- */
-function toKebabCase(tag: string): string {
-	return tag
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "");
-}
-
-function normalizeSuggestion(s: Suggestion): Suggestion {
-	return {
-		...s,
-		suggestedPrompts: s.suggestedPrompts.map((p) => {
-			const seen = new Set<string>();
-			const tags: string[] = [];
-			for (const raw of p.tags) {
-				const t = toKebabCase(raw);
-				if (!t || seen.has(t)) continue;
-				seen.add(t);
-				tags.push(t);
-				if (tags.length >= 3) break;
-			}
-			return { ...p, prompt: p.prompt.trim().toLowerCase(), tags };
-		}),
-	};
-}
-
-// ---------------------------------------------------------------------------
-// Per-provider runner
-// ---------------------------------------------------------------------------
-
-interface RunArgs {
-	website: string;
-	numPrompts: number;
-	numBranded: number;
-	numCompetitors: number;
-	timeoutMs: number;
-}
-
-async function runProvider(providerId: ProviderId, args: RunArgs): Promise<RunResult> {
+async function runProvider(providerId: ProviderId, ctx: AnalysisContext, timeoutMs: number): Promise<RunResult> {
 	const provider = getProvider(providerId);
-	if (!provider.isConfigured()) {
-		throw new Error(`${providerId}: not configured (missing API key in env)`);
-	}
-	if (!provider.runStructuredResearch) {
-		throw new Error(`${providerId}: provider doesn't implement structured research`);
-	}
-	const schema = buildSchema(args);
-	const prompt = buildUserPrompt(args);
+	if (!provider.isConfigured()) throw new Error(`${providerId}: not configured (missing API key in env)`);
+	if (!provider.runStructuredResearch) throw new Error(`${providerId}: provider doesn't implement structured research`);
+
 	const start = Date.now();
 	const result = await withTimeout(
-		provider.runStructuredResearch({ prompt, schema }),
-		args.timeoutMs,
+		provider.runStructuredResearch({ prompt: ctx.prompt, schema: ctx.schema }),
+		timeoutMs,
 		`${providerId} engine`,
 	);
 	const elapsedMs = Date.now() - start;
-	const model = result.modelVersion ?? "(unknown)";
-	const suggestion = normalizeSuggestion(result.object as Suggestion);
-	const brandedCount = countBrandedPrompts(suggestion, args.website);
-	return { providerId, model, elapsedMs, suggestion, brandedCount };
-}
-
-/**
- * Match production's `isPromptBranded` (packages/lib/src/tag-utils.ts):
- * a prompt counts as branded if it contains the brandName, the website
- * hostname, or the domain root (e.g. "hera" for hera.video). Without the
- * domain-root fallback, providers that returned brandName="Hera Video"
- * would show 0 even though all 5 branded prompts say "hera.video".
- */
-function countBrandedPrompts(s: Suggestion, website: string): number {
-	const brandLower = s.brandName.toLowerCase();
-	let host = website.toLowerCase();
-	try {
-		const u = new URL(host.startsWith("http") ? host : `https://${host}`);
-		host = u.hostname.replace(/^www\./, "").toLowerCase();
-	} catch {
-		// fall through with the input as-is
-	}
-	const domainRoot = host.split(".")[0];
-	return s.suggestedPrompts.filter((p) => {
-		const lower = p.prompt.toLowerCase();
-		return (
-			(brandLower && lower.includes(brandLower)) ||
-			(host && lower.includes(host)) ||
-			(domainRoot && lower.includes(domainRoot))
-		);
-	}).length;
+	const suggestion = normalizeAnalysisResult(result.object, ctx);
+	const brandedCount = suggestion.suggestedPrompts.filter((p) =>
+		isPromptBranded(p.prompt, suggestion.brandName, suggestion.website),
+	).length;
+	return {
+		providerId,
+		model: result.modelVersion ?? "(unknown)",
+		elapsedMs,
+		suggestion,
+		brandedCount,
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -288,9 +143,14 @@ function formatMs(ms: number): string {
 	return `${(ms / 1000).toFixed(2)}s`;
 }
 
+function tagVocabOf(s: OnboardingSuggestion): string[] {
+	const set = new Set<string>();
+	for (const p of s.suggestedPrompts) for (const t of p.tags) set.add(t);
+	return [...set].sort();
+}
+
 function summary(r: RunResult): string {
-	const tagVocab = new Set<string>();
-	for (const p of r.suggestion.suggestedPrompts) for (const t of p.tags) tagVocab.add(t);
+	const tags = tagVocabOf(r.suggestion);
 	return [
 		`  provider:  ${r.providerId}`,
 		`  model:     ${r.model}`,
@@ -301,7 +161,7 @@ function summary(r: RunResult): string {
 		`  products:  ${r.suggestion.products.length}`,
 		`  competit:  ${r.suggestion.competitors.length}`,
 		`  prompts:   ${r.suggestion.suggestedPrompts.length} (${r.brandedCount} branded by name)`,
-		`  tag vocab: ${tagVocab.size} distinct — ${[...tagVocab].sort().join(", ") || "(none)"}`,
+		`  tag vocab: ${tags.length} distinct — ${tags.join(", ") || "(none)"}`,
 	].join("\n");
 }
 
@@ -333,8 +193,7 @@ const CSV_HEADERS = [
 ] as const;
 
 function rowFromResult(r: RunResult): string {
-	const tagVocab = new Set<string>();
-	for (const p of r.suggestion.suggestedPrompts) for (const t of p.tags) tagVocab.add(t);
+	const tags = tagVocabOf(r.suggestion);
 	const cells = [
 		r.providerId,
 		"ok",
@@ -347,8 +206,8 @@ function rowFromResult(r: RunResult): string {
 		r.suggestion.competitors.length,
 		r.suggestion.suggestedPrompts.length,
 		r.brandedCount,
-		tagVocab.size,
-		[...tagVocab].sort().join(","),
+		tags.length,
+		tags.join(","),
 		"",
 	];
 	return cells.map(csvEscape).join(",");
@@ -387,10 +246,9 @@ function tabulatedComparison(results: RunResult[]): string {
 		`  ${colName.padEnd(nameWidth)}  ${"time".padStart(8)}  ${"branded".padStart(8)}  ${"competit".padStart(8)}  ${"tag vocab".padStart(10)}`,
 	);
 	for (const r of sorted) {
-		const tagVocab = new Set<string>();
-		for (const p of r.suggestion.suggestedPrompts) for (const t of p.tags) tagVocab.add(t);
+		const tags = tagVocabOf(r.suggestion);
 		lines.push(
-			`  ${r.providerId.padEnd(nameWidth)}  ${formatMs(r.elapsedMs).padStart(8)}  ${String(r.brandedCount).padStart(8)}  ${String(r.suggestion.competitors.length).padStart(8)}  ${String(tagVocab.size).padStart(10)}`,
+			`  ${r.providerId.padEnd(nameWidth)}  ${formatMs(r.elapsedMs).padStart(8)}  ${String(r.brandedCount).padStart(8)}  ${String(r.suggestion.competitors.length).padStart(8)}  ${String(tags.length).padStart(10)}`,
 		);
 	}
 	return lines.join("\n");
@@ -415,9 +273,8 @@ async function main() {
 	const { values, positionals } = parseArgs({
 		args: process.argv.slice(2),
 		options: {
-			"num-prompts": { type: "string", default: "20" },
-			"num-branded": { type: "string", default: "5" },
-			"num-competitors": { type: "string", default: "10" },
+			"max-prompts": { type: "string" },
+			"max-competitors": { type: "string" },
 			only: { type: "string" },
 			skip: { type: "string" },
 			"env-file": { type: "string" },
@@ -431,10 +288,9 @@ async function main() {
 		console.error("Usage: tsx compare-onboarding.ts <website> [options]");
 		console.error("");
 		console.error("Options:");
-		console.error("  --num-prompts N       Total prompts to request (default 20)");
-		console.error("  --num-branded N       How many should be branded (default 5)");
-		console.error("  --num-competitors N   Max competitors to request (default 10)");
-		console.error(`  --only IDS            Comma-separated provider IDs to run (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`);
+		console.error("  --max-prompts N       Pass through to analyzeBrand (default: production default)");
+		console.error("  --max-competitors N   Pass through to analyzeBrand (default: production default)");
+		console.error(`  --only IDS            Comma-separated provider IDs (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`);
 		console.error("  --skip IDS            Comma-separated provider IDs to skip");
 		console.error("  --env-file PATH       Load API keys from this .env before defaults");
 		console.error("  --timeout SECONDS     Hard timeout per provider (default 180)");
@@ -450,14 +306,9 @@ async function main() {
 	}
 
 	const website = positionals[0];
-	const numPrompts = Number(values["num-prompts"]);
-	const numBranded = Number(values["num-branded"]);
-	const numCompetitors = Number(values["num-competitors"]);
+	const maxPrompts = values["max-prompts"] !== undefined ? Number(values["max-prompts"]) : undefined;
+	const maxCompetitors = values["max-competitors"] !== undefined ? Number(values["max-competitors"]) : undefined;
 	const timeoutMs = Number(values.timeout) * 1000;
-	if (numBranded > numPrompts) {
-		console.error("--num-branded cannot exceed --num-prompts");
-		process.exit(1);
-	}
 	if (!Number.isFinite(timeoutMs) || timeoutMs < 1000) {
 		console.error("--timeout must be a positive number of seconds (>=1)");
 		process.exit(1);
@@ -494,10 +345,14 @@ async function main() {
 		process.exit(1);
 	}
 
-	const runArgs: RunArgs = { website, numPrompts, numBranded, numCompetitors, timeoutMs };
+	// Build the same analysis context production would build — once. Every
+	// provider gets identical prompt + schema + excerpt.
+	const ctx = await buildAnalysisContext({
+		website,
+		...(maxCompetitors !== undefined ? { maxCompetitors } : {}),
+		...(maxPrompts !== undefined ? { maxPrompts } : {}),
+	});
 
-	// Run all configured providers in parallel. Stream a "→" line on start
-	// and a "✓"/"✗" line on completion so the user sees progress for each.
 	const results: RunResult[] = [];
 	const failures: RunFailure[] = [];
 
@@ -510,7 +365,7 @@ async function main() {
 		console.error(`→ ${providerId}: starting`);
 		const start = Date.now();
 		try {
-			const result = await runProvider(providerId, runArgs);
+			const result = await runProvider(providerId, ctx, timeoutMs);
 			console.error(`✓ ${providerId}: done in ${formatMs(result.elapsedMs)}`);
 			results.push(result);
 		} catch (err) {
