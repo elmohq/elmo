@@ -333,11 +333,10 @@
 							"type": "object",
 							"properties": {
 								"name": { "type": "string" },
-								"domain": { "type": "string" },
-								"additionalDomains": { "type": "array", "items": { "type": "string" } },
+								"domains": { "type": "array", "items": { "type": "string" } },
 								"aliases": { "type": "array", "items": { "type": "string" } }
 							},
-							"required": ["name", "domain", "additionalDomains", "aliases"]
+							"required": ["name", "domains", "aliases"]
 						}
 					},
 					"suggestedPrompts": {
