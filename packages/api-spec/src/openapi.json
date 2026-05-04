@@ -362,7 +362,7 @@
 			},
 			"CreateBrandRequest": {
 				"type": "object",
-				"description": "Create a brand.",
+				"description": "Create a brand. Skips onboarding.",
 				"properties": {
 					"brandId": { "type": "string", "minLength": 1 },
 					"brandName": { "type": "string", "minLength": 1 },
