@@ -37,13 +37,9 @@ export interface Provider {
 
 	/**
 	 * Run a single research call that returns a Zod-validated structured value.
-	 * Each direct API provider implements this using the most idiomatic combo
-	 * for its API: `generateText` + web-search tool + `experimental_output`
-	 * for Anthropic/OpenAI; raw fetch + `plugins:[{web,native}]` for OpenRouter;
-	 * raw fetch + `/v1/conversations` + web_search for Mistral. Screen-scraper
-	 * providers (Olostep / BrightData) don't implement this — the onboarding
-	 * flow always picks a direct API provider. The optional `model` argument
-	 * overrides the provider's internal default.
+	 * Each direct API provider implements this using the most idiomatic combo.
+	 * Scraper providers don't implement this, and at least one direct api
+	 * provider is required.
 	 */
 	runStructuredResearch?<T>(options: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>>;
 }
