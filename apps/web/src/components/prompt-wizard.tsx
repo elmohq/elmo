@@ -10,23 +10,16 @@ import { Button } from "@workspace/ui/components/button";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { Input } from "@workspace/ui/components/input";
-import { Loader2, AlertCircle, Play, Rocket, Plus, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, AlertCircle, Play, Rocket, ChevronDown, ChevronRight } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { useBrand } from "@/hooks/use-brands";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { analyzeBrandFn, createOnboardedBrandFn } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
+import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
 
 interface PromptWizardProps {
 	onComplete: () => void;
-}
-
-interface CompetitorDraft {
-	id: string;
-	name: string;
-	domains: string[];
-	aliases: string[];
 }
 
 interface PromptDraft {
@@ -41,7 +34,7 @@ interface WizardData {
 	website: string;
 	additionalDomains: string[];
 	aliases: string[];
-	competitors: CompetitorDraft[];
+	competitors: CompetitorEntry[];
 	prompts: PromptDraft[];
 	customPrompts: string[];
 }
@@ -156,12 +149,14 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				website: brand?.website || suggestion.website || "",
 				additionalDomains: suggestion.additionalDomains,
 				aliases: suggestion.aliases,
-				competitors: suggestion.competitors.map((c) => ({
-					id: generateId(),
-					name: c.name,
-					domains: c.domains,
-					aliases: c.aliases,
-				})),
+				competitors: suggestion.competitors.map((c) =>
+					newCompetitorEntry({
+						name: c.name,
+						domains: c.domains,
+						aliases: c.aliases,
+						expanded: false,
+					}),
+				),
 				prompts: suggestion.suggestedPrompts.map((p) => ({
 					id: generateId(),
 					value: p.prompt,
@@ -194,28 +189,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		[],
 	);
 
-	const updateCompetitor = useCallback(
-		(id: string, patch: Partial<CompetitorDraft>) =>
-			setData((p) => ({
-				...p,
-				competitors: p.competitors.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-			})),
-		[],
-	);
-	const removeCompetitor = useCallback(
-		(id: string) =>
-			setData((p) => ({ ...p, competitors: p.competitors.filter((c) => c.id !== id) })),
-		[],
-	);
-	const addCompetitor = useCallback(
-		() =>
-			setData((p) => ({
-				...p,
-				competitors: [
-					...p.competitors,
-					{ id: generateId(), name: "", domains: [], aliases: [] },
-				],
-			})),
+	const updateCompetitors = useCallback(
+		(competitors: CompetitorEntry[]) => setData((p) => ({ ...p, competitors })),
 		[],
 	);
 
@@ -374,49 +349,12 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 
 			<Separator />
 
-			<div className="space-y-2">
-				<h2 className="text-2xl font-bold">Competitors</h2>
-				<p className="text-muted-foreground">Companies you want tracked alongside your brand.</p>
-				<div className="space-y-3">
-					{data.competitors.map((c) => (
-						<div key={c.id} className="space-y-3 rounded-lg border p-3">
-							<div className="flex gap-2 items-start">
-								<Input
-									value={c.name}
-									onChange={(e) => updateCompetitor(c.id, { name: e.target.value })}
-									placeholder="Competitor name"
-									className="flex-1"
-								/>
-								<Button variant="outline" size="sm" onClick={() => removeCompetitor(c.id)} className="p-2">
-									<X className="h-4 w-4" />
-								</Button>
-							</div>
-							<div className="space-y-1.5">
-								<p className="text-xs text-muted-foreground">Domains</p>
-								<TagsInput
-									value={c.domains}
-									onValueChange={(domains) => updateCompetitor(c.id, { domains })}
-									placeholder="Add domain..."
-									maxItems={10}
-								/>
-							</div>
-							<div className="space-y-1.5">
-								<p className="text-xs text-muted-foreground">Aliases</p>
-								<TagsInput
-									value={c.aliases}
-									onValueChange={(aliases) => updateCompetitor(c.id, { aliases })}
-									placeholder="Add alias..."
-									maxItems={10}
-								/>
-							</div>
-						</div>
-					))}
-					{data.competitors.length < MAX_COMPETITORS && (
-						<Button variant="outline" size="sm" onClick={addCompetitor} className="flex items-center gap-2">
-							<Plus className="h-4 w-4" /> Add competitor
-						</Button>
-					)}
+			<div className="space-y-3">
+				<div>
+					<h2 className="text-2xl font-bold">Competitors</h2>
+					<p className="text-muted-foreground">Companies you want tracked alongside your brand.</p>
 				</div>
+				<CompetitorsEditor competitors={data.competitors} onChange={updateCompetitors} disabled={isSaving} />
 			</div>
 
 			<Separator />
