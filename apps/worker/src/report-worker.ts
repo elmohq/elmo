@@ -21,6 +21,7 @@ interface PromptData {
 
 // Report constants
 const TARGET_PROMPTS_COUNT = 70;
+const CANDIDATE_PROMPTS_COUNT = Math.ceil(TARGET_PROMPTS_COUNT * 1.2);
 const MIN_BRAND_MENTIONS = 14;
 const MAX_BRAND_MENTIONS = 28;
 
@@ -286,7 +287,7 @@ export async function processReportJob(job: ReportJobContext) {
 		const suggestion = await analyzeBrand({
 			website: brandWebsite,
 			brandName,
-			maxPrompts: useManualPrompts ? 0 : 84,
+			maxPrompts: useManualPrompts ? 0 : CANDIDATE_PROMPTS_COUNT,
 		});
 		// The report renderer's CompetitorResult expects a single primary domain;
 		// analyzeBrand returns the full list now. Take the first as the canonical
