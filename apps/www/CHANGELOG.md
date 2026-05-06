@@ -1,5 +1,20 @@
 # @workspace/www
 
+## 0.2.5
+
+### Patch Changes
+
+- edf97d4: Add Mistral as a direct API provider. Set `MISTRAL_API_KEY` and target via `mistral:mistral-api:<model>[:online]`.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- Updated dependencies [76e2a5f]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+  - @workspace/docs@0.2.5
+  - @workspace/config@0.2.5
+  - @workspace/api-spec@0.2.5
+  - @workspace/og@0.2.5
+  - @workspace/ui@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

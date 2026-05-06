@@ -1,5 +1,18 @@
 # @workspace/whitelabel
 
+## 0.2.5
+
+### Patch Changes
+
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- Updated dependencies [7990382]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+- Updated dependencies [839b98b]
+  - @workspace/lib@0.2.5
+  - @workspace/config@0.2.5
+  - @workspace/ui@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

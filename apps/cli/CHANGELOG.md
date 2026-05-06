@@ -1,5 +1,14 @@
 # @elmohq/cli
 
+## 0.2.5
+
+### Patch Changes
+
+- 839b98b: `elmo init` adds a recommended setup path — pick a scraper (BrightData or Olostep), pick a direct LLM API (OpenRouter, Anthropic, OpenAI, or Mistral), four prompts total. The custom path now requires at least one direct LLM API so onboarding analysis works out of the box.
+- 76e2a5f: Add telemetry opt-out prompt during `elmo init` and new `elmo telemetry status|enable|disable` subcommand. See [Telemetry](https://elmohq.com/docs/developer-guide/telemetry) for what's collected.
+- edf97d4: Add Mistral as a direct API provider. Set `MISTRAL_API_KEY` and target via `mistral:mistral-api:<model>[:online]`.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+
 ## 0.2.4
 
 ### Patch Changes

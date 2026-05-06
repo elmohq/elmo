@@ -1,5 +1,19 @@
 # @workspace/worker
 
+## 0.2.5
+
+### Patch Changes
+
+- 76e2a5f: Add telemetry opt-out prompt during `elmo init` and new `elmo telemetry status|enable|disable` subcommand. See [Telemetry](https://elmohq.com/docs/developer-guide/telemetry) for what's collected.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- 839b98b: Brand onboarding is now a single screen: paste a website and review the suggested products, competitors (with their own domains and aliases), additional brand domains, aliases, and tagged starter prompts before saving. Powered by whichever direct LLM API you've configured (OpenRouter, Anthropic, OpenAI, or Mistral) with web search.
+- Updated dependencies [7990382]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+- Updated dependencies [839b98b]
+  - @workspace/lib@0.2.5
+  - @workspace/whitelabel@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

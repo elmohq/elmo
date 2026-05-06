@@ -1,5 +1,25 @@
 # @workspace/web
 
+## 0.2.5
+
+### Patch Changes
+
+- edf97d4: Add Mistral as a direct API provider. Set `MISTRAL_API_KEY` and target via `mistral:mistral-api:<model>[:online]`.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- 839b98b: REST-style brand management API: `GET/POST /api/v1/brands`, `GET/PATCH /api/v1/brands/{brandId}`, `POST /api/v1/tools/analyze`, and full CRUD for `/api/v1/competitors`. API-created brands skip onboarding — callers hit `tools/analyze` first if they want suggestions, then create brands with whatever they choose to keep.
+- 839b98b: Brand onboarding is now a single screen: paste a website and review the suggested products, competitors (with their own domains and aliases), additional brand domains, aliases, and tagged starter prompts before saving. Powered by whichever direct LLM API you've configured (OpenRouter, Anthropic, OpenAI, or Mistral) with web search.
+- Updated dependencies [7990382]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+- Updated dependencies [839b98b]
+  - @workspace/lib@0.2.5
+  - @workspace/config@0.2.5
+  - @workspace/api-spec@0.2.5
+  - @workspace/deployment@0.2.5
+  - @workspace/og@0.2.5
+  - @workspace/ui@0.2.5
+  - @workspace/whitelabel@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes
