@@ -12,7 +12,7 @@ export function getMarketingOgImage(opts: {
 	description?: string;
 }): string {
 	// The rendered card already shows the "elmo" logo, so a "Pricing · Elmo" or
-	// "Elmo · Open Source AI Visibility Platform" title would render the brand
+	// "Elmo · Open Source AI Visibility" title would render the brand
 	// twice. Strip the brand prefix/suffix here. The og:title meta keeps the
 	// full string for crawlers — only the image gets the cleaner version.
 	const cleanTitle = opts.title
