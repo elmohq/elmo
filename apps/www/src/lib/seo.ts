@@ -1,7 +1,10 @@
+import { getMarketingOgImage } from "./og";
+
 export const SITE_URL = "https://www.elmohq.com";
 export const SITE_NAME = "Elmo";
 export const SITE_DESCRIPTION =
 	"Track how ChatGPT, Claude, and Google AI Overviews talk about your brand. Self-hosted, transparent, and free.";
+export const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
 
 export function canonicalUrl(path: string): string {
 	return `${SITE_URL}${path}`;
@@ -21,25 +24,27 @@ export function ogMeta({
 	type?: "website" | "article";
 }) {
 	const url = canonicalUrl(path);
-	const meta = [
+	const resolvedImage = image ?? getMarketingOgImage({ title, description });
+	const absoluteImage = resolvedImage.startsWith("http")
+		? resolvedImage
+		: canonicalUrl(resolvedImage);
+
+	return [
 		{ property: "og:title", content: title },
 		{ property: "og:description", content: description },
 		{ property: "og:url", content: url },
 		{ property: "og:site_name", content: SITE_NAME },
 		{ property: "og:type", content: type },
+		{ property: "og:locale", content: "en_US" },
+		{ property: "og:image", content: absoluteImage },
+		{ property: "og:image:width", content: "1200" },
+		{ property: "og:image:height", content: "630" },
+		{ property: "og:logo", content: SITE_LOGO_URL },
 		{ name: "twitter:card", content: "summary_large_image" },
 		{ name: "twitter:title", content: title },
 		{ name: "twitter:description", content: description },
+		{ name: "twitter:image", content: absoluteImage },
 	];
-
-	if (image) {
-		meta.push(
-			{ property: "og:image", content: image.startsWith("http") ? image : canonicalUrl(image) },
-			{ name: "twitter:image", content: image.startsWith("http") ? image : canonicalUrl(image) },
-		);
-	}
-
-	return meta;
 }
 
 export function jsonLd(data: Record<string, unknown>): {
@@ -66,7 +71,7 @@ export function organizationJsonLd() {
 		"@type": "Organization",
 		name: SITE_NAME,
 		url: SITE_URL,
-		logo: `${SITE_URL}/brand/icons/elmo-icon-512.png`,
+		logo: SITE_LOGO_URL,
 		sameAs: ["https://github.com/elmohq/elmo"],
 	});
 }

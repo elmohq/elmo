@@ -75,6 +75,9 @@ export const Route = createFileRoute("/api/og/")({
 				const url = new URL(request.url);
 				const forceDefault =
 					url.searchParams.get("defaultBranding") === "true";
+				const title = url.searchParams.get("title") ?? undefined;
+				const description =
+					url.searchParams.get("description") ?? undefined;
 
 				const deployment = getDeployment();
 				const { branding } = deployment;
@@ -97,6 +100,8 @@ export const Route = createFileRoute("/api/og/")({
 				const response = new ImageResponse(
 					renderOgImage({
 						appName,
+						title,
+						description,
 						accentColors: forceDefault
 							? undefined
 							: branding.chartColors.slice(0, 4),
