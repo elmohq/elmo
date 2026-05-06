@@ -12,10 +12,15 @@ import {
 	SITE_URL,
 	SITE_NAME,
 	SITE_DESCRIPTION,
+	SITE_LOGO_URL,
 	websiteJsonLd,
 	organizationJsonLd,
 } from "@/lib/seo";
+import { getMarketingOgImage } from "@/lib/og";
 import appCss from "../styles.css?url";
+
+const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility Platform`;
+const ROOT_OG_IMAGE = `${SITE_URL}${getMarketingOgImage({ title: ROOT_TITLE, description: SITE_DESCRIPTION })}`;
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -25,11 +30,22 @@ export const Route = createRootRoute({
 				name: "viewport",
 				content: "width=device-width, initial-scale=1",
 			},
-			{ title: `${SITE_NAME} · Open Source AI Visibility Platform` },
+			{ title: ROOT_TITLE },
 			{ name: "description", content: SITE_DESCRIPTION },
 			{ property: "og:site_name", content: SITE_NAME },
 			{ property: "og:locale", content: "en_US" },
+			{ property: "og:type", content: "website" },
+			{ property: "og:url", content: SITE_URL },
+			{ property: "og:title", content: ROOT_TITLE },
+			{ property: "og:description", content: SITE_DESCRIPTION },
+			{ property: "og:image", content: ROOT_OG_IMAGE },
+			{ property: "og:image:width", content: "1200" },
+			{ property: "og:image:height", content: "630" },
+			{ property: "og:logo", content: SITE_LOGO_URL },
 			{ name: "twitter:card", content: "summary_large_image" },
+			{ name: "twitter:title", content: ROOT_TITLE },
+			{ name: "twitter:description", content: SITE_DESCRIPTION },
+			{ name: "twitter:image", content: ROOT_OG_IMAGE },
 			{ name: "theme-color", content: "#2563eb" },
 			{ name: "apple-mobile-web-app-title", content: SITE_NAME },
 		],

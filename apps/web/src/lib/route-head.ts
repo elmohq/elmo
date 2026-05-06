@@ -3,14 +3,32 @@
  * Respects white-label / deployment branding configuration.
  */
 
+const DEFAULT_DESCRIPTION =
+	"Track and optimize your brand's visibility across AI models.";
+
+interface RouteMatchContext {
+	context?: {
+		clientConfig?: {
+			branding?: { name?: string; url?: string; icon?: string };
+		};
+	};
+}
+
 /**
  * Get the app display name from route match context.
  * Returns the white-label branding name if configured, otherwise "Elmo".
  */
-export function getAppName(match: {
-	context?: { clientConfig?: { branding?: { name?: string } } };
-}): string {
+export function getAppName(match: RouteMatchContext): string {
 	return match.context?.clientConfig?.branding?.name || "Elmo";
+}
+
+/**
+ * Get the absolute base URL for the deployment, with no trailing slash.
+ * Used to build canonical / og:url / og:image absolute URLs.
+ */
+export function getAppUrl(match: RouteMatchContext): string | undefined {
+	const url = match.context?.clientConfig?.branding?.url;
+	return url ? url.replace(/\/$/, "") : undefined;
 }
 
 /**
@@ -43,20 +61,34 @@ export function buildTitle(
 	return `${pageName} · ${opts.appName}`;
 }
 
+function toAbsolute(appUrl: string | undefined, path: string): string {
+	if (path.startsWith("http")) return path;
+	if (!appUrl) return path;
+	return `${appUrl}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 /**
  * Build OG / Twitter Card meta tags for a page.
- * Points og:image at the dynamic /api/og endpoint which renders a brand-aware PNG.
+ *
+ * Points og:image at the dynamic /api/og endpoint which renders a brand-aware
+ * PNG. The endpoint accepts ?title=…&description=… so each page can render its
+ * own social card. URLs are absolute when an appUrl is supplied — required by
+ * crawlers like Facebook, Twitter, and Slack.
  */
 export function buildOgMeta(opts: {
 	title: string;
 	description?: string;
+	path?: string;
+	appUrl?: string;
 }): Array<Record<string, string>> {
-	const description =
-		opts.description ||
-		"Track and optimize your brand's visibility across AI models.";
-	const ogImageUrl = "/api/og";
+	const description = opts.description || DEFAULT_DESCRIPTION;
 
-	return [
+	const ogImageParams = new URLSearchParams();
+	ogImageParams.set("title", opts.title);
+	ogImageParams.set("description", description);
+	const ogImageUrl = toAbsolute(opts.appUrl, `/api/og?${ogImageParams.toString()}`);
+
+	const meta: Array<Record<string, string>> = [
 		{ property: "og:title", content: opts.title },
 		{ property: "og:description", content: description },
 		{ property: "og:image", content: ogImageUrl },
@@ -68,4 +100,13 @@ export function buildOgMeta(opts: {
 		{ name: "twitter:description", content: description },
 		{ name: "twitter:image", content: ogImageUrl },
 	];
+
+	if (opts.path && opts.appUrl) {
+		meta.push({
+			property: "og:url",
+			content: toAbsolute(opts.appUrl, opts.path),
+		});
+	}
+
+	return meta;
 }

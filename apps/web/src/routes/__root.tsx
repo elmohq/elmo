@@ -59,12 +59,20 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 		const hasCustomIcon = Boolean(branding?.icon && branding.icon !== DEFAULT_APP_ICON);
 		const appName = branding?.name || "Elmo";
 		const themeColor = hasCustomIcon ? "#000000" : ELMO_THEME_COLOR;
+		const appUrl = branding?.url ? branding.url.replace(/\/$/, "") : undefined;
 
-		const title = branding?.name
-			? `${branding.name} - AI Search Optimization`
-			: "Elmo - AI Search Optimization";
+		const title = `${appName} - AI Search Optimization`;
 		const description = "Track and optimize your brand's visibility across AI models.";
-		const ogImage = "/api/og";
+		const ogImageParams = new URLSearchParams({ title, description });
+		const ogImagePath = `/api/og?${ogImageParams.toString()}`;
+		const ogImage = appUrl ? `${appUrl}${ogImagePath}` : ogImagePath;
+		// og:logo is non-standard but used by some unfurlers (LinkedIn). Falls back
+		// to the absolute branding icon URL when available.
+		const ogLogo = (() => {
+			if (!branding?.icon) return undefined;
+			if (branding.icon.startsWith("http")) return branding.icon;
+			return appUrl ? `${appUrl}${branding.icon}` : undefined;
+		})();
 
 		return {
 			meta: [
@@ -74,12 +82,16 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 				{ name: "viewport", content: "width=device-width, initial-scale=1" },
 				{ name: "theme-color", content: themeColor },
 				{ name: "apple-mobile-web-app-title", content: appName },
+				{ property: "og:site_name", content: appName },
+				{ property: "og:locale", content: "en_US" },
 				{ property: "og:title", content: title },
 				{ property: "og:description", content: description },
 				{ property: "og:image", content: ogImage },
 				{ property: "og:image:width", content: "1200" },
 				{ property: "og:image:height", content: "630" },
 				{ property: "og:type", content: "website" },
+				...(appUrl ? [{ property: "og:url", content: appUrl }] : []),
+				...(ogLogo ? [{ property: "og:logo", content: ogLogo }] : []),
 				{ name: "twitter:card", content: "summary_large_image" },
 				{ name: "twitter:title", content: title },
 				{ name: "twitter:description", content: description },

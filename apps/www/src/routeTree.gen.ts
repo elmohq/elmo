@@ -15,6 +15,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as OgDotpngRouteImport } from './routes/og[.]png'
 import { Route as LlmsDottxtRouteImport } from './routes/llms[.]txt'
 import { Route as LlmsFullDottxtRouteImport } from './routes/llms-full[.]txt'
 import { Route as FeaturesRouteImport } from './routes/features'
@@ -60,6 +61,11 @@ const RoadmapRoute = RoadmapRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OgDotpngRoute = OgDotpngRouteImport.update({
+  id: '/og.png',
+  path: '/og.png',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LlmsDottxtRoute = LlmsDottxtRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/features': typeof FeaturesRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/features': typeof FeaturesRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/features': typeof FeaturesRoute
   '/llms-full.txt': typeof LlmsFullDottxtRoute
   '/llms.txt': typeof LlmsDottxtRoute
+  '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/features'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/og.png'
     | '/pricing'
     | '/roadmap'
     | '/robots.txt'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/features'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/og.png'
     | '/pricing'
     | '/roadmap'
     | '/robots.txt'
@@ -274,6 +285,7 @@ export interface FileRouteTypes {
     | '/features'
     | '/llms-full.txt'
     | '/llms.txt'
+    | '/og.png'
     | '/pricing'
     | '/roadmap'
     | '/robots.txt'
@@ -299,6 +311,7 @@ export interface RootRouteChildren {
   FeaturesRoute: typeof FeaturesRoute
   LlmsFullDottxtRoute: typeof LlmsFullDottxtRoute
   LlmsDottxtRoute: typeof LlmsDottxtRoute
+  OgDotpngRoute: typeof OgDotpngRoute
   PricingRoute: typeof PricingRoute
   RoadmapRoute: typeof RoadmapRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
@@ -359,6 +372,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/og.png': {
+      id: '/og.png'
+      path: '/og.png'
+      fullPath: '/og.png'
+      preLoaderRoute: typeof OgDotpngRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/llms.txt': {
@@ -483,6 +503,7 @@ const rootRouteChildren: RootRouteChildren = {
   FeaturesRoute: FeaturesRoute,
   LlmsFullDottxtRoute: LlmsFullDottxtRoute,
   LlmsDottxtRoute: LlmsDottxtRoute,
+  OgDotpngRoute: OgDotpngRoute,
   PricingRoute: PricingRoute,
   RoadmapRoute: RoadmapRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
