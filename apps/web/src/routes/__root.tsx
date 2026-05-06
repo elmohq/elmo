@@ -63,7 +63,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 		const title = `${appName} - AI Search Optimization`;
 		const description = "Track and optimize your brand's visibility across AI models.";
-		const ogImageParams = new URLSearchParams({ title, description });
+		// Don't pass `title` to /api/og — the renderer already shows the brand
+		// (Elmo logo or whitelabel icon + name), so a "Brand - AI Search Optimization"
+		// title would render redundantly. Pages that override og:image can supply
+		// a page-specific title via the query param.
+		const ogImageParams = new URLSearchParams({ description });
 		const ogImagePath = `/api/og?${ogImageParams.toString()}`;
 		const ogImage = appUrl ? `${appUrl}${ogImagePath}` : ogImagePath;
 		// og:logo is non-standard but used by some unfurlers (LinkedIn). Falls back
