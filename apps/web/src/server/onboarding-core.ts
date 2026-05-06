@@ -50,12 +50,20 @@ const promptInputSchema = z.object({
 	enabled: z.boolean().optional().default(true),
 });
 
-/** POST /api/v1/brands body. */
+type CompetitorInput = z.infer<typeof competitorInputSchema>;
+type PromptInput = z.infer<typeof promptInputSchema>;
+
+/**
+ * POST /api/v1/brands body.
+ *
+ * The API speaks a single `domains` list to mirror the competitor endpoints.
+ * Internally, the first cleaned entry is stored as the brand's `website`
+ * (`https://<host>`) and the rest are stored in `additionalDomains`.
+ */
 export const createBrandInputSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
-	website: z.string().min(1),
-	additionalDomains: z.array(z.string()).optional(),
+	domains: z.array(z.string()).min(1),
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
 	prompts: z.array(promptInputSchema).optional(),
@@ -64,14 +72,9 @@ export const createBrandInputSchema = z.object({
 /** PATCH /api/v1/brands/:brandId body. brandId comes from the URL. */
 export const updateBrandBodySchema = z.object({
 	brandName: z.string().min(1).optional(),
-	website: z.string().min(1).optional(),
-	additionalDomains: z.array(z.string()).optional(),
+	domains: z.array(z.string()).min(1).optional(),
 	aliases: z.array(z.string()).optional(),
 	enabled: z.boolean().optional(),
-});
-
-const updateBrandInputSchema = updateBrandBodySchema.extend({
-	brandId: z.string().min(1),
 });
 
 /** Wizard save: brand-level fields + new prompts/competitors in one shot. */
@@ -85,15 +88,33 @@ export const wizardOnboardingInputSchema = z.object({
 	prompts: z.array(promptInputSchema).optional(),
 });
 
-export type CreateBrandInput = z.infer<typeof createBrandInputSchema>;
-export type UpdateBrandInput = z.infer<typeof updateBrandInputSchema>;
+/** Internal shape for createBrand — matches storage (website + additionalDomains). */
+export interface CreateBrandInput {
+	id: string;
+	name: string;
+	website: string;
+	additionalDomains?: string[];
+	aliases?: string[];
+	competitors?: CompetitorInput[];
+	prompts?: PromptInput[];
+}
+
+/** Internal shape for updateBrand — matches storage. */
+export interface UpdateBrandInput {
+	brandId: string;
+	brandName?: string;
+	website?: string;
+	additionalDomains?: string[];
+	aliases?: string[];
+	enabled?: boolean;
+}
+
 export type WizardOnboardingInput = z.infer<typeof wizardOnboardingInputSchema>;
 
 export interface BrandResult {
 	id: string;
 	name: string;
-	website: string;
-	additionalDomains: string[];
+	domains: string[];
 	aliases: string[];
 	enabled: boolean;
 	onboarded: boolean;
@@ -119,17 +140,69 @@ function validateAndFormatWebsite(url: string): string {
 }
 
 export function buildBrandResult(row: typeof brands.$inferSelect): BrandResult {
+	const websiteHost = new URL(row.website).hostname.replace(/^www\./, "");
 	return {
 		id: row.id,
 		name: row.name,
-		website: row.website,
-		additionalDomains: row.additionalDomains,
+		domains: [websiteHost, ...row.additionalDomains],
 		aliases: row.aliases,
 		enabled: row.enabled,
 		onboarded: row.onboarded,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
+}
+
+/**
+ * Validation error thrown by the API → internal converters when the supplied
+ * `domains` array contains no valid entries after cleaning. Callers should
+ * surface this as a 400.
+ */
+export class InvalidDomainsError extends Error {
+	constructor(message = "domains: at least one valid domain is required") {
+		super(message);
+		this.name = "InvalidDomainsError";
+	}
+}
+
+function splitDomainsForStorage(domains: string[]): { website: string; additionalDomains: string[] } {
+	const cleaned = dedupeDomains(domains);
+	if (cleaned.length === 0) throw new InvalidDomainsError();
+	const [primary, ...rest] = cleaned;
+	return { website: `https://${primary}`, additionalDomains: rest };
+}
+
+/** Convert POST /api/v1/brands body into the internal createBrand input. */
+export function apiCreateInputToInternal(input: z.infer<typeof createBrandInputSchema>): CreateBrandInput {
+	const { website, additionalDomains } = splitDomainsForStorage(input.domains);
+	return {
+		id: input.id,
+		name: input.name,
+		website,
+		additionalDomains,
+		aliases: input.aliases,
+		competitors: input.competitors,
+		prompts: input.prompts,
+	};
+}
+
+/** Convert PATCH /api/v1/brands/:brandId body into the internal updateBrand input. */
+export function apiUpdateInputToInternal(
+	brandId: string,
+	input: z.infer<typeof updateBrandBodySchema>,
+): UpdateBrandInput {
+	const result: UpdateBrandInput = {
+		brandId,
+		brandName: input.brandName,
+		aliases: input.aliases,
+		enabled: input.enabled,
+	};
+	if (input.domains !== undefined) {
+		const { website, additionalDomains } = splitDomainsForStorage(input.domains);
+		result.website = website;
+		result.additionalDomains = additionalDomains;
+	}
+	return result;
 }
 
 async function insertCompetitors(args: {

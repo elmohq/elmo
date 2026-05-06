@@ -352,12 +352,16 @@
 			},
 			"CreateBrandRequest": {
 				"type": "object",
-				"description": "Create a brand. Skips onboarding.",
+				"description": "Create a brand. Skips onboarding. The first entry in `domains` is treated as the brand's primary website; the rest are stored as additional domains.",
 				"properties": {
 					"id": { "type": "string", "minLength": 1 },
 					"name": { "type": "string", "minLength": 1 },
-					"website": { "type": "string", "minLength": 1 },
-					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"domains": {
+						"type": "array",
+						"items": { "type": "string" },
+						"minItems": 1,
+						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
+					},
 					"aliases": { "type": "array", "items": { "type": "string" } },
 					"competitors": {
 						"type": "array",
@@ -384,15 +388,19 @@
 						}
 					}
 				},
-				"required": ["id", "name", "website"]
+				"required": ["id", "name", "domains"]
 			},
 			"UpdateBrandRequest": {
 				"type": "object",
-				"description": "Update brand-level fields. Provided arrays replace the stored values verbatim. Prompts and competitors are managed via /prompts and /competitors.",
+				"description": "Update brand-level fields. Provided arrays replace the stored values verbatim. When `domains` is provided, the first entry becomes the primary website and the rest become additional domains. Prompts and competitors are managed via /prompts and /competitors.",
 				"properties": {
 					"brandName": { "type": "string", "minLength": 1 },
-					"website": { "type": "string", "minLength": 1 },
-					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"domains": {
+						"type": "array",
+						"items": { "type": "string" },
+						"minItems": 1,
+						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
+					},
 					"aliases": { "type": "array", "items": { "type": "string" } },
 					"enabled": { "type": "boolean" }
 				}
@@ -402,15 +410,18 @@
 				"properties": {
 					"id": { "type": "string", "description": "User-supplied brand identifier (e.g. \"acme\")" },
 					"name": { "type": "string" },
-					"website": { "type": "string" },
-					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"domains": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Brand domains. The first entry is the primary website; remaining entries are additional domains."
+					},
 					"aliases": { "type": "array", "items": { "type": "string" } },
 					"enabled": { "type": "boolean" },
 					"onboarded": { "type": "boolean" },
 					"createdAt": { "type": "string", "format": "date-time" },
 					"updatedAt": { "type": "string", "format": "date-time" }
 				},
-				"required": ["id", "name", "website", "additionalDomains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
+				"required": ["id", "name", "domains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
 			},
 			"BrandsList": {
 				"type": "object",

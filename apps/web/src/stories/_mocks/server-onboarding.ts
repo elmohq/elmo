@@ -38,8 +38,7 @@ export const updateOnboardedBrandFn = async (_args: { data: unknown }) => {
 	return {
 		id: "mock-brand-id",
 		name: "Mock",
-		website: "mock.com",
-		additionalDomains: [],
+		domains: ["mock.com"],
 		aliases: [],
 		enabled: true,
 		onboarded: true,
