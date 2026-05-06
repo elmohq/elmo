@@ -88,8 +88,7 @@ function AnalyzeBrandDialog() {
 				<DialogHeader>
 					<DialogTitle>Analyze brand</DialogTitle>
 					<DialogDescription>
-						Run the provider-agnostic onboarding analysis for any website. Uses whichever LLM the deployment has
-						configured (Anthropic / OpenAI / OpenRouter / Olostep / BrightData) with web search.
+						Run the onboarding analysis for any website.
 					</DialogDescription>
 				</DialogHeader>
 
