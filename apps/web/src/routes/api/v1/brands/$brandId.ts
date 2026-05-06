@@ -13,26 +13,15 @@ import { eq } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
 import { updateBrand, updateBrandBodySchema, buildBrandResult, BrandNotFoundError } from "@/server/onboarding-core";
 
-function getBrandIdFromPath(request: Request): string {
-	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
-	return decodeURIComponent(segments[segments.length - 1] || "");
-}
-
 export const Route = createFileRoute("/api/v1/brands/$brandId")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
+			GET: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
-				const brandId = getBrandIdFromPath(request);
-				if (!brandId) {
-					return Response.json(
-						{ error: "Validation Error", message: "brandId path parameter is required" },
-						{ status: 400 },
-					);
-				}
+				const { brandId } = params;
 
 				try {
 					const row = await db.query.brands.findFirst({ where: eq(brands.id, brandId) });
@@ -46,18 +35,12 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 				}
 			},
 
-			PATCH: async ({ request }) => {
+			PATCH: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
-				const brandId = getBrandIdFromPath(request);
-				if (!brandId) {
-					return Response.json(
-						{ error: "Validation Error", message: "brandId path parameter is required" },
-						{ status: 400 },
-					);
-				}
+				const { brandId } = params;
 
 				let body: unknown;
 				try {

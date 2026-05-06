@@ -19,21 +19,16 @@ function isValidUUID(id: string): boolean {
 	return uuidRegex.test(id);
 }
 
-function getCompetitorIdFromPath(request: Request): string {
-	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
-	return decodeURIComponent(segments[segments.length - 1] || "");
-}
-
 export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
+			GET: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
-				const id = getCompetitorIdFromPath(request);
-				if (!isValidUUID(id)) {
+				const { competitorId } = params;
+				if (!isValidUUID(competitorId)) {
 					return Response.json(
 						{ error: "Validation Error", message: "Invalid competitor ID format" },
 						{ status: 400 },
@@ -41,10 +36,10 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				}
 
 				try {
-					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, id) });
+					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
 					if (!row) {
 						return Response.json(
-							{ error: "Not Found", message: `Competitor with ID '${id}' not found` },
+							{ error: "Not Found", message: `Competitor with ID '${competitorId}' not found` },
 							{ status: 404 },
 						);
 					}
@@ -55,13 +50,13 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				}
 			},
 
-			PATCH: async ({ request }) => {
+			PATCH: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
-				const id = getCompetitorIdFromPath(request);
-				if (!isValidUUID(id)) {
+				const { competitorId } = params;
+				if (!isValidUUID(competitorId)) {
 					return Response.json(
 						{ error: "Validation Error", message: "Invalid competitor ID format" },
 						{ status: 400 },
@@ -78,10 +73,10 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 					);
 				}
 
-				const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, id) });
+				const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
 				if (!existing) {
 					return Response.json(
-						{ error: "Not Found", message: `Competitor with ID '${id}' not found` },
+						{ error: "Not Found", message: `Competitor with ID '${competitorId}' not found` },
 						{ status: 404 },
 					);
 				}
@@ -118,7 +113,7 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				}
 
 				try {
-					const [updated] = await db.update(competitors).set(update).where(eq(competitors.id, id)).returning();
+					const [updated] = await db.update(competitors).set(update).where(eq(competitors.id, competitorId)).returning();
 					return Response.json(updated);
 				} catch (err) {
 					console.error("[competitors PATCH] failed:", err);
@@ -127,13 +122,13 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				}
 			},
 
-			DELETE: async ({ request }) => {
+			DELETE: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
-				const id = getCompetitorIdFromPath(request);
-				if (!isValidUUID(id)) {
+				const { competitorId } = params;
+				if (!isValidUUID(competitorId)) {
 					return Response.json(
 						{ error: "Validation Error", message: "Invalid competitor ID format" },
 						{ status: 400 },
@@ -141,10 +136,10 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 				}
 
 				try {
-					const [deleted] = await db.delete(competitors).where(eq(competitors.id, id)).returning();
+					const [deleted] = await db.delete(competitors).where(eq(competitors.id, competitorId)).returning();
 					if (!deleted) {
 						return Response.json(
-							{ error: "Not Found", message: `Competitor with ID '${id}' not found` },
+							{ error: "Not Found", message: `Competitor with ID '${competitorId}' not found` },
 							{ status: 404 },
 						);
 					}
