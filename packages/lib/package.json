@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "test": "vitest run",
+    "compare:onboarding": "tsx scripts/compare-onboarding.ts",
     "generate:auth-schema": "bash scripts/generate-auth-schema.sh"
   },
   "exports": {
@@ -19,7 +20,7 @@
     "./ai-providers": "./src/ai-providers.ts",
     "./text-extraction": "./src/text-extraction.ts",
     "./dataforseo": "./src/dataforseo.ts",
-    "./wizard-helpers": "./src/wizard-helpers.ts",
+    "./onboarding": "./src/onboarding/index.ts",
     "./tag-utils": "./src/tag-utils.ts",
     "./website-excerpt": "./src/website-excerpt.ts",
     "./report-metrics": "./src/report-metrics.ts",

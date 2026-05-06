@@ -3,22 +3,25 @@ import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
-import {
-	analyzeWebsite,
-	getCompetitors,
-	getKeywords,
-	getPersonas,
-	generateCandidatePromptsForReports,
-	type AnalyzeWebsiteResult,
-	type CompetitorResult,
-	type KeywordResult,
-	type PersonaGroup,
-	type PromptData,
-} from "@workspace/lib/wizard-helpers";
+import { analyzeBrand } from "@workspace/lib/onboarding";
 import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
+
+interface CompetitorResult {
+	name: string;
+	domain: string;
+}
+
+interface PromptData {
+	brandId: string;
+	value: string;
+	enabled: boolean;
+	tags: string[];
+	systemTags: string[];
+}
 
 // Report constants
 const TARGET_PROMPTS_COUNT = 70;
+const CANDIDATE_PROMPTS_COUNT = Math.ceil(TARGET_PROMPTS_COUNT * 1.2);
 const MIN_BRAND_MENTIONS = 14;
 const MAX_BRAND_MENTIONS = 28;
 
@@ -75,10 +78,7 @@ interface PromptRunResult {
 }
 
 interface ReportData {
-	websiteAnalysis: AnalyzeWebsiteResult;
 	competitors: CompetitorResult[];
-	keywords: KeywordResult[];
-	personaGroups: PersonaGroup[];
 	prompts: PromptData[];
 	promptRuns: PromptRunResult[];
 }
@@ -279,96 +279,46 @@ export async function processReportJob(job: ReportJobContext) {
 		job.log(`Report ${reportId} marked as processing`);
 		job.updateProgress(5);
 
-		// Step 1: Analyze website
-		job.log(`Analyzing website: ${brandWebsite}`);
-		const websiteAnalysis = await analyzeWebsite(brandWebsite);
-		job.updateProgress(15);
+		// Step 1: Analyze brand — competitors + candidate prompts in one shared
+		// LLM call (same `analyzeBrand` the onboarding flow uses; provider-
+		// agnostic with native web search wired in). Manual-prompt path skips
+		// the prompt generation but still needs competitors.
+		job.log(`Analyzing brand: ${brandWebsite}`);
+		const suggestion = await analyzeBrand({
+			website: brandWebsite,
+			brandName,
+			maxPrompts: useManualPrompts ? 0 : CANDIDATE_PROMPTS_COUNT,
+		});
+		// The report renderer's CompetitorResult expects a single primary domain;
+		// analyzeBrand returns the full list now. Take the first as the canonical
+		// one for the report's UI (which doesn't display the rest anyway).
+		const competitors: CompetitorResult[] = suggestion.competitors
+			.filter((c) => c.domains.length > 0)
+			.map((c) => ({ name: c.name, domain: c.domains[0] }));
+		job.updateProgress(35);
 
-		// Check if we should skip detailed analysis
-		if (websiteAnalysis.skipDetailedAnalysis) {
-			job.log(`Skipping detailed analysis for low-traffic website`);
+		// Step 2: Build candidate prompt list — manual override or analyzeBrand output
+		const candidatePrompts: { prompt: string; brandedPrompt: boolean }[] = useManualPrompts
+			? manualPrompts.map((prompt) => ({
+					prompt: prompt.toLowerCase().trim(),
+					brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
+				}))
+			: suggestion.suggestedPrompts.map((p) => ({
+					prompt: p.prompt,
+					brandedPrompt: isPromptBranded(p.prompt, brandName, brandWebsite),
+				}));
 
-			// Create minimal report data
-			const reportData: ReportData = {
-				websiteAnalysis,
-				competitors: [],
-				keywords: [],
-				personaGroups: [],
-				prompts: [],
-				promptRuns: [],
-			};
-
-			// Update report with completed status and minimal data
-			await db
-				.update(reports)
-				.set({
-					status: "completed",
-					completedAt: new Date(),
-					updatedAt: new Date(),
-					rawOutput: JSON.stringify(reportData),
-				})
-				.where(eq(reports.id, reportId));
-
-			job.log(`Successfully completed minimal report ${reportId}`);
-			return { success: true, reportId, minimal: true };
+		if (candidatePrompts.length === 0) {
+			job.log(`No candidate prompts available, report cannot continue`);
+			throw new Error("No candidate prompts available");
 		}
+		job.log(
+			`${useManualPrompts ? "Using" : "Generated"} ${candidatePrompts.length} candidate prompts ` +
+				`(${candidatePrompts.filter((p) => p.brandedPrompt).length} branded)`,
+		);
+		job.updateProgress(40);
 
-		// Step 2: Get competitors
-		job.log(`Getting competitors for products: ${websiteAnalysis.products.join(", ")}`);
-		const competitors = await getCompetitors(websiteAnalysis.products, brandWebsite);
-		job.updateProgress(25);
-
-		// Step 3: Get keywords (only if not using manual prompts)
-		let keywords: KeywordResult[] = [];
-		if (!useManualPrompts) {
-			job.log(`Getting keywords for domain and products`);
-			keywords = await getKeywords(brandWebsite, websiteAnalysis.products);
-			job.updateProgress(35);
-		} else {
-			job.updateProgress(35);
-		}
-
-		// Step 4: Get personas (only if not using manual prompts)
-		let personaGroups: PersonaGroup[] = [];
-		if (!useManualPrompts) {
-			job.log(`Getting personas for products and website`);
-			personaGroups = await getPersonas(websiteAnalysis.products, brandWebsite);
-			job.updateProgress(35);
-		} else {
-			job.updateProgress(35);
-		}
-
-		// Step 5: Generate or use provided prompts
-		let candidatePrompts: { prompt: string; brandedPrompt: boolean }[];
-		
-		if (useManualPrompts) {
-			// Use manual prompts directly
-			job.log(`Using ${manualPrompts.length} manual prompts`);
-			candidatePrompts = manualPrompts.map(prompt => ({
-				prompt: prompt.toLowerCase().trim(),
-				brandedPrompt: isPromptBranded(prompt, brandName, brandWebsite),
-			}));
-			job.updateProgress(40);
-		} else {
-			// Generate candidate prompts using Claude
-			job.log(`Generating candidate prompts using Claude`);
-			candidatePrompts = await generateCandidatePromptsForReports(
-				brandName,
-				brandWebsite,
-				websiteAnalysis.products,
-				competitors,
-			);
-			
-			if (candidatePrompts.length === 0) {
-				job.log(`Failed to generate candidate prompts, report cannot continue`);
-				throw new Error("Failed to generate candidate prompts");
-			}
-			
-			job.log(`Generated ${candidatePrompts.length} candidate prompts`);
-			job.updateProgress(40);
-		}
-
-		// Step 6: Run all candidate prompts to test them
+		// Step 4: Run all candidate prompts to test them
 		job.log(`Testing ${candidatePrompts.length} candidate prompts`);
 		const candidateResults: Array<{
 			promptValue: string;
@@ -429,12 +379,12 @@ export async function processReportJob(job: ReportJobContext) {
 
 		job.updateProgress(70);
 
-		// Step 7: Select optimal prompts from candidates
+		// Step 5: Select optimal prompts from candidates
 		job.log(`Selecting optimal ${TARGET_PROMPTS_COUNT} prompts from ${candidateResults.length} candidates`);
 		const selectedPromptValues = selectOptimalPrompts(candidateResults, brandName, brandWebsite);
 		job.updateProgress(75);
 
-		// Step 8: Re-run selected prompts for final data
+		// Step 6: Re-run selected prompts for final data
 		job.log(`Running final ${selectedPromptValues.length} selected prompts`);
 		const promptRuns: PromptRunResult[] = [];
 		const totalFinalRuns = selectedPromptValues.length;
@@ -469,10 +419,7 @@ export async function processReportJob(job: ReportJobContext) {
 
 		// Create final report data
 		const reportData: ReportData = {
-			websiteAnalysis,
 			competitors,
-			keywords,
-			personaGroups,
 			prompts,
 			promptRuns,
 		};

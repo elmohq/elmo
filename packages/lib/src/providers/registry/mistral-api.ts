@@ -1,71 +1,33 @@
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import { z } from "zod";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
 import type { Citation } from "../../text-extraction";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
+// `mistral-large-latest` aliases to Mistral Large 3 (released Dec 2025).
+// Tracked as `-latest` so the alias rolls forward when newer Large
+// generations ship.
+const DEFAULT_RESEARCH_MODEL = "mistral-large-latest";
 
-function sanitizeForJson(obj: unknown): unknown {
-	return JSON.parse(JSON.stringify(obj));
-}
-
-function authHeaders(): Record<string, string> {
-	return {
-		Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
-		"Content-Type": "application/json",
-	};
-}
-
-async function runChatCompletions(prompt: string, model: string): Promise<ScrapeResult> {
-	const res = await fetch(`${MISTRAL_BASE_URL}/v1/chat/completions`, {
+async function mistralPost(path: string, body: object): Promise<any> {
+	const res = await fetch(`${MISTRAL_BASE_URL}${path}`, {
 		method: "POST",
-		headers: authHeaders(),
-		body: JSON.stringify({
-			model,
-			messages: [{ role: "user", content: prompt }],
-		}),
+		headers: {
+			Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
 	});
-
 	if (!res.ok) {
 		throw new Error(`Mistral API error (${res.status}): ${await res.text()}`);
 	}
-
-	const data: any = await res.json();
-	const textContent = data?.choices?.[0]?.message?.content ?? "No text content found in Mistral response.";
-
-	return {
-		rawOutput: data,
-		textContent,
-		webQueries: [],
-		citations: [],
-		modelVersion: data?.model ?? model,
-	};
-}
-
-async function runConversationsWithWebSearch(prompt: string, model: string): Promise<ScrapeResult> {
-	const res = await fetch(`${MISTRAL_BASE_URL}/v1/conversations`, {
-		method: "POST",
-		headers: authHeaders(),
-		body: JSON.stringify({
-			model,
-			inputs: prompt,
-			tools: [{ type: "web_search" }],
-		}),
-	});
-
-	if (!res.ok) {
-		throw new Error(`Mistral API error (${res.status}): ${await res.text()}`);
-	}
-
-	const data: any = await res.json();
-	const { textContent, citations, webQueries } = parseConversationsResponse(data);
-
-	return {
-		rawOutput: data,
-		textContent,
-		webQueries,
-		citations,
-		modelVersion: data?.model ?? model,
-	};
+	return res.json();
 }
 
 function parseConversationsResponse(data: any): { textContent: string; citations: Citation[]; webQueries: string[] } {
@@ -75,30 +37,35 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 	const seen = new Set<string>();
 	let idx = 0;
 
-	const outputs = Array.isArray(data?.outputs) ? data.outputs : [];
-	for (const entry of outputs) {
-		// Tool execution entries surface the search query. `arguments` is a JSON-encoded
-		// string in the live response, but we also handle the parsed-object form defensively.
-		if ((entry?.type === "tool.execution" || entry?.type === "tool_execution") &&
-			(entry?.name === "web_search" || entry?.function === "web_search")) {
-			const query = extractMistralQuery(entry);
-			if (query) webQueries.push(query);
+	for (const entry of data?.outputs ?? []) {
+		// Tool-execution entries carry the search query as a JSON-encoded string
+		// in `arguments`. Best-effort parse — webQueries is a reporting signal,
+		// not load-bearing, so a malformed payload shouldn't blow up the response.
+		if (entry?.type === "tool.execution" && entry?.name === "web_search" && typeof entry.arguments === "string") {
+			try {
+				const args = JSON.parse(entry.arguments);
+				if (args?.query) webQueries.push(args.query);
+			} catch {
+				// ignore — keep going
+			}
 		}
 
-		// Message output entries hold the model's text + reference chunks.
-		const content = Array.isArray(entry?.content) ? entry.content : [];
-		for (const chunk of content) {
+		// Conversations API returns message content as either a plain string
+		// (single-shot replies) or an array of typed chunks (when tools cite sources).
+		if (typeof entry?.content === "string") {
+			texts.push(entry.content);
+			continue;
+		}
+		for (const chunk of Array.isArray(entry?.content) ? entry.content : []) {
 			if (chunk?.type === "text" && typeof chunk.text === "string") {
 				texts.push(chunk.text);
-			} else if (chunk?.type === "tool_reference" && typeof chunk.url === "string") {
-				if (seen.has(chunk.url)) continue;
+			} else if (chunk?.type === "tool_reference" && typeof chunk.url === "string" && !seen.has(chunk.url)) {
 				seen.add(chunk.url);
 				try {
-					const parsed = new URL(chunk.url);
 					citations.push({
 						url: chunk.url,
 						title: chunk.title ?? undefined,
-						domain: parsed.hostname.replace(/^www\./, ""),
+						domain: new URL(chunk.url).hostname.replace(/^www\./, ""),
 						citationIndex: idx++,
 					});
 				} catch (e) {
@@ -108,18 +75,7 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 		}
 	}
 
-	const textContent = texts.length > 0 ? texts.join("\n") : "No text content found in Mistral response.";
-	return { textContent, citations, webQueries };
-}
-
-function extractMistralQuery(entry: any): string | null {
-	const args = entry?.arguments;
-	let parsed: any = args;
-	if (typeof args === "string") {
-		try { parsed = JSON.parse(args); } catch { parsed = null; }
-	}
-	const query = parsed?.query ?? entry?.input?.query;
-	return typeof query === "string" && query.trim() ? query : null;
+	return { textContent: texts.join("\n"), citations, webQueries };
 }
 
 export const mistralApi: Provider = {
@@ -132,9 +88,53 @@ export const mistralApi: Provider = {
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		const version = options?.version ?? DEFAULT_MODEL;
-		const result = options?.webSearch
-			? await runConversationsWithWebSearch(prompt, version)
-			: await runChatCompletions(prompt, version);
-		return { ...result, rawOutput: sanitizeForJson(result.rawOutput) };
+
+		if (options?.webSearch) {
+			const data = await mistralPost("/v1/conversations", {
+				model: version,
+				inputs: prompt,
+				tools: [{ type: "web_search" }],
+			});
+			const parsed = parseConversationsResponse(data);
+			return { ...parsed, rawOutput: data, modelVersion: data?.model ?? version };
+		}
+
+		const data = await mistralPost("/v1/chat/completions", {
+			model: version,
+			messages: [{ role: "user", content: prompt }],
+		});
+		return {
+			rawOutput: data,
+			textContent: data?.choices?.[0]?.message?.content ?? "",
+			webQueries: [],
+			citations: [],
+			modelVersion: data?.model ?? version,
+		};
+	},
+
+	async runStructuredResearch<T>({
+		prompt,
+		schema,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		// /v1/conversations forwards completion_args.response_format through to
+		// the underlying chat completion, so we can have web_search AND
+		// server-validated json_schema output in a single call.
+		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
+		const data = await mistralPost("/v1/conversations", {
+			model: DEFAULT_RESEARCH_MODEL,
+			inputs: prompt,
+			tools: [{ type: "web_search" }],
+			completion_args: {
+				response_format: {
+					type: "json_schema",
+					json_schema: { name: "research_output", strict: true, schema: jsonSchema },
+				},
+			},
+		});
+		const { textContent } = parseConversationsResponse(data);
+		return {
+			object: (schema as z.ZodType).parse(JSON.parse(textContent)) as T,
+			modelVersion: data?.model ?? DEFAULT_RESEARCH_MODEL,
+		};
 	},
 };

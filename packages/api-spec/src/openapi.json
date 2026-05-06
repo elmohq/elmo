@@ -281,6 +281,204 @@
 				},
 				"required": ["url", "title", "count"]
 			},
+			"AnalyzeBrandRequest": {
+				"type": "object",
+				"properties": {
+					"website": {
+						"type": "string",
+						"description": "Brand's website URL or hostname",
+						"minLength": 1
+					},
+					"brandName": {
+						"type": "string",
+						"description": "Optional brand name hint. If omitted, inferred from the domain."
+					},
+					"maxCompetitors": {
+						"type": "integer",
+						"description": "Maximum number of competitor suggestions. 0 disables competitor generation entirely.",
+						"minimum": 0,
+						"maximum": 100,
+						"default": 20
+					},
+					"maxPrompts": {
+						"type": "integer",
+						"description": "Maximum number of suggested prompts. 0 disables prompt generation entirely.",
+						"minimum": 0,
+						"maximum": 100,
+						"default": 30
+					}
+				},
+				"required": ["website"]
+			},
+			"OnboardingSuggestion": {
+				"type": "object",
+				"properties": {
+					"brandName": { "type": "string" },
+					"website": { "type": "string", "description": "Cleaned hostname" },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"competitors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": { "type": "string" },
+								"domains": { "type": "array", "items": { "type": "string" } },
+								"aliases": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["name", "domains", "aliases"]
+						}
+					},
+					"suggestedPrompts": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"prompt": { "type": "string" },
+								"tags": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["prompt", "tags"]
+						}
+					}
+				},
+				"required": [
+					"brandName",
+					"website",
+					"additionalDomains",
+					"aliases",
+					"competitors",
+					"suggestedPrompts"
+				]
+			},
+			"CreateBrandRequest": {
+				"type": "object",
+				"description": "Create a brand. Skips onboarding.",
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"name": { "type": "string", "minLength": 1 },
+					"website": { "type": "string", "minLength": 1 },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"competitors": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"name": { "type": "string", "minLength": 1 },
+								"domains": { "type": "array", "items": { "type": "string" } },
+								"aliases": { "type": "array", "items": { "type": "string" } }
+							},
+							"required": ["name"]
+						}
+					},
+					"prompts": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"value": { "type": "string", "minLength": 1 },
+								"tags": { "type": "array", "items": { "type": "string" } },
+								"enabled": { "type": "boolean", "default": true }
+							},
+							"required": ["value"]
+						}
+					}
+				},
+				"required": ["id", "name", "website"]
+			},
+			"UpdateBrandRequest": {
+				"type": "object",
+				"description": "Update brand-level fields. Provided arrays replace the stored values verbatim. Prompts and competitors are managed via /prompts and /competitors.",
+				"properties": {
+					"brandName": { "type": "string", "minLength": 1 },
+					"website": { "type": "string", "minLength": 1 },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"enabled": { "type": "boolean" }
+				}
+			},
+			"Brand": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "User-supplied brand identifier (e.g. \"acme\")" },
+					"name": { "type": "string" },
+					"website": { "type": "string" },
+					"additionalDomains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"enabled": { "type": "boolean" },
+					"onboarded": { "type": "boolean" },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["id", "name", "website", "additionalDomains", "aliases", "enabled", "onboarded", "createdAt", "updatedAt"]
+			},
+			"BrandsList": {
+				"type": "object",
+				"properties": {
+					"brands": { "type": "array", "items": { "$ref": "#/components/schemas/Brand" } },
+					"pagination": {
+						"type": "object",
+						"properties": {
+							"page": { "type": "integer" },
+							"limit": { "type": "integer" },
+							"total": { "type": "integer" },
+							"totalPages": { "type": "integer" }
+						},
+						"required": ["page", "limit", "total", "totalPages"]
+					}
+				},
+				"required": ["brands", "pagination"]
+			},
+			"Competitor": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "format": "uuid" },
+					"brandId": { "type": "string" },
+					"name": { "type": "string" },
+					"domains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["id", "brandId", "name", "domains", "aliases", "createdAt", "updatedAt"]
+			},
+			"CompetitorsList": {
+				"type": "object",
+				"properties": {
+					"competitors": { "type": "array", "items": { "$ref": "#/components/schemas/Competitor" } },
+					"pagination": {
+						"type": "object",
+						"properties": {
+							"page": { "type": "integer" },
+							"limit": { "type": "integer" },
+							"total": { "type": "integer" },
+							"totalPages": { "type": "integer" }
+						},
+						"required": ["page", "limit", "total", "totalPages"]
+					}
+				},
+				"required": ["competitors", "pagination"]
+			},
+			"CreateCompetitorRequest": {
+				"type": "object",
+				"description": "Add a competitor to a brand.",
+				"properties": {
+					"brandId": { "type": "string", "minLength": 1 },
+					"name": { "type": "string", "minLength": 1 },
+					"domains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } }
+				},
+				"required": ["brandId", "name"]
+			},
+			"UpdateCompetitorRequest": {
+				"type": "object",
+				"description": "Update a competitor. Provided arrays replace the stored values verbatim.",
+				"properties": {
+					"name": { "type": "string", "minLength": 1 },
+					"domains": { "type": "array", "items": { "type": "string" } },
+					"aliases": { "type": "array", "items": { "type": "string" } }
+				}
+			},
 			"PromptSnapshot": {
 				"type": "object",
 				"properties": {
@@ -379,10 +577,340 @@
 						}
 					}
 				}
+			},
+			"ConflictError": {
+				"description": "Resource already exists",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
 			}
 		}
 	},
 	"paths": {
+		"/tools/analyze": {
+			"post": {
+				"summary": "Analyze a website",
+				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.",
+				"operationId": "analyzeBrand",
+				"tags": ["Tools"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/AnalyzeBrandRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Brand analysis suggestion",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/OnboardingSuggestion" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/brands": {
+			"get": {
+				"summary": "List brands",
+				"operationId": "listBrands",
+				"tags": ["Brands"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Paginated list of brands",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/BrandsList" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"post": {
+				"summary": "Create a brand",
+				"operationId": "createBrand",
+				"tags": ["Brands"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/CreateBrandRequest" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Brand created",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Brand" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"409": { "$ref": "#/components/responses/ConflictError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/brands/{brandId}": {
+			"get": {
+				"summary": "Get a brand",
+				"operationId": "getBrand",
+				"tags": ["Brands"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "path",
+						"required": true,
+						"description": "Brand identifier",
+						"schema": { "type": "string", "minLength": 1 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Brand",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Brand" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"patch": {
+				"summary": "Update a brand",
+				"operationId": "updateBrand",
+				"tags": ["Brands"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "path",
+						"required": true,
+						"description": "Brand identifier",
+						"schema": { "type": "string", "minLength": 1 }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/UpdateBrandRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Brand updated",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Brand" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/competitors": {
+			"get": {
+				"summary": "List competitors",
+				"operationId": "listCompetitors",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "brandId",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Paginated list of competitors",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/CompetitorsList" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"post": {
+				"summary": "Add a competitor",
+				"operationId": "createCompetitor",
+				"tags": ["Competitors"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/CreateCompetitorRequest" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Competitor created",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Competitor" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"409": { "$ref": "#/components/responses/ConflictError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/competitors/{competitorId}": {
+			"get": {
+				"summary": "Get a competitor",
+				"operationId": "getCompetitor",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "competitorId",
+						"in": "path",
+						"required": true,
+						"description": "Competitor identifier (UUID)",
+						"schema": { "type": "string", "format": "uuid" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Competitor",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Competitor" }
+							}
+						}
+					},
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"patch": {
+				"summary": "Update a competitor",
+				"operationId": "updateCompetitor",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "competitorId",
+						"in": "path",
+						"required": true,
+						"description": "Competitor identifier (UUID)",
+						"schema": { "type": "string", "format": "uuid" }
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/UpdateCompetitorRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Competitor updated",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/Competitor" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"delete": {
+				"summary": "Delete a competitor",
+				"operationId": "deleteCompetitor",
+				"tags": ["Competitors"],
+				"parameters": [
+					{
+						"name": "competitorId",
+						"in": "path",
+						"required": true,
+						"description": "Competitor identifier (UUID)",
+						"schema": { "type": "string", "format": "uuid" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Competitor deleted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"message": { "type": "string" },
+										"data": { "$ref": "#/components/schemas/Competitor" }
+									},
+									"required": ["message", "data"]
+								}
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
+					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"404": { "$ref": "#/components/responses/NotFoundError" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
 		"/prompts": {
 			"get": {
 				"summary": "List all prompts",
@@ -671,7 +1199,7 @@
 			},
 			"patch": {
 				"summary": "Update a prompt",
-				"description": "Update a prompt's properties. Only provided fields will be updated.",
+				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
 				"operationId": "updatePrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -744,7 +1272,22 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"$ref": "#/components/schemas/SuccessMessage"
+									"type": "object",
+									"properties": {
+										"message": { "type": "string" },
+										"data": {
+											"type": "object",
+											"properties": {
+												"deletedPrompt": { "$ref": "#/components/schemas/Prompt" },
+												"deletedRunsCount": {
+													"type": "integer",
+													"description": "Number of related prompt_runs rows deleted by the cascade."
+												}
+											},
+											"required": ["deletedPrompt", "deletedRunsCount"]
+										}
+									},
+									"required": ["message", "data"]
 								}
 							}
 						}
@@ -1070,8 +1613,20 @@
 	},
 	"tags": [
 		{
+			"name": "Brands",
+			"description": "Manage brand records"
+		},
+		{
+			"name": "Tools",
+			"description": "One-shot helpers (e.g. brand analysis) that don't persist anything"
+		},
+		{
 			"name": "Prompts",
 			"description": "Manage brand prompts"
+		},
+		{
+			"name": "Competitors",
+			"description": "Manage brand competitors"
 		},
 		{
 			"name": "Snapshots",

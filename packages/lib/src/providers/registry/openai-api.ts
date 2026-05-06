@@ -1,16 +1,31 @@
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { openai, createOpenAI } from "@ai-sdk/openai";
+import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
+
+const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
 }
 
+function getOpenAIResponsesModel(model: string) {
+	const provider = process.env.OPENAI_API_KEY
+		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+		: openai;
+	return provider.responses(model);
+}
+
 async function runOpenAI(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const tools: Record<string, any> = {};
-	if (options?.webSearch !== false) {
-		tools.web_search_preview = openai.tools.webSearchPreview({
+	if (options?.webSearch) {
+		tools.web_search = openai.tools.webSearch({
 			searchContextSize: "low",
 		}) as any;
 	}
@@ -51,7 +66,25 @@ export const openaiApi: Provider = {
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const version = options?.version ?? "gpt-5-mini";
+		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
 		return runOpenAI(prompt, version, options);
+	},
+
+	async runStructuredResearch<T>({
+		prompt,
+		schema,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		const result = await generateText({
+			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
+			tools: {
+				web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any,
+			},
+			experimental_output: Output.object({ schema }),
+			prompt,
+		});
+		return {
+			object: result.experimental_output as T,
+			modelVersion: DEFAULT_RESEARCH_MODEL,
+		};
 	},
 };

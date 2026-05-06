@@ -68,6 +68,32 @@ export function cleanAndValidateDomain(input: string): string | null {
 	return cleaned;
 }
 
+export function dedupeDomains(values: string[]): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const v of values) {
+		const cleaned = cleanAndValidateDomain(v);
+		if (!cleaned || seen.has(cleaned)) continue;
+		seen.add(cleaned);
+		out.push(cleaned);
+	}
+	return out;
+}
+
+export function dedupeAliases(values: string[]): string[] {
+	const out: string[] = [];
+	const seen = new Set<string>();
+	for (const v of values) {
+		const trimmed = v.trim();
+		if (!trimmed) continue;
+		const key = trimmed.toLowerCase();
+		if (seen.has(key)) continue;
+		seen.add(key);
+		out.push(trimmed);
+	}
+	return out;
+}
+
 export function normalizeUrl(url: string): string {
 	try {
 		const urlObj = new URL(url);
