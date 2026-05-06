@@ -11,7 +11,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { count, desc } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { createBrand, createBrandInputSchema, buildBrandResult, BrandConflictError } from "@/server/onboarding";
+import { createBrand, createBrandInputSchema, buildBrandResult, BrandConflictError } from "@/server/onboarding-core";
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {

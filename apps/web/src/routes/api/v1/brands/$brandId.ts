@@ -11,7 +11,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { updateBrand, updateBrandBodySchema, buildBrandResult, BrandNotFoundError } from "@/server/onboarding";
+import { updateBrand, updateBrandBodySchema, buildBrandResult, BrandNotFoundError } from "@/server/onboarding-core";
 
 function getBrandIdFromPath(request: Request): string {
 	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
