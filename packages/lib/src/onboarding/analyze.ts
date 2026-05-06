@@ -78,7 +78,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		suggestedPrompts: z
 			.array(promptSchema)
 			.describe(
-				`Up to ${args.maxPrompts} suggested AI tracking prompts. Mix shapes: "best [category]", "best [category] for [persona]", "[category] vs alternatives", "[brand] alternative", "where to buy [category]", "is [brand] worth it". Include 3-5 explicitly branded prompts. ${TAG_GUIDANCE}`,
+				`Up to ${args.maxPrompts} suggested AI tracking prompts. IMPORTANT: the MAJORITY must be UNBRANDED — generic category/persona queries that do NOT contain the brand name (e.g. "best [category]", "best [category] for [persona]", "[category] vs alternatives", "where to buy [category]"). Only 3-5 should be branded (contain the brand name, e.g. "[brand] alternative", "is [brand] worth it"). The goal is to test whether AI models mention the brand organically in response to unbranded queries. ${TAG_GUIDANCE}`,
 			),
 	});
 }
