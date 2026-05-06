@@ -11,21 +11,16 @@ function isValidUUID(id: string): boolean {
 	return uuidRegex.test(id);
 }
 
-function getPromptIdFromPath(request: Request): string {
-	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
-	return decodeURIComponent(segments[segments.length - 1] || "");
-}
-
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
+			GET: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
 				try {
-					const promptId = getPromptIdFromPath(request);
+					const { promptId } = params;
 					if (!isValidUUID(promptId)) {
 						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
 					}
@@ -56,13 +51,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				}
 			},
 
-			PATCH: async ({ request }) => {
+			PATCH: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
 				try {
-					const promptId = getPromptIdFromPath(request);
+					const { promptId } = params;
 					if (!isValidUUID(promptId)) {
 						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
 					}
@@ -131,13 +126,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 				}
 			},
 
-			DELETE: async ({ request }) => {
+			DELETE: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
 				try {
-					const promptId = getPromptIdFromPath(request);
+					const { promptId } = params;
 					if (!isValidUUID(promptId)) {
 						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
 					}

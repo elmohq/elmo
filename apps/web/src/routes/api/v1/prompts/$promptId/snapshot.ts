@@ -22,22 +22,16 @@ function isValidDate(dateStr: string): boolean {
 	return !Number.isNaN(d.getTime());
 }
 
-function getPromptIdFromPath(request: Request): string {
-	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
-	const snapshotIndex = segments.lastIndexOf("snapshot");
-	return snapshotIndex > 0 ? decodeURIComponent(segments[snapshotIndex - 1]) : "";
-}
-
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
+			GET: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
 				try {
-					const promptId = getPromptIdFromPath(request);
+					const { promptId } = params;
 					const { searchParams } = new URL(request.url);
 
 					if (!isValidUUID(promptId)) {
