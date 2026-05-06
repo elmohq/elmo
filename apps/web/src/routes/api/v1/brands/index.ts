@@ -11,7 +11,14 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { count, desc } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { createBrand, createBrandInputSchema, buildBrandResult, BrandConflictError } from "@/server/onboarding-core";
+import {
+	createBrand,
+	createBrandInputSchema,
+	apiCreateInputToInternal,
+	buildBrandResult,
+	BrandConflictError,
+	InvalidDomainsError,
+} from "@/server/onboarding-core";
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
@@ -75,9 +82,13 @@ export const Route = createFileRoute("/api/v1/brands/")({
 				}
 
 				try {
-					const result = await createBrand(parsed.data);
+					const internal = apiCreateInputToInternal(parsed.data);
+					const result = await createBrand(internal);
 					return Response.json(result, { status: 201 });
 				} catch (err) {
+					if (err instanceof InvalidDomainsError) {
+						return Response.json({ error: "Validation Error", message: err.message }, { status: 400 });
+					}
 					if (err instanceof BrandConflictError) {
 						return Response.json({ error: "Conflict", message: err.message }, { status: 409 });
 					}

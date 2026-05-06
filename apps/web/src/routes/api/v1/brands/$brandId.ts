@@ -11,7 +11,14 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
-import { updateBrand, updateBrandBodySchema, buildBrandResult, BrandNotFoundError } from "@/server/onboarding-core";
+import {
+	updateBrand,
+	updateBrandBodySchema,
+	apiUpdateInputToInternal,
+	buildBrandResult,
+	BrandNotFoundError,
+	InvalidDomainsError,
+} from "@/server/onboarding-core";
 
 export const Route = createFileRoute("/api/v1/brands/$brandId")({
 	server: {
@@ -64,9 +71,13 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 				}
 
 				try {
-					const result = await updateBrand({ brandId, ...parsed.data });
+					const internal = apiUpdateInputToInternal(brandId, parsed.data);
+					const result = await updateBrand(internal);
 					return Response.json(result, { status: 200 });
 				} catch (err) {
+					if (err instanceof InvalidDomainsError) {
+						return Response.json({ error: "Validation Error", message: err.message }, { status: 400 });
+					}
 					if (err instanceof BrandNotFoundError) {
 						return Response.json({ error: "Not Found", message: err.message }, { status: 404 });
 					}
