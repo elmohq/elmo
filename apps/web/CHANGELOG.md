@@ -1,5 +1,19 @@
 # @workspace/web
 
+## 0.2.6
+
+### Patch Changes
+
+- 1a1005a: Admin `/api/v1/brands` endpoints (POST, GET, PATCH) now accept and return a single `domains` list instead of `website` + `additionalDomains`. This future-proofs against a future db model change.
+- Updated dependencies [1a1005a]
+  - @workspace/api-spec@0.2.6
+  - @workspace/config@0.2.6
+  - @workspace/deployment@0.2.6
+  - @workspace/lib@0.2.6
+  - @workspace/og@0.2.6
+  - @workspace/ui@0.2.6
+  - @workspace/whitelabel@0.2.6
+
 ## 0.2.5
 
 ### Patch Changes
