@@ -13,7 +13,7 @@
     "@workspace/config": "workspace:*",
     "@workspace/lib": "workspace:*",
     "@workspace/ui": "workspace:*",
-    "zod": "^4.3.6"
+    "zod": "^4.4.2"
   },
   "peerDependencies": {
     "@tabler/icons-react": "^3.0.0",
