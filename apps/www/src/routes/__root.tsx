@@ -17,6 +17,7 @@ import {
 	organizationJsonLd,
 } from "@/lib/seo";
 import { getMarketingOgImage } from "@/lib/og";
+import { getGitHubStars } from "@/lib/github-stars";
 import appCss from "../styles.css?url";
 
 const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility`;
@@ -69,6 +70,10 @@ export const Route = createRootRoute({
 			},
 		],
 	}),
+	loader: async () => {
+		const githubStars = await getGitHubStars();
+		return { githubStars };
+	},
 	component: RootComponent,
 });
 

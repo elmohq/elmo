@@ -252,7 +252,7 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 	return (
 		<div className="min-h-screen">
 			<Navbar />
-			<div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
+			<div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">
 				<div className="flex gap-10">
 					<aside className="hidden w-56 shrink-0 md:block">
 						<div className="sticky top-20">

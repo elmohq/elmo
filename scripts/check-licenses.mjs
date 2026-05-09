@@ -76,6 +76,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["lightningcss-win32-x64-msvc", "MPL-2.0"],
 
   // Web fonts – OFL-1.1 permits bundling in web applications.
+  ["@fontsource/geist-mono", "OFL-1.1"],
   ["@fontsource/geist-sans", "OFL-1.1"],
   ["@fontsource/titan-one", "OFL-1.1"],
 
