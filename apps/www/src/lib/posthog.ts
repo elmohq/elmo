@@ -14,6 +14,12 @@ export function initPostHog(): void {
 		capture_pageleave: true,
 		autocapture: false,
 		disable_session_recording: true,
+		// Prevent PostHog from auto-loading optional feature scripts we don't use.
+		// Without these, /static/{surveys,dead-clicks-autocapture,web-vitals}.js
+		// were being fetched even though the server returns surveys:false etc.
+		disable_surveys: true,
+		capture_dead_clicks: false,
+		capture_performance: false,
 		persistence: "localStorage+cookie",
 	});
 
