@@ -18,12 +18,14 @@ import {
 } from "@/lib/seo";
 import { getMarketingOgImage } from "@/lib/og";
 import { getGitHubStars } from "@/lib/github-stars";
+import { NotFound } from "@/components/not-found";
 import appCss from "../styles.css?url";
 
 const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility`;
 const ROOT_OG_IMAGE = `${SITE_URL}${getMarketingOgImage({ title: ROOT_TITLE, description: SITE_DESCRIPTION })}`;
 
 export const Route = createRootRoute({
+	notFoundComponent: NotFound,
 	head: () => ({
 		meta: [
 			{ charSet: "utf-8" },
