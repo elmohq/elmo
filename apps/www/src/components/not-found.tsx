@@ -30,7 +30,7 @@ export function NotFound() {
 							</h1>
 							<p className="mx-auto mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
 								The page you're looking for may have moved, been renamed, or
-								never existed. Try one of the links below or head back home.
+								never existed.
 							</p>
 							<div className="mt-8 flex flex-wrap items-center justify-center gap-2">
 								<Link
