@@ -3,6 +3,8 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-openapi/css/preset.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 
 @source "../src";
 @source "../../../packages/ui/src";
@@ -47,28 +49,10 @@
 	font-display: swap;
 }
 
-@font-face {
-	font-family: "Geist Sans";
-	font-style: normal;
-	font-weight: 100 900;
-	src: url("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2")
-		format("woff2");
-	font-display: swap;
-}
-
-@font-face {
-	font-family: "Geist Mono";
-	font-style: normal;
-	font-weight: 100 900;
-	src: url("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2")
-		format("woff2");
-	font-display: swap;
-}
-
 :root {
 	--fd-nav-height: 4rem;
-	--font-geist-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
-	--font-geist-mono: "Geist Mono", ui-monospace, monospace;
+	--font-geist-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+	--font-geist-mono: "Geist Mono Variable", ui-monospace, monospace;
 	--font-titan-one: "Titan One", cursive;
 
 	--radius: 0.625rem;

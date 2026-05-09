@@ -3,11 +3,12 @@ import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline' https://var.elmohq.com",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
 		"font-src 'self' data:",
 		"connect-src 'self' https://var.elmohq.com",
+		"worker-src 'self' blob:",
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
