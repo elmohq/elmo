@@ -154,9 +154,10 @@ export function Hero() {
 						</div>
 						<CustomerLogosInline />
 					</div>
-					<aside className="flex flex-col gap-4 lg:col-span-5">
+					{/* When restoring <VideoPlaceholder />, drop lg:self-center so the column tops align again. */}
+					<aside className="flex flex-col gap-4 lg:col-span-5 lg:self-center">
 						<QuickstartBlock />
-						<VideoPlaceholder />
+						{/* <VideoPlaceholder /> */}
 					</aside>
 				</div>
 			</div>
