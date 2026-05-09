@@ -47,6 +47,14 @@
 	font-display: swap;
 }
 
+/*
+ * Geist Sans / Mono ship only the 400-weight static file. The declared
+ * font-weight: 100 900 range tells the browser to use this single face
+ * for any requested weight WITHOUT synthesizing bold — so font-medium,
+ * font-semibold, etc. all render at the 400 file's visual weight. This
+ * is intentional: it keeps the lighter, uniform look across headings
+ * and avoids shipping additional weight files.
+ */
 @font-face {
 	font-family: "Geist Sans";
 	font-style: normal;

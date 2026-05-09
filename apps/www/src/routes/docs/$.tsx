@@ -4,6 +4,7 @@ import { source } from "@/lib/source";
 import { getPageImage } from "@/lib/og";
 import browserCollections from "collections/browser";
 import { useFumadocsLoader } from "fumadocs-core/source/client";
+import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { Suspense } from "react";
 import { useMDXComponents } from "@/components/mdx";
 import { ClientAPIPage } from "@/components/api-page";
@@ -250,34 +251,36 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 	const data = useFumadocsLoader(loaderData);
 
 	return (
-		<div className="min-h-screen">
-			<Navbar />
-			<div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">
-				<div className="flex gap-10">
-					<aside className="hidden w-56 shrink-0 md:block">
-						<div className="sticky top-20">
-							<DocsSidebar tree={data.pageTree} />
-						</div>
-					</aside>
+		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }}>
+			<div className="min-h-screen">
+				<Navbar />
+				<div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">
+					<div className="flex gap-10">
+						<aside className="hidden w-56 shrink-0 md:block">
+							<div className="sticky top-20">
+								<DocsSidebar tree={data.pageTree} />
+							</div>
+						</aside>
 
-					<main className="min-w-0 flex-1">
-						{data.type === "openapi" ? (
-							<OpenApiContent
-								title={data.title}
-								description={data.description}
-								apiProps={data.apiProps}
-							/>
-						) : (
-							<>
-								<Suspense>{clientLoader.useContent(data.path)}</Suspense>
-								<DocsPageActions filePath={data.filePath} />
-							</>
-						)}
-					</main>
+						<main className="min-w-0 flex-1">
+							{data.type === "openapi" ? (
+								<OpenApiContent
+									title={data.title}
+									description={data.description}
+									apiProps={data.apiProps}
+								/>
+							) : (
+								<>
+									<Suspense>{clientLoader.useContent(data.path)}</Suspense>
+									<DocsPageActions filePath={data.filePath} />
+								</>
+							)}
+						</main>
+					</div>
 				</div>
+				<Footer />
 			</div>
-			<Footer />
-		</div>
+		</RootProvider>
 	);
 }
 

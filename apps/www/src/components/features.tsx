@@ -88,7 +88,7 @@ export function Features() {
 					</h2>
 				</div>
 
-				<dl className="mt-16 space-y-16 lg:space-y-24">
+				<div className="mt-16 space-y-16 lg:space-y-24">
 					{features.map((f) => (
 						<div
 							key={f.num}
@@ -100,17 +100,17 @@ export function Features() {
 									<span className="mx-2 text-zinc-300">/</span>
 									{f.eyebrow}
 								</p>
-								<dt className="mt-5 max-w-[20ch] text-2xl font-semibold leading-[1.15] tracking-tight text-balance text-zinc-950 md:text-3xl">
+								<h3 className="mt-5 max-w-[20ch] text-2xl font-semibold leading-[1.15] tracking-tight text-balance text-zinc-950 md:text-3xl">
 									{f.title}
-								</dt>
-								<dd className="mt-4 max-w-[52ch] text-pretty text-zinc-600 md:text-base/7">
+								</h3>
+								<p className="mt-4 max-w-[52ch] text-pretty text-zinc-600 md:text-base/7">
 									{f.description}
-								</dd>
+								</p>
 							</div>
 							<div className="lg:col-span-7">{f.graphic}</div>
 						</div>
 					))}
-				</dl>
+				</div>
 			</div>
 		</section>
 	);

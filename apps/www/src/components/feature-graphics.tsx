@@ -54,6 +54,19 @@ function Mono({
 // Screenshot helper — used by feature graphics that show real product UI
 // ---------------------------------------------------------------------------
 
+// Screenshot column renders at ~640px max (max-w-6xl × 7/12). Use 750/1200/1920
+// from the Vercel image sizes list to cover 1x/2x/3x DPR.
+const SCREENSHOT_WIDTHS = [750, 1200, 1920];
+
+function optimizedSrc(src: string, width: number, quality = 75) {
+	const params = new URLSearchParams({
+		url: src,
+		w: String(width),
+		q: String(quality),
+	});
+	return `/_vercel/image?${params.toString()}`;
+}
+
 function Screenshot({
 	src,
 	alt,
@@ -65,10 +78,16 @@ function Screenshot({
 	aspect?: string;
 	objectPosition?: string;
 }) {
+	const useOptimized = import.meta.env.PROD;
+	const srcSet = useOptimized
+		? SCREENSHOT_WIDTHS.map((w) => `${optimizedSrc(src, w)} ${w}w`).join(", ")
+		: undefined;
 	return (
 		<Frame aspect={aspect}>
 			<img
-				src={src}
+				src={useOptimized ? optimizedSrc(src, 1200) : src}
+				srcSet={srcSet}
+				sizes="(min-width: 1024px) 640px, 100vw"
 				alt={alt}
 				loading="lazy"
 				decoding="async"

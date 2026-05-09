@@ -36,6 +36,7 @@ export function Navbar() {
 								className="group size-8 md:hidden"
 								variant="ghost"
 								size="icon"
+								aria-label="Open menu"
 							>
 								<svg
 									className="pointer-events-none"

@@ -6,7 +6,6 @@ import {
 	HeadContent,
 	Scripts,
 } from "@tanstack/react-router";
-import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { initPostHog } from "@/lib/posthog";
 import {
 	SITE_URL,
@@ -98,14 +97,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 				<HeadContent />
 			</head>
 			<body className="flex min-h-screen flex-col">
-				<RootProvider
-					theme={{
-						defaultTheme: "light",
-						forcedTheme: "light",
-					}}
-				>
-					{children}
-				</RootProvider>
+				{children}
 				<Scripts />
 			</body>
 		</html>
