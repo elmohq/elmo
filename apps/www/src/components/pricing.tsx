@@ -1,160 +1,147 @@
-import { CircleCheck } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@workspace/ui/components/card";
-import { Separator } from "@workspace/ui/components/separator";
 import { WaitlistForm } from "./waitlist-form";
 import { ContactForm } from "./contact-form";
 
 interface Plan {
 	id: string;
+	tag: string;
 	name: string;
-	description: string;
+	desc: string;
 	price: string;
+	priceLabel: string;
 	features: string[];
-	button?: {
-		text: string;
-		url: string;
-	};
-	waitlist?: boolean;
-	contact?: boolean;
+	cta:
+		| { type: "link"; text: string; href: string }
+		| { type: "waitlist" }
+		| { type: "contact" };
 }
 
 const plans: Plan[] = [
 	{
-		id: "free",
-		name: "Free",
-		description: "Self-host on your own infrastructure with full access",
+		id: "self-hosted",
+		tag: "01",
+		name: "Self-Hosted",
+		desc: "Run on your own infra with full access.",
 		price: "$0",
+		priceLabel: "",
 		features: [
-			"Unlimited brands & prompts",
+			"Unlimited prompts",
 			"All AI models supported",
 			"Citation analysis",
 			"Competitor tracking",
 			"Full source code access",
 			"Community support",
 		],
-		button: {
-			text: "Get Started",
-			url: "/docs",
-		},
+		cta: { type: "link", text: "Get started", href: "/docs" },
 	},
 	{
 		id: "cloud",
+		tag: "02",
 		name: "Cloud",
-		description: "Managed hosting so you can focus on insights",
+		desc: "Managed hosting, no maintenance.",
 		price: "Coming Soon",
+		priceLabel: "",
 		features: [
-			"Everything in Free",
+			"Everything in Self-Hosted",
 			"Managed hosting",
 			"Automatic updates",
 			"Priority support",
-			"Uptime SLA",
-			"No server management",
+			"Daily backups",
+			"Usage analytics",
 		],
-		waitlist: true,
+		cta: { type: "waitlist" },
 	},
 	{
 		id: "white-label",
+		tag: "03",
 		name: "White Label",
-		description: "Deploy under your own brand with multi-org support",
+		desc: "Provide AEO for all of your customers.",
 		price: "Custom",
+		priceLabel: "",
 		features: [
 			"Everything in Cloud",
 			"Custom branding",
-			"Multi-organization",
-			"SSO via Auth0",
-			"Dedicated support",
-			"Custom integrations",
+			"Custom domain",
+			"SSO",
+			"Shared Slack channel",
+			"Prioritized features",
 		],
-		contact: true,
+		cta: { type: "contact" },
 	},
 ];
 
 export function Pricing() {
 	return (
-		<section id="pricing" className="py-12 lg:py-20">
-			<div className="container mx-auto px-4 md:px-6">
-				<div className="mx-auto flex max-w-5xl flex-col items-center space-y-6 text-center lg:space-y-8">
-					<header className="mb-10 space-y-4">
-						<h2 className="font-heading text-4xl text-balance lg:text-5xl">
-							Free to Start, Scales With You
-						</h2>
-						<p className="text-muted-foreground text-balance lg:text-lg">
-							Elmo is open source and free to self-host. Need managed hosting
-							or white-label? We've got you covered.
-						</p>
-					</header>
+		<section id="pricing" className="border-b border-zinc-200 bg-white">
+			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
+				<div>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+						/ PRICING
+					</p>
+					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
+						Self-host it, run it in our cloud, or white-label it for your
+						customers.
+					</h2>
+				</div>
 
-					<div className="flex flex-col items-stretch gap-6 md:flex-row">
-						{plans.map((plan) => (
-							<Card
-								key={plan.id}
-								className="flex w-80 flex-col justify-between text-left shadow-none"
-							>
-								<CardHeader>
-									<CardTitle>
-										<p>{plan.name}</p>
-									</CardTitle>
-									<p className="text-muted-foreground text-sm">
-										{plan.description}
-									</p>
-									<div className="flex items-end">
-										<span className="text-3xl font-bold lg:text-4xl">
-											{plan.price}
+				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
+					{plans.map((plan) => (
+						<div
+							key={plan.id}
+							className="flex flex-col justify-between bg-white p-6 lg:p-8"
+						>
+							<div>
+								<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
+									{plan.tag}
+								</span>
+								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">
+									{plan.name}
+								</h3>
+								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">
+									{plan.desc}
+								</p>
+								<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
+									<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">
+										{plan.price}
+									</span>
+									{plan.priceLabel && (
+										<span className="font-mono text-[11px] uppercase tracking-[0.15em] text-zinc-500">
+											{plan.priceLabel}
 										</span>
-									</div>
-								</CardHeader>
-								<CardContent>
-									<Separator className="mb-6" />
-									<ul className="space-y-4">
-										{plan.features.map((feature, index) => (
-											<li
-												key={index}
-												className="flex items-center gap-2 text-sm"
-											>
-												<CircleCheck className="size-4" />
-												<span>{feature}</span>
-											</li>
-										))}
-									</ul>
-								</CardContent>
-								<CardFooter className="mt-auto">
-									{plan.contact ? (
-										<ContactForm source="pricing" />
-									) : plan.waitlist ? (
-										<WaitlistForm source="pricing" />
-									) : plan.button ? (
-										<Button asChild className="w-full">
-											{plan.button.url.startsWith("/") ? (
-												<Link to={plan.button.url}>
-													{plan.button.text}
-												</Link>
-											) : (
-												<a
-													href={plan.button.url}
-													{...(plan.button.url.startsWith("http")
-														? {
-																target: "_blank",
-																rel: "noopener noreferrer",
-															}
-														: {})}
-												>
-													{plan.button.text}
-												</a>
-											)}
-										</Button>
-									) : null}
-								</CardFooter>
-							</Card>
-						))}
-					</div>
+									)}
+								</div>
+								<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
+									{plan.features.map((f) => (
+										<li key={f} className="flex items-start gap-2">
+											<Check
+												className="mt-0.5 size-3.5 shrink-0 text-blue-600"
+												strokeWidth={3}
+											/>
+											<span>{f}</span>
+										</li>
+									))}
+								</ul>
+							</div>
+							<div className="mt-8 [&_button]:!h-8 [&_button]:w-full [&_button]:rounded-md [&_button]:bg-blue-600 [&_button]:!px-3 [&_button]:!py-0 [&_button]:!text-sm [&_button]:font-medium [&_button]:!leading-none [&_button]:text-white [&_button]:ring-1 [&_button]:ring-blue-600 [&_button]:hover:bg-blue-700">
+								{plan.cta.type === "link" && (
+									<Link
+										to={plan.cta.href}
+										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
+									>
+										{plan.cta.text}
+										<ArrowRight className="size-3.5" />
+									</Link>
+								)}
+								{plan.cta.type === "waitlist" && (
+									<WaitlistForm source="pricing" />
+								)}
+								{plan.cta.type === "contact" && (
+									<ContactForm source="pricing" />
+								)}
+							</div>
+						</div>
+					))}
 				</div>
 			</div>
 		</section>

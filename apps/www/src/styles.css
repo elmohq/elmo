@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "fumadocs-ui/css/neutral.css";
@@ -59,7 +60,7 @@
 :root {
 	--fd-nav-height: 4rem;
 	--font-geist-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
-	--font-geist-mono: ui-monospace, monospace;
+	--font-geist-mono: "Geist Mono", ui-monospace, monospace;
 	--font-titan-one: "Titan One", cursive;
 
 	--radius: 0.625rem;
@@ -88,7 +89,7 @@
 }
 
 @utility font-heading {
-	font-weight: 700;
+	font-weight: 600;
 	letter-spacing: -0.025em;
 }
 
@@ -98,6 +99,10 @@
 	}
 	body {
 		@apply bg-background text-foreground font-sans antialiased;
+	}
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
 	}
 }
 

@@ -9,10 +9,7 @@
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
-		"generate-icons": "tsx scripts/generate-brand-icons.tsx",
-		"generate:changelog": "node scripts/generate-changelog.mjs",
-		"generate:roadmap": "node scripts/generate-roadmap.mjs",
-		"generate": "node scripts/generate-changelog.mjs && node scripts/generate-roadmap.mjs"
+		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
 		"@fontsource/geist-sans": "^5.2.5",

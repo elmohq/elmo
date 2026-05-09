@@ -98,7 +98,7 @@ function DownloadButton({
 		<a
 			href={href}
 			download
-			className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+			className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-950"
 		>
 			<Download className="size-3" />
 			{label}
@@ -115,7 +115,7 @@ const CHECKERED_BG = {
 
 function AssetCard({ asset }: { asset: BrandAsset }) {
 	return (
-		<div className="group overflow-hidden rounded-xl border transition-shadow hover:shadow-md">
+		<div className="group overflow-hidden rounded-md border border-zinc-200 bg-white transition-shadow hover:shadow-md">
 			<div
 				className={`relative flex items-center justify-center overflow-hidden ${asset.preview.padding ?? "p-6"}`}
 				style={{
@@ -131,8 +131,8 @@ function AssetCard({ asset }: { asset: BrandAsset }) {
 					loading="lazy"
 				/>
 			</div>
-			<div className="flex items-center justify-between border-t px-4 py-3">
-				<span className="text-sm font-medium">{asset.label}</span>
+			<div className="flex items-center justify-between border-t border-zinc-200 px-4 py-3">
+				<span className="text-sm font-medium text-zinc-950">{asset.label}</span>
 				<div className="flex items-center gap-1.5">
 					<DownloadButton href={asset.path} label="PNG" />
 					{asset.svgPath && (
@@ -166,15 +166,15 @@ function ColorSwatch({
 		<button
 			type="button"
 			onClick={handleCopy}
-			className="group flex cursor-pointer items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-muted/50"
+			className="group flex cursor-pointer items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-zinc-50"
 		>
 			<div
-				className="size-12 shrink-0 rounded-lg border shadow-sm"
+				className="size-12 shrink-0 rounded-md border border-zinc-200 shadow-sm"
 				style={{ backgroundColor: color }}
 			/>
 			<div className="min-w-0 flex-1">
-				<p className="text-sm font-medium">{label}</p>
-				<p className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+				<p className="text-sm font-medium text-zinc-950">{label}</p>
+				<p className="flex items-center gap-1 font-mono text-xs text-zinc-500">
 					{value}
 					{copied ? (
 						<Check className="size-3 text-emerald-500" />
@@ -191,12 +191,15 @@ function BrandPage() {
 	return (
 		<div className="min-h-screen">
 			<Navbar />
-			<main className="mx-auto max-w-4xl px-4 py-12 md:px-6 lg:py-20">
+			<main className="mx-auto max-w-6xl px-4 py-12 md:px-6 lg:py-20">
 				<header className="mb-16 space-y-4">
-					<h1 className="font-heading text-4xl lg:text-5xl">
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+						/ BRAND
+					</p>
+					<h1 className="font-heading text-4xl text-zinc-950 lg:text-5xl">
 						Brand Assets
 					</h1>
-					<p className="max-w-2xl text-lg text-muted-foreground text-balance">
+					<p className="max-w-2xl text-lg text-balance text-zinc-600">
 						Writing about Elmo or building an integration? Download
 						official logos and icons to use in blog posts, videos,
 						partner pages, or anywhere you reference Elmo.
@@ -205,20 +208,20 @@ function BrandPage() {
 
 				{/* Guidelines */}
 				<section className="mb-16">
-					<h2 className="mb-6 text-xl font-semibold">Guidelines</h2>
-					<div className="rounded-xl border p-6">
+					<h2 className="mb-6 text-xl font-semibold text-zinc-950">Guidelines</h2>
+					<div className="rounded-md border border-zinc-200 bg-white p-6">
 						<div className="grid gap-6 sm:grid-cols-2">
 							<div className="space-y-1">
-								<p className="text-sm font-medium">Do</p>
-								<ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+								<p className="text-sm font-medium text-zinc-950">Do</p>
+								<ul className="list-disc space-y-1 pl-4 text-sm text-zinc-600">
 									<li>Use the provided assets without modification</li>
 									<li>Maintain clear space around the logo</li>
 									<li>Use on solid backgrounds with good contrast</li>
 								</ul>
 							</div>
 							<div className="space-y-1">
-								<p className="text-sm font-medium">Don't</p>
-								<ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+								<p className="text-sm font-medium text-zinc-950">Don't</p>
+								<ul className="list-disc space-y-1 pl-4 text-sm text-zinc-600">
 									<li>Alter the colors, proportions, or orientation</li>
 									<li>Add effects like shadows, outlines, or gradients</li>
 									<li>Use the logo to imply endorsement without permission</li>
@@ -230,7 +233,7 @@ function BrandPage() {
 
 				{/* Colors */}
 				<section className="mb-16">
-					<h2 className="mb-6 text-xl font-semibold">Colors</h2>
+					<h2 className="mb-6 text-xl font-semibold text-zinc-950">Colors</h2>
 					<div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
 						<ColorSwatch
 							color={BRAND_COLOR}
@@ -258,8 +261,8 @@ function BrandPage() {
 				{/* Icons */}
 				<section className="mb-16">
 					<div className="mb-6 flex items-center justify-between">
-						<h2 className="text-xl font-semibold">Icons</h2>
-						<span className="text-xs text-muted-foreground">512 × 512px</span>
+						<h2 className="text-xl font-semibold text-zinc-950">Icons</h2>
+						<span className="font-mono text-[11px] text-zinc-500">512 × 512px</span>
 					</div>
 					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{icons.map((asset) => (
@@ -271,8 +274,8 @@ function BrandPage() {
 				{/* Logos */}
 				<section className="mb-16">
 					<div className="mb-6 flex items-center justify-between">
-						<h2 className="text-xl font-semibold">Wordmark</h2>
-						<span className="text-xs text-muted-foreground">700 × 330px</span>
+						<h2 className="text-xl font-semibold text-zinc-950">Wordmark</h2>
+						<span className="font-mono text-[11px] text-zinc-500">700 × 330px</span>
 					</div>
 					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{logos.map((asset) => (
@@ -283,19 +286,19 @@ function BrandPage() {
 
 				{/* Typography */}
 				<section className="mb-16">
-					<h2 className="mb-6 text-xl font-semibold">Typography</h2>
+					<h2 className="mb-6 text-xl font-semibold text-zinc-950">Typography</h2>
 					<div className="grid gap-6 sm:grid-cols-2">
 						<a
 							href="https://fonts.google.com/specimen/Titan+One"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="group rounded-xl border p-6 transition-colors hover:bg-muted/30"
+							className="group rounded-md border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50"
 						>
 							<p className="font-titan-one text-4xl lowercase text-blue-600">
 								elmo
 							</p>
-							<p className="mt-3 text-sm font-medium group-hover:text-primary">Titan One</p>
-							<p className="text-xs text-muted-foreground">
+							<p className="mt-3 text-sm font-medium text-zinc-950 group-hover:text-blue-600">Titan One</p>
+							<p className="text-xs text-zinc-500">
 								Used for the logo wordmark and icon glyph
 							</p>
 						</a>
@@ -303,13 +306,13 @@ function BrandPage() {
 							href="https://vercel.com/font"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="group rounded-xl border p-6 transition-colors hover:bg-muted/30"
+							className="group rounded-md border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50"
 						>
-							<p className="text-4xl font-semibold tracking-tight">
+							<p className="text-4xl font-semibold tracking-tight text-zinc-950">
 								Geist Sans
 							</p>
-							<p className="mt-3 text-sm font-medium group-hover:text-primary">Geist Sans</p>
-							<p className="text-xs text-muted-foreground">
+							<p className="mt-3 text-sm font-medium text-zinc-950 group-hover:text-blue-600">Geist Sans</p>
+							<p className="text-xs text-zinc-500">
 								Used for body text, headings, and UI elements
 							</p>
 						</a>
@@ -317,9 +320,9 @@ function BrandPage() {
 				</section>
 
 				{/* CTA */}
-				<div className="rounded-xl border border-dashed p-8 text-center">
-					<h3 className="text-lg font-semibold">Need something else?</h3>
-					<p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+				<div className="rounded-md border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+					<h3 className="text-lg font-semibold text-zinc-950">Need something else?</h3>
+					<p className="mx-auto mt-2 max-w-md text-sm text-zinc-600">
 						If you need assets in a different format or size, or have
 						questions about brand usage, reach out on Discord or open a
 						GitHub issue.
