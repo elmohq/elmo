@@ -4,9 +4,9 @@ const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline'",
-		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: https:",
-		"font-src 'self' data: https://fonts.gstatic.com",
+		"font-src 'self' data:",
 		"connect-src 'self' https://var.elmohq.com",
 		"object-src 'none'",
 		"frame-ancestors 'none'",

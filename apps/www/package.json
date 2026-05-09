@@ -12,6 +12,7 @@
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
 	},
 	"dependencies": {
+		"@fontsource/geist-mono": "^5.2.7",
 		"@fontsource/geist-sans": "^5.2.5",
 		"@fontsource/titan-one": "^5.2.8",
 		"@tailwindcss/typography": "^0.5.19",
@@ -37,8 +38,10 @@
 		"posthog-js": "^1.372.6",
 		"react": "^19.2.5",
 		"react-dom": "^19.2.5",
+		"react-markdown": "^10.1.0",
 		"react-use-measure": "^2.1.7",
 		"recharts": "^3.8.1",
+		"remark-gfm": "^4.0.1",
 		"shiki": "^4.0.2",
 		"tailwindcss": "^4.2.4",
 		"tslib": "^2.8.1",
