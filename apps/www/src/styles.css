@@ -48,15 +48,17 @@
 }
 
 /*
- * Only the 400-weight static file is loaded for Geist Sans / Mono. Heavier
- * weights (font-medium, font-semibold, font-bold) are intentionally
- * browser-synthesized via font-synthesis-weight (auto by default) so the
- * site keeps its current chunkier look without shipping extra font files.
+ * Geist Sans / Mono ship only the 400-weight static file. The declared
+ * font-weight: 100 900 range tells the browser to use this single face
+ * for any requested weight WITHOUT synthesizing bold — so font-medium,
+ * font-semibold, etc. all render at the 400 file's visual weight. This
+ * is intentional: it keeps the lighter, uniform look across headings
+ * and avoids shipping additional weight files.
  */
 @font-face {
 	font-family: "Geist Sans";
 	font-style: normal;
-	font-weight: 400;
+	font-weight: 100 900;
 	src: url("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2")
 		format("woff2");
 	font-display: swap;
@@ -65,7 +67,7 @@
 @font-face {
 	font-family: "Geist Mono";
 	font-style: normal;
-	font-weight: 400;
+	font-weight: 100 900;
 	src: url("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2")
 		format("woff2");
 	font-display: swap;
