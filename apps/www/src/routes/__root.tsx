@@ -19,6 +19,12 @@ import { getMarketingOgImage } from "@/lib/og";
 import { getGitHubStars } from "@/lib/github-stars";
 import { NotFound } from "@/components/not-found";
 import appCss from "../styles.css?url";
+// Preload the 400-weight files used everywhere above the fold so they download
+// in parallel with the CSS instead of after it (the H1 LCP element was being
+// held back by the HTML→CSS→font waterfall).
+import geistSansFont from "@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2?url";
+import geistMonoFont from "@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2?url";
+import titanOneFont from "@fontsource/titan-one/files/titan-one-latin-400-normal.woff2?url";
 
 const ROOT_TITLE = `${SITE_NAME} · Open Source AI Visibility`;
 const ROOT_OG_IMAGE = `${SITE_URL}${getMarketingOgImage({ title: ROOT_TITLE, description: SITE_DESCRIPTION })}`;
@@ -52,6 +58,27 @@ export const Route = createRootRoute({
 			{ name: "apple-mobile-web-app-title", content: SITE_NAME },
 		],
 		links: [
+			{
+				rel: "preload",
+				as: "font",
+				type: "font/woff2",
+				href: geistSansFont,
+				crossOrigin: "anonymous",
+			},
+			{
+				rel: "preload",
+				as: "font",
+				type: "font/woff2",
+				href: geistMonoFont,
+				crossOrigin: "anonymous",
+			},
+			{
+				rel: "preload",
+				as: "font",
+				type: "font/woff2",
+				href: titanOneFont,
+				crossOrigin: "anonymous",
+			},
 			{ rel: "icon", type: "image/svg+xml", href: "/icons/elmo-icon.svg" },
 			{ rel: "icon", type: "image/png", sizes: "96x96", href: "/icons/elmo-icon-96.png" },
 			{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
