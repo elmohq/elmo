@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { ArrowUpRight, ThumbsUp, MessageCircle } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -8,6 +7,7 @@ import {
 	getGitHubRoadmap,
 	type RoadmapIssue as GitHubRoadmapIssue,
 } from "@/lib/github-roadmap";
+import upcomingData from "@/data/upcoming-features.json";
 
 const title = "Roadmap · Elmo";
 const description =
@@ -24,15 +24,8 @@ interface UpcomingHighlight {
 	url: string;
 }
 
-interface UpcomingData {
-	lastUpdated: string;
-	highlights: UpcomingHighlight[];
-}
-
-interface PageData {
-	popularIssues: GitHubRoadmapIssue[];
-	upcoming: UpcomingHighlight[];
-}
+const upcomingHighlights = (upcomingData as { highlights: UpcomingHighlight[] })
+	.highlights;
 
 export const Route = createFileRoute("/roadmap")({
 	head: () => ({
@@ -49,18 +42,8 @@ export const Route = createFileRoute("/roadmap")({
 			]),
 		],
 	}),
-	loader: async () => getRoadmapPageData(),
-	component: RoadmapPage,
-});
-
-const getRoadmapPageData = createServerFn({ method: "GET" }).handler(
-	async (): Promise<PageData> => {
-		const [roadmap, upcomingMod] = await Promise.all([
-			getGitHubRoadmap(),
-			import("../data/upcoming-features.json"),
-		]);
-		const upcoming = upcomingMod.default as UpcomingData;
-
+	loader: async () => {
+		const roadmap = await getGitHubRoadmap();
 		const issues = roadmap.issues;
 		const hasReactions = issues.some((i) => i.reactions > 0);
 		const sorted = [...issues].sort((a, b) => {
@@ -72,13 +55,13 @@ const getRoadmapPageData = createServerFn({ method: "GET" }).handler(
 				new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
 			);
 		});
-
 		return {
 			popularIssues: sorted.slice(0, 7),
-			upcoming: upcoming.highlights,
+			upcoming: upcomingHighlights,
 		};
 	},
-);
+	component: RoadmapPage,
+});
 
 function GitHubGlyph({ className = "" }: { className?: string }) {
 	return (
