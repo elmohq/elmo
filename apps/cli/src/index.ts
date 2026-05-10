@@ -1233,7 +1233,7 @@ function buildWebService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push("  image: elmohq/web:latest");
+		lines.push("  image: elmohq/elmo-web:latest");
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", '    - "1515:3000"');
@@ -1267,7 +1267,7 @@ function buildWorkerService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push("  image: elmohq/worker:latest");
+		lines.push("  image: elmohq/elmo-worker:latest");
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true");
