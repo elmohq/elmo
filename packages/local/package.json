@@ -1,6 +1,6 @@
 {
   "name": "@workspace/local",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "main": "./src/index.ts",
