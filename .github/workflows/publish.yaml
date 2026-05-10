@@ -23,6 +23,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -67,6 +69,24 @@ jobs:
           node scripts/generate-release-notes.mjs "$VERSION" > release-notes.md
           gh release create "v$VERSION" --title "v$VERSION" --notes-file release-notes.md
 
+  docker-build:
+    name: Build images (${{ matrix.arch }})
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: blacksmith-4vcpu-ubuntu-2404
+            arch: amd64
+          - platform: linux/arm64
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Setup Blacksmith Builder
         uses: useblacksmith/setup-docker-builder@v1
 
@@ -76,24 +96,80 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push web image
+      - name: Build and push web image by digest
+        id: build-web
         uses: useblacksmith/build-push-action@v2
         with:
           context: .
           file: docker/Dockerfile
           target: web
-          push: true
-          tags: |
-            elmohq/elmo-web:${{ steps.version.outputs.version }}
-            elmohq/elmo-web:latest
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=elmohq/elmo-web,push-by-digest=true,name-canonical=true,push=true
 
-      - name: Build and push worker image
+      - name: Build and push worker image by digest
+        id: build-worker
         uses: useblacksmith/build-push-action@v2
         with:
           context: .
           file: docker/Dockerfile
           target: worker
-          push: true
-          tags: |
-            elmohq/elmo-worker:${{ steps.version.outputs.version }}
-            elmohq/elmo-worker:latest
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=elmohq/elmo-worker,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digests
+        env:
+          WEB_DIGEST: ${{ steps.build-web.outputs.digest }}
+          WORKER_DIGEST: ${{ steps.build-worker.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests/web /tmp/digests/worker
+          touch "/tmp/digests/web/${WEB_DIGEST#sha256:}"
+          touch "/tmp/digests/worker/${WORKER_DIGEST#sha256:}"
+
+      - name: Upload digests
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker-manifest:
+    name: Publish multi-arch manifests
+    needs: [release, docker-build]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create multi-arch web manifest
+        working-directory: /tmp/digests/web
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            -t "elmohq/elmo-web:${VERSION}" \
+            -t "elmohq/elmo-web:latest" \
+            $(printf 'elmohq/elmo-web@sha256:%s ' *)
+
+      - name: Create multi-arch worker manifest
+        working-directory: /tmp/digests/worker
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            -t "elmohq/elmo-worker:${VERSION}" \
+            -t "elmohq/elmo-worker:latest" \
+            $(printf 'elmohq/elmo-worker@sha256:%s ' *)
