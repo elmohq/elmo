@@ -1138,6 +1138,7 @@ function buildComposeYaml(options: {
 		services.push(buildPostgresService());
 		services.push(
 			buildDbMigrateService({
+				dev: options.dev,
 				dockerfilePath,
 				repoRoot: options.repoRoot,
 			}),
@@ -1200,19 +1201,28 @@ function buildPostgresService(): string {
 	].join("\n");
 }
 
-function buildDbMigrateService(options: { dockerfilePath: string; repoRoot: string }): string {
-	return [
-		"db-migrate:",
-		"  build:",
-		`    context: ${options.repoRoot}`,
-		`    dockerfile: ${options.dockerfilePath}`,
-		"    target: migrate",
+function buildDbMigrateService(options: { dev: boolean; dockerfilePath: string; repoRoot: string }): string {
+	const lines = ["db-migrate:"];
+	if (options.dev) {
+		lines.push(
+			"  build:",
+			`    context: ${options.repoRoot}`,
+			`    dockerfile: ${options.dockerfilePath}`,
+			"    target: migrate",
+		);
+	} else {
+		lines.push("  image: elmohq/elmo-db-migrate:latest");
+	}
+
+	lines.push(
 		"  environment:",
 		"    - DATABASE_URL=postgres://postgres:postgres@postgres:5432/elmo",
 		"  depends_on:",
 		"    postgres:",
 		"      condition: service_healthy",
-	].join("\n");
+	);
+
+	return lines.join("\n");
 }
 
 function buildWebService(options: {
