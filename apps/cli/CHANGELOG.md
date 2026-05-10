@@ -1,5 +1,11 @@
 # @elmohq/cli
 
+## 0.2.8
+
+### Patch Changes
+
+- c576cee: Publish `elmohq/elmo-db-migrate` images instead of always attempting to build as part of the CLI.
+
 ## 0.2.7
 
 ### Patch Changes
