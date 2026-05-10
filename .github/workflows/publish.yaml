@@ -119,14 +119,26 @@ jobs:
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=elmohq/elmo-worker,push-by-digest=true,name-canonical=true,push=true
 
+      - name: Build and push db-migrate image by digest
+        id: build-db-migrate
+        uses: useblacksmith/build-push-action@v2
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: migrate
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=elmohq/elmo-db-migrate,push-by-digest=true,name-canonical=true,push=true
+
       - name: Export digests
         env:
           WEB_DIGEST: ${{ steps.build-web.outputs.digest }}
           WORKER_DIGEST: ${{ steps.build-worker.outputs.digest }}
+          DB_MIGRATE_DIGEST: ${{ steps.build-db-migrate.outputs.digest }}
         run: |
-          mkdir -p /tmp/digests/web /tmp/digests/worker
+          mkdir -p /tmp/digests/web /tmp/digests/worker /tmp/digests/db-migrate
           touch "/tmp/digests/web/${WEB_DIGEST#sha256:}"
           touch "/tmp/digests/worker/${WORKER_DIGEST#sha256:}"
+          touch "/tmp/digests/db-migrate/${DB_MIGRATE_DIGEST#sha256:}"
 
       - name: Upload digests
         uses: actions/upload-artifact@v4
@@ -176,3 +188,13 @@ jobs:
             -t "elmohq/elmo-worker:${VERSION}" \
             -t "elmohq/elmo-worker:latest" \
             $(printf 'elmohq/elmo-worker@sha256:%s ' *)
+
+      - name: Create multi-arch db-migrate manifest
+        working-directory: /tmp/digests/db-migrate
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            -t "elmohq/elmo-db-migrate:${VERSION}" \
+            -t "elmohq/elmo-db-migrate:latest" \
+            $(printf 'elmohq/elmo-db-migrate@sha256:%s ' *)
