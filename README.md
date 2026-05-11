@@ -39,7 +39,7 @@ npm install -g @elmohq/cli
 elmo init
 
 # Start the stack
-elmo start
+elmo compose up -d
 ```
 
 > [!TIP]

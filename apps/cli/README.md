@@ -44,7 +44,7 @@ Requires [Docker](https://docs.docker.com/get-docker/) and Docker Compose.
 elmo init
 
 # 2. Start the stack
-elmo start
+elmo compose up -d
 
 # 3. Open the app at http://localhost:1515
 ```
@@ -58,13 +58,9 @@ For the full self-hosting walkthrough, see the [Elmo docs](https://www.elmohq.co
 | Command | Description |
 | --- | --- |
 | `elmo init` | Interactive wizard to set up a local Elmo instance |
-| `elmo start` | Start the Elmo stack |
-| `elmo stop` | Stop the Elmo stack |
 | `elmo status` | Check the health of running services |
-| `elmo logs [service]` | Tail container logs (pass `-f` to follow) |
 | `elmo regen` | Regenerate `elmo.yaml` / `.env` from your saved config |
-| `elmo compose <args...>` | Run any `docker compose` command against your Elmo project |
-| `elmo build` | Build Docker images locally (for `--dev` installs) |
+| `elmo compose <args...>` | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`) |
 
 Run `elmo --help` or `elmo <command> --help` for the full list of flags.
 
