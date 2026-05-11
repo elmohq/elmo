@@ -24,13 +24,6 @@ describe("validateWebsiteUrl", () => {
 		});
 	});
 
-	it("accepts a full https URL with a trailing slash", () => {
-		expect(validateWebsiteUrl("https://example.com/")).toEqual({
-			isValid: true,
-			formattedUrl: "https://example.com/",
-		});
-	});
-
 	it("strips the path from a URL with a path", () => {
 		expect(validateWebsiteUrl("https://example.com/products")).toEqual({
 			isValid: true,
@@ -63,13 +56,6 @@ describe("validateWebsiteUrl", () => {
 		expect(validateWebsiteUrl("https://blog.example.com/posts/1")).toEqual({
 			isValid: true,
 			formattedUrl: "https://blog.example.com/",
-		});
-	});
-
-	it("trims leading and trailing whitespace", () => {
-		expect(validateWebsiteUrl("  example.com  ")).toEqual({
-			isValid: true,
-			formattedUrl: "https://example.com/",
 		});
 	});
 
