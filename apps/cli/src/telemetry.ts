@@ -6,7 +6,7 @@ import { PostHog } from "posthog-node";
 
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 const POSTHOG_HOST = "https://us.i.posthog.com";
-const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
+const CONFIG_HOME = path.join(os.homedir(), ".elmo");
 const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
 
 interface TelemetryConfig {

@@ -62,7 +62,6 @@ For the full self-hosting walkthrough, see the [Elmo docs](https://www.elmohq.co
 | `elmo stop` | Stop the Elmo stack |
 | `elmo status` | Check the health of running services |
 | `elmo logs [service]` | Tail container logs (pass `-f` to follow) |
-| `elmo regen` | Regenerate `elmo.yaml` / `.env` from your saved config |
 | `elmo compose <args...>` | Run any `docker compose` command against your Elmo project |
 | `elmo build` | Build Docker images locally (for `--dev` installs) |
 
@@ -70,7 +69,7 @@ Run `elmo --help` or `elmo <command> --help` for the full list of flags.
 
 ### Useful flags
 
-- `--dir <path>` — point any command at a specific config directory (defaults to `~/.config/elmo`).
+- `--dir <path>` — point any command at a specific config directory (defaults to `~/.elmo`).
 - `elmo init --dev` — build images from a local checkout of the repo instead of pulling from the registry.
 
 ## Telemetry
