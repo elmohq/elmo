@@ -521,7 +521,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 		initialValue: "openrouter" as const,
 	});
 	assertNotCancelled(direct);
-	await collectDirectApiQuick(direct, env, targets);
+	await collectDirectApiQuick(direct, env);
 
 	await finalizeScrapeTargets(env, targets, { skipEdit: true });
 }
@@ -579,7 +579,6 @@ async function collectScraperKey(scraper: "brightdata" | "olostep", env: EnvMap)
 async function collectDirectApiQuick(
 	kind: "openrouter" | "anthropic" | "openai" | "mistral",
 	env: EnvMap,
-	targets: string[],
 ): Promise<void> {
 	if (kind === "openrouter") {
 		const key = await p.password({
@@ -588,7 +587,6 @@ async function collectDirectApiQuick(
 		});
 		assertNotCancelled(key);
 		env.OPENROUTER_API_KEY = key;
-		targets.push(`claude:openrouter:${DEFAULT_OPENROUTER_MODEL}:online`);
 	} else if (kind === "anthropic") {
 		const key = await p.password({
 			message: "Anthropic API key",
@@ -596,7 +594,6 @@ async function collectDirectApiQuick(
 		});
 		assertNotCancelled(key);
 		env.ANTHROPIC_API_KEY = key;
-		targets.push(`claude:anthropic-api:${DEFAULT_ANTHROPIC_MODEL}:online`);
 	} else if (kind === "openai") {
 		const key = await p.password({
 			message: "OpenAI API key",
@@ -604,7 +601,6 @@ async function collectDirectApiQuick(
 		});
 		assertNotCancelled(key);
 		env.OPENAI_API_KEY = key;
-		targets.push(`chatgpt:openai-api:${DEFAULT_OPENAI_MODEL}:online`);
 	} else {
 		const key = await p.password({
 			message: "Mistral API key",
@@ -612,7 +608,6 @@ async function collectDirectApiQuick(
 		});
 		assertNotCancelled(key);
 		env.MISTRAL_API_KEY = key;
-		targets.push(`mistral:mistral-api:${DEFAULT_MISTRAL_MODEL}:online`);
 	}
 }
 
