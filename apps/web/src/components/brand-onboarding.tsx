@@ -56,7 +56,7 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 						required
 						disabled={isLoading}
 					/>
-					<p className="text-xs text-muted-foreground">Enter your brand's website &mdash; a domain or full URL works</p>
+					<p className="text-xs text-muted-foreground">Enter your brand's website</p>
 				</div>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}

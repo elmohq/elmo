@@ -144,7 +144,7 @@ function BrandSettingsPage() {
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website &mdash; a domain or full URL works</p>
+						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website</p>
 					</div>
 
 					<div className="space-y-2">
