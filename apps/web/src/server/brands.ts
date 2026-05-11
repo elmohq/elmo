@@ -102,12 +102,12 @@ function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: str
 		if (!["http:", "https:"].includes(urlObj.protocol)) {
 			return { isValid: false, error: "Website URL must use http or https protocol" };
 		}
-		if (!urlObj.hostname || urlObj.hostname.length === 0) {
+		if (!cleanAndValidateDomain(urlObj.hostname)) {
 			return { isValid: false, error: "Website URL must have a valid domain name" };
 		}
 		return { isValid: true, formattedUrl };
 	} catch {
-		return { isValid: false, error: "Please enter a valid website URL" };
+		return { isValid: false, error: "Please enter a valid website URL or domain" };
 	}
 }
 

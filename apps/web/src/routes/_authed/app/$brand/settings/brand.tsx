@@ -134,17 +134,17 @@ function BrandSettingsPage() {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="website">Website URL</Label>
+						<Label htmlFor="website">Website</Label>
 						<Input
 							id="website"
 							name="website"
-							type="url"
-							placeholder="https://example.com"
+							type="text"
+							placeholder="example.com"
 							defaultValue={brand.website}
 							required
 							disabled={isSubmitting}
 						/>
-						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website URL</p>
+						<p className="text-xs text-muted-foreground">Your brand&apos;s primary website &mdash; a domain or full URL works</p>
 					</div>
 
 					<div className="space-y-2">
