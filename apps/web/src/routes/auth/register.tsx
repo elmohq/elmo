@@ -5,7 +5,7 @@
  * No email verification required.
  */
 
-import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -113,16 +113,6 @@ function RegisterPage() {
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
 			</form>
-			<p className="text-center text-sm text-muted-foreground">
-				Already have an account?{" "}
-				<Link
-					to="/auth/login"
-					search={returnTo ? { returnTo } : {}}
-					className="text-primary hover:underline font-medium"
-				>
-					Sign in
-				</Link>
-			</p>
 		</FullPageCard>
 	);
 }
