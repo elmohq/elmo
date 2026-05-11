@@ -1,5 +1,19 @@
 # @workspace/web
 
+## 0.2.9
+
+### Patch Changes
+
+- 2173aa8: Accept bare domains (e.g. `example.com`) in the brand website field and normalize the stored value to the origin (`https://example.com/products` is saved as `https://example.com/`).
+- 1ee1955: Show the signup screen instead of login on a fresh local deployment.
+  - @workspace/api-spec@0.2.9
+  - @workspace/config@0.2.9
+  - @workspace/deployment@0.2.9
+  - @workspace/lib@0.2.9
+  - @workspace/og@0.2.9
+  - @workspace/ui@0.2.9
+  - @workspace/whitelabel@0.2.9
+
 ## 0.2.8
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @workspace/worker
 
+## 0.2.9
+
+### Patch Changes
+
+- a2a9681: Attach a `boss.on("error")` handler so transient pg-boss connection blips no longer crash the worker.
+  - @workspace/lib@0.2.9
+  - @workspace/whitelabel@0.2.9
+
 ## 0.2.8
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @elmohq/cli
 
+## 0.2.9
+
+### Patch Changes
+
+- 3d378c2: Clean up wording in `elmo init`.
+
 ## 0.2.8
 
 ### Patch Changes

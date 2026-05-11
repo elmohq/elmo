@@ -1,6 +1,6 @@
 {
   "name": "@workspace/lib",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "scripts": {
