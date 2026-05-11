@@ -20,6 +20,14 @@ async function main() {
 	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 	console.log("SCRAPE_TARGETS validated");
 
+	boss.on("error", (error) => {
+		console.error("pg-boss error:", error);
+		Sentry.withScope((scope) => {
+			scope.setTag("source", "pg-boss-internal");
+			Sentry.captureException(error);
+		});
+	});
+
 	// Start pg-boss (creates schema if needed)
 	await boss.start();
 	console.log("pg-boss started");
