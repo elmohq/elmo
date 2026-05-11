@@ -521,7 +521,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 	const mode = await p.select({
 		message: "Setup mode",
 		options: [
-			{ value: "recommended" as const, label: "Recommended — one scraper + one direct API (4 prompts)" },
+			{ value: "recommended" as const, label: "Recommended — one scraper + one direct API" },
 			{ value: "custom" as const, label: "Custom — pick each provider individually" },
 		],
 		initialValue: "recommended" as const,
@@ -716,7 +716,7 @@ async function pickScraperTargets(args: {
 	targets: string[];
 }): Promise<void> {
 	const selected = (await p.multiselect({
-		message: `Surfaces to track via ${args.providerLabel}`,
+		message: `LLM Providers to track via ${args.providerLabel}`,
 		options: args.allModels.map((model) => ({ value: model, label: model })),
 		required: true,
 		initialValues: [...DEFAULT_SCRAPER_MODELS],
@@ -752,7 +752,7 @@ async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
 	const slug = model || DEFAULT_ANTHROPIC_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Enable Claude's web search tool? (reflects real browsing behavior)",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
@@ -784,7 +784,7 @@ async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
 	const slug = model || DEFAULT_OPENAI_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Enable the web_search_preview tool?",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
@@ -816,7 +816,7 @@ async function collectMistral(env: EnvMap, targets: string[]): Promise<void> {
 	const slug = model || DEFAULT_MISTRAL_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Enable Mistral's web search tool? (uses the beta Conversations API)",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
@@ -848,7 +848,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 	const slug = model || DEFAULT_OPENROUTER_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Append :online for web search?",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
@@ -858,7 +858,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 
 async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode scraping + keyword/persona suggestions in the web wizard)`,
+		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode scraping)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
