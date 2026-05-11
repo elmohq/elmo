@@ -18,6 +18,7 @@ type GlobalConfig = {
 	dockerDir?: string;
 	dev?: boolean;
 	postgresMode?: PostgresMode;
+	port?: number;
 	repoRoot?: string;
 	updatedAt: string;
 };
@@ -49,7 +50,7 @@ const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
 const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
 const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
-const DEFAULT_APP_URL = "http://localhost:1515";
+const DEFAULT_APP_PORT = 1515;
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
 const TELEMETRY_DOC_URL = "https://elmohq.com/docs/developer-guide/telemetry";
 
@@ -297,10 +298,8 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	env.BETTER_AUTH_SECRET = generateSecret();
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;
-	env.APP_URL = DEFAULT_APP_URL;
 	env.VITE_APP_NAME = DEFAULT_APP_NAME;
 	env.VITE_APP_ICON = DEFAULT_APP_ICON;
-	env.VITE_APP_URL = DEFAULT_APP_URL;
 
 	if (postgresMode === "external") {
 		p.note("Must be an IPv4-compatible direct connection or database pooler.", "DATABASE_URL");
@@ -360,12 +359,32 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	});
 	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
 
+	// ── Web app port ────────────────────────────────────────────────────
+	const portInput = await p.text({
+		message: "Web app port",
+		placeholder: String(DEFAULT_APP_PORT),
+		defaultValue: String(DEFAULT_APP_PORT),
+		validate: (v) => {
+			if (!v) return undefined;
+			const n = Number(v);
+			if (!Number.isInteger(n) || n < 1 || n > 65535) {
+				return "Must be an integer between 1 and 65535";
+			}
+			return undefined;
+		},
+	});
+	assertNotCancelled(portInput);
+	const port = Number(portInput);
+	env.APP_URL = `http://localhost:${port}`;
+	env.VITE_APP_URL = env.APP_URL;
+
 	// ── Write config ─────────────────────────────────────────────────────
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
 		postgresMode,
 		repoRoot,
 		dockerDir,
+		port,
 	});
 
 	await ensureDir(configDir);
@@ -380,6 +399,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		dockerDir,
 		dev: Boolean(options.dev),
 		postgresMode,
+		port,
 		repoRoot,
 	});
 
@@ -914,18 +934,21 @@ async function runRegen(options: DirOption): Promise<void> {
 	let postgresMode: PostgresMode;
 	let repoRoot: string;
 	let dockerDir: string | undefined;
+	let port: number;
 
 	if (globalConfig?.postgresMode) {
 		dev = globalConfig.dev ?? false;
 		postgresMode = globalConfig.postgresMode;
 		repoRoot = globalConfig.repoRoot ?? process.cwd();
 		dockerDir = globalConfig.dockerDir;
+		port = globalConfig.port ?? DEFAULT_APP_PORT;
 	} else {
 		const detected = await detectSettingsFromConfig(configDir);
 		dev = detected.dev;
 		postgresMode = detected.postgresMode;
 		repoRoot = detected.repoRoot;
 		dockerDir = detected.dockerDir;
+		port = detected.port;
 	}
 
 	const composeYaml = buildComposeYaml({
@@ -933,6 +956,7 @@ async function runRegen(options: DirOption): Promise<void> {
 		postgresMode,
 		repoRoot,
 		dockerDir,
+		port,
 	});
 
 	const composePath = path.join(configDir, "elmo.yaml");
@@ -943,6 +967,7 @@ async function runRegen(options: DirOption): Promise<void> {
 		dockerDir,
 		dev,
 		postgresMode,
+		port,
 		repoRoot,
 	});
 
@@ -1018,6 +1043,7 @@ function buildComposeYaml(options: {
 	postgresMode: PostgresMode;
 	repoRoot: string;
 	dockerDir?: string;
+	port: number;
 }): string {
 	const services: string[] = [];
 	const volumes = new Set<string>();
@@ -1055,6 +1081,7 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
+			port: options.port,
 		}),
 	);
 	services.push(
@@ -1131,6 +1158,7 @@ function buildWebService(options: {
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
+	port: number;
 }): string {
 	const lines = ["web:"];
 	if (options.dev) {
@@ -1146,7 +1174,7 @@ function buildWebService(options: {
 		lines.push("  image: elmohq/elmo-web:latest");
 	}
 
-	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", '    - "1515:3000"');
+	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", `    - "${options.port}:3000"`);
 
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
@@ -1407,6 +1435,7 @@ async function writeGlobalConfig(config: {
 	dockerDir?: string;
 	dev?: boolean;
 	postgresMode?: PostgresMode;
+	port?: number;
 	repoRoot?: string;
 }): Promise<void> {
 	const globalConfig: GlobalConfig = {
@@ -1463,6 +1492,7 @@ async function detectSettingsFromConfig(configDir: string): Promise<{
 	postgresMode: PostgresMode;
 	repoRoot: string;
 	dockerDir?: string;
+	port: number;
 }> {
 	const envPath = path.join(configDir, ".env");
 	const env = await readEnvFile(envPath);
@@ -1472,6 +1502,7 @@ async function detectSettingsFromConfig(configDir: string): Promise<{
 	const yamlPath = path.join(configDir, "elmo.yaml");
 	let dev = false;
 	let repoRoot = process.cwd();
+	let port = DEFAULT_APP_PORT;
 
 	try {
 		const yamlContent = await fs.readFile(yamlPath, "utf8");
@@ -1480,11 +1511,18 @@ async function detectSettingsFromConfig(configDir: string): Promise<{
 		if (contextMatch) {
 			repoRoot = contextMatch[1].trim();
 		}
+		const portMatch = yamlContent.match(/"(\d+):3000"/);
+		if (portMatch) {
+			const parsed = Number(portMatch[1]);
+			if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
+				port = parsed;
+			}
+		}
 	} catch {
 		// Use defaults
 	}
 
-	return { dev, postgresMode, repoRoot };
+	return { dev, postgresMode, repoRoot, port };
 }
 
 async function updateDeploymentEnvTelemetry(enabled: boolean): Promise<string | null> {
