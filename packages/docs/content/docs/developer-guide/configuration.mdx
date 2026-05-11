@@ -50,8 +50,8 @@ To change environment variables after initial setup:
 nano ~/.elmo/.env
 
 # Restart services to pick up changes
-elmo stop
-elmo start
+elmo compose down
+elmo compose up -d
 ```
 
 ## Using an External Database

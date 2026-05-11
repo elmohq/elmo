@@ -88,16 +88,17 @@ pnpm cli:unlink
 
 ```bash
 # Build Docker images locally
-elmo build
+elmo compose build
 
 # Build without cache
-elmo build --no-cache
+elmo compose build --no-cache
 
 # Build only web or worker
-elmo build --web-only
-elmo build --worker-only
+elmo compose build web
+elmo compose build worker
 
-# Run docker compose commands
+# Run other docker compose commands
+elmo compose up -d
 elmo compose ps
 elmo compose logs -f web
 elmo compose down

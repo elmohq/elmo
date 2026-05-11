@@ -226,6 +226,10 @@ async function main(): Promise<void> {
 	await waitFor("email to receive product updates");
 	await send(ENTER);
 
+	// Web app port (default 1515) → accept default
+	await waitFor("Web app port");
+	await send(ENTER);
+
 	// Start the stack now? (default Yes) → No
 	await waitFor("Start the stack now?");
 	await send(ARROW_LEFT);
