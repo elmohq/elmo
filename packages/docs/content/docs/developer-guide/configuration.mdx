@@ -50,8 +50,8 @@ To change environment variables after initial setup:
 nano ./elmo/.env
 
 # Restart services to pick up changes
-elmo stop
-elmo start
+elmo compose down
+elmo compose up -d
 ```
 
 ## Regenerating Docker Compose
@@ -71,6 +71,6 @@ By default, `elmo init` provisions a PostgreSQL container. To use an existing da
 1. Choose "Use existing Postgres" during `elmo init`, or
 2. Edit `.env` to set `DATABASE_URL` to your connection string
 3. Run `elmo regen` to update `elmo.yaml` (removes the Postgres container)
-4. Restart with `elmo stop && elmo start`
+4. Restart with `elmo compose down && elmo compose up -d`
 
 Your database must be PostgreSQL 15 or later.

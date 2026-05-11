@@ -134,22 +134,6 @@ async function main() {
 		});
 
 	program
-		.command("start")
-		.description("start Elmo instance")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStart(options));
-		});
-
-	program
-		.command("stop")
-		.description("stop Elmo instance")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStop(options));
-		});
-
-	program
 		.command("status")
 		.description("check Elmo instance health")
 		.option("--dir <path>", "Config directory")
@@ -166,35 +150,6 @@ async function main() {
 		.action(async (args: string[], options: DirOption) => {
 			await withVersionCheck(version, () => runCompose(args, options));
 		});
-
-	program
-		.command("logs")
-		.description("view Elmo instance logs")
-		.allowUnknownOption(true)
-		.option("--dir <path>", "Config directory")
-		.argument("[args...]", "Arguments passed to Docker Compose logs")
-		.action(async (args: string[], options: DirOption) => {
-			await withVersionCheck(version, () => runCompose(["logs", ...args], options));
-		});
-
-	program
-		.command("build")
-		.description("build Docker images locally for development")
-		.option("--dir <path>", "Config directory")
-		.option("--web-only", "Only build the web image")
-		.option("--worker-only", "Only build the worker image")
-		.option("--no-cache", "Build without Docker cache")
-		.action(
-			async (
-				options: DirOption & {
-					webOnly?: boolean;
-					workerOnly?: boolean;
-					cache?: boolean;
-				},
-			) => {
-				await withVersionCheck(version, () => runBuild(options));
-			},
-		);
 
 	const telemetry = program.command("telemetry").description("manage CLI + local-deployment telemetry");
 
@@ -213,7 +168,7 @@ async function main() {
 			const updated = await updateDeploymentEnvTelemetry(true);
 			log.success("Telemetry enabled.");
 			if (updated) {
-				log.info(`Updated ${updated}. Restart the stack with \`elmo start\` to apply.`);
+				log.info(`Updated ${updated}. Restart the stack with \`elmo compose up -d\` to apply.`);
 			}
 			console.log(`  Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
 		});
@@ -226,7 +181,7 @@ async function main() {
 			const updated = await updateDeploymentEnvTelemetry(false);
 			log.success("Telemetry disabled. No further events will be sent.");
 			if (updated) {
-				log.info(`Updated ${updated}. Restart the stack with \`elmo start\` to apply.`);
+				log.info(`Updated ${updated}. Restart the stack with \`elmo compose up -d\` to apply.`);
 			}
 		});
 
@@ -444,7 +399,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	if (shouldStart) {
 		await doStart(configDir);
 	} else {
-		p.log.info("You can start later with `elmo start`.");
+		p.log.info("You can start later with `elmo compose up -d`.");
 	}
 
 	// CLI telemetry — silently dropped if the user opted out above.
@@ -1000,12 +955,7 @@ async function runRegen(options: DirOption): Promise<void> {
 	log.info("The .env file was not modified.");
 }
 
-// ── Command: start ───────────────────────────────────────────────────────────
-
-async function runStart(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	await doStart(configDir);
-}
+// ── Start helper (used by init) ──────────────────────────────────────────────
 
 async function doStart(configDir: string): Promise<void> {
 	assertDockerRunning();
@@ -1024,20 +974,10 @@ async function doStart(configDir: string): Promise<void> {
 	}
 
 	log.info("Examples:");
-	console.log(`  ${pc.bold("elmo logs -f")}`);
+	console.log(`  ${pc.bold("elmo compose logs -f")}`);
 	console.log(`  ${pc.bold("elmo compose logs -f web")}`);
 	console.log(`  ${pc.bold("elmo compose ps")}`);
-}
-
-// ── Command: stop ────────────────────────────────────────────────────────────
-
-async function runStop(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
-
-	log.step("Stopping Docker Compose stack...");
-	await runDockerCompose(configDir, ["down"]);
-	log.success("Stack stopped.");
+	console.log(`  ${pc.bold("elmo compose down")}`);
 }
 
 // ── Command: status ──────────────────────────────────────────────────────────
@@ -1074,41 +1014,6 @@ async function runCompose(args: string[], options: DirOption): Promise<void> {
 	const configDir = await resolveConfigDir(options.dir);
 	assertDockerRunning();
 	await runDockerCompose(configDir, args);
-}
-
-// ── Command: build ───────────────────────────────────────────────────────────
-
-async function runBuild(
-	options: DirOption & {
-		webOnly?: boolean;
-		workerOnly?: boolean;
-		cache?: boolean;
-	},
-): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
-
-	const buildWeb = !options.workerOnly;
-	const buildWorker = !options.webOnly;
-	const noCache = options.cache === false;
-
-	const targets: string[] = [];
-	if (buildWeb) targets.push("web");
-	if (buildWorker) targets.push("worker");
-
-	log.step(`Building Docker images: ${targets.join(", ")}${noCache ? " (no cache)" : ""}...`);
-
-	const buildArgs: string[] = ["build"];
-	if (noCache) buildArgs.push("--no-cache");
-
-	for (const target of targets) {
-		log.step(`Building ${target}...`);
-		await runDockerCompose(configDir, [...buildArgs, target]);
-		log.success(`${target} image built successfully.`);
-	}
-
-	log.success("All images built.");
-	console.log(`  Run ${pc.bold("elmo start")} to start the stack.`);
 }
 
 // ── Compose YAML Builder ─────────────────────────────────────────────────────

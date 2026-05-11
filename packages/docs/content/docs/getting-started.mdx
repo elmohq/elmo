@@ -42,10 +42,10 @@ Once complete, Elmo generates two files in your config directory:
 If you didn't start during init, bring everything up with:
 
 ```bash
-elmo start
+elmo compose up -d
 ```
 
-This pulls the Docker images, starts all services, and waits for them to become healthy. Once ready, open **http://localhost:1515** in your browser.
+This pulls the Docker images and starts all services. Once they report healthy, open **http://localhost:1515** in your browser.
 
 ## System Architecture
 
@@ -73,17 +73,16 @@ Once Elmo is running, these commands help you manage it:
 elmo status
 
 # View live logs
-elmo logs -f
+elmo compose logs -f
 
 # View logs for a specific service
 elmo compose logs -f web
 
 # Stop all services
-elmo stop
-
-# Run any docker compose command
-elmo compose ps
 elmo compose down
+
+# Run any other docker compose command
+elmo compose ps
 ```
 
 ## What's Next

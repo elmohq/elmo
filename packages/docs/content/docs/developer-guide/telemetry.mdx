@@ -9,7 +9,7 @@ and the same opt-out covers both:
 
 1. **The CLI** — events fired by `elmo` commands you run on your machine.
 2. **Your local deployment** — events fired by the web app and worker
-   containers when you run `elmo start`.
+   containers when you run `elmo compose up -d`.
 
 ## What is collected
 
@@ -65,7 +65,7 @@ elmo telemetry enable     # turn back on
 `elmo telemetry disable` writes `telemetryDisabled: true` to
 `~/.config/elmo/config.json` (used by the CLI) and adds `DISABLE_TELEMETRY=1`
 to your deployment's `.env` (used by the web app and worker). Restart the
-stack with `elmo start` to apply the deployment-side change. Setting
+stack with `elmo compose up -d` to apply the deployment-side change. Setting
 `DISABLE_TELEMETRY=1` in any environment also disables telemetry there
 unconditionally.
 
