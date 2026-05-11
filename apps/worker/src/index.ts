@@ -20,9 +20,6 @@ async function main() {
 	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
 	console.log("SCRAPE_TARGETS validated");
 
-	// Without an 'error' listener, Node throws on pg-boss internal errors
-	// (pool/connection blips during polling, maintenance, etc.) and kills the
-	// process. pg-boss recovers on its own — we just need to surface them.
 	boss.on("error", (error) => {
 		console.error("pg-boss error:", error);
 		Sentry.withScope((scope) => {
