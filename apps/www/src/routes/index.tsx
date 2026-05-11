@@ -3,6 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { Features } from "@/components/features";
 import { Stats } from "@/components/stats";
+import { Community } from "@/components/community";
 import { Pricing } from "@/components/pricing";
 import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
@@ -39,6 +40,7 @@ function HomePage() {
 				<Hero />
 				<Stats />
 				<Features />
+				<Community />
 				<Pricing />
 				<CTA />
 			</main>

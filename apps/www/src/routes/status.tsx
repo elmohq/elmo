@@ -165,7 +165,7 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 					key={i}
 					className={`h-6 flex-1 rounded-sm ${
 						b.latest === "none"
-							? "bg-muted"
+							? "bg-zinc-100"
 							: b.latest === "fail"
 								? "bg-red-500"
 								: b.hadFail
@@ -228,7 +228,7 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 
 	if (chartData.length === 0) {
 		return (
-			<div className="text-muted-foreground py-12 text-center text-sm">
+			<div className="py-12 text-center text-sm text-zinc-600">
 				No latency data available yet. Data will appear after the first scheduled run.
 			</div>
 		);
@@ -268,7 +268,7 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 									{sorted.map((item: any) => (
 										<div key={item.dataKey} className="flex items-center gap-2">
 											<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
-											<span className="text-muted-foreground flex-1">{item.name}</span>
+											<span className="flex-1 text-zinc-600">{item.name}</span>
 											<span className="font-mono font-medium tabular-nums">{formatLatency(item.value as number)}</span>
 										</div>
 									))}
@@ -365,7 +365,7 @@ function StatWithSparkline({
 			</button>
 			{show && createPortal(
 				<div
-					className="bg-background text-foreground border-border/50 pointer-events-none fixed z-50 rounded-md border px-2 pt-3 pb-1 shadow-lg"
+					className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 pt-3 pb-1 text-zinc-950 shadow-lg"
 					style={{ left: pos.x, top: pos.y, transform: "translate(-50%, calc(-100% - 6px))" }}
 				>
 					<div style={{ width: 220, height: 90 }}>
@@ -433,16 +433,16 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 
 
 	return (
-		<div className="space-y-2 rounded-lg border p-4">
+		<div className="space-y-2 rounded-md border border-zinc-200 bg-white p-4">
 			<div className="flex items-center justify-between">
 				<div>
-					<span className="font-medium">{formatProvider(provider)}</span>
-					{rest && <span className="text-muted-foreground"> ({["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider) ? rest : rest.replace(/online/g, "web search")})</span>}
+					<span className="font-medium text-zinc-950">{formatProvider(provider)}</span>
+					{rest && <span className="text-zinc-500"> ({["openrouter", "openai-api", "anthropic-api", "mistral-api"].includes(provider) ? rest : rest.replace(/online/g, "web search")})</span>}
 				</div>
 				<UptimeBadge entries={deduped} />
 			</div>
 			<UptimeBar entries={deduped} />
-			<div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
+			<div className="flex flex-wrap gap-4 text-xs text-zinc-600">
 				{latest && (
 					<>
 						<span>Success: {uptime !== null ? `${uptime.toFixed(1)}%` : "—"}</span>
@@ -510,10 +510,13 @@ function StatusPage() {
 	return (
 		<div className="min-h-screen">
 			<Navbar />
-			<main className="mx-auto max-w-5xl px-4 py-10 md:px-6">
+			<main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
 				<div className="mb-8">
-					<h1 className="font-heading text-3xl md:text-4xl">Provider Status</h1>
-					<p className="text-muted-foreground mt-2">
+					<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+						/ STATUS
+					</p>
+					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
+					<p className="mt-2 text-zinc-600">
 						Status of the third-party AI providers and scraping services Elmo
 						uses to track your brand's visibility and citations. Tests run
 						automatically 4 times per day. Latencies shown are for individual
@@ -522,11 +525,11 @@ function StatusPage() {
 				</div>
 
 				{/* Overall status banner */}
-				<Card className={`mb-8 border-2 ${allOperational ? "border-green-500/30" : failCount > 0 ? "border-red-500/30" : "border-border"}`}>
+				<Card className={`mb-8 border-2 ${allOperational ? "border-green-500/30" : failCount > 0 ? "border-red-500/30" : "border-zinc-200"}`}>
 					<CardContent className="flex items-center gap-5 py-8">
 						<div className="relative flex items-center justify-center">
 							<div
-								className={`size-5 rounded-full ${allOperational ? "bg-green-500" : failCount > 0 ? "bg-red-500" : "bg-muted"}`}
+								className={`size-5 rounded-full ${allOperational ? "bg-green-500" : failCount > 0 ? "bg-red-500" : "bg-zinc-200"}`}
 							/>
 							{(allOperational || failCount > 0) && (
 								<div
@@ -535,7 +538,7 @@ function StatusPage() {
 							)}
 						</div>
 						<div>
-							<p className="text-xl font-semibold">
+							<p className="text-xl font-semibold text-zinc-950">
 								{allLatest.length === 0
 									? "Waiting for data"
 									: allOperational
@@ -543,7 +546,7 @@ function StatusPage() {
 										: `${failCount} provider${failCount !== 1 ? "s" : ""} experiencing issues`}
 							</p>
 							{allLatest.length > 0 && (
-								<p className="text-muted-foreground mt-1 text-sm">
+								<p className="mt-1 text-sm text-zinc-500">
 									Last checked{" "}
 									{new Date(
 										Math.max(...allLatest.map((e) => new Date(e.ts).getTime())),
@@ -560,7 +563,7 @@ function StatusPage() {
 						.sort(([a], [b]) => a.localeCompare(b))
 						.map(([model, targets]) => (
 							<div key={model}>
-								<h2 className="mb-3 text-lg font-semibold">{formatModel(model)}</h2>
+								<h2 className="mb-3 text-lg font-semibold text-zinc-950">{formatModel(model)}</h2>
 								<div className="space-y-2">
 									{targets.map((t) => (
 										<ProviderRow key={t.target} data={t} />
@@ -580,7 +583,7 @@ function StatusPage() {
 					</CardContent>
 				</Card>
 
-				<p className="text-muted-foreground mt-8 text-center text-xs">
+				<p className="mt-8 text-center text-xs text-zinc-500">
 					Provider tests run every 6 hours via GitHub Actions.
 					Each test sends a real query and validates the response.
 				</p>

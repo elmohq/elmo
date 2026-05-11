@@ -26,24 +26,24 @@ function FeatureRow({
 	const elmoWins = elmo && !competitor;
 	const competitorWins = !elmo && competitor;
 	return (
-		<tr className="border-b border-dashed last:border-solid">
-			<td className="py-3 pr-4 text-sm">{label}</td>
+		<tr className="border-b border-dashed border-zinc-200 last:border-solid">
+			<td className="py-3 pr-4 text-sm text-zinc-600">{label}</td>
 			<td
-				className={`px-4 py-3 text-center ${elmoWins ? "bg-primary/5" : ""}`}
+				className={`px-4 py-3 text-center ${elmoWins ? "bg-blue-50" : ""}`}
 			>
 				{elmo ? (
-					<Check className="text-primary mx-auto h-4 w-4" />
+					<Check className="mx-auto h-4 w-4 text-blue-600" />
 				) : (
-					<X className="text-muted-foreground/30 mx-auto h-4 w-4" />
+					<X className="mx-auto h-4 w-4 text-zinc-300" />
 				)}
 			</td>
 			<td
-				className={`px-4 py-3 text-center ${competitorWins ? "bg-primary/5" : ""}`}
+				className={`px-4 py-3 text-center ${competitorWins ? "bg-blue-50" : ""}`}
 			>
 				{competitor ? (
-					<Check className="text-primary mx-auto h-4 w-4" />
+					<Check className="mx-auto h-4 w-4 text-blue-600" />
 				) : (
-					<X className="text-muted-foreground/30 mx-auto h-4 w-4" />
+					<X className="mx-auto h-4 w-4 text-zinc-300" />
 				)}
 			</td>
 		</tr>
@@ -74,10 +74,10 @@ export function CompetitorComparison({
 	return (
 		<>
 			{/* Back link */}
-			<div className="mx-auto max-w-4xl px-4 pt-8 md:px-6">
+			<div className="mx-auto max-w-6xl px-4 pt-8 md:px-6">
 				<Link
 					to="/ai-visibility-tools"
-					className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+					className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
 				>
 					<ArrowLeft className="h-3 w-3" />
 					AI Visibility Tool Directory
@@ -85,25 +85,25 @@ export function CompetitorComparison({
 			</div>
 
 			{/* Hero */}
-			<section className="py-12 lg:py-20">
-				<div className="mx-auto max-w-4xl px-4 md:px-6">
+			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
+				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<Badge variant="outline" className="mb-4">
 						{CATEGORY_LABELS[competitor.category]}
 					</Badge>
-					<h1 className="font-heading text-4xl text-balance md:text-5xl">
+					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">
 						Elmo vs {competitor.name}
 					</h1>
-					<p className="text-muted-foreground mt-4 max-w-3xl text-lg text-balance">
+					<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
 						How Elmo's open-source AEO platform compares to{" "}
 						{competitor.name} for AI visibility tracking.
 					</p>
 				{competitor.status === "shutting-down" && (
-					<div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+					<div className="mt-4 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
 						Note: {competitor.name} is shutting down.
 					</div>
 				)}
 				{isLowDR(competitor) && (
-					<div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-500/20 bg-amber-50/50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+					<div className="mt-4 flex items-start gap-3 rounded-md border border-amber-500/20 bg-amber-50/50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
 						<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
 						<div>
 							<p className="font-medium">Limited market presence</p>
@@ -120,23 +120,23 @@ export function CompetitorComparison({
 			</section>
 
 			{/* Quick summary */}
-			<section className="border-y py-8">
-				<div className="mx-auto grid max-w-4xl grid-cols-2 gap-8 px-4 md:px-6">
+			<section className="border-b border-zinc-200 bg-zinc-50 py-8">
+				<div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 md:px-6">
 					<div>
-						<h3 className="mb-1 text-lg font-semibold">Elmo</h3>
+						<h3 className="mb-1 text-lg font-semibold text-zinc-950">Elmo</h3>
 						<div className="mt-2 flex flex-wrap gap-2">
 							<Badge variant="secondary">Open Source</Badge>
 							<Badge variant="secondary">Self-Hosted</Badge>
 							<Badge variant="secondary">White-Label</Badge>
 						</div>
-						<p className="text-muted-foreground mt-3 text-sm">
+						<p className="mt-3 text-sm text-zinc-600">
 							Open-source AEO platform. Self-host for free, forever.
 							Track AI visibility across ChatGPT, Claude, and Google AI
 							Overviews with full transparency.
 						</p>
 					</div>
 					<div>
-						<h3 className="mb-1 text-lg font-semibold">
+						<h3 className="mb-1 text-lg font-semibold text-zinc-950">
 							{competitor.name}
 						</h3>
 						<div className="mt-2 flex flex-wrap gap-2">
@@ -152,7 +152,7 @@ export function CompetitorComparison({
 								</Badge>
 							)}
 						</div>
-						<p className="text-muted-foreground mt-3 text-sm">
+						<p className="mt-3 text-sm text-zinc-600">
 							{competitor.tagline}
 						</p>
 					</div>
@@ -160,12 +160,12 @@ export function CompetitorComparison({
 			</section>
 
 			{/* Screenshot */}
-			<section className="py-12">
-				<div className="mx-auto max-w-4xl px-4 md:px-6">
-					<h2 className="font-heading mb-6 text-2xl">
+			<section className="border-b border-zinc-200 bg-white py-12">
+				<div className="mx-auto max-w-6xl px-4 md:px-6">
+					<h2 className="font-heading mb-6 text-2xl text-zinc-950">
 						{competitor.name} at a glance
 					</h2>
-					<div className="overflow-hidden rounded-lg border shadow-sm">
+					<div className="overflow-hidden rounded-md border border-zinc-200 shadow-sm">
 						<img
 							src={getScreenshotUrl(competitor.slug)}
 							alt={`Screenshot of ${competitor.name} homepage`}
@@ -178,7 +178,7 @@ export function CompetitorComparison({
 							href={competitor.url}
 							target="_blank"
 							rel="noopener noreferrer nofollow"
-							className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm transition-colors"
+							className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
 						>
 							Visit {competitor.domain}
 							<ExternalLink className="h-3 w-3" />
@@ -188,17 +188,17 @@ export function CompetitorComparison({
 			</section>
 
 			{/* About the competitor */}
-			<section className="border-t py-12">
-				<div className="mx-auto max-w-4xl px-4 md:px-6">
-					<h2 className="font-heading mb-4 text-2xl">
+			<section className="border-b border-zinc-200 bg-white py-12">
+				<div className="mx-auto max-w-6xl px-4 md:px-6">
+					<h2 className="font-heading mb-4 text-2xl text-zinc-950">
 						About {competitor.name}
 					</h2>
-					<p className="text-muted-foreground leading-relaxed">
+					<p className="leading-relaxed text-zinc-600">
 						{competitor.description}
 					</p>
-					<p className="text-muted-foreground mt-4 text-sm">
+					<p className="mt-4 text-sm text-zinc-500">
 						Popularity grade:{" "}
-						<span className="text-foreground font-semibold">
+						<span className="font-semibold text-zinc-950">
 							{getPopularityGrade(competitor)}
 						</span>
 					</p>
@@ -207,9 +207,9 @@ export function CompetitorComparison({
 							{competitor.highlights.map((h) => (
 								<li
 									key={h}
-									className="text-muted-foreground flex items-start gap-2 text-sm"
+									className="flex items-start gap-2 text-sm text-zinc-600"
 								>
-									<Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
+									<Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
 									{h}
 								</li>
 							))}
@@ -219,22 +219,22 @@ export function CompetitorComparison({
 			</section>
 
 			{/* Feature comparison table */}
-			<section className="border-t py-12">
-				<div className="mx-auto max-w-4xl px-4 md:px-6">
-					<h2 className="font-heading mb-8 text-2xl">
+			<section className="border-b border-zinc-200 bg-white py-12">
+				<div className="mx-auto max-w-6xl px-4 md:px-6">
+					<h2 className="font-heading mb-8 text-2xl text-zinc-950">
 						Feature comparison
 					</h2>
 					<div className="overflow-x-auto">
 						<table className="w-full text-sm">
 							<thead>
-								<tr className="border-b">
-									<th className="py-3 pr-4 text-left font-semibold">
+								<tr className="border-b border-zinc-200">
+									<th className="py-3 pr-4 text-left font-semibold text-zinc-950">
 										Feature
 									</th>
-									<th className="w-32 px-4 py-3 text-center font-semibold">
+									<th className="w-32 px-4 py-3 text-center font-semibold text-zinc-950">
 										Elmo
 									</th>
-									<th className="w-32 px-4 py-3 text-center font-semibold">
+									<th className="w-32 px-4 py-3 text-center font-semibold text-zinc-950">
 										{competitor.name}
 									</th>
 								</tr>
@@ -245,7 +245,7 @@ export function CompetitorComparison({
 										<tr key={`cat-${catKey}`}>
 											<td
 												colSpan={3}
-												className="bg-muted/50 px-0 py-2 text-xs font-semibold uppercase tracking-wider"
+												className="bg-zinc-50 px-0 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500"
 											>
 												{cat.label}
 											</td>
@@ -277,24 +277,24 @@ export function CompetitorComparison({
 			</section>
 
 			{/* Key Differences */}
-			<section className="border-t py-12">
-				<div className="mx-auto max-w-4xl px-4 md:px-6">
-					<h2 className="font-heading mb-8 text-2xl">
+			<section className="border-b border-zinc-200 bg-white py-12">
+				<div className="mx-auto max-w-6xl px-4 md:px-6">
+					<h2 className="font-heading mb-8 text-2xl text-zinc-950">
 						Key differences
 					</h2>
 					<div className="grid gap-6 md:grid-cols-3">
 						{elmoOnlyFeatures.length > 0 && (
-							<div className="bg-muted/50 rounded-lg p-5">
-								<h3 className="mb-3 text-sm font-semibold uppercase tracking-wider">
+							<div className="rounded-md border border-zinc-200 bg-zinc-50 p-5">
+								<h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
 									Only in Elmo
 								</h3>
 								<ul className="space-y-2">
 									{elmoOnlyFeatures.map((f) => (
 										<li
 											key={f}
-											className="text-muted-foreground flex items-center gap-2 text-sm"
+											className="flex items-center gap-2 text-sm text-zinc-600"
 										>
-											<Check className="text-primary h-3.5 w-3.5 shrink-0" />
+											<Check className="h-3.5 w-3.5 shrink-0 text-blue-600" />
 											{f}
 										</li>
 									))}
@@ -302,17 +302,17 @@ export function CompetitorComparison({
 							</div>
 						)}
 						{sharedFeatures.length > 0 && (
-							<div className="bg-muted/50 rounded-lg p-5">
-								<h3 className="mb-3 text-sm font-semibold uppercase tracking-wider">
+							<div className="rounded-md border border-zinc-200 bg-zinc-50 p-5">
+								<h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
 									Both offer
 								</h3>
 								<ul className="space-y-2">
 									{sharedFeatures.map((f) => (
 										<li
 											key={f}
-											className="text-muted-foreground flex items-center gap-2 text-sm"
+											className="flex items-center gap-2 text-sm text-zinc-600"
 										>
-											<Check className="text-muted-foreground/60 h-3.5 w-3.5 shrink-0" />
+											<Check className="h-3.5 w-3.5 shrink-0 text-zinc-400" />
 											{f}
 										</li>
 									))}
@@ -320,17 +320,17 @@ export function CompetitorComparison({
 							</div>
 						)}
 						{competitorOnlyFeatures.length > 0 && (
-							<div className="bg-muted/50 rounded-lg p-5">
-								<h3 className="mb-3 text-sm font-semibold uppercase tracking-wider">
+							<div className="rounded-md border border-zinc-200 bg-zinc-50 p-5">
+								<h3 className="mb-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
 									Only in {competitor.name}
 								</h3>
 								<ul className="space-y-2">
 									{competitorOnlyFeatures.map((f) => (
 										<li
 											key={f}
-											className="text-muted-foreground flex items-center gap-2 text-sm"
+											className="flex items-center gap-2 text-sm text-zinc-600"
 										>
-											<Check className="text-muted-foreground/40 h-3.5 w-3.5 shrink-0" />
+											<Check className="h-3.5 w-3.5 shrink-0 text-zinc-300" />
 											{f}
 										</li>
 									))}
@@ -342,37 +342,37 @@ export function CompetitorComparison({
 			</section>
 
 			{/* Why Elmo */}
-			<section className="border-t py-12">
-				<div className="mx-auto max-w-4xl px-4 md:px-6">
-					<h2 className="font-heading mb-4 text-2xl">
+			<section className="border-b border-zinc-200 bg-white py-12">
+				<div className="mx-auto max-w-6xl px-4 md:px-6">
+					<h2 className="font-heading mb-4 text-2xl text-zinc-950">
 						Why choose Elmo over {competitor.name}?
 					</h2>
 					<div className="grid gap-6 sm:grid-cols-2">
-						<div className="rounded-lg border p-5">
-							<h3 className="font-semibold">Open source and transparent</h3>
-							<p className="text-muted-foreground mt-2 text-sm">
+						<div className="rounded-md border border-zinc-200 bg-white p-5">
+							<h3 className="font-semibold text-zinc-950">Open source and transparent</h3>
+							<p className="mt-2 text-sm text-zinc-600">
 								Every line of code is open. You can verify exactly how
 								your visibility data is collected, calculated, and
 								presented. No black boxes.
 							</p>
 						</div>
-						<div className="rounded-lg border p-5">
-							<h3 className="font-semibold">Self-host for free, forever</h3>
-							<p className="text-muted-foreground mt-2 text-sm">
-								Run Elmo on your own infrastructure. 
+						<div className="rounded-md border border-zinc-200 bg-white p-5">
+							<h3 className="font-semibold text-zinc-950">Self-host for free, forever</h3>
+							<p className="mt-2 text-sm text-zinc-600">
+								Run Elmo on your own infrastructure.
 								The core platform is free and always will be, even when we release a cloud version of Elmo.
 							</p>
 						</div>
-						<div className="rounded-lg border p-5">
-							<h3 className="font-semibold">No vendor lock-in</h3>
-							<p className="text-muted-foreground mt-2 text-sm">
-								Export everything, fork the code, or migrate at any time. 
+						<div className="rounded-md border border-zinc-200 bg-white p-5">
+							<h3 className="font-semibold text-zinc-950">No vendor lock-in</h3>
+							<p className="mt-2 text-sm text-zinc-600">
+								Export everything, fork the code, or migrate at any time.
 								You own all of your data and have the right to use it wherever you want.
 							</p>
 						</div>
-						<div className="rounded-lg border p-5">
-							<h3 className="font-semibold">Built to last</h3>
-							<p className="text-muted-foreground mt-2 text-sm">
+						<div className="rounded-md border border-zinc-200 bg-white p-5">
+							<h3 className="font-semibold text-zinc-950">Built to last</h3>
+							<p className="mt-2 text-sm text-zinc-600">
 								Bootstrapped and sustainable. No investors pushing
 								towards dark patterns. We'll outlast the companies taking
 								too much VC money.
@@ -383,20 +383,20 @@ export function CompetitorComparison({
 			</section>
 
 			{/* CTA */}
-			<section className="border-t py-16 lg:py-24">
+			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
 				<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
-					<h2 className="font-heading text-3xl md:text-4xl">
+					<h2 className="font-heading text-3xl text-zinc-950 md:text-4xl">
 						Ready to track your AI visibility?
 					</h2>
-					<p className="text-muted-foreground mx-auto mt-4 max-w-xl text-lg text-balance">
+					<p className="mx-auto mt-4 max-w-xl text-lg text-balance text-zinc-600">
 						Deploy Elmo in minutes and start monitoring how ChatGPT,
 						Claude, and Google AI Overviews talk about your brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						<Button asChild size="lg">
+						<Button asChild size="sm">
 							<Link to="/docs">Deploy Elmo</Link>
 						</Button>
-						<Button asChild variant="outline" size="lg">
+						<Button asChild variant="outline" size="sm">
 							<a
 								href="https://github.com/elmohq/elmo"
 								target="_blank"

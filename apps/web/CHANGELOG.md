@@ -1,5 +1,31 @@
 # @workspace/web
 
+## 0.2.8
+
+### Patch Changes
+
+- @workspace/api-spec@0.2.8
+- @workspace/config@0.2.8
+- @workspace/deployment@0.2.8
+- @workspace/lib@0.2.8
+- @workspace/og@0.2.8
+- @workspace/ui@0.2.8
+- @workspace/whitelabel@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- 1e770ff: Publish multi-arch (`linux/amd64` + `linux/arm64`) Docker images for `elmohq/elmo-web` and `elmohq/elmo-worker`, so Apple Silicon and other arm64 hosts can pull them.
+- 6ab2b42: Fix OG image generation: `og:image` is now an absolute URL and renders the current page's title/description. Adds `og:url`, `og:site_name`, `og:locale`, and `og:logo` to the document head.
+  - @workspace/api-spec@0.2.7
+  - @workspace/config@0.2.7
+  - @workspace/deployment@0.2.7
+  - @workspace/lib@0.2.7
+  - @workspace/og@0.2.7
+  - @workspace/ui@0.2.7
+  - @workspace/whitelabel@0.2.7
+
 ## 0.2.6
 
 ### Patch Changes

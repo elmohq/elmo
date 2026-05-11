@@ -160,7 +160,7 @@ async function main(): Promise<void> {
 	await send(`sk-ant-placeholder-not-used${ENTER}`);
 	await waitFor("Claude model");
 	await send(ENTER); // accept default slug
-	await waitFor("Enable Claude's web search tool?");
+	await waitFor("Enable web search?");
 	await send(ARROW_LEFT);
 	await send(ENTER); // No — target becomes claude:anthropic-api:<slug> without :online
 
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
 	await send(`sk-placeholder-not-used${ENTER}`);
 	await waitFor("OpenAI model");
 	await send(ENTER); // accept default gpt-5-mini
-	await waitFor("Enable the web_search_preview tool?");
+	await waitFor("Enable web search?");
 	await send(ENTER); // Yes — chatgpt:openai-api:gpt-5-mini:online
 
 	// Mistral confirm (default No) → No

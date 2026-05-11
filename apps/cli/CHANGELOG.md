@@ -1,5 +1,17 @@
 # @elmohq/cli
 
+## 0.2.8
+
+### Patch Changes
+
+- c576cee: Publish `elmohq/elmo-db-migrate` images instead of always attempting to build as part of the CLI.
+
+## 0.2.7
+
+### Patch Changes
+
+- 1e770ff: Standardize Docker image naming between the CLI and release process on `elmohq/elmo-web` and `elmohq/elmo-worker`.
+
 ## 0.2.6
 
 ## 0.2.5

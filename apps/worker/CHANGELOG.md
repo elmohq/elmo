@@ -1,5 +1,20 @@
 # @workspace/worker
 
+## 0.2.8
+
+### Patch Changes
+
+- @workspace/lib@0.2.8
+- @workspace/whitelabel@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- 1e770ff: Publish multi-arch (`linux/amd64` + `linux/arm64`) Docker images for `elmohq/elmo-web` and `elmohq/elmo-worker`, so Apple Silicon and other arm64 hosts can pull them.
+  - @workspace/lib@0.2.7
+  - @workspace/whitelabel@0.2.7
+
 ## 0.2.6
 
 ### Patch Changes
