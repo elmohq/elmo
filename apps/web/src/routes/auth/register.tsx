@@ -26,6 +26,8 @@ export const Route = createFileRoute("/auth/register")({
 function RegisterPage() {
 	const { returnTo } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const canRegister = context.clientConfig?.canRegister ?? false;
+	const hasUsers = context.clientConfig?.hasUsers ?? false;
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -33,7 +35,7 @@ function RegisterPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 
-	if (!context.clientConfig?.canRegister) {
+	if (!canRegister) {
 		window.location.href = "/auth/login";
 		return null;
 	}
@@ -113,16 +115,18 @@ function RegisterPage() {
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
 			</form>
-			<p className="text-center text-sm text-muted-foreground">
-				Already have an account?{" "}
-				<Link
-					to="/auth/login"
-					search={returnTo ? { returnTo } : {}}
-					className="text-primary hover:underline font-medium"
-				>
-					Sign in
-				</Link>
-			</p>
+			{hasUsers && (
+				<p className="text-center text-sm text-muted-foreground pt-4">
+					Already have an account?{" "}
+					<Link
+						to="/auth/login"
+						search={returnTo ? { returnTo } : {}}
+						className="text-primary hover:underline font-medium"
+					>
+						Sign in
+					</Link>
+				</p>
+			)}
 		</FullPageCard>
 	);
 }
