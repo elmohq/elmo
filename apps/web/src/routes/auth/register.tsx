@@ -27,6 +27,7 @@ function RegisterPage() {
 	const { returnTo } = Route.useSearch();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const canRegister = context.clientConfig?.canRegister ?? false;
+	const hasUsers = context.clientConfig?.hasUsers ?? false;
 	const navigate = useNavigate();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -114,7 +115,7 @@ function RegisterPage() {
 					{loading ? "Creating account..." : "Create account"}
 				</Button>
 			</form>
-			{!canRegister && (
+			{hasUsers && (
 				<p className="text-center text-sm text-muted-foreground pt-4">
 					Already have an account?{" "}
 					<Link

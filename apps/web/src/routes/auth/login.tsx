@@ -6,7 +6,7 @@
  */
 
 import { IconInfoCircle } from "@tabler/icons-react";
-import { createFileRoute, Link, redirect, useNavigate, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
 import { authClient } from "@workspace/lib/auth/client";
 import { Alert, AlertDescription } from "@workspace/ui/components/alert";
@@ -21,16 +21,6 @@ export const Route = createFileRoute("/auth/login")({
 	validateSearch: z.object({
 		returnTo: z.string().optional(),
 	}),
-	beforeLoad: ({ context, search }) => {
-		// Fresh local deployment with no users yet: send visitors to the
-		// signup screen instead of an empty-database login form.
-		if (context.clientConfig?.canRegister) {
-			throw redirect({
-				to: "/auth/register",
-				search: search.returnTo ? { returnTo: search.returnTo } : {},
-			});
-		}
-	},
 	component: LoginPage,
 });
 

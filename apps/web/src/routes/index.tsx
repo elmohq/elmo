@@ -5,8 +5,9 @@
  * In demo mode, auto-redirects unauthenticated users to /auth/login
  * (the login page pre-fills the demo credentials, so the bare home page
  * is just a redundant extra click).
- * On a fresh local deployment (no users yet), redirects to /auth/register
- * so the first visitor sees the signup screen instead of login.
+ * On a fresh deployment that needs bootstrapping (registration is open
+ * AND no users exist yet), redirects to /auth/register so the first
+ * visitor sees the signup screen instead of an empty-database login form.
  * Shows sign-in for unauthenticated users in other modes.
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/")({
 			});
 		}
 
-		if (context.clientConfig?.canRegister) {
+		if (context.clientConfig?.canRegister && !context.clientConfig?.hasUsers) {
 			throw redirect({
 				to: "/auth/register",
 				search: search.redirect ? { returnTo: search.redirect } : {},

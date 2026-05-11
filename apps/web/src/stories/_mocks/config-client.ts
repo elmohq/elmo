@@ -36,6 +36,7 @@ export interface ClientConfig {
 	analytics: AnalyticsConfig;
 	defaultDelayHours: number;
 	canRegister: boolean;
+	hasUsers: boolean;
 }
 
 const DEFAULT_CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
@@ -58,6 +59,7 @@ let _config: ClientConfig = {
 	analytics: {},
 	defaultDelayHours: 24,
 	canRegister: false,
+	hasUsers: true,
 };
 
 export function setMockClientConfig(config: ClientConfig) {

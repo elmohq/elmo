@@ -105,6 +105,13 @@ export interface ClientConfig {
 	 * when no user exists yet. Demo/whitelabel always false.
 	 */
 	canRegister: boolean;
+	/**
+	 * Whether any user account exists. Distinct from `canRegister`: a future
+	 * cloud mode would have both `canRegister` and `hasUsers` true. Used to
+	 * decide whether login/register cross-links and the `/` → register
+	 * bootstrap redirect make sense.
+	 */
+	hasUsers: boolean;
 }
 
 // ============================================================================
