@@ -59,10 +59,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Install Playwright browsers
+        run: pnpm -C apps/web exec playwright install chromium --with-deps
+
       - name: Type check
         run: pnpm turbo check-types
 
-      - name: Unit tests
+      - name: Unit + Storybook tests
         run: pnpm turbo test
 
       - name: Build elmo CLI
