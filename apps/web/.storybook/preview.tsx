@@ -1,25 +1,15 @@
-import { useState } from "react";
-import type { Preview } from "@storybook/react-vite";
+import type { Decorator } from "@storybook/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
 import "../src/styles.css";
 
-const preview: Preview = {
-	decorators: [
-		(Story) => {
-			const [client] = useState(
-				() =>
-					new QueryClient({
-						defaultOptions: { queries: { retry: false } },
-					}),
-			);
-			return (
-				<QueryClientProvider client={client}>
-					<Story />
-				</QueryClientProvider>
-			);
-		},
-	],
-};
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+});
 
-export default preview;
+const withQueryClient: Decorator = (Story) => (
+	<QueryClientProvider client={queryClient}>
+		<Story />
+	</QueryClientProvider>
+);
+
+export const decorators: Decorator[] = [withQueryClient];

@@ -65,6 +65,12 @@ jobs:
       - name: Unit tests
         run: pnpm turbo test
 
+      - name: Install Playwright browsers
+        run: pnpm -C apps/web exec playwright install chromium --with-deps
+
+      - name: Storybook tests
+        run: pnpm -C apps/web test:storybook
+
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
 

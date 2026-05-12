@@ -148,6 +148,7 @@ export function TagsInput({
     <div className={cn("flex w-full flex-col", className)}>
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger
+          nativeButton={false}
           render={
             <div
               role="combobox"

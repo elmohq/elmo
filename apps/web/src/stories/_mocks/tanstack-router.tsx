@@ -117,6 +117,10 @@ export function Scripts() {
 	return null;
 }
 
+export function ScriptOnce(_props: { children?: unknown }) {
+	return null;
+}
+
 export function HeadContent() {
 	return null;
 }
