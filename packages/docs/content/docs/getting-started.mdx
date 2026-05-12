@@ -69,20 +69,17 @@ This pulls the Docker images and starts all services. Once they report healthy, 
 Once Elmo is running, these commands help you manage it:
 
 ```bash
-# Check service health
-elmo status
-
 # View live logs
 elmo compose logs -f
 
 # View logs for a specific service
 elmo compose logs -f web
 
+# Check service status
+elmo compose ps
+
 # Stop all services
 elmo compose down
-
-# Run any other docker compose command
-elmo compose ps
 ```
 
 ## What's Next

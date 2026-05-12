@@ -117,14 +117,6 @@ async function main() {
 		});
 
 	program
-		.command("status")
-		.description("check Elmo instance health")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStatus(options));
-		});
-
-	program
 		.command("compose")
 		.description("run Docker Compose commands using your Elmo config")
 		.allowUnknownOption(true)
@@ -882,34 +874,6 @@ async function doStart(configDir: string): Promise<void> {
 	console.log(`  ${pc.bold("elmo compose down")}`);
 }
 
-// ── Command: status ──────────────────────────────────────────────────────────
-
-async function runStatus(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
-
-	const services = await getComposeServices(configDir);
-	if (services.length === 0) {
-		log.warn("No running services found.");
-		return;
-	}
-
-	let allHealthy = true;
-	for (const service of services) {
-		const status = formatServiceStatus(service);
-		console.log(status);
-		if (!isServiceReady(service)) {
-			allHealthy = false;
-		}
-	}
-
-	if (allHealthy) {
-		log.success("All services are healthy.");
-	} else {
-		log.warn("Some services are not healthy yet.");
-	}
-}
-
 // ── Command: compose ─────────────────────────────────────────────────────────
 
 async function runCompose(args: string[], options: DirOption): Promise<void> {
@@ -1176,21 +1140,6 @@ async function getComposeServices(configDir: string): Promise<ComposeService[]> 
 			return [];
 		}
 	}
-}
-
-function formatServiceStatus(service: ComposeService): string {
-	const health = service.Health ?? "unknown";
-	const state = service.State ?? "unknown";
-	const label = `${service.Service}`.padEnd(16, " ");
-	let color = pc.red;
-
-	if (isServiceReady(service)) {
-		color = pc.green;
-	} else if (health === "starting" || state.includes("starting")) {
-		color = pc.yellow;
-	}
-
-	return color(`${label} ${state} ${service.Health ? `(${health})` : ""}`.trim());
 }
 
 function isServiceReady(service: ComposeService): boolean {
