@@ -2,7 +2,7 @@
 	"name": "@workspace/www",
 	"version": "0.2.9",
 	"private": true,
-	"license": "AGPL-3.0-or-later",
+	"license": "MIT",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --port 3001",
