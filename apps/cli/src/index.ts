@@ -136,7 +136,7 @@ async function main() {
 
 	program
 		.command("edit")
-		.description("change API keys, scrape targets, or the Docker Compose stack")
+		.description("change API keys, scrape targets, or the Docker Compose YAML")
 		.argument("<env|compose>", "which config file to edit")
 		.option("--dir <path>", "Config directory")
 		.action(async (target: string, options: DirOption) => {
