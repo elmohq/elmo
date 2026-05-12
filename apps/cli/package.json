@@ -1,7 +1,7 @@
 {
   "name": "@elmohq/cli",
   "version": "0.2.9",
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "keywords": [
     "marketing",
     "typescript",

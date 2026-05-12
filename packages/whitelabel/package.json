@@ -2,7 +2,7 @@
   "name": "@workspace/whitelabel",
   "version": "0.2.9",
   "private": true,
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
