@@ -41,59 +41,64 @@ export function NavUser() {
 		<SidebarMenu>
 			<SidebarMenuItem>
 				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<SidebarMenuButton
-							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer"
-						>
-							<Avatar className="h-8 w-8 rounded-lg">
-								<AvatarImage src={user.picture} alt={user.name} />
-								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-									<IconUser className="size-4" />
-								</AvatarFallback>
-							</Avatar>
-							<div className="grid flex-1 text-left text-sm leading-tight">
-								<span className="truncate font-medium">{user.name}</span>
-								<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
-							</div>
-							<IconSelector className="ml-auto size-4" />
-						</SidebarMenuButton>
+					<DropdownMenuTrigger
+						render={
+							<SidebarMenuButton
+								size="lg"
+								className="data-popup-open:bg-sidebar-accent data-popup-open:text-sidebar-accent-foreground cursor-pointer"
+							/>
+						}
+					>
+						<Avatar className="h-8 w-8 rounded-lg">
+							<AvatarImage src={user.picture} alt={user.name} />
+							<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+								<IconUser className="size-4" />
+							</AvatarFallback>
+						</Avatar>
+						<div className="grid flex-1 text-left text-sm leading-tight">
+							<span className="truncate font-medium">{user.name}</span>
+							<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+						</div>
+						<IconSelector className="ml-auto size-4" />
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
-						className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+						className="min-w-56 rounded-lg"
 						side={isMobile ? "bottom" : "right"}
 						align="end"
 						sideOffset={4}
 					>
-						<DropdownMenuLabel className="p-0 font-normal">
-							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-								<Avatar className="h-8 w-8 rounded-lg">
-									<AvatarImage src={user.picture} alt={user.name} />
-								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-									<IconUser className="size-4" />
-								</AvatarFallback>
-								</Avatar>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-medium">{user.name}</span>
-									<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+						<DropdownMenuGroup>
+							<DropdownMenuLabel className="p-0 font-normal">
+								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+									<Avatar className="h-8 w-8 rounded-lg">
+										<AvatarImage src={user.picture} alt={user.name} />
+									<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+										<IconUser className="size-4" />
+									</AvatarFallback>
+									</Avatar>
+									<div className="grid flex-1 text-left text-sm leading-tight">
+										<span className="truncate font-medium">{user.name}</span>
+										<span className="truncate text-xs">{isNameEmailSame ? "Your Account" : user.email}</span>
+									</div>
 								</div>
-							</div>
-						</DropdownMenuLabel>
+							</DropdownMenuLabel>
+						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
-							<DropdownMenuItem asChild className="cursor-pointer">
-								<Link to="/app" onClick={() => setOpenMobile(false)}>
-									<IconStatusChange />
-									Switch Brand
-								</Link>
+							<DropdownMenuItem render={<Link to="/app" onClick={() => setOpenMobile(false)} />} className="cursor-pointer">
+								<IconStatusChange />
+								Switch Brand
 							</DropdownMenuItem>
 							{clientConfig?.branding.parentUrl && clientConfig?.branding.parentName && (
-								<DropdownMenuItem asChild className="cursor-pointer">
-									<a href={clientConfig.branding.parentUrl} target="_blank" rel="noreferrer">
-										<IconExternalLink />
-										{clientConfig.branding.parentName} Dashboard
-									</a>
-								</DropdownMenuItem>
+								<DropdownMenuItem
+									render={
+										<a href={clientConfig.branding.parentUrl} target="_blank" rel="noreferrer">
+											<IconExternalLink />
+											{clientConfig.branding.parentName} Dashboard
+										</a>
+									}
+									className="cursor-pointer"
+								/>
 							)}
 						</DropdownMenuGroup>
 					<DropdownMenuSeparator />

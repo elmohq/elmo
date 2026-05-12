@@ -393,18 +393,20 @@ export function CompetitorComparison({
 						Claude, and Google AI Overviews talk about your brand.
 					</p>
 					<div className="mt-8 flex flex-wrap justify-center gap-3">
-						<Button asChild size="sm">
-							<Link to="/docs">Deploy Elmo</Link>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<a
-								href="https://github.com/elmohq/elmo"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								View on GitHub
-							</a>
-						</Button>
+						<Button render={<Link to="/docs" />} size="sm">Deploy Elmo</Button>
+						<Button
+							render={
+								<a
+									href="https://github.com/elmohq/elmo"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									View on GitHub
+								</a>
+							}
+							variant="outline"
+							size="sm"
+						/>
 					</div>
 				</div>
 			</section>

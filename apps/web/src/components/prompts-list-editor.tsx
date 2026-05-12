@@ -145,9 +145,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 				<div className="flex items-center gap-1 min-w-0">
 					Prompt Text
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">The question or query that will be sent to AI models for evaluation.</p>
 						</TooltipContent>
@@ -157,9 +155,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 					<div className="hidden md:flex items-center gap-1">
 						System
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
+							<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 							<TooltipContent>
 								<p className="max-w-xs">Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.</p>
 							</TooltipContent>
@@ -169,9 +165,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 				<div className="flex items-center gap-1 min-w-0">
 					Tags
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent>
 							<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
 						</TooltipContent>

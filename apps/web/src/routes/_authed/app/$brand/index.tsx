@@ -239,14 +239,12 @@ function StatWithTooltip({
 }) {
 	return (
 		<Tooltip>
-			<TooltipTrigger asChild>
-				<div className="flex items-center gap-2 cursor-help">
-					<Icon className="h-4 w-4 flex-shrink-0" />
-					<span>
-						<span className="font-semibold text-foreground">{value}</span> {label}
-					</span>
-					<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
-				</div>
+			<TooltipTrigger render={<div className="flex items-center gap-2 cursor-help" />}>
+				<Icon className="h-4 w-4 flex-shrink-0" />
+				<span>
+					<span className="font-semibold text-foreground">{value}</span> {label}
+				</span>
+				<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
 			</TooltipTrigger>
 			<TooltipContent className="max-w-xs text-sm">
 				{tooltip}
@@ -268,9 +266,7 @@ function CardTitleWithTooltip({
 		<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${className}`}>
 			{title}
 			<Tooltip>
-				<TooltipTrigger asChild>
-					<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-				</TooltipTrigger>
+				<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 				<TooltipContent className="max-w-xs text-sm font-normal">
 					{tooltip}
 				</TooltipContent>
@@ -316,10 +312,8 @@ function DashboardPage() {
 							<IconEye className="h-5 w-5 text-muted-foreground" />
 							AI Visibility
 						</h2>
-						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
+						<Button render={<Link to="/app/$brand/visibility" params={{ brand: brandId }} />} variant="ghost" size="sm" className="h-8">
+							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 						</Button>
 					</div>
 					<div className="grid gap-4 lg:grid-cols-4">
@@ -357,10 +351,8 @@ function DashboardPage() {
 							<IconLink className="h-5 w-5 text-muted-foreground" />
 							Citations
 						</h2>
-						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/citations" params={{ brand: brandId }}>
-								View Citations <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
+						<Button render={<Link to="/app/$brand/citations" params={{ brand: brandId }} />} variant="ghost" size="sm" className="h-8">
+							View Citations <IconArrowRight className="h-4 w-4 ml-1" />
 						</Button>
 					</div>
 					<Card className="shadow-none">
@@ -456,10 +448,8 @@ function DashboardPage() {
 							<span className="font-semibold">{totalPrompts.toLocaleString()}</span>
 						</div>
 					)}
-					<Button asChild variant="outline" className="w-full">
-						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
-							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"} <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
+					<Button render={<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }} />} variant="outline" className="w-full">
+						{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"} <IconArrowRight className="h-4 w-4 ml-1" />
 					</Button>
 				</div>
 				{hasEnabledPrompts && (
@@ -497,10 +487,8 @@ function DashboardPage() {
 						<IconEye className="h-5 w-5 text-muted-foreground" />
 						AI Visibility
 					</h2>
-					<Button asChild variant="ghost" size="sm" className="h-8">
-						<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
+					<Button render={<Link to="/app/$brand/visibility" params={{ brand: brandId }} />} variant="ghost" size="sm" className="h-8">
+						View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
 					</Button>
 				</div>
 
@@ -511,9 +499,7 @@ function DashboardPage() {
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${isLoading ? "text-muted-foreground" : getVisibilityLabelColor(averageVisibility)}`}>
 								Current Visibility
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3.5 w-3.5 cursor-help opacity-70" />
-									</TooltipTrigger>
+									<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 cursor-help opacity-70" />} />
 									<TooltipContent className="max-w-xs text-sm font-normal">
 										The percentage of AI responses to your prompts where your brand is mentioned. For prompts that do not contain your brand, the AI visibility is {nonBrandedVisibility}%.
 									</TooltipContent>
@@ -615,10 +601,8 @@ function DashboardPage() {
 						<IconLink className="h-5 w-5 text-muted-foreground" />
 						Citations
 					</h2>
-					<Button asChild variant="ghost" size="sm" className="h-8">
-						<Link to="/app/$brand/citations" params={{ brand: brandId }}>
-							View Citations <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
+					<Button render={<Link to="/app/$brand/citations" params={{ brand: brandId }} />} variant="ghost" size="sm" className="h-8">
+						View Citations <IconArrowRight className="h-4 w-4 ml-1" />
 					</Button>
 				</div>
 

@@ -116,18 +116,20 @@ export function CompetitorDirectory() {
 						visibility without vendor lock-in or inflated pricing.
 					</p>
 					<div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-						<Button asChild size="sm">
-							<Link to="/docs">Read the Docs</Link>
-						</Button>
-						<Button asChild variant="outline" size="sm">
-							<a
-								href="https://github.com/elmohq/elmo"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								View on GitHub
-							</a>
-						</Button>
+						<Button render={<Link to="/docs" />} size="sm">Read the Docs</Button>
+						<Button
+							render={
+								<a
+									href="https://github.com/elmohq/elmo"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									View on GitHub
+								</a>
+							}
+							variant="outline"
+							size="sm"
+						/>
 					</div>
 				</div>
 			</section>

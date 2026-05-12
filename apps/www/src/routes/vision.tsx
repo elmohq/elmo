@@ -254,20 +254,22 @@ function VisionPage() {
 							If that resonates, we'd love to have you.
 						</p>
 						<div className="mt-8 flex flex-wrap justify-center gap-3">
-							<Button asChild size="sm">
-								<Link to="/docs">
-									Get Started
-									<ArrowRight className="size-3.5" />
-								</Link>
+							<Button render={<Link to="/docs" />} size="sm">
+								Get Started
+								<ArrowRight className="size-3.5" />
 							</Button>
-							<Button asChild variant="outline" size="sm">
-								<a
-									href="https://github.com/elmohq/elmo"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Star on GitHub
-								</a>
+							<Button
+								render={
+									<a
+										href="https://github.com/elmohq/elmo"
+										target="_blank"
+										rel="noopener noreferrer"
+									/>
+								}
+								variant="outline"
+								size="sm"
+							>
+								Star on GitHub
 							</Button>
 						</div>
 					</div>

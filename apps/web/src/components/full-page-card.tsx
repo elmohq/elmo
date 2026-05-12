@@ -52,9 +52,7 @@ export default function FullPageCard({
 					<div className="flex justify-center">{customBackButton}</div>
 				) : showBackButton ? (
 					<div className="flex justify-center">
-						<Button variant="outline" size="sm" asChild>
-							<Link to={backButtonHref}>{backButtonText}</Link>
-						</Button>
+						<Button variant="outline" size="sm" render={<Link to={backButtonHref} />}>{backButtonText}</Button>
 					</div>
 				) : null}
 			</div>

@@ -147,54 +147,57 @@ export function TagsInput({
   return (
     <div className={cn("flex w-full flex-col", className)}>
       <Popover open={open} onOpenChange={handleOpenChange}>
-        <PopoverTrigger asChild>
-          <div
-            role="combobox"
-            aria-expanded={open}
-            aria-disabled={disabled || undefined}
-            tabIndex={disabled ? -1 : 0}
-            onClick={() => !disabled && setOpen(true)}
-            onKeyDown={(e) => {
-              if (disabled) return;
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setOpen(true);
-              }
-            }}
-            className={cn(
-              "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
-              disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-            )}
-          >
-            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1 min-h-[22px]">
-              {value.length === 0 ? (
-                <span className="text-muted-foreground text-xs">{placeholder}</span>
-              ) : (
-                value.map((v) => (
-                  <Badge key={v} variant="secondary" className={cn("gap-1", canRemove && "pr-1")}>
-                    <span className="max-w-[14rem] truncate">{v}</span>
-                    {canRemove && (
-                      <button
-                        type="button"
-                        tabIndex={-1}
-                        aria-label={`Remove ${v}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          remove(v);
-                        }}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        className="rounded-sm p-0.5 hover:bg-muted-foreground/20"
-                      >
-                        <RemoveIcon className="size-3" />
-                      </button>
-                    )}
-                  </Badge>
-                ))
+        <PopoverTrigger
+          nativeButton={false}
+          render={
+            <div
+              role="combobox"
+              aria-expanded={open}
+              aria-disabled={disabled || undefined}
+              tabIndex={disabled ? -1 : 0}
+              onClick={() => !disabled && setOpen(true)}
+              onKeyDown={(e) => {
+                if (disabled) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpen(true);
+                }
+              }}
+              className={cn(
+                "border-input focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-9 w-full items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]",
+                disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
               )}
-            </span>
-          </div>
+            />
+          }
+        >
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-1 min-h-[22px]">
+            {value.length === 0 ? (
+              <span className="text-muted-foreground text-xs">{placeholder}</span>
+            ) : (
+              value.map((v) => (
+                <Badge key={v} variant="secondary" className={cn("gap-1", canRemove && "pr-1")}>
+                  <span className="max-w-[14rem] truncate">{v}</span>
+                  {canRemove && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-label={`Remove ${v}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        remove(v);
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="rounded-sm p-0.5 hover:bg-muted-foreground/20"
+                    >
+                      <RemoveIcon className="size-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))
+            )}
+          </span>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-0">
+        <PopoverContent align="start" className="w-(--anchor-width) p-0">
           <Command shouldFilter={false}>
             <CommandInput
               value={query}

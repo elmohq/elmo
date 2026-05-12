@@ -264,14 +264,16 @@ function TrackDomainPopover({
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-					title={`Track ${domain}`}
-				>
-					<IconPlus className="h-3.5 w-3.5" />
-				</button>
+			<PopoverTrigger
+				render={
+					<button
+						type="button"
+						className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+						title={`Track ${domain}`}
+					/>
+				}
+			>
+				<IconPlus className="h-3.5 w-3.5" />
 			</PopoverTrigger>
 			<PopoverContent className="w-72 p-3" align="end">
 				<div className="space-y-3">
@@ -285,9 +287,7 @@ function TrackDomainPopover({
 						<div className="flex items-center gap-1">
 							<p className="text-[11px] text-muted-foreground">Add as brand domain</p>
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-xs font-normal">
 									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified as your brand.
 								</TooltipContent>
@@ -308,9 +308,7 @@ function TrackDomainPopover({
 							<div className="flex items-center gap-1">
 								<p className="text-[11px] text-muted-foreground">Add to existing competitor</p>
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-									</TooltipTrigger>
+									<TooltipTrigger render={<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />} />
 									<TooltipContent className="max-w-xs text-xs font-normal">
 										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified under the selected competitor.
 									</TooltipContent>
@@ -381,9 +379,7 @@ function OpportunitiesCard({
 				<CardTitle className="flex items-center gap-1.5">
 					Opportunities
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 						<TooltipContent className="max-w-xs text-sm font-normal">
 							Actionable insights to improve your brand&apos;s presence in AI-generated responses.
 						</TooltipContent>
@@ -562,9 +558,7 @@ export function CitationsDisplay({
 								<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
 									Brand Citation Share
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />} />
 										<TooltipContent className="max-w-xs text-sm font-normal">
 											The percentage of all citations that link to your brand&apos;s domain. A higher share means AI models are more likely to reference your content.
 										</TooltipContent>
@@ -598,9 +592,7 @@ export function CitationsDisplay({
 							<CardTitle className="flex items-center gap-1.5">
 								Citations by Domain Type
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-									</TooltipTrigger>
+									<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 									<TooltipContent className="max-w-xs text-sm font-normal">
 										<p className="mb-2"><strong>Competitor</strong> domains are only those you&apos;ve added to your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">competitors list</Link> : "competitors list"}.</p>
 										<p>If you see a competitor in &quot;Other&quot;, consider adding them to your list for better tracking.</p>
@@ -637,9 +629,7 @@ export function CitationsDisplay({
 						<CardTitle className="text-sm font-medium flex items-center gap-1.5">
 							Citation Category Trends
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									Distribution of citations by category over time, shown as a percentage of all citations each day. Data is smoothed to account for staggered prompt schedules.
 								</TooltipContent>
@@ -720,9 +710,7 @@ export function CitationsDisplay({
 						<CardTitle className="flex items-center gap-1.5">
 							Recent Changes
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and dropped pages, title changes, and new and dropped domains.
 								</TooltipContent>
@@ -833,9 +821,7 @@ export function CitationsDisplay({
 								<CardTitle className="flex items-center gap-1.5">
 									Top Cited Domains
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 										<TooltipContent className="max-w-xs text-sm font-normal">
 											The most frequently cited domains across all prompt evaluations. Each domain is colored by its category (brand, competitor, etc.).
 										</TooltipContent>
@@ -897,9 +883,7 @@ export function CitationsDisplay({
 								<CardTitle className="flex items-center gap-1.5">
 									Top Cited URLs
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 										<TooltipContent className="max-w-xs text-sm font-normal">
 											<p className="mb-2">The specific pages most frequently cited by AI models. Filter by category to focus on brand, competitor, or other sources.</p>
 											<p><strong>Competitor</strong> domains are only those in your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">tracked competitors list</Link> : "tracked competitors list"}.</p>
@@ -965,19 +949,15 @@ export function CitationsDisplay({
 										<div className="flex items-center gap-3 shrink-0 pt-0.5">
 											{citation.avgPosition != null && (
 												<Tooltip>
-													<TooltipTrigger asChild>
-														<span className="text-[11px] text-muted-foreground tabular-nums">avg {citation.avgPosition.toFixed(1)}</span>
-													</TooltipTrigger>
+													<TooltipTrigger render={<span className="text-[11px] text-muted-foreground tabular-nums" />}>avg {citation.avgPosition.toFixed(1)}</TooltipTrigger>
 													<TooltipContent className="text-xs">
 														Average citation position (lower = cited earlier in the response)
 													</TooltipContent>
 												</Tooltip>
 											)}
 											<Tooltip>
-												<TooltipTrigger asChild>
-													<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right">
-														{citation.count.toLocaleString()}
-													</span>
+												<TooltipTrigger render={<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right" />}>
+													{citation.count.toLocaleString()}
 												</TooltipTrigger>
 												<TooltipContent className="text-xs">
 													Total times this URL was cited across all prompt evaluations
@@ -1005,9 +985,7 @@ export function CitationsDisplay({
 						<CardTitle className="flex items-center gap-1.5">
 							Top Cited Subreddits
 							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
+								<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 								<TooltipContent className="max-w-xs text-sm font-normal">
 									Reddit communities most frequently cited by AI models. Extracted from all reddit.com URLs in your citation data.
 								</TooltipContent>

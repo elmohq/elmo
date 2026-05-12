@@ -78,11 +78,9 @@ function AnalyzeBrandDialog() {
 
 	return (
 		<Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : handleClose())}>
-			<DialogTrigger asChild>
-				<Button variant="outline" className="cursor-pointer w-full">
-					<Sparkles className="h-4 w-4 mr-2" />
-					Analyze brand
-				</Button>
+			<DialogTrigger render={<Button variant="outline" className="cursor-pointer w-full" />}>
+				<Sparkles className="h-4 w-4 mr-2" />
+				Analyze brand
 			</DialogTrigger>
 			<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
 				<DialogHeader>

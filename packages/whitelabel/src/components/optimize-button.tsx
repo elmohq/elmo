@@ -6,6 +6,7 @@ import { Button } from "@workspace/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 	DropdownMenuLabel,
@@ -140,21 +141,19 @@ export function OptimizeButton({
 	// Dropdown for "all" model selection - shows options for each model
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6">
-					Optimize with {parentName}
-					<IconChevronDown size={12} className="size-3 ml-0.5" />
-				</Button>
+			<DropdownMenuTrigger render={<Button size="sm" className="text-xs cursor-pointer p-0 m-0 h-6" />}>
+				Optimize with {parentName}
+				<IconChevronDown size={12} className="size-3 ml-0.5" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-48">
 				{availableModels.map((model, index) => {
 					const modelName = getModelDisplayName(model);
 					const loading = isLoading(model);
 					return (
-						<div key={model}>
+						<DropdownMenuGroup key={model}>
 							{index > 0 && <DropdownMenuSeparator />}
 							<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
-							<DropdownMenuItem 
+							<DropdownMenuItem
 								className="cursor-pointer"
 								onClick={(e) => handleOptimizeClick(e, model)}
 								disabled={loading}
@@ -168,7 +167,7 @@ export function OptimizeButton({
 									)}
 								</div>
 							</DropdownMenuItem>
-						</div>
+						</DropdownMenuGroup>
 					);
 				})}
 			</DropdownMenuContent>

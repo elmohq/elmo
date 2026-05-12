@@ -20,9 +20,7 @@ export function PageHeader({ title, subtitle, infoContent, children }: PageHeade
 					{title}
 					{infoContent && (
 						<Tooltip>
-							<TooltipTrigger asChild>
-								<IconInfoCircle className="h-5 w-5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
+							<TooltipTrigger render={<IconInfoCircle className="h-5 w-5 text-muted-foreground cursor-help" />} />
 							<TooltipContent className="max-w-xs text-sm font-normal">
 								{infoContent}
 							</TooltipContent>

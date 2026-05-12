@@ -102,9 +102,9 @@ type FilterTriggerButtonProps = {
 	badgeCount?: number;
 } & React.ComponentProps<"button">;
 
-// Props forward to the underlying Button so `<DropdownMenuTrigger asChild>` /
-// `<PopoverTrigger asChild>` can hand their ref + data-state directly to the
-// button element (wrapping in a div would make Slot target the div instead).
+// Props forward to the underlying Button so `<DropdownMenuTrigger render={...}>` /
+// `<PopoverTrigger render={...}>` can hand their ref + data-state directly to the
+// button element (wrapping in a div would make the render prop target the div instead).
 function FilterTriggerButton({
 	icon,
 	label,
@@ -165,13 +165,15 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 	const isFiltered = optimistic !== ALL_MODELS_VALUE;
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton
-					icon={iconForModel(optimistic)}
-					label={labelForModel(optimistic)}
-					active={isFiltered}
-				/>
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton
+						icon={iconForModel(optimistic)}
+						label={labelForModel(optimistic)}
+						active={isFiltered}
+					/>
+				}
+			/>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={optimistic} onValueChange={handleChange}>
 					{availableModels.map((model) => (
@@ -210,12 +212,14 @@ export function LookbackDropdown() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton
-					icon={<Clock className="size-3.5" />}
-					label={getLookbackLabel(optimistic)}
-				/>
-			</DropdownMenuTrigger>
+			<DropdownMenuTrigger
+				render={
+					<FilterTriggerButton
+						icon={<Clock className="size-3.5" />}
+						label={getLookbackLabel(optimistic)}
+					/>
+				}
+			/>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup
 					value={optimistic}
@@ -260,15 +264,17 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal={false}>
-			<PopoverTrigger asChild>
-				<FilterTriggerButton
-					icon={<TagIcon className="size-3.5" />}
-					label="Tags"
-					active={optimistic.length > 0}
-					badgeCount={optimistic.length > 0 ? optimistic.length : undefined}
-				/>
-			</PopoverTrigger>
-			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+			<PopoverTrigger
+				render={
+					<FilterTriggerButton
+						icon={<TagIcon className="size-3.5" />}
+						label="Tags"
+						active={optimistic.length > 0}
+						badgeCount={optimistic.length > 0 ? optimistic.length : undefined}
+					/>
+				}
+			/>
+			<PopoverContent align="start" className="w-64 p-0" initialFocus={false}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
 					{optimistic.length > 0 && (

@@ -16,10 +16,8 @@ function BrandSubpathNotFound() {
 			</div>
 
 			<div className="pt-2">
-				<Button asChild variant="outline">
-					<Link to="/app/$brand" params={{ brand: brandId }}>
-						Go Back
-					</Link>
+				<Button render={<Link to="/app/$brand" params={{ brand: brandId }} />} variant="outline">
+					Go Back
 				</Button>
 			</div>
 		</div>

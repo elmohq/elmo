@@ -21,11 +21,14 @@ export function HistoryButton({
 	const historyUrl = `/app/${brandId}/prompts/${promptId}`;
 
 	return (
-		<Button size="sm" variant="secondary" className="text-xs cursor-pointer h-6 flex items-center px-2" asChild>
-			<Link to={historyUrl}>
-				<GoStack className="size-3 mr-0.5" />
-				<span className="text-xs font-normal">View Details</span>
-			</Link>
+		<Button
+			size="sm"
+			variant="secondary"
+			className="text-xs cursor-pointer h-6 flex items-center px-2"
+			render={<Link to={historyUrl} />}
+		>
+			<GoStack className="size-3 mr-0.5" />
+			<span className="text-xs font-normal">View Details</span>
 		</Button>
 	);
 }
