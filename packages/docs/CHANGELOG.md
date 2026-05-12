@@ -1,5 +1,12 @@
 # @workspace/docs
 
+## 0.2.10
+
+### Patch Changes
+
+- 063e33e: Remove `elmo start`, `elmo stop`, `elmo logs`, and `elmo build` aliases — use `elmo compose <args>` directly (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`).
+  - @workspace/ui@0.2.10
+
 ## 0.2.9
 
 ### Patch Changes
