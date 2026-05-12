@@ -7,6 +7,7 @@
  */
 import { useState, useCallback, memo, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
@@ -67,6 +68,7 @@ EditableTagsInput.displayName = "EditableTagsInput";
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand, revalidate } = useBrand();
 	const queryClient = useQueryClient();
+	const router = useRouter();
 	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -179,6 +181,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			// Deployments without an onboardingRedirectUrlTemplate (e.g. local mode) skip the full reload, so caches fetched while !onboarded must be busted explicitly.
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
+			// The $brand route loader feeds `brand` into AppSidebar; invalidate it so the sidebar picks up onboarded=true.
+			await router.invalidate();
 
 			await revalidate();
 			onComplete();
