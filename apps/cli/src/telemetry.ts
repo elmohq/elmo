@@ -1,52 +1,49 @@
-import crypto from "node:crypto";
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { PostHog } from "posthog-node";
 
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
 const POSTHOG_HOST = "https://us.i.posthog.com";
-const CONFIG_HOME = path.join(os.homedir(), ".elmo");
-const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
-
-interface TelemetryConfig {
-	telemetryId?: string;
-	telemetryDisabled?: boolean;
-	[key: string]: unknown;
-}
-
-async function readConfig(): Promise<TelemetryConfig> {
-	try {
-		const contents = await fs.readFile(CONFIG_FILE, "utf8");
-		return JSON.parse(contents) as TelemetryConfig;
-	} catch {
-		return {};
-	}
-}
-
-async function writeConfig(config: TelemetryConfig): Promise<void> {
-	await fs.mkdir(CONFIG_HOME, { recursive: true });
-	await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
-}
 
 function envDisabled(): boolean {
 	return Boolean(process.env.DISABLE_TELEMETRY);
 }
 
-export async function isTelemetryDisabled(): Promise<boolean> {
-	if (envDisabled()) return true;
-	const config = await readConfig();
-	return config.telemetryDisabled === true;
+async function readEnvKey(configDir: string, key: string): Promise<string | undefined> {
+	try {
+		const contents = await fs.readFile(path.join(configDir, ".env"), "utf8");
+		for (const line of contents.split("\n")) {
+			const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+			if (!match || match[1] !== key) continue;
+			let value = match[2];
+			if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
+				value = value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+			}
+			return value;
+		}
+	} catch {
+		// .env doesn't exist
+	}
+	return undefined;
 }
 
-export async function setTelemetryEnabled(enabled: boolean): Promise<void> {
-	const config = await readConfig();
-	if (enabled) {
-		delete config.telemetryDisabled;
-	} else {
-		config.telemetryDisabled = true;
+export async function isTelemetryDisabled(configDir: string): Promise<boolean> {
+	if (envDisabled()) return true;
+	return Boolean(await readEnvKey(configDir, "DISABLE_TELEMETRY"));
+}
+
+export async function setTelemetryEnabled(configDir: string, enabled: boolean): Promise<string> {
+	const envPath = path.join(configDir, ".env");
+	const contents = await fs.readFile(envPath, "utf8");
+	const lines = contents.split("\n");
+	const filtered = lines.filter((line) => !/^\s*DISABLE_TELEMETRY\s*=/.test(line));
+	if (!enabled) {
+		const insertIdx =
+			filtered.length > 0 && filtered[filtered.length - 1] === "" ? filtered.length - 1 : filtered.length;
+		filtered.splice(insertIdx, 0, "DISABLE_TELEMETRY=1");
 	}
-	await writeConfig(config);
+	await fs.writeFile(envPath, filtered.join("\n"), "utf8");
+	return envPath;
 }
 
 export type TelemetryStatus = {
@@ -55,44 +52,37 @@ export type TelemetryStatus = {
 	distinctId?: string;
 };
 
-export async function getTelemetryStatus(): Promise<TelemetryStatus> {
+export async function getTelemetryStatus(configDir: string): Promise<TelemetryStatus> {
 	if (envDisabled()) {
 		return { enabled: false, source: "env" };
 	}
-	const config = await readConfig();
-	if (config.telemetryDisabled === true) {
-		return { enabled: false, source: "config", distinctId: config.telemetryId };
-	}
-	return { enabled: true, source: "default", distinctId: config.telemetryId };
-}
-
-async function getOrCreateDistinctId(): Promise<string> {
-	const config = await readConfig();
-	if (config.telemetryId) return config.telemetryId;
-
-	const id = crypto.randomUUID();
-	await writeConfig({ ...config, telemetryId: id });
-	return id;
+	const disabled = Boolean(await readEnvKey(configDir, "DISABLE_TELEMETRY"));
+	const distinctId = await readEnvKey(configDir, "DEPLOYMENT_ID");
+	return {
+		enabled: !disabled,
+		source: disabled ? "config" : "default",
+		distinctId,
+	};
 }
 
 export async function trackCliEvent(
+	configDir: string,
 	eventName: string,
 	properties?: Record<string, string | number | boolean | undefined>,
 	personProperties?: Record<string, string | number | boolean | undefined>,
 ): Promise<void> {
-	if (await isTelemetryDisabled()) return;
+	if (await isTelemetryDisabled(configDir)) return;
+	const distinctId = await readEnvKey(configDir, "DEPLOYMENT_ID");
+	if (!distinctId) return;
 
 	try {
-		const distinctId = await getOrCreateDistinctId();
 		const client = new PostHog(POSTHOG_PUBLIC_KEY, { host: POSTHOG_HOST });
-
 		client.capture({
 			distinctId,
 			event: eventName,
 			properties,
 			...(personProperties ? { $set: personProperties } : {}),
 		});
-
 		await client.shutdown();
 	} catch {
 		// Telemetry should never block the CLI
@@ -101,14 +91,15 @@ export async function trackCliEvent(
 
 // Newsletter signup is an explicit user action with clear intent, so it
 // fires even when anonymous telemetry is disabled. When telemetry is on the
-// event is keyed off the install UUID and the email is attached as a person
-// property — same identity as the rest of the CLI events. When telemetry is
-// off the event is keyed off the email itself, so it is never linked back
-// to the anonymous install UUID.
-export async function submitNewsletterSignup(email: string): Promise<void> {
+// event is keyed off the deployment UUID and the email is attached as a
+// person property — same identity as the rest of the CLI events. When
+// telemetry is off the event is keyed off the email itself, so it is never
+// linked back to the anonymous deployment UUID.
+export async function submitNewsletterSignup(configDir: string, email: string): Promise<void> {
 	try {
-		const disabled = await isTelemetryDisabled();
-		const distinctId = disabled ? email : await getOrCreateDistinctId();
+		const disabled = await isTelemetryDisabled(configDir);
+		const deploymentId = disabled ? null : await readEnvKey(configDir, "DEPLOYMENT_ID");
+		const distinctId = deploymentId ?? email;
 		const client = new PostHog(POSTHOG_PUBLIC_KEY, { host: POSTHOG_HOST });
 		client.capture({
 			distinctId,
