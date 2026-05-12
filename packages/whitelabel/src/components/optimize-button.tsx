@@ -6,6 +6,7 @@ import { Button } from "@workspace/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 	DropdownMenuLabel,
@@ -149,10 +150,10 @@ export function OptimizeButton({
 					const modelName = getModelDisplayName(model);
 					const loading = isLoading(model);
 					return (
-						<div key={model}>
+						<DropdownMenuGroup key={model}>
 							{index > 0 && <DropdownMenuSeparator />}
 							<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
-							<DropdownMenuItem 
+							<DropdownMenuItem
 								className="cursor-pointer"
 								onClick={(e) => handleOptimizeClick(e, model)}
 								disabled={loading}
@@ -166,7 +167,7 @@ export function OptimizeButton({
 									)}
 								</div>
 							</DropdownMenuItem>
-						</div>
+						</DropdownMenuGroup>
 					);
 				})}
 			</DropdownMenuContent>
