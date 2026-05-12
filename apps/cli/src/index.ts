@@ -136,8 +136,8 @@ async function main() {
 
 	program
 		.command("edit")
-		.description("open .env or elmo.yaml in $VISUAL / $EDITOR (fallback: nano)")
-		.argument("<target>", "`env` or `compose`")
+		.description("change API keys, scrape targets, or the Docker Compose stack")
+		.argument("<env|compose>", "which config file to edit")
 		.option("--dir <path>", "Config directory")
 		.action(async (target: string, options: DirOption) => {
 			await runEdit(target, options);
