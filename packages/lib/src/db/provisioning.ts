@@ -72,12 +72,18 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
 /**
  * Slugify a brand name into the URL/id form used for new local-mode orgs.
  * Exported so the slug rules can be unit-tested directly without a database.
+ *
+ * Note: leading/trailing hyphens are trimmed via index walks instead of an
+ * `^-+|-+$` alternation regex — the alternation form trips ReDoS scanners
+ * on inputs like `"---"` even though the JS engine handles it linearly.
  */
 export function slugifyOrgName(name: string): string {
-	const slug = name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-+|-+$/g, "");
+	const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+	let start = 0;
+	while (start < cleaned.length && cleaned[start] === "-") start++;
+	let end = cleaned.length;
+	while (end > start && cleaned[end - 1] === "-") end--;
+	const slug = cleaned.slice(start, end);
 	return slug || "brand";
 }
 
