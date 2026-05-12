@@ -12,9 +12,10 @@ import { useMemo, useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
+import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Plus, Inbox, Check } from "lucide-react";
+import { Plus, Inbox } from "lucide-react";
 import { IconInfoCircle } from "@tabler/icons-react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 
@@ -87,14 +88,17 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
+	// Mobile drops the System column and tightens tag/text minimums; desktop
+	// (md and up) restores the wider layout. Column order is:
+	// [select] [text] [system?] [tags] [enable switch]
 	const gridCols = showSystemTags
-		? "grid-cols-[2.5rem_3rem_1fr_6rem_minmax(14rem,1fr)]"
-		: "grid-cols-[2.5rem_3rem_1fr_minmax(14rem,1fr)]";
+		? "grid-cols-[2.25rem_minmax(0,1fr)_minmax(7rem,1fr)_2.75rem] md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]"
+		: "grid-cols-[2.25rem_minmax(0,1fr)_minmax(7rem,1fr)_2.75rem] md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]";
 
 	return (
 		<div className="space-y-4">
 			{liveSelectedCount > 0 && (
-				<div className="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+				<div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
 					<span className="text-muted-foreground">
 						<strong className="text-foreground">{liveSelectedCount}</strong> selected
 					</span>
@@ -139,10 +143,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 						aria-label={allSelected ? "Deselect all prompts" : "Select all prompts"}
 					/>
 				</div>
-				<div className="flex justify-center">
-					<Check className="h-4 w-4" />
-				</div>
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-1 min-w-0">
 					Prompt Text
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -154,7 +155,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 					</Tooltip>
 				</div>
 				{showSystemTags && (
-					<div className="flex items-center gap-1">
+					<div className="hidden md:flex items-center gap-1">
 						System
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -166,7 +167,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 						</Tooltip>
 					</div>
 				)}
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-1 min-w-0">
 					Tags
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -176,6 +177,9 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 							<p className="max-w-xs">Custom labels to organize and filter prompts.</p>
 						</TooltipContent>
 					</Tooltip>
+				</div>
+				<div className="flex justify-center">
+					<span className="sr-only">Enabled</span>
 				</div>
 			</div>
 
@@ -200,19 +204,20 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 									aria-label="Select prompt"
 								/>
 							</div>
-							<div className="flex justify-center pt-2">
-								<Checkbox
-									checked={prompt.enabled}
-									onCheckedChange={(checked) => update(index, { enabled: checked === true })}
-								/>
-							</div>
 							<Input
 								value={prompt.value}
 								onChange={(e) => update(index, { value: e.target.value })}
 								placeholder="Enter prompt text..."
+								className="min-w-0"
 							/>
 							{showSystemTags && (
-								<TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />
+								<TagsInput
+									value={prompt.systemTags}
+									onValueChange={() => {}}
+									disabled
+									placeholder="—"
+									className="hidden md:flex"
+								/>
 							)}
 							<TagsInput
 								value={prompt.tags}
@@ -222,6 +227,13 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 								searchPlaceholder="Search or create tag..."
 								normalizeValue={(raw) => raw.toLowerCase().trim()}
 							/>
+							<div className="flex justify-center pt-2">
+								<Switch
+									checked={prompt.enabled}
+									onCheckedChange={(checked) => update(index, { enabled: checked })}
+									aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+								/>
+							</div>
 						</div>
 					))}
 				</div>
