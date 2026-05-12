@@ -101,6 +101,8 @@ async function main() {
 	program
 		.name("elmo")
 		.version(version)
+		.option("--dir <path>", "Config directory")
+		.configureHelp({ showGlobalOptions: true })
 		.action(() => {
 			printBanner();
 			program.outputHelp();
@@ -110,29 +112,26 @@ async function main() {
 		.command("init")
 		.description("set up local Elmo instance")
 		.option("--dev", "Use local build context (repo only)")
-		.option("--dir <path>", "Directory to store config files")
 		.option("--docker-dir <path>", "Path to Docker build context (dev mode)")
-		.action(async (options: InitOptions) => {
-			await withVersionCheck(version, () => runInit(options, version));
+		.action(async (_opts: object, cmd: Command) => {
+			await withVersionCheck(version, () => runInit(cmd.optsWithGlobals<InitOptions>(), version));
 		});
 
 	program
 		.command("compose")
 		.description("run Docker Compose commands using your Elmo config")
 		.allowUnknownOption(true)
-		.option("--dir <path>", "Config directory")
 		.argument("[args...]", "Arguments passed to Docker Compose")
-		.action(async (args: string[], options: DirOption) => {
-			await withVersionCheck(version, () => runCompose(args, options));
+		.action(async (args: string[], _opts: object, cmd: Command) => {
+			await withVersionCheck(version, () => runCompose(args, cmd.optsWithGlobals<DirOption>()));
 		});
 
 	program
 		.command("edit")
 		.description("change API keys, scrape targets, or the Docker Compose YAML")
 		.argument("<env|compose>", "which config file to edit")
-		.option("--dir <path>", "Config directory")
-		.action(async (target: string, options: DirOption) => {
-			await runEdit(target, options);
+		.action(async (target: string, _opts: object, cmd: Command) => {
+			await runEdit(target, cmd.optsWithGlobals<DirOption>());
 		});
 
 	await program.parseAsync(process.argv);
