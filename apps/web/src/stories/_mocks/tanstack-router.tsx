@@ -141,18 +141,21 @@ export function lazyRouteComponent(loader: any) {
 	};
 }
 
-export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(
+export const Link = React.forwardRef<HTMLAnchorElement, any>(function LinkMock(
 	{ to, children, onClick, ...props },
 	ref,
 ) {
 	return (
-		<button
-			type="button"
+		<a
+			href={typeof to === "string" ? to : "#"}
 			ref={ref}
-			onClick={onClick}
+			onClick={(e) => {
+				e.preventDefault();
+				onClick?.(e);
+			}}
 			{...props}
 		>
 			{children}
-		</button>
+		</a>
 	);
 });
