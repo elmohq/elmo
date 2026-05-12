@@ -58,8 +58,7 @@ For the full self-hosting walkthrough, see the [Elmo docs](https://www.elmohq.co
 | Command | Description |
 | --- | --- |
 | `elmo init` | Interactive wizard to set up a local Elmo instance |
-| `elmo status` | Check the health of running services |
-| `elmo compose <args...>` | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`) |
+| `elmo compose <args...>` | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`, `elmo compose ps`) |
 | `elmo edit <env\|compose>` | Open `.env` or `elmo.yaml` in `$VISUAL` / `$EDITOR` (fallback: `nano`) |
 
 Run `elmo --help` or `elmo <command> --help` for the full list of flags.
