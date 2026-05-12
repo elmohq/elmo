@@ -60,6 +60,7 @@ For the full self-hosting walkthrough, see the [Elmo docs](https://www.elmohq.co
 | `elmo init` | Interactive wizard to set up a local Elmo instance |
 | `elmo status` | Check the health of running services |
 | `elmo compose <args...>` | Run any `docker compose` command against your Elmo project (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`) |
+| `elmo edit <env\|compose>` | Open `.env` or `elmo.yaml` in `$VISUAL` / `$EDITOR` (fallback: `nano`) |
 
 Run `elmo --help` or `elmo <command> --help` for the full list of flags.
 
@@ -70,11 +71,14 @@ Run `elmo --help` or `elmo <command> --help` for the full list of flags.
 
 ## Telemetry
 
-The CLI sends anonymous install and command events so we can understand which flows people use and where setup breaks. To opt out, set:
+The CLI sends anonymous install and command events so we can understand which flows people use and where setup breaks. To opt out, either export `DISABLE_TELEMETRY=1` in your shell, or add it to your `.env`:
 
 ```bash
-export DISABLE_TELEMETRY=1
+elmo edit env       # add DISABLE_TELEMETRY=1
+elmo compose up -d  # restart so the deployment picks it up
 ```
+
+See [the telemetry docs](https://www.elmohq.com/docs/developer-guide/telemetry) for details on what is collected.
 
 ## Star, contribute, and chat
 

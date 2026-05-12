@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { parse } from "dotenv";
 import { PostHog } from "posthog-node";
 
 const POSTHOG_PUBLIC_KEY = "phc_Jhx9LnI9cTDFHpQmpOzJSDTW127qD9pFU65KRnYym6z";
@@ -12,57 +13,15 @@ function envDisabled(): boolean {
 async function readEnvKey(configDir: string, key: string): Promise<string | undefined> {
 	try {
 		const contents = await fs.readFile(path.join(configDir, ".env"), "utf8");
-		for (const line of contents.split("\n")) {
-			const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-			if (!match || match[1] !== key) continue;
-			let value = match[2];
-			if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
-				value = value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
-			}
-			return value;
-		}
+		return parse(contents)[key];
 	} catch {
-		// .env doesn't exist
+		return undefined;
 	}
-	return undefined;
 }
 
-export async function isTelemetryDisabled(configDir: string): Promise<boolean> {
+async function isTelemetryDisabled(configDir: string): Promise<boolean> {
 	if (envDisabled()) return true;
 	return Boolean(await readEnvKey(configDir, "DISABLE_TELEMETRY"));
-}
-
-export async function setTelemetryEnabled(configDir: string, enabled: boolean): Promise<string> {
-	const envPath = path.join(configDir, ".env");
-	const contents = await fs.readFile(envPath, "utf8");
-	const lines = contents.split("\n");
-	const filtered = lines.filter((line) => !/^\s*DISABLE_TELEMETRY\s*=/.test(line));
-	if (!enabled) {
-		const insertIdx =
-			filtered.length > 0 && filtered[filtered.length - 1] === "" ? filtered.length - 1 : filtered.length;
-		filtered.splice(insertIdx, 0, "DISABLE_TELEMETRY=1");
-	}
-	await fs.writeFile(envPath, filtered.join("\n"), "utf8");
-	return envPath;
-}
-
-export type TelemetryStatus = {
-	enabled: boolean;
-	source: "env" | "config" | "default";
-	distinctId?: string;
-};
-
-export async function getTelemetryStatus(configDir: string): Promise<TelemetryStatus> {
-	if (envDisabled()) {
-		return { enabled: false, source: "env" };
-	}
-	const disabled = Boolean(await readEnvKey(configDir, "DISABLE_TELEMETRY"));
-	const distinctId = await readEnvKey(configDir, "DEPLOYMENT_ID");
-	return {
-		enabled: !disabled,
-		source: disabled ? "config" : "default",
-		distinctId,
-	};
 }
 
 export async function trackCliEvent(
