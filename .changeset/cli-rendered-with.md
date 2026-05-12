@@ -2,4 +2,4 @@
 "@elmohq/cli": patch
 ---
 
-`elmo init` now stamps the CLI version and timestamp into the `.env` and `elmo.yaml` headers, and re-running it on an existing config asks for confirmation and preserves the existing `DEPLOYMENT_ID` so telemetry identity stays stable. `~/.elmo/config.json` is no longer written — telemetry state and the deployment ID now live entirely in `.env`. The `elmo telemetry` subcommand is removed; use `elmo edit env` (new — opens `.env`/`elmo.yaml` in `$VISUAL` / `$EDITOR`, falling back to `nano`) to toggle `DISABLE_TELEMETRY` and restart with `elmo compose up -d`.
+Add `elmo edit`, drop `elmo telemetry` and the `~/.elmo/config.json` file. `elmo edit env|compose` opens the file in `$VISUAL` / `$EDITOR` (fallback `nano`) — toggle `DISABLE_TELEMETRY` there instead of via the removed `elmo telemetry` subcommand. Telemetry state and the deployment ID now live entirely in `.env`; `elmo init` stamps the CLI version and timestamp into the `.env` and `elmo.yaml` headers, and re-running it preserves the existing `DEPLOYMENT_ID`.
