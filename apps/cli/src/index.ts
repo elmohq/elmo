@@ -1055,7 +1055,14 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 				});
 		assertNotCancelled(pull);
 		if (pull) {
-			await applyComposeUpdate(configDir);
+			assertDockerRunning();
+			const wasRunning = await stackHasRunningServices(configDir);
+			log.step("Pulling images...");
+			await runDockerCompose(configDir, ["pull"]);
+			if (wasRunning) {
+				log.step("Restarting services...");
+				await runDockerCompose(configDir, ["up", "-d"]);
+			}
 		}
 		p.outro(pc.green("Nothing to migrate."));
 		return;
@@ -1089,6 +1096,14 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 		process.exit(0);
 	}
 
+	// ── Stop running stack so migrations + image swap happen on a quiet deployment ─
+	assertDockerRunning();
+	const wasRunning = await stackHasRunningServices(configDir);
+	if (wasRunning) {
+		log.step("Stopping services...");
+		await runDockerCompose(configDir, ["down"]);
+	}
+
 	// ── Run migrations ───────────────────────────────────────────────────
 	const ctx = buildMigrationContext(configDir);
 	try {
@@ -1097,6 +1112,9 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 		const msg = error instanceof Error ? error.message : String(error);
 		log.error(`Migration failed: ${msg}`);
 		log.info("`installedVersion` left unchanged. Fix the issue and rerun `elmo upgrade`.");
+		if (wasRunning) {
+			log.info("Stack was stopped for the upgrade. Restart with `elmo compose up -d` after fixing.");
+		}
 		process.exit(1);
 	}
 
@@ -1130,24 +1148,44 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 
 	log.success(`Wrote ${composePath} (images pinned to ${cliVersion}).`);
 
-	// ── Pull + restart ───────────────────────────────────────────────────
-	await applyComposeUpdate(configDir);
+	// ── Pull new images ──────────────────────────────────────────────────
+	log.step("Pulling images...");
+	await runDockerCompose(configDir, ["pull"]);
+
+	// ── Restart only if the stack was running before upgrade ─────────────
+	if (wasRunning) {
+		log.step("Starting services...");
+		await runDockerCompose(configDir, ["up", "-d"]);
+		const s = p.spinner();
+		s.start("Waiting for services to become healthy...");
+		const ok = await waitForHealthy(configDir, 180_000);
+		if (ok) {
+			s.stop("All services healthy!");
+		} else {
+			s.stop("Health check timed out.");
+			log.warn("Some services did not report healthy status.");
+		}
+	} else {
+		log.info("Stack was stopped before upgrade — leaving it stopped. Start with `elmo compose up -d`.");
+	}
 
 	await trackCliEvent("cli_upgrade", {
 		from_version: fromVersion,
 		to_version: cliVersion,
 		migrations_run: plan.length,
+		was_running: wasRunning,
 	});
 
 	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
 }
 
-async function applyComposeUpdate(configDir: string): Promise<void> {
-	assertDockerRunning();
-	log.step("Pulling images...");
-	await runDockerCompose(configDir, ["pull"]);
-	log.step("Restarting services...");
-	await runDockerCompose(configDir, ["up", "-d"]);
+async function stackHasRunningServices(configDir: string): Promise<boolean> {
+	try {
+		const services = await getComposeServices(configDir);
+		return services.some((s) => s.State?.startsWith("running") ?? false);
+	} catch {
+		return false;
+	}
 }
 
 function buildMigrationContext(configDir: string): MigrationContext {
