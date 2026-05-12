@@ -948,6 +948,7 @@ function buildComposeYaml(options: {
 				dev: options.dev,
 				dockerfilePath,
 				repoRoot: options.repoRoot,
+				version: options.version,
 			}),
 		);
 		dependsOnWeb.push("db-migrate");
@@ -963,6 +964,7 @@ function buildComposeYaml(options: {
 			repoRoot: options.repoRoot,
 			dockerfilePath,
 			port: options.port,
+			version: options.version,
 		}),
 	);
 	services.push(
@@ -972,6 +974,7 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
+			version: options.version,
 		}),
 	);
 
@@ -1009,7 +1012,12 @@ function buildPostgresService(): string {
 	].join("\n");
 }
 
-function buildDbMigrateService(options: { dev: boolean; dockerfilePath: string; repoRoot: string }): string {
+function buildDbMigrateService(options: {
+	dev: boolean;
+	dockerfilePath: string;
+	repoRoot: string;
+	version: string;
+}): string {
 	const lines = ["db-migrate:"];
 	if (options.dev) {
 		lines.push(
@@ -1019,7 +1027,7 @@ function buildDbMigrateService(options: { dev: boolean; dockerfilePath: string; 
 			"    target: migrate",
 		);
 	} else {
-		lines.push("  image: elmohq/elmo-db-migrate:latest");
+		lines.push(`  image: elmohq/elmo-db-migrate:${options.version}`);
 	}
 
 	lines.push(
@@ -1040,6 +1048,7 @@ function buildWebService(options: {
 	repoRoot: string;
 	dockerfilePath: string;
 	port: number;
+	version: string;
 }): string {
 	const lines = ["web:"];
 	if (options.dev) {
@@ -1052,7 +1061,7 @@ function buildWebService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push("  image: elmohq/elmo-web:latest");
+		lines.push(`  image: elmohq/elmo-web:${options.version}`);
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", `    - "${options.port}:3000"`);
@@ -1074,6 +1083,7 @@ function buildWorkerService(options: {
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
+	version: string;
 }): string {
 	const lines = ["worker:"];
 	if (options.dev) {
@@ -1086,7 +1096,7 @@ function buildWorkerService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push("  image: elmohq/elmo-worker:latest");
+		lines.push(`  image: elmohq/elmo-worker:${options.version}`);
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true");
