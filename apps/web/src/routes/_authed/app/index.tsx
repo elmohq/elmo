@@ -74,10 +74,8 @@ function BrandSwitcherPage() {
 			<div className="flex flex-col space-y-3">
 				{organizations.length > 0 ? (
 					organizations.map((org: { id: string; name: string }) => (
-						<Button key={org.id} asChild variant="secondary" className="min-w-[200px]">
-							<Link to="/app/$brand" params={{ brand: org.id }}>
-								{org.name}
-							</Link>
+						<Button key={org.id} render={<Link to="/app/$brand" params={{ brand: org.id }} />} variant="secondary" className="min-w-[200px]">
+							{org.name}
 						</Button>
 					))
 				) : (

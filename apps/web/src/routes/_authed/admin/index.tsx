@@ -126,8 +126,8 @@ function DelayOverrideDialog({ brand, onUpdate }: { brand: BrandStats; onUpdate:
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogTrigger asChild>
-				<Button variant="outline" size="sm" className="cursor-pointer"><Settings className="h-4 w-4" /></Button>
+			<DialogTrigger render={<Button variant="outline" size="sm" className="cursor-pointer" />}>
+				<Settings className="h-4 w-4" />
 			</DialogTrigger>
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>

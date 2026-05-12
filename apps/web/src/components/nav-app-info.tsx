@@ -25,19 +25,23 @@ export function NavAppInfo() {
 			</a>
 			<div className="flex items-center gap-1">
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<a href="https://www.elmohq.com/" target="_blank" className={linkClass}>
-							<IconWorld className="size-4" />
-						</a>
-					</TooltipTrigger>
+					<TooltipTrigger
+						render={
+							<a href="https://www.elmohq.com/" target="_blank" rel="noopener" className={linkClass}>
+								<IconWorld className="size-4" />
+							</a>
+						}
+					/>
 					<TooltipContent>elmohq.com</TooltipContent>
 				</Tooltip>
 				<Tooltip>
-					<TooltipTrigger asChild>
-						<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass}>
-							<IconBrandGithub className="size-4" />
-						</a>
-					</TooltipTrigger>
+					<TooltipTrigger
+						render={
+							<a href="https://github.com/elmohq/elmo" target="_blank" rel="noreferrer" className={linkClass}>
+								<IconBrandGithub className="size-4" />
+							</a>
+						}
+					/>
 					<TooltipContent>View on GitHub</TooltipContent>
 				</Tooltip>
 			</div>

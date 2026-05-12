@@ -55,9 +55,7 @@ function HomePage() {
 
 	return (
 		<FullPageCard className="">
-			<Button asChild>
-				<a href={signInUrl}>Sign In</a>
-			</Button>
+			<Button render={<a href={signInUrl}>Sign In</a>} />
 		</FullPageCard>
 	);
 }

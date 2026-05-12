@@ -50,17 +50,17 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
 						{group.items.map((item) => (
 							<SidebarMenuItem key={item.title}>
 								<SidebarMenuButton
-									asChild
+									render={
+										<Link
+											to={getHref(item.url, item.absolute)}
+											onClick={() => setOpenMobile(false)}
+										/>
+									}
 									tooltip={item.title}
 									isActive={isActive(item.url, item.absolute)}
 								>
-								<Link
-									to={getHref(item.url, item.absolute)}
-									onClick={() => setOpenMobile(false)}
-								>
 									{item.icon && <item.icon />}
 									<span>{item.title}</span>
-								</Link>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 						))}

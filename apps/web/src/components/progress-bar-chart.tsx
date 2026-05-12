@@ -119,18 +119,20 @@ export function ProgressBarChart({
 						<div className="flex items-center gap-1 min-w-0 flex-1">
 							{item.tooltip ? (
 								<Tooltip>
-									<TooltipTrigger asChild>
-										<span
-											className={cn(
-												"text-sm cursor-default",
-												isHighlighted ? "font-bold" : "font-medium",
-												truncateLabels && "truncate",
-												isClickable && "cursor-pointer hover:underline"
-											)}
-											onClick={item.onClick}
-										>
-											{item.label}
-										</span>
+									<TooltipTrigger
+										render={
+											<span
+												className={cn(
+													"text-sm cursor-default",
+													isHighlighted ? "font-bold" : "font-medium",
+													truncateLabels && "truncate",
+													isClickable && "cursor-pointer hover:underline"
+												)}
+												onClick={item.onClick}
+											/>
+										}
+									>
+										{item.label}
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs text-xs font-normal">{item.tooltip}</TooltipContent>
 								</Tooltip>

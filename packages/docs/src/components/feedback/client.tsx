@@ -110,14 +110,16 @@ export function FeedbackBlock({
 		<div className="group/feedback relative">
 			{children}
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger asChild>
-					<button
-						type="button"
-						className="absolute -right-8 top-0 hidden size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/feedback:flex group-hover/feedback:opacity-100"
-						aria-label="Send feedback about this section"
-					>
-						<MessageSquare className="size-3.5" />
-					</button>
+				<PopoverTrigger
+					render={
+						<button
+							type="button"
+							className="absolute -right-8 top-0 hidden size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/feedback:flex group-hover/feedback:opacity-100"
+							aria-label="Send feedback about this section"
+						/>
+					}
+				>
+					<MessageSquare className="size-3.5" />
 				</PopoverTrigger>
 				<PopoverContent align="end" className="w-72 p-3">
 					{submitted ? (

@@ -116,9 +116,7 @@ function ConfigRow({
 				<span>{label}</span>
 				{tooltip && (
 					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-						</TooltipTrigger>
+						<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />} />
 						<TooltipContent className="max-w-xs text-xs font-normal">{tooltip}</TooltipContent>
 					</Tooltip>
 				)}

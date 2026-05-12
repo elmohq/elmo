@@ -104,9 +104,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<Label className="text-xs font-medium flex items-center gap-1.5">
 									Name
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 										<TooltipContent className="max-w-xs text-xs font-normal">
 											The primary name used to detect this competitor in AI responses. Mention detection applies to <strong>future</strong> prompt runs only.
 										</TooltipContent>
@@ -126,9 +124,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<Label className="text-xs font-medium flex items-center gap-1.5">
 									Domains
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 										<TooltipContent className="max-w-xs text-xs font-normal">
 											All domains owned by this competitor. Citation categorization updates retroactively &mdash; existing citations from these domains will immediately be classified as &quot;competitor&quot;.
 										</TooltipContent>
@@ -148,9 +144,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<Label className="text-xs font-medium flex items-center gap-1.5">
 									Aliases
 									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
+										<TooltipTrigger render={<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
 										<TooltipContent className="max-w-xs text-xs font-normal">
 											Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively.
 										</TooltipContent>

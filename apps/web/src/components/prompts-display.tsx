@@ -120,11 +120,9 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 						<div className="text-center py-8 text-muted-foreground">
 							<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 							<p className="mb-4">No prompts yet.</p>
-							<Button asChild size="sm" className="h-7 flex cursor-pointer">
-								<Link to={editLink}>
-									<IconEditCircle />
-									<span>Edit</span>
-								</Link>
+							<Button render={<Link to={editLink} />} size="sm" className="h-7 flex cursor-pointer">
+								<IconEditCircle />
+								<span>Edit</span>
 							</Button>
 						</div>
 					</div>
