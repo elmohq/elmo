@@ -88,17 +88,16 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 
 	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 
-	// Mobile drops the System column and tightens tag/text minimums; desktop
-	// (md and up) restores the wider layout. Column order is:
-	// [select] [text] [system?] [tags] [enable switch]
+	// Desktop layout only — column order is [select] [text] [system?] [tags] [switch].
+	// Mobile renders a stacked per-prompt block instead (no selection, no bulk).
 	const gridCols = showSystemTags
-		? "grid-cols-[2.25rem_minmax(0,1fr)_minmax(7rem,1fr)_2.75rem] md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]"
-		: "grid-cols-[2.25rem_minmax(0,1fr)_minmax(7rem,1fr)_2.75rem] md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]";
+		? "md:grid-cols-[2.25rem_minmax(0,1fr)_6rem_minmax(14rem,1fr)_2.75rem]"
+		: "md:grid-cols-[2.25rem_minmax(0,1fr)_minmax(14rem,1fr)_2.75rem]";
 
 	return (
 		<div className="space-y-4">
 			{liveSelectedCount > 0 && (
-				<div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+				<div className="hidden md:flex flex-wrap items-center justify-between gap-x-2 gap-y-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
 					<span className="text-muted-foreground">
 						<strong className="text-foreground">{liveSelectedCount}</strong> selected
 					</span>
@@ -134,7 +133,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 				</div>
 			)}
 
-			<div className={`grid ${gridCols} gap-2 text-sm font-medium text-muted-foreground border-b pb-2`}>
+			<div className={`hidden md:grid ${gridCols} gap-2 text-sm font-medium text-muted-foreground border-b pb-2`}>
 				<div className="flex justify-center">
 					<Checkbox
 						checked={allSelected}
@@ -193,46 +192,71 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 			) : (
 				<div className="space-y-3">
 					{prompts.map((prompt, index) => (
-						<div
-							key={prompt._key}
-							className={`grid ${gridCols} gap-2 items-start ${!prompt.enabled ? "opacity-60" : ""}`}
-						>
-							<div className="flex justify-center pt-2">
-								<Checkbox
-									checked={selectedKeys.has(prompt._key)}
-									onCheckedChange={() => toggleSelect(prompt._key)}
-									aria-label="Select prompt"
+						<div key={prompt._key} className={!prompt.enabled ? "opacity-60" : ""}>
+							{/* Mobile: stacked, no selection/bulk */}
+							<div
+								className={`md:hidden flex flex-col gap-2 pb-3 ${
+									index < prompts.length - 1 ? "border-b" : ""
+								}`}
+							>
+								<div className="flex items-start gap-2">
+									<Input
+										value={prompt.value}
+										onChange={(e) => update(index, { value: e.target.value })}
+										placeholder="Enter prompt text..."
+										className="min-w-0 flex-1"
+									/>
+									<div className="pt-2">
+										<Switch
+											checked={prompt.enabled}
+											onCheckedChange={(checked) => update(index, { enabled: checked })}
+											aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+										/>
+									</div>
+								</div>
+								<TagsInput
+									value={prompt.tags}
+									onValueChange={(tags) => update(index, { tags })}
+									options={allTagOptions}
+									placeholder="Add tag..."
+									searchPlaceholder="Search or create tag..."
+									normalizeValue={(raw) => raw.toLowerCase().trim()}
 								/>
 							</div>
-							<Input
-								value={prompt.value}
-								onChange={(e) => update(index, { value: e.target.value })}
-								placeholder="Enter prompt text..."
-								className="min-w-0"
-							/>
-							{showSystemTags && (
+
+							{/* Desktop (md+): single-line grid */}
+							<div className={`hidden md:grid ${gridCols} gap-2 items-start`}>
+								<div className="flex justify-center pt-2">
+									<Checkbox
+										checked={selectedKeys.has(prompt._key)}
+										onCheckedChange={() => toggleSelect(prompt._key)}
+										aria-label="Select prompt"
+									/>
+								</div>
+								<Input
+									value={prompt.value}
+									onChange={(e) => update(index, { value: e.target.value })}
+									placeholder="Enter prompt text..."
+									className="min-w-0"
+								/>
+								{showSystemTags && (
+									<TagsInput value={prompt.systemTags} onValueChange={() => {}} disabled placeholder="—" />
+								)}
 								<TagsInput
-									value={prompt.systemTags}
-									onValueChange={() => {}}
-									disabled
-									placeholder="—"
-									className="hidden md:flex"
+									value={prompt.tags}
+									onValueChange={(tags) => update(index, { tags })}
+									options={allTagOptions}
+									placeholder="Add tag..."
+									searchPlaceholder="Search or create tag..."
+									normalizeValue={(raw) => raw.toLowerCase().trim()}
 								/>
-							)}
-							<TagsInput
-								value={prompt.tags}
-								onValueChange={(tags) => update(index, { tags })}
-								options={allTagOptions}
-								placeholder="Add tag..."
-								searchPlaceholder="Search or create tag..."
-								normalizeValue={(raw) => raw.toLowerCase().trim()}
-							/>
-							<div className="flex justify-center pt-2">
-								<Switch
-									checked={prompt.enabled}
-									onCheckedChange={(checked) => update(index, { enabled: checked })}
-									aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
-								/>
+								<div className="flex justify-center pt-2">
+									<Switch
+										checked={prompt.enabled}
+										onCheckedChange={(checked) => update(index, { enabled: checked })}
+										aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
+									/>
+								</div>
 							</div>
 						</div>
 					))}
