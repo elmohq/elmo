@@ -13,9 +13,10 @@ import { Input } from "@workspace/ui/components/input";
 import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
-import { useBrand } from "@/hooks/use-brands";
+import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
+import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
 import { analyzeBrandFn, updateOnboardedBrandFn } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
@@ -66,7 +67,7 @@ const EditableTagsInput = memo(
 EditableTagsInput.displayName = "EditableTagsInput";
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
-	const { brand, revalidate } = useBrand();
+	const { brand } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
@@ -179,19 +180,20 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 			});
 
 			// Deployments without an onboardingRedirectUrlTemplate (e.g. local mode) skip the full reload, so caches fetched while !onboarded must be busted explicitly.
+			queryClient.invalidateQueries({ queryKey: brandKeys.all });
 			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			queryClient.invalidateQueries({ queryKey: citationKeys.all });
+			queryClient.invalidateQueries({ queryKey: promptsSummaryKeys.all });
 			// The $brand route loader feeds `brand` into AppSidebar; invalidate it so the sidebar picks up onboarded=true.
 			await router.invalidate();
 
-			await revalidate();
 			onComplete();
 		} catch (err) {
 			setSubmitError(err instanceof Error ? err.message : "Failed to save");
 		} finally {
 			setIsSaving(false);
 		}
-	}, [brand, data, revalidate, onComplete]);
+	}, [brand, data, queryClient, router, onComplete]);
 
 	if (phase === "idle" || phase === "analyzing") {
 		return (
