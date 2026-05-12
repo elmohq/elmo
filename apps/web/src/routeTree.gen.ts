@@ -24,6 +24,7 @@ import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports
 import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
 import { Route as AuthedAdminIndexRouteImport } from './routes/_authed/admin/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
 import { Route as AuthedAppBrandRouteImport } from './routes/_authed/app/$brand'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
@@ -127,6 +128,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedAppNewRoute = AuthedAppNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AuthedAppRoute,
 } as any)
 const AuthedAppBrandRoute = AuthedAppBrandRouteImport.update({
   id: '/$brand',
@@ -298,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/$brand': typeof AuthedAppBrandRouteWithChildren
+  '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin/': typeof AuthedAdminIndexRoute
   '/app/': typeof AuthedAppIndexRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AuthRegisterRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
+  '/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin': typeof AuthedAdminIndexRoute
   '/app': typeof AuthedAppIndexRoute
@@ -386,6 +394,7 @@ export interface FileRoutesById {
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/_authed/app/$brand': typeof AuthedAppBrandRouteWithChildren
+  '/_authed/app/new': typeof AuthedAppNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/admin/': typeof AuthedAdminIndexRoute
   '/_authed/app/': typeof AuthedAppIndexRoute
@@ -433,6 +442,7 @@ export interface FileRouteTypes {
     | '/admin/tools'
     | '/admin/workflows'
     | '/app/$brand'
+    | '/app/new'
     | '/api/auth/$'
     | '/admin/'
     | '/app/'
@@ -474,6 +484,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/admin/tools'
     | '/admin/workflows'
+    | '/app/new'
     | '/api/auth/$'
     | '/admin'
     | '/app'
@@ -520,6 +531,7 @@ export interface FileRouteTypes {
     | '/_authed/admin/tools'
     | '/_authed/admin/workflows'
     | '/_authed/app/$brand'
+    | '/_authed/app/new'
     | '/api/auth/$'
     | '/_authed/admin/'
     | '/_authed/app/'
@@ -685,6 +697,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/app/new': {
+      id: '/_authed/app/new'
+      path: '/new'
+      fullPath: '/app/new'
+      preLoaderRoute: typeof AuthedAppNewRouteImport
+      parentRoute: typeof AuthedAppRoute
     }
     '/_authed/app/$brand': {
       id: '/_authed/app/$brand'
@@ -945,11 +964,13 @@ const AuthedAppBrandRouteWithChildren = AuthedAppBrandRoute._addFileChildren(
 
 interface AuthedAppRouteChildren {
   AuthedAppBrandRoute: typeof AuthedAppBrandRouteWithChildren
+  AuthedAppNewRoute: typeof AuthedAppNewRoute
   AuthedAppIndexRoute: typeof AuthedAppIndexRoute
 }
 
 const AuthedAppRouteChildren: AuthedAppRouteChildren = {
   AuthedAppBrandRoute: AuthedAppBrandRouteWithChildren,
+  AuthedAppNewRoute: AuthedAppNewRoute,
   AuthedAppIndexRoute: AuthedAppIndexRoute,
 }
 

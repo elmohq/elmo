@@ -21,6 +21,7 @@ import {
 	evaluateDeploymentPolicy,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
+	evaluateRequireCanCreateBrands,
 	evaluateRequireOrgAccess,
 	type RequestInfo,
 } from "@/lib/auth/policies";
@@ -418,6 +419,23 @@ describe("evaluateReadOnly", () => {
 
 	it("allows writes when read-only is disabled", () => {
 		expect(evaluateReadOnly(false)).toBe("allow");
+	});
+});
+
+describe("evaluateRequireCanCreateBrands", () => {
+	it("denies when canCreateBrands is false", () => {
+		expect(evaluateRequireCanCreateBrands(false)).toBe("deny");
+	});
+
+	it("allows when canCreateBrands is true", () => {
+		expect(evaluateRequireCanCreateBrands(true)).toBe("allow");
+	});
+
+	it("matches the expected per-mode flag", () => {
+		// Local can create; demo and whitelabel cannot.
+		expect(evaluateRequireCanCreateBrands(LOCAL_FEATURES.canCreateBrands)).toBe("allow");
+		expect(evaluateRequireCanCreateBrands(DEMO_FEATURES.canCreateBrands)).toBe("deny");
+		expect(evaluateRequireCanCreateBrands(WHITELABEL_FEATURES.canCreateBrands)).toBe("deny");
 	});
 });
 

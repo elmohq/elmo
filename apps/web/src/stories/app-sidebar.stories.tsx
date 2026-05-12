@@ -64,7 +64,8 @@ const localConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
+		supportsMultiOrg: true,
+		canCreateBrands: true,
 	},
 	branding: { name: "Elmo", chartColors: CHART_COLORS },
 	analytics: {},
@@ -75,7 +76,8 @@ const demoConfig: ClientConfig = {
 	features: {
 		readOnly: true,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
+		supportsMultiOrg: true,
+		canCreateBrands: false,
 	},
 	branding: { name: "Elmo", chartColors: CHART_COLORS },
 	analytics: {},
@@ -86,7 +88,8 @@ const whitelabelConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: true,
-		supportsMultiOrg: false,
+		supportsMultiOrg: true,
+		canCreateBrands: false,
 	},
 	branding: {
 		name: "BrandMonitor Pro",

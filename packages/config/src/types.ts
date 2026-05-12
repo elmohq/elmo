@@ -24,6 +24,11 @@ export interface FeaturesConfig {
 	showOptimizeButton: boolean;
 	/** Whether multi-org brand switching is supported */
 	supportsMultiOrg: boolean;
+	/**
+	 * Whether the user can create new brands from the UI. True only in local mode —
+	 * whitelabel orgs come from Auth0, demo is read-only.
+	 */
+	canCreateBrands: boolean;
 }
 
 /**

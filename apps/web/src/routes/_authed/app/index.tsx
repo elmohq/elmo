@@ -18,6 +18,7 @@ const getOrganizations = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
 		organizations: { id: string; name: string }[];
 		supportsMultiOrg: boolean;
+		canCreateBrands: boolean;
 	}> => {
 		const session = await requireAuthSession();
 		const deployment = getDeployment();
@@ -35,6 +36,7 @@ const getOrganizations = createServerFn({ method: "GET" }).handler(
 		return {
 			organizations,
 			supportsMultiOrg: deployment.features.supportsMultiOrg,
+			canCreateBrands: deployment.features.canCreateBrands,
 		};
 	},
 );
@@ -67,14 +69,14 @@ export const Route = createFileRoute("/_authed/app/")({
 });
 
 function BrandSwitcherPage() {
-	const { organizations } = Route.useLoaderData();
+	const { organizations, canCreateBrands } = Route.useLoaderData();
 
 	return (
 		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
-			<div className="flex flex-col space-y-3">
+			<div className="flex flex-col space-y-3 min-w-[200px]">
 				{organizations.length > 0 ? (
 					organizations.map((org: { id: string; name: string }) => (
-						<Button key={org.id} asChild variant="secondary" className="min-w-[200px]">
+						<Button key={org.id} asChild variant="secondary">
 							<Link to="/app/$brand" params={{ brand: org.id }}>
 								{org.name}
 							</Link>
@@ -82,6 +84,11 @@ function BrandSwitcherPage() {
 					))
 				) : (
 					<p className="text-muted-foreground text-center">No brands available</p>
+				)}
+				{canCreateBrands && (
+					<Button asChild variant="outline">
+						<Link to="/app/new">+ Create new brand</Link>
+					</Button>
 				)}
 			</div>
 		</FullPageCard>
