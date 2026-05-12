@@ -47,30 +47,15 @@ To change environment variables after initial setup:
 
 ```bash
 # Edit the .env file
-nano ./elmo/.env
+nano ~/.elmo/.env
 
 # Restart services to pick up changes
 elmo compose down
 elmo compose up -d
 ```
 
-## Regenerating Docker Compose
-
-If you need to regenerate the `elmo.yaml` file (e.g. after changing Postgres mode):
-
-```bash
-elmo regen
-```
-
-This rebuilds `elmo.yaml` from your current settings without touching `.env`.
-
 ## Using an External Database
 
-By default, `elmo init` provisions a PostgreSQL container. To use an existing database instead:
-
-1. Choose "Use existing Postgres" during `elmo init`, or
-2. Edit `.env` to set `DATABASE_URL` to your connection string
-3. Run `elmo regen` to update `elmo.yaml` (removes the Postgres container)
-4. Restart with `elmo compose down && elmo compose up -d`
+By default, `elmo init` provisions a PostgreSQL container. To use an existing database instead, choose "Use existing Postgres" during `elmo init` and provide your connection string when prompted.
 
 Your database must be PostgreSQL 15 or later.

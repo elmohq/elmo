@@ -46,7 +46,7 @@ type EnvMap = Record<string, string>;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
+const CONFIG_HOME = path.join(os.homedir(), ".elmo");
 const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
 const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
@@ -124,14 +124,6 @@ async function main() {
 		.option("--docker-dir <path>", "Path to Docker build context (dev mode)")
 		.action(async (options: InitOptions) => {
 			await withVersionCheck(version, () => runInit(options, version));
-		});
-
-	program
-		.command("regen")
-		.description("regenerate configuration files from current settings")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runRegen(options));
 		});
 
 	program
@@ -220,18 +212,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const cwd = process.cwd();
 
 	// ── Resolve config directory ─────────────────────────────────────────
-	let configDir: string;
-	if (options.dir) {
-		configDir = path.resolve(cwd, options.dir);
-	} else {
-		const dir = await p.text({
-			message: "Where should the config be stored?",
-			placeholder: "./elmo",
-			defaultValue: "./elmo",
-		});
-		assertNotCancelled(dir);
-		configDir = path.resolve(cwd, dir);
-	}
+	const configDir = options.dir ? path.resolve(cwd, options.dir) : CONFIG_HOME;
 
 	// ── .env safety check ────────────────────────────────────────────────
 	const existingEnvPath = path.join(configDir, ".env");
@@ -327,7 +308,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			"on what to fix or build next.",
 			"",
 			pc.bold("What we send:"),
-			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
+			"  • install ID (random UUID stored in ~/.elmo/config.json)",
 			"  • CLI/app version, OS, arch, Node version, deployment mode",
 			"  • command/event names + non-secret options (e.g. postgres mode)",
 			"  • feature counts (prompts edited, brands created — never the names or text)",
@@ -923,58 +904,6 @@ function dedupeTargets(targets: string[]): string {
 	return out.join(",");
 }
 
-// ── Command: update ──────────────────────────────────────────────────────────
-
-async function runRegen(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	const globalConfig = await readGlobalConfig();
-
-	// Determine settings: prefer global config, fall back to detecting from files
-	let dev: boolean;
-	let postgresMode: PostgresMode;
-	let repoRoot: string;
-	let dockerDir: string | undefined;
-	let port: number;
-
-	if (globalConfig?.postgresMode) {
-		dev = globalConfig.dev ?? false;
-		postgresMode = globalConfig.postgresMode;
-		repoRoot = globalConfig.repoRoot ?? process.cwd();
-		dockerDir = globalConfig.dockerDir;
-		port = globalConfig.port ?? DEFAULT_APP_PORT;
-	} else {
-		const detected = await detectSettingsFromConfig(configDir);
-		dev = detected.dev;
-		postgresMode = detected.postgresMode;
-		repoRoot = detected.repoRoot;
-		dockerDir = detected.dockerDir;
-		port = detected.port;
-	}
-
-	const composeYaml = buildComposeYaml({
-		dev,
-		postgresMode,
-		repoRoot,
-		dockerDir,
-		port,
-	});
-
-	const composePath = path.join(configDir, "elmo.yaml");
-	await fs.writeFile(composePath, composeYaml, "utf8");
-
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev,
-		postgresMode,
-		port,
-		repoRoot,
-	});
-
-	log.success(`Regenerated ${composePath}`);
-	log.info("The .env file was not modified.");
-}
-
 // ── Start helper (used by init) ──────────────────────────────────────────────
 
 async function doStart(configDir: string): Promise<void> {
@@ -1487,44 +1416,6 @@ function formatEnvValue(value: string): string {
 	return value;
 }
 
-async function detectSettingsFromConfig(configDir: string): Promise<{
-	dev: boolean;
-	postgresMode: PostgresMode;
-	repoRoot: string;
-	dockerDir?: string;
-	port: number;
-}> {
-	const envPath = path.join(configDir, ".env");
-	const env = await readEnvFile(envPath);
-
-	const postgresMode: PostgresMode = env.DATABASE_URL?.includes("postgres:5432") ? "docker" : "external";
-
-	const yamlPath = path.join(configDir, "elmo.yaml");
-	let dev = false;
-	let repoRoot = process.cwd();
-	let port = DEFAULT_APP_PORT;
-
-	try {
-		const yamlContent = await fs.readFile(yamlPath, "utf8");
-		dev = yamlContent.includes("build:");
-		const contextMatch = yamlContent.match(/context:\s+(.+)/);
-		if (contextMatch) {
-			repoRoot = contextMatch[1].trim();
-		}
-		const portMatch = yamlContent.match(/"(\d+):3000"/);
-		if (portMatch) {
-			const parsed = Number(portMatch[1]);
-			if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
-				port = parsed;
-			}
-		}
-	} catch {
-		// Use defaults
-	}
-
-	return { dev, postgresMode, repoRoot, port };
-}
-
 async function updateDeploymentEnvTelemetry(enabled: boolean): Promise<string | null> {
 	const config = await readGlobalConfig();
 	if (!config?.configDir) return null;
@@ -1541,29 +1432,6 @@ async function updateDeploymentEnvTelemetry(enabled: boolean): Promise<string | 
 	}
 	await fs.writeFile(envPath, filtered.join("\n"), "utf8");
 	return envPath;
-}
-
-async function readEnvFile(envPath: string): Promise<EnvMap> {
-	try {
-		const contents = await fs.readFile(envPath, "utf8");
-		const env: EnvMap = {};
-		for (const line of contents.split("\n")) {
-			const trimmed = line.trim();
-			if (!trimmed || trimmed.startsWith("#")) continue;
-			const eqIndex = trimmed.indexOf("=");
-			if (eqIndex < 0) continue;
-			const key = trimmed.substring(0, eqIndex);
-			let value = trimmed.substring(eqIndex + 1);
-			// Remove surrounding quotes
-			if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-				value = value.slice(1, -1);
-			}
-			env[key] = value;
-		}
-		return env;
-	} catch {
-		return {};
-	}
 }
 
 async function fileExists(target: string): Promise<boolean> {

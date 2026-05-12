@@ -9,6 +9,11 @@
  * to the child's stdin, so we exercise the same interactive wizard a
  * human user would see.
  *
+ * The CLI writes config to `~/.elmo`. To redirect that to a test-local
+ * directory without polluting the runner's real home, we set HOME on the
+ * child process so `os.homedir()` resolves to the parent of <config-dir>.
+ * The supplied <config-dir> must therefore end in `.elmo`.
+ *
  * Usage: tsx cli-driver.ts <config-dir> <repo-root>
  */
 import { spawn } from "node:child_process";
@@ -22,10 +27,17 @@ if (!configDir || !repoRoot) {
 	process.exit(1);
 }
 
+if (path.basename(configDir) !== ".elmo") {
+	console.error(`config-dir must end in ".elmo" (got ${configDir})`);
+	process.exit(1);
+}
+
+const cliHome = path.dirname(configDir);
 const cliPath = path.join(repoRoot, "apps/cli/dist/index.js");
 const nodeBin = process.execPath;
 
 console.error(`  [driver] config-dir: ${configDir}`);
+console.error(`  [driver] cli-home:   ${cliHome}`);
 console.error(`  [driver] repo-root:  ${repoRoot}`);
 console.error(`  [driver] cli-path:   ${cliPath}`);
 
@@ -49,11 +61,12 @@ function shEscape(s: string): string {
 function spawnViaScript() {
 	const env = {
 		...process.env,
+		HOME: cliHome,
 		FORCE_COLOR: "0",
 		NO_COLOR: "1",
 		TERM: "xterm-256color",
 	};
-	const cliArgs = [nodeBin, cliPath, "init", "--dev", "--dir", configDir];
+	const cliArgs = [nodeBin, cliPath, "init", "--dev"];
 
 	if (process.platform === "darwin") {
 		// BSD script: `script [-q] file command...` — propagates child exit code.
