@@ -6,12 +6,15 @@
  * DataForSEO + Anthropic in tandem.
  */
 import { useState, useCallback, memo, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
 import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
 import { useBrand } from "@/hooks/use-brands";
+import { citationKeys } from "@/hooks/use-citations";
+import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { analyzeBrandFn, updateOnboardedBrandFn } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
@@ -63,6 +66,7 @@ EditableTagsInput.displayName = "EditableTagsInput";
 
 export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const { brand, revalidate } = useBrand();
+	const queryClient = useQueryClient();
 	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
@@ -171,6 +175,10 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				competitors_created: competitorsPayload.length,
 				skipped: false,
 			});
+
+			// Deployments without an onboardingRedirectUrlTemplate (e.g. local mode) skip the full reload, so caches fetched while !onboarded must be busted explicitly.
+			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+			queryClient.invalidateQueries({ queryKey: citationKeys.all });
 
 			await revalidate();
 			onComplete();
