@@ -73,7 +73,7 @@
 		"@vitejs/plugin-react": "^6.0.1",
 		"@vitest/browser-playwright": "^4.1.5",
 		"@vitest/coverage-v8": "^4.1.5",
-		"archiver": "^7.0.1",
+		"archiver": "^8.0.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"playwright": "^1.59.1",
 		"png-to-ico": "^3.0.1",
