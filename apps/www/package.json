@@ -29,7 +29,7 @@
 		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
 		"fumadocs-core": "^16.8.5",
-		"fumadocs-mdx": "^14.3.2",
+		"fumadocs-mdx": "^15.0.0",
 		"fumadocs-openapi": "^10.8.1",
 		"fumadocs-ui": "^16.8.5",
 		"lucide-react": "^1.14.0",
