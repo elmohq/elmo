@@ -29,18 +29,18 @@
     "./providers/types": "./src/providers/types.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.74",
-    "@ai-sdk/openai": "^3.0.58",
-    "@anthropic-ai/sdk": "^0.92.0",
-    "@better-auth/sso": "^1.6.9",
+    "@ai-sdk/anthropic": "^3.0.76",
+    "@ai-sdk/openai": "^3.0.63",
+    "@anthropic-ai/sdk": "^0.95.1",
+    "@better-auth/sso": "^1.6.10",
     "@brightdata/sdk": "^1.1.0",
-    "ai": "^6.0.174",
-    "better-auth": "^1.6.9",
+    "ai": "^6.0.177",
+    "better-auth": "^1.6.10",
     "dataforseo-client": "^2.0.24",
     "drizzle-orm": "^0.45.2",
-    "olostep": "^1.0.0",
+    "olostep": "^1.1.0",
     "pg": "^8.20.0",
-    "zod": "^4.4.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",

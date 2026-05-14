@@ -13,7 +13,7 @@
     "@workspace/config": "workspace:*",
     "@workspace/lib": "workspace:*",
     "@workspace/ui": "workspace:*",
-    "zod": "^4.4.2"
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "@tabler/icons-react": "^3.0.0",
@@ -21,7 +21,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.6.2",
     "@types/react": "^19.2.14",
     "typescript": "^6.0.3"
   }
