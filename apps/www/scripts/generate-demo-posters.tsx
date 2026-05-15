@@ -91,7 +91,7 @@ function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
 				position: "relative",
 			}}
 		>
-			{/* dashboard fills the frame, blurred at render time */}
+			{/* dashboard fills the frame, lightly blurred so structure shows through */}
 			<img
 				src={dashboardSrc}
 				alt=""
@@ -101,29 +101,30 @@ function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
 					width: "100%",
 					height: "100%",
 					objectFit: "cover",
-					filter: "blur(14px) saturate(0.9)",
+					filter: "blur(14px) saturate(1.05) brightness(0.95)",
 				}}
 			/>
-			{/* dark veil pulls the image back so the play button reads cleanly */}
+			{/* light veil — keeps overall composition readable without crushing
+			    the dashboard colors beneath */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
-					backgroundColor: "rgba(9,9,11,0.55)",
+					backgroundColor: "rgba(9,9,11,0.22)",
 				}}
 			/>
-			{/* vignette dims the corners and concentrates light at the center */}
+			{/* gentle corner vignette */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
 					backgroundImage:
-						"radial-gradient(ellipse 55% 60% at 50% 50%, transparent 0%, rgba(9,9,11,0.55) 100%)",
+						"radial-gradient(ellipse 65% 70% at 50% 50%, transparent 0%, rgba(9,9,11,0.32) 100%)",
 				}}
 			/>
-			{/* soft blue glow behind the play button — brand accent */}
+			{/* soft brand-blue glow behind the play button */}
 			<div
 				style={{
 					display: "flex",
@@ -139,34 +140,25 @@ function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
 						"radial-gradient(circle, rgba(37,99,235,0.35) 0%, transparent 65%)",
 				}}
 			/>
-			{/* outer halo ring */}
+			{/* glass disc — frosted backdrop, soft outer edge, inner highlight ring
+			    via inset box-shadow so the Mux play button feels like it's set into
+			    a pane of glass. */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					left: "50%",
 					top: "50%",
-					width: 280,
-					height: 280,
-					marginLeft: -140,
-					marginTop: -140,
+					width: 260,
+					height: 260,
+					marginLeft: -130,
+					marginTop: -130,
 					borderRadius: 999,
-					border: "1px solid rgba(255,255,255,0.12)",
-				}}
-			/>
-			{/* inner ring — sits just outside the Mux play button */}
-			<div
-				style={{
-					display: "flex",
-					position: "absolute",
-					left: "50%",
-					top: "50%",
-					width: 200,
-					height: 200,
-					marginLeft: -100,
-					marginTop: -100,
-					borderRadius: 999,
-					border: "1.5px solid rgba(255,255,255,0.22)",
+					backgroundColor: "rgba(255,255,255,0.10)",
+					backdropFilter: "blur(8px) saturate(1.4)",
+					border: "1px solid rgba(255,255,255,0.30)",
+					boxShadow:
+						"inset 0 0 0 1px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.40), 0 8px 40px rgba(0,0,0,0.25)",
 				}}
 			/>
 		</div>
