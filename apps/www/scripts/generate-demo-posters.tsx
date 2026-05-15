@@ -73,125 +73,102 @@ const ZINC_950 = "#09090b";
 // message at a size that survives the player's actual render width.
 // ---------------------------------------------------------------------------
 
-function PagePoster() {
+function loadDashboardDataUri(): string {
+	const buf = readFileSync(
+		resolve(__dirname, "../public/screenshots/overview.png"),
+	);
+	return `data:image/png;base64,${buf.toString("base64")}`;
+}
+
+function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
 	return (
 		<div
 			style={{
 				display: "flex",
-				flexDirection: "column",
-				justifyContent: "space-between",
 				width: "100%",
 				height: "100%",
-				padding: 64,
 				backgroundColor: ZINC_950,
 				position: "relative",
 			}}
 		>
+			{/* dashboard fills the frame, blurred at render time */}
+			<img
+				src={dashboardSrc}
+				alt=""
+				style={{
+					position: "absolute",
+					inset: 0,
+					width: "100%",
+					height: "100%",
+					objectFit: "cover",
+					filter: "blur(14px) saturate(0.9)",
+				}}
+			/>
+			{/* dark veil pulls the image back so the play button reads cleanly */}
+			<div
+				style={{
+					display: "flex",
+					position: "absolute",
+					inset: 0,
+					backgroundColor: "rgba(9,9,11,0.55)",
+				}}
+			/>
+			{/* vignette dims the corners and concentrates light at the center */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
 					backgroundImage:
-						"radial-gradient(rgba(255,255,255,0.05) 1.4px, transparent 1.4px)",
-					backgroundSize: "44px 44px",
+						"radial-gradient(ellipse 55% 60% at 50% 50%, transparent 0%, rgba(9,9,11,0.55) 100%)",
 				}}
 			/>
+			{/* soft blue glow behind the play button — brand accent */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
-					inset: 0,
+					left: "50%",
+					top: "50%",
+					width: 480,
+					height: 480,
+					marginLeft: -240,
+					marginTop: -240,
+					borderRadius: 999,
 					backgroundImage:
-						"radial-gradient(ellipse 80% 70% at 85% 10%, rgba(37,99,235,0.22) 0%, transparent 65%)",
+						"radial-gradient(circle, rgba(37,99,235,0.35) 0%, transparent 65%)",
 				}}
 			/>
-			{/* ghost "e" — mirrors the OG image watermark and the Discord-section
-			    decoration. Sits behind everything so the play button overlays it. */}
+			{/* outer halo ring */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
-					fontFamily: "Titan One",
-					fontSize: 900,
-					color: "rgba(255,255,255,0.06)",
-					lineHeight: 1,
-					right: -120,
-					top: -180,
+					left: "50%",
+					top: "50%",
+					width: 280,
+					height: 280,
+					marginLeft: -140,
+					marginTop: -140,
+					borderRadius: 999,
+					border: "1px solid rgba(255,255,255,0.12)",
 				}}
-			>
-				e
-			</div>
-
-			{/* top: category tag, well clear of the centered play button */}
+			/>
+			{/* inner ring — sits just outside the Mux play button */}
 			<div
 				style={{
 					display: "flex",
-					alignItems: "center",
-					gap: 18,
-					position: "relative",
+					position: "absolute",
+					left: "50%",
+					top: "50%",
+					width: 200,
+					height: 200,
+					marginLeft: -100,
+					marginTop: -100,
+					borderRadius: 999,
+					border: "1.5px solid rgba(255,255,255,0.22)",
 				}}
-			>
-				<div
-					style={{
-						display: "flex",
-						width: 14,
-						height: 14,
-						borderRadius: 999,
-						backgroundColor: BRAND_BLUE,
-					}}
-				/>
-				<div
-					style={{
-						display: "flex",
-						fontFamily: "Geist Mono",
-						fontWeight: 500,
-						fontSize: 40,
-						color: ZINC_400,
-						letterSpacing: 4,
-						textTransform: "uppercase",
-					}}
-				>
-					Walkthrough
-				</div>
-			</div>
-
-			{/* bottom: single-line headline, anchored below the play button */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "baseline",
-					gap: 32,
-					position: "relative",
-				}}
-			>
-				<div
-					style={{
-						display: "flex",
-						fontFamily: "Geist Sans",
-						fontWeight: 600,
-						fontSize: 140,
-						color: ZINC_50,
-						lineHeight: 0.95,
-						letterSpacing: -5,
-					}}
-				>
-					See it
-				</div>
-				<div
-					style={{
-						display: "flex",
-						fontFamily: "Geist Sans",
-						fontWeight: 600,
-						fontSize: 140,
-						color: ZINC_500,
-						lineHeight: 0.95,
-						letterSpacing: -5,
-					}}
-				>
-					in action.
-				</div>
-			</div>
+			/>
 		</div>
 	);
 }
@@ -394,10 +371,11 @@ async function render(
 }
 
 async function main() {
+	const dashboardSrc = loadDashboardDataUri();
 	// Page poster ships with the site as a static asset so MuxPlayer can use
 	// it as the `poster` while the video metadata loads.
 	await render(
-		<PagePoster />,
+		<PagePoster dashboardSrc={dashboardSrc} />,
 		resolve(__dirname, "../public/demo-poster.png"),
 	);
 	// YouTube variant is hand-uploaded; keep it out of the repo.
