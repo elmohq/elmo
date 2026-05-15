@@ -86,7 +86,12 @@ function DemoVideo() {
 					video_id: "KGvs37kE02Z6mnTpcrnLJCtiS01V023aJEHK3MZlmaULPA",
 					video_title: "Elmo demo",
 				}}
-				style={{ aspectRatio: "16 / 9", display: "block", width: "100%" }}
+				style={{
+					aspectRatio: "16 / 9",
+					display: "block",
+					width: "100%",
+					cursor: "pointer",
+				}}
 			/>
 		</div>
 	);
