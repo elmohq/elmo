@@ -81,6 +81,7 @@ function DemoVideo() {
 				playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"
 				streamType="on-demand"
 				accentColor="#2563eb"
+				poster="/demo-poster.png"
 				metadata={{
 					video_id: "KGvs37kE02Z6mnTpcrnLJCtiS01V023aJEHK3MZlmaULPA",
 					video_title: "Elmo demo",
