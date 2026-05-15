@@ -79,10 +79,10 @@ function PagePoster() {
 			style={{
 				display: "flex",
 				flexDirection: "column",
-				justifyContent: "flex-end",
+				justifyContent: "space-between",
 				width: "100%",
 				height: "100%",
-				padding: 80,
+				padding: 64,
 				backgroundColor: ZINC_950,
 				position: "relative",
 			}}
@@ -107,10 +107,44 @@ function PagePoster() {
 				}}
 			/>
 
+			{/* top: category tag, well clear of the centered play button */}
 			<div
 				style={{
 					display: "flex",
-					flexDirection: "column",
+					alignItems: "center",
+					gap: 18,
+					position: "relative",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						width: 14,
+						height: 14,
+						borderRadius: 999,
+						backgroundColor: BRAND_BLUE,
+					}}
+				/>
+				<div
+					style={{
+						display: "flex",
+						fontFamily: "Geist Mono",
+						fontWeight: 500,
+						fontSize: 40,
+						color: ZINC_400,
+						letterSpacing: 4,
+						textTransform: "uppercase",
+					}}
+				>
+					Walkthrough
+				</div>
+			</div>
+
+			{/* bottom: single-line headline, anchored below the play button */}
+			<div
+				style={{
+					display: "flex",
+					alignItems: "baseline",
 					gap: 32,
 					position: "relative",
 				}}
@@ -118,42 +152,12 @@ function PagePoster() {
 				<div
 					style={{
 						display: "flex",
-						alignItems: "center",
-						gap: 18,
-					}}
-				>
-					<div
-						style={{
-							display: "flex",
-							width: 14,
-							height: 14,
-							borderRadius: 999,
-							backgroundColor: BRAND_BLUE,
-						}}
-					/>
-					<div
-						style={{
-							display: "flex",
-							fontFamily: "Geist Mono",
-							fontWeight: 500,
-							fontSize: 44,
-							color: ZINC_400,
-							letterSpacing: 4,
-							textTransform: "uppercase",
-						}}
-					>
-						Walkthrough
-					</div>
-				</div>
-				<div
-					style={{
-						display: "flex",
 						fontFamily: "Geist Sans",
 						fontWeight: 600,
-						fontSize: 180,
+						fontSize: 140,
 						color: ZINC_50,
 						lineHeight: 0.95,
-						letterSpacing: -6,
+						letterSpacing: -5,
 					}}
 				>
 					See it
@@ -163,11 +167,10 @@ function PagePoster() {
 						display: "flex",
 						fontFamily: "Geist Sans",
 						fontWeight: 600,
-						fontSize: 180,
+						fontSize: 140,
 						color: ZINC_500,
 						lineHeight: 0.95,
-						letterSpacing: -6,
-						marginTop: -40,
+						letterSpacing: -5,
 					}}
 				>
 					in action.
