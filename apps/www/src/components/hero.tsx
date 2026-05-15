@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, ArrowRight, Play } from "lucide-react";
+import { ArrowUpRight, ArrowRight } from "lucide-react";
+import MuxPlayer from "@mux/mux-player-react";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
 
@@ -73,37 +74,19 @@ function GhostCTA({
 	return null;
 }
 
-function VideoPlaceholder() {
+function DemoVideo() {
 	return (
-		<div className="group relative aspect-[16/10] w-full overflow-hidden rounded-md border border-zinc-200 bg-zinc-950 shadow-lg shadow-blue-600/10">
-			<img
-				src="/screenshots/overview.png"
-				alt=""
-				className="size-full object-cover object-left-top opacity-50"
+		<div className="overflow-hidden rounded-md border border-zinc-200 bg-zinc-950 shadow-lg shadow-blue-600/10">
+			<MuxPlayer
+				playbackId="PYV9FNIG008vlkchyQf9KMTxDt028zQdshaM4VLC6lS1Q"
+				streamType="on-demand"
+				accentColor="#2563eb"
+				metadata={{
+					video_id: "KGvs37kE02Z6mnTpcrnLJCtiS01V023aJEHK3MZlmaULPA",
+					video_title: "Elmo demo",
+				}}
+				style={{ aspectRatio: "16 / 9", display: "block", width: "100%" }}
 			/>
-			<div
-				aria-hidden="true"
-				className="absolute inset-0 bg-linear-to-b from-zinc-950/40 via-zinc-950/30 to-zinc-950/70"
-			/>
-			<button
-				type="button"
-				aria-label="Play demo"
-				className="absolute inset-0 flex items-center justify-center"
-			>
-				<span className="flex size-12 items-center justify-center rounded-full bg-white/95 shadow-xl ring-1 ring-zinc-200 backdrop-blur transition-transform duration-300 group-hover:scale-110">
-					<Play
-						className="ml-0.5 size-4 fill-zinc-950 text-zinc-950"
-						strokeWidth={0}
-					/>
-				</span>
-			</button>
-			<div className="absolute bottom-2.5 left-3 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-white/80">
-				<span className="size-1 rounded-full bg-amber-400" />
-				Demo · 2 min
-			</div>
-			<div className="absolute bottom-2.5 right-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/60">
-				Coming soon
-			</div>
 		</div>
 	);
 }
@@ -154,10 +137,9 @@ export function Hero() {
 						</div>
 						<CustomerLogosInline />
 					</div>
-					{/* When restoring <VideoPlaceholder />, drop lg:self-center so the column tops align again. */}
-					<aside className="flex flex-col gap-4 lg:col-span-5 lg:self-center">
+					<aside className="flex flex-col gap-4 lg:col-span-5">
 						<QuickstartBlock />
-						{/* <VideoPlaceholder /> */}
+						<DemoVideo />
 					</aside>
 				</div>
 			</div>
