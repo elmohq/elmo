@@ -103,9 +103,25 @@ function PagePoster() {
 					position: "absolute",
 					inset: 0,
 					backgroundImage:
-						"radial-gradient(ellipse 80% 70% at 85% 10%, rgba(37,99,235,0.18) 0%, transparent 65%)",
+						"radial-gradient(ellipse 80% 70% at 85% 10%, rgba(37,99,235,0.22) 0%, transparent 65%)",
 				}}
 			/>
+			{/* ghost "e" — mirrors the OG image watermark and the Discord-section
+			    decoration. Sits behind everything so the play button overlays it. */}
+			<div
+				style={{
+					display: "flex",
+					position: "absolute",
+					fontFamily: "Titan One",
+					fontSize: 900,
+					color: "rgba(255,255,255,0.06)",
+					lineHeight: 1,
+					right: -120,
+					top: -180,
+				}}
+			>
+				e
+			</div>
 
 			{/* top: category tag, well clear of the centered play button */}
 			<div
