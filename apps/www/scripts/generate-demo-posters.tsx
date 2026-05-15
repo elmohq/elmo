@@ -91,7 +91,8 @@ function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
 				position: "relative",
 			}}
 		>
-			{/* dashboard fills the frame, lightly blurred so structure shows through */}
+			{/* dashboard fills the frame, lightly blurred + brightened so the
+			    product hint sits forward instead of feeling dim */}
 			<img
 				src={dashboardSrc}
 				alt=""
@@ -101,64 +102,73 @@ function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
 					width: "100%",
 					height: "100%",
 					objectFit: "cover",
-					filter: "blur(14px) saturate(1.05) brightness(0.95)",
+					filter: "blur(16px) saturate(1.15) brightness(1.05)",
 				}}
 			/>
-			{/* light veil — keeps overall composition readable without crushing
-			    the dashboard colors beneath */}
+			{/* very light veil — just enough to unify the surface */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
-					backgroundColor: "rgba(9,9,11,0.22)",
+					backgroundColor: "rgba(15,23,42,0.10)",
 				}}
 			/>
-			{/* gentle corner vignette */}
+			{/* soft brand-blue glow concentrated at the center so the play
+			    button has a halo to land on */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
 					backgroundImage:
-						"radial-gradient(ellipse 65% 70% at 50% 50%, transparent 0%, rgba(9,9,11,0.32) 100%)",
+						"radial-gradient(circle at 50% 50%, rgba(37,99,235,0.30) 0%, transparent 45%)",
 				}}
 			/>
-			{/* soft brand-blue glow behind the play button */}
+			{/* gentle edge vignette so corners don't compete with the center */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
-					left: "50%",
-					top: "50%",
-					width: 480,
-					height: 480,
-					marginLeft: -240,
-					marginTop: -240,
-					borderRadius: 999,
+					inset: 0,
 					backgroundImage:
-						"radial-gradient(circle, rgba(37,99,235,0.35) 0%, transparent 65%)",
+						"radial-gradient(ellipse 80% 85% at 50% 50%, transparent 50%, rgba(9,9,11,0.25) 100%)",
 				}}
 			/>
-			{/* glass disc — frosted backdrop, soft outer edge, inner highlight ring
-			    via inset box-shadow so the Mux play button feels like it's set into
-			    a pane of glass. */}
+			{/* glass frame — inset rounded border around the whole poster with
+			    a top-edge highlight for the glass-pane feel */}
+			<div
+				style={{
+					display: "flex",
+					position: "absolute",
+					top: 22,
+					left: 22,
+					right: 22,
+					bottom: 22,
+					borderRadius: 14,
+					border: "1px solid rgba(255,255,255,0.22)",
+					boxShadow:
+						"inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.20), inset 0 0 0 1px rgba(255,255,255,0.06)",
+				}}
+			/>
+			{/* frosted disc behind the play button — soft outer edge so optical
+			    misalignment with the play triangle isn't an issue */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					left: "50%",
 					top: "50%",
-					width: 260,
-					height: 260,
-					marginLeft: -130,
-					marginTop: -130,
+					width: 280,
+					height: 280,
+					marginLeft: -140,
+					marginTop: -140,
 					borderRadius: 999,
 					backgroundColor: "rgba(255,255,255,0.10)",
-					backdropFilter: "blur(8px) saturate(1.4)",
-					border: "1px solid rgba(255,255,255,0.30)",
+					backdropFilter: "blur(6px) saturate(1.4)",
+					border: "1px solid rgba(255,255,255,0.28)",
 					boxShadow:
-						"inset 0 0 0 1px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.40), 0 8px 40px rgba(0,0,0,0.25)",
+						"inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.15), 0 10px 40px rgba(0,0,0,0.18)",
 				}}
 			/>
 		</div>
