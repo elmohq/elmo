@@ -218,8 +218,9 @@ async function main(): Promise<void> {
 	await waitFor("Edit SCRAPE_TARGETS before saving?");
 	await send(ENTER);
 
-	// Telemetry opt-in (default Yes) → accept default
+	// Telemetry opt-in (default Yes) → No
 	await waitFor("Share telemetry?");
+	await send(ARROW_LEFT);
 	await send(ENTER);
 
 	// Product updates email (optional)
