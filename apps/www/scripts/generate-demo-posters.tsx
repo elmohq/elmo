@@ -73,104 +73,127 @@ const ZINC_950 = "#09090b";
 // message at a size that survives the player's actual render width.
 // ---------------------------------------------------------------------------
 
-function loadDashboardDataUri(): string {
-	const buf = readFileSync(
-		resolve(__dirname, "../public/screenshots/overview.png"),
-	);
-	return `data:image/png;base64,${buf.toString("base64")}`;
-}
-
-function PagePoster({ dashboardSrc }: { dashboardSrc: string }) {
+function PagePoster() {
 	return (
 		<div
 			style={{
 				display: "flex",
+				flexDirection: "column",
+				justifyContent: "space-between",
 				width: "100%",
 				height: "100%",
-				backgroundColor: ZINC_950,
+				padding: 64,
+				backgroundColor: "#ffffff",
 				position: "relative",
 			}}
 		>
-			{/* dashboard fills the frame, lightly blurred + brightened so the
-			    product hint sits forward instead of feeling dim */}
-			<img
-				src={dashboardSrc}
-				alt=""
-				style={{
-					position: "absolute",
-					inset: 0,
-					width: "100%",
-					height: "100%",
-					objectFit: "cover",
-					filter: "blur(16px) saturate(1.15) brightness(1.05)",
-				}}
-			/>
-			{/* very light veil — just enough to unify the surface */}
-			<div
-				style={{
-					display: "flex",
-					position: "absolute",
-					inset: 0,
-					backgroundColor: "rgba(15,23,42,0.10)",
-				}}
-			/>
-			{/* soft brand-blue glow concentrated at the center so the play
-			    button has a halo to land on */}
+			{/* faint dot grid — mirrors the hero section background */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
 					backgroundImage:
-						"radial-gradient(circle at 50% 50%, rgba(37,99,235,0.30) 0%, transparent 45%)",
+						"radial-gradient(rgba(0,0,0,0.07) 1.4px, transparent 1.4px)",
+					backgroundSize: "44px 44px",
 				}}
 			/>
-			{/* gentle edge vignette so corners don't compete with the center */}
+			{/* soft brand-blue wash in the upper-right corner */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
 					inset: 0,
 					backgroundImage:
-						"radial-gradient(ellipse 80% 85% at 50% 50%, transparent 50%, rgba(9,9,11,0.25) 100%)",
+						"radial-gradient(ellipse 80% 70% at 85% 10%, rgba(37,99,235,0.14) 0%, transparent 65%)",
 				}}
 			/>
-			{/* glass frame — inset rounded border around the whole poster with
-			    a top-edge highlight for the glass-pane feel */}
+			{/* ghost "e" — same watermark device the OG image uses, blue at low
+			    opacity so it reads as a brand mark, not a letter */}
 			<div
 				style={{
 					display: "flex",
 					position: "absolute",
-					top: 22,
-					left: 22,
-					right: 22,
-					bottom: 22,
-					borderRadius: 14,
-					border: "1px solid rgba(255,255,255,0.22)",
-					boxShadow:
-						"inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -1px 0 rgba(0,0,0,0.20), inset 0 0 0 1px rgba(255,255,255,0.06)",
+					fontFamily: "Titan One",
+					fontSize: 900,
+					color: "rgba(37,99,235,0.07)",
+					lineHeight: 1,
+					right: -120,
+					top: -180,
 				}}
-			/>
-			{/* frosted disc behind the play button — soft outer edge so optical
-			    misalignment with the play triangle isn't an issue */}
+			>
+				e
+			</div>
+
+			{/* top: category tag */}
 			<div
 				style={{
 					display: "flex",
-					position: "absolute",
-					left: "50%",
-					top: "50%",
-					width: 280,
-					height: 280,
-					marginLeft: -140,
-					marginTop: -140,
-					borderRadius: 999,
-					backgroundColor: "rgba(255,255,255,0.10)",
-					backdropFilter: "blur(6px) saturate(1.4)",
-					border: "1px solid rgba(255,255,255,0.28)",
-					boxShadow:
-						"inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.15), 0 10px 40px rgba(0,0,0,0.18)",
+					alignItems: "center",
+					gap: 18,
+					position: "relative",
 				}}
-			/>
+			>
+				<div
+					style={{
+						display: "flex",
+						width: 14,
+						height: 14,
+						borderRadius: 999,
+						backgroundColor: BRAND_BLUE,
+					}}
+				/>
+				<div
+					style={{
+						display: "flex",
+						fontFamily: "Geist Mono",
+						fontWeight: 500,
+						fontSize: 40,
+						color: ZINC_600,
+						letterSpacing: 4,
+						textTransform: "uppercase",
+					}}
+				>
+					Walkthrough
+				</div>
+			</div>
+
+			{/* bottom: single-line headline, anchored below the play button */}
+			<div
+				style={{
+					display: "flex",
+					alignItems: "baseline",
+					gap: 32,
+					position: "relative",
+				}}
+			>
+				<div
+					style={{
+						display: "flex",
+						fontFamily: "Geist Sans",
+						fontWeight: 600,
+						fontSize: 140,
+						color: ZINC_950,
+						lineHeight: 0.95,
+						letterSpacing: -5,
+					}}
+				>
+					See it
+				</div>
+				<div
+					style={{
+						display: "flex",
+						fontFamily: "Geist Sans",
+						fontWeight: 600,
+						fontSize: 140,
+						color: ZINC_400,
+						lineHeight: 0.95,
+						letterSpacing: -5,
+					}}
+				>
+					in action.
+				</div>
+			</div>
 		</div>
 	);
 }
@@ -373,11 +396,10 @@ async function render(
 }
 
 async function main() {
-	const dashboardSrc = loadDashboardDataUri();
 	// Page poster ships with the site as a static asset so MuxPlayer can use
 	// it as the `poster` while the video metadata loads.
 	await render(
-		<PagePoster dashboardSrc={dashboardSrc} />,
+		<PagePoster />,
 		resolve(__dirname, "../public/demo-poster.png"),
 	);
 	// YouTube variant is hand-uploaded; keep it out of the repo.
