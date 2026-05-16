@@ -11,6 +11,7 @@ export interface FeaturesConfig {
 	readOnly: boolean;
 	showOptimizeButton: boolean;
 	supportsMultiOrg: boolean;
+	canCreateBrands: boolean;
 }
 
 export interface BrandingConfig {
@@ -51,6 +52,7 @@ let _config: ClientConfig = {
 		readOnly: false,
 		showOptimizeButton: false,
 		supportsMultiOrg: false,
+		canCreateBrands: false,
 	},
 	branding: {
 		name: "Elmo",

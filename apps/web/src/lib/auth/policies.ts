@@ -229,6 +229,15 @@ export function evaluateReadOnly(readOnly: boolean): "allow" | "deny" {
 	return readOnly ? "deny" : "allow";
 }
 
+/**
+ * Evaluate whether the deployment allows the user to create brands from the UI.
+ * Used by the create-brand server function. Local mode is the only mode that
+ * allows it — whitelabel orgs come from Auth0, demo is read-only.
+ */
+export function evaluateRequireCanCreateBrands(canCreateBrands: boolean): "allow" | "deny" {
+	return canCreateBrands ? "allow" : "deny";
+}
+
 // ============================================================================
 // Route Guard Policies
 // ============================================================================

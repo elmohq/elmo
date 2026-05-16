@@ -14,7 +14,7 @@
  * call is a bug and should fail at the database layer rather than
  * silently rewriting rows.
  */
-import { count } from "drizzle-orm";
+import { count, eq, or } from "drizzle-orm";
 import { db } from "./db";
 import { member, organization, user } from "./schema";
 
@@ -67,4 +67,83 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
 	});
 
 	return { orgId: LOCAL_ORG.id };
+}
+
+/**
+ * Slugify a brand name into the URL/id form used for new local-mode orgs.
+ * Exported so the slug rules can be unit-tested directly without a database.
+ *
+ * Note: leading/trailing hyphens are trimmed via index walks instead of an
+ * `^-+|-+$` alternation regex — the alternation form trips ReDoS scanners
+ * on inputs like `"---"` even though the JS engine handles it linearly.
+ */
+export function slugifyOrgName(name: string): string {
+	const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+	let start = 0;
+	while (start < cleaned.length && cleaned[start] === "-") start++;
+	let end = cleaned.length;
+	while (end > start && cleaned[end - 1] === "-") end--;
+	const slug = cleaned.slice(start, end);
+	return slug || "brand";
+}
+
+/**
+ * Slugs that would collide with sibling routes under `/app/$brand`. A
+ * user-named brand that slugifies to one of these gets a numeric suffix
+ * instead so the URL stays unambiguous.
+ */
+const RESERVED_ORG_SLUGS = new Set(["new"]);
+
+async function findUniqueOrgId(baseSlug: string): Promise<string> {
+	let candidate = baseSlug;
+	let suffix = 2;
+	for (;;) {
+		const isReserved = RESERVED_ORG_SLUGS.has(candidate);
+		const conflict = isReserved
+			? [{ id: candidate }]
+			: await db
+					.select({ id: organization.id })
+					.from(organization)
+					.where(or(eq(organization.id, candidate), eq(organization.slug, candidate)))
+					.limit(1);
+		if (conflict.length === 0) return candidate;
+		candidate = `${baseSlug}-${suffix}`;
+		suffix++;
+	}
+}
+
+/**
+ * Provision an additional organization for an existing local-mode user — used
+ * by the multi-brand "create new brand" flow. The id is a slug derived from
+ * `name`, with a numeric suffix on collision, and is reused as the org slug
+ * so that URLs and the org row stay in sync.
+ *
+ * The brand row itself is the caller's responsibility; provisioning only
+ * handles the auth-level (org + admin membership) bits.
+ */
+export async function provisionAdditionalLocalOrg(input: {
+	userId: string;
+	name: string;
+}): Promise<{ orgId: string }> {
+	const baseSlug = slugifyOrgName(input.name);
+	const orgId = await findUniqueOrgId(baseSlug);
+
+	await db.transaction(async (tx) => {
+		await tx.insert(organization).values({
+			id: orgId,
+			name: input.name,
+			slug: orgId,
+			createdAt: new Date(),
+		});
+
+		await tx.insert(member).values({
+			id: crypto.randomUUID(),
+			organizationId: orgId,
+			userId: input.userId,
+			role: "admin",
+			createdAt: new Date(),
+		});
+	});
+
+	return { orgId };
 }

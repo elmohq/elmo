@@ -32,7 +32,8 @@ const elmoConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
+		supportsMultiOrg: true,
+		canCreateBrands: true,
 	},
 	branding: {
 		name: "Elmo",
@@ -46,7 +47,8 @@ const whitelabelConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: true,
-		supportsMultiOrg: false,
+		supportsMultiOrg: true,
+		canCreateBrands: false,
 	},
 	branding: {
 		name: "BrandMonitor Pro",

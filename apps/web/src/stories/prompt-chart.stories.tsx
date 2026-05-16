@@ -31,7 +31,8 @@ const defaultClientConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
+		supportsMultiOrg: true,
+		canCreateBrands: true,
 	},
 	branding: {
 		name: "Elmo",

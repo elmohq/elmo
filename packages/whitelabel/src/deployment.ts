@@ -38,6 +38,7 @@ export function createWhitelabelDeployment(
 			readOnly: false,
 			showOptimizeButton: true,
 			supportsMultiOrg: true,
+			canCreateBrands: false,
 		},
 		branding: {
 			name: requireEnv("VITE_APP_NAME", env),

@@ -18,7 +18,8 @@ export function createLocalDeployment(env: Record<string, string | undefined> = 
 		features: {
 			readOnly,
 			showOptimizeButton: false,
-			supportsMultiOrg: readOnly,
+			supportsMultiOrg: true,
+			canCreateBrands: !readOnly,
 		},
 		branding: {
 			name: getEnv("APP_NAME", DEFAULT_APP_NAME, env),
