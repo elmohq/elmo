@@ -74,21 +74,11 @@ function GhostCTA({
 	return null;
 }
 
-// Mux Player's center play button is exposed via the CSS part API. Style it
-// brand-blue with a white icon so it reads as the "in action." accent on the
-// light poster instead of the default white-on-white.
+// Tint Mux Player's center play-button icon brand-blue so it ties to the
+// poster's "in action." accent. Size and shape stay at the defaults.
 const MUX_PLAYER_STYLES = `
 	mux-player::part(center play button) {
-		background-color: #2563eb;
-		color: #ffffff;
-		border-radius: 9999px;
-		border: none;
-		width: 88px;
-		height: 88px;
-		box-shadow: 0 10px 32px rgba(37, 99, 235, 0.32);
-	}
-	mux-player::part(center play button):hover {
-		background-color: #1d4ed8;
+		color: #2563eb;
 	}
 `;
 
