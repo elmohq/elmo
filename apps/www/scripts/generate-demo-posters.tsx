@@ -125,37 +125,20 @@ function PagePoster() {
 				e
 			</div>
 
-			{/* top: category tag */}
+			{/* top: category tag, flush-left with the headline below */}
 			<div
 				style={{
 					display: "flex",
-					alignItems: "center",
-					gap: 18,
+					fontFamily: "Geist Mono",
+					fontWeight: 500,
+					fontSize: 40,
+					color: ZINC_600,
+					letterSpacing: 4,
+					textTransform: "uppercase",
 					position: "relative",
 				}}
 			>
-				<div
-					style={{
-						display: "flex",
-						width: 14,
-						height: 14,
-						borderRadius: 999,
-						backgroundColor: BRAND_BLUE,
-					}}
-				/>
-				<div
-					style={{
-						display: "flex",
-						fontFamily: "Geist Mono",
-						fontWeight: 500,
-						fontSize: 40,
-						color: ZINC_600,
-						letterSpacing: 4,
-						textTransform: "uppercase",
-					}}
-				>
-					Walkthrough
-				</div>
+				Walkthrough
 			</div>
 
 			{/* bottom: single-line headline, anchored below the play button */}
