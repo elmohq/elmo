@@ -186,7 +186,7 @@ function PagePoster() {
 						fontFamily: "Geist Sans",
 						fontWeight: 600,
 						fontSize: 140,
-						color: ZINC_400,
+						color: BRAND_BLUE,
 						lineHeight: 0.95,
 						letterSpacing: -5,
 					}}
