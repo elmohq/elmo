@@ -74,11 +74,12 @@ function GhostCTA({
 	return null;
 }
 
-// Tint Mux Player's center play-button icon brand-blue so it ties to the
-// poster's "in action." accent. Size and shape stay at the defaults.
+// Cast a brand-blue glow under Mux Player's default center play button so it
+// echoes the wrapper's outer blue shadow. Drop-shadow follows the circle's
+// shape, unlike box-shadow which would paint a square.
 const MUX_PLAYER_STYLES = `
 	mux-player::part(center play button) {
-		color: #2563eb;
+		filter: drop-shadow(0 8px 24px rgba(37, 99, 235, 0.35));
 	}
 `;
 
