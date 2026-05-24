@@ -64,6 +64,7 @@ Examples:
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online,gemini:olostep:online"
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:olostep:online" --output-json result.json
   pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:brightdata:online" --dump ./dumps
+  pnpm tsx --env-file=.env scripts/test-provider.ts --target "chatgpt:oxylabs:online"
 `);
 			process.exit(0);
 		}

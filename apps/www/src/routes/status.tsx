@@ -75,6 +75,7 @@ function formatProvider(provider: string) {
 	const names: Record<string, string> = {
 		olostep: "Olostep",
 		brightdata: "BrightData",
+		oxylabs: "Oxylabs",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",

@@ -5,6 +5,7 @@ export type EnvMap = Record<string, string | undefined>;
 const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
 	olostep: { keys: ["OLOSTEP_API_KEY"], label: "OLOSTEP_API_KEY" },
 	brightdata: { keys: ["BRIGHTDATA_API_TOKEN"], label: "BRIGHTDATA_API_TOKEN" },
+	oxylabs: { keys: ["OXYLABS_USERNAME", "OXYLABS_PASSWORD"], label: "OXYLABS_USERNAME + OXYLABS_PASSWORD" },
 	openrouter: { keys: ["OPENROUTER_API_KEY"], label: "OPENROUTER_API_KEY" },
 	"openai-api": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
 	"anthropic-api": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
@@ -42,7 +43,7 @@ function buildProviderKeyRequirements(): EnvRequirement[] {
 		if (!mapping || seen.has(mapping.label)) continue;
 		seen.add(mapping.label);
 
-		const useRequireAll = provider === "dataforseo";
+		const useRequireAll = provider === "dataforseo" || provider === "oxylabs";
 		requirements.push({
 			id: `PROVIDER_${provider.toUpperCase().replace("-", "_")}`,
 			label: mapping.label,
