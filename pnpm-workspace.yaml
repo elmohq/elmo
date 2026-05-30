@@ -22,21 +22,19 @@ overrides:
   yaml: "^2.8.3"
   "@esbuild-kit/core-utils>esbuild": "^0.25.0"
 
-onlyBuiltDependencies:
-  - "@tailwindcss/oxide"
-  - esbuild
-  - msgpackr-extract
-  - puppeteer
-  - sharp
-  - unrs-resolver
-
-ignoredBuiltDependencies:
-  - "@scarf/scarf"
-  - "@tree-sitter-grammars/tree-sitter-yaml"
-  - core-js
-  - core-js-pure
-  - tree-sitter
-  - tree-sitter-json
+allowBuilds:
+  "@tailwindcss/oxide": true
+  esbuild: true
+  msgpackr-extract: true
+  puppeteer: true
+  sharp: true
+  unrs-resolver: true
+  "@scarf/scarf": false
+  "@tree-sitter-grammars/tree-sitter-yaml": false
+  core-js: false
+  core-js-pure: false
+  tree-sitter: false
+  tree-sitter-json: false
 
 blockExoticSubdeps: true
 minimumReleaseAge: 5760
