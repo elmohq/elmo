@@ -19,7 +19,13 @@ export const blog = defineDocs({
 	dir: "../../packages/docs/content/blog",
 	docs: {
 		schema: pageSchema.extend({
-			date: z.string(),
+			// An unquoted date in YAML frontmatter (date: 2026-05-30) is parsed
+			// into a Date, while a quoted one ("2026-05-30") stays a string.
+			// Accept either and normalize to a YYYY-MM-DD string so downstream
+			// code (byline, JSON-LD, RSS) only ever deals with a string.
+			date: z
+				.union([z.string(), z.date()])
+				.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value)),
 			author: z.string(),
 			tags: z.array(z.string()).optional(),
 		}),
