@@ -6,6 +6,39 @@ packages:
 publicHoistPattern:
   - "@takumi-rs/core-*"
 
+overrides:
+  "@types/react": "^19.2.14"
+  "@types/react-dom": "^19.2.3"
+  next: "^16.1.7"
+  "glob>minimatch": "^9.0.7"
+  "cheerio>undici": "^7.24.0"
+  kysely: "~0.28.14"
+  h3: ">=2.0.1-rc.18"
+  h3-v2: "npm:h3@>=2.0.1-rc.18"
+  picomatch: "^4.0.4"
+  "anymatch>picomatch": "^2.3.2"
+  "micromatch>picomatch": "^2.3.2"
+  dompurify: "^3.3.2"
+  yaml: "^2.8.3"
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+
+allowBuilds:
+  "@tailwindcss/oxide": true
+  esbuild: true
+  msgpackr-extract: true
+  puppeteer: true
+  sharp: true
+  unrs-resolver: true
+  "@sentry/cli": true # postinstall downloads the sentry-cli binary
+  "@scarf/scarf": false
+  "@tree-sitter-grammars/tree-sitter-yaml": false
+  core-js: false
+  core-js-pure: false
+  msw: false
+  protobufjs: false
+  tree-sitter: false
+  tree-sitter-json: false
+
 blockExoticSubdeps: true
 minimumReleaseAge: 5760
 minimumReleaseAgeExclude:
