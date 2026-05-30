@@ -29,8 +29,8 @@ allowBuilds:
   puppeteer: true
   sharp: true
   unrs-resolver: true
+  "@sentry/cli": true # postinstall downloads the sentry-cli binary
   "@scarf/scarf": false
-  "@sentry/cli": false
   "@tree-sitter-grammars/tree-sitter-yaml": false
   core-js: false
   core-js-pure: false
