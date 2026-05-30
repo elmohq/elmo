@@ -8,7 +8,7 @@ import { formatPostDate } from "@/lib/format";
 import { breadcrumbJsonLd, canonicalUrl, ogMeta, SITE_NAME } from "@/lib/seo";
 
 const title = "Blog · Elmo";
-const description = "Guides, product updates, and notes on tracking your brand's visibility across AI assistants.";
+const description = "Learn how to optimize your brand's AI search visibility.";
 
 interface PostMeta {
 	url: string;
