@@ -1,9 +1,6 @@
 /**
  * Shared utility functions.
- * Re-exports the cn() utility from @workspace/ui.
  */
-export { cn } from "@workspace/ui/lib/utils";
-
 import { getModelMeta } from "@workspace/lib/providers/models";
 
 /**
