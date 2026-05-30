@@ -34,26 +34,26 @@ const listPosts = createServerFn({ method: "GET" }).handler(async (): Promise<Po
 		.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 });
 
-export const Route = createFileRoute("/resources/")({
+export const Route = createFileRoute("/blog/")({
 	head: () => ({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
-			...ogMeta({ title, description, path: "/resources" }),
+			...ogMeta({ title, description, path: "/blog" }),
 		],
 		links: [
-			{ rel: "canonical", href: canonicalUrl("/resources") },
+			{ rel: "canonical", href: canonicalUrl("/blog") },
 			{
 				rel: "alternate",
 				type: "application/rss+xml",
 				title: `${SITE_NAME} Blog`,
-				href: canonicalUrl("/resources/rss.xml"),
+				href: canonicalUrl("/blog/rss.xml"),
 			},
 		],
 		scripts: [
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
-				{ name: "Blog", path: "/resources" },
+				{ name: "Blog", path: "/blog" },
 			]),
 		],
 	}),

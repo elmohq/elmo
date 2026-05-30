@@ -15,7 +15,7 @@ export interface BlogPostLoaderData {
 	tags: string[];
 }
 
-export const Route = createFileRoute("/resources/$")({
+export const Route = createFileRoute("/blog/$")({
 	component: Page,
 	head: ({ loaderData }) => {
 		const data = loaderData as BlogPostLoaderData | undefined;
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/resources/$")({
 		const { title, description, date, author, slugs } = data;
 		const pageTitle = `${title} · ${SITE_NAME}`;
 		const pageDescription = description || `${title} — from the ${SITE_NAME} blog.`;
-		const path = `/resources/${slugs.join("/")}`;
+		const path = `/blog/${slugs.join("/")}`;
 		const resolved = resolveAuthor(author);
 		const authorName =
 			resolved.kind === "team" ? resolved.author.name : resolved.kind === "unknown" ? resolved.name : undefined;
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/resources/$")({
 				}),
 				breadcrumbJsonLd([
 					{ name: "Home", path: "/" },
-					{ name: "Blog", path: "/resources" },
+					{ name: "Blog", path: "/blog" },
 					{ name: title, path },
 				]),
 			],

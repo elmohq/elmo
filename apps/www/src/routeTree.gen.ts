@@ -22,12 +22,12 @@ import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ResourcesIndexRouteImport } from './routes/resources/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as AiVisibilityToolsIndexRouteImport } from './routes/ai-visibility-tools/index'
-import { Route as ResourcesRssDotxmlRouteImport } from './routes/resources/rss[.]xml'
-import { Route as ResourcesSplatRouteImport } from './routes/resources/$'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
+import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
+import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
@@ -101,14 +101,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResourcesIndexRoute = ResourcesIndexRouteImport.update({
-  id: '/resources/',
-  path: '/resources/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DocsIndexRoute = DocsIndexRouteImport.update({
   id: '/docs/',
   path: '/docs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AiVisibilityToolsIndexRoute = AiVisibilityToolsIndexRouteImport.update({
@@ -116,19 +116,19 @@ const AiVisibilityToolsIndexRoute = AiVisibilityToolsIndexRouteImport.update({
   path: '/ai-visibility-tools/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResourcesRssDotxmlRoute = ResourcesRssDotxmlRouteImport.update({
-  id: '/resources/rss.xml',
-  path: '/resources/rss.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResourcesSplatRoute = ResourcesSplatRouteImport.update({
-  id: '/resources/$',
-  path: '/resources/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DocsSplatRoute = DocsSplatRouteImport.update({
   id: '/docs/$',
   path: '/docs/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogRssDotxmlRoute = BlogRssDotxmlRouteImport.update({
+  id: '/blog/rss.xml',
+  path: '/blog/rss.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSplatRoute = BlogSplatRouteImport.update({
+  id: '/blog/$',
+  path: '/blog/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSearchRoute = ApiSearchRouteImport.update({
@@ -185,12 +185,12 @@ export interface FileRoutesByFullPath {
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
+  '/blog/$': typeof BlogSplatRoute
+  '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
-  '/resources/$': typeof ResourcesSplatRoute
-  '/resources/rss.xml': typeof ResourcesRssDotxmlRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
-  '/resources/': typeof ResourcesIndexRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
@@ -213,12 +213,12 @@ export interface FileRoutesByTo {
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
+  '/blog/$': typeof BlogSplatRoute
+  '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
-  '/resources/$': typeof ResourcesSplatRoute
-  '/resources/rss.xml': typeof ResourcesRssDotxmlRoute
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
+  '/blog': typeof BlogIndexRoute
   '/docs': typeof DocsIndexRoute
-  '/resources': typeof ResourcesIndexRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
@@ -242,12 +242,12 @@ export interface FileRoutesById {
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
+  '/blog/$': typeof BlogSplatRoute
+  '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
-  '/resources/$': typeof ResourcesSplatRoute
-  '/resources/rss.xml': typeof ResourcesRssDotxmlRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
-  '/resources/': typeof ResourcesIndexRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
@@ -272,12 +272,12 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
+    | '/blog/$'
+    | '/blog/rss.xml'
     | '/docs/$'
-    | '/resources/$'
-    | '/resources/rss.xml'
     | '/ai-visibility-tools/'
+    | '/blog/'
     | '/docs/'
-    | '/resources/'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
     | '/api/plausible/event/'
@@ -300,12 +300,12 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
+    | '/blog/$'
+    | '/blog/rss.xml'
     | '/docs/$'
-    | '/resources/$'
-    | '/resources/rss.xml'
     | '/ai-visibility-tools'
+    | '/blog'
     | '/docs'
-    | '/resources'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
     | '/api/plausible/event'
@@ -328,12 +328,12 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
+    | '/blog/$'
+    | '/blog/rss.xml'
     | '/docs/$'
-    | '/resources/$'
-    | '/resources/rss.xml'
     | '/ai-visibility-tools/'
+    | '/blog/'
     | '/docs/'
-    | '/resources/'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
     | '/api/plausible/event/'
@@ -357,12 +357,12 @@ export interface RootRouteChildren {
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  BlogSplatRoute: typeof BlogSplatRoute
+  BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   DocsSplatRoute: typeof DocsSplatRoute
-  ResourcesSplatRoute: typeof ResourcesSplatRoute
-  ResourcesRssDotxmlRoute: typeof ResourcesRssDotxmlRoute
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
-  ResourcesIndexRoute: typeof ResourcesIndexRoute
   LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
   OgDocsSplatRoute: typeof OgDocsSplatRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
@@ -462,18 +462,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resources/': {
-      id: '/resources/'
-      path: '/resources'
-      fullPath: '/resources/'
-      preLoaderRoute: typeof ResourcesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/docs/': {
       id: '/docs/'
       path: '/docs'
       fullPath: '/docs/'
       preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ai-visibility-tools/': {
@@ -483,25 +483,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiVisibilityToolsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/resources/rss.xml': {
-      id: '/resources/rss.xml'
-      path: '/resources/rss.xml'
-      fullPath: '/resources/rss.xml'
-      preLoaderRoute: typeof ResourcesRssDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resources/$': {
-      id: '/resources/$'
-      path: '/resources/$'
-      fullPath: '/resources/$'
-      preLoaderRoute: typeof ResourcesSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/docs/$': {
       id: '/docs/$'
       path: '/docs/$'
       fullPath: '/docs/$'
       preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/rss.xml': {
+      id: '/blog/rss.xml'
+      path: '/blog/rss.xml'
+      fullPath: '/blog/rss.xml'
+      preLoaderRoute: typeof BlogRssDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$': {
+      id: '/blog/$'
+      path: '/blog/$'
+      fullPath: '/blog/$'
+      preLoaderRoute: typeof BlogSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/search': {
@@ -573,12 +573,12 @@ const rootRouteChildren: RootRouteChildren = {
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
   ApiSearchRoute: ApiSearchRoute,
+  BlogSplatRoute: BlogSplatRoute,
+  BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   DocsSplatRoute: DocsSplatRoute,
-  ResourcesSplatRoute: ResourcesSplatRoute,
-  ResourcesRssDotxmlRoute: ResourcesRssDotxmlRoute,
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
+  BlogIndexRoute: BlogIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
-  ResourcesIndexRoute: ResourcesIndexRoute,
   LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
   OgDocsSplatRoute: OgDocsSplatRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,

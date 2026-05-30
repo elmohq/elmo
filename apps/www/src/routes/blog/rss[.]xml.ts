@@ -10,7 +10,7 @@ function escapeXml(value: string): string {
 		.replace(/'/g, "&apos;");
 }
 
-export const Route = createFileRoute("/resources/rss.xml")({
+export const Route = createFileRoute("/blog/rss.xml")({
 	server: {
 		handlers: {
 			GET: async () => {
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/resources/rss.xml")({
 					}))
 					.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
-				const feedUrl = canonicalUrl("/resources/rss.xml");
+				const feedUrl = canonicalUrl("/blog/rss.xml");
 				const items = posts
 					.map(
 						(post) => `    <item>
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/resources/rss.xml")({
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>${escapeXml(`${SITE_NAME} Blog`)}</title>
-    <link>${canonicalUrl("/resources")}</link>
+    <link>${canonicalUrl("/blog")}</link>
     <description>${escapeXml(SITE_DESCRIPTION)}</description>
     <atom:link href="${feedUrl}" rel="self" type="application/rss+xml" />
 ${items}

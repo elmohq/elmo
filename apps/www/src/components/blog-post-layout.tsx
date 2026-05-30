@@ -1,5 +1,5 @@
 // Mirrors docs-page-layout.tsx: the heavy fumadocs-ui / browser-collection
-// imports live here, NOT in the route file. routes/resources/$.tsx only
+// imports live here, NOT in the route file. routes/blog/$.tsx only
 // references BlogPostLayout from inside the route's `component:`, which
 // @tanstack/router-plugin auto-splits into its own chunk, keeping these deps
 // out of the bundle that loads on other marketing pages.
@@ -13,7 +13,7 @@ import { AuthorByline } from "@/components/author-byline";
 import { Footer } from "@/components/footer";
 import { getMDXComponents } from "@/components/mdx";
 import { Navbar } from "@/components/navbar";
-import type { BlogPostLoaderData } from "@/routes/resources/$";
+import type { BlogPostLoaderData } from "@/routes/blog/$";
 
 function isElmoHref(href: string): boolean {
 	if (href.startsWith("/") || href.startsWith("#")) return true;
@@ -55,7 +55,7 @@ export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 				<Navbar />
 				<main className="mx-auto max-w-3xl px-4 py-12 md:px-6 lg:py-16">
 					<a
-						href="/resources"
+						href="/blog"
 						className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500 hover:text-zinc-950"
 					>
 						<ArrowLeft className="size-3" />

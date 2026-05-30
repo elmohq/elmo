@@ -5,4 +5,4 @@ import { loader } from "fumadocs-core/source";
 // blog. Server-only — importing this pulls in fumadocs-core/source and the
 // generated server collections, so only import it inside server functions and
 // server route handlers, never from client components.
-export const blogSource = loader({ blog: blog.toFumadocsSource() }, { baseUrl: "/resources" });
+export const blogSource = loader({ blog: blog.toFumadocsSource() }, { baseUrl: "/blog" });
