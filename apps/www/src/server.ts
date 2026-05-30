@@ -11,6 +11,8 @@ const SECURITY_HEADERS: Record<string, string> = {
 		"connect-src 'self' https://var.elmohq.com https://*.mux.com https://*.litix.io",
 		"media-src 'self' blob: https://*.mux.com",
 		"worker-src 'self' blob:",
+		// YouTube embeds in blog posts (privacy-enhanced youtube-nocookie host).
+		"frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com",
 		"object-src 'none'",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
