@@ -64,6 +64,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.15",
 		"@storybook/addon-vitest": "^10.3.6",
+		"@storybook/react": "^10.3.6",
 		"@storybook/react-vite": "^10.3.6",
 		"@types/archiver": "^7.0.0",
 		"@types/node": "^25.6.2",

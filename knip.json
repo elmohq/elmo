@@ -7,10 +7,24 @@
       "ignoreBinaries": ["playwright"]
     },
     "apps/web": {
-      "entry": ["src/routes/**/*.{ts,tsx}!", "scripts/*.ts"],
+      "entry": ["src/routes/**/*.{ts,tsx}!", "src/server.ts", "scripts/*.ts"],
       "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
-      "ignore": ["src/lib/db/migrations/**"],
-      "ignoreDependencies": ["tailwindcss", "tw-animate-css", "@tailwindcss/typography"]
+      "ignore": ["src/stories/_mocks/**"],
+      "ignoreDependencies": [
+        "tailwindcss",
+        "tw-animate-css",
+        "@tailwindcss/typography",
+        "@takumi-rs/wasm",
+        "@fontsource/geist-sans"
+      ]
+    },
+    "apps/www": {
+      "entry": ["src/server.ts", "scripts/**"],
+      "ignore": [".source/**", "source.generated.ts"],
+      "ignoreDependencies": ["@takumi-rs/wasm", "shiki"]
+    },
+    "apps/worker": {
+      "entry": ["scripts/test-provider.ts"]
     },
     "e2e": {
       "entry": ["*.ts"],
