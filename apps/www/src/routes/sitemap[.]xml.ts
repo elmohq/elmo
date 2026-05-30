@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { source } from "@/lib/source";
+import { blogSource } from "@/lib/blog";
 import { competitors, getComparisonSlug, isLowDR } from "@/lib/competitors";
 
 const SITE_URL = "https://www.elmohq.com";
@@ -11,6 +12,7 @@ const staticPages = [
 	{ path: "/changelog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/roadmap", changefreq: "weekly", priority: 0.7 },
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },
+	{ path: "/resources", changefreq: "weekly", priority: 0.7 },
 	{ path: "/ai-visibility-tools", changefreq: "weekly", priority: 0.8 },
 	{ path: "/brand", changefreq: "monthly", priority: 0.5 },
 	{ path: "/status", changefreq: "daily", priority: 0.5 },
@@ -26,6 +28,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 				priority: 0.7,
 			}));
 
+			const blogPages = blogSource.getPages().map((page) => ({
+				path: page.url,
+				changefreq: "monthly",
+				priority: 0.7,
+			}));
+
 			const comparisonPages = competitors
 				.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
 				.map((c) => ({
@@ -34,7 +42,12 @@ export const Route = createFileRoute("/sitemap.xml")({
 					priority: 0.6,
 				}));
 
-			const allPages = [...staticPages, ...docsPages, ...comparisonPages];
+			const allPages = [
+				...staticPages,
+				...docsPages,
+				...blogPages,
+				...comparisonPages,
+			];
 				const now = new Date().toISOString().split("T")[0];
 
 				const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

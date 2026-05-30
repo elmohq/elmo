@@ -2,8 +2,7 @@ import { getMarketingOgImage } from "./og";
 
 export const SITE_URL = "https://www.elmohq.com";
 export const SITE_NAME = "Elmo";
-export const SITE_DESCRIPTION =
-	"Open source AI visibility tracking and optimization.";
+export const SITE_DESCRIPTION = "Open source AI visibility tracking and optimization.";
 export const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
 
 export function canonicalUrl(path: string): string {
@@ -25,9 +24,7 @@ export function ogMeta({
 }) {
 	const url = canonicalUrl(path);
 	const resolvedImage = image ?? getMarketingOgImage({ title, description });
-	const absoluteImage = resolvedImage.startsWith("http")
-		? resolvedImage
-		: canonicalUrl(resolvedImage);
+	const absoluteImage = resolvedImage.startsWith("http") ? resolvedImage : canonicalUrl(resolvedImage);
 
 	return [
 		{ property: "og:title", content: title },
@@ -92,15 +89,7 @@ export function softwareApplicationJsonLd() {
 	});
 }
 
-export function articleJsonLd({
-	title,
-	description,
-	path,
-}: {
-	title: string;
-	description: string;
-	path: string;
-}) {
+export function articleJsonLd({ title, description, path }: { title: string; description: string; path: string }) {
 	return jsonLd({
 		"@type": "TechArticle",
 		headline: title,
@@ -114,9 +103,39 @@ export function articleJsonLd({
 	});
 }
 
-export function breadcrumbJsonLd(
-	items: { name: string; path: string }[],
-) {
+export function blogPostingJsonLd({
+	title,
+	description,
+	path,
+	datePublished,
+	authorName,
+}: {
+	title: string;
+	description: string;
+	path: string;
+	datePublished: string;
+	/** A real person's name. Omit for AI-generated posts — the org is credited. */
+	authorName?: string;
+}) {
+	return jsonLd({
+		"@type": "BlogPosting",
+		headline: title,
+		description,
+		url: canonicalUrl(path),
+		datePublished,
+		author: authorName
+			? { "@type": "Person", name: authorName }
+			: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+		publisher: {
+			"@type": "Organization",
+			name: SITE_NAME,
+			url: SITE_URL,
+			logo: { "@type": "ImageObject", url: SITE_LOGO_URL },
+		},
+	});
+}
+
+export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 	return jsonLd({
 		"@type": "BreadcrumbList",
 		itemListElement: items.map((item, index) => ({

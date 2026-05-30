@@ -1,0 +1,53 @@
+// Mirrors docs-page-layout.tsx: the heavy fumadocs-ui / browser-collection
+// imports live here, NOT in the route file. routes/resources/$.tsx only
+// references BlogPostLayout from inside the route's `component:`, which
+// @tanstack/router-plugin auto-splits into its own chunk, keeping these deps
+// out of the bundle that loads on other marketing pages.
+
+import browserCollections from "collections/browser";
+import { RootProvider } from "fumadocs-ui/provider/tanstack";
+import { ArrowLeft } from "lucide-react";
+import { Suspense } from "react";
+import { AuthorByline } from "@/components/author-byline";
+import { Footer } from "@/components/footer";
+import { getMDXComponents } from "@/components/mdx";
+import { Navbar } from "@/components/navbar";
+import type { BlogPostLoaderData } from "@/routes/resources/$";
+
+// getMDXComponents is a plain factory (no React hooks), so the components map
+// is built once at module scope rather than per render.
+const mdxComponents = getMDXComponents();
+
+export const clientLoader = browserCollections.blog.createClientLoader({
+	component({ default: MDX }, _props: undefined) {
+		return <MDX components={mdxComponents} />;
+	},
+});
+
+export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
+	return (
+		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }}>
+			<div className="min-h-screen">
+				<Navbar />
+				<main className="mx-auto max-w-3xl px-4 py-12 md:px-6 lg:py-16">
+					<a
+						href="/resources"
+						className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500 hover:text-zinc-950"
+					>
+						<ArrowLeft className="size-3" />
+						Blog
+					</a>
+					<article className="prose mt-8 max-w-none">
+						<h1 className="mb-3">{data.title}</h1>
+						{data.description && <p className="lead mt-0 text-zinc-600">{data.description}</p>}
+						<div className="not-prose mb-10 mt-6 border-b border-zinc-200 pb-8">
+							<AuthorByline author={data.author} date={data.date} />
+						</div>
+						<Suspense>{clientLoader.useContent(data.path)}</Suspense>
+					</article>
+				</main>
+				<Footer />
+			</div>
+		</RootProvider>
+	);
+}
