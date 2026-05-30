@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { authorDisplayName, isAiAuthor } from "@/data/authors";
@@ -86,13 +86,11 @@ function ResourcesPage() {
 								>
 									<div className="flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
 										<time dateTime={post.date}>{formatPostDate(post.date)}</time>
-										<span className="text-zinc-300">·</span>
-										<span>{authorDisplayName(post.author)}</span>
-										{isAiAuthor(post.author) && (
-											<span className="inline-flex items-center gap-1 rounded-sm bg-blue-50 px-1.5 py-0.5 text-blue-600">
-												<Sparkles className="size-3" />
-												AI
-											</span>
+										{!isAiAuthor(post.author) && (
+											<>
+												<span className="text-zinc-300">·</span>
+												<span>{authorDisplayName(post.author)}</span>
+											</>
 										)}
 									</div>
 									<h2 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-950 group-hover:text-blue-700">

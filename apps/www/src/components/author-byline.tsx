@@ -1,4 +1,3 @@
-import { Sparkles } from "lucide-react";
 import { resolveAuthor, type TeamAuthor } from "@/data/authors";
 import { formatPostDate } from "@/lib/format";
 
@@ -31,9 +30,9 @@ function TeamAvatar({ author }: { author: TeamAuthor }) {
 }
 
 /**
- * Byline for a blog post. Renders an "AI-generated" badge for `author: "ai"`,
- * a full team byline for known authors, and a plain name for anything else.
- * See src/data/authors.ts.
+ * Byline for a blog post. AI-generated posts (`author: "ai"`) show no author
+ * information — just the date. Known team authors get a full byline, and
+ * anything else falls back to a plain name. See src/data/authors.ts.
  */
 export function AuthorByline({ author, date }: { author: string; date: string }) {
 	const resolved = resolveAuthor(author);
@@ -41,19 +40,8 @@ export function AuthorByline({ author, date }: { author: string; date: string })
 
 	if (resolved.kind === "ai") {
 		return (
-			<div className="not-prose flex items-center gap-3">
-				<span
-					aria-hidden
-					className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-100"
-				>
-					<Sparkles className="size-4" />
-				</span>
-				<div className="text-sm leading-tight">
-					<div className="font-medium text-zinc-900">AI-generated</div>
-					<time dateTime={date} className="text-zinc-500">
-						{dateLabel}
-					</time>
-				</div>
+			<div className="not-prose text-sm text-zinc-500">
+				<time dateTime={date}>{dateLabel}</time>
 			</div>
 		);
 	}
