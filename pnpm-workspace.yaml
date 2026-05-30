@@ -30,9 +30,12 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   "@scarf/scarf": false
+  "@sentry/cli": false
   "@tree-sitter-grammars/tree-sitter-yaml": false
   core-js: false
   core-js-pure: false
+  msw: false
+  protobufjs: false
   tree-sitter: false
   tree-sitter-json: false
 
