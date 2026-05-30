@@ -14,6 +14,7 @@ const cols = [
 	{
 		heading: "Resources",
 		links: [
+			{ label: "Blog", href: "/blog" },
 			{ label: "Documentation", href: "/docs" },
 			{ label: "API Reference", href: "/docs/api" },
 			{ label: "Tool Directory", href: "/ai-visibility-tools" },

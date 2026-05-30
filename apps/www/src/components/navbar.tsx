@@ -20,6 +20,7 @@ const navigationLinks = [
 	{ href: "/roadmap", label: "Roadmap" },
 	{ href: "/vision", label: "Vision" },
 	{ href: "/docs", label: "Docs" },
+	{ href: "/blog", label: "Blog" },
 ];
 
 export function Navbar() {
