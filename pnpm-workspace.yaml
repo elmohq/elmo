@@ -9,8 +9,7 @@ publicHoistPattern:
 overrides:
   "@types/react": "^19.2.14"
   "@types/react-dom": "^19.2.3"
-  next: "^16.1.7"
-  "glob>minimatch": "^9.0.7"
+  "glob>minimatch": "^10.2.5"
   "cheerio>undici": "^7.24.0"
   kysely: "~0.28.14"
   h3: ">=2.0.1-rc.18"
@@ -21,6 +20,9 @@ overrides:
   dompurify: "^3.3.2"
   yaml: "^2.8.3"
   "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+  fast-uri: "^3.1.2"
+  ws: "^8.20.1"
+  protobufjs: "^7.5.8"
 
 allowBuilds:
   "@tailwindcss/oxide": true
