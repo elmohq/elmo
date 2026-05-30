@@ -31,9 +31,9 @@ function TeamAvatar({ author }: { author: TeamAuthor }) {
 }
 
 /**
- * Byline for a blog post. Renders an AI-generated badge (with a link to our AI
- * policy) for `author: "ai"`, a full team byline for known authors, and a
- * plain name for anything else. See src/data/authors.ts.
+ * Byline for a blog post. Renders an "AI-generated" badge for `author: "ai"`,
+ * a full team byline for known authors, and a plain name for anything else.
+ * See src/data/authors.ts.
  */
 export function AuthorByline({ author, date }: { author: string; date: string }) {
 	const resolved = resolveAuthor(author);
@@ -49,15 +49,7 @@ export function AuthorByline({ author, date }: { author: string; date: string })
 					<Sparkles className="size-4" />
 				</span>
 				<div className="text-sm leading-tight">
-					<div className="flex flex-wrap items-center gap-x-1.5 font-medium text-zinc-900">
-						AI-generated
-						<a
-							href="/docs/developer-guide/ai-policy"
-							className="font-normal text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
-						>
-							How we use AI
-						</a>
-					</div>
+					<div className="font-medium text-zinc-900">AI-generated</div>
 					<time dateTime={date} className="text-zinc-500">
 						{dateLabel}
 					</time>
@@ -76,7 +68,7 @@ export function AuthorByline({ author, date }: { author: string; date: string })
 			<div className="text-sm leading-tight">
 				<div className="font-medium text-zinc-900">
 					{url ? (
-						<a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+						<a href={url} target="_blank" rel="nofollow noopener noreferrer" className="hover:underline">
 							{name}
 						</a>
 					) : (

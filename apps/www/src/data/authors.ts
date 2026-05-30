@@ -20,6 +20,7 @@ export const teamAuthors = {
 	jared: {
 		name: "Jared Rhizor",
 		role: "Founder",
+		avatar: "/authors/jared.png",
 	},
 } satisfies Record<string, TeamAuthor>;
 

@@ -7,6 +7,7 @@
 import browserCollections from "collections/browser";
 import { RootProvider } from "fumadocs-ui/provider/tanstack";
 import { ArrowLeft } from "lucide-react";
+import type { ComponentPropsWithoutRef } from "react";
 import { Suspense } from "react";
 import { AuthorByline } from "@/components/author-byline";
 import { Footer } from "@/components/footer";
@@ -14,9 +15,32 @@ import { getMDXComponents } from "@/components/mdx";
 import { Navbar } from "@/components/navbar";
 import type { BlogPostLoaderData } from "@/routes/resources/$";
 
+function isElmoHref(href: string): boolean {
+	if (href.startsWith("/") || href.startsWith("#")) return true;
+	try {
+		const { hostname } = new URL(href);
+		return hostname === "elmohq.com" || hostname.endsWith(".elmohq.com");
+	} catch {
+		// mailto:, tel:, or other non-http(s) hrefs — not an outbound web link.
+		return true;
+	}
+}
+
+// Links inside post content: outbound links are nofollow and open in a new
+// tab, so blog posts don't pass SEO equity to external sites (e.g. competitors
+// we reference). Internal / elmohq-owned links stay followed; noopener keeps
+// the referrer for analytics on owned domains.
+function BlogLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
+	if (isElmoHref(href)) {
+		const rel = /^https?:\/\//.test(href) ? "noopener" : undefined;
+		return <a {...props} href={href} rel={rel} />;
+	}
+	return <a {...props} href={href} target="_blank" rel="nofollow noopener noreferrer" />;
+}
+
 // getMDXComponents is a plain factory (no React hooks), so the components map
 // is built once at module scope rather than per render.
-const mdxComponents = getMDXComponents();
+const mdxComponents = getMDXComponents({ a: BlogLink });
 
 export const clientLoader = browserCollections.blog.createClientLoader({
 	component({ default: MDX }, _props: undefined) {
