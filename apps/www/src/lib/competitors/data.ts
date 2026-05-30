@@ -370,9 +370,9 @@ export const competitors: Competitor[] = [
 		name: "Peec AI",
 		domain: "peec.ai",
 		url: "https://peec.ai/",
-		tagline: "$29M-funded AI visibility platform with Looker Studio integration",
+		tagline: "$21M-funded Berlin AI visibility platform with Looker Studio integration",
 		description:
-			"Peec AI raised $29M in Series A funding. Based in Berlin, they offer prompt volume estimates, sentiment analysis, Looker Studio connectors, and AI visibility tracking across multiple LLMs.",
+			"Peec AI raised a $21M Series A led by Singular and reports over 1,300 brands and agencies onboarded since launching in early 2025. Based in Berlin, it offers prompt volume estimates, sentiment analysis, Looker Studio connectors, and AI visibility tracking across multiple LLMs.",
 		category: "tracking",
 		ahrefsDR: 71,
 		ahrefsTraffic: 1055,
@@ -393,7 +393,7 @@ export const competitors: Competitor[] = [
 		},
 		pricing: { hasFree: false, hasEnterprise: true },
 		highlights: [
-			"$29M Series A funding",
+			"$21M Series A led by Singular, 1,300+ brands onboarded",
 			"Looker Studio native connector",
 			"Prompt volume estimates with sentiment tracking",
 		],
@@ -2969,6 +2969,130 @@ export const competitors: Competitor[] = [
 			"Focused on agent UX rather than chat citations",
 		],
 	},
+	{
+		slug: "superlines",
+		name: "Superlines",
+		domain: "superlines.io",
+		url: "https://www.superlines.io/",
+		tagline: "AI search intelligence platform for brands and agencies",
+		description:
+			"Superlines is a GEO platform that monitors brand visibility, citations, and mentions across ChatGPT, Gemini, Google AI Overviews, Perplexity, Claude, Copilot, DeepSeek, Grok, and Mistral. It captures responses from AI front-end interfaces rather than APIs, and provides share-of-voice metrics, sentiment analysis, competitive benchmarking across markets and languages, and an MCP server for integration.",
+		category: "tracking",
+		ahrefsDR: 56,
+		ahrefsTraffic: 649,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			geographicTracking: true,
+			multiLanguage: true,
+			dataExportApi: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: false, hasEnterprise: true },
+		highlights: [
+			"Tracks 9 AI platforms including DeepSeek, Grok, and Mistral",
+			"Captures responses from AI front-end interfaces rather than API calls",
+			"Customers include Supabase, Tallink Silja, and Tietoevry; part of the Google for AI Startups Cloud Program",
+		],
+	},
+	{
+		slug: "temso",
+		name: "Temso",
+		domain: "temso.ai",
+		url: "https://www.temso.ai/",
+		tagline: "AI search visibility tracking with an AI content-execution agent",
+		description:
+			"Temso tracks brand visibility across ChatGPT, Claude, Google AI Overview, Gemini, Perplexity, Grok, and Copilot, pairing monitoring with an AI agent that drafts and executes content under user oversight. It includes competitor share-of-voice analysis, content gap identification, prompt strategy for high-intent queries, sentiment tracking, diagnostic audits, and prioritized action plans.",
+		category: "tracking",
+		ahrefsDR: 16,
+		ahrefsTraffic: 33,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			contentGapAnalysis: true,
+			siteAudits: true,
+			keywordResearch: true,
+			contentGeneration: true,
+		},
+		pricing: { hasFree: false, startingPrice: "$29/mo", hasEnterprise: false },
+		highlights: [
+			"AI agent drafts and executes content under user oversight",
+			"4.8 rating on G2",
+			"Case studies report Doctorflix +20% and RevenueHub 7%→36% visibility gains",
+		],
+	},
+	{
+		slug: "brandscan",
+		name: "BrandScan",
+		domain: "brandscan.ro",
+		url: "https://www.brandscan.ro/",
+		tagline: "AI visibility tracking focused on the Romanian market",
+		description:
+			"BrandScan is a GEO platform focused on the Romanian market, monitoring how brands appear across ChatGPT, Perplexity, Gemini, Claude, and Google AI Mode using 30–100 custom Romanian-language prompts. It reports an overall GEO score alongside Visibility, Authority, and Consistency sub-scores, with competitor benchmarking, sentiment analysis, and prioritized optimization recommendations. Data is stored in AWS Frankfurt for GDPR compliance.",
+		category: "tracking",
+		ahrefsDR: 0,
+		ahrefsTraffic: 0,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			competitorBenchmarking: true,
+			brandMentionTracking: true,
+			sentimentAnalysis: true,
+			actionRecommendations: true,
+			dataExportApi: true,
+			biConnectors: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, startingPrice: "€49/mo", hasEnterprise: false },
+		highlights: [
+			"Romanian-market focus with Romanian-language prompts and local competitor analysis",
+			"GEO score broken into Visibility, Authority, and Consistency sub-scores",
+			"GDPR-compliant data storage in AWS Frankfurt",
+		],
+	},
+	{
+		slug: "canonry",
+		name: "Canonry",
+		domain: "github.com",
+		url: "https://github.com/AINYC/canonry",
+		tagline: "Open-source, self-hosted agent-first AEO platform",
+		description:
+			"Canonry is an open-source, self-hosted AEO platform (FSL-1.1-ALv2 license, converting to Apache 2.0 after two years) that tracks how AI answer engines — Gemini, ChatGPT, Claude, Perplexity, and local LLMs — cite websites. It ingests server logs to measure AI-driven traffic, integrates with Google Search Console, GA4, Bing Webmaster, and Google Business Profile, and executes fixes via WordPress and JSON-LD schema. Clients are managed declaratively through YAML, and a built-in agent (Aero) exposes a 67-tool MCP adapter.",
+		category: "open-source",
+		ahrefsDR: 97,
+		ahrefsTraffic: 47619730,
+		status: "active",
+		features: {
+			multiLlmTracking: true,
+			visibilityScore: true,
+			citationAnalytics: true,
+			brandMentionTracking: true,
+			crawlerAnalytics: true,
+			actionRecommendations: true,
+			siteAudits: true,
+			emailAlerts: true,
+			dataExportApi: true,
+			openSource: true,
+			whiteLabelAgency: true,
+		},
+		pricing: { hasFree: true, hasEnterprise: false },
+		highlights: [
+			"Open source (FSL-1.1-ALv2, converts to Apache 2.0) and fully self-hosted",
+			"Ingests server logs (Cloud Run, Vercel, WordPress) to measure AI-driven traffic",
+			"Built-in agent with a 67-tool MCP adapter and GSC, GA4, and Google Business Profile integrations",
+		],
+	},
 ];
 
 export function getCompetitorBySlug(slug: string): Competitor | undefined {
@@ -2999,91 +3123,94 @@ export function getComparisonSlug(competitor: Competitor): string {
  * based on the criteria above. Do NOT append to the end.
  */
 const aeoPopularityRanking: string[] = [
-	// --- Tier A: Well-known, established AEO-focused tools with real traction ---
-	"profound",           // G2 AEO Leader, enterprise (MongoDB, Figma, Zapier), Fortune/WSJ/NYT press
-	"otterly-ai",         // Gartner Cool Vendor 2025, 20k+ users, comprehensive feature set
-	"peec-ai",            // $29M Series A, Looker Studio connector, Berlin-based
-	"writesonic",         // 120M AI conversation dataset, combined tracking + content
+	// --- Tier A: Category leaders with major funding, customers, and recognition ---
+	"profound",           // Category leader: G2 AEO Leader, enterprise (MongoDB, Figma, Zapier, Ramp), Fortune/WSJ/NYT
+	"peec-ai",            // $21M Series A (Singular), 1,300+ brands onboarded, fastest-growing pure-play
+	"airops",             // $40M Series B / $225M val (Greylock), Ramp/Chime/Wiz/Carta, repositioned as AI-search platform
+	"scrunch",            // $19M (Mayfield/Decibel), G2 category leader, broadest engine coverage, SOC2+HIPAA
+	"otterly-ai",         // Gartner Cool Vendor 2025, 20k+ users, dedicated GEO tracker
+	"evertune",           // $4M seed, NYT/WSJ/Forbes/Adweek, EverPanel consumer panel data
+	"writesonic",         // 120M AI conversation dataset, major brand, combined tracking + content
+	"athenahq",           // Repeatedly named in best-AEO-tools-2026 lists, prompt-level insights
+	"se-ranking",         // Large established platform with dedicated AI Overviews + ChatGPT trackers
 
-	"evertune",           // $4M seed, NYT/WSJ/Forbes/Adweek coverage, enterprise customers (Athenahealth, Miro, Roku, WPP), 150M+ prompt panel
-
-	// --- Tier B: Known/growing AEO tools ---
-	"wellows",            // DR 62 / 6K traffic, published 485K citation research, multi-tier pricing
-	"passionfruit",       // Stanford/CMU alumni, DR 63 / 10K traffic, unified SEO+GEO+AEO + managed service
-	"se-ranking",         // All-in-one SEO with dedicated AI Overviews + ChatGPT trackers
-	"local-falcon",       // Early AEO entrant, SAIV metric, Looker Studio integration
-	"nightwatch",         // Traditional rank tracker with AI search tracking
-	"athenahq",           // AI search analytics with prompt-level insights
-	"promptwatch",        // Focused prompt monitoring tool
-	"amplitude",          // Product analytics giant adding AEO features
+	// --- Tier B: Known / growing AEO tools ---
+	"nightwatch",         // Established rank tracker (190K locations) with AI search tracking
 	"frase",              // Agentic SEO/GEO platform, 80+ AI tools
+	"amplitude",          // Product analytics giant adding AEO features
+	"local-falcon",       // Early entrant (SAIV metric); local-SEO-primary with AEO
+	"promptwatch",        // UI-scraping prompt monitor, 630M citations, WSJ/Axios
+	"goodie",             // Funded; Amazon Rufus tracking + AEO thought leadership
+	"knowatoa",           // Multi-LLM tracking, BISCUIT framework, BI connectors
+	"llmrefs",            // Citation specialist; lists eBay/HubSpot/NVIDIA users
+	"aiseotracker",       // Dedicated AEO tracker, claims 249K brands, Page Inspector
+	"gracker",            // Cybersecurity/B2B-SaaS vertical with documented customer case studies
+	"rankability",        // AI Search Analyzer with NLP/entity focus, agency-oriented
+	"gauge",              // End-to-end tracking + analysis + content platform
+	"passionfruit",       // Stanford/CMU founders, unified SEO+GEO+AEO + managed service
 
-	// --- Tier C: Niche/emerging AEO tools with some traction ---
-	"llmrefs",            // Citation tracking specialist
-	"goodie",             // AI visibility tracking with content optimization
-	"knowatoa",           // Multi-LLM tracking with competitor benchmarking
-	"aiseotracker",       // Dedicated AEO tracker
-	"geneo",              // AI visibility platform
-	"scrunch",            // Content + AI tracking platform
-	"airops",             // Content engineering with Page360 AI analysis
-	"rankability",        // AI Search Analyzer with NLP/entity focus
-	"promptmonitor",      // Prompt monitoring and brand tracking
-	"gumshoe",            // AI search monitoring
-	"gauge",              // AI visibility measurement
-	"quattr",             // SEO + AEO content platform
-	"rank-ai",            // AI-powered content optimization
-	"aeo-engine",         // E-commerce focused AEO
-	"rebel-growth",       // AI visibility tracking
-	"gushwork",           // Content + AI optimization
-	"babylovegrowth",     // Autopilot content + backlinks for AI citations
-	"airefs",             // Hybrid tracker + agency, DR 44 / 7K traffic, multi-tier pricing
-	"gracker",            // DR 60 / 4K traffic, cybersecurity vertical focus with case studies
-	"rankshift",          // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
+	// --- Tier C: Niche / emerging AEO tools with some traction ---
+	"wellows",            // DR 62 / 6K traffic, published citation research; no disclosed funding/customers
+	"superlines",         // 9-platform GEO tracker, customers incl. Supabase/Publicis, Google for AI Startups
+	"bluefish-ai",        // Enterprise AI-commerce (Fortune 500 focus), named in best-AEO-2026 lists
+	"babylovegrowth",     // DR 76, autopilot content + backlink network for AI citations
 	"topify",             // 200+ brands incl. Zoom/TCL/Midea, full GEO feature set
+	"omniseo",            // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Caterpillar)
+	"trakkr",             // 8-model tracker, weekly ROI-scored actions + GA revenue attribution
+	"indexly",            // Unified Google + AI tracker, broad feature set
+	"rankshift",          // 850+ brands, BI connectors (Looker/BigQuery/Power BI)
 	"siftly",             // Y Combinator-backed GEO platform with A/B testing
-	"trakkr",             // 8-model tracker with weekly ROI-scored actions + GA revenue attribution
-	"omniseo",            // WebFX-backed, enterprise customers (Darktrace, Fujifilm, Tealium, Caterpillar)
-	"indexly",            // Unified Google + AI tracker, DR 41 / 3.6K traffic, broad feature set
+	"airefs",             // Hybrid tracker + done-for-you agency service
+	"geneo",              // AI visibility platform with optimization recommendations
+	"gushwork",           // $9M raised, AI agents for end-to-end SEO workflows
+	"quattr",             // GIGA AI agent, unified SEO + AEO + GEO
+	"rank-ai",            // AI content creation + rank tracking
+	"promptmonitor",      // 200+ countries, AI bot analytics (acquired)
+	"gumshoe",            // AI search visibility intelligence
+	"rebel-growth",       // Growth-focused AEO tracking + consulting
+	"aeo-engine",         // E-commerce focused AEO with schema optimization
+	"aiclicks",           // Done-for-you action plans with AI agents
+	"searchable",         // AI search visibility monitoring
+	"llm-pulse",          // LLM monitoring with prompt suggestions + Looker Studio
+	"ai-peekaboo",        // White-label GEO competitive intelligence for agencies
 
-	// --- Tier D: Early/small AEO tools ---
-	"aiclicks",           // AI click tracking
-	"searchable",         // AI search visibility
-	"llm-pulse",          // LLM monitoring
-	"ai-peekaboo",        // AI visibility checker
-	"checkthat",          // AI mention checking
-	"bluefish-ai",        // E-commerce AI visibility
-	"parse",              // AI search tracking
-	"amionai",            // "Am I on AI?" checker
-	"limy",               // AI visibility tracking
-	"bear-ai",            // AI content optimization
-	"getmint",            // Content + AI platform
-	"wildcard",           // E-commerce AI visibility
-	"showupinai",         // AI presence checker
-	"omnia",              // AI visibility tracking
-	"lorelight",          // AI visibility tracking
-	"getcito",            // Open-source citation tracker
+	// --- Tier D: Early / small AEO tools ---
+	"checkthat",          // No-cold-start tracking, lead gen for GrowthX
+	"parse",              // 219K brands database, peer visibility
+	"amionai",            // Weekly action plans + The Index leaderboards
+	"limy",               // B2A revenue tracking
+	"bear-ai",            // Blog Agent for AI-optimized content
+	"getmint",            // 150K+ partner media distribution network
+	"wildcard",           // YC-backed e-commerce AI visibility
+	"showupinai",         // IndexNow integration for faster AI indexing
+	"omnia",              // AI visibility tracking, multi-language/region
+	"lorelight",          // Shutting down — public postmortem
+	"getcito",            // Open-source (MIT) citation tracker, Crawlability Clinic
 	"geo-aeo-tracker",    // Open-source self-hosted AEO dashboard, 80 GitHub stars
-	"meridian",           // AI search tracking
-	"peasy",              // AI visibility tracking
-	"flip-aeo",           // AEO tracking
-	"llmclicks",          // "Search Console for AI" — GSC integration + 120-point audit, G2 listed
-	"meikai",             // Enterprise AEO with notable luxury/finance clients (Chanel, Hennessy, AXA)
-	"citatra",            // Multi-platform tracker with one-click content publishing + GA4 attribution
+	"canonry",            // Open-source self-hosted AEO platform, server-log ingestion + MCP, 52 stars
+	"meridian",           // AI search tracking with geographic targeting
+	"peasy",              // Server-side, cookie-free AI traffic analytics
+	"flip-aeo",           // AEO tracking + optimization
+	"llmclicks",          // Search-Console-for-AI positioning — GSC integration + 120-point audit
+	"meikai",             // Enterprise AEO with luxury/finance clients (Chanel, Hennessy, AXA)
+	"citatra",            // Multi-platform tracker with one-click content publishing + GA4
 	"lumen",              // AEO tracker with ChatGPT Shopping + crawler analytics
 	"oneglanse",          // MIT-licensed self-hosted tracker capturing AI web UIs
 	"estran",             // Ecommerce AEO with ACP/UCP protocol support
 	"sitesignal",         // Hallucination detection niche, Looker Studio + white-label
 	"visiblie",           // MCP server integration + agentic workflows, SOC2
-	"airanklab",          // Unified SEO/GEO/AEO with WordPress auto-publish, claims 2000+ users
-	"cairrot",            // Affordable agency-focused AEO with Looker/Databox + WP crawl logging
-	"rankprompt",         // 6-platform tracker with hyper-local (500+ cities) + 50+ languages
+	"airanklab",          // Unified SEO/GEO/AEO with WordPress auto-publish
+	"cairrot",            // Affordable agency-focused AEO with Looker/Databox
+	"rankprompt",         // 6-platform tracker, hyper-local (500+ cities) + 50+ languages
 	"aeotool",            // Page audit tool with Chrome extension, 6-category scoring
-	"orchly",             // Unified SEO+AEO with autonomous agents, Reddit + Shopping tracking
-	"kime",               // AEO tracker with citation source percentages + Action Centre
 
 	// --- Tier F: Very new or minimal traction ---
+	"orchly",             // Unified SEO+AEO with autonomous agents
+	"temso",              // AEO tracker + content-execution agent, G2 4.8, small case studies
+	"kime",               // AEO tracker with citation source percentages + Action Centre
 	"radarkit",
 	"seozast",
+	"brandscan",          // Romania-only GEO tracker, complete product but DR 0 / minimal traction
 	"anvil",
 	"petra-labs",
 	"searchify",
