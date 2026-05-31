@@ -4,6 +4,19 @@ import MuxPlayer from "@mux/mux-player-react";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
 
+// Links to our own elmohq.com subdomains (e.g. the demo) keep the Referer so
+// the destination's analytics can attribute the visit — strip it only for
+// third-party domains.
+function externalRel(href: string): string {
+	try {
+		const { hostname } = new URL(href);
+		const sameOrg = hostname === "elmohq.com" || hostname.endsWith(".elmohq.com");
+		return sameOrg ? "noopener" : "noopener noreferrer";
+	} catch {
+		return "noopener noreferrer";
+	}
+}
+
 function PrimaryCTA({
 	to,
 	href,
@@ -30,7 +43,7 @@ function PrimaryCTA({
 			<a
 				href={href}
 				className={cls}
-				{...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+				{...(external ? { target: "_blank", rel: externalRel(href) } : {})}
 			>
 				{children}
 			</a>
@@ -65,7 +78,7 @@ function GhostCTA({
 			<a
 				href={href}
 				className={cls}
-				{...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+				{...(external ? { target: "_blank", rel: externalRel(href) } : {})}
 			>
 				{children}
 			</a>

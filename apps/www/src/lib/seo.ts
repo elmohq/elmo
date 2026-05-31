@@ -36,7 +36,7 @@ export function ogMeta({
 		{ property: "og:image", content: absoluteImage },
 		{ property: "og:image:width", content: "1200" },
 		{ property: "og:image:height", content: "630" },
-		{ property: "og:logo", content: SITE_LOGO_URL },
+		{ property: "og:image:alt", content: title },
 		{ name: "twitter:card", content: "summary_large_image" },
 		{ name: "twitter:title", content: title },
 		{ name: "twitter:description", content: description },
