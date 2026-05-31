@@ -3,19 +3,7 @@ import { ArrowUpRight, ArrowRight } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
-
-// Links to our own elmohq.com subdomains (e.g. the demo) keep the Referer so
-// the destination's analytics can attribute the visit — strip it only for
-// third-party domains.
-function externalRel(href: string): string {
-	try {
-		const { hostname } = new URL(href);
-		const sameOrg = hostname === "elmohq.com" || hostname.endsWith(".elmohq.com");
-		return sameOrg ? "noopener" : "noopener noreferrer";
-	} catch {
-		return "noopener noreferrer";
-	}
-}
+import { externalRel } from "@/lib/external-link";
 
 function PrimaryCTA({
 	to,
