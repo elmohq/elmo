@@ -31,6 +31,7 @@ const cols = [
 		links: [
 			{ label: "Vision", href: "/vision" },
 			{ label: "Brand Assets", href: "/brand" },
+			{ label: "llms.txt", href: "/llms.txt" },
 		],
 	},
 ];
