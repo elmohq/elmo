@@ -3,6 +3,7 @@ import { ArrowUpRight, ArrowRight } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
+import { externalRel } from "@/lib/external-link";
 
 function PrimaryCTA({
 	to,
@@ -30,7 +31,7 @@ function PrimaryCTA({
 			<a
 				href={href}
 				className={cls}
-				{...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+				{...(external ? { target: "_blank", rel: externalRel(href) } : {})}
 			>
 				{children}
 			</a>
@@ -65,7 +66,7 @@ function GhostCTA({
 			<a
 				href={href}
 				className={cls}
-				{...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+				{...(external ? { target: "_blank", rel: externalRel(href) } : {})}
 			>
 				{children}
 			</a>
