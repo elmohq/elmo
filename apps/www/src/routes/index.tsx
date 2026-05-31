@@ -7,11 +7,14 @@ import { Community } from "@/components/community";
 import { Pricing } from "@/components/pricing";
 import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
+import { Faq } from "@/components/faq";
+import { HOME_FAQS } from "@/lib/faqs";
 import {
 	SITE_NAME,
 	SITE_DESCRIPTION,
 	ogMeta,
 	softwareApplicationJsonLd,
+	faqJsonLd,
 	canonicalUrl,
 } from "@/lib/seo";
 
@@ -27,7 +30,7 @@ export const Route = createFileRoute("/")({
 			}),
 		],
 		links: [{ rel: "canonical", href: canonicalUrl("/") }],
-		scripts: [softwareApplicationJsonLd()],
+		scripts: [softwareApplicationJsonLd(), faqJsonLd(HOME_FAQS)],
 	}),
 	component: HomePage,
 });
@@ -42,6 +45,7 @@ function HomePage() {
 				<Features />
 				<Community />
 				<Pricing />
+				<Faq items={HOME_FAQS} eyebrow="/ FAQ" />
 				<CTA />
 			</main>
 			<Footer />

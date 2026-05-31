@@ -28,7 +28,7 @@ Elmo is Answer Engine Optimization (AEO), also called generative engine optimiza
 
 ## Resources
 
-- [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools): Compare 70+ AI visibility and Answer Engine Optimization tools, with a feature matrix, pricing, and head-to-head comparisons with Elmo.
+- [AI Visibility Tool Directory](https://www.elmohq.com/ai-visibility-tools): Compare 100+ AI visibility and Answer Engine Optimization tools, with a feature matrix, pricing, and head-to-head comparisons with Elmo.
 - [Changelog](https://www.elmohq.com/changelog): Recent releases, improvements, and bug fixes.
 - [Roadmap](https://www.elmohq.com/roadmap): What's coming next, prioritized in the open on GitHub.
 - [Provider Status](https://www.elmohq.com/status): Real-time status and performance monitoring for AI answer engine integrations.
