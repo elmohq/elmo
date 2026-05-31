@@ -157,6 +157,11 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 	});
 }
 
+/**
+ * FAQPage schema — the question/answer pairs an answer engine is most likely to
+ * lift verbatim. Pair it with a visibly rendered FAQ (the <Faq> component, or
+ * the blog FAQ block) so the markup and the content stay in sync.
+ */
 export function faqJsonLd(items: { question: string; answer: string }[]) {
 	return jsonLd({
 		"@type": "FAQPage",
@@ -171,14 +176,76 @@ export function faqJsonLd(items: { question: string; answer: string }[]) {
 	});
 }
 
-export function itemListJsonLd(items: { name: string; path: string }[]) {
+/**
+ * ItemList schema for roundup/listicle and directory pages. Provide `path` for a
+ * site-relative item (canonicalized here) or `url` for an absolute one (e.g. an
+ * external vendor); `description` is optional.
+ */
+export function itemListJsonLd(items: { name: string; path?: string; url?: string; description?: string }[]) {
 	return jsonLd({
 		"@type": "ItemList",
 		itemListElement: items.map((item, index) => ({
 			"@type": "ListItem",
 			position: index + 1,
 			name: item.name,
-			url: canonicalUrl(item.path),
+			...(item.path
+				? { url: canonicalUrl(item.path) }
+				: item.url
+					? { url: item.url.startsWith("http") ? item.url : canonicalUrl(item.url) }
+					: {}),
+			...(item.description ? { description: item.description } : {}),
+		})),
+	});
+}
+
+/**
+ * DefinedTermSet schema for the glossary. Each term is a DefinedTerm; `url` is
+ * an optional "see also" target (canonicalized when site-relative).
+ */
+export function definedTermSetJsonLd({
+	name,
+	description,
+	path,
+	terms,
+}: {
+	name: string;
+	description?: string;
+	path?: string;
+	terms: { term: string; definition: string; url?: string }[];
+}) {
+	return jsonLd({
+		"@type": "DefinedTermSet",
+		name,
+		...(description ? { description } : {}),
+		...(path ? { url: canonicalUrl(path) } : {}),
+		hasDefinedTerm: terms.map((t) => ({
+			"@type": "DefinedTerm",
+			name: t.term,
+			description: t.definition,
+			...(t.url ? { url: t.url.startsWith("http") ? t.url : canonicalUrl(t.url) } : {}),
+		})),
+	});
+}
+
+/** HowTo schema for step-by-step guides (e.g. tracking a brand in AI search). */
+export function howToJsonLd({
+	name,
+	description,
+	steps,
+}: {
+	name: string;
+	description?: string;
+	steps: { name: string; text: string }[];
+}) {
+	return jsonLd({
+		"@type": "HowTo",
+		name,
+		...(description ? { description } : {}),
+		step: steps.map((step, index) => ({
+			"@type": "HowToStep",
+			position: index + 1,
+			name: step.name,
+			text: step.text,
 		})),
 	});
 }

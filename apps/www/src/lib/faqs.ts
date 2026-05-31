@@ -85,4 +85,14 @@ export const DIRECTORY_FAQS: FaqItem[] = [
 		answer:
 			"Yes. Elmo is an open-source, self-hostable AI visibility platform. You can run it on your own infrastructure for free, audit exactly how each metric is calculated, and export your data at any time.",
 	},
+	{
+		question: "How does AI visibility tracking work?",
+		answer:
+			"AI visibility tracking works by running a defined set of prompts across AI engines on a schedule, then recording whether each answer mentions your brand, cites your site, and how it describes you. Sampling over time reveals trends a one-off check would miss.",
+	},
+	{
+		question: "Can you track brand mentions in ChatGPT?",
+		answer:
+			"Yes. AI visibility software queries ChatGPT with your prompts and records whether it mentions or cites your brand. Because answers vary between runs, tracking a consistent prompt set on a schedule gives a far more reliable read than a single manual check.",
+	},
 ];

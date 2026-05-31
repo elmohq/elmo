@@ -28,6 +28,31 @@ export const blog = defineDocs({
 				.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value)),
 			author: z.string(),
 			tags: z.array(z.string()).optional(),
+			// Optional SEO <title> override. The post `title` is the on-page H1;
+			// when these diverge (e.g. a tighter, click-worthy ≤60-char title)
+			// set this. Falls back to `${title} · Elmo` when omitted.
+			metaTitle: z.string().optional(),
+			// FAQ pairs rendered at the foot of the post AND emitted as FAQPage
+			// JSON-LD — one source of truth for the markup an answer engine lifts.
+			faq: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+			// Emits ItemList JSON-LD for roundup/listicle posts. `url` may be an
+			// absolute vendor URL or a site-relative path.
+			itemList: z
+				.array(z.object({ name: z.string(), url: z.string().optional(), description: z.string().optional() }))
+				.optional(),
+			// Emits DefinedTermSet JSON-LD for the glossary. `href` is an optional
+			// "see also" link for the term.
+			definedTerms: z
+				.array(z.object({ term: z.string(), definition: z.string(), href: z.string().optional() }))
+				.optional(),
+			// Emits HowTo JSON-LD for step-by-step guides.
+			howTo: z
+				.object({
+					name: z.string().optional(),
+					description: z.string().optional(),
+					steps: z.array(z.object({ name: z.string(), text: z.string() })),
+				})
+				.optional(),
 		}),
 	},
 });
