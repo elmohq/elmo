@@ -2,11 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { ArrowRight } from "lucide-react";
 
-export interface HubFaqItem {
-	question: string;
-	answer: string;
-}
-
 const LINK = "font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900";
 
 function Eyebrow({ num, label }: { num: string; label: string }) {
@@ -44,7 +39,7 @@ const FEATURES = [
 	},
 ];
 
-export function AiVisibilitySoftwareHub({ faqs }: { faqs: HubFaqItem[] }) {
+export function AiVisibilitySoftwareHub() {
 	return (
 		<>
 			{/* Hero */}
@@ -201,29 +196,11 @@ export function AiVisibilitySoftwareHub({ faqs }: { faqs: HubFaqItem[] }) {
 				</div>
 			</section>
 
-			{/* FAQ */}
-			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
-				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<div className="max-w-3xl">
-						<Eyebrow num="05" label="FAQ" />
-						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Frequently asked questions</h2>
-						<dl className="mt-8 space-y-8">
-							{faqs.map((faq) => (
-								<div key={faq.question}>
-									<dt className="text-lg font-semibold text-zinc-950">{faq.question}</dt>
-									<dd className="mt-2 text-[1.0625rem] leading-relaxed text-zinc-600">{faq.answer}</dd>
-								</div>
-							))}
-						</dl>
-					</div>
-				</div>
-			</section>
-
 			{/* Directory lead-in */}
 			<section className="border-b border-zinc-200 bg-zinc-50 pt-12 lg:pt-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
 					<div className="max-w-3xl">
-						<Eyebrow num="06" label="COMPARE" />
+						<Eyebrow num="05" label="COMPARE" />
 						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Compare every AI visibility tool</h2>
 						<p className="mt-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							Browse the full directory of AI visibility and answer engine optimization tools below, with a

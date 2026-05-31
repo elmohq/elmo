@@ -7,7 +7,7 @@ import {
 	breadcrumbJsonLd,
 	canonicalUrl,
 	definedTermSetJsonLd,
-	faqPageJsonLd,
+	faqJsonLd,
 	howToJsonLd,
 	itemListJsonLd,
 	ogMeta,
@@ -79,7 +79,7 @@ export const Route = createFileRoute("/blog/$")({
 					{ name: "Blog", path: "/blog" },
 					{ name: title, path },
 				]),
-				...(faq && faq.length > 0 ? [faqPageJsonLd(faq)] : []),
+				...(faq && faq.length > 0 ? [faqJsonLd(faq)] : []),
 				...(itemList && itemList.length > 0 ? [itemListJsonLd(itemList)] : []),
 				...(definedTerms && definedTerms.length > 0
 					? [

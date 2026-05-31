@@ -1,5 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "./logo";
+import { externalRel } from "@/lib/external-link";
+
+// Our parent company. externalRel keeps the Referer (bluewhale.dev is owned);
+// the ?ref=elmo param is a belt-and-suspenders fallback.
+const BLUEWHALE_URL = "https://bluewhale.dev?ref=elmo";
 
 const cols = [
 	{
@@ -31,6 +36,7 @@ const cols = [
 		links: [
 			{ label: "Vision", href: "/vision" },
 			{ label: "Brand Assets", href: "/brand" },
+			{ label: "llms.txt", href: "/llms.txt" },
 		],
 	},
 ];
@@ -68,7 +74,7 @@ export function Footer() {
 												<a
 													href={link.href}
 													target="_blank"
-													rel="noopener noreferrer"
+													rel={externalRel(link.href)}
 													className="hover:text-zinc-950 hover:underline"
 												>
 													{link.label}
@@ -104,9 +110,9 @@ export function Footer() {
 					<p className="font-mono text-[11px] text-zinc-500">
 						&copy; {new Date().getFullYear()}{" "}
 						<a
-							href="https://bluewhale.dev?ref=elmo"
+							href={BLUEWHALE_URL}
 							target="_blank"
-							rel="noopener noreferrer"
+							rel={externalRel(BLUEWHALE_URL)}
 							className="hover:text-zinc-900 hover:underline"
 						>
 							Blue Whale Software, LLC

@@ -36,7 +36,7 @@ export function ogMeta({
 		{ property: "og:image", content: absoluteImage },
 		{ property: "og:image:width", content: "1200" },
 		{ property: "og:image:height", content: "630" },
-		{ property: "og:logo", content: SITE_LOGO_URL },
+		{ property: "og:image:alt", content: title },
 		{ name: "twitter:card", content: "summary_large_image" },
 		{ name: "twitter:title", content: title },
 		{ name: "twitter:description", content: description },
@@ -69,7 +69,17 @@ export function organizationJsonLd() {
 		name: SITE_NAME,
 		url: SITE_URL,
 		logo: SITE_LOGO_URL,
-		sameAs: ["https://github.com/elmohq/elmo"],
+		sameAs: [
+			"https://github.com/elmohq/elmo",
+			"https://x.com/tryelmo",
+			"https://www.linkedin.com/company/elmohq",
+			"https://discord.gg/s24nubCtKz",
+		],
+		parentOrganization: {
+			"@type": "Organization",
+			name: "Blue Whale Software, LLC",
+			url: "https://bluewhale.dev",
+		},
 	});
 }
 
@@ -149,33 +159,40 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 
 /**
  * FAQPage schema — the question/answer pairs an answer engine is most likely to
- * lift verbatim. Pair it with a visibly rendered FAQ on the page so the markup
- * and the content stay in sync.
+ * lift verbatim. Pair it with a visibly rendered FAQ (the <Faq> component, or
+ * the blog FAQ block) so the markup and the content stay in sync.
  */
-export function faqPageJsonLd(items: { question: string; answer: string }[]) {
+export function faqJsonLd(items: { question: string; answer: string }[]) {
 	return jsonLd({
 		"@type": "FAQPage",
 		mainEntity: items.map((item) => ({
 			"@type": "Question",
 			name: item.question,
-			acceptedAnswer: { "@type": "Answer", text: item.answer },
+			acceptedAnswer: {
+				"@type": "Answer",
+				text: item.answer,
+			},
 		})),
 	});
 }
 
 /**
- * ItemList schema for roundup/listicle pages (the tool and AI-search-engine
- * comparisons). `url` may be absolute (an external vendor) or site-relative
- * (canonicalized here).
+ * ItemList schema for roundup/listicle and directory pages. Provide `path` for a
+ * site-relative item (canonicalized here) or `url` for an absolute one (e.g. an
+ * external vendor); `description` is optional.
  */
-export function itemListJsonLd(items: { name: string; url?: string; description?: string }[]) {
+export function itemListJsonLd(items: { name: string; path?: string; url?: string; description?: string }[]) {
 	return jsonLd({
 		"@type": "ItemList",
 		itemListElement: items.map((item, index) => ({
 			"@type": "ListItem",
 			position: index + 1,
 			name: item.name,
-			...(item.url ? { url: item.url.startsWith("http") ? item.url : canonicalUrl(item.url) } : {}),
+			...(item.path
+				? { url: canonicalUrl(item.path) }
+				: item.url
+					? { url: item.url.startsWith("http") ? item.url : canonicalUrl(item.url) }
+					: {}),
 			...(item.description ? { description: item.description } : {}),
 		})),
 	});
