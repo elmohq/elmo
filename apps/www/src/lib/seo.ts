@@ -69,7 +69,17 @@ export function organizationJsonLd() {
 		name: SITE_NAME,
 		url: SITE_URL,
 		logo: SITE_LOGO_URL,
-		sameAs: ["https://github.com/elmohq/elmo"],
+		sameAs: [
+			"https://github.com/elmohq/elmo",
+			"https://x.com/tryelmo",
+			"https://www.linkedin.com/company/elmohq",
+			"https://discord.gg/s24nubCtKz",
+		],
+		parentOrganization: {
+			"@type": "Organization",
+			name: "Blue Whale Software, LLC",
+			url: "https://bluewhale.dev",
+		},
 	});
 }
 
@@ -143,6 +153,32 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 			position: index + 1,
 			name: item.name,
 			item: canonicalUrl(item.path),
+		})),
+	});
+}
+
+export function faqJsonLd(items: { question: string; answer: string }[]) {
+	return jsonLd({
+		"@type": "FAQPage",
+		mainEntity: items.map((item) => ({
+			"@type": "Question",
+			name: item.question,
+			acceptedAnswer: {
+				"@type": "Answer",
+				text: item.answer,
+			},
+		})),
+	});
+}
+
+export function itemListJsonLd(items: { name: string; path: string }[]) {
+	return jsonLd({
+		"@type": "ItemList",
+		itemListElement: items.map((item, index) => ({
+			"@type": "ListItem",
+			position: index + 1,
+			name: item.name,
+			url: canonicalUrl(item.path),
 		})),
 	});
 }

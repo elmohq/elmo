@@ -23,3 +23,5 @@ export {
 	getPopularityRank,
 	getPopularityGrade,
 } from "./data";
+
+export { getComparisonFaqs, getComparisonVerdict } from "./content";
