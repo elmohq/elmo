@@ -13,7 +13,7 @@ import { AuthorByline } from "@/components/author-byline";
 import { Footer } from "@/components/footer";
 import { getMDXComponents } from "@/components/mdx";
 import { Navbar } from "@/components/navbar";
-import type { BlogPostLoaderData } from "@/routes/blog/$";
+import type { BlogPostFaqItem, BlogPostLoaderData } from "@/routes/blog/$";
 
 function isElmoHref(href: string): boolean {
 	if (href.startsWith("/") || href.startsWith("#")) return true;
@@ -48,6 +48,23 @@ export const clientLoader = browserCollections.blog.createClientLoader({
 	},
 });
 
+// Rendered from frontmatter `faq` so the visible Q&A and the FAQPage JSON-LD
+// (emitted in routes/blog/$.tsx) come from one source. Questions are h3s so
+// they nest under the post's h2 outline and pick up prose styling.
+function PostFaq({ items }: { items: BlogPostFaqItem[] }) {
+	return (
+		<section className="mt-14">
+			<h2 id="faq">Frequently asked questions</h2>
+			{items.map((item) => (
+				<div key={item.question}>
+					<h3>{item.question}</h3>
+					<p>{item.answer}</p>
+				</div>
+			))}
+		</section>
+	);
+}
+
 export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 	return (
 		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }}>
@@ -68,6 +85,7 @@ export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 							<AuthorByline author={data.author} date={data.date} />
 						</div>
 						<Suspense>{clientLoader.useContent(data.path)}</Suspense>
+						{data.faq && data.faq.length > 0 && <PostFaq items={data.faq} />}
 					</article>
 				</main>
 				<Footer />

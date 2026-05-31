@@ -146,3 +146,89 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
 		})),
 	});
 }
+
+/**
+ * FAQPage schema — the question/answer pairs an answer engine is most likely to
+ * lift verbatim. Pair it with a visibly rendered FAQ on the page so the markup
+ * and the content stay in sync.
+ */
+export function faqPageJsonLd(items: { question: string; answer: string }[]) {
+	return jsonLd({
+		"@type": "FAQPage",
+		mainEntity: items.map((item) => ({
+			"@type": "Question",
+			name: item.question,
+			acceptedAnswer: { "@type": "Answer", text: item.answer },
+		})),
+	});
+}
+
+/**
+ * ItemList schema for roundup/listicle pages (the tool and AI-search-engine
+ * comparisons). `url` may be absolute (an external vendor) or site-relative
+ * (canonicalized here).
+ */
+export function itemListJsonLd(items: { name: string; url?: string; description?: string }[]) {
+	return jsonLd({
+		"@type": "ItemList",
+		itemListElement: items.map((item, index) => ({
+			"@type": "ListItem",
+			position: index + 1,
+			name: item.name,
+			...(item.url ? { url: item.url.startsWith("http") ? item.url : canonicalUrl(item.url) } : {}),
+			...(item.description ? { description: item.description } : {}),
+		})),
+	});
+}
+
+/**
+ * DefinedTermSet schema for the glossary. Each term is a DefinedTerm; `url` is
+ * an optional "see also" target (canonicalized when site-relative).
+ */
+export function definedTermSetJsonLd({
+	name,
+	description,
+	path,
+	terms,
+}: {
+	name: string;
+	description?: string;
+	path?: string;
+	terms: { term: string; definition: string; url?: string }[];
+}) {
+	return jsonLd({
+		"@type": "DefinedTermSet",
+		name,
+		...(description ? { description } : {}),
+		...(path ? { url: canonicalUrl(path) } : {}),
+		hasDefinedTerm: terms.map((t) => ({
+			"@type": "DefinedTerm",
+			name: t.term,
+			description: t.definition,
+			...(t.url ? { url: t.url.startsWith("http") ? t.url : canonicalUrl(t.url) } : {}),
+		})),
+	});
+}
+
+/** HowTo schema for step-by-step guides (e.g. tracking a brand in AI search). */
+export function howToJsonLd({
+	name,
+	description,
+	steps,
+}: {
+	name: string;
+	description?: string;
+	steps: { name: string; text: string }[];
+}) {
+	return jsonLd({
+		"@type": "HowTo",
+		name,
+		...(description ? { description } : {}),
+		step: steps.map((step, index) => ({
+			"@type": "HowToStep",
+			position: index + 1,
+			name: step.name,
+			text: step.text,
+		})),
+	});
+}
