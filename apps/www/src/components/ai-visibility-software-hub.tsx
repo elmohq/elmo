@@ -39,43 +39,11 @@ const FEATURES = [
 	},
 ];
 
+// Rendered below the comparison directory on /ai-visibility-tools as numbered
+// sections — the directory provides the page hero and H1.
 export function AiVisibilitySoftwareHub() {
 	return (
 		<>
-			{/* Hero */}
-			<section className="relative overflow-hidden border-b border-zinc-200 bg-white py-16 lg:py-24">
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
-				/>
-				<div className="relative mx-auto max-w-6xl px-4 md:px-6">
-					<div className="max-w-3xl">
-						<p className="mb-4 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ AI VISIBILITY SOFTWARE
-						</p>
-						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl lg:text-6xl">
-							AI Visibility Software
-						</h1>
-						<p className="mt-6 max-w-2xl text-lg text-balance text-zinc-600 md:text-xl">
-							AI visibility software tracks how your brand appears in AI search — how often it is mentioned, cited, and
-							accurately described across ChatGPT, Perplexity, Gemini, and Google AI Overviews. It turns an invisible
-							new channel into something you can measure and improve.
-						</p>
-						<div className="mt-8 flex flex-wrap gap-3">
-							<Button asChild size="sm">
-								<a href="/blog/best-ai-visibility-tools">
-									Compare the best tools
-									<ArrowRight className="size-3.5" />
-								</a>
-							</Button>
-							<Button asChild variant="outline" size="sm">
-								<Link to="/docs">Get started with Elmo</Link>
-							</Button>
-						</div>
-					</div>
-				</div>
-			</section>
-
 			{/* What it does */}
 			<section className="border-b border-zinc-200 bg-white py-12 lg:py-20">
 				<div className="mx-auto max-w-6xl px-4 md:px-6">
@@ -84,13 +52,15 @@ export function AiVisibilitySoftwareHub() {
 						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">What AI visibility software does</h2>
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
-								AI visibility software answers a question traditional analytics can't: when someone asks an AI engine
-								about your category, does it mention you — and is it right? Instead of tracking rankings on a results
-								page, it samples the answers themselves.
+								AI visibility software tracks how your brand appears in AI search — how often it's mentioned, cited, and
+								accurately described across ChatGPT, Perplexity, Gemini, and Google AI Overviews. It answers a question
+								traditional analytics can't: when someone asks an AI engine about your category, does it mention you —
+								and is it right?
 							</p>
 							<p>
-								In practice, that means running a defined set of prompts across multiple AI engines on a schedule and
-								recording what comes back: whether your brand is mentioned, whether it's{" "}
+								Instead of tracking rankings on a results page, it samples the answers themselves — running a defined
+								set of prompts across multiple AI engines on a schedule and recording what comes back: whether your
+								brand is mentioned, whether it's{" "}
 								<a className={LINK} href="/blog/ai-citations">
 									cited with a link
 								</a>
@@ -192,20 +162,6 @@ export function AiVisibilitySoftwareHub() {
 								</a>
 							</Button>
 						</div>
-					</div>
-				</div>
-			</section>
-
-			{/* Directory lead-in */}
-			<section className="border-b border-zinc-200 bg-zinc-50 pt-12 lg:pt-20">
-				<div className="mx-auto max-w-6xl px-4 md:px-6">
-					<div className="max-w-3xl">
-						<Eyebrow num="05" label="COMPARE" />
-						<h2 className="font-heading mt-3 text-3xl text-zinc-950 md:text-4xl">Compare every AI visibility tool</h2>
-						<p className="mt-6 text-[1.0625rem] leading-relaxed text-zinc-600">
-							Browse the full directory of AI visibility and answer engine optimization tools below, with a
-							feature-by-feature matrix and head-to-head comparisons against Elmo.
-						</p>
 					</div>
 				</div>
 			</section>

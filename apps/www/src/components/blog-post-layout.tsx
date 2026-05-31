@@ -79,7 +79,7 @@ export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 						Blog
 					</a>
 					<article className="prose mt-8 max-w-none">
-						<h1 className="mb-3">{data.title}</h1>
+						<h1 className="mb-3 text-balance">{data.title}</h1>
 						{data.description && <p className="lead mt-0 text-zinc-600">{data.description}</p>}
 						<div className="not-prose mb-10 mt-6 border-b border-zinc-200 pb-8">
 							<AuthorByline author={data.author} date={data.date} />
