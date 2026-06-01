@@ -25,3 +25,32 @@ export {
 } from "./data";
 
 export { getComparisonFaqs, getComparisonVerdict } from "./content";
+
+export {
+	isIndexed,
+	indexedCompetitors,
+	getAlternatives,
+	comparePairCompetitors,
+	comparePairs,
+	comparePairSlug,
+	getComparePair,
+	FEATURE_SLUGS,
+	getFeatureKeyBySlug,
+	toolsWithFeature,
+	indexableFeatureKeys,
+	MIN_TOOLS_FOR_FEATURE_PAGE,
+	CATEGORY_SLUGS,
+	CATEGORY_HEADINGS,
+	getCategoryBySlug,
+	toolsInCategory,
+	indexableCategories,
+	openSourceTools,
+	getAlternativesVerdict,
+	getAlternativesFaqs,
+	getPairVerdict,
+	getPairFaqs,
+	getFeatureVerdict,
+	getFeatureFaqs,
+	getCategoryVerdict,
+	getCategoryFaqs,
+} from "./directory";
