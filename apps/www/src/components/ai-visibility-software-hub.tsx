@@ -81,7 +81,7 @@ export function AiVisibilitySoftwareHub() {
 						<div className="mt-8 space-y-6 text-[1.0625rem] leading-relaxed text-zinc-600">
 							<p>
 								Search is shifting from a list of blue links to a synthesized answer. Google now shows{" "}
-								<a className={LINK} href="/blog/google-ai-overviews">
+								<a className={LINK} href="/ai-search/google-ai-overviews">
 									AI Overviews
 								</a>{" "}
 								above the results for many queries, and tools like Perplexity and ChatGPT Search resolve questions

@@ -4,7 +4,7 @@ import type { Competitor, CompetitorCategory } from "./types";
 // Prose-friendly category nouns (acronyms kept uppercase, descriptive words
 // lowercased) so they read naturally mid-sentence — e.g. "an AI visibility
 // tracking tool", "a traditional SEO tool".
-const CATEGORY_NOUN: Record<CompetitorCategory, string> = {
+export const CATEGORY_NOUN: Record<CompetitorCategory, string> = {
 	tracking: "AI visibility tracking",
 	content: "content generation",
 	"api-developer": "developer API",
@@ -14,11 +14,11 @@ const CATEGORY_NOUN: Record<CompetitorCategory, string> = {
 	other: "AI visibility",
 };
 
-function indefiniteArticle(phrase: string): "a" | "an" {
+export function indefiniteArticle(phrase: string): "a" | "an" {
 	return /^[aeiou]/i.test(phrase) ? "an" : "a";
 }
 
-function isOpenSource(competitor: Competitor): boolean {
+export function isOpenSource(competitor: Competitor): boolean {
 	return (
 		(competitor.features.openSource ?? false) ||
 		competitor.category === "open-source"

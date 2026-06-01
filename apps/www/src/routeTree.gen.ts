@@ -22,17 +22,32 @@ import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GlossaryIndexRouteImport } from './routes/glossary/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as BlogIndexRouteImport } from './routes/blog/index'
 import { Route as AiVisibilityToolsIndexRouteImport } from './routes/ai-visibility-tools/index'
+import { Route as AiSearchIndexRouteImport } from './routes/ai-search/index'
+import { Route as AeoForIndexRouteImport } from './routes/aeo-for/index'
+import { Route as GlossarySlugRouteImport } from './routes/glossary/$slug'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
+import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
+import { Route as AeoForSlugRouteImport } from './routes/aeo-for/$slug'
+import { Route as AiVisibilityToolsFeaturesIndexRouteImport } from './routes/ai-visibility-tools/features/index'
+import { Route as AiVisibilityToolsCompareIndexRouteImport } from './routes/ai-visibility-tools/compare/index'
+import { Route as AiVisibilityToolsCategoryIndexRouteImport } from './routes/ai-visibility-tools/category/index'
+import { Route as AiVisibilityToolsAlternativesIndexRouteImport } from './routes/ai-visibility-tools/alternatives/index'
 import { Route as OgDocsSplatRouteImport } from './routes/og/docs/$'
 import { Route as LlmsDotmdxDocsSplatRouteImport } from './routes/llms[.]mdx.docs.$'
+import { Route as AiVisibilityToolsFeaturesSlugRouteImport } from './routes/ai-visibility-tools/features/$slug'
+import { Route as AiVisibilityToolsCompareSlugRouteImport } from './routes/ai-visibility-tools/compare/$slug'
+import { Route as AiVisibilityToolsCategoryOpenSourceRouteImport } from './routes/ai-visibility-tools/category/open-source'
+import { Route as AiVisibilityToolsCategorySlugRouteImport } from './routes/ai-visibility-tools/category/$slug'
+import { Route as AiVisibilityToolsAlternativesSlugRouteImport } from './routes/ai-visibility-tools/alternatives/$slug'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
 import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plausible/js/script/index'
 
@@ -101,6 +116,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GlossaryIndexRoute = GlossaryIndexRouteImport.update({
+  id: '/glossary/',
+  path: '/glossary/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsIndexRoute = DocsIndexRouteImport.update({
   id: '/docs/',
   path: '/docs/',
@@ -114,6 +134,21 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
 const AiVisibilityToolsIndexRoute = AiVisibilityToolsIndexRouteImport.update({
   id: '/ai-visibility-tools/',
   path: '/ai-visibility-tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiSearchIndexRoute = AiSearchIndexRouteImport.update({
+  id: '/ai-search/',
+  path: '/ai-search/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AeoForIndexRoute = AeoForIndexRouteImport.update({
+  id: '/aeo-for/',
+  path: '/aeo-for/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GlossarySlugRoute = GlossarySlugRouteImport.update({
+  id: '/glossary/$slug',
+  path: '/glossary/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsSplatRoute = DocsSplatRouteImport.update({
@@ -146,6 +181,40 @@ const AiVisibilityToolsSlugRoute = AiVisibilityToolsSlugRouteImport.update({
   path: '/ai-visibility-tools/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiSearchSlugRoute = AiSearchSlugRouteImport.update({
+  id: '/ai-search/$slug',
+  path: '/ai-search/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AeoForSlugRoute = AeoForSlugRouteImport.update({
+  id: '/aeo-for/$slug',
+  path: '/aeo-for/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiVisibilityToolsFeaturesIndexRoute =
+  AiVisibilityToolsFeaturesIndexRouteImport.update({
+    id: '/ai-visibility-tools/features/',
+    path: '/ai-visibility-tools/features/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsCompareIndexRoute =
+  AiVisibilityToolsCompareIndexRouteImport.update({
+    id: '/ai-visibility-tools/compare/',
+    path: '/ai-visibility-tools/compare/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsCategoryIndexRoute =
+  AiVisibilityToolsCategoryIndexRouteImport.update({
+    id: '/ai-visibility-tools/category/',
+    path: '/ai-visibility-tools/category/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsAlternativesIndexRoute =
+  AiVisibilityToolsAlternativesIndexRouteImport.update({
+    id: '/ai-visibility-tools/alternatives/',
+    path: '/ai-visibility-tools/alternatives/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const OgDocsSplatRoute = OgDocsSplatRouteImport.update({
   id: '/og/docs/$',
   path: '/og/docs/$',
@@ -156,6 +225,36 @@ const LlmsDotmdxDocsSplatRoute = LlmsDotmdxDocsSplatRouteImport.update({
   path: '/llms.mdx/docs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiVisibilityToolsFeaturesSlugRoute =
+  AiVisibilityToolsFeaturesSlugRouteImport.update({
+    id: '/ai-visibility-tools/features/$slug',
+    path: '/ai-visibility-tools/features/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsCompareSlugRoute =
+  AiVisibilityToolsCompareSlugRouteImport.update({
+    id: '/ai-visibility-tools/compare/$slug',
+    path: '/ai-visibility-tools/compare/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsCategoryOpenSourceRoute =
+  AiVisibilityToolsCategoryOpenSourceRouteImport.update({
+    id: '/ai-visibility-tools/category/open-source',
+    path: '/ai-visibility-tools/category/open-source',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsCategorySlugRoute =
+  AiVisibilityToolsCategorySlugRouteImport.update({
+    id: '/ai-visibility-tools/category/$slug',
+    path: '/ai-visibility-tools/category/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AiVisibilityToolsAlternativesSlugRoute =
+  AiVisibilityToolsAlternativesSlugRouteImport.update({
+    id: '/ai-visibility-tools/alternatives/$slug',
+    path: '/ai-visibility-tools/alternatives/$slug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlausibleEventIndexRoute = ApiPlausibleEventIndexRouteImport.update({
   id: '/api/plausible/event/',
   path: '/api/plausible/event/',
@@ -182,17 +281,32 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
+  '/aeo-for/$slug': typeof AeoForSlugRoute
+  '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
+  '/glossary/$slug': typeof GlossarySlugRoute
+  '/aeo-for/': typeof AeoForIndexRoute
+  '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/glossary/': typeof GlossaryIndexRoute
+  '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
+  '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
+  '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
+  '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
+  '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
+  '/ai-visibility-tools/alternatives/': typeof AiVisibilityToolsAlternativesIndexRoute
+  '/ai-visibility-tools/category/': typeof AiVisibilityToolsCategoryIndexRoute
+  '/ai-visibility-tools/compare/': typeof AiVisibilityToolsCompareIndexRoute
+  '/ai-visibility-tools/features/': typeof AiVisibilityToolsFeaturesIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -210,17 +324,32 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
+  '/aeo-for/$slug': typeof AeoForSlugRoute
+  '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
+  '/glossary/$slug': typeof GlossarySlugRoute
+  '/aeo-for': typeof AeoForIndexRoute
+  '/ai-search': typeof AiSearchIndexRoute
   '/ai-visibility-tools': typeof AiVisibilityToolsIndexRoute
   '/blog': typeof BlogIndexRoute
   '/docs': typeof DocsIndexRoute
+  '/glossary': typeof GlossaryIndexRoute
+  '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
+  '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
+  '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
+  '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
+  '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
+  '/ai-visibility-tools/alternatives': typeof AiVisibilityToolsAlternativesIndexRoute
+  '/ai-visibility-tools/category': typeof AiVisibilityToolsCategoryIndexRoute
+  '/ai-visibility-tools/compare': typeof AiVisibilityToolsCompareIndexRoute
+  '/ai-visibility-tools/features': typeof AiVisibilityToolsFeaturesIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -239,17 +368,32 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/status': typeof StatusRoute
   '/vision': typeof VisionRoute
+  '/aeo-for/$slug': typeof AeoForSlugRoute
+  '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
   '/docs/$': typeof DocsSplatRoute
+  '/glossary/$slug': typeof GlossarySlugRoute
+  '/aeo-for/': typeof AeoForIndexRoute
+  '/ai-search/': typeof AiSearchIndexRoute
   '/ai-visibility-tools/': typeof AiVisibilityToolsIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/docs/': typeof DocsIndexRoute
+  '/glossary/': typeof GlossaryIndexRoute
+  '/ai-visibility-tools/alternatives/$slug': typeof AiVisibilityToolsAlternativesSlugRoute
+  '/ai-visibility-tools/category/$slug': typeof AiVisibilityToolsCategorySlugRoute
+  '/ai-visibility-tools/category/open-source': typeof AiVisibilityToolsCategoryOpenSourceRoute
+  '/ai-visibility-tools/compare/$slug': typeof AiVisibilityToolsCompareSlugRoute
+  '/ai-visibility-tools/features/$slug': typeof AiVisibilityToolsFeaturesSlugRoute
   '/llms.mdx/docs/$': typeof LlmsDotmdxDocsSplatRoute
   '/og/docs/$': typeof OgDocsSplatRoute
+  '/ai-visibility-tools/alternatives/': typeof AiVisibilityToolsAlternativesIndexRoute
+  '/ai-visibility-tools/category/': typeof AiVisibilityToolsCategoryIndexRoute
+  '/ai-visibility-tools/compare/': typeof AiVisibilityToolsCompareIndexRoute
+  '/ai-visibility-tools/features/': typeof AiVisibilityToolsFeaturesIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -269,17 +413,32 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/status'
     | '/vision'
+    | '/aeo-for/$slug'
+    | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
     | '/docs/$'
+    | '/glossary/$slug'
+    | '/aeo-for/'
+    | '/ai-search/'
     | '/ai-visibility-tools/'
     | '/blog/'
     | '/docs/'
+    | '/glossary/'
+    | '/ai-visibility-tools/alternatives/$slug'
+    | '/ai-visibility-tools/category/$slug'
+    | '/ai-visibility-tools/category/open-source'
+    | '/ai-visibility-tools/compare/$slug'
+    | '/ai-visibility-tools/features/$slug'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
+    | '/ai-visibility-tools/alternatives/'
+    | '/ai-visibility-tools/category/'
+    | '/ai-visibility-tools/compare/'
+    | '/ai-visibility-tools/features/'
     | '/api/plausible/event/'
     | '/api/plausible/js/script/'
   fileRoutesByTo: FileRoutesByTo
@@ -297,17 +456,32 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/status'
     | '/vision'
+    | '/aeo-for/$slug'
+    | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
     | '/docs/$'
+    | '/glossary/$slug'
+    | '/aeo-for'
+    | '/ai-search'
     | '/ai-visibility-tools'
     | '/blog'
     | '/docs'
+    | '/glossary'
+    | '/ai-visibility-tools/alternatives/$slug'
+    | '/ai-visibility-tools/category/$slug'
+    | '/ai-visibility-tools/category/open-source'
+    | '/ai-visibility-tools/compare/$slug'
+    | '/ai-visibility-tools/features/$slug'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
+    | '/ai-visibility-tools/alternatives'
+    | '/ai-visibility-tools/category'
+    | '/ai-visibility-tools/compare'
+    | '/ai-visibility-tools/features'
     | '/api/plausible/event'
     | '/api/plausible/js/script'
   id:
@@ -325,17 +499,32 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/status'
     | '/vision'
+    | '/aeo-for/$slug'
+    | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
     | '/docs/$'
+    | '/glossary/$slug'
+    | '/aeo-for/'
+    | '/ai-search/'
     | '/ai-visibility-tools/'
     | '/blog/'
     | '/docs/'
+    | '/glossary/'
+    | '/ai-visibility-tools/alternatives/$slug'
+    | '/ai-visibility-tools/category/$slug'
+    | '/ai-visibility-tools/category/open-source'
+    | '/ai-visibility-tools/compare/$slug'
+    | '/ai-visibility-tools/features/$slug'
     | '/llms.mdx/docs/$'
     | '/og/docs/$'
+    | '/ai-visibility-tools/alternatives/'
+    | '/ai-visibility-tools/category/'
+    | '/ai-visibility-tools/compare/'
+    | '/ai-visibility-tools/features/'
     | '/api/plausible/event/'
     | '/api/plausible/js/script/'
   fileRoutesById: FileRoutesById
@@ -354,17 +543,32 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StatusRoute: typeof StatusRoute
   VisionRoute: typeof VisionRoute
+  AeoForSlugRoute: typeof AeoForSlugRoute
+  AiSearchSlugRoute: typeof AiSearchSlugRoute
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   DocsSplatRoute: typeof DocsSplatRoute
+  GlossarySlugRoute: typeof GlossarySlugRoute
+  AeoForIndexRoute: typeof AeoForIndexRoute
+  AiSearchIndexRoute: typeof AiSearchIndexRoute
   AiVisibilityToolsIndexRoute: typeof AiVisibilityToolsIndexRoute
   BlogIndexRoute: typeof BlogIndexRoute
   DocsIndexRoute: typeof DocsIndexRoute
+  GlossaryIndexRoute: typeof GlossaryIndexRoute
+  AiVisibilityToolsAlternativesSlugRoute: typeof AiVisibilityToolsAlternativesSlugRoute
+  AiVisibilityToolsCategorySlugRoute: typeof AiVisibilityToolsCategorySlugRoute
+  AiVisibilityToolsCategoryOpenSourceRoute: typeof AiVisibilityToolsCategoryOpenSourceRoute
+  AiVisibilityToolsCompareSlugRoute: typeof AiVisibilityToolsCompareSlugRoute
+  AiVisibilityToolsFeaturesSlugRoute: typeof AiVisibilityToolsFeaturesSlugRoute
   LlmsDotmdxDocsSplatRoute: typeof LlmsDotmdxDocsSplatRoute
   OgDocsSplatRoute: typeof OgDocsSplatRoute
+  AiVisibilityToolsAlternativesIndexRoute: typeof AiVisibilityToolsAlternativesIndexRoute
+  AiVisibilityToolsCategoryIndexRoute: typeof AiVisibilityToolsCategoryIndexRoute
+  AiVisibilityToolsCompareIndexRoute: typeof AiVisibilityToolsCompareIndexRoute
+  AiVisibilityToolsFeaturesIndexRoute: typeof AiVisibilityToolsFeaturesIndexRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
   ApiPlausibleJsScriptIndexRoute: typeof ApiPlausibleJsScriptIndexRoute
 }
@@ -462,6 +666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/glossary/': {
+      id: '/glossary/'
+      path: '/glossary'
+      fullPath: '/glossary/'
+      preLoaderRoute: typeof GlossaryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs/': {
       id: '/docs/'
       path: '/docs'
@@ -481,6 +692,27 @@ declare module '@tanstack/react-router' {
       path: '/ai-visibility-tools'
       fullPath: '/ai-visibility-tools/'
       preLoaderRoute: typeof AiVisibilityToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-search/': {
+      id: '/ai-search/'
+      path: '/ai-search'
+      fullPath: '/ai-search/'
+      preLoaderRoute: typeof AiSearchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aeo-for/': {
+      id: '/aeo-for/'
+      path: '/aeo-for'
+      fullPath: '/aeo-for/'
+      preLoaderRoute: typeof AeoForIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/glossary/$slug': {
+      id: '/glossary/$slug'
+      path: '/glossary/$slug'
+      fullPath: '/glossary/$slug'
+      preLoaderRoute: typeof GlossarySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs/$': {
@@ -525,6 +757,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiVisibilityToolsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ai-search/$slug': {
+      id: '/ai-search/$slug'
+      path: '/ai-search/$slug'
+      fullPath: '/ai-search/$slug'
+      preLoaderRoute: typeof AiSearchSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aeo-for/$slug': {
+      id: '/aeo-for/$slug'
+      path: '/aeo-for/$slug'
+      fullPath: '/aeo-for/$slug'
+      preLoaderRoute: typeof AeoForSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/features/': {
+      id: '/ai-visibility-tools/features/'
+      path: '/ai-visibility-tools/features'
+      fullPath: '/ai-visibility-tools/features/'
+      preLoaderRoute: typeof AiVisibilityToolsFeaturesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/compare/': {
+      id: '/ai-visibility-tools/compare/'
+      path: '/ai-visibility-tools/compare'
+      fullPath: '/ai-visibility-tools/compare/'
+      preLoaderRoute: typeof AiVisibilityToolsCompareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/category/': {
+      id: '/ai-visibility-tools/category/'
+      path: '/ai-visibility-tools/category'
+      fullPath: '/ai-visibility-tools/category/'
+      preLoaderRoute: typeof AiVisibilityToolsCategoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/alternatives/': {
+      id: '/ai-visibility-tools/alternatives/'
+      path: '/ai-visibility-tools/alternatives'
+      fullPath: '/ai-visibility-tools/alternatives/'
+      preLoaderRoute: typeof AiVisibilityToolsAlternativesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/og/docs/$': {
       id: '/og/docs/$'
       path: '/og/docs/$'
@@ -537,6 +811,41 @@ declare module '@tanstack/react-router' {
       path: '/llms.mdx/docs/$'
       fullPath: '/llms.mdx/docs/$'
       preLoaderRoute: typeof LlmsDotmdxDocsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/features/$slug': {
+      id: '/ai-visibility-tools/features/$slug'
+      path: '/ai-visibility-tools/features/$slug'
+      fullPath: '/ai-visibility-tools/features/$slug'
+      preLoaderRoute: typeof AiVisibilityToolsFeaturesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/compare/$slug': {
+      id: '/ai-visibility-tools/compare/$slug'
+      path: '/ai-visibility-tools/compare/$slug'
+      fullPath: '/ai-visibility-tools/compare/$slug'
+      preLoaderRoute: typeof AiVisibilityToolsCompareSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/category/open-source': {
+      id: '/ai-visibility-tools/category/open-source'
+      path: '/ai-visibility-tools/category/open-source'
+      fullPath: '/ai-visibility-tools/category/open-source'
+      preLoaderRoute: typeof AiVisibilityToolsCategoryOpenSourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/category/$slug': {
+      id: '/ai-visibility-tools/category/$slug'
+      path: '/ai-visibility-tools/category/$slug'
+      fullPath: '/ai-visibility-tools/category/$slug'
+      preLoaderRoute: typeof AiVisibilityToolsCategorySlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-visibility-tools/alternatives/$slug': {
+      id: '/ai-visibility-tools/alternatives/$slug'
+      path: '/ai-visibility-tools/alternatives/$slug'
+      fullPath: '/ai-visibility-tools/alternatives/$slug'
+      preLoaderRoute: typeof AiVisibilityToolsAlternativesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/plausible/event/': {
@@ -570,17 +879,35 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StatusRoute: StatusRoute,
   VisionRoute: VisionRoute,
+  AeoForSlugRoute: AeoForSlugRoute,
+  AiSearchSlugRoute: AiSearchSlugRoute,
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   DocsSplatRoute: DocsSplatRoute,
+  GlossarySlugRoute: GlossarySlugRoute,
+  AeoForIndexRoute: AeoForIndexRoute,
+  AiSearchIndexRoute: AiSearchIndexRoute,
   AiVisibilityToolsIndexRoute: AiVisibilityToolsIndexRoute,
   BlogIndexRoute: BlogIndexRoute,
   DocsIndexRoute: DocsIndexRoute,
+  GlossaryIndexRoute: GlossaryIndexRoute,
+  AiVisibilityToolsAlternativesSlugRoute:
+    AiVisibilityToolsAlternativesSlugRoute,
+  AiVisibilityToolsCategorySlugRoute: AiVisibilityToolsCategorySlugRoute,
+  AiVisibilityToolsCategoryOpenSourceRoute:
+    AiVisibilityToolsCategoryOpenSourceRoute,
+  AiVisibilityToolsCompareSlugRoute: AiVisibilityToolsCompareSlugRoute,
+  AiVisibilityToolsFeaturesSlugRoute: AiVisibilityToolsFeaturesSlugRoute,
   LlmsDotmdxDocsSplatRoute: LlmsDotmdxDocsSplatRoute,
   OgDocsSplatRoute: OgDocsSplatRoute,
+  AiVisibilityToolsAlternativesIndexRoute:
+    AiVisibilityToolsAlternativesIndexRoute,
+  AiVisibilityToolsCategoryIndexRoute: AiVisibilityToolsCategoryIndexRoute,
+  AiVisibilityToolsCompareIndexRoute: AiVisibilityToolsCompareIndexRoute,
+  AiVisibilityToolsFeaturesIndexRoute: AiVisibilityToolsFeaturesIndexRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
   ApiPlausibleJsScriptIndexRoute: ApiPlausibleJsScriptIndexRoute,
 }

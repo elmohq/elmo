@@ -1,7 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { source } from "@/lib/source";
 import { blogSource } from "@/lib/blog";
-import { competitors, getComparisonSlug, isLowDR } from "@/lib/competitors";
+import {
+	competitors,
+	getComparisonSlug,
+	isLowDR,
+	comparePairs,
+	comparePairSlug,
+	indexedCompetitors,
+	indexableFeatureKeys,
+	FEATURE_SLUGS,
+	indexableCategories,
+	CATEGORY_SLUGS,
+} from "@/lib/competitors";
+import { glossaryTerms } from "@/data/glossary";
+import { aiSearchEngines } from "@/data/ai-search-engines";
+import { aeoVerticals } from "@/data/aeo-verticals";
 
 const SITE_URL = "https://www.elmohq.com";
 
@@ -57,11 +71,71 @@ export const Route = createFileRoute("/sitemap.xml")({
 					priority: 0.6,
 				}));
 
+			// Programmatic directory sub-pages (hubs + generated pages).
+			const directorySubPages: SitemapEntry[] = [
+				{ path: "/ai-visibility-tools/compare", changefreq: "monthly", priority: 0.5 },
+				{ path: "/ai-visibility-tools/alternatives", changefreq: "monthly", priority: 0.5 },
+				{ path: "/ai-visibility-tools/features", changefreq: "monthly", priority: 0.5 },
+				{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
+				...comparePairs.map(([a, b]) => ({
+					path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				})),
+				...indexedCompetitors.map((c) => ({
+					path: `/ai-visibility-tools/alternatives/${c.slug}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				})),
+				...indexableFeatureKeys().map((key) => ({
+					path: `/ai-visibility-tools/features/${FEATURE_SLUGS[key]}`,
+					changefreq: "monthly",
+					priority: 0.5,
+				})),
+				...indexableCategories.map((cat) => ({
+					path: `/ai-visibility-tools/category/${CATEGORY_SLUGS[cat]}`,
+					changefreq: "monthly",
+					priority: 0.5,
+				})),
+			];
+
+			// Editorial programmatic sections.
+			const glossaryPages: SitemapEntry[] = [
+				{ path: "/glossary", changefreq: "monthly", priority: 0.7 },
+				...glossaryTerms.map((t) => ({
+					path: `/glossary/${t.slug}`,
+					changefreq: "monthly",
+					priority: 0.5,
+				})),
+			];
+
+			const aiSearchPages: SitemapEntry[] = [
+				{ path: "/ai-search", changefreq: "monthly", priority: 0.7 },
+				...aiSearchEngines.map((e) => ({
+					path: `/ai-search/${e.slug}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				})),
+			];
+
+			const aeoForPages: SitemapEntry[] = [
+				{ path: "/aeo-for", changefreq: "monthly", priority: 0.7 },
+				...aeoVerticals.map((v) => ({
+					path: `/aeo-for/${v.slug}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				})),
+			];
+
 			const allPages: SitemapEntry[] = [
 				...staticPages,
 				...docsPages,
 				...blogPages,
 				...comparisonPages,
+				...directorySubPages,
+				...glossaryPages,
+				...aiSearchPages,
+				...aeoForPages,
 			];
 
 				const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
