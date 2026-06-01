@@ -22,7 +22,6 @@ const cols = [
 			{ label: "Blog", href: "/blog" },
 			{ label: "Documentation", href: "/docs" },
 			{ label: "API Reference", href: "/docs/api" },
-			{ label: "Tool Directory", href: "/ai-visibility-tools" },
 			{ label: "Provider Status", href: "/status" },
 			{
 				label: "Issues",
@@ -37,6 +36,7 @@ const cols = [
 			{ label: "AEO Glossary", href: "/glossary" },
 			{ label: "AI Search Guides", href: "/ai-search" },
 			{ label: "AEO by Industry", href: "/aeo-for" },
+			{ label: "Tool Directory", href: "/ai-visibility-tools" },
 			{ label: "Compare Tools", href: "/ai-visibility-tools/compare" },
 		],
 	},
