@@ -207,22 +207,15 @@ export function openSourceTools(): Competitor[] {
 // claims that come from fields we actually store)
 // ---------------------------------------------------------------------------
 
-function formatList(names: string[], max = 3): string {
+function formatList(names: string[], max = 3, more = true): string {
 	const shown = names.slice(0, max);
 	const extra = names.length - shown.length;
 	let joined: string;
 	if (shown.length <= 1) joined = shown[0] ?? "";
 	else if (shown.length === 2) joined = `${shown[0]} and ${shown[1]}`;
 	else joined = `${shown.slice(0, -1).join(", ")}, and ${shown[shown.length - 1]}`;
-	if (extra > 0) return `${joined}, plus ${extra} more`;
+	if (more && extra > 0) return `${joined}, plus ${extra} more`;
 	return joined;
-}
-
-function pricingClause(c: Competitor): string {
-	if (c.pricing?.hasFree) return "has a free tier";
-	if (c.pricing?.startingPrice) return `starts at ${c.pricing.startingPrice}`;
-	if (c.pricing?.hasEnterprise) return "is quote-based, with no public self-host price";
-	return "does not publish standard pricing";
 }
 
 function featuresOf(c: Competitor): Set<FeatureKey> {
@@ -307,27 +300,34 @@ export function getPairVerdict(a: Competitor, b: Competitor): string {
 export function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 	const aGap = featureGap(a, b);
 	const bGap = featureGap(b, a);
-	const deltaSentence =
-		aGap.length || bGap.length
-			? `${aGap.length ? `${a.name} adds ${formatList(aGap, 2)}. ` : ""}${bGap.length ? `${b.name} adds ${formatList(bGap, 2)}.` : ""}`.trim()
-			: `Their feature sets overlap closely.`;
+
+	const overlap =
+		a.category === b.category
+			? `${a.name} and ${b.name} are both ${CATEGORY_NOUN[a.category]} tools, so they overlap on the core job of measuring how AI answer engines mention and cite your brand.`
+			: `${a.name} is ${indefiniteArticle(CATEGORY_NOUN[a.category])} ${CATEGORY_NOUN[a.category]} tool, while ${b.name} is ${indefiniteArticle(CATEGORY_NOUN[b.category])} ${CATEGORY_NOUN[b.category]} tool, so they come at AI visibility from different angles.`;
+
+	// Name a couple of distinguishing capabilities per side, drawn from the
+	// feature matrix. No pricing: we don't track reliable current prices.
+	const featureBits: string[] = [];
+	if (aGap.length)
+		featureBits.push(`${a.name} stands out for ${formatList(aGap, 2, false)}`);
+	if (bGap.length) featureBits.push(`${b.name} adds ${formatList(bGap, 2, false)}`);
+	const featureSentence = featureBits.length
+		? ` On features, ${featureBits.join(", while ")}.`
+		: "";
 
 	return [
 		{
 			question: `What is the difference between ${a.name} and ${b.name}?`,
-			answer: `${a.name} is ${indefiniteArticle(CATEGORY_NOUN[a.category])} ${CATEGORY_NOUN[a.category]} tool and ${pricingClause(a)}. ${b.name} is ${indefiniteArticle(CATEGORY_NOUN[b.category])} ${CATEGORY_NOUN[b.category]} tool and ${pricingClause(b)}. ${deltaSentence} Both are closed-source.`,
+			answer: `${overlap}${featureSentence} Both are closed-source and hosted.`,
 		},
 		{
 			question: `Is ${a.name} or ${b.name} better for AI visibility tracking?`,
-			answer: `It depends on what you need. ${a.name} fits teams drawn to ${a.tagline.toLowerCase()}, while ${b.name} fits teams that want ${b.tagline.toLowerCase()}. Neither is open source, so if data ownership matters, it is worth comparing both against Elmo before you commit.`,
+			answer: `Neither is simply better; it depends on your priorities. Both track how AI engines mention and cite your brand across the major models, so the decision comes down to which feature set and workflow suit your team. Since both are proprietary and hosted, it is also worth trying an open-source option like Elmo, which you can self-host and audit before committing.`,
 		},
 		{
 			question: `Is there an open-source alternative to ${a.name} and ${b.name}?`,
 			answer: `Yes. Elmo is an open-source AI visibility platform you can self-host for free. It tracks mentions, citations, and competitor share across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, and every metric is auditable in the code.`,
-		},
-		{
-			question: `How much do ${a.name} and ${b.name} cost?`,
-			answer: `${a.name} ${pricingClause(a)}. ${b.name} ${pricingClause(b)}. Pricing in this category changes often, so check each vendor for current plans. Elmo is free to self-host if you would rather avoid a subscription entirely.`,
 		},
 	];
 }
