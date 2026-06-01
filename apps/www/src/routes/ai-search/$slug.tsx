@@ -80,7 +80,7 @@ function EnginePage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<div className="mx-auto max-w-3xl px-4 pt-8 md:px-6">
+				<div className="mx-auto max-w-6xl px-4 pt-8 md:px-6">
 					<a
 						href="/ai-search"
 						className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
@@ -90,7 +90,8 @@ function EnginePage() {
 					</a>
 				</div>
 
-				<article className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+				<article className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+					<div className="max-w-3xl">
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
 						{engine.vendor}
 					</p>
@@ -155,6 +156,7 @@ function EnginePage() {
 							</div>
 						</div>
 					)}
+					</div>
 				</article>
 
 				<Faq items={engineFaqs(engine)} eyebrow="/ FAQ" />

@@ -58,7 +58,7 @@ function GlossaryTermPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<div className="mx-auto max-w-3xl px-4 pt-8 md:px-6">
+				<div className="mx-auto max-w-6xl px-4 pt-8 md:px-6">
 					<a
 						href="/glossary"
 						className="inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-950"
@@ -68,7 +68,8 @@ function GlossaryTermPage() {
 					</a>
 				</div>
 
-				<article className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+				<article className="mx-auto max-w-6xl px-4 py-10 md:px-6">
+					<div className="max-w-3xl">
 					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">
 						{term.term}
 					</h1>
@@ -125,6 +126,7 @@ function GlossaryTermPage() {
 							</div>
 						</div>
 					)}
+					</div>
 				</article>
 
 				<section className="border-t border-zinc-200 bg-zinc-50 py-12">

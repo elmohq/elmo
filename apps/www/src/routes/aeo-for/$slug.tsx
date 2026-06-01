@@ -66,7 +66,8 @@ function VerticalPage() {
 				/>
 
 				<section className="border-b border-zinc-200 bg-white py-12">
-					<div className="mx-auto max-w-3xl px-4 md:px-6">
+					<div className="mx-auto max-w-6xl px-4 md:px-6">
+						<div className="max-w-3xl">
 						<div className="space-y-5 text-lg leading-relaxed text-zinc-700">
 							{vertical.intro.map((p) => (
 								<p key={p.slice(0, 32)}>{p}</p>
@@ -132,6 +133,7 @@ function VerticalPage() {
 									</a>
 								))}
 							</div>
+						</div>
 						</div>
 					</div>
 				</section>
