@@ -33,9 +33,11 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 
 	const { onboardingRedirectUrl, ...serializableBranding } = deployment.branding;
 
+	const userCount = await countUsers();
+	const hasUsers = userCount > 0;
 	// Register is only reachable in local mode before the first user signs up.
 	// Once the instance is bootstrapped, both the UI and API reject signups.
-	const canRegister = deployment.mode === "local" && (await countUsers()) === 0;
+	const canRegister = deployment.mode === "local" && !hasUsers;
 
 	return {
 		mode: deployment.mode,
@@ -48,6 +50,7 @@ export const getClientConfig = createServerFn({ method: "GET" }).handler(async (
 		},
 		defaultDelayHours: getDefaultDelayHours(),
 		canRegister,
+		hasUsers,
 	};
 });
 

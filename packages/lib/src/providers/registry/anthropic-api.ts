@@ -1,7 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
+import { generateText, Output } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
 import type { Citation } from "../../text-extraction";
+
+const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
+
+function getAnthropicLanguageModel(model: string) {
+	return process.env.ANTHROPIC_API_KEY
+		? createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model)
+		: anthropic(model);
+}
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
@@ -13,13 +29,13 @@ function getClient(): Anthropic {
 
 async function runAnthropic(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const client = getClient();
-	const tools: Anthropic.Messages.Tool[] = [];
+	const tools: Anthropic.Messages.ToolUnion[] = [];
 	if (options?.webSearch) {
 		tools.push({
-			type: "web_search_20250305" as any,
+			type: "web_search_20250305",
 			name: "web_search",
 			max_uses: 1,
-		} as any);
+		});
 	}
 
 	const makeRequest = () => client.messages.create({
@@ -130,7 +146,23 @@ export const anthropicApi: Provider = {
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
-		const version = options?.version ?? "claude-sonnet-4-20250514";
+		const version = options?.version ?? DEFAULT_RESEARCH_MODEL;
 		return runAnthropic(prompt, version, options);
 	},
+
+	async runStructuredResearch<T>({ prompt, schema }: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		const result = await generateText({
+			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
+			tools: {
+				web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }),
+			},
+			experimental_output: Output.object({ schema }),
+			prompt,
+		});
+		return {
+			object: result.experimental_output as T,
+			modelVersion: DEFAULT_RESEARCH_MODEL,
+		};
+	},
 };
+

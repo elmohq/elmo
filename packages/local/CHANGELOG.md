@@ -1,5 +1,44 @@
 # @workspace/local
 
+## 0.2.10
+
+### Patch Changes
+
+- @workspace/config@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- @workspace/config@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @workspace/config@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- @workspace/config@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- @workspace/config@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+  - @workspace/config@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

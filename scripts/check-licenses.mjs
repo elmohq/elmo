@@ -6,7 +6,9 @@
  * Ensures every dependency uses a license compatible with distributing
  * Elmo itself under MIT. Runs `pnpm licenses list --json` and validates
  * the output against an allow-list of SPDX identifiers plus a set of
- * per-package exceptions for known-safe outliers.
+ * per-package exceptions for known-safe outliers. The allow-list is
+ * limited to permissive licenses so that nothing we ship pulls in
+ * copyleft terms that would conflict with MIT redistribution.
  *
  * Exit codes:
  *   0 – all packages pass
@@ -16,7 +18,9 @@
 import { execSync } from "node:child_process";
 
 // ── Allowed SPDX license identifiers ────────────────────────────────
-// These are all permissive / MIT-compatible and fine for an MIT project.
+// These are all permissive licenses, compatible with MIT redistribution.
+// GPL/LGPL/AGPL and other copyleft licenses are intentionally NOT added
+// here — their terms would conflict with shipping Elmo under MIT.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
@@ -69,6 +73,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["lightningcss-win32-x64-msvc", "MPL-2.0"],
 
   // Web fonts – OFL-1.1 permits bundling in web applications.
+  ["@fontsource/geist-mono", "OFL-1.1"],
   ["@fontsource/geist-sans", "OFL-1.1"],
   ["@fontsource/titan-one", "OFL-1.1"],
 

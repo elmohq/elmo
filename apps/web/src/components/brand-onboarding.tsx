@@ -47,16 +47,16 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 				<input type="hidden" name="brandName" value={brandName} />
 
 				<div className="space-y-2">
-					<Label htmlFor="website">Website URL</Label>
+					<Label htmlFor="website">Website</Label>
 					<Input
 						id="website"
 						name="website"
-						type="url"
-						placeholder="https://example.com"
+						type="text"
+						placeholder="example.com"
 						required
 						disabled={isLoading}
 					/>
-					<p className="text-xs text-muted-foreground">Enter your brand's website URL</p>
+					<p className="text-xs text-muted-foreground">Enter your brand's website</p>
 				</div>
 
 				{error && <p className="text-sm text-destructive">{error}</p>}

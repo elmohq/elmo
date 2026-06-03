@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import {
 	Dialog,
@@ -60,6 +61,7 @@ export function ContactForm({ source }: ContactFormProps) {
 		<>
 			<Button className="w-full" onClick={() => setOpen(true)}>
 				Contact Us
+				<ArrowRight className="size-3.5" />
 			</Button>
 			<Dialog open={open} onOpenChange={handleOpenChange}>
 				<DialogContent className="sm:max-w-md" aria-describedby={undefined}>

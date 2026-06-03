@@ -3,9 +3,11 @@ import { Navbar } from "@/components/navbar";
 import { Pricing } from "@/components/pricing";
 import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
+import { Faq } from "@/components/faq";
+import { PRICING_FAQS } from "@/lib/faqs";
+import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 
-const title = "Pricing · Elmo";
+const title = "Pricing — Free & Open-Source AI Visibility · Elmo";
 const description =
 	"Elmo is free and open source to self-host. Managed cloud hosting coming soon. White-label available for agencies.";
 
@@ -22,6 +24,7 @@ export const Route = createFileRoute("/pricing")({
 				{ name: "Home", path: "/" },
 				{ name: "Pricing", path: "/pricing" },
 			]),
+			faqJsonLd(PRICING_FAQS),
 		],
 	}),
 	component: PricingPage,
@@ -33,6 +36,7 @@ function PricingPage() {
 			<Navbar />
 			<main>
 				<Pricing />
+				<Faq items={PRICING_FAQS} eyebrow="/ FAQ" />
 				<CTA />
 			</main>
 			<Footer />

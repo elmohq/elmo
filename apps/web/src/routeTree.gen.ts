@@ -26,15 +26,19 @@ import { Route as AuthedAdminIndexRouteImport } from './routes/_authed/admin/ind
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedAppBrandRouteImport } from './routes/_authed/app/$brand'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
-import { Route as AuthedAdminWizardTestRouteImport } from './routes/_authed/admin/wizard-test'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
 import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
 import { Route as ApiV1DocsIndexRouteImport } from './routes/api/v1/docs/index'
+import { Route as ApiV1CompetitorsIndexRouteImport } from './routes/api/v1/competitors/index'
+import { Route as ApiV1BrandsIndexRouteImport } from './routes/api/v1/brands/index'
 import { Route as ApiPlausibleEventIndexRouteImport } from './routes/api/plausible/event/index'
 import { Route as AuthedAppBrandIndexRouteImport } from './routes/_authed/app/$brand/index'
+import { Route as ApiV1ToolsAnalyzeRouteImport } from './routes/api/v1/tools/analyze'
 import { Route as ApiV1ReportsReportIdRouteImport } from './routes/api/v1/reports/$reportId'
 import { Route as ApiV1PromptsPromptIdRouteImport } from './routes/api/v1/prompts/$promptId'
+import { Route as ApiV1CompetitorsCompetitorIdRouteImport } from './routes/api/v1/competitors/$competitorId'
+import { Route as ApiV1BrandsBrandIdRouteImport } from './routes/api/v1/brands/$brandId'
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
@@ -134,11 +138,6 @@ const AuthedAdminWorkflowsRoute = AuthedAdminWorkflowsRouteImport.update({
   path: '/workflows',
   getParentRoute: () => AuthedAdminRoute,
 } as any)
-const AuthedAdminWizardTestRoute = AuthedAdminWizardTestRouteImport.update({
-  id: '/wizard-test',
-  path: '/wizard-test',
-  getParentRoute: () => AuthedAdminRoute,
-} as any)
 const AuthedAdminToolsRoute = AuthedAdminToolsRouteImport.update({
   id: '/tools',
   path: '/tools',
@@ -159,6 +158,16 @@ const ApiV1DocsIndexRoute = ApiV1DocsIndexRouteImport.update({
   path: '/api/v1/docs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1CompetitorsIndexRoute = ApiV1CompetitorsIndexRouteImport.update({
+  id: '/api/v1/competitors/',
+  path: '/api/v1/competitors/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1BrandsIndexRoute = ApiV1BrandsIndexRouteImport.update({
+  id: '/api/v1/brands/',
+  path: '/api/v1/brands/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlausibleEventIndexRoute = ApiPlausibleEventIndexRouteImport.update({
   id: '/api/plausible/event/',
   path: '/api/plausible/event/',
@@ -169,6 +178,11 @@ const AuthedAppBrandIndexRoute = AuthedAppBrandIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedAppBrandRoute,
 } as any)
+const ApiV1ToolsAnalyzeRoute = ApiV1ToolsAnalyzeRouteImport.update({
+  id: '/api/v1/tools/analyze',
+  path: '/api/v1/tools/analyze',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1ReportsReportIdRoute = ApiV1ReportsReportIdRouteImport.update({
   id: '/api/v1/reports/$reportId',
   path: '/api/v1/reports/$reportId',
@@ -177,6 +191,17 @@ const ApiV1ReportsReportIdRoute = ApiV1ReportsReportIdRouteImport.update({
 const ApiV1PromptsPromptIdRoute = ApiV1PromptsPromptIdRouteImport.update({
   id: '/api/v1/prompts/$promptId',
   path: '/api/v1/prompts/$promptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CompetitorsCompetitorIdRoute =
+  ApiV1CompetitorsCompetitorIdRouteImport.update({
+    id: '/api/v1/competitors/$competitorId',
+    path: '/api/v1/competitors/$competitorId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1BrandsBrandIdRoute = ApiV1BrandsBrandIdRouteImport.update({
+  id: '/api/v1/brands/$brandId',
+  path: '/api/v1/brands/$brandId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedReportsRenderReportIdRoute =
@@ -271,7 +296,6 @@ export interface FileRoutesByFullPath {
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
-  '/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -285,10 +309,15 @@ export interface FileRoutesByFullPath {
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
+  '/api/v1/brands/': typeof ApiV1BrandsIndexRoute
+  '/api/v1/competitors/': typeof ApiV1CompetitorsIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
@@ -309,7 +338,6 @@ export interface FileRoutesByTo {
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
-  '/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/admin': typeof AuthedAdminIndexRoute
@@ -322,10 +350,15 @@ export interface FileRoutesByTo {
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/app/$brand': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
+  '/api/v1/brands': typeof ApiV1BrandsIndexRoute
+  '/api/v1/competitors': typeof ApiV1CompetitorsIndexRoute
   '/api/v1/docs': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports': typeof ApiV1ReportsIndexRoute
@@ -351,7 +384,6 @@ export interface FileRoutesById {
   '/auth/logout': typeof AuthLogoutRoute
   '/auth/register': typeof AuthRegisterRoute
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
-  '/_authed/admin/wizard-test': typeof AuthedAdminWizardTestRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/_authed/app/$brand': typeof AuthedAppBrandRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -365,10 +397,15 @@ export interface FileRoutesById {
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
+  '/api/v1/tools/analyze': typeof ApiV1ToolsAnalyzeRoute
   '/_authed/app/$brand/': typeof AuthedAppBrandIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
+  '/api/v1/brands/': typeof ApiV1BrandsIndexRoute
+  '/api/v1/competitors/': typeof ApiV1CompetitorsIndexRoute
   '/api/v1/docs/': typeof ApiV1DocsIndexRoute
   '/api/v1/prompts/': typeof ApiV1PromptsIndexRoute
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
@@ -394,7 +431,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/auth/register'
     | '/admin/tools'
-    | '/admin/wizard-test'
     | '/admin/workflows'
     | '/app/$brand'
     | '/api/auth/$'
@@ -408,10 +444,15 @@ export interface FileRouteTypes {
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
+    | '/api/v1/brands/$brandId'
+    | '/api/v1/competitors/$competitorId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/tools/analyze'
     | '/app/$brand/'
     | '/api/plausible/event/'
+    | '/api/v1/brands/'
+    | '/api/v1/competitors/'
     | '/api/v1/docs/'
     | '/api/v1/prompts/'
     | '/api/v1/reports/'
@@ -432,7 +473,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/auth/register'
     | '/admin/tools'
-    | '/admin/wizard-test'
     | '/admin/workflows'
     | '/api/auth/$'
     | '/admin'
@@ -445,10 +485,15 @@ export interface FileRouteTypes {
     | '/app/$brand/citations'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
+    | '/api/v1/brands/$brandId'
+    | '/api/v1/competitors/$competitorId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/tools/analyze'
     | '/app/$brand'
     | '/api/plausible/event'
+    | '/api/v1/brands'
+    | '/api/v1/competitors'
     | '/api/v1/docs'
     | '/api/v1/prompts'
     | '/api/v1/reports'
@@ -473,7 +518,6 @@ export interface FileRouteTypes {
     | '/auth/logout'
     | '/auth/register'
     | '/_authed/admin/tools'
-    | '/_authed/admin/wizard-test'
     | '/_authed/admin/workflows'
     | '/_authed/app/$brand'
     | '/api/auth/$'
@@ -487,10 +531,15 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/citations'
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
+    | '/api/v1/brands/$brandId'
+    | '/api/v1/competitors/$competitorId'
     | '/api/v1/prompts/$promptId'
     | '/api/v1/reports/$reportId'
+    | '/api/v1/tools/analyze'
     | '/_authed/app/$brand/'
     | '/api/plausible/event/'
+    | '/api/v1/brands/'
+    | '/api/v1/competitors/'
     | '/api/v1/docs/'
     | '/api/v1/prompts/'
     | '/api/v1/reports/'
@@ -516,9 +565,14 @@ export interface RootRouteChildren {
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
+  ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRoute
+  ApiV1CompetitorsCompetitorIdRoute: typeof ApiV1CompetitorsCompetitorIdRoute
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
   ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
+  ApiV1ToolsAnalyzeRoute: typeof ApiV1ToolsAnalyzeRoute
   ApiPlausibleEventIndexRoute: typeof ApiPlausibleEventIndexRoute
+  ApiV1BrandsIndexRoute: typeof ApiV1BrandsIndexRoute
+  ApiV1CompetitorsIndexRoute: typeof ApiV1CompetitorsIndexRoute
   ApiV1DocsIndexRoute: typeof ApiV1DocsIndexRoute
   ApiV1PromptsIndexRoute: typeof ApiV1PromptsIndexRoute
   ApiV1ReportsIndexRoute: typeof ApiV1ReportsIndexRoute
@@ -646,13 +700,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminWorkflowsRouteImport
       parentRoute: typeof AuthedAdminRoute
     }
-    '/_authed/admin/wizard-test': {
-      id: '/_authed/admin/wizard-test'
-      path: '/wizard-test'
-      fullPath: '/admin/wizard-test'
-      preLoaderRoute: typeof AuthedAdminWizardTestRouteImport
-      parentRoute: typeof AuthedAdminRoute
-    }
     '/_authed/admin/tools': {
       id: '/_authed/admin/tools'
       path: '/tools'
@@ -681,6 +728,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1DocsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/competitors/': {
+      id: '/api/v1/competitors/'
+      path: '/api/v1/competitors'
+      fullPath: '/api/v1/competitors/'
+      preLoaderRoute: typeof ApiV1CompetitorsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/brands/': {
+      id: '/api/v1/brands/'
+      path: '/api/v1/brands'
+      fullPath: '/api/v1/brands/'
+      preLoaderRoute: typeof ApiV1BrandsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/plausible/event/': {
       id: '/api/plausible/event/'
       path: '/api/plausible/event'
@@ -695,6 +756,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppBrandIndexRouteImport
       parentRoute: typeof AuthedAppBrandRoute
     }
+    '/api/v1/tools/analyze': {
+      id: '/api/v1/tools/analyze'
+      path: '/api/v1/tools/analyze'
+      fullPath: '/api/v1/tools/analyze'
+      preLoaderRoute: typeof ApiV1ToolsAnalyzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/reports/$reportId': {
       id: '/api/v1/reports/$reportId'
       path: '/api/v1/reports/$reportId'
@@ -707,6 +775,20 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/prompts/$promptId'
       fullPath: '/api/v1/prompts/$promptId'
       preLoaderRoute: typeof ApiV1PromptsPromptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/competitors/$competitorId': {
+      id: '/api/v1/competitors/$competitorId'
+      path: '/api/v1/competitors/$competitorId'
+      fullPath: '/api/v1/competitors/$competitorId'
+      preLoaderRoute: typeof ApiV1CompetitorsCompetitorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/brands/$brandId': {
+      id: '/api/v1/brands/$brandId'
+      path: '/api/v1/brands/$brandId'
+      fullPath: '/api/v1/brands/$brandId'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/reports/render/$reportId': {
@@ -812,14 +894,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthedAdminRouteChildren {
   AuthedAdminToolsRoute: typeof AuthedAdminToolsRoute
-  AuthedAdminWizardTestRoute: typeof AuthedAdminWizardTestRoute
   AuthedAdminWorkflowsRoute: typeof AuthedAdminWorkflowsRoute
   AuthedAdminIndexRoute: typeof AuthedAdminIndexRoute
 }
 
 const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
   AuthedAdminToolsRoute: AuthedAdminToolsRoute,
-  AuthedAdminWizardTestRoute: AuthedAdminWizardTestRoute,
   AuthedAdminWorkflowsRoute: AuthedAdminWorkflowsRoute,
   AuthedAdminIndexRoute: AuthedAdminIndexRoute,
 }
@@ -927,9 +1007,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
+  ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRoute,
+  ApiV1CompetitorsCompetitorIdRoute: ApiV1CompetitorsCompetitorIdRoute,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
   ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,
+  ApiV1ToolsAnalyzeRoute: ApiV1ToolsAnalyzeRoute,
   ApiPlausibleEventIndexRoute: ApiPlausibleEventIndexRoute,
+  ApiV1BrandsIndexRoute: ApiV1BrandsIndexRoute,
+  ApiV1CompetitorsIndexRoute: ApiV1CompetitorsIndexRoute,
   ApiV1DocsIndexRoute: ApiV1DocsIndexRoute,
   ApiV1PromptsIndexRoute: ApiV1PromptsIndexRoute,
   ApiV1ReportsIndexRoute: ApiV1ReportsIndexRoute,

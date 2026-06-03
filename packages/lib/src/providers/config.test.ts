@@ -134,6 +134,20 @@ describe("validateScrapeTargets", () => {
 		).toThrow("requires a version slug");
 	});
 
+	it("throws when mistral-api provider has no version", () => {
+		const configs = [{ model: "mistral", provider: "mistral-api", webSearch: true }];
+		expect(() =>
+			validateScrapeTargets(configs, makeGetProvider({ "mistral-api": configuredProvider })),
+		).toThrow("requires a version slug");
+	});
+
+	it("passes when mistral-api provider has a version", () => {
+		const configs = [{ model: "mistral", provider: "mistral-api", version: "mistral-medium-latest", webSearch: true }];
+		expect(() =>
+			validateScrapeTargets(configs, makeGetProvider({ "mistral-api": configuredProvider })),
+		).not.toThrow();
+	});
+
 	it("passes when openai-api provider has a version", () => {
 		const configs = [{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: true }];
 		expect(() =>

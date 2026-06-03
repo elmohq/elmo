@@ -18,21 +18,16 @@ function isValidUUID(id: string): boolean {
 	return uuidRegex.test(id);
 }
 
-function getReportIdFromPath(request: Request): string {
-	const segments = new URL(request.url).pathname.split("/").filter(Boolean);
-	return decodeURIComponent(segments[segments.length - 1] || "");
-}
-
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
+			GET: async ({ request, params }) => {
 				if (!validateApiKey(request)) {
 					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
 				}
 
 				try {
-					const reportId = getReportIdFromPath(request);
+					const { reportId } = params;
 					if (!isValidUUID(reportId)) {
 						return Response.json({ error: "Validation Error", message: "Invalid report ID format" }, { status: 400 });
 					}

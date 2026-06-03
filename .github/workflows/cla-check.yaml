@@ -1,0 +1,73 @@
+# CLA Check
+#
+# Verifies that the author of every pull request has signed the CLA by
+# being listed in .github/contributors.txt on the PR head. The header of
+# contributors.txt is the click-wrap notice — adding your username to the
+# file is itself the agreement.
+#
+# Org members, repo collaborators, the repo owner, and bot accounts are
+# exempt.
+
+name: CLA Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cla:
+    name: Verify CLA signature
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Verify signer
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        run: |
+          set -euo pipefail
+          author_lower="$(echo "$AUTHOR" | tr '[:upper:]' '[:lower:]')"
+
+          # ── Exemptions ────────────────────────────────────────────────
+
+          # Any GitHub App / bot account (dependabot[bot], renovate[bot], etc.)
+          if [ "$AUTHOR_TYPE" = "Bot" ]; then
+            echo "Bot account $AUTHOR is exempt from CLA check."
+            exit 0
+          fi
+          case "$author_lower" in
+            'dependabot[bot]'|'github-actions[bot]'|'renovate[bot]'|dependabot|renovate)
+              echo "Bot account $AUTHOR is exempt from CLA check."
+              exit 0
+              ;;
+          esac
+
+          # ── Check signature ───────────────────────────────────────────
+          if [ ! -f .github/contributors.txt ]; then
+            echo "::error::$AUTHOR has not signed the CLA. See CLA.md for instructions."
+            exit 1
+          fi
+
+          if awk '
+              { sub(/#.*$/, ""); gsub(/[[:space:]]/, "") }
+              tolower($0) == author { found = 1 }
+              END { exit found ? 0 : 1 }
+            ' author="$author_lower" .github/contributors.txt; then
+            echo "$AUTHOR has signed the CLA."
+            exit 0
+          fi
+
+          echo "::error::$AUTHOR has not signed the CLA. See CLA.md for instructions."
+          exit 1

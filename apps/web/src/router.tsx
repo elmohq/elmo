@@ -18,8 +18,6 @@ export const getRouter = () => {
 			envValidation: undefined!,
 		},
 		defaultPreload: "intent",
-		scrollRestoration: ({ location }) =>
-			!location.pathname.startsWith("/api/v1/docs"),
 		defaultNotFoundComponent: NotFound,
 		defaultErrorComponent: DefaultErrorComponent,
 		defaultPendingComponent: DefaultPendingComponent,

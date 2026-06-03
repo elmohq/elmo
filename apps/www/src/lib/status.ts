@@ -50,6 +50,8 @@ const TARGETS = [
 	"chatgpt:openrouter:openai/gpt-5-mini:online",
 	"deepseek:openrouter:deepseek/deepseek-v3.2",
 	"mistral:openrouter:mistralai/mistral-small-2603",
+	"mistral:mistral-api:mistral-medium-latest",
+	"mistral:mistral-api:mistral-medium-latest:online",
 ];
 
 export const getStatusData = createServerFn({ method: "GET" }).handler(

@@ -1,5 +1,94 @@
 # @workspace/web
 
+## 0.2.10
+
+### Patch Changes
+
+- b716c43: Fix the dashboard briefly showing "No Data Yet" with "none are currently enabled" right after the onboarding wizard finishes in local mode.
+- 2d8fd8c: Bulk-select prompts in the editor (settings and onboarding) to enable or disable many at once.
+- Updated dependencies [520aef4]
+  - @workspace/lib@0.2.10
+  - @workspace/whitelabel@0.2.10
+  - @workspace/deployment@0.2.10
+  - @workspace/api-spec@0.2.10
+  - @workspace/config@0.2.10
+  - @workspace/og@0.2.10
+  - @workspace/ui@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- 2173aa8: Accept bare domains (e.g. `example.com`) in the brand website field and normalize the stored value to the origin (`https://example.com/products` is saved as `https://example.com/`).
+- 1ee1955: Show the signup screen instead of login on a fresh local deployment.
+  - @workspace/api-spec@0.2.9
+  - @workspace/config@0.2.9
+  - @workspace/deployment@0.2.9
+  - @workspace/lib@0.2.9
+  - @workspace/og@0.2.9
+  - @workspace/ui@0.2.9
+  - @workspace/whitelabel@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @workspace/api-spec@0.2.8
+- @workspace/config@0.2.8
+- @workspace/deployment@0.2.8
+- @workspace/lib@0.2.8
+- @workspace/og@0.2.8
+- @workspace/ui@0.2.8
+- @workspace/whitelabel@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- 1e770ff: Publish multi-arch (`linux/amd64` + `linux/arm64`) Docker images for `elmohq/elmo-web` and `elmohq/elmo-worker`, so Apple Silicon and other arm64 hosts can pull them.
+- 6ab2b42: Fix OG image generation: `og:image` is now an absolute URL and renders the current page's title/description. Adds `og:url`, `og:site_name`, `og:locale`, and `og:logo` to the document head.
+  - @workspace/api-spec@0.2.7
+  - @workspace/config@0.2.7
+  - @workspace/deployment@0.2.7
+  - @workspace/lib@0.2.7
+  - @workspace/og@0.2.7
+  - @workspace/ui@0.2.7
+  - @workspace/whitelabel@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- 1a1005a: Admin `/api/v1/brands` endpoints (POST, GET, PATCH) now accept and return a single `domains` list instead of `website` + `additionalDomains`. This future-proofs against a future db model change.
+- Updated dependencies [1a1005a]
+  - @workspace/api-spec@0.2.6
+  - @workspace/config@0.2.6
+  - @workspace/deployment@0.2.6
+  - @workspace/lib@0.2.6
+  - @workspace/og@0.2.6
+  - @workspace/ui@0.2.6
+  - @workspace/whitelabel@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- edf97d4: Add Mistral as a direct API provider. Set `MISTRAL_API_KEY` and target via `mistral:mistral-api:<model>[:online]`.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- 839b98b: REST-style brand management API: `GET/POST /api/v1/brands`, `GET/PATCH /api/v1/brands/{brandId}`, `POST /api/v1/tools/analyze`, and full CRUD for `/api/v1/competitors`. API-created brands skip onboarding — callers hit `tools/analyze` first if they want suggestions, then create brands with whatever they choose to keep.
+- 839b98b: Brand onboarding is now a single screen: paste a website and review the suggested products, competitors (with their own domains and aliases), additional brand domains, aliases, and tagged starter prompts before saving. Powered by whichever direct LLM API you've configured (OpenRouter, Anthropic, OpenAI, or Mistral) with web search.
+- Updated dependencies [7990382]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+- Updated dependencies [839b98b]
+  - @workspace/lib@0.2.5
+  - @workspace/config@0.2.5
+  - @workspace/api-spec@0.2.5
+  - @workspace/deployment@0.2.5
+  - @workspace/og@0.2.5
+  - @workspace/ui@0.2.5
+  - @workspace/whitelabel@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

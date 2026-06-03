@@ -2,6 +2,7 @@
 	"title": "User Guide",
 	"pages": [
 		"index",
+		"providers",
 		"registration",
 		"brand-setup",
 		"prompt-wizard",
@@ -9,7 +10,6 @@
 		"visibility",
 		"citations",
 		"settings",
-		"reports",
-		"api-reference"
+		"reports"
 	]
 }

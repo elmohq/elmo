@@ -1,7 +1,29 @@
-import type { Provider, ScrapeResult, ProviderOptions } from "../types";
+import { z } from "zod";
+import type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "../types";
 import type { Citation } from "../../text-extraction";
 
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
+// Default to GPT-5 Mini via OpenRouter — supports OpenRouter's *native*
+// web-search plugin (vs the Exa fallback) and produced the best brand-info
+// recall + cheapest cost in our compare-onboarding runs. Other families that
+// support native search per the docs: Anthropic, Perplexity, xAI.
+const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
+
+function openrouterHeaders(): Record<string, string> {
+	return {
+		Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+		"Content-Type": "application/json",
+		"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
+		"X-Title": "Elmo AEO",
+	};
+}
 
 function extractTextFromOpenRouterResponse(data: any): string {
 	if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -52,6 +74,48 @@ export const openrouter: Provider = {
 
 	isConfigured() {
 		return !!process.env.OPENROUTER_API_KEY;
+	},
+
+	async runStructuredResearch<T>({
+		prompt,
+		schema,
+	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
+		// — the AI SDK's OpenAI-compat path doesn't pass it through. We use
+		// `engine: "native"` so the underlying provider's real web-search tool
+		// runs (e.g. Anthropic's web_search_20250305) instead of the Exa
+		// fallback.
+		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
+		const body = {
+			model: DEFAULT_RESEARCH_MODEL,
+			messages: [{ role: "user", content: prompt }],
+			plugins: [{ id: "web", engine: "native" }],
+			response_format: {
+				type: "json_schema",
+				json_schema: { name: "research_output", strict: true, schema: jsonSchema },
+			},
+		};
+		const res = await fetch(OPENROUTER_API_URL, {
+			method: "POST",
+			headers: openrouterHeaders(),
+			body: JSON.stringify(body),
+		});
+		if (!res.ok) {
+			throw new Error(`OpenRouter API error (${res.status}): ${await res.text()}`);
+		}
+		const data: any = await res.json();
+		const content = data?.choices?.[0]?.message?.content;
+		if (typeof content !== "string") {
+			throw new Error(`OpenRouter returned no JSON content (model=${DEFAULT_RESEARCH_MODEL})`);
+		}
+		const parsed = (schema as z.ZodType).parse(JSON.parse(content));
+		return {
+			object: parsed as T,
+			// Report the alias we sent, not OpenRouter's resolved version
+			// (e.g. "openai/gpt-5-mini" vs "openai/gpt-5-mini-2025-08-07") —
+			// matches what openai-api and anthropic-api do.
+			modelVersion: DEFAULT_RESEARCH_MODEL,
+		};
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

@@ -4,7 +4,7 @@
 		"index",
 		"getting-started",
 		"user-guide",
-		"deployment",
-		"contributing"
+		"developer-guide",
+		"api"
 	]
 }

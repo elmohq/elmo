@@ -7,20 +7,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
 import { Command } from "commander";
+import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
-import { trackCliEvent } from "./telemetry.js";
+import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-type GlobalConfig = {
-	configDir: string;
-	dockerDir?: string;
-	dev?: boolean;
-	postgresMode?: PostgresMode;
-	repoRoot?: string;
-	updatedAt: string;
-};
 
 type ComposeService = {
 	Service: string;
@@ -45,12 +37,12 @@ type EnvMap = Record<string, string>;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
-const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
+const CONFIG_HOME = path.join(os.homedir(), ".elmo");
 const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
-const DEFAULT_APP_URL = "http://localhost:1515";
+const DEFAULT_APP_PORT = 1515;
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
+const TELEMETRY_DOC_URL = "https://elmohq.com/docs/developer-guide/telemetry";
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -109,6 +101,8 @@ async function main() {
 	program
 		.name("elmo")
 		.version(version)
+		.option("--dir <path>", "Config directory")
+		.configureHelp({ showGlobalOptions: true })
 		.action(() => {
 			printBanner();
 			program.outputHelp();
@@ -118,82 +112,27 @@ async function main() {
 		.command("init")
 		.description("set up local Elmo instance")
 		.option("--dev", "Use local build context (repo only)")
-		.option("--dir <path>", "Directory to store config files")
 		.option("--docker-dir <path>", "Path to Docker build context (dev mode)")
-		.action(async (options: InitOptions) => {
-			await withVersionCheck(version, () => runInit(options, version));
-		});
-
-	program
-		.command("regen")
-		.description("regenerate configuration files from current settings")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runRegen(options));
-		});
-
-	program
-		.command("start")
-		.description("start Elmo instance")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStart(options));
-		});
-
-	program
-		.command("stop")
-		.description("stop Elmo instance")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStop(options));
-		});
-
-	program
-		.command("status")
-		.description("check Elmo instance health")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStatus(options));
+		.action(async (_opts: object, cmd: Command) => {
+			await withVersionCheck(version, () => runInit(cmd.optsWithGlobals<InitOptions>(), version));
 		});
 
 	program
 		.command("compose")
 		.description("run Docker Compose commands using your Elmo config")
 		.allowUnknownOption(true)
-		.option("--dir <path>", "Config directory")
 		.argument("[args...]", "Arguments passed to Docker Compose")
-		.action(async (args: string[], options: DirOption) => {
-			await withVersionCheck(version, () => runCompose(args, options));
+		.action(async (args: string[], _opts: object, cmd: Command) => {
+			await withVersionCheck(version, () => runCompose(args, cmd.optsWithGlobals<DirOption>()));
 		});
 
 	program
-		.command("logs")
-		.description("view Elmo instance logs")
-		.allowUnknownOption(true)
-		.option("--dir <path>", "Config directory")
-		.argument("[args...]", "Arguments passed to Docker Compose logs")
-		.action(async (args: string[], options: DirOption) => {
-			await withVersionCheck(version, () => runCompose(["logs", ...args], options));
+		.command("edit")
+		.description("change API keys, scrape targets, or the Docker Compose YAML")
+		.argument("<env|compose>", "which config file to edit")
+		.action(async (target: string, _opts: object, cmd: Command) => {
+			await runEdit(target, cmd.optsWithGlobals<DirOption>());
 		});
-
-	program
-		.command("build")
-		.description("build Docker images locally for development")
-		.option("--dir <path>", "Config directory")
-		.option("--web-only", "Only build the web image")
-		.option("--worker-only", "Only build the worker image")
-		.option("--no-cache", "Build without Docker cache")
-		.action(
-			async (
-				options: DirOption & {
-					webOnly?: boolean;
-					workerOnly?: boolean;
-					cache?: boolean;
-				},
-			) => {
-				await withVersionCheck(version, () => runBuild(options));
-			},
-		);
 
 	await program.parseAsync(process.argv);
 }
@@ -213,24 +152,14 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const cwd = process.cwd();
 
 	// ── Resolve config directory ─────────────────────────────────────────
-	let configDir: string;
-	if (options.dir) {
-		configDir = path.resolve(cwd, options.dir);
-	} else {
-		const dir = await p.text({
-			message: "Where should the config be stored?",
-			placeholder: "./elmo",
-			defaultValue: "./elmo",
-		});
-		assertNotCancelled(dir);
-		configDir = path.resolve(cwd, dir);
-	}
+	const configDir = options.dir ? path.resolve(cwd, options.dir) : CONFIG_HOME;
 
 	// ── .env safety check ────────────────────────────────────────────────
 	const existingEnvPath = path.join(configDir, ".env");
+	let preservedDeploymentId: string | undefined;
 	if (await fileExists(existingEnvPath)) {
 		const contents = await fs.readFile(existingEnvPath, "utf8");
-		const isElmoEnv = contents.startsWith("# Generated by elmo");
+		const isElmoEnv = contents.startsWith("# Rendered by elmo") || contents.startsWith("# Generated by elmo");
 
 		if (!isElmoEnv) {
 			p.log.warn(`A .env file already exists in ${configDir} and was NOT created by Elmo.`);
@@ -244,7 +173,17 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 				process.exit(0);
 			}
 		} else {
-			p.log.info("Existing Elmo config found — it will be updated.");
+			p.log.warn(`An existing Elmo config was found at ${configDir}.`);
+			const overwrite = await p.confirm({
+				message: "Overwrite it with new values? Existing secrets (DATABASE_URL, API keys, etc.) will be replaced.",
+				initialValue: false,
+			});
+			assertNotCancelled(overwrite);
+			if (!overwrite) {
+				p.cancel("Setup cancelled. Use `elmo edit env` to change individual values.");
+				process.exit(0);
+			}
+			preservedDeploymentId = parseDotenv(contents).DEPLOYMENT_ID;
 		}
 	}
 
@@ -287,13 +226,12 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
 	env.VITE_DEPLOYMENT_MODE = "local";
+	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;
-	env.APP_URL = DEFAULT_APP_URL;
 	env.VITE_APP_NAME = DEFAULT_APP_NAME;
 	env.VITE_APP_ICON = DEFAULT_APP_ICON;
-	env.VITE_APP_URL = DEFAULT_APP_URL;
 
 	if (postgresMode === "external") {
 		p.note("Must be an IPv4-compatible direct connection or database pooler.", "DATABASE_URL");
@@ -308,7 +246,42 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	}
 
 	// ── AI providers ─────────────────────────────────────────────────────
-	await configureProvidersInteractive(env);
+	const setupMode = await configureProvidersInteractive(env);
+
+	// ── Telemetry ───────────────────────────────────────────────────────
+	p.note(
+		[
+			"Elmo is open source and maintained by a small team. Telemetry",
+			"from both the CLI and your local deployment (web + worker)",
+			"tells us things like which CLI versions are still in use, where",
+			"`elmo init` drops off, which providers people pick, and whether",
+			"new features actually get used. Without it we are flying blind",
+			"on what to fix or build next.",
+			"",
+			pc.bold("What we send:"),
+			"  • deployment ID (random UUID stored as DEPLOYMENT_ID in your .env)",
+			"  • CLI/app version, OS, arch, Node version, deployment mode",
+			"  • command/event names + non-secret options (e.g. postgres mode)",
+			"  • feature counts (prompts edited, brands created — never the names or text)",
+			"  • IP address (recorded on each event by PostHog, used for geolocation)",
+			"",
+			pc.bold("What we never send:"),
+			"  API keys, .env contents, brand names, prompt text, and scraped responses.",
+			"",
+			`Full breakdown: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
+			"Toggle later by editing DISABLE_TELEMETRY in .env (`elmo edit env`).",
+		].join("\n"),
+		"Telemetry",
+	);
+
+	const telemetryEnabled = await p.confirm({
+		message: "Share telemetry?",
+		initialValue: true,
+	});
+	assertNotCancelled(telemetryEnabled);
+	if (!telemetryEnabled) {
+		env.DISABLE_TELEMETRY = "1";
+	}
 
 	// ── Product updates ─────────────────────────────────────────────────
 	const updatesEmail = await p.text({
@@ -317,12 +290,33 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	});
 	const email = p.isCancel(updatesEmail) ? undefined : updatesEmail || undefined;
 
+	// ── Web app port ────────────────────────────────────────────────────
+	const portInput = await p.text({
+		message: "Web app port",
+		placeholder: String(DEFAULT_APP_PORT),
+		defaultValue: String(DEFAULT_APP_PORT),
+		validate: (v) => {
+			if (!v) return undefined;
+			const n = Number(v);
+			if (!Number.isInteger(n) || n < 1 || n > 65535) {
+				return "Must be an integer between 1 and 65535";
+			}
+			return undefined;
+		},
+	});
+	assertNotCancelled(portInput);
+	const port = Number(portInput);
+	env.APP_URL = `http://localhost:${port}`;
+	env.VITE_APP_URL = env.APP_URL;
+
 	// ── Write config ─────────────────────────────────────────────────────
 	const composeYaml = buildComposeYaml({
 		dev: Boolean(options.dev),
 		postgresMode,
 		repoRoot,
 		dockerDir,
+		port,
+		version,
 	});
 
 	await ensureDir(configDir);
@@ -331,13 +325,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		composeYaml,
 		postgresMode,
 		dev: Boolean(options.dev),
-	});
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev: Boolean(options.dev),
-		postgresMode,
-		repoRoot,
+		version,
 	});
 
 	p.log.success(`Config written to ${configDir}`);
@@ -356,22 +344,27 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	if (shouldStart) {
 		await doStart(configDir);
 	} else {
-		p.log.info("You can start later with `elmo start`.");
+		p.log.info("You can start later with `elmo compose up -d`.");
 	}
 
-	// Fire telemetry in the background — never blocks the CLI
-	await trackCliEvent(
-		"cli_init",
-		{
-			version,
-			os: process.platform,
-			arch: process.arch,
-			node_version: process.version,
-			postgres_mode: postgresMode,
-			dev_mode: Boolean(options.dev),
-		},
-		email ? { $email: email, wants_updates: true } : undefined,
-	);
+	// CLI telemetry — silently dropped if the user opted out above.
+	await trackCliEvent(configDir, "cli_init", {
+		version,
+		os: process.platform,
+		arch: process.arch,
+		node_version: process.version,
+		postgres_mode: postgresMode,
+		dev_mode: Boolean(options.dev),
+		setup_mode: setupMode,
+		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY),
+		has_direct_api: hasDirectApiConfigured(env),
+	});
+
+	// Newsletter signup is a separate, explicit opt-in and runs even when
+	// telemetry is disabled.
+	if (email) {
+		await submitNewsletterSignup(configDir, email);
+	}
 
 	p.log.message(
 		`If you find Elmo useful, star us on GitHub!\n  ${link(pc.cyan("https://github.com/elmohq/elmo"), "https://github.com/elmohq/elmo")}`,
@@ -384,7 +377,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
-const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/deployment/providers";
+const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
 const BRIGHTDATA_MODELS = ["chatgpt", "google-ai-mode", "perplexity", "copilot", "gemini", "grok"] as const;
@@ -404,51 +397,172 @@ const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
+const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
-async function configureProvidersInteractive(env: EnvMap): Promise<void> {
+async function configureProvidersInteractive(env: EnvMap): Promise<"recommended" | "custom"> {
 	p.note(
 		[
-			"Elmo tracks which AI answer engines mention your brand. Most of",
-			"that traffic comes from ChatGPT and Google AI Mode — neither has",
-			"a public API, so tracking them requires a scraper.",
+			"Elmo needs two kinds of providers:",
 			"",
-			pc.bold("Recommended scrapers:"),
-			`  • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
-			`  • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
+			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
+			`     • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
+			`     • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
+			"",
+			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
+			"   ad-hoc LLM calls). Required:",
+			`     • ${pc.cyan("OpenRouter")} — one key, all major models (recommended)`,
+			`     • ${pc.cyan("Anthropic / OpenAI / Mistral")} — direct provider keys`,
 			"",
 			"Pricing assumes Elmo's default cadence (5 runs/day × 2 surfaces).",
-			"Configure any combination below — every target is opt-in.",
 		].join("\n"),
-		"AI visibility providers",
+		"AI providers",
 	);
 
+	const mode = await p.select({
+		message: "Setup mode",
+		options: [
+			{ value: "recommended" as const, label: "Recommended — one scraper + one direct API" },
+			{ value: "custom" as const, label: "Custom — pick each provider individually" },
+		],
+		initialValue: "recommended" as const,
+	});
+	assertNotCancelled(mode);
+
+	if (mode === "recommended") {
+		await configureProvidersRecommended(env);
+	} else {
+		await configureProvidersCustom(env);
+	}
+	return mode;
+}
+
+async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 	const targets: string[] = [];
 
-	const brightDataTookDefaults = await collectBrightData(env, targets);
-	if (brightDataTookDefaults) {
-		await finalizeScrapeTargets(env, targets, { skipEdit: true });
-		return;
+	// ── Scraper ─────────────────────────────────────────────────────────────
+	const scraper = await p.select({
+		message: "Scraper (tracks ChatGPT + Google AI Mode)",
+		options: [
+			{ value: "brightdata" as const, label: "BrightData — ~$0.45/mo per prompt (cheaper)" },
+			{ value: "olostep" as const, label: "Olostep — ~$2.25/mo per prompt (premium)" },
+		],
+		initialValue: "brightdata" as const,
+	});
+	assertNotCancelled(scraper);
+	await collectScraperKey(scraper, env);
+	for (const model of DEFAULT_SCRAPER_MODELS) {
+		targets.push(`${model}:${scraper}:online`);
 	}
-	const olostepTookDefaults = await collectOlostep(env, targets);
-	if (olostepTookDefaults) {
-		await finalizeScrapeTargets(env, targets, { skipEdit: true });
-		return;
+
+	// ── Direct API ──────────────────────────────────────────────────────────
+	const direct = await p.select({
+		message: "Direct LLM API (powers onboarding analysis + sentiment scoring)",
+		options: [
+			{ value: "openrouter" as const, label: "OpenRouter — one key, all major models (recommended)" },
+			{ value: "anthropic" as const, label: "Anthropic — direct Claude" },
+			{ value: "openai" as const, label: "OpenAI — direct GPT-* models" },
+			{ value: "mistral" as const, label: "Mistral — direct Mistral models" },
+		],
+		initialValue: "openrouter" as const,
+	});
+	assertNotCancelled(direct);
+	await collectDirectApiQuick(direct, env);
+
+	await finalizeScrapeTargets(env, targets, { skipEdit: true });
+}
+
+async function configureProvidersCustom(env: EnvMap): Promise<void> {
+	const targets: string[] = [];
+
+	p.log.step(pc.bold("Step 1 of 2 — Direct LLM API (at least one is required)"));
+	// Order matches the auto-pick preference in onboarding/llm.ts so the first
+	// provider asked is the one onboarding will reach for by default.
+	while (!hasDirectApiConfigured(env)) {
+		await collectOpenRouter(env, targets);
+		await collectAnthropic(env, targets);
+		await collectOpenAI(env, targets);
+		await collectMistral(env, targets);
+		if (!hasDirectApiConfigured(env)) {
+			p.log.warn(
+				"Onboarding analysis and other low-latency LLM tasks require a direct API. Configure at least one before continuing.",
+			);
+		}
 	}
-	await collectAnthropic(env, targets);
-	await collectOpenAI(env, targets);
-	await collectOpenRouter(env, targets);
+
+	p.log.step(pc.bold("Step 2 of 2 — Scrapers (optional, but needed to track ChatGPT / Google AI Mode)"));
+	await collectBrightData(env, targets);
+	await collectOlostep(env, targets);
 	await collectDataForSEO(env, targets);
 
 	await finalizeScrapeTargets(env, targets);
 }
 
-async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolean> {
+function hasDirectApiConfigured(env: EnvMap): boolean {
+	return Boolean(env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY || env.MISTRAL_API_KEY || env.OPENROUTER_API_KEY);
+}
+
+async function collectScraperKey(scraper: "brightdata" | "olostep", env: EnvMap): Promise<void> {
+	if (scraper === "brightdata") {
+		p.log.info(`Sign up: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`);
+		const key = await p.password({
+			message: "BrightData API token",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.BRIGHTDATA_API_TOKEN = key;
+	} else {
+		p.log.info(`Sign up: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`);
+		const key = await p.password({
+			message: "Olostep API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OLOSTEP_API_KEY = key;
+	}
+}
+
+async function collectDirectApiQuick(
+	kind: "openrouter" | "anthropic" | "openai" | "mistral",
+	env: EnvMap,
+): Promise<void> {
+	if (kind === "openrouter") {
+		const key = await p.password({
+			message: "OpenRouter API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENROUTER_API_KEY = key;
+	} else if (kind === "anthropic") {
+		const key = await p.password({
+			message: "Anthropic API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.ANTHROPIC_API_KEY = key;
+	} else if (kind === "openai") {
+		const key = await p.password({
+			message: "OpenAI API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.OPENAI_API_KEY = key;
+	} else {
+		const key = await p.password({
+			message: "Mistral API key",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(key);
+		env.MISTRAL_API_KEY = key;
+	}
+}
+
+async function collectBrightData(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("BrightData")}? (recommended scraper — ~$0.45/mo per prompt)`,
+		message: `Configure ${pc.bold("BrightData")}? (~$0.45/mo per prompt)`,
 		initialValue: true,
 	});
 	assertNotCancelled(enable);
-	if (!enable) return false;
+	if (!enable) return;
 
 	p.log.info(`Sign up and generate an API token: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`);
 	const key = await p.password({
@@ -458,7 +572,7 @@ async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolea
 	assertNotCancelled(key);
 	env.BRIGHTDATA_API_TOKEN = key;
 
-	return await pickScraperTargets({
+	await pickScraperTargets({
 		providerLabel: "BrightData",
 		providerId: "brightdata",
 		allModels: BRIGHTDATA_MODELS as readonly string[],
@@ -466,13 +580,13 @@ async function collectBrightData(env: EnvMap, targets: string[]): Promise<boolea
 	});
 }
 
-async function collectOlostep(env: EnvMap, targets: string[]): Promise<boolean> {
+async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Olostep")}? (recommended scraper — ~$2.25/mo per prompt)`,
+		message: `Configure ${pc.bold("Olostep")}? (~$2.25/mo per prompt)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
-	if (!enable) return false;
+	if (!enable) return;
 
 	p.log.info(`Grab an API key: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`);
 	const key = await p.password({
@@ -482,7 +596,7 @@ async function collectOlostep(env: EnvMap, targets: string[]): Promise<boolean> 
 	assertNotCancelled(key);
 	env.OLOSTEP_API_KEY = key;
 
-	return await pickScraperTargets({
+	await pickScraperTargets({
 		providerLabel: "Olostep",
 		providerId: "olostep",
 		allModels: OLOSTEP_MODELS as readonly string[],
@@ -495,37 +609,18 @@ async function pickScraperTargets(args: {
 	providerId: "brightdata" | "olostep";
 	allModels: readonly string[];
 	targets: string[];
-}): Promise<boolean> {
-	const { providerLabel, providerId, allModels, targets } = args;
-
-	const useDefault = await p.confirm({
-		message: `Track ChatGPT and Google AI Mode via ${providerLabel}? (recommended)`,
-		initialValue: true,
-	});
-	assertNotCancelled(useDefault);
-
-	if (useDefault) {
-		for (const model of DEFAULT_SCRAPER_MODELS) {
-			targets.push(`${model}:${providerId}:online`);
-		}
-		return true;
-	}
-
+}): Promise<void> {
 	const selected = (await p.multiselect({
-		message: `Pick which surfaces to track via ${providerLabel}`,
-		options: allModels.map((model) => ({
-			value: model,
-			label: model,
-		})),
+		message: `LLM Providers to track via ${args.providerLabel}`,
+		options: args.allModels.map((model) => ({ value: model, label: model })),
 		required: true,
 		initialValues: [...DEFAULT_SCRAPER_MODELS],
 	})) as string[] | symbol;
 	assertNotCancelled(selected);
 
 	for (const model of selected) {
-		targets.push(`${model}:${providerId}:online`);
+		args.targets.push(`${model}:${args.providerId}:online`);
 	}
-	return false;
 }
 
 async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
@@ -552,7 +647,7 @@ async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
 	const slug = model || DEFAULT_ANTHROPIC_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Enable Claude's web search tool? (reflects real browsing behavior)",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
@@ -584,12 +679,44 @@ async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
 	const slug = model || DEFAULT_OPENAI_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Enable the web_search_preview tool?",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
 
 	targets.push(webSearch ? `chatgpt:openai-api:${slug}:online` : `chatgpt:openai-api:${slug}`);
+}
+
+async function collectMistral(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("Mistral API")}? (direct Mistral models)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	const key = await p.password({
+		message: "Mistral API key",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(key);
+	env.MISTRAL_API_KEY = key;
+
+	const model = await p.text({
+		message: "Mistral model",
+		placeholder: DEFAULT_MISTRAL_MODEL,
+		defaultValue: DEFAULT_MISTRAL_MODEL,
+	});
+	assertNotCancelled(model);
+	const slug = model || DEFAULT_MISTRAL_MODEL;
+
+	const webSearch = await p.confirm({
+		message: "Enable web search? (recommended, but more expensive)",
+		initialValue: true,
+	});
+	assertNotCancelled(webSearch);
+
+	targets.push(webSearch ? `mistral:mistral-api:${slug}:online` : `mistral:mistral-api:${slug}`);
 }
 
 async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> {
@@ -616,7 +743,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 	const slug = model || DEFAULT_OPENROUTER_MODEL;
 
 	const webSearch = await p.confirm({
-		message: "Append :online for web search?",
+		message: "Enable web search? (recommended, but more expensive)",
 		initialValue: true,
 	});
 	assertNotCancelled(webSearch);
@@ -626,7 +753,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 
 async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode scraping + keyword/persona suggestions in the web wizard)`,
+		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode scraping)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
@@ -721,59 +848,7 @@ function dedupeTargets(targets: string[]): string {
 	return out.join(",");
 }
 
-// ── Command: update ──────────────────────────────────────────────────────────
-
-async function runRegen(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	const globalConfig = await readGlobalConfig();
-
-	// Determine settings: prefer global config, fall back to detecting from files
-	let dev: boolean;
-	let postgresMode: PostgresMode;
-	let repoRoot: string;
-	let dockerDir: string | undefined;
-
-	if (globalConfig?.postgresMode) {
-		dev = globalConfig.dev ?? false;
-		postgresMode = globalConfig.postgresMode;
-		repoRoot = globalConfig.repoRoot ?? process.cwd();
-		dockerDir = globalConfig.dockerDir;
-	} else {
-		const detected = await detectSettingsFromConfig(configDir);
-		dev = detected.dev;
-		postgresMode = detected.postgresMode;
-		repoRoot = detected.repoRoot;
-		dockerDir = detected.dockerDir;
-	}
-
-	const composeYaml = buildComposeYaml({
-		dev,
-		postgresMode,
-		repoRoot,
-		dockerDir,
-	});
-
-	const composePath = path.join(configDir, "elmo.yaml");
-	await fs.writeFile(composePath, composeYaml, "utf8");
-
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev,
-		postgresMode,
-		repoRoot,
-	});
-
-	log.success(`Regenerated ${composePath}`);
-	log.info("The .env file was not modified.");
-}
-
-// ── Command: start ───────────────────────────────────────────────────────────
-
-async function runStart(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	await doStart(configDir);
-}
+// ── Start helper (used by init) ──────────────────────────────────────────────
 
 async function doStart(configDir: string): Promise<void> {
 	assertDockerRunning();
@@ -792,48 +867,10 @@ async function doStart(configDir: string): Promise<void> {
 	}
 
 	log.info("Examples:");
-	console.log(`  ${pc.bold("elmo logs -f")}`);
+	console.log(`  ${pc.bold("elmo compose logs -f")}`);
 	console.log(`  ${pc.bold("elmo compose logs -f web")}`);
 	console.log(`  ${pc.bold("elmo compose ps")}`);
-}
-
-// ── Command: stop ────────────────────────────────────────────────────────────
-
-async function runStop(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
-
-	log.step("Stopping Docker Compose stack...");
-	await runDockerCompose(configDir, ["down"]);
-	log.success("Stack stopped.");
-}
-
-// ── Command: status ──────────────────────────────────────────────────────────
-
-async function runStatus(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
-
-	const services = await getComposeServices(configDir);
-	if (services.length === 0) {
-		log.warn("No running services found.");
-		return;
-	}
-
-	let allHealthy = true;
-	for (const service of services) {
-		const status = formatServiceStatus(service);
-		console.log(status);
-		if (!isServiceReady(service)) {
-			allHealthy = false;
-		}
-	}
-
-	if (allHealthy) {
-		log.success("All services are healthy.");
-	} else {
-		log.warn("Some services are not healthy yet.");
-	}
+	console.log(`  ${pc.bold("elmo compose down")}`);
 }
 
 // ── Command: compose ─────────────────────────────────────────────────────────
@@ -844,39 +881,39 @@ async function runCompose(args: string[], options: DirOption): Promise<void> {
 	await runDockerCompose(configDir, args);
 }
 
-// ── Command: build ───────────────────────────────────────────────────────────
+// ── Command: edit ────────────────────────────────────────────────────────────
 
-async function runBuild(
-	options: DirOption & {
-		webOnly?: boolean;
-		workerOnly?: boolean;
-		cache?: boolean;
-	},
-): Promise<void> {
+async function runEdit(target: string, options: DirOption): Promise<void> {
 	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
 
-	const buildWeb = !options.workerOnly;
-	const buildWorker = !options.webOnly;
-	const noCache = options.cache === false;
-
-	const targets: string[] = [];
-	if (buildWeb) targets.push("web");
-	if (buildWorker) targets.push("worker");
-
-	log.step(`Building Docker images: ${targets.join(", ")}${noCache ? " (no cache)" : ""}...`);
-
-	const buildArgs: string[] = ["build"];
-	if (noCache) buildArgs.push("--no-cache");
-
-	for (const target of targets) {
-		log.step(`Building ${target}...`);
-		await runDockerCompose(configDir, [...buildArgs, target]);
-		log.success(`${target} image built successfully.`);
+	let filePath: string;
+	if (target === "env") {
+		filePath = path.join(configDir, ".env");
+	} else if (target === "compose") {
+		filePath = path.join(configDir, "elmo.yaml");
+	} else {
+		throw new Error(`Unknown edit target: ${target}. Use \`env\` or \`compose\`.`);
 	}
 
-	log.success("All images built.");
-	console.log(`  Run ${pc.bold("elmo start")} to start the stack.`);
+	if (!(await fileExists(filePath))) {
+		throw new Error(`File not found: ${filePath}`);
+	}
+
+	const editorEnv = process.env.VISUAL || process.env.EDITOR || "nano";
+	const parts = editorEnv.split(/\s+/).filter(Boolean);
+	const cmd = parts[0] ?? "nano";
+	const args = [...parts.slice(1), filePath];
+
+	await new Promise<void>((resolve, reject) => {
+		const child = spawn(cmd, args, { stdio: "inherit" });
+		child.on("close", (code) => {
+			if (code === 0) resolve();
+			else reject(new Error(`${cmd} exited with code ${code}`));
+		});
+		child.on("error", (err) => reject(err));
+	});
+
+	log.info("Restart the stack with `elmo compose up -d` to apply changes.");
 }
 
 // ── Compose YAML Builder ─────────────────────────────────────────────────────
@@ -886,6 +923,8 @@ function buildComposeYaml(options: {
 	postgresMode: PostgresMode;
 	repoRoot: string;
 	dockerDir?: string;
+	port: number;
+	version: string;
 }): string {
 	const services: string[] = [];
 	const volumes = new Set<string>();
@@ -906,8 +945,10 @@ function buildComposeYaml(options: {
 		services.push(buildPostgresService());
 		services.push(
 			buildDbMigrateService({
+				dev: options.dev,
 				dockerfilePath,
 				repoRoot: options.repoRoot,
+				version: options.version,
 			}),
 		);
 		dependsOnWeb.push("db-migrate");
@@ -922,6 +963,8 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
+			port: options.port,
+			version: options.version,
 		}),
 	);
 	services.push(
@@ -931,10 +974,11 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
+			version: options.version,
 		}),
 	);
 
-	const lines = ["name: elmo", "", "services:"];
+	const lines = [renderedByHeader(options.version), "", "name: elmo", "", "services:"];
 	lines.push(...services.map((service) => indentBlock(service, 2)));
 
 	if (volumes.size > 0) {
@@ -968,19 +1012,33 @@ function buildPostgresService(): string {
 	].join("\n");
 }
 
-function buildDbMigrateService(options: { dockerfilePath: string; repoRoot: string }): string {
-	return [
-		"db-migrate:",
-		"  build:",
-		`    context: ${options.repoRoot}`,
-		`    dockerfile: ${options.dockerfilePath}`,
-		"    target: migrate",
+function buildDbMigrateService(options: {
+	dev: boolean;
+	dockerfilePath: string;
+	repoRoot: string;
+	version: string;
+}): string {
+	const lines = ["db-migrate:"];
+	if (options.dev) {
+		lines.push(
+			"  build:",
+			`    context: ${options.repoRoot}`,
+			`    dockerfile: ${options.dockerfilePath}`,
+			"    target: migrate",
+		);
+	} else {
+		lines.push(`  image: elmohq/elmo-db-migrate:${options.version}`);
+	}
+
+	lines.push(
 		"  environment:",
 		"    - DATABASE_URL=postgres://postgres:postgres@postgres:5432/elmo",
 		"  depends_on:",
 		"    postgres:",
 		"      condition: service_healthy",
-	].join("\n");
+	);
+
+	return lines.join("\n");
 }
 
 function buildWebService(options: {
@@ -989,6 +1047,8 @@ function buildWebService(options: {
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
+	port: number;
+	version: string;
 }): string {
 	const lines = ["web:"];
 	if (options.dev) {
@@ -1001,10 +1061,10 @@ function buildWebService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push("  image: elmohq/web:latest");
+		lines.push(`  image: elmohq/elmo-web:${options.version}`);
 	}
 
-	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", '    - "1515:3000"');
+	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", `    - "${options.port}:3000"`);
 
 	if (options.dependsOn.length > 0) {
 		lines.push("  depends_on:");
@@ -1023,6 +1083,7 @@ function buildWorkerService(options: {
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
+	version: string;
 }): string {
 	const lines = ["worker:"];
 	if (options.dev) {
@@ -1035,7 +1096,7 @@ function buildWorkerService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push("  image: elmohq/worker:latest");
+		lines.push(`  image: elmohq/elmo-worker:${options.version}`);
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true");
@@ -1088,21 +1149,6 @@ async function getComposeServices(configDir: string): Promise<ComposeService[]> 
 			return [];
 		}
 	}
-}
-
-function formatServiceStatus(service: ComposeService): string {
-	const health = service.Health ?? "unknown";
-	const state = service.State ?? "unknown";
-	const label = `${service.Service}`.padEnd(16, " ");
-	let color = pc.red;
-
-	if (isServiceReady(service)) {
-		color = pc.green;
-	} else if (health === "starting" || state.includes("starting")) {
-		color = pc.yellow;
-	}
-
-	return color(`${label} ${state} ${service.Health ? `(${health})` : ""}`.trim());
 }
 
 function isServiceReady(service: ComposeService): boolean {
@@ -1225,55 +1271,20 @@ async function resolveDockerDirAuto(cwd: string, explicitDir?: string): Promise<
 // ── Config Dir Resolution ────────────────────────────────────────────────────
 
 async function resolveConfigDir(explicitDir?: string): Promise<string> {
-	if (explicitDir) {
-		const resolved = path.resolve(process.cwd(), explicitDir);
-		const composePath = path.join(resolved, "elmo.yaml");
-		if (!(await fileExists(composePath))) {
-			throw new Error(
-				`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init\` to create your local setup.`,
-			);
-		}
-		return resolved;
-	}
-
-	const config = await readGlobalConfig();
-	if (!config?.configDir) {
-		throw new Error("No config found. Run `elmo init` or specify --dir.");
-	}
-
-	const resolved = path.resolve(config.configDir);
+	const resolved = explicitDir ? path.resolve(process.cwd(), explicitDir) : CONFIG_HOME;
 	const composePath = path.join(resolved, "elmo.yaml");
 	if (!(await fileExists(composePath))) {
-		throw new Error(`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init\` to regenerate.`);
+		if (explicitDir) {
+			throw new Error(
+				`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init --dir ${explicitDir}\` to create it.`,
+			);
+		}
+		throw new Error(`No config found at ${resolved}. Run \`elmo init\` to create one, or specify --dir.`);
 	}
 	return resolved;
 }
 
 // ── File & Config Helpers ────────────────────────────────────────────────────
-
-async function readGlobalConfig(): Promise<GlobalConfig | null> {
-	try {
-		const contents = await fs.readFile(CONFIG_FILE, "utf8");
-		return JSON.parse(contents) as GlobalConfig;
-	} catch {
-		return null;
-	}
-}
-
-async function writeGlobalConfig(config: {
-	configDir: string;
-	dockerDir?: string;
-	dev?: boolean;
-	postgresMode?: PostgresMode;
-	repoRoot?: string;
-}): Promise<void> {
-	const globalConfig: GlobalConfig = {
-		...config,
-		updatedAt: new Date().toISOString(),
-	};
-	await ensureDir(CONFIG_HOME);
-	await fs.writeFile(CONFIG_FILE, JSON.stringify(globalConfig, null, 2), "utf8");
-}
 
 async function writeConfigFiles(
 	configDir: string,
@@ -1282,18 +1293,26 @@ async function writeConfigFiles(
 		composeYaml: string;
 		postgresMode: PostgresMode;
 		dev: boolean;
+		version: string;
 	},
 ): Promise<void> {
 	const envPath = path.join(configDir, ".env");
 	const composePath = path.join(configDir, "elmo.yaml");
 
 	await ensureDir(configDir);
-	await fs.writeFile(envPath, buildEnvFile(initConfig.env), "utf8");
+	await fs.writeFile(envPath, buildEnvFile(initConfig.env, initConfig.version), "utf8");
 	await fs.writeFile(composePath, initConfig.composeYaml, "utf8");
 }
 
-function buildEnvFile(env: EnvMap): string {
-	const lines = ["# Generated by elmo init", "# WARNING: contains secrets. Do not commit.", ""];
+function renderedByHeader(version: string): string {
+	return [
+		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
+		"# Re-run `elmo init` after upgrading the CLI to refresh this file.",
+	].join("\n");
+}
+
+function buildEnvFile(env: EnvMap, version: string): string {
+	const lines = [renderedByHeader(version), "# WARNING: contains secrets. Do not commit.", ""];
 
 	for (const [key, rawValue] of Object.entries(env)) {
 		if (rawValue === undefined) {
@@ -1314,58 +1333,6 @@ function formatEnvValue(value: string): string {
 		return `"${escaped}"`;
 	}
 	return value;
-}
-
-async function detectSettingsFromConfig(configDir: string): Promise<{
-	dev: boolean;
-	postgresMode: PostgresMode;
-	repoRoot: string;
-	dockerDir?: string;
-}> {
-	const envPath = path.join(configDir, ".env");
-	const env = await readEnvFile(envPath);
-
-	const postgresMode: PostgresMode = env.DATABASE_URL?.includes("postgres:5432") ? "docker" : "external";
-
-	const yamlPath = path.join(configDir, "elmo.yaml");
-	let dev = false;
-	let repoRoot = process.cwd();
-
-	try {
-		const yamlContent = await fs.readFile(yamlPath, "utf8");
-		dev = yamlContent.includes("build:");
-		const contextMatch = yamlContent.match(/context:\s+(.+)/);
-		if (contextMatch) {
-			repoRoot = contextMatch[1].trim();
-		}
-	} catch {
-		// Use defaults
-	}
-
-	return { dev, postgresMode, repoRoot };
-}
-
-async function readEnvFile(envPath: string): Promise<EnvMap> {
-	try {
-		const contents = await fs.readFile(envPath, "utf8");
-		const env: EnvMap = {};
-		for (const line of contents.split("\n")) {
-			const trimmed = line.trim();
-			if (!trimmed || trimmed.startsWith("#")) continue;
-			const eqIndex = trimmed.indexOf("=");
-			if (eqIndex < 0) continue;
-			const key = trimmed.substring(0, eqIndex);
-			let value = trimmed.substring(eqIndex + 1);
-			// Remove surrounding quotes
-			if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-				value = value.slice(1, -1);
-			}
-			env[key] = value;
-		}
-		return env;
-	} catch {
-		return {};
-	}
 }
 
 async function fileExists(target: string): Promise<boolean> {

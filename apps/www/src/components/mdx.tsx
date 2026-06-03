@@ -1,9 +1,8 @@
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
-import { OpenApiReference } from "@workspace/docs/components/openapi-reference";
-import { Mermaid } from "@workspace/docs/components/mermaid";
 import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
+import { YouTubeEmbed } from "@/components/youtube-embed";
 
 async function onBlockFeedback(
 	feedback: BlockFeedback,
@@ -21,11 +20,10 @@ async function onBlockFeedback(
 export function getMDXComponents(components?: MDXComponents) {
 	return {
 		...defaultMdxComponents,
-		OpenApiReference,
-		Mermaid,
 		FeedbackBlock: (props: { id: string; body?: string; children: React.ReactNode }) => (
 			<FeedbackBlock {...props} onSendAction={onBlockFeedback} />
 		),
+		YouTube: YouTubeEmbed,
 		...components,
 	} satisfies MDXComponents;
 }

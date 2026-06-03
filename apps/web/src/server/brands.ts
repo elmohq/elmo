@@ -10,6 +10,7 @@ import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from 
 import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
+import { validateWebsiteUrl } from "@/lib/brand-website";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
 
@@ -89,28 +90,6 @@ async function getBrandWithPromptsFromDb(
 	}
 }
 
-function validateWebsiteUrl(url: string): { isValid: boolean; formattedUrl?: string; error?: string } {
-	if (!url || url.trim() === "") {
-		return { isValid: false, error: "Website URL is required" };
-	}
-	let formattedUrl = url.trim();
-	if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
-		formattedUrl = `https://${formattedUrl}`;
-	}
-	try {
-		const urlObj = new URL(formattedUrl);
-		if (!["http:", "https:"].includes(urlObj.protocol)) {
-			return { isValid: false, error: "Website URL must use http or https protocol" };
-		}
-		if (!urlObj.hostname || urlObj.hostname.length === 0) {
-			return { isValid: false, error: "Website URL must have a valid domain name" };
-		}
-		return { isValid: true, formattedUrl };
-	} catch {
-		return { isValid: false, error: "Please enter a valid website URL" };
-	}
-}
-
 // ============================================================================
 // Server Functions
 // ============================================================================
@@ -183,7 +162,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 			.values({
 				id: data.brandId,
 				name: data.brandName,
-				website: urlValidation.formattedUrl!,
+				website: urlValidation.formattedUrl,
 				enabled: true,
 				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 			})

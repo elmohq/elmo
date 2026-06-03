@@ -19,7 +19,7 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 			"SCRAPE_TARGETS environment variable is required. " +
 			"Set it to configure which AI models to track. Example:\n" +
 			"  SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online\n" +
-			"See https://docs.elmohq.com/docs/deployment/providers for details.",
+			"See https://docs.elmohq.com/docs/user-guide/providers for details.",
 		);
 	}
 	return envValue.split(",").map((raw) => {
@@ -48,7 +48,7 @@ export function validateScrapeTargets(
 			throw new Error(
 				`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured (see docs)`,
 			);
-		if ((config.provider === "openai-api" || config.provider === "anthropic-api" || config.provider === "openrouter") && !config.version)
+		if ((config.provider === "openai-api" || config.provider === "anthropic-api" || config.provider === "mistral-api" || config.provider === "openrouter") && !config.version)
 			throw new Error(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
 		const targetError = provider.validateTarget?.(config);
 		if (targetError)

@@ -3,10 +3,19 @@ import { olostep } from "./registry/olostep";
 import { brightdata } from "./registry/brightdata";
 import { openaiApi } from "./registry/openai-api";
 import { anthropicApi } from "./registry/anthropic-api";
+import { mistralApi } from "./registry/mistral-api";
 import { dataforseo } from "./registry/dataforseo";
 import { openrouter } from "./registry/openrouter";
 
-export type { Provider, ScrapeResult, ProviderOptions, TestResult, ModelConfig } from "./types";
+export type {
+	Provider,
+	ScrapeResult,
+	ProviderOptions,
+	TestResult,
+	ModelConfig,
+	StructuredResearchOptions,
+	StructuredResearchResult,
+} from "./types";
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
@@ -17,6 +26,7 @@ const providerMap: Record<string, Provider> = {
 	brightdata,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
+	"mistral-api": mistralApi,
 	dataforseo,
 	openrouter,
 };

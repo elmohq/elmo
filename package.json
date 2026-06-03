@@ -2,43 +2,10 @@
   "name": "elmo",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.33.0",
+  "license": "MIT",
+  "packageManager": "pnpm@11.5.0",
   "engines": {
     "node": "24.x"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "^19.2.14",
-      "@types/react-dom": "^19.2.3",
-      "next": "^16.1.7",
-      "glob>minimatch": "^9.0.7",
-      "cheerio>undici": "^7.24.0",
-      "kysely": "~0.28.14",
-      "h3": ">=2.0.1-rc.18",
-      "h3-v2": "npm:h3@>=2.0.1-rc.18",
-      "picomatch": "^4.0.4",
-      "anymatch>picomatch": "^2.3.2",
-      "micromatch>picomatch": "^2.3.2",
-      "dompurify": "^3.3.2",
-      "yaml": "^2.8.3",
-      "@esbuild-kit/core-utils>esbuild": "^0.25.0"
-    },
-    "onlyBuiltDependencies": [
-      "@tailwindcss/oxide",
-      "esbuild",
-      "msgpackr-extract",
-      "puppeteer",
-      "sharp",
-      "unrs-resolver"
-    ],
-    "ignoredBuiltDependencies": [
-      "@scarf/scarf",
-      "@tree-sitter-grammars/tree-sitter-yaml",
-      "core-js",
-      "core-js-pure",
-      "tree-sitter",
-      "tree-sitter-json"
-    ]
   },
   "scripts": {
     "dev": "turbo dev",
@@ -58,11 +25,11 @@
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.12",
+    "@biomejs/biome": "2.4.15",
     "@changesets/cli": "^2.31.0",
-    "knip": "^6.4.1",
-    "tsx": "^4.21.0",
-    "turbo": "^2.9.6",
+    "knip": "^6.14.2",
+    "tsx": "^4.22.3",
+    "turbo": "^2.9.14",
     "typescript": "^6.0.3"
   }
 }

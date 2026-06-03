@@ -1,7 +1,8 @@
 {
   "name": "@workspace/deployment",
-  "version": "0.2.4",
+  "version": "0.2.10",
   "private": true,
+  "license": "MIT",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
@@ -13,7 +14,7 @@
     "@workspace/whitelabel": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.9.1",
     "typescript": "^6.0.3"
   }
 }

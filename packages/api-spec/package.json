@@ -1,7 +1,8 @@
 {
 	"name": "@workspace/api-spec",
-	"version": "0.2.4",
+	"version": "0.2.10",
 	"private": true,
+	"license": "MIT",
 	"type": "module",
 	"exports": {
 		".": "./src/openapi.json"

@@ -1,5 +1,72 @@
 # @workspace/www
 
+## 0.2.10
+
+### Patch Changes
+
+- Updated dependencies [063e33e]
+  - @workspace/docs@0.2.10
+  - @workspace/api-spec@0.2.10
+  - @workspace/config@0.2.10
+  - @workspace/og@0.2.10
+  - @workspace/ui@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- @workspace/api-spec@0.2.9
+- @workspace/config@0.2.9
+- @workspace/docs@0.2.9
+- @workspace/og@0.2.9
+- @workspace/ui@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @workspace/api-spec@0.2.8
+- @workspace/config@0.2.8
+- @workspace/docs@0.2.8
+- @workspace/og@0.2.8
+- @workspace/ui@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- @workspace/api-spec@0.2.7
+- @workspace/config@0.2.7
+- @workspace/docs@0.2.7
+- @workspace/og@0.2.7
+- @workspace/ui@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies [1a1005a]
+  - @workspace/api-spec@0.2.6
+  - @workspace/config@0.2.6
+  - @workspace/docs@0.2.6
+  - @workspace/og@0.2.6
+  - @workspace/ui@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- edf97d4: Add Mistral as a direct API provider. Set `MISTRAL_API_KEY` and target via `mistral:mistral-api:<model>[:online]`.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- Updated dependencies [76e2a5f]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+  - @workspace/docs@0.2.5
+  - @workspace/config@0.2.5
+  - @workspace/api-spec@0.2.5
+  - @workspace/og@0.2.5
+  - @workspace/ui@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

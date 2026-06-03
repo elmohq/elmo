@@ -26,7 +26,7 @@ function createClient(): bdclient {
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
-	for (const key of ["answer_text", "answer_text_markdown", "answer", "response_raw", "response", "text", "content"]) {
+	for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
 		if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 	}
 	return JSON.stringify(record).slice(0, 2000);

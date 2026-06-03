@@ -1,5 +1,21 @@
 # @workspace/ui
 
+## 0.2.10
+
+## 0.2.9
+
+## 0.2.8
+
+## 0.2.7
+
+## 0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+
 ## 0.2.4
 
 ## 0.2.3

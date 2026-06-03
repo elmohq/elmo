@@ -1,5 +1,57 @@
 # @workspace/worker
 
+## 0.2.10
+
+### Patch Changes
+
+- Updated dependencies [520aef4]
+  - @workspace/lib@0.2.10
+  - @workspace/whitelabel@0.2.10
+
+## 0.2.9
+
+### Patch Changes
+
+- a2a9681: Attach a `boss.on("error")` handler so transient pg-boss connection blips no longer crash the worker.
+  - @workspace/lib@0.2.9
+  - @workspace/whitelabel@0.2.9
+
+## 0.2.8
+
+### Patch Changes
+
+- @workspace/lib@0.2.8
+- @workspace/whitelabel@0.2.8
+
+## 0.2.7
+
+### Patch Changes
+
+- 1e770ff: Publish multi-arch (`linux/amd64` + `linux/arm64`) Docker images for `elmohq/elmo-web` and `elmohq/elmo-worker`, so Apple Silicon and other arm64 hosts can pull them.
+  - @workspace/lib@0.2.7
+  - @workspace/whitelabel@0.2.7
+
+## 0.2.6
+
+### Patch Changes
+
+- @workspace/lib@0.2.6
+- @workspace/whitelabel@0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- 76e2a5f: Add telemetry opt-out prompt during `elmo init` and new `elmo telemetry status|enable|disable` subcommand. See [Telemetry](https://elmohq.com/docs/developer-guide/telemetry) for what's collected.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- 839b98b: Brand onboarding is now a single screen: paste a website and review the suggested products, competitors (with their own domains and aliases), additional brand domains, aliases, and tagged starter prompts before saving. Powered by whichever direct LLM API you've configured (OpenRouter, Anthropic, OpenAI, or Mistral) with web search.
+- Updated dependencies [7990382]
+- Updated dependencies [edf97d4]
+- Updated dependencies [7cba46d]
+- Updated dependencies [839b98b]
+  - @workspace/lib@0.2.5
+  - @workspace/whitelabel@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

@@ -9,6 +9,11 @@
  * to the child's stdin, so we exercise the same interactive wizard a
  * human user would see.
  *
+ * The CLI writes config to `~/.elmo`. To redirect that to a test-local
+ * directory without polluting the runner's real home, we set HOME on the
+ * child process so `os.homedir()` resolves to the parent of <config-dir>.
+ * The supplied <config-dir> must therefore end in `.elmo`.
+ *
  * Usage: tsx cli-driver.ts <config-dir> <repo-root>
  */
 import { spawn } from "node:child_process";
@@ -22,15 +27,23 @@ if (!configDir || !repoRoot) {
 	process.exit(1);
 }
 
+if (path.basename(configDir) !== ".elmo") {
+	console.error(`config-dir must end in ".elmo" (got ${configDir})`);
+	process.exit(1);
+}
+
+const cliHome = path.dirname(configDir);
 const cliPath = path.join(repoRoot, "apps/cli/dist/index.js");
 const nodeBin = process.execPath;
 
 console.error(`  [driver] config-dir: ${configDir}`);
+console.error(`  [driver] cli-home:   ${cliHome}`);
 console.error(`  [driver] repo-root:  ${repoRoot}`);
 console.error(`  [driver] cli-path:   ${cliPath}`);
 
 const ENTER = "\r";
 const ARROW_LEFT = "\x1b[D";
+const ARROW_DOWN = "\x1b[B";
 
 // Strip ANSI CSI + OSC sequences so we can substring-match clack's rendered output.
 function stripAnsi(s: string): string {
@@ -48,11 +61,12 @@ function shEscape(s: string): string {
 function spawnViaScript() {
 	const env = {
 		...process.env,
+		HOME: cliHome,
 		FORCE_COLOR: "0",
 		NO_COLOR: "1",
 		TERM: "xterm-256color",
 	};
-	const cliArgs = [nodeBin, cliPath, "init", "--dev", "--dir", configDir];
+	const cliArgs = [nodeBin, cliPath, "init", "--dev"];
 
 	if (process.platform === "darwin") {
 		// BSD script: `script [-q] file command...` — propagates child exit code.
@@ -136,13 +150,19 @@ async function main(): Promise<void> {
 	await waitFor("PostgreSQL connection");
 	await send(ENTER);
 
-	// BrightData confirm (default Yes) → No
-	await waitFor("Configure BrightData?");
-	await send(ARROW_LEFT);
+	// Setup mode select — default is "Recommended"; arrow-down to "Custom" so
+	// we exercise the multi-provider path with placeholder keys.
+	await waitFor("Setup mode");
+	await send(ARROW_DOWN);
 	await send(ENTER);
 
-	// Olostep confirm (default No) → No
-	await waitFor("Configure Olostep?");
+	// ── Step 1: Direct LLM APIs (loops until at least one is configured) ──
+	// The loop asks providers in the same order as the auto-pick preference:
+	// OpenRouter → Anthropic → OpenAI → Mistral. We say Yes to Anthropic and
+	// OpenAI to keep the resulting .env close to the pre-refactor shape.
+
+	// OpenRouter confirm (default No) → No
+	await waitFor("Configure OpenRouter?");
 	await send(ENTER);
 
 	// Anthropic confirm (default No) → Yes
@@ -153,7 +173,7 @@ async function main(): Promise<void> {
 	await send(`sk-ant-placeholder-not-used${ENTER}`);
 	await waitFor("Claude model");
 	await send(ENTER); // accept default slug
-	await waitFor("Enable Claude's web search tool?");
+	await waitFor("Enable web search?");
 	await send(ARROW_LEFT);
 	await send(ENTER); // No — target becomes claude:anthropic-api:<slug> without :online
 
@@ -165,11 +185,22 @@ async function main(): Promise<void> {
 	await send(`sk-placeholder-not-used${ENTER}`);
 	await waitFor("OpenAI model");
 	await send(ENTER); // accept default gpt-5-mini
-	await waitFor("Enable the web_search_preview tool?");
+	await waitFor("Enable web search?");
 	await send(ENTER); // Yes — chatgpt:openai-api:gpt-5-mini:online
 
-	// OpenRouter confirm (default No) → No
-	await waitFor("Configure OpenRouter?");
+	// Mistral confirm (default No) → No
+	await waitFor("Configure Mistral API?");
+	await send(ENTER);
+
+	// ── Step 2: Scrapers + DataForSEO (optional) ──────────────────────────
+
+	// BrightData confirm (default Yes) → No
+	await waitFor("Configure BrightData?");
+	await send(ARROW_LEFT);
+	await send(ENTER);
+
+	// Olostep confirm (default No) → No
+	await waitFor("Configure Olostep?");
 	await send(ENTER);
 
 	// DataForSEO confirm (default No) → Yes (placeholder creds, no extra target)
@@ -187,8 +218,17 @@ async function main(): Promise<void> {
 	await waitFor("Edit SCRAPE_TARGETS before saving?");
 	await send(ENTER);
 
+	// Telemetry opt-in (default Yes) → No
+	await waitFor("Share telemetry?");
+	await send(ARROW_LEFT);
+	await send(ENTER);
+
 	// Product updates email (optional)
 	await waitFor("email to receive product updates");
+	await send(ENTER);
+
+	// Web app port (default 1515) → accept default
+	await waitFor("Web app port");
 	await send(ENTER);
 
 	// Start the stack now? (default Yes) → No

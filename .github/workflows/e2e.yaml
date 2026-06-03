@@ -17,6 +17,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -61,6 +64,12 @@ jobs:
 
       - name: Unit tests
         run: pnpm turbo test
+
+      - name: Install Playwright browsers
+        run: pnpm -C apps/web exec playwright install chromium --with-deps
+
+      - name: Storybook tests
+        run: pnpm -C apps/web test:storybook
 
       - name: Build elmo CLI
         run: pnpm -C apps/cli build
@@ -109,9 +118,6 @@ jobs:
 
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
-
-      - name: Install Playwright browsers
-        run: cd e2e && npx playwright install chromium --with-deps
 
       - name: Run Playwright E2E tests
         run: pnpm test:e2e

@@ -1,5 +1,28 @@
 # @workspace/lib
 
+## 0.2.10
+
+### Patch Changes
+
+- 520aef4: Log start/done (with duration and result counts) for `analyzeBrand`, so the onboarding analyze step is visible in the web server logs.
+
+## 0.2.9
+
+## 0.2.8
+
+## 0.2.7
+
+## 0.2.6
+
+## 0.2.5
+
+### Patch Changes
+
+- 7990382: BrightData: prefer `answer_text_markdown` over `answer_text` when extracting response text, so prompt responses render with markdown formatting in the UI.
+- edf97d4: Add Mistral as a direct API provider. Set `MISTRAL_API_KEY` and target via `mistral:mistral-api:<model>[:online]`.
+- 7cba46d: License Elmo under the MIT License. Add Code of Conduct, Contributing guide, Security policy, and a lightweight CLA process.
+- 839b98b: Brand onboarding is now a single screen: paste a website and review the suggested products, competitors (with their own domains and aliases), additional brand domains, aliases, and tagged starter prompts before saving. Powered by whichever direct LLM API you've configured (OpenRouter, Anthropic, OpenAI, or Mistral) with web search.
+
 ## 0.2.4
 
 ### Patch Changes

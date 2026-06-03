@@ -32,10 +32,7 @@ import {
 // ---------- Types ----------
 
 interface ReportData {
-	websiteAnalysis: any;
 	competitors: CompetitorResult[];
-	keywords: any[];
-	personaGroups: any[];
 	prompts: PromptData[];
 	promptRuns: PromptRunResult[];
 }

@@ -27,7 +27,7 @@ The wizard walks you through:
 
 1. **Config directory** — Where to store your `elmo.yaml` and `.env` files (default: `./elmo`)
 2. **PostgreSQL** — Run Postgres in Docker (recommended) or provide an existing `DATABASE_URL`
-3. **AI Providers** — Enter your API keys for OpenAI, Anthropic, and/or DataForSEO
+3. **AI Providers** — Configure scrapers (BrightData, Olostep, DataForSEO) and/or direct model APIs (OpenAI, Anthropic, Mistral, OpenRouter); see [Providers](/docs/user-guide/providers) for details
 4. **Start** — Optionally start the stack immediately
 
 Once complete, Elmo generates two files in your config directory:
@@ -42,58 +42,43 @@ Once complete, Elmo generates two files in your config directory:
 If you didn't start during init, bring everything up with:
 
 ```bash
-elmo start
+elmo compose up -d
 ```
 
-This pulls the Docker images, starts all services, and waits for them to become healthy. Once ready, open **http://localhost:1515** in your browser.
+This pulls the Docker images and starts all services. Once they report healthy, open **http://localhost:1515** in your browser.
 
 ## System Architecture
 
-<Mermaid chart={`flowchart TD
-    CLI["Elmo CLI"]
-    CONFIG["elmo.yaml + .env"]
-    CLI -->|elmo init| CONFIG
-    CONFIG -->|docker compose up| DOCKER
-
-    subgraph DOCKER["Docker Compose Stack"]
-        WEB["Web<br/>Dashboard and API<br/>port 1515"]
-        WORKER["Worker<br/>pg-boss scheduler"]
-        PG[("PostgreSQL<br/>port 5432")]
-        WEB <--> PG
-        WORKER <--> PG
-    end
-
-    LLM["External LLM Providers"]
-    WORKER -->|queries| LLM
-`} />
+<img
+  src="/brand/architecture.svg"
+  alt="Elmo system architecture: User connects to Web; Web and Worker share a Postgres database; Web calls LLM APIs; Worker calls both LLM APIs and an LLM Scraper."
+  className="my-6 w-full"
+/>
 
 | Service | Role |
 |---------|------|
-| **Elmo CLI** | Generates config files, then runs `docker compose up` |
-| **Web** | Dashboard UI and REST API (port 1515) |
-| **Worker** | Background scheduler — queries AI models and processes results |
-| **PostgreSQL** | Shared database for brands, prompts, snapshots, and job queue |
-| **LLM Providers** | OpenAI, Anthropic, Google — queried by the worker on a schedule |
+| **Web** | Dashboard UI and REST API |
+| **Worker** | Background scheduler that drives prompt runs |
+| **Postgres** | Shared database and job queue |
+| **LLM APIs** | Direct API calls (OpenAI, Anthropic, OpenRouter) |
+| **LLM Scraper** | Scrapers for ChatGPT, Claude, and Google AI Mode (Brightdata, Olostep) |
+| **Elmo CLI** | Generates `elmo.yaml` + `.env` and runs `docker compose` |
 
 ## CLI Commands Reference
 
 Once Elmo is running, these commands help you manage it:
 
 ```bash
-# Check service health
-elmo status
-
 # View live logs
-elmo logs -f
+elmo compose logs -f
 
 # View logs for a specific service
 elmo compose logs -f web
 
-# Stop all services
-elmo stop
-
-# Run any docker compose command
+# Check service status
 elmo compose ps
+
+# Stop all services
 elmo compose down
 ```
 

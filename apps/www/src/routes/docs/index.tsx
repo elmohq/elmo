@@ -1,10 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-	serverLoader,
-	clientLoader,
-	DocsPageLayout,
-	type DocsLoaderData,
-} from "./$";
+import { serverLoader, type LoaderData } from "./$";
 import { getPageImage } from "@/lib/og";
 import {
 	SITE_NAME,
@@ -12,11 +7,12 @@ import {
 	canonicalUrl,
 	breadcrumbJsonLd,
 } from "@/lib/seo";
+import { DocsPageLayout } from "@/components/docs-page-layout";
 
 export const Route = createFileRoute("/docs/")({
 	component: Page,
 	head: ({ loaderData }) => {
-		const data = loaderData as DocsLoaderData | undefined;
+		const data = loaderData as LoaderData | undefined;
 		if (!data) return {};
 
 		const pageTitle = `Documentation · ${SITE_NAME}`;
@@ -44,14 +40,10 @@ export const Route = createFileRoute("/docs/")({
 			],
 		};
 	},
-	loader: async () => {
-		const data = await serverLoader({ data: [] });
-		await clientLoader.preload(data.path);
-		return data;
-	},
+	loader: async () => serverLoader({ data: [] }),
 });
 
 function Page() {
-	const loaderData = Route.useLoaderData() as DocsLoaderData;
+	const loaderData = Route.useLoaderData() as LoaderData;
 	return <DocsPageLayout loaderData={loaderData} />;
 }
