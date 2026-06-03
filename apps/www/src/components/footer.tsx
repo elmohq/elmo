@@ -1,5 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Logo } from "./logo";
+import { externalRel } from "@/lib/external-link";
+
+// Our parent company. externalRel keeps the Referer (bluewhale.dev is owned);
+// the ?ref=elmo param is a belt-and-suspenders fallback.
+const BLUEWHALE_URL = "https://bluewhale.dev?ref=elmo";
 
 const cols = [
 	{
@@ -14,9 +19,9 @@ const cols = [
 	{
 		heading: "Resources",
 		links: [
+			{ label: "Blog", href: "/blog" },
 			{ label: "Documentation", href: "/docs" },
 			{ label: "API Reference", href: "/docs/api" },
-			{ label: "Tool Directory", href: "/ai-visibility-tools" },
 			{ label: "Provider Status", href: "/status" },
 			{
 				label: "Issues",
@@ -26,10 +31,21 @@ const cols = [
 		],
 	},
 	{
+		heading: "Learn",
+		links: [
+			{ label: "AEO Glossary", href: "/glossary" },
+			{ label: "AI Search Guides", href: "/ai-search" },
+			{ label: "AEO by Industry", href: "/aeo-for" },
+			{ label: "Tool Directory", href: "/ai-visibility-tools" },
+			{ label: "Compare Tools", href: "/ai-visibility-tools/compare" },
+		],
+	},
+	{
 		heading: "Company",
 		links: [
 			{ label: "Vision", href: "/vision" },
 			{ label: "Brand Assets", href: "/brand" },
+			{ label: "llms.txt", href: "/llms.txt" },
 		],
 	},
 ];
@@ -39,7 +55,7 @@ export function Footer() {
 		<footer className="bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-12 md:px-6">
 				<div className="grid gap-10 md:grid-cols-12">
-					<div className="md:col-span-4">
+					<div className="md:col-span-3">
 						<Link to="/" aria-label="Homepage">
 							<Logo className="text-3xl" />
 						</Link>
@@ -51,7 +67,7 @@ export function Footer() {
 							v0.2.6
 						</div>
 					</div>
-					<div className="grid grid-cols-2 gap-10 md:col-span-8 md:grid-cols-3">
+					<div className="grid grid-cols-2 gap-10 md:col-span-9 md:grid-cols-4">
 						{cols.map((col) => (
 							<div key={col.heading}>
 								<h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
@@ -67,7 +83,7 @@ export function Footer() {
 												<a
 													href={link.href}
 													target="_blank"
-													rel="noopener noreferrer"
+													rel={externalRel(link.href)}
 													className="hover:text-zinc-950 hover:underline"
 												>
 													{link.label}
@@ -103,9 +119,9 @@ export function Footer() {
 					<p className="font-mono text-[11px] text-zinc-500">
 						&copy; {new Date().getFullYear()}{" "}
 						<a
-							href="https://bluewhale.dev?ref=elmo"
+							href={BLUEWHALE_URL}
 							target="_blank"
-							rel="noopener noreferrer"
+							rel={externalRel(BLUEWHALE_URL)}
 							className="hover:text-zinc-900 hover:underline"
 						>
 							Blue Whale Software, LLC

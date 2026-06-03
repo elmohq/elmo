@@ -2,6 +2,7 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import type { MDXComponents } from "mdx/types";
 import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
+import { YouTubeEmbed } from "@/components/youtube-embed";
 
 async function onBlockFeedback(
 	feedback: BlockFeedback,
@@ -22,6 +23,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		FeedbackBlock: (props: { id: string; body?: string; children: React.ReactNode }) => (
 			<FeedbackBlock {...props} onSendAction={onBlockFeedback} />
 		),
+		YouTube: YouTubeEmbed,
 		...components,
 	} satisfies MDXComponents;
 }

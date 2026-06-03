@@ -6,6 +6,45 @@ packages:
 publicHoistPattern:
   - "@takumi-rs/core-*"
 
+overrides:
+  "@types/react": "^19.2.14"
+  "@types/react-dom": "^19.2.3"
+  "glob>minimatch": "^10.2.5"
+  "cheerio>undici": "^7.24.0"
+  kysely: "~0.28.14"
+  h3: ">=2.0.1-rc.18"
+  h3-v2: "npm:h3@>=2.0.1-rc.18"
+  picomatch: "^4.0.4"
+  "anymatch>picomatch": "^2.3.2"
+  "micromatch>picomatch": "^2.3.2"
+  dompurify: "^3.3.2"
+  yaml: "^2.8.3"
+  "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+  fast-uri: "^3.1.2"
+  ws: "^8.20.1"
+  protobufjs: "^7.5.8"
+  # Keep one fumadocs-core copy across apps/www and packages/docs (a peer dep there).
+  # Without this anchor, bumping fumadocs-core in www alone leaves @workspace/docs on a
+  # stale version and the two PageTree types clash at the docs-page-layout boundary.
+  fumadocs-core: "^16.9.1"
+
+allowBuilds:
+  "@tailwindcss/oxide": true
+  esbuild: true
+  msgpackr-extract: true
+  puppeteer: true
+  sharp: true
+  unrs-resolver: true
+  "@sentry/cli": true # postinstall downloads the sentry-cli binary
+  "@scarf/scarf": false
+  "@tree-sitter-grammars/tree-sitter-yaml": false
+  core-js: false
+  core-js-pure: false
+  msw: false
+  protobufjs: false
+  tree-sitter: false
+  tree-sitter-json: false
+
 blockExoticSubdeps: true
 minimumReleaseAge: 5760
 minimumReleaseAgeExclude:
