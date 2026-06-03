@@ -8,6 +8,21 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
+export const blog = await create.docs("blog", "../../packages/docs/content/blog", import.meta.glob(["./**/*.{json,yaml}"], {
+  "base": "./../../../packages/docs/content/blog",
+  "query": {
+    "collection": "blog"
+  },
+  "import": "default",
+  "eager": true
+}), import.meta.glob(["./**/*.{mdx,md}"], {
+  "base": "./../../../packages/docs/content/blog",
+  "query": {
+    "collection": "blog"
+  },
+  "eager": true
+}));
+
 export const docs = await create.docs("docs", "../../packages/docs/content/docs", import.meta.glob(["./**/*.{json,yaml}"], {
   "base": "./../../../packages/docs/content/docs",
   "query": {

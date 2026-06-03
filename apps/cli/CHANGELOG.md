@@ -1,5 +1,15 @@
 # @elmohq/cli
 
+## 0.2.10
+
+### Patch Changes
+
+- 1f9c1cd: Default the CLI config directory to `~/.elmo`.
+- ac355fd: Prompt for the web app port in `elmo init` (defaults to 1515).
+- afbd561: Recommended `elmo init` setup no longer adds direct-API query targets — only scraping tracks ChatGPT and Google AI Mode.
+- 19eacbc: Add `elmo edit`, drop `elmo telemetry` and the `~/.elmo/config.json` file. `elmo edit env|compose` opens the file in `$VISUAL` / `$EDITOR` (fallback `nano`) — toggle `DISABLE_TELEMETRY` there instead of via the removed `elmo telemetry` subcommand. Telemetry state and the deployment ID now live entirely in `.env`; `elmo init` stamps the CLI version and timestamp into the `.env` and `elmo.yaml` headers, and re-running it preserves the existing `DEPLOYMENT_ID`.
+- 063e33e: Remove `elmo start`, `elmo stop`, `elmo logs`, and `elmo build` aliases — use `elmo compose <args>` directly (e.g. `elmo compose up -d`, `elmo compose down`, `elmo compose logs -f`, `elmo compose build`).
+
 ## 0.2.9
 
 ### Patch Changes

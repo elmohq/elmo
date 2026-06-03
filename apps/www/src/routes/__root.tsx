@@ -11,7 +11,6 @@ import {
 	SITE_URL,
 	SITE_NAME,
 	SITE_DESCRIPTION,
-	SITE_LOGO_URL,
 	websiteJsonLd,
 	organizationJsonLd,
 } from "@/lib/seo";
@@ -49,7 +48,7 @@ export const Route = createRootRoute({
 			{ property: "og:image", content: ROOT_OG_IMAGE },
 			{ property: "og:image:width", content: "1200" },
 			{ property: "og:image:height", content: "630" },
-			{ property: "og:logo", content: SITE_LOGO_URL },
+			{ property: "og:image:alt", content: ROOT_TITLE },
 			{ name: "twitter:card", content: "summary_large_image" },
 			{ name: "twitter:title", content: ROOT_TITLE },
 			{ name: "twitter:description", content: SITE_DESCRIPTION },
@@ -84,7 +83,6 @@ export const Route = createRootRoute({
 			{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
 			{ rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 			{ rel: "manifest", href: "/site.webmanifest" },
-			{ rel: "canonical", href: SITE_URL },
 			{ rel: "stylesheet", href: appCss },
 		],
 		scripts: [

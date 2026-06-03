@@ -7,23 +7,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
 import { Command } from "commander";
+import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
 import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
-import { getTelemetryStatus, setTelemetryEnabled, submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
+import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-type GlobalConfig = {
-	configDir: string;
-	dockerDir?: string;
-	dev?: boolean;
-	postgresMode?: PostgresMode;
-	port?: number;
-	repoRoot?: string;
-	installedVersion?: string;
-	updatedAt: string;
-};
 
 type ComposeService = {
 	Service: string;
@@ -53,8 +43,7 @@ type EnvMap = Record<string, string>;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const CONFIG_HOME = path.join(os.homedir(), ".config", "elmo");
-const CONFIG_FILE = path.join(CONFIG_HOME, "config.json");
+const CONFIG_HOME = path.join(os.homedir(), ".elmo");
 const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_PORT = 1515;
@@ -118,6 +107,8 @@ async function main() {
 	program
 		.name("elmo")
 		.version(version)
+		.option("--dir <path>", "Config directory")
+		.configureHelp({ showGlobalOptions: true })
 		.action(() => {
 			printBanner();
 			program.outputHelp();
@@ -127,98 +118,37 @@ async function main() {
 		.command("init")
 		.description("set up local Elmo instance")
 		.option("--dev", "Use local build context (repo only)")
-		.option("--dir <path>", "Directory to store config files")
 		.option("--docker-dir <path>", "Path to Docker build context (dev mode)")
-		.action(async (options: InitOptions) => {
-			await withVersionCheck(version, () => runInit(options, version));
-		});
-
-	program
-		.command("regen")
-		.description("regenerate configuration files from current settings")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runRegen(options));
-		});
-
-	program
-		.command("status")
-		.description("check Elmo instance health")
-		.option("--dir <path>", "Config directory")
-		.action(async (options: DirOption) => {
-			await withVersionCheck(version, () => runStatus(options));
+		.action(async (_opts: object, cmd: Command) => {
+			await withVersionCheck(version, () => runInit(cmd.optsWithGlobals<InitOptions>(), version));
 		});
 
 	program
 		.command("compose")
 		.description("run Docker Compose commands using your Elmo config")
 		.allowUnknownOption(true)
-		.option("--dir <path>", "Config directory")
 		.argument("[args...]", "Arguments passed to Docker Compose")
-		.action(async (args: string[], options: DirOption) => {
-			await withVersionCheck(version, () => runCompose(args, options));
+		.action(async (args: string[], _opts: object, cmd: Command) => {
+			await withVersionCheck(version, () => runCompose(args, cmd.optsWithGlobals<DirOption>()));
+		});
+
+	program
+		.command("edit")
+		.description("change API keys, scrape targets, or the Docker Compose YAML")
+		.argument("<env|compose>", "which config file to edit")
+		.action(async (target: string, _opts: object, cmd: Command) => {
+			await runEdit(target, cmd.optsWithGlobals<DirOption>());
 		});
 
 	program
 		.command("upgrade")
-		.description("upgrade your Elmo deployment to the version supported by this CLI")
-		.option("--dir <path>", "Config directory")
-		.option("--yes", "Skip confirmation prompts")
-		.action(async (options: UpgradeOptions) => {
-			await runUpgrade(options, version);
-		});
-
-	const telemetry = program.command("telemetry").description("manage CLI + local-deployment telemetry");
-
-	telemetry
-		.command("status")
-		.description("show whether telemetry is enabled and what is collected")
-		.action(async () => {
-			await runTelemetryStatus();
-		});
-
-	telemetry
-		.command("enable")
-		.description("enable telemetry")
-		.action(async () => {
-			await setTelemetryEnabled(true);
-			const updated = await updateDeploymentEnvTelemetry(true);
-			log.success("Telemetry enabled.");
-			if (updated) {
-				log.info(`Updated ${updated}. Restart the stack with \`elmo compose up -d\` to apply.`);
-			}
-			console.log(`  Details: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
-		});
-
-	telemetry
-		.command("disable")
-		.description("disable telemetry")
-		.action(async () => {
-			await setTelemetryEnabled(false);
-			const updated = await updateDeploymentEnvTelemetry(false);
-			log.success("Telemetry disabled. No further events will be sent.");
-			if (updated) {
-				log.info(`Updated ${updated}. Restart the stack with \`elmo compose up -d\` to apply.`);
-			}
+		.description("upgrade your Elmo deployment to this CLI's version")
+		.option("--yes", "skip confirmation prompts")
+		.action(async (_opts: object, cmd: Command) => {
+			await runUpgrade(cmd.optsWithGlobals<UpgradeOptions>(), version);
 		});
 
 	await program.parseAsync(process.argv);
-}
-
-async function runTelemetryStatus(): Promise<void> {
-	const status = await getTelemetryStatus();
-	const state = status.enabled ? pc.green("enabled") : pc.yellow("disabled");
-	console.log(`Telemetry: ${state}`);
-	if (status.source === "env") {
-		console.log("  Source: DISABLE_TELEMETRY environment variable");
-	} else if (status.source === "config") {
-		console.log(`  Source: ${CONFIG_FILE}`);
-	}
-	if (status.distinctId) {
-		console.log(`  Install ID: ${status.distinctId}`);
-	}
-	console.log(`  What we collect: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`);
-	console.log("  Toggle: `elmo telemetry enable` / `elmo telemetry disable`");
 }
 
 async function withVersionCheck(version: string, fn: () => Promise<void>): Promise<void> {
@@ -236,24 +166,14 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const cwd = process.cwd();
 
 	// ── Resolve config directory ─────────────────────────────────────────
-	let configDir: string;
-	if (options.dir) {
-		configDir = path.resolve(cwd, options.dir);
-	} else {
-		const dir = await p.text({
-			message: "Where should the config be stored?",
-			placeholder: "./elmo",
-			defaultValue: "./elmo",
-		});
-		assertNotCancelled(dir);
-		configDir = path.resolve(cwd, dir);
-	}
+	const configDir = options.dir ? path.resolve(cwd, options.dir) : CONFIG_HOME;
 
 	// ── .env safety check ────────────────────────────────────────────────
 	const existingEnvPath = path.join(configDir, ".env");
+	let preservedDeploymentId: string | undefined;
 	if (await fileExists(existingEnvPath)) {
 		const contents = await fs.readFile(existingEnvPath, "utf8");
-		const isElmoEnv = contents.startsWith("# Generated by elmo");
+		const isElmoEnv = contents.startsWith("# Rendered by elmo") || contents.startsWith("# Generated by elmo");
 
 		if (!isElmoEnv) {
 			p.log.warn(`A .env file already exists in ${configDir} and was NOT created by Elmo.`);
@@ -267,7 +187,17 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 				process.exit(0);
 			}
 		} else {
-			p.log.info("Existing Elmo config found — it will be updated.");
+			p.log.warn(`An existing Elmo config was found at ${configDir}.`);
+			const overwrite = await p.confirm({
+				message: "Overwrite it with new values? Existing secrets (DATABASE_URL, API keys, etc.) will be replaced.",
+				initialValue: false,
+			});
+			assertNotCancelled(overwrite);
+			if (!overwrite) {
+				p.cancel("Setup cancelled. Use `elmo edit env` to change individual values.");
+				process.exit(0);
+			}
+			preservedDeploymentId = parseDotenv(contents).DEPLOYMENT_ID;
 		}
 	}
 
@@ -310,7 +240,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
 	env.VITE_DEPLOYMENT_MODE = "local";
-	env.DEPLOYMENT_ID = crypto.randomUUID();
+	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;
@@ -343,7 +273,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			"on what to fix or build next.",
 			"",
 			pc.bold("What we send:"),
-			"  • install ID (random UUID stored in ~/.config/elmo/config.json)",
+			"  • deployment ID (random UUID stored as DEPLOYMENT_ID in your .env)",
 			"  • CLI/app version, OS, arch, Node version, deployment mode",
 			"  • command/event names + non-secret options (e.g. postgres mode)",
 			"  • feature counts (prompts edited, brands created — never the names or text)",
@@ -353,7 +283,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			"  API keys, .env contents, brand names, prompt text, and scraped responses.",
 			"",
 			`Full breakdown: ${link(pc.cyan(TELEMETRY_DOC_URL), TELEMETRY_DOC_URL)}`,
-			"Toggle later with `elmo telemetry enable|disable`.",
+			"Toggle later by editing DISABLE_TELEMETRY in .env (`elmo edit env`).",
 		].join("\n"),
 		"Telemetry",
 	);
@@ -363,7 +293,6 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		initialValue: true,
 	});
 	assertNotCancelled(telemetryEnabled);
-	await setTelemetryEnabled(telemetryEnabled);
 	if (!telemetryEnabled) {
 		env.DISABLE_TELEMETRY = "1";
 	}
@@ -401,7 +330,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		repoRoot,
 		dockerDir,
 		port,
-		imageTag: version,
+		version,
 	});
 
 	await ensureDir(configDir);
@@ -410,15 +339,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		composeYaml,
 		postgresMode,
 		dev: Boolean(options.dev),
-	});
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev: Boolean(options.dev),
-		postgresMode,
-		port,
-		repoRoot,
-		installedVersion: version,
+		version,
 	});
 
 	p.log.success(`Config written to ${configDir}`);
@@ -441,7 +362,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	}
 
 	// CLI telemetry — silently dropped if the user opted out above.
-	await trackCliEvent("cli_init", {
+	await trackCliEvent(configDir, "cli_init", {
 		version,
 		os: process.platform,
 		arch: process.arch,
@@ -456,7 +377,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	// Newsletter signup is a separate, explicit opt-in and runs even when
 	// telemetry is disabled.
 	if (email) {
-		await submitNewsletterSignup(email);
+		await submitNewsletterSignup(configDir, email);
 	}
 
 	p.log.message(
@@ -941,269 +862,6 @@ function dedupeTargets(targets: string[]): string {
 	return out.join(",");
 }
 
-// ── Command: update ──────────────────────────────────────────────────────────
-
-async function runRegen(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	const globalConfig = await readGlobalConfig();
-	const cliVersion = await getPackageVersion();
-
-	// Determine settings: prefer global config, fall back to detecting from files
-	let dev: boolean;
-	let postgresMode: PostgresMode;
-	let repoRoot: string;
-	let dockerDir: string | undefined;
-	let port: number;
-
-	if (globalConfig?.postgresMode) {
-		dev = globalConfig.dev ?? false;
-		postgresMode = globalConfig.postgresMode;
-		repoRoot = globalConfig.repoRoot ?? process.cwd();
-		dockerDir = globalConfig.dockerDir;
-		port = globalConfig.port ?? DEFAULT_APP_PORT;
-	} else {
-		const detected = await detectSettingsFromConfig(configDir);
-		dev = detected.dev;
-		postgresMode = detected.postgresMode;
-		repoRoot = detected.repoRoot;
-		dockerDir = detected.dockerDir;
-		port = detected.port;
-	}
-
-	const imageTag = globalConfig?.installedVersion ?? cliVersion;
-
-	const composeYaml = buildComposeYaml({
-		dev,
-		postgresMode,
-		repoRoot,
-		dockerDir,
-		port,
-		imageTag,
-	});
-
-	const composePath = path.join(configDir, "elmo.yaml");
-	await fs.writeFile(composePath, composeYaml, "utf8");
-
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev,
-		postgresMode,
-		port,
-		repoRoot,
-		installedVersion: imageTag,
-	});
-
-	log.success(`Regenerated ${composePath}`);
-	log.info("The .env file was not modified.");
-}
-
-// ── Command: upgrade ─────────────────────────────────────────────────────────
-
-async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<void> {
-	printBanner();
-	p.intro(pc.bold("Upgrading Elmo"));
-
-	// ── CLI freshness check ──────────────────────────────────────────────
-	const latestCli = await fetchLatestCliVersion();
-	if (latestCli && semver.valid(cliVersion) && semver.lt(cliVersion, latestCli)) {
-		log.warn(`Your CLI (${cliVersion}) is behind the latest published version (${latestCli}).`);
-		log.info("Recommended: upgrade the CLI first and rerun this command:");
-		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
-		const proceed = options.yes
-			? true
-			: await p.confirm({
-					message: `Continue upgrading the stack with CLI ${cliVersion} anyway?`,
-					initialValue: false,
-				});
-		assertNotCancelled(proceed);
-		if (!proceed) {
-			p.cancel("Upgrade cancelled. Upgrade the CLI and rerun `elmo upgrade`.");
-			process.exit(0);
-		}
-	}
-
-	// ── Resolve config + figure out what we're upgrading from ────────────
-	const configDir = await resolveConfigDir(options.dir);
-	const globalConfig = await readGlobalConfig();
-	if (!globalConfig) {
-		throw new Error("No global config found. Run `elmo init` first.");
-	}
-
-	const fromVersion = globalConfig.installedVersion ?? cliVersion;
-	if (!semver.valid(fromVersion)) {
-		throw new Error(`Installed version is not valid semver: ${fromVersion}`);
-	}
-
-	if (semver.gt(fromVersion, cliVersion)) {
-		log.warn(`Installed version (${fromVersion}) is newer than CLI version (${cliVersion}).`);
-		log.info("Upgrade the CLI to match before running this command:");
-		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
-		process.exit(1);
-	}
-
-	const versionChanged = !semver.eq(fromVersion, cliVersion);
-	const needsPin = globalConfig.installedVersion === undefined;
-
-	if (!versionChanged && !needsPin) {
-		log.success(`Already at ${cliVersion}.`);
-		const pull = options.yes
-			? true
-			: await p.confirm({
-					message: "Pull the latest images for this version anyway?",
-					initialValue: false,
-				});
-		assertNotCancelled(pull);
-		if (pull) {
-			assertDockerRunning();
-			const wasRunning = await stackHasRunningServices(configDir);
-			log.step("Pulling images...");
-			await runDockerCompose(configDir, ["pull"]);
-			if (wasRunning) {
-				log.step("Restarting services...");
-				await runDockerCompose(configDir, ["up", "-d"]);
-			}
-		}
-		p.outro(pc.green("Nothing to migrate."));
-		return;
-	}
-
-	// ── Plan migrations ──────────────────────────────────────────────────
-	const plan = planMigrations(fromVersion, cliVersion, MIGRATIONS);
-	if (versionChanged) {
-		log.info(`Upgrading from ${pc.cyan(fromVersion)} → ${pc.cyan(cliVersion)}`);
-	} else {
-		log.info(`Pinning images to ${pc.cyan(cliVersion)}.`);
-	}
-	if (plan.length === 0) {
-		log.step("No migrations to run (docker images will be re-pulled).");
-	} else {
-		log.step(`Migrations to apply: ${plan.length}`);
-		for (const m of plan) {
-			console.log(`  • ${pc.bold(`${m.from} → ${m.to}`)} ${m.description}`);
-		}
-	}
-
-	const confirm = options.yes
-		? true
-		: await p.confirm({
-				message: "Proceed with upgrade?",
-				initialValue: true,
-			});
-	assertNotCancelled(confirm);
-	if (!confirm) {
-		p.cancel("Upgrade cancelled.");
-		process.exit(0);
-	}
-
-	// ── Stop running stack so migrations + image swap happen on a quiet deployment ─
-	assertDockerRunning();
-	const wasRunning = await stackHasRunningServices(configDir);
-	if (wasRunning) {
-		log.step("Stopping services...");
-		await runDockerCompose(configDir, ["down"]);
-	}
-
-	// ── Run migrations ───────────────────────────────────────────────────
-	const ctx = buildMigrationContext(configDir);
-	try {
-		await runMigrations(plan, ctx);
-	} catch (error) {
-		const msg = error instanceof Error ? error.message : String(error);
-		log.error(`Migration failed: ${msg}`);
-		log.info("`installedVersion` left unchanged. Fix the issue and rerun `elmo upgrade`.");
-		if (wasRunning) {
-			log.info("Stack was stopped for the upgrade. Restart with `elmo compose up -d` after fixing.");
-		}
-		process.exit(1);
-	}
-
-	// ── Rewrite compose YAML with new tag ────────────────────────────────
-	const dev = globalConfig.dev ?? false;
-	const postgresMode = globalConfig.postgresMode ?? "docker";
-	const repoRoot = globalConfig.repoRoot ?? process.cwd();
-	const dockerDir = globalConfig.dockerDir;
-	const port = globalConfig.port ?? DEFAULT_APP_PORT;
-
-	const composeYaml = buildComposeYaml({
-		dev,
-		postgresMode,
-		repoRoot,
-		dockerDir,
-		port,
-		imageTag: cliVersion,
-	});
-	const composePath = path.join(configDir, "elmo.yaml");
-	await fs.writeFile(composePath, composeYaml, "utf8");
-
-	await writeGlobalConfig({
-		configDir,
-		dockerDir,
-		dev,
-		postgresMode,
-		port,
-		repoRoot,
-		installedVersion: cliVersion,
-	});
-
-	log.success(`Wrote ${composePath} (images pinned to ${cliVersion}).`);
-
-	// ── Pull new images ──────────────────────────────────────────────────
-	log.step("Pulling images...");
-	await runDockerCompose(configDir, ["pull"]);
-
-	// ── Restart only if the stack was running before upgrade ─────────────
-	if (wasRunning) {
-		log.step("Starting services...");
-		await runDockerCompose(configDir, ["up", "-d"]);
-		const s = p.spinner();
-		s.start("Waiting for services to become healthy...");
-		const ok = await waitForHealthy(configDir, 180_000);
-		if (ok) {
-			s.stop("All services healthy!");
-		} else {
-			s.stop("Health check timed out.");
-			log.warn("Some services did not report healthy status.");
-		}
-	} else {
-		log.info("Stack was stopped before upgrade — leaving it stopped. Start with `elmo compose up -d`.");
-	}
-
-	await trackCliEvent("cli_upgrade", {
-		from_version: fromVersion,
-		to_version: cliVersion,
-		migrations_run: plan.length,
-		was_running: wasRunning,
-	});
-
-	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
-}
-
-async function stackHasRunningServices(configDir: string): Promise<boolean> {
-	try {
-		const services = await getComposeServices(configDir);
-		return services.some((s) => s.State?.startsWith("running") ?? false);
-	} catch {
-		return false;
-	}
-}
-
-function buildMigrationContext(configDir: string): MigrationContext {
-	const envPath = path.join(configDir, ".env");
-	return {
-		configDir,
-		log: {
-			info: (msg) => log.info(msg),
-			warn: (msg) => log.warn(msg),
-			step: (msg) => log.step(msg),
-		},
-		readEnv: () => readEnvFile(envPath),
-		writeEnv: async (env) => {
-			await fs.writeFile(envPath, buildEnvFile(env), "utf8");
-		},
-	};
-}
-
 // ── Start helper (used by init) ──────────────────────────────────────────────
 
 async function doStart(configDir: string): Promise<void> {
@@ -1229,40 +887,269 @@ async function doStart(configDir: string): Promise<void> {
 	console.log(`  ${pc.bold("elmo compose down")}`);
 }
 
-// ── Command: status ──────────────────────────────────────────────────────────
-
-async function runStatus(options: DirOption): Promise<void> {
-	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
-
-	const services = await getComposeServices(configDir);
-	if (services.length === 0) {
-		log.warn("No running services found.");
-		return;
-	}
-
-	let allHealthy = true;
-	for (const service of services) {
-		const status = formatServiceStatus(service);
-		console.log(status);
-		if (!isServiceReady(service)) {
-			allHealthy = false;
-		}
-	}
-
-	if (allHealthy) {
-		log.success("All services are healthy.");
-	} else {
-		log.warn("Some services are not healthy yet.");
-	}
-}
-
 // ── Command: compose ─────────────────────────────────────────────────────────
 
 async function runCompose(args: string[], options: DirOption): Promise<void> {
 	const configDir = await resolveConfigDir(options.dir);
 	assertDockerRunning();
 	await runDockerCompose(configDir, args);
+}
+
+// ── Command: edit ────────────────────────────────────────────────────────────
+
+async function runEdit(target: string, options: DirOption): Promise<void> {
+	const configDir = await resolveConfigDir(options.dir);
+
+	let filePath: string;
+	if (target === "env") {
+		filePath = path.join(configDir, ".env");
+	} else if (target === "compose") {
+		filePath = path.join(configDir, "elmo.yaml");
+	} else {
+		throw new Error(`Unknown edit target: ${target}. Use \`env\` or \`compose\`.`);
+	}
+
+	if (!(await fileExists(filePath))) {
+		throw new Error(`File not found: ${filePath}`);
+	}
+
+	const editorEnv = process.env.VISUAL || process.env.EDITOR || "nano";
+	const parts = editorEnv.split(/\s+/).filter(Boolean);
+	const cmd = parts[0] ?? "nano";
+	const args = [...parts.slice(1), filePath];
+
+	await new Promise<void>((resolve, reject) => {
+		const child = spawn(cmd, args, { stdio: "inherit" });
+		child.on("close", (code) => {
+			if (code === 0) resolve();
+			else reject(new Error(`${cmd} exited with code ${code}`));
+		});
+		child.on("error", (err) => reject(err));
+	});
+
+	log.info("Restart the stack with `elmo compose up -d` to apply changes.");
+}
+
+// ── Command: upgrade ───────────────────────────────────────────────────────────
+
+async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<void> {
+	printBanner();
+	p.intro(pc.bold("Upgrading Elmo"));
+
+	// ── CLI freshness check ──────────────────────────────────────────────
+	const latestCli = await fetchLatestCliVersion();
+	if (latestCli && semver.valid(cliVersion) && semver.lt(cliVersion, latestCli)) {
+		log.warn(`Your CLI (${cliVersion}) is behind the latest published version (${latestCli}).`);
+		log.info("Recommended: upgrade the CLI first, then rerun this command:");
+		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
+		const proceed = options.yes
+			? true
+			: await p.confirm({
+					message: `Continue upgrading the stack with CLI ${cliVersion} anyway?`,
+					initialValue: false,
+				});
+		assertNotCancelled(proceed);
+		if (!proceed) {
+			p.cancel("Upgrade cancelled. Upgrade the CLI and rerun `elmo upgrade`.");
+			process.exit(0);
+		}
+	}
+
+	// ── Resolve config + the version it was last rendered with ───────────
+	const configDir = await resolveConfigDir(options.dir);
+	const composePath = path.join(configDir, "elmo.yaml");
+	const fromVersion = (await readRenderedVersion(composePath)) ?? cliVersion;
+	if (!semver.valid(fromVersion)) {
+		throw new Error(`Could not determine the installed version from ${composePath}.`);
+	}
+
+	if (semver.gt(fromVersion, cliVersion)) {
+		log.warn(`Your deployment (${fromVersion}) is newer than this CLI (${cliVersion}).`);
+		log.info("Upgrade the CLI to match, then rerun:");
+		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
+		process.exit(1);
+	}
+
+	// ── Already current ──────────────────────────────────────────────────
+	if (semver.eq(fromVersion, cliVersion)) {
+		log.success(`Already at ${cliVersion}.`);
+		const pull = options.yes
+			? true
+			: await p.confirm({ message: "Pull images for this version anyway?", initialValue: false });
+		assertNotCancelled(pull);
+		if (pull) {
+			assertDockerRunning();
+			const wasRunning = await stackHasRunningServices(configDir);
+			log.step("Pulling images...");
+			await runDockerCompose(configDir, ["pull"]);
+			if (wasRunning) {
+				log.step("Restarting services...");
+				await runDockerCompose(configDir, ["up", "-d"]);
+			}
+		}
+		p.outro(pc.green("Nothing to upgrade."));
+		return;
+	}
+
+	// ── Plan migrations ──────────────────────────────────────────────────
+	const plan = planMigrations(fromVersion, cliVersion, MIGRATIONS);
+	log.info(`Upgrading from ${pc.cyan(fromVersion)} → ${pc.cyan(cliVersion)}`);
+	if (plan.length === 0) {
+		log.step("No migrations to run (docker images will be re-pinned and pulled).");
+	} else {
+		log.step(`Migrations to apply: ${plan.length}`);
+		for (const m of plan) {
+			console.log(`  • ${pc.bold(`${m.from} → ${m.to}`)} ${m.description}`);
+		}
+	}
+
+	const confirm = options.yes ? true : await p.confirm({ message: "Proceed with upgrade?", initialValue: true });
+	assertNotCancelled(confirm);
+	if (!confirm) {
+		p.cancel("Upgrade cancelled.");
+		process.exit(0);
+	}
+
+	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
+	assertDockerRunning();
+	const wasRunning = await stackHasRunningServices(configDir);
+	if (wasRunning) {
+		log.step("Stopping services...");
+		await runDockerCompose(configDir, ["down"]);
+	}
+
+	// ── Run migrations ───────────────────────────────────────────────────
+	const ctx = buildMigrationContext(configDir, cliVersion);
+	try {
+		await runMigrations(plan, ctx);
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+		log.error(`Migration failed: ${msg}`);
+		log.info("Your config version was left unchanged. Fix the issue and rerun `elmo upgrade`.");
+		if (wasRunning) {
+			log.info("The stack was stopped for the upgrade. Restart with `elmo compose up -d` after fixing.");
+		}
+		process.exit(1);
+	}
+
+	// ── Re-pin image tags + refresh the version recorded in the config ───
+	const isDev = await composeUsesBuild(composePath);
+	await repinComposeImages(composePath, cliVersion);
+	await refreshRenderedVersion(path.join(configDir, ".env"), cliVersion);
+	log.success(`Pinned config to ${cliVersion}.`);
+
+	// ── Pull new images (dev builds from source, so nothing to pull) ─────
+	if (isDev) {
+		log.info("Dev mode detected — rebuild with `elmo compose build` to apply the new version.");
+	} else {
+		log.step("Pulling images...");
+		await runDockerCompose(configDir, ["pull"]);
+	}
+
+	// ── Restart only if the stack was running before the upgrade ─────────
+	if (wasRunning) {
+		log.step("Starting services...");
+		await runDockerCompose(configDir, ["up", "-d"]);
+		const s = p.spinner();
+		s.start("Waiting for services to become healthy...");
+		const ok = await waitForHealthy(configDir, 180_000);
+		if (ok) {
+			s.stop("All services healthy!");
+		} else {
+			s.stop("Health check timed out.");
+			log.warn("Some services did not report healthy status.");
+		}
+	} else {
+		log.info("Stack was stopped before upgrade — leaving it stopped. Start with `elmo compose up -d`.");
+	}
+
+	await trackCliEvent(configDir, "cli_upgrade", {
+		from_version: fromVersion,
+		to_version: cliVersion,
+		migrations_run: plan.length,
+		was_running: wasRunning,
+		dev_mode: isDev,
+	});
+
+	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
+}
+
+async function stackHasRunningServices(configDir: string): Promise<boolean> {
+	try {
+		const services = await getComposeServices(configDir);
+		return services.some((s) => s.State?.startsWith("running") ?? false);
+	} catch {
+		return false;
+	}
+}
+
+// Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
+async function readRenderedVersion(filePath: string): Promise<string | null> {
+	try {
+		const contents = await fs.readFile(filePath, "utf8");
+		const match = contents.match(/^# Rendered by elmo (\S+) on /m);
+		return match ? match[1] : null;
+	} catch {
+		return null;
+	}
+}
+
+async function composeUsesBuild(composePath: string): Promise<boolean> {
+	try {
+		const contents = await fs.readFile(composePath, "utf8");
+		return /^\s*build:/m.test(contents);
+	} catch {
+		return false;
+	}
+}
+
+// Rewrites `elmohq/elmo-*:<tag>` image tags in place, preserving any manual
+// edits the user made to the compose file, then refreshes the version header.
+async function repinComposeImages(composePath: string, version: string): Promise<void> {
+	const contents = await fs.readFile(composePath, "utf8");
+	const repinned = contents.replace(/(image:\s*elmohq\/elmo-[a-z-]+):\S+/g, `$1:${version}`);
+	await fs.writeFile(composePath, refreshHeaderVersion(repinned, version), "utf8");
+}
+
+async function refreshRenderedVersion(filePath: string, version: string): Promise<void> {
+	try {
+		const contents = await fs.readFile(filePath, "utf8");
+		await fs.writeFile(filePath, refreshHeaderVersion(contents, version), "utf8");
+	} catch {
+		// File is optional (e.g. .env may be absent in some setups).
+	}
+}
+
+function refreshHeaderVersion(contents: string, version: string): string {
+	if (!/^# Rendered by elmo \S+ on /m.test(contents)) {
+		return contents;
+	}
+	return contents.replace(
+		/^# Rendered by elmo \S+ on .*$/m,
+		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
+	);
+}
+
+function buildMigrationContext(configDir: string, version: string): MigrationContext {
+	const envPath = path.join(configDir, ".env");
+	return {
+		configDir,
+		log: {
+			info: (msg) => log.info(msg),
+			warn: (msg) => log.warn(msg),
+			step: (msg) => log.step(msg),
+		},
+		readEnv: async () => {
+			try {
+				return parseDotenv(await fs.readFile(envPath, "utf8"));
+			} catch {
+				return {};
+			}
+		},
+		writeEnv: async (env) => {
+			await fs.writeFile(envPath, buildEnvFile(env, version), "utf8");
+		},
+	};
 }
 
 // ── Compose YAML Builder ─────────────────────────────────────────────────────
@@ -1273,7 +1160,7 @@ function buildComposeYaml(options: {
 	repoRoot: string;
 	dockerDir?: string;
 	port: number;
-	imageTag: string;
+	version: string;
 }): string {
 	const services: string[] = [];
 	const volumes = new Set<string>();
@@ -1297,7 +1184,7 @@ function buildComposeYaml(options: {
 				dev: options.dev,
 				dockerfilePath,
 				repoRoot: options.repoRoot,
-				imageTag: options.imageTag,
+				version: options.version,
 			}),
 		);
 		dependsOnWeb.push("db-migrate");
@@ -1313,7 +1200,7 @@ function buildComposeYaml(options: {
 			repoRoot: options.repoRoot,
 			dockerfilePath,
 			port: options.port,
-			imageTag: options.imageTag,
+			version: options.version,
 		}),
 	);
 	services.push(
@@ -1323,11 +1210,11 @@ function buildComposeYaml(options: {
 			dependencyConditions,
 			repoRoot: options.repoRoot,
 			dockerfilePath,
-			imageTag: options.imageTag,
+			version: options.version,
 		}),
 	);
 
-	const lines = ["name: elmo", "", "services:"];
+	const lines = [renderedByHeader(options.version), "", "name: elmo", "", "services:"];
 	lines.push(...services.map((service) => indentBlock(service, 2)));
 
 	if (volumes.size > 0) {
@@ -1365,7 +1252,7 @@ function buildDbMigrateService(options: {
 	dev: boolean;
 	dockerfilePath: string;
 	repoRoot: string;
-	imageTag: string;
+	version: string;
 }): string {
 	const lines = ["db-migrate:"];
 	if (options.dev) {
@@ -1376,7 +1263,7 @@ function buildDbMigrateService(options: {
 			"    target: migrate",
 		);
 	} else {
-		lines.push(`  image: elmohq/elmo-db-migrate:${options.imageTag}`);
+		lines.push(`  image: elmohq/elmo-db-migrate:${options.version}`);
 	}
 
 	lines.push(
@@ -1397,7 +1284,7 @@ function buildWebService(options: {
 	repoRoot: string;
 	dockerfilePath: string;
 	port: number;
-	imageTag: string;
+	version: string;
 }): string {
 	const lines = ["web:"];
 	if (options.dev) {
@@ -1410,7 +1297,7 @@ function buildWebService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push(`  image: elmohq/elmo-web:${options.imageTag}`);
+		lines.push(`  image: elmohq/elmo-web:${options.version}`);
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", `    - "${options.port}:3000"`);
@@ -1432,7 +1319,7 @@ function buildWorkerService(options: {
 	dependencyConditions: Record<string, string>;
 	repoRoot: string;
 	dockerfilePath: string;
-	imageTag: string;
+	version: string;
 }): string {
 	const lines = ["worker:"];
 	if (options.dev) {
@@ -1445,7 +1332,7 @@ function buildWorkerService(options: {
 			"      DEPLOYMENT_MODE: local",
 		);
 	} else {
-		lines.push(`  image: elmohq/elmo-worker:${options.imageTag}`);
+		lines.push(`  image: elmohq/elmo-worker:${options.version}`);
 	}
 
 	lines.push("  env_file:", "    - path: .env", "      required: true");
@@ -1498,21 +1385,6 @@ async function getComposeServices(configDir: string): Promise<ComposeService[]> 
 			return [];
 		}
 	}
-}
-
-function formatServiceStatus(service: ComposeService): string {
-	const health = service.Health ?? "unknown";
-	const state = service.State ?? "unknown";
-	const label = `${service.Service}`.padEnd(16, " ");
-	let color = pc.red;
-
-	if (isServiceReady(service)) {
-		color = pc.green;
-	} else if (health === "starting" || state.includes("starting")) {
-		color = pc.yellow;
-	}
-
-	return color(`${label} ${state} ${service.Health ? `(${health})` : ""}`.trim());
 }
 
 function isServiceReady(service: ComposeService): boolean {
@@ -1635,57 +1507,20 @@ async function resolveDockerDirAuto(cwd: string, explicitDir?: string): Promise<
 // ── Config Dir Resolution ────────────────────────────────────────────────────
 
 async function resolveConfigDir(explicitDir?: string): Promise<string> {
-	if (explicitDir) {
-		const resolved = path.resolve(process.cwd(), explicitDir);
-		const composePath = path.join(resolved, "elmo.yaml");
-		if (!(await fileExists(composePath))) {
-			throw new Error(
-				`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init\` to create your local setup.`,
-			);
-		}
-		return resolved;
-	}
-
-	const config = await readGlobalConfig();
-	if (!config?.configDir) {
-		throw new Error("No config found. Run `elmo init` or specify --dir.");
-	}
-
-	const resolved = path.resolve(config.configDir);
+	const resolved = explicitDir ? path.resolve(process.cwd(), explicitDir) : CONFIG_HOME;
 	const composePath = path.join(resolved, "elmo.yaml");
 	if (!(await fileExists(composePath))) {
-		throw new Error(`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init\` to regenerate.`);
+		if (explicitDir) {
+			throw new Error(
+				`Config directory does not contain elmo.yaml: ${resolved}\nRun \`elmo init --dir ${explicitDir}\` to create it.`,
+			);
+		}
+		throw new Error(`No config found at ${resolved}. Run \`elmo init\` to create one, or specify --dir.`);
 	}
 	return resolved;
 }
 
 // ── File & Config Helpers ────────────────────────────────────────────────────
-
-async function readGlobalConfig(): Promise<GlobalConfig | null> {
-	try {
-		const contents = await fs.readFile(CONFIG_FILE, "utf8");
-		return JSON.parse(contents) as GlobalConfig;
-	} catch {
-		return null;
-	}
-}
-
-async function writeGlobalConfig(config: {
-	configDir: string;
-	dockerDir?: string;
-	dev?: boolean;
-	postgresMode?: PostgresMode;
-	port?: number;
-	repoRoot?: string;
-	installedVersion?: string;
-}): Promise<void> {
-	const globalConfig: GlobalConfig = {
-		...config,
-		updatedAt: new Date().toISOString(),
-	};
-	await ensureDir(CONFIG_HOME);
-	await fs.writeFile(CONFIG_FILE, JSON.stringify(globalConfig, null, 2), "utf8");
-}
 
 async function writeConfigFiles(
 	configDir: string,
@@ -1694,18 +1529,26 @@ async function writeConfigFiles(
 		composeYaml: string;
 		postgresMode: PostgresMode;
 		dev: boolean;
+		version: string;
 	},
 ): Promise<void> {
 	const envPath = path.join(configDir, ".env");
 	const composePath = path.join(configDir, "elmo.yaml");
 
 	await ensureDir(configDir);
-	await fs.writeFile(envPath, buildEnvFile(initConfig.env), "utf8");
+	await fs.writeFile(envPath, buildEnvFile(initConfig.env, initConfig.version), "utf8");
 	await fs.writeFile(composePath, initConfig.composeYaml, "utf8");
 }
 
-function buildEnvFile(env: EnvMap): string {
-	const lines = ["# Generated by elmo init", "# WARNING: contains secrets. Do not commit.", ""];
+function renderedByHeader(version: string): string {
+	return [
+		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
+		"# Run `elmo upgrade` after upgrading the CLI to refresh this file.",
+	].join("\n");
+}
+
+function buildEnvFile(env: EnvMap, version: string): string {
+	const lines = [renderedByHeader(version), "# WARNING: contains secrets. Do not commit.", ""];
 
 	for (const [key, rawValue] of Object.entries(env)) {
 		if (rawValue === undefined) {
@@ -1726,85 +1569,6 @@ function formatEnvValue(value: string): string {
 		return `"${escaped}"`;
 	}
 	return value;
-}
-
-async function detectSettingsFromConfig(configDir: string): Promise<{
-	dev: boolean;
-	postgresMode: PostgresMode;
-	repoRoot: string;
-	dockerDir?: string;
-	port: number;
-}> {
-	const envPath = path.join(configDir, ".env");
-	const env = await readEnvFile(envPath);
-
-	const postgresMode: PostgresMode = env.DATABASE_URL?.includes("postgres:5432") ? "docker" : "external";
-
-	const yamlPath = path.join(configDir, "elmo.yaml");
-	let dev = false;
-	let repoRoot = process.cwd();
-	let port = DEFAULT_APP_PORT;
-
-	try {
-		const yamlContent = await fs.readFile(yamlPath, "utf8");
-		dev = yamlContent.includes("build:");
-		const contextMatch = yamlContent.match(/context:\s+(.+)/);
-		if (contextMatch) {
-			repoRoot = contextMatch[1].trim();
-		}
-		const portMatch = yamlContent.match(/"(\d+):3000"/);
-		if (portMatch) {
-			const parsed = Number(portMatch[1]);
-			if (Number.isInteger(parsed) && parsed > 0 && parsed <= 65535) {
-				port = parsed;
-			}
-		}
-	} catch {
-		// Use defaults
-	}
-
-	return { dev, postgresMode, repoRoot, port };
-}
-
-async function updateDeploymentEnvTelemetry(enabled: boolean): Promise<string | null> {
-	const config = await readGlobalConfig();
-	if (!config?.configDir) return null;
-	const envPath = path.join(config.configDir, ".env");
-	if (!(await fileExists(envPath))) return null;
-
-	const contents = await fs.readFile(envPath, "utf8");
-	const lines = contents.split("\n");
-	const filtered = lines.filter((line) => !/^\s*DISABLE_TELEMETRY\s*=/.test(line));
-	if (!enabled) {
-		const insertIdx =
-			filtered.length > 0 && filtered[filtered.length - 1] === "" ? filtered.length - 1 : filtered.length;
-		filtered.splice(insertIdx, 0, "DISABLE_TELEMETRY=1");
-	}
-	await fs.writeFile(envPath, filtered.join("\n"), "utf8");
-	return envPath;
-}
-
-async function readEnvFile(envPath: string): Promise<EnvMap> {
-	try {
-		const contents = await fs.readFile(envPath, "utf8");
-		const env: EnvMap = {};
-		for (const line of contents.split("\n")) {
-			const trimmed = line.trim();
-			if (!trimmed || trimmed.startsWith("#")) continue;
-			const eqIndex = trimmed.indexOf("=");
-			if (eqIndex < 0) continue;
-			const key = trimmed.substring(0, eqIndex);
-			let value = trimmed.substring(eqIndex + 1);
-			// Remove surrounding quotes
-			if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-				value = value.slice(1, -1);
-			}
-			env[key] = value;
-		}
-		return env;
-	} catch {
-		return {};
-	}
 }
 
 async function fileExists(target: string): Promise<boolean> {
@@ -1833,7 +1597,9 @@ async function getPackageVersion(): Promise<string> {
 async function fetchLatestCliVersion(): Promise<string | null> {
 	try {
 		const response = await fetch("https://registry.npmjs.org/@elmohq/cli/latest");
-		if (!response.ok) return null;
+		if (!response.ok) {
+			return null;
+		}
 		const data = (await response.json()) as { version?: string };
 		return data.version ?? null;
 	} catch {
@@ -1843,7 +1609,9 @@ async function fetchLatestCliVersion(): Promise<string | null> {
 
 async function maybeNotifyNewVersion(currentVersion: string): Promise<void> {
 	const latest = await fetchLatestCliVersion();
-	if (!latest) return;
+	if (!latest) {
+		return;
+	}
 	if (semver.valid(currentVersion) && semver.lt(currentVersion, latest)) {
 		log.warn(`New CLI version available (${latest}). Run: npm install -g @elmohq/cli@latest`);
 	}

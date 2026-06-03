@@ -1,5 +1,11 @@
 # @workspace/lib
 
+## 0.2.10
+
+### Patch Changes
+
+- 520aef4: Log start/done (with duration and result counts) for `analyzeBrand`, so the onboarding analyze step is visible in the web server logs.
+
 ## 0.2.9
 
 ## 0.2.8

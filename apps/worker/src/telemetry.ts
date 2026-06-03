@@ -30,7 +30,7 @@ export function trackWorkerEvent(
 
 	try {
 		ph.capture({
-			distinctId: `deployment:${process.env.DEPLOYMENT_ID}`,
+			distinctId: process.env.DEPLOYMENT_ID,
 			event: eventName,
 			properties: {
 				deployment_mode: process.env.DEPLOYMENT_MODE ?? "local",

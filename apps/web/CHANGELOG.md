@@ -1,5 +1,20 @@
 # @workspace/web
 
+## 0.2.10
+
+### Patch Changes
+
+- b716c43: Fix the dashboard briefly showing "No Data Yet" with "none are currently enabled" right after the onboarding wizard finishes in local mode.
+- 2d8fd8c: Bulk-select prompts in the editor (settings and onboarding) to enable or disable many at once.
+- Updated dependencies [520aef4]
+  - @workspace/lib@0.2.10
+  - @workspace/whitelabel@0.2.10
+  - @workspace/deployment@0.2.10
+  - @workspace/api-spec@0.2.10
+  - @workspace/config@0.2.10
+  - @workspace/og@0.2.10
+  - @workspace/ui@0.2.10
+
 ## 0.2.9
 
 ### Patch Changes

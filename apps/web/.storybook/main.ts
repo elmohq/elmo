@@ -6,8 +6,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mocksDir = path.resolve(__dirname, "../src/stories/_mocks");
 
 const config: StorybookConfig = {
-	framework: "@storybook/react-vite",
+	framework: {
+		name: "@storybook/react-vite",
+		// Use a plugin-light vite config dedicated to Storybook; the app's main
+		// vite.config.ts pulls in TanStack Start + Nitro plugins that conflict
+		// with Storybook's multi-iframe bundling.
+		options: {
+			builder: {
+				viteConfigPath: ".storybook/vite.config.ts",
+			},
+		},
+	},
 	stories: ["../src/stories/**/*.stories.{ts,tsx}"],
+	addons: ["@storybook/addon-vitest"],
 	core: {
 		disableTelemetry: true,
 	},
@@ -30,7 +41,12 @@ const config: StorybookConfig = {
 					{ find: /^@\/lib\/config\/client(\.ts)?$/, replacement: path.resolve(mocksDir, "config-client.ts") },
 					{ find: /^@\/server\/onboarding(\.ts)?$/, replacement: path.resolve(mocksDir, "server-onboarding.ts") },
 					{ find: /^@\/server\/brands(\.ts)?$/, replacement: path.resolve(mocksDir, "server-brands.ts") },
+					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
+					{ find: /^@\/server\/citations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-citations.ts") },
+					{ find: /^@\/server\/dashboard(\.ts)?$/, replacement: path.resolve(mocksDir, "server-dashboard.ts") },
 					{ find: /^@tanstack\/react-router$/, replacement: path.resolve(mocksDir, "tanstack-router.tsx") },
+					{ find: /^@tanstack\/react-start\/server$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },
+					{ find: /^@tanstack\/react-start$/, replacement: path.resolve(mocksDir, "tanstack-start.ts") },
 					{ find: /^@\//, replacement: path.resolve(__dirname, "../src") + "/" },
 				],
 			},

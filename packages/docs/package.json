@@ -1,8 +1,8 @@
 {
 	"name": "@workspace/docs",
-	"version": "0.2.9",
+	"version": "0.2.10",
 	"private": true,
-	"license": "AGPL-3.0-or-later",
+	"license": "MIT",
 	"type": "module",
 	"exports": {
 		"./components/docs-sidebar": "./src/components/docs-sidebar.tsx",
@@ -13,7 +13,7 @@
 	},
 	"dependencies": {
 		"@workspace/ui": "workspace:*",
-		"lucide-react": "^1.14.0"
+		"lucide-react": "^1.16.0"
 	},
 	"peerDependencies": {
 		"@tanstack/react-router": ">=1.0.0",
@@ -21,7 +21,7 @@
 		"react": ">=19.0.0"
 	},
 	"devDependencies": {
-		"@types/react": "^19.2.14",
+		"@types/react": "^19.2.15",
 		"typescript": "^6.0.3"
 	}
 }

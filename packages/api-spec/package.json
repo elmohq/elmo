@@ -1,8 +1,8 @@
 {
 	"name": "@workspace/api-spec",
-	"version": "0.2.9",
+	"version": "0.2.10",
 	"private": true,
-	"license": "AGPL-3.0-or-later",
+	"license": "MIT",
 	"type": "module",
 	"exports": {
 		".": "./src/openapi.json"

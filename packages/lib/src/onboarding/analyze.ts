@@ -179,9 +179,15 @@ export function normalizeAnalysisResult(raw: RawSuggestion, ctx: AnalysisContext
 }
 
 export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<OnboardingSuggestion> {
+	const start = Date.now();
+	console.log(`[onboarding] analyzeBrand start: ${options.website}`);
 	const ctx = await buildAnalysisContext(options);
 	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema);
-	return normalizeAnalysisResult(raw, ctx);
+	const result = normalizeAnalysisResult(raw, ctx);
+	console.log(
+		`[onboarding] analyzeBrand done: ${options.website} in ${Date.now() - start}ms (brand="${result.brandName}", competitors=${result.competitors.length}, prompts=${result.suggestedPrompts.length})`,
+	);
+	return result;
 }
 
 /** Normalize an LLM-supplied tag to lowercase kebab-case. */

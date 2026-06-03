@@ -25,6 +25,12 @@ import type { LoaderData } from "@/routes/docs/$";
 const REPO = "elmohq/elmo";
 const BRANCH = "main";
 
+// /docs/foo → /docs/foo.md  (/docs index → /docs.md). The same markdown the
+// .md/.mdx routes and the Accept-header negotiation serve (see server.ts).
+function docsMarkdownPath(slugs: string[]): string {
+	return slugs.length ? `/docs/${slugs.join("/")}.md` : "/docs.md";
+}
+
 async function onFeedback(feedback: PageFeedback): Promise<ActionResponse> {
 	const { trackEvent } = await import("@/lib/posthog");
 	trackEvent("docs_page_feedback", {
@@ -64,7 +70,13 @@ export const clientLoader = browserCollections.docs.createClientLoader({
 	},
 });
 
-function DocsPageActions({ filePath }: { filePath: string }) {
+function DocsPageActions({
+	filePath,
+	mdUrl,
+}: {
+	filePath: string;
+	mdUrl: string;
+}) {
 	const editUrl = `https://github.com/${REPO}/edit/${BRANCH}/${filePath}`;
 	const issueUrl = `https://github.com/${REPO}/issues/new?labels=docs&title=Docs+issue:+`;
 	const discordUrl = "https://discord.gg/s24nubCtKz";
@@ -81,6 +93,18 @@ function DocsPageActions({ filePath }: { filePath: string }) {
 					<path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z" />
 				</svg>
 				Edit this page
+			</a>
+			<span className="text-border">·</span>
+			<a
+				href={mdUrl}
+				target="_blank"
+				rel="noopener"
+				className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+			>
+				<svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+					<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" /><path d="M14 2v5h5" /><path d="M9 13h6" /><path d="M9 17h6" />
+				</svg>
+				View as Markdown
 			</a>
 			<span className="text-border">·</span>
 			<a
@@ -157,7 +181,10 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 							) : (
 								<>
 									<Suspense>{clientLoader.useContent(data.path)}</Suspense>
-									<DocsPageActions filePath={data.filePath} />
+									<DocsPageActions
+										filePath={data.filePath}
+										mdUrl={docsMarkdownPath(data.slugs)}
+									/>
 								</>
 							)}
 						</main>

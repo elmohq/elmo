@@ -10,9 +10,12 @@ import {
 	isLowDR,
 	getPopularityGrade,
 	getScreenshotUrl,
+	getComparisonFaqs,
+	getComparisonVerdict,
 	type Competitor,
 	type FeatureKey,
 } from "@/lib/competitors";
+import { Faq } from "./faq";
 
 function FeatureRow({
 	label,
@@ -94,8 +97,7 @@ export function CompetitorComparison({
 						Elmo vs {competitor.name}
 					</h1>
 					<p className="mt-4 max-w-3xl text-lg text-balance text-zinc-600">
-						How Elmo's open-source AEO platform compares to{" "}
-						{competitor.name} for AI visibility tracking.
+						{getComparisonVerdict(competitor)}
 					</p>
 				{competitor.status === "shutting-down" && (
 					<div className="mt-4 rounded-md border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -381,6 +383,9 @@ export function CompetitorComparison({
 					</div>
 				</div>
 			</section>
+
+			{/* FAQ */}
+			<Faq items={getComparisonFaqs(competitor)} eyebrow="/ FAQ" />
 
 			{/* CTA */}
 			<section className="border-b border-zinc-200 bg-white py-16 lg:py-24">
