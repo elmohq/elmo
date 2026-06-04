@@ -394,3 +394,29 @@ export function getCategoryFaqs(
 		},
 	];
 }
+
+/**
+ * Category-tailored pitch for the "Elmo: the open-source alternative" banner.
+ * Each one frames Elmo against what that category actually leads with, so the
+ * CTA reads as specific to the page rather than a generic blurb.
+ */
+const CATEGORY_ELMO_PITCH: Record<CompetitorCategory, string> = {
+	tracking:
+		"Elmo does the same core job as the tools on this page: it measures how AI engines mention and cite your brand. The difference is that it is open source. You can self-host it for free, keep your prompts and history on your own infrastructure, and check exactly how each score is built instead of trusting a number from a closed dashboard.",
+	content:
+		"Most tools in this category lead with content generation. Elmo takes a narrower path and focuses on transparent tracking, so you can measure how AI engines mention and cite your brand before you decide what to publish. It is open source and self-hosted, with no per-seat fees and no scores you cannot inspect.",
+	"api-developer":
+		"The tools here are API-first. Elmo gives you the data and the code: self-host the whole platform, read how every metric is produced, and pull mentions and citations into your own dashboards without paying per call or depending on a pipeline you cannot see.",
+	ecommerce:
+		"Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews describe your brand across the major engines. It is the open-source choice in this space, so you run it yourself for free and verify every number rather than trusting a hosted score.",
+	"seo-traditional":
+		"The platforms in this category bolted AI search tracking onto an existing SEO suite. Elmo was built for the AI layer from the start, and it is open source, so you can self-host it for free and confirm how each visibility metric is calculated instead of taking a bundled feature on faith.",
+	"open-source":
+		"Like the other projects here, Elmo is open source, so you can read the code and run it yourself. It is built specifically for verifiable AI visibility tracking across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, and it adds white-label support for agencies with no per-seat pricing.",
+	other:
+		"Elmo is the open-source AI visibility platform in this directory. Self-host it for free, keep your data in-house, and verify how it tracks the way AI engines mention and cite your brand.",
+};
+
+export function getCategoryElmoPitch(category: CompetitorCategory): string {
+	return CATEGORY_ELMO_PITCH[category];
+}

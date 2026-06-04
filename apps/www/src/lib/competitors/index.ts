@@ -53,4 +53,5 @@ export {
 	getFeatureFaqs,
 	getCategoryVerdict,
 	getCategoryFaqs,
+	getCategoryElmoPitch,
 } from "./directory";
