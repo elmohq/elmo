@@ -73,16 +73,15 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { sortedPrompts, filteredPromptIds } = useMemo(() => {
-		if (!promptsSummary) return { sortedPrompts: [], filteredPromptIds: [] as string[] };
+	// The prompt list is still search-filtered client-side for display. The
+	// chart/visibility sections no longer receive this id list — they resolve
+	// the same prompts server-side from the tag + search filters (issue #68).
+	const sortedPrompts = useMemo(() => {
+		if (!promptsSummary) return [];
 		const allPrompts = promptsSummary.prompts;
-		const filtered = searchQuery
+		return searchQuery
 			? allPrompts.filter((p: { value: string }) => p.value.toLowerCase().includes(searchQuery.toLowerCase()))
 			: allPrompts;
-		return {
-			sortedPrompts: filtered,
-			filteredPromptIds: filtered.map((p: { id: string }) => p.id),
-		};
 	}, [promptsSummary, searchQuery]);
 
 	const isInitialLoad = isLoadingSummary && !promptsSummary;
@@ -102,7 +101,7 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 					showModelSelector
 					resultCount={isInitialLoad ? undefined : sortedPrompts.length}
 				/>
-				<VisibilityBarSection brandId={brandId} promptIds={filteredPromptIds} />
+				<VisibilityBarSection brandId={brandId} />
 			</FilterSection>
 
 			<div className="space-y-6">
@@ -146,8 +145,8 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 						selectedModel={selectedModel}
 						modelParam={modelParam}
 						searchQuery={searchQuery}
+						selectedTags={selectedTags}
 						sortedPrompts={sortedPrompts}
-						filteredPromptIds={filteredPromptIds}
 						availableIndividualModels={availableIndividualModels}
 					/>
 				)}
@@ -166,8 +165,8 @@ function ChartSection({
 	selectedModel,
 	modelParam,
 	searchQuery,
+	selectedTags,
 	sortedPrompts,
-	filteredPromptIds,
 	availableIndividualModels,
 }: {
 	brandId: string | undefined;
@@ -175,14 +174,15 @@ function ChartSection({
 	selectedModel: ReturnType<typeof usePageFilters>["selectedModel"];
 	modelParam: string | undefined;
 	searchQuery: string;
+	selectedTags: string[];
 	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
-	filteredPromptIds: string[];
 	availableIndividualModels: string[];
 }) {
 	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
 		lookback,
 		model: modelParam,
-		promptIds: filteredPromptIds,
+		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		search: searchQuery || undefined,
 	});
 
 	const { startDate, endDate } = useMemo(() => {

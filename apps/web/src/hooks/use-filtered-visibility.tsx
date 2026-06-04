@@ -6,8 +6,11 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
 export interface FilteredVisibilityFilters {
 	lookback?: LookbackPeriod;
-	promptIds?: string[];
 	model?: string;
+	/** Tag filter (resolved to prompt IDs server-side). */
+	tags?: string[];
+	/** Search term applied to prompt text (resolved server-side). */
+	search?: string;
 }
 
 export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibilityFilters) {
@@ -20,7 +23,8 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 			resolvedBrandId,
 			filters?.lookback,
 			filters?.model,
-			filters?.promptIds?.join(","),
+			filters?.tags?.join(","),
+			filters?.search,
 		],
 		queryFn: () =>
 			getFilteredVisibilityFn({
@@ -28,7 +32,8 @@ export function useFilteredVisibility(brandId?: string, filters?: FilteredVisibi
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
-					promptIds: filters?.promptIds || [],
+					tags: filters?.tags?.join(","),
+					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
