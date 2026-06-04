@@ -8,8 +8,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { type LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
@@ -66,6 +66,77 @@ export interface FilteredVisibilityResponse {
 }
 
 // ============================================================================
+// Prompt resolution
+// ============================================================================
+
+interface ResolvedPrompt {
+	id: string;
+	value: string;
+	systemTags: string[];
+	tags: string[];
+}
+
+/**
+ * Resolve the in-scope prompts for a brand from filter criteria, entirely
+ * server-side. Mirrors the filtering the visibility page applies to build its
+ * prompt list — the tag filter from `getPromptsSummaryFn` plus the search box —
+ * so the chart and visibility aggregates cover the same prompts the list shows.
+ *
+ * Resolving here (instead of having the client serialize the full prompt-id
+ * list into the GET request URL) keeps the request bounded regardless of how
+ * many prompts a brand has. Shipping the id list overflowed the request URL for
+ * brands with a few hundred prompts — 414 URI Too Long on Vercel, 431 Request
+ * Header Fields Too Large in dev. See issue #68.
+ *
+ * NOTE: the tag-filter logic here must stay in sync with `getPromptsSummaryFn`
+ * (apps/web/src/server/prompts.ts), which produces the displayed list.
+ */
+async function resolveFilteredPrompts(
+	brandId: string,
+	opts: { tags?: string; search?: string },
+): Promise<ResolvedPrompt[]> {
+	const allPrompts = await db
+		.select({
+			id: prompts.id,
+			value: prompts.value,
+			systemTags: prompts.systemTags,
+			tags: prompts.tags,
+		})
+		.from(prompts)
+		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
+
+	const tagFilter = opts.tags?.split(",").filter(Boolean) || [];
+	const search = opts.search;
+
+	return allPrompts
+		.filter((p) => {
+			const userTags = p.tags || [];
+
+			// Tag filter — match getPromptsSummaryFn: a prompt's effective tags
+			// are its user tags plus exactly one system tag reflecting its
+			// effective branded status.
+			if (tagFilter.length > 0) {
+				const { isBranded } = getEffectiveBrandedStatus(p.systemTags || [], userTags);
+				const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
+				const effectiveTags = userTags.includes(systemTag) ? userTags : [...userTags, systemTag];
+				if (!tagFilter.some((t) => effectiveTags.includes(t))) return false;
+			}
+
+			// Search filter — previously applied in the browser against the
+			// prompt text (case-insensitive substring).
+			if (search && !p.value.toLowerCase().includes(search.toLowerCase())) return false;
+
+			return true;
+		})
+		.map((p) => ({
+			id: p.id,
+			value: p.value,
+			systemTags: p.systemTags || [],
+			tags: p.tags || [],
+		}));
+}
+
+// ============================================================================
 // Server functions
 // ============================================================================
 
@@ -75,7 +146,8 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
 			model: z.string().optional(),
-			promptIds: z.array(z.string()),
+			tags: z.string().optional(),
+			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -86,16 +158,22 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		const timezone = resolveTimezone(data.timezone);
 		const lookbackParam = data.lookback as LookbackPeriod;
 
+		// `allStrategy: "1y"` guarantees concrete bounds for every lookback
+		// (including "all"), so the dates are never null here.
 		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
 			allStrategy: "1y",
-		});
+		}) as { fromDateStr: string; toDateStr: string };
 
-		if (data.promptIds.length === 0) {
-			throw new Error("promptIds parameter is required");
-		}
+		// Resolve the in-scope prompts server-side from the filter criteria so
+		// the client never ships the full prompt-id list (issue #68).
+		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
+			tags: data.tags,
+			search: data.search,
+		});
+		const promptIds = resolvedPrompts.map((p) => p.id);
 
 		// Get brand and competitors from PostgreSQL
-		const [brandResult, competitorsResult, promptsResult] = await Promise.all([
+		const [brandResult, competitorsResult] = await Promise.all([
 			db
 				.select({ id: brands.id, name: brands.name })
 				.from(brands)
@@ -105,10 +183,6 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 				.select({ id: competitors.id, name: competitors.name })
 				.from(competitors)
 				.where(eq(competitors.brandId, data.brandId)),
-			db
-				.select({ id: prompts.id, value: prompts.value })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), inArray(prompts.id, data.promptIds))),
 		]);
 
 		if (brandResult.length === 0) {
@@ -117,8 +191,20 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		const brand = brandResult[0];
 
+		// No prompts match the current filters — return an empty-but-valid
+		// payload rather than erroring (the page renders an empty state).
+		if (promptIds.length === 0) {
+			return {
+				chartData: [],
+				visibility: { currentVisibility: 0, totalRuns: 0, visibilityTimeSeries: [] },
+				brand: { id: brand.id, name: brand.name },
+				competitors: competitorsResult,
+				dateRange: { fromDate: fromDateStr, toDate: toDateStr },
+			};
+		}
+
 		// Determine branded prompt IDs
-		const brandedPromptIds = promptsResult
+		const brandedPromptIds = resolvedPrompts
 			.filter((p) => p.value.toLowerCase().includes(brand.name.toLowerCase()))
 			.map((p) => p.id);
 
@@ -126,7 +212,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		const [chartData, visibilityData] = await Promise.all([
 			getBatchChartData(
 				data.brandId,
-				data.promptIds,
+				promptIds,
 				fromDateStr,
 				toDateStr,
 				timezone,
@@ -135,7 +221,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			),
 			getBatchVisibilityData(
 				data.brandId,
-				data.promptIds,
+				promptIds,
 				brandedPromptIds,
 				fromDateStr,
 				toDateStr,
@@ -158,8 +244,8 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 			brand: { id: brand.id, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
-				fromDate: fromDateStr!,
-				toDate: toDateStr!,
+				fromDate: fromDateStr,
+				toDate: toDateStr,
 			},
 		};
 	});
@@ -170,7 +256,8 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
 			model: z.string().optional(),
-			promptIds: z.array(z.string()).default([]),
+			tags: z.string().optional(),
+			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -180,34 +267,14 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		if (data.promptIds.length === 0) {
-			return {
-				currentVisibility: 0,
-				totalRuns: 0,
-				totalPrompts: 0,
-				totalCitations: 0,
-				visibilityTimeSeries: [],
-				lookback: lookbackParam,
-			};
-		}
-
-		const timezone = resolveTimezone(data.timezone);
-
-		// Get brand name and prompt values for branded/non-branded determination
-		const [brandResult, promptsResult] = await Promise.all([
-			db.select({ name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db
-				.select({
-					id: prompts.id,
-					value: prompts.value,
-					systemTags: prompts.systemTags,
-					tags: prompts.tags,
-				})
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), inArray(prompts.id, data.promptIds))),
-		]);
-
-		const totalPrompts = promptsResult.length;
+		// Resolve the in-scope prompts server-side from the filter criteria so
+		// the client never ships the full prompt-id list (issue #68).
+		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
+			tags: data.tags,
+			search: data.search,
+		});
+		const promptIds = resolvedPrompts.map((p) => p.id);
+		const totalPrompts = promptIds.length;
 
 		if (totalPrompts === 0) {
 			return {
@@ -220,12 +287,11 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			};
 		}
 
-		// Determine branded prompt IDs
-		const brandedPromptIds = promptsResult
-			.filter((p) => {
-				const effectiveStatus = getEffectiveBrandedStatus(p.systemTags || [], p.tags || []);
-				return effectiveStatus.isBranded;
-			})
+		const timezone = resolveTimezone(data.timezone);
+
+		// Determine branded prompt IDs from effective branded status
+		const brandedPromptIds = resolvedPrompts
+			.filter((p) => getEffectiveBrandedStatus(p.systemTags, p.tags).isBranded)
 			.map((p) => p.id);
 
 		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so
@@ -244,11 +310,11 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 				fromDate,
 				toDate,
 				timezone,
-				data.promptIds,
+				promptIds,
 				brandedPromptIds,
 				data.model,
 			),
-			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, data.promptIds, data.model),
+			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
 		]);
 
 		// Roll the period totals from the raw observation sums (actual_*);

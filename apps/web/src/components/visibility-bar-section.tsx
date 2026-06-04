@@ -5,11 +5,11 @@ import { usePageFilters } from "@/components/filter-bar";
 
 /**
  * Self-contained visibility bar. Subscribes directly to the filter URL
- * keys it needs and fetches `useFilteredVisibility` itself, so it's a
- * sibling of the chart section rather than something the parent has to
- * wire through. The parent passes the already-search-filtered prompt
- * IDs since search is applied client-side and we don't want to duplicate
- * that logic here.
+ * keys it needs (lookback, model, tags, search) and fetches
+ * `useFilteredVisibility` itself, so it's a sibling of the chart section
+ * rather than something the parent has to wire through. The tag + search
+ * filters are resolved to prompt IDs server-side, so we pass the criteria
+ * rather than a prompt-id list (issue #68).
  *
  * The skeleton stays mounted inside a grid overlay so the bar reserves
  * its vertical space on load and doesn't shove the charts down when the
@@ -17,12 +17,10 @@ import { usePageFilters } from "@/components/filter-bar";
  */
 export function VisibilityBarSection({
 	brandId,
-	promptIds,
 }: {
 	brandId: string | undefined;
-	promptIds: string[];
 }) {
-	const { selectedLookback, selectedModel } = usePageFilters();
+	const { selectedLookback, selectedModel, selectedTags, searchQuery } = usePageFilters();
 	const modelParam = selectedModel === "all" ? undefined : selectedModel;
 
 	const {
@@ -31,7 +29,8 @@ export function VisibilityBarSection({
 		isValidating: isValidatingVisibility,
 	} = useFilteredVisibility(brandId, {
 		lookback: selectedLookback,
-		promptIds: promptIds.length > 0 ? promptIds : undefined,
+		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		search: searchQuery || undefined,
 		model: modelParam,
 	});
 
