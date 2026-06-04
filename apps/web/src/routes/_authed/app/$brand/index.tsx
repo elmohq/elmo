@@ -335,8 +335,8 @@ function DashboardPage() {
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="flex-1 flex flex-col justify-center gap-4">
-								<div style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
-									<Skeleton className="h-20 w-36" />
+								<div style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}>
+									<Skeleton className="h-12 w-28" />
 								</div>
 							</CardContent>
 						</Card>
@@ -347,7 +347,7 @@ function DashboardPage() {
 									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 								</CardTitle>
 							</CardHeader>
-							<CardContent className="flex-1 min-h-[120px]">
+							<CardContent className="flex-1 min-h-[88px]">
 								<Skeleton className="h-full w-full" />
 							</CardContent>
 						</Card>
@@ -386,7 +386,7 @@ function DashboardPage() {
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 									</CardTitle>
 								</CardHeader>
-								<CardContent className="flex-1 min-h-[110px]">
+								<CardContent className="flex-1 min-h-[88px]">
 									<Skeleton className="h-full w-full" />
 								</CardContent>
 							</Card>
@@ -414,7 +414,7 @@ function DashboardPage() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<Skeleton className="h-[120px] w-full" />
+							<Skeleton className="h-[96px] w-full" />
 						</CardContent>
 					</Card>
 				</section>
@@ -566,9 +566,9 @@ function DashboardPage() {
 						<CardContent className="flex-1 flex flex-col justify-center gap-4">
 							<div
 								className={`font-bold tracking-tight ${isLoading ? "text-muted-foreground" : getVisibilityTextColor(averageVisibility)}`}
-								style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
+								style={{ fontSize: "clamp(2rem, 4vw, 3.25rem)" }}
 							>
-								{isLoading ? <Skeleton className="h-20 w-36" /> : `${averageVisibility}%`}
+								{isLoading ? <Skeleton className="h-12 w-28" /> : `${averageVisibility}%`}
 							</div>
 						</CardContent>
 					</Card>
@@ -581,7 +581,7 @@ function DashboardPage() {
 							tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
 						/>
 						</CardHeader>
-						<CardContent className="flex-1 min-h-[120px]">
+						<CardContent className="flex-1 min-h-[88px]">
 							{isLoading ? (
 								<Skeleton className="h-full w-full" />
 							) : (
@@ -681,7 +681,7 @@ function DashboardPage() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="flex-1 flex flex-col justify-center gap-4">
-							<div className="font-bold tracking-tight" style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
+							<div className="font-bold tracking-tight" style={{ fontSize: "clamp(1.75rem, 3.5vw, 2.75rem)" }}>
 								{sovData?.brandShare != null ? `${Math.round(sovData.brandShare * 100)}%` : "—"}
 							</div>
 						</CardContent>
@@ -694,7 +694,7 @@ function DashboardPage() {
 								tooltip="Your brand's share of voice over time — your mentions as a percentage of all brand and competitor mentions each day."
 							/>
 						</CardHeader>
-						<CardContent className="flex-1 min-h-[110px]">
+						<CardContent className="flex-1 min-h-[88px]">
 							<ShareOfVoiceTrend data={sovData?.shareTimeSeries ?? []} className="aspect-auto h-full w-full" />
 						</CardContent>
 					</Card>
@@ -724,9 +724,9 @@ function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						{isLoading ? (
-							<Skeleton className="h-[120px] w-full" />
+							<Skeleton className="h-[96px] w-full" />
 						) : (
-							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[120px] w-full">
+							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[96px] w-full">
 								<AreaChart data={extendedCitationData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
 									<CartesianGrid vertical={false} strokeDasharray="3 3" />
 									<XAxis
