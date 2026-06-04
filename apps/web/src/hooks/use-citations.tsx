@@ -27,6 +27,7 @@ export function useCitations(brandId?: string, filters?: CitationFilters) {
 					days: filters?.days || 7,
 					tags: filters?.tags?.join(","),
 					model: filters?.model,
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
 		enabled: !!resolvedBrandId,

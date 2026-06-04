@@ -85,6 +85,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			webSearchEnabled: z.string().optional(),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			timezone: z.string().optional().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -105,7 +106,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		}
 
 		// Compute date range from lookback parameter
-		const timezone = "UTC";
+		const timezone = data.timezone || "UTC";
 		let fromDateStr: string | null = null;
 		let toDateStr: string | null = null;
 
@@ -234,6 +235,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		z.object({
 			promptId: z.string(),
 			days: z.number().optional().default(7),
+			timezone: z.string().optional().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -253,7 +255,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const toDate = new Date();
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
-		const timezone = "UTC";
+		const timezone = data.timezone || "UTC";
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
 		// Run aggregation queries in parallel

@@ -143,6 +143,23 @@ function dateFilter(fromDate: string | null, toDate: string | null, timezone: st
 	return sql`AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone}) AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})`;
 }
 
+/**
+ * Same shape as `dateFilter` but for the `hour` column on the `hourly_*`
+ * aggregate tables. Buckets are stored as `timestamptz` at the start of
+ * each UTC hour; the filter projects the user's `[fromDate, toDate]`
+ * (interpreted in `timezone`) into UTC instants for the `hour` comparison.
+ *
+ * A bucket is included if its `hour` instant falls within the user's
+ * selected day window. Near day boundaries this means the bucket that
+ * straddles the user's "today / yesterday" line is attributed to whichever
+ * UTC hour it starts on — at hourly resolution this is at most ~1 hour
+ * of attribution slack, invisible at chart resolution.
+ */
+function hourFilter(fromDate: string | null, toDate: string | null, timezone: string): SQL {
+	if (!fromDate || !toDate) return sql``;
+	return sql`AND hour >= (${fromDate}::date AT TIME ZONE ${timezone}) AND hour < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})`;
+}
+
 function uuidList(ids: string[]): SQL {
 	return sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
 }
@@ -176,13 +193,13 @@ export async function getDashboardSummary(
 	const rows = await queryPg<DashboardSummary>(sql`
 		SELECT
 			count(DISTINCT prompt_id)::int AS total_prompts,
-			count(*)::int AS total_runs,
-			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS avg_visibility,
-			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS non_branded_visibility,
-			to_char(max(created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_updated
-		FROM prompt_runs
+			coalesce(sum(total_runs), 0)::int AS total_runs,
+			round(coalesce(sum(brand_mentioned_count), 0) * 100.0 / NULLIF(coalesce(sum(total_runs), 0), 0), 0)::int AS avg_visibility,
+			round(coalesce(sum(brand_mentioned_count), 0) * 100.0 / NULLIF(coalesce(sum(total_runs), 0), 0), 0)::int AS non_branded_visibility,
+			to_char(max(last_run_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z' AS last_updated
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
-			${dateFilter(fromDate, toDate, timezone)}
+			${hourFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 	`);
 	return rows;
@@ -211,12 +228,12 @@ export async function getPerPromptVisibilityTimeSeries(
 	const rows = await queryPg<PerPromptVisibilityPoint>(sql`
 		SELECT
 			prompt_id,
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-		FROM prompt_runs
+			(hour AT TIME ZONE ${timezone})::date AS date,
+			sum(total_runs)::int AS total_runs,
+			sum(brand_mentioned_count)::int AS brand_mentioned_count
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
-			${dateFilter(fromDate, toDate, timezone)}
+			${hourFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date
@@ -301,20 +318,20 @@ export async function getVisibilityDailyAggregate(
 			observations AS (
 				SELECT
 					prompt_id,
-					(created_at AT TIME ZONE ${timezone})::date AS obs_date,
-					count(*)::int AS total_runs,
-					count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-				FROM prompt_runs
+					(hour AT TIME ZONE ${timezone})::date AS obs_date,
+					sum(total_runs)::int AS total_runs,
+					sum(brand_mentioned_count)::int AS brand_mentioned_count
+				FROM hourly_prompt_runs
 				WHERE brand_id = ${brandId}
 					AND prompt_id IN (${uuidList(enabledPromptIds)})
-					AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-					AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+					AND hour >= (${fromDate}::date AT TIME ZONE ${timezone})
+					AND hour < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 					${modelFilter(model)}
 				-- Group by the SELECT alias, not the full expression: drizzle
 				-- emits a fresh $N parameter for every timezone interpolation,
 				-- so the SELECT expression and GROUP BY expression aren't
 				-- recognized as identical by Postgres and the query errors
-				-- with "column prompt_runs.created_at must appear in GROUP BY".
+				-- with "column hourly_prompt_runs.hour must appear in GROUP BY".
 				GROUP BY prompt_id, obs_date
 			),
 			first_obs AS (
@@ -389,11 +406,11 @@ export async function getCitationsTotalCount(
 ): Promise<number> {
 	if (enabledPromptIds && enabledPromptIds.length === 0) return 0;
 	const rows = await queryPg<{ total: number }>(sql`
-		SELECT count(*)::int AS total
-		FROM citations
+		SELECT coalesce(sum(count), 0)::int AS total
+		FROM hourly_citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND hour >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND hour < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 	`);
@@ -418,13 +435,13 @@ export async function getVisibilityTimeSeries(
 		: sql`FALSE`;
 	const rows = await queryPg<VisibilityTimeSeriesPoint>(sql`
 		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
+			(hour AT TIME ZONE ${timezone})::date AS date,
+			sum(total_runs)::int AS total_runs,
+			sum(brand_mentioned_count)::int AS brand_mentioned_count,
 			${isBranded} AS is_branded
-		FROM prompt_runs
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
-			${dateFilter(fromDate, toDate, timezone)}
+			${hourFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY date, is_branded
@@ -446,8 +463,8 @@ export async function getPromptsFirstEvaluatedAt(
 	const rows = await queryPg<PromptFirstEvaluatedAt>(sql`
 		SELECT
 			prompt_id,
-			min(created_at) AT TIME ZONE 'UTC' AS first_evaluated_at
-		FROM prompt_runs
+			min(first_run_at) AT TIME ZONE 'UTC' AS first_evaluated_at
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
 		GROUP BY prompt_id
@@ -467,14 +484,14 @@ export async function getPromptsSummary(
 	const rows = await queryPg<PromptSummary>(sql`
 		SELECT
 			prompt_id,
-			count(*)::int AS total_runs,
-			round(count(*) FILTER (WHERE brand_mentioned) * 100.0 / NULLIF(count(*), 0), 0)::int AS brand_mention_rate,
-			round(count(*) FILTER (WHERE array_length(competitors_mentioned, 1) > 0) * 100.0 / NULLIF(count(*), 0), 0)::int AS competitor_mention_rate,
-			(count(*) FILTER (WHERE brand_mentioned) * 2 + COALESCE(sum(array_length(competitors_mentioned, 1)), 0))::int AS total_weighted_mentions,
-			max((created_at AT TIME ZONE ${timezone})::date) AS last_run_date
-		FROM prompt_runs
+			coalesce(sum(total_runs), 0)::int AS total_runs,
+			round(coalesce(sum(brand_mentioned_count), 0) * 100.0 / NULLIF(coalesce(sum(total_runs), 0), 0), 0)::int AS brand_mention_rate,
+			round(coalesce(sum(competitor_run_count), 0) * 100.0 / NULLIF(coalesce(sum(total_runs), 0), 0), 0)::int AS competitor_mention_rate,
+			(coalesce(sum(brand_mentioned_count), 0) * 2 + coalesce(sum(competitor_mention_sum), 0))::int AS total_weighted_mentions,
+			max((last_run_at AT TIME ZONE ${timezone})::date) AS last_run_date
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
-			${dateFilter(fromDate, toDate, timezone)}
+			${hourFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
 			${modelFilter(model)}
 			${promptIdFilter(enabledPromptIds)}
@@ -498,12 +515,12 @@ export async function getPromptDailyStats(
 ): Promise<PromptDailyStats[]> {
 	const rows = await queryPg<PromptDailyStats>(sql`
 		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-		FROM prompt_runs
+			(hour AT TIME ZONE ${timezone})::date AS date,
+			sum(total_runs)::int AS total_runs,
+			sum(brand_mentioned_count)::int AS brand_mentioned_count
+		FROM hourly_prompt_runs
 		WHERE prompt_id = ${promptId}
-			${dateFilter(fromDate, toDate, timezone)}
+			${hourFilter(fromDate, toDate, timezone)}
 			${webSearchFilter(webSearchEnabled)}
 			${modelFilter(model)}
 		GROUP BY date
@@ -524,15 +541,20 @@ export async function getPromptCompetitorDailyStats(
 	webSearchEnabled?: boolean,
 	model?: string,
 ): Promise<PromptCompetitorDailyStats[]> {
+	// `webSearchEnabled` filter cannot be honored from the competitor aggregate
+	// (we don't carry that dimension on `hourly_prompt_run_competitors` because
+	// it would multiply the row count for a column the chart never filters on).
+	// In practice this filter has never been wired up by any caller — see
+	// `apps/web/src/server/prompts.ts:getPromptChartDataFn`.
+	void webSearchEnabled;
 	const rows = await queryPg<PromptCompetitorDailyStats>(sql`
 		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
+			(hour AT TIME ZONE ${timezone})::date AS date,
 			competitor_name,
-			count(*)::int AS mention_count
-		FROM prompt_runs, unnest(competitors_mentioned) AS competitor_name
+			sum(mention_count)::int AS mention_count
+		FROM hourly_prompt_run_competitors
 		WHERE prompt_id = ${promptId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${webSearchFilter(webSearchEnabled)}
+			${hourFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
 		GROUP BY date, competitor_name
 		ORDER BY date, competitor_name
@@ -609,19 +631,31 @@ export async function getCitationDomainStats(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<CitationDomainStats[]> {
+	// `example_title` is taken from `hourly_citation_urls` (which carries
+	// titles per URL) — pick any non-null title for any URL on this domain
+	// in the window. The aggregate-side scan is small enough that this
+	// LATERAL is cheap, and avoids needing to keep `title` on the
+	// per-domain aggregate.
 	const rows = await queryPg<CitationDomainStats>(sql`
+		WITH dom AS (
+			SELECT
+				domain,
+				sum(count)::int AS count
+			FROM hourly_citations
+			WHERE brand_id = ${brandId}
+				${hourFilter(fromDate, toDate, timezone)}
+				${promptIdFilter(enabledPromptIds)}
+				${modelFilter(model)}
+			GROUP BY domain
+		)
 		SELECT
-			domain,
-			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
-		FROM citations
-		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY domain
-		ORDER BY count DESC
+			dom.domain,
+			dom.count,
+			(SELECT title FROM hourly_citation_urls hu
+			 WHERE hu.brand_id = ${brandId} AND hu.domain = dom.domain AND hu.title IS NOT NULL
+			 LIMIT 1) AS example_title
+		FROM dom
+		ORDER BY dom.count DESC
 	`);
 	return rows;
 }
@@ -638,18 +672,22 @@ export async function getCitationUrlStats(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<CitationUrlStats[]> {
+	// avg_position derives from the per-bucket `sum_citation_index`:
+	//     avg = sum(sum_citation_index) / sum(count)
+	// `title` is the most-recently-observed non-null title across the
+	// window's buckets. `prompt_count` is the number of distinct prompts
+	// that cited the URL.
 	const rows = await queryPg<CitationUrlStats>(sql`
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
-			count(*)::int AS count,
-			round(avg(citation_index)::numeric, 1)::float AS avg_position,
+			(array_agg(title ORDER BY hour DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			sum(count)::int AS count,
+			round(sum(sum_citation_index)::numeric / NULLIF(sum(count), 0), 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
-		FROM citations
+		FROM hourly_citation_urls
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${hourFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY url, domain
@@ -669,16 +707,23 @@ export async function getPromptCitationStats(
 	timezone: string,
 ): Promise<CitationDomainStats[]> {
 	const rows = await queryPg<CitationDomainStats>(sql`
+		WITH dom AS (
+			SELECT
+				domain,
+				sum(count)::int AS count
+			FROM hourly_citations
+			WHERE prompt_id = ${promptId}
+				${hourFilter(fromDate, toDate, timezone)}
+			GROUP BY domain
+		)
 		SELECT
-			domain,
-			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
-		FROM citations
-		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-		GROUP BY domain
-		ORDER BY count DESC
+			dom.domain,
+			dom.count,
+			(SELECT title FROM hourly_citation_urls hu
+			 WHERE hu.prompt_id = ${promptId} AND hu.domain = dom.domain AND hu.title IS NOT NULL
+			 LIMIT 1) AS example_title
+		FROM dom
+		ORDER BY dom.count DESC
 	`);
 	return rows;
 }
@@ -693,14 +738,13 @@ export async function getPromptCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
-			count(*)::int AS count,
-			round(avg(citation_index)::numeric, 1)::float AS avg_position,
+			(array_agg(title ORDER BY hour DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			sum(count)::int AS count,
+			round(sum(sum_citation_index)::numeric / NULLIF(sum(count), 0), 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
-		FROM citations
+		FROM hourly_citation_urls
 		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${hourFilter(fromDate, toDate, timezone)}
 		GROUP BY url, domain
 		ORDER BY count DESC
 	`);
@@ -719,13 +763,12 @@ export async function getPromptMentionSummary(
 ): Promise<PromptMentionSummary> {
 	const rows = await queryPg<PromptMentionSummary>(sql`
 		SELECT
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			COALESCE(sum(array_length(competitors_mentioned, 1)), 0)::int AS competitor_mentioned_count
-		FROM prompt_runs
+			coalesce(sum(total_runs), 0)::int AS total_runs,
+			coalesce(sum(brand_mentioned_count), 0)::int AS brand_mentioned_count,
+			coalesce(sum(competitor_mention_sum), 0)::int AS competitor_mentioned_count
+		FROM hourly_prompt_runs
 		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${hourFilter(fromDate, toDate, timezone)}
 	`);
 	return rows[0] || { total_runs: 0, brand_mentioned_count: 0, competitor_mentioned_count: 0 };
 }
@@ -737,14 +780,18 @@ export async function getPromptTopCompetitorMentions(
 	timezone: string,
 	limit: number,
 ): Promise<TopCompetitorMention[]> {
+	// Old query did `count(DISTINCT pr.id)` to count runs that mentioned the
+	// competitor (not total mention occurrences). The aggregate's
+	// `mention_count` is per-(prompt, hour, model, competitor_name); summing
+	// it across the window gives the same count of runs that mentioned the
+	// competitor (each run contributes 1 to its bucket per competitor name).
 	const rows = await queryPg<TopCompetitorMention>(sql`
 		SELECT
 			competitor_name,
-			count(DISTINCT pr.id)::int AS mention_count
-		FROM prompt_runs pr, unnest(pr.competitors_mentioned) AS competitor_name
-		WHERE pr.prompt_id = ${promptId}
-			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			sum(mention_count)::int AS mention_count
+		FROM hourly_prompt_run_competitors
+		WHERE prompt_id = ${promptId}
+			${hourFilter(fromDate, toDate, timezone)}
 		GROUP BY competitor_name
 		ORDER BY mention_count DESC
 		LIMIT ${limit}
@@ -766,13 +813,12 @@ export async function getDailyCitationStats(
 ): Promise<DailyCitationStats[]> {
 	const rows = await queryPg<DailyCitationStats>(sql`
 		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
+			(hour AT TIME ZONE ${timezone})::date AS date,
 			domain,
-			count(*)::int AS count
-		FROM citations
+			sum(count)::int AS count
+		FROM hourly_citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${hourFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY date, domain
@@ -804,13 +850,12 @@ export async function getPerPromptDailyCitationStats(
 	const rows = await queryPg<PerPromptDailyCitationStats>(sql`
 		SELECT
 			prompt_id,
-			(created_at AT TIME ZONE ${timezone})::date AS date,
+			(hour AT TIME ZONE ${timezone})::date AS date,
 			domain,
-			count(*)::int AS count
-		FROM citations
+			sum(count)::int AS count
+		FROM hourly_citations
 		WHERE brand_id = ${brandId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			${hourFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 		GROUP BY prompt_id, date, domain
@@ -827,8 +872,8 @@ export async function getBrandEarliestRunDate(
 	brandId: string,
 ): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
-		SELECT min(created_at) AS earliest_date
-		FROM prompt_runs
+		SELECT min(first_run_at) AS earliest_date
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
 	`);
 	return rows[0]?.earliest_date || null;
@@ -849,6 +894,10 @@ export async function getBatchChartData(
 ): Promise<ProcessedBatchChartDataPoint[]> {
 	if (promptIds.length === 0) return [];
 
+	// `webSearchEnabled` filter is honored on prompt_runs aggregate but not on
+	// the competitor aggregate (we don't carry that dimension on
+	// `hourly_prompt_run_competitors` — see getPromptCompetitorDailyStats).
+	void webSearchEnabled;
 	const [brandData, competitorData] = await Promise.all([
 		queryPg<{
 			prompt_id: string;
@@ -858,13 +907,13 @@ export async function getBatchChartData(
 		}>(sql`
 			SELECT
 				prompt_id,
-				(created_at AT TIME ZONE ${timezone})::date AS date,
-				count(*)::int AS total_runs,
-				count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
-			FROM prompt_runs
+				(hour AT TIME ZONE ${timezone})::date AS date,
+				sum(total_runs)::int AS total_runs,
+				sum(brand_mentioned_count)::int AS brand_mentioned_count
+			FROM hourly_prompt_runs
 			WHERE brand_id = ${brandId}
 				AND prompt_id IN (${uuidList(promptIds)})
-				${dateFilter(fromDate, toDate, timezone)}
+				${hourFilter(fromDate, toDate, timezone)}
 				${webSearchFilter(webSearchEnabled)}
 				${modelFilter(model)}
 			GROUP BY prompt_id, date
@@ -878,14 +927,13 @@ export async function getBatchChartData(
 		}>(sql`
 			SELECT
 				prompt_id,
-				(created_at AT TIME ZONE ${timezone})::date AS date,
+				(hour AT TIME ZONE ${timezone})::date AS date,
 				competitor_name,
-				count(*)::int AS mention_count
-			FROM prompt_runs, unnest(competitors_mentioned) AS competitor_name
+				sum(mention_count)::int AS mention_count
+			FROM hourly_prompt_run_competitors
 			WHERE brand_id = ${brandId}
 				AND prompt_id IN (${uuidList(promptIds)})
-				${dateFilter(fromDate, toDate, timezone)}
-				${webSearchFilter(webSearchEnabled)}
+				${hourFilter(fromDate, toDate, timezone)}
 				${modelFilter(model)}
 			GROUP BY prompt_id, date, competitor_name
 			ORDER BY prompt_id, date, competitor_name
@@ -936,14 +984,14 @@ export async function getBatchVisibilityData(
 		is_branded: boolean;
 	}>(sql`
 		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
+			(hour AT TIME ZONE ${timezone})::date AS date,
+			sum(total_runs)::int AS total_runs,
+			sum(brand_mentioned_count)::int AS brand_mentioned_count,
 			${isBranded} AS is_branded
-		FROM prompt_runs
+		FROM hourly_prompt_runs
 		WHERE brand_id = ${brandId}
 			AND prompt_id IN (${uuidList(promptIds)})
-			${dateFilter(fromDate, toDate, timezone)}
+			${hourFilter(fromDate, toDate, timezone)}
 		GROUP BY date, is_branded
 		ORDER BY date
 	`);

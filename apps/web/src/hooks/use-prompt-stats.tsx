@@ -12,7 +12,14 @@ export function usePromptStats(promptId?: string, options?: { days?: number }) {
 
 	const query = useQuery({
 		queryKey: promptStatsKeys.detail(promptId || "", days),
-		queryFn: () => getPromptStatsFn({ data: { promptId: promptId!, days } }),
+		queryFn: () =>
+			getPromptStatsFn({
+				data: {
+					promptId: promptId!,
+					days,
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+				},
+			}),
 		enabled: !!promptId,
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
