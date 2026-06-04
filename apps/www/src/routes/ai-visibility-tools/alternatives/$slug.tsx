@@ -1,12 +1,11 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
-import { Button } from "@workspace/ui/components/button";
-import { ArrowRight } from "lucide-react";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
 import { ToolGrid } from "@/components/tool-list";
 import {
 	DirectoryBackLink,
+	DirectoryElmoBanner,
 	DirectoryHero,
 	DirectorySection,
 	ElmoCta,
@@ -14,6 +13,7 @@ import {
 import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 import {
 	getCompetitorBySlug,
+	getComparisonSlug,
 	isIndexed,
 	getAlternatives,
 	getAlternativesVerdict,
@@ -69,37 +69,13 @@ function AlternativesPage() {
 					lead={getAlternativesVerdict(competitor)}
 				/>
 
-				{/* Elmo: the open-source pick */}
-				<section className="border-b border-zinc-200 bg-zinc-50 py-10">
-					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<div className="rounded-md border border-blue-200 bg-blue-50/40 p-6">
-							<h2 className="font-heading text-xl text-zinc-950">
-								Elmo: the open-source alternative
-							</h2>
-							<p className="mt-2 max-w-3xl text-sm leading-relaxed text-zinc-600">
-								Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google
-								AI Overviews mention and cite your brand. It is open source, so
-								you self-host it for free, keep your data in-house, and verify
-								exactly how each metric is calculated. No per-seat pricing, no
-								black-box scores, no lock-in.
-							</p>
-							<div className="mt-4 flex flex-wrap gap-3">
-								<Button asChild size="sm">
-									<Link to="/docs">Deploy Elmo</Link>
-								</Button>
-								<Button asChild variant="outline" size="sm">
-									<Link
-										to="/ai-visibility-tools/$slug"
-										params={{ slug: `elmo-vs-${competitor.slug}` }}
-									>
-										Elmo vs {competitor.name}
-										<ArrowRight className="h-3.5 w-3.5" />
-									</Link>
-								</Button>
-							</div>
-						</div>
-					</div>
-				</section>
+				<DirectoryElmoBanner
+					pitch="Elmo tracks how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand. It is open source, so you self-host it for free, keep your data in-house, and verify exactly how each metric is calculated. No per-seat pricing, no black-box scores, no lock-in."
+					comparison={{
+						slug: getComparisonSlug(competitor),
+						name: competitor.name,
+					}}
+				/>
 
 				<DirectorySection title={`Other ${competitor.name} alternatives`}>
 					<ToolGrid competitors={alternatives} />
