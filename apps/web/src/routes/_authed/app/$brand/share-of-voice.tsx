@@ -2,7 +2,8 @@
  * /app/$brand/share-of-voice - Share of Voice
  *
  * "Who do the AI engines mention instead of you?" A leaderboard of competitor
- * mention rates next to the brand's own, derived from prompt_runs.
+ * mention rates next to the brand's own, with the brand's overall share, a
+ * donut of top competitors, and share of voice over time.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -10,12 +11,17 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Badge } from "@workspace/ui/components/badge";
 import { Progress } from "@workspace/ui/components/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
+import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrand } from "@/hooks/use-brands";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
+import { ColHead } from "@/components/col-head";
+import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
+import { ShareOfVoiceTrend } from "@/components/share-of-voice-trend";
 
 export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 	head: ({ matches, match }) => {
@@ -33,16 +39,25 @@ export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 
 const formatPct = (share: number) => `${Math.round(share * 100)}%`;
 
+const TIPS = {
+	mentions: "Number of runs in which this brand was mentioned in the AI answer.",
+	share: "This brand's share of all brand + competitor mentions.",
+	prompts: "Number of distinct prompts this brand appeared in.",
+};
+
 function ShareOfVoicePage() {
 	const { brand: brandId } = Route.useParams();
-	const { selectedModel, selectedLookback } = usePageFilters();
+	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
 	const days = getDaysFromLookback(selectedLookback);
 
 	const { brand } = useBrand(brandId);
 	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
 	const modelParam = selectedModel === "all" ? undefined : selectedModel;
 
-	const { data, isLoading } = useShareOfVoice(brandId, { days, model: modelParam });
+	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback, model: modelParam });
+	const availableTags = promptsSummary?.availableTags ?? [];
+
+	const { data, isLoading } = useShareOfVoice(brandId, { days, model: modelParam, tags: selectedTags });
 
 	const infoContent = (
 		<>
@@ -82,25 +97,39 @@ function ShareOfVoicePage() {
 		);
 	} else {
 		content = (
-			<>
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-sm font-medium text-muted-foreground">Your share of voice</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="text-3xl sm:text-4xl font-bold">
-							{data.brandShare !== null ? formatPct(data.brandShare) : "—"}
-						</div>
-						<p className="text-sm text-muted-foreground mt-1">
-							{data.brandName} across {data.totalRuns.toLocaleString()} runs
-							{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
-						</p>
-					</CardContent>
-				</Card>
+			<TooltipProvider delayDuration={150}>
+				<div className="grid gap-6 lg:grid-cols-2">
+					<Card>
+						<CardHeader>
+							<CardTitle>Share of Voice</CardTitle>
+						</CardHeader>
+						<CardContent className="flex items-center justify-between gap-4">
+							<div>
+								<div className="text-3xl sm:text-4xl font-bold">
+									{data.brandShare !== null ? formatPct(data.brandShare) : "—"}
+								</div>
+								<p className="text-sm text-muted-foreground mt-1 max-w-[18rem]">
+									{data.brandName} across {data.totalRuns.toLocaleString()} runs
+									{data.entries.length > 1 ? ` and ${data.entries.length - 1} competitors` : ""}.
+								</p>
+							</div>
+							<ShareOfVoiceDonut entries={data.entries} />
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle>Share of voice over time</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<ShareOfVoiceTrend data={data.shareTimeSeries} />
+						</CardContent>
+					</Card>
+				</div>
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Mention leaderboard</CardTitle>
+						<CardTitle>Share of Voice Leaderboard</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<Table>
@@ -108,9 +137,15 @@ function ShareOfVoicePage() {
 								<TableRow>
 									<TableHead className="w-10">#</TableHead>
 									<TableHead>Brand</TableHead>
-									<TableHead className="text-right">Mentions</TableHead>
-									<TableHead className="w-[34%]">Share</TableHead>
-									<TableHead className="text-right">Prompts</TableHead>
+									<TableHead className="text-right">
+										<ColHead label="Mentions" tip={TIPS.mentions} right />
+									</TableHead>
+									<TableHead className="w-[34%]">
+										<ColHead label="Share" tip={TIPS.share} />
+									</TableHead>
+									<TableHead className="text-right">
+										<ColHead label="Prompts" tip={TIPS.prompts} right />
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -130,25 +165,20 @@ function ShareOfVoicePage() {
 										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
-												<Progress
-													value={maxMentions > 0 ? (e.mentions / maxMentions) * 100 : 0}
-													className="h-2"
-												/>
+												<Progress value={maxMentions > 0 ? (e.mentions / maxMentions) * 100 : 0} className="h-2" />
 												<span className="tabular-nums text-sm text-muted-foreground w-10 text-right">
 													{formatPct(e.share)}
 												</span>
 											</div>
 										</TableCell>
-										<TableCell className="text-right tabular-nums text-muted-foreground">
-											{e.prompts ?? "—"}
-										</TableCell>
+										<TableCell className="text-right tabular-nums text-muted-foreground">{e.prompts}</TableCell>
 									</TableRow>
 								))}
 							</TableBody>
 						</Table>
 					</CardContent>
 				</Card>
-			</>
+			</TooltipProvider>
 		);
 	}
 
@@ -159,7 +189,7 @@ function ShareOfVoicePage() {
 			infoContent={infoContent}
 		>
 			<FilterSection>
-				<FilterBar availableTags={[]} availableModels={availableModels} showSearch={false} showModelSelector />
+				<FilterBar availableTags={availableTags} availableModels={availableModels} showSearch={false} showModelSelector />
 			</FilterSection>
 			<div className="space-y-6">{content}</div>
 		</PageHeader>

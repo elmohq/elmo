@@ -191,20 +191,26 @@ export function citationCoverage(runDays: number, citedDays: number): number | n
 	return round3(Math.min(citedDays, runDays) / runDays);
 }
 
-export type GroundingMode = "grounded" | "mixed" | "from-memory";
+export type GroundingFrequency = "always" | "usually" | "sometimes" | "rarely" | "never";
 
 /**
- * Bucket a coverage value into how the engine answers this prompt:
- *  - grounded:    it almost always retrieves and cites sources.
- *  - mixed:       it sometimes grounds, sometimes answers from memory.
- *  - from-memory: it answers from its own knowledge and rarely/never cites
- *                 (so there is no citation slot to win — only a mentions game).
+ * How often the engine cites a source for this prompt, bucketed from citation
+ * coverage (the share of run-days with at least one citation):
+ *   always (≥90%) · usually (≥60%) · sometimes (≥30%) · rarely (>0%) · never.
+ * "rarely" / "never" mean the engine answers from memory — there is no citation
+ * slot to win, so those prompts are not citation opportunities.
  */
-export function groundingMode(coverage: number | null): GroundingMode {
-	if (coverage === null) return "from-memory";
-	if (coverage >= 0.7) return "grounded";
-	if (coverage >= 0.3) return "mixed";
-	return "from-memory";
+export function groundingFrequency(coverage: number | null): GroundingFrequency {
+	if (coverage === null || coverage <= 0) return "never";
+	if (coverage >= 0.9) return "always";
+	if (coverage >= 0.6) return "usually";
+	if (coverage >= 0.3) return "sometimes";
+	return "rarely";
+}
+
+/** Whether the engine grounds often enough (≥ "sometimes") that a citation is worth pursuing. */
+export function isCitationOpportunity(coverage: number | null): boolean {
+	return coverage !== null && coverage >= 0.3;
 }
 
 /** Product-facing Stability score: 0 (churns daily) → 100 (rock stable). null if not enough data. */
@@ -245,7 +251,7 @@ export function computeShareOfVoice(
 	return { entries, brandShare: total === 0 ? null : round3(brand.mentions / total), total };
 }
 
-export interface WinnabilityInput {
+export interface OpportunityInput {
 	/** Brand mention rate, 0..1. */
 	brandPresence: number;
 	/** Any-competitor mention rate, 0..1. */
@@ -256,38 +262,33 @@ export interface WinnabilityInput {
 	volatility: number | null;
 }
 
-export type WinnabilityTier = "high" | "medium" | "low";
+/** "won" = the brand already leads; otherwise the size of the remaining opening. */
+export type OpportunityTier = "won" | "high" | "medium" | "low";
 
-export interface WinnabilityResult {
-	/** 0..1 opportunity score. */
+export interface OpportunityResult {
+	/** 0..1 opportunity score (0 when already won). */
 	score: number;
-	tier: WinnabilityTier;
-	/**
-	 * Where the lever is:
-	 *  - "citation": the engine grounds here, so citable content can win a slot.
-	 *  - "mention":  the engine answers from memory, so the lever is brand
-	 *                presence in its knowledge, not earning a citation.
-	 */
-	play: "citation" | "mention";
+	tier: OpportunityTier;
 }
 
 /**
- * Winnability blends four signals into a single opportunity score:
+ * Opportunity blends three signals:
  *   gap         = how absent the brand is where competitors are present.
  *   grounded    = whether there is a citation slot to win at all (coverage).
  *   contestable = how unsettled the citation set is (weighted volatility);
  *                 a churning set is easier to break into than a locked one.
  *
  *   score = gap × grounded × contestable
- * where contestable maps null/volatility∈[0,1] → [0.5, 1.0] so an unknown
- * volatility is treated neutrally rather than zeroing the score.
+ * contestable maps null/volatility∈[0,1] → [0.5, 1.0] so an unknown volatility
+ * is treated neutrally rather than zeroing the score. Prompts where the brand
+ * is mentioned at least as often as competitors are already "won".
  */
-export function computeWinnability(input: WinnabilityInput): WinnabilityResult {
+export function computeOpportunity(input: OpportunityInput): OpportunityResult {
+	if (input.brandPresence >= input.competitorPresence) return { score: 0, tier: "won" };
 	const gap = clamp01(input.competitorPresence - input.brandPresence);
 	const grounded = input.coverage ?? 0;
 	const contestable = 0.5 + 0.5 * clamp01(input.volatility ?? 0.5);
 	const score = round3(gap * grounded * contestable);
-	const tier: WinnabilityTier = score >= 0.35 ? "high" : score >= 0.15 ? "medium" : "low";
-	const play = groundingMode(input.coverage) === "from-memory" ? "mention" : "citation";
-	return { score, tier, play };
+	const tier: OpportunityTier = score >= 0.35 ? "high" : score >= 0.15 ? "medium" : "low";
+	return { score, tier };
 }

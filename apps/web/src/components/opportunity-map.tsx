@@ -1,13 +1,14 @@
 /**
  * Opportunity map: a scatter of every prompt by competitor presence (x) vs
  * brand presence (y). Points below the parity line — competitors are mentioned
- * but you aren't — are the openings. Dot colour encodes the winnability tier.
+ * but you aren't — are the openings. Dot colour encodes the opportunity tier.
  */
 import { CartesianGrid, Cell, ReferenceLine, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import { ChartContainer } from "@workspace/ui/components/chart";
 import type { PromptOpportunity } from "@/server/analysis";
 
 const TIER_COLOR: Record<PromptOpportunity["tier"], string> = {
+	won: "#3b82f6",
 	high: "#10b981",
 	medium: "#f59e0b",
 	low: "#94a3b8",
@@ -20,7 +21,7 @@ interface Point {
 	z: number;
 	prompt: string;
 	tier: PromptOpportunity["tier"];
-	winnability: number;
+	opportunity: number;
 }
 
 export function OpportunityMap({ prompts }: { prompts: PromptOpportunity[] }) {
@@ -31,7 +32,7 @@ export function OpportunityMap({ prompts }: { prompts: PromptOpportunity[] }) {
 		z: p.runs,
 		prompt: p.prompt,
 		tier: p.tier,
-		winnability: p.winnability,
+		opportunity: p.opportunity,
 	}));
 
 	return (
@@ -75,8 +76,8 @@ export function OpportunityMap({ prompts }: { prompts: PromptOpportunity[] }) {
 								<div className="text-muted-foreground">
 									You {Math.round(p.y * 100)}% · Competitors {Math.round(p.x * 100)}%
 								</div>
-								<div className="text-muted-foreground capitalize">
-									{p.tier} winnability ({p.winnability.toFixed(2)})
+								<div className="text-muted-foreground">
+									{p.tier === "won" ? "Already winning" : `${p.tier} opportunity (${p.opportunity.toFixed(2)})`}
 								</div>
 							</div>
 						);

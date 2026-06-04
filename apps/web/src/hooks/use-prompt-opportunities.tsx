@@ -5,6 +5,7 @@ import { getPromptOpportunitiesFn } from "@/server/analysis";
 export interface PromptOpportunitiesFilters {
 	days?: number;
 	model?: string;
+	tags?: string[];
 }
 
 export const opportunitiesKeys = {
@@ -25,6 +26,7 @@ export function usePromptOpportunities(brandId?: string, filters?: PromptOpportu
 					brandId: resolvedBrandId!,
 					days: filters?.days ?? 42,
 					model: filters?.model,
+					tags: filters?.tags?.join(","),
 				},
 			}),
 		enabled: !!resolvedBrandId,

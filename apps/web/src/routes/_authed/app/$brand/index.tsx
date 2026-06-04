@@ -16,11 +16,14 @@ import {
 	IconInfoCircle,
 	IconRefresh,
 	IconLink,
+	IconSpeakerphone,
 } from "@tabler/icons-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import PromptWizard from "@/components/prompt-wizard";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
+import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { ShareOfVoiceTrend } from "@/components/share-of-voice-trend";
 import type { VisibilityTimeSeriesPoint, CitationTimeSeriesPoint } from "@/server/dashboard";
 import { CATEGORY_CONFIG } from "@/lib/domain-categories";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -283,6 +286,7 @@ function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
+	const { data: sovData } = useShareOfVoice(brand?.id, { days: 30 });
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
@@ -350,7 +354,46 @@ function DashboardPage() {
 					</div>
 				</section>
 
-				{/* Citations section skeleton */}
+				{/* Share of Voice section skeleton */}
+					<section className="space-y-3">
+						<div className="flex items-center justify-between">
+							<h2 className="text-lg font-semibold flex items-center gap-2">
+								<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
+								Share of Voice
+							</h2>
+							<Button asChild variant="ghost" size="sm" className="h-8">
+								<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+									View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+								</Link>
+							</Button>
+						</div>
+						<div className="grid gap-4 lg:grid-cols-4">
+							<Card className="shadow-none flex flex-col">
+								<CardHeader className="pb-2">
+									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+										Current Share of Voice
+										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="flex-1 flex flex-col justify-center gap-4">
+									<Skeleton className="h-14 w-28" />
+								</CardContent>
+							</Card>
+							<Card className="shadow-none lg:col-span-3 flex flex-col">
+								<CardHeader className="pb-2">
+									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+										Share of Voice Trends (30d)
+										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="flex-1 min-h-[110px]">
+									<Skeleton className="h-full w-full" />
+								</CardContent>
+							</Card>
+						</div>
+					</section>
+
+					{/* Citations section skeleton */}
 				<section className="space-y-3">
 					<div className="flex items-center justify-between">
 						<h2 className="text-lg font-semibold flex items-center gap-2">
@@ -371,7 +414,7 @@ function DashboardPage() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<Skeleton className="h-[140px] w-full" />
+							<Skeleton className="h-[120px] w-full" />
 						</CardContent>
 					</Card>
 				</section>
@@ -608,6 +651,56 @@ function DashboardPage() {
 				</div>
 			</section>
 
+			{/* Section: Share of Voice */}
+			<section className="space-y-3">
+				<div className="flex items-center justify-between">
+					<h2 className="text-lg font-semibold flex items-center gap-2">
+						<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
+						Share of Voice
+					</h2>
+					<Button asChild variant="ghost" size="sm" className="h-8">
+						<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+							View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+						</Link>
+					</Button>
+				</div>
+
+				<div className="grid gap-4 lg:grid-cols-4">
+					<Card className="shadow-none flex flex-col">
+						<CardHeader className="pb-2">
+							<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+								Current Share of Voice
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<IconInfoCircle className="h-3.5 w-3.5 cursor-help opacity-70" />
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs text-sm font-normal">
+										Your brand's share of all brand and competitor mentions across the AI answers to your prompts.
+									</TooltipContent>
+								</Tooltip>
+							</CardTitle>
+						</CardHeader>
+						<CardContent className="flex-1 flex flex-col justify-center gap-4">
+							<div className="font-bold tracking-tight" style={{ fontSize: "clamp(2rem, 5vw, 4rem)" }}>
+								{sovData?.brandShare != null ? `${Math.round(sovData.brandShare * 100)}%` : "—"}
+							</div>
+						</CardContent>
+					</Card>
+
+					<Card className="shadow-none lg:col-span-3 flex flex-col">
+						<CardHeader className="pb-2">
+							<CardTitleWithTooltip
+								title="Share of Voice Trends (30d)"
+								tooltip="Your brand's share of voice over time — your mentions as a percentage of all brand and competitor mentions each day."
+							/>
+						</CardHeader>
+						<CardContent className="flex-1 min-h-[110px]">
+							<ShareOfVoiceTrend data={sovData?.shareTimeSeries ?? []} className="aspect-auto h-full w-full" />
+						</CardContent>
+					</Card>
+				</div>
+			</section>
+
 			{/* Section 2: Citations */}
 			<section className="space-y-3">
 				<div className="flex items-center justify-between">
@@ -631,9 +724,9 @@ function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						{isLoading ? (
-							<Skeleton className="h-[140px] w-full" />
+							<Skeleton className="h-[120px] w-full" />
 						) : (
-							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[140px] w-full">
+							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[120px] w-full">
 								<AreaChart data={extendedCitationData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
 									<CartesianGrid vertical={false} strokeDasharray="3 3" />
 									<XAxis

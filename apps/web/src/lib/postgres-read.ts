@@ -866,6 +866,8 @@ export async function getPerPromptRunStats(
 export interface BrandMentionTotals {
 	total_runs: number;
 	brand_mentioned_runs: number;
+	/** Distinct prompts in which the brand was mentioned at least once. */
+	brand_mentioned_prompts: number;
 }
 
 export async function getBrandMentionTotals(
@@ -879,14 +881,47 @@ export async function getBrandMentionTotals(
 	const rows = await queryPg<BrandMentionTotals>(sql`
 		SELECT
 			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_runs
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_runs,
+			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_prompts
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
 	`);
-	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0 };
+	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0, brand_mentioned_prompts: 0 };
+}
+
+export interface DailyShareOfVoice {
+	date: string;
+	/** Runs that day mentioning the brand. */
+	brand_runs: number;
+	/** Total competitor mention instances that day (sum over runs of competitors mentioned). */
+	competitor_mentions: number;
+}
+
+export async function getDailyShareOfVoice(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<DailyShareOfVoice[]> {
+	const rows = await queryPg<DailyShareOfVoice>(sql`
+		SELECT
+			(created_at AT TIME ZONE ${timezone})::date::text AS date,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_runs,
+			COALESCE(sum(cardinality(competitors_mentioned)), 0)::int AS competitor_mentions
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY (created_at AT TIME ZONE ${timezone})::date
+		ORDER BY (created_at AT TIME ZONE ${timezone})::date
+	`);
+	return rows;
 }
 
 export interface CompetitorMentionRow {

@@ -4,10 +4,11 @@ import {
 	computeConcentration,
 	computePoolStats,
 	citationCoverage,
-	groundingMode,
+	groundingFrequency,
+	isCitationOpportunity,
 	stabilityScore,
 	computeShareOfVoice,
-	computeWinnability,
+	computeOpportunity,
 	type DailyDomainCount,
 } from "@/lib/visibility-stats";
 
@@ -132,7 +133,7 @@ describe("computePoolStats", () => {
 	});
 });
 
-describe("citationCoverage / groundingMode", () => {
+describe("citationCoverage / groundingFrequency", () => {
 	it("is null when the model never ran", () => {
 		expect(citationCoverage(0, 0)).toBeNull();
 	});
@@ -142,13 +143,22 @@ describe("citationCoverage / groundingMode", () => {
 		expect(citationCoverage(10, 12)).toBe(1); // clamped
 	});
 
-	it("buckets coverage into grounding modes", () => {
-		expect(groundingMode(null)).toBe("from-memory");
-		expect(groundingMode(0.05)).toBe("from-memory");
-		expect(groundingMode(0.5)).toBe("mixed");
-		expect(groundingMode(0.95)).toBe("grounded");
-		expect(groundingMode(0.7)).toBe("grounded"); // boundary
-		expect(groundingMode(0.3)).toBe("mixed"); // boundary
+	it("buckets coverage into five grounding frequencies", () => {
+		expect(groundingFrequency(null)).toBe("never");
+		expect(groundingFrequency(0)).toBe("never");
+		expect(groundingFrequency(0.1)).toBe("rarely");
+		expect(groundingFrequency(0.3)).toBe("sometimes"); // boundary
+		expect(groundingFrequency(0.5)).toBe("sometimes");
+		expect(groundingFrequency(0.6)).toBe("usually"); // boundary
+		expect(groundingFrequency(0.9)).toBe("always"); // boundary
+		expect(groundingFrequency(1)).toBe("always");
+	});
+
+	it("treats >= sometimes as a citation opportunity", () => {
+		expect(isCitationOpportunity(null)).toBe(false);
+		expect(isCitationOpportunity(0.2)).toBe(false); // rarely
+		expect(isCitationOpportunity(0.3)).toBe(true); // sometimes
+		expect(isCitationOpportunity(0.95)).toBe(true);
 	});
 });
 
@@ -181,37 +191,37 @@ describe("computeShareOfVoice", () => {
 	});
 });
 
-describe("computeWinnability", () => {
-	it("scores zero when the brand is already as present as competitors", () => {
-		const r = computeWinnability({ brandPresence: 0.9, competitorPresence: 0.9, coverage: 1, volatility: 0.6 });
-		expect(r.score).toBe(0);
-		expect(r.tier).toBe("low");
+describe("computeOpportunity", () => {
+	it("marks a prompt as won when the brand is at least as present as competitors", () => {
+		const tie = computeOpportunity({ brandPresence: 0.9, competitorPresence: 0.9, coverage: 1, volatility: 0.6 });
+		expect(tie.tier).toBe("won");
+		expect(tie.score).toBe(0);
+		const lead = computeOpportunity({ brandPresence: 1, competitorPresence: 0.4, coverage: 1, volatility: 0.6 });
+		expect(lead.tier).toBe("won");
 	});
 
 	it("scores high for a grounded, contested prompt the brand is absent from", () => {
-		const r = computeWinnability({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: 1 });
+		const r = computeOpportunity({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: 1 });
 		expect(r.score).toBe(1); // gap 1 * grounded 1 * contestable 1
 		expect(r.tier).toBe("high");
-		expect(r.play).toBe("citation");
 	});
 
-	it("flags a mentions play when the engine answers from memory", () => {
-		const r = computeWinnability({ brandPresence: 0.1, competitorPresence: 0.9, coverage: 0.1, volatility: null });
-		expect(r.play).toBe("mention");
-		// gap .8 * grounded .1 * contestable .75 = .06 -> low (no citation slot to win)
+	it("scores low when there is barely a citation slot to win", () => {
+		const r = computeOpportunity({ brandPresence: 0.1, competitorPresence: 0.9, coverage: 0.1, volatility: null });
+		// gap .8 * grounded .1 * contestable .75 = .06 -> low
 		expect(r.tier).toBe("low");
 	});
 
 	it("lands mid-range cases in the medium tier", () => {
 		// gap .5 * grounded .8 * contestable (0.5 + 0.5*0.5 = .75) = .3
-		const r = computeWinnability({ brandPresence: 0.2, competitorPresence: 0.7, coverage: 0.8, volatility: 0.5 });
+		const r = computeOpportunity({ brandPresence: 0.2, competitorPresence: 0.7, coverage: 0.8, volatility: 0.5 });
 		expect(r.score).toBeCloseTo(0.3, 5);
 		expect(r.tier).toBe("medium");
 	});
 
 	it("treats unknown volatility neutrally rather than zeroing the score", () => {
-		const withNull = computeWinnability({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: null });
-		const withHalf = computeWinnability({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: 0.5 });
+		const withNull = computeOpportunity({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: null });
+		const withHalf = computeOpportunity({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: 0.5 });
 		expect(withNull.score).toBe(withHalf.score); // null -> 0.5
 		expect(withNull.score).toBe(0.75);
 	});

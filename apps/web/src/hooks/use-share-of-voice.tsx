@@ -5,6 +5,7 @@ import { getShareOfVoiceFn } from "@/server/analysis";
 export interface ShareOfVoiceFilters {
 	days?: number;
 	model?: string;
+	tags?: string[];
 	limit?: number;
 }
 
@@ -25,6 +26,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 					brandId: resolvedBrandId!,
 					days: filters?.days ?? 30,
 					model: filters?.model,
+					tags: filters?.tags?.join(","),
 					limit: filters?.limit,
 				},
 			}),
