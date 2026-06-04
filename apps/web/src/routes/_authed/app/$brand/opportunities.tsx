@@ -2,9 +2,10 @@
  * /app/$brand/opportunities - Prompt opportunities
  *
  * Ranks competitive (non-branded) prompts by opportunity: where competitors are
- * mentioned but you aren't, the engine grounds (so a citation is winnable), and
- * the citation set is contested. Prompts the engine answers from memory are
- * listed separately — there is no citation to win there.
+ * mentioned but you aren't. A prompt is only winnable if brands are mentioned at
+ * all — prompts where neither you nor competitors show up aren't brand queries,
+ * so they're listed separately. Citation stability is shown alongside (its own
+ * spectrum + a column) but doesn't drive the opportunity score.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -20,7 +21,8 @@ import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
 import { OpportunityMap } from "@/components/opportunity-map";
-import type { GroundingFrequency, OpportunityTier } from "@/lib/visibility-stats";
+import { PromptStabilitySpectrum } from "@/components/prompt-stability-spectrum";
+import type { OpportunityTier } from "@/lib/visibility-stats";
 
 export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
 	head: ({ matches, match }) => {
@@ -29,7 +31,7 @@ export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
 		return {
 			meta: [
 				{ title: buildTitle("Opportunities", { appName, brandName }) },
-				{ name: "description", content: "Find the prompts where you can win AI citations." },
+				{ name: "description", content: "Find the prompts where you can win AI mentions and citations." },
 			],
 		};
 	},
@@ -43,14 +45,7 @@ const TIER_CLASS: Record<OpportunityTier, string> = {
 	high: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
 	medium: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
 	low: "bg-muted text-muted-foreground",
-};
-
-const GROUNDING: Record<GroundingFrequency, { label: string; className: string }> = {
-	always: { label: "Always", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" },
-	usually: { label: "Usually", className: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
-	sometimes: { label: "Sometimes", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
-	rarely: { label: "Rarely", className: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300" },
-	never: { label: "Never", className: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300" },
+	none: "bg-muted text-muted-foreground",
 };
 
 function Pill({ className, children }: { className: string; children: React.ReactNode }) {
@@ -63,10 +58,9 @@ function Pill({ className, children }: { className: string; children: React.Reac
 
 const TIPS = {
 	opportunity:
-		"How big the opening is — blends the competitor gap, whether the engine cites here, and how contested the citations are. 'Won' means you already lead.",
+		"How big the opening is — the gap by which competitors out-mention you. 'Won' means you're mentioned at least as often as competitors.",
 	you: "How often AI mentions your brand in answers to this prompt.",
 	competitors: "How often AI mentions any tracked competitor.",
-	grounding: "How often the engine cites sources for this prompt versus answering from its own knowledge.",
 	stability:
 		"0–100: how stable the cited sources are day to day (100 = the same sources every day; low = churning). Higher means a citation you earn tends to stick.",
 };
@@ -85,19 +79,20 @@ function OpportunitiesPage() {
 
 	const { data, isLoading } = usePromptOpportunities(brandId, { days, model: modelParam, tags: selectedTags });
 
-	const opportunities = data?.prompts.filter((p) => p.isCitationOpportunity) ?? [];
-	const fromMemory = data?.prompts.filter((p) => !p.isCitationOpportunity) ?? [];
+	// "none" = neither you nor competitors are mentioned enough to be a brand query.
+	const opportunities = data?.prompts.filter((p) => p.tier !== "none") ?? [];
+	const noBrandMentions = data?.prompts.filter((p) => p.tier === "none") ?? [];
 
 	const infoContent = (
 		<>
 			<p className="mb-2">
-				Opportunity blends three signals: how absent you are where competitors appear (the gap), whether the engine
-				actually cites sources here (grounding), and how contested the citation set is (stability). Your own branded
-				prompts are excluded.
+				A prompt is only winnable if brands actually get mentioned in the answer. Opportunity is the gap by which
+				competitors out-mention you — biggest where competitors lead and you're absent. Your own branded prompts are
+				excluded.
 			</p>
 			<p>
-				Prompts the engine answers from memory have no citation to win, so they are listed separately below — focus
-				on brand presence there, not links.
+				Prompts where neither you nor competitors are mentioned aren't brand-recommendation queries, so they're listed
+				separately below. Citation stability is shown alongside but doesn't change the opportunity ranking.
 			</p>
 		</>
 	);
@@ -129,11 +124,12 @@ function OpportunitiesPage() {
 					<CardHeader>
 						<CardTitle>Opportunity Map</CardTitle>
 						<CardDescription>
-							Dots below the dashed parity line are prompts where competitors lead and you trail.
+							Dots below the dashed parity line are prompts where competitors lead and you trail. Branded prompts and
+							prompts with no brand mentions are excluded.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<OpportunityMap prompts={data.prompts} />
+						<OpportunityMap prompts={opportunities} />
 						<div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
 							<LegendDot color="#3b82f6" label="Won" />
 							<LegendDot color="#10b981" label="High" />
@@ -145,16 +141,26 @@ function OpportunitiesPage() {
 
 				<Card>
 					<CardHeader>
+						<CardTitle>Citation stability</CardTitle>
+						<CardDescription>
+							Where each prompt's cited sources sit between churning daily (volatile) and steady (stable).
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<PromptStabilitySpectrum prompts={opportunities} />
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
 						<CardTitle>Opportunities</CardTitle>
 						<CardDescription>
-							Prompts the engine cites for, ranked by opportunity. "Won" prompts are ones you already lead.
+							Ranked by the competitor-vs-you gap. "Won" prompts are ones you already lead.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						{opportunities.length === 0 ? (
-							<div className="text-muted-foreground text-sm py-4">
-								No grounded prompts for the selected filters.
-							</div>
+							<div className="text-muted-foreground text-sm py-4">No competitive prompts for the selected filters.</div>
 						) : (
 							<Table>
 								<TableHeader>
@@ -168,9 +174,6 @@ function OpportunitiesPage() {
 										</TableHead>
 										<TableHead className="text-right">
 											<ColHead label="Competitors" tip={TIPS.competitors} right />
-										</TableHead>
-										<TableHead>
-											<ColHead label="Grounding" tip={TIPS.grounding} />
 										</TableHead>
 										<TableHead className="text-right">
 											<ColHead label="Stability" tip={TIPS.stability} right />
@@ -186,11 +189,6 @@ function OpportunitiesPage() {
 											</TableCell>
 											<TableCell className="text-right tabular-nums">{pct(p.brandMentionRate)}</TableCell>
 											<TableCell className="text-right tabular-nums">{pct(p.competitorMentionRate)}</TableCell>
-											<TableCell>
-												<Pill className={GROUNDING[p.groundingFrequency].className}>
-													{GROUNDING[p.groundingFrequency].label}
-												</Pill>
-											</TableCell>
 											<TableCell className="text-right tabular-nums">
 												{p.stabilityScore === null ? (
 													<span title="Not enough citation history yet">—</span>
@@ -206,13 +204,13 @@ function OpportunitiesPage() {
 					</CardContent>
 				</Card>
 
-				{fromMemory.length > 0 && (
+				{noBrandMentions.length > 0 && (
 					<Card>
 						<CardHeader>
-							<CardTitle>Answered from memory</CardTitle>
+							<CardTitle>No brand mentions</CardTitle>
 							<CardDescription>
-								For these prompts the engine rarely or never cites a source, so there is no citation to win. The
-								lever here is brand presence in the model's knowledge, not a link.
+								Neither you nor your competitors are mentioned much in these answers, so they aren't
+								brand-recommendation prompts — there's nothing to win here yet.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
@@ -226,22 +224,14 @@ function OpportunitiesPage() {
 										<TableHead className="text-right">
 											<ColHead label="Competitors" tip={TIPS.competitors} right />
 										</TableHead>
-										<TableHead>
-											<ColHead label="Grounding" tip={TIPS.grounding} />
-										</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
-									{fromMemory.map((p) => (
+									{noBrandMentions.map((p) => (
 										<TableRow key={p.promptId}>
 											<PromptCell prompt={p.prompt} />
 											<TableCell className="text-right tabular-nums">{pct(p.brandMentionRate)}</TableCell>
 											<TableCell className="text-right tabular-nums">{pct(p.competitorMentionRate)}</TableCell>
-											<TableCell>
-												<Pill className={GROUNDING[p.groundingFrequency].className}>
-													{GROUNDING[p.groundingFrequency].label}
-												</Pill>
-											</TableCell>
 										</TableRow>
 									))}
 								</TableBody>
@@ -256,7 +246,7 @@ function OpportunitiesPage() {
 	return (
 		<PageHeader
 			title="Opportunities"
-			subtitle="Where you can win AI citations: contested prompts where competitors lead and you trail."
+			subtitle="Where you can win AI mentions: prompts where competitors lead and you trail."
 			infoContent={infoContent}
 		>
 			<FilterSection>

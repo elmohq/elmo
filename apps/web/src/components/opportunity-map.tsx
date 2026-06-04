@@ -7,11 +7,12 @@ import { CartesianGrid, Cell, ReferenceLine, Scatter, ScatterChart, Tooltip, XAx
 import { ChartContainer } from "@workspace/ui/components/chart";
 import type { PromptOpportunity } from "@/server/analysis";
 
-const TIER_COLOR: Record<PromptOpportunity["tier"], string> = {
+export const TIER_COLOR: Record<PromptOpportunity["tier"], string> = {
 	won: "#3b82f6",
 	high: "#10b981",
 	medium: "#f59e0b",
 	low: "#94a3b8",
+	none: "#cbd5e1",
 };
 
 interface Point {

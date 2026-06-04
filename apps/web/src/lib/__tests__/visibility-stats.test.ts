@@ -192,37 +192,33 @@ describe("computeShareOfVoice", () => {
 });
 
 describe("computeOpportunity", () => {
-	it("marks a prompt as won when the brand is at least as present as competitors", () => {
-		const tie = computeOpportunity({ brandPresence: 0.9, competitorPresence: 0.9, coverage: 1, volatility: 0.6 });
-		expect(tie.tier).toBe("won");
-		expect(tie.score).toBe(0);
-		const lead = computeOpportunity({ brandPresence: 1, competitorPresence: 0.4, coverage: 1, volatility: 0.6 });
-		expect(lead.tier).toBe("won");
+	it("is 'none' when neither brand nor competitors are mentioned enough", () => {
+		expect(computeOpportunity({ brandPresence: 0, competitorPresence: 0 }).tier).toBe("none");
+		// 13% brand / 0% competitors is below the activity floor — not really winnable, not "won"
+		expect(computeOpportunity({ brandPresence: 0.13, competitorPresence: 0 }).tier).toBe("none");
+		expect(computeOpportunity({ brandPresence: 0.05, competitorPresence: 0.1 }).tier).toBe("none");
 	});
 
-	it("scores high for a grounded, contested prompt the brand is absent from", () => {
-		const r = computeOpportunity({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: 1 });
-		expect(r.score).toBe(1); // gap 1 * grounded 1 * contestable 1
-		expect(r.tier).toBe("high");
+	it("marks a prompt 'won' only when the brand is active and leads", () => {
+		expect(computeOpportunity({ brandPresence: 0.6, competitorPresence: 0.1 }).tier).toBe("won");
+		expect(computeOpportunity({ brandPresence: 0.9, competitorPresence: 0.9 }).tier).toBe("won"); // active tie
+		expect(computeOpportunity({ brandPresence: 0.6, competitorPresence: 0.1 }).score).toBe(0);
 	});
 
-	it("scores low when there is barely a citation slot to win", () => {
-		const r = computeOpportunity({ brandPresence: 0.1, competitorPresence: 0.9, coverage: 0.1, volatility: null });
-		// gap .8 * grounded .1 * contestable .75 = .06 -> low
-		expect(r.tier).toBe("low");
+	it("tiers the competitor-vs-you gap when competitors lead", () => {
+		expect(computeOpportunity({ brandPresence: 0, competitorPresence: 1 })).toEqual({ score: 1, tier: "high" });
+		expect(computeOpportunity({ brandPresence: 0.5, competitorPresence: 1 }).tier).toBe("high"); // gap .5
+		expect(computeOpportunity({ brandPresence: 0.6, competitorPresence: 0.9 }).tier).toBe("medium"); // gap .3
+		expect(computeOpportunity({ brandPresence: 0.7, competitorPresence: 0.8 }).tier).toBe("low"); // gap .1
 	});
 
-	it("lands mid-range cases in the medium tier", () => {
-		// gap .5 * grounded .8 * contestable (0.5 + 0.5*0.5 = .75) = .3
-		const r = computeOpportunity({ brandPresence: 0.2, competitorPresence: 0.7, coverage: 0.8, volatility: 0.5 });
-		expect(r.score).toBeCloseTo(0.3, 5);
-		expect(r.tier).toBe("medium");
+	it("ignores grounding entirely — only mention activity matters", () => {
+		// high competitor demand, brand absent → high opportunity regardless of any citation behaviour
+		expect(computeOpportunity({ brandPresence: 0, competitorPresence: 0.9 }).tier).toBe("high");
 	});
 
-	it("treats unknown volatility neutrally rather than zeroing the score", () => {
-		const withNull = computeOpportunity({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: null });
-		const withHalf = computeOpportunity({ brandPresence: 0, competitorPresence: 1, coverage: 1, volatility: 0.5 });
-		expect(withNull.score).toBe(withHalf.score); // null -> 0.5
-		expect(withNull.score).toBe(0.75);
+	it("respects a custom activity floor", () => {
+		expect(computeOpportunity({ brandPresence: 0.2, competitorPresence: 0 }, 0.3).tier).toBe("none");
+		expect(computeOpportunity({ brandPresence: 0.2, competitorPresence: 0 }, 0.1).tier).toBe("won");
 	});
 });

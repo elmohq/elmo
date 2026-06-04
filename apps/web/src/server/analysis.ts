@@ -22,14 +22,10 @@ import { filterPromptIdsByTags, isBrandedPrompt } from "@/lib/prompt-tags";
 import { generateDateRange } from "@/lib/chart-utils";
 import {
 	computeVolatility,
-	citationCoverage,
-	groundingFrequency,
-	isCitationOpportunity,
 	stabilityScore,
 	computeShareOfVoice,
 	computeOpportunity,
 	type DailyDomainCount,
-	type GroundingFrequency,
 	type OpportunityTier,
 } from "@/lib/visibility-stats";
 
@@ -167,14 +163,10 @@ export interface PromptOpportunity {
 	runs: number;
 	brandMentionRate: number;
 	competitorMentionRate: number;
-	coverage: number | null;
-	groundingFrequency: GroundingFrequency;
-	/** Whether the engine grounds often enough that a citation is winnable. */
-	isCitationOpportunity: boolean;
 	weightedVolatility: number | null;
 	stabilityScore: number | null;
 	dayTransitions: number;
-	/** 0..1 opportunity score (0 when already won). */
+	/** 0..1 opportunity score (the competitor-vs-you gap; 0 when won or not a brand query). */
 	opportunity: number;
 	tier: OpportunityTier;
 }
@@ -226,18 +218,13 @@ export const getPromptOpportunitiesFn = createServerFn({ method: "GET" })
 		const results: PromptOpportunity[] = consideredPrompts.map((p) => {
 			const daily = dailyByPrompt.get(p.id) ?? [];
 			const run = runStatsByPrompt.get(p.id);
-			const runDays = run?.run_days ?? 0;
 			const brandMentionRate = run?.brand_mention_rate ?? 0;
 			const competitorMentionRate = run?.competitor_mention_rate ?? 0;
 
 			const volatility = computeVolatility(daily);
-			const citedDays = new Set(daily.map((d) => d.date)).size;
-			const coverage = citationCoverage(runDays, citedDays);
 			const opportunity = computeOpportunity({
 				brandPresence: brandMentionRate,
 				competitorPresence: competitorMentionRate,
-				coverage,
-				volatility: volatility.weightedVolatility,
 			});
 
 			return {
@@ -246,9 +233,6 @@ export const getPromptOpportunitiesFn = createServerFn({ method: "GET" })
 				runs: run?.runs ?? 0,
 				brandMentionRate,
 				competitorMentionRate,
-				coverage,
-				groundingFrequency: groundingFrequency(coverage),
-				isCitationOpportunity: isCitationOpportunity(coverage),
 				weightedVolatility: volatility.weightedVolatility,
 				stabilityScore: stabilityScore(volatility.weightedVolatility),
 				dayTransitions: volatility.dayTransitions,

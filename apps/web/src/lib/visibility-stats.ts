@@ -256,39 +256,45 @@ export interface OpportunityInput {
 	brandPresence: number;
 	/** Any-competitor mention rate, 0..1. */
 	competitorPresence: number;
-	/** Grounding coverage, 0..1, or null when the engine never cites. */
-	coverage: number | null;
-	/** Weighted citation volatility, 0..1 (higher = more contestable), or null. */
-	volatility: number | null;
 }
 
-/** "won" = the brand already leads; otherwise the size of the remaining opening. */
-export type OpportunityTier = "won" | "high" | "medium" | "low";
+/**
+ * Minimum brand-mention activity for a prompt to count as a brand-recommendation
+ * query. If neither the brand nor any competitor is mentioned at least this
+ * often, the prompt isn't really about brands — so there's nothing to win.
+ */
+export const MIN_BRAND_ACTIVITY = 0.15;
+
+/**
+ * Opportunity tiers:
+ *  - none:   neither you nor competitors are mentioned much — not a brand query.
+ *  - won:    you're mentioned at least as often as competitors (you lead).
+ *  - low / medium / high: competitors lead and you trail, by a growing gap.
+ */
+export type OpportunityTier = "won" | "high" | "medium" | "low" | "none";
 
 export interface OpportunityResult {
-	/** 0..1 opportunity score (0 when already won). */
+	/** 0..1 opportunity score = the competitor-vs-you gap (0 when won or not a brand query). */
 	score: number;
 	tier: OpportunityTier;
 }
 
 /**
- * Opportunity blends three signals:
- *   gap         = how absent the brand is where competitors are present.
- *   grounded    = whether there is a citation slot to win at all (coverage).
- *   contestable = how unsettled the citation set is (weighted volatility);
- *                 a churning set is easier to break into than a locked one.
- *
- *   score = gap × grounded × contestable
- * contestable maps null/volatility∈[0,1] → [0.5, 1.0] so an unknown volatility
- * is treated neutrally rather than zeroing the score. Prompts where the brand
- * is mentioned at least as often as competitors are already "won".
+ * Opportunity is driven by brand-mention activity, not grounding (grounding is
+ * model-dependent and orthogonal to whether a brand can win the answer):
+ *   - if no brand is mentioned at a meaningful rate → not winnable ("none");
+ *   - else if you're mentioned >= competitors → you've "won";
+ *   - else the score is the gap by which competitors out-mention you.
+ * Citation stability is reported separately rather than folded into this score.
  */
-export function computeOpportunity(input: OpportunityInput): OpportunityResult {
+export function computeOpportunity(
+	input: OpportunityInput,
+	minBrandActivity = MIN_BRAND_ACTIVITY,
+): OpportunityResult {
+	const activity = Math.max(input.brandPresence, input.competitorPresence);
+	if (activity < minBrandActivity) return { score: 0, tier: "none" };
 	if (input.brandPresence >= input.competitorPresence) return { score: 0, tier: "won" };
 	const gap = clamp01(input.competitorPresence - input.brandPresence);
-	const grounded = input.coverage ?? 0;
-	const contestable = 0.5 + 0.5 * clamp01(input.volatility ?? 0.5);
-	const score = round3(gap * grounded * contestable);
-	const tier: OpportunityTier = score >= 0.35 ? "high" : score >= 0.15 ? "medium" : "low";
-	return { score, tier };
+	const tier: OpportunityTier = gap >= 0.5 ? "high" : gap >= 0.25 ? "medium" : "low";
+	return { score: round3(gap), tier };
 }
