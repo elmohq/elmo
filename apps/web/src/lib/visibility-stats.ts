@@ -1,0 +1,293 @@
+/**
+ * Pure, dependency-free statistics for AI-visibility analysis.
+ *
+ * These power the Share of Voice and Opportunities pages and the stability /
+ * grounding enrichments. They take plain aggregated rows (produced by the
+ * postgres read layer) and never touch IO, so they are unit-testable in
+ * isolation.
+ *
+ * Two notions of "how much do the cited sources move over time" live here and
+ * are deliberately kept distinct — in practice they are near-orthogonal:
+ *   - set volatility:      churn in the *set* of cited domains (Jaccard distance).
+ *   - weighted volatility: churn weighted by citation *volume* (Bray–Curtis on
+ *     the daily citation-share vectors). A prompt with one dominant source every
+ *     day but a noisy long tail looks volatile by set yet stable by volume —
+ *     weighted is the truer "do the sources that carry the answer move?" signal,
+ *     so it's the one we surface as the Stability score.
+ */
+
+export interface DailyDomainCount {
+	/** ISO day bucket, "YYYY-MM-DD" (lexicographically sortable = chronological). */
+	date: string;
+	domain: string;
+	/** Number of citations to `domain` on `date`. */
+	count: number;
+}
+
+export interface VolatilityResult {
+	/** Mean Jaccard distance between consecutive days' domain sets, 0..1. null if < 2 days of data. */
+	setVolatility: number | null;
+	/** Mean Bray–Curtis distance between consecutive days' citation-share vectors, 0..1. null if < 2 days. */
+	weightedVolatility: number | null;
+	/** Consecutive-day transitions the averages are based on. Use as a reliability gate. */
+	dayTransitions: number;
+}
+
+export interface ConcentrationResult {
+	/** Domains cited on at least `coreThreshold` of the days that had any citations. */
+	coreDomains: number;
+	totalDomains: number;
+	/** Share of total citation volume coming from core domains, 0..1. null if no data. */
+	coreShareOfCitations: number | null;
+}
+
+export interface PoolStatsResult {
+	avgDomainsPerDay: number | null;
+	totalDistinctDomains: number;
+	/** totalDistinctDomains / avgDomainsPerDay — how much wider the source pool is than a single day. */
+	poolToSampleRatio: number | null;
+}
+
+interface DayBucket {
+	date: string;
+	counts: Map<string, number>;
+	total: number;
+}
+
+const round1 = (x: number): number => Math.round(x * 10) / 10;
+const round3 = (x: number): number => Math.round(x * 1000) / 1000;
+const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
+
+/** Collapse raw rows into one bucket per day (summing duplicate domains), sorted chronologically. */
+function bucketByDay(daily: DailyDomainCount[]): DayBucket[] {
+	const byDate = new Map<string, Map<string, number>>();
+	for (const { date, domain, count } of daily) {
+		if (count <= 0) continue;
+		let m = byDate.get(date);
+		if (!m) {
+			m = new Map();
+			byDate.set(date, m);
+		}
+		m.set(domain, (m.get(domain) ?? 0) + count);
+	}
+	return [...byDate.entries()]
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([date, counts]) => {
+			let total = 0;
+			for (const c of counts.values()) total += c;
+			return { date, counts, total };
+		});
+}
+
+/**
+ * Citation volatility: how much the cited-domain set churns from one day to the next.
+ * Returns both the unweighted (set) and volume-weighted distances, averaged over
+ * every consecutive-day transition.
+ */
+export function computeVolatility(daily: DailyDomainCount[]): VolatilityResult {
+	const days = bucketByDay(daily);
+	if (days.length < 2) {
+		return { setVolatility: null, weightedVolatility: null, dayTransitions: 0 };
+	}
+
+	let setSum = 0;
+	let weightedSum = 0;
+	let transitions = 0;
+
+	for (let i = 1; i < days.length; i++) {
+		const prev = days[i - 1];
+		const cur = days[i];
+
+		// Jaccard distance on the domain sets: 1 - |A∩B| / |A∪B|.
+		let inter = 0;
+		for (const d of cur.counts.keys()) {
+			if (prev.counts.has(d)) inter++;
+		}
+		const union = cur.counts.size + prev.counts.size - inter;
+		const setDist = union === 0 ? 0 : 1 - inter / union;
+
+		// Bray–Curtis distance on the citation-share vectors: 1 - Σ min(shareCur, sharePrev).
+		// Domains present on only one of the two days contribute min(x, 0) = 0, so we only
+		// need to walk the shared domains.
+		let overlap = 0;
+		for (const [d, c] of cur.counts) {
+			const prevC = prev.counts.get(d);
+			if (prevC === undefined) continue;
+			overlap += Math.min(c / cur.total, prevC / prev.total);
+		}
+		const weightedDist = 1 - overlap;
+
+		setSum += setDist;
+		weightedSum += weightedDist;
+		transitions++;
+	}
+
+	return {
+		setVolatility: round3(setSum / transitions),
+		weightedVolatility: round3(weightedSum / transitions),
+		dayTransitions: transitions,
+	};
+}
+
+/**
+ * Citation concentration: is the citation volume carried by a stable head of
+ * always-present domains, or spread across a churning tail?
+ */
+export function computeConcentration(daily: DailyDomainCount[], coreThreshold = 0.8): ConcentrationResult {
+	const days = bucketByDay(daily);
+	const nDays = days.length;
+	if (nDays === 0) return { coreDomains: 0, totalDomains: 0, coreShareOfCitations: null };
+
+	const daysPresent = new Map<string, number>();
+	const hits = new Map<string, number>();
+	for (const day of days) {
+		for (const [d, c] of day.counts) {
+			daysPresent.set(d, (daysPresent.get(d) ?? 0) + 1);
+			hits.set(d, (hits.get(d) ?? 0) + c);
+		}
+	}
+
+	let coreDomains = 0;
+	let coreHits = 0;
+	let totalHits = 0;
+	for (const [d, h] of hits) {
+		totalHits += h;
+		if ((daysPresent.get(d) ?? 0) / nDays >= coreThreshold) {
+			coreDomains++;
+			coreHits += h;
+		}
+	}
+
+	return {
+		coreDomains,
+		totalDomains: hits.size,
+		coreShareOfCitations: totalHits === 0 ? null : round3(coreHits / totalHits),
+	};
+}
+
+/** How broad is the cited-domain pool relative to a typical day's sample? */
+export function computePoolStats(daily: DailyDomainCount[]): PoolStatsResult {
+	const days = bucketByDay(daily);
+	if (days.length === 0) {
+		return { avgDomainsPerDay: null, totalDistinctDomains: 0, poolToSampleRatio: null };
+	}
+	const distinct = new Set<string>();
+	let domainDaySum = 0;
+	for (const day of days) {
+		domainDaySum += day.counts.size;
+		for (const d of day.counts.keys()) distinct.add(d);
+	}
+	const avg = domainDaySum / days.length;
+	return {
+		avgDomainsPerDay: round1(avg),
+		totalDistinctDomains: distinct.size,
+		poolToSampleRatio: avg === 0 ? null : round1(distinct.size / avg),
+	};
+}
+
+/** Fraction of a model's run-days on which it cited any source for the prompt. null if it never ran. */
+export function citationCoverage(runDays: number, citedDays: number): number | null {
+	if (runDays <= 0) return null;
+	return round3(Math.min(citedDays, runDays) / runDays);
+}
+
+export type GroundingMode = "grounded" | "mixed" | "from-memory";
+
+/**
+ * Bucket a coverage value into how the engine answers this prompt:
+ *  - grounded:    it almost always retrieves and cites sources.
+ *  - mixed:       it sometimes grounds, sometimes answers from memory.
+ *  - from-memory: it answers from its own knowledge and rarely/never cites
+ *                 (so there is no citation slot to win — only a mentions game).
+ */
+export function groundingMode(coverage: number | null): GroundingMode {
+	if (coverage === null) return "from-memory";
+	if (coverage >= 0.7) return "grounded";
+	if (coverage >= 0.3) return "mixed";
+	return "from-memory";
+}
+
+/** Product-facing Stability score: 0 (churns daily) → 100 (rock stable). null if not enough data. */
+export function stabilityScore(weightedVolatility: number | null): number | null {
+	if (weightedVolatility === null) return null;
+	return Math.round((1 - clamp01(weightedVolatility)) * 100);
+}
+
+export interface VoiceShare {
+	name: string;
+	/** Run-days (or runs) on which this entity was mentioned. */
+	mentions: number;
+	/** Share of total mentions across the brand + all competitors, 0..1. */
+	share: number;
+	isBrand: boolean;
+}
+
+/**
+ * Share of voice across the brand and its competitors. Inputs must be in a
+ * consistent unit (e.g. "# of runs that mentioned this entity"), so the brand's
+ * mention count and each competitor's are directly comparable.
+ */
+export function computeShareOfVoice(
+	brand: { name: string; mentions: number },
+	competitors: { name: string; mentions: number }[],
+): { entries: VoiceShare[]; brandShare: number | null; total: number } {
+	let total = brand.mentions;
+	for (const c of competitors) total += c.mentions;
+	const mk = (name: string, mentions: number, isBrand: boolean): VoiceShare => ({
+		name,
+		mentions,
+		isBrand,
+		share: total === 0 ? 0 : round3(mentions / total),
+	});
+	const entries = [mk(brand.name, brand.mentions, true), ...competitors.map((c) => mk(c.name, c.mentions, false))].sort(
+		(a, b) => b.mentions - a.mentions,
+	);
+	return { entries, brandShare: total === 0 ? null : round3(brand.mentions / total), total };
+}
+
+export interface WinnabilityInput {
+	/** Brand mention rate, 0..1. */
+	brandPresence: number;
+	/** Any-competitor mention rate, 0..1. */
+	competitorPresence: number;
+	/** Grounding coverage, 0..1, or null when the engine never cites. */
+	coverage: number | null;
+	/** Weighted citation volatility, 0..1 (higher = more contestable), or null. */
+	volatility: number | null;
+}
+
+export type WinnabilityTier = "high" | "medium" | "low";
+
+export interface WinnabilityResult {
+	/** 0..1 opportunity score. */
+	score: number;
+	tier: WinnabilityTier;
+	/**
+	 * Where the lever is:
+	 *  - "citation": the engine grounds here, so citable content can win a slot.
+	 *  - "mention":  the engine answers from memory, so the lever is brand
+	 *                presence in its knowledge, not earning a citation.
+	 */
+	play: "citation" | "mention";
+}
+
+/**
+ * Winnability blends four signals into a single opportunity score:
+ *   gap         = how absent the brand is where competitors are present.
+ *   grounded    = whether there is a citation slot to win at all (coverage).
+ *   contestable = how unsettled the citation set is (weighted volatility);
+ *                 a churning set is easier to break into than a locked one.
+ *
+ *   score = gap × grounded × contestable
+ * where contestable maps null/volatility∈[0,1] → [0.5, 1.0] so an unknown
+ * volatility is treated neutrally rather than zeroing the score.
+ */
+export function computeWinnability(input: WinnabilityInput): WinnabilityResult {
+	const gap = clamp01(input.competitorPresence - input.brandPresence);
+	const grounded = input.coverage ?? 0;
+	const contestable = 0.5 + 0.5 * clamp01(input.volatility ?? 0.5);
+	const score = round3(gap * grounded * contestable);
+	const tier: WinnabilityTier = score >= 0.35 ? "high" : score >= 0.15 ? "medium" : "low";
+	const play = groundingMode(input.coverage) === "from-memory" ? "mention" : "citation";
+	return { score, tier, play };
+}

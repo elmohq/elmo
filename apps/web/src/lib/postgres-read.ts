@@ -820,6 +820,110 @@ export async function getPerPromptDailyCitationStats(
 }
 
 // ============================================================================
+// Per-Prompt Run Stats (grounding coverage + mention rates)
+// ============================================================================
+
+export interface PerPromptRunStats {
+	prompt_id: string;
+	runs: number;
+	/** Distinct days on which this prompt was run (for the chosen model filter). */
+	run_days: number;
+	/** Fraction of runs in which the brand was mentioned, 0..1. */
+	brand_mention_rate: number;
+	/** Fraction of runs in which any tracked competitor was mentioned, 0..1. */
+	competitor_mention_rate: number;
+}
+
+export async function getPerPromptRunStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptRunStats[]> {
+	const rows = await queryPg<PerPromptRunStats>(sql`
+		SELECT
+			prompt_id,
+			count(*)::int AS runs,
+			count(DISTINCT (created_at AT TIME ZONE ${timezone})::date)::int AS run_days,
+			round(avg(CASE WHEN brand_mentioned THEN 1 ELSE 0 END)::numeric, 4)::float AS brand_mention_rate,
+			round(avg(CASE WHEN cardinality(competitors_mentioned) > 0 THEN 1 ELSE 0 END)::numeric, 4)::float AS competitor_mention_rate
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id
+	`);
+	return rows;
+}
+
+// ============================================================================
+// Share of Voice (competitor mention leaderboard)
+// ============================================================================
+
+export interface BrandMentionTotals {
+	total_runs: number;
+	brand_mentioned_runs: number;
+}
+
+export async function getBrandMentionTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<BrandMentionTotals> {
+	const rows = await queryPg<BrandMentionTotals>(sql`
+		SELECT
+			count(*)::int AS total_runs,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_runs
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+	`);
+	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0 };
+}
+
+export interface CompetitorMentionRow {
+	competitor: string;
+	/** Number of runs that mentioned this competitor (same unit as brand_mentioned_runs). */
+	mentions: number;
+	/** Distinct prompts in which the competitor appeared. */
+	prompts: number;
+}
+
+export async function getCompetitorMentionLeaderboard(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+	limit = 50,
+): Promise<CompetitorMentionRow[]> {
+	const rows = await queryPg<CompetitorMentionRow>(sql`
+		SELECT
+			competitor,
+			count(*)::int AS mentions,
+			count(DISTINCT prompt_id)::int AS prompts
+		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY competitor
+		ORDER BY mentions DESC
+		LIMIT ${limit}
+	`);
+	return rows;
+}
+
+// ============================================================================
 // Brand Data Age
 // ============================================================================
 
