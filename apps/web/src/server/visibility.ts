@@ -69,7 +69,7 @@ export interface FilteredVisibilityResponse {
 // Prompt resolution
 // ============================================================================
 
-interface ResolvedPrompt {
+export interface ResolvedPrompt {
 	id: string;
 	value: string;
 	systemTags: string[];
@@ -91,7 +91,7 @@ interface ResolvedPrompt {
  * NOTE: the tag-filter logic here must stay in sync with `getPromptsSummaryFn`
  * (apps/web/src/server/prompts.ts), which produces the displayed list.
  */
-async function resolveFilteredPrompts(
+export async function resolveFilteredPrompts(
 	brandId: string,
 	opts: { tags?: string; search?: string },
 ): Promise<ResolvedPrompt[]> {

@@ -3,13 +3,18 @@
  * Opportunities. Read-only — derived entirely from existing prompt_runs /
  * citations data via the postgres read layer plus the pure stats in
  * `@/lib/visibility-stats`. No schema changes.
+ *
+ * Filters are resolved server-side (tags/search -> prompt IDs) via
+ * `resolveFilteredPrompts`, and the lookback window is computed in the user's
+ * timezone — the same handling as the visibility page (see issue #68), so we
+ * never serialize a brand's full prompt-id list into the request URL.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { brands } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import {
 	getPerPromptRunStats,
 	getPerPromptDailyCitationStats,
@@ -18,8 +23,10 @@ import {
 	getPerPromptDailyMentions,
 	type PerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
-import { filterPromptIdsByTags, isBrandedPrompt } from "@/lib/prompt-tags";
-import { generateDateRange } from "@/lib/chart-utils";
+import { resolveFilteredPrompts } from "@/server/visibility";
+import { isBrandedPrompt } from "@/lib/prompt-tags";
+import { generateDateRange, type LookbackPeriod } from "@/lib/chart-utils";
+import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
 	computeVolatility,
 	stabilityScore,
@@ -30,16 +37,16 @@ import {
 	type OpportunityTier,
 } from "@/lib/visibility-stats";
 
-/** Resolve a `days` lookback into UTC from/to date strings (mirrors server/citations.ts). */
-function dateRangeFromDays(days: number): { fromDateStr: string; toDateStr: string; timezone: string } {
-	const toDate = new Date();
-	const fromDate = new Date();
-	fromDate.setDate(fromDate.getDate() - days);
-	return {
-		fromDateStr: fromDate.toISOString().split("T")[0],
-		toDateStr: toDate.toISOString().split("T")[0],
-		timezone: "UTC",
+const LOOKBACK = z.enum(["1w", "1m", "3m", "6m", "1y", "all"]);
+
+/** Resolve a lookback + timezone into concrete from/to date strings (mirrors server/visibility.ts). */
+function resolveRange(lookback: LookbackPeriod, timezoneParam: string) {
+	const timezone = resolveTimezone(timezoneParam);
+	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
+		fromDateStr: string;
+		toDateStr: string;
 	};
+	return { timezone, fromDateStr, toDateStr };
 }
 
 /** Group per-prompt daily citation rows into the {date, domain, count}[] shape the stats expect. */
@@ -55,8 +62,6 @@ function groupDailyByPrompt(rows: PerPromptDailyCitationStats[]): Map<string, Da
 	}
 	return byPrompt;
 }
-
-const tagsArray = (tags?: string) => tags?.split(",").filter(Boolean) ?? [];
 
 // ============================================================================
 // Share of Voice
@@ -85,9 +90,11 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 	.inputValidator(
 		z.object({
 			brandId: z.string(),
-			days: z.number().optional().default(30),
+			lookback: LOOKBACK.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			search: z.string().optional(),
+			timezone: z.string().default("UTC"),
 			limit: z.number().optional().default(40),
 		}),
 	)
@@ -95,27 +102,17 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const { fromDateStr, toDateStr, timezone } = dateRangeFromDays(data.days);
+		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
 
-		const [brandRow, enabledPrompts] = await Promise.all([
+		const [brandRow, resolved] = await Promise.all([
 			db.select({ name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db
-				.select({ id: prompts.id, tags: prompts.tags, systemTags: prompts.systemTags })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			resolveFilteredPrompts(data.brandId, { tags: data.tags, search: data.search }),
 		]);
 		const brandName = brandRow[0]?.name ?? "Your brand";
-		const promptIds = filterPromptIdsByTags(enabledPrompts, tagsArray(data.tags));
+		const promptIds = resolved.map((p) => p.id);
 
 		if (promptIds.length === 0) {
-			return {
-				brandName,
-				entries: [],
-				brandShare: null,
-				totalRuns: 0,
-				model: data.model ?? null,
-				shareTimeSeries: [],
-			};
+			return { brandName, entries: [], brandShare: null, totalRuns: 0, model: data.model ?? null, shareTimeSeries: [] };
 		}
 
 		const [totals, leaderboard, perPromptDaily] = await Promise.all([
@@ -132,8 +129,6 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 
 		// Brand share of voice per day, LVCF-smoothed over the lookback window so
 		// staggered prompt schedules don't scallop the line (mirrors the visibility trend).
-		const start = new Date(toDateStr);
-		start.setDate(start.getDate() - (data.days - 1));
 		const shareTimeSeries = shareOfVoiceTimeSeriesLVCF(
 			perPromptDaily.map((r) => ({
 				promptId: r.prompt_id,
@@ -141,7 +136,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 				brandMentions: r.brand_mentions,
 				competitorMentions: r.competitor_mentions,
 			})),
-			generateDateRange(start, new Date(toDateStr)),
+			generateDateRange(new Date(fromDateStr), new Date(toDateStr)),
 		);
 
 		return {
@@ -184,27 +179,24 @@ export const getPromptOpportunitiesFn = createServerFn({ method: "GET" })
 	.inputValidator(
 		z.object({
 			brandId: z.string(),
-			days: z.number().optional().default(42),
+			lookback: LOOKBACK.default("1m"),
 			model: z.string().optional(),
 			tags: z.string().optional(),
+			search: z.string().optional(),
+			timezone: z.string().default("UTC"),
 		}),
 	)
 	.handler(async ({ data }): Promise<PromptOpportunitiesResponse> => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const { fromDateStr, toDateStr, timezone } = dateRangeFromDays(data.days);
-
-		const enabledPrompts = await db
-			.select({ id: prompts.id, value: prompts.value, tags: prompts.tags, systemTags: prompts.systemTags })
-			.from(prompts)
-			.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)));
+		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
 
 		// Opportunities are about competitive prompts — exclude the brand's own
-		// branded queries, then apply the tag filter.
-		const nonBranded = enabledPrompts.filter((p) => !isBrandedPrompt(p));
-		const allowedIds = new Set(filterPromptIdsByTags(nonBranded, tagsArray(data.tags)));
-		const consideredPrompts = nonBranded.filter((p) => allowedIds.has(p.id));
+		// branded queries from the tag/search-resolved set.
+		const consideredPrompts = (await resolveFilteredPrompts(data.brandId, { tags: data.tags, search: data.search })).filter(
+			(p) => !isBrandedPrompt(p),
+		);
 		const promptIds = consideredPrompts.map((p) => p.id);
 
 		if (promptIds.length === 0) {

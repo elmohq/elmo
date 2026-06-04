@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { getShareOfVoiceFn } from "@/server/analysis";
+import type { LookbackPeriod } from "@/lib/chart-utils";
 
 export interface ShareOfVoiceFilters {
-	days?: number;
+	lookback?: LookbackPeriod;
 	model?: string;
+	/** Tag filter (resolved to prompt IDs server-side, like the visibility page). */
 	tags?: string[];
 	limit?: number;
 }
@@ -24,9 +26,10 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 			getShareOfVoiceFn({
 				data: {
 					brandId: resolvedBrandId!,
-					days: filters?.days ?? 30,
+					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 					limit: filters?.limit,
 				},
 			}),

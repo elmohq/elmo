@@ -16,7 +16,6 @@ import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrand } from "@/hooks/use-brands";
-import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
 import { ColHead } from "@/components/col-head";
@@ -48,7 +47,6 @@ const TIPS = {
 function ShareOfVoicePage() {
 	const { brand: brandId } = Route.useParams();
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
-	const days = getDaysFromLookback(selectedLookback);
 
 	const { brand } = useBrand(brandId);
 	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
@@ -57,7 +55,7 @@ function ShareOfVoicePage() {
 	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading } = useShareOfVoice(brandId, { days, model: modelParam, tags: selectedTags });
+	const { data, isLoading } = useShareOfVoice(brandId, { lookback: selectedLookback, model: modelParam, tags: selectedTags });
 
 	const infoContent = (
 		<>
@@ -119,7 +117,7 @@ function ShareOfVoicePage() {
 
 					<Card>
 						<CardHeader>
-							<CardTitle>Share of voice over time</CardTitle>
+							<CardTitle>Share of Voice Trends</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<ShareOfVoiceTrend data={data.shareTimeSeries} />

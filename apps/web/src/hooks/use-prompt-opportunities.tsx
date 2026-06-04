@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { getPromptOpportunitiesFn } from "@/server/analysis";
+import type { LookbackPeriod } from "@/lib/chart-utils";
 
 export interface PromptOpportunitiesFilters {
-	days?: number;
+	lookback?: LookbackPeriod;
 	model?: string;
+	/** Tag filter (resolved to prompt IDs server-side, like the visibility page). */
 	tags?: string[];
 }
 
@@ -24,9 +26,10 @@ export function usePromptOpportunities(brandId?: string, filters?: PromptOpportu
 			getPromptOpportunitiesFn({
 				data: {
 					brandId: resolvedBrandId!,
-					days: filters?.days ?? 42,
+					lookback: filters?.lookback ?? "1m",
 					model: filters?.model,
 					tags: filters?.tags?.join(","),
+					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
 		enabled: !!resolvedBrandId,

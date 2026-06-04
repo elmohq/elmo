@@ -213,7 +213,7 @@ function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
-	const { data: sovData } = useShareOfVoice(brand?.id, { days: 30 });
+	const { data: sovData } = useShareOfVoice(brand?.id, { lookback: "1m" });
 	const sovShare = sovData?.brandShare != null ? Math.round(sovData.brandShare * 100) : null;
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;

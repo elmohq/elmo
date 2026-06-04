@@ -17,7 +17,6 @@ import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { usePromptOpportunities } from "@/hooks/use-prompt-opportunities";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrand } from "@/hooks/use-brands";
-import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
 import { OpportunityMap } from "@/components/opportunity-map";
@@ -68,7 +67,6 @@ const TIPS = {
 function OpportunitiesPage() {
 	const { brand: brandId } = Route.useParams();
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
-	const days = getDaysFromLookback(selectedLookback);
 
 	const { brand } = useBrand(brandId);
 	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
@@ -77,7 +75,7 @@ function OpportunitiesPage() {
 	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading } = usePromptOpportunities(brandId, { days, model: modelParam, tags: selectedTags });
+	const { data, isLoading } = usePromptOpportunities(brandId, { lookback: selectedLookback, model: modelParam, tags: selectedTags });
 
 	// "none" = neither you nor competitors are mentioned enough to be a brand query.
 	const opportunities = data?.prompts.filter((p) => p.tier !== "none") ?? [];
