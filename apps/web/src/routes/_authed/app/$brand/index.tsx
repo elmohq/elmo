@@ -312,7 +312,7 @@ function DashboardPage() {
 
 	if (isLoadingBrand) {
 		return (
-			<div className="flex flex-1 flex-col gap-4 p-4 max-w-[1600px] mx-auto w-full">
+			<div className="flex flex-1 flex-col gap-3 p-3 max-w-[1600px] mx-auto w-full">
 				{/* AI Visibility section skeleton */}
 				<section className="space-y-3">
 					<div className="flex items-center justify-between">
@@ -327,7 +327,7 @@ function DashboardPage() {
 						</Button>
 					</div>
 					<div className="grid gap-4 lg:grid-cols-4">
-						<Card className="shadow-none flex flex-col">
+						<Card className="shadow-none flex flex-col gap-2 py-3">
 							<CardHeader className="pb-2">
 								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 									Current Visibility
@@ -340,14 +340,14 @@ function DashboardPage() {
 								</div>
 							</CardContent>
 						</Card>
-						<Card className="shadow-none lg:col-span-3 flex flex-col">
+						<Card className="shadow-none lg:col-span-3 flex flex-col gap-2 py-3">
 							<CardHeader className="pb-2">
 								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 									Visibility Trends (30d)
 									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 								</CardTitle>
 							</CardHeader>
-							<CardContent className="flex-1 min-h-[88px]">
+							<CardContent className="flex-1 min-h-[72px]">
 								<Skeleton className="h-full w-full" />
 							</CardContent>
 						</Card>
@@ -368,7 +368,7 @@ function DashboardPage() {
 							</Button>
 						</div>
 						<div className="grid gap-4 lg:grid-cols-4">
-							<Card className="shadow-none flex flex-col">
+							<Card className="shadow-none flex flex-col gap-2 py-3">
 								<CardHeader className="pb-2">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 										Current Share of Voice
@@ -379,14 +379,14 @@ function DashboardPage() {
 									<Skeleton className="h-14 w-28" />
 								</CardContent>
 							</Card>
-							<Card className="shadow-none lg:col-span-3 flex flex-col">
+							<Card className="shadow-none lg:col-span-3 flex flex-col gap-2 py-3">
 								<CardHeader className="pb-2">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 										Share of Voice Trends (30d)
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 									</CardTitle>
 								</CardHeader>
-								<CardContent className="flex-1 min-h-[88px]">
+								<CardContent className="flex-1 min-h-[72px]">
 									<Skeleton className="h-full w-full" />
 								</CardContent>
 							</Card>
@@ -406,7 +406,7 @@ function DashboardPage() {
 							</Link>
 						</Button>
 					</div>
-					<Card className="shadow-none">
+					<Card className="shadow-none gap-2 py-3">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 								Citation Category Trends (30d)
@@ -414,7 +414,7 @@ function DashboardPage() {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<Skeleton className="h-[96px] w-full" />
+							<Skeleton className="h-[72px] w-full" />
 						</CardContent>
 					</Card>
 				</section>
@@ -531,7 +531,7 @@ function DashboardPage() {
 	};
 
 	return (
-		<div className="flex flex-1 flex-col gap-4 p-4 max-w-[1600px] mx-auto w-full">
+		<div className="flex flex-1 flex-col gap-3 p-3 max-w-[1600px] mx-auto w-full">
 
 			{/* Section 1: AI Visibility */}
 			<section className="space-y-3">
@@ -549,7 +549,7 @@ function DashboardPage() {
 
 				<div className="grid gap-4 lg:grid-cols-4">
 					{/* Hero Visibility Score */}
-					<Card className={`shadow-none flex flex-col ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
+					<Card className={`shadow-none flex flex-col gap-2 py-3 ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
 						<CardHeader className="pb-2">
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${isLoading ? "text-muted-foreground" : getVisibilityLabelColor(averageVisibility)}`}>
 								Current Visibility
@@ -574,14 +574,14 @@ function DashboardPage() {
 					</Card>
 
 					{/* Visibility Chart */}
-					<Card className="shadow-none lg:col-span-3 flex flex-col">
+					<Card className="shadow-none lg:col-span-3 flex flex-col gap-2 py-3">
 						<CardHeader className="pb-2">
 						<CardTitleWithTooltip
 							title="Visibility Trends (30d)"
 							tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
 						/>
 						</CardHeader>
-						<CardContent className="flex-1 min-h-[88px]">
+						<CardContent className="flex-1 min-h-[72px]">
 							{isLoading ? (
 								<Skeleton className="h-full w-full" />
 							) : (
@@ -666,7 +666,7 @@ function DashboardPage() {
 				</div>
 
 				<div className="grid gap-4 lg:grid-cols-4">
-					<Card className="shadow-none flex flex-col">
+					<Card className="shadow-none flex flex-col gap-2 py-3">
 						<CardHeader className="pb-2">
 							<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 								Current Share of Voice
@@ -687,14 +687,14 @@ function DashboardPage() {
 						</CardContent>
 					</Card>
 
-					<Card className="shadow-none lg:col-span-3 flex flex-col">
+					<Card className="shadow-none lg:col-span-3 flex flex-col gap-2 py-3">
 						<CardHeader className="pb-2">
 							<CardTitleWithTooltip
 								title="Share of Voice Trends (30d)"
 								tooltip="Your brand's share of voice over time — your mentions as a percentage of all brand and competitor mentions each day."
 							/>
 						</CardHeader>
-						<CardContent className="flex-1 min-h-[88px]">
+						<CardContent className="flex-1 min-h-[72px]">
 							<ShareOfVoiceTrend data={sovData?.shareTimeSeries ?? []} className="aspect-auto h-full w-full" />
 						</CardContent>
 					</Card>
@@ -715,7 +715,7 @@ function DashboardPage() {
 					</Button>
 				</div>
 
-				<Card className="shadow-none">
+				<Card className="shadow-none gap-2 py-3">
 					<CardHeader className="pb-2">
 						<CardTitleWithTooltip
 							title="Citation Category Trends (30d)"
@@ -724,9 +724,9 @@ function DashboardPage() {
 					</CardHeader>
 					<CardContent>
 						{isLoading ? (
-							<Skeleton className="h-[96px] w-full" />
+							<Skeleton className="h-[72px] w-full" />
 						) : (
-							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[96px] w-full">
+							<ChartContainer config={citationsChartConfig} className="aspect-auto h-[72px] w-full">
 								<AreaChart data={extendedCitationData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
 									<CartesianGrid vertical={false} strokeDasharray="3 3" />
 									<XAxis

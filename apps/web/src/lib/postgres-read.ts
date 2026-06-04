@@ -918,8 +918,8 @@ export async function getDailyShareOfVoice(
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
-		GROUP BY (created_at AT TIME ZONE ${timezone})::date
-		ORDER BY (created_at AT TIME ZONE ${timezone})::date
+		GROUP BY date
+		ORDER BY date
 	`);
 	return rows;
 }
