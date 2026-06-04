@@ -4,7 +4,7 @@
  * Shows visibility charts, citation trends, and stats.
  * Displays onboarding wizard if brand is not yet onboarded.
  */
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
@@ -211,7 +211,7 @@ function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
-	const { data: sovData } = useShareOfVoice(brand?.id, { lookback: "1m" });
+	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
 	const sovShare = sovData?.brandShare != null ? Math.round(sovData.brandShare * 100) : null;
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
@@ -297,7 +297,9 @@ function DashboardPage() {
 									</CardTitle>
 								</CardHeader>
 								<CardContent className="flex-1 flex flex-col justify-center gap-4">
-									<Skeleton className="h-14 w-28" />
+									<div style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
+									<Skeleton className="h-20 w-36" />
+								</div>
 								</CardContent>
 							</Card>
 							<Card className="shadow-none lg:col-span-3 flex flex-col">
@@ -528,7 +530,7 @@ function DashboardPage() {
 											stroke="#10b981"
 											strokeWidth={2}
 											fill="#10b981"
-											fillOpacity={0.8}
+											fillOpacity={0.18}
 											connectNulls={true}
 										/>
 									</AreaChart>
@@ -573,7 +575,7 @@ function DashboardPage() {
 								className={`font-bold tracking-tight ${sovShare === null ? "text-muted-foreground" : getVisibilityTextColor(sovShare)}`}
 								style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
 							>
-								{sovShare === null ? "—" : `${sovShare}%`}
+								{isLoadingSov ? <Skeleton className="h-20 w-36" /> : sovShare === null ? "—" : `${sovShare}%`}
 							</div>
 						</CardContent>
 					</Card>
@@ -586,7 +588,11 @@ function DashboardPage() {
 							/>
 						</CardHeader>
 						<CardContent className="flex-1 min-h-[120px]">
-							<ShareOfVoiceTrend data={sovData?.shareTimeSeries ?? []} className="aspect-auto h-full w-full" />
+							{isLoadingSov ? (
+								<Skeleton className="h-full w-full" />
+							) : (
+								<ShareOfVoiceTrend data={sovData?.shareTimeSeries ?? []} className="aspect-auto h-full w-full" />
+							)}
 						</CardContent>
 					</Card>
 				</div>

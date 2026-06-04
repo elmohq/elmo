@@ -6,7 +6,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@workspace/ui/components/chart";
 
 const config = {
-	share: { label: "Share of voice", color: "var(--chart-1)" },
+	share: { label: "Share of voice", color: "#2563eb" },
 } satisfies ChartConfig;
 
 /** Build a local Date from a "YYYY-MM-DD" string (avoids the UTC off-by-one of `new Date(iso)`). */
@@ -74,7 +74,7 @@ export function ShareOfVoiceTrend({
 					stroke="var(--color-share)"
 					strokeWidth={2}
 					fill="var(--color-share)"
-					fillOpacity={0.8}
+					fillOpacity={0.18}
 					connectNulls
 				/>
 			</AreaChart>
