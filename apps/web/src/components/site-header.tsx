@@ -17,6 +17,8 @@ import { Link } from "@tanstack/react-router";
 /** Map of page segments to display names */
 const PAGE_NAMES: Record<string, string> = {
 	visibility: "Visibility",
+	"share-of-voice": "Share of Voice",
+	opportunities: "Opportunities",
 	prompts: "Prompts",
 	citations: "Citations",
 	brand: "Brand",
