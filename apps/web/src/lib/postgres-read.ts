@@ -892,34 +892,38 @@ export async function getBrandMentionTotals(
 	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0, brand_mentioned_prompts: 0 };
 }
 
-export interface DailyShareOfVoice {
+export interface PerPromptDailyMentionRow {
+	prompt_id: string;
 	date: string;
-	/** Runs that day mentioning the brand. */
-	brand_runs: number;
-	/** Total competitor mention instances that day (sum over runs of competitors mentioned). */
+	/** Runs that day (for this prompt) mentioning the brand. */
+	brand_mentions: number;
+	/** Competitor mention instances that day (for this prompt). */
 	competitor_mentions: number;
 }
 
-export async function getDailyShareOfVoice(
+/** Per-prompt, per-day brand and competitor mention counts — feeds LVCF-smoothed share of voice. */
+export async function getPerPromptDailyMentions(
 	brandId: string,
 	fromDate: string,
 	toDate: string,
 	timezone: string,
 	enabledPromptIds?: string[],
 	model?: string,
-): Promise<DailyShareOfVoice[]> {
-	const rows = await queryPg<DailyShareOfVoice>(sql`
+): Promise<PerPromptDailyMentionRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyMentionRow>(sql`
 		SELECT
+			prompt_id,
 			(created_at AT TIME ZONE ${timezone})::date::text AS date,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_runs,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentions,
 			COALESCE(sum(cardinality(competitors_mentioned)), 0)::int AS competitor_mentions
 		FROM prompt_runs
 		WHERE brand_id = ${brandId}
 			${dateFilter(fromDate, toDate, timezone)}
 			${promptIdFilter(enabledPromptIds)}
 			${modelFilter(model)}
-		GROUP BY date
-		ORDER BY date
+		GROUP BY prompt_id, date
+		ORDER BY prompt_id, date
 	`);
 	return rows;
 }

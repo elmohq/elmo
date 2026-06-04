@@ -9,6 +9,7 @@ import {
 	stabilityScore,
 	computeShareOfVoice,
 	computeOpportunity,
+	shareOfVoiceTimeSeriesLVCF,
 	type DailyDomainCount,
 } from "@/lib/visibility-stats";
 
@@ -220,5 +221,33 @@ describe("computeOpportunity", () => {
 	it("respects a custom activity floor", () => {
 		expect(computeOpportunity({ brandPresence: 0.2, competitorPresence: 0 }, 0.3).tier).toBe("none");
 		expect(computeOpportunity({ brandPresence: 0.2, competitorPresence: 0 }, 0.1).tier).toBe("won");
+	});
+});
+
+describe("shareOfVoiceTimeSeriesLVCF", () => {
+	it("carries each prompt's last values forward across gap days", () => {
+		const series = shareOfVoiceTimeSeriesLVCF(
+			[
+				{ promptId: "p1", date: "2026-01-01", brandMentions: 2, competitorMentions: 2 },
+				{ promptId: "p1", date: "2026-01-03", brandMentions: 1, competitorMentions: 3 },
+			],
+			["2026-01-01", "2026-01-02", "2026-01-03"],
+		);
+		// day2 has no run, so it carries day1 (2/(2+2)=50%); day3 uses its own (1/(1+3)=25%)
+		expect(series.map((s) => s.share)).toEqual([50, 50, 25]);
+	});
+
+	it("aggregates across prompts and yields null for days with no data", () => {
+		const series = shareOfVoiceTimeSeriesLVCF(
+			[
+				{ promptId: "a", date: "2026-01-02", brandMentions: 1, competitorMentions: 0 },
+				{ promptId: "b", date: "2026-01-02", brandMentions: 0, competitorMentions: 1 },
+			],
+			["2026-01-01", "2026-01-02"],
+		);
+		// day1: both prompts carry their earliest (day2) obs -> brand 1 / total 2 = 50
+		expect(series[0]).toEqual({ date: "2026-01-01", share: 50 });
+		expect(series[1]).toEqual({ date: "2026-01-02", share: 50 });
+		expect(shareOfVoiceTimeSeriesLVCF([], ["2026-01-01"])).toEqual([{ date: "2026-01-01", share: null }]);
 	});
 });

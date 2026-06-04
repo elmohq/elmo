@@ -15,7 +15,7 @@ import {
 	getPerPromptDailyCitationStats,
 	getBrandMentionTotals,
 	getCompetitorMentionLeaderboard,
-	getDailyShareOfVoice,
+	getPerPromptDailyMentions,
 	type PerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
 import { filterPromptIdsByTags, isBrandedPrompt } from "@/lib/prompt-tags";
@@ -25,6 +25,7 @@ import {
 	stabilityScore,
 	computeShareOfVoice,
 	computeOpportunity,
+	shareOfVoiceTimeSeriesLVCF,
 	type DailyDomainCount,
 	type OpportunityTier,
 } from "@/lib/visibility-stats";
@@ -117,10 +118,10 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			};
 		}
 
-		const [totals, leaderboard, daily] = await Promise.all([
+		const [totals, leaderboard, perPromptDaily] = await Promise.all([
 			getBrandMentionTotals(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model),
 			getCompetitorMentionLeaderboard(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model, data.limit),
-			getDailyShareOfVoice(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model),
+			getPerPromptDailyMentions(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model),
 		]);
 
 		const promptsByCompetitor = new Map(leaderboard.map((c) => [c.competitor, c.prompts]));
@@ -129,16 +130,19 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			leaderboard.map((c) => ({ name: c.competitor, mentions: c.mentions })),
 		);
 
-		// Brand share of voice per day, over the lookback window.
-		const dailyByDate = new Map(daily.map((d) => [d.date, d]));
+		// Brand share of voice per day, LVCF-smoothed over the lookback window so
+		// staggered prompt schedules don't scallop the line (mirrors the visibility trend).
 		const start = new Date(toDateStr);
 		start.setDate(start.getDate() - (data.days - 1));
-		const shareTimeSeries = generateDateRange(start, new Date(toDateStr)).map((date) => {
-			const d = dailyByDate.get(date);
-			if (!d) return { date, share: null };
-			const denom = d.brand_runs + d.competitor_mentions;
-			return { date, share: denom === 0 ? null : Math.round((d.brand_runs / denom) * 100) };
-		});
+		const shareTimeSeries = shareOfVoiceTimeSeriesLVCF(
+			perPromptDaily.map((r) => ({
+				promptId: r.prompt_id,
+				date: String(r.date),
+				brandMentions: r.brand_mentions,
+				competitorMentions: r.competitor_mentions,
+			})),
+			generateDateRange(start, new Date(toDateStr)),
+		);
 
 		return {
 			brandName,

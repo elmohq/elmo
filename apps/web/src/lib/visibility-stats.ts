@@ -298,3 +298,58 @@ export function computeOpportunity(
 	const tier: OpportunityTier = gap >= 0.5 ? "high" : gap >= 0.25 ? "medium" : "low";
 	return { score: round3(gap), tier };
 }
+
+export interface PerPromptDailyMentions {
+	promptId: string;
+	date: string;
+	brandMentions: number;
+	competitorMentions: number;
+}
+
+/**
+ * Brand share of voice over time, smoothed with per-prompt Last-Value-Carried-
+ * Forward (mirrors the visibility trend): each prompt's last-known brand and
+ * competitor mention counts are carried across days it didn't run, then summed
+ * per day — so staggered prompt schedules don't scallop the line. The carry is
+ * pre-seeded with each prompt's earliest observation to avoid a ramp-up dip.
+ * Share = brand / (brand + competitor), as a 0–100 percentage (null = no data).
+ */
+export function shareOfVoiceTimeSeriesLVCF(
+	perPrompt: PerPromptDailyMentions[],
+	dateRange: string[],
+): Array<{ date: string; share: number | null }> {
+	const byPrompt = new Map<string, Map<string, { brand: number; competitor: number }>>();
+	for (const r of perPrompt) {
+		let m = byPrompt.get(r.promptId);
+		if (!m) {
+			m = new Map();
+			byPrompt.set(r.promptId, m);
+		}
+		m.set(r.date, { brand: r.brandMentions, competitor: r.competitorMentions });
+	}
+
+	const daily = new Map<string, { brand: number; competitor: number }>();
+	for (const [, dateMap] of byPrompt) {
+		const sorted = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+		let carried = sorted.length > 0 ? sorted[0][1] : null;
+		for (const date of dateRange) {
+			const actual = dateMap.get(date);
+			if (actual) carried = actual;
+			if (!carried) continue;
+			let bucket = daily.get(date);
+			if (!bucket) {
+				bucket = { brand: 0, competitor: 0 };
+				daily.set(date, bucket);
+			}
+			bucket.brand += carried.brand;
+			bucket.competitor += carried.competitor;
+		}
+	}
+
+	return dateRange.map((date) => {
+		const b = daily.get(date);
+		if (!b) return { date, share: null };
+		const denom = b.brand + b.competitor;
+		return { date, share: denom === 0 ? null : Math.round((b.brand / denom) * 100) };
+	});
+}
