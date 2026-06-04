@@ -1,21 +1,25 @@
 /**
- * Prompt stability spectrum: a 1-D strip placing each prompt from volatile (0)
- * to stable (100) by its citation-stability score, coloured by opportunity tier.
- * Gives an at-a-glance read of which prompts' cited sources churn vs. stick —
- * complementing the per-row number in the table.
+ * Prompt stability spectrum: each prompt placed from volatile (0) to stable
+ * (100) by its citation-stability score, coloured by opportunity tier. Built on
+ * recharts so it spans the same width as the opportunity map and shows the
+ * prompt on hover. Dots are spread across a few rows to reduce overlap.
  */
+import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
+import { ChartContainer } from "@workspace/ui/components/chart";
 import { TIER_COLOR } from "@/components/opportunity-map";
 import type { PromptOpportunity } from "@/server/analysis";
 
-const W = 1000;
-const H = 104;
-const PAD_X = 52;
-const MID = 46;
+interface Point {
+	x: number;
+	y: number;
+	id: string;
+	prompt: string;
+	tier: PromptOpportunity["tier"];
+	stabilityScore: number;
+}
 
 export function PromptStabilitySpectrum({ prompts }: { prompts: PromptOpportunity[] }) {
-	const scored = prompts
-		.filter((p): p is PromptOpportunity & { stabilityScore: number } => p.stabilityScore !== null)
-		.sort((a, b) => a.stabilityScore - b.stabilityScore);
+	const scored = prompts.filter((p): p is PromptOpportunity & { stabilityScore: number } => p.stabilityScore !== null);
 
 	if (scored.length === 0) {
 		return (
@@ -25,32 +29,55 @@ export function PromptStabilitySpectrum({ prompts }: { prompts: PromptOpportunit
 		);
 	}
 
-	const x = (score: number) => PAD_X + (score / 100) * (W - PAD_X * 2);
+	const points: Point[] = [...scored]
+		.sort((a, b) => a.stabilityScore - b.stabilityScore)
+		.map((p, i) => ({
+			x: p.stabilityScore,
+			y: i % 5,
+			id: p.promptId,
+			prompt: p.prompt,
+			tier: p.tier,
+			stabilityScore: p.stabilityScore,
+		}));
 
 	return (
-		<svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }} role="img" aria-label="Prompt stability spectrum">
-			<line x1={PAD_X} y1={MID} x2={W - PAD_X} y2={MID} stroke="var(--border)" strokeWidth={2} />
-			{[0, 25, 50, 75, 100].map((t) => (
-				<line key={t} x1={x(t)} y1={MID - 6} x2={x(t)} y2={MID + 6} stroke="var(--border)" strokeWidth={1} />
-			))}
-			{scored.map((p, i) => (
-				<circle
-					key={p.promptId}
-					cx={x(p.stabilityScore)}
-					cy={MID + ((i % 5) - 2) * 7}
-					r={6}
-					fill={TIER_COLOR[p.tier]}
-					fillOpacity={0.8}
-				>
-					<title>{`${p.prompt}\nStability ${p.stabilityScore}/100 · ${p.tier}`}</title>
-				</circle>
-			))}
-			<text x={PAD_X} y={H - 6} fontSize={12} fill="var(--muted-foreground)">
-				Volatile
-			</text>
-			<text x={W - PAD_X} y={H - 6} fontSize={12} fill="var(--muted-foreground)" textAnchor="end">
-				Stable
-			</text>
-		</svg>
+		<ChartContainer config={{}} className="aspect-auto h-[160px] w-full">
+			<ScatterChart margin={{ top: 16, right: 16, bottom: 24, left: 16 }}>
+				<CartesianGrid horizontal={false} strokeDasharray="3 3" />
+				<XAxis
+					type="number"
+					dataKey="x"
+					domain={[0, 100]}
+					ticks={[0, 25, 50, 75, 100]}
+					tickLine={false}
+					tick={{ fontSize: 11 }}
+					tickFormatter={(v: number) => (v === 0 ? "Volatile" : v === 100 ? "Stable" : `${v}`)}
+				/>
+				<YAxis type="number" dataKey="y" domain={[-1, 5]} hide />
+				<ZAxis range={[70, 70]} />
+				<Tooltip
+					cursor={{ strokeDasharray: "3 3" }}
+					content={({ active, payload }) => {
+						if (!active || !payload?.length) return null;
+						const p = payload[0].payload as Point;
+						return (
+							<div className="border-border/50 bg-background grid min-w-[12rem] max-w-[260px] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+								<div className="font-medium line-clamp-3">{p.prompt}</div>
+								<div className="flex items-center gap-2">
+									<div className="shrink-0 rounded-[2px] h-2.5 w-2.5" style={{ background: TIER_COLOR[p.tier] }} />
+									<span className="text-muted-foreground">Stability</span>
+									<span className="ml-auto font-mono tabular-nums">{p.stabilityScore}/100</span>
+								</div>
+							</div>
+						);
+					}}
+				/>
+				<Scatter data={points} fillOpacity={0.8}>
+					{points.map((p) => (
+						<Cell key={p.id} fill={TIER_COLOR[p.tier]} />
+					))}
+				</Scatter>
+			</ScatterChart>
+		</ChartContainer>
 	);
 }

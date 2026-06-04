@@ -139,7 +139,7 @@ function OpportunitiesPage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Citation stability</CardTitle>
+						<CardTitle>Citation Stability</CardTitle>
 						<CardDescription>
 							Where each prompt's cited sources sit between churning daily (volatile) and steady (stable).
 						</CardDescription>
@@ -205,10 +205,10 @@ function OpportunitiesPage() {
 				{noBrandMentions.length > 0 && (
 					<Card>
 						<CardHeader>
-							<CardTitle>No brand mentions</CardTitle>
+							<CardTitle>Few Brand Mentions</CardTitle>
 							<CardDescription>
-								Neither you nor your competitors are mentioned much in these answers, so they aren't
-								brand-recommendation prompts — there's nothing to win here yet.
+								You and your competitors are each named in 10% or fewer of these answers — they read more like
+								informational questions than brand-recommendation queries, so there's little to win until that shifts.
 							</CardDescription>
 						</CardHeader>
 						<CardContent>

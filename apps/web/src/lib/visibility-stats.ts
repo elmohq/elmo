@@ -259,11 +259,11 @@ export interface OpportunityInput {
 }
 
 /**
- * Minimum brand-mention activity for a prompt to count as a brand-recommendation
- * query. If neither the brand nor any competitor is mentioned at least this
- * often, the prompt isn't really about brands — so there's nothing to win.
+ * A prompt counts as a brand-recommendation query only if the brand or some
+ * competitor is mentioned in MORE than this fraction of runs. At or below it
+ * (≤10%), brands barely come up, so there's nothing to win yet.
  */
-export const MIN_BRAND_ACTIVITY = 0.15;
+export const MIN_BRAND_ACTIVITY = 0.1;
 
 /**
  * Opportunity tiers:
@@ -292,7 +292,7 @@ export function computeOpportunity(
 	minBrandActivity = MIN_BRAND_ACTIVITY,
 ): OpportunityResult {
 	const activity = Math.max(input.brandPresence, input.competitorPresence);
-	if (activity < minBrandActivity) return { score: 0, tier: "none" };
+	if (activity <= minBrandActivity) return { score: 0, tier: "none" };
 	if (input.brandPresence >= input.competitorPresence) return { score: 0, tier: "won" };
 	const gap = clamp01(input.competitorPresence - input.brandPresence);
 	const tier: OpportunityTier = gap >= 0.5 ? "high" : gap >= 0.25 ? "medium" : "low";

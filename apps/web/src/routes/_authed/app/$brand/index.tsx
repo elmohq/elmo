@@ -15,9 +15,7 @@ import {
 	IconClock,
 	IconInfoCircle,
 	IconRefresh,
-	IconLink,
 	IconSpeakerphone,
-	IconTarget,
 } from "@tabler/icons-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import PromptWizard from "@/components/prompt-wizard";
@@ -251,7 +249,7 @@ function DashboardPage() {
 					</div>
 					<div className="grid gap-4 lg:grid-cols-4">
 						<Card className="shadow-none flex flex-col">
-							<CardHeader className="pb-2">
+							<CardHeader className="border-b border-dotted pb-2">
 								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 									Current Visibility
 									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
@@ -264,7 +262,7 @@ function DashboardPage() {
 							</CardContent>
 						</Card>
 						<Card className="shadow-none lg:col-span-3 flex flex-col">
-							<CardHeader className="pb-2">
+							<CardHeader className="border-b border-dotted pb-2">
 								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 									Visibility Trends (30d)
 									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
@@ -292,7 +290,7 @@ function DashboardPage() {
 						</div>
 						<div className="grid gap-4 lg:grid-cols-4">
 							<Card className="shadow-none flex flex-col">
-								<CardHeader className="pb-2">
+								<CardHeader className="border-b border-dotted pb-2">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 										Current Share of Voice
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
@@ -303,7 +301,7 @@ function DashboardPage() {
 								</CardContent>
 							</Card>
 							<Card className="shadow-none lg:col-span-3 flex flex-col">
-								<CardHeader className="pb-2">
+								<CardHeader className="border-b border-dotted pb-2">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 										Share of Voice Trends (30d)
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
@@ -440,7 +438,7 @@ function DashboardPage() {
 				<div className="grid gap-4 lg:grid-cols-4">
 					{/* Hero Visibility Score */}
 					<Card className={`shadow-none flex flex-col ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
-						<CardHeader className="pb-2">
+						<CardHeader className="border-b border-dotted pb-2">
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${isLoading ? "text-muted-foreground" : getVisibilityLabelColor(averageVisibility)}`}>
 								Current Visibility
 								<Tooltip>
@@ -465,7 +463,7 @@ function DashboardPage() {
 
 					{/* Visibility Chart */}
 					<Card className="shadow-none lg:col-span-3 flex flex-col">
-						<CardHeader className="pb-2">
+						<CardHeader className="border-b border-dotted pb-2">
 						<CardTitleWithTooltip
 							title="Visibility Trends (30d)"
 							tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
@@ -557,7 +555,7 @@ function DashboardPage() {
 
 				<div className="grid gap-4 lg:grid-cols-4">
 					<Card className={`shadow-none flex flex-col ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}>
-						<CardHeader className="pb-2">
+						<CardHeader className="border-b border-dotted pb-2">
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${sovShare === null ? "text-muted-foreground" : getVisibilityLabelColor(sovShare)}`}>
 								Current Share of Voice
 								<Tooltip>
@@ -581,7 +579,7 @@ function DashboardPage() {
 					</Card>
 
 					<Card className="shadow-none lg:col-span-3 flex flex-col">
-						<CardHeader className="pb-2">
+						<CardHeader className="border-b border-dotted pb-2">
 							<CardTitleWithTooltip
 								title="Share of Voice Trends (30d)"
 								tooltip="Your share of voice can shift as AI models change, as you and your competitors publish, or as the sites AI scans before answering move. Data is smoothed to account for staggered prompt schedules."
@@ -593,20 +591,6 @@ function DashboardPage() {
 					</Card>
 				</div>
 			</section>
-
-			{/* Quick links to the deeper analyses */}
-			<div className="flex flex-wrap justify-center gap-2">
-				<Button asChild variant="outline" size="sm">
-					<Link to="/app/$brand/citations" params={{ brand: brandId }}>
-						<IconLink className="h-4 w-4 mr-1.5" /> Citations
-					</Link>
-				</Button>
-				<Button asChild variant="outline" size="sm">
-					<Link to="/app/$brand/opportunities" params={{ brand: brandId }}>
-						<IconTarget className="h-4 w-4 mr-1.5" /> Opportunities
-					</Link>
-				</Button>
-			</div>
 
 			{/* Section 3: Tracking Stats */}
 			<section className="pt-4">

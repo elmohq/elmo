@@ -193,11 +193,12 @@ describe("computeShareOfVoice", () => {
 });
 
 describe("computeOpportunity", () => {
-	it("is 'none' when neither brand nor competitors are mentioned enough", () => {
+	it("is 'none' when brands are mentioned in 10% of runs or fewer", () => {
 		expect(computeOpportunity({ brandPresence: 0, competitorPresence: 0 }).tier).toBe("none");
-		// 13% brand / 0% competitors is below the activity floor — not really winnable, not "won"
-		expect(computeOpportunity({ brandPresence: 0.13, competitorPresence: 0 }).tier).toBe("none");
-		expect(computeOpportunity({ brandPresence: 0.05, competitorPresence: 0.1 }).tier).toBe("none");
+		expect(computeOpportunity({ brandPresence: 0.08, competitorPresence: 0 }).tier).toBe("none");
+		expect(computeOpportunity({ brandPresence: 0.05, competitorPresence: 0.1 }).tier).toBe("none"); // max == 10% (boundary)
+		// just above the 10% floor → no longer "none"
+		expect(computeOpportunity({ brandPresence: 0.13, competitorPresence: 0 }).tier).toBe("won");
 	});
 
 	it("marks a prompt 'won' only when the brand is active and leads", () => {
