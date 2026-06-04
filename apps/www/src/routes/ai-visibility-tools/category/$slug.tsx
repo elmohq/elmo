@@ -5,6 +5,7 @@ import { Faq } from "@/components/faq";
 import { ToolGrid } from "@/components/tool-list";
 import {
 	DirectoryBackLink,
+	DirectoryElmoBanner,
 	DirectoryHero,
 	DirectorySection,
 	ElmoCta,
@@ -12,6 +13,8 @@ import {
 import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
 import {
 	getCategoryBySlug,
+	getCategoryElmoPitch,
+	getComparisonSlug,
 	toolsInCategory,
 	getCategoryVerdict,
 	getCategoryFaqs,
@@ -71,6 +74,13 @@ function CategoryPage() {
 					eyebrow="Category"
 					title={CATEGORY_HEADINGS[category]}
 					lead={getCategoryVerdict(category, tools)}
+				/>
+				<DirectoryElmoBanner
+					pitch={getCategoryElmoPitch(category)}
+					comparison={{
+						slug: getComparisonSlug(tools[0]),
+						name: tools[0].name,
+					}}
 				/>
 				<DirectorySection title="Tools in this category">
 					<ToolGrid competitors={tools} />
