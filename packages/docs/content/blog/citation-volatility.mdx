@@ -165,7 +165,7 @@ The single biggest predictor of how much a prompt churns is the question itself.
 
 The mechanism is pool size. A question like "Jordan 1 vs Adidas Forum" has an obvious, finite set of relevant pages, so Google AI Mode drew on about 85 distinct domains across the whole six weeks and kept returning to the same ones (volatility 0.56). "Alternatives to Nike for high-performance running" sat on top of 445 distinct domains, a deep, interchangeable pool of best-of roundups and retailer pages, and a different slice surfaced each day (volatility 0.80). The broader the question, the larger the candidate pool, and the more the cited subset rotates.
 
-This is the finding that travels. The absolute numbers shift by category, but the ordering, narrow and branded is stable while broad and open-ended is volatile, holds regardless of the brand. If you are tracking [prompt-level visibility](/blog/ai-prompt-tracking), expect your broadest, highest-intent prompts to be the noisiest.
+This is the finding that travels. Absolute scores shift by category, but the ordering holds regardless of the brand: narrow, branded questions stay stable, while broad, open-ended ones churn. If you are tracking [prompt-level visibility](/blog/ai-prompt-tracking), expect your broadest, highest-intent prompts to be the noisiest.
 
 ## A churning list, a stable core
 
@@ -207,7 +207,7 @@ To separate the two, weight each domain by how often it is actually cited, then 
 
 This chart holds the most useful finding in the whole study, and it is a little counterintuitive. Google AI Mode has the *higher* raw set volatility (0.69 vs ChatGPT's 0.62) because it casts a wider net, citing about 24 domains per day to ChatGPT's 17. But its volume-weighted volatility is *lower* (0.40 vs 0.52). The reason is concentration: on Google AI Mode, the domains cited on at least 80% of days accounted for about 56% of all citations. On ChatGPT, that stable core captured only about 23%.
 
-So the two engines play the role differently. Google AI Mode keeps a fixed cast of headline sources and rotates the supporting extras. ChatGPT spreads its citations more evenly across a smaller cast and rotates even the leads. For anyone doing [answer engine optimization](/blog/answer-engine-optimization), that distinction sets the strategy: breaking into Google AI Mode's core is hard but durable, while ChatGPT's lead roles turn over often, so there is more room to break in and more risk of dropping out.
+So the two engines work differently. Google AI Mode keeps a fixed cast of headline sources and rotates the supporting extras. ChatGPT spreads its citations more evenly across a smaller cast and rotates even the leads. For anyone doing [answer engine optimization](/blog/answer-engine-optimization), that distinction sets the strategy: breaking into Google AI Mode's core is hard but durable, while ChatGPT's lead roles turn over often, so there is more room to break in and more risk of dropping out.
 
 The practical takeaway is to never trust the set-membership number alone. A prompt that looks wildly volatile may have a rock-solid core with a noisy tail. Weight by citation volume before you read anything into the score.
 
@@ -264,6 +264,19 @@ That changes what you optimize for. Where an engine does not cite, there is no c
 
 One caution this surfaces: a score built on six citing days is noise, not signal. The 6-day prompts can post extreme volatility numbers purely because there is so little data. Gate every score on a minimum number of observations, around 20 day-to-day comparisons, before you trust it.
 
+## The two engines, side by side
+
+Two surfaces, two different games. The whole contrast in one view:
+
+| | ChatGPT | Google AI Mode |
+|---|---|---|
+| Domains cited per day | ~17 | ~24 |
+| Raw set volatility | 0.62 | 0.69 |
+| Volume-weighted volatility | 0.52 | 0.40 |
+| Citations from a stable core | ~23% | ~56% |
+| When it grounds (searches and cites) | Mainly commercial intent | Almost always |
+| What that means for you | Top sources rotate, so it is easier to break in and easier to fall out | A stable core is hard to crack, but durable once you are in |
+
 ## Even Nike does not own the answer to its own category
 
 Volatility describes how the cited sources move. A related question is who gets *mentioned* in the answer, and the data here is humbling even for a giant. Across these 28 prompts, AI almost never answered with Nike alone. It named a long roster of competitors, constantly.
@@ -291,7 +304,7 @@ Volatility describes how the cited sources move. A related question is who gets 
 <figcaption>Share of all Nike prompt runs in which each competitor was mentioned, across ChatGPT and Google AI Mode. The answer to "best running shoes" is rarely one brand. This is the brand's AI share of voice.</figcaption>
 </figure>
 
-Under Armour turned up in 81% of answers, Adidas in 59%, New Balance in 57%, with ASICS, Hoka, Brooks, and Saucony close behind. Even for the most recognizable name in athletic footwear, AI treats the category as a field, not a default. For a smaller brand the lesson is encouraging: the answer is a roster, and rosters have room. Tracking who shares your answers, your AI [share of voice](/blog/ai-share-of-voice), is as important as tracking your own mentions. Interestingly, the per-engine split was nearly identical here (Adidas 57% on ChatGPT vs 60% on Google), so for a category of comparably sized brands, neither engine favored anyone, a reminder that surface-level differences depend on the mix of brands involved.
+Under Armour turned up in 81% of answers, Adidas in 59%, New Balance in 57%, with ASICS, Hoka, Brooks, and Saucony close behind. Even for the most recognizable name in athletic footwear, AI treats the category as a field, not a default. For a smaller brand the lesson is encouraging: the answer is a roster, and rosters have room. Tracking who shares your answers, your AI [share of voice](/blog/ai-share-of-voice), is as important as tracking your own mentions. The per-engine split was nearly identical here, with Adidas in 57% of ChatGPT answers and 60% of Google's, so when rivals are all comparably sized brands, neither engine favors anyone in particular.
 
 ## What this means for your AEO strategy
 
