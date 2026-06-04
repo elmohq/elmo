@@ -20,7 +20,7 @@ import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
 import { ColHead } from "@/components/col-head";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
-import { ShareOfVoiceTrend } from "@/components/share-of-voice-trend";
+import { TrendChart } from "@/components/trend-chart";
 
 export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 	head: ({ matches, match }) => {
@@ -120,7 +120,12 @@ function ShareOfVoicePage() {
 							<CardTitle>Share of Voice Trends</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<ShareOfVoiceTrend data={data.shareTimeSeries} />
+							<TrendChart
+								data={data.shareTimeSeries.map((p) => ({ date: p.date, value: p.share }))}
+								label="Share of Voice"
+								color="#2563eb"
+								className="aspect-auto h-[180px] w-full"
+							/>
 						</CardContent>
 					</Card>
 				</div>

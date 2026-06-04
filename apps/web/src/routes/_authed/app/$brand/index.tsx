@@ -4,7 +4,7 @@
  * Shows visibility charts, citation trends, and stats.
  * Displays onboarding wizard if brand is not yet onboarded.
  */
-import { useMemo, useEffect } from "react";
+import { useEffect } from "react";
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
@@ -17,73 +17,17 @@ import {
 	IconRefresh,
 	IconSpeakerphone,
 } from "@tabler/icons-react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import PromptWizard from "@/components/prompt-wizard";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
-import { ShareOfVoiceTrend } from "@/components/share-of-voice-trend";
-import type { VisibilityTimeSeriesPoint } from "@/server/dashboard";
+import { TrendChart } from "@/components/trend-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import {
-	type ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-} from "@workspace/ui/components/chart";
 import type { ClientConfig } from "@workspace/config/types";
 import { setPersonProperties } from "@/lib/posthog";
-
-// Extended data point types for dashboard charts
-interface ExtendedVisibilityPoint extends VisibilityTimeSeriesPoint {
-	_extended?: boolean;
-	overallReal?: number | null;
-}
-
-/**
- * Extends visibility time series data to chart edges using straight lines.
- */
-function extendVisibilityData(data: VisibilityTimeSeriesPoint[]): ExtendedVisibilityPoint[] {
-	if (data.length === 0) return [];
-
-	const extendedData: ExtendedVisibilityPoint[] = data.map((point) => ({
-		...point,
-		overallReal: point.overall,
-	}));
-
-	let firstValidIndex = -1;
-	let lastValidIndex = -1;
-	let firstValue: number | null = null;
-	let lastValue: number | null = null;
-
-	for (let i = 0; i < extendedData.length; i++) {
-		if (extendedData[i].overall !== null) {
-			if (firstValidIndex === -1) {
-				firstValidIndex = i;
-				firstValue = extendedData[i].overall;
-			}
-			lastValidIndex = i;
-			lastValue = extendedData[i].overall;
-		}
-	}
-
-	if (firstValidIndex !== -1 && lastValidIndex !== -1) {
-		for (let i = 0; i < firstValidIndex; i++) {
-			extendedData[i].overall = firstValue;
-			extendedData[i].overallReal = null;
-			extendedData[i]._extended = true;
-		}
-		for (let i = lastValidIndex + 1; i < extendedData.length; i++) {
-			extendedData[i].overall = lastValue;
-			extendedData[i].overallReal = null;
-			extendedData[i]._extended = true;
-		}
-	}
-
-	return extendedData;
-}
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -226,16 +170,11 @@ function DashboardPage() {
 
 	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
 
-	const extendedVisibilityData = useMemo(
-		() => extendVisibilityData(visibilityTimeSeries),
-		[visibilityTimeSeries],
-	);
-
 	if (isLoadingBrand) {
 		return (
-			<div className="flex flex-1 flex-col gap-4 p-4 max-w-[1600px] mx-auto w-full">
+			<div className="flex flex-1 flex-col gap-3 p-4 max-w-[1600px] mx-auto w-full">
 				{/* AI Visibility section skeleton */}
-				<section className="space-y-3">
+				<section className="space-y-2">
 					<div className="flex items-center justify-between">
 						<h2 className="text-lg font-semibold flex items-center gap-2">
 							<IconEye className="h-5 w-5 text-muted-foreground" />
@@ -248,27 +187,27 @@ function DashboardPage() {
 						</Button>
 					</div>
 					<div className="grid gap-4 lg:grid-cols-4">
-						<Card className="shadow-none flex flex-col">
-							<CardHeader className="border-b border-dotted pb-2">
+						<Card className="shadow-none flex flex-col gap-3 py-4">
+							<CardHeader className="border-b border-dotted pb-1">
 								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 									Current Visibility
 									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 								</CardTitle>
 							</CardHeader>
 							<CardContent className="flex-1 flex flex-col justify-center gap-4">
-								<div style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
-									<Skeleton className="h-20 w-36" />
+								<div style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}>
+									<Skeleton className="h-14 w-32" />
 								</div>
 							</CardContent>
 						</Card>
-						<Card className="shadow-none lg:col-span-3 flex flex-col">
-							<CardHeader className="border-b border-dotted pb-2">
+						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+							<CardHeader className="border-b border-dotted pb-1">
 								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 									Visibility Trends (30d)
 									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
 								</CardTitle>
 							</CardHeader>
-							<CardContent className="flex-1 min-h-[120px]">
+							<CardContent className="flex-1 min-h-[100px]">
 								<Skeleton className="h-full w-full" />
 							</CardContent>
 						</Card>
@@ -276,49 +215,48 @@ function DashboardPage() {
 				</section>
 
 				{/* Share of Voice section skeleton */}
-					<section className="space-y-3">
-						<div className="flex items-center justify-between">
-							<h2 className="text-lg font-semibold flex items-center gap-2">
-								<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-								Share of Voice
-							</h2>
-							<Button asChild variant="ghost" size="sm" className="h-8">
-								<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-									View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-								</Link>
-							</Button>
-						</div>
-						<div className="grid gap-4 lg:grid-cols-4">
-							<Card className="shadow-none flex flex-col">
-								<CardHeader className="border-b border-dotted pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-										Current Share of Voice
-										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="flex-1 flex flex-col justify-center gap-4">
-									<div style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}>
-									<Skeleton className="h-20 w-36" />
+				<section className="space-y-2">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-semibold flex items-center gap-2">
+							<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
+							Share of Voice
+						</h2>
+						<Button asChild variant="ghost" size="sm" className="h-8">
+							<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
+						</Button>
+					</div>
+					<div className="grid gap-4 lg:grid-cols-4">
+						<Card className="shadow-none flex flex-col gap-3 py-4">
+							<CardHeader className="border-b border-dotted pb-1">
+								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+									Current Share of Voice
+									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="flex-1 flex flex-col justify-center gap-4">
+								<div style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}>
+									<Skeleton className="h-14 w-32" />
 								</div>
-								</CardContent>
-							</Card>
-							<Card className="shadow-none lg:col-span-3 flex flex-col">
-								<CardHeader className="border-b border-dotted pb-2">
-									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-										Share of Voice Trends (30d)
-										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="flex-1 min-h-[120px]">
-									<Skeleton className="h-full w-full" />
-								</CardContent>
-							</Card>
-						</div>
-					</section>
-
+							</CardContent>
+						</Card>
+						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+							<CardHeader className="border-b border-dotted pb-1">
+								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+									Share of Voice Trends (30d)
+									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="flex-1 min-h-[100px]">
+								<Skeleton className="h-full w-full" />
+							</CardContent>
+						</Card>
+					</div>
+				</section>
 
 				{/* Footer stats skeleton */}
-				<section className="pt-4">
+				<section className="pt-2">
 					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
 						<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
 						<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
@@ -412,19 +350,11 @@ function DashboardPage() {
 		);
 	}
 
-	const visibilityChartConfig: ChartConfig = {
-		overall: {
-			label: "AI Visibility (7d avg)",
-			color: "#10b981",
-		},
-	};
-
-
 	return (
-		<div className="flex flex-1 flex-col gap-4 p-4 max-w-[1600px] mx-auto w-full">
+		<div className="flex flex-1 flex-col gap-3 p-4 max-w-[1600px] mx-auto w-full">
 
 			{/* Section 1: AI Visibility */}
-			<section className="space-y-3">
+			<section className="space-y-2">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-semibold flex items-center gap-2">
 						<IconEye className="h-5 w-5 text-muted-foreground" />
@@ -439,8 +369,8 @@ function DashboardPage() {
 
 				<div className="grid gap-4 lg:grid-cols-4">
 					{/* Hero Visibility Score */}
-					<Card className={`shadow-none flex flex-col ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
-						<CardHeader className="border-b border-dotted pb-2">
+					<Card className={`shadow-none flex flex-col gap-3 py-4 ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
+						<CardHeader className={`border-b border-dotted pb-1 ${isLoading ? "" : getVisibilityBorderColor(averageVisibility)}`}>
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${isLoading ? "text-muted-foreground" : getVisibilityLabelColor(averageVisibility)}`}>
 								Current Visibility
 								<Tooltip>
@@ -456,85 +386,30 @@ function DashboardPage() {
 						<CardContent className="flex-1 flex flex-col justify-center gap-4">
 							<div
 								className={`font-bold tracking-tight ${isLoading ? "text-muted-foreground" : getVisibilityTextColor(averageVisibility)}`}
-								style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
+								style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}
 							>
-								{isLoading ? <Skeleton className="h-20 w-36" /> : `${averageVisibility}%`}
+								{isLoading ? <Skeleton className="h-14 w-32" /> : `${averageVisibility}%`}
 							</div>
 						</CardContent>
 					</Card>
 
 					{/* Visibility Chart */}
-					<Card className="shadow-none lg:col-span-3 flex flex-col">
-						<CardHeader className="border-b border-dotted pb-2">
-						<CardTitleWithTooltip
-							title="Visibility Trends (30d)"
-							tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
-						/>
+					<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+						<CardHeader className="border-b border-dotted pb-1">
+							<CardTitleWithTooltip
+								title="Visibility Trends (30d)"
+								tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
+							/>
 						</CardHeader>
-						<CardContent className="flex-1 min-h-[120px]">
+						<CardContent className="flex-1 min-h-[100px]">
 							{isLoading ? (
 								<Skeleton className="h-full w-full" />
 							) : (
-								<ChartContainer config={visibilityChartConfig} className="aspect-auto h-full w-full">
-									<AreaChart data={extendedVisibilityData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-										<CartesianGrid vertical={false} strokeDasharray="3 3" />
-										<XAxis
-											dataKey="date"
-											tickLine={false}
-											axisLine={false}
-											tickMargin={8}
-											minTickGap={50}
-											tick={{ fontSize: 11 }}
-											tickFormatter={(value) => {
-												const [year, month, day] = value.split("-").map(Number);
-												const date = new Date(year, month - 1, day);
-												return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-											}}
-										/>
-										<YAxis
-											domain={[0, "auto"]}
-											tickLine={false}
-											axisLine={false}
-											tickMargin={8}
-											tickCount={4}
-											tick={{ fontSize: 11 }}
-											tickFormatter={(value) => `${value}%`}
-										/>
-										<ChartTooltip
-											isAnimationActive={false}
-											cursor={false}
-											content={({ active, payload, label }) => {
-												if (!active || !payload?.length) return null;
-												const dataPoint = payload[0]?.payload as ExtendedVisibilityPoint;
-												if (dataPoint?._extended) return null;
-
-												const [year, month, day] = (label as string).split("-").map(Number);
-												const date = new Date(year, month - 1, day);
-												const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-
-												return (
-													<div className="border-border/50 bg-background grid min-w-[12rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
-														<div className="font-medium">{formattedDate}</div>
-														<div className="flex items-center gap-2">
-															<div className="shrink-0 rounded-[2px] h-2.5 w-2.5 bg-emerald-500" />
-															<span className="text-muted-foreground">AI Visibility (7d avg)</span>
-															<span className="ml-auto font-mono tabular-nums">{dataPoint?.overall}%</span>
-														</div>
-													</div>
-												);
-											}}
-										/>
-										<Area
-											dataKey="overall"
-											type="monotone"
-											stroke="#10b981"
-											strokeWidth={2}
-											fill="#10b981"
-											fillOpacity={0.18}
-											connectNulls={true}
-										/>
-									</AreaChart>
-								</ChartContainer>
+								<TrendChart
+									data={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
+									label="AI Visibility (7d avg)"
+									color="#10b981"
+								/>
 							)}
 						</CardContent>
 					</Card>
@@ -542,7 +417,7 @@ function DashboardPage() {
 			</section>
 
 			{/* Section: Share of Voice */}
-			<section className="space-y-3">
+			<section className="space-y-2">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-semibold flex items-center gap-2">
 						<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
@@ -556,8 +431,8 @@ function DashboardPage() {
 				</div>
 
 				<div className="grid gap-4 lg:grid-cols-4">
-					<Card className={`shadow-none flex flex-col ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}>
-						<CardHeader className="border-b border-dotted pb-2">
+					<Card className={`shadow-none flex flex-col gap-3 py-4 ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}>
+						<CardHeader className={`border-b border-dotted pb-1 ${sovShare === null ? "" : getVisibilityBorderColor(sovShare)}`}>
 							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${sovShare === null ? "text-muted-foreground" : getVisibilityLabelColor(sovShare)}`}>
 								Current Share of Voice
 								<Tooltip>
@@ -573,25 +448,29 @@ function DashboardPage() {
 						<CardContent className="flex-1 flex flex-col justify-center gap-4">
 							<div
 								className={`font-bold tracking-tight ${sovShare === null ? "text-muted-foreground" : getVisibilityTextColor(sovShare)}`}
-								style={{ fontSize: "clamp(2.5rem, 6vw, 6rem)" }}
+								style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}
 							>
-								{isLoadingSov ? <Skeleton className="h-20 w-36" /> : sovShare === null ? "—" : `${sovShare}%`}
+								{isLoadingSov ? <Skeleton className="h-14 w-32" /> : sovShare === null ? "—" : `${sovShare}%`}
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card className="shadow-none lg:col-span-3 flex flex-col">
-						<CardHeader className="border-b border-dotted pb-2">
+					<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+						<CardHeader className="border-b border-dotted pb-1">
 							<CardTitleWithTooltip
 								title="Share of Voice Trends (30d)"
 								tooltip="Your share of voice can shift as AI models change, as you and your competitors publish, or as the sites AI scans before answering move. Data is smoothed to account for staggered prompt schedules."
 							/>
 						</CardHeader>
-						<CardContent className="flex-1 min-h-[120px]">
+						<CardContent className="flex-1 min-h-[100px]">
 							{isLoadingSov ? (
 								<Skeleton className="h-full w-full" />
 							) : (
-								<ShareOfVoiceTrend data={sovData?.shareTimeSeries ?? []} className="aspect-auto h-full w-full" />
+								<TrendChart
+									data={(sovData?.shareTimeSeries ?? []).map((p) => ({ date: p.date, value: p.share }))}
+									label="Share of Voice"
+									color="#2563eb"
+								/>
 							)}
 						</CardContent>
 					</Card>
@@ -599,7 +478,7 @@ function DashboardPage() {
 			</section>
 
 			{/* Section 3: Tracking Stats */}
-			<section className="pt-4">
+			<section className="pt-2">
 				<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
 					{isLoadingSummary ? (
 						<>

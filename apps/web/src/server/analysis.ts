@@ -23,7 +23,7 @@ import {
 	getPerPromptDailyMentions,
 	type PerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
-import { resolveFilteredPrompts } from "@/server/visibility";
+import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 import { isBrandedPrompt } from "@/lib/prompt-tags";
 import { generateDateRange, type LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
