@@ -57,7 +57,7 @@ function Pill({ className, children }: { className: string; children: React.Reac
 
 const TIPS = {
 	opportunity:
-		"How big the opening is — the gap by which competitors out-mention you. 'Won' means you're mentioned at least as often as competitors.",
+		"How big the opening is — the gap by which competitors out-mention you. 'Won' means you're mentioned about as often as or more than competitors (a hair-thin gap counts as held).",
 	you: "How often AI mentions your brand in answers to this prompt.",
 	competitors: "How often AI mentions any tracked competitor.",
 	stability:
@@ -155,7 +155,7 @@ function OpportunitiesPage() {
 					<CardHeader>
 						<CardTitle>Opportunities</CardTitle>
 						<CardDescription>
-							Ranked by the competitor-vs-you gap. "Won" prompts are ones you already lead.
+							Ranked by the competitor-vs-you gap. "Won" prompts are ones you already hold.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

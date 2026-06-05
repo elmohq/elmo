@@ -201,10 +201,22 @@ describe("computeOpportunity", () => {
 		expect(computeOpportunity({ brandPresence: 0.13, competitorPresence: 0 }).tier).toBe("won");
 	});
 
-	it("marks a prompt 'won' only when the brand is active and leads", () => {
+	it("marks a prompt 'won' when the brand is active and even or ahead", () => {
 		expect(computeOpportunity({ brandPresence: 0.6, competitorPresence: 0.1 }).tier).toBe("won");
 		expect(computeOpportunity({ brandPresence: 0.9, competitorPresence: 0.9 }).tier).toBe("won"); // active tie
 		expect(computeOpportunity({ brandPresence: 0.6, competitorPresence: 0.1 }).score).toBe(0);
+	});
+
+	it("treats a hair-thin competitor lead as 'won' (held), not a low opportunity", () => {
+		// competitors out-mention you by only 3pp → within the noise floor → held, score 0
+		expect(computeOpportunity({ brandPresence: 0.1, competitorPresence: 0.13 })).toEqual({ score: 0, tier: "won" });
+		// a clear 7pp lead clears the floor → a (low) opportunity
+		expect(computeOpportunity({ brandPresence: 0.1, competitorPresence: 0.17 }).tier).toBe("low");
+	});
+
+	it("respects a custom minimum gap", () => {
+		expect(computeOpportunity({ brandPresence: 0.1, competitorPresence: 0.13 }, undefined, 0).tier).toBe("low");
+		expect(computeOpportunity({ brandPresence: 0.1, competitorPresence: 0.13 }, undefined, 0.05).tier).toBe("won");
 	});
 
 	it("tiers the competitor-vs-you gap when competitors lead", () => {

@@ -41,16 +41,19 @@ function getVisibilityTextColor(value: number): string {
 	return "text-rose-700 dark:text-rose-400";
 }
 
-function getVisibilityLabelColor(value: number): string {
-	if (value > 75) return "text-emerald-600 dark:text-emerald-500";
-	if (value > 45) return "text-amber-600 dark:text-amber-500";
-	return "text-rose-600 dark:text-rose-500";
-}
-
 function getVisibilityBorderColor(value: number): string {
 	if (value > 75) return "border-emerald-200 dark:border-emerald-800";
 	if (value > 45) return "border-amber-200 dark:border-amber-800";
 	return "border-rose-200 dark:border-rose-800";
+}
+
+/** Most recent non-null value in a daily series — matches the right end of the trend line. */
+function lastValue<T>(series: T[], key: keyof T): number | null {
+	for (let i = series.length - 1; i >= 0; i--) {
+		const v = series[i]?.[key];
+		if (typeof v === "number") return v;
+	}
+	return null;
 }
 
 function formatRelativeTime(dateString: string | null): string {
@@ -151,12 +154,25 @@ function CardTitleWithTooltip({
 	);
 }
 
+/** The big "current" stat that fills a card — the latest point of its trend, colour-coded by value. */
+function HeroStat({ value, loading }: { value: number | null; loading: boolean }) {
+	return (
+		<CardContent className="flex-1 flex items-center justify-center">
+			<div
+				className={`font-bold tracking-tight ${value === null ? "text-muted-foreground" : getVisibilityTextColor(value)}`}
+				style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}
+			>
+				{loading ? <Skeleton className="h-16 w-32" /> : value === null ? "—" : `${value}%`}
+			</div>
+		</CardContent>
+	);
+}
+
 function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
 	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
-	const sovShare = sovData?.brandShare != null ? Math.round(sovData.brandShare * 100) : null;
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
@@ -170,100 +186,87 @@ function DashboardPage() {
 
 	const visibilityTimeSeries = dashboardSummary?.visibilityTimeSeries || [];
 
+	// "Current" = the latest plotted point of each trend, so the hero number always
+	// matches the right end of the chart beside it (rather than the whole-window average).
+	const currentVisibility = lastValue(visibilityTimeSeries, "overall");
+	const sovShare = lastValue(sovData?.shareTimeSeries ?? [], "share");
+
 	if (isLoadingBrand) {
 		return (
-			<div className="flex flex-1 flex-col gap-3 p-4 max-w-[1600px] mx-auto w-full">
-				{/* AI Visibility section skeleton */}
-				<section className="space-y-2 mt-auto">
-					<div className="flex items-center justify-between">
-						<h2 className="text-lg font-semibold flex items-center gap-2">
-							<IconEye className="h-5 w-5 text-muted-foreground" />
-							AI Visibility
-						</h2>
-						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
-						</Button>
-					</div>
-					<div className="grid gap-4 lg:grid-cols-4">
-						<Card className="shadow-none flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-1">
-								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-									Current Visibility
-									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 flex flex-col justify-center gap-4">
-								<div style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}>
-									<Skeleton className="h-14 w-32" />
-								</div>
-							</CardContent>
-						</Card>
-						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-1">
-								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-									Visibility Trends (30d)
-									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 min-h-[100px]">
-								<Skeleton className="h-full w-full" />
-							</CardContent>
-						</Card>
-					</div>
-				</section>
+			<div className="flex flex-1 flex-col">
+				<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
+					{/* AI Visibility section skeleton */}
+					<section className="space-y-2">
+						<div className="flex items-center justify-between">
+							<h2 className="text-lg font-semibold flex items-center gap-2">
+								<IconEye className="h-5 w-5 text-muted-foreground" />
+								AI Visibility
+							</h2>
+							<Button asChild variant="ghost" size="sm" className="h-8">
+								<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
+									View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+								</Link>
+							</Button>
+						</div>
+						<div className="grid gap-4 lg:grid-cols-4">
+							<Card className="shadow-none flex flex-col gap-3 py-4">
+								<HeroStat value={null} loading />
+							</Card>
+							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+								<CardHeader className="border-b border-dotted pb-1">
+									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+										Visibility Trends (30d)
+										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="flex-1 min-h-[100px]">
+									<Skeleton className="h-full w-full" />
+								</CardContent>
+							</Card>
+						</div>
+					</section>
 
-				{/* Share of Voice section skeleton */}
-				<section className="space-y-2">
-					<div className="flex items-center justify-between">
-						<h2 className="text-lg font-semibold flex items-center gap-2">
-							<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-							Share of Voice
-						</h2>
-						<Button asChild variant="ghost" size="sm" className="h-8">
-							<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-							</Link>
-						</Button>
-					</div>
-					<div className="grid gap-4 lg:grid-cols-4">
-						<Card className="shadow-none flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-1">
-								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-									Current Share of Voice
-									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 flex flex-col justify-center gap-4">
-								<div style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}>
-									<Skeleton className="h-14 w-32" />
-								</div>
-							</CardContent>
-						</Card>
-						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-1">
-								<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-									Share of Voice Trends (30d)
-									<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 min-h-[100px]">
-								<Skeleton className="h-full w-full" />
-							</CardContent>
-						</Card>
-					</div>
-				</section>
+					{/* Share of Voice section skeleton */}
+					<section className="space-y-2">
+						<div className="flex items-center justify-between">
+							<h2 className="text-lg font-semibold flex items-center gap-2">
+								<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
+								Share of Voice
+							</h2>
+							<Button asChild variant="ghost" size="sm" className="h-8">
+								<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+									View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+								</Link>
+							</Button>
+						</div>
+						<div className="grid gap-4 lg:grid-cols-4">
+							<Card className="shadow-none flex flex-col gap-3 py-4">
+								<HeroStat value={null} loading />
+							</Card>
+							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+								<CardHeader className="border-b border-dotted pb-1">
+									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
+										Share of Voice Trends (30d)
+										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="flex-1 min-h-[100px]">
+									<Skeleton className="h-full w-full" />
+								</CardContent>
+							</Card>
+						</div>
+					</section>
 
-				{/* Footer stats skeleton */}
-				<section className="pt-2 mb-auto">
-					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-						<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
-						<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
-						<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
-						<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
-					</div>
-				</section>
+					{/* Footer stats skeleton */}
+					<section className="pt-2">
+						<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+							<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
+							<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
+							<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+							<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+						</div>
+					</section>
+				</div>
 			</div>
 		);
 	}
@@ -295,7 +298,6 @@ function DashboardPage() {
 	// Get metrics from optimized summary
 	const totalRuns = dashboardSummary?.totalRuns || 0;
 	const totalPrompts = dashboardSummary?.totalPrompts || 0;
-	const averageVisibility = dashboardSummary?.averageVisibility || 0;
 	const nonBrandedVisibility = dashboardSummary?.nonBrandedVisibility || 0;
 	const lastUpdatedAt = dashboardSummary?.lastUpdatedAt || null;
 
@@ -351,175 +353,137 @@ function DashboardPage() {
 	}
 
 	return (
-		<div className="flex flex-1 flex-col gap-3 p-4 max-w-[1600px] mx-auto w-full">
+		<div className="flex flex-1 flex-col">
+			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
 
-			{/* Section 1: AI Visibility */}
-			<section className="space-y-2 mt-auto">
-				<div className="flex items-center justify-between">
-					<h2 className="text-lg font-semibold flex items-center gap-2">
-						<IconEye className="h-5 w-5 text-muted-foreground" />
-						AI Visibility
-					</h2>
-					<Button asChild variant="ghost" size="sm" className="h-8">
-						<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
-							View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
-					</Button>
-				</div>
+				{/* Section 1: AI Visibility */}
+				<section className="space-y-2">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-semibold flex items-center gap-2">
+							<IconEye className="h-5 w-5 text-muted-foreground" />
+							AI Visibility
+						</h2>
+						<Button asChild variant="ghost" size="sm" className="h-8">
+							<Link to="/app/$brand/visibility" params={{ brand: brandId }}>
+								View Visibility <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
+						</Button>
+					</div>
 
-				<div className="grid gap-4 lg:grid-cols-4">
-					{/* Hero Visibility Score */}
-					<Card className={`shadow-none flex flex-col gap-3 py-4 ${isLoading ? "" : `${getVisibilityBgColor(averageVisibility)} ${getVisibilityBorderColor(averageVisibility)}`}`}>
-						<CardHeader className={`border-b border-dotted pb-1 ${isLoading ? "" : getVisibilityBorderColor(averageVisibility)}`}>
-							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${isLoading ? "text-muted-foreground" : getVisibilityLabelColor(averageVisibility)}`}>
-								Current Visibility
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3.5 w-3.5 cursor-help opacity-70" />
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs text-sm font-normal">
-										The percentage of AI responses to your prompts where your brand is mentioned. For prompts that do not contain your brand, the AI visibility is {nonBrandedVisibility}%.
-									</TooltipContent>
-								</Tooltip>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex-1 flex flex-col justify-center gap-4">
-							<div
-								className={`font-bold tracking-tight ${isLoading ? "text-muted-foreground" : getVisibilityTextColor(averageVisibility)}`}
-								style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}
-							>
-								{isLoading ? <Skeleton className="h-14 w-32" /> : `${averageVisibility}%`}
-							</div>
-						</CardContent>
-					</Card>
+					<div className="grid gap-4 lg:grid-cols-4">
+						{/* Hero Visibility Score */}
+						<Card className={`shadow-none flex flex-col gap-3 py-4 ${currentVisibility === null ? "" : `${getVisibilityBgColor(currentVisibility)} ${getVisibilityBorderColor(currentVisibility)}`}`}>
+							<HeroStat value={currentVisibility} loading={isLoading} />
+						</Card>
 
-					{/* Visibility Chart */}
-					<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-						<CardHeader className="border-b border-dotted pb-1">
-							<CardTitleWithTooltip
-								title="Visibility Trends (30d)"
-								tooltip="AI visibility can change based on underlying modifications to AI models themselves, the prompts you track, or the websites AI scans before generating responses. Data is smoothed to account for staggered prompt schedules."
-							/>
-						</CardHeader>
-						<CardContent className="flex-1 min-h-[100px]">
-							{isLoading ? (
-								<Skeleton className="h-full w-full" />
-							) : (
-								<TrendChart
-									data={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
-									label="AI Visibility (7d avg)"
-									color="#10b981"
+						{/* Visibility Chart */}
+						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+							<CardHeader className="border-b border-dotted pb-1">
+								<CardTitleWithTooltip
+									title="Visibility Trends (30d)"
+									tooltip={`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`}
 								/>
-							)}
-						</CardContent>
-					</Card>
-				</div>
-			</section>
+							</CardHeader>
+							<CardContent className="flex-1 min-h-[100px]">
+								{isLoading ? (
+									<Skeleton className="h-full w-full" />
+								) : (
+									<TrendChart
+										data={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
+										label="AI Visibility (7d avg)"
+										color="#10b981"
+									/>
+								)}
+							</CardContent>
+						</Card>
+					</div>
+				</section>
 
-			{/* Section: Share of Voice */}
-			<section className="space-y-2">
-				<div className="flex items-center justify-between">
-					<h2 className="text-lg font-semibold flex items-center gap-2">
-						<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
-						Share of Voice
-					</h2>
-					<Button asChild variant="ghost" size="sm" className="h-8">
-						<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
-							View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
-						</Link>
-					</Button>
-				</div>
+				{/* Section: Share of Voice */}
+				<section className="space-y-2">
+					<div className="flex items-center justify-between">
+						<h2 className="text-lg font-semibold flex items-center gap-2">
+							<IconSpeakerphone className="h-5 w-5 text-muted-foreground" />
+							Share of Voice
+						</h2>
+						<Button asChild variant="ghost" size="sm" className="h-8">
+							<Link to="/app/$brand/share-of-voice" params={{ brand: brandId }}>
+								View Share of Voice <IconArrowRight className="h-4 w-4 ml-1" />
+							</Link>
+						</Button>
+					</div>
 
-				<div className="grid gap-4 lg:grid-cols-4">
-					<Card className={`shadow-none flex flex-col gap-3 py-4 ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}>
-						<CardHeader className={`border-b border-dotted pb-1 ${sovShare === null ? "" : getVisibilityBorderColor(sovShare)}`}>
-							<CardTitle className={`text-sm font-medium flex items-center gap-1.5 ${sovShare === null ? "text-muted-foreground" : getVisibilityLabelColor(sovShare)}`}>
-								Current Share of Voice
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3.5 w-3.5 cursor-help opacity-70" />
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs text-sm font-normal">
-										Your brand's share of all brand and competitor mentions across the AI answers to your prompts.
-									</TooltipContent>
-								</Tooltip>
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="flex-1 flex flex-col justify-center gap-4">
-							<div
-								className={`font-bold tracking-tight ${sovShare === null ? "text-muted-foreground" : getVisibilityTextColor(sovShare)}`}
-								style={{ fontSize: "clamp(2rem, 4.5vw, 3.75rem)" }}
-							>
-								{isLoadingSov ? <Skeleton className="h-14 w-32" /> : sovShare === null ? "—" : `${sovShare}%`}
-							</div>
-						</CardContent>
-					</Card>
+					<div className="grid gap-4 lg:grid-cols-4">
+						<Card className={`shadow-none flex flex-col gap-3 py-4 ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}>
+							<HeroStat value={sovShare} loading={isLoadingSov} />
+						</Card>
 
-					<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-						<CardHeader className="border-b border-dotted pb-1">
-							<CardTitleWithTooltip
-								title="Share of Voice Trends (30d)"
-								tooltip="Your share of voice can shift as AI models change, as you and your competitors publish, or as the sites AI scans before answering move. Data is smoothed to account for staggered prompt schedules."
-							/>
-						</CardHeader>
-						<CardContent className="flex-1 min-h-[100px]">
-							{isLoadingSov ? (
-								<Skeleton className="h-full w-full" />
-							) : (
-								<TrendChart
-									data={(sovData?.shareTimeSeries ?? []).map((p) => ({ date: p.date, value: p.share }))}
-									label="Share of Voice"
-									color="#2563eb"
+						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
+							<CardHeader className="border-b border-dotted pb-1">
+								<CardTitleWithTooltip
+									title="Share of Voice Trends (30d)"
+									tooltip="Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules."
 								/>
-							)}
-						</CardContent>
-					</Card>
-				</div>
-			</section>
+							</CardHeader>
+							<CardContent className="flex-1 min-h-[100px]">
+								{isLoadingSov ? (
+									<Skeleton className="h-full w-full" />
+								) : (
+									<TrendChart
+										data={(sovData?.shareTimeSeries ?? []).map((p) => ({ date: p.date, value: p.share }))}
+										label="Share of Voice"
+										color="#2563eb"
+									/>
+								)}
+							</CardContent>
+						</Card>
+					</div>
+				</section>
 
-			{/* Section 3: Tracking Stats */}
-			<section className="pt-2 mb-auto">
-				<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-					{isLoadingSummary ? (
-						<>
-							<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
-							<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
-							<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
-							<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
-						</>
-					) : (
-						<>
-							<StatWithTooltip
-								icon={IconList}
-								label="prompts tracked"
-								value={totalPrompts.toLocaleString()}
-								tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
-							/>
-							<StatWithTooltip
-								icon={IconActivity}
-								label="evaluations (30d)"
-								value={totalRuns.toLocaleString()}
-								tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
-							/>
-							<StatWithTooltip
-								icon={IconClock}
-								label="run frequency"
-								value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
-								tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
-							/>
-							<StatWithTooltip
-								icon={IconRefresh}
-								label="last updated"
-								value={formatRelativeTime(lastUpdatedAt)}
-								tooltip={lastUpdatedAt
-									? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
-									: "No evaluations have been run yet."
-								}
-							/>
-						</>
-					)}
-				</div>
-			</section>
+				{/* Section 3: Tracking Stats */}
+				<section className="pt-2">
+					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+						{isLoadingSummary ? (
+							<>
+								<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
+								<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
+								<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+								<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+							</>
+						) : (
+							<>
+								<StatWithTooltip
+									icon={IconList}
+									label="prompts tracked"
+									value={totalPrompts.toLocaleString()}
+									tooltip="Total number of unique prompts being monitored for AI visibility across ChatGPT, Claude, and Gemini."
+								/>
+								<StatWithTooltip
+									icon={IconActivity}
+									label="evaluations (30d)"
+									value={totalRuns.toLocaleString()}
+									tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+								/>
+								<StatWithTooltip
+									icon={IconClock}
+									label="run frequency"
+									value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
+									tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
+								/>
+								<StatWithTooltip
+									icon={IconRefresh}
+									label="last updated"
+									value={formatRelativeTime(lastUpdatedAt)}
+									tooltip={lastUpdatedAt
+										? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
+										: "No evaluations have been run yet."
+									}
+								/>
+							</>
+						)}
+					</div>
+				</section>
+			</div>
 		</div>
 	);
 }

@@ -266,9 +266,17 @@ export interface OpportunityInput {
 export const MIN_BRAND_ACTIVITY = 0.1;
 
 /**
+ * Competitors must out-mention you by MORE than this margin for a prompt to count
+ * as an opportunity. Within it you're effectively even — you hold the prompt, it
+ * isn't an opening — so a hair-thin gap reads as noise rather than a win to chase.
+ */
+export const MIN_OPPORTUNITY_GAP = 0.05;
+
+/**
  * Opportunity tiers:
  *  - none:   neither you nor competitors are mentioned much — not a brand query.
- *  - won:    you're mentioned at least as often as competitors (you lead).
+ *  - won:    you're mentioned about as often as (within MIN_OPPORTUNITY_GAP) or
+ *            more than competitors — you hold the prompt.
  *  - low / medium / high: competitors lead and you trail, by a growing gap.
  */
 export type OpportunityTier = "won" | "high" | "medium" | "low" | "none";
@@ -282,19 +290,21 @@ export interface OpportunityResult {
 /**
  * Opportunity is driven by brand-mention activity, not grounding (grounding is
  * model-dependent and orthogonal to whether a brand can win the answer):
- *   - if no brand is mentioned at a meaningful rate → not winnable ("none");
- *   - else if you're mentioned >= competitors → you've "won";
+ *   - if no brand is mentioned at a meaningful rate → not a brand query ("none");
+ *   - else if competitors don't out-mention you by more than `minGap` → you're
+ *     even or ahead, so you've "won" (you hold the prompt);
  *   - else the score is the gap by which competitors out-mention you.
  * Citation stability is reported separately rather than folded into this score.
  */
 export function computeOpportunity(
 	input: OpportunityInput,
 	minBrandActivity = MIN_BRAND_ACTIVITY,
+	minGap = MIN_OPPORTUNITY_GAP,
 ): OpportunityResult {
 	const activity = Math.max(input.brandPresence, input.competitorPresence);
 	if (activity <= minBrandActivity) return { score: 0, tier: "none" };
-	if (input.brandPresence >= input.competitorPresence) return { score: 0, tier: "won" };
 	const gap = clamp01(input.competitorPresence - input.brandPresence);
+	if (gap <= minGap) return { score: 0, tier: "won" };
 	const tier: OpportunityTier = gap >= 0.5 ? "high" : gap >= 0.25 ? "medium" : "low";
 	return { score: round3(gap), tier };
 }
