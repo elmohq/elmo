@@ -9,7 +9,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Badge } from "@workspace/ui/components/badge";
-import { Progress } from "@workspace/ui/components/progress";
+import { shareOfVoiceColorMap } from "@/lib/share-of-voice-palette";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
@@ -44,7 +44,7 @@ const TIPS = {
 	prompts: "Number of distinct prompts this brand appeared in.",
 };
 
-function ShareOfVoicePage() {
+export function ShareOfVoicePage() {
 	const { brand: brandId } = Route.useParams();
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
 
@@ -68,6 +68,7 @@ function ShareOfVoicePage() {
 	);
 
 	const maxMentions = data?.entries.reduce((m, e) => Math.max(m, e.mentions), 0) ?? 0;
+	const barColors = shareOfVoiceColorMap(data?.entries ?? []);
 
 	let content: React.ReactNode;
 	if (isLoading && !data) {
@@ -168,7 +169,15 @@ function ShareOfVoicePage() {
 										<TableCell className="text-right tabular-nums">{e.mentions.toLocaleString()}</TableCell>
 										<TableCell>
 											<div className="flex items-center gap-2">
-												<Progress value={maxMentions > 0 ? (e.mentions / maxMentions) * 100 : 0} className="h-2" />
+												<div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+													<div
+														className="h-full rounded-full"
+														style={{
+															width: `${maxMentions > 0 ? (e.mentions / maxMentions) * 100 : 0}%`,
+															backgroundColor: barColors.get(e.name) ?? "#cbd5e1",
+														}}
+													/>
+												</div>
 												<span className="tabular-nums text-sm text-muted-foreground w-10 text-right">
 													{formatPct(e.share)}
 												</span>

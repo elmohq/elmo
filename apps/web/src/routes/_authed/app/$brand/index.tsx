@@ -159,7 +159,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 	return (
 		<CardContent className="flex-1 flex items-center justify-center">
 			<div
-				className={`font-bold tracking-tight ${value === null ? "text-muted-foreground" : getVisibilityTextColor(value)}`}
+				className={`font-bold tracking-tight tabular-nums ${value === null ? "text-muted-foreground" : getVisibilityTextColor(value)}`}
 				style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}
 			>
 				{loading ? <Skeleton className="h-16 w-32" /> : value === null ? "—" : `${value}%`}
@@ -168,7 +168,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 	);
 }
 
-function DashboardPage() {
+export function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");

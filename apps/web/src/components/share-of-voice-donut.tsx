@@ -5,10 +5,7 @@
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import { ChartContainer } from "@workspace/ui/components/chart";
 import type { ShareOfVoiceEntry } from "@/server/analysis";
-
-const BRAND_COLOR = "#2563eb";
-const OTHERS_COLOR = "#cbd5e1";
-const PALETTE = ["#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316"];
+import { BRAND_COLOR, COMPETITOR_PALETTE as PALETTE, OTHERS_COLOR } from "@/lib/share-of-voice-palette";
 
 interface Slice {
 	name: string;

@@ -44,7 +44,7 @@ const TIER_CLASS: Record<OpportunityTier, string> = {
 	won: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
 	high: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
 	medium: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-	low: "bg-muted text-muted-foreground",
+	low: "bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300",
 	none: "bg-muted text-muted-foreground",
 };
 
@@ -65,7 +65,7 @@ const TIPS = {
 		"How hard it is to break in, like SEO keyword difficulty (0–100). High = the same sources are cited day after day (entrenched, hard to displace); low = the cited sources churn, so the slots are up for grabs.",
 };
 
-function OpportunitiesPage() {
+export function OpportunitiesPage() {
 	const { brand: brandId } = Route.useParams();
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
 
@@ -151,6 +151,11 @@ function OpportunitiesPage() {
 					</CardHeader>
 					<CardContent>
 						<OpportunityStabilityChart prompts={opportunities} />
+						<div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+							<LegendDot color="#10b981" label="High" />
+							<LegendDot color="#f59e0b" label="Medium" />
+							<LegendDot color="#94a3b8" label="Low" />
+						</div>
 					</CardContent>
 				</Card>
 
