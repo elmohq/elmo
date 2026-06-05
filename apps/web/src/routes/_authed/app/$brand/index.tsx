@@ -174,7 +174,7 @@ function DashboardPage() {
 		return (
 			<div className="flex flex-1 flex-col gap-3 p-4 max-w-[1600px] mx-auto w-full">
 				{/* AI Visibility section skeleton */}
-				<section className="space-y-2">
+				<section className="space-y-2 mt-auto">
 					<div className="flex items-center justify-between">
 						<h2 className="text-lg font-semibold flex items-center gap-2">
 							<IconEye className="h-5 w-5 text-muted-foreground" />
@@ -256,7 +256,7 @@ function DashboardPage() {
 				</section>
 
 				{/* Footer stats skeleton */}
-				<section className="pt-2">
+				<section className="pt-2 mb-auto">
 					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
 						<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
 						<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
@@ -354,7 +354,7 @@ function DashboardPage() {
 		<div className="flex flex-1 flex-col gap-3 p-4 max-w-[1600px] mx-auto w-full">
 
 			{/* Section 1: AI Visibility */}
-			<section className="space-y-2">
+			<section className="space-y-2 mt-auto">
 				<div className="flex items-center justify-between">
 					<h2 className="text-lg font-semibold flex items-center gap-2">
 						<IconEye className="h-5 w-5 text-muted-foreground" />
@@ -478,7 +478,7 @@ function DashboardPage() {
 			</section>
 
 			{/* Section 3: Tracking Stats */}
-			<section className="pt-2">
+			<section className="pt-2 mb-auto">
 				<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
 					{isLoadingSummary ? (
 						<>

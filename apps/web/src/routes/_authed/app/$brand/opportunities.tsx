@@ -5,7 +5,7 @@
  * mentioned but you aren't. A prompt is only winnable if brands are mentioned at
  * all — prompts where neither you nor competitors show up aren't brand queries,
  * so they're listed separately. Citation stability is shown alongside (its own
- * spectrum + a column) but doesn't drive the opportunity score.
+ * chart + a column) but doesn't drive the opportunity score.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -20,7 +20,7 @@ import { useBrand } from "@/hooks/use-brands";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
 import { OpportunityMap } from "@/components/opportunity-map";
-import { PromptStabilitySpectrum } from "@/components/prompt-stability-spectrum";
+import { OpportunityStabilityChart } from "@/components/opportunity-stability-chart";
 import type { OpportunityTier } from "@/lib/visibility-stats";
 
 export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
@@ -139,13 +139,15 @@ function OpportunitiesPage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Citation Stability</CardTitle>
+						<CardTitle>Opportunity vs Citation Stability</CardTitle>
 						<CardDescription>
-							Where each prompt's cited sources sit between churning daily (volatile) and steady (stable).
+							Each open prompt placed by how big the opening is (up) and how steady its cited sources are
+							(right). Top-right is the sweet spot — a sizeable gap whose sources hold, so a citation you earn
+							there tends to stick; sources to the left churn day to day. Won prompts are omitted.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<PromptStabilitySpectrum prompts={opportunities} />
+						<OpportunityStabilityChart prompts={opportunities} />
 					</CardContent>
 				</Card>
 
