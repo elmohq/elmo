@@ -6,14 +6,7 @@
 import { CartesianGrid, Cell, ReferenceLine, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import { ChartContainer } from "@workspace/ui/components/chart";
 import type { PromptOpportunity } from "@/server/analysis";
-
-export const TIER_COLOR: Record<PromptOpportunity["tier"], string> = {
-	won: "#3b82f6",
-	high: "#10b981",
-	medium: "#f59e0b",
-	low: "#94a3b8",
-	none: "#cbd5e1",
-};
+import { TIER_COLOR } from "@/lib/opportunity-tiers";
 
 interface Point {
 	id: string;

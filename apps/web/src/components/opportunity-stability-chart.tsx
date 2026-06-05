@@ -9,7 +9,7 @@
  */
 import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import { ChartContainer } from "@workspace/ui/components/chart";
-import { TIER_COLOR } from "@/components/opportunity-map";
+import { TIER_COLOR } from "@/lib/opportunity-tiers";
 import type { PromptOpportunity } from "@/server/analysis";
 
 interface Point {
