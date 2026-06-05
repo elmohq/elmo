@@ -38,6 +38,15 @@ export const Route = createFileRoute("/_authed/app/$brand/share-of-voice")({
 
 const formatPct = (share: number) => `${Math.round(share * 100)}%`;
 
+/** Latest non-null point of the share-of-voice trend — the value the line ends on. */
+function currentShareOf(series: Array<{ share: number | null }>): number | null {
+	for (let i = series.length - 1; i >= 0; i--) {
+		const v = series[i]?.share;
+		if (typeof v === "number") return v;
+	}
+	return null;
+}
+
 const TIPS = {
 	mentions: "Number of runs in which this brand was mentioned in the AI answer.",
 	share: "This brand's share of all brand + competitor mentions.",
@@ -95,6 +104,8 @@ export function ShareOfVoicePage() {
 			</Card>
 		);
 	} else {
+		// The big number = the trend's last plotted point, so it matches the line beside it.
+		const currentShare = currentShareOf(data.shareTimeSeries);
 		content = (
 			<TooltipProvider delayDuration={150}>
 				<div className="grid gap-6 lg:grid-cols-2">
@@ -104,8 +115,8 @@ export function ShareOfVoicePage() {
 						</CardHeader>
 						<CardContent className="flex items-center justify-between gap-4">
 							<div>
-								<div className="text-3xl sm:text-4xl font-bold">
-									{data.brandShare !== null ? formatPct(data.brandShare) : "—"}
+								<div className="text-3xl sm:text-4xl font-bold tabular-nums">
+									{currentShare !== null ? `${currentShare}%` : "—"}
 								</div>
 								<p className="text-sm text-muted-foreground mt-1 max-w-[18rem]">
 									{data.brandName} across {data.totalRuns.toLocaleString()} runs
