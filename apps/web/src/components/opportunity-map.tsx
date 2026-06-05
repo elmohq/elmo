@@ -19,7 +19,6 @@ interface Point {
 	id: string;
 	x: number;
 	y: number;
-	z: number;
 	prompt: string;
 	tier: PromptOpportunity["tier"];
 	opportunity: number;
@@ -30,7 +29,6 @@ export function OpportunityMap({ prompts }: { prompts: PromptOpportunity[] }) {
 		id: p.promptId,
 		x: p.competitorMentionRate,
 		y: p.brandMentionRate,
-		z: p.runs,
 		prompt: p.prompt,
 		tier: p.tier,
 		opportunity: p.opportunity,
@@ -56,7 +54,7 @@ export function OpportunityMap({ prompts }: { prompts: PromptOpportunity[] }) {
 					tickFormatter={(v: number) => `${Math.round(v * 100)}%`}
 					label={{ value: "Your presence", angle: -90, position: "insideLeft" }}
 				/>
-				<ZAxis type="number" dataKey="z" range={[40, 320]} name="Runs" />
+				<ZAxis range={[80, 80]} />
 				{/* Parity line: above it you lead, below it competitors lead (your openings). */}
 				<ReferenceLine
 					segment={[
