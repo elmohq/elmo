@@ -4,8 +4,9 @@
  * Ranks competitive (non-branded) prompts by opportunity: where competitors are
  * mentioned but you aren't. A prompt is only winnable if brands are mentioned at
  * all — prompts where neither you nor competitors show up aren't brand queries,
- * so they're listed separately. Citation stability is shown alongside (its own
- * chart + a column) but doesn't drive the opportunity score.
+ * so they're listed separately. Difficulty (how entrenched the cited sources are,
+ * read like SEO keyword difficulty) is shown alongside (its own chart + a column)
+ * but doesn't drive the opportunity score.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
@@ -60,8 +61,8 @@ const TIPS = {
 		"How big the opening is — the gap by which competitors out-mention you. 'Won' means you're mentioned about as often as or more than competitors (a hair-thin gap counts as held).",
 	you: "How often AI mentions your brand in answers to this prompt.",
 	competitors: "How often AI mentions any tracked competitor.",
-	stability:
-		"0–100: how stable the cited sources are day to day (100 = the same sources every day; low = churning). Higher means a citation you earn tends to stick.",
+	difficulty:
+		"How hard it is to break in, like SEO keyword difficulty (0–100). High = the same sources are cited day after day (entrenched, hard to displace); low = the cited sources churn, so the slots are up for grabs.",
 };
 
 function OpportunitiesPage() {
@@ -90,7 +91,7 @@ function OpportunitiesPage() {
 			</p>
 			<p>
 				Prompts where neither you nor competitors are mentioned aren't brand-recommendation queries, so they're listed
-				separately below. Citation stability is shown alongside but doesn't change the opportunity ranking.
+				separately below. Difficulty is shown alongside but doesn't change the opportunity ranking.
 			</p>
 		</>
 	);
@@ -139,11 +140,13 @@ function OpportunitiesPage() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Opportunity vs Citation Stability</CardTitle>
+						<CardTitle>Opportunity vs Difficulty</CardTitle>
 						<CardDescription>
-							Each open prompt placed by how big the opening is (up) and how steady its cited sources are
-							(right). Top-right is the sweet spot — a sizeable gap whose sources hold, so a citation you earn
-							there tends to stick; sources to the left churn day to day. Won prompts are omitted.
+							Each open prompt by the size of the opening (up) and how hard it is to break in (right).
+							Difficulty reads like SEO keyword difficulty: stable sources ("Hard") are cited day after day, so
+							they're entrenched and tough to displace; churning sources ("Easy") leave the citations up for
+							grabs. The best targets are top-left — a big opening that's also low-difficulty. Won prompts are
+							omitted.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -176,7 +179,7 @@ function OpportunitiesPage() {
 											<ColHead label="Competitors" tip={TIPS.competitors} right />
 										</TableHead>
 										<TableHead className="text-right">
-											<ColHead label="Stability" tip={TIPS.stability} right />
+											<ColHead label="Difficulty" tip={TIPS.difficulty} right />
 										</TableHead>
 									</TableRow>
 								</TableHeader>

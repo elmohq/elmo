@@ -1,11 +1,11 @@
 /**
- * Opportunity × citation-stability scatter. Each open prompt (where competitors
+ * Opportunity × difficulty scatter. Each open prompt (where competitors
  * out-mention you) is placed by how big the opening is (y: the competitor-vs-you
- * gap) and how steady its cited sources are (x: volatile → stable), coloured by
- * tier. The useful corner is the top-right — a sizeable opening whose sources
- * hold, so a citation you earn there tends to stick; top-left is just as big an
- * opening but its sources churn day to day. "Won" prompts have no gap, so they
- * are omitted here.
+ * gap) and how hard it is to break into (x). Difficulty is the citation-stability
+ * score read like SEO keyword difficulty: stable sources are cited day after day,
+ * so they're entrenched and hard to displace ("Hard"); churning sources leave the
+ * citations up for grabs ("Easy"). The best targets are top-left — a big opening
+ * that's also low-difficulty. "Won" prompts have no gap, so they're omitted.
  */
 import { CartesianGrid, Cell, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from "recharts";
 import { ChartContainer } from "@workspace/ui/components/chart";
@@ -58,7 +58,7 @@ export function OpportunityStabilityChart({ prompts }: { prompts: PromptOpportun
 					ticks={[0, 25, 50, 75, 100]}
 					tickLine={false}
 					tick={{ fontSize: 11 }}
-					tickFormatter={(v: number) => (v === 0 ? "Volatile" : v === 100 ? "Stable" : `${v}`)}
+					tickFormatter={(v: number) => (v === 0 ? "Easy" : v === 100 ? "Hard" : `${v}`)}
 				/>
 				<YAxis
 					type="number"
@@ -84,7 +84,7 @@ export function OpportunityStabilityChart({ prompts }: { prompts: PromptOpportun
 									<span className="ml-auto font-mono tabular-nums">{p.y}%</span>
 								</div>
 								<div className="flex justify-between gap-3 text-muted-foreground">
-									<span>Stability</span>
+									<span>Difficulty</span>
 									<span className="font-mono tabular-nums text-foreground">{p.stabilityScore}/100</span>
 								</div>
 								<div className="flex justify-between gap-3 text-muted-foreground">

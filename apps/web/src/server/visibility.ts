@@ -247,26 +247,31 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
 		]);
 
-		// Roll the period totals from the raw observation sums (actual_*);
+		// Roll the period run totals from the raw observation sums (actual_*);
 		// the visibility time-series uses the per-day LVCF sums so gaps in
 		// individual prompt schedules don't scallop the line.
 		let totalBrandedRuns = 0;
-		let totalBrandedMentioned = 0;
 		let totalNonBrandedRuns = 0;
-		let totalNonBrandedMentioned = 0;
 		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
 			totalBrandedRuns += row.actual_branded_runs;
-			totalBrandedMentioned += row.actual_branded_mentioned;
 			totalNonBrandedRuns += row.actual_nonbranded_runs;
-			totalNonBrandedMentioned += row.actual_nonbranded_mentioned;
 			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
 			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
 			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
 		});
 
 		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
-		const currentVisibility = totalRuns > 0 ? Math.round((totalMentioned / totalRuns) * 100) : 0;
+		// "Current" = the latest plotted point (last non-null LVCF day), so the headline
+		// number matches the right end of the trend/sparkline beside it — and the
+		// overview's current-visibility hero — rather than the whole-window average.
+		let currentVisibility = 0;
+		for (let i = visibilityTimeSeries.length - 1; i >= 0; i--) {
+			const v = visibilityTimeSeries[i].visibility;
+			if (v != null) {
+				currentVisibility = v;
+				break;
+			}
+		}
 
 		return {
 			currentVisibility,
