@@ -213,7 +213,7 @@ function DashboardPage() {
 								<HeroStat value={null} loading />
 							</Card>
 							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-								<CardHeader className="border-b border-dotted pb-1">
+								<CardHeader className="border-b border-dotted pb-2!">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 										Visibility Trends (30d)
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
@@ -244,7 +244,7 @@ function DashboardPage() {
 								<HeroStat value={null} loading />
 							</Card>
 							<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-								<CardHeader className="border-b border-dotted pb-1">
+								<CardHeader className="border-b border-dotted pb-2!">
 									<CardTitle className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
 										Share of Voice Trends (30d)
 										<IconInfoCircle className="h-3.5 w-3.5 opacity-70" />
@@ -378,7 +378,7 @@ function DashboardPage() {
 
 						{/* Visibility Chart */}
 						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-1">
+							<CardHeader className="border-b border-dotted pb-2!">
 								<CardTitleWithTooltip
 									title="Visibility Trends (30d)"
 									tooltip={`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`}
@@ -419,7 +419,7 @@ function DashboardPage() {
 						</Card>
 
 						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
-							<CardHeader className="border-b border-dotted pb-1">
+							<CardHeader className="border-b border-dotted pb-2!">
 								<CardTitleWithTooltip
 									title="Share of Voice Trends (30d)"
 									tooltip="Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules."
