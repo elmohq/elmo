@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { OpportunitiesCommandCenter } from "@/components/opportunities-command-center";
 import { OpportunitiesCommandCenterV2, type LeaderPrompt } from "@/components/opportunities-command-center-v2";
+import { OpportunitiesPlaybook, type PlaybookPrompt, type Field, type OppType } from "@/components/opportunities-playbook";
 import { OpportunitiesCompetitive, type Standing } from "@/components/opportunities-competitive";
 import { OpportunitiesSourceStrategy, type OpportunityWithCoverage } from "@/components/opportunities-source-strategy";
 import type { OpportunityWithLead } from "@/components/opportunities-battlefield";
@@ -59,6 +60,22 @@ const withLeader: LeaderPrompt[] = mockOpportunities.prompts
 		sources: LEADER[p.promptId]?.sources ?? [],
 	}));
 
+// Action classification per prompt (incl. the former "Few Brand Mentions" p9/p10,
+// reframed as Untapped / Community). type drives the category + action.
+const PLAYBOOK: Record<string, { type: OppType; leader: { name: string; rate: number }; target: string; field?: Field; trendPp?: number }> = {
+	p1: { type: "popular-gap", leader: { name: "Globex", rate: 0.68 }, target: "a definitive “best CRM” guide", field: "contested" },
+	p3: { type: "content-gap", leader: { name: "Globex", rate: 0.52 }, target: "globex.com/accounting-guide", field: "locked" },
+	p9: { type: "untapped", leader: { name: "Initech", rate: 0.06 }, target: "a definitive CRM explainer", field: "open" },
+	p5: { type: "almost", leader: { name: "Initech", rate: 0.47 }, target: "acme.com/remote-collaboration", field: "contested" },
+	p4: { type: "declining", leader: { name: "Globex", rate: 0.5 }, target: "acme.com/help-desk-guide", trendPp: -8 },
+	p2: { type: "weak-content", leader: { name: "Initech", rate: 0.64 }, target: "acme.com/project-management-tools" },
+	p6: { type: "mention-gap", leader: { name: "Umbrella", rate: 0.31 }, target: "g2.com", field: "open" },
+	p10: { type: "community", leader: { name: "Initech", rate: 0.05 }, target: "the cited Reddit threads", field: "open" },
+};
+const playbookPrompts: PlaybookPrompt[] = mockOpportunities.prompts
+	.filter((p) => PLAYBOOK[p.promptId])
+	.map((p) => ({ ...p, ...PLAYBOOK[p.promptId] }));
+
 const CITED: Record<string, boolean> = { p1: false, p2: false, p3: true, p4: false, p5: true, p6: true };
 const withCoverage: OpportunityWithCoverage[] = mockOpportunities.prompts.map((p) => ({
 	...p,
@@ -82,6 +99,11 @@ const meta = {
 } satisfies Meta;
 
 export default meta;
+
+export const Playbook: StoryObj = {
+	name: "0 — AEO command center",
+	render: () => <OpportunitiesPlaybook prompts={playbookPrompts} />,
+};
 
 export const CommandCenter: StoryObj = {
 	name: "1 — Command center",
