@@ -962,6 +962,46 @@ export async function getCompetitorMentionLeaderboard(
 	return rows;
 }
 
+export interface PerPromptDailyCompetitorRow {
+	prompt_id: string;
+	date: string;
+	competitor: string;
+	/** Competitor mention instances that day (for this prompt). */
+	mentions: number;
+}
+
+/**
+ * Per-prompt, per-day, per-competitor mention counts. Feeds the LVCF "current
+ * standings" leaderboard so the headline number, donut, and table all reflect
+ * the same last-day state as the share-of-voice trend (rather than a whole-window
+ * aggregate that wouldn't match the line's end).
+ */
+export async function getPerPromptDailyCompetitorMentions(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptDailyCompetitorRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyCompetitorRow>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date::text AS date,
+			competitor,
+			count(*)::int AS mentions
+		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, date, competitor
+		ORDER BY prompt_id, date
+	`);
+	return rows;
+}
+
 // ============================================================================
 // Brand Data Age
 // ============================================================================

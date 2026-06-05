@@ -363,3 +363,81 @@ export function shareOfVoiceTimeSeriesLVCF(
 		return { date, share: denom === 0 ? null : Math.round((b.brand / denom) * 100) };
 	});
 }
+
+export interface LeaderboardLVCFResult {
+	brandMentions: number;
+	brandPrompts: number;
+	competitors: Array<{ name: string; mentions: number; prompts: number }>;
+}
+
+/**
+ * "Current standings" leaderboard: carry each prompt's most recent (brand +
+ * per-competitor) mention counts forward to the last day, then sum across
+ * prompts. This is the per-competitor companion to shareOfVoiceTimeSeriesLVCF
+ * and uses the same per-prompt last-observation carry-forward, so the brand
+ * share it implies equals that trend's final point — keeping the headline,
+ * donut, and table consistent with the line (rather than a whole-window
+ * aggregate that wouldn't match it).
+ */
+export function shareOfVoiceLeaderboardLVCF(
+	brandDaily: Array<{ promptId: string; date: string; brand: number }>,
+	competitorDaily: Array<{ promptId: string; date: string; competitor: string; mentions: number }>,
+	dateRange: string[],
+): LeaderboardLVCFResult {
+	if (dateRange.length === 0) return { brandMentions: 0, brandPrompts: 0, competitors: [] };
+	const lastDate = dateRange[dateRange.length - 1];
+
+	interface Obs {
+		brand: number;
+		competitors: Map<string, number>;
+	}
+	const byPrompt = new Map<string, Map<string, Obs>>();
+	const obsAt = (promptId: string, date: string): Obs => {
+		let dateMap = byPrompt.get(promptId);
+		if (!dateMap) {
+			dateMap = new Map();
+			byPrompt.set(promptId, dateMap);
+		}
+		let obs = dateMap.get(date);
+		if (!obs) {
+			obs = { brand: 0, competitors: new Map() };
+			dateMap.set(date, obs);
+		}
+		return obs;
+	};
+	for (const r of brandDaily) obsAt(r.promptId, r.date).brand = r.brand;
+	for (const r of competitorDaily) {
+		if (r.mentions > 0) obsAt(r.promptId, r.date).competitors.set(r.competitor, r.mentions);
+	}
+
+	let brandMentions = 0;
+	let brandPrompts = 0;
+	const compMentions = new Map<string, number>();
+	const compPrompts = new Map<string, number>();
+
+	for (const [, dateMap] of byPrompt) {
+		// The prompt's latest observation on/before the last day = its current state.
+		let last: Obs | null = null;
+		let lastSeen = "";
+		for (const [date, obs] of dateMap) {
+			if (date <= lastDate && date >= lastSeen) {
+				last = obs;
+				lastSeen = date;
+			}
+		}
+		if (!last) continue;
+		brandMentions += last.brand;
+		if (last.brand > 0) brandPrompts++;
+		for (const [name, n] of last.competitors) {
+			if (n <= 0) continue;
+			compMentions.set(name, (compMentions.get(name) ?? 0) + n);
+			compPrompts.set(name, (compPrompts.get(name) ?? 0) + 1);
+		}
+	}
+
+	const competitors = [...compMentions.entries()]
+		.map(([name, mentions]) => ({ name, mentions, prompts: compPrompts.get(name) ?? 0 }))
+		.sort((a, b) => b.mentions - a.mentions);
+
+	return { brandMentions, brandPrompts, competitors };
+}

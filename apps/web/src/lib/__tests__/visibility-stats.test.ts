@@ -10,6 +10,7 @@ import {
 	computeShareOfVoice,
 	computeOpportunity,
 	shareOfVoiceTimeSeriesLVCF,
+	shareOfVoiceLeaderboardLVCF,
 	type DailyDomainCount,
 } from "@/lib/visibility-stats";
 
@@ -262,5 +263,44 @@ describe("shareOfVoiceTimeSeriesLVCF", () => {
 		expect(series[0]).toEqual({ date: "2026-01-01", share: 50 });
 		expect(series[1]).toEqual({ date: "2026-01-02", share: 50 });
 		expect(shareOfVoiceTimeSeriesLVCF([], ["2026-01-01"])).toEqual([{ date: "2026-01-01", share: null }]);
+	});
+});
+
+describe("shareOfVoiceLeaderboardLVCF", () => {
+	it("carries each prompt's last standings forward and sums per competitor", () => {
+		const r = shareOfVoiceLeaderboardLVCF(
+			[
+				{ promptId: "p1", date: "2026-01-01", brand: 2 },
+				{ promptId: "p1", date: "2026-01-03", brand: 1 },
+				{ promptId: "p2", date: "2026-01-02", brand: 0 },
+			],
+			[
+				{ promptId: "p1", date: "2026-01-01", competitor: "A", mentions: 1 },
+				{ promptId: "p1", date: "2026-01-01", competitor: "B", mentions: 1 },
+				{ promptId: "p1", date: "2026-01-03", competitor: "A", mentions: 3 },
+				{ promptId: "p2", date: "2026-01-02", competitor: "A", mentions: 2 },
+			],
+			["2026-01-01", "2026-01-02", "2026-01-03"],
+		);
+		// p1's latest obs is day3 (brand 1, {A:3} — B is gone, not in the latest run);
+		// p2's latest obs is day2 (brand 0, {A:2}).
+		expect(r.brandMentions).toBe(1);
+		expect(r.brandPrompts).toBe(1);
+		expect(r.competitors).toEqual([{ name: "A", mentions: 5, prompts: 2 }]);
+		// The implied brand share equals the trend's final point (1 / (1 + 5)).
+		const fromLeaderboard = computeShareOfVoice({ name: "you", mentions: r.brandMentions }, r.competitors).brandShare;
+		const trend = shareOfVoiceTimeSeriesLVCF(
+			[
+				{ promptId: "p1", date: "2026-01-01", brandMentions: 2, competitorMentions: 2 },
+				{ promptId: "p1", date: "2026-01-03", brandMentions: 1, competitorMentions: 3 },
+				{ promptId: "p2", date: "2026-01-02", brandMentions: 0, competitorMentions: 2 },
+			],
+			["2026-01-01", "2026-01-02", "2026-01-03"],
+		);
+		expect(Math.round((fromLeaderboard ?? 0) * 100)).toBe(trend[trend.length - 1].share);
+	});
+
+	it("returns empty for an empty date range", () => {
+		expect(shareOfVoiceLeaderboardLVCF([], [], [])).toEqual({ brandMentions: 0, brandPrompts: 0, competitors: [] });
 	});
 });

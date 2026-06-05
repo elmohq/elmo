@@ -47,17 +47,20 @@ const shareTimeSeries = DATES.map((date, i) => ({
 	share: clamp(29 + i * 0.18 + 4 * Math.sin(i / 4.5)),
 }));
 
+// Headline + entries are kept consistent with the trend's last point (35%), the
+// way the server now derives them (LVCF current standings).
+const sovLastShare = shareTimeSeries[shareTimeSeries.length - 1].share ?? 0;
 export const mockShareOfVoice = {
 	brandName: "Acme",
-	brandShare: 0.34,
+	brandShare: sovLastShare / 100,
 	totalRuns: 3120,
 	model: null,
 	shareTimeSeries,
 	entries: [
-		{ name: "Acme", mentions: 1062, share: 0.34, isBrand: true, prompts: 31 },
-		{ name: "Globex", mentions: 905, share: 0.29, isBrand: false, prompts: 28 },
-		{ name: "Initech", mentions: 686, share: 0.22, isBrand: false, prompts: 24 },
-		{ name: "Umbrella", mentions: 467, share: 0.15, isBrand: false, prompts: 19 },
+		{ name: "Acme", mentions: 1050, share: 0.35, isBrand: true, prompts: 31 },
+		{ name: "Globex", mentions: 870, share: 0.29, isBrand: false, prompts: 28 },
+		{ name: "Initech", mentions: 660, share: 0.22, isBrand: false, prompts: 24 },
+		{ name: "Umbrella", mentions: 420, share: 0.14, isBrand: false, prompts: 19 },
 	],
 };
 

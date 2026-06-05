@@ -19,8 +19,8 @@ import {
 	getPerPromptRunStats,
 	getPerPromptDailyCitationStats,
 	getBrandMentionTotals,
-	getCompetitorMentionLeaderboard,
 	getPerPromptDailyMentions,
+	getPerPromptDailyCompetitorMentions,
 	type PerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
@@ -33,6 +33,7 @@ import {
 	computeShareOfVoice,
 	computeOpportunity,
 	shareOfVoiceTimeSeriesLVCF,
+	shareOfVoiceLeaderboardLVCF,
 	type DailyDomainCount,
 	type OpportunityTier,
 } from "@/lib/visibility-stats";
@@ -115,20 +116,35 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			return { brandName, entries: [], brandShare: null, totalRuns: 0, model: data.model ?? null, shareTimeSeries: [] };
 		}
 
-		const [totals, leaderboard, perPromptDaily] = await Promise.all([
+		const dateRange = generateDateRange(new Date(fromDateStr), new Date(toDateStr));
+		const [totals, perPromptDaily, perPromptCompetitorDaily] = await Promise.all([
 			getBrandMentionTotals(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model),
-			getCompetitorMentionLeaderboard(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model, data.limit),
 			getPerPromptDailyMentions(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model),
+			getPerPromptDailyCompetitorMentions(data.brandId, fromDateStr, toDateStr, timezone, promptIds, data.model),
 		]);
 
-		const promptsByCompetitor = new Map(leaderboard.map((c) => [c.competitor, c.prompts]));
-		const { entries, brandShare } = computeShareOfVoice(
-			{ name: brandName, mentions: totals.brand_mentioned_runs },
-			leaderboard.map((c) => ({ name: c.competitor, mentions: c.mentions })),
+		// "Current standings": carry each prompt's latest brand + per-competitor counts
+		// forward to the last day, so the headline, donut, and leaderboard reflect the
+		// same state as the trend's final point rather than a whole-window aggregate.
+		const standings = shareOfVoiceLeaderboardLVCF(
+			perPromptDaily.map((r) => ({ promptId: r.prompt_id, date: String(r.date), brand: r.brand_mentions })),
+			perPromptCompetitorDaily.map((r) => ({
+				promptId: r.prompt_id,
+				date: String(r.date),
+				competitor: r.competitor,
+				mentions: r.mentions,
+			})),
+			dateRange,
 		);
 
-		// Brand share of voice per day, LVCF-smoothed over the lookback window so
-		// staggered prompt schedules don't scallop the line (mirrors the visibility trend).
+		const promptsByName = new Map(standings.competitors.map((c) => [c.name, c.prompts]));
+		const { entries, brandShare } = computeShareOfVoice(
+			{ name: brandName, mentions: standings.brandMentions },
+			standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
+		);
+
+		// Same per-prompt LVCF as the standings above, per day — so the line's final
+		// point equals the headline brandShare.
 		const shareTimeSeries = shareOfVoiceTimeSeriesLVCF(
 			perPromptDaily.map((r) => ({
 				promptId: r.prompt_id,
@@ -136,7 +152,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 				brandMentions: r.brand_mentions,
 				competitorMentions: r.competitor_mentions,
 			})),
-			generateDateRange(new Date(fromDateStr), new Date(toDateStr)),
+			dateRange,
 		);
 
 		return {
@@ -147,7 +163,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			shareTimeSeries,
 			entries: entries.map((e) => ({
 				...e,
-				prompts: e.isBrand ? totals.brand_mentioned_prompts : (promptsByCompetitor.get(e.name) ?? 0),
+				prompts: e.isBrand ? standings.brandPrompts : (promptsByName.get(e.name) ?? 0),
 			})),
 		};
 	});
