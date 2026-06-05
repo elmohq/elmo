@@ -168,7 +168,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 	);
 }
 
-export function DashboardPage() {
+function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");

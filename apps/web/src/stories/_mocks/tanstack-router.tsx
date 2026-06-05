@@ -53,6 +53,9 @@ export function createRouter(_opts?: unknown) {
 export function createFileRoute(_path: string) {
 	return (config: any) => ({
 		...config,
+		// Mirror the real Route shape so stories can render a route's component via
+		// Route.options.component (without the route file having to export it).
+		options: config,
 		useParams: () => ({ brand: "mock-brand-id" }),
 	});
 }

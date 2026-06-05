@@ -65,7 +65,7 @@ const TIPS = {
 		"How hard it is to break in, like SEO keyword difficulty (0–100). High = the same sources are cited day after day (entrenched, hard to displace); low = the cited sources churn, so the slots are up for grabs.",
 };
 
-export function OpportunitiesPage() {
+function OpportunitiesPage() {
 	const { brand: brandId } = Route.useParams();
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
 

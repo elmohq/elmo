@@ -4,10 +4,14 @@
  * the URL via nuqs, so it's wrapped in NuqsTestingAdapter.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
-import { OpportunitiesPage } from "@/routes/_authed/app/$brand/opportunities";
+import { Route } from "@/routes/_authed/app/$brand/opportunities";
+
+// The route file exports only `Route` (route files must, for code-splitting).
+// Render its component via the route options — the mock exposes `options`.
+const OpportunitiesPage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 import { setMockBrand } from "./_mocks/use-brands";
 import { setMockOpportunities } from "./_mocks/server-analysis";
 import { mockOpportunities } from "./analytics-fixtures";

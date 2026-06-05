@@ -4,10 +4,14 @@
  * the URL via nuqs, so it's wrapped in NuqsTestingAdapter.
  */
 import type { Meta, StoryObj } from "@storybook/react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
-import { ShareOfVoicePage } from "@/routes/_authed/app/$brand/share-of-voice";
+import { Route } from "@/routes/_authed/app/$brand/share-of-voice";
+
+// The route file exports only `Route` (route files must, for code-splitting).
+// Render its component via the route options — the mock exposes `options`.
+const ShareOfVoicePage = (Route as unknown as { options: { component: ComponentType } }).options.component;
 import { setMockBrand } from "./_mocks/use-brands";
 import { setMockShareOfVoice } from "./_mocks/server-analysis";
 import { mockShareOfVoice } from "./analytics-fixtures";

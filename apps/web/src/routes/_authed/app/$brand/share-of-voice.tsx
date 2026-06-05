@@ -53,7 +53,7 @@ const TIPS = {
 	prompts: "Number of distinct prompts this brand appeared in.",
 };
 
-export function ShareOfVoicePage() {
+function ShareOfVoicePage() {
 	const { brand: brandId } = Route.useParams();
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
 
