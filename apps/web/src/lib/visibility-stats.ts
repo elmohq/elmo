@@ -123,7 +123,9 @@ export interface VoiceShare {
 	name: string;
 	/** Run-days (or runs) on which this entity was mentioned. */
 	mentions: number;
-	/** Share of total mentions across the brand + all competitors, 0..1. */
+	/** Share of total mentions across the brand + all competitors, 0..1. Exact
+	 * ratio (not pre-rounded) — round once at the display layer so the table,
+	 * donut, and trend never disagree by a point. */
 	share: number;
 	isBrand: boolean;
 }
@@ -132,6 +134,12 @@ export interface VoiceShare {
  * Share of voice across the brand and its competitors. Inputs must be in a
  * consistent unit (e.g. "# of runs that mentioned this entity"), so the brand's
  * mention count and each competitor's are directly comparable.
+ *
+ * `share`/`brandShare` are exact ratios, deliberately NOT pre-rounded: the
+ * leaderboard renders `round(share * 100)`, the donut `round(mentions / total *
+ * 100)`, and the trend `round(brand / denom * 100)` — all the same single round
+ * of the same ratio. Pre-rounding `share` here (e.g. to 3 decimals) would
+ * double-round and let the table read a point off the headline/donut.
  */
 export function computeShareOfVoice(
 	brand: { name: string; mentions: number },
@@ -143,12 +151,12 @@ export function computeShareOfVoice(
 		name,
 		mentions,
 		isBrand,
-		share: total === 0 ? 0 : round3(mentions / total),
+		share: total === 0 ? 0 : mentions / total,
 	});
 	const entries = [mk(brand.name, brand.mentions, true), ...competitors.map((c) => mk(c.name, c.mentions, false))].sort(
 		(a, b) => b.mentions - a.mentions,
 	);
-	return { entries, brandShare: total === 0 ? null : round3(brand.mentions / total), total };
+	return { entries, brandShare: total === 0 ? null : brand.mentions / total, total };
 }
 
 export interface PerPromptDailyMentions {

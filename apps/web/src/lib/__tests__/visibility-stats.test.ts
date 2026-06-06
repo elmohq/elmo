@@ -174,3 +174,37 @@ describe("shareOfVoiceLeaderboardLVCF", () => {
 		expect(shareOfVoiceLeaderboardLVCF([], [], [])).toEqual({ brandMentions: 0, brandPrompts: 0, competitors: [] });
 	});
 });
+
+describe("share-of-voice percentage consistency across computation methods", () => {
+	it("leaderboard, donut, and trend round the same brand share to the same percent (no double-rounding)", () => {
+		// 235 / 1002 = 23.453% — exactly the band where pre-rounding the share to
+		// 3 decimals first would bump the leaderboard/donut to 24% while the trend,
+		// rounding the exact ratio, shows 23%. All paths must land on 23%.
+		const dateRange = ["2026-01-01"];
+
+		// Trend (per-prompt LVCF time series): rounds brand / (brand + competitor).
+		const trend = shareOfVoiceTimeSeriesLVCF(
+			[{ promptId: "p1", date: "2026-01-01", brandMentions: 235, competitorMentions: 767 }],
+			dateRange,
+		);
+		const trendPct = trend[trend.length - 1].share;
+
+		// Leaderboard -> computeShareOfVoice (the source for the table + donut).
+		const standings = shareOfVoiceLeaderboardLVCF(
+			[{ promptId: "p1", date: "2026-01-01", brand: 235 }],
+			[{ promptId: "p1", date: "2026-01-01", competitor: "X", mentions: 767 }],
+			dateRange,
+		);
+		const { entries, brandShare } = computeShareOfVoice(
+			{ name: "you", mentions: standings.brandMentions },
+			standings.competitors.map((c) => ({ name: c.name, mentions: c.mentions })),
+		);
+		const brandEntry = entries.find((e) => e.isBrand);
+		const total = entries.reduce((s, e) => s + e.mentions, 0);
+
+		expect(trendPct).toBe(23); // headline / sparkline
+		expect(Math.round((brandShare ?? 0) * 100)).toBe(23); // headline derived from the leaderboard
+		expect(Math.round((brandEntry?.share ?? 0) * 100)).toBe(23); // leaderboard table cell (formatPct)
+		expect(Math.round((brandEntry!.mentions / total) * 100)).toBe(23); // donut slice
+	});
+});
