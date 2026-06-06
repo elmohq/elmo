@@ -1,8 +1,8 @@
 /**
  * Pure, dependency-free statistics for AI-visibility analysis.
  *
- * These power the Share of Voice and Opportunities pages and the stability /
- * grounding enrichments. They take plain aggregated rows (produced by the
+ * These power the Share of Voice page and the Opportunities digest's stability
+ * scores. They take plain aggregated rows (produced by the
  * postgres read layer) and never touch IO, so they are unit-testable in
  * isolation.
  *
@@ -33,28 +33,12 @@ export interface VolatilityResult {
 	dayTransitions: number;
 }
 
-export interface ConcentrationResult {
-	/** Domains cited on at least `coreThreshold` of the days that had any citations. */
-	coreDomains: number;
-	totalDomains: number;
-	/** Share of total citation volume coming from core domains, 0..1. null if no data. */
-	coreShareOfCitations: number | null;
-}
-
-export interface PoolStatsResult {
-	avgDomainsPerDay: number | null;
-	totalDistinctDomains: number;
-	/** totalDistinctDomains / avgDomainsPerDay — how much wider the source pool is than a single day. */
-	poolToSampleRatio: number | null;
-}
-
 interface DayBucket {
 	date: string;
 	counts: Map<string, number>;
 	total: number;
 }
 
-const round1 = (x: number): number => Math.round(x * 10) / 10;
 const round3 = (x: number): number => Math.round(x * 1000) / 1000;
 const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -129,90 +113,6 @@ export function computeVolatility(daily: DailyDomainCount[]): VolatilityResult {
 	};
 }
 
-/**
- * Citation concentration: is the citation volume carried by a stable head of
- * always-present domains, or spread across a churning tail?
- */
-export function computeConcentration(daily: DailyDomainCount[], coreThreshold = 0.8): ConcentrationResult {
-	const days = bucketByDay(daily);
-	const nDays = days.length;
-	if (nDays === 0) return { coreDomains: 0, totalDomains: 0, coreShareOfCitations: null };
-
-	const daysPresent = new Map<string, number>();
-	const hits = new Map<string, number>();
-	for (const day of days) {
-		for (const [d, c] of day.counts) {
-			daysPresent.set(d, (daysPresent.get(d) ?? 0) + 1);
-			hits.set(d, (hits.get(d) ?? 0) + c);
-		}
-	}
-
-	let coreDomains = 0;
-	let coreHits = 0;
-	let totalHits = 0;
-	for (const [d, h] of hits) {
-		totalHits += h;
-		if ((daysPresent.get(d) ?? 0) / nDays >= coreThreshold) {
-			coreDomains++;
-			coreHits += h;
-		}
-	}
-
-	return {
-		coreDomains,
-		totalDomains: hits.size,
-		coreShareOfCitations: totalHits === 0 ? null : round3(coreHits / totalHits),
-	};
-}
-
-/** How broad is the cited-domain pool relative to a typical day's sample? */
-export function computePoolStats(daily: DailyDomainCount[]): PoolStatsResult {
-	const days = bucketByDay(daily);
-	if (days.length === 0) {
-		return { avgDomainsPerDay: null, totalDistinctDomains: 0, poolToSampleRatio: null };
-	}
-	const distinct = new Set<string>();
-	let domainDaySum = 0;
-	for (const day of days) {
-		domainDaySum += day.counts.size;
-		for (const d of day.counts.keys()) distinct.add(d);
-	}
-	const avg = domainDaySum / days.length;
-	return {
-		avgDomainsPerDay: round1(avg),
-		totalDistinctDomains: distinct.size,
-		poolToSampleRatio: avg === 0 ? null : round1(distinct.size / avg),
-	};
-}
-
-/** Fraction of a model's run-days on which it cited any source for the prompt. null if it never ran. */
-export function citationCoverage(runDays: number, citedDays: number): number | null {
-	if (runDays <= 0) return null;
-	return round3(Math.min(citedDays, runDays) / runDays);
-}
-
-export type GroundingFrequency = "always" | "usually" | "sometimes" | "rarely" | "never";
-
-/**
- * How often the engine cites a source for this prompt, bucketed from citation
- * coverage (the share of run-days with at least one citation):
- *   always (≥90%) · usually (≥60%) · sometimes (≥30%) · rarely (>0%) · never.
- * "rarely" / "never" mean the engine answers from memory — there is no citation
- * slot to win, so those prompts are not citation opportunities.
- */
-export function groundingFrequency(coverage: number | null): GroundingFrequency {
-	if (coverage === null || coverage <= 0) return "never";
-	if (coverage >= 0.9) return "always";
-	if (coverage >= 0.6) return "usually";
-	if (coverage >= 0.3) return "sometimes";
-	return "rarely";
-}
-
-/** Whether the engine grounds often enough (≥ "sometimes") that a citation is worth pursuing. */
-export function isCitationOpportunity(coverage: number | null): boolean {
-	return coverage !== null && coverage >= 0.3;
-}
-
 /** Product-facing Stability score: 0 (churns daily) → 100 (rock stable). null if not enough data. */
 export function stabilityScore(weightedVolatility: number | null): number | null {
 	if (weightedVolatility === null) return null;
@@ -249,64 +149,6 @@ export function computeShareOfVoice(
 		(a, b) => b.mentions - a.mentions,
 	);
 	return { entries, brandShare: total === 0 ? null : round3(brand.mentions / total), total };
-}
-
-export interface OpportunityInput {
-	/** Brand mention rate, 0..1. */
-	brandPresence: number;
-	/** Any-competitor mention rate, 0..1. */
-	competitorPresence: number;
-}
-
-/**
- * A prompt counts as a brand-recommendation query only if the brand or some
- * competitor is mentioned in MORE than this fraction of runs. At or below it
- * (≤10%), brands barely come up, so there's nothing to win yet.
- */
-export const MIN_BRAND_ACTIVITY = 0.1;
-
-/**
- * Competitors must out-mention you by MORE than this margin for a prompt to count
- * as an opportunity. Within it you're effectively even — you hold the prompt, it
- * isn't an opening — so a hair-thin gap reads as noise rather than a win to chase.
- */
-export const MIN_OPPORTUNITY_GAP = 0.05;
-
-/**
- * Opportunity tiers:
- *  - none:   neither you nor competitors are mentioned much — not a brand query.
- *  - won:    you're mentioned about as often as (within MIN_OPPORTUNITY_GAP) or
- *            more than competitors — you hold the prompt.
- *  - low / medium / high: competitors lead and you trail, by a growing gap.
- */
-export type OpportunityTier = "won" | "high" | "medium" | "low" | "none";
-
-export interface OpportunityResult {
-	/** 0..1 opportunity score = the competitor-vs-you gap (0 when won or not a brand query). */
-	score: number;
-	tier: OpportunityTier;
-}
-
-/**
- * Opportunity is driven by brand-mention activity, not grounding (grounding is
- * model-dependent and orthogonal to whether a brand can win the answer):
- *   - if no brand is mentioned at a meaningful rate → not a brand query ("none");
- *   - else if competitors don't out-mention you by more than `minGap` → you're
- *     even or ahead, so you've "won" (you hold the prompt);
- *   - else the score is the gap by which competitors out-mention you.
- * Citation stability is reported separately rather than folded into this score.
- */
-export function computeOpportunity(
-	input: OpportunityInput,
-	minBrandActivity = MIN_BRAND_ACTIVITY,
-	minGap = MIN_OPPORTUNITY_GAP,
-): OpportunityResult {
-	const activity = Math.max(input.brandPresence, input.competitorPresence);
-	if (activity <= minBrandActivity) return { score: 0, tier: "none" };
-	const gap = clamp01(input.competitorPresence - input.brandPresence);
-	if (gap <= minGap) return { score: 0, tier: "won" };
-	const tier: OpportunityTier = gap >= 0.5 ? "high" : gap >= 0.25 ? "medium" : "low";
-	return { score: round3(gap), tier };
 }
 
 export interface PerPromptDailyMentions {

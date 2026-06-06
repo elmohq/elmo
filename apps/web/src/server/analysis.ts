@@ -70,7 +70,6 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 			tags: z.string().optional(),
 			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
-			limit: z.number().optional().default(40),
 		}),
 	)
 	.handler(async ({ data }): Promise<ShareOfVoiceResponse> => {

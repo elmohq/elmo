@@ -929,40 +929,6 @@ export async function getPerPromptDailyMentions(
 	return rows;
 }
 
-export interface CompetitorMentionRow {
-	competitor: string;
-	/** Number of runs that mentioned this competitor (same unit as brand_mentioned_runs). */
-	mentions: number;
-	/** Distinct prompts in which the competitor appeared. */
-	prompts: number;
-}
-
-export async function getCompetitorMentionLeaderboard(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-	limit = 50,
-): Promise<CompetitorMentionRow[]> {
-	const rows = await queryPg<CompetitorMentionRow>(sql`
-		SELECT
-			competitor,
-			count(*)::int AS mentions,
-			count(DISTINCT prompt_id)::int AS prompts
-		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
-		WHERE brand_id = ${brandId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY competitor
-		ORDER BY mentions DESC
-		LIMIT ${limit}
-	`);
-	return rows;
-}
-
 export interface PerPromptDailyCompetitorRow {
 	prompt_id: string;
 	date: string;
