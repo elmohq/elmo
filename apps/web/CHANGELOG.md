@@ -1,24 +1,5 @@
 # @workspace/web
 
-## 0.3.0
-
-### Minor Changes
-
-- 60ee475: Add "Share of Voice" and "Opportunities" pages.
-
-### Patch Changes
-
-- 60ee475: Fix "current visibility" to show the latest point of the carried-forward trend (the value the line ends on) instead of the whole-window average, so the headline number matches the chart beside it.
-- c018ebe: Fix the sidebar showing only "Overview" after the onboarding wizard finishes in local mode, until the page is refreshed.
-- 67770a7: Fix the visibility page failing to load for brands with many active prompts.
-  - @workspace/api-spec@0.3.0
-  - @workspace/config@0.3.0
-  - @workspace/deployment@0.3.0
-  - @workspace/lib@0.3.0
-  - @workspace/og@0.3.0
-  - @workspace/ui@0.3.0
-  - @workspace/whitelabel@0.3.0
-
 ## 0.2.10
 
 ### Patch Changes
