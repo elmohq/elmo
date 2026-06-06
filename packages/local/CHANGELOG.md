@@ -1,5 +1,11 @@
 # @workspace/local
 
+## 0.3.0
+
+### Patch Changes
+
+- @workspace/config@0.3.0
+
 ## 0.2.10
 
 ### Patch Changes

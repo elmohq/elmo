@@ -1,5 +1,12 @@
 # @workspace/docs
 
+## 0.3.0
+
+### Patch Changes
+
+- aeb3505: Remove `elmo status` — use `elmo compose ps` instead.
+  - @workspace/ui@0.3.0
+
 ## 0.2.10
 
 ### Patch Changes

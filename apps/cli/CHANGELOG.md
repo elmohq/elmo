@@ -1,5 +1,14 @@
 # @elmohq/cli
 
+## 0.3.0
+
+### Patch Changes
+
+- f4f2191: Make `--dir` a global CLI option. It applies to `init`, `compose`, and `edit`, and now shows up in `elmo --help` as well as each subcommand's help.
+- 2b4d735: `elmo -h` now makes clear what `elmo edit` lets you change and which targets it accepts.
+- 4022f6e: Pin generated `docker-compose.yml` image tags to the CLI's version (e.g. `elmohq/elmo-web:0.2.10`) instead of `latest`, so stacks stay on the version they were initialized with until the user upgrades.
+- aeb3505: Remove `elmo status` — use `elmo compose ps` instead.
+
 ## 0.2.10
 
 ### Patch Changes
