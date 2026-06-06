@@ -8,13 +8,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { brands, competitors } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { type LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 import {
 	getBatchChartData,
-	getBatchVisibilityData,
 	getVisibilityDailyAggregate,
 	getCitationsTotalCount,
 	type ProcessedBatchChartDataPoint,
@@ -27,16 +27,6 @@ import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 export interface BatchChartDataResponse {
 	chartData: ProcessedBatchChartDataPoint[];
-	visibility: {
-		currentVisibility: number;
-		totalRuns: number;
-		visibilityTimeSeries: Array<{
-			date: string;
-			total_runs: number;
-			brand_mentioned_count: number;
-			is_branded: boolean;
-		}>;
-	};
 	brand: {
 		id: string;
 		name: string;
@@ -63,77 +53,6 @@ export interface FilteredVisibilityResponse {
 	totalCitations: number;
 	visibilityTimeSeries: VisibilityTimeSeriesPoint[];
 	lookback: LookbackPeriod;
-}
-
-// ============================================================================
-// Prompt resolution
-// ============================================================================
-
-interface ResolvedPrompt {
-	id: string;
-	value: string;
-	systemTags: string[];
-	tags: string[];
-}
-
-/**
- * Resolve the in-scope prompts for a brand from filter criteria, entirely
- * server-side. Mirrors the filtering the visibility page applies to build its
- * prompt list — the tag filter from `getPromptsSummaryFn` plus the search box —
- * so the chart and visibility aggregates cover the same prompts the list shows.
- *
- * Resolving here (instead of having the client serialize the full prompt-id
- * list into the GET request URL) keeps the request bounded regardless of how
- * many prompts a brand has. Shipping the id list overflowed the request URL for
- * brands with a few hundred prompts — 414 URI Too Long on Vercel, 431 Request
- * Header Fields Too Large in dev. See issue #68.
- *
- * NOTE: the tag-filter logic here must stay in sync with `getPromptsSummaryFn`
- * (apps/web/src/server/prompts.ts), which produces the displayed list.
- */
-async function resolveFilteredPrompts(
-	brandId: string,
-	opts: { tags?: string; search?: string },
-): Promise<ResolvedPrompt[]> {
-	const allPrompts = await db
-		.select({
-			id: prompts.id,
-			value: prompts.value,
-			systemTags: prompts.systemTags,
-			tags: prompts.tags,
-		})
-		.from(prompts)
-		.where(and(eq(prompts.brandId, brandId), eq(prompts.enabled, true)));
-
-	const tagFilter = opts.tags?.split(",").filter(Boolean) || [];
-	const search = opts.search;
-
-	return allPrompts
-		.filter((p) => {
-			const userTags = p.tags || [];
-
-			// Tag filter — match getPromptsSummaryFn: a prompt's effective tags
-			// are its user tags plus exactly one system tag reflecting its
-			// effective branded status.
-			if (tagFilter.length > 0) {
-				const { isBranded } = getEffectiveBrandedStatus(p.systemTags || [], userTags);
-				const systemTag = isBranded ? SYSTEM_TAGS.BRANDED : SYSTEM_TAGS.UNBRANDED;
-				const effectiveTags = userTags.includes(systemTag) ? userTags : [...userTags, systemTag];
-				if (!tagFilter.some((t) => effectiveTags.includes(t))) return false;
-			}
-
-			// Search filter — previously applied in the browser against the
-			// prompt text (case-insensitive substring).
-			if (search && !p.value.toLowerCase().includes(search.toLowerCase())) return false;
-
-			return true;
-		})
-		.map((p) => ({
-			id: p.id,
-			value: p.value,
-			systemTags: p.systemTags || [],
-			tags: p.tags || [],
-		}));
 }
 
 // ============================================================================
@@ -196,51 +115,25 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		if (promptIds.length === 0) {
 			return {
 				chartData: [],
-				visibility: { currentVisibility: 0, totalRuns: 0, visibilityTimeSeries: [] },
 				brand: { id: brand.id, name: brand.name },
 				competitors: competitorsResult,
 				dateRange: { fromDate: fromDateStr, toDate: toDateStr },
 			};
 		}
 
-		// Determine branded prompt IDs
-		const brandedPromptIds = resolvedPrompts
-			.filter((p) => p.value.toLowerCase().includes(brand.name.toLowerCase()))
-			.map((p) => p.id);
-
-		// Fetch batch chart data and visibility data in parallel
-		const [chartData, visibilityData] = await Promise.all([
-			getBatchChartData(
-				data.brandId,
-				promptIds,
-				fromDateStr,
-				toDateStr,
-				timezone,
-				undefined,
-				data.model,
-			),
-			getBatchVisibilityData(
-				data.brandId,
-				promptIds,
-				brandedPromptIds,
-				fromDateStr,
-				toDateStr,
-				timezone,
-			),
-		]);
-
-		const currentVisibility =
-			visibilityData.totalRuns > 0
-				? Math.round((visibilityData.totalMentioned / visibilityData.totalRuns) * 100)
-				: 0;
+		// Fetch batch chart data
+		const chartData = await getBatchChartData(
+			data.brandId,
+			promptIds,
+			fromDateStr,
+			toDateStr,
+			timezone,
+			undefined,
+			data.model,
+		);
 
 		return {
 			chartData,
-			visibility: {
-				currentVisibility,
-				totalRuns: visibilityData.totalRuns,
-				visibilityTimeSeries: visibilityData.visibilityTimeSeries,
-			},
 			brand: { id: brand.id, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
@@ -317,26 +210,31 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
 		]);
 
-		// Roll the period totals from the raw observation sums (actual_*);
+		// Roll the period run totals from the raw observation sums (actual_*);
 		// the visibility time-series uses the per-day LVCF sums so gaps in
 		// individual prompt schedules don't scallop the line.
 		let totalBrandedRuns = 0;
-		let totalBrandedMentioned = 0;
 		let totalNonBrandedRuns = 0;
-		let totalNonBrandedMentioned = 0;
 		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
 			totalBrandedRuns += row.actual_branded_runs;
-			totalBrandedMentioned += row.actual_branded_mentioned;
 			totalNonBrandedRuns += row.actual_nonbranded_runs;
-			totalNonBrandedMentioned += row.actual_nonbranded_mentioned;
 			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
 			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
 			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
 		});
 
 		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
-		const currentVisibility = totalRuns > 0 ? Math.round((totalMentioned / totalRuns) * 100) : 0;
+		// "Current" = the latest plotted point (last non-null LVCF day), so the headline
+		// number matches the right end of the trend/sparkline beside it — and the
+		// overview's current-visibility hero — rather than the whole-window average.
+		let currentVisibility = 0;
+		for (let i = visibilityTimeSeries.length - 1; i >= 0; i--) {
+			const v = visibilityTimeSeries[i].visibility;
+			if (v != null) {
+				currentVisibility = v;
+				break;
+			}
+		}
 
 		return {
 			currentVisibility,

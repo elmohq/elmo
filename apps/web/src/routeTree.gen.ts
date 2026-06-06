@@ -41,6 +41,8 @@ import { Route as ApiV1CompetitorsCompetitorIdRouteImport } from './routes/api/v
 import { Route as ApiV1BrandsBrandIdRouteImport } from './routes/api/v1/brands/$brandId'
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
+import { Route as AuthedAppBrandShareOfVoiceRouteImport } from './routes/_authed/app/$brand/share-of-voice'
+import { Route as AuthedAppBrandOpportunitiesRouteImport } from './routes/_authed/app/$brand/opportunities'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
 import { Route as AuthedAppBrandSplatRouteImport } from './routes/_authed/app/$brand/$'
 import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plausible/js/script/index'
@@ -216,6 +218,18 @@ const AuthedAppBrandVisibilityRoute =
     path: '/visibility',
     getParentRoute: () => AuthedAppBrandRoute,
   } as any)
+const AuthedAppBrandShareOfVoiceRoute =
+  AuthedAppBrandShareOfVoiceRouteImport.update({
+    id: '/share-of-voice',
+    path: '/share-of-voice',
+    getParentRoute: () => AuthedAppBrandRoute,
+  } as any)
+const AuthedAppBrandOpportunitiesRoute =
+  AuthedAppBrandOpportunitiesRouteImport.update({
+    id: '/opportunities',
+    path: '/opportunities',
+    getParentRoute: () => AuthedAppBrandRoute,
+  } as any)
 const AuthedAppBrandCitationsRoute = AuthedAppBrandCitationsRouteImport.update({
   id: '/citations',
   path: '/citations',
@@ -307,6 +321,8 @@ export interface FileRoutesByFullPath {
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
   '/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
+  '/app/$brand/opportunities': typeof AuthedAppBrandOpportunitiesRoute
+  '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
@@ -348,6 +364,8 @@ export interface FileRoutesByTo {
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
   '/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
+  '/app/$brand/opportunities': typeof AuthedAppBrandOpportunitiesRoute
+  '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
@@ -395,6 +413,8 @@ export interface FileRoutesById {
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
   '/_authed/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
+  '/_authed/app/$brand/opportunities': typeof AuthedAppBrandOpportunitiesRoute
+  '/_authed/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
   '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
@@ -442,6 +462,8 @@ export interface FileRouteTypes {
     | '/api/setup-status/'
     | '/app/$brand/$'
     | '/app/$brand/citations'
+    | '/app/$brand/opportunities'
+    | '/app/$brand/share-of-voice'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -483,6 +505,8 @@ export interface FileRouteTypes {
     | '/api/setup-status'
     | '/app/$brand/$'
     | '/app/$brand/citations'
+    | '/app/$brand/opportunities'
+    | '/app/$brand/share-of-voice'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -529,6 +553,8 @@ export interface FileRouteTypes {
     | '/api/setup-status/'
     | '/_authed/app/$brand/$'
     | '/_authed/app/$brand/citations'
+    | '/_authed/app/$brand/opportunities'
+    | '/_authed/app/$brand/share-of-voice'
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
     | '/api/v1/brands/$brandId'
@@ -805,6 +831,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppBrandVisibilityRouteImport
       parentRoute: typeof AuthedAppBrandRoute
     }
+    '/_authed/app/$brand/share-of-voice': {
+      id: '/_authed/app/$brand/share-of-voice'
+      path: '/share-of-voice'
+      fullPath: '/app/$brand/share-of-voice'
+      preLoaderRoute: typeof AuthedAppBrandShareOfVoiceRouteImport
+      parentRoute: typeof AuthedAppBrandRoute
+    }
+    '/_authed/app/$brand/opportunities': {
+      id: '/_authed/app/$brand/opportunities'
+      path: '/opportunities'
+      fullPath: '/app/$brand/opportunities'
+      preLoaderRoute: typeof AuthedAppBrandOpportunitiesRouteImport
+      parentRoute: typeof AuthedAppBrandRoute
+    }
     '/_authed/app/$brand/citations': {
       id: '/_authed/app/$brand/citations'
       path: '/citations'
@@ -911,6 +951,8 @@ const AuthedAdminRouteWithChildren = AuthedAdminRoute._addFileChildren(
 interface AuthedAppBrandRouteChildren {
   AuthedAppBrandSplatRoute: typeof AuthedAppBrandSplatRoute
   AuthedAppBrandCitationsRoute: typeof AuthedAppBrandCitationsRoute
+  AuthedAppBrandOpportunitiesRoute: typeof AuthedAppBrandOpportunitiesRoute
+  AuthedAppBrandShareOfVoiceRoute: typeof AuthedAppBrandShareOfVoiceRoute
   AuthedAppBrandVisibilityRoute: typeof AuthedAppBrandVisibilityRoute
   AuthedAppBrandIndexRoute: typeof AuthedAppBrandIndexRoute
   AuthedAppBrandPromptsPromptIdRoute: typeof AuthedAppBrandPromptsPromptIdRoute
@@ -926,6 +968,8 @@ interface AuthedAppBrandRouteChildren {
 const AuthedAppBrandRouteChildren: AuthedAppBrandRouteChildren = {
   AuthedAppBrandSplatRoute: AuthedAppBrandSplatRoute,
   AuthedAppBrandCitationsRoute: AuthedAppBrandCitationsRoute,
+  AuthedAppBrandOpportunitiesRoute: AuthedAppBrandOpportunitiesRoute,
+  AuthedAppBrandShareOfVoiceRoute: AuthedAppBrandShareOfVoiceRoute,
   AuthedAppBrandVisibilityRoute: AuthedAppBrandVisibilityRoute,
   AuthedAppBrandIndexRoute: AuthedAppBrandIndexRoute,
   AuthedAppBrandPromptsPromptIdRoute: AuthedAppBrandPromptsPromptIdRoute,
