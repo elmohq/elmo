@@ -116,9 +116,6 @@ async function benchBrand(
 	results.push(await bench("getBatchChartData",
 		() => pgRead.getBatchChartData(brandId, promptIds, fromDate, toDate, tz)));
 
-	results.push(await bench("getBatchVisibilityData",
-		() => pgRead.getBatchVisibilityData(brandId, promptIds, brandedPromptIds, fromDate, toDate, tz)));
-
 	results.push(await bench("getBrandEarliestRunDate",
 		() => pgRead.getBrandEarliestRunDate(brandId)));
 

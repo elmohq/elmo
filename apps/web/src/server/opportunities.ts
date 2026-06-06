@@ -12,8 +12,9 @@
  *
  * Provider selection reuses the same config as onboarding / prompt-idea
  * generation (`runStructuredCompletionPrompt` → `resolveResearchProvider`, which
- * honors ONBOARDING_LLM_TARGET / the preference order). No schema change, no
- * caching yet — recomputed per hard refresh (caching deferred, see issue #312).
+ * honors ONBOARDING_LLM_TARGET / the preference order). Reports are persisted to
+ * the brand_opportunities table (append-only) and served as-is until the latest
+ * is older than REFRESH_AFTER_DAYS, so a normal page load doesn't trigger an LLM call.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";

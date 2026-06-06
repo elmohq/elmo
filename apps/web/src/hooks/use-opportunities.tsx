@@ -8,9 +8,9 @@ export const opportunitiesKeys = {
 };
 
 /**
- * Opportunities AEO report. Each call triggers a fresh LLM completion server-side, so
- * it's cached for the session (staleTime: Infinity, no refetch-on-focus) and
- * only recomputes on a hard page load — matching "recompute per hard refresh".
+ * Opportunities AEO report. The server returns a stored report and regenerates it
+ * only when the latest is stale, so this is held for the session (staleTime:
+ * Infinity, no refetch-on-focus) rather than refetched.
  */
 export function useOpportunities(brandId?: string) {
 	const params = useParams({ strict: false }) as { brand?: string };

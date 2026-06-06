@@ -1,6 +1,6 @@
 /**
  * Shared prompt-tag helpers. Tag/search → prompt-id resolution lives in
- * `resolveFilteredPrompts` (server/visibility.ts); this just exposes the
+ * `resolveFilteredPrompts` (server/prompt-resolution.ts); this just exposes the
  * effective branded check used to exclude branded prompts from Opportunities.
  */
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";

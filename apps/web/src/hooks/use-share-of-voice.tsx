@@ -40,7 +40,7 @@ export function useShareOfVoice(brandId?: string, filters?: ShareOfVoiceFilters)
 		data: query.data,
 		isLoading: query.isLoading,
 		isFetching: query.isFetching,
-		isError: query.error,
+		isError: !!query.error,
 		revalidate: query.refetch,
 	};
 }

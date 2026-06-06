@@ -101,17 +101,6 @@ export interface ProcessedBatchChartDataPoint {
 	competitor_counts: Record<string, number>;
 }
 
-export interface BatchVisibilityData {
-	visibilityTimeSeries: Array<{
-		date: string;
-		total_runs: number;
-		brand_mentioned_count: number;
-		is_branded: boolean;
-	}>;
-	totalRuns: number;
-	totalMentioned: number;
-}
-
 export interface AdminRunsOverTime {
 	date: string;
 	count: number;
@@ -1134,52 +1123,6 @@ export async function getBatchChartData(
 		brand_mentioned_count: row.brand_mentioned_count,
 		competitor_counts: competitorMap.get(row.prompt_id)?.get(String(row.date)) || {},
 	}));
-}
-
-// ============================================================================
-// Batch Visibility Data
-// ============================================================================
-
-export async function getBatchVisibilityData(
-	brandId: string,
-	promptIds: string[],
-	brandedPromptIds: string[],
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-): Promise<BatchVisibilityData> {
-	if (promptIds.length === 0) {
-		return { visibilityTimeSeries: [], totalRuns: 0, totalMentioned: 0 };
-	}
-
-	const isBranded = brandedPromptIds.length > 0 ? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))` : sql`FALSE`;
-	const result = await queryPg<{
-		date: string;
-		total_runs: number;
-		brand_mentioned_count: number;
-		is_branded: boolean;
-	}>(sql`
-		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			${isBranded} AS is_branded
-		FROM prompt_runs
-		WHERE brand_id = ${brandId}
-			AND prompt_id IN (${uuidList(promptIds)})
-			${dateFilter(fromDate, toDate, timezone)}
-		GROUP BY date, is_branded
-		ORDER BY date
-	`);
-
-	let totalRuns = 0;
-	let totalMentioned = 0;
-	for (const row of result) {
-		totalRuns += Number(row.total_runs);
-		totalMentioned += Number(row.brand_mentioned_count);
-	}
-
-	return { visibilityTimeSeries: result, totalRuns, totalMentioned };
 }
 
 // ============================================================================

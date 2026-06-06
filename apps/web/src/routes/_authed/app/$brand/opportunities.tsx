@@ -5,8 +5,8 @@
  * digest of the brand's tracked citation data (per-query standing vs the leading
  * competitor over 7d + 30d, citation difficulty, where answers are sourced, and
  * per-platform visibility) and make a single structured LLM completion (no web
- * search) to turn it into categorized opportunities. Recomputed on each hard
- * refresh — see server/opportunities.ts.
+ * search) to turn it into categorized opportunities. The report is cached
+ * server-side and regenerated only when stale — see server/opportunities.ts.
  */
 
 import { IconLoader2 } from "@tabler/icons-react";

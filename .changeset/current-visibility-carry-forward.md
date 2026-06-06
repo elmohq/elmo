@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Fix "current visibility" to average each prompt's latest carried-forward value across all processed prompts, instead of only the prompts processed on the most recent day.
+Fix "current visibility" to show the latest point of the carried-forward trend (the value the line ends on) instead of the whole-window average, so the headline number matches the chart beside it.

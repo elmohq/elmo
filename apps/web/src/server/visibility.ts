@@ -15,7 +15,6 @@ import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils"
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 import {
 	getBatchChartData,
-	getBatchVisibilityData,
 	getVisibilityDailyAggregate,
 	getCitationsTotalCount,
 	type ProcessedBatchChartDataPoint,
@@ -28,16 +27,6 @@ import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 export interface BatchChartDataResponse {
 	chartData: ProcessedBatchChartDataPoint[];
-	visibility: {
-		currentVisibility: number;
-		totalRuns: number;
-		visibilityTimeSeries: Array<{
-			date: string;
-			total_runs: number;
-			brand_mentioned_count: number;
-			is_branded: boolean;
-		}>;
-	};
 	brand: {
 		id: string;
 		name: string;
@@ -126,51 +115,25 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		if (promptIds.length === 0) {
 			return {
 				chartData: [],
-				visibility: { currentVisibility: 0, totalRuns: 0, visibilityTimeSeries: [] },
 				brand: { id: brand.id, name: brand.name },
 				competitors: competitorsResult,
 				dateRange: { fromDate: fromDateStr, toDate: toDateStr },
 			};
 		}
 
-		// Determine branded prompt IDs
-		const brandedPromptIds = resolvedPrompts
-			.filter((p) => p.value.toLowerCase().includes(brand.name.toLowerCase()))
-			.map((p) => p.id);
-
-		// Fetch batch chart data and visibility data in parallel
-		const [chartData, visibilityData] = await Promise.all([
-			getBatchChartData(
-				data.brandId,
-				promptIds,
-				fromDateStr,
-				toDateStr,
-				timezone,
-				undefined,
-				data.model,
-			),
-			getBatchVisibilityData(
-				data.brandId,
-				promptIds,
-				brandedPromptIds,
-				fromDateStr,
-				toDateStr,
-				timezone,
-			),
-		]);
-
-		const currentVisibility =
-			visibilityData.totalRuns > 0
-				? Math.round((visibilityData.totalMentioned / visibilityData.totalRuns) * 100)
-				: 0;
+		// Fetch batch chart data
+		const chartData = await getBatchChartData(
+			data.brandId,
+			promptIds,
+			fromDateStr,
+			toDateStr,
+			timezone,
+			undefined,
+			data.model,
+		);
 
 		return {
 			chartData,
-			visibility: {
-				currentVisibility,
-				totalRuns: visibilityData.totalRuns,
-				visibilityTimeSeries: visibilityData.visibilityTimeSeries,
-			},
 			brand: { id: brand.id, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
