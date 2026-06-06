@@ -64,52 +64,107 @@ export const mockShareOfVoice = {
 	],
 };
 
-type Tier = "won" | "high" | "medium" | "low" | "none";
-interface Opp {
-	promptId: string;
-	prompt: string;
-	runs: number;
-	brandMentionRate: number;
-	competitorMentionRate: number;
-	weightedVolatility: number | null;
-	stabilityScore: number | null;
-	dayTransitions: number;
-	opportunity: number;
-	tier: Tier;
-}
-
-const opp = (
-	promptId: string,
-	prompt: string,
-	brand: number,
-	comp: number,
-	stability: number | null,
-	tier: Tier,
-): Opp => ({
-	promptId,
-	prompt,
-	runs: 120,
-	brandMentionRate: brand,
-	competitorMentionRate: comp,
-	weightedVolatility: stability === null ? null : 1 - stability / 100,
-	stabilityScore: stability,
-	dayTransitions: 29,
-	opportunity: tier === "won" || tier === "none" ? 0 : Math.round((comp - brand) * 1000) / 1000,
-	tier,
-});
-
+/** Mock opportunities report (the getOpportunitiesFn response shape). */
 export const mockOpportunities = {
-	model: null,
-	prompts: [
-		opp("p1", "best crm for small business", 0.05, 0.82, 22, "high"),
-		opp("p2", "top project management tools", 0.12, 0.78, 41, "high"),
-		opp("p3", "affordable accounting software for startups", 0.18, 0.66, 73, "medium"),
-		opp("p4", "what is the best help desk software", 0.31, 0.62, 58, "medium"),
-		opp("p5", "tools for remote team collaboration", 0.44, 0.59, 86, "low"),
-		opp("p6", "best alternative to spreadsheets for tracking sales", 0.28, 0.36, 34, "low"),
-		opp("p7", "how to choose a marketing automation platform", 0.61, 0.55, 64, "won"),
-		opp("p8", "acme vs globex pricing", 0.74, 0.48, 91, "won"),
-		opp("p9", "what is customer relationship management", 0.04, 0.06, 12, "none"),
-		opp("p10", "how do saas companies handle billing", 0.02, 0.05, null, "none"),
-	],
+	reason: null,
+	generatedFor: { brandName: "Acme" },
+	report: {
+		summary: [
+			"Acme is out-cited by Globex and Initech on nearly every unbranded category question.",
+			"Those answers lean on review sites and 'best CRM' roundups (G2, Capterra, PCMag) where competitors show up and Acme rarely does.",
+			"Fastest wins are wide-open comparison and community surfaces; the entrenched media roundups are higher-effort, longer plays.",
+		],
+		opportunities: [
+			{
+				category: "creation",
+				title: "Win the 'Acme vs Globex' and 'CRM alternatives' comparisons",
+				why: "Buyers comparing CRMs see Globex named in most AI answers and you almost never — a neutral side-by-side gives assistants a reason to put Acme in the conversation.",
+				relatedPrompts: [
+					{ text: "acme vs globex pricing", promptId: "p8" },
+					{ text: "best alternative to spreadsheets for tracking sales", promptId: "p6" },
+				],
+				yourCitations: [],
+				competitorCitations: [
+					{ title: "Globex vs the alternatives", domain: "globex.com", url: "https://globex.com/compare" },
+				],
+			},
+			{
+				category: "creation",
+				title: "Create a link-worthy 'best CRM for small business' resource",
+				why: "Globex wins this high-volume question through roundups you're absent from; a strong, citable resource of your own gives editors and assistants something to point to.",
+				relatedPrompts: [{ text: "best crm for small business", promptId: "p1" }],
+				yourCitations: [],
+				competitorCitations: [
+					{ title: "Globex for Small Business", domain: "globex.com", url: "https://globex.com/smb" },
+				],
+			},
+			{
+				category: "creation",
+				title: "Publish a definitive 'CRM for startups' guide",
+				why: "No source owns the startup-CRM explainer answers and the citations there keep changing, so a clear guide can claim them before a competitor does.",
+				relatedPrompts: [
+					{ text: "affordable accounting software for startups", promptId: "p3" },
+					{ text: "what is customer relationship management", promptId: "p9" },
+				],
+				yourCitations: [],
+				competitorCitations: [],
+			},
+			{
+				category: "existing-content",
+				title: "Shore up your Help Desk guide before it slips",
+				why: "You already get cited for this answer, but a Globex page is gaining ground — reinforcing the page you have protects citations you're about to lose.",
+				relatedPrompts: [{ text: "what is the best help desk software", promptId: "p4" }],
+				yourCitations: [{ title: "Acme Help Desk Guide", domain: "acme.com", url: "https://acme.com/help-desk-guide" }],
+				competitorCitations: [{ title: "Globex Help Desk", domain: "globex.com", url: "https://globex.com/help-desk" }],
+			},
+			{
+				category: "outreach",
+				title: "Run a verified-review drive on G2 and Capterra",
+				why: "Review sites are the pages AI cites most for CRM picks, and competitors out-review you there — more recent reviews are the cheapest way to start getting named.",
+				relatedPrompts: [
+					{ text: "best crm for small business", promptId: "p1" },
+					{ text: "tools for remote team collaboration", promptId: "p5" },
+				],
+				yourCitations: [{ title: "Acme CRM", domain: "acme.com", url: "https://acme.com" }],
+				competitorCitations: [{ title: "Globex CRM", domain: "globex.com", url: "https://globex.com/crm" }],
+			},
+			{
+				category: "outreach",
+				title: "Earn inclusion in the major 'best CRM' roundups",
+				why: "PCMag, Forbes Advisor and TechRadar are cited again and again for your biggest gaps but list competitors, not you — one inclusion can surface Acme across many related questions.",
+				relatedPrompts: [
+					{ text: "best crm for small business", promptId: "p1" },
+					{ text: "top project management tools", promptId: "p2" },
+				],
+				yourCitations: [],
+				competitorCitations: [
+					{ title: "Globex for Small Business", domain: "globex.com", url: "https://globex.com/smb" },
+				],
+			},
+			{
+				category: "social",
+				title: "Answer recurring 'which CRM' threads on r/CRM",
+				why: "These Reddit threads feed a lot of AI answers and rotate often, so genuine, disclosed answers can get Acme surfaced quickly — competitors are already named there.",
+				relatedPrompts: [
+					{ text: "how do saas companies handle billing", promptId: "p10" },
+					{ text: "what is customer relationship management", promptId: "p9" },
+				],
+				yourCitations: [],
+				competitorCitations: [{ title: "Globex CRM overview", domain: "globex.com", url: "https://globex.com/crm" }],
+			},
+			{
+				category: "social",
+				title: "Seed honest comparison demos on YouTube",
+				why: "Video walkthroughs get pulled into AI answers for evaluation questions, where competitor demos currently dominate and you're not represented.",
+				relatedPrompts: [{ text: "best alternative to spreadsheets for tracking sales", promptId: "p6" }],
+				yourCitations: [],
+				competitorCitations: [],
+			},
+		],
+		risks: [
+			"The big media roundups are locked-in and slow to crack — treat them as longer plays, not quick wins.",
+			"Several 'vs' queries are answered from competitor-owned domains you can't get listed on; focus on independent comparisons instead.",
+			"Skip incentivized or fake reviews — assistants increasingly discount coordinated, inauthentic activity.",
+		],
+	},
 };

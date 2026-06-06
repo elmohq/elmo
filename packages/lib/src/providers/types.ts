@@ -18,6 +18,12 @@ export interface ProviderOptions {
 export interface StructuredResearchOptions<T> {
 	prompt: string;
 	schema: z.ZodType<T>;
+	/**
+	 * Whether the model may use its web-search tool. Defaults to true (the
+	 * onboarding research path). Set false for a single completion over context
+	 * supplied entirely in the prompt — no tools, no agent loop.
+	 */
+	webSearch?: boolean;
 }
 
 export interface StructuredResearchResult<T> {

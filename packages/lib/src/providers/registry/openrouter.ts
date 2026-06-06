@@ -79,22 +79,22 @@ export const openrouter: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
+		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		// Raw fetch (no AI SDK) so we can attach the OpenRouter `plugins` field
-		// — the AI SDK's OpenAI-compat path doesn't pass it through. We use
-		// `engine: "native"` so the underlying provider's real web-search tool
-		// runs (e.g. Anthropic's web_search_20250305) instead of the Exa
-		// fallback.
+		// — the AI SDK's OpenAI-compat path doesn't pass it through.
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
-		const body = {
+		const body: Record<string, unknown> = {
 			model: DEFAULT_RESEARCH_MODEL,
 			messages: [{ role: "user", content: prompt }],
-			plugins: [{ id: "web", engine: "native" }],
 			response_format: {
 				type: "json_schema",
 				json_schema: { name: "research_output", strict: true, schema: jsonSchema },
 			},
 		};
+		// `engine: "native"` runs the underlying provider's real web-search tool
+		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback.
+		if (webSearch) body.plugins = [{ id: "web", engine: "native" }];
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: openrouterHeaders(),
