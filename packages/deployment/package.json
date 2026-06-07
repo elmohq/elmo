@@ -1,6 +1,6 @@
 {
   "name": "@workspace/deployment",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "private": true,
   "license": "MIT",
   "main": "./src/index.ts",

@@ -1,5 +1,13 @@
 # @workspace/worker
 
+## 0.2.12
+
+### Patch Changes
+
+- 7ce34f1: Fixes bug where in some cases BrightData processing could get stuck.
+  - @workspace/lib@0.2.12
+  - @workspace/whitelabel@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes

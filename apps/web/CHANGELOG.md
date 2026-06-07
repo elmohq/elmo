@@ -1,5 +1,17 @@
 # @workspace/web
 
+## 0.2.12
+
+### Patch Changes
+
+- @workspace/api-spec@0.2.12
+- @workspace/config@0.2.12
+- @workspace/deployment@0.2.12
+- @workspace/lib@0.2.12
+- @workspace/og@0.2.12
+- @workspace/ui@0.2.12
+- @workspace/whitelabel@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes
