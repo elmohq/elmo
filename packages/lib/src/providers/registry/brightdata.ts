@@ -167,7 +167,7 @@ export const brightdata: Provider = {
 			// eventually 429s even healthy triggers. Best-effort cancel so abandoned
 			// jobs don't accumulate. (Worker SIGTERM mid-poll still leaks; those need
 			// the periodic snapshot sweep.)
-			if (snapshotId && !consumed) await cancelSnapshot(snapshotId);
+			if (snapshotId && !consumed) await cancelSnapshot(client, snapshotId);
 			await client.close();
 		}
 	},
@@ -220,12 +220,9 @@ async function getSnapshotStatus(snapshotId: string): Promise<string> {
 /** Best-effort cancel of a triggered snapshot we're abandoning, so it stops
  *  counting against BrightData's per-dataset running-jobs cap. Cancellation is
  *  cleanup, not part of the run's success path, so errors are swallowed. */
-async function cancelSnapshot(snapshotId: string): Promise<void> {
+async function cancelSnapshot(client: bdclient, snapshotId: string): Promise<void> {
 	try {
-		await fetch(`https://api.brightdata.com/datasets/v3/snapshot/${snapshotId}/cancel`, {
-			method: "POST",
-			headers: { Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}` },
-		});
+		await client.scrape.snapshot.cancel(snapshotId);
 	} catch (e) {
 		console.warn(`BrightData: failed to cancel snapshot ${snapshotId}`, e);
 	}
