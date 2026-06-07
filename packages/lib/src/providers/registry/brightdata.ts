@@ -108,6 +108,8 @@ export const brightdata: Provider = {
 		}
 
 		const client = createClient();
+		let snapshotId: string | undefined;
+		let consumed = false;
 		try {
 			const triggerRes = await fetch(
 				`https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&notify=false&include_errors=true&format=json`,
@@ -130,9 +132,10 @@ export const brightdata: Provider = {
 				throw new Error(`BrightData trigger failed (${triggerRes.status}): ${await triggerRes.text()}`);
 			}
 
-			const { snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string };
-			await pollUntilReady(client, snapshotId);
+			({ snapshot_id: snapshotId } = (await triggerRes.json()) as { snapshot_id: string });
+			await pollUntilReady(snapshotId);
 			const payload = await client.scrape.snapshot.fetch(snapshotId, { format: "json" });
+			consumed = true;
 
 			const record = (Array.isArray(payload) ? payload[0] : payload) ?? {};
 			const answer = normalizeAnswer(record);
@@ -158,21 +161,34 @@ export const brightdata: Provider = {
 				modelVersion: record?.model ?? undefined,
 			};
 		} finally {
+			// A triggered snapshot we never consumed (timeout, terminal failure, an
+			// unknown status we gave up on, or any thrown error) keeps running on
+			// BrightData and counts against the per-dataset concurrency cap — which
+			// eventually 429s even healthy triggers. Best-effort cancel so abandoned
+			// jobs don't accumulate. (Worker SIGTERM mid-poll still leaks; those need
+			// the periodic snapshot sweep.)
+			if (snapshotId && !consumed) await cancelSnapshot(snapshotId);
 			await client.close();
 		}
 	},
 };
 
-async function pollUntilReady(client: bdclient, snapshotId: string): Promise<void> {
+/** Terminal failure statuses from datasets/v3/progress. Anything else —
+ *  running, building, "starting", queued, or a status BrightData adds later —
+ *  is treated as "still working" so a degraded scraper or an unrecognized
+ *  status string doesn't fail the run on the very first poll. */
+const TERMINAL_FAILURE = new Set(["failed", "error", "cancelled"]);
+
+async function pollUntilReady(snapshotId: string): Promise<void> {
 	const maxAttempts = 60;
 	const BASE_DELAY = 2000;
 	const MAX_DELAY = 10000;
 
 	for (let attempt = 0; attempt < maxAttempts; attempt++) {
-		const status = await client.scrape.snapshot.getStatus(snapshotId);
-		if (status.status === "ready") return;
-		if (status.status === "failed" || status.status === "cancelled") {
-			throw new Error(`BrightData snapshot ${snapshotId} ${status.status}`);
+		const status = await getSnapshotStatus(snapshotId);
+		if (status === "ready") return;
+		if (TERMINAL_FAILURE.has(status)) {
+			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
 		}
 
 		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
@@ -180,4 +196,37 @@ async function pollUntilReady(client: bdclient, snapshotId: string): Promise<voi
 	}
 
 	throw new Error(`BrightData snapshot ${snapshotId} timed out`);
+}
+
+/** Read snapshot status straight from datasets/v3/progress. We bypass the SDK's
+ *  getStatus because its response schema is a strict enum
+ *  (running|ready|failed|cancelled|error) that throws on any other value — and the
+ *  live API also returns statuses like "starting", which would otherwise fail the
+ *  run instantly instead of waiting. A transient HTTP/parse error is reported as a
+ *  non-terminal status so we keep polling rather than abandon the snapshot. */
+async function getSnapshotStatus(snapshotId: string): Promise<string> {
+	try {
+		const res = await fetch(`https://api.brightdata.com/datasets/v3/progress/${snapshotId}`, {
+			headers: { Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}` },
+		});
+		if (!res.ok) return "pending";
+		const body = (await res.json()) as { status?: string };
+		return body.status ?? "pending";
+	} catch {
+		return "pending";
+	}
+}
+
+/** Best-effort cancel of a triggered snapshot we're abandoning, so it stops
+ *  counting against BrightData's per-dataset running-jobs cap. Cancellation is
+ *  cleanup, not part of the run's success path, so errors are swallowed. */
+async function cancelSnapshot(snapshotId: string): Promise<void> {
+	try {
+		await fetch(`https://api.brightdata.com/datasets/v3/snapshot/${snapshotId}/cancel`, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}` },
+		});
+	} catch (e) {
+		console.warn(`BrightData: failed to cancel snapshot ${snapshotId}`, e);
+	}
 }
