@@ -507,7 +507,7 @@ function CitationsTab({
 		return <div className="py-12 text-center text-muted-foreground text-sm">No citation data available for this time period.</div>;
 	}
 
-	return <CitationsDisplay citationData={citationStats} brandId={brandId} brandName={brandName} showStats={true} maxDomains={20} maxUrls={50} />;
+	return <CitationsDisplay citationData={citationStats} brandId={brandId} brandName={brandName} showStats={true} maxDomains={10} maxUrls={50} />;
 }
 
 function PaginationControls({

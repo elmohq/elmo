@@ -495,7 +495,7 @@ function TrendAreaChart({
 								return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 							}}
 						/>
-						<YAxis tickLine={false} axisLine={false} tickMargin={8} tickCount={4} tick={{ fontSize: 11 }} tickFormatter={(value) => `${value}%`} />
+						<YAxis tickLine={false} axisLine={false} tickMargin={8} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tick={{ fontSize: 11 }} tickFormatter={(value) => `${value}%`} />
 						<ChartTooltip
 							isAnimationActive={false}
 							cursor={false}
@@ -525,7 +525,8 @@ function TrendAreaChart({
 								);
 							}}
 						/>
-						{present.map((k) => (
+						{/* "other" first so it renders at the bottom of the stack */}
+						{[...present].sort((a, b) => (a === "other" ? -1 : b === "other" ? 1 : 0)).map((k) => (
 							<Area key={k} dataKey={k} type="monotone" stackId="1" stroke={`var(--color-${k})`} fill={`var(--color-${k})`} fillOpacity={0.8} strokeWidth={0} />
 						))}
 					</AreaChart>
@@ -540,7 +541,7 @@ export function CitationsDisplay({
 	brandId,
 	brandName,
 	showStats = false,
-	maxDomains = 20,
+	maxDomains = 10,
 	maxUrls = 20,
 	days = 7,
 	onCompetitorAdded,
@@ -553,7 +554,7 @@ export function CitationsDisplay({
 	const [changeTabExpanded, setChangeTabExpanded] = useState(false);
 	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
 	const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
-	const [showAllProducts, setShowAllProducts] = useState(false);
+	const [productPage, setProductPage] = useState(0);
 	const [productFilter, setProductFilter] = useState<"all" | "brand" | "competitor">("all");
 	const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
 	const [showAllQueries, setShowAllQueries] = useState(false);
@@ -605,6 +606,14 @@ export function CitationsDisplay({
 		const ps = citationData.googleModule?.shopping.products ?? [];
 		return productFilter === "all" ? ps : ps.filter((p) => p.attribution === productFilter);
 	}, [citationData.googleModule, productFilter]);
+	const productCounts = useMemo(() => {
+		const ps = citationData.googleModule?.shopping.products ?? [];
+		return {
+			all: ps.length,
+			brand: ps.filter((p) => p.attribution === "brand").length,
+			competitor: ps.filter((p) => p.attribution === "competitor").length,
+		};
+	}, [citationData.googleModule]);
 
 	const subredditData = useMemo(() => {
 		const droppedUrlSet = new Set(
@@ -951,18 +960,27 @@ export function CitationsDisplay({
 					</CardHeader>
 					<Separator />
 					<CardContent>
-						<UnderlineTabs
-							tabs={CATEGORY_TABS}
-							activeKey={selectedCategory}
-							onSelect={setSelectedCategory}
-						/>
+						<div className="flex items-center gap-3">
+							<span className="text-[11px] font-medium text-muted-foreground shrink-0">Source</span>
+							<UnderlineTabs
+								tabs={CATEGORY_TABS}
+								activeKey={selectedCategory}
+								onSelect={setSelectedCategory}
+							/>
+						</div>
 						{pageTypeTabs.length > 2 && (
-							<div className="mt-2">
-								<UnderlineTabs
-									tabs={pageTypeTabs}
-									activeKey={selectedPageType}
-									onSelect={setSelectedPageType}
-								/>
+							<div className="flex items-center flex-wrap gap-1.5 mt-3">
+								<span className="text-[11px] font-medium text-muted-foreground mr-1">Page type</span>
+								{pageTypeTabs.map((t) => (
+									<button
+										key={t.key}
+										type="button"
+										onClick={() => setSelectedPageType(t.key)}
+										className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${selectedPageType === t.key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-muted/60"}`}
+									>
+										{t.label}
+									</button>
+								))}
 							</div>
 						)}
 						<div className="divide-y divide-border mt-1">
@@ -1063,16 +1081,16 @@ export function CitationsDisplay({
 											<button
 												key={key}
 												type="button"
-												onClick={() => { setProductFilter(key); setShowAllProducts(false); }}
+												onClick={() => { setProductFilter(key); setProductPage(0); }}
 												className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${productFilter === key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
 											>
-												{label}
+												{label} ({productCounts[key].toLocaleString()})
 											</button>
 										))}
 									</div>
 								</div>
 								<div className="divide-y divide-border/50">
-									{(showAllProducts ? googleProducts : googleProducts.slice(0, 5)).map((product) => {
+									{googleProducts.slice(productPage * 10, productPage * 10 + 10).map((product) => {
 										const isExpanded = expandedProduct === product.name;
 										return (
 											<div key={product.name}>
@@ -1112,13 +1130,30 @@ export function CitationsDisplay({
 										);
 									})}
 								</div>
-								{googleProducts.length > 5 && !showAllProducts && (
-									<button
-										onClick={() => setShowAllProducts(true)}
-										className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-									>
-										Show {googleProducts.length - 5} more
-									</button>
+								{googleProducts.length > 10 && (
+									<div className="mt-3 flex items-center justify-between">
+										<span className="text-[11px] text-muted-foreground tabular-nums">
+											{productPage * 10 + 1}–{Math.min((productPage + 1) * 10, googleProducts.length)} of {googleProducts.length.toLocaleString()}
+										</span>
+										<div className="flex items-center gap-1.5">
+											<button
+												type="button"
+												onClick={() => setProductPage((p) => Math.max(0, p - 1))}
+												disabled={productPage === 0}
+												className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+											>
+												Previous
+											</button>
+											<button
+												type="button"
+												onClick={() => setProductPage((p) => ((p + 1) * 10 < googleProducts.length ? p + 1 : p))}
+												disabled={(productPage + 1) * 10 >= googleProducts.length}
+												className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+											>
+												Next
+											</button>
+										</div>
+									</div>
 								)}
 							</div>
 						)}
@@ -1183,7 +1218,7 @@ export function CitationsDisplay({
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-1.5">
-							Top Cited Subreddits
+							Reddit
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -1194,7 +1229,7 @@ export function CitationsDisplay({
 							</Tooltip>
 						</CardTitle>
 						<CardDescription>
-							Which subreddits AI models reference when answering your prompts
+							Top cited subreddits — which Reddit communities AI models reference when answering your prompts
 						</CardDescription>
 					</CardHeader>
 					<Separator />
