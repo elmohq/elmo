@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	inferPageType,
+	resolvePageType,
 	isGoogleShoppingUrl,
 	isGoogleSearchUrl,
 	isGoogleSurfaceUrl,
@@ -114,6 +115,18 @@ describe("inferPageType", () => {
 		expect(inferPageType("https://ubeauty.com/pages/return-policy", "Returns")).toBe("info");
 		expect(inferPageType("https://ubeauty.com/pages/subscription", "Subscription")).toBe("info");
 		expect(inferPageType("https://amazon.com/dp/B089", "U Beauty Serum")).toBe("product");
-		expect(inferPageType("https://mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/x", "Acne treatment")).toBe("article");
+	});
+});
+
+describe("resolvePageType (niche-independent article fallback)", () => {
+	it("treats untyped content-publisher pages as articles", () => {
+		// niche health paths have no generic page-type signal, but the source is a publisher
+		expect(resolvePageType("https://mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/x", "Acne treatment", "institutional")).toBe("article");
+		expect(resolvePageType("https://aad.org/public/diseases/acne/derm-treat/treat", "Acne", "institutional")).toBe("article");
+		expect(resolvePageType("https://en.wikipedia.org/wiki/Acne", "Acne", "reference")).toBe("article");
+	});
+	it("does not turn brand utility / typed pages into articles", () => {
+		expect(resolvePageType("https://ubeauty.com/pages/siren-technology", "SIREN Technology", "brand")).toBe("other");
+		expect(resolvePageType("https://ubeauty.com/pages/return-policy", "Returns", "brand")).toBe("info");
 	});
 });

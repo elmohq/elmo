@@ -290,11 +290,25 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	if (/\/(support|help|kb)(\/|$)/.test(path)) return "doc";
 	if (
 		/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?)(\/|$|-)/.test(path)
-		|| /\/(diseases?-?conditions?|conditions?|symptoms?(-causes)?|diagnosis(-treatment)?|treatments?|in-depth|tests?-procedures?|health|skin-care-secrets|everyday-care|derm-treat|public\/diseases)(\/|$|-)/.test(path)
 		|| /\/\d{4}\/\d{2}\//.test(path)
 		|| /\/\d{4}\/[a-z]/.test(path)
 	) return "article";
 	return "other";
+}
+
+// Source categories whose cited pages are essentially always editorial content.
+const CONTENT_PUBLISHER_CATEGORIES = new Set<CitationCategory>(["editorial", "institutional", "reference"]);
+
+/**
+ * Page type for a citation given its resolved source category. Niche-independent:
+ * a page from a content publisher (editorial / institutional / reference) that
+ * doesn't match a more specific type is treated as an article rather than left in
+ * "other" — instead of hardcoding per-industry content paths.
+ */
+export function resolvePageType(url: string, title: string | null | undefined, category: CitationCategory): CitationPageType {
+	const pt = inferPageType(url, title);
+	if (pt === "other" && CONTENT_PUBLISHER_CATEGORIES.has(category)) return "article";
+	return pt;
 }
 
 /**
@@ -346,7 +360,7 @@ export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartCo
 	howto: { label: "How-to", chartColor: "#22c55e" },
 	comparison: { label: "Comparison", chartColor: "#f59e0b" },
 	review: { label: "Review", chartColor: "#f43f5e" },
-	product: { label: "Product", chartColor: "#ec4899" },
+	product: { label: "Storefront", chartColor: "#ec4899" },
 	doc: { label: "Docs", chartColor: "#6366f1" },
 	forum: { label: "Forum", chartColor: "#06b6d4" },
 	video: { label: "Video", chartColor: "#ef4444" },

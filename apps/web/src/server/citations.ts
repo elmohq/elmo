@@ -22,7 +22,7 @@ import {
 	extractDomain,
 	normalizeUrl,
 	toRoundedPercentages,
-	inferPageType,
+	resolvePageType,
 	isGoogleShoppingUrl,
 	isGoogleSearchUrl,
 	isGoogleSurfaceUrl,
@@ -317,17 +317,20 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 
 		const specificUrls = Array.from(urlCounts.entries())
-			.map(([url, { count, title, domain, positionSum, positionCount, promptCount }]) => ({
-				url,
-				title,
-				domain,
-				count,
-				category: classify(domain, url, title),
-				pageType: inferPageType(url, title),
-				avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
-				promptCount,
-				isNew: !prevUrlMap.has(url),
-			}))
+			.map(([url, { count, title, domain, positionSum, positionCount, promptCount }]) => {
+				const category = classify(domain, url, title);
+				return {
+					url,
+					title,
+					domain,
+					count,
+					category,
+					pageType: resolvePageType(url, title, category),
+					avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
+					promptCount,
+					isNew: !prevUrlMap.has(url),
+				};
+			})
 			.sort((a, b) => b.count - a.count);
 
 		// Domain distribution rebuilt from URL-level data: count + a per-domain
@@ -407,8 +410,9 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			if (!r.url || isGoogleSurfaceUrl(r.url)) continue;
 			const c = Number(r.count);
 			const date = String(r.date);
-			categoryRows.push({ prompt_id: r.prompt_id, date, key: classify(r.domain, r.url, r.title), count: c });
-			pageTypeRows.push({ prompt_id: r.prompt_id, date, key: inferPageType(r.url, r.title), count: c });
+			const category = classify(r.domain, r.url, r.title);
+			categoryRows.push({ prompt_id: r.prompt_id, date, key: category, count: c });
+			pageTypeRows.push({ prompt_id: r.prompt_id, date, key: resolvePageType(r.url, r.title, category), count: c });
 		}
 		const smoothedCategories = applyPerPromptKeyedLVCF(categoryRows, dateRange, cadenceHours, CITATION_CATEGORIES);
 		const smoothedPageTypes = applyPerPromptKeyedLVCF(pageTypeRows, dateRange, cadenceHours, CITATION_PAGE_TYPES);
