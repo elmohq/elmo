@@ -810,45 +810,8 @@ export async function getPerPromptDailyCitationStats(
 }
 
 // ============================================================================
-// Per-Prompt / Per-Model Domain Citation Stats (citation landscape insights)
+// Citation landscape insights (run-level + page-level domain stats)
 // ============================================================================
-
-export interface CitationPromptDomainStats {
-	prompt_id: string;
-	model: string;
-	domain: string;
-	count: number;
-}
-
-/**
- * Citation counts grouped by (prompt, model, domain). The single fact table that
- * powers the citation-landscape insights (kingmaker targets, prompt winnability,
- * share-of-voice scoreboard) without any per-analysis SQL.
- */
-export async function getCitationPromptDomainStats(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds?: string[],
-	model?: string,
-): Promise<CitationPromptDomainStats[]> {
-	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
-	const rows = await queryPg<CitationPromptDomainStats>(sql`
-		SELECT
-			prompt_id,
-			model,
-			domain,
-			count(*)::int AS count
-		FROM citations
-		WHERE brand_id = ${brandId}
-			${dateFilter(fromDate, toDate, timezone)}
-			${promptIdFilter(enabledPromptIds)}
-			${modelFilter(model)}
-		GROUP BY prompt_id, model, domain
-	`);
-	return rows;
-}
 
 export interface CitationRunDomainStats {
 	prompt_id: string;

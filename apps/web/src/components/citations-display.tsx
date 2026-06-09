@@ -1,15 +1,11 @@
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
 import { Separator } from "@workspace/ui/components/separator";
-import { Input } from "@workspace/ui/components/input";
-import { Button } from "@workspace/ui/components/button";
-import { IconExternalLink, IconInfoCircle, IconSearch, IconPlus, IconArrowDownRight, IconSwitchHorizontal, IconChevronDown, IconCheck, IconAlertTriangle } from "@tabler/icons-react";
-import { Loader2 } from "lucide-react";
+import { IconExternalLink, IconInfoCircle, IconPlus, IconArrowDownRight, IconSwitchHorizontal, IconChevronDown, IconAlertTriangle } from "@tabler/icons-react";
 import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/components/popover";
 import { Link } from "@tanstack/react-router";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -18,8 +14,6 @@ import {
 	ChartTooltip,
 } from "@workspace/ui/components/chart";
 import { type CitationCategory, CATEGORY_CONFIG } from "@/lib/domain-categories";
-import * as Sentry from "@sentry/tanstackstart-react";
-import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
 
 export interface CitationData {
 	totalCitations: number;
@@ -80,12 +74,6 @@ interface CitationsDisplayProps {
 	onCompetitorAdded?: () => void;
 }
 
-const getCategoryLabel = (category: string) =>
-	CATEGORY_CONFIG[category as CitationCategory]?.label ?? category;
-
-const getCategoryColorClass = (category: string) =>
-	CATEGORY_CONFIG[category as CitationCategory]?.badgeClass ?? "bg-gray-500/90 text-white";
-
 const formatUrlForDisplay = (url: string) => {
 	let displayUrl = url.replace(/^https?:\/\//, "");
 	displayUrl = displayUrl.replace(/^www\./, "");
@@ -117,17 +105,6 @@ const extractSubreddit = (url: string): string | null => {
 	}
 };
 
-const extractFilenameFromUrl = (url: string) => {
-	try {
-		const urlObj = new URL(url);
-		const segments = urlObj.pathname.split("/").filter(Boolean);
-		if (segments.length === 0) return urlObj.hostname.replace(/^www\./, "");
-		return segments[segments.length - 1];
-	} catch {
-		return url;
-	}
-};
-
 type ChangeType = "new_pages" | "dropped_pages" | "title" | "new_domains" | "dropped_domains";
 
 const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
@@ -137,16 +114,6 @@ const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
 	{ key: "new_domains", label: "New Domains" },
 	{ key: "dropped_domains", label: "Dropped Domains" },
 ];
-
-const CATEGORY_TABS = [
-	{ key: "all", label: "All" },
-	{ key: "brand", label: "Brand" },
-	{ key: "competitor", label: "Competitors" },
-	{ key: "social_media", label: "Social Media" },
-	{ key: "google", label: "Google" },
-	{ key: "institutional", label: "Institutional" },
-	{ key: "other", label: "Other" },
-] as const;
 
 const citationsChartConfig: ChartConfig = {
 	brand: { label: "Your Brand", color: CATEGORY_CONFIG.brand.chartColor },
@@ -186,179 +153,6 @@ function UnderlineTabs<T extends string>({
 	);
 }
 
-function TrackDomainPopover({
-	domain,
-	brandId,
-	brandName,
-	competitors,
-	onAdded,
-}: {
-	domain: string;
-	brandId: string;
-	brandName?: string;
-	competitors: Array<{ id: string; name: string; domains: string[] }>;
-	onAdded?: () => void;
-}) {
-	const [open, setOpen] = useState(false);
-	const [newName, setNewName] = useState("");
-	const [saving, setSaving] = useState(false);
-	const [saved, setSaved] = useState(false);
-	const [error, setError] = useState("");
-
-	const handleSuccess = () => {
-		setSaving(false);
-		setSaved(true);
-		setError("");
-		setOpen(false);
-		onAdded?.();
-	};
-
-	const handleError = (e: unknown) => {
-		setSaving(false);
-		setError("Something went wrong. Please try again.");
-		Sentry.captureException(e);
-	};
-
-	const handleAddToBrand = async () => {
-		setSaving(true);
-		setError("");
-		try {
-			await addDomainToBrandFn({ data: { brandId, domain } });
-			handleSuccess();
-		} catch (e) {
-			handleError(e);
-		}
-	};
-
-	const handleAddToExisting = async (competitorId: string) => {
-		setSaving(true);
-		setError("");
-		try {
-			await addDomainToCompetitorFn({ data: { brandId, competitorId, domain } });
-			handleSuccess();
-		} catch (e) {
-			handleError(e);
-		}
-	};
-
-	const handleCreateNew = async () => {
-		if (!newName.trim()) return;
-		setSaving(true);
-		setError("");
-		try {
-			await createCompetitorFromDomainFn({ data: { brandId, name: newName.trim(), domain } });
-			setNewName("");
-			handleSuccess();
-		} catch (e) {
-			handleError(e);
-		}
-	};
-
-	if (saved) {
-		return (
-			<span className="shrink-0 p-1 text-muted-foreground">
-				<Loader2 className="h-3.5 w-3.5 animate-spin" />
-			</span>
-		);
-	}
-
-	return (
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					className="shrink-0 p-1 rounded hover:bg-muted cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-					title={`Track ${domain}`}
-				>
-					<IconPlus className="h-3.5 w-3.5" />
-				</button>
-			</PopoverTrigger>
-			<PopoverContent className="w-72 p-3" align="end">
-				<div className="space-y-3">
-					<p className="text-xs font-medium">Track <strong>{domain}</strong></p>
-
-					{error && (
-						<p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{error}</p>
-					)}
-
-					<div className="space-y-1">
-						<div className="flex items-center gap-1">
-							<p className="text-[11px] text-muted-foreground">Add as brand domain</p>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
-								<TooltipContent className="max-w-xs text-xs font-normal">
-									Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified as your brand.
-								</TooltipContent>
-							</Tooltip>
-						</div>
-						<button
-							type="button"
-							onClick={handleAddToBrand}
-							disabled={saving}
-							className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
-						>
-							{brandName || "My brand"}
-						</button>
-					</div>
-
-					{competitors.length > 0 && (
-						<div className="space-y-1">
-							<div className="flex items-center gap-1">
-								<p className="text-[11px] text-muted-foreground">Add to existing competitor</p>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs text-xs font-normal">
-										Applies <strong>retroactively</strong> &mdash; all existing and future citations from this domain will be classified under the selected competitor.
-									</TooltipContent>
-								</Tooltip>
-							</div>
-							<div className="max-h-32 overflow-y-auto space-y-0.5">
-								{competitors.map((c) => (
-									<button
-										key={c.id}
-										type="button"
-										onClick={() => handleAddToExisting(c.id)}
-										disabled={saving}
-										className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted cursor-pointer disabled:opacity-50 transition-colors"
-									>
-										{c.name}
-									</button>
-								))}
-							</div>
-						</div>
-					)}
-
-					<div className="space-y-1.5">
-						<p className="text-[11px] text-muted-foreground">Or create new competitor:</p>
-						<div className="flex gap-1.5">
-							<Input
-								value={newName}
-								onChange={(e) => setNewName(e.target.value)}
-								placeholder="Competitor name"
-								className="h-7 text-xs"
-								onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreateNew(); } }}
-								disabled={saving}
-							/>
-							<Button
-								size="sm"
-								onClick={handleCreateNew}
-								disabled={saving || !newName.trim()}
-								className="h-7 px-2 text-xs cursor-pointer shrink-0"
-							>
-								Add
-							</Button>
-						</div>
-					</div>
-				</div>
-			</PopoverContent>
-		</Popover>
-	);
-}
-
 const OPPORTUNITY_TABS = [
 	{ key: "content_gaps" as const, label: "Content Gaps" },
 ];
@@ -395,11 +189,7 @@ function OpportunitiesCard({
 			</CardHeader>
 			<Separator />
 			<CardContent>
-				<UnderlineTabs
-					tabs={OPPORTUNITY_TABS}
-					activeKey="content_gaps"
-					onSelect={() => {}}
-				/>
+				<UnderlineTabs tabs={OPPORTUNITY_TABS} activeKey="content_gaps" onSelect={() => {}} />
 				<div className="divide-y divide-border/50">
 					{visible.map((prompt) => (
 						<Link
@@ -416,7 +206,9 @@ function OpportunitiesCard({
 									<span className="text-sm font-medium truncate text-foreground group-hover:underline">{prompt.value}</span>
 								</div>
 								<p className="text-xs text-muted-foreground mt-0.5">
-									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited {prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash; your brand cited 0 times
+									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited{" "}
+									{prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash; your
+									brand cited 0 times
 								</p>
 							</div>
 						</Link>
@@ -424,6 +216,7 @@ function OpportunitiesCard({
 				</div>
 				{remaining > 0 && !expanded && (
 					<button
+						type="button"
 						onClick={() => setExpanded(true)}
 						className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
 					>
@@ -438,49 +231,11 @@ function OpportunitiesCard({
 export function CitationsDisplay({
 	citationData,
 	brandId,
-	brandName,
 	showStats = false,
-	maxDomains = 20,
-	maxUrls = 20,
 	days = 7,
-	onCompetitorAdded,
 }: CitationsDisplayProps) {
-	const [domainSearch, setDomainSearch] = useState("");
-	const [urlSearch, setUrlSearch] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [changeTypeFilter, setChangeTypeFilter] = useState<ChangeType>("new_pages");
 	const [changeTabExpanded, setChangeTabExpanded] = useState(false);
-	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
-
-	if (citationData.totalCitations === 0) {
-		return null;
-	}
-
-	const brandShare = citationData.totalCitations > 0
-		? Math.round((citationData.brandCitations / citationData.totalCitations) * 100)
-		: 0;
-
-	const filteredDomains = useMemo(() => {
-		if (!domainSearch) return citationData.domainDistribution;
-		const q = domainSearch.toLowerCase();
-		return citationData.domainDistribution.filter((d) => d.domain.toLowerCase().includes(q));
-	}, [citationData.domainDistribution, domainSearch]);
-
-	const filteredUrls = useMemo(() => {
-		let urls = citationData.specificUrls;
-		if (selectedCategory !== "all") {
-			urls = urls.filter((u) => u.category === selectedCategory);
-		}
-		if (urlSearch) {
-			const q = urlSearch.toLowerCase();
-			urls = urls.filter((u) =>
-				u.url.toLowerCase().includes(q) ||
-				(u.title?.toLowerCase().includes(q)) ||
-				u.domain.toLowerCase().includes(q)
-			);
-		}
-		return urls.slice(0, maxUrls);
-	}, [citationData.specificUrls, selectedCategory, urlSearch, maxUrls]);
 
 	const subredditData = useMemo(() => {
 		const droppedUrlSet = new Set(
@@ -550,6 +305,12 @@ export function CitationsDisplay({
 	const CHANGES_PREVIEW_COUNT = 3;
 	const visibleChanges = changeTabExpanded ? filteredChanges : filteredChanges.slice(0, CHANGES_PREVIEW_COUNT);
 	const totalChanges = allChanges.length;
+	const brandShare =
+		citationData.totalCitations > 0 ? Math.round((citationData.brandCitations / citationData.totalCitations) * 100) : 0;
+
+	if (citationData.totalCitations === 0) {
+		return null;
+	}
 
 	return (
 		<>
@@ -822,180 +583,6 @@ export function CitationsDisplay({
 					prompts={citationData.competitorOnlyPrompts}
 					brandId={brandId}
 				/>
-			)}
-
-			{/* Top Cited Domains */}
-			{filteredDomains.length > 0 && (
-				<Card className="gap-4">
-					<CardHeader>
-						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-							<div className="space-y-1 min-w-0">
-								<CardTitle className="flex items-center gap-1.5">
-									Top Cited Domains
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
-										<TooltipContent className="max-w-xs text-sm font-normal">
-											The most frequently cited domains across all prompt evaluations. Each domain is colored by its category (brand, competitor, etc.).
-										</TooltipContent>
-									</Tooltip>
-								</CardTitle>
-								<CardDescription>
-									Which domains LLMs reference most when responding to your prompts
-								</CardDescription>
-							</div>
-							<div className="relative w-full sm:w-48 shrink-0">
-								<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-								<Input
-									placeholder="Search domains..."
-									value={domainSearch}
-								onChange={(e) => { setDomainSearch(e.target.value); setVisibleDomains(maxDomains); }}
-								className="h-8 pl-8 text-xs"
-								/>
-							</div>
-						</div>
-					</CardHeader>
-					<Separator />
-					<CardContent>
-						<ProgressBarChart
-							items={filteredDomains.slice(0, visibleDomains).map((domain) => ({
-								label: domain.domain,
-								count: domain.count,
-								category: domain.category || "other",
-							action: domain.category === "other" && brandId && citationData.competitors ? (
-								<TrackDomainPopover
-									domain={domain.domain}
-									brandId={brandId}
-									brandName={brandName}
-									competitors={citationData.competitors}
-									onAdded={onCompetitorAdded}
-								/>
-								) : undefined,
-							}))}
-							colorMapping={DOMAIN_CATEGORY_COLORS}
-							percentageMode="max"
-						/>
-						{filteredDomains.length > visibleDomains && visibleDomains < 100 && (
-							<button
-								onClick={() => setVisibleDomains((prev) => Math.min(prev + 20, 100))}
-								className="mt-6 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-							>
-								Show more
-							</button>
-						)}
-					</CardContent>
-				</Card>
-			)}
-
-			{/* Top Cited URLs */}
-			{citationData.specificUrls.length > 0 && (
-				<Card className="gap-4">
-					<CardHeader>
-						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-							<div className="space-y-1 min-w-0">
-								<CardTitle className="flex items-center gap-1.5">
-									Top Cited URLs
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-										</TooltipTrigger>
-										<TooltipContent className="max-w-xs text-sm font-normal">
-											<p className="mb-2">The specific pages most frequently cited by AI models. Filter by category to focus on brand, competitor, or other sources.</p>
-											<p><strong>Competitor</strong> domains are only those in your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">tracked competitors list</Link> : "tracked competitors list"}.</p>
-										</TooltipContent>
-									</Tooltip>
-								</CardTitle>
-								<CardDescription>
-									Individual pages cited by LLMs{citationData.brandCitations > 0 && brandName && (
-										<> &mdash; {brandName} accounts for <strong>{brandShare}%</strong> of all citations</>
-									)}
-								</CardDescription>
-							</div>
-							<div className="relative w-full sm:w-48 shrink-0">
-								<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-								<Input
-									placeholder="Search URLs..."
-									value={urlSearch}
-									onChange={(e) => setUrlSearch(e.target.value)}
-									className="h-8 pl-8 text-xs"
-								/>
-							</div>
-						</div>
-					</CardHeader>
-					<Separator />
-					<CardContent>
-						<UnderlineTabs
-							tabs={CATEGORY_TABS}
-							activeKey={selectedCategory}
-							onSelect={setSelectedCategory}
-						/>
-						<div className="divide-y divide-border mt-1">
-							{filteredUrls.map((citation) => {
-								const displayUrl = formatUrlForDisplay(citation.url);
-								const domainEndIndex = displayUrl.indexOf("/");
-								const domainPart = domainEndIndex > 0 ? displayUrl.substring(0, domainEndIndex) : displayUrl;
-								const pathPart = domainEndIndex > 0 ? displayUrl.substring(domainEndIndex) : "";
-
-								return (
-									<a
-										key={citation.url}
-										href={citation.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="flex items-start justify-between gap-3 py-3 group"
-									>
-										<div className="min-w-0 flex-1">
-											<div className="flex items-center gap-2 mb-0.5">
-												<Badge className={`text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none ${getCategoryColorClass(citation.category)}`}>
-													{getCategoryLabel(citation.category)}
-												</Badge>
-												{citation.isNew && (
-													<Badge className="text-[10px] px-1.5 py-0 h-[18px] border-0 shadow-none bg-green-100 text-green-700">NEW</Badge>
-												)}
-												<span className="text-sm font-medium truncate group-hover:underline">
-													{citation.title || extractFilenameFromUrl(citation.url)}
-												</span>
-											</div>
-											<div className="text-xs text-muted-foreground truncate">
-												<span className="font-semibold">{domainPart}</span>
-												{pathPart && <span>{pathPart}</span>}
-											</div>
-										</div>
-										<div className="flex items-center gap-3 shrink-0 pt-0.5">
-											{citation.avgPosition != null && (
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<span className="text-[11px] text-muted-foreground tabular-nums">avg {citation.avgPosition.toFixed(1)}</span>
-													</TooltipTrigger>
-													<TooltipContent className="text-xs">
-														Average citation position (lower = cited earlier in the response)
-													</TooltipContent>
-												</Tooltip>
-											)}
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<span className="text-sm font-semibold tabular-nums min-w-[2rem] text-right">
-														{citation.count.toLocaleString()}
-													</span>
-												</TooltipTrigger>
-												<TooltipContent className="text-xs">
-													Total times this URL was cited across all prompt evaluations
-												</TooltipContent>
-											</Tooltip>
-											<IconExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-										</div>
-									</a>
-								);
-							})}
-							{filteredUrls.length === 0 && (
-								<p className="text-sm text-muted-foreground text-center py-4">
-									No URLs match the current filters.
-								</p>
-							)}
-						</div>
-					</CardContent>
-				</Card>
 			)}
 
 			{/* Top Cited Subreddits */}
