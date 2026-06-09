@@ -39,8 +39,10 @@ export async function trackCliEvent(
 		client.capture({
 			distinctId,
 			event: eventName,
-			properties,
-			...(personProperties ? { $set: personProperties } : {}),
+			properties: {
+				...properties,
+				...(personProperties ? { $set: personProperties } : {}),
+			},
 		});
 		await client.shutdown();
 	} catch {
@@ -63,8 +65,10 @@ export async function submitNewsletterSignup(configDir: string, email: string): 
 		client.capture({
 			distinctId,
 			event: "newsletter_signup",
-			properties: { source: "cli_init" },
-			...{ $set: { $email: email, wants_updates: true } },
+			properties: {
+				source: "cli_init",
+				$set: { email, wants_updates: true },
+			},
 		});
 		await client.shutdown();
 	} catch {
