@@ -7,6 +7,12 @@
 
 import { type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import type {
+	FanoutBreakdownRow,
+	FanoutModelTotalRow,
+	FanoutPromptTotalRow,
+	GoogleFanoutCitationRow,
+} from "@/lib/fanout-analysis";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -1174,4 +1180,139 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 		ORDER BY target_date
 	`);
 	return rows;
+}
+
+// ============================================================================
+// Query Fanout
+//
+// The sub-queries an engine issues to the web while answering a prompt, read
+// from `prompt_runs.web_queries`. A fan-out query equal to the original prompt
+// is the engine echoing it, not an expansion, so it's dropped here (a join to
+// `prompts` lets us compare). Columns are qualified (the join brings two
+// `created_at`/`prompt_id` columns into scope) so the shared filter helpers,
+// which emit unqualified names, are inlined instead.
+// ============================================================================
+
+/** (prompt × model × query) fan-out counts with how often the brand was mentioned. */
+export async function getFanoutBreakdown(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutBreakdownRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<FanoutBreakdownRow>(sql`
+		SELECT
+			pr.prompt_id,
+			pr.model,
+			wq AS query,
+			count(*)::int AS count,
+			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL unnest(pr.web_queries) AS wq
+		WHERE pr.brand_id = ${brandId}
+			AND length(btrim(wq)) > 0
+			AND lower(btrim(wq)) <> lower(btrim(p.value))
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.prompt_id, pr.model, wq
+	`);
+}
+
+/** Per-model run counts and fan-out totals (the denominators for fan-outs-per-execution). */
+export async function getFanoutModelTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutModelTotalRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	// `runs` counts only web-search-enabled runs ("Search Prompt Runs"); `fanout_runs`
+	// counts runs that produced ≥1 web query. For Google AI Mode `web_queries` is the
+	// echoed prompt, not a fan-out — the caller overrides Google's totals with the
+	// citation-reconstructed values (or zeroes them), so no per-row echo filter is needed here.
+	return queryPg<FanoutModelTotalRow>(sql`
+		SELECT
+			model,
+			count(*) FILTER (WHERE web_search_enabled)::int AS runs,
+			count(*) FILTER (WHERE cardinality(web_queries) > 0)::int AS fanout_runs,
+			COALESCE(sum(cardinality(web_queries)), 0)::int AS total_queries
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY model
+		ORDER BY total_queries DESC
+	`);
+}
+
+/**
+ * `google.com/search?…` links cited by Google models. DataForSEO doesn't expose
+ * Google AI Mode's fan-out in `web_queries`, but the answer cites the searches
+ * it ran; the caller decodes the `q` param (dropping shopping/vertical links)
+ * to reconstruct the fan-out. See `deriveGoogleFanout`.
+ */
+export async function getGoogleSearchFanoutCitations(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds: string[],
+	models: string[],
+): Promise<GoogleFanoutCitationRow[]> {
+	if (!enabledPromptIds.length || !models.length) return [];
+	return queryPg<GoogleFanoutCitationRow>(sql`
+		SELECT
+			c.prompt_id,
+			c.prompt_run_id,
+			c.model,
+			c.url,
+			pr.brand_mentioned,
+			pr.competitors_mentioned,
+			(c.created_at AT TIME ZONE ${timezone})::date::text AS created_date
+		FROM citations c
+		JOIN prompt_runs pr ON pr.id = c.prompt_run_id
+		WHERE c.brand_id = ${brandId}
+			AND c.domain = 'google.com'
+			AND c.url LIKE '%/search?%'
+			AND c.model IN (${sql.join(
+				models.map((m) => sql`${m}`),
+				sql`, `,
+			)})
+			AND c.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND c.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND c.prompt_id IN (${uuidList(enabledPromptIds)})
+	`);
+}
+
+
+/** Per-prompt count of runs that produced ≥1 web query — the denominator for avg fan-out per run. */
+export async function getFanoutPromptTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutPromptTotalRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<FanoutPromptTotalRow>(sql`
+		SELECT
+			prompt_id,
+			count(*) FILTER (WHERE cardinality(web_queries) > 0)::int AS runs
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id
+	`);
 }

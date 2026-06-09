@@ -42,6 +42,7 @@ import { Route as ApiV1BrandsBrandIdRouteImport } from './routes/api/v1/brands/$
 import { Route as AuthedReportsRenderReportIdRouteImport } from './routes/_authed/reports/render/$reportId'
 import { Route as AuthedAppBrandVisibilityRouteImport } from './routes/_authed/app/$brand/visibility'
 import { Route as AuthedAppBrandShareOfVoiceRouteImport } from './routes/_authed/app/$brand/share-of-voice'
+import { Route as AuthedAppBrandQueryFanoutRouteImport } from './routes/_authed/app/$brand/query-fanout'
 import { Route as AuthedAppBrandOpportunitiesRouteImport } from './routes/_authed/app/$brand/opportunities'
 import { Route as AuthedAppBrandCitationsRouteImport } from './routes/_authed/app/$brand/citations'
 import { Route as AuthedAppBrandSplatRouteImport } from './routes/_authed/app/$brand/$'
@@ -224,6 +225,12 @@ const AuthedAppBrandShareOfVoiceRoute =
     path: '/share-of-voice',
     getParentRoute: () => AuthedAppBrandRoute,
   } as any)
+const AuthedAppBrandQueryFanoutRoute =
+  AuthedAppBrandQueryFanoutRouteImport.update({
+    id: '/query-fanout',
+    path: '/query-fanout',
+    getParentRoute: () => AuthedAppBrandRoute,
+  } as any)
 const AuthedAppBrandOpportunitiesRoute =
   AuthedAppBrandOpportunitiesRouteImport.update({
     id: '/opportunities',
@@ -322,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/opportunities': typeof AuthedAppBrandOpportunitiesRoute
+  '/app/$brand/query-fanout': typeof AuthedAppBrandQueryFanoutRoute
   '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
@@ -365,6 +373,7 @@ export interface FileRoutesByTo {
   '/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/app/$brand/opportunities': typeof AuthedAppBrandOpportunitiesRoute
+  '/app/$brand/query-fanout': typeof AuthedAppBrandQueryFanoutRoute
   '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
@@ -414,6 +423,7 @@ export interface FileRoutesById {
   '/_authed/app/$brand/$': typeof AuthedAppBrandSplatRoute
   '/_authed/app/$brand/citations': typeof AuthedAppBrandCitationsRoute
   '/_authed/app/$brand/opportunities': typeof AuthedAppBrandOpportunitiesRoute
+  '/_authed/app/$brand/query-fanout': typeof AuthedAppBrandQueryFanoutRoute
   '/_authed/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/app/$brand/$'
     | '/app/$brand/citations'
     | '/app/$brand/opportunities'
+    | '/app/$brand/query-fanout'
     | '/app/$brand/share-of-voice'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
@@ -506,6 +517,7 @@ export interface FileRouteTypes {
     | '/app/$brand/$'
     | '/app/$brand/citations'
     | '/app/$brand/opportunities'
+    | '/app/$brand/query-fanout'
     | '/app/$brand/share-of-voice'
     | '/app/$brand/visibility'
     | '/reports/render/$reportId'
@@ -554,6 +566,7 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/$'
     | '/_authed/app/$brand/citations'
     | '/_authed/app/$brand/opportunities'
+    | '/_authed/app/$brand/query-fanout'
     | '/_authed/app/$brand/share-of-voice'
     | '/_authed/app/$brand/visibility'
     | '/_authed/reports/render/$reportId'
@@ -838,6 +851,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppBrandShareOfVoiceRouteImport
       parentRoute: typeof AuthedAppBrandRoute
     }
+    '/_authed/app/$brand/query-fanout': {
+      id: '/_authed/app/$brand/query-fanout'
+      path: '/query-fanout'
+      fullPath: '/app/$brand/query-fanout'
+      preLoaderRoute: typeof AuthedAppBrandQueryFanoutRouteImport
+      parentRoute: typeof AuthedAppBrandRoute
+    }
     '/_authed/app/$brand/opportunities': {
       id: '/_authed/app/$brand/opportunities'
       path: '/opportunities'
@@ -952,6 +972,7 @@ interface AuthedAppBrandRouteChildren {
   AuthedAppBrandSplatRoute: typeof AuthedAppBrandSplatRoute
   AuthedAppBrandCitationsRoute: typeof AuthedAppBrandCitationsRoute
   AuthedAppBrandOpportunitiesRoute: typeof AuthedAppBrandOpportunitiesRoute
+  AuthedAppBrandQueryFanoutRoute: typeof AuthedAppBrandQueryFanoutRoute
   AuthedAppBrandShareOfVoiceRoute: typeof AuthedAppBrandShareOfVoiceRoute
   AuthedAppBrandVisibilityRoute: typeof AuthedAppBrandVisibilityRoute
   AuthedAppBrandIndexRoute: typeof AuthedAppBrandIndexRoute
@@ -969,6 +990,7 @@ const AuthedAppBrandRouteChildren: AuthedAppBrandRouteChildren = {
   AuthedAppBrandSplatRoute: AuthedAppBrandSplatRoute,
   AuthedAppBrandCitationsRoute: AuthedAppBrandCitationsRoute,
   AuthedAppBrandOpportunitiesRoute: AuthedAppBrandOpportunitiesRoute,
+  AuthedAppBrandQueryFanoutRoute: AuthedAppBrandQueryFanoutRoute,
   AuthedAppBrandShareOfVoiceRoute: AuthedAppBrandShareOfVoiceRoute,
   AuthedAppBrandVisibilityRoute: AuthedAppBrandVisibilityRoute,
   AuthedAppBrandIndexRoute: AuthedAppBrandIndexRoute,

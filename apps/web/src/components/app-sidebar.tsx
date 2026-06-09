@@ -4,6 +4,7 @@ import {
 	IconDashboard,
 	IconChartBar,
 	IconSpeakerphone,
+	IconSitemap,
 	IconTarget,
 	IconLink,
 	IconBuilding,
@@ -71,6 +72,11 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 					title: "Share of Voice",
 					url: "/share-of-voice",
 					icon: IconSpeakerphone,
+				},
+				{
+					title: "Query Fanout",
+					url: "/query-fanout",
+					icon: IconSitemap,
 				},
 				{
 					title: "Citations",
