@@ -9,7 +9,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCitationDomainStats, getCitationUrlStats, getPerPromptDailyCitationStats } from "@/lib/postgres-read";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { hasTagFilter, resolveEnabledPromptIds } from "@/lib/citation-filters";
 import { generateDateRange, applyPerPromptCitationLVCF } from "@/lib/chart-utils";
 import { type CitationCategory, extractDomain, normalizeUrl, categorizeDomain as categorizeDomainShared, toRoundedPercentages } from "@/lib/domain-categories";
 
@@ -73,38 +73,9 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const availableTags = [SYSTEM_TAGS.BRANDED, SYSTEM_TAGS.UNBRANDED, ...userTagsWithoutSystemTags];
 
 		// Filter prompt IDs by tags if specified
-		let enabledPromptIds = allPrompts.map((p) => p.id);
-		const tagFilter = data.tags?.split(",").filter(Boolean) || [];
-		if (tagFilter.length > 0) {
-			const filterByBranded = tagFilter.includes(SYSTEM_TAGS.BRANDED);
-			const filterByUnbranded = tagFilter.includes(SYSTEM_TAGS.UNBRANDED);
-			const nonSystemFilterTags = tagFilter.filter(
-				(t) => t !== SYSTEM_TAGS.BRANDED && t !== SYSTEM_TAGS.UNBRANDED,
-			);
-
-			const matchingPrompts = allPrompts.filter((p) => {
-				const systemTags = p.systemTags || [];
-				const userTags = p.tags || [];
-
-				if (filterByBranded || filterByUnbranded) {
-					const effectiveStatus = getEffectiveBrandedStatus(systemTags, userTags);
-					if (filterByBranded && effectiveStatus.isBranded) return true;
-					if (filterByUnbranded && !effectiveStatus.isBranded) return true;
-				}
-
-				if (nonSystemFilterTags.length > 0) {
-					const allTagsLower = [...systemTags, ...userTags].map((t) => t.toLowerCase());
-					if (nonSystemFilterTags.some((ft) => allTagsLower.includes(ft))) return true;
-				}
-
-				if ((filterByBranded || filterByUnbranded) && nonSystemFilterTags.length === 0) return false;
-				return false;
-			});
-
-			enabledPromptIds = matchingPrompts.map((p) => p.id);
-
-			if (enabledPromptIds.length === 0) {
-				return {
+		const enabledPromptIds = resolveEnabledPromptIds(allPrompts, data.tags);
+		if (hasTagFilter(data.tags) && enabledPromptIds.length === 0) {
+			return {
 					totalCitations: 0,
 					uniqueDomains: 0,
 					brandCitations: 0,
@@ -126,8 +97,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					newDomains: [] as { domain: string; count: number; category: CitationCategory }[],
 					droppedDomains: [] as { domain: string; previousCount: number; category: CitationCategory }[],
 				},
-				};
-			}
+			};
 		}
 
 		const [domainStats, urlStats, perPromptCitations, prevDomainStats, prevUrlStats] = await Promise.all([

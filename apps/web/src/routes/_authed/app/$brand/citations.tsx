@@ -13,6 +13,8 @@ import { useCitations } from "@/hooks/use-citations";
 import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
+import { DomainRatingCorrelation } from "@/components/domain-rating-correlation";
+import { CitationInsights } from "@/components/citation-insights";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader, FilterSection } from "@/components/page-header";
 import { FilterBar, getAvailableModels, usePageFilters, usePageFilterSetters } from "@/components/filter-bar";
@@ -122,21 +124,35 @@ function CitationsPage() {
 		);
 	} else {
 		content = (
-			<CitationsDisplay
-				citationData={citationData}
-				brandId={brandId}
-				brandName={brand?.name}
-				showStats={true}
-				maxDomains={20}
-				maxUrls={20}
-				days={days}
-				onCompetitorAdded={() => {
-					revalidateCitations();
-					queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-					queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
-					queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
-				}}
-			/>
+			<>
+				<CitationsDisplay
+					citationData={citationData}
+					brandId={brandId}
+					brandName={brand?.name}
+					showStats={true}
+					maxDomains={20}
+					maxUrls={20}
+					days={days}
+					onCompetitorAdded={() => {
+						revalidateCitations();
+						queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+						queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
+						queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
+					}}
+				/>
+				<DomainRatingCorrelation
+					brandId={brandId}
+					days={days}
+					tags={selectedTags.length > 0 ? selectedTags : undefined}
+					model={modelParam}
+				/>
+				<CitationInsights
+					brandId={brandId}
+					days={days}
+					tags={selectedTags.length > 0 ? selectedTags : undefined}
+					model={modelParam}
+				/>
+			</>
 		);
 	}
 

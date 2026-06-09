@@ -810,6 +810,163 @@ export async function getPerPromptDailyCitationStats(
 }
 
 // ============================================================================
+// Per-Prompt / Per-Model Domain Citation Stats (citation landscape insights)
+// ============================================================================
+
+export interface CitationPromptDomainStats {
+	prompt_id: string;
+	model: string;
+	domain: string;
+	count: number;
+}
+
+/**
+ * Citation counts grouped by (prompt, model, domain). The single fact table that
+ * powers the citation-landscape insights (kingmaker targets, prompt winnability,
+ * share-of-voice scoreboard) without any per-analysis SQL.
+ */
+export async function getCitationPromptDomainStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<CitationPromptDomainStats[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const rows = await queryPg<CitationPromptDomainStats>(sql`
+		SELECT
+			prompt_id,
+			model,
+			domain,
+			count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, model, domain
+	`);
+	return rows;
+}
+
+export interface CitationRunDomainStats {
+	prompt_id: string;
+	domain: string;
+	/** Total citations of this domain for this prompt. */
+	total: number;
+	/** Sum of (per-run citation count)^2 — for variance over runs. */
+	sumsq: number;
+	/** Distinct runs of this prompt that cited this domain. */
+	runs_present: number;
+}
+
+/**
+ * Per-(prompt, domain) run-level citation moments: total, sum of squares of the
+ * per-run counts, and the number of runs the domain appeared in. Lets us measure
+ * how steadily a domain is cited *across prompt-runs* (not calendar days, which
+ * conflates citation instability with run cadence).
+ */
+export async function getCitationRunDomainStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<CitationRunDomainStats[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const rows = await queryPg<CitationRunDomainStats>(sql`
+		SELECT
+			prompt_id,
+			domain,
+			sum(c)::int AS total,
+			sum(c * c)::int AS sumsq,
+			count(*)::int AS runs_present
+		FROM (
+			SELECT prompt_run_id, prompt_id, domain, count(*)::int AS c
+			FROM citations
+			WHERE brand_id = ${brandId}
+				${dateFilter(fromDate, toDate, timezone)}
+				${promptIdFilter(enabledPromptIds)}
+				${modelFilter(model)}
+			GROUP BY prompt_run_id, prompt_id, domain
+		) sub
+		GROUP BY prompt_id, domain
+	`);
+	return rows;
+}
+
+export interface PromptWebSearchRunCount {
+	prompt_id: string;
+	runs: number;
+}
+
+/**
+ * Web-search-enabled run counts per prompt — the denominator for citation
+ * volatility (only web-search runs can produce citations, so a non-web-search
+ * run shouldn't count as a "miss").
+ */
+export async function getPromptWebSearchRunCounts(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PromptWebSearchRunCount[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const rows = await queryPg<PromptWebSearchRunCount>(sql`
+		SELECT prompt_id, count(*)::int AS runs
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+			${webSearchFilter(true)}
+		GROUP BY prompt_id
+	`);
+	return rows;
+}
+
+export interface CitationPromptDomainPageStats {
+	prompt_id: string;
+	domain: string;
+	citations: number;
+	/** Distinct URLs of this domain cited for this prompt. */
+	pages: number;
+}
+
+/**
+ * Per-(prompt, domain) citation + distinct-page counts. Powers the per-prompt
+ * citation map (dot size = how many distinct pages of a domain are referenced).
+ */
+export async function getCitationPromptDomainPageStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<CitationPromptDomainPageStats[]> {
+	if (enabledPromptIds && enabledPromptIds.length === 0) return [];
+	const rows = await queryPg<CitationPromptDomainPageStats>(sql`
+		SELECT
+			prompt_id,
+			domain,
+			count(*)::int AS citations,
+			count(DISTINCT url)::int AS pages
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, domain
+	`);
+	return rows;
+}
+
+// ============================================================================
 // Per-Prompt Run Stats (grounding coverage + mention rates)
 // ============================================================================
 
