@@ -66,12 +66,8 @@ export interface CitationData {
 interface CitationsDisplayProps {
 	citationData: CitationData;
 	brandId?: string;
-	brandName?: string;
 	showStats?: boolean;
-	maxDomains?: number;
-	maxUrls?: number;
 	days?: number;
-	onCompetitorAdded?: () => void;
 }
 
 const formatUrlForDisplay = (url: string) => {

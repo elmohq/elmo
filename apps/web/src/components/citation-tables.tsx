@@ -66,13 +66,16 @@ function DomainLink({ domain }: { domain: string }) {
 const dr = (r: number | null) => (r === null ? "—" : Math.round(r).toString());
 const num = (n: number) => n.toLocaleString();
 
-export function CitedDomainsTable({ rows }: { rows: DomainTableRow[] }) {
+export function CitedDomainsTable({ rows, showDr = true }: { rows: DomainTableRow[]; showDr?: boolean }) {
+	const drColumns: ColumnDef<DomainTableRow>[] = [
+		{ accessorKey: "rating", header: "DR", sortingFn: nullableNumberSort<DomainTableRow>("rating"), cell: ({ row }) => <span className="font-mono tabular-nums text-muted-foreground">{dr(row.original.rating)}</span> },
+		{ accessorKey: "volatility", header: "Volatility", sortingFn: nullableNumberSort<DomainTableRow>("volatility"), cell: ({ row }) => <span className="font-mono tabular-nums text-muted-foreground">{row.original.volatility === null ? "—" : row.original.volatility.toFixed(2)}</span> },
+	];
 	const columns: ColumnDef<DomainTableRow>[] = [
 		{ accessorKey: "domain", header: "Domain", cell: ({ row }) => <DomainLink domain={row.original.domain} /> },
 		{ accessorKey: "category", header: "Category", filterFn: "equals", cell: ({ row }) => <CategoryCell category={row.original.category} /> },
 		{ accessorKey: "citations", header: "Citations", cell: ({ row }) => <span className="font-mono tabular-nums">{num(row.original.citations)}</span> },
-		{ accessorKey: "rating", header: "DR", sortingFn: nullableNumberSort<DomainTableRow>("rating"), cell: ({ row }) => <span className="font-mono tabular-nums text-muted-foreground">{dr(row.original.rating)}</span> },
-		{ accessorKey: "volatility", header: "Volatility", sortingFn: nullableNumberSort<DomainTableRow>("volatility"), cell: ({ row }) => <span className="font-mono tabular-nums text-muted-foreground">{row.original.volatility === null ? "—" : row.original.volatility.toFixed(2)}</span> },
+		...(showDr ? drColumns : []),
 	];
 	return (
 		<DataTable
