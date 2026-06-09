@@ -171,10 +171,10 @@ export const getCitationInsightsFn = createServerFn({ method: "GET" })
 		});
 
 		const allDomains = [...domainTotals.keys()];
-		let { ratings, missing } = loadDomainRatings(allDomains);
+		let { ratings, missing } = await loadDomainRatings(allDomains);
 		if (missing.length > 0) {
 			await warmDomainRatings(missing);
-			({ ratings, missing } = loadDomainRatings(allDomains));
+			({ ratings, missing } = await loadDomainRatings(allDomains));
 		}
 		const ratingsRecord: Record<string, number | null> = {};
 		for (const d of allDomains) ratingsRecord[d] = ratings.get(d) ?? null;

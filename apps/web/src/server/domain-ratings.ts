@@ -87,10 +87,10 @@ export const getDomainRatingsFn = createServerFn({ method: "GET" })
 		const allDomains = [...countByDomain.keys()];
 		if (allDomains.length === 0) return emptyResult;
 
-		let { ratings, missing } = loadDomainRatings(allDomains);
+		let { ratings, missing } = await loadDomainRatings(allDomains);
 		if (missing.length > 0) {
 			await warmDomainRatings(missing);
-			({ ratings, missing } = loadDomainRatings(allDomains));
+			({ ratings, missing } = await loadDomainRatings(allDomains));
 		}
 
 		const correlation = computeDrCorrelation<CitationCategory>(
