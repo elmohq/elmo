@@ -8,9 +8,9 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getCitationUrlStats, getPerPromptDailyCitationStats, getPerPromptCitationPages, type PerPromptCitationPageRow } from "@/lib/postgres-read";
+import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages, type PerPromptCitationPageRow } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { generateDateRange, applyPerPromptCitationLVCF } from "@/lib/chart-utils";
+import { generateDateRange, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
 import {
 	type CitationCategory,
 	type CitationPageType,
@@ -239,6 +239,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					googleModule: emptyGoogleModule(),
 					availableTags,
 					citationTimeSeries: [] as ({ date: string } & Record<CitationCategory, number>)[],
+					pageTypeTimeSeries: [] as ({ date: string } & Record<CitationPageType, number>)[],
 					previousBrandShare: null as number | null,
 				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
 				whatsChanged: {
@@ -252,9 +253,9 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		const [urlStats, perPromptCitations, perPromptPages, prevUrlStats] = await Promise.all([
+		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+			getPerPromptDailyCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
 		]);
@@ -393,17 +394,33 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			? Math.round((prevBrandCitations / prevTotalCitations) * 100)
 			: null;
 
-		// Citation time series via per-prompt LVCF with cadence normalization
+		// Citation time series via per-prompt LVCF with cadence normalization. Both
+		// axes are classified at the URL level (surfaces excluded), so the trends
+		// match the breakdown above and show every category / page type.
 		const dateRangeStart = new Date(toDateStr);
 		dateRangeStart.setDate(dateRangeStart.getDate() - (data.days - 1));
 		const dateRange = generateDateRange(dateRangeStart, new Date(toDateStr));
-		const smoothedCitations = applyPerPromptCitationLVCF(
-			perPromptCitations, dateRange, brandResult[0]?.delayOverrideHours, categorizeDomain,
-		);
+		const cadenceHours = brandResult[0]?.delayOverrideHours;
+		const categoryRows: { prompt_id: string; date: string; key: CitationCategory; count: number }[] = [];
+		const pageTypeRows: { prompt_id: string; date: string; key: CitationPageType; count: number }[] = [];
+		for (const r of perPromptDailyPages) {
+			if (!r.url || isGoogleSurfaceUrl(r.url)) continue;
+			const c = Number(r.count);
+			const date = String(r.date);
+			categoryRows.push({ prompt_id: r.prompt_id, date, key: classify(r.domain, r.url, r.title), count: c });
+			pageTypeRows.push({ prompt_id: r.prompt_id, date, key: inferPageType(r.url, r.title), count: c });
+		}
+		const smoothedCategories = applyPerPromptKeyedLVCF(categoryRows, dateRange, cadenceHours, CITATION_CATEGORIES);
+		const smoothedPageTypes = applyPerPromptKeyedLVCF(pageTypeRows, dateRange, cadenceHours, CITATION_PAGE_TYPES);
 		const citationTimeSeries = dateRange.map((date) => {
-			const c = smoothedCitations.get(date);
+			const c = smoothedCategories.get(date);
 			if (!c) return { date, ...emptyCategoryCounts() };
 			return { date, ...(toRoundedPercentages(c) as Record<CitationCategory, number>) };
+		});
+		const pageTypeTimeSeries = dateRange.map((date) => {
+			const c = smoothedPageTypes.get(date);
+			if (!c) return { date, ...emptyPageTypeCounts() };
+			return { date, ...(toRoundedPercentages(c) as Record<CitationPageType, number>) };
 		});
 
 		// What's Changed: new URLs, dropped URLs, title changes
@@ -480,7 +497,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 
 		const promptCitationFlags = new Map<string, { hasBrand: boolean; hasCompetitor: boolean; competitorCount: number; competitorIds: Set<string> }>();
-		for (const row of perPromptCitations) {
+		for (const row of perPromptPages) {
 			const cat = categorizeDomain(row.domain);
 			let entry = promptCitationFlags.get(row.prompt_id);
 			if (!entry) {
@@ -522,6 +539,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			googleModule,
 			availableTags,
 			citationTimeSeries,
+			pageTypeTimeSeries,
 			previousBrandShare,
 			competitors: competitorSummary,
 			competitorOnlyPrompts,

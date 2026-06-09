@@ -108,4 +108,12 @@ describe("inferPageType", () => {
 		expect(inferPageType("https://example.com/blog/2026/01/hello")).toBe("article");
 		expect(inferPageType("https://www.google.com/search?q=product&prds=productid:1")).toBe("shopping");
 	});
+	it("classifies forum / video / info pages (shrinks page-type 'other')", () => {
+		expect(inferPageType("https://reddit.com/r/Skincare/comments/abc/title")).toBe("forum");
+		expect(inferPageType("https://youtube.com/watch?v=abc", "5 products")).toBe("video");
+		expect(inferPageType("https://ubeauty.com/pages/return-policy", "Returns")).toBe("info");
+		expect(inferPageType("https://ubeauty.com/pages/subscription", "Subscription")).toBe("info");
+		expect(inferPageType("https://amazon.com/dp/B089", "U Beauty Serum")).toBe("product");
+		expect(inferPageType("https://mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/x", "Acne treatment")).toBe("article");
+	});
 });

@@ -11,7 +11,7 @@ import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/components/popover";
 import { Link } from "@tanstack/react-router";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
 	type ChartConfig,
 	ChartContainer,
@@ -22,8 +22,8 @@ import {
 	type CitationPageType,
 	CATEGORY_CONFIG,
 	CITATION_CATEGORIES,
+	CITATION_PAGE_TYPES,
 	PAGE_TYPE_CONFIG,
-	PAGE_TYPE_COLORS,
 } from "@/lib/domain-categories";
 import * as Sentry from "@sentry/tanstackstart-react";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
@@ -72,6 +72,7 @@ export interface CitationData {
 	pageTypeDistribution?: { pageType: CitationPageType; count: number }[];
 	googleModule?: GoogleModuleData;
 	citationTimeSeries?: Array<{ date: string } & Partial<Record<CitationCategory, number>>>;
+	pageTypeTimeSeries?: Array<{ date: string } & Partial<Record<CitationPageType, number>>>;
 	previousBrandShare?: number | null;
 	competitors?: Array<{ id: string; name: string; domains: string[] }>;
 	competitorOnlyPrompts?: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
@@ -158,33 +159,12 @@ const CATEGORY_TABS: { key: string; label: string }[] = [
 	...CITATION_CATEGORIES.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label })),
 ];
 
-const CATEGORY_TOOLTIPS: Record<CitationCategory, string> = {
-	brand: "Citations linking to your brand's own domain",
-	competitor: "Citations linking to domains in your tracked competitors list",
-	editorial: "News outlets, trade press, magazines, and blogs",
-	reviews: "Review, comparison, and vendor-listing sites (G2, Capterra, Trustpilot, etc.)",
-	ecommerce: "Retailers, marketplaces, and storefront/product pages (Amazon, Sephora, Ulta, etc.)",
-	social: "Social platforms and community/Q&A sites (Reddit, LinkedIn, YouTube, Quora, Stack Overflow, etc.)",
-	pr: "Press-release distribution wires (PR Newswire, Business Wire, etc.)",
-	reference: "Reference and structured-knowledge sites (Wikipedia, Crunchbase, IMDb, etc.)",
-	institutional: "Government, education, research, and nonprofit institutions (.gov, .edu, .org)",
-	google: "Other Google-owned properties (Maps, Support, etc.). Google AI Mode search & shopping are broken out separately.",
-	other: "All other cited domains not matching the above categories",
-};
-
-// The trend chart folds the 10 categories into 5 primary bands + "Other sources"
-// to stay legible (and to keep Google AI Mode surfaces, which live in the Google
-// module, from showing as their own band).
-const TREND_PRIMARY: CitationCategory[] = ["brand", "competitor", "editorial", "reviews", "social"];
-const TREND_BANDS: { key: string; label: string; dotClass: string }[] = [
-	...TREND_PRIMARY.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label, dotClass: CATEGORY_CONFIG[c].chartDotClass })),
-	{ key: "otherSources", label: "Other sources", dotClass: CATEGORY_CONFIG.other.chartDotClass },
-];
-
-const citationsChartConfig: ChartConfig = {
-	...Object.fromEntries(TREND_PRIMARY.map((c) => [c, { label: CATEGORY_CONFIG[c].label, color: CATEGORY_CONFIG[c].chartColor }])),
-	otherSources: { label: "Other sources", color: CATEGORY_CONFIG.other.chartColor },
-};
+const CATEGORY_META: Record<string, { label: string; color: string }> = Object.fromEntries(
+	CITATION_CATEGORIES.map((c) => [c, { label: CATEGORY_CONFIG[c].label, color: CATEGORY_CONFIG[c].chartColor }]),
+);
+const PAGE_TYPE_META: Record<string, { label: string; color: string }> = Object.fromEntries(
+	CITATION_PAGE_TYPES.map((p) => [p, { label: PAGE_TYPE_CONFIG[p].label, color: PAGE_TYPE_CONFIG[p].chartColor }]),
+);
 
 const attributionDotClass = (a: "brand" | "competitor" | "other") =>
 	a === "brand" ? "bg-emerald-500" : a === "competitor" ? "bg-red-500" : "bg-gray-400";
@@ -467,39 +447,91 @@ function OpportunitiesCard({
 	);
 }
 
-function BreakdownDonut({
+function TrendAreaChart({
 	title,
-	items,
+	tooltip,
+	data,
+	keys,
+	meta,
 }: {
 	title: string;
-	items: { label: string; count: number; color: string }[];
+	tooltip: string;
+	data: Array<Record<string, number | string>>;
+	keys: string[];
+	meta: Record<string, { label: string; color: string }>;
 }) {
-	const total = items.reduce((s, i) => s + i.count, 0);
-	const slices = items.filter((i) => i.count > 0);
+	// Only render bands that actually appear in the window.
+	const present = keys.filter((k) => data.some((d) => typeof d[k] === "number" && (d[k] as number) > 0));
+	const config: ChartConfig = Object.fromEntries(
+		present.map((k) => [k, { label: meta[k]?.label ?? k, color: meta[k]?.color ?? "#9ca3af" }]),
+	);
 	return (
-		<div className="flex-1 min-w-0">
-			<div className="text-sm font-medium mb-3">{title}</div>
-			<div className="flex items-center gap-4">
-				<ChartContainer config={{}} className="h-[128px] w-[128px] shrink-0">
-					<PieChart>
-						<Pie data={slices} dataKey="count" nameKey="label" innerRadius={36} outerRadius={60} paddingAngle={1} strokeWidth={0}>
-							{slices.map((it) => (
-								<Cell key={it.label} fill={it.color} />
-							))}
-						</Pie>
-					</PieChart>
+		<Card>
+			<CardHeader className="gap-0 pb-2">
+				<CardTitle className="text-sm font-medium flex items-center gap-1.5">
+					{title}
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+						</TooltipTrigger>
+						<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
+					</Tooltip>
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<ChartContainer config={config} className="aspect-auto h-[200px] w-full">
+					<AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+						<CartesianGrid vertical={false} strokeDasharray="3 3" />
+						<XAxis
+							dataKey="date"
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							minTickGap={50}
+							tick={{ fontSize: 11 }}
+							tickFormatter={(value) => {
+								const [year, month, day] = String(value).split("-").map(Number);
+								const date = new Date(year, month - 1, day);
+								return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+							}}
+						/>
+						<YAxis tickLine={false} axisLine={false} tickMargin={8} tickCount={4} tick={{ fontSize: 11 }} tickFormatter={(value) => `${value}%`} />
+						<ChartTooltip
+							isAnimationActive={false}
+							cursor={false}
+							content={({ active, payload, label }) => {
+								if (!active || !payload?.length) return null;
+								const dp = payload[0]?.payload as Record<string, number | string> | undefined;
+								const [year, month, day] = String(label).split("-").map(Number);
+								const date = new Date(year, month - 1, day);
+								const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+								const rows = present
+									.map((k) => ({ k, value: (dp?.[k] as number | undefined) ?? 0 }))
+									.filter((r) => r.value > 0)
+									.sort((a, b) => b.value - a.value);
+								return (
+									<div className="border-border/50 bg-background grid min-w-[10rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+										<div className="font-medium">{formattedDate}</div>
+										<div className="grid gap-1">
+											{rows.map((r) => (
+												<div key={r.k} className="flex items-center gap-2">
+													<span className="shrink-0 rounded-[2px] h-2.5 w-2.5" style={{ backgroundColor: meta[r.k]?.color ?? "#9ca3af" }} />
+													<span className="text-muted-foreground">{meta[r.k]?.label ?? r.k}</span>
+													<span className="ml-auto font-mono tabular-nums">{r.value}%</span>
+												</div>
+											))}
+										</div>
+									</div>
+								);
+							}}
+						/>
+						{present.map((k) => (
+							<Area key={k} dataKey={k} type="monotone" stackId="1" stroke={`var(--color-${k})`} fill={`var(--color-${k})`} fillOpacity={0.8} strokeWidth={0} />
+						))}
+					</AreaChart>
 				</ChartContainer>
-				<div className="min-w-0 flex-1 space-y-1">
-					{slices.slice(0, 7).map((it) => (
-						<div key={it.label} className="flex items-center gap-2 text-xs">
-							<span className="h-2.5 w-2.5 rounded-[2px] shrink-0" style={{ backgroundColor: it.color }} />
-							<span className="text-muted-foreground truncate">{it.label}</span>
-							<span className="ml-auto font-mono tabular-nums">{total > 0 ? Math.round((it.count / total) * 100) : 0}%</span>
-						</div>
-					))}
-				</div>
-			</div>
-		</div>
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -559,34 +591,6 @@ export function CitationsDisplay({
 		return urls.slice(0, maxUrls);
 	}, [citationData.specificUrls, selectedCategory, selectedPageType, urlSearch, maxUrls]);
 
-	const domainTypeItems = useMemo(() => {
-		const cc = citationData.categoryCounts;
-		const items = [{ label: CATEGORY_CONFIG.brand.label, count: cc.brand ?? 0, category: "brand", tooltip: CATEGORY_TOOLTIPS.brand }];
-		for (const c of CITATION_CATEGORIES) {
-			if (c === "brand" || c === "other" || (cc[c] ?? 0) <= 0) continue;
-			items.push({ label: CATEGORY_CONFIG[c].label, count: cc[c], category: c, tooltip: CATEGORY_TOOLTIPS[c] });
-		}
-		const fixed = items.slice(0, 1);
-		const middle = items.slice(1).sort((a, b) => b.count - a.count);
-		const result = [...fixed, ...middle];
-		if ((cc.other ?? 0) > 0) result.push({ label: CATEGORY_CONFIG.other.label, count: cc.other, category: "other", tooltip: CATEGORY_TOOLTIPS.other });
-		return result;
-	}, [citationData.categoryCounts]);
-
-	const trendData = useMemo(() => {
-		const ts = citationData.citationTimeSeries ?? [];
-		return ts.map((p) => {
-			const point: Record<string, number | string> = { date: p.date };
-			let otherSources = 0;
-			for (const c of CITATION_CATEGORIES) {
-				const v = (p as Partial<Record<CitationCategory, number>>)[c] ?? 0;
-				if (TREND_PRIMARY.includes(c)) point[c] = v;
-				else otherSources += v;
-			}
-			point.otherSources = otherSources;
-			return point;
-		});
-	}, [citationData.citationTimeSeries]);
 
 	const pageTypes = useMemo(
 		() => [...(citationData.pageTypeDistribution ?? [])].sort((a, b) => b.count - a.count),
@@ -675,154 +679,64 @@ export function CitationsDisplay({
 		<>
 			{/* Stats Cards */}
 			{showStats && (
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-					<div className="md:col-span-2 lg:col-span-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 gap-4">
-						<Card className="flex flex-col">
-							<CardHeader className="gap-0">
-								<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-									Brand Citation Share
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-										</TooltipTrigger>
-										<TooltipContent className="max-w-xs text-sm font-normal">
-											The percentage of all citations that link to your brand&apos;s domain. A higher share means AI models are more likely to reference your content.
-										</TooltipContent>
-									</Tooltip>
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 flex items-center">
-								<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{brandShare}%</div>
-							</CardContent>
-						</Card>
-						<Card className="flex flex-col">
-							<CardHeader className="gap-0">
-								<CardTitle className="text-sm font-medium text-muted-foreground">Unique Domains</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 flex items-center">
-								<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{citationData.uniqueDomains.toLocaleString()}</div>
-							</CardContent>
-						</Card>
-						<Card className="flex flex-col">
-							<CardHeader className="gap-0">
-								<CardTitle className="text-sm font-medium text-muted-foreground">Total Citations</CardTitle>
-							</CardHeader>
-							<CardContent className="flex-1 flex items-center">
-								<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{citationData.totalCitations.toLocaleString()}</div>
-							</CardContent>
-						</Card>
-					</div>
-
-					<Card className="md:col-span-2 lg:col-span-3 flex flex-col">
+				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+					<Card className="flex flex-col">
 						<CardHeader className="gap-0">
-							<CardTitle className="flex items-center gap-1.5">
-								Citation Breakdown
+							<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+								Brand Citation Share
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+										<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs text-sm font-normal">
-										<p className="mb-2"><strong>Source</strong> is who published the page; <strong>page type</strong> is what kind of page it is.</p>
-										<p><strong>Competitor</strong> domains are only those in your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">competitors list</Link> : "competitors list"}.</p>
+										The percentage of all citations that link to your brand&apos;s domain. A higher share means AI models are more likely to reference your content.
 									</TooltipContent>
 								</Tooltip>
 							</CardTitle>
 						</CardHeader>
-						<Separator />
-						<CardContent className="flex-1 flex flex-col sm:flex-row gap-6 pt-4">
-							<BreakdownDonut
-								title="By source"
-								items={domainTypeItems.map((i) => ({ label: i.label, count: i.count, color: DOMAIN_CATEGORY_COLORS[i.category] ?? "#9ca3af" }))}
-							/>
-							<BreakdownDonut
-								title="By page type"
-								items={pageTypes.map((d) => ({ label: PAGE_TYPE_CONFIG[d.pageType].label, count: d.count, color: PAGE_TYPE_COLORS[d.pageType] ?? "#9ca3af" }))}
-							/>
+						<CardContent className="flex-1 flex items-center">
+							<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{brandShare}%</div>
+						</CardContent>
+					</Card>
+					<Card className="flex flex-col">
+						<CardHeader className="gap-0">
+							<CardTitle className="text-sm font-medium text-muted-foreground">Unique Domains</CardTitle>
+						</CardHeader>
+						<CardContent className="flex-1 flex items-center">
+							<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{citationData.uniqueDomains.toLocaleString()}</div>
+						</CardContent>
+					</Card>
+					<Card className="flex flex-col">
+						<CardHeader className="gap-0">
+							<CardTitle className="text-sm font-medium text-muted-foreground">Total Citations</CardTitle>
+						</CardHeader>
+						<CardContent className="flex-1 flex items-center">
+							<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{citationData.totalCitations.toLocaleString()}</div>
 						</CardContent>
 					</Card>
 				</div>
 			)}
 
-			{/* Citation Trends Chart */}
+			{/* Citation Categories over time */}
 			{citationData.citationTimeSeries && citationData.citationTimeSeries.length > 0 && (
-				<Card>
-					<CardHeader className="gap-0 pb-2">
-						<CardTitle className="text-sm font-medium flex items-center gap-1.5">
-							Citation Category Trends
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
-								<TooltipContent className="max-w-xs text-sm font-normal">
-									Distribution of citations by category over time, shown as a percentage of all citations each day. Data is smoothed to account for staggered prompt schedules.
-								</TooltipContent>
-							</Tooltip>
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<ChartContainer config={citationsChartConfig} className="aspect-auto h-[180px] w-full">
-							<AreaChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-								<CartesianGrid vertical={false} strokeDasharray="3 3" />
-								<XAxis
-									dataKey="date"
-									tickLine={false}
-									axisLine={false}
-									tickMargin={8}
-									minTickGap={50}
-									tick={{ fontSize: 11 }}
-									tickFormatter={(value) => {
-										const [year, month, day] = value.split("-").map(Number);
-										const date = new Date(year, month - 1, day);
-										return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-									}}
-								/>
-							<YAxis
-								tickLine={false}
-								axisLine={false}
-								tickMargin={8}
-								tickCount={4}
-									tick={{ fontSize: 11 }}
-									tickFormatter={(value) => `${value}%`}
-								/>
-								<ChartTooltip
-									isAnimationActive={false}
-									cursor={false}
-									content={({ active, payload, label }) => {
-										if (!active || !payload?.length) return null;
-										const dp = payload[0]?.payload as Record<string, number | string> | undefined;
-										const [year, month, day] = (label as string).split("-").map(Number);
-										const date = new Date(year, month - 1, day);
-										const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-										return (
-											<div className="border-border/50 bg-background grid min-w-[10rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
-												<div className="font-medium">{formattedDate}</div>
-											<div className="grid gap-1">
-												{TREND_BANDS.map((band) => {
-													const value = dp?.[band.key] as number | undefined;
-													if (!value) return null;
-													return (
-														<div key={band.key} className="flex items-center gap-2">
-															<div className={`shrink-0 rounded-[2px] h-2.5 w-2.5 ${band.dotClass}`} />
-															<span className="text-muted-foreground">{band.label}</span>
-															<span className="ml-auto font-mono tabular-nums">{value}%</span>
-														</div>
-													);
-												})}
-											</div>
-											</div>
-										);
-									}}
-								/>
-							<Area dataKey="otherSources" type="monotone" stackId="1" stroke="var(--color-otherSources)" fill="var(--color-otherSources)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="social" type="monotone" stackId="1" stroke="var(--color-social)" fill="var(--color-social)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="reviews" type="monotone" stackId="1" stroke="var(--color-reviews)" fill="var(--color-reviews)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="editorial" type="monotone" stackId="1" stroke="var(--color-editorial)" fill="var(--color-editorial)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="competitor" type="monotone" stackId="1" stroke="var(--color-competitor)" fill="var(--color-competitor)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="brand" type="monotone" stackId="1" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.8} strokeWidth={0} />
-							</AreaChart>
-						</ChartContainer>
-					</CardContent>
-				</Card>
+				<TrendAreaChart
+					title="Citation Categories"
+					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
+					data={(citationData.citationTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
+					keys={CITATION_CATEGORIES}
+					meta={CATEGORY_META}
+				/>
+			)}
+
+			{/* Citation Page Types over time */}
+			{citationData.pageTypeTimeSeries && citationData.pageTypeTimeSeries.length > 0 && (
+				<TrendAreaChart
+					title="Citation Page Types"
+					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
+					data={(citationData.pageTypeTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
+					keys={CITATION_PAGE_TYPES}
+					meta={PAGE_TYPE_META}
+				/>
 			)}
 
 			{/* Recent Changes */}

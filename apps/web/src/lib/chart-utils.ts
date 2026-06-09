@@ -1,6 +1,6 @@
 import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
-import { type CitationCategory, CITATION_CATEGORIES, emptyCategoryCounts } from "@/lib/domain-categories";
+import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categories";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -156,65 +156,65 @@ export function applyPerPromptLVCF(
 export type CitationCategories = Record<CitationCategory, number>;
 
 /**
- * Per-prompt LVCF for citation data with cadence normalization.
- *
- * For each prompt, carries forward its last known citation counts per category,
- * normalized by the brand's cadence (citations_per_run / cadence_days) so the
- * daily total reflects a steady rate rather than spiking on run days.
- *
- * Pre-seeds each prompt with its earliest observation to avoid ramp-up artifacts.
+ * Generalized per-prompt LVCF with cadence normalization over arbitrary string
+ * keys (citation category, page type, …). For each prompt, carries forward its
+ * last known per-key counts, normalized by the brand's cadence so daily totals
+ * reflect a steady rate rather than spiking on run days. Pre-seeds each prompt
+ * with its earliest observation to avoid ramp-up artifacts.
  */
+export function applyPerPromptKeyedLVCF<K extends string>(
+	rows: { prompt_id: string; date: string | Date; key: K; count: number }[],
+	dateRange: string[],
+	cadenceHours: number | null | undefined,
+	allKeys: readonly K[],
+): Map<string, Record<K, number>> {
+	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
+	const empty = (): Record<K, number> => Object.fromEntries(allKeys.map((k) => [k, 0])) as Record<K, number>;
+
+	// Group by prompt_id -> date -> per-key totals
+	const byPrompt = new Map<string, Map<string, Record<K, number>>>();
+	for (const row of rows) {
+		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
+		const dateMap = byPrompt.get(row.prompt_id)!;
+		const dateStr = String(row.date);
+		if (!dateMap.has(dateStr)) dateMap.set(dateStr, empty());
+		dateMap.get(dateStr)![row.key] += Number(row.count);
+	}
+
+	const daily = new Map<string, Record<K, number>>();
+	for (const [, dateMap] of byPrompt) {
+		// Pre-seed with the earliest observation to avoid ramp-up
+		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+		let carried: Record<K, number> | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
+		for (const date of dateRange) {
+			const actual = dateMap.get(date);
+			if (actual) carried = actual;
+			if (!carried) continue;
+			if (!daily.has(date)) daily.set(date, empty());
+			const day = daily.get(date)!;
+			for (const k of allKeys) day[k] += carried[k] / cadenceDays;
+		}
+	}
+
+	for (const [, v] of daily) {
+		for (const k of allKeys) v[k] = Math.round(v[k]);
+	}
+	return daily;
+}
+
+/** Category-keyed LVCF (back-compat wrapper used by the dashboard). */
 export function applyPerPromptCitationLVCF(
 	perPromptData: PerPromptDailyCitationStats[],
 	dateRange: string[],
 	cadenceHours: number | null | undefined,
 	categorizeDomain: (domain: string) => CitationCategory,
 ): Map<string, CitationCategories> {
-	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
-
-	// Group by prompt_id -> date -> category totals
-	const byPrompt = new Map<string, Map<string, CitationCategories>>();
-	for (const row of perPromptData) {
-		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
-		const dateMap = byPrompt.get(row.prompt_id)!;
-		const dateStr = String(row.date);
-		if (!dateMap.has(dateStr)) dateMap.set(dateStr, emptyCategoryCounts());
-		const bucket = dateMap.get(dateStr)!;
-		bucket[categorizeDomain(row.domain)] += Number(row.count);
-	}
-
-	const dailyCitations = new Map<string, CitationCategories>();
-
-	for (const [, dateMap] of byPrompt) {
-		// Pre-seed with the earliest observation to avoid ramp-up
-		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-		let carried: CitationCategories | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
-
-		for (const date of dateRange) {
-			const actual = dateMap.get(date);
-			if (actual) {
-				carried = actual;
-			}
-			if (!carried) continue;
-
-			if (!dailyCitations.has(date)) {
-				dailyCitations.set(date, emptyCategoryCounts());
-			}
-			const day = dailyCitations.get(date)!;
-			for (const cat of CITATION_CATEGORIES) {
-				day[cat] += carried[cat] / cadenceDays;
-			}
-		}
-	}
-
-	// Round final values
-	for (const [, v] of dailyCitations) {
-		for (const cat of CITATION_CATEGORIES) {
-			v[cat] = Math.round(v[cat]);
-		}
-	}
-
-	return dailyCitations;
+	return applyPerPromptKeyedLVCF(
+		perPromptData.map((r) => ({ prompt_id: r.prompt_id, date: r.date, key: categorizeDomain(r.domain), count: Number(r.count) })),
+		dateRange,
+		cadenceHours,
+		CITATION_CATEGORIES,
+	);
 }
 
 // Function to normalize values from 0-500 range to 0-100% and round down to nearest 20%

@@ -1001,6 +1001,45 @@ export async function getPerPromptCitationPages(
 	return rows;
 }
 
+export interface PerPromptDailyCitationPageRow {
+	prompt_id: string;
+	date: string;
+	url: string | null;
+	domain: string;
+	title: string | null;
+	count: number;
+}
+
+/** Per prompt + day + URL: citation counts with a representative title. Powers the
+ *  category and page-type time-series, which are classified in JS from url + title. */
+export async function getPerPromptDailyCitationPages(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptDailyCitationPageRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyCitationPageRow>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date AS date,
+			url,
+			domain,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, date, url, domain
+		ORDER BY prompt_id, date
+	`);
+	return rows;
+}
+
 // ============================================================================
 // Brand Mention Rate by Model (per-platform standing for the digest)
 // ============================================================================

@@ -52,6 +52,9 @@ export type CitationPageType =
 	| "review"
 	| "product"
 	| "doc"
+	| "forum"
+	| "video"
+	| "info"
 	| "search"
 	| "shopping"
 	| "other";
@@ -65,6 +68,9 @@ export const CITATION_PAGE_TYPES: CitationPageType[] = [
 	"review",
 	"product",
 	"doc",
+	"forum",
+	"video",
+	"info",
 	"search",
 	"shopping",
 	"other",
@@ -259,8 +265,11 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	if (isGoogleSearchUrl(url)) return "search";
 
 	let path = "";
+	let host = "";
 	try {
-		path = new URL(url).pathname.toLowerCase();
+		const u = new URL(url);
+		path = u.pathname.toLowerCase();
+		host = u.hostname.replace(/^www\./, "").toLowerCase();
 	} catch {
 		return "other";
 	}
@@ -269,13 +278,22 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	const t = (title ?? "").toLowerCase();
 	const hay = `${path} ${t}`;
 
-	if (/\/(docs?|documentation|support|help|kb|api|developers?|reference)(\/|$)/.test(path)) return "doc";
+	if (/(^|\.)(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com)$/.test(host) || /\/(watch|shorts|embed|videos?)(\/|$|\?)/.test(path)) return "video";
+	if (/(^|\.)reddit\.com$/.test(host) || /\/(comments|forums?|threads?|topic|viewtopic|discussion|community)(\/|$)/.test(path) || /\/r\//.test(path)) return "forum";
+	if (/\/(docs?|documentation|developers?|api|sdk|reference)(\/|$)/.test(path)) return "doc";
 	if (/\breview(s|ed)?\b/.test(hay)) return "review";
 	if (/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) || /\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)) return "comparison";
 	if (/\b(\d+\s+best|best\s+\d+|top\s+\d+|\d+\s+top|best\s+[a-z])\b/.test(t) || /^\s*(best|top)\b/.test(t)) return "listicle";
 	if (/\b(how to|how-to|guide|tutorial|step[- ]by[- ]step|getting started|routine)\b/.test(hay) || /\/(how-to|guides?|tutorials?|routines?)(\/|$)/.test(path)) return "howto";
-	if (/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|pricing|plans?)(\/|$)/.test(path)) return "product";
-	if (/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?)(\/|$|-)/.test(path) || /\/\d{4}\/\d{2}\//.test(path) || /\/\d{4}\/[a-z]/.test(path)) return "article";
+	if (/\/(about|about-us|faq|faqs|contact|contact-us|shipping|shipping-policy|returns?|return-policy|refunds?|privacy|terms|policy|policies|legal|account|login|sign-?in|register|careers?|press|wholesale|store-locator|locations?|subscribe|subscription|rewards|loyalty|gift-?cards?)(\/|$|-)/.test(path)) return "info";
+	if (/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|cart|pricing|plans?)(\/|$)/.test(path)) return "product";
+	if (/\/(support|help|kb)(\/|$)/.test(path)) return "doc";
+	if (
+		/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?)(\/|$|-)/.test(path)
+		|| /\/(diseases?-?conditions?|conditions?|symptoms?(-causes)?|diagnosis(-treatment)?|treatments?|in-depth|tests?-procedures?|health|skin-care-secrets|everyday-care|derm-treat|public\/diseases)(\/|$|-)/.test(path)
+		|| /\/\d{4}\/\d{2}\//.test(path)
+		|| /\/\d{4}\/[a-z]/.test(path)
+	) return "article";
 	return "other";
 }
 
@@ -330,6 +348,9 @@ export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartCo
 	review: { label: "Review", chartColor: "#f43f5e" },
 	product: { label: "Product", chartColor: "#ec4899" },
 	doc: { label: "Docs", chartColor: "#6366f1" },
+	forum: { label: "Forum", chartColor: "#06b6d4" },
+	video: { label: "Video", chartColor: "#ef4444" },
+	info: { label: "Info", chartColor: "#78716c" },
 	search: { label: "Search", chartColor: "#4285f4" },
 	shopping: { label: "Shopping", chartColor: "#a855f7" },
 	other: { label: "Other", chartColor: "#9ca3af" },
