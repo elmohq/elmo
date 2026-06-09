@@ -8,6 +8,7 @@ export type CitationCategory =
 	| "competitor"
 	| "editorial"
 	| "reviews"
+	| "ecommerce"
 	| "social"
 	| "pr"
 	| "reference"
@@ -25,6 +26,7 @@ export const CITATION_CATEGORIES: CitationCategory[] = [
 	"competitor",
 	"editorial",
 	"reviews",
+	"ecommerce",
 	"social",
 	"pr",
 	"reference",
@@ -47,6 +49,7 @@ export type CitationPageType =
 	| "listicle"
 	| "howto"
 	| "comparison"
+	| "review"
 	| "product"
 	| "doc"
 	| "search"
@@ -59,6 +62,7 @@ export const CITATION_PAGE_TYPES: CitationPageType[] = [
 	"listicle",
 	"howto",
 	"comparison",
+	"review",
 	"product",
 	"doc",
 	"search",
@@ -266,11 +270,12 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	const hay = `${path} ${t}`;
 
 	if (/\/(docs?|documentation|support|help|kb|api|developers?|reference)(\/|$)/.test(path)) return "doc";
+	if (/\breview(s|ed)?\b/.test(hay)) return "review";
 	if (/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) || /\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)) return "comparison";
-	if (/\b(\d+\s+best|best\s+\d+|top\s+\d+|\d+\s+top)\b/.test(t) || /^\s*(best|top)\b/.test(t)) return "listicle";
-	if (/\b(how to|how-to|guide|tutorial|step[- ]by[- ]step|getting started)\b/.test(hay) || /\/(how-to|guides?|tutorials?)(\/|$)/.test(path)) return "howto";
-	if (/\/(pricing|plans?|product|products|shop|store|buy|item|pdp)(\/|$)/.test(path)) return "product";
-	if (/\/(blog|news|article|story|stories|posts?|\d{4}\/\d{2})/.test(path)) return "article";
+	if (/\b(\d+\s+best|best\s+\d+|top\s+\d+|\d+\s+top|best\s+[a-z])\b/.test(t) || /^\s*(best|top)\b/.test(t)) return "listicle";
+	if (/\b(how to|how-to|guide|tutorial|step[- ]by[- ]step|getting started|routine)\b/.test(hay) || /\/(how-to|guides?|tutorials?|routines?)(\/|$)/.test(path)) return "howto";
+	if (/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|pricing|plans?)(\/|$)/.test(path)) return "product";
+	if (/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?)(\/|$|-)/.test(path) || /\/\d{4}\/\d{2}\//.test(path) || /\/\d{4}\/[a-z]/.test(path)) return "article";
 	return "other";
 }
 
@@ -303,6 +308,7 @@ export const CATEGORY_CONFIG: Record<CitationCategory, { label: string; chartCol
 	competitor: { label: "Competitor", chartColor: "#ef4444", badgeClass: "bg-red-500/90 text-white", chartDotClass: "bg-red-500" },
 	editorial: { label: "Editorial", chartColor: "#0ea5e9", badgeClass: "bg-sky-500/90 text-white", chartDotClass: "bg-sky-500" },
 	reviews: { label: "Reviews", chartColor: "#14b8a6", badgeClass: "bg-teal-500/90 text-white", chartDotClass: "bg-teal-500" },
+	ecommerce: { label: "Ecommerce", chartColor: "#f97316", badgeClass: "bg-orange-500/90 text-white", chartDotClass: "bg-orange-500" },
 	social: { label: "Social", chartColor: "#8b5cf6", badgeClass: "bg-purple-500/90 text-white", chartDotClass: "bg-violet-500" },
 	pr: { label: "PR", chartColor: "#ec4899", badgeClass: "bg-pink-500/90 text-white", chartDotClass: "bg-pink-500" },
 	reference: { label: "Reference", chartColor: "#6366f1", badgeClass: "bg-indigo-500/90 text-white", chartDotClass: "bg-indigo-500" },
@@ -321,6 +327,7 @@ export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartCo
 	listicle: { label: "Listicle", chartColor: "#14b8a6" },
 	howto: { label: "How-to", chartColor: "#22c55e" },
 	comparison: { label: "Comparison", chartColor: "#f59e0b" },
+	review: { label: "Review", chartColor: "#f43f5e" },
 	product: { label: "Product", chartColor: "#ec4899" },
 	doc: { label: "Docs", chartColor: "#6366f1" },
 	search: { label: "Search", chartColor: "#4285f4" },

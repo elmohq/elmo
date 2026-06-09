@@ -11,7 +11,7 @@ import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@workspace/ui/components/popover";
 import { Link } from "@tanstack/react-router";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, PieChart, Pie, Cell } from "recharts";
 import {
 	type ChartConfig,
 	ChartContainer,
@@ -163,6 +163,7 @@ const CATEGORY_TOOLTIPS: Record<CitationCategory, string> = {
 	competitor: "Citations linking to domains in your tracked competitors list",
 	editorial: "News outlets, trade press, magazines, and blogs",
 	reviews: "Review, comparison, and vendor-listing sites (G2, Capterra, Trustpilot, etc.)",
+	ecommerce: "Retailers, marketplaces, and storefront/product pages (Amazon, Sephora, Ulta, etc.)",
 	social: "Social platforms and community/Q&A sites (Reddit, LinkedIn, YouTube, Quora, Stack Overflow, etc.)",
 	pr: "Press-release distribution wires (PR Newswire, Business Wire, etc.)",
 	reference: "Reference and structured-knowledge sites (Wikipedia, Crunchbase, IMDb, etc.)",
@@ -466,6 +467,42 @@ function OpportunitiesCard({
 	);
 }
 
+function BreakdownDonut({
+	title,
+	items,
+}: {
+	title: string;
+	items: { label: string; count: number; color: string }[];
+}) {
+	const total = items.reduce((s, i) => s + i.count, 0);
+	const slices = items.filter((i) => i.count > 0);
+	return (
+		<div className="flex-1 min-w-0">
+			<div className="text-sm font-medium mb-3">{title}</div>
+			<div className="flex items-center gap-4">
+				<ChartContainer config={{}} className="h-[128px] w-[128px] shrink-0">
+					<PieChart>
+						<Pie data={slices} dataKey="count" nameKey="label" innerRadius={36} outerRadius={60} paddingAngle={1} strokeWidth={0}>
+							{slices.map((it) => (
+								<Cell key={it.label} fill={it.color} />
+							))}
+						</Pie>
+					</PieChart>
+				</ChartContainer>
+				<div className="min-w-0 flex-1 space-y-1">
+					{slices.slice(0, 7).map((it) => (
+						<div key={it.label} className="flex items-center gap-2 text-xs">
+							<span className="h-2.5 w-2.5 rounded-[2px] shrink-0" style={{ backgroundColor: it.color }} />
+							<span className="text-muted-foreground truncate">{it.label}</span>
+							<span className="ml-auto font-mono tabular-nums">{total > 0 ? Math.round((it.count / total) * 100) : 0}%</span>
+						</div>
+					))}
+				</div>
+			</div>
+		</div>
+	);
+}
+
 export function CitationsDisplay({
 	citationData,
 	brandId,
@@ -485,6 +522,7 @@ export function CitationsDisplay({
 	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
 	const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 	const [showAllProducts, setShowAllProducts] = useState(false);
+	const [productFilter, setProductFilter] = useState<"all" | "brand" | "competitor">("all");
 	const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
 	const [showAllQueries, setShowAllQueries] = useState(false);
 
@@ -559,6 +597,10 @@ export function CitationsDisplay({
 		[pageTypes],
 	);
 	const googleModule = citationData.googleModule;
+	const googleProducts = useMemo(() => {
+		const ps = citationData.googleModule?.shopping.products ?? [];
+		return productFilter === "all" ? ps : ps.filter((p) => p.attribution === productFilter);
+	}, [citationData.googleModule, productFilter]);
 
 	const subredditData = useMemo(() => {
 		const droppedUrlSet = new Set(
@@ -674,25 +716,27 @@ export function CitationsDisplay({
 					<Card className="md:col-span-2 lg:col-span-3 flex flex-col">
 						<CardHeader className="gap-0">
 							<CardTitle className="flex items-center gap-1.5">
-								Citations by Domain Type
+								Citation Breakdown
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 									</TooltipTrigger>
 									<TooltipContent className="max-w-xs text-sm font-normal">
-										<p className="mb-2"><strong>Competitor</strong> domains are only those you&apos;ve added to your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">competitors list</Link> : "competitors list"}.</p>
-										<p>If you see a competitor in &quot;Other&quot;, consider adding them to your list for better tracking.</p>
+										<p className="mb-2"><strong>Source</strong> is who published the page; <strong>page type</strong> is what kind of page it is.</p>
+										<p><strong>Competitor</strong> domains are only those in your {brandId ? <Link to="/app/$brand/settings/competitors" params={{ brand: brandId }} className="underline">competitors list</Link> : "competitors list"}.</p>
 									</TooltipContent>
 								</Tooltip>
 							</CardTitle>
 						</CardHeader>
 						<Separator />
-					<CardContent className="flex-1 flex flex-col pb-1">
-						<ProgressBarChart
-								items={domainTypeItems}
-								colorMapping={DOMAIN_CATEGORY_COLORS}
-								percentageMode="total"
-								fillHeight
+						<CardContent className="flex-1 flex flex-col sm:flex-row gap-6 pt-4">
+							<BreakdownDonut
+								title="By source"
+								items={domainTypeItems.map((i) => ({ label: i.label, count: i.count, color: DOMAIN_CATEGORY_COLORS[i.category] ?? "#9ca3af" }))}
+							/>
+							<BreakdownDonut
+								title="By page type"
+								items={pageTypes.map((d) => ({ label: PAGE_TYPE_CONFIG[d.pageType].label, count: d.count, color: PAGE_TYPE_COLORS[d.pageType] ?? "#9ca3af" }))}
 							/>
 						</CardContent>
 					</Card>
@@ -777,33 +821,6 @@ export function CitationsDisplay({
 							<Area dataKey="brand" type="monotone" stackId="1" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.8} strokeWidth={0} />
 							</AreaChart>
 						</ChartContainer>
-					</CardContent>
-				</Card>
-			)}
-
-			{/* Citations by Page Type */}
-			{pageTypes.length > 0 && (
-				<Card>
-					<CardHeader className="gap-0 pb-2">
-						<CardTitle className="text-sm font-medium flex items-center gap-1.5">
-							Citations by Page Type
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-								</TooltipTrigger>
-								<TooltipContent className="max-w-xs text-sm font-normal">
-									What kind of page each citation points to — articles, listicles, how-tos, comparisons, product/pricing pages, docs — inferred from the URL and title.
-								</TooltipContent>
-							</Tooltip>
-						</CardTitle>
-					</CardHeader>
-					<Separator />
-					<CardContent className="pt-3">
-						<ProgressBarChart
-							items={pageTypes.map((d) => ({ label: PAGE_TYPE_CONFIG[d.pageType].label, count: d.count, category: d.pageType }))}
-							colorMapping={PAGE_TYPE_COLORS}
-							percentageMode="total"
-						/>
 					</CardContent>
 				</Card>
 			)}
@@ -1102,39 +1119,46 @@ export function CitationsDisplay({
 				</Card>
 			)}
 
-			{/* Google AI Mode */}
-			{googleModule && (googleModule.shopping.products.length > 0 || googleModule.search.queries.length > 0) && (
+			{/* Google Shopping */}
+			{googleModule && googleModule.shopping.products.length > 0 && (
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-1.5">
-							Google AI Mode
+							Google Shopping
 							<Tooltip>
 								<TooltipTrigger asChild>
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-sm font-normal">
-									Products and searches Google AI Mode surfaced when answering your prompts. Kept separate from the citation mix above so they don&apos;t swamp it.
+									Product cards Google AI Mode showed when answering your prompts. The number next to each is how many times that card appeared across results (card inclusions, not unique products). Kept separate from the citation mix above.
 								</TooltipContent>
 							</Tooltip>
 						</CardTitle>
 						<CardDescription>
-							Google Shopping product cards and search links cited by Google AI Mode
+							Products Google AI Mode surfaced — <span className="font-medium text-emerald-600">{googleModule.shopping.brandCount.toLocaleString()}</span> appearances for yours vs <span className="font-medium text-red-600">{googleModule.shopping.competitorCount.toLocaleString()}</span> for competitors
 						</CardDescription>
 					</CardHeader>
 					<Separator />
 					<CardContent className="space-y-6">
 						{googleModule.shopping.products.length > 0 && (
 							<div>
-								<div className="flex items-center justify-between mb-2">
-									<h4 className="text-sm font-medium">Products surfaced</h4>
-									<span className="text-xs text-muted-foreground">
-										<span className="font-semibold text-emerald-600">{googleModule.shopping.brandCount.toLocaleString()}</span> yours
-										{" · "}
-										<span className="font-semibold text-red-600">{googleModule.shopping.competitorCount.toLocaleString()}</span> competitors
-									</span>
+								<div className="flex items-center justify-between mb-2 gap-2">
+									<h4 className="text-sm font-medium shrink-0">Products surfaced</h4>
+									<div className="flex items-center gap-1">
+										{([["all", "All"], ["brand", "Yours"], ["competitor", "Competitors"]] as const).map(([key, label]) => (
+											<button
+												key={key}
+												type="button"
+												onClick={() => { setProductFilter(key); setShowAllProducts(false); }}
+												className={`px-2 py-0.5 rounded text-[11px] cursor-pointer transition-colors ${productFilter === key ? "bg-muted text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+											>
+												{label}
+											</button>
+										))}
+									</div>
 								</div>
 								<div className="divide-y divide-border/50">
-									{(showAllProducts ? googleModule.shopping.products : googleModule.shopping.products.slice(0, 5)).map((product) => {
+									{(showAllProducts ? googleProducts : googleProducts.slice(0, 5)).map((product) => {
 										const isExpanded = expandedProduct === product.name;
 										return (
 											<div key={product.name}>
@@ -1174,12 +1198,12 @@ export function CitationsDisplay({
 										);
 									})}
 								</div>
-								{googleModule.shopping.products.length > 5 && !showAllProducts && (
+								{googleProducts.length > 5 && !showAllProducts && (
 									<button
 										onClick={() => setShowAllProducts(true)}
 										className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
 									>
-										Show {googleModule.shopping.products.length - 5} more
+										Show {googleProducts.length - 5} more
 									</button>
 								)}
 							</div>

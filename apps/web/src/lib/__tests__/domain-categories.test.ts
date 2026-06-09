@@ -8,11 +8,12 @@ import {
 	parseGoogleSearchQuery,
 	attributeProduct,
 } from "@/lib/domain-categories";
-import { categorizeDomain } from "@/lib/domain-categories.server";
+import { categorizeDomain, classifyUrl } from "@/lib/domain-categories.server";
 
 const brand = new Set(["mybrand.com"]);
 const competitors = new Set(["rival.com"]);
 const cat = (domain: string) => categorizeDomain(domain, brand, competitors);
+const classify = (domain: string, url: string, title?: string) => classifyUrl(domain, url, title, brand, competitors);
 
 describe("categorizeDomain priority", () => {
 	it("classifies brand and competitor domains (incl. subdomains)", () => {
@@ -25,6 +26,8 @@ describe("categorizeDomain priority", () => {
 		expect(cat("forbes.com")).toBe("editorial");
 		expect(cat("bbc.co.uk")).toBe("editorial"); // moved out of institutional
 		expect(cat("g2.com")).toBe("reviews");
+		expect(cat("amazon.com")).toBe("ecommerce");
+		expect(cat("sephora.com")).toBe("ecommerce");
 		expect(cat("reddit.com")).toBe("social");
 		expect(cat("quora.com")).toBe("social");
 		expect(cat("prnewswire.com")).toBe("pr");
@@ -43,6 +46,21 @@ describe("categorizeDomain priority", () => {
 
 	it("falls back to other for unknown domains", () => {
 		expect(cat("some-random-saas.com")).toBe("other");
+	});
+});
+
+describe("classifyUrl fallback (shrinks 'other')", () => {
+	it("treats unknown-domain review/article pages as editorial", () => {
+		expect(classify("thestripe.com", "https://thestripe.com/my-u-beauty-review", "My U Beauty Review")).toBe("editorial");
+		expect(classify("bowsandsequins.com", "https://bowsandsequins.com/2024/02/28/my-review", "A review")).toBe("editorial");
+	});
+	it("treats unknown-domain storefront/product pages as ecommerce", () => {
+		expect(classify("shoprescuespa.com", "https://shoprescuespa.com/products/resurfacing-compound", "Resurfacing Compound")).toBe("ecommerce");
+	});
+	it("never overrides a domain that already classifies", () => {
+		expect(classify("mybrand.com", "https://mybrand.com/blog/a-review", "A Review")).toBe("brand");
+		expect(classify("amazon.com", "https://amazon.com/dp/B089", "Product")).toBe("ecommerce");
+		expect(classify("some-corp.com", "https://some-corp.com/about", "About us")).toBe("other");
 	});
 });
 

@@ -4,7 +4,7 @@
 // server functions. Client code imports types/config from `./domain-categories`.
 
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
-import type { CitationCategory } from "./domain-categories";
+import { type CitationCategory, inferPageType } from "./domain-categories";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
 	"facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
@@ -57,7 +57,30 @@ const REFERENCE_DOMAINS = new Set([
 	"wikipedia.org", "wikimedia.org", "wiktionary.org", "wikivoyage.org",
 	"fandom.com", "wikihow.com", "crunchbase.com", "imdb.com", "britannica.com",
 	"dictionary.com", "merriam-webster.com", "investopedia.com", "goodreads.com",
-	"discogs.com", "genius.com", "allmusic.com",
+	"discogs.com", "genius.com", "allmusic.com", "incidecoder.com", "skinsort.com",
+]);
+
+// Retailers, marketplaces, drugstores, and coupon/deal sites.
+const ECOMMERCE_DOMAINS = new Set([
+	// Marketplaces
+	"amazon.com", "amazon.co.uk", "amazon.ca", "amazon.de", "amazon.fr", "amazon.es",
+	"amazon.it", "amazon.in", "amazon.com.au", "amazon.co.jp", "amazon.com.br", "amazon.com.mx",
+	"ebay.com", "ebay.co.uk", "ebay.com.au", "etsy.com", "aliexpress.com", "alibaba.com",
+	"temu.com", "shein.com", "wish.com", "mercari.com", "poshmark.com", "depop.com",
+	// General / department retail
+	"walmart.com", "target.com", "costco.com", "samsclub.com", "bestbuy.com",
+	"nordstrom.com", "nordstromrack.com", "macys.com", "bloomingdales.com", "saksfifthavenue.com",
+	"kohls.com", "jcpenney.com", "qvc.com", "hsn.com", "overstock.com", "wayfair.com",
+	// Beauty / personal-care retail
+	"sephora.com", "ulta.com", "dermstore.com", "skinstore.com", "bluemercury.com",
+	"lookfantastic.com", "cultbeauty.com", "spacenk.com", "beautylish.com", "credobeauty.com",
+	"thedetoxmarket.com", "beautybay.com", "feelunique.com", "sokoglam.com", "yesstyle.com",
+	"stylevana.com", "revolve.com", "shopbop.com", "asos.com", "violetgrey.com", "adorebeauty.com.au",
+	// Drugstores / pharmacy retail
+	"walgreens.com", "cvs.com", "riteaid.com", "boots.com", "superdrug.com", "chemistwarehouse.com.au",
+	// Coupon / deal / cashback
+	"rakuten.com", "retailmenot.com", "couponcabin.com", "joinhoney.com", "honey.com",
+	"slickdeals.net", "groupon.com", "dealmoon.com", "coupons.com", "knoji.com",
 ]);
 
 const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);
@@ -107,6 +130,10 @@ export function isReviewDomain(domain: string): boolean {
 	return inDomainSet(domain, REVIEW_DOMAINS);
 }
 
+export function isEcommerceDomain(domain: string): boolean {
+	return inDomainSet(domain, ECOMMERCE_DOMAINS);
+}
+
 export function isReferenceDomain(domain: string): boolean {
 	return inDomainSet(domain, REFERENCE_DOMAINS);
 }
@@ -150,9 +177,34 @@ export function categorizeDomain(
 	if (isGoogleDomain(domain)) return "google";
 	if (isPrWireDomain(domain)) return "pr";
 	if (isReviewDomain(domain)) return "reviews";
+	if (isEcommerceDomain(domain)) return "ecommerce";
 	if (isSocialMediaDomain(domain)) return "social";
 	if (isReferenceDomain(domain)) return "reference";
 	if (isEditorialDomain(domain)) return "editorial";
 	if (isInstitutionalDomain(domain)) return "institutional";
+	return "other";
+}
+
+const EDITORIAL_PAGE_TYPES = new Set(["article", "listicle", "howto", "comparison", "review"]);
+
+/**
+ * Classify a single citation by domain, and — when the domain alone is
+ * unclassified ("other") — fall back to the inferred page type so long-tail
+ * review blogs and articles count as editorial, and standalone storefront/product
+ * pages count as ecommerce. This is the main lever for shrinking the catch-all
+ * "other" bucket beyond what the hardcoded domain lists can cover.
+ */
+export function classifyUrl(
+	domain: string,
+	url: string,
+	title: string | null | undefined,
+	brandDomains: Set<string>,
+	competitorDomains: Set<string>,
+): CitationCategory {
+	const cat = categorizeDomain(domain, brandDomains, competitorDomains);
+	if (cat !== "other") return cat;
+	const pt = inferPageType(url, title);
+	if (EDITORIAL_PAGE_TYPES.has(pt)) return "editorial";
+	if (pt === "product" || pt === "shopping") return "ecommerce";
 	return "other";
 }

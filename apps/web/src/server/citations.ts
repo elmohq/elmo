@@ -8,7 +8,7 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getCitationDomainStats, getCitationUrlStats, getPerPromptDailyCitationStats, getPerPromptCitationPages, type CitationUrlStats, type PerPromptCitationPageRow } from "@/lib/postgres-read";
+import { getCitationUrlStats, getPerPromptDailyCitationStats, getPerPromptCitationPages, type PerPromptCitationPageRow } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { generateDateRange, applyPerPromptCitationLVCF } from "@/lib/chart-utils";
 import {
@@ -30,7 +30,7 @@ import {
 	parseGoogleSearchQuery,
 	attributeProduct,
 } from "@/lib/domain-categories";
-import { categorizeDomain as categorizeDomainShared } from "@/lib/domain-categories.server";
+import { categorizeDomain as categorizeDomainShared, classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
 
 type GooglePromptRef = { id: string; value: string; count: number };
 type GoogleProduct = {
@@ -51,19 +51,6 @@ const emptyGoogleModule = (): GoogleModule => ({
 	shopping: { totalCitations: 0, brandCount: 0, competitorCount: 0, products: [] },
 	search: { totalCitations: 0, queries: [] },
 });
-
-/** Sum Google search/shopping citations per domain (to subtract from the donut) and overall. */
-function computeGoogleSurface(rows: Pick<CitationUrlStats, "url" | "domain" | "count">[]) {
-	const byDomain = new Map<string, number>();
-	let total = 0;
-	for (const u of rows) {
-		if (!isGoogleSurfaceUrl(u.url)) continue;
-		const c = Number(u.count);
-		total += c;
-		byDomain.set(u.domain, (byDomain.get(u.domain) ?? 0) + c);
-	}
-	return { byDomain, total };
-}
 
 /**
  * Build the Google AI Mode module from per-prompt cited pages: Shopping products
@@ -265,49 +252,27 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		const [domainStats, urlStats, perPromptCitations, perPromptPages, prevDomainStats, prevUrlStats] = await Promise.all([
-			getCitationDomainStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+		const [urlStats, perPromptCitations, perPromptPages, prevUrlStats] = await Promise.all([
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getCitationDomainStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
 			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
 		]);
 
 		function categorizeDomain(domain: string): CitationCategory {
 			return categorizeDomainShared(domain, brandDomains, competitorDomains);
 		}
+		const classify = (domain: string, url: string, title: string | null | undefined): CitationCategory =>
+			classifyUrlShared(domain, url, title, brandDomains, competitorDomains);
 
 		// Google search/shopping surfaces (Google AI Mode) are pulled OUT of the
-		// source-mix donut/totals/lists and surfaced in their own module below.
-		// Compute how many citations to subtract, per domain, for both periods.
-		const surface = computeGoogleSurface(urlStats);
-		const prevSurface = computeGoogleSurface(prevUrlStats);
-
-		// Build previous period domain map for trend comparison (surface-adjusted)
+		// source mix and surfaced in their own module below. Previous-period domain
+		// counts (surfaces excluded) drive trend deltas + new/dropped detection.
 		const prevDomainMap = new Map<string, number>();
-		for (const { domain, count } of prevDomainStats) {
-			const adjusted = Number(count) - (prevSurface.byDomain.get(domain) ?? 0);
-			if (adjusted > 0) prevDomainMap.set(domain, adjusted);
+		for (const { url, domain, count } of prevUrlStats) {
+			if (isGoogleSurfaceUrl(url)) continue;
+			prevDomainMap.set(domain, (prevDomainMap.get(domain) ?? 0) + Number(count));
 		}
-
-		const domainDistribution = domainStats
-			.map(({ domain, count, example_title }) => {
-				const currentCount = Number(count) - (surface.byDomain.get(domain) ?? 0);
-				const previousCount = prevDomainMap.get(domain) || 0;
-				const changePercent = previousCount > 0
-					? Math.round(((currentCount - previousCount) / previousCount) * 100)
-					: null;
-				return {
-					domain,
-					count: currentCount,
-					category: categorizeDomain(domain),
-					exampleTitle: example_title || undefined,
-					previousCount,
-					changePercent,
-				};
-			})
-			.filter((d) => d.count > 0);
 
 		// Build previous period URL map for comparison
 		const prevUrlMap = new Map<string, { count: number; title?: string; domain: string }>();
@@ -356,7 +321,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				title,
 				domain,
 				count,
-				category: categorizeDomain(domain),
+				category: classify(domain, url, title),
 				pageType: inferPageType(url, title),
 				avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
 				promptCount,
@@ -364,17 +329,45 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}))
 			.sort((a, b) => b.count - a.count);
 
-		// Category totals (Google search/shopping surfaces already excluded from domainDistribution)
-		const categoryCounts = emptyCategoryCounts();
-		for (const d of domainDistribution) categoryCounts[d.category] += d.count;
-		const totalCitations = CITATION_CATEGORIES.reduce((s, c) => s + categoryCounts[c], 0);
-
-		// Page-type breakdown (surfaces excluded; they live in the Google module)
-		const pageTypeCounts = emptyPageTypeCounts();
-		for (const u of urlStats) {
-			if (isGoogleSurfaceUrl(u.url)) continue;
-			pageTypeCounts[inferPageType(u.url, u.title)] += Number(u.count);
+		// Domain distribution rebuilt from URL-level data: count + a per-domain
+		// category taken from its top-cited URL (so a domain that's mostly review
+		// articles reads as editorial rather than other), sorted by count.
+		const domainAgg = new Map<string, { count: number; category: CitationCategory; topCount: number; exampleTitle?: string }>();
+		for (const u of specificUrls) {
+			const cur = domainAgg.get(u.domain);
+			if (cur) {
+				cur.count += u.count;
+				if (u.count > cur.topCount) {
+					cur.topCount = u.count;
+					cur.category = u.category;
+					cur.exampleTitle = u.title;
+				}
+			} else {
+				domainAgg.set(u.domain, { count: u.count, category: u.category, topCount: u.count, exampleTitle: u.title });
+			}
 		}
+		const domainDistribution = Array.from(domainAgg.entries())
+			.map(([domain, v]) => {
+				const previousCount = prevDomainMap.get(domain) || 0;
+				return {
+					domain,
+					count: v.count,
+					category: v.category,
+					exampleTitle: v.exampleTitle,
+					previousCount,
+					changePercent: previousCount > 0 ? Math.round(((v.count - previousCount) / previousCount) * 100) : null,
+				};
+			})
+			.sort((a, b) => b.count - a.count);
+
+		// Category + page-type totals from the URL-level classification
+		const categoryCounts = emptyCategoryCounts();
+		const pageTypeCounts = emptyPageTypeCounts();
+		for (const u of specificUrls) {
+			categoryCounts[u.category] += u.count;
+			pageTypeCounts[u.pageType] += u.count;
+		}
+		const totalCitations = CITATION_CATEGORIES.reduce((s, c) => s + categoryCounts[c], 0);
 		const pageTypeDistribution = CITATION_PAGE_TYPES
 			.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] }))
 			.filter((d) => d.count > 0);
@@ -433,7 +426,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					domain: prevData.domain,
 					previousCount: prevData.count,
 					currentCount,
-					category: categorizeDomain(prevData.domain),
+					category: classify(prevData.domain, url, prevData.title),
 				});
 			}
 		}
@@ -449,7 +442,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					domain: currentData.domain,
 					currentTitle: currentData.title,
 					previousTitle: prevData.title,
-					category: categorizeDomain(currentData.domain),
+					category: classify(currentData.domain, url, currentData.title),
 				});
 			}
 		}
