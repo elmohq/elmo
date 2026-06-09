@@ -14,6 +14,8 @@ const SOCIAL_MEDIA_DOMAINS = new Set([
 	// Q&A / forums
 	"quora.com", "stackoverflow.com", "stackexchange.com", "superuser.com",
 	"serverfault.com", "askubuntu.com", "news.ycombinator.com",
+	// Code / developer communities (user-published)
+	"github.com", "gitlab.com",
 ]);
 
 const GOOGLE_OWNED_DOMAINS = new Set([
@@ -58,6 +60,8 @@ const REFERENCE_DOMAINS = new Set([
 	"fandom.com", "wikihow.com", "crunchbase.com", "imdb.com", "britannica.com",
 	"dictionary.com", "merriam-webster.com", "investopedia.com", "goodreads.com",
 	"discogs.com", "genius.com", "allmusic.com", "incidecoder.com", "skinsort.com",
+	// Dictionaries / encyclopedias
+	"dictionary.cambridge.org", "collinsdictionary.com", "vocabulary.com", "thesaurus.com",
 ]);
 
 // Retailers, marketplaces, drugstores, and coupon/deal sites.
@@ -81,6 +85,9 @@ const ECOMMERCE_DOMAINS = new Set([
 	// Coupon / deal / cashback
 	"rakuten.com", "retailmenot.com", "couponcabin.com", "joinhoney.com", "honey.com",
 	"slickdeals.net", "groupon.com", "dealmoon.com", "coupons.com", "knoji.com",
+	// General / specialty retailers
+	"rei.com", "bestbuy.com", "kroger.com", "dickssportinggoods.com", "chewy.com",
+	"zappos.com", "gnc.com", "iherb.com", "vitaminshoppe.com", "backcountry.com",
 ]);
 
 const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);
@@ -99,6 +106,10 @@ const INSTITUTIONAL_DOMAINS = new Set([
 	"pubmed.ncbi.nlm.nih.gov", "medlineplus.gov", "cochrane.org",
 	"arxiv.org", "doi.org", "jstor.org", "ncbi.nlm.nih.gov",
 	"ieee.org", "acm.org", "nature.com", "sciencedirect.com", "springer.com", "wiley.com",
+	// Academic / research publishers + databases
+	"mdpi.com", "tandfonline.com", "sagepub.com", "jamanetwork.com", "biomedcentral.com",
+	"oup.com", "researchgate.net", "examine.com", "cambridge.org", "ssrn.com",
+	"thelancet.com", "bmj.com", "cell.com", "karger.com", "frontiersin.org",
 	"parliament.uk", "legislation.gov.uk", "service.gov.uk",
 	"canada.ca", "gc.ca", "gov.au", "govt.nz",
 ]);

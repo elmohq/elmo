@@ -48,6 +48,22 @@ describe("categorizeDomain priority", () => {
 	it("falls back to other for unknown domains", () => {
 		expect(cat("some-random-saas.com")).toBe("other");
 	});
+
+	it("routes cross-niche domains (generalizable, not one vertical)", () => {
+		// academic / research publishers
+		expect(cat("mdpi.com")).toBe("institutional");
+		expect(cat("jamanetwork.com")).toBe("institutional");
+		expect(cat("jissn.biomedcentral.com")).toBe("institutional");
+		expect(cat("pmc.ncbi.nlm.nih.gov")).toBe("institutional"); // .gov
+		expect(cat("arxiv.org")).toBe("institutional");
+		// code/dev community
+		expect(cat("github.com")).toBe("social");
+		// dictionaries
+		expect(cat("dictionary.cambridge.org")).toBe("reference");
+		// retailers
+		expect(cat("rei.com")).toBe("ecommerce");
+		expect(cat("gnc.com")).toBe("ecommerce");
+	});
 });
 
 describe("classifyUrl fallback (shrinks 'other')", () => {
@@ -115,6 +131,14 @@ describe("inferPageType", () => {
 		expect(inferPageType("https://ubeauty.com/pages/return-policy", "Returns")).toBe("info");
 		expect(inferPageType("https://ubeauty.com/pages/subscription", "Subscription")).toBe("info");
 		expect(inferPageType("https://amazon.com/dp/B089", "U Beauty Serum")).toBe("product");
+	});
+	it("detects 'best/top' in the URL slug, but not store best-seller pages", () => {
+		// title doesn't lead with "Best", but the slug does
+		expect(inferPageType("https://urbanstylefootwear.com/best-white-sneakers-2026-tested", "I Tested Every Sneaker This Year")).toBe("listicle");
+		expect(inferPageType("https://runrepeat.com/guides/best-trail-running-shoes", "Trail shoes")).toBe("listicle");
+		// storefront best-seller / commerce paths are NOT listicles
+		expect(inferPageType("https://shop.com/products/best-seller-serum", "Hydrating Serum")).toBe("product");
+		expect(inferPageType("https://shop.com/collections/best-sellers", "Shop Collection")).toBe("product");
 	});
 });
 
