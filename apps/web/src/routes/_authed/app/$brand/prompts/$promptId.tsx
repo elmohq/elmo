@@ -20,7 +20,7 @@ import { Button } from "@workspace/ui/components/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconChevronLeft, IconChevronRight, IconInfoCircle } from "@tabler/icons-react";
 import { ProgressBarChart, MODEL_COLORS } from "@/components/progress-bar-chart";
-import { CitationsDisplay } from "@/components/citations-display";
+import { CitationsDisplay, type CitationData } from "@/components/citations-display";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { getModelDisplayName } from "@/lib/utils";
@@ -497,20 +497,7 @@ function CitationsTab({
 	brandName,
 }: {
 	isLoading: boolean;
-	citationStats:
-		| {
-				totalCitations: number;
-				uniqueDomains: number;
-				brandCitations: number;
-				competitorCitations: number;
-				socialMediaCitations: number;
-				googleCitations: number;
-				institutionalCitations: number;
-				otherCitations: number;
-				domainDistribution: any[];
-				specificUrls: any[];
-		  }
-		| undefined;
+	citationStats: CitationData | undefined;
 	brandId: string;
 	brandName?: string;
 }) {

@@ -1,5 +1,6 @@
 import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { type CitationCategory, CITATION_CATEGORIES, emptyCategoryCounts } from "@/lib/domain-categories";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -152,14 +153,7 @@ export function applyPerPromptLVCF(
 	return { dailyVisibilityMap, totalBrandedRuns, totalBrandedMentioned, totalNonBrandedRuns, totalNonBrandedMentioned };
 }
 
-export interface CitationCategories {
-	brand: number;
-	competitor: number;
-	socialMedia: number;
-	google: number;
-	institutional: number;
-	other: number;
-}
+export type CitationCategories = Record<CitationCategory, number>;
 
 /**
  * Per-prompt LVCF for citation data with cadence normalization.
@@ -174,7 +168,7 @@ export function applyPerPromptCitationLVCF(
 	perPromptData: PerPromptDailyCitationStats[],
 	dateRange: string[],
 	cadenceHours: number | null | undefined,
-	categorizeDomain: (domain: string) => "brand" | "competitor" | "social_media" | "google" | "institutional" | "other",
+	categorizeDomain: (domain: string) => CitationCategory,
 ): Map<string, CitationCategories> {
 	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
 
@@ -184,11 +178,9 @@ export function applyPerPromptCitationLVCF(
 		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
 		const dateMap = byPrompt.get(row.prompt_id)!;
 		const dateStr = String(row.date);
-		if (!dateMap.has(dateStr)) dateMap.set(dateStr, { brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 });
+		if (!dateMap.has(dateStr)) dateMap.set(dateStr, emptyCategoryCounts());
 		const bucket = dateMap.get(dateStr)!;
-		const cat = categorizeDomain(row.domain);
-		if (cat === "social_media") bucket.socialMedia += Number(row.count);
-		else bucket[cat] += Number(row.count);
+		bucket[categorizeDomain(row.domain)] += Number(row.count);
 	}
 
 	const dailyCitations = new Map<string, CitationCategories>();
@@ -206,26 +198,20 @@ export function applyPerPromptCitationLVCF(
 			if (!carried) continue;
 
 			if (!dailyCitations.has(date)) {
-				dailyCitations.set(date, { brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 });
+				dailyCitations.set(date, emptyCategoryCounts());
 			}
 			const day = dailyCitations.get(date)!;
-			day.brand += carried.brand / cadenceDays;
-			day.competitor += carried.competitor / cadenceDays;
-			day.socialMedia += carried.socialMedia / cadenceDays;
-			day.google += carried.google / cadenceDays;
-			day.institutional += carried.institutional / cadenceDays;
-			day.other += carried.other / cadenceDays;
+			for (const cat of CITATION_CATEGORIES) {
+				day[cat] += carried[cat] / cadenceDays;
+			}
 		}
 	}
 
 	// Round final values
 	for (const [, v] of dailyCitations) {
-		v.brand = Math.round(v.brand);
-		v.competitor = Math.round(v.competitor);
-		v.socialMedia = Math.round(v.socialMedia);
-		v.google = Math.round(v.google);
-		v.institutional = Math.round(v.institutional);
-		v.other = Math.round(v.other);
+		for (const cat of CITATION_CATEGORIES) {
+			v[cat] = Math.round(v[cat]);
+		}
 	}
 
 	return dailyCitations;

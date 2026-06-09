@@ -1,49 +1,73 @@
-export type CitationCategory = "brand" | "competitor" | "social_media" | "google" | "institutional" | "other";
+// Client-safe citation taxonomy: types, display config, and lightweight URL
+// helpers. The heavy domain lists + `categorizeDomain` live in
+// `domain-categories.server.ts` (server-only) so the ~25k-entry editorial list
+// never ships in the browser bundle.
 
-const SOCIAL_MEDIA_DOMAINS = [
-	"facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
-	"youtube.com", "tiktok.com", "pinterest.com", "reddit.com", "snapchat.com",
-	"tumblr.com", "whatsapp.com", "telegram.org", "discord.com", "twitch.tv",
-	"threads.net", "threads.com",
+export type CitationCategory =
+	| "brand"
+	| "competitor"
+	| "editorial"
+	| "reviews"
+	| "social"
+	| "pr"
+	| "reference"
+	| "institutional"
+	| "google"
+	| "other";
+
+/**
+ * Ordered source of truth for citation source categories. Display order, chart
+ * band order, tab order, and total accumulators are all derived from this — add
+ * or reorder a category here and the rest follows.
+ */
+export const CITATION_CATEGORIES: CitationCategory[] = [
+	"brand",
+	"competitor",
+	"editorial",
+	"reviews",
+	"social",
+	"pr",
+	"reference",
+	"institutional",
+	"google",
+	"other",
 ];
 
-const GOOGLE_OWNED_DOMAINS = [
-	"google.com", "google.org", "google.dev", "google.cloud",
-	"googleapis.com", "googleusercontent.com", "googleblog.com",
-	"googlesource.com", "googlecode.com",
-	"blog.google", "about.google", "store.google",
-	"android.com", "chromium.org", "chrome.com",
-	"youtube.google.com", "withgoogle.com",
-	"firebase.com", "firebaseio.com",
-	"gstatic.com", "ggpht.com",
-	"gmail.com", "googlemail.com",
-	"google.ai", "deepmind.google", "deepmind.com",
-	"kaggle.com", "waze.com", "fitbit.com",
-	"blogger.com", "blogspot.com",
-	"appspot.com", "web.app", "firebaseapp.com",
-	"googlemaps.com", "google.maps",
-	"doubleclick.net", "googlesyndication.com", "googleadservices.com",
-	"google.shopping", "google.flights",
+export const emptyCategoryCounts = (): Record<CitationCategory, number> =>
+	Object.fromEntries(CITATION_CATEGORIES.map((c) => [c, 0])) as Record<CitationCategory, number>;
+
+/**
+ * Page-type axis — orthogonal to the source category. Inferred from the URL path
+ * and citation title (see `inferPageType`). A `reviews` domain can be a
+ * `comparison` page; a `brand` domain can be a `product`/`pricing` page.
+ */
+export type CitationPageType =
+	| "homepage"
+	| "article"
+	| "listicle"
+	| "howto"
+	| "comparison"
+	| "product"
+	| "doc"
+	| "search"
+	| "shopping"
+	| "other";
+
+export const CITATION_PAGE_TYPES: CitationPageType[] = [
+	"homepage",
+	"article",
+	"listicle",
+	"howto",
+	"comparison",
+	"product",
+	"doc",
+	"search",
+	"shopping",
+	"other",
 ];
 
-// TLDs and second-level domains that indicate institutional/government/academic sites
-const INSTITUTIONAL_TLDS = new Set(["edu", "gov", "mil", "int"]);
-const INSTITUTIONAL_SLDS = new Set(["edu", "gov", "org", "ac", "mil", "govt", "gob"]);
-
-const INSTITUTIONAL_DOMAINS = new Set([
-	"nhs.uk", "nhs.net",
-	"nih.gov", "cdc.gov", "fda.gov", "who.int",
-	"europa.eu", "un.org", "unesco.org", "unicef.org",
-	"worldbank.org", "imf.org", "wto.org",
-	"nato.int", "icrc.org",
-	"mayo.edu", "mayoclinic.org", "clevelandclinic.org", "hopkinsmedicine.org", "webmd.com",
-	"pubmed.ncbi.nlm.nih.gov", "medlineplus.gov", "cochrane.org",
-	"bbc.co.uk", "npr.org", "pbs.org", "abc.net.au",
-	"arxiv.org", "doi.org", "jstor.org", "ncbi.nlm.nih.gov",
-	"ieee.org", "acm.org", "nature.com", "sciencedirect.com", "springer.com", "wiley.com",
-	"parliament.uk", "legislation.gov.uk", "service.gov.uk",
-	"canada.ca", "gc.ca", "gov.au", "govt.nz",
-]);
+export const emptyPageTypeCounts = (): Record<CitationPageType, number> =>
+	Object.fromEntries(CITATION_PAGE_TYPES.map((p) => [p, 0])) as Record<CitationPageType, number>;
 
 export function extractDomain(urlOrDomain: string): string {
 	try {
@@ -114,48 +138,139 @@ export function normalizeUrl(url: string): string {
 	}
 }
 
-export function isSocialMediaDomain(domain: string): boolean {
-	return SOCIAL_MEDIA_DOMAINS.some((sm) => domain === sm || domain.endsWith(`.${sm}`));
+// ============================================================================
+// Google AI Mode surfaces (Shopping cards + Search links)
+// ============================================================================
+
+const GOOGLE_HOST_RE = /(^|\.)google\.[a-z.]+$/;
+
+function googleHost(url: string): string | null {
+	try {
+		const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+		return GOOGLE_HOST_RE.test(host) ? host : null;
+	} catch {
+		return null;
+	}
 }
 
-export function isGoogleDomain(domain: string): boolean {
-	if (GOOGLE_OWNED_DOMAINS.some((g) => domain === g || domain.endsWith(`.${g}`))) return true;
-	// Google country-specific TLDs: google.co.uk, google.com.au, google.de, etc.
-	if (/^google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(domain)) return true;
-	return false;
+/**
+ * Google Shopping product card, e.g.
+ * `google.com/search?q=product&prds=pvt:hg,productid:123...`. The product name
+ * lives in the citation title; `q=product` is a constant in this deep-link format.
+ */
+export function isGoogleShoppingUrl(url: string): boolean {
+	if (!googleHost(url)) return false;
+	try {
+		const u = new URL(url);
+		if (!u.pathname.startsWith("/search")) return false;
+		const q = u.search;
+		return (
+			q.includes("prds=") ||
+			/productid(%3a|:)/i.test(q) ||
+			q.includes("tbm=shop") ||
+			u.searchParams.get("udm") === "28"
+		);
+	} catch {
+		return false;
+	}
 }
 
-export function isInstitutionalDomain(domain: string): boolean {
-	if (INSTITUTIONAL_DOMAINS.has(domain)) return true;
-	for (const inst of INSTITUTIONAL_DOMAINS) {
-		if (domain.endsWith(`.${inst}`)) return true;
+/** Google web-search link, e.g. `google.com/search?q=best+vitamin+c+serum`. */
+export function isGoogleSearchUrl(url: string): boolean {
+	if (!googleHost(url)) return false;
+	if (isGoogleShoppingUrl(url)) return false;
+	try {
+		const u = new URL(url);
+		return u.pathname.startsWith("/search") && u.searchParams.has("q");
+	} catch {
+		return false;
 	}
-	const parts = domain.split(".");
-	if (parts.length < 2) return false;
-	const tld = parts[parts.length - 1];
-	if (INSTITUTIONAL_TLDS.has(tld)) return true;
-	if (tld === "org") return true;
-	if (parts.length >= 3) {
-		const sld = parts[parts.length - 2];
-		if (INSTITUTIONAL_SLDS.has(sld)) return true;
-	}
-	return false;
 }
 
-export function categorizeDomain(
-	domain: string,
-	brandDomains: Set<string>,
-	competitorDomains: Set<string>,
-): CitationCategory {
-	for (const bd of brandDomains) {
-		if (domain === bd || domain.endsWith(`.${bd}`)) return "brand";
+/** Any Google search/shopping surface pulled out of the source-mix donut. */
+export function isGoogleSurfaceUrl(url: string): boolean {
+	return isGoogleShoppingUrl(url) || isGoogleSearchUrl(url);
+}
+
+export function parseGoogleProductName(url: string, title?: string | null): string | null {
+	if (title && title.trim()) return title.trim();
+	try {
+		const m = new URL(url).search.match(/productid(?:%3a|:)(\d+)/i);
+		return m ? `Product ${m[1]}` : null;
+	} catch {
+		return null;
 	}
-	for (const cd of competitorDomains) {
-		if (domain === cd || domain.endsWith(`.${cd}`)) return "competitor";
+}
+
+export function parseGoogleSearchQuery(url: string): string | null {
+	try {
+		const q = new URL(url).searchParams.get("q");
+		if (!q) return null;
+		const trimmed = q.trim();
+		if (!trimmed || trimmed.toLowerCase() === "product") return null;
+		return trimmed;
+	} catch {
+		return null;
 	}
-	if (isSocialMediaDomain(domain)) return "social_media";
-	if (isGoogleDomain(domain)) return "google";
-	if (isInstitutionalDomain(domain)) return "institutional";
+}
+
+export type ProductAttribution =
+	| { kind: "brand" }
+	| { kind: "competitor"; competitorId: string; competitorName: string }
+	| { kind: "other" };
+
+/**
+ * Attribute a Google Shopping product (by its name) to the brand or a tracked
+ * competitor via case-insensitive name match. Longest competitor name first so a
+ * longer name wins over a shorter substring collision.
+ */
+export function attributeProduct(
+	productName: string,
+	brandName: string | undefined,
+	competitors: { id: string; name: string }[],
+): ProductAttribution {
+	const n = productName.toLowerCase();
+	if (brandName?.trim() && n.includes(brandName.trim().toLowerCase())) return { kind: "brand" };
+	const sorted = competitors
+		.filter((c) => c.name?.trim())
+		.sort((a, b) => b.name.length - a.name.length);
+	for (const c of sorted) {
+		if (n.includes(c.name.trim().toLowerCase())) {
+			return { kind: "competitor", competitorId: c.id, competitorName: c.name };
+		}
+	}
+	return { kind: "other" };
+}
+
+// ============================================================================
+// Page-type inference
+// ============================================================================
+
+/**
+ * Infer a page type from the URL path + citation title. Heuristic — "good, not
+ * perfect"; the long tail falls through to "other".
+ */
+export function inferPageType(url: string, title?: string | null): CitationPageType {
+	if (isGoogleShoppingUrl(url)) return "shopping";
+	if (isGoogleSearchUrl(url)) return "search";
+
+	let path = "";
+	try {
+		path = new URL(url).pathname.toLowerCase();
+	} catch {
+		return "other";
+	}
+	if (path === "/" || path === "") return "homepage";
+
+	const t = (title ?? "").toLowerCase();
+	const hay = `${path} ${t}`;
+
+	if (/\/(docs?|documentation|support|help|kb|api|developers?|reference)(\/|$)/.test(path)) return "doc";
+	if (/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) || /\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)) return "comparison";
+	if (/\b(\d+\s+best|best\s+\d+|top\s+\d+|\d+\s+top)\b/.test(t) || /^\s*(best|top)\b/.test(t)) return "listicle";
+	if (/\b(how to|how-to|guide|tutorial|step[- ]by[- ]step|getting started)\b/.test(hay) || /\/(how-to|guides?|tutorials?)(\/|$)/.test(path)) return "howto";
+	if (/\/(pricing|plans?|product|products|shop|store|buy|item|pdp)(\/|$)/.test(path)) return "product";
+	if (/\/(blog|news|article|story|stories|posts?|\d{4}\/\d{2})/.test(path)) return "article";
 	return "other";
 }
 
@@ -186,17 +301,33 @@ export function toRoundedPercentages(counts: Record<string, number>): Record<str
 export const CATEGORY_CONFIG: Record<CitationCategory, { label: string; chartColor: string; badgeClass: string; chartDotClass: string }> = {
 	brand: { label: "Brand", chartColor: "#10b981", badgeClass: "bg-green-500/90 text-white", chartDotClass: "bg-emerald-500" },
 	competitor: { label: "Competitor", chartColor: "#ef4444", badgeClass: "bg-red-500/90 text-white", chartDotClass: "bg-red-500" },
-	social_media: { label: "Social Media", chartColor: "#8b5cf6", badgeClass: "bg-purple-500/90 text-white", chartDotClass: "bg-violet-500" },
-	google: { label: "Google", chartColor: "#4285f4", badgeClass: "bg-blue-500/90 text-white", chartDotClass: "bg-blue-500" },
+	editorial: { label: "Editorial", chartColor: "#0ea5e9", badgeClass: "bg-sky-500/90 text-white", chartDotClass: "bg-sky-500" },
+	reviews: { label: "Reviews", chartColor: "#14b8a6", badgeClass: "bg-teal-500/90 text-white", chartDotClass: "bg-teal-500" },
+	social: { label: "Social", chartColor: "#8b5cf6", badgeClass: "bg-purple-500/90 text-white", chartDotClass: "bg-violet-500" },
+	pr: { label: "PR", chartColor: "#ec4899", badgeClass: "bg-pink-500/90 text-white", chartDotClass: "bg-pink-500" },
+	reference: { label: "Reference", chartColor: "#6366f1", badgeClass: "bg-indigo-500/90 text-white", chartDotClass: "bg-indigo-500" },
 	institutional: { label: "Institutional", chartColor: "#f59e0b", badgeClass: "bg-amber-500/90 text-white", chartDotClass: "bg-amber-500" },
+	google: { label: "Google", chartColor: "#4285f4", badgeClass: "bg-blue-500/90 text-white", chartDotClass: "bg-blue-500" },
 	other: { label: "Other", chartColor: "#9ca3af", badgeClass: "bg-gray-500/90 text-white", chartDotClass: "bg-gray-400" },
 };
 
-export const DOMAIN_CATEGORY_COLORS: Record<string, string> = {
-	brand: "#48bb78",
-	competitor: "#f56565",
-	social_media: "#7e56ee",
-	google: "#4285f4",
-	institutional: "#f59e0b",
-	other: "#9ca3af",
+export const DOMAIN_CATEGORY_COLORS: Record<string, string> = Object.fromEntries(
+	CITATION_CATEGORIES.map((c) => [c, CATEGORY_CONFIG[c].chartColor]),
+);
+
+export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartColor: string }> = {
+	homepage: { label: "Homepage", chartColor: "#64748b" },
+	article: { label: "Article", chartColor: "#0ea5e9" },
+	listicle: { label: "Listicle", chartColor: "#14b8a6" },
+	howto: { label: "How-to", chartColor: "#22c55e" },
+	comparison: { label: "Comparison", chartColor: "#f59e0b" },
+	product: { label: "Product", chartColor: "#ec4899" },
+	doc: { label: "Docs", chartColor: "#6366f1" },
+	search: { label: "Search", chartColor: "#4285f4" },
+	shopping: { label: "Shopping", chartColor: "#a855f7" },
+	other: { label: "Other", chartColor: "#9ca3af" },
 };
+
+export const PAGE_TYPE_COLORS: Record<string, string> = Object.fromEntries(
+	CITATION_PAGE_TYPES.map((p) => [p, PAGE_TYPE_CONFIG[p].chartColor]),
+);

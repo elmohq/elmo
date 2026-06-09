@@ -8,10 +8,148 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { getCitationDomainStats, getCitationUrlStats, getPerPromptDailyCitationStats } from "@/lib/postgres-read";
+import { getCitationDomainStats, getCitationUrlStats, getPerPromptDailyCitationStats, getPerPromptCitationPages, type CitationUrlStats, type PerPromptCitationPageRow } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { generateDateRange, applyPerPromptCitationLVCF } from "@/lib/chart-utils";
-import { type CitationCategory, extractDomain, normalizeUrl, categorizeDomain as categorizeDomainShared, toRoundedPercentages } from "@/lib/domain-categories";
+import {
+	type CitationCategory,
+	type CitationPageType,
+	type ProductAttribution,
+	CITATION_CATEGORIES,
+	CITATION_PAGE_TYPES,
+	emptyCategoryCounts,
+	emptyPageTypeCounts,
+	extractDomain,
+	normalizeUrl,
+	toRoundedPercentages,
+	inferPageType,
+	isGoogleShoppingUrl,
+	isGoogleSearchUrl,
+	isGoogleSurfaceUrl,
+	parseGoogleProductName,
+	parseGoogleSearchQuery,
+	attributeProduct,
+} from "@/lib/domain-categories";
+import { categorizeDomain as categorizeDomainShared } from "@/lib/domain-categories.server";
+
+type GooglePromptRef = { id: string; value: string; count: number };
+type GoogleProduct = {
+	name: string;
+	count: number;
+	attribution: ProductAttribution["kind"];
+	competitorName?: string;
+	prompts: GooglePromptRef[];
+	urls: { url: string; count: number }[];
+};
+type GoogleQuery = { query: string; count: number; prompts: GooglePromptRef[] };
+type GoogleModule = {
+	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProduct[] };
+	search: { totalCitations: number; queries: GoogleQuery[] };
+};
+
+const emptyGoogleModule = (): GoogleModule => ({
+	shopping: { totalCitations: 0, brandCount: 0, competitorCount: 0, products: [] },
+	search: { totalCitations: 0, queries: [] },
+});
+
+/** Sum Google search/shopping citations per domain (to subtract from the donut) and overall. */
+function computeGoogleSurface(rows: Pick<CitationUrlStats, "url" | "domain" | "count">[]) {
+	const byDomain = new Map<string, number>();
+	let total = 0;
+	for (const u of rows) {
+		if (!isGoogleSurfaceUrl(u.url)) continue;
+		const c = Number(u.count);
+		total += c;
+		byDomain.set(u.domain, (byDomain.get(u.domain) ?? 0) + c);
+	}
+	return { byDomain, total };
+}
+
+/**
+ * Build the Google AI Mode module from per-prompt cited pages: Shopping products
+ * (attributed brand/competitor/other by name) and search queries, each tied to
+ * the prompts that triggered them.
+ */
+function buildGoogleModule(
+	pages: PerPromptCitationPageRow[],
+	brandName: string,
+	competitors: { id: string; name: string }[],
+	promptValue: (id: string) => string | undefined,
+): GoogleModule {
+	type ProductAgg = { name: string; count: number; attribution: ProductAttribution; prompts: Map<string, number>; urls: Map<string, number> };
+	type QueryAgg = { query: string; count: number; prompts: Map<string, number> };
+	const productByKey = new Map<string, ProductAgg>();
+	const queryByKey = new Map<string, QueryAgg>();
+
+	for (const row of pages) {
+		if (!row.url) continue;
+		const c = Number(row.count);
+		if (isGoogleShoppingUrl(row.url)) {
+			const name = parseGoogleProductName(row.url, row.title);
+			if (!name) continue;
+			const key = name.toLowerCase();
+			let e = productByKey.get(key);
+			if (!e) {
+				e = { name, count: 0, attribution: attributeProduct(name, brandName, competitors), prompts: new Map(), urls: new Map() };
+				productByKey.set(key, e);
+			}
+			e.count += c;
+			e.prompts.set(row.prompt_id, (e.prompts.get(row.prompt_id) ?? 0) + c);
+			e.urls.set(row.url, (e.urls.get(row.url) ?? 0) + c);
+		} else if (isGoogleSearchUrl(row.url)) {
+			const query = parseGoogleSearchQuery(row.url);
+			if (!query) continue;
+			const key = query.toLowerCase();
+			let e = queryByKey.get(key);
+			if (!e) {
+				e = { query, count: 0, prompts: new Map() };
+				queryByKey.set(key, e);
+			}
+			e.count += c;
+			e.prompts.set(row.prompt_id, (e.prompts.get(row.prompt_id) ?? 0) + c);
+		}
+	}
+
+	const promptRefs = (m: Map<string, number>): GooglePromptRef[] =>
+		[...m.entries()]
+			.map(([id, count]) => {
+				const value = promptValue(id);
+				return value ? { id, value, count } : null;
+			})
+			.filter((p): p is GooglePromptRef => p !== null)
+			.sort((a, b) => b.count - a.count);
+
+	const products: GoogleProduct[] = [...productByKey.values()]
+		.map((e) => ({
+			name: e.name,
+			count: e.count,
+			attribution: e.attribution.kind,
+			competitorName: e.attribution.kind === "competitor" ? e.attribution.competitorName : undefined,
+			prompts: promptRefs(e.prompts),
+			urls: [...e.urls.entries()].map(([url, count]) => ({ url, count })).sort((a, b) => b.count - a.count),
+		}))
+		.sort((a, b) => b.count - a.count);
+
+	const queries: GoogleQuery[] = [...queryByKey.values()]
+		.map((e) => ({ query: e.query, count: e.count, prompts: promptRefs(e.prompts) }))
+		.sort((a, b) => b.count - a.count);
+
+	const brandCount = products.filter((p) => p.attribution === "brand").reduce((s, p) => s + p.count, 0);
+	const competitorCount = products.filter((p) => p.attribution === "competitor").reduce((s, p) => s + p.count, 0);
+
+	return {
+		shopping: {
+			totalCitations: products.reduce((s, p) => s + p.count, 0),
+			brandCount,
+			competitorCount,
+			products,
+		},
+		search: {
+			totalCitations: queries.reduce((s, q) => s + q.count, 0),
+			queries,
+		},
+	};
+}
 
 /**
  * Get citation statistics for a brand
@@ -107,16 +245,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				return {
 					totalCitations: 0,
 					uniqueDomains: 0,
-					brandCitations: 0,
-					competitorCitations: 0,
-					socialMediaCitations: 0,
-					googleCitations: 0,
-					institutionalCitations: 0,
-					otherCitations: 0,
+					categoryCounts: emptyCategoryCounts(),
 					domainDistribution: [] as { domain: string; count: number; category: CitationCategory; exampleTitle?: string; previousCount: number; changePercent: number | null }[],
-					specificUrls: [] as { url: string; title?: string; domain: string; count: number; category: CitationCategory; avgPosition: number | null; promptCount: number; isNew: boolean }[],
+					specificUrls: [] as { url: string; title?: string; domain: string; count: number; category: CitationCategory; pageType: CitationPageType; avgPosition: number | null; promptCount: number; isNew: boolean }[],
+					pageTypeDistribution: [] as { pageType: CitationPageType; count: number }[],
+					googleModule: emptyGoogleModule(),
 					availableTags,
-					citationTimeSeries: [] as { date: string; brand: number; competitor: number; socialMedia: number; google: number; institutional: number; other: number }[],
+					citationTimeSeries: [] as ({ date: string } & Record<CitationCategory, number>)[],
 					previousBrandShare: null as number | null,
 				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
 				whatsChanged: {
@@ -130,10 +265,11 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		const [domainStats, urlStats, perPromptCitations, prevDomainStats, prevUrlStats] = await Promise.all([
+		const [domainStats, urlStats, perPromptCitations, perPromptPages, prevDomainStats, prevUrlStats] = await Promise.all([
 			getCitationDomainStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
+			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getCitationDomainStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
 			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
 		]);
@@ -142,31 +278,41 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			return categorizeDomainShared(domain, brandDomains, competitorDomains);
 		}
 
-		// Build previous period domain map for trend comparison
+		// Google search/shopping surfaces (Google AI Mode) are pulled OUT of the
+		// source-mix donut/totals/lists and surfaced in their own module below.
+		// Compute how many citations to subtract, per domain, for both periods.
+		const surface = computeGoogleSurface(urlStats);
+		const prevSurface = computeGoogleSurface(prevUrlStats);
+
+		// Build previous period domain map for trend comparison (surface-adjusted)
 		const prevDomainMap = new Map<string, number>();
 		for (const { domain, count } of prevDomainStats) {
-			prevDomainMap.set(domain, Number(count));
+			const adjusted = Number(count) - (prevSurface.byDomain.get(domain) ?? 0);
+			if (adjusted > 0) prevDomainMap.set(domain, adjusted);
 		}
 
-		const domainDistribution = domainStats.map(({ domain, count, example_title }) => {
-			const currentCount = Number(count);
-			const previousCount = prevDomainMap.get(domain) || 0;
-			const changePercent = previousCount > 0
-				? Math.round(((currentCount - previousCount) / previousCount) * 100)
-				: null;
-			return {
-				domain,
-				count: currentCount,
-				category: categorizeDomain(domain),
-				exampleTitle: example_title || undefined,
-				previousCount,
-				changePercent,
-			};
-		});
+		const domainDistribution = domainStats
+			.map(({ domain, count, example_title }) => {
+				const currentCount = Number(count) - (surface.byDomain.get(domain) ?? 0);
+				const previousCount = prevDomainMap.get(domain) || 0;
+				const changePercent = previousCount > 0
+					? Math.round(((currentCount - previousCount) / previousCount) * 100)
+					: null;
+				return {
+					domain,
+					count: currentCount,
+					category: categorizeDomain(domain),
+					exampleTitle: example_title || undefined,
+					previousCount,
+					changePercent,
+				};
+			})
+			.filter((d) => d.count > 0);
 
 		// Build previous period URL map for comparison
 		const prevUrlMap = new Map<string, { count: number; title?: string; domain: string }>();
 		for (const { url, domain, title, count } of prevUrlStats) {
+			if (isGoogleSurfaceUrl(url)) continue;
 			const normalizedUrl = normalizeUrl(url);
 			const existing = prevUrlMap.get(normalizedUrl);
 			if (existing) {
@@ -180,6 +326,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// Categorize and normalize specific URLs with new fields
 		const urlCounts = new Map<string, { count: number; title?: string; domain: string; positionSum: number; positionCount: number; promptCount: number }>();
 		for (const { url, domain, title, count, avg_position, prompt_count } of urlStats) {
+			if (isGoogleSurfaceUrl(url)) continue;
 			const normalizedUrl = normalizeUrl(url);
 			const c = Number(count);
 			const positionSum = avg_position != null ? Number(avg_position) * c : 0;
@@ -210,26 +357,45 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 				domain,
 				count,
 				category: categorizeDomain(domain),
+				pageType: inferPageType(url, title),
 				avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
 				promptCount,
 				isNew: !prevUrlMap.has(url),
 			}))
 			.sort((a, b) => b.count - a.count);
 
-		// Calculate category totals
-		const brandCitations = domainDistribution.filter((d) => d.category === "brand").reduce((s, d) => s + d.count, 0);
-		const competitorCitations = domainDistribution.filter((d) => d.category === "competitor").reduce((s, d) => s + d.count, 0);
-		const socialMediaCitations = domainDistribution.filter((d) => d.category === "social_media").reduce((s, d) => s + d.count, 0);
-		const googleCitations = domainDistribution.filter((d) => d.category === "google").reduce((s, d) => s + d.count, 0);
-		const institutionalCitations = domainDistribution.filter((d) => d.category === "institutional").reduce((s, d) => s + d.count, 0);
-		const otherCitations = domainDistribution.filter((d) => d.category === "other").reduce((s, d) => s + d.count, 0);
-		const totalCitations = brandCitations + competitorCitations + socialMediaCitations + googleCitations + institutionalCitations + otherCitations;
+		// Category totals (Google search/shopping surfaces already excluded from domainDistribution)
+		const categoryCounts = emptyCategoryCounts();
+		for (const d of domainDistribution) categoryCounts[d.category] += d.count;
+		const totalCitations = CITATION_CATEGORIES.reduce((s, c) => s + categoryCounts[c], 0);
 
-		// Previous period brand share for delta
-		const prevBrandCitations = prevDomainStats
-			.filter((d) => categorizeDomain(d.domain) === "brand")
-			.reduce((s, d) => s + Number(d.count), 0);
-		const prevTotalCitations = prevDomainStats.reduce((s, d) => s + Number(d.count), 0);
+		// Page-type breakdown (surfaces excluded; they live in the Google module)
+		const pageTypeCounts = emptyPageTypeCounts();
+		for (const u of urlStats) {
+			if (isGoogleSurfaceUrl(u.url)) continue;
+			pageTypeCounts[inferPageType(u.url, u.title)] += Number(u.count);
+		}
+		const pageTypeDistribution = CITATION_PAGE_TYPES
+			.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] }))
+			.filter((d) => d.count > 0);
+
+		// Google AI Mode module: Shopping products (brand vs competitor) + search
+		// queries, each tied to the prompts that triggered them.
+		const promptLookup = new Map(allPrompts.map((p) => [p.id, p]));
+		const googleModule = buildGoogleModule(
+			perPromptPages,
+			brandResult[0]?.name ?? "",
+			competitorsList.map((c) => ({ id: c.id, name: c.name })),
+			(id) => promptLookup.get(id)?.value,
+		);
+
+		// Previous period brand share for delta (surface-adjusted, matching the donut)
+		let prevBrandCitations = 0;
+		let prevTotalCitations = 0;
+		for (const [domain, count] of prevDomainMap) {
+			prevTotalCitations += count;
+			if (categorizeDomain(domain) === "brand") prevBrandCitations += count;
+		}
 		const previousBrandShare = prevTotalCitations > 0
 			? Math.round((prevBrandCitations / prevTotalCitations) * 100)
 			: null;
@@ -243,20 +409,8 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		);
 		const citationTimeSeries = dateRange.map((date) => {
 			const c = smoothedCitations.get(date);
-			if (!c) return { date, brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 };
-			const pct = toRoundedPercentages({
-				brand: c.brand, competitor: c.competitor, socialMedia: c.socialMedia,
-				google: c.google, institutional: c.institutional, other: c.other,
-			});
-			return {
-				date,
-				brand: pct.brand ?? 0,
-				competitor: pct.competitor ?? 0,
-				socialMedia: pct.socialMedia ?? 0,
-				google: pct.google ?? 0,
-				institutional: pct.institutional ?? 0,
-				other: pct.other ?? 0,
-			};
+			if (!c) return { date, ...emptyCategoryCounts() };
+			return { date, ...(toRoundedPercentages(c) as Record<CitationCategory, number>) };
 		});
 
 		// What's Changed: new URLs, dropped URLs, title changes
@@ -349,7 +503,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			}
 		}
 
-		const promptLookup = new Map(allPrompts.map((p) => [p.id, p]));
 		const competitorOnlyPrompts = Array.from(promptCitationFlags.entries())
 			.filter(([, data]) => data.hasCompetitor && !data.hasBrand)
 			.map(([id, data]) => {
@@ -369,14 +522,11 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		return {
 			totalCitations,
 			uniqueDomains: domainDistribution.length,
-			brandCitations,
-			competitorCitations,
-			socialMediaCitations,
-			googleCitations,
-			institutionalCitations,
-			otherCitations,
+			categoryCounts,
 			domainDistribution,
 			specificUrls,
+			pageTypeDistribution,
+			googleModule,
 			availableTags,
 			citationTimeSeries,
 			previousBrandShare,

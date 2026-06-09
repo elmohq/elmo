@@ -17,19 +17,39 @@ import {
 	ChartContainer,
 	ChartTooltip,
 } from "@workspace/ui/components/chart";
-import { type CitationCategory, CATEGORY_CONFIG } from "@/lib/domain-categories";
+import {
+	type CitationCategory,
+	type CitationPageType,
+	CATEGORY_CONFIG,
+	CITATION_CATEGORIES,
+	PAGE_TYPE_CONFIG,
+	PAGE_TYPE_COLORS,
+} from "@/lib/domain-categories";
 import * as Sentry from "@sentry/tanstackstart-react";
 import { addDomainToBrandFn, addDomainToCompetitorFn, createCompetitorFromDomainFn } from "@/server/brands";
+
+export interface GoogleProductRow {
+	name: string;
+	count: number;
+	attribution: "brand" | "competitor" | "other";
+	competitorName?: string;
+	prompts: { id: string; value: string; count: number }[];
+	urls: { url: string; count: number }[];
+}
+export interface GoogleQueryRow {
+	query: string;
+	count: number;
+	prompts: { id: string; value: string; count: number }[];
+}
+export interface GoogleModuleData {
+	shopping: { totalCitations: number; brandCount: number; competitorCount: number; products: GoogleProductRow[] };
+	search: { totalCitations: number; queries: GoogleQueryRow[] };
+}
 
 export interface CitationData {
 	totalCitations: number;
 	uniqueDomains: number;
-	brandCitations: number;
-	competitorCitations: number;
-	socialMediaCitations: number;
-	googleCitations?: number;
-	institutionalCitations?: number;
-	otherCitations: number;
+	categoryCounts: Record<CitationCategory, number>;
 	domainDistribution: {
 		domain: string;
 		count: number;
@@ -44,19 +64,14 @@ export interface CitationData {
 		domain: string;
 		count: number;
 		category: CitationCategory;
+		pageType?: CitationPageType;
 		avgPosition?: number | null;
 		promptCount?: number;
 		isNew?: boolean;
 	}[];
-	citationTimeSeries?: {
-		date: string;
-		brand: number;
-		competitor: number;
-		socialMedia: number;
-		google: number;
-		institutional: number;
-		other: number;
-	}[];
+	pageTypeDistribution?: { pageType: CitationPageType; count: number }[];
+	googleModule?: GoogleModuleData;
+	citationTimeSeries?: Array<{ date: string } & Partial<Record<CitationCategory, number>>>;
 	previousBrandShare?: number | null;
 	competitors?: Array<{ id: string; name: string; domains: string[] }>;
 	competitorOnlyPrompts?: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
@@ -138,24 +153,40 @@ const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
 	{ key: "dropped_domains", label: "Dropped Domains" },
 ];
 
-const CATEGORY_TABS = [
+const CATEGORY_TABS: { key: string; label: string }[] = [
 	{ key: "all", label: "All" },
-	{ key: "brand", label: "Brand" },
-	{ key: "competitor", label: "Competitors" },
-	{ key: "social_media", label: "Social Media" },
-	{ key: "google", label: "Google" },
-	{ key: "institutional", label: "Institutional" },
-	{ key: "other", label: "Other" },
-] as const;
+	...CITATION_CATEGORIES.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label })),
+];
+
+const CATEGORY_TOOLTIPS: Record<CitationCategory, string> = {
+	brand: "Citations linking to your brand's own domain",
+	competitor: "Citations linking to domains in your tracked competitors list",
+	editorial: "News outlets, trade press, magazines, and blogs",
+	reviews: "Review, comparison, and vendor-listing sites (G2, Capterra, Trustpilot, etc.)",
+	social: "Social platforms and community/Q&A sites (Reddit, LinkedIn, YouTube, Quora, Stack Overflow, etc.)",
+	pr: "Press-release distribution wires (PR Newswire, Business Wire, etc.)",
+	reference: "Reference and structured-knowledge sites (Wikipedia, Crunchbase, IMDb, etc.)",
+	institutional: "Government, education, research, and nonprofit institutions (.gov, .edu, .org)",
+	google: "Other Google-owned properties (Maps, Support, etc.). Google AI Mode search & shopping are broken out separately.",
+	other: "All other cited domains not matching the above categories",
+};
+
+// The trend chart folds the 10 categories into 5 primary bands + "Other sources"
+// to stay legible (and to keep Google AI Mode surfaces, which live in the Google
+// module, from showing as their own band).
+const TREND_PRIMARY: CitationCategory[] = ["brand", "competitor", "editorial", "reviews", "social"];
+const TREND_BANDS: { key: string; label: string; dotClass: string }[] = [
+	...TREND_PRIMARY.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label, dotClass: CATEGORY_CONFIG[c].chartDotClass })),
+	{ key: "otherSources", label: "Other sources", dotClass: CATEGORY_CONFIG.other.chartDotClass },
+];
 
 const citationsChartConfig: ChartConfig = {
-	brand: { label: "Your Brand", color: CATEGORY_CONFIG.brand.chartColor },
-	competitor: { label: "Competitors", color: CATEGORY_CONFIG.competitor.chartColor },
-	socialMedia: { label: "Social Media", color: CATEGORY_CONFIG.social_media.chartColor },
-	google: { label: "Google", color: CATEGORY_CONFIG.google.chartColor },
-	institutional: { label: "Institutional", color: CATEGORY_CONFIG.institutional.chartColor },
-	other: { label: "Other", color: CATEGORY_CONFIG.other.chartColor },
+	...Object.fromEntries(TREND_PRIMARY.map((c) => [c, { label: CATEGORY_CONFIG[c].label, color: CATEGORY_CONFIG[c].chartColor }])),
+	otherSources: { label: "Other sources", color: CATEGORY_CONFIG.other.chartColor },
 };
+
+const attributionDotClass = (a: "brand" | "competitor" | "other") =>
+	a === "brand" ? "bg-emerald-500" : a === "competitor" ? "bg-red-500" : "bg-gray-400";
 
 function UnderlineTabs<T extends string>({
 	tabs,
@@ -448,16 +479,21 @@ export function CitationsDisplay({
 	const [domainSearch, setDomainSearch] = useState("");
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
+	const [selectedPageType, setSelectedPageType] = useState<string>("all");
 	const [changeTypeFilter, setChangeTypeFilter] = useState<ChangeType>("new_pages");
 	const [changeTabExpanded, setChangeTabExpanded] = useState(false);
 	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
+	const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+	const [showAllProducts, setShowAllProducts] = useState(false);
+	const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
+	const [showAllQueries, setShowAllQueries] = useState(false);
 
 	if (citationData.totalCitations === 0) {
 		return null;
 	}
 
 	const brandShare = citationData.totalCitations > 0
-		? Math.round((citationData.brandCitations / citationData.totalCitations) * 100)
+		? Math.round((citationData.categoryCounts.brand / citationData.totalCitations) * 100)
 		: 0;
 
 	const filteredDomains = useMemo(() => {
@@ -471,6 +507,9 @@ export function CitationsDisplay({
 		if (selectedCategory !== "all") {
 			urls = urls.filter((u) => u.category === selectedCategory);
 		}
+		if (selectedPageType !== "all") {
+			urls = urls.filter((u) => u.pageType === selectedPageType);
+		}
 		if (urlSearch) {
 			const q = urlSearch.toLowerCase();
 			urls = urls.filter((u) =>
@@ -480,7 +519,46 @@ export function CitationsDisplay({
 			);
 		}
 		return urls.slice(0, maxUrls);
-	}, [citationData.specificUrls, selectedCategory, urlSearch, maxUrls]);
+	}, [citationData.specificUrls, selectedCategory, selectedPageType, urlSearch, maxUrls]);
+
+	const domainTypeItems = useMemo(() => {
+		const cc = citationData.categoryCounts;
+		const items = [{ label: CATEGORY_CONFIG.brand.label, count: cc.brand ?? 0, category: "brand", tooltip: CATEGORY_TOOLTIPS.brand }];
+		for (const c of CITATION_CATEGORIES) {
+			if (c === "brand" || c === "other" || (cc[c] ?? 0) <= 0) continue;
+			items.push({ label: CATEGORY_CONFIG[c].label, count: cc[c], category: c, tooltip: CATEGORY_TOOLTIPS[c] });
+		}
+		const fixed = items.slice(0, 1);
+		const middle = items.slice(1).sort((a, b) => b.count - a.count);
+		const result = [...fixed, ...middle];
+		if ((cc.other ?? 0) > 0) result.push({ label: CATEGORY_CONFIG.other.label, count: cc.other, category: "other", tooltip: CATEGORY_TOOLTIPS.other });
+		return result;
+	}, [citationData.categoryCounts]);
+
+	const trendData = useMemo(() => {
+		const ts = citationData.citationTimeSeries ?? [];
+		return ts.map((p) => {
+			const point: Record<string, number | string> = { date: p.date };
+			let otherSources = 0;
+			for (const c of CITATION_CATEGORIES) {
+				const v = (p as Partial<Record<CitationCategory, number>>)[c] ?? 0;
+				if (TREND_PRIMARY.includes(c)) point[c] = v;
+				else otherSources += v;
+			}
+			point.otherSources = otherSources;
+			return point;
+		});
+	}, [citationData.citationTimeSeries]);
+
+	const pageTypes = useMemo(
+		() => [...(citationData.pageTypeDistribution ?? [])].sort((a, b) => b.count - a.count),
+		[citationData.pageTypeDistribution],
+	);
+	const pageTypeTabs = useMemo<{ key: string; label: string }[]>(
+		() => [{ key: "all", label: "All types" }, ...pageTypes.map((d) => ({ key: d.pageType as string, label: PAGE_TYPE_CONFIG[d.pageType].label }))],
+		[pageTypes],
+	);
+	const googleModule = citationData.googleModule;
 
 	const subredditData = useMemo(() => {
 		const droppedUrlSet = new Set(
@@ -611,16 +689,7 @@ export function CitationsDisplay({
 						<Separator />
 					<CardContent className="flex-1 flex flex-col pb-1">
 						<ProgressBarChart
-								items={[
-									{ label: "Brand", count: citationData.brandCitations, category: "brand", tooltip: "Citations linking to your brand's own domain" },
-									...[
-										{ label: "Competitor", count: citationData.competitorCitations, category: "competitor", tooltip: "Citations linking to domains in your tracked competitors list" },
-										{ label: "Social Media", count: citationData.socialMediaCitations, category: "social_media", tooltip: "Citations linking to social platforms like Reddit, YouTube, LinkedIn, X, etc." },
-										{ label: "Google", count: citationData.googleCitations ?? 0, category: "google", tooltip: "Citations linking to Google-owned properties (Search, Support, Maps, Cloud, etc.)" },
-										{ label: "Institutional", count: citationData.institutionalCitations ?? 0, category: "institutional", tooltip: "Citations linking to .org, .edu, .gov, and other institutional domains" },
-									].sort((a, b) => b.count - a.count),
-									{ label: "Other", count: citationData.otherCitations, category: "other", tooltip: "All other cited domains not matching the above categories" },
-								]}
+								items={domainTypeItems}
 								colorMapping={DOMAIN_CATEGORY_COLORS}
 								percentageMode="total"
 								fillHeight
@@ -648,7 +717,7 @@ export function CitationsDisplay({
 					</CardHeader>
 					<CardContent>
 						<ChartContainer config={citationsChartConfig} className="aspect-auto h-[180px] w-full">
-							<AreaChart data={citationData.citationTimeSeries} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+							<AreaChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
 								<CartesianGrid vertical={false} strokeDasharray="3 3" />
 								<XAxis
 									dataKey="date"
@@ -676,7 +745,7 @@ export function CitationsDisplay({
 									cursor={false}
 									content={({ active, payload, label }) => {
 										if (!active || !payload?.length) return null;
-										const dp = payload[0]?.payload as NonNullable<CitationData["citationTimeSeries"]>[0];
+										const dp = payload[0]?.payload as Record<string, number | string> | undefined;
 										const [year, month, day] = (label as string).split("-").map(Number);
 										const date = new Date(year, month - 1, day);
 										const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
@@ -684,15 +753,13 @@ export function CitationsDisplay({
 											<div className="border-border/50 bg-background grid min-w-[10rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 												<div className="font-medium">{formattedDate}</div>
 											<div className="grid gap-1">
-												{(["brand", "competitor", "social_media", "google", "institutional", "other"] as const).map((cat) => {
-													const cfg = CATEGORY_CONFIG[cat];
-													const key = cat === "social_media" ? "socialMedia" : cat;
-													const value = dp?.[key as keyof typeof dp] as number | undefined;
+												{TREND_BANDS.map((band) => {
+													const value = dp?.[band.key] as number | undefined;
 													if (!value) return null;
 													return (
-														<div key={cat} className="flex items-center gap-2">
-															<div className={`shrink-0 rounded-[2px] h-2.5 w-2.5 ${cfg.chartDotClass}`} />
-															<span className="text-muted-foreground">{cfg.label}</span>
+														<div key={band.key} className="flex items-center gap-2">
+															<div className={`shrink-0 rounded-[2px] h-2.5 w-2.5 ${band.dotClass}`} />
+															<span className="text-muted-foreground">{band.label}</span>
 															<span className="ml-auto font-mono tabular-nums">{value}%</span>
 														</div>
 													);
@@ -702,13 +769,41 @@ export function CitationsDisplay({
 										);
 									}}
 								/>
-							<Area dataKey="institutional" type="monotone" stackId="1" stroke="var(--color-institutional)" fill="var(--color-institutional)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="google" type="monotone" stackId="1" stroke="var(--color-google)" fill="var(--color-google)" fillOpacity={0.8} strokeWidth={0} />
-							<Area dataKey="socialMedia" type="monotone" stackId="1" stroke="var(--color-socialMedia)" fill="var(--color-socialMedia)" fillOpacity={0.8} strokeWidth={0} />
+							<Area dataKey="otherSources" type="monotone" stackId="1" stroke="var(--color-otherSources)" fill="var(--color-otherSources)" fillOpacity={0.8} strokeWidth={0} />
+							<Area dataKey="social" type="monotone" stackId="1" stroke="var(--color-social)" fill="var(--color-social)" fillOpacity={0.8} strokeWidth={0} />
+							<Area dataKey="reviews" type="monotone" stackId="1" stroke="var(--color-reviews)" fill="var(--color-reviews)" fillOpacity={0.8} strokeWidth={0} />
+							<Area dataKey="editorial" type="monotone" stackId="1" stroke="var(--color-editorial)" fill="var(--color-editorial)" fillOpacity={0.8} strokeWidth={0} />
 							<Area dataKey="competitor" type="monotone" stackId="1" stroke="var(--color-competitor)" fill="var(--color-competitor)" fillOpacity={0.8} strokeWidth={0} />
 							<Area dataKey="brand" type="monotone" stackId="1" stroke="var(--color-brand)" fill="var(--color-brand)" fillOpacity={0.8} strokeWidth={0} />
 							</AreaChart>
 						</ChartContainer>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Citations by Page Type */}
+			{pageTypes.length > 0 && (
+				<Card>
+					<CardHeader className="gap-0 pb-2">
+						<CardTitle className="text-sm font-medium flex items-center gap-1.5">
+							Citations by Page Type
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-sm font-normal">
+									What kind of page each citation points to — articles, listicles, how-tos, comparisons, product/pricing pages, docs — inferred from the URL and title.
+								</TooltipContent>
+							</Tooltip>
+						</CardTitle>
+					</CardHeader>
+					<Separator />
+					<CardContent className="pt-3">
+						<ProgressBarChart
+							items={pageTypes.map((d) => ({ label: PAGE_TYPE_CONFIG[d.pageType].label, count: d.count, category: d.pageType }))}
+							colorMapping={PAGE_TYPE_COLORS}
+							percentageMode="total"
+						/>
 					</CardContent>
 				</Card>
 			)}
@@ -907,7 +1002,7 @@ export function CitationsDisplay({
 									</Tooltip>
 								</CardTitle>
 								<CardDescription>
-									Individual pages cited by LLMs{citationData.brandCitations > 0 && brandName && (
+									Individual pages cited by LLMs{citationData.categoryCounts.brand > 0 && brandName && (
 										<> &mdash; {brandName} accounts for <strong>{brandShare}%</strong> of all citations</>
 									)}
 								</CardDescription>
@@ -930,6 +1025,15 @@ export function CitationsDisplay({
 							activeKey={selectedCategory}
 							onSelect={setSelectedCategory}
 						/>
+						{pageTypeTabs.length > 2 && (
+							<div className="mt-2">
+								<UnderlineTabs
+									tabs={pageTypeTabs}
+									activeKey={selectedPageType}
+									onSelect={setSelectedPageType}
+								/>
+							</div>
+						)}
 						<div className="divide-y divide-border mt-1">
 							{filteredUrls.map((citation) => {
 								const displayUrl = formatUrlForDisplay(citation.url);
@@ -994,6 +1098,144 @@ export function CitationsDisplay({
 								</p>
 							)}
 						</div>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Google AI Mode */}
+			{googleModule && (googleModule.shopping.products.length > 0 || googleModule.search.queries.length > 0) && (
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-1.5">
+							Google AI Mode
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent className="max-w-xs text-sm font-normal">
+									Products and searches Google AI Mode surfaced when answering your prompts. Kept separate from the citation mix above so they don&apos;t swamp it.
+								</TooltipContent>
+							</Tooltip>
+						</CardTitle>
+						<CardDescription>
+							Google Shopping product cards and search links cited by Google AI Mode
+						</CardDescription>
+					</CardHeader>
+					<Separator />
+					<CardContent className="space-y-6">
+						{googleModule.shopping.products.length > 0 && (
+							<div>
+								<div className="flex items-center justify-between mb-2">
+									<h4 className="text-sm font-medium">Products surfaced</h4>
+									<span className="text-xs text-muted-foreground">
+										<span className="font-semibold text-emerald-600">{googleModule.shopping.brandCount.toLocaleString()}</span> yours
+										{" · "}
+										<span className="font-semibold text-red-600">{googleModule.shopping.competitorCount.toLocaleString()}</span> competitors
+									</span>
+								</div>
+								<div className="divide-y divide-border/50">
+									{(showAllProducts ? googleModule.shopping.products : googleModule.shopping.products.slice(0, 5)).map((product) => {
+										const isExpanded = expandedProduct === product.name;
+										return (
+											<div key={product.name}>
+												<div className="flex items-center justify-between py-2 gap-3">
+													<button
+														type="button"
+														onClick={() => setExpandedProduct(isExpanded ? null : product.name)}
+														className="flex items-center gap-1.5 min-w-0 cursor-pointer group text-left"
+													>
+														<IconChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+														<span className={`shrink-0 rounded-full h-2 w-2 ${attributionDotClass(product.attribution)}`} />
+														<span className="text-sm font-medium text-foreground group-hover:underline truncate">{product.name}</span>
+														{product.attribution === "competitor" && product.competitorName && (
+															<span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">({product.competitorName})</span>
+														)}
+													</button>
+													<span className="text-sm font-semibold tabular-nums shrink-0">{product.count.toLocaleString()}</span>
+												</div>
+												{isExpanded && product.prompts.length > 0 && (
+													<div className="pl-5 pb-2 space-y-0.5">
+														{product.prompts.map((p) => (
+															brandId ? (
+																<Link key={p.id} to="/app/$brand/prompts/$promptId" params={{ brand: brandId, promptId: p.id }} className="flex items-center justify-between py-1 group text-xs">
+																	<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">{p.value}</span>
+																	<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+																</Link>
+															) : (
+																<div key={p.id} className="flex items-center justify-between py-1 text-xs">
+																	<span className="text-muted-foreground truncate min-w-0">{p.value}</span>
+																	<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+																</div>
+															)
+														))}
+													</div>
+												)}
+											</div>
+										);
+									})}
+								</div>
+								{googleModule.shopping.products.length > 5 && !showAllProducts && (
+									<button
+										onClick={() => setShowAllProducts(true)}
+										className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+									>
+										Show {googleModule.shopping.products.length - 5} more
+									</button>
+								)}
+							</div>
+						)}
+
+						{googleModule.search.queries.length > 0 && (
+							<div>
+								<h4 className="text-sm font-medium mb-2">Search queries</h4>
+								<div className="divide-y divide-border/50">
+									{(showAllQueries ? googleModule.search.queries : googleModule.search.queries.slice(0, 5)).map((q) => {
+										const isExpanded = expandedQuery === q.query;
+										return (
+											<div key={q.query}>
+												<div className="flex items-center justify-between py-2 gap-3">
+													<button
+														type="button"
+														onClick={() => setExpandedQuery(isExpanded ? null : q.query)}
+														className="flex items-center gap-1.5 min-w-0 cursor-pointer group text-left"
+													>
+														<IconChevronDown className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+														<IconSearch className="h-3 w-3 shrink-0 text-muted-foreground" />
+														<span className="text-sm font-medium text-foreground group-hover:underline truncate">{q.query}</span>
+													</button>
+													<span className="text-sm font-semibold tabular-nums shrink-0">{q.count.toLocaleString()}</span>
+												</div>
+												{isExpanded && q.prompts.length > 0 && (
+													<div className="pl-5 pb-2 space-y-0.5">
+														{q.prompts.map((p) => (
+															brandId ? (
+																<Link key={p.id} to="/app/$brand/prompts/$promptId" params={{ brand: brandId, promptId: p.id }} className="flex items-center justify-between py-1 group text-xs">
+																	<span className="text-muted-foreground group-hover:text-foreground group-hover:underline truncate min-w-0">{p.value}</span>
+																	<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+																</Link>
+															) : (
+																<div key={p.id} className="flex items-center justify-between py-1 text-xs">
+																	<span className="text-muted-foreground truncate min-w-0">{p.value}</span>
+																	<span className="tabular-nums text-muted-foreground shrink-0 ml-3">{p.count.toLocaleString()}</span>
+																</div>
+															)
+														))}
+													</div>
+												)}
+											</div>
+										);
+									})}
+								</div>
+								{googleModule.search.queries.length > 5 && !showAllQueries && (
+									<button
+										onClick={() => setShowAllQueries(true)}
+										className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+									>
+										Show {googleModule.search.queries.length - 5} more
+									</button>
+								)}
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			)}
