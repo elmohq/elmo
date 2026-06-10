@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
 	inferPageType,
 	resolvePageType,
+	isForumDomain,
 	isGoogleShoppingUrl,
 	isGoogleSearchUrl,
 	isGoogleSurfaceUrl,
@@ -108,6 +109,9 @@ describe("classifyUrl fallback (shrinks 'other')", () => {
 	it("treats unknown-domain storefront/product pages as ecommerce", () => {
 		expect(classify("shoprescuespa.com", "https://shoprescuespa.com/products/resurfacing-compound", "Resurfacing Compound")).toBe("ecommerce");
 	});
+	it("treats unknown-domain forum pages as social", () => {
+		expect(classify("randomforum.xyz", "https://randomforum.xyz/forums/thread-123", "A thread")).toBe("social");
+	});
 	it("never overrides a domain that already classifies", () => {
 		expect(classify("mybrand.com", "https://mybrand.com/blog/a-review", "A Review")).toBe("brand");
 		expect(classify("amazon.com", "https://amazon.com/dp/B089", "Product")).toBe("ecommerce");
@@ -165,6 +169,8 @@ describe("inferPageType", () => {
 		expect(inferPageType("https://ubeauty.com/pages/return-policy", "Returns")).toBe("info");
 		expect(inferPageType("https://ubeauty.com/pages/subscription", "Subscription")).toBe("info");
 		expect(inferPageType("https://amazon.com/dp/B089", "U Beauty Serum")).toBe("product");
+		// commerce path wins over "info": /products/return-pillow is a product, not a returns page
+		expect(inferPageType("https://shop.com/products/return-pillow", "Return Pillow")).toBe("product");
 		// "/topic/" is not a forum (Britannica/news topic pages)
 		expect(inferPageType("https://www.britannica.com/topic/mezcal", "Mezcal")).not.toBe("forum");
 		expect(resolvePageType("https://www.britannica.com/topic/mezcal", "Mezcal", "reference")).toBe("article");
@@ -213,5 +219,25 @@ describe("curated domain lists are mutually exclusive", () => {
 
 	it("keeps slickdeals in ecommerce (not social)", () => {
 		expect(cat("slickdeals.net")).toBe("ecommerce");
+	});
+});
+
+describe("isForumDomain", () => {
+	it("matches dedicated forum domains and conventional forum subdomains", () => {
+		expect(isForumDomain("bogleheads.org")).toBe(true);
+		expect(isForumDomain("forums.macrumors.com")).toBe(true);
+		expect(isForumDomain("forum.xda-developers.com")).toBe(true);
+		expect(isForumDomain("community.spotify.com")).toBe(true);
+		expect(isForumDomain("boards.example.co.uk")).toBe(true);
+		expect(isForumDomain("discuss.python.org")).toBe(true);
+	});
+
+	it("does not over-match: a prefix needs a dot, and unrelated domains are not forums", () => {
+		// "community" must be a full subdomain label (community.x), not a hyphen prefix
+		expect(isForumDomain("community-coffee.com")).toBe(false);
+		expect(isForumDomain("forumcafe.com")).toBe(false);
+		expect(isForumDomain("boardgamegeek.com")).toBe(false);
+		expect(isForumDomain("example.com")).toBe(false);
+		expect(isForumDomain("macrumors.com")).toBe(false); // the news site, not its forum subdomain
 	});
 });

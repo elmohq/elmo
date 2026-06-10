@@ -274,6 +274,7 @@ export function classifyUrl(
 	const cat = categorizeDomain(domain, brandDomains, competitorDomains);
 	if (cat !== "other") return cat;
 	const pt = inferPageType(url, title);
+	if (pt === "forum") return "social"; // a forum page on an unlisted domain is still community / UGC
 	if (EDITORIAL_PAGE_TYPES.has(pt)) return "editorial";
 	if (pt === "product" || pt === "shopping") return "ecommerce";
 	return "other";

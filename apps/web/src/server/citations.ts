@@ -10,7 +10,7 @@ import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/sch
 import { eq, and } from "drizzle-orm";
 import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages, type PerPromptCitationPageRow } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { generateDateRange, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
+import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
 import {
 	type CitationCategory,
 	type CitationPageType,
@@ -154,25 +154,11 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		// Calculate date ranges. The window is exactly `data.days` calendar days
-		// ending today (inclusive): [today-(days-1), today]. This matches the trend
-		// charts' dateRange below exactly, so the stat cards + Top URL/Domain lists
-		// cover the same span as the charts (no off-by-one extra day).
-		const toDate = new Date();
-		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - (data.days - 1));
-		const fromDateStr = fromDate.toISOString().split("T")[0];
-		const toDateStr = toDate.toISOString().split("T")[0];
+		// Window: `data.days` calendar days ending today (inclusive), plus the
+		// contiguous equal-length previous window — all UTC (server-TZ independent).
+		// `dateRange` is reused for the trend charts so totals + charts span identically.
+		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(new Date(), data.days);
 		const timezone = "UTC";
-
-		// Previous period: equal-length (`data.days`) window ending the day before the
-		// current window starts.
-		const prevEndDate = new Date(fromDate);
-		prevEndDate.setDate(prevEndDate.getDate() - 1);
-		const prevStartDate = new Date(prevEndDate);
-		prevStartDate.setDate(prevStartDate.getDate() - (data.days - 1));
-		const prevFromDateStr = prevStartDate.toISOString().split("T")[0];
-		const prevToDateFmt = prevEndDate.toISOString().split("T")[0];
 
 		// Get brand info, competitors, and all enabled prompts
 		const [brandResult, competitorsList, allPrompts] = await Promise.all([
@@ -245,7 +231,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					availableTags,
 					citationTimeSeries: [] as ({ date: string } & Record<CitationCategory, number>)[],
 					pageTypeTimeSeries: [] as ({ date: string } & Record<CitationPageType, number>)[],
-					previousBrandShare: null as number | null,
 					competitors: competitorSummary,
 				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
 				whatsChanged: {
@@ -263,7 +248,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptDailyCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
-			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateFmt, timezone, enabledPromptIds, data.model),
+			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateStr, timezone, enabledPromptIds, data.model),
 		]);
 
 		function categorizeDomain(domain: string): CitationCategory {
@@ -392,23 +377,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			(id) => promptLookup.get(id)?.value,
 		);
 
-		// Previous period brand share for delta (surface-adjusted, matching the donut)
-		let prevBrandCitations = 0;
-		let prevTotalCitations = 0;
-		for (const [domain, count] of prevDomainMap) {
-			prevTotalCitations += count;
-			if (categorizeDomain(domain) === "brand") prevBrandCitations += count;
-		}
-		const previousBrandShare = prevTotalCitations > 0
-			? Math.round((prevBrandCitations / prevTotalCitations) * 100)
-			: null;
-
 		// Citation time series via per-prompt LVCF with cadence normalization. Both
 		// axes are classified at the URL level (surfaces excluded), so the trends
-		// match the breakdown above and show every category / page type.
-		const dateRangeStart = new Date(toDateStr);
-		dateRangeStart.setDate(dateRangeStart.getDate() - (data.days - 1));
-		const dateRange = generateDateRange(dateRangeStart, new Date(toDateStr));
+		// match the breakdown above and show every category / page type. `dateRange`
+		// (the current window) was computed once up top so charts + totals stay aligned.
 		const cadenceHours = brandResult[0]?.delayOverrideHours;
 		const categoryRows: { prompt_id: string; date: string; key: CitationCategory; count: number }[] = [];
 		const pageTypeRows: { prompt_id: string; date: string; key: CitationPageType; count: number }[] = [];
@@ -544,7 +516,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			availableTags,
 			citationTimeSeries,
 			pageTypeTimeSeries,
-			previousBrandShare,
 			competitors: competitorSummary,
 			competitorOnlyPrompts,
 			whatsChanged: {

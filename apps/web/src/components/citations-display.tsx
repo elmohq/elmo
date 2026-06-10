@@ -73,7 +73,6 @@ export interface CitationData {
 	googleModule?: GoogleModuleData;
 	citationTimeSeries?: Array<{ date: string } & Partial<Record<CitationCategory, number>>>;
 	pageTypeTimeSeries?: Array<{ date: string } & Partial<Record<CitationPageType, number>>>;
-	previousBrandShare?: number | null;
 	competitors?: Array<{ id: string; name: string; domains: string[] }>;
 	competitorOnlyPrompts?: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
 	whatsChanged?: {
@@ -608,17 +607,20 @@ export function CitationsDisplay({
 	}, [citationData.specificUrls, selectedCategory, selectedPageType, urlSearch, maxUrls]);
 
 
-	// Single source of truth: the categories / page types that actually appear in
-	// the two trend charts. The tab filters read from these SAME lists (passed to
-	// TrendAreaChart as `keys`), so the tabs and charts can never drift apart.
+	// Single source of truth for which categories / page types appear. Derived from
+	// the RAW aggregates (categoryCounts / pageTypeDistribution), NOT the smoothed %
+	// time series: a tiny category that rounds to 0% on every day would otherwise
+	// vanish from both the chart keys and the tab filters despite having real
+	// citations (and being filterable in the URL list). The same lists feed the tab
+	// filters and the chart `keys`, so the two stay consistent.
 	const chartSourceCategories = useMemo(
-		() => CITATION_CATEGORIES.filter((c) => (citationData.citationTimeSeries ?? []).some((p) => ((p as Partial<Record<CitationCategory, number>>)[c] ?? 0) > 0)),
-		[citationData.citationTimeSeries],
+		() => CITATION_CATEGORIES.filter((c) => (citationData.categoryCounts[c] ?? 0) > 0),
+		[citationData.categoryCounts],
 	);
-	const chartPageTypes = useMemo(
-		() => CITATION_PAGE_TYPES.filter((p) => (citationData.pageTypeTimeSeries ?? []).some((d) => ((d as Partial<Record<CitationPageType, number>>)[p] ?? 0) > 0)),
-		[citationData.pageTypeTimeSeries],
-	);
+	const chartPageTypes = useMemo(() => {
+		const present = new Set((citationData.pageTypeDistribution ?? []).filter((d) => d.count > 0).map((d) => d.pageType));
+		return CITATION_PAGE_TYPES.filter((p) => present.has(p));
+	}, [citationData.pageTypeDistribution]);
 	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
 		() => [{ key: "all", label: "All Sources" }, ...chartSourceCategories.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))],
 		[chartSourceCategories],

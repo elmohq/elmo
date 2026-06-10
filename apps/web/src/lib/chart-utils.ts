@@ -62,6 +62,33 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 	return dates;
 }
 
+/**
+ * Citation comparison window for a lookback of `days` days — computed entirely in
+ * UTC so it's independent of server timezone. The current window is `days` calendar
+ * days ending on `today` (inclusive): [today-(days-1), today]. The previous window
+ * is the contiguous equal-length window ending the day before the current one
+ * starts. `dateRange` is the current window as one YYYY-MM-DD per day (what the
+ * trend charts iterate) so totals and charts cover exactly the same span.
+ */
+export function citationDateWindow(
+	today: Date,
+	days: number,
+): { fromDateStr: string; toDateStr: string; prevFromDateStr: string; prevToDateStr: string; dateRange: string[] } {
+	const iso = (d: Date) => d.toISOString().split("T")[0];
+	const shift = (base: Date, deltaDays: number) => {
+		const d = new Date(base);
+		d.setUTCDate(d.getUTCDate() + deltaDays);
+		return d;
+	};
+	const span = Math.max(1, days);
+	const from = shift(today, -(span - 1));
+	const prevTo = shift(from, -1);
+	const prevFrom = shift(prevTo, -(span - 1));
+	const dateRange: string[] = [];
+	for (let i = 0; i < span; i++) dateRange.push(iso(shift(from, i)));
+	return { fromDateStr: iso(from), toDateStr: iso(today), prevFromDateStr: iso(prevFrom), prevToDateStr: iso(prevTo), dateRange };
+}
+
 // ============================================================================
 // Smoothing utilities
 // ============================================================================
@@ -196,9 +223,10 @@ export function applyPerPromptKeyedLVCF<K extends string>(
 		}
 	}
 
-	for (const [, v] of daily) {
-		for (const k of allKeys) v[k] = Math.round(v[k]);
-	}
+	// Values are intentionally left fractional (not rounded to ints): both consumers
+	// convert to percentages via toRoundedPercentages, where the 1/cadenceDays factor
+	// cancels exactly — so cadence can't shift the chart, and a tiny category isn't
+	// pre-zeroed by an intermediate round before the percentage is taken.
 	return daily;
 }
 
