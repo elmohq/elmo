@@ -28,7 +28,7 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --external:@clack/prompts --external:commander --external:dotenv --external:picocolors --external:posthog-node --external:semver",
+    "build": "node scripts/build.mjs",
     "check-types": "tsc -p tsconfig.json"
   },
   "dependencies": {
