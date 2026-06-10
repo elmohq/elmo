@@ -603,7 +603,7 @@ export async function getCitationDomainStats(
 		SELECT
 			domain,
 			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE brand_id = ${brandId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -632,7 +632,7 @@ export async function getCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
 			count(*)::int AS count,
 			round(avg(citation_index)::numeric, 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
@@ -662,7 +662,7 @@ export async function getPromptCitationStats(
 		SELECT
 			domain,
 			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE prompt_id = ${promptId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -683,7 +683,7 @@ export async function getPromptCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
 			count(*)::int AS count,
 			round(avg(citation_index)::numeric, 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
