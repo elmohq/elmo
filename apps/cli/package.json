@@ -28,7 +28,8 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "node scripts/build.mjs",
+    "check-types": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.0",
@@ -41,6 +42,8 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@types/semver": "^7.7.1",
+    "@workspace/config": "workspace:*",
+    "rolldown": "^1.0.2",
     "typescript": "^6.0.3"
   }
 }
