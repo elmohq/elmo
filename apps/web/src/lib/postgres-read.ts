@@ -652,27 +652,6 @@ export async function getCitationUrlStats(
 // Prompt-Level Citation Stats
 // ============================================================================
 
-export async function getPromptCitationStats(
-	promptId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-): Promise<CitationDomainStats[]> {
-	const rows = await queryPg<CitationDomainStats>(sql`
-		SELECT
-			domain,
-			count(*)::int AS count,
-			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
-		FROM citations
-		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-		GROUP BY domain
-		ORDER BY count DESC
-	`);
-	return rows;
-}
-
 export async function getPromptCitationUrlStats(
 	promptId: string,
 	fromDate: string,
