@@ -60,14 +60,10 @@ declare global {
 			readonly AUTH0_MGMT_API_DOMAIN?: string;
 			readonly AUTH0_CLIENT_ID?: string;
 			readonly AUTH0_CLIENT_SECRET?: string;
-			readonly UPSTASH_REDIS_REST_URL?: string;
-			readonly UPSTASH_REDIS_REST_TOKEN?: string;
-			readonly UPSTASH_REDIS_ENDPOINT?: string;
 			readonly ADMIN_AUTH0_SUB?: string;
 			readonly ADMIN_API_KEYS?: string;
 			readonly DEFAULT_BRAND_DOMAINS?: string;
 			readonly ENVIRONMENT?: string;
-			readonly BLOB_READ_WRITE_TOKEN?: string;
 			readonly DBOS_SYSTEM_DATABASE_URL?: string;
 			readonly SENTRY_DSN?: string;
 			readonly SENTRY_ORG?: string;
