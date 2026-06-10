@@ -154,7 +154,8 @@ function ReportRenderPage() {
 				id: `run-${pi}-${ri}`, promptId, brandMentioned: run.brandMentioned,
 				competitorsMentioned: run.competitorsMentioned, createdAt: new Date(),
 				model: run.model, version: run.version,
-				webSearchEnabled: run.webSearchEnabled, rawOutput: run.rawOutput, webQueries: run.webQueries,
+				webSearchEnabled: run.webSearchEnabled, rawOutput: run.rawOutput,
+				textContent: run.textContent ?? null, webQueries: run.webQueries, analyzedAt: null,
 			});
 		});
 	});

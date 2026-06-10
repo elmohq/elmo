@@ -178,6 +178,44 @@ function tryGenericExtraction(rawOutput: any): string {
 	return "Unknown provider format - cannot extract text content.";
 }
 
+/**
+ * Exact sentinel strings returned when no answer text could be extracted —
+ * by the extractors in this file and by the provider-local extractors in
+ * providers/registry/*. Display paths show these to users; storage/analysis
+ * paths must treat them as failures (see tryExtractTextContent).
+ */
+const EXTRACTION_FAILURE_MESSAGES: ReadonlySet<string> = new Set([
+	"No text content found in OpenAI output.",
+	"No text content found in Anthropic output.",
+	"No AI overview content found.",
+	"No text content found in Mistral output.",
+	"No text content found in OpenRouter output.",
+	"No text content found in OpenRouter response.",
+	"No text content found in Olostep output.",
+	"No text content found in Olostep response.",
+	"No content in BrightData output.",
+	"No text content found in BrightData output.",
+	"Error extracting text content.",
+	"No content.",
+	"Unknown provider format - cannot extract text content.",
+]);
+
+export function isExtractionFailureMessage(text: string): boolean {
+	return EXTRACTION_FAILURE_MESSAGES.has(text.trim());
+}
+
+/**
+ * Like extractTextContent, but returns null instead of a human-readable
+ * failure sentinel when no answer text could be extracted. Use this anywhere
+ * the result is stored or analyzed (text_content writes, backfill,
+ * re-analysis) rather than displayed.
+ */
+export function tryExtractTextContent(rawOutput: any, providerOrEngine: string): string | null {
+	const text = extractTextContent(rawOutput, providerOrEngine);
+	if (!text || !text.trim() || isExtractionFailureMessage(text)) return null;
+	return text;
+}
+
 // ============================================================================
 // Citation extraction by provider
 // ============================================================================

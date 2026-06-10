@@ -28,7 +28,9 @@ interface PromptRunData {
 	version: string;
 	webSearchEnabled: boolean;
 	rawOutput: any;
+	textContent: string | null;
 	webQueries: string[];
+	analyzedAt: Date | null;
 }
 
 interface PromptChartPrintProps {

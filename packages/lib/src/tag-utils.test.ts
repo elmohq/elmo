@@ -64,6 +64,12 @@ describe("tag-utils", () => {
 			expect(isPromptBranded("Acme Corp products", brandName, "not-a-valid-url")).toBe(true);
 			expect(isPromptBranded("random products", brandName, "not-a-valid-url")).toBe(false);
 		});
+
+		it("should not match brand names embedded in longer words", () => {
+			expect(isPromptBranded("best toolbox for developers", "Box", "https://box.com")).toBe(false);
+			expect(isPromptBranded("is Box good for file storage", "Box", "https://box.com")).toBe(true);
+			expect(isPromptBranded("compare box.com pricing", "Box", "https://box.com")).toBe(true);
+		});
 	});
 
 	describe("computeSystemTags", () => {

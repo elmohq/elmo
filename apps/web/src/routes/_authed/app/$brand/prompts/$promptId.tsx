@@ -665,7 +665,8 @@ function ResponsesTab({
 						<div>
 							<span className="text-xs text-muted-foreground block mb-1.5">LLM Response</span>
 							<div className="rounded-md border bg-muted/30 p-4 max-h-64 overflow-auto prose prose-sm max-w-none">
-								<ReactMarkdown>{extractTextContent(run.rawOutput, run.provider ?? run.model)}</ReactMarkdown>
+								{/* Prefer the persisted text; fall back to re-parsing rawOutput for rows the backfill hasn't reached. */}
+								<ReactMarkdown>{run.textContent ?? extractTextContent(run.rawOutput, run.provider ?? run.model)}</ReactMarkdown>
 							</div>
 						</div>
 

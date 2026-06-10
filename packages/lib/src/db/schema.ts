@@ -78,9 +78,18 @@ export const promptRuns = pgTable(
 		version: text("version").notNull(),
 		webSearchEnabled: boolean("web_search_enabled").notNull(),
 		rawOutput: json("raw_output").notNull(),
+		/**
+		 * Provider-extracted answer text, persisted at write time so mention
+		 * analysis can be replayed without re-parsing provider-specific
+		 * rawOutput. Nullable: historical rows are populated by the
+		 * backfill-text-content job, and rows where extraction failed stay NULL.
+		 */
+		textContent: text("text_content"),
 		webQueries: text("web_queries").array().notNull().default([]),
 		brandMentioned: boolean("brand_mentioned").notNull(),
 		competitorsMentioned: text("competitors_mentioned").array().notNull().default([]),
+		/** When brand/competitor mentions were last computed (write time or last re-analysis). */
+		analyzedAt: timestamp("analyzed_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 	},
 	(table) => ({

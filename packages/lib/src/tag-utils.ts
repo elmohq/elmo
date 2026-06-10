@@ -1,4 +1,5 @@
 import { SYSTEM_TAGS } from "./db/schema";
+import { extractDomainFromUrl, mentionsName } from "./mention-analysis";
 
 /**
  * All possible system tag values
@@ -77,21 +78,22 @@ export function getEffectiveBrandedStatus(
 }
 
 /**
- * Check if a prompt text is "branded" (contains the brand name or domain)
+ * Check if a prompt text is "branded" (contains the brand name or domain).
+ *
+ * The name and the domain-without-TLD are matched on word boundaries so a
+ * brand named "Box" doesn't tag every prompt containing "toolbox" as branded.
+ * The full domain keeps substring matching — "box.com" is unambiguous.
  */
 export function isPromptBranded(promptValue: string, brandName: string, brandWebsite: string): boolean {
-	const promptLower = promptValue.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
+	if (mentionsName(promptValue, brandName)) return true;
 
-	try {
-		const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
-		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
-		const domainWithoutTld = domain.split(".")[0];
+	const domain = extractDomainFromUrl(brandWebsite);
+	const domainWithoutTld = domain.split(".")[0];
 
-		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
-	} catch {
-		return promptLower.includes(brandNameLower);
-	}
+	return (
+		(domain.includes(".") && promptValue.toLowerCase().includes(domain)) ||
+		mentionsName(promptValue, domainWithoutTld)
+	);
 }
 
 /**

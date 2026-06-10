@@ -11,6 +11,7 @@ import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
+import { enqueueBrandReanalysis } from "@/lib/reanalysis";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
 
@@ -239,6 +240,11 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 			throw new Error("Failed to update brand");
 		}
 
+		// Brand identity changed - recompute historical mentions/system tags.
+		if (Object.keys(updateData).length > 0) {
+			await enqueueBrandReanalysis(data.brandId);
+		}
+
 		return result[0];
 	});
 
@@ -290,7 +296,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 			};
 		});
 
-		return db.transaction(async (tx) => {
+		const saved = await db.transaction(async (tx) => {
 			await tx.delete(competitors).where(eq(competitors.brandId, data.brandId));
 
 			if (cleanedCompetitors.length > 0) {
@@ -308,6 +314,11 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 				where: eq(competitors.brandId, data.brandId),
 			});
 		});
+
+		// Competitor list changed - recompute historical competitor mentions.
+		await enqueueBrandReanalysis(data.brandId);
+
+		return saved;
 	});
 
 /**
@@ -341,7 +352,10 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 			)
 			.returning();
 
-		if (result) return result;
+		if (result) {
+			await enqueueBrandReanalysis(data.brandId);
+			return result;
+		}
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
@@ -381,6 +395,8 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 			.where(eq(competitors.id, data.competitorId))
 			.returning();
 
+		await enqueueBrandReanalysis(data.brandId);
+
 		return result;
 	});
 
@@ -419,6 +435,8 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 				domains: [domain],
 			})
 			.returning();
+
+		await enqueueBrandReanalysis(data.brandId);
 
 		return result;
 	});
