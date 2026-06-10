@@ -22,7 +22,8 @@ import { generateDateRange } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import { extractDomain, normalizeUrl, categorizeDomain } from "@/lib/domain-categories";
+import { extractDomain, normalizeUrl, emptyCategoryCounts } from "@/lib/domain-categories";
+import { categorizeDomain } from "@/lib/domain-categories.server";
 // Server Functions
 // ============================================================================
 
@@ -442,24 +443,15 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				}))
 				.sort((a, b) => b.count - a.count);
 
-			const brandCitations = domainDistribution.filter((d) => d.category === "brand").reduce((s, d) => s + d.count, 0);
-			const competitorCitations = domainDistribution.filter((d) => d.category === "competitor").reduce((s, d) => s + d.count, 0);
-			const socialMediaCitations = domainDistribution.filter((d) => d.category === "social_media").reduce((s, d) => s + d.count, 0);
-			const googleCitations = domainDistribution.filter((d) => d.category === "google").reduce((s, d) => s + d.count, 0);
-			const institutionalCitations = domainDistribution.filter((d) => d.category === "institutional").reduce((s, d) => s + d.count, 0);
-			const otherCitations = domainDistribution.filter((d) => d.category === "other").reduce((s, d) => s + d.count, 0);
-			const totalCitations = brandCitations + competitorCitations + socialMediaCitations + googleCitations + institutionalCitations + otherCitations;
+			const categoryCounts = emptyCategoryCounts();
+			for (const d of domainDistribution) categoryCounts[d.category] += d.count;
+			const totalCitations = domainDistribution.reduce((s, d) => s + d.count, 0);
 
 			if (totalCitations > 0) {
 				citationStats = {
 					totalCitations,
 					uniqueDomains: domainDistribution.length,
-					brandCitations,
-					competitorCitations,
-					socialMediaCitations,
-					googleCitations,
-					institutionalCitations,
-					otherCitations,
+					categoryCounts,
 					domainDistribution,
 					specificUrls,
 				};

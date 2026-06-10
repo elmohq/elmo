@@ -23,7 +23,8 @@ import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
-import { categorizeDomain, extractDomain } from "@/lib/domain-categories";
+import { extractDomain } from "@/lib/domain-categories";
+import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
 	getBrandMentionRateByModel,
 	getPerPromptCitationPages,
@@ -340,7 +341,7 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 		else domainAgg.set(row.domain, { count: row.count, title: row.title, cat });
 		if (cat === "brand") mix.brand += row.count;
 		else if (cat === "competitor") mix.competitor += row.count;
-		else if (cat === "social_media") mix.community += row.count;
+		else if (cat === "social") mix.community += row.count;
 		else mix.thirdParty += row.count;
 	}
 	const totalCites = mix.brand + mix.competitor + mix.community + mix.thirdParty || 1;
@@ -350,11 +351,11 @@ async function buildDigest(brandId: string, timezoneParam: string): Promise<Dige
 		e.title ? `${e.domain} ("${e.title}")` : e.domain;
 
 	const thirdPartyTop = entries
-		.filter((e) => e.cat !== "brand" && e.cat !== "competitor" && e.cat !== "social_media")
+		.filter((e) => e.cat !== "brand" && e.cat !== "competitor" && e.cat !== "social")
 		.sort(sortByCount)
 		.slice(0, 10);
 	const communityTop = entries
-		.filter((e) => e.cat === "social_media")
+		.filter((e) => e.cat === "social")
 		.sort(sortByCount)
 		.slice(0, 5);
 	const competitorPages = entries

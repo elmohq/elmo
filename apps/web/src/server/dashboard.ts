@@ -15,7 +15,8 @@ import {
 	getPerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { extractDomain, categorizeDomain, toRoundedPercentages } from "@/lib/domain-categories";
+import { type CitationCategory, extractDomain, toRoundedPercentages, emptyCategoryCounts } from "@/lib/domain-categories";
+import { categorizeDomain } from "@/lib/domain-categories.server";
 
 export interface VisibilityTimeSeriesPoint {
 	date: string;
@@ -24,15 +25,7 @@ export interface VisibilityTimeSeriesPoint {
 	branded: number | null;
 }
 
-export interface CitationTimeSeriesPoint {
-	date: string;
-	brand: number;
-	competitor: number;
-	socialMedia: number;
-	google: number;
-	institutional: number;
-	other: number;
-}
+export type CitationTimeSeriesPoint = { date: string } & Record<CitationCategory, number>;
 
 export interface DashboardSummaryResponse {
 	totalPrompts: number;
@@ -162,20 +155,8 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		);
 		const citationTimeSeries: CitationTimeSeriesPoint[] = dateRange.map((date) => {
 			const c = smoothedCitations.get(date);
-			if (!c) return { date, brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 };
-			const pct = toRoundedPercentages({
-				brand: c.brand, competitor: c.competitor, socialMedia: c.socialMedia,
-				google: c.google, institutional: c.institutional, other: c.other,
-			});
-			return {
-				date,
-				brand: pct.brand ?? 0,
-				competitor: pct.competitor ?? 0,
-				socialMedia: pct.socialMedia ?? 0,
-				google: pct.google ?? 0,
-				institutional: pct.institutional ?? 0,
-				other: pct.other ?? 0,
-			};
+			if (!c) return { date, ...emptyCategoryCounts() };
+			return { date, ...(toRoundedPercentages(c) as Record<CitationCategory, number>) };
 		});
 
 		return {

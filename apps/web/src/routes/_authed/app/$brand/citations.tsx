@@ -127,7 +127,7 @@ function CitationsPage() {
 				brandId={brandId}
 				brandName={brand?.name}
 				showStats={true}
-				maxDomains={20}
+				maxDomains={10}
 				maxUrls={20}
 				days={days}
 				onCompetitorAdded={() => {
