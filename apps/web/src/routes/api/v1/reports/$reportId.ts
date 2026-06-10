@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				params: z.object({ reportId: z.uuid("Invalid report ID format") }),
+				params: z.object({ reportId: z.guid("Invalid report ID format") }),
 				handle: async ({ params, request }) => {
 					const { reportId } = params;
 

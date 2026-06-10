@@ -223,8 +223,11 @@ test.describe("External API - CRUD Operations", () => {
     });
     expect(response.status()).toBe(200);
 
+    // DELETE returns the deleted resource bare, plus cascade info
     const body = await response.json();
-    expect(body.message).toContain("deleted");
+    expect(body.id).toBe(created.id);
+    expect(body.value).toContain("Prompt to be deleted");
+    expect(body.deletedRunsCount).toBe(0);
 
     // Verify it's gone
     const getResponse = await request.get(`/api/v1/prompts/${created.id}`, {

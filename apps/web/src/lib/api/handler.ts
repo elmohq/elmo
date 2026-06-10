@@ -42,7 +42,7 @@ export interface ApiHandlerContext<P, B> {
 }
 
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
-	/** Zod schema for route path params, e.g. `z.object({ promptId: z.uuid() })`. */
+	/** Zod schema for route path params, e.g. `z.object({ promptId: z.guid() })`. */
 	params?: z.ZodType<P>;
 	/** Zod schema for the JSON request body (POST/PATCH). */
 	body?: z.ZodType<B>;

@@ -64,7 +64,7 @@ describe("createApiHandler", () => {
 
 	it("returns 400 when params fail validation", async () => {
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.uuid("Invalid prompt ID format") }),
+			params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
 			handle: async () => ({ ok: true }),
 		});
 		const response = await handler({ request: makeRequest(), params: { promptId: "not-a-uuid" } });
@@ -77,10 +77,21 @@ describe("createApiHandler", () => {
 	it("passes validated params to handle", async () => {
 		const promptId = "123e4567-e89b-12d3-a456-426614174000";
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.uuid() }),
+			params: z.object({ promptId: z.guid() }),
 			handle: async ({ params }) => ({ received: params.promptId }),
 		});
 		const response = await handler({ request: makeRequest(), params: { promptId } });
+		expect(await response.json()).toEqual({ received: promptId });
+	});
+
+	it("accepts IDs without RFC version bits, like the old isValidUUID regex", async () => {
+		const promptId = "00000000-0000-0000-0000-000000000001";
+		const handler = createApiHandler({
+			params: z.object({ promptId: z.guid() }),
+			handle: async ({ params }) => ({ received: params.promptId }),
+		});
+		const response = await handler({ request: makeRequest(), params: { promptId } });
+		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ received: promptId });
 	});
 
@@ -173,7 +184,7 @@ describe("createApiHandler", () => {
 
 	it("checks auth before validating params", async () => {
 		const handler = createApiHandler({
-			params: z.object({ promptId: z.uuid() }),
+			params: z.object({ promptId: z.guid() }),
 			handle: async () => ({ ok: true }),
 		});
 		const response = await handler({

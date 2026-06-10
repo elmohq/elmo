@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				params: z.object({ promptId: z.uuid("Invalid prompt ID format") }),
+				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
 				handle: async ({ params, request }) => {
 					const { promptId } = params;
 					const { searchParams } = new URL(request.url);

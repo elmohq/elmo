@@ -15,7 +15,9 @@ import { z } from "zod";
 import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
 
-const competitorParams = z.object({ competitorId: z.uuid("Invalid competitor ID format") });
+// z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
+// always used; z.uuid() enforces RFC version bits and rejects existing IDs.
+const competitorParams = z.object({ competitorId: z.guid("Invalid competitor ID format") });
 
 const updateCompetitorBody = z.object({
 	name: z.string().trim().min(1, "name must be a non-empty string").optional(),
