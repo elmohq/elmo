@@ -757,8 +757,13 @@ export function CitationsDisplay({
 									<TooltipTrigger asChild>
 										<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
 									</TooltipTrigger>
-									<TooltipContent className="max-w-xs text-sm font-normal">
-										The total citations (links) AI models returned across all prompt evaluations, excluding Google AI Mode search &amp; shopping surfaces.
+									{/* Kept deliberately simple: the user doesn't need the Google AI Mode
+								    search/shopping nuance. Those surfaces aren't citations in the
+								    traditional sense (they point back into Google's own product/search
+								    results, not an external domain w.r.t. the model), so they're
+								    excluded from this count and broken out in the Google Shopping card. */}
+								<TooltipContent className="max-w-xs text-sm font-normal">
+										The total external websites cited by AI models across prompt evaluations.
 									</TooltipContent>
 								</Tooltip>
 							</CardTitle>
