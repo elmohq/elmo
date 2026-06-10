@@ -10,38 +10,28 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { reports } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
+import { z } from "zod";
 import { computeReportUnstableStats } from "@workspace/lib/report-metrics";
-
-function isValidUUID(id: string): boolean {
-	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	return uuidRegex.test(id);
-}
+import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/reports/$reportId")({
 	server: {
 		handlers: {
-			GET: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
+			GET: createApiHandler({
+				params: z.object({ reportId: z.uuid("Invalid report ID format") }),
+				handle: async ({ params, request }) => {
 					const { reportId } = params;
-					if (!isValidUUID(reportId)) {
-						return Response.json({ error: "Validation Error", message: "Invalid report ID format" }, { status: 400 });
-					}
 
 					const result = await db.select().from(reports).where(eq(reports.id, reportId)).limit(1);
 					if (result.length === 0) {
-						return Response.json({ error: "Not Found", message: `Report with ID '${reportId}' not found` }, { status: 404 });
+						throw new ApiError(404, "Not Found", `Report with ID '${reportId}' not found`);
 					}
 
 					const report = result[0];
 
 					// For non-completed reports, return status with progress
 					if (report.status !== "completed" || !report.rawOutput) {
-						return Response.json({
+						return {
 							reportId: report.id,
 							status: report.status,
 							progress: report.progress,
@@ -49,7 +39,7 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 							brandWebsite: report.brandWebsite,
 							createdAt: report.createdAt,
 							completedAt: report.completedAt,
-						});
+						};
 					}
 
 					const { searchParams } = new URL(request.url);
@@ -108,7 +98,7 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 					// Compute unstable derived stats
 					const unstable = computeReportUnstableStats(rawOutput);
 
-					return Response.json({
+					return {
 						reportId: report.id,
 						status: report.status,
 						brandName: report.brandName,
@@ -117,12 +107,9 @@ export const Route = createFileRoute("/api/v1/reports/$reportId")({
 						completedAt: report.completedAt,
 						prompts: allPromptSnapshots,
 						unstable,
-					});
-				} catch (error) {
-					console.error("Error fetching report:", error);
-					return Response.json({ error: "Internal Server Error", message: "Failed to fetch report" }, { status: 500 });
-				}
-			},
+					};
+				},
+			}),
 		},
 	},
 });

@@ -845,6 +845,7 @@
 							}
 						}
 					},
+					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
@@ -901,17 +902,10 @@
 				],
 				"responses": {
 					"200": {
-						"description": "Competitor deleted",
+						"description": "Competitor deleted (returns the deleted competitor)",
 						"content": {
 							"application/json": {
-								"schema": {
-									"type": "object",
-									"properties": {
-										"message": { "type": "string" },
-										"data": { "$ref": "#/components/schemas/Competitor" }
-									},
-									"required": ["message", "data"]
-								}
+								"schema": { "$ref": "#/components/schemas/Competitor" }
 							}
 						}
 					},
@@ -1197,6 +1191,9 @@
 							}
 						}
 					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
+					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
@@ -1279,29 +1276,29 @@
 				],
 				"responses": {
 					"200": {
-						"description": "Prompt deleted successfully",
+						"description": "Prompt deleted (returns the deleted prompt)",
 						"content": {
 							"application/json": {
 								"schema": {
-									"type": "object",
-									"properties": {
-										"message": { "type": "string" },
-										"data": {
+									"allOf": [
+										{ "$ref": "#/components/schemas/Prompt" },
+										{
 											"type": "object",
 											"properties": {
-												"deletedPrompt": { "$ref": "#/components/schemas/Prompt" },
 												"deletedRunsCount": {
 													"type": "integer",
 													"description": "Number of related prompt_runs rows deleted by the cascade."
 												}
 											},
-											"required": ["deletedPrompt", "deletedRunsCount"]
+											"required": ["deletedRunsCount"]
 										}
-									},
-									"required": ["message", "data"]
+									]
 								}
 							}
 						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationError"
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"

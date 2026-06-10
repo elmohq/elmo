@@ -1,30 +1,35 @@
+/**
+ * /api/v1/prompts/:promptId — single prompt resource.
+ *
+ * GET     fetch one prompt
+ * PATCH   update value / enabled / tags
+ * DELETE  remove the prompt (cascades to runs + citations)
+ *
+ * Protected by API key authentication.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
 
-function isValidUUID(id: string): boolean {
-	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	return uuidRegex.test(id);
-}
+const promptParams = z.object({ promptId: z.uuid("Invalid prompt ID format") });
+
+const updatePromptBody = z.object({
+	value: z.string().trim().min(1, "value must be a non-empty string").optional(),
+	enabled: z.boolean().optional(),
+	tags: z.array(z.string()).optional(),
+});
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
 		handlers: {
-			GET: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
-					const { promptId } = params;
-					if (!isValidUUID(promptId)) {
-						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
-					}
-
+			GET: createApiHandler({
+				params: promptParams,
+				handle: async ({ params }) => {
 					const prompt = await db
 						.select({
 							id: prompts.id,
@@ -37,72 +42,44 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 							updatedAt: prompts.updatedAt,
 						})
 						.from(prompts)
-						.where(eq(prompts.id, promptId))
+						.where(eq(prompts.id, params.promptId))
 						.limit(1);
 
 					if (prompt.length === 0) {
-						return Response.json({ error: "Not Found", message: `Prompt with ID '${promptId}' not found` }, { status: 404 });
+						throw new ApiError(404, "Not Found", `Prompt with ID '${params.promptId}' not found`);
 					}
 
-					return Response.json(prompt[0]);
-				} catch (error) {
-					console.error("Error fetching prompt:", error);
-					return Response.json({ error: "Internal Server Error", message: "Failed to fetch prompt" }, { status: 500 });
-				}
-			},
+					return prompt[0];
+				},
+			}),
 
-			PATCH: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
+			PATCH: createApiHandler({
+				params: promptParams,
+				body: updatePromptBody,
+				handle: async ({ params, body }) => {
 					const { promptId } = params;
-					if (!isValidUUID(promptId)) {
-						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
-					}
+					const { value, enabled, tags } = body;
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
-						return Response.json({ error: "Not Found", message: `Prompt with ID '${promptId}' not found` }, { status: 404 });
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 
 					const brandInfo = await db.select().from(brands).where(eq(brands.id, existingPrompt[0].brandId)).limit(1);
 					if (brandInfo.length === 0) {
-						return Response.json({ error: "Internal Server Error", message: "Brand not found for prompt" }, { status: 500 });
+						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
 					}
 					const brand = brandInfo[0];
 
-					const body = await request.json();
-					const { value, enabled, tags } = body as {
-						value?: unknown;
-						enabled?: unknown;
-						tags?: unknown;
-					};
-
 					const updateData: Partial<typeof prompts.$inferInsert> = {};
 					if (value !== undefined) {
-						if (typeof value !== "string" || !value.trim()) {
-							return Response.json(
-								{ error: "Validation Error", message: "value must be a non-empty string" },
-								{ status: 400 },
-							);
-						}
-						updateData.value = value.trim();
-						updateData.systemTags = computeSystemTags(value.trim(), brand.name, brand.website);
+						updateData.value = value;
+						updateData.systemTags = computeSystemTags(value, brand.name, brand.website);
 					}
-
 					if (enabled !== undefined) {
-						if (typeof enabled !== "boolean") {
-							return Response.json({ error: "Validation Error", message: "enabled must be a boolean" }, { status: 400 });
-						}
 						updateData.enabled = enabled;
 					}
-
 					if (tags !== undefined) {
-						if (!Array.isArray(tags)) {
-							return Response.json({ error: "Validation Error", message: "tags must be an array of strings" }, { status: 400 });
-						}
 						updateData.tags = sanitizeUserTags(tags);
 					}
 
@@ -119,53 +96,35 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						}
 					}
 
-					return Response.json(updatedPrompt);
-				} catch (error) {
-					console.error("Error updating prompt:", error);
-					return Response.json({ error: "Internal Server Error", message: "Failed to update prompt" }, { status: 500 });
-				}
-			},
+					return updatedPrompt;
+				},
+			}),
 
-			DELETE: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
+			DELETE: createApiHandler({
+				params: promptParams,
+				handle: async ({ params }) => {
 					const { promptId } = params;
-					if (!isValidUUID(promptId)) {
-						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
-					}
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
-						return Response.json({ error: "Not Found", message: `Prompt with ID '${promptId}' not found` }, { status: 404 });
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 
 					await removePromptJobScheduler(promptId);
 
-				const result = await db.transaction(async (tx) => {
-					await tx.delete(citations).where(eq(citations.promptId, promptId));
-					const deletedRuns = await tx
-						.delete(promptRuns)
-						.where(eq(promptRuns.promptId, promptId))
-						.returning({ id: promptRuns.id });
-					const deletedPrompt = await tx.delete(prompts).where(eq(prompts.id, promptId)).returning();
-					return { deletedRuns, deletedPrompt };
-				});
-
-					return Response.json({
-						message: "Prompt deleted successfully",
-						data: {
-							deletedPrompt: result.deletedPrompt[0],
-							deletedRunsCount: result.deletedRuns.length,
-						},
+					const result = await db.transaction(async (tx) => {
+						await tx.delete(citations).where(eq(citations.promptId, promptId));
+						const deletedRuns = await tx
+							.delete(promptRuns)
+							.where(eq(promptRuns.promptId, promptId))
+							.returning({ id: promptRuns.id });
+						const deletedPrompt = await tx.delete(prompts).where(eq(prompts.id, promptId)).returning();
+						return { deletedRuns, deletedPrompt };
 					});
-				} catch (error) {
-					console.error("Error deleting prompt:", error);
-					return Response.json({ error: "Internal Server Error", message: "Failed to delete prompt" }, { status: 500 });
-				}
-			},
+
+					return { ...result.deletedPrompt[0], deletedRunsCount: result.deletedRuns.length };
+				},
+			}),
 		},
 	},
 });
