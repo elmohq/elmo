@@ -70,6 +70,9 @@ describe("categorizeDomain priority", () => {
 		expect(cat("bogleheads.org")).toBe("social");
 		expect(cat("forums.macrumors.com")).toBe("social");
 		expect(cat("community.whattoexpect.com")).toBe("social");
+		expect(cat("nairaland.com")).toBe("social");
+		expect(cat("collegeconfidential.com")).toBe("social");
+		expect(cat("news.ycombinator.com")).toBe("social");
 		// quora stays general social
 		expect(cat("quora.com")).toBe("social");
 		// dictionaries

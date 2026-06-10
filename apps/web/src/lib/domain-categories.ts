@@ -262,16 +262,29 @@ export function attributeProduct(
  * subdomain heuristic in isForumDomain — additionally recognizes a forum when the
  * path is ambiguous, and routes the domain to the "social" source category
  * (community / UGC) instead of letting it fall to "other".
+ *
+ * Seeded from Wikipedia's "List of Internet forums". News/forum hybrids (MacRumors,
+ * Tom's Hardware, Ars Technica, Digital Spy, XDA, MoneySavingExpert, …) are
+ * deliberately omitted: their forum subdomains/paths are already caught, while the
+ * bare domain should stay editorial. Defunct, regional-only, and dark-web/abuse
+ * forums are skipped.
  */
 const FORUM_DOMAINS = new Set([
-	// general / large
+	// general / large (incl. major non-US: zhihu = Chinese Q&A, nairaland = Nigerian)
 	"4chan.org", "somethingawful.com", "city-data.com", "gaiaonline.com",
 	"resetera.com", "neogaf.com", "thestudentroom.co.uk", "mumsnet.com",
+	"nairaland.com", "skyscrapercity.com", "whirlpool.net.au", "zhihu.com",
+	"news.ycombinator.com",
+	// academic / professional
+	"collegeconfidential.com", "studentdoctor.net", "boredofstudies.org",
+	"pprune.org", "eng-tips.com",
 	// hobby / enthusiast
 	"bogleheads.org", "physicsforums.com", "avsforum.com", "head-fi.org",
 	"audiosciencereview.com", "linustechtips.com", "androidforums.com",
 	"talkbass.com", "ultimate-guitar.com", "reef2reef.com", "fishlore.com",
 	"stripersonline.com", "ar15.com", "rollitup.org", "grasscity.com",
+	"twoplustwo.com", "healthboards.com", "airliners.net", "gearspace.com",
+	"teamliquid.net", "atariage.com", "websleuths.com",
 	// deals / travel / parenting / wedding
 	"redflagdeals.com", "flyertalk.com", "slickdeals.net", "weddingbee.com",
 	"thenest.com", "cafemom.com",
