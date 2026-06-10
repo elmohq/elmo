@@ -1,7 +1,8 @@
 import { useRef } from "react";
 import { useFilteredVisibility } from "@/hooks/use-filtered-visibility";
 import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/components/visibility-bar";
-import { usePageFilters } from "@/components/filter-bar";
+import { useListFilters } from "@/hooks/use-list-filters";
+import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /**
  * Self-contained visibility bar. Subscribes directly to the filter URL
@@ -20,17 +21,17 @@ export function VisibilityBarSection({
 }: {
 	brandId: string | undefined;
 }) {
-	const { selectedLookback, selectedModel, selectedTags, searchQuery } = usePageFilters();
-	const modelParam = selectedModel === "all" ? undefined : selectedModel;
+	const { lookback, model, tags, search } = useListFilters();
+	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
 	const {
 		filteredVisibility,
 		isLoading: isLoadingVisibility,
 		isValidating: isValidatingVisibility,
 	} = useFilteredVisibility(brandId, {
-		lookback: selectedLookback,
-		tags: selectedTags.length > 0 ? selectedTags : undefined,
-		search: searchQuery || undefined,
+		lookback,
+		tags: tags.length > 0 ? tags : undefined,
+		search: search || undefined,
 		model: modelParam,
 	});
 

@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useOptimistic, useRef, useState, useMemo, startTransition } from "react";
-import { useQueryState, parseAsArrayOf, parseAsString } from "nuqs";
+import { useQueryState } from "nuqs";
 import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot, SiMistralai } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
 import { Sparkles } from "lucide-react";
@@ -20,30 +20,20 @@ import { useBrand } from "@/hooks/use-brands";
 import { getModelMeta } from "@workspace/lib/providers/models";
 export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
 import { ALL_MODELS_VALUE } from "@/lib/model-filter";
+// Shared URL parsers live with `useListFilters` (the data-consumer hook);
+// the widgets here keep their own per-key subscriptions built on them.
+import {
+	modelParser,
+	lookbackParser,
+	tagsParser,
+	searchParser,
+	coerceLookback,
+} from "@/hooks/use-list-filters";
 
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
  *  model ids, so we don't constrain this to a literal union. */
 export type ModelFilterValue = string;
-
-// Parsers stay plain — each interactive handler opens its own
-// `startTransition` scope so the URL update *and* the `useOptimistic`
-// dispatch ride together in one transition. Using nuqs's parser-level
-// `startTransition` option gave us an ugly race: `setOptimistic` was
-// urgent while the URL setter was transition-priority, so a sync
-// effect fired in the urgent render (with URL still stale) and
-// snapped the optimistic value back.
-const modelParser = parseAsString;
-const lookbackParser = parseAsString;
-const tagsParser = parseAsArrayOf(parseAsString, ",");
-const searchParser = parseAsString;
-
-const LOOKBACK_VALUES = ["1w", "1m", "3m", "6m", "1y", "all"] as const;
-function coerceLookback(raw: string | null | undefined, fallback: LookbackPeriod): LookbackPeriod {
-	return (LOOKBACK_VALUES as readonly string[]).includes(raw ?? "")
-		? (raw as LookbackPeriod)
-		: fallback;
-}
 
 /** Map a provider `iconId` (see `getModelMeta`) to the react-icons component
  *  that renders it. `generic` and any unknown id fall through to a sparkle,
@@ -406,14 +396,16 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 // prompts-summary query is read once by a single owner.
 // ------------------------------------------------------------------
 
-export function ResultCount({ count }: { count: number | undefined }) {
+export function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
 	const [tags] = useQueryState("tags", tagsParser.withDefault([]));
 	const [q] = useQueryState("q", searchParser.withDefault(""));
 	const active = (tags?.length ?? 0) > 0 || Boolean(q);
 	if (!active || count === undefined) return null;
+	const showTotal = total !== undefined && total !== count;
 	return (
 		<span className="text-xs text-muted-foreground tabular-nums ml-1">
-			{count.toLocaleString()} {count === 1 ? "result" : "results"}
+			{count.toLocaleString()}
+			{showTotal && ` of ${total.toLocaleString()}`} {count === 1 && !showTotal ? "result" : "results"}
 		</span>
 	);
 }
@@ -427,14 +419,19 @@ export function FilterBar({
 	availableModels,
 	showSearch,
 	showModelSelector,
+	searchPlaceholder,
 	resultCount,
+	resultTotal,
 }: {
 	availableTags: readonly string[];
 	availableModels: string[];
 	showSearch: boolean;
 	showModelSelector: boolean;
+	searchPlaceholder?: string;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
 	resultCount?: number;
+	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
+	resultTotal?: number;
 }) {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
@@ -442,53 +439,12 @@ export function FilterBar({
 				{showModelSelector && <ModelDropdown availableModels={availableModels} />}
 				<TagsDropdown availableTags={availableTags} />
 				<LookbackDropdown />
-				<ResultCount count={resultCount} />
+				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput />}
+			{showSearch && <SearchInput placeholder={searchPlaceholder} />}
 		</div>
 	);
 }
 
-// ------------------------------------------------------------------
-// Hooks for data-fetching consumers that need all four values at once.
-// These subscribe to every URL key, so only use in components that
-// actually compose a SWR query from the full filter set.
-// ------------------------------------------------------------------
-
-export function usePageFilters() {
-	const { brand } = useBrand();
-	const defaultLookback = useMemo(
-		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[brand?.earliestDataDate],
-	);
-
-	const [selectedModel] = useQueryState("model", modelParser.withDefault(ALL_MODELS_VALUE));
-	const [selectedLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
-	const [selectedTags] = useQueryState("tags", tagsParser.withDefault([]));
-	const [searchQuery] = useQueryState("q", searchParser.withDefault(""));
-
-	return {
-		selectedModel: selectedModel ?? ALL_MODELS_VALUE,
-		selectedLookback: coerceLookback(selectedLookback, defaultLookback),
-		selectedTags: selectedTags ?? [],
-		searchQuery: searchQuery ?? "",
-	};
-}
-
-export function usePageFilterSetters() {
-	const [, setSelectedModel] = useQueryState("model", modelParser);
-	const [, setSelectedLookback] = useQueryState("lookback", lookbackParser);
-	const [, setSelectedTags] = useQueryState("tags", tagsParser);
-	const [, setSearchQuery] = useQueryState("q", searchParser);
-
-	return {
-		setSelectedModel: (model: string) => setSelectedModel(model),
-		setSelectedLookback: (lookback: LookbackPeriod) => setSelectedLookback(lookback),
-		setSelectedTags,
-		setSearchQuery,
-		clearFilters: () => {
-			setSelectedTags(null);
-			setSearchQuery(null);
-		},
-	};
-}
+// Data-fetching consumers that need the full filter set use
+// `useListFilters` from "@/hooks/use-list-filters".
