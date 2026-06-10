@@ -39,10 +39,11 @@ describe("categorizeDomain priority", () => {
 		expect(cat("crunchbase.com")).toBe("reference");
 	});
 
-	it("keeps government/edu/research institutional and Google as google", () => {
+	it("keeps gov/edu/research institutional; unbucketed Google domains fall to other", () => {
 		expect(cat("nih.gov")).toBe("institutional");
 		expect(cat("stanford.edu")).toBe("institutional");
-		expect(cat("google.com")).toBe("google");
+		expect(cat("google.com")).toBe("other"); // no Google category anymore
+		expect(cat("patents.google.com")).toBe("reference"); // exception: patent database
 	});
 
 	it("falls back to other for unknown domains", () => {
@@ -63,6 +64,8 @@ describe("categorizeDomain priority", () => {
 		expect(cat("pypi.org")).toBe("developer"); // .org, must beat institutional
 		expect(cat("npmjs.com")).toBe("developer");
 		expect(cat("developer.mozilla.org")).toBe("developer");
+		expect(cat("kaggle.com")).toBe("developer"); // ex-Google, now developer
+		expect(cat("chromium.org")).toBe("developer");
 		// quora stays general social
 		expect(cat("quora.com")).toBe("social");
 		// dictionaries
@@ -147,6 +150,9 @@ describe("inferPageType", () => {
 		expect(inferPageType("https://ubeauty.com/pages/return-policy", "Returns")).toBe("info");
 		expect(inferPageType("https://ubeauty.com/pages/subscription", "Subscription")).toBe("info");
 		expect(inferPageType("https://amazon.com/dp/B089", "U Beauty Serum")).toBe("product");
+		// "/topic/" is not a forum (Britannica/news topic pages)
+		expect(inferPageType("https://www.britannica.com/topic/mezcal", "Mezcal")).not.toBe("forum");
+		expect(resolvePageType("https://www.britannica.com/topic/mezcal", "Mezcal", "reference")).toBe("article");
 	});
 	it("detects 'best/top' in the URL slug, but not store best-seller pages", () => {
 		// title doesn't lead with "Best", but the slug does

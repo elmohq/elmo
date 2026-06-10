@@ -14,7 +14,6 @@ export type CitationCategory =
 	| "pr"
 	| "reference"
 	| "institutional"
-	| "google"
 	| "other";
 
 /**
@@ -33,7 +32,6 @@ export const CITATION_CATEGORIES: CitationCategory[] = [
 	"pr",
 	"reference",
 	"institutional",
-	"google",
 	"other",
 ];
 
@@ -281,7 +279,7 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	const hay = `${path} ${t}`;
 
 	if (/(^|\.)(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com)$/.test(host) || /\/(watch|shorts|embed|videos?)(\/|$|\?)/.test(path)) return "video";
-	if (/(^|\.)reddit\.com$/.test(host) || /\/(comments|forums?|threads?|topic|viewtopic|discussion|community)(\/|$)/.test(path) || /\/r\//.test(path)) return "forum";
+	if (/(^|\.)reddit\.com$/.test(host) || /\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) || /\/r\//.test(path)) return "forum";
 	if (/\/(docs?|documentation|developers?|api|sdk|reference)(\/|$)/.test(path)) return "doc";
 	if (/\breview(s|ed)?\b/.test(hay)) return "review";
 	if (/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) || /\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)) return "comparison";
@@ -354,7 +352,6 @@ export const CATEGORY_CONFIG: Record<CitationCategory, { label: string; chartCol
 	pr: { label: "PR", chartColor: "#f58518", badgeClass: "bg-orange-500/90 text-white", chartDotClass: "bg-orange-500" },
 	reference: { label: "Reference", chartColor: "#b279a2", badgeClass: "bg-fuchsia-500/90 text-white", chartDotClass: "bg-fuchsia-500" },
 	institutional: { label: "Institutional", chartColor: "#79a8e8", badgeClass: "bg-sky-500/90 text-white", chartDotClass: "bg-sky-500" },
-	google: { label: "Google", chartColor: "#9c6b4e", badgeClass: "bg-amber-700/90 text-white", chartDotClass: "bg-amber-700" },
 	other: { label: "Other", chartColor: "#9498a0", badgeClass: "bg-slate-400/90 text-white", chartDotClass: "bg-slate-400" },
 };
 

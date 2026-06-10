@@ -32,27 +32,9 @@ const DEVELOPER_DOMAINS = new Set([
 	// Developer docs / learning
 	"developer.mozilla.org", "w3schools.com", "geeksforgeeks.org", "freecodecamp.org",
 	"readthedocs.io", "css-tricks.com", "baeldung.com", "digitalocean.com",
-	// ML / model hubs
+	// ML / model hubs + ex-Google dev/ML domains (no longer their own category)
 	"huggingface.co", "paperswithcode.com",
-]);
-
-const GOOGLE_OWNED_DOMAINS = new Set([
-	"google.com", "google.org", "google.dev", "google.cloud",
-	"googleapis.com", "googleusercontent.com", "googleblog.com",
-	"googlesource.com", "googlecode.com",
-	"blog.google", "about.google", "store.google",
-	"android.com", "chromium.org", "chrome.com",
-	"youtube.google.com", "withgoogle.com",
-	"firebase.com", "firebaseio.com",
-	"gstatic.com", "ggpht.com",
-	"gmail.com", "googlemail.com",
-	"google.ai", "deepmind.google", "deepmind.com",
-	"kaggle.com", "waze.com", "fitbit.com",
-	"blogger.com", "blogspot.com",
-	"appspot.com", "web.app", "firebaseapp.com",
-	"googlemaps.com", "google.maps",
-	"doubleclick.net", "googlesyndication.com", "googleadservices.com",
-	"google.shopping", "google.flights",
+	"kaggle.com", "chromium.org", "firebase.com", "firebaseio.com", "deepmind.com", "deepmind.google",
 ]);
 
 // Press-release distribution wires — small, finite, unambiguous.
@@ -81,6 +63,7 @@ const REFERENCE_DOMAINS = new Set([
 	"fandom.com", "wikihow.com", "crunchbase.com", "imdb.com", "britannica.com",
 	"dictionary.com", "merriam-webster.com", "investopedia.com", "goodreads.com",
 	"discogs.com", "genius.com", "allmusic.com", "incidecoder.com", "skinsort.com",
+	"patents.google.com", // Google-owned, but a reference DB (not a traditional citation surface)
 	// Dictionaries / encyclopedias
 	"dictionary.cambridge.org", "collinsdictionary.com", "vocabulary.com", "thesaurus.com",
 	// Knowledge / structured data
@@ -186,13 +169,6 @@ export function isEditorialDomain(domain: string): boolean {
 	return inDomainSet(domain, EDITORIAL_DOMAIN_SET);
 }
 
-export function isGoogleDomain(domain: string): boolean {
-	if (inDomainSet(domain, GOOGLE_OWNED_DOMAINS)) return true;
-	// Google country-specific TLDs: google.co.uk, google.com.au, google.de, etc.
-	if (/^google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(domain)) return true;
-	return false;
-}
-
 export function isInstitutionalDomain(domain: string): boolean {
 	if (inDomainSet(domain, INSTITUTIONAL_DOMAINS)) return true;
 	const parts = domain.split(".");
@@ -218,7 +194,6 @@ export function categorizeDomain(
 	for (const cd of competitorDomains) {
 		if (domain === cd || domain.endsWith(`.${cd}`)) return "competitor";
 	}
-	if (isGoogleDomain(domain)) return "google";
 	if (isPrWireDomain(domain)) return "pr";
 	if (isReviewDomain(domain)) return "reviews";
 	if (isEcommerceDomain(domain)) return "ecommerce";

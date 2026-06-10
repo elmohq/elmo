@@ -463,8 +463,8 @@ function TrendAreaChart({
 	keys: string[];
 	meta: Record<string, { label: string; color: string }>;
 }) {
-	// Only render bands that actually appear in the window.
-	const present = keys.filter((k) => data.some((d) => typeof d[k] === "number" && (d[k] as number) > 0));
+	// Callers pass exactly the keys that appear (same lists the tab filters use).
+	const present = keys;
 	// Display order: largest band first, "other" always last.
 	const totals = new Map(present.map((k) => [k, data.reduce((s, d) => s + (typeof d[k] === "number" ? (d[k] as number) : 0), 0)]));
 	const ordered = [...present].sort((a, b) => (a === "other" ? 1 : b === "other" ? -1 : (totals.get(b) ?? 0) - (totals.get(a) ?? 0)));
@@ -612,20 +612,26 @@ export function CitationsDisplay({
 	}, [citationData.specificUrls, selectedCategory, selectedPageType, urlSearch, maxUrls]);
 
 
-	// Tab filters show only categories/types that actually appear, in canonical order.
-	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(() => {
-		const present = CITATION_CATEGORIES.filter((c) => citationData.specificUrls.some((u) => u.category === c));
-		return [{ key: "all", label: "All Sources" }, ...present.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))];
-	}, [citationData.specificUrls]);
-	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(() => {
-		const present = new Set(citationData.specificUrls.map((u) => u.pageType).filter(Boolean));
-		const ordered = CITATION_PAGE_TYPES.filter((p) => present.has(p));
-		return [{ key: "all", label: "All Page Types" }, ...ordered.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label }))];
-	}, [citationData.specificUrls]);
-	const domainSourceTabs = useMemo<{ key: string; label: string }[]>(() => {
-		const present = CITATION_CATEGORIES.filter((c) => citationData.domainDistribution.some((d) => d.category === c));
-		return [{ key: "all", label: "All Sources" }, ...present.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))];
-	}, [citationData.domainDistribution]);
+	// Single source of truth: the categories / page types that actually appear in
+	// the two trend charts. The tab filters read from these SAME lists (passed to
+	// TrendAreaChart as `keys`), so the tabs and charts can never drift apart.
+	const chartSourceCategories = useMemo(
+		() => CITATION_CATEGORIES.filter((c) => (citationData.citationTimeSeries ?? []).some((p) => ((p as Partial<Record<CitationCategory, number>>)[c] ?? 0) > 0)),
+		[citationData.citationTimeSeries],
+	);
+	const chartPageTypes = useMemo(
+		() => CITATION_PAGE_TYPES.filter((p) => (citationData.pageTypeTimeSeries ?? []).some((d) => ((d as Partial<Record<CitationPageType, number>>)[p] ?? 0) > 0)),
+		[citationData.pageTypeTimeSeries],
+	);
+	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(
+		() => [{ key: "all", label: "All Sources" }, ...chartSourceCategories.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))],
+		[chartSourceCategories],
+	);
+	const domainSourceTabs = urlSourceTabs; // identical by construction (same chart-category list)
+	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(
+		() => [{ key: "all", label: "All Page Types" }, ...chartPageTypes.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label }))],
+		[chartPageTypes],
+	);
 	const googleModule = citationData.googleModule;
 	const googleProducts = useMemo(() => {
 		const ps = citationData.googleModule?.shopping.products ?? [];
@@ -781,7 +787,7 @@ export function CitationsDisplay({
 					title="Citation Categories"
 					tooltip="Share of citations by source category over time, as a percentage of all citations each day. Smoothed to account for staggered prompt schedules; Google AI Mode search/shopping are excluded (see the Google Shopping section)."
 					data={(citationData.citationTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
-					keys={CITATION_CATEGORIES}
+					keys={chartSourceCategories}
 					meta={CATEGORY_META}
 				/>
 			)}
@@ -792,7 +798,7 @@ export function CitationsDisplay({
 					title="Citation Page Types"
 					tooltip="Share of citations by page type over time — what kind of page each citation points to, inferred from the URL and title."
 					data={(citationData.pageTypeTimeSeries ?? []) as unknown as Array<Record<string, number | string>>}
-					keys={CITATION_PAGE_TYPES}
+					keys={chartPageTypes}
 					meta={PAGE_TYPE_META}
 				/>
 			)}
