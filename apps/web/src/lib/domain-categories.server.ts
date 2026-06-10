@@ -28,13 +28,16 @@ const DEVELOPER_DOMAINS = new Set([
 	"hex.pm", "pub.dev", "pkg.go.dev", "hub.docker.com", "cocoapods.org", "mvnrepository.com",
 	// Developer Q&A / community
 	"stackoverflow.com", "stackexchange.com", "superuser.com", "serverfault.com",
-	"askubuntu.com", "news.ycombinator.com", "dev.to", "hashnode.com", "lobste.rs",
+	"askubuntu.com", "dev.to", "hashnode.com", "lobste.rs",
 	// Developer docs / learning
 	"developer.mozilla.org", "w3schools.com", "geeksforgeeks.org", "freecodecamp.org",
 	"readthedocs.io", "css-tricks.com", "baeldung.com", "digitalocean.com",
 	// ML / model hubs + ex-Google dev/ML domains (no longer their own category)
 	"huggingface.co", "paperswithcode.com",
 	"kaggle.com", "chromium.org", "firebase.com", "firebaseio.com", "deepmind.com", "deepmind.google",
+	// More code hosts + package registries (Wikipedia: source-code hosting facilities)
+	"gitee.com", "launchpad.net", "savannah.gnu.org", "dev.azure.com",
+	"anaconda.org", "metacpan.org", "rosettacode.org",
 ]);
 
 // Press-release distribution wires — small, finite, unambiguous.
@@ -54,6 +57,11 @@ const REVIEW_DOMAINS = new Set([
 	"glassdoor.com", "omr.com", "producthunt.com", "goodfirms.co", "clutch.co",
 	"influenster.com", "makeupalley.com", "bbb.org", "angi.com", "houzz.com",
 	"reviews.io", "resellerratings.com", "feefo.com", "consumerlab.com", "thingtesting.com",
+	// Consumer / electronics / pro-services / school / employer review sites
+	"consumerreports.org", "which.co.uk", "rtings.com", "dxomark.com", "notebookcheck.net",
+	"healthgrades.com", "ratemds.com", "vitals.com", "greatschools.org", "niche.com",
+	"ratemyprofessors.com", "avvo.com", "comparably.com", "kununu.com",
+	"homeadvisor.com", "thumbtack.com",
 ]);
 
 // Reference / structured-knowledge. Checked before `institutional` so that
@@ -69,6 +77,18 @@ const REFERENCE_DOMAINS = new Set([
 	// Knowledge / structured data
 	"wolframalpha.com", "howstuffworks.com", "tvtropes.org", "wikidata.org", "wikiquote.org",
 	"wikibooks.org", "openfoodfacts.org", "pitchbook.com", "owler.com", "zoominfo.com", "similarweb.com",
+	// Encyclopedias (Wikipedia: list of online encyclopedias)
+	"encyclopedia.com", "scholarpedia.org", "newworldencyclopedia.org", "worldhistory.org",
+	"plato.stanford.edu", "iep.utm.edu", "mathworld.wolfram.com", "scienceworld.wolfram.com", "oeis.org",
+	"emojipedia.org", "knowyourmeme.com", "ballotpedia.org", "liquipedia.net", "musicbrainz.org",
+	"rateyourmusic.com", "pcgamingwiki.com", "radiopaedia.org", "omniglot.com", "minecraft.wiki",
+	"treccani.it", "larousse.fr", "snl.no", "ne.se", "baike.baidu.com",
+	// Dictionaries / thesauruses (Wikipedia: list of online dictionaries)
+	"thefreedictionary.com", "ahdictionary.com", "oxfordlearnersdictionaries.com", "ldoceonline.com",
+	"urbandictionary.com", "wordnik.com", "linguee.com", "reverso.net", "etymonline.com", "rae.es", "duden.de",
+	// Wikis / structured DBs (Wikipedia: list of wikis)
+	"openstreetmap.org", "geonames.org", "wikisource.org", "wikiversity.org", "wikispecies.org",
+	"wikiart.org", "imslp.org", "familysearch.org",
 ]);
 
 // Retailers, marketplaces, drugstores, and coupon/deal sites.
@@ -93,12 +113,21 @@ const ECOMMERCE_DOMAINS = new Set([
 	"rakuten.com", "retailmenot.com", "couponcabin.com", "joinhoney.com", "honey.com",
 	"slickdeals.net", "groupon.com", "dealmoon.com", "coupons.com", "knoji.com",
 	// General / specialty retailers
-	"rei.com", "bestbuy.com", "kroger.com", "dickssportinggoods.com", "chewy.com",
+	"rei.com", "kroger.com", "dickssportinggoods.com", "chewy.com",
 	"zappos.com", "gnc.com", "iherb.com", "vitaminshoppe.com", "backcountry.com",
 	"newegg.com", "homedepot.com", "lowes.com", "vitacost.com", "bodybuilding.com",
 	"swansonvitamins.com", "hm.com", "zara.com", "uniqlo.com", "gap.com",
 	// Resale marketplaces
 	"stockx.com", "goat.com", "grailed.com", "vinted.com", "therealreal.com",
+	// More global marketplaces (Wikipedia: list of online marketplaces)
+	"flipkart.com", "pinduoduo.com", "trendyol.com", "hepsiburada.com", "gumtree.com", "kijiji.ca",
+	"mercadolibre.com", "jd.com", "tmall.com", "lazada.com", "shopee.com", "rakuten.co.jp", "instacart.com",
+	// Electronics / fashion / home / books / auto retailers
+	"bhphotovideo.com", "adorama.com", "microcenter.com",
+	"farfetch.com", "ssense.com", "net-a-porter.com", "mytheresa.com", "endclothing.com",
+	"ikea.com", "crateandbarrel.com", "williams-sonoma.com", "staples.com", "officedepot.com",
+	"petco.com", "petsmart.com", "barnesandnoble.com", "abebooks.com", "bookshop.org", "thriftbooks.com",
+	"carvana.com", "cargurus.com", "autotrader.com", "cars.com",
 ]);
 
 const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);

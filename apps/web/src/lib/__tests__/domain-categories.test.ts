@@ -80,6 +80,14 @@ describe("categorizeDomain priority", () => {
 		// retailers
 		expect(cat("rei.com")).toBe("ecommerce");
 		expect(cat("gnc.com")).toBe("ecommerce");
+		// scraped list additions (Wikipedia: encyclopedias / dictionaries / marketplaces / code hosts)
+		expect(cat("worldhistory.org")).toBe("reference"); // .org wins reference over institutional
+		expect(cat("etymonline.com")).toBe("reference");
+		expect(cat("openstreetmap.org")).toBe("reference");
+		expect(cat("gitee.com")).toBe("developer");
+		expect(cat("consumerreports.org")).toBe("reviews"); // .org wins reviews over institutional
+		expect(cat("flipkart.com")).toBe("ecommerce");
+		expect(cat("bhphotovideo.com")).toBe("ecommerce");
 	});
 
 	it("brand and competitor always win over list categories", () => {
