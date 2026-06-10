@@ -43,7 +43,7 @@
     "@types/node": "^25.9.1",
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
-    "esbuild": "^0.25.12",
+    "rolldown": "^1.0.2",
     "typescript": "^6.0.3"
   }
 }

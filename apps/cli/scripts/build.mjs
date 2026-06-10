@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { build } from "esbuild";
+import { build } from "rolldown";
 
 const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
 
@@ -7,11 +7,11 @@ const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url),
 // the published package. Everything else that gets imported (notably the
 // unpublishable @workspace/* devDependencies) is bundled into dist/index.js.
 await build({
-	entryPoints: ["src/index.ts"],
-	bundle: true,
+	input: "src/index.ts",
 	platform: "node",
-	format: "esm",
-	target: "node20",
-	outfile: "dist/index.js",
 	external: Object.keys(pkg.dependencies ?? {}),
+	output: {
+		format: "esm",
+		file: "dist/index.js",
+	},
 });
