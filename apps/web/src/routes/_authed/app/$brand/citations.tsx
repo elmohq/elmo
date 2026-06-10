@@ -4,12 +4,14 @@
  * Shows citation statistics with filtering by model, tags, and lookback period.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Button } from "@workspace/ui/components/button";
 import { useCitations } from "@/hooks/use-citations";
-import { useBrand } from "@/hooks/use-brands";
+import { useBrand, brandKeys } from "@/hooks/use-brands";
+import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
 import { DomainRatingCorrelation } from "@/components/domain-rating-correlation";
 import { CitationInsights } from "@/components/citation-insights";
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/_authed/app/$brand/citations")({
 
 function CitationsPage() {
 	const { brand: brandId } = Route.useParams();
+	const queryClient = useQueryClient();
 
 	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
 	const { clearFilters } = usePageFilterSetters();
@@ -48,6 +51,7 @@ function CitationsPage() {
 		citations: citationData,
 		isLoading,
 		isError,
+		revalidate: revalidateCitations,
 	} = useCitations(brandId, {
 		days,
 		tags: selectedTags.length > 0 ? selectedTags : undefined,
@@ -121,7 +125,21 @@ function CitationsPage() {
 	} else {
 		content = (
 			<>
-				<CitationsDisplay citationData={citationData} brandId={brandId} showStats={true} days={days} />
+				<CitationsDisplay
+					citationData={citationData}
+					brandId={brandId}
+					brandName={brand?.name}
+					showStats={true}
+					maxDomains={10}
+					maxUrls={20}
+					days={days}
+					onCompetitorAdded={() => {
+						revalidateCitations();
+						queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+						queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
+						queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
+					}}
+				/>
 				<DomainRatingCorrelation
 					brandId={brandId}
 					days={days}

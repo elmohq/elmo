@@ -19,7 +19,8 @@ import {
 	getPromptWebSearchRunCounts,
 } from "@/lib/postgres-read";
 import { loadDomainRatings, warmDomainRatings } from "@/lib/domain-rating-cache";
-import { categorizeDomain as categorizeDomainShared, type CitationCategory, extractDomain } from "@/lib/domain-categories";
+import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
+import { categorizeDomain as categorizeDomainShared } from "@/lib/domain-categories.server";
 
 export const getCitationInsightsFn = createServerFn({ method: "GET" })
 	.inputValidator(

@@ -17,7 +17,8 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { hasTagFilter, resolveEnabledPromptIds } from "@/lib/citation-filters";
 import { getCitationDomainStats } from "@/lib/postgres-read";
 import { loadDomainRatings, warmDomainRatings } from "@/lib/domain-rating-cache";
-import { type CitationCategory, categorizeDomain as categorizeDomainShared, extractDomain } from "@/lib/domain-categories";
+import { type CitationCategory, extractDomain } from "@/lib/domain-categories";
+import { categorizeDomain as categorizeDomainShared } from "@/lib/domain-categories.server";
 
 export const getDomainRatingsFn = createServerFn({ method: "GET" })
 	.inputValidator(
