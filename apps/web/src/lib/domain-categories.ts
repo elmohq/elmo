@@ -257,6 +257,44 @@ export function attributeProduct(
 // ============================================================================
 
 /**
+ * Dedicated forum / community sites (the whole domain is user discussion). Forum
+ * *threads* are also caught by path markers in inferPageType; this list — plus the
+ * subdomain heuristic in isForumDomain — additionally recognizes a forum when the
+ * path is ambiguous, and routes the domain to the "social" source category
+ * (community / UGC) instead of letting it fall to "other".
+ */
+const FORUM_DOMAINS = new Set([
+	// general / large
+	"4chan.org", "somethingawful.com", "city-data.com", "gaiaonline.com",
+	"resetera.com", "neogaf.com", "thestudentroom.co.uk", "mumsnet.com",
+	// hobby / enthusiast
+	"bogleheads.org", "physicsforums.com", "avsforum.com", "head-fi.org",
+	"audiosciencereview.com", "linustechtips.com", "androidforums.com",
+	"talkbass.com", "ultimate-guitar.com", "reef2reef.com", "fishlore.com",
+	"stripersonline.com", "ar15.com", "rollitup.org", "grasscity.com",
+	// deals / travel / parenting / wedding
+	"redflagdeals.com", "flyertalk.com", "slickdeals.net", "weddingbee.com",
+	"thenest.com", "cafemom.com",
+]);
+
+/**
+ * True for dedicated forum domains and conventional forum subdomains
+ * (forum.X, forums.X, community.X, discuss.X, boards.X) — a generalizable signal
+ * that works across niches without enumerating every site.
+ */
+export function isForumDomain(host: string): boolean {
+	let d = host.replace(/^www\./, "").toLowerCase();
+	if (/^(forums?|community|discuss|boards?)\./.test(d)) return true;
+	while (d) {
+		if (FORUM_DOMAINS.has(d)) return true;
+		const dot = d.indexOf(".");
+		if (dot === -1) return false;
+		d = d.slice(dot + 1);
+	}
+	return false;
+}
+
+/**
  * Infer a page type from the URL path + citation title. Heuristic — "good, not
  * perfect"; the long tail falls through to "other".
  */
@@ -279,7 +317,7 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	const hay = `${path} ${t}`;
 
 	if (/(^|\.)(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com)$/.test(host) || /\/(watch|shorts|embed|videos?)(\/|$|\?)/.test(path)) return "video";
-	if (/(^|\.)reddit\.com$/.test(host) || /\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) || /\/r\//.test(path)) return "forum";
+	if (isForumDomain(host) || /(^|\.)reddit\.com$/.test(host) || /\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) || /\/r\//.test(path)) return "forum";
 	if (/\/(docs?|documentation|developers?|api|sdk|reference)(\/|$)/.test(path)) return "doc";
 	if (/\breview(s|ed)?\b/.test(hay)) return "review";
 	if (/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) || /\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)) return "comparison";

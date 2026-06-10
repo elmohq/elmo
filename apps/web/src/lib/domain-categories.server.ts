@@ -4,7 +4,7 @@
 // server functions. Client code imports types/config from `./domain-categories`.
 
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
-import { type CitationCategory, inferPageType } from "./domain-categories";
+import { type CitationCategory, inferPageType, isForumDomain } from "./domain-categories";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
 	"facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
@@ -194,6 +194,9 @@ export function categorizeDomain(
 	for (const cd of competitorDomains) {
 		if (domain === cd || domain.endsWith(`.${cd}`)) return "competitor";
 	}
+	// Forums (incl. community.X / forums.X subdomains) win over the generic lists
+	// below so a forum on an ecommerce/editorial site isn't miscounted as a store.
+	if (isForumDomain(domain)) return "social";
 	if (isPrWireDomain(domain)) return "pr";
 	if (isReviewDomain(domain)) return "reviews";
 	if (isEcommerceDomain(domain)) return "ecommerce";

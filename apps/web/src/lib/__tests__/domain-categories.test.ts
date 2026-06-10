@@ -66,6 +66,10 @@ describe("categorizeDomain priority", () => {
 		expect(cat("developer.mozilla.org")).toBe("developer");
 		expect(cat("kaggle.com")).toBe("developer"); // ex-Google, now developer
 		expect(cat("chromium.org")).toBe("developer");
+		// forums (community / UGC) -> social, incl. forum subdomains of other sites
+		expect(cat("bogleheads.org")).toBe("social");
+		expect(cat("forums.macrumors.com")).toBe("social");
+		expect(cat("community.whattoexpect.com")).toBe("social");
 		// quora stays general social
 		expect(cat("quora.com")).toBe("social");
 		// dictionaries
@@ -153,6 +157,9 @@ describe("inferPageType", () => {
 		// "/topic/" is not a forum (Britannica/news topic pages)
 		expect(inferPageType("https://www.britannica.com/topic/mezcal", "Mezcal")).not.toBe("forum");
 		expect(resolvePageType("https://www.britannica.com/topic/mezcal", "Mezcal", "reference")).toBe("article");
+		// known forum domains / subdomains are forums even with an ambiguous path
+		expect(inferPageType("https://bogleheads.org/forum/viewtopic.php?t=1")).toBe("forum");
+		expect(inferPageType("https://community.whattoexpect.com/groups/jan-2025")).toBe("forum");
 	});
 	it("detects 'best/top' in the URL slug, but not store best-seller pages", () => {
 		// title doesn't lead with "Best", but the slug does
