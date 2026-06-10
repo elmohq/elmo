@@ -154,11 +154,6 @@ const CHANGE_TYPE_TABS: { key: ChangeType; label: string }[] = [
 	{ key: "dropped_domains", label: "Dropped Domains" },
 ];
 
-const CATEGORY_TABS: { key: string; label: string }[] = [
-	{ key: "all", label: "All" },
-	...CITATION_CATEGORIES.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label })),
-];
-
 const CATEGORY_META: Record<string, { label: string; color: string }> = Object.fromEntries(
 	CITATION_CATEGORIES.map((c) => [c, { label: CATEGORY_CONFIG[c].label, color: CATEGORY_CONFIG[c].chartColor }]),
 );
@@ -371,10 +366,6 @@ function TrackDomainPopover({
 	);
 }
 
-const OPPORTUNITY_TABS = [
-	{ key: "content_gaps" as const, label: "Content Gaps" },
-];
-
 function OpportunitiesCard({
 	prompts,
 	brandId,
@@ -382,37 +373,32 @@ function OpportunitiesCard({
 	prompts: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
 	brandId: string;
 }) {
-	const [expanded, setExpanded] = useState(false);
-	const PREVIEW_COUNT = 3;
-	const visible = expanded ? prompts : prompts.slice(0, PREVIEW_COUNT);
-	const remaining = prompts.length - PREVIEW_COUNT;
+	const PAGE_SIZE = 6;
+	const [page, setPage] = useState(0);
+	const totalPages = Math.ceil(prompts.length / PAGE_SIZE);
+	const visible = prompts.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
 	return (
-		<Card>
+		<Card className="h-full flex flex-col">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-1.5">
-					Opportunities
+					Content Gaps
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Actionable insights to improve your brand&apos;s presence in AI-generated responses.
+							Prompts where competitors are cited but your brand isn&apos;t — opportunities to improve your citation presence.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
 				<CardDescription>
-					Areas where you can improve your brand&apos;s citation presence
+					Prompts where competitors are cited but your brand isn&apos;t
 				</CardDescription>
 			</CardHeader>
 			<Separator />
-			<CardContent>
-				<UnderlineTabs
-					tabs={OPPORTUNITY_TABS}
-					activeKey="content_gaps"
-					onSelect={() => {}}
-				/>
-				<div className="divide-y divide-border/50">
+			<CardContent className="flex-1 flex flex-col">
+				<div className="divide-y divide-border/50 flex-1">
 					{visible.map((prompt) => (
 						<Link
 							key={prompt.id}
@@ -434,13 +420,30 @@ function OpportunitiesCard({
 						</Link>
 					))}
 				</div>
-				{remaining > 0 && !expanded && (
-					<button
-						onClick={() => setExpanded(true)}
-						className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-					>
-						Show {remaining} more
-					</button>
+				{totalPages > 1 && (
+					<div className="mt-3 flex items-center justify-between">
+						<span className="text-[11px] text-muted-foreground tabular-nums">
+							{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, prompts.length)} of {prompts.length}
+						</span>
+						<div className="flex items-center gap-1.5">
+							<button
+								type="button"
+								onClick={() => setPage((p) => Math.max(0, p - 1))}
+								disabled={page === 0}
+								className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+							>
+								Previous
+							</button>
+							<button
+								type="button"
+								onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+								disabled={page >= totalPages - 1}
+								className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+							>
+								Next
+							</button>
+						</div>
+					</div>
 				)}
 			</CardContent>
 		</Card>
@@ -462,8 +465,11 @@ function TrendAreaChart({
 }) {
 	// Only render bands that actually appear in the window.
 	const present = keys.filter((k) => data.some((d) => typeof d[k] === "number" && (d[k] as number) > 0));
+	// Display order: largest band first, "other" always last.
+	const totals = new Map(present.map((k) => [k, data.reduce((s, d) => s + (typeof d[k] === "number" ? (d[k] as number) : 0), 0)]));
+	const ordered = [...present].sort((a, b) => (a === "other" ? 1 : b === "other" ? -1 : (totals.get(b) ?? 0) - (totals.get(a) ?? 0)));
 	const config: ChartConfig = Object.fromEntries(
-		present.map((k) => [k, { label: meta[k]?.label ?? k, color: meta[k]?.color ?? "#9ca3af" }]),
+		ordered.map((k) => [k, { label: meta[k]?.label ?? k, color: meta[k]?.color ?? "#9ca3af" }]),
 	);
 	return (
 		<Card>
@@ -505,10 +511,9 @@ function TrendAreaChart({
 								const [year, month, day] = String(label).split("-").map(Number);
 								const date = new Date(year, month - 1, day);
 								const formattedDate = date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-								const rows = present
+								const rows = ordered
 									.map((k) => ({ k, value: (dp?.[k] as number | undefined) ?? 0 }))
-									.filter((r) => r.value > 0)
-									.sort((a, b) => b.value - a.value);
+									.filter((r) => r.value > 0);
 								return (
 									<div className="border-border/50 bg-background grid min-w-[10rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 										<div className="font-medium">{formattedDate}</div>
@@ -525,8 +530,9 @@ function TrendAreaChart({
 								);
 							}}
 						/>
-						{/* "other" first so it renders at the bottom of the stack */}
-						{[...present].sort((a, b) => (a === "other" ? -1 : b === "other" ? 1 : 0)).map((k) => (
+						{/* Render bottom-up (reverse of display order) so the largest band sits
+						    on top and Other at the bottom; tooltip lists in the same order. */}
+						{[...ordered].reverse().map((k) => (
 							<Area key={k} dataKey={k} type="monotone" stackId="1" stroke={`var(--color-${k})`} fill={`var(--color-${k})`} fillOpacity={0.8} strokeWidth={0} />
 						))}
 					</AreaChart>
@@ -550,8 +556,8 @@ export function CitationsDisplay({
 	const [urlSearch, setUrlSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
 	const [selectedPageType, setSelectedPageType] = useState<string>("all");
+	const [selectedDomainCategory, setSelectedDomainCategory] = useState<string>("all");
 	const [changeTypeFilter, setChangeTypeFilter] = useState<ChangeType>("new_pages");
-	const [changeTabExpanded, setChangeTabExpanded] = useState(false);
 	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
 	const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 	const [productPage, setProductPage] = useState(0);
@@ -563,15 +569,28 @@ export function CitationsDisplay({
 		return null;
 	}
 
-	const brandShare = citationData.totalCitations > 0
-		? Math.round((citationData.categoryCounts.brand / citationData.totalCitations) * 100)
-		: 0;
+	// Match the last point of the Citation Categories chart exactly (smoothed daily
+	// brand share), falling back to the window aggregate if there's no time series.
+	const lastTrendPoint = citationData.citationTimeSeries?.[citationData.citationTimeSeries.length - 1];
+	const brandShare = lastTrendPoint
+		? (lastTrendPoint.brand ?? 0)
+		: citationData.totalCitations > 0
+			? Math.round((citationData.categoryCounts.brand / citationData.totalCitations) * 100)
+			: 0;
+
+	const hasGaps = !!(citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId);
 
 	const filteredDomains = useMemo(() => {
-		if (!domainSearch) return citationData.domainDistribution;
-		const q = domainSearch.toLowerCase();
-		return citationData.domainDistribution.filter((d) => d.domain.toLowerCase().includes(q));
-	}, [citationData.domainDistribution, domainSearch]);
+		let domains = citationData.domainDistribution;
+		if (selectedDomainCategory !== "all") {
+			domains = domains.filter((d) => d.category === selectedDomainCategory);
+		}
+		if (domainSearch) {
+			const q = domainSearch.toLowerCase();
+			domains = domains.filter((d) => d.domain.toLowerCase().includes(q));
+		}
+		return domains;
+	}, [citationData.domainDistribution, selectedDomainCategory, domainSearch]);
 
 	const filteredUrls = useMemo(() => {
 		let urls = citationData.specificUrls;
@@ -593,14 +612,20 @@ export function CitationsDisplay({
 	}, [citationData.specificUrls, selectedCategory, selectedPageType, urlSearch, maxUrls]);
 
 
-	const pageTypes = useMemo(
-		() => [...(citationData.pageTypeDistribution ?? [])].sort((a, b) => b.count - a.count),
-		[citationData.pageTypeDistribution],
-	);
-	const pageTypeTabs = useMemo<{ key: string; label: string }[]>(
-		() => [{ key: "all", label: "All types" }, ...pageTypes.map((d) => ({ key: d.pageType as string, label: PAGE_TYPE_CONFIG[d.pageType].label }))],
-		[pageTypes],
-	);
+	// Tab filters show only categories/types that actually appear, in canonical order.
+	const urlSourceTabs = useMemo<{ key: string; label: string }[]>(() => {
+		const present = CITATION_CATEGORIES.filter((c) => citationData.specificUrls.some((u) => u.category === c));
+		return [{ key: "all", label: "All Sources" }, ...present.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))];
+	}, [citationData.specificUrls]);
+	const urlPageTypeTabs = useMemo<{ key: string; label: string }[]>(() => {
+		const present = new Set(citationData.specificUrls.map((u) => u.pageType).filter(Boolean));
+		const ordered = CITATION_PAGE_TYPES.filter((p) => present.has(p));
+		return [{ key: "all", label: "All Page Types" }, ...ordered.map((p) => ({ key: p as string, label: PAGE_TYPE_CONFIG[p].label }))];
+	}, [citationData.specificUrls]);
+	const domainSourceTabs = useMemo<{ key: string; label: string }[]>(() => {
+		const present = CITATION_CATEGORIES.filter((c) => citationData.domainDistribution.some((d) => d.category === c));
+		return [{ key: "all", label: "All Sources" }, ...present.map((c) => ({ key: c as string, label: CATEGORY_CONFIG[c].label }))];
+	}, [citationData.domainDistribution]);
 	const googleModule = citationData.googleModule;
 	const googleProducts = useMemo(() => {
 		const ps = citationData.googleModule?.shopping.products ?? [];
@@ -662,7 +687,7 @@ export function CitationsDisplay({
 			.sort((a, b) => b.count - a.count);
 	}, [citationData.specificUrls, citationData.whatsChanged]);
 	const [expandedSubreddit, setExpandedSubreddit] = useState<string | null>(null);
-	const [showAllSubreddits, setShowAllSubreddits] = useState(false);
+	const [subredditPage, setSubredditPage] = useState(0);
 
 	const whatsChanged = citationData.whatsChanged;
 	const allChanges = useMemo(() => {
@@ -680,8 +705,7 @@ export function CitationsDisplay({
 		return allChanges.filter((c) => c.type === changeTypeFilter);
 	}, [allChanges, changeTypeFilter]);
 
-	const CHANGES_PREVIEW_COUNT = 3;
-	const visibleChanges = changeTabExpanded ? filteredChanges : filteredChanges.slice(0, CHANGES_PREVIEW_COUNT);
+	const visibleChanges = filteredChanges.slice(0, 6);
 	const totalChanges = allChanges.length;
 
 	return (
@@ -709,7 +733,17 @@ export function CitationsDisplay({
 					</Card>
 					<Card className="flex flex-col">
 						<CardHeader className="gap-0">
-							<CardTitle className="text-sm font-medium text-muted-foreground">Unique Domains</CardTitle>
+							<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+								Unique Domains
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs text-sm font-normal">
+										The number of distinct domains cited across all prompt evaluations in this period.
+									</TooltipContent>
+								</Tooltip>
+							</CardTitle>
 						</CardHeader>
 						<CardContent className="flex-1 flex items-center">
 							<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{citationData.uniqueDomains.toLocaleString()}</div>
@@ -717,7 +751,17 @@ export function CitationsDisplay({
 					</Card>
 					<Card className="flex flex-col">
 						<CardHeader className="gap-0">
-							<CardTitle className="text-sm font-medium text-muted-foreground">Total Citations</CardTitle>
+							<CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+								Total Citations
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs text-sm font-normal">
+										The total citations (links) AI models returned across all prompt evaluations, excluding Google AI Mode search &amp; shopping surfaces.
+									</TooltipContent>
+								</Tooltip>
+							</CardTitle>
 						</CardHeader>
 						<CardContent className="flex-1 flex items-center">
 							<div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{citationData.totalCitations.toLocaleString()}</div>
@@ -748,9 +792,11 @@ export function CitationsDisplay({
 				/>
 			)}
 
-			{/* Recent Changes */}
-			{totalChanges > 0 && (
-				<Card>
+			{/* Recent Changes + Content Gaps (side by side) */}
+			{(totalChanges > 0 || hasGaps) && (
+				<div className={totalChanges > 0 && hasGaps ? "grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch" : "contents"}>
+				{totalChanges > 0 && (
+				<Card className="h-full flex flex-col">
 					<CardHeader>
 						<CardTitle className="flex items-center gap-1.5">
 							Recent Changes
@@ -768,11 +814,11 @@ export function CitationsDisplay({
 						</CardDescription>
 					</CardHeader>
 					<Separator />
-					<CardContent>
+					<CardContent className="flex-1">
 						<UnderlineTabs
 							tabs={CHANGE_TYPE_TABS}
 							activeKey={changeTypeFilter}
-							onSelect={(key) => { setChangeTypeFilter(key); setChangeTabExpanded(false); }}
+							onSelect={(key) => setChangeTypeFilter(key)}
 						/>
 						<div className="divide-y divide-border/50">
 							{visibleChanges.map((change) => {
@@ -839,28 +885,20 @@ export function CitationsDisplay({
 								</p>
 							)}
 						</div>
-						{filteredChanges.length > CHANGES_PREVIEW_COUNT && !changeTabExpanded && (
-							<button
-								onClick={() => setChangeTabExpanded(true)}
-								className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-							>
-								Show {filteredChanges.length - CHANGES_PREVIEW_COUNT} more
-							</button>
-						)}
 					</CardContent>
 				</Card>
-			)}
-
-			{/* Opportunities */}
-			{citationData.competitorOnlyPrompts && citationData.competitorOnlyPrompts.length > 0 && brandId && (
-				<OpportunitiesCard
-					prompts={citationData.competitorOnlyPrompts}
-					brandId={brandId}
-				/>
+				)}
+				{hasGaps && (
+					<OpportunitiesCard
+						prompts={citationData.competitorOnlyPrompts!}
+						brandId={brandId!}
+					/>
+				)}
+				</div>
 			)}
 
 			{/* Top Cited Domains */}
-			{filteredDomains.length > 0 && (
+			{citationData.domainDistribution.length > 0 && (
 				<Card className="gap-4">
 					<CardHeader>
 						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -893,31 +931,46 @@ export function CitationsDisplay({
 					</CardHeader>
 					<Separator />
 					<CardContent>
-						<ProgressBarChart
-							items={filteredDomains.slice(0, visibleDomains).map((domain) => ({
-								label: domain.domain,
-								count: domain.count,
-								category: domain.category || "other",
-							action: domain.category === "other" && brandId && citationData.competitors ? (
-								<TrackDomainPopover
-									domain={domain.domain}
-									brandId={brandId}
-									brandName={brandName}
-									competitors={citationData.competitors}
-									onAdded={onCompetitorAdded}
+						{domainSourceTabs.length > 2 && (
+							<div className="mb-3">
+								<UnderlineTabs
+									tabs={domainSourceTabs}
+									activeKey={selectedDomainCategory}
+									onSelect={(key) => { setSelectedDomainCategory(key); setVisibleDomains(maxDomains); }}
 								/>
-								) : undefined,
-							}))}
-							colorMapping={DOMAIN_CATEGORY_COLORS}
-							percentageMode="max"
-						/>
-						{filteredDomains.length > visibleDomains && visibleDomains < 100 && (
-							<button
-								onClick={() => setVisibleDomains((prev) => Math.min(prev + 20, 100))}
-								className="mt-6 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-							>
-								Show more
-							</button>
+							</div>
+						)}
+						{filteredDomains.length > 0 ? (
+							<>
+								<ProgressBarChart
+									items={filteredDomains.slice(0, visibleDomains).map((domain) => ({
+										label: domain.domain,
+										count: domain.count,
+										category: domain.category || "other",
+									action: domain.category === "other" && brandId && citationData.competitors ? (
+										<TrackDomainPopover
+											domain={domain.domain}
+											brandId={brandId}
+											brandName={brandName}
+											competitors={citationData.competitors}
+											onAdded={onCompetitorAdded}
+										/>
+										) : undefined,
+									}))}
+									colorMapping={DOMAIN_CATEGORY_COLORS}
+									percentageMode="max"
+								/>
+								{filteredDomains.length > visibleDomains && visibleDomains < 100 && (
+									<button
+										onClick={() => setVisibleDomains((prev) => Math.min(prev + 20, 100))}
+										className="mt-6 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
+									>
+										Show more
+									</button>
+								)}
+							</>
+						) : (
+							<p className="text-sm text-muted-foreground text-center py-4">No domains match the current filters.</p>
 						)}
 					</CardContent>
 				</Card>
@@ -960,18 +1013,16 @@ export function CitationsDisplay({
 					</CardHeader>
 					<Separator />
 					<CardContent>
-						<div className="flex items-center gap-3">
-							<span className="text-[11px] font-medium text-muted-foreground shrink-0">Source</span>
+						{urlSourceTabs.length > 2 && (
 							<UnderlineTabs
-								tabs={CATEGORY_TABS}
+								tabs={urlSourceTabs}
 								activeKey={selectedCategory}
 								onSelect={setSelectedCategory}
 							/>
-						</div>
-						{pageTypeTabs.length > 2 && (
+						)}
+						{urlPageTypeTabs.length > 2 && (
 							<div className="flex items-center flex-wrap gap-1.5 mt-3">
-								<span className="text-[11px] font-medium text-muted-foreground mr-1">Page type</span>
-								{pageTypeTabs.map((t) => (
+								{urlPageTypeTabs.map((t) => (
 									<button
 										key={t.key}
 										type="button"
@@ -1042,7 +1093,7 @@ export function CitationsDisplay({
 								);
 							})}
 							{filteredUrls.length === 0 && (
-								<p className="text-sm text-muted-foreground text-center py-4">
+								<p className="text-sm text-muted-foreground text-center pt-8 pb-4">
 									No URLs match the current filters.
 								</p>
 							)}
@@ -1075,7 +1126,7 @@ export function CitationsDisplay({
 						{googleModule.shopping.products.length > 0 && (
 							<div>
 								<div className="flex items-center justify-between mb-2 gap-2">
-									<h4 className="text-sm font-medium shrink-0">Products surfaced</h4>
+									<h4 className="text-sm font-medium shrink-0">Products</h4>
 									<div className="flex items-center gap-1">
 										{([["all", "All"], ["brand", "Yours"], ["competitor", "Competitors"]] as const).map(([key, label]) => (
 											<button
@@ -1235,7 +1286,7 @@ export function CitationsDisplay({
 					<Separator />
 					<CardContent>
 						<div className="divide-y divide-border/50">
-							{(showAllSubreddits ? subredditData : subredditData.slice(0, 5)).map((sub) => {
+							{subredditData.slice(subredditPage * 8, subredditPage * 8 + 8).map((sub) => {
 								const isExpanded = expandedSubreddit === sub.name;
 								return (
 									<div key={sub.name}>
@@ -1295,13 +1346,30 @@ export function CitationsDisplay({
 								);
 							})}
 						</div>
-						{subredditData.length > 5 && !showAllSubreddits && (
-							<button
-								onClick={() => setShowAllSubreddits(true)}
-								className="mt-3 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-							>
-								Show {subredditData.length - 5} more
-							</button>
+						{subredditData.length > 8 && (
+							<div className="mt-3 flex items-center justify-between">
+								<span className="text-[11px] text-muted-foreground tabular-nums">
+									{subredditPage * 8 + 1}–{Math.min((subredditPage + 1) * 8, subredditData.length)} of {subredditData.length}
+								</span>
+								<div className="flex items-center gap-1.5">
+									<button
+										type="button"
+										onClick={() => setSubredditPage((p) => Math.max(0, p - 1))}
+										disabled={subredditPage === 0}
+										className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+									>
+										Previous
+									</button>
+									<button
+										type="button"
+										onClick={() => setSubredditPage((p) => ((p + 1) * 8 < subredditData.length ? p + 1 : p))}
+										disabled={(subredditPage + 1) * 8 >= subredditData.length}
+										className="text-xs text-muted-foreground hover:text-foreground cursor-pointer px-2.5 py-1 rounded-md border border-border hover:bg-muted/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+									>
+										Next
+									</button>
+								</div>
+							</div>
 						)}
 					</CardContent>
 				</Card>

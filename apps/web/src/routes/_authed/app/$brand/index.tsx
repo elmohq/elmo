@@ -391,7 +391,7 @@ function DashboardPage() {
 									<TrendChart
 										data={visibilityTimeSeries.map((p) => ({ date: p.date, value: p.overall }))}
 										label="AI Visibility (7d avg)"
-										color="#10b981"
+										color="#2563eb"
 									/>
 								)}
 							</CardContent>

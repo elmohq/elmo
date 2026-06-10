@@ -68,10 +68,10 @@ export const CITATION_PAGE_TYPES: CitationPageType[] = [
 	"howto",
 	"comparison",
 	"review",
-	"product",
-	"doc",
 	"forum",
 	"video",
+	"doc",
+	"product",
 	"info",
 	"search",
 	"shopping",
@@ -344,18 +344,18 @@ export function toRoundedPercentages(counts: Record<string, number>): Record<str
 }
 
 export const CATEGORY_CONFIG: Record<CitationCategory, { label: string; chartColor: string; badgeClass: string; chartDotClass: string }> = {
-	brand: { label: "Brand", chartColor: "#10b981", badgeClass: "bg-emerald-500/90 text-white", chartDotClass: "bg-emerald-500" },
+	brand: { label: "Brand", chartColor: "#2563eb", badgeClass: "bg-blue-600/90 text-white", chartDotClass: "bg-blue-600" },
 	competitor: { label: "Competitor", chartColor: "#ef4444", badgeClass: "bg-red-500/90 text-white", chartDotClass: "bg-red-500" },
-	editorial: { label: "Editorial", chartColor: "#6366f1", badgeClass: "bg-indigo-500/90 text-white", chartDotClass: "bg-indigo-500" },
-	reviews: { label: "Reviews", chartColor: "#f97316", badgeClass: "bg-orange-500/90 text-white", chartDotClass: "bg-orange-500" },
-	ecommerce: { label: "Ecommerce", chartColor: "#14b8a6", badgeClass: "bg-teal-500/90 text-white", chartDotClass: "bg-teal-500" },
-	social: { label: "Social", chartColor: "#ec4899", badgeClass: "bg-pink-500/90 text-white", chartDotClass: "bg-pink-500" },
-	developer: { label: "Developer", chartColor: "#65a30d", badgeClass: "bg-lime-600/90 text-white", chartDotClass: "bg-lime-600" },
-	pr: { label: "PR", chartColor: "#8b5cf6", badgeClass: "bg-violet-500/90 text-white", chartDotClass: "bg-violet-500" },
-	reference: { label: "Reference", chartColor: "#f59e0b", badgeClass: "bg-amber-500/90 text-white", chartDotClass: "bg-amber-500" },
-	institutional: { label: "Institutional", chartColor: "#06b6d4", badgeClass: "bg-cyan-500/90 text-white", chartDotClass: "bg-cyan-500" },
-	google: { label: "Google", chartColor: "#4285f4", badgeClass: "bg-blue-500/90 text-white", chartDotClass: "bg-blue-500" },
-	other: { label: "Other", chartColor: "#94a3b8", badgeClass: "bg-slate-400/90 text-white", chartDotClass: "bg-slate-400" },
+	editorial: { label: "Editorial", chartColor: "#a463f2", badgeClass: "bg-purple-500/90 text-white", chartDotClass: "bg-purple-500" },
+	reviews: { label: "Reviews", chartColor: "#efb118", badgeClass: "bg-amber-500/90 text-white", chartDotClass: "bg-amber-500" },
+	ecommerce: { label: "Ecommerce", chartColor: "#36b39a", badgeClass: "bg-teal-500/90 text-white", chartDotClass: "bg-teal-500" },
+	social: { label: "Social", chartColor: "#ff8ab7", badgeClass: "bg-pink-400/90 text-white", chartDotClass: "bg-pink-400" },
+	developer: { label: "Developer", chartColor: "#3ca951", badgeClass: "bg-green-600/90 text-white", chartDotClass: "bg-green-600" },
+	pr: { label: "PR", chartColor: "#f58518", badgeClass: "bg-orange-500/90 text-white", chartDotClass: "bg-orange-500" },
+	reference: { label: "Reference", chartColor: "#b279a2", badgeClass: "bg-fuchsia-500/90 text-white", chartDotClass: "bg-fuchsia-500" },
+	institutional: { label: "Institutional", chartColor: "#79a8e8", badgeClass: "bg-sky-500/90 text-white", chartDotClass: "bg-sky-500" },
+	google: { label: "Google", chartColor: "#9c6b4e", badgeClass: "bg-amber-700/90 text-white", chartDotClass: "bg-amber-700" },
+	other: { label: "Other", chartColor: "#9498a0", badgeClass: "bg-slate-400/90 text-white", chartDotClass: "bg-slate-400" },
 };
 
 export const DOMAIN_CATEGORY_COLORS: Record<string, string> = Object.fromEntries(
@@ -363,20 +363,20 @@ export const DOMAIN_CATEGORY_COLORS: Record<string, string> = Object.fromEntries
 );
 
 export const PAGE_TYPE_CONFIG: Record<CitationPageType, { label: string; chartColor: string }> = {
-	homepage: { label: "Homepage", chartColor: "#3b82f6" },
-	article: { label: "Article", chartColor: "#f59e0b" },
-	listicle: { label: "Listicle", chartColor: "#14b8a6" },
-	howto: { label: "How-to", chartColor: "#ec4899" },
-	comparison: { label: "Comparison", chartColor: "#f97316" },
-	review: { label: "Review", chartColor: "#8b5cf6" },
-	product: { label: "Storefront", chartColor: "#84cc16" },
-	doc: { label: "Docs", chartColor: "#6366f1" },
-	forum: { label: "Forum", chartColor: "#06b6d4" },
+	homepage: { label: "Homepage", chartColor: "#79a8e8" },
+	article: { label: "Article", chartColor: "#2563eb" },
+	listicle: { label: "Listicle", chartColor: "#36b39a" },
+	howto: { label: "Guide", chartColor: "#a463f2" },
+	comparison: { label: "Comparison", chartColor: "#f58518" },
+	review: { label: "Review", chartColor: "#ff8ab7" },
+	forum: { label: "Forum", chartColor: "#11a8cd" },
 	video: { label: "Video", chartColor: "#ef4444" },
-	info: { label: "Info", chartColor: "#22c55e" },
-	search: { label: "Search", chartColor: "#a855f7" },
-	shopping: { label: "Shopping", chartColor: "#eab308" },
-	other: { label: "Other", chartColor: "#94a3b8" },
+	doc: { label: "Docs", chartColor: "#b279a2" },
+	product: { label: "Storefront", chartColor: "#3ca951" },
+	info: { label: "Info", chartColor: "#efb118" },
+	search: { label: "Search", chartColor: "#b6992d" },
+	shopping: { label: "Shopping", chartColor: "#9c6b4e" },
+	other: { label: "Other", chartColor: "#9498a0" },
 };
 
 export const PAGE_TYPE_COLORS: Record<string, string> = Object.fromEntries(
