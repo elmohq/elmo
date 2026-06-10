@@ -15,22 +15,20 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
+import { LOOKBACK, resolveRange } from "@/server/analysis";
 import {
 	getFanoutBreakdown,
 	getFanoutModelTotals,
 	getFanoutPromptTotals,
 	getGoogleSearchFanoutCitations,
 } from "@/lib/postgres-read";
-import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 import {
 	computeFanoutAnalysis,
 	deriveGoogleFanout,
+	mergeGoogleFanout,
 	type FanoutAnalysis,
-	type FanoutModelTotalRow,
 } from "@/lib/fanout-analysis";
-
-const LOOKBACK = z.enum(["1w", "1m", "3m", "6m", "1y", "all"]);
 
 /** Engines whose fan-out isn't in `web_queries` but is reconstructable from cited Google searches. */
 const GOOGLE_FANOUT_MODELS = ["google-ai-mode", "google-ai-overview"] as const;
@@ -40,15 +38,6 @@ export interface QueryFanoutResponse extends FanoutAnalysis {
 	model: string | null;
 	/** Models whose fan-out was reconstructed from citations rather than read from `web_queries`. */
 	reconstructedModels: string[];
-}
-
-function resolveRange(lookback: LookbackPeriod, timezoneParam: string) {
-	const timezone = resolveTimezone(timezoneParam);
-	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
-		fromDateStr: string;
-		toDateStr: string;
-	};
-	return { timezone, fromDateStr, toDateStr };
 }
 
 function emptyResponse(brandName: string, model: string | null): QueryFanoutResponse {
@@ -68,7 +57,6 @@ function emptyResponse(brandName: string, model: string | null): QueryFanoutResp
 		byPrompt: [],
 		invisibleQueries: [],
 		wonQueries: [],
-		modelsWithoutFanout: [],
 		reconstructedModels: [],
 	};
 }
@@ -115,28 +103,18 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 			getGoogleSearchFanoutCitations(data.brandId, fromDateStr, toDateStr, timezone, promptIds, citationModels),
 		]);
 
-		// Google AI Mode's `web_queries` is the echoed prompt, not a fan-out. Replace
-		// its model totals with the citation-reconstructed counts where we have them,
-		// and zero out any Google model with no reconstructed searches.
+		// DataForSEO's Google AI Mode echoes the prompt in `web_queries` (filtered out
+		// upstream) and exposes its real searches only as `google.com/search` citations;
+		// Olostep's Google runs carry genuine `web_queries`. Reconstruct the former from
+		// citations and ADD it to the web_queries-derived totals so neither is dropped.
 		const google = deriveGoogleFanout(googleCitations, promptValueMap);
 		const allBreakdown = [...breakdown, ...google.rows];
-		const googleSet = new Set<string>(GOOGLE_FANOUT_MODELS);
-		const patchedTotals: FanoutModelTotalRow[] = modelTotals.map((m) => {
-			const g = google.totalsByModel.get(m.model);
-			if (g) return { ...m, fanout_runs: g.fanoutRuns, total_queries: g.totalQueries };
-			if (googleSet.has(m.model)) return { ...m, fanout_runs: 0, total_queries: 0 };
-			return m;
-		});
-		for (const [model_, g] of google.totalsByModel) {
-			if (!patchedTotals.some((m) => m.model === model_)) {
-				patchedTotals.push({ model: model_, runs: g.fanoutRuns, fanout_runs: g.fanoutRuns, total_queries: g.totalQueries });
-			}
-		}
-		const reconstructedModels = [...google.totalsByModel.entries()]
-			.filter(([, g]) => g.totalQueries > 0)
-			.map(([m]) => m);
+		const { modelTotals: patchedTotals, promptRuns, reconstructedModels } = mergeGoogleFanout(
+			modelTotals,
+			promptTotalsRows,
+			google,
+		);
 
-		const promptRuns = new Map(promptTotalsRows.map((r) => [r.prompt_id, r.runs]));
 		const analysis = computeFanoutAnalysis(allBreakdown, patchedTotals, promptValueMap, { promptRuns });
 
 		return { brandName, model: model ?? null, ...analysis, reconstructedModels };

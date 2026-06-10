@@ -58,7 +58,7 @@ function QueryFanoutPage() {
 	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading } = useQueryFanout(brandId, { lookback: selectedLookback, tags: selectedTags });
+	const { data, isLoading, isError } = useQueryFanout(brandId, { lookback: selectedLookback, tags: selectedTags });
 
 	const infoContent = (
 		<p>
@@ -70,13 +70,24 @@ function QueryFanoutPage() {
 	let content: React.ReactNode;
 	if (isLoading && !data) {
 		content = <LoadingState />;
+	} else if (isError && !data) {
+		content = <EmptyState message="Couldn't load query fan-out right now. Reload the page to try again." />;
 	} else if (!data || data.totalRuns === 0) {
+		// totalRuns counts only web-search-enabled runs — a brand whose models all
+		// run without web search lands here even with plenty of runs.
 		content = (
-			<EmptyState message="No runs yet for the selected filters. Fan-out appears once your prompts have been run." />
+			<EmptyState message="No runs with web search enabled for the selected filters. Fan-out appears once your prompts have been run by an engine with web search." />
 		);
 	} else if (data.totalQueries === 0) {
+		// Runs happened but none exposed fan-out — still show the KPIs (run counts)
+		// above the explanation rather than hiding everything.
 		content = (
-			<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
+			<TooltipProvider delayDuration={150}>
+				<div className="space-y-6">
+					<StatRow data={data} />
+					<EmptyState message="No web queries in this period — the engines you track didn't expose any searches for these prompts and filters." />
+				</div>
+			</TooltipProvider>
 		);
 	} else {
 		content = (
@@ -173,7 +184,10 @@ function RunsTooltip({ breakdown, reconstructed }: { breakdown: FanoutData["byMo
 
 function StatRow({ data }: { data: FanoutData }) {
 	const reconstructed = new Set(data.reconstructedModels);
-	const breakdown = [...data.byModel].sort((a, b) => b.fanoutRuns - a.fanoutRuns);
+	// Only models that actually produced fan-out — the tooltip describes runs that
+	// "produced at least one web search", so engines that ran but exposed none (e.g.
+	// OpenRouter) are left off rather than listed as 0.
+	const breakdown = data.byModel.filter((m) => m.fanoutRuns > 0).sort((a, b) => b.fanoutRuns - a.fanoutRuns);
 	return (
 		<div className="grid gap-4 sm:grid-cols-3">
 			<StatCard
