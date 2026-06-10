@@ -603,7 +603,7 @@ export async function getCitationDomainStats(
 		SELECT
 			domain,
 			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE brand_id = ${brandId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -632,7 +632,7 @@ export async function getCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
 			count(*)::int AS count,
 			round(avg(citation_index)::numeric, 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
@@ -662,7 +662,7 @@ export async function getPromptCitationStats(
 		SELECT
 			domain,
 			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE prompt_id = ${promptId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -683,7 +683,7 @@ export async function getPromptCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
 			count(*)::int AS count,
 			round(avg(citation_index)::numeric, 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
@@ -997,6 +997,45 @@ export async function getPerPromptCitationPages(
 			${modelFilter(model)}
 		GROUP BY prompt_id, url, domain
 		ORDER BY prompt_id, count DESC
+	`);
+	return rows;
+}
+
+export interface PerPromptDailyCitationPageRow {
+	prompt_id: string;
+	date: string;
+	url: string | null;
+	domain: string;
+	title: string | null;
+	count: number;
+}
+
+/** Per prompt + day + URL: citation counts with a representative title. Powers the
+ *  category and page-type time-series, which are classified in JS from url + title. */
+export async function getPerPromptDailyCitationPages(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptDailyCitationPageRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyCitationPageRow>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date AS date,
+			url,
+			domain,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, date, url, domain
+		ORDER BY prompt_id, date
 	`);
 	return rows;
 }
