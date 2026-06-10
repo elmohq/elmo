@@ -4,7 +4,7 @@
 // server functions. Client code imports types/config from `./domain-categories`.
 
 import { EDITORIAL_DOMAINS } from "./editorial-domains";
-import { type CitationCategory, inferPageType, isForumDomain } from "./domain-categories";
+import { type CitationCategory, inferPageType, isForumDomain, FORUM_DOMAINS } from "./domain-categories";
 
 const SOCIAL_MEDIA_DOMAINS = new Set([
 	"facebook.com", "twitter.com", "x.com", "instagram.com", "linkedin.com",
@@ -236,6 +236,24 @@ export function categorizeDomain(
 	if (isInstitutionalDomain(domain)) return "institutional";
 	return "other";
 }
+
+/**
+ * The curated domain lists categorizeDomain consults, in precedence order. Exported
+ * so a test can assert they're mutually exclusive: a domain in two lists would be
+ * silently resolved by whichever is checked first (the slickdeals class of bug). The
+ * ~25k editorial set is intentionally excluded — it's the catch-all checked last, so
+ * overlaps with the specific lists above are expected (and harmless), not bugs.
+ */
+export const CURATED_DOMAIN_LISTS: { name: string; domains: Set<string> }[] = [
+	{ name: "forum", domains: FORUM_DOMAINS },
+	{ name: "pr", domains: PR_WIRE_DOMAINS },
+	{ name: "reviews", domains: REVIEW_DOMAINS },
+	{ name: "ecommerce", domains: ECOMMERCE_DOMAINS },
+	{ name: "social", domains: SOCIAL_MEDIA_DOMAINS },
+	{ name: "developer", domains: DEVELOPER_DOMAINS },
+	{ name: "reference", domains: REFERENCE_DOMAINS },
+	{ name: "institutional", domains: INSTITUTIONAL_DOMAINS },
+];
 
 const EDITORIAL_PAGE_TYPES = new Set(["article", "listicle", "howto", "comparison", "review"]);
 

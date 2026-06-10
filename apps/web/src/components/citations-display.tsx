@@ -565,10 +565,6 @@ export function CitationsDisplay({
 	const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
 	const [showAllQueries, setShowAllQueries] = useState(false);
 
-	if (citationData.totalCitations === 0) {
-		return null;
-	}
-
 	// Match the last point of the Citation Categories chart exactly (smoothed daily
 	// brand share), falling back to the window aggregate if there's no time series.
 	const lastTrendPoint = citationData.citationTimeSeries?.[citationData.citationTimeSeries.length - 1];
@@ -713,6 +709,9 @@ export function CitationsDisplay({
 
 	const visibleChanges = filteredChanges.slice(0, 6);
 	const totalChanges = allChanges.length;
+
+	// Bail out only AFTER every hook above has run unconditionally (Rules of Hooks).
+	if (citationData.totalCitations === 0) return null;
 
 	return (
 		<>

@@ -269,7 +269,7 @@ export function attributeProduct(
  * bare domain should stay editorial. Defunct, regional-only, and dark-web/abuse
  * forums are skipped.
  */
-const FORUM_DOMAINS = new Set([
+export const FORUM_DOMAINS = new Set([
 	// general / large (incl. major non-US: zhihu = Chinese Q&A, nairaland = Nigerian)
 	"4chan.org", "somethingawful.com", "city-data.com", "gaiaonline.com",
 	"resetera.com", "neogaf.com", "thestudentroom.co.uk", "mumsnet.com",
@@ -285,8 +285,8 @@ const FORUM_DOMAINS = new Set([
 	"stripersonline.com", "ar15.com", "rollitup.org", "grasscity.com",
 	"twoplustwo.com", "healthboards.com", "airliners.net", "gearspace.com",
 	"teamliquid.net", "atariage.com", "websleuths.com",
-	// deals / travel / parenting / wedding
-	"redflagdeals.com", "flyertalk.com", "slickdeals.net", "weddingbee.com",
+	// deals / travel / parenting / wedding (slickdeals lives in ecommerce, not here)
+	"redflagdeals.com", "flyertalk.com", "weddingbee.com",
 	"thenest.com", "cafemom.com",
 ]);
 

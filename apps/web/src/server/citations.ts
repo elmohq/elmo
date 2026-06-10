@@ -154,21 +154,23 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		// Calculate date ranges
+		// Calculate date ranges. The window is exactly `data.days` calendar days
+		// ending today (inclusive): [today-(days-1), today]. This matches the trend
+		// charts' dateRange below exactly, so the stat cards + Top URL/Domain lists
+		// cover the same span as the charts (no off-by-one extra day).
 		const toDate = new Date();
 		const fromDate = new Date();
-		fromDate.setDate(fromDate.getDate() - data.days);
+		fromDate.setDate(fromDate.getDate() - (data.days - 1));
 		const fromDateStr = fromDate.toISOString().split("T")[0];
 		const toDateStr = toDate.toISOString().split("T")[0];
 		const timezone = "UTC";
 
-		// Previous period of equal length for comparisons
-		// Current period: [fromDate, toDate] inclusive = (data.days + 1) calendar days
-		// Previous period ends the day before fromDate, same span
+		// Previous period: equal-length (`data.days`) window ending the day before the
+		// current window starts.
 		const prevEndDate = new Date(fromDate);
 		prevEndDate.setDate(prevEndDate.getDate() - 1);
 		const prevStartDate = new Date(prevEndDate);
-		prevStartDate.setDate(prevStartDate.getDate() - data.days);
+		prevStartDate.setDate(prevStartDate.getDate() - (data.days - 1));
 		const prevFromDateStr = prevStartDate.toISOString().split("T")[0];
 		const prevToDateFmt = prevEndDate.toISOString().split("T")[0];
 
@@ -186,6 +188,9 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		const additionalBrandDomains = (brandResult[0]?.additionalDomains || []).map(extractDomain);
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
+		// Defined early so both the empty (no matching prompts) return and the main
+		// return below expose the same shape — `competitors` must be present in both.
+		const competitorSummary = competitorsList.map((c) => ({ id: c.id, name: c.name, domains: c.domains }));
 
 		// Collect available tags
 		const allUserTags = new Set<string>();
@@ -241,6 +246,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					citationTimeSeries: [] as ({ date: string } & Record<CitationCategory, number>)[],
 					pageTypeTimeSeries: [] as ({ date: string } & Record<CitationPageType, number>)[],
 					previousBrandShare: null as number | null,
+					competitors: competitorSummary,
 				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
 				whatsChanged: {
 					newUrls: [] as { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[],
@@ -526,12 +532,6 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			})
 			.filter((p): p is NonNullable<typeof p> => p !== null)
 			.sort((a, b) => b.competitorCitationCount - a.competitorCitationCount);
-
-		const competitorSummary = competitorsList.map((c) => ({
-			id: c.id,
-			name: c.name,
-			domains: c.domains,
-		}));
 
 		return {
 			totalCitations,

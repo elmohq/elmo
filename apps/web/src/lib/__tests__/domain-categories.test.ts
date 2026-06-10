@@ -9,7 +9,7 @@ import {
 	parseGoogleSearchQuery,
 	attributeProduct,
 } from "@/lib/domain-categories";
-import { categorizeDomain, classifyUrl } from "@/lib/domain-categories.server";
+import { categorizeDomain, classifyUrl, CURATED_DOMAIN_LISTS } from "@/lib/domain-categories.server";
 
 const brand = new Set(["mybrand.com"]);
 const competitors = new Set(["rival.com"]);
@@ -192,5 +192,26 @@ describe("resolvePageType (niche-independent article fallback)", () => {
 	it("does not turn brand utility / typed pages into articles", () => {
 		expect(resolvePageType("https://ubeauty.com/pages/siren-technology", "SIREN Technology", "brand")).toBe("other");
 		expect(resolvePageType("https://ubeauty.com/pages/return-policy", "Returns", "brand")).toBe("info");
+	});
+});
+
+describe("curated domain lists are mutually exclusive", () => {
+	// A domain in two lists would be silently resolved by whichever categorizeDomain
+	// checks first (e.g. slickdeals was in both forum and ecommerce -> wrongly social).
+	it("has no domain appearing in more than one list", () => {
+		const seen = new Map<string, string>();
+		const collisions: string[] = [];
+		for (const { name, domains } of CURATED_DOMAIN_LISTS) {
+			for (const d of domains) {
+				const prior = seen.get(d);
+				if (prior) collisions.push(`"${d}" is in both ${prior} and ${name}`);
+				else seen.set(d, name);
+			}
+		}
+		expect(collisions).toEqual([]);
+	});
+
+	it("keeps slickdeals in ecommerce (not social)", () => {
+		expect(cat("slickdeals.net")).toBe("ecommerce");
 	});
 });
