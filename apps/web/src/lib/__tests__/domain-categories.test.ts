@@ -171,6 +171,11 @@ describe("inferPageType", () => {
 		expect(inferPageType("https://amazon.com/dp/B089", "U Beauty Serum")).toBe("product");
 		// commerce path wins over "info": /products/return-pillow is a product, not a returns page
 		expect(inferPageType("https://shop.com/products/return-pillow", "Return Pillow")).toBe("product");
+		// ...but unambiguous policy / contact pages nested under a commerce segment stay "info"
+		expect(inferPageType("https://shop.com/shop/shipping-policy")).toBe("info");
+		expect(inferPageType("https://shop.com/store/locations")).toBe("info");
+		// and a product slug that merely contains an info word is still a product
+		expect(inferPageType("https://shop.com/products/location-tracker", "Location Tracker")).toBe("product");
 		// "/topic/" is not a forum (Britannica/news topic pages)
 		expect(inferPageType("https://www.britannica.com/topic/mezcal", "Mezcal")).not.toBe("forum");
 		expect(resolvePageType("https://www.britannica.com/topic/mezcal", "Mezcal", "reference")).toBe("article");

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { citationDateWindow } from "@/lib/chart-utils";
+import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
+import { toRoundedPercentages } from "@/lib/domain-categories";
 
 describe("citationDateWindow", () => {
 	it("builds a `days`-day current window + contiguous equal-length previous window (UTC)", () => {
@@ -36,5 +37,32 @@ describe("citationDateWindow", () => {
 		const w = citationDateWindow(new Date("2026-06-09T23:59:59Z"), 7);
 		expect(w.toDateStr).toBe("2026-06-09");
 		expect(w.fromDateStr).toBe("2026-06-03");
+	});
+});
+
+describe("applyPerPromptKeyedLVCF", () => {
+	const rows = [
+		{ prompt_id: "p1", date: "2026-06-01", key: "brand", count: 3 },
+		{ prompt_id: "p1", date: "2026-06-01", key: "editorial", count: 1 },
+		{ prompt_id: "p2", date: "2026-06-02", key: "editorial", count: 5 },
+	];
+	const range = ["2026-06-01", "2026-06-02"];
+	const keys = ["brand", "editorial", "other"];
+
+	it("yields identical percentages regardless of cadenceHours (cadence cancels exactly)", () => {
+		// If the intermediate Math.round ever comes back, the weekly cadence would
+		// pre-zero the sub-1 daily rates and these would diverge — this pins that.
+		const daily = applyPerPromptKeyedLVCF(rows, range, 24, keys); // daily cadence
+		const weekly = applyPerPromptKeyedLVCF(rows, range, 168, keys); // weekly cadence
+		for (const date of range) {
+			expect(toRoundedPercentages(daily.get(date)!)).toEqual(toRoundedPercentages(weekly.get(date)!));
+		}
+	});
+
+	it("carries each prompt's last value forward to fill gap days", () => {
+		// p1 only ran on 06-01; its values are carried into 06-02.
+		const daily = applyPerPromptKeyedLVCF(rows, range, 24, keys);
+		expect(toRoundedPercentages(daily.get("2026-06-01")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
+		expect(toRoundedPercentages(daily.get("2026-06-02")!)).toEqual({ brand: 33, editorial: 67, other: 0 });
 	});
 });

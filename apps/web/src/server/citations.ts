@@ -382,15 +382,25 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// match the breakdown above and show every category / page type. `dateRange`
 		// (the current window) was computed once up top so charts + totals stay aligned.
 		const cadenceHours = brandResult[0]?.delayOverrideHours;
+		// Classify each URL ONCE (from specificUrls) and reuse it here, keyed by the
+		// normalized URL. The per-(prompt,day) rows carry their own title, so
+		// re-classifying them could land an "other"-domain URL in a different category
+		// than categoryCounts/the tabs — which would render a chart band with no tab and
+		// let the stack sum to <100%. Looking up the canonical classification keeps the
+		// trend charts, the totals, and the tab filters provably in sync.
+		const urlCategory = new Map(specificUrls.map((u) => [u.url, u.category] as const));
+		const urlPageType = new Map(specificUrls.map((u) => [u.url, u.pageType] as const));
 		const categoryRows: { prompt_id: string; date: string; key: CitationCategory; count: number }[] = [];
 		const pageTypeRows: { prompt_id: string; date: string; key: CitationPageType; count: number }[] = [];
 		for (const r of perPromptDailyPages) {
 			if (!r.url || isGoogleSurfaceUrl(r.url)) continue;
 			const c = Number(r.count);
 			const date = String(r.date);
-			const category = classify(r.domain, r.url, r.title);
+			const nu = normalizeUrl(r.url);
+			const category = urlCategory.get(nu) ?? classify(r.domain, r.url, r.title);
+			const pageType = urlPageType.get(nu) ?? resolvePageType(r.url, r.title, category);
 			categoryRows.push({ prompt_id: r.prompt_id, date, key: category, count: c });
-			pageTypeRows.push({ prompt_id: r.prompt_id, date, key: resolvePageType(r.url, r.title, category), count: c });
+			pageTypeRows.push({ prompt_id: r.prompt_id, date, key: pageType, count: c });
 		}
 		const smoothedCategories = applyPerPromptKeyedLVCF(categoryRows, dateRange, cadenceHours, CITATION_CATEGORIES);
 		const smoothedPageTypes = applyPerPromptKeyedLVCF(pageTypeRows, dateRange, cadenceHours, CITATION_PAGE_TYPES);
