@@ -10,6 +10,7 @@ export type CitationCategory =
 	| "reviews"
 	| "ecommerce"
 	| "social"
+	| "developer"
 	| "pr"
 	| "reference"
 	| "institutional"
@@ -28,6 +29,7 @@ export const CITATION_CATEGORIES: CitationCategory[] = [
 	"reviews",
 	"ecommerce",
 	"social",
+	"developer",
 	"pr",
 	"reference",
 	"institutional",
@@ -348,6 +350,7 @@ export const CATEGORY_CONFIG: Record<CitationCategory, { label: string; chartCol
 	reviews: { label: "Reviews", chartColor: "#f97316", badgeClass: "bg-orange-500/90 text-white", chartDotClass: "bg-orange-500" },
 	ecommerce: { label: "Ecommerce", chartColor: "#14b8a6", badgeClass: "bg-teal-500/90 text-white", chartDotClass: "bg-teal-500" },
 	social: { label: "Social", chartColor: "#ec4899", badgeClass: "bg-pink-500/90 text-white", chartDotClass: "bg-pink-500" },
+	developer: { label: "Developer", chartColor: "#65a30d", badgeClass: "bg-lime-600/90 text-white", chartDotClass: "bg-lime-600" },
 	pr: { label: "PR", chartColor: "#8b5cf6", badgeClass: "bg-violet-500/90 text-white", chartDotClass: "bg-violet-500" },
 	reference: { label: "Reference", chartColor: "#f59e0b", badgeClass: "bg-amber-500/90 text-white", chartDotClass: "bg-amber-500" },
 	institutional: { label: "Institutional", chartColor: "#06b6d4", badgeClass: "bg-cyan-500/90 text-white", chartDotClass: "bg-cyan-500" },

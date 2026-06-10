@@ -56,13 +56,29 @@ describe("categorizeDomain priority", () => {
 		expect(cat("jissn.biomedcentral.com")).toBe("institutional");
 		expect(cat("pmc.ncbi.nlm.nih.gov")).toBe("institutional"); // .gov
 		expect(cat("arxiv.org")).toBe("institutional");
-		// code/dev community
-		expect(cat("github.com")).toBe("social");
+		// developer platforms (code hosting, package registries, dev Q&A)
+		expect(cat("github.com")).toBe("developer");
+		expect(cat("gitlab.com")).toBe("developer");
+		expect(cat("stackoverflow.com")).toBe("developer");
+		expect(cat("pypi.org")).toBe("developer"); // .org, must beat institutional
+		expect(cat("npmjs.com")).toBe("developer");
+		expect(cat("developer.mozilla.org")).toBe("developer");
+		// quora stays general social
+		expect(cat("quora.com")).toBe("social");
 		// dictionaries
 		expect(cat("dictionary.cambridge.org")).toBe("reference");
 		// retailers
 		expect(cat("rei.com")).toBe("ecommerce");
 		expect(cat("gnc.com")).toBe("ecommerce");
+	});
+
+	it("brand and competitor always win over list categories", () => {
+		const b = new Set(["amazon.com"]); // hypothetically the brand's own domain
+		const c = new Set(["github.com", "g2.com"]); // hypothetically tracked competitors
+		expect(categorizeDomain("amazon.com", b, c)).toBe("brand"); // not ecommerce
+		expect(categorizeDomain("github.com", b, c)).toBe("competitor"); // not developer
+		expect(categorizeDomain("g2.com", b, c)).toBe("competitor"); // not reviews
+		expect(categorizeDomain("blog.amazon.com", b, c)).toBe("brand"); // subdomain
 	});
 });
 

@@ -11,11 +11,29 @@ const SOCIAL_MEDIA_DOMAINS = new Set([
 	"youtube.com", "tiktok.com", "pinterest.com", "reddit.com", "snapchat.com",
 	"tumblr.com", "whatsapp.com", "telegram.org", "discord.com", "twitch.tv",
 	"threads.net", "threads.com",
-	// Q&A / forums
-	"quora.com", "stackoverflow.com", "stackexchange.com", "superuser.com",
-	"serverfault.com", "askubuntu.com", "news.ycombinator.com",
-	// Code / developer communities (user-published)
-	"github.com", "gitlab.com",
+	// More platforms / creator / video / community
+	"bsky.app", "mastodon.social", "vk.com", "weibo.com", "vimeo.com", "patreon.com",
+	"nextdoor.com", "flickr.com", "deviantart.com", "letterboxd.com", "strava.com",
+	"meetup.com", "rumble.com", "kick.com", "bilibili.com", "imgur.com",
+	// General Q&A (developer Q&A lives under "developer")
+	"quora.com",
+]);
+
+// Code hosting, package registries, developer Q&A, docs, and model hubs.
+const DEVELOPER_DOMAINS = new Set([
+	// Code hosting
+	"github.com", "gitlab.com", "bitbucket.org", "sourceforge.net", "codeberg.org", "gitea.com",
+	// Package registries
+	"npmjs.com", "pypi.org", "crates.io", "rubygems.org", "packagist.org", "nuget.org",
+	"hex.pm", "pub.dev", "pkg.go.dev", "hub.docker.com", "cocoapods.org", "mvnrepository.com",
+	// Developer Q&A / community
+	"stackoverflow.com", "stackexchange.com", "superuser.com", "serverfault.com",
+	"askubuntu.com", "news.ycombinator.com", "dev.to", "hashnode.com", "lobste.rs",
+	// Developer docs / learning
+	"developer.mozilla.org", "w3schools.com", "geeksforgeeks.org", "freecodecamp.org",
+	"readthedocs.io", "css-tricks.com", "baeldung.com", "digitalocean.com",
+	// ML / model hubs
+	"huggingface.co", "paperswithcode.com",
 ]);
 
 const GOOGLE_OWNED_DOMAINS = new Set([
@@ -43,6 +61,7 @@ const PR_WIRE_DOMAINS = new Set([
 	"einpresswire.com", "einnews.com", "prweb.com", "newswire.com",
 	"24-7pressrelease.com", "prlog.org", "openpr.com", "pr.com",
 	"presswire.com", "issuewire.com", "prunderground.com", "send2press.com",
+	"webwire.com", "releasewire.com", "prfree.com", "newswire.ca", "pressat.co.uk",
 ]);
 
 // Review / comparison / vendor-listing sites.
@@ -51,6 +70,8 @@ const REVIEW_DOMAINS = new Set([
 	"trustpilot.com", "sitejabber.com", "productreview.com.au", "peerspot.com",
 	"gartner.com", "forrester.com", "yelp.com", "tripadvisor.com", "consumeraffairs.com",
 	"glassdoor.com", "omr.com", "producthunt.com", "goodfirms.co", "clutch.co",
+	"influenster.com", "makeupalley.com", "bbb.org", "angi.com", "houzz.com",
+	"reviews.io", "resellerratings.com", "feefo.com", "consumerlab.com", "thingtesting.com",
 ]);
 
 // Reference / structured-knowledge. Checked before `institutional` so that
@@ -62,6 +83,9 @@ const REFERENCE_DOMAINS = new Set([
 	"discogs.com", "genius.com", "allmusic.com", "incidecoder.com", "skinsort.com",
 	// Dictionaries / encyclopedias
 	"dictionary.cambridge.org", "collinsdictionary.com", "vocabulary.com", "thesaurus.com",
+	// Knowledge / structured data
+	"wolframalpha.com", "howstuffworks.com", "tvtropes.org", "wikidata.org", "wikiquote.org",
+	"wikibooks.org", "openfoodfacts.org", "pitchbook.com", "owler.com", "zoominfo.com", "similarweb.com",
 ]);
 
 // Retailers, marketplaces, drugstores, and coupon/deal sites.
@@ -88,6 +112,10 @@ const ECOMMERCE_DOMAINS = new Set([
 	// General / specialty retailers
 	"rei.com", "bestbuy.com", "kroger.com", "dickssportinggoods.com", "chewy.com",
 	"zappos.com", "gnc.com", "iherb.com", "vitaminshoppe.com", "backcountry.com",
+	"newegg.com", "homedepot.com", "lowes.com", "vitacost.com", "bodybuilding.com",
+	"swansonvitamins.com", "hm.com", "zara.com", "uniqlo.com", "gap.com",
+	// Resale marketplaces
+	"stockx.com", "goat.com", "grailed.com", "vinted.com", "therealreal.com",
 ]);
 
 const EDITORIAL_DOMAIN_SET = new Set(EDITORIAL_DOMAINS);
@@ -110,6 +138,7 @@ const INSTITUTIONAL_DOMAINS = new Set([
 	"mdpi.com", "tandfonline.com", "sagepub.com", "jamanetwork.com", "biomedcentral.com",
 	"oup.com", "researchgate.net", "examine.com", "cambridge.org", "ssrn.com",
 	"thelancet.com", "bmj.com", "cell.com", "karger.com", "frontiersin.org",
+	"hindawi.com", "dovepress.com", "spandidos-publications.com",
 	"parliament.uk", "legislation.gov.uk", "service.gov.uk",
 	"canada.ca", "gc.ca", "gov.au", "govt.nz",
 ]);
@@ -143,6 +172,10 @@ export function isReviewDomain(domain: string): boolean {
 
 export function isEcommerceDomain(domain: string): boolean {
 	return inDomainSet(domain, ECOMMERCE_DOMAINS);
+}
+
+export function isDeveloperDomain(domain: string): boolean {
+	return inDomainSet(domain, DEVELOPER_DOMAINS);
 }
 
 export function isReferenceDomain(domain: string): boolean {
@@ -190,6 +223,7 @@ export function categorizeDomain(
 	if (isReviewDomain(domain)) return "reviews";
 	if (isEcommerceDomain(domain)) return "ecommerce";
 	if (isSocialMediaDomain(domain)) return "social";
+	if (isDeveloperDomain(domain)) return "developer";
 	if (isReferenceDomain(domain)) return "reference";
 	if (isEditorialDomain(domain)) return "editorial";
 	if (isInstitutionalDomain(domain)) return "institutional";
