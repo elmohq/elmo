@@ -28,7 +28,8 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/index.js --external:@clack/prompts --external:commander --external:dotenv --external:picocolors --external:posthog-node --external:semver",
+    "check-types": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.0",
@@ -41,6 +42,8 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@types/semver": "^7.7.1",
+    "@workspace/config": "workspace:*",
+    "esbuild": "^0.25.12",
     "typescript": "^6.0.3"
   }
 }

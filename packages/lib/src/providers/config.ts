@@ -1,41 +1,8 @@
 import type { ModelConfig } from "./types";
 
-/**
- * Parse the SCRAPE_TARGETS env var into structured ModelConfig objects.
- *
- * Format: model:provider[:version][:online]
- * - model: AI model to track (chatgpt, google-ai-mode, copilot, etc.)
- * - provider: How to reach it (olostep, brightdata, direct, openrouter, dataforseo)
- * - version: Specific version slug, required for direct/openrouter (may contain colons for OpenRouter variants)
- * - :online: Append to enable web search. Omit = no web search.
- *
- * Parsing: split on ":". First = model, second = provider. If last segment is "online",
- * pop it (websearch = true). Remaining middle segments rejoined with ":" = version slug.
- * This naturally handles OpenRouter variant suffixes like ":free".
- */
-export function parseScrapeTargets(envValue?: string): ModelConfig[] {
-	if (!envValue || !envValue.trim()) {
-		throw new Error(
-			"SCRAPE_TARGETS environment variable is required. " +
-			"Set it to configure which AI models to track. Example:\n" +
-			"  SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online\n" +
-			"See https://docs.elmohq.com/docs/user-guide/providers for details.",
-		);
-	}
-	return envValue.split(",").map((raw) => {
-		const trimmed = raw.trim();
-		if (!trimmed) throw new Error('Invalid SCRAPE_TARGETS: empty entry (check for trailing commas)');
-		const parts = trimmed.split(":");
-		if (parts.length < 2)
-			throw new Error(`Invalid SCRAPE_TARGETS entry: "${trimmed}" (need at least model:provider)`);
-		const model = parts[0];
-		const provider = parts[1];
-		const webSearch = parts[parts.length - 1] === "online";
-		const versionParts = parts.slice(2, webSearch ? -1 : undefined);
-		const version = versionParts.length > 0 ? versionParts.join(":") : undefined;
-		return { model, provider, version, webSearch };
-	});
-}
+// SCRAPE_TARGETS parsing/formatting lives in @workspace/config (the env source
+// of truth, shared with the CLI); re-exported here for compatibility.
+export { parseScrapeTargets } from "@workspace/config/scrape-targets";
 
 export function validateScrapeTargets(
 	configs: ModelConfig[],

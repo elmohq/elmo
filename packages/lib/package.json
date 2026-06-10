@@ -33,6 +33,7 @@
     "@anthropic-ai/sdk": "^0.100.1",
     "@better-auth/sso": "^1.6.12",
     "@brightdata/sdk": "^1.1.0",
+    "@workspace/config": "workspace:*",
     "ai": "^6.0.193",
     "better-auth": "^1.6.12",
     "dataforseo-client": "^2.0.24",

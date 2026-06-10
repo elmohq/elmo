@@ -1,5 +1,11 @@
+import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
 import type { Citation } from "../text-extraction";
+
+// Canonical definition lives next to the SCRAPE_TARGETS parser in
+// @workspace/config; re-exported here so provider code keeps importing it
+// from "./types".
+export type { ModelConfig };
 
 export interface ScrapeResult {
 	textContent: string;
@@ -55,11 +61,4 @@ export interface TestResult {
 	latencyMs: number;
 	error?: string;
 	sampleOutput?: string;
-}
-
-export interface ModelConfig {
-	model: string;
-	provider: string;
-	version?: string;
-	webSearch: boolean;
 }
