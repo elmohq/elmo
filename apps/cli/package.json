@@ -32,18 +32,18 @@
     "check-types": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@clack/prompts": "^1.5.0",
+    "@clack/prompts": "^1.5.1",
     "commander": "^15.0.0",
     "dotenv": "17.4.2",
     "picocolors": "^1.1.1",
-    "posthog-node": "^5.35.6",
-    "semver": "^7.8.1"
+    "posthog-node": "^5.36.4",
+    "semver": "^7.8.2"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.2",
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
-    "rolldown": "^1.0.2",
+    "rolldown": "^1.1.0",
     "typescript": "^6.0.3"
   }
 }
