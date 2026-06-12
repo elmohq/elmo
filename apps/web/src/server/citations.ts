@@ -31,7 +31,7 @@ import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
  * Get citation statistics for a brand
  */
 export const getCitationsFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			days: z.number().optional().default(7),

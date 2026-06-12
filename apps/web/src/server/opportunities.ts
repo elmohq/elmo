@@ -470,7 +470,7 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 // ============================================================================
 
 export const getOpportunitiesFn = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
+	.validator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
 	.handler(async ({ data }): Promise<OpportunitiesResponse> => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);

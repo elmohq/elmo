@@ -22,7 +22,7 @@ import BrandOnboarding from "@/components/brand-onboarding";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 
 const getBrandData = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string() }))
+	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }): Promise<{
 		brand: BrandWithPrompts | null;
 		brandName: string | null;
