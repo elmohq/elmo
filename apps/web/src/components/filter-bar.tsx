@@ -99,7 +99,9 @@ type FilterTriggerButtonProps = {
 // Props forward to the underlying Button so `<DropdownMenuTrigger asChild>` /
 // `<PopoverTrigger asChild>` can hand their ref + data-state directly to the
 // button element (wrapping in a div would make Slot target the div instead).
-function FilterTriggerButton({
+// Exported so page-specific bar controls (e.g. the prompts sort dropdown)
+// share the same trigger look without re-implementing it.
+export function FilterTriggerButton({
 	icon,
 	label,
 	active,
@@ -404,6 +406,7 @@ export function FilterBar({
 	showModelSelector,
 	resultCount,
 	resultTotal,
+	extraControls,
 }: {
 	availableTags: readonly string[];
 	availableModels: string[];
@@ -413,6 +416,9 @@ export function FilterBar({
 	resultCount?: number;
 	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
 	resultTotal?: number;
+	/** Page-specific controls rendered inline with the dropdown group
+	 *  (e.g. the prompts list's sort dropdown). */
+	extraControls?: ReactNode;
 }) {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
@@ -420,6 +426,7 @@ export function FilterBar({
 				{showModelSelector && <ModelDropdown availableModels={availableModels} />}
 				<TagsDropdown availableTags={availableTags} />
 				<LookbackDropdown />
+				{extraControls}
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
 			{showSearch && <SearchInput />}
