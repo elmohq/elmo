@@ -1,20 +1,19 @@
 /** Ordering options for the prompts list (#60). "Default" keeps the server's
  *  smart order (visibility priority → weighted mentions → A–Z); the rest
  *  re-sort the already-fetched summaries client-side, each with an ascending
- *  and a descending direction. Ordering never narrows the list, so it stays
- *  out of `useListFilters` / `isFiltered` and lives in the visibility route's
- *  own `validateSearch` (the page-specific search key pattern from PR #336).
- *
- *  `label` is the menu text; `trigger` is the shorter form shown on the bar
- *  button so a long "(high → low)" label doesn't dominate the filter row. */
+ *  and a descending direction (↑ low→high, ↓ high→low). Ordering never narrows
+ *  the list, so it stays out of `useListFilters` / `isFiltered` and lives in
+ *  the visibility route's own `validateSearch` (the page-specific search key
+ *  pattern from PR #336). The label is used both in the menu and (for a chosen
+ *  order) on the bar button. */
 export const PROMPT_ORDER_OPTIONS = [
-	{ value: "default", label: "Default", trigger: "Sort" },
-	{ value: "brand-desc", label: "Brand Visibility (high → low)", trigger: "Brand Visibility ↓" },
-	{ value: "brand-asc", label: "Brand Visibility (low → high)", trigger: "Brand Visibility ↑" },
-	{ value: "competitor-desc", label: "Competitor Visibility (high → low)", trigger: "Competitor Visibility ↓" },
-	{ value: "competitor-asc", label: "Competitor Visibility (low → high)", trigger: "Competitor Visibility ↑" },
-	{ value: "prompt-asc", label: "Prompt (A → Z)", trigger: "Prompt A–Z" },
-	{ value: "prompt-desc", label: "Prompt (Z → A)", trigger: "Prompt Z–A" },
+	{ value: "default", label: "Default" },
+	{ value: "brand-desc", label: "Brand Visibility ↓" },
+	{ value: "brand-asc", label: "Brand Visibility ↑" },
+	{ value: "competitor-desc", label: "Competitor Visibility ↓" },
+	{ value: "competitor-asc", label: "Competitor Visibility ↑" },
+	{ value: "prompt-asc", label: "Prompt A–Z" },
+	{ value: "prompt-desc", label: "Prompt Z–A" },
 ] as const;
 
 export type PromptOrder = (typeof PROMPT_ORDER_OPTIONS)[number]["value"];

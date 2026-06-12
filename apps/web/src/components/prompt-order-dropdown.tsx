@@ -38,9 +38,12 @@ export function PromptOrderDropdown() {
 			resetScroll: false,
 		});
 
-	// The trigger shows the option's short form (the default order's is "Sort"),
-	// keeping the long "(high → low)" menu labels off the filter row.
-	const label = PROMPT_ORDER_OPTIONS.find((o) => o.value === selected)?.trigger ?? "Sort";
+	// The button reads "Sort" in the default state and otherwise echoes the
+	// chosen order's menu label (arrows and all).
+	const label =
+		selected === DEFAULT_PROMPT_ORDER
+			? "Sort"
+			: (PROMPT_ORDER_OPTIONS.find((o) => o.value === selected)?.label ?? "Sort");
 
 	return (
 		<DropdownMenu>
