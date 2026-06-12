@@ -718,8 +718,8 @@ importers:
         specifier: workspace:*
         version: link:../ui
       auth0:
-        specifier: ^5.3.1
-        version: 5.6.0
+        specifier: ^5.11.0
+        version: 5.11.0
       react:
         specifier: ^19.0.0
         version: 19.2.5
@@ -4692,10 +4692,6 @@ packages:
     resolution: {integrity: sha512-y84ghIWkpha+VXdkI78Z/DxbThGlMEX/rHbg6YyN1T0C02gmx/4fRuxj+dm+w1UvMcv6XwXb11EUldgjwCzPuA==}
     engines: {node: ^20.19.0 || ^22.12.0 || ^24.0.0}
 
-  auth0@5.6.0:
-    resolution: {integrity: sha512-+1pEJlf9Q2j2eU1mMQ8wRIGJ15U9iDXrQTUWqeyY6BOpUtYCPOs9I9yuYcQHL7NyByTWPrLNoNEXbtMHi36LAw==}
-    engines: {node: ^20.19.0 || ^22.12.0 || ^24.0.0}
-
   b4a@1.8.1:
     resolution: {integrity: sha512-aiqre1Nr0B/6DgE2N5vwTc+2/oQZ4Wh1t4NznYY4E00y8LCt6NqdRv81so00oo27D8MVKTpUa/MwUUtBLXCoDw==}
     peerDependencies:
@@ -7492,10 +7488,6 @@ packages:
 
   utrie@1.0.2:
     resolution: {integrity: sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw==}
-
-  uuid@11.1.0:
-    resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
-    hasBin: true
 
   uuid@11.1.1:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
@@ -11477,12 +11469,6 @@ snapshots:
       jose: 4.15.9
       uuid: 11.1.1
 
-  auth0@5.6.0:
-    dependencies:
-      auth0-legacy: auth0@4.37.1
-      jose: 4.15.9
-      uuid: 11.1.0
-
   b4a@1.8.1: {}
 
   babel-dead-code-elimination@1.0.12:
@@ -14531,8 +14517,6 @@ snapshots:
   utrie@1.0.2:
     dependencies:
       base64-arraybuffer: 1.0.2
-
-  uuid@11.1.0: {}
 
   uuid@11.1.1: {}
 
