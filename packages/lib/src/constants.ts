@@ -23,3 +23,12 @@ export function getDefaultDelayHours(): number {
 // Maximum limits for brand resources
 export const MAX_COMPETITORS = 100;
 export const MAX_PROMPTS = 100;
+
+/**
+ * Sentinel providers store in `prompt_runs.web_queries` when a web search
+ * happened (citations prove it) but the provider doesn't expose the actual
+ * query strings (OpenRouter always; BrightData/Olostep on extraction failure).
+ * Written by the provider implementations and filtered out by every fan-out
+ * read path — keep both sides on this constant.
+ */
+export const WEB_QUERIES_UNAVAILABLE = "unavailable";

@@ -1,6 +1,7 @@
 import * as client from "dataforseo-client";
 import { extractTextFromGoogle, extractCitationsFromGoogle } from "../../text-extraction";
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 
 const SUPPORTED_MODELS = new Set(["google-ai-mode"]);
 
@@ -59,11 +60,16 @@ export const dataforseo: Provider = {
 			throw new Error(`DataForSEO API Error: ${task.status_message}`);
 		}
 
+		const citations = extractCitationsFromGoogle(response);
+		// Google AI Mode always searches, but DataForSEO doesn't expose the query
+		// strings anywhere in its response. Mark "unavailable" when citations
+		// prove a search, like the other providers; never echo the prompt (runs
+		// before this change did).
 		return {
 			rawOutput: sanitizeForJson(response),
-			webQueries: [prompt],
+			webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
 			textContent: extractTextFromGoogle(response),
-			citations: extractCitationsFromGoogle(response),
+			citations,
 			modelVersion: "dataforseo",
 		};
 	},

@@ -1,6 +1,7 @@
 import { bdclient } from "@brightdata/sdk";
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import type { Citation } from "../../text-extraction";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
@@ -155,7 +156,7 @@ export const brightdata: Provider = {
 				// and citations exist but no query strings were exposed.
 				// When web search is disabled, webQueries is always empty.
 				webQueries: options?.webSearch
-					? (webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [])
+					? (webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [])
 					: [],
 				citations,
 				modelVersion: record?.model ?? undefined,
