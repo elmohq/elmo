@@ -74,8 +74,8 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 					icon: IconSpeakerphone,
 				},
 				{
-					title: "Query Fanout",
-					url: "/query-fanout",
+					title: "Query Fan-Out",
+					url: "/query-fan-out",
 					icon: IconSitemap,
 				},
 				{

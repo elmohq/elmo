@@ -257,8 +257,9 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const timezone = "UTC";
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
-		// Run aggregation queries in parallel
-		const [mentionStatsResult, competitorMentionsResult, webQueryStatsResult, webSearchSummaryResult] =
+		// Run aggregation queries in parallel. Web-query stats used to be computed
+		// here too — the Web Queries tab now goes through getQueryFanoutFn instead.
+		const [mentionStatsResult, competitorMentionsResult] =
 			await Promise.all([
 				// Total runs + brand mentions
 				db
@@ -280,27 +281,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 							sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
 						),
 					),
-
-				// Web query stats
-				db
-					.select({ model: promptRuns.model, webQueries: promptRuns.webQueries })
-					.from(promptRuns)
-					.where(
-						and(
-							eq(promptRuns.promptId, data.promptId),
-							timeCondition,
-							sql`array_length(${promptRuns.webQueries}, 1) > 0`,
-						),
-					),
-
-				// Web search summary
-				db
-					.select({
-						totalRuns: count(),
-						webSearchEnabled: sql<number>`SUM(CASE WHEN ${promptRuns.webSearchEnabled} THEN 1 ELSE 0 END)`,
-					})
-					.from(promptRuns)
-					.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 			]);
 
 		// ---- Process mention stats ----
@@ -356,49 +336,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		// Sort by count desc, then alphabetically
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
-
-		// ---- Process web query stats ----
-		const allQueries: Record<string, number> = {};
-		const modelQueries: Record<string, Record<string, number>> = {};
-
-		webQueryStatsResult.forEach((row: any) => {
-			const queries = row.webQueries || [];
-			const model = row.model;
-			if (!modelQueries[model]) modelQueries[model] = {};
-			queries.forEach((query: string) => {
-				if (query?.trim()) {
-					allQueries[query] = (allQueries[query] || 0) + 1;
-					modelQueries[model][query] = (modelQueries[model][query] || 0) + 1;
-				}
-			});
-		});
-
-		const webQueryStats: {
-			overall: { name: string; count: number }[];
-			byModel: Record<string, { name: string; count: number }[]>;
-		} = { overall: [], byModel: {} };
-
-		for (const model of Object.keys(modelQueries)) {
-			webQueryStats.byModel[model] = Object.entries(modelQueries[model])
-				.map(([name, cnt]) => ({ name, count: cnt }))
-				.sort((a, b) => b.count - a.count)
-				.slice(0, 15);
-		}
-
-		webQueryStats.overall = Object.entries(allQueries)
-			.map(([name, cnt]) => ({ name, count: cnt }))
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 20);
-
-		// ---- Web search summary ----
-		const webSearchData = webSearchSummaryResult[0];
-		const webSearchSummary = {
-			enabled: Number(webSearchData?.webSearchEnabled || 0),
-			disabled: Number(webSearchData?.totalRuns || 0) - Number(webSearchData?.webSearchEnabled || 0),
-			percentage: webSearchData?.totalRuns
-				? Math.round((Number(webSearchData.webSearchEnabled) / Number(webSearchData.totalRuns)) * 100)
-				: 0,
-		};
 
 		// ---- Citation stats ----
 		let citationStats = undefined;
@@ -462,8 +399,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			prompt: prompt[0],
 			aggregations: {
 				mentionStats,
-				webQueryStats,
-				webSearchSummary,
 				citationStats,
 				totalRuns: Number(mentionData?.totalRuns || 0),
 			},

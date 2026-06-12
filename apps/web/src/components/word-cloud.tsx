@@ -65,7 +65,7 @@ export function WordCloud({
 					<span
 						key={it.term}
 						title={`${it.term} · ${it.count.toLocaleString()}`}
-						className="font-semibold transition-transform hover:scale-110"
+						className="font-semibold"
 						style={{ fontSize: Math.round(MIN_PX + t * (MAX_PX - MIN_PX)), color, opacity: 0.62 + t * 0.38 }}
 					>
 						{it.term}

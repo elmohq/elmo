@@ -1,44 +1,49 @@
 /**
- * /app/$brand/query-fanout - Query Fanout
+ * /app/$brand/query-fan-out - Query Fan-Out
  *
  * "What are the answer engines really searching for?" When an engine answers a
  * tracked prompt it may run several web searches first. KPIs summarize how much
- * prompts expand, then three tabs: Prompt Fanout (each prompt's searches, with
+ * prompts expand, then three tabs: Prompt Fan-Out (each prompt's searches, with
  * its keywords bolded), Query Words (the cloud + which words engines add/drop/keep),
  * and Query Visibility (searches you're missing vs win).
  *
- * Read-only from `prompt_runs.web_queries`, with Google AI Mode's fan-out
- * reconstructed from its cited `google.com/search?q=` links. See
- * `server/query-fanout.ts` and `lib/fanout-analysis.ts`.
+ * Read-only from `prompt_runs.web_queries`; engines that don't expose their
+ * searches contribute runs but no queries. See `server/query-fanout.ts` and
+ * `lib/fanout-analysis.ts`.
  */
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { cn } from "@workspace/ui/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Separator } from "@workspace/ui/components/separator";
-import { Switch } from "@workspace/ui/components/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Input } from "@workspace/ui/components/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconChevronDown, IconChevronRight, IconInfoCircle, IconSearch } from "@tabler/icons-react";
+import { TooltipProvider } from "@workspace/ui/components/tooltip";
+import { IconChevronDown, IconChevronRight, IconSearch } from "@tabler/icons-react";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { getModelDisplayName } from "@/lib/utils";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { PageHeader, FilterSection } from "@/components/page-header";
-import { FilterBar, usePageFilters } from "@/components/filter-bar";
-import { ProgressBarChart } from "@/components/progress-bar-chart";
-import { WordCloud } from "@/components/word-cloud";
-import { WON_MENTION_THRESHOLD, isStopword, type FanoutQueryStat, type PromptFanoutStat, type WordChangeStat } from "@/lib/fanout-analysis";
+import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
+import { useBrand } from "@/hooks/use-brands";
+import { HistoryButton } from "@/components/history-button";
+import { InfoTip, QueryWordsSection, VariationLine } from "@/components/fanout-sections";
+import { promptKeywords, type PromptFanoutStat, type TopQueryStat } from "@/lib/fanout-analysis";
 
-export const Route = createFileRoute("/_authed/app/$brand/query-fanout")({
+/** The active tab lives in `?tab=` so each tab is directly linkable. */
+const FANOUT_TABS = ["fanout", "top-queries", "words"] as const;
+type FanoutTab = (typeof FANOUT_TABS)[number];
+const fanoutTabParser = parseAsStringLiteral(FANOUT_TABS);
+
+export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
 		return {
 			meta: [
-				{ title: buildTitle("Query Fanout", { appName, brandName }) },
+				{ title: buildTitle("Query Fan-Out", { appName, brandName }) },
 				{
 					name: "description",
 					content: "See the web searches AI engines run when answering your prompts, and how they rewrite your wording.",
@@ -49,16 +54,23 @@ export const Route = createFileRoute("/_authed/app/$brand/query-fanout")({
 	component: QueryFanoutPage,
 });
 
-const PURPLE = "#8b5cf6";
-
 function QueryFanoutPage() {
 	const { brand: brandId } = Route.useParams();
-	const { selectedLookback, selectedTags } = usePageFilters();
+	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
+	const [tab, setTab] = useQueryState("tab", fanoutTabParser.withDefault("fanout"));
 
-	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback });
+	const { brand } = useBrand(brandId);
+	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
+	const modelParam = selectedModel === "all" ? undefined : selectedModel;
+
+	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading, isError } = useQueryFanout(brandId, { lookback: selectedLookback, tags: selectedTags });
+	const { data, isLoading, isError } = useQueryFanout(brandId, {
+		lookback: selectedLookback,
+		tags: selectedTags,
+		model: modelParam,
+	});
 
 	const infoContent = (
 		<p>
@@ -94,20 +106,20 @@ function QueryFanoutPage() {
 			<TooltipProvider delayDuration={150}>
 				<div className="space-y-6">
 					<StatRow data={data} />
-					<Tabs defaultValue="fanout" className="gap-4">
+					<Tabs value={tab} onValueChange={(v) => setTab(v as FanoutTab)} className="gap-4">
 						<TabsList>
-							<TabsTrigger value="fanout">Prompt Fanout</TabsTrigger>
+							<TabsTrigger value="fanout">Prompt Fan-Out</TabsTrigger>
+							<TabsTrigger value="top-queries">Top Queries</TabsTrigger>
 							<TabsTrigger value="words">Query Words</TabsTrigger>
-							<TabsTrigger value="visibility">Query Visibility</TabsTrigger>
 						</TabsList>
 						<TabsContent value="fanout">
 							<Prompts prompts={data.byPrompt} brandId={brandId} />
 						</TabsContent>
-						<TabsContent value="words">
-							<QueryWords data={data} />
+						<TabsContent value="top-queries">
+							<TopQueries data={data} brandId={brandId} />
 						</TabsContent>
-						<TabsContent value="visibility">
-							<QueryVisibility data={data} />
+						<TabsContent value="words">
+							<QueryWordsSection terms={data.terms} wordChanges={data.wordChanges} />
 						</TabsContent>
 					</Tabs>
 				</div>
@@ -116,9 +128,9 @@ function QueryFanoutPage() {
 	}
 
 	return (
-		<PageHeader title="Query Fanout" subtitle="The web searches AI engines run when answering your prompts." infoContent={infoContent}>
+		<PageHeader title="Query Fan-Out" subtitle="The web searches AI engines run when answering your prompts." infoContent={infoContent}>
 			<FilterSection>
-				<FilterBar availableTags={availableTags} availableModels={[]} showSearch={false} showModelSelector={false} />
+				<FilterBar availableTags={availableTags} availableModels={availableModels} showSearch={false} showModelSelector />
 			</FilterSection>
 			{content}
 		</PageHeader>
@@ -130,19 +142,6 @@ type FanoutData = NonNullable<ReturnType<typeof useQueryFanout>["data"]>;
 // ---------------------------------------------------------------------------
 // Shared bits
 // ---------------------------------------------------------------------------
-
-function InfoTip({ children }: { children: React.ReactNode }) {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<span className="cursor-help">
-					<IconInfoCircle className="text-muted-foreground/60 size-3.5" />
-				</span>
-			</TooltipTrigger>
-			<TooltipContent className="max-w-xs text-sm font-normal">{children}</TooltipContent>
-		</Tooltip>
-	);
-}
 
 function StatCard({ label, value, tip }: { label: string; value: React.ReactNode; tip: React.ReactNode }) {
 	return (
@@ -158,7 +157,7 @@ function StatCard({ label, value, tip }: { label: string; value: React.ReactNode
 	);
 }
 
-function RunsTooltip({ breakdown, reconstructed }: { breakdown: FanoutData["byModel"]; reconstructed: Set<string> }) {
+function RunsTooltip({ breakdown }: { breakdown: FanoutData["byModel"] }) {
 	return (
 		<>
 			<p>
@@ -169,10 +168,7 @@ function RunsTooltip({ breakdown, reconstructed }: { breakdown: FanoutData["byMo
 				<div className="border-border/60 mt-2 space-y-0.5 border-t pt-2">
 					{breakdown.map((m) => (
 						<div key={m.model} className="flex items-center justify-between gap-3">
-							<span>
-								{getModelDisplayName(m.model)}
-								{reconstructed.has(m.model) ? " (reconstructed)" : ""}
-							</span>
+							<span>{getModelDisplayName(m.model)}</span>
 							<span className="tabular-nums">{m.fanoutRuns.toLocaleString()}</span>
 						</div>
 					))}
@@ -182,26 +178,55 @@ function RunsTooltip({ breakdown, reconstructed }: { breakdown: FanoutData["byMo
 	);
 }
 
+function UnknownRunsTooltip({ byModel }: { byModel: FanoutData["byModel"] }) {
+	const rows = byModel
+		.map((m) => ({ model: m.model, unknown: m.runs - m.fanoutRuns }))
+		.filter((m) => m.unknown > 0)
+		.sort((a, b) => b.unknown - a.unknown);
+	return (
+		<>
+			<p>
+				Search-enabled runs without known queries. The engine may have chosen not to search at all, searched with just
+				the prompt itself, or searched without revealing its queries.
+			</p>
+			{rows.length > 0 && (
+				<div className="border-border/60 mt-2 space-y-0.5 border-t pt-2">
+					{rows.map((m) => (
+						<div key={m.model} className="flex items-center justify-between gap-3">
+							<span>{getModelDisplayName(m.model)}</span>
+							<span className="tabular-nums">{m.unknown.toLocaleString()}</span>
+						</div>
+					))}
+				</div>
+			)}
+		</>
+	);
+}
+
 function StatRow({ data }: { data: FanoutData }) {
-	const reconstructed = new Set(data.reconstructedModels);
 	// Only models that actually produced fan-out — the tooltip describes runs that
 	// "produced at least one web search", so engines that ran but exposed none (e.g.
 	// OpenRouter) are left off rather than listed as 0.
 	const breakdown = data.byModel.filter((m) => m.fanoutRuns > 0).sort((a, b) => b.fanoutRuns - a.fanoutRuns);
 	return (
-		<div className="grid gap-4 sm:grid-cols-3">
+		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 			<StatCard
 				label="Search Prompt Runs"
 				value={data.totalRuns.toLocaleString()}
-				tip="How many times your prompts were run against engines with web search enabled."
+				tip="How many times your prompts were run against engines configured with web search. An engine may still choose not to execute a search on a given run."
 			/>
 			<StatCard
-				label="Prompt Runs w/ Queries"
+				label="Prompt Runs w/ Unknown Queries"
+				value={(data.totalRuns - data.fanoutRuns).toLocaleString()}
+				tip={<UnknownRunsTooltip byModel={data.byModel} />}
+			/>
+			<StatCard
+				label="Prompt Runs w/ Known Queries"
 				value={data.fanoutRuns.toLocaleString()}
-				tip={<RunsTooltip breakdown={breakdown} reconstructed={reconstructed} />}
+				tip={<RunsTooltip breakdown={breakdown} />}
 			/>
 			<StatCard
-				label="Average Fanout"
+				label="Average Fan-Out"
 				value={data.avgPerExecution.toLocaleString()}
 				tip="Average queries per run that had at least one web query."
 			/>
@@ -212,8 +237,8 @@ function StatRow({ data }: { data: FanoutData }) {
 function LoadingState() {
 	return (
 		<div className="space-y-6">
-			<div className="grid gap-4 sm:grid-cols-3">
-				{["a", "b", "c"].map((k) => (
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				{["a", "b", "c", "d"].map((k) => (
 					<Card key={k} className="py-4">
 						<CardContent className="space-y-2">
 							<Skeleton className="h-4 w-28" />
@@ -247,40 +272,12 @@ function EmptyState({ message }: { message: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Prompt Fanout — per-prompt searches with the prompt's keywords bolded
+// Prompt Fan-Out — per-prompt searches with the prompt's keywords bolded
 // ---------------------------------------------------------------------------
-
-const normTok = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-/** Non-stop-word tokens from the prompt — these get bolded in each search. */
-function promptKeywords(promptValue: string): Set<string> {
-	return new Set(promptValue.split(/\s+/).map(normTok).filter((t) => t.length > 0 && !isStopword(t)));
-}
-
-function VariationLine({ query, keywords }: { query: string; keywords: Set<string> }) {
-	const seen = new Map<string, number>();
-	const segs = query
-		.split(/\s+/)
-		.filter(Boolean)
-		.map((w) => {
-			const n = seen.get(w) ?? 0;
-			seen.set(w, n + 1);
-			return { text: w, bold: keywords.has(normTok(w)), key: `${w}:${n}` };
-		});
-	return (
-		<div className="text-sm leading-6 break-words">
-			{segs.map((s) => (
-				<span key={s.key} className={s.bold ? "text-foreground font-semibold" : "text-muted-foreground"}>
-					{s.text}{" "}
-				</span>
-			))}
-		</div>
-	);
-}
 
 type SortKey = "queries" | "avg";
 
-function SortHead({ k, label, sort, setSort }: { k: SortKey; label: string; sort: SortKey; setSort: (k: SortKey) => void }) {
+function SortHead<K extends string>({ k, label, sort, setSort }: { k: K; label: string; sort: K; setSort: (k: K) => void }) {
 	return (
 		<button
 			type="button"
@@ -364,34 +361,37 @@ function Prompts({ prompts, brandId }: { prompts: PromptFanoutStat[]; brandId: s
 						const keywords = isOpen ? promptKeywords(p.promptValue) : null;
 						return (
 							<div key={p.promptId} className="py-1">
-								<div className={cn(GRID, "py-2")}>
-									<button
-										type="button"
-										onClick={() => toggle(p.promptId)}
-										className="text-muted-foreground hover:text-foreground cursor-pointer"
-										aria-label={isOpen ? "Collapse" : "Expand"}
-									>
+								<button
+									type="button"
+									onClick={() => toggle(p.promptId)}
+									className={cn(GRID, "hover:bg-muted/50 w-full cursor-pointer rounded-sm py-2 text-left")}
+									aria-expanded={isOpen}
+								>
+									<span className="text-muted-foreground">
 										{isOpen ? <IconChevronDown className="size-4" /> : <IconChevronRight className="size-4" />}
-									</button>
-									<div className="min-w-0">
-										<Link
-											to="/app/$brand/prompts/$promptId"
-											params={{ brand: brandId, promptId: p.promptId }}
-											className="block truncate text-sm font-medium hover:underline"
-											title={p.promptValue}
-										>
+									</span>
+									<span className="min-w-0">
+										<span className="block truncate text-sm font-medium" title={p.promptValue}>
 											{p.promptValue || "(untitled prompt)"}
-										</Link>
+										</span>
 										<span className="text-muted-foreground text-xs">{p.uniqueQueries.toLocaleString()} variations</span>
-									</div>
+									</span>
 									<span className="text-right text-sm tabular-nums">{p.totalQueries.toLocaleString()}</span>
 									<span className="text-right text-sm tabular-nums">{p.avgPerExecution.toLocaleString()}</span>
-								</div>
+								</button>
 								{isOpen && keywords && (
 									<div className="border-border mb-3 ml-8 mr-2 space-y-2 border-l pl-4">
 										{p.variations.map((v) => (
-											<VariationLine key={v.query} query={v.query} keywords={keywords} />
+											<VariationLine key={v.query} variation={v} keywords={keywords} />
 										))}
+										{p.uniqueQueries > p.variations.length && (
+											<div className="text-muted-foreground text-xs">
+												Top {p.variations.length} of {p.uniqueQueries.toLocaleString()} variations shown
+											</div>
+										)}
+										<div className="pt-1">
+											<HistoryButton brandId={brandId} promptId={p.promptId} promptName={p.promptValue} tab="web-queries" />
+										</div>
 									</div>
 								)}
 							</div>
@@ -407,131 +407,101 @@ function Prompts({ prompts, brandId }: { prompts: PromptFanoutStat[]; brandId: s
 }
 
 // ---------------------------------------------------------------------------
-// Query Words — the cloud + Added / Preserved / Dropped
+// Top Queries — the searches with the widest reach, with the prompts behind them
 // ---------------------------------------------------------------------------
 
-type WordTab = "added" | "preserved" | "dropped";
+type TopSort = "prompts" | "runs";
 
-const WORD_TAB_HELP: Record<WordTab, string> = {
-	added: "Words engines add that weren't in your prompt — the intent they layer on (e.g. “best”, “2026”, “vs”).",
-	preserved: "Words from your prompt engines keep in their searches.",
-	dropped: "Words from your prompt engines leave out of their searches.",
-};
+const TOP_GRID = "grid grid-cols-[1.25rem_1fr_5rem_5.5rem] items-center gap-3";
 
-function QueryWords({ data }: { data: FanoutData }) {
-	const [tab, setTab] = useState<WordTab>("added");
-	const [hideStop, setHideStop] = useState(true);
+function TopQueries({ data, brandId }: { data: FanoutData; brandId: string }) {
+	const [sort, setSort] = useState<TopSort>("prompts");
+	const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-	const words: WordChangeStat[] = data.wordChanges[tab];
-	const shown = hideStop ? words.filter((w) => !w.isStop) : words;
-	const items = shown.slice(0, 18).map((w) => ({
-		label: w.word,
-		count: w.count,
-		suffix: <span className="text-muted-foreground tabular-nums text-xs">{w.share}%</span>,
-	}));
+	const rows: TopQueryStat[] = sort === "prompts" ? data.topByPrompts : data.topByRuns;
+
+	const toggle = (query: string) =>
+		setExpanded((prev) => {
+			const next = new Set(prev);
+			if (next.has(query)) next.delete(query);
+			else next.add(query);
+			return next;
+		});
 
 	return (
-		<div className="space-y-6">
-			<Card className="py-4">
-				<CardContent>
-					<WordCloud terms={data.terms} />
-				</CardContent>
-			</Card>
-
-			<Card className="gap-3">
-				<CardHeader>
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<div>
-							<CardTitle className="flex items-center gap-1.5 text-base">
-								Word Changes
-								<InfoTip>{WORD_TAB_HELP[tab]}</InfoTip>
-							</CardTitle>
-							<CardDescription>How engines rewrite your prompt wording.</CardDescription>
-						</div>
-						<div className="flex items-center gap-4">
-							<div className="flex items-center gap-2">
-								<Switch id="qf-hide-stop" checked={hideStop} onCheckedChange={setHideStop} />
-								<label htmlFor="qf-hide-stop" className="text-muted-foreground cursor-pointer text-sm">
-									Hide stop words
-								</label>
+		<Card className="gap-4">
+			<CardHeader>
+				<CardTitle className="flex items-center gap-1.5 text-base">
+					Top Queries
+					<InfoTip>
+						The searches with the widest reach — sort by how many distinct prompts triggered them, or how many prompt
+						runs issued them. Expand a query to see the prompts behind it.
+					</InfoTip>
+				</CardTitle>
+				<CardDescription>The searches that recur across your prompts.</CardDescription>
+			</CardHeader>
+			<CardContent>
+				<div className={cn(TOP_GRID, "text-muted-foreground/80 border-b py-2 text-[11px] font-medium")}>
+					<span />
+					<span className="uppercase tracking-wide">Query</span>
+					<span className="text-right">
+						<SortHead k="prompts" label="Prompts" sort={sort} setSort={setSort} />
+					</span>
+					<span className="text-right">
+						<SortHead k="runs" label="Prompt Runs" sort={sort} setSort={setSort} />
+					</span>
+				</div>
+				<div className="divide-border divide-y">
+					{rows.map((q) => {
+						const isOpen = expanded.has(q.query);
+						return (
+							<div key={q.query} className="py-1">
+								<button
+									type="button"
+									onClick={() => toggle(q.query)}
+									className={cn(TOP_GRID, "hover:bg-muted/50 w-full cursor-pointer rounded-sm py-2 text-left")}
+									aria-expanded={isOpen}
+								>
+									<span className="text-muted-foreground">
+										{isOpen ? <IconChevronDown className="size-4" /> : <IconChevronRight className="size-4" />}
+									</span>
+									<span className="min-w-0 truncate text-sm" title={q.query}>
+										{q.query}
+									</span>
+									<span className="text-right text-sm tabular-nums">{q.prompts.toLocaleString()}</span>
+									<span className="text-right text-sm tabular-nums">{q.runs.toLocaleString()}</span>
+								</button>
+								{isOpen && (
+									<div className="border-border mb-3 ml-8 mr-2 space-y-1.5 border-l pl-4">
+										{q.promptRefs.map((p) => (
+											<div key={p.promptId} className="flex items-baseline justify-between gap-4">
+												<Link
+													to="/app/$brand/prompts/$promptId"
+													params={{ brand: brandId, promptId: p.promptId }}
+													search={{ tab: "web-queries" }}
+													className="min-w-0 truncate text-sm hover:underline"
+													title={p.promptValue}
+												>
+													{p.promptValue || "(untitled prompt)"}
+												</Link>
+												<span
+													className="text-muted-foreground shrink-0 text-sm tabular-nums"
+													title="Runs of this prompt that issued the search"
+												>
+													{p.runs.toLocaleString()}×
+												</span>
+											</div>
+										))}
+									</div>
+								)}
 							</div>
-							<Tabs value={tab} onValueChange={(v) => setTab(v as WordTab)}>
-								<TabsList>
-									<TabsTrigger value="added">Added</TabsTrigger>
-									<TabsTrigger value="preserved">Preserved</TabsTrigger>
-									<TabsTrigger value="dropped">Dropped</TabsTrigger>
-								</TabsList>
-							</Tabs>
-						</div>
-					</div>
-				</CardHeader>
-				<Separator />
-				<CardContent>
-					{items.length > 0 ? (
-						<ProgressBarChart items={items} defaultColor={PURPLE} />
-					) : (
-						<div className="text-muted-foreground py-6 text-center text-sm">
-							No {tab} words{hideStop ? " (try showing stop words)" : ""}.
-						</div>
+						);
+					})}
+					{rows.length === 0 && (
+						<div className="text-muted-foreground py-6 text-center text-sm">No queries for this period.</div>
 					)}
-				</CardContent>
-			</Card>
-		</div>
-	);
-}
-
-// ---------------------------------------------------------------------------
-// Query Visibility — invisible vs won
-// ---------------------------------------------------------------------------
-
-function queryItems(queries: FanoutQueryStat[]) {
-	return queries.map((q) => ({ label: q.query, count: q.count }));
-}
-
-function QueryVisibility({ data }: { data: FanoutData }) {
-	return (
-		<div className="grid gap-6 lg:grid-cols-2">
-			<Card className="gap-3">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-1.5 text-base">
-						Queries You're Invisible In
-						<InfoTip>
-							Queries that ran more than once where your brand did not appear. These are potential keyword opportunities.
-						</InfoTip>
-					</CardTitle>
-					<CardDescription>Where to focus — high-volume searches you're missing.</CardDescription>
-				</CardHeader>
-				<Separator />
-				<CardContent>
-					{data.invisibleQueries.length > 0 ? (
-						<ProgressBarChart items={queryItems(data.invisibleQueries)} defaultColor="#f43f5e" />
-					) : (
-						<div className="text-muted-foreground py-4 text-sm">
-							Your brand appeared in every search that ran more than once. 🎉
-						</div>
-					)}
-				</CardContent>
-			</Card>
-
-			<Card className="gap-3">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-1.5 text-base">
-						Queries You Win
-						<InfoTip>Searches your brand shows up in more than {WON_MENTION_THRESHOLD}% of the time.</InfoTip>
-					</CardTitle>
-					<CardDescription>The searches you reliably show up in.</CardDescription>
-				</CardHeader>
-				<Separator />
-				<CardContent>
-					{data.wonQueries.length > 0 ? (
-						<ProgressBarChart items={queryItems(data.wonQueries)} defaultColor="#10b981" />
-					) : (
-						<div className="text-muted-foreground py-4 text-sm">
-							Your brand hasn't reliably appeared in any repeated search yet.
-						</div>
-					)}
-				</CardContent>
-			</Card>
-		</div>
+				</div>
+			</CardContent>
+		</Card>
 	);
 }

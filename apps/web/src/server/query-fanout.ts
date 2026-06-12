@@ -1,8 +1,8 @@
 /**
- * Server function for the Query Fanout page. Read-only — derived from existing
+ * Server function for the Query Fanout page. Read-only — derived entirely from
  * `prompt_runs.web_queries` (the sub-queries engines run while answering a
- * prompt) plus, for Google AI Mode, the `google.com/search?q=` links it cites.
- * No schema changes.
+ * prompt), uniformly across providers. Engines that don't expose their
+ * searches contribute runs but no queries. No schema changes.
  *
  * Filters (tags/search → prompt IDs, lookback → date range in the user's
  * timezone) are resolved server-side exactly like Share of Voice, so the same
@@ -16,28 +16,13 @@ import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { LOOKBACK, resolveRange } from "@/server/analysis";
-import {
-	getFanoutBreakdown,
-	getFanoutModelTotals,
-	getFanoutPromptTotals,
-	getGoogleSearchFanoutCitations,
-} from "@/lib/postgres-read";
+import { getFanoutBreakdown, getFanoutModelTotals, getFanoutPromptTotals } from "@/lib/postgres-read";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
-import {
-	computeFanoutAnalysis,
-	deriveGoogleFanout,
-	mergeGoogleFanout,
-	type FanoutAnalysis,
-} from "@/lib/fanout-analysis";
-
-/** Engines whose fan-out isn't in `web_queries` but is reconstructable from cited Google searches. */
-const GOOGLE_FANOUT_MODELS = ["google-ai-mode", "google-ai-overview"] as const;
+import { computeFanoutAnalysis, type FanoutAnalysis } from "@/lib/fanout-analysis";
 
 export interface QueryFanoutResponse extends FanoutAnalysis {
 	brandName: string;
 	model: string | null;
-	/** Models whose fan-out was reconstructed from citations rather than read from `web_queries`. */
-	reconstructedModels: string[];
 }
 
 function emptyResponse(brandName: string, model: string | null): QueryFanoutResponse {
@@ -55,16 +40,9 @@ function emptyResponse(brandName: string, model: string | null): QueryFanoutResp
 		wordChanges: { added: [], dropped: [], preserved: [] },
 		byModel: [],
 		byPrompt: [],
-		invisibleQueries: [],
-		wonQueries: [],
-		reconstructedModels: [],
+		topByPrompts: [],
+		topByRuns: [],
 	};
-}
-
-/** Which Google models to look up citations for, honoring the model filter. */
-function citationModelsFor(model: string | undefined): string[] {
-	if (!model) return [...GOOGLE_FANOUT_MODELS];
-	return (GOOGLE_FANOUT_MODELS as readonly string[]).includes(model) ? [model] : [];
 }
 
 export const getQueryFanoutFn = createServerFn({ method: "GET" })
@@ -75,6 +53,8 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 			model: z.string().optional(),
 			tags: z.string().optional(),
 			search: z.string().optional(),
+			/** Scope to a single prompt (prompt-details Web Queries tab) — lists come back uncapped. */
+			promptId: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -85,37 +65,30 @@ export const getQueryFanoutFn = createServerFn({ method: "GET" })
 		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
 		const model = data.model;
 
-		const [brandRow, resolved] = await Promise.all([
+		const [brandRow, allResolved] = await Promise.all([
 			db.select({ name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			resolveFilteredPrompts(data.brandId, { tags: data.tags, search: data.search }),
 		]);
 		const brandName = brandRow[0]?.name ?? "Your brand";
+		// Resolving then filtering (rather than trusting the input id) keeps the
+		// brand-ownership check: a promptId from another brand resolves to nothing.
+		const resolved = data.promptId ? allResolved.filter((p) => p.id === data.promptId) : allResolved;
 		const promptIds = resolved.map((p) => p.id);
 		if (promptIds.length === 0) return emptyResponse(brandName, model ?? null);
 
 		const promptValueMap = new Map(resolved.map((p) => [p.id, p.value]));
-		const citationModels = citationModelsFor(model);
 
-		const [breakdown, modelTotals, promptTotalsRows, googleCitations] = await Promise.all([
+		const [breakdown, modelTotals, promptTotalsRows] = await Promise.all([
 			getFanoutBreakdown(data.brandId, fromDateStr, toDateStr, timezone, promptIds, model),
 			getFanoutModelTotals(data.brandId, fromDateStr, toDateStr, timezone, promptIds, model),
 			getFanoutPromptTotals(data.brandId, fromDateStr, toDateStr, timezone, promptIds, model),
-			getGoogleSearchFanoutCitations(data.brandId, fromDateStr, toDateStr, timezone, promptIds, citationModels),
 		]);
+		const promptRuns = new Map(promptTotalsRows.map((r) => [r.prompt_id, r.runs]));
 
-		// DataForSEO's Google AI Mode echoes the prompt in `web_queries` (filtered out
-		// upstream) and exposes its real searches only as `google.com/search` citations;
-		// Olostep's Google runs carry genuine `web_queries`. Reconstruct the former from
-		// citations and ADD it to the web_queries-derived totals so neither is dropped.
-		const google = deriveGoogleFanout(googleCitations, promptValueMap);
-		const allBreakdown = [...breakdown, ...google.rows];
-		const { modelTotals: patchedTotals, promptRuns, reconstructedModels } = mergeGoogleFanout(
-			modelTotals,
-			promptTotalsRows,
-			google,
-		);
+		// Single-prompt mode shows every variation (the prompt-details tab) — 2000 is
+		// a payload-size backstop, far above the largest observed prompt (~700).
+		const limits = data.promptId ? { topQueries: 2000, perModelTop: 2000, variations: 2000 } : undefined;
+		const analysis = computeFanoutAnalysis(breakdown, modelTotals, promptValueMap, { promptRuns, limits });
 
-		const analysis = computeFanoutAnalysis(allBreakdown, patchedTotals, promptValueMap, { promptRuns });
-
-		return { brandName, model: model ?? null, ...analysis, reconstructedModels };
+		return { brandName, model: model ?? null, ...analysis };
 	});

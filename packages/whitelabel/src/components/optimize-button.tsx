@@ -93,22 +93,25 @@ export function OptimizeButton({
 			}
 
 			const url = generateOptimizationUrl(
-				optimizationUrlTemplate, 
-				promptName, 
-				brandId, 
-				!!webQuery,
-				webQuery || undefined
+				optimizationUrlTemplate,
+				promptName,
+				brandId,
+				true,
+				// No genuine search query known (the engine searched the prompt
+				// verbatim or doesn't expose its queries) — the prompt itself is
+				// the best stand-in.
+				webQuery || promptName
 			);
-			
+
 			window.open(url, "_blank", "noopener,noreferrer");
 		} catch (error) {
 			console.error("Failed to fetch web query:", error);
 			const url = generateOptimizationUrl(
-				optimizationUrlTemplate, 
-				promptName, 
-				brandId, 
-				false,
-				undefined
+				optimizationUrlTemplate,
+				promptName,
+				brandId,
+				true,
+				promptName
 			);
 			window.open(url, "_blank", "noopener,noreferrer");
 		} finally {

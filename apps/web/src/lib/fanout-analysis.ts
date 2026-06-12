@@ -4,20 +4,17 @@
  * page (for its result types).
  *
  * "Query fanout" = the sub-queries an AI engine issues to the web while
- * answering a tracked prompt (`prompt_runs.web_queries`). Two kinds of entries
- * are *not* genuine fan-out and are dropped (in the SQL that reads web_queries,
- * and defensively here): a query identical to the prompt (the engine echoing it,
- * e.g. DataForSEO Google AI Mode stores `[prompt]`), and the `"unavailable"`
- * sentinel some providers write when a search happened but the real query
- * strings aren't exposed (OpenRouter always; BrightData/Olostep on extraction
- * failure). So every row that reaches the aggregator is a genuine expansion.
- *
- * Most engines populate `web_queries` directly. DataForSEO's Google AI Mode does
- * not — it only echoes the prompt there, but *cites* `google.com/search?q=…`
- * links (the searches it actually ran). `deriveGoogleFanout` reconstructs Google
- * fan-out from those citations, and `mergeGoogleFanout` ADDS it to the
- * web_queries-derived totals (Olostep's Google runs carry genuine `web_queries`,
- * which must be kept, not replaced) so neither provider is a blank on the page.
+ * answering a tracked prompt (`prompt_runs.web_queries`) — the single source
+ * for every figure on the page, uniformly across providers. Two kinds of
+ * entries are *not* genuine fan-out and are dropped (in the SQL that reads
+ * web_queries, and defensively here): a query identical to the prompt (the
+ * engine echoing it — the worker strips echoes for every provider at write
+ * time via `stripPromptEcho`; the read-side filter covers rows written before
+ * that guard existed), and the `"unavailable"` sentinel providers write when a
+ * search happened but the real query strings aren't exposed (OpenRouter and
+ * DataForSEO always; BrightData/Olostep on extraction failure). So every row
+ * that reaches the aggregator is a genuine expansion, and engines that never
+ * expose their searches simply contribute none.
  */
 import { WEB_QUERIES_UNAVAILABLE } from "@workspace/lib/constants";
 
@@ -47,15 +44,6 @@ export interface FanoutPromptTotalRow {
 	runs: number;
 }
 
-/** One `google.com/search?…` citation emitted by a Google AI Mode run. */
-export interface GoogleFanoutCitationRow {
-	prompt_id: string;
-	prompt_run_id: string;
-	model: string;
-	url: string;
-	brand_mentioned: boolean;
-}
-
 // ---------------------------------------------------------------------------
 // Output shapes (rendered by the page).
 // ---------------------------------------------------------------------------
@@ -65,6 +53,25 @@ export interface FanoutQueryStat {
 	count: number;
 	/** % of this query's runs whose answer mentioned the brand (0..100). */
 	brandMentionRate: number;
+}
+
+/** One prompt's contribution to a fan-out query (the Top Queries drill-down). */
+export interface QueryPromptRef {
+	promptId: string;
+	promptValue: string;
+	/** Run instances of this prompt that issued the query. */
+	runs: number;
+}
+
+/** A fan-out query ranked by reach: how many prompts / runs issued it. */
+export interface TopQueryStat {
+	query: string;
+	/** Distinct prompts whose runs issued this search. */
+	prompts: number;
+	/** Total run instances that issued it. */
+	runs: number;
+	/** The prompts involved, heaviest first. */
+	promptRefs: QueryPromptRef[];
 }
 
 export interface TermStat {
@@ -132,10 +139,10 @@ export interface FanoutAnalysis {
 	wordChanges: WordChanges;
 	byModel: ModelFanoutStat[];
 	byPrompt: PromptFanoutStat[];
-	/** Top fan-out queries the brand never appeared in (opportunities). */
-	invisibleQueries: FanoutQueryStat[];
-	/** Top fan-out queries the brand reliably appears in. */
-	wonQueries: FanoutQueryStat[];
+	/** Queries reaching the most distinct prompts (cross-prompt searches). */
+	topByPrompts: TopQueryStat[];
+	/** Queries issued by the most prompt runs. */
+	topByRuns: TopQueryStat[];
 }
 
 // ---------------------------------------------------------------------------
@@ -147,12 +154,13 @@ const LIMITS = {
 	terms: 60,
 	wordChanges: 60,
 	perModelTop: 8,
-	variations: 25,
-	opportunities: 20,
-} as const;
+	// Brand-wide page shows a teaser per prompt — View Details has the full list.
+	variations: 10,
+	breadth: 20,
+};
 
-/** A query is "won" if the brand is mentioned in more than this % of its runs. */
-export const WON_MENTION_THRESHOLD = 50;
+/** Per-call overrides for the list caps (single-prompt mode raises them). */
+export type FanoutLimitOverrides = Partial<typeof LIMITS>;
 
 /**
  * Stop words for the term cloud and word-change analysis. Deliberately excludes
@@ -173,6 +181,26 @@ const STOPWORDS = new Set([
 /** True for stop words; the Word changes view hides these by default. */
 export function isStopword(word: string): boolean {
 	return STOPWORDS.has(word.toLowerCase());
+}
+
+/** Normalize a display word for keyword matching: lowercase, alphanumerics only. */
+export const normTok = (w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * Non-stop-word tokens from the prompt — the page bolds these in each fan-out
+ * query. A possessive contributes its base form too ("Acme's" yields "acmes"
+ * AND "acme"), since engines search for the bare name, which would otherwise
+ * not match the prompt's possessive token.
+ */
+export function promptKeywords(promptValue: string): Set<string> {
+	const out = new Set<string>();
+	for (const raw of promptValue.split(/\s+/)) {
+		for (const form of [raw, raw.replace(/['’]s$/i, "")]) {
+			const tok = normTok(form);
+			if (tok.length > 0 && !isStopword(tok)) out.add(tok);
+		}
+	}
+	return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,183 +244,6 @@ function toQueryStats(map: Map<string, Tally>, limit: number): FanoutQueryStat[]
 }
 
 // ---------------------------------------------------------------------------
-// Google AI Mode: reconstruct fan-out from cited google.com/search?q= links.
-// ---------------------------------------------------------------------------
-
-/**
- * Hostname is a real Google domain: `google.<tld>` or `<sub>.google.<tld>`,
- * where `<tld>` is a single label (com, de, …) or a known second-level ccTLD
- * (co.uk, com.au, …). "google" must be the registrable-domain label, so
- * look-alikes like `google.evil.com`, `google.com.evil.com`, and `notgoogle.com`
- * are rejected. The SQL prefilter (`getGoogleSearchFanoutCitations`) is looser —
- * this regex is the authoritative gate.
- */
-const GOOGLE_HOST = /(^|\.)google\.(?:[a-z]{2,}|(?:co|com|org|net|gov|ac|edu)\.[a-z]{2,})$/;
-
-/**
- * If `url` is a plain Google web-search link, return its decoded query; else
- * null. Shopping / vertical links (`prds`, `tbm`, non-web `udm`) are product or
- * image/news surfaces, not query fan-out, so they're rejected — except
- * `udm=14`, which is Google's plain "Web" results surface, i.e. a genuine
- * web search.
- */
-export function parseGoogleSearchQuery(url: string): string | null {
-	try {
-		const u = new URL(url);
-		if (!GOOGLE_HOST.test(u.hostname)) return null;
-		if (u.pathname !== "/search" && u.pathname !== "/search/") return null;
-		if (u.searchParams.has("prds") || u.searchParams.has("tbm")) return null;
-		const udm = u.searchParams.get("udm");
-		if (udm !== null && udm !== "14") return null;
-		const q = u.searchParams.get("q");
-		if (!q) return null;
-		const trimmed = q.trim();
-		return trimmed.length > 0 ? trimmed : null;
-	} catch {
-		return null;
-	}
-}
-
-type RunTotals = { fanoutRuns: number; totalQueries: number };
-
-export interface GoogleFanoutDerived {
-	rows: FanoutBreakdownRow[];
-	/** Per-model run/query counts to patch into the model totals. */
-	totalsByModel: Map<string, RunTotals>;
-	/** Per-prompt run/query counts to fold into the per-prompt totals. */
-	totalsByPrompt: Map<string, RunTotals>;
-}
-
-/**
- * Fold Google AI Mode `google.com/search?q=` citations into breakdown rows that
- * look exactly like web_queries-derived ones, plus per-model and per-prompt
- * run/query totals so "fan-outs per execution" reflects the reconstructed
- * searches.
- */
-export function deriveGoogleFanout(
-	citations: GoogleFanoutCitationRow[],
-	promptValueMap: Map<string, string>,
-): GoogleFanoutDerived {
-	const rowMap = new Map<string, FanoutBreakdownRow>();
-	const runsByModel = new Map<string, Set<string>>();
-	const queriesByModel = new Map<string, number>();
-	const runsByPrompt = new Map<string, Set<string>>();
-	const queriesByPrompt = new Map<string, number>();
-	// A run that cites the same search in several reference blocks ran it once —
-	// count one query instance per (run, query). Not every extractor dedups its
-	// citations (DataForSEO's doesn't), so guard here regardless of provider.
-	const seenPerRun = new Set<string>();
-
-	for (const c of citations) {
-		const q = parseGoogleSearchQuery(c.url);
-		if (!q) continue;
-		const query = norm(q);
-		if (!query) continue;
-		if (query === norm(promptValueMap.get(c.prompt_id) ?? "")) continue; // prompt echo, not a fan-out
-		const seenKey = `${c.prompt_run_id} ${query}`;
-		if (seenPerRun.has(seenKey)) continue;
-		seenPerRun.add(seenKey);
-
-		const key = `${c.prompt_id} ${c.model} ${query}`;
-		const row = rowMap.get(key);
-		if (row) {
-			row.count += 1;
-			if (c.brand_mentioned) row.brand_mentions += 1;
-		} else {
-			rowMap.set(key, {
-				prompt_id: c.prompt_id,
-				model: c.model,
-				query,
-				count: 1,
-				brand_mentions: c.brand_mentioned ? 1 : 0,
-			});
-		}
-
-		if (!runsByModel.has(c.model)) runsByModel.set(c.model, new Set());
-		runsByModel.get(c.model)!.add(c.prompt_run_id);
-		queriesByModel.set(c.model, (queriesByModel.get(c.model) ?? 0) + 1);
-
-		if (!runsByPrompt.has(c.prompt_id)) runsByPrompt.set(c.prompt_id, new Set());
-		runsByPrompt.get(c.prompt_id)!.add(c.prompt_run_id);
-		queriesByPrompt.set(c.prompt_id, (queriesByPrompt.get(c.prompt_id) ?? 0) + 1);
-	}
-
-	const totalsByModel = new Map<string, RunTotals>();
-	for (const [model, total] of queriesByModel) {
-		totalsByModel.set(model, { fanoutRuns: runsByModel.get(model)?.size ?? 0, totalQueries: total });
-	}
-	const totalsByPrompt = new Map<string, RunTotals>();
-	for (const [promptId, total] of queriesByPrompt) {
-		totalsByPrompt.set(promptId, { fanoutRuns: runsByPrompt.get(promptId)?.size ?? 0, totalQueries: total });
-	}
-	return { rows: [...rowMap.values()], totalsByModel, totalsByPrompt };
-}
-
-export interface MergedGoogleFanout {
-	/** Model totals with reconstructed Google fan-out folded in. */
-	modelTotals: FanoutModelTotalRow[];
-	/** Per-prompt fan-out run counts (the denominator for avg fan-out per prompt run). */
-	promptRuns: Map<string, number>;
-	/** Google models whose fan-out was reconstructed from citations (have ≥1 search). */
-	reconstructedModels: string[];
-}
-
-/**
- * Fold citation-reconstructed Google fan-out (from `deriveGoogleFanout`) into the
- * `web_queries`-derived model and per-prompt totals.
- *
- * The two sources are per-run disjoint, so the counts are ADDED, never replaced:
- * a DataForSEO Google run echoes the prompt in `web_queries` (dropped by provider,
- * not by text match, so prompt edits can't leak it) and exposes its real searches
- * only as `google.com/search` citations, while an Olostep Google run carries
- * genuine `web_queries` and cites external pages. Replacing would discard Olostep's
- * real Google fan-out; adding keeps both and still surfaces DataForSEO's
- * reconstructed searches. Disjointness is enforced upstream:
- * `getGoogleSearchFanoutCitations` only returns citations for runs that produced no
- * genuine `web_queries`, so no run is counted twice.
- *
- * A model is reported as "reconstructed" only when ALL its fan-out came from
- * citations (no genuine `web_queries` total) — a model with both keeps its
- * web_queries-derived label.
- */
-export function mergeGoogleFanout(
-	modelTotals: FanoutModelTotalRow[],
-	promptTotals: FanoutPromptTotalRow[],
-	google: GoogleFanoutDerived,
-): MergedGoogleFanout {
-	const webQueriesTotal = new Map(modelTotals.map((m) => [m.model, m.total_queries]));
-	const merged: FanoutModelTotalRow[] = modelTotals.map((m) => {
-		const g = google.totalsByModel.get(m.model);
-		if (!g) return m;
-		const fanout_runs = m.fanout_runs + g.fanoutRuns;
-		// `runs` counts web-search-enabled runs; reconstructed runs are web searches
-		// too, so keep the invariant runs >= fanout_runs even if a reconstructed run
-		// somehow wasn't flagged web-search-enabled (else the UI shows "runs w/ queries"
-		// exceeding "search prompt runs").
-		return { ...m, runs: Math.max(m.runs, fanout_runs), fanout_runs, total_queries: m.total_queries + g.totalQueries };
-	});
-	// A reconstructed Google model with no `prompt_runs` row in the window (only
-	// citations) won't be in `modelTotals` — add it; `runs` is best-effort.
-	for (const [model, g] of google.totalsByModel) {
-		if (!merged.some((m) => m.model === model)) {
-			merged.push({ model, runs: g.fanoutRuns, fanout_runs: g.fanoutRuns, total_queries: g.totalQueries });
-		}
-	}
-
-	const promptRuns = new Map(promptTotals.map((r) => [r.prompt_id, r.runs]));
-	for (const [promptId, g] of google.totalsByPrompt) {
-		promptRuns.set(promptId, (promptRuns.get(promptId) ?? 0) + g.fanoutRuns);
-	}
-
-	// Only models whose fan-out is *purely* reconstructed (no genuine web_queries).
-	const reconstructedModels = [...google.totalsByModel.entries()]
-		.filter(([model, g]) => g.totalQueries > 0 && (webQueriesTotal.get(model) ?? 0) === 0)
-		.map(([m]) => m);
-
-	return { modelTotals: merged, promptRuns, reconstructedModels };
-}
-
-// ---------------------------------------------------------------------------
 // Main aggregation
 // ---------------------------------------------------------------------------
 
@@ -403,11 +254,16 @@ export function computeFanoutAnalysis(
 	opts: {
 		/** prompt id → runs that produced ≥1 web query, for per-prompt avg fan-out per run. */
 		promptRuns?: Map<string, number>;
+		/** Raise/lower the list caps (e.g. effectively uncapped for a single prompt). */
+		limits?: FanoutLimitOverrides;
 	} = {},
 ): FanoutAnalysis {
 	const { promptRuns } = opts;
+	const L = { ...LIMITS, ...opts.limits };
 
 	const overall = new Map<string, Tally>();
+	/** query → prompt id → run instances (feeds the Top Queries drill-down). */
+	const promptsPerQuery = new Map<string, Map<string, number>>();
 	const perModel = new Map<string, Map<string, Tally>>();
 	const perPrompt = new Map<string, { value: string; total: number; queries: Map<string, Tally> }>();
 	const terms = new Map<string, number>();
@@ -436,6 +292,13 @@ export function computeFanoutAnalysis(
 		totalBrand += row.brand_mentions;
 
 		bump(overall, query, row.count, row.brand_mentions);
+
+		let queryPrompts = promptsPerQuery.get(query);
+		if (!queryPrompts) {
+			queryPrompts = new Map();
+			promptsPerQuery.set(query, queryPrompts);
+		}
+		queryPrompts.set(row.prompt_id, (queryPrompts.get(row.prompt_id) ?? 0) + row.count);
 
 		if (!perModel.has(row.model)) perModel.set(row.model, new Map());
 		bump(perModel.get(row.model)!, query, row.count, row.brand_mentions);
@@ -470,18 +333,18 @@ export function computeFanoutAnalysis(
 
 	const coverageRate = pct(totalBrand, totalQueries);
 	const allQueryStats = toQueryStats(overall, overall.size);
-	const topQueries = allQueryStats.slice(0, LIMITS.topQueries);
+	const topQueries = allQueryStats.slice(0, L.topQueries);
 
 	const termStats: TermStat[] = [...terms.entries()]
 		.map(([term, count]) => ({ term, count }))
 		.sort((a, b) => b.count - a.count || a.term.localeCompare(b.term))
-		.slice(0, LIMITS.terms);
+		.slice(0, L.terms);
 
 	const toWordChanges = (map: Map<string, number>): WordChangeStat[] =>
 		[...map.entries()]
 			.map(([word, count]) => ({ word, count, share: pct(count, totalQueries), isStop: STOPWORDS.has(word) }))
 			.sort((a, b) => b.count - a.count || a.word.localeCompare(b.word))
-			.slice(0, LIMITS.wordChanges);
+			.slice(0, L.wordChanges);
 	const wordChanges: WordChanges = {
 		added: toWordChanges(added),
 		dropped: toWordChanges(dropped),
@@ -496,7 +359,7 @@ export function computeFanoutAnalysis(
 			fanoutRuns: m.fanout_runs,
 			totalQueries: m.total_queries,
 			avgPerExecution: m.fanout_runs > 0 ? Math.round((m.total_queries / m.fanout_runs) * 10) / 10 : 0,
-			topQueries: perModel.has(m.model) ? toQueryStats(perModel.get(m.model)!, LIMITS.perModelTop) : [],
+			topQueries: perModel.has(m.model) ? toQueryStats(perModel.get(m.model)!, L.perModelTop) : [],
 		}))
 		.sort((a, b) => b.totalQueries - a.totalQueries || b.runs - a.runs);
 
@@ -512,21 +375,27 @@ export function computeFanoutAnalysis(
 				uniqueQueries: pp.queries.size,
 				runs,
 				avgPerExecution: runs > 0 ? Math.round((pp.total / runs) * 10) / 10 : 0,
-				variations: toQueryStats(pp.queries, LIMITS.variations),
+				variations: toQueryStats(pp.queries, L.variations),
 			};
 		})
 		.sort((a, b) => b.totalQueries - a.totalQueries);
 
-	// Opportunity framing — queries engines run often where the brand is absent,
-	// and the queries it reliably wins. Require count >= 2 so one-off queries
-	// don't dominate the lists.
-	const invisibleQueries = allQueryStats
-		.filter((q) => q.count >= 2 && q.brandMentionRate === 0)
-		.slice(0, LIMITS.opportunities);
-	const wonQueries = allQueryStats
-		.filter((q) => q.count >= 2 && q.brandMentionRate > WON_MENTION_THRESHOLD)
-		.sort((a, b) => b.count - a.count || b.brandMentionRate - a.brandMentionRate)
-		.slice(0, LIMITS.opportunities);
+	// Breadth framing — the searches that matter beyond a single prompt, with
+	// the prompts behind each one so the list can drill down like the
+	// Prompt Fan-Out accordion (just inverted: query → prompts).
+	const breadthStats: TopQueryStat[] = [...overall.entries()].map(([query, t]) => {
+		const per = promptsPerQuery.get(query) ?? new Map<string, number>();
+		const promptRefs: QueryPromptRef[] = [...per.entries()]
+			.map(([promptId, runs]) => ({ promptId, promptValue: promptValueMap.get(promptId) ?? "", runs }))
+			.sort((a, b) => b.runs - a.runs || a.promptValue.localeCompare(b.promptValue));
+		return { query, prompts: per.size, runs: t.count, promptRefs };
+	});
+	const topByPrompts = [...breadthStats]
+		.sort((a, b) => b.prompts - a.prompts || b.runs - a.runs || a.query.localeCompare(b.query))
+		.slice(0, L.breadth);
+	const topByRuns = [...breadthStats]
+		.sort((a, b) => b.runs - a.runs || b.prompts - a.prompts || a.query.localeCompare(b.query))
+		.slice(0, L.breadth);
 
 	const totalRuns = modelTotals.reduce((s, m) => s + m.runs, 0);
 	const fanoutRuns = modelTotals.reduce((s, m) => s + m.fanout_runs, 0);
@@ -543,7 +412,7 @@ export function computeFanoutAnalysis(
 		wordChanges,
 		byModel,
 		byPrompt,
-		invisibleQueries,
-		wonQueries,
+		topByPrompts,
+		topByRuns,
 	};
 }

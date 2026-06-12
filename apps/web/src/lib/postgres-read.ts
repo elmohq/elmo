@@ -12,7 +12,6 @@ import {
 	type FanoutBreakdownRow,
 	type FanoutModelTotalRow,
 	type FanoutPromptTotalRow,
-	type GoogleFanoutCitationRow,
 } from "@/lib/fanout-analysis";
 
 const db = drizzle(process.env.DATABASE_URL!);
@@ -578,6 +577,9 @@ export async function getPromptWebQueryCounts(
 	timezone: string,
 	model?: string,
 ): Promise<WebQueryCount[]> {
+	// The `unavailable` sentinel (search happened, query strings unexposed) isn't
+	// a usable web query — without this filter it becomes a model's "top query"
+	// whenever a provider never exposes strings (OpenRouter; DataForSEO Google).
 	const rows = await queryPg<WebQueryCount>(sql`
 		SELECT
 			model,
@@ -586,6 +588,7 @@ export async function getPromptWebQueryCounts(
 		FROM prompt_runs, unnest(web_queries) AS web_query
 		WHERE prompt_id = ${promptId}
 			AND array_length(web_queries, 1) > 0
+			AND lower(btrim(web_query)) <> ${UNAVAILABLE_SENTINEL}
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
 		GROUP BY model, web_query
@@ -1226,37 +1229,44 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 // Query Fanout
 //
 // The sub-queries an engine issues to the web while answering a prompt, read
-// from `prompt_runs.web_queries`. Entries that aren't genuine fan-out are dropped
-// via `genuineFanoutWq`: the `unavailable` sentinel some providers emit when a
-// search happened but the strings aren't exposed, the prompt echoed verbatim, and
-// anything from an echo-only provider (DataForSEO, which stores `[prompt]`).
+// from `prompt_runs.web_queries` — the single source for every figure, with no
+// provider-specific handling. Entries that aren't genuine fan-out are dropped
+// via `genuineFanoutWq`: the `unavailable` sentinel providers emit when a
+// search happened but the strings aren't exposed, and the prompt echoed
+// verbatim. A run that lists the same query twice counts it ONCE — one
+// instance per (run, normalized query) — so a single run can't satisfy the
+// count >= 2 Invisible/Won gate.
 // Every fan-out query joins `prompts` (to compare against the prompt text) so
 // columns are qualified (`pr.`, the join brings two `created_at` columns into
 // scope) and the shared unqualified filter helpers are inlined instead.
 // ============================================================================
 
 /**
- * Providers whose `web_queries` is never genuine fan-out — DataForSEO's Google AI
- * Mode stores the prompt verbatim (`webQueries: [prompt]`), and its fan-out is
- * recovered from cited `google.com/search` links instead. Matching on provider
- * (not on the prompt text) keeps echo-dropping correct even after a prompt is
- * edited, when the stored echo would no longer equal the current `prompts.value`.
- */
-const ECHO_ONLY_PROVIDER = "dataforseo";
-
-/**
  * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`
- * sentinel (OpenRouter always; BrightData/Olostep on extraction failure), not the
- * prompt echoed verbatim, and not from an echo-only provider. Shared by the
- * breakdown, model totals, per-prompt totals, and the citation-disjointness guard
- * so all four count the same set. Requires a `wq` unnest alias plus the `pr`
- * prompt_runs and `p` prompts rows in scope.
+ * sentinel (OpenRouter and DataForSEO always; BrightData/Olostep on extraction
+ * failure), and not the prompt echoed verbatim. Shared by the breakdown, model
+ * totals, and per-prompt totals so all three count the same set. Requires a
+ * `wq` unnest alias plus the `pr` prompt_runs and `p` prompts rows in scope.
+ *
+ * The worker strips echoes for every provider at write time (`stripPromptEcho`
+ * in @workspace/lib), where the prompt text as run is known. The read-side echo
+ * comparison only covers rows written before that guard existed; for those, an
+ * echo whose prompt is later edited would no longer match `prompts.value` and
+ * could leak back in as a "query" — accepted as a uniform legacy edge case that
+ * ages out, rather than special-casing providers here.
  */
 function genuineFanoutWq(): SQL {
-	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value)) AND pr.provider IS DISTINCT FROM ${ECHO_ONLY_PROVIDER}`;
+	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;
 }
 
-/** (prompt × model × query) fan-out counts with how often the brand was mentioned. */
+/**
+ * (prompt × model × query) fan-out counts with how often the brand was mentioned.
+ * The LATERAL emits each run's DISTINCT normalized queries, so a run that lists
+ * the same query twice contributes one instance (`count` = runs that searched it,
+ * keeping `brand_mentions <= count` and the count >= 2 Invisible/Won gate
+ * meaning "ran in 2+ runs"). Normalizing here (lowercase + trim) merges case
+ * variants exactly like the aggregator's `norm`.
+ */
 export async function getFanoutBreakdown(
 	brandId: string,
 	fromDate: string,
@@ -1270,19 +1280,20 @@ export async function getFanoutBreakdown(
 		SELECT
 			pr.prompt_id,
 			pr.model,
-			wq AS query,
+			fq.query,
 			count(*)::int AS count,
 			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
 		FROM prompt_runs pr
 		JOIN prompts p ON p.id = pr.prompt_id
-		CROSS JOIN LATERAL unnest(pr.web_queries) AS wq
+		CROSS JOIN LATERAL (
+			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
 		WHERE pr.brand_id = ${brandId}
-			AND ${genuineFanoutWq()}
 			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
 			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
 			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
 			${model ? sql`AND pr.model = ${model}` : sql``}
-		GROUP BY pr.prompt_id, pr.model, wq
+		GROUP BY pr.prompt_id, pr.model, fq.query
 	`);
 }
 
@@ -1299,8 +1310,9 @@ export async function getFanoutModelTotals(
 	// `runs` counts every web-search-enabled run ("Search Prompt Runs"); `fanout_runs`
 	// and `total_queries` count only genuine fan-out (via `genuineFanoutWq`), so they
 	// stay consistent with `getFanoutBreakdown`. The per-run LATERAL yields one row per
-	// run holding its genuine-query count. Google AI Mode echoes the prompt here (so it
-	// contributes 0) — the caller ADDS its citation-reconstructed totals.
+	// run holding its DISTINCT genuine-query count (per-run duplicates count once, as
+	// in the breakdown). Engines that don't expose their searches contribute runs
+	// but no queries.
 	return queryPg<FanoutModelTotalRow>(sql`
 		SELECT
 			pr.model,
@@ -1310,7 +1322,7 @@ export async function getFanoutModelTotals(
 		FROM prompt_runs pr
 		JOIN prompts p ON p.id = pr.prompt_id
 		CROSS JOIN LATERAL (
-			SELECT count(*)::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
 		WHERE pr.brand_id = ${brandId}
 			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -1323,66 +1335,9 @@ export async function getFanoutModelTotals(
 }
 
 /**
- * `google.com/search?…` links cited by Google models. DataForSEO doesn't expose
- * Google AI Mode's fan-out in `web_queries` (it echoes the prompt), but the answer
- * cites the searches it ran; the caller decodes the `q` param (dropping
- * shopping/vertical links) to reconstruct the fan-out. See `deriveGoogleFanout`.
- *
- * Only runs that produced NO genuine `web_queries` are returned, so the
- * reconstruction is strictly disjoint from the `web_queries`-derived breakdown —
- * a run that already exposed real fan-out (e.g. Olostep) is never also
- * reconstructed from its citations, which would double-count it.
- *
- * The domain and url matches are coarse prefilters: the former admits any host
- * containing a `google.` label (international domains like google.co.uk and
- * subdomains like news.google.com included; `domain` is the hostname minus
- * `www.`), the latter any path containing `/search` (so trailing-slash links
- * like `/search/?q=…` aren't dropped before parsing) — the caller's
- * `parseGoogleSearchQuery` is the authoritative gate and rejects look-alikes
- * and non-search paths.
- * The date window uses `pr.created_at` so reconstructed runs land in the same
- * window as the run-based totals queries above.
- */
-export async function getGoogleSearchFanoutCitations(
-	brandId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-	enabledPromptIds: string[],
-	models: string[],
-): Promise<GoogleFanoutCitationRow[]> {
-	if (!enabledPromptIds.length || !models.length) return [];
-	return queryPg<GoogleFanoutCitationRow>(sql`
-		SELECT
-			c.prompt_id,
-			c.prompt_run_id,
-			c.model,
-			c.url,
-			pr.brand_mentioned
-		FROM citations c
-		JOIN prompt_runs pr ON pr.id = c.prompt_run_id
-		JOIN prompts p ON p.id = pr.prompt_id
-		WHERE c.brand_id = ${brandId}
-			AND (c.domain LIKE 'google.%' OR c.domain LIKE '%.google.%')
-			AND c.url LIKE '%/search%'
-			AND c.model IN (${sql.join(
-				models.map((m) => sql`${m}`),
-				sql`, `,
-			)})
-			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-			AND c.prompt_id IN (${uuidList(enabledPromptIds)})
-			AND NOT EXISTS (
-				SELECT 1 FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
-			)
-	`);
-}
-
-/**
  * Per-prompt count of runs that produced ≥1 genuine fan-out query — the
  * denominator for avg fan-out per run. Uses the same `genuineFanoutWq` filter as
- * the breakdown (so echoes/sentinels don't inflate it); the caller ADDs the
- * citation-reconstructed Google runs (`mergeGoogleFanout`).
+ * the breakdown, so echoes/sentinels don't inflate it.
  */
 export async function getFanoutPromptTotals(
 	brandId: string,
@@ -1400,7 +1355,7 @@ export async function getFanoutPromptTotals(
 		FROM prompt_runs pr
 		JOIN prompts p ON p.id = pr.prompt_id
 		CROSS JOIN LATERAL (
-			SELECT count(*)::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
 		) fq
 		WHERE pr.brand_id = ${brandId}
 			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
