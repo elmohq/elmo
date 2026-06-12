@@ -23,6 +23,8 @@ import { ApiError, createApiHandler } from "@/lib/api/handler";
 export const Route = createFileRoute("/api/v1/brands/$brandId")({
 	server: {
 		handlers: {
+			// No params schema: brand IDs are caller-chosen strings (e.g. "acme"),
+			// not UUIDs like the competitor/prompt/report routes validate.
 			GET: createApiHandler({
 				handle: async ({ params }) => {
 					const { brandId } = params;
@@ -35,7 +37,10 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 			}),
 
 			PATCH: createApiHandler({
-				body: updateBrandBodySchema,
+				body: updateBrandBodySchema.refine(
+					(body) => Object.keys(body).length > 0,
+					"At least one of brandName, domains, aliases, or enabled must be provided",
+				),
 				mapError: (err) => {
 					if (err instanceof InvalidDomainsError) {
 						return new ApiError(400, "Validation Error", err.message);

@@ -9,11 +9,17 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { analyzeBrand } from "@workspace/lib/onboarding";
+import { analyzeBrand, cleanOnboardingDomain } from "@workspace/lib/onboarding";
 import { createApiHandler } from "@/lib/api/handler";
 
 const analyzeBody = z.object({
-	website: z.string("website is required").trim().min(1, "website is required"),
+	// Mirrors the cleanDomain() check inside analyzeBrand so an unparseable
+	// website is a 400 here instead of an opaque 500 from the analyzer.
+	website: z
+		.string("website is required")
+		.trim()
+		.min(1, "website is required")
+		.refine((website) => cleanOnboardingDomain(website) !== "", "website must be a valid domain or URL"),
 	brandName: z.string().trim().optional(),
 	maxCompetitors: z.int("maxCompetitors must be a non-negative integer").min(0, "maxCompetitors must be a non-negative integer").optional(),
 	maxPrompts: z.int("maxPrompts must be a non-negative integer").min(0, "maxPrompts must be a non-negative integer").optional(),

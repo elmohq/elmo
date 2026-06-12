@@ -166,6 +166,25 @@ describe("createApiHandler", () => {
 		expect(await response.json()).toEqual({ error: "Conflict", message: "Already exists" });
 	});
 
+	it("falls back to the enveloped 500 when mapError itself throws", async () => {
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const handler = createApiHandler({
+			mapError: () => {
+				throw new Error("mapError exploded");
+			},
+			handle: async () => {
+				throw new Error("db exploded");
+			},
+		});
+		const response = await handler({ request: makeRequest(), params: {} });
+		expect(response.status).toBe(500);
+		expect(await response.json()).toEqual({
+			error: "Internal Server Error",
+			message: "An unexpected error occurred",
+		});
+		expect(consoleError).toHaveBeenCalled();
+	});
+
 	it("returns a logged 500 for unknown errors", async () => {
 		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 		const handler = createApiHandler({

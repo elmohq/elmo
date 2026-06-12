@@ -20,11 +20,13 @@ import { ApiError, createApiHandler } from "@/lib/api/handler";
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
 const promptParams = z.object({ promptId: z.guid("Invalid prompt ID format") });
 
-const updatePromptBody = z.object({
-	value: z.string().trim().min(1, "value must be a non-empty string").optional(),
-	enabled: z.boolean().optional(),
-	tags: z.array(z.string()).optional(),
-});
+const updatePromptBody = z
+	.object({
+		value: z.string().trim().min(1, "value must be a non-empty string").optional(),
+		enabled: z.boolean().optional(),
+		tags: z.array(z.string()).optional(),
+	})
+	.refine((body) => Object.keys(body).length > 0, "At least one of value, enabled, or tags must be provided");
 
 export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
@@ -86,8 +88,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 					}
 
 					const [updatedPrompt] = await db.update(prompts).set(updateData).where(eq(prompts.id, promptId)).returning();
+					// The existence check above can race with a concurrent delete;
+					// the update's returning() is the source of truth.
+					if (!updatedPrompt) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+					}
 
-					if (enabled !== undefined && updatedPrompt) {
+					if (enabled !== undefined) {
 						const wasEnabled = existingPrompt[0].enabled;
 						const isNowEnabled = enabled;
 
@@ -124,7 +131,14 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						return { deletedRuns, deletedPrompt };
 					});
 
-					return { ...result.deletedPrompt[0], deletedRunsCount: result.deletedRuns.length };
+					// The pre-transaction existence check can race with a concurrent
+					// delete; the transaction's returning() is the source of truth.
+					const deleted = result.deletedPrompt[0];
+					if (!deleted) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+					}
+
+					return { ...deleted, deletedRunsCount: result.deletedRuns.length };
 				},
 			}),
 		},

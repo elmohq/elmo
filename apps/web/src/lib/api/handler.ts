@@ -91,7 +91,12 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 			if (err instanceof ApiError) {
 				return errorResponse(err.status, err.error, err.message);
 			}
-			const mapped = opts.mapError?.(err);
+			let mapped: ApiError | undefined;
+			try {
+				mapped = opts.mapError?.(err);
+			} catch (mapErr) {
+				console.error(`[api] ${request.method} ${new URL(request.url).pathname} mapError threw:`, mapErr);
+			}
 			if (mapped) {
 				return errorResponse(mapped.status, mapped.error, mapped.message);
 			}

@@ -19,11 +19,13 @@ import { ApiError, createApiHandler } from "@/lib/api/handler";
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
 const competitorParams = z.object({ competitorId: z.guid("Invalid competitor ID format") });
 
-const updateCompetitorBody = z.object({
-	name: z.string().trim().min(1, "name must be a non-empty string").optional(),
-	domains: z.array(z.string()).optional(),
-	aliases: z.array(z.string()).optional(),
-});
+const updateCompetitorBody = z
+	.object({
+		name: z.string().trim().min(1, "name must be a non-empty string").optional(),
+		domains: z.array(z.string()).optional(),
+		aliases: z.array(z.string()).optional(),
+	})
+	.refine((body) => Object.keys(body).length > 0, "At least one of name, domains, or aliases must be provided");
 
 export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
@@ -61,7 +63,16 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 						update.aliases = dedupeAliases(body.aliases);
 					}
 
-					const [updated] = await db.update(competitors).set(update).where(eq(competitors.id, competitorId)).returning();
+					const [updated] = await db
+						.update(competitors)
+						.set(update)
+						.where(eq(competitors.id, competitorId))
+						.returning();
+					// The existence check above can race with a concurrent delete;
+					// the update's returning() is the source of truth.
+					if (!updated) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
+					}
 					return updated;
 				},
 			}),
