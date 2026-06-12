@@ -1,5 +1,24 @@
 # @workspace/web
 
+## 0.2.13
+
+### Patch Changes
+
+- 4272c19: Added new citation source categories and a Google AI Mode breakdown to the citations dashboard.
+- 222fd4f: Local-mode deployments now support multiple brands. The brand switcher shows a "Create new brand" option that provisions a new org + admin membership for the user.
+- 3f17708: Added the Google Shopping breakdown to a prompt's Citations tab on the prompt details page.
+- 532d592: Added a sort control to the Visibility page.
+- cf5a7da: Added a Query Fan-Out section showing the searches AI engines run for your prompts, with a prompt-to-query diff, the words engines add or drop, and the searches you're missing.
+- c4505ba: Breaking: `/api/v1` DELETE endpoints now return the deleted resource directly instead of a `{ message, data }` wrapper (the deleted prompt includes a `deletedRunsCount` field), PATCH endpoints reject an empty body with a 400, an unparseable `website` on `/tools/analyze` is now a 400 instead of a 500, and 500 responses no longer echo internal error messages.
+- Updated dependencies [c4505ba]
+  - @workspace/api-spec@0.2.13
+  - @workspace/config@0.2.13
+  - @workspace/deployment@0.2.13
+  - @workspace/lib@0.2.13
+  - @workspace/og@0.2.13
+  - @workspace/ui@0.2.13
+  - @workspace/whitelabel@0.2.13
+
 ## 0.2.12
 
 ### Patch Changes

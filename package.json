@@ -1,6 +1,6 @@
 {
   "name": "elmo",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@11.5.0",

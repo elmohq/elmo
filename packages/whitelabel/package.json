@@ -1,6 +1,6 @@
 {
   "name": "@workspace/whitelabel",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "private": true,
   "license": "MIT",
   "main": "./src/index.ts",
