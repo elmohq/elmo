@@ -3,18 +3,15 @@ import { Inbox } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { FilterBar } from "@/components/filter-bar";
 import { FilterSection } from "@/components/page-header";
-import { ListPagination } from "@/components/list-pagination";
 import type { ListFilterState } from "@/hooks/use-list-filters";
 
 interface FilteredListShellProps {
-	/** The page's `useListFilters()` result (the shell only reads the shared
-	 *  subset, so pages with `extra` keys pass theirs straight through). */
+	/** The page's `useListFilters()` result. */
 	filters: ListFilterState;
 	availableTags: readonly string[];
 	availableModels: string[];
 	showSearch?: boolean;
 	showModelSelector?: boolean;
-	searchPlaceholder?: string;
 	/** Show "n results" / "n of m results" next to the filter dropdowns. */
 	showResultCount?: boolean;
 	/** Extra content inside the sticky filter section, below the bar
@@ -36,29 +33,20 @@ interface FilteredListShellProps {
 	emptyState: ReactNode;
 	noMatchesTitle?: string;
 	noMatchesDescription?: string;
-	/** Optional pagination footer rendered below the children. */
-	pagination?: {
-		page: number;
-		pageSize: number;
-		totalItems: number;
-		onPageChange: (page: number) => void;
-	};
 	children: ReactNode;
 }
 
 /** The "FilterBar → fetch → filter → list" composition every dashboard page
  *  was rebuilding by hand: filter bar + result count, the loading/error
- *  states, the two DISTINCT empty states ("no data yet" vs "no matches for
- *  your filters" with a Clear filters escape hatch), and an optional
- *  pagination footer. The page keeps owning data fetching; the shell owns
- *  the plumbing around it. */
+ *  states, and the two DISTINCT empty states ("no data yet" vs "no matches
+ *  for your filters" with a Clear filters escape hatch). The page keeps
+ *  owning data fetching; the shell owns the plumbing around it. */
 export function FilteredListShell({
 	filters,
 	availableTags,
 	availableModels,
 	showSearch = false,
 	showModelSelector = true,
-	searchPlaceholder,
 	showResultCount = false,
 	filterSectionExtras,
 	isLoading = false,
@@ -70,7 +58,6 @@ export function FilteredListShell({
 	emptyState,
 	noMatchesTitle,
 	noMatchesDescription,
-	pagination,
 	children,
 }: FilteredListShellProps) {
 	const effectiveFilteredCount = filteredCount ?? totalCount;
@@ -103,12 +90,7 @@ export function FilteredListShell({
 			</div>
 		);
 	} else {
-		body = (
-			<>
-				{children}
-				{pagination && <ListPagination {...pagination} />}
-			</>
-		);
+		body = children;
 	}
 
 	return (
@@ -119,7 +101,6 @@ export function FilteredListShell({
 					availableModels={availableModels}
 					showSearch={showSearch}
 					showModelSelector={showModelSelector}
-					searchPlaceholder={searchPlaceholder}
 					resultCount={showResultCount && !isLoading ? effectiveFilteredCount : undefined}
 					resultTotal={showResultCount && !isLoading ? totalCount : undefined}
 				/>

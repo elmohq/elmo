@@ -419,7 +419,6 @@ export function FilterBar({
 	availableModels,
 	showSearch,
 	showModelSelector,
-	searchPlaceholder,
 	resultCount,
 	resultTotal,
 }: {
@@ -427,7 +426,6 @@ export function FilterBar({
 	availableModels: string[];
 	showSearch: boolean;
 	showModelSelector: boolean;
-	searchPlaceholder?: string;
 	/** Only passed by pages that filter a list; omit on pages with a single aggregate view (e.g. Citations). */
 	resultCount?: number;
 	/** Unfiltered count — when it differs from `resultCount` the line reads "n of m results". */
@@ -441,7 +439,7 @@ export function FilterBar({
 				<LookbackDropdown />
 				<ResultCount count={resultCount} total={resultTotal} />
 			</div>
-			{showSearch && <SearchInput placeholder={searchPlaceholder} />}
+			{showSearch && <SearchInput />}
 		</div>
 	);
 }

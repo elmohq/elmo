@@ -9,26 +9,19 @@ interface ListPaginationProps {
 	pageSize: number;
 	totalItems: number;
 	onPageChange: (page: number) => void;
-	className?: string;
 }
 
 /** Page-based pagination footer ("1–10 of 42" + Previous/Next). Controlled,
  *  so the same props work whether the caller paginates client-side over
  *  fetched data (v1, via `usePagedList`) or drives page/total from the
  *  server later. Renders nothing when everything fits on one page. */
-export function ListPagination({
-	page,
-	pageSize,
-	totalItems,
-	onPageChange,
-	className,
-}: ListPaginationProps) {
+export function ListPagination({ page, pageSize, totalItems, onPageChange }: ListPaginationProps) {
 	const totalPages = Math.ceil(totalItems / pageSize);
 	if (totalPages <= 1) return null;
 	const start = page * pageSize + 1;
 	const end = Math.min((page + 1) * pageSize, totalItems);
 	return (
-		<div className={`mt-3 flex items-center justify-between ${className ?? ""}`}>
+		<div className="mt-3 flex items-center justify-between">
 			<span className="text-[11px] text-muted-foreground tabular-nums">
 				{start.toLocaleString()}–{end.toLocaleString()} of {totalItems.toLocaleString()}
 			</span>

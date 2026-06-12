@@ -83,7 +83,6 @@ function CitationsPage() {
 				filters={filters}
 				availableTags={citationData?.availableTags || []}
 				availableModels={availableModels}
-				showSearch={false}
 				showModelSelector
 				isLoading={showFullSkeleton}
 				loadingState={
