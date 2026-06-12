@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { useQueryState, parseAsStringLiteral } from "nuqs";
+import { useSearch } from "@tanstack/react-router";
 import { type LookbackPeriod, getDefaultLookbackPeriod } from "@/lib/chart-utils";
 import { useBrand } from "@/hooks/use-brands";
-
-const lookbackParser = parseAsStringLiteral(["1w", "1m", "3m", "6m", "1y", "all"] as const);
+import { coerceLookback, useFilterNavigate } from "@/hooks/use-list-filters";
 
 function getLookbackLabel(lookback: LookbackPeriod): string {
 	switch (lookback) {
@@ -34,11 +33,12 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 		[defaultPeriod, brand?.earliestDataDate]
 	);
 
-	const [selectedLookbackRaw, setSelectedLookback] = useQueryState("lookback", lookbackParser.withDefault(computedDefaultPeriod));
-	const selectedLookback = selectedLookbackRaw ?? computedDefaultPeriod;
+	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
+	const setFilters = useFilterNavigate();
+	const selectedLookback = coerceLookback(urlLookback, computedDefaultPeriod);
 
 	const handleChange = (period: LookbackPeriod) => {
-		setSelectedLookback(period);
+		setFilters({ lookback: period === computedDefaultPeriod ? undefined : period });
 		onLookbackChange?.(period);
 	};
 
@@ -69,7 +69,6 @@ export function useLookbackPeriod(defaultPeriod?: LookbackPeriod) {
 		[defaultPeriod, brand?.earliestDataDate]
 	);
 
-	const [selectedLookback] = useQueryState("lookback", lookbackParser.withDefault(computedDefaultPeriod));
-	return selectedLookback ?? computedDefaultPeriod;
+	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
+	return coerceLookback(urlLookback, computedDefaultPeriod);
 }
-

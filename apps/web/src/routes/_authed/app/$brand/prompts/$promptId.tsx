@@ -3,7 +3,7 @@
  *
  * Shows prompt details with tabs: Mentions, Web Queries, Citations, LLM Responses.
  */
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
@@ -16,18 +16,22 @@ import {
 import { Badge } from "@workspace/ui/components/badge";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Separator } from "@workspace/ui/components/separator";
-import { Button } from "@workspace/ui/components/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconChevronLeft, IconChevronRight, IconInfoCircle } from "@tabler/icons-react";
-import { ProgressBarChart, MODEL_COLORS } from "@/components/progress-bar-chart";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
+import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { ListPagination } from "@/components/list-pagination";
 import { CitationsDisplay, type CitationData } from "@/components/citations-display";
 import { CitedDomainsTable, CitedUrlsTable, type DomainTableRow, type UrlTableRow } from "@/components/citation-tables";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
+import { InfoTip, QueryWordsSection, UnknownQueriesNote, VariationsList, type VariationModelCount } from "@/components/fanout-sections";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { getModelDisplayName } from "@/lib/utils";
+import { promptKeywords } from "@/lib/fanout-analysis";
 import { useBrand } from "@/hooks/use-brands";
 import { usePromptStats } from "@/hooks/use-prompt-stats";
 import { usePromptRunsOnly } from "@/hooks/use-prompt-runs-only";
+import { useQueryFanout } from "@/hooks/use-query-fanout";
 import { getPromptMetadataFn } from "@/server/prompts";
 import { extractTextContent } from "@workspace/lib/text-extraction";
 import ReactMarkdown from "react-markdown";
@@ -46,7 +50,8 @@ type PromptMetadata = {
 	nextRunAt?: string | null;
 };
 
-type TabKey = "mentions" | "web-queries" | "citations" | "responses";
+const TAB_KEYS = ["mentions", "web-queries", "citations", "responses"] as const;
+type TabKey = (typeof TAB_KEYS)[number];
 
 const TABS: { key: TabKey; label: string }[] = [
 	{ key: "mentions", label: "Mentions" },
@@ -56,6 +61,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
+	// `tab` is part of the route's search schema so links can target a specific
+	// tab (e.g. View Details → web-queries). Absent means the default tab.
+	validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({
+		tab: TAB_KEYS.includes(search.tab as TabKey) ? (search.tab as TabKey) : undefined,
+	}),
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -75,15 +85,26 @@ function PromptHistoryPage() {
 	const lookback = useLookbackPeriod();
 	const days = getDaysFromLookback(lookback);
 
-	const [activeTab, setActiveTab] = useState<TabKey>("mentions");
-	const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(new Set(["mentions"]));
+	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
+	const navigate = Route.useNavigate();
+	const setActiveTab = useCallback(
+		(tab: TabKey) =>
+			navigate({
+				search: (prev) => ({ ...prev, tab: tab === "mentions" ? undefined : tab }),
+				replace: true,
+				resetScroll: false,
+			}),
+		[navigate],
+	);
+	const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
 	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);
 	const [isMetaLoading, setIsMetaLoading] = useState(true);
 
 	const { brand } = useBrand(brandId);
 
-	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("web-queries") || visitedTabs.has("citations");
+	// Web Queries fetches its own data (useQueryFanout) — stats only back Mentions/Citations.
+	const shouldFetchStats = visitedTabs.has("mentions") || visitedTabs.has("citations");
 	const { isLoading: isStatsLoading, isError: isStatsError, aggregations } = usePromptStats(shouldFetchStats ? promptId : "", { days });
 
 	const shouldFetchRuns = visitedTabs.has("responses");
@@ -107,13 +128,16 @@ function PromptHistoryPage() {
 			.finally(() => setIsMetaLoading(false));
 	}, [brandId, promptId]);
 
-	const handleTabChange = useCallback((tab: TabKey) => {
-		setActiveTab(tab);
-		setVisitedTabs((prev) => {
-			if (prev.has(tab)) return prev;
-			return new Set([...prev, tab]);
-		});
-	}, []);
+	const handleTabChange = useCallback(
+		(tab: TabKey) => {
+			setActiveTab(tab);
+			setVisitedTabs((prev) => {
+				if (prev.has(tab)) return prev;
+				return new Set([...prev, tab]);
+			});
+		},
+		[setActiveTab],
+	);
 
 	const handleLookbackChange = useCallback(() => {
 		setCurrentPage(1);
@@ -126,7 +150,6 @@ function PromptHistoryPage() {
 	};
 
 	const mentionStats = aggregations?.mentionStats || [];
-	const webQueryStats = aggregations?.webQueryStats || { overall: [], byModel: {} };
 	const citationStats = aggregations?.citationStats;
 
 	const systemTags = promptMeta?.systemTags || [];
@@ -288,12 +311,7 @@ function PromptHistoryPage() {
 				)}
 
 				{activeTab === "web-queries" && (
-					<WebQueriesTab
-						isLoading={isStatsLoading}
-						webQueryStats={webQueryStats}
-						totalRuns={aggregations?.totalRuns || 0}
-						effectiveModels={brand?.effectiveModels ?? []}
-					/>
+					<WebQueriesTab brandId={brandId} promptId={promptId} promptValue={promptMeta?.value ?? ""} lookback={lookback} />
 				)}
 
 				{activeTab === "citations" && (
@@ -397,97 +415,80 @@ function MentionsTab({
 }
 
 function WebQueriesTab({
-	isLoading,
-	webQueryStats,
-	totalRuns,
-	effectiveModels,
+	brandId,
+	promptId,
+	promptValue,
+	lookback,
 }: {
-	isLoading: boolean;
-	webQueryStats: {
-		overall: { name: string; count: number }[];
-		byModel: Record<string, { name: string; count: number }[]>;
-	};
-	totalRuns: number;
-	/** Deployment-resolved model ids this brand runs — server-computed from
-	 *  `SCRAPE_TARGETS` + `brand.enabledModels`. */
-	effectiveModels: readonly string[];
+	brandId: string;
+	promptId: string;
+	promptValue: string;
+	lookback: ReturnType<typeof useLookbackPeriod>;
 }) {
-	if (isLoading) return <TabLoadingSkeleton lines={6} />;
+	// Same pipeline as the Query Fan-Out page, scoped to this prompt — echo and
+	// "unavailable" sentinels filtered, and (unlike the brand-wide page) every
+	// variation returned.
+	const { data, isLoading, isError } = useQueryFanout(brandId, { lookback, promptId });
 
-	const hasAnyQueries = webQueryStats.overall.length > 0 || Object.values(webQueryStats.byModel).some((q) => q.length > 0);
+	// query → per-model counts, for the inline "2× ChatGPT" breakdown. byModel
+	// lists are uncapped in single-prompt mode, so every variation resolves.
+	const modelCounts = useMemo(() => {
+		const map = new Map<string, VariationModelCount[]>();
+		for (const m of data?.byModel ?? []) {
+			for (const q of m.topQueries) {
+				const entry = map.get(q.query);
+				if (entry) entry.push({ model: m.model, count: q.count });
+				else map.set(q.query, [{ model: m.model, count: q.count }]);
+			}
+		}
+		for (const counts of map.values()) counts.sort((a, b) => b.count - a.count);
+		return map;
+	}, [data]);
 
-	if (!hasAnyQueries) {
+	if (isLoading && !data) return <TabLoadingSkeleton lines={6} />;
+	if (isError && !data) {
+		return <div className="py-12 text-center text-muted-foreground text-sm">Couldn't load web queries right now. Reload the page to try again.</div>;
+	}
+	if (!data || data.totalQueries === 0) {
 		return <div className="py-12 text-center text-muted-foreground text-sm">No web query data available for this time period.</div>;
 	}
 
-	// Render sections for the brand's effective models, falling back to whichever
-	// models the query actually returned data for when the server didn't tell us
-	// (defensive — effectiveModels should always be populated).
-	const modelOrder = effectiveModels.length > 0 ? [...effectiveModels] : Object.keys(webQueryStats.byModel);
-
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="flex items-center gap-1.5 text-base">
-					Web Queries
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-						</TooltipTrigger>
-						<TooltipContent className="max-w-xs text-sm font-normal">
-							<p className="mb-2">The number next to each query represents how many times it was made when evaluating this prompt.</p>
-							<p>LLMs can make multiple web queries per evaluation, and sometimes the same queries appear across different evaluations.</p>
-						</TooltipContent>
-					</Tooltip>
-				</CardTitle>
-				<CardDescription>Underlying queries used by the LLMs to search for information relevant to the prompt.</CardDescription>
-			</CardHeader>
-			<Separator />
-
-			{webQueryStats.overall.length > 0 && (
-				<CardContent className="pb-0">
-					<h4 className="text-sm font-medium mb-1">All</h4>
-					<p className="text-xs text-muted-foreground mb-3">
-						Counts show how many times each query appeared across {totalRuns.toLocaleString()} prompt runs
-					</p>
-					<ProgressBarChart
-						items={webQueryStats.overall.map((q) => ({ label: q.name, count: q.count }))}
-						defaultColor="#8b5cf6"
-						customTotal={totalRuns || 1}
-					/>
-				</CardContent>
-			)}
-
-			{webQueryStats.overall.length > 0 && <Separator />}
-
-			{modelOrder.map((model, index) => {
-				const hasQueries = webQueryStats.byModel?.[model] && webQueryStats.byModel[model].length > 0;
-
-				return (
-					<div key={model}>
-						<CardContent className="pb-0">
-							<h4 className="text-sm font-medium mb-3">{getModelDisplayName(model)}</h4>
-							{hasQueries ? (
-								<ProgressBarChart
-									items={webQueryStats.byModel[model].map((q: { name: string; count: number }) => ({
-										label: q.name,
-										count: q.count,
-										category: model,
-									}))}
-									colorMapping={MODEL_COLORS}
-									customTotal={totalRuns || 1}
-								/>
-							) : (
-								<div className="text-muted-foreground text-sm py-4 px-3 bg-muted/50 rounded-md">
-									No web queries were made by {getModelDisplayName(model)} for this prompt.
-								</div>
-							)}
-						</CardContent>
-						{index < modelOrder.length - 1 && <Separator className="mt-6" />}
-					</div>
-				);
-			})}
-		</Card>
+		<Tabs defaultValue="fanout" className="gap-4">
+			<TabsList>
+				<TabsTrigger value="fanout">Prompt Fan-Out</TabsTrigger>
+				<TabsTrigger value="words">Query Words</TabsTrigger>
+			</TabsList>
+			<TabsContent value="fanout">
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-1.5 text-base">
+							Prompt Fan-Out
+							<InfoTip>
+								Every distinct search engines ran while answering this prompt, with how many runs each engine issued
+								it. Your prompt's keywords are bolded.
+							</InfoTip>
+						</CardTitle>
+						<CardDescription>{data.uniqueQueries.toLocaleString()} distinct searches.</CardDescription>
+					</CardHeader>
+					<Separator />
+					<CardContent>
+						<div className="mb-3 space-y-1 empty:hidden">
+							<UnknownQueriesNote byModel={data.byModel} />
+						</div>
+						<VariationsList
+							variations={data.topQueries}
+							keywords={promptKeywords(promptValue)}
+							totalUnique={data.uniqueQueries}
+							modelCounts={modelCounts}
+						/>
+					</CardContent>
+				</Card>
+			</TabsContent>
+			<TabsContent value="words">
+				<QueryWordsSection terms={data.terms} wordChanges={data.wordChanges} />
+			</TabsContent>
+		</Tabs>
 	);
 }
 
@@ -548,49 +549,6 @@ function CitationsTab({
 	);
 }
 
-function PaginationControls({
-	className,
-	pagination,
-	currentPage,
-	onPageChange,
-	isLoading,
-}: {
-	className?: string;
-	pagination: any;
-	currentPage: number;
-	onPageChange: (page: number) => void;
-	isLoading: boolean;
-}) {
-	if (!pagination || pagination.totalPages <= 1) return null;
-	return (
-		<div className={`flex items-center gap-2 ${className || ""}`}>
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={() => onPageChange(currentPage - 1)}
-				disabled={!pagination.hasPrev || isLoading}
-				className="cursor-pointer disabled:cursor-not-allowed"
-			>
-				<IconChevronLeft className="h-4 w-4" />
-				Previous
-			</Button>
-			<span className="text-sm text-muted-foreground tabular-nums">
-				Page {pagination.page} of {pagination.totalPages}
-			</span>
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={() => onPageChange(currentPage + 1)}
-				disabled={!pagination.hasNext || isLoading}
-				className="cursor-pointer disabled:cursor-not-allowed"
-			>
-				Next
-				<IconChevronRight className="h-4 w-4" />
-			</Button>
-		</div>
-	);
-}
-
 function ResponsesTab({
 	runs,
 	pagination,
@@ -647,10 +605,7 @@ function ResponsesTab({
 
 	return (
 		<div className="space-y-4">
-			<div className="flex justify-between items-center">
-				<h3 className="text-base font-medium">Individual Prompt Runs</h3>
-				<PaginationControls pagination={pagination} currentPage={currentPage} onPageChange={onPageChange} isLoading={isLoading} />
-			</div>
+			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
 			{runs.map((run: any) => (
 				<Card key={run.id}>
@@ -717,7 +672,12 @@ function ResponsesTab({
 				</Card>
 			))}
 
-			<PaginationControls className="justify-center pt-4" pagination={pagination} currentPage={currentPage} onPageChange={onPageChange} isLoading={isLoading} />
+			<ListPagination
+				page={currentPage - 1}
+				pageSize={pagination?.limit ?? 15}
+				totalItems={pagination?.total ?? runs.length}
+				onPageChange={(p) => onPageChange(p + 1)}
+			/>
 		</div>
 	);
 }

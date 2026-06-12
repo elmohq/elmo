@@ -1,6 +1,7 @@
 import Olostep from "olostep";
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import type { Citation } from "../../text-extraction";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -161,7 +162,7 @@ export const olostep: Provider = {
 			textContent: extractTextFromOlostep(parsed),
 			// Mark as "unavailable" only when citations prove a search happened
 			// but the API didn't expose the query strings
-			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? ["unavailable"] : [],
+			webQueries: webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
 			citations,
 			modelVersion: parsed?.model ?? undefined,
 		};

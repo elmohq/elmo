@@ -7,6 +7,12 @@
 
 import { type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import {
+	UNAVAILABLE_SENTINEL,
+	type FanoutBreakdownRow,
+	type FanoutModelTotalRow,
+	type FanoutPromptTotalRow,
+} from "@/lib/fanout-analysis";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -571,6 +577,9 @@ export async function getPromptWebQueryCounts(
 	timezone: string,
 	model?: string,
 ): Promise<WebQueryCount[]> {
+	// The `unavailable` sentinel (search happened, query strings unexposed) isn't
+	// a usable web query — without this filter it becomes a model's "top query"
+	// whenever a provider never exposes strings (OpenRouter; DataForSEO Google).
 	const rows = await queryPg<WebQueryCount>(sql`
 		SELECT
 			model,
@@ -579,6 +588,7 @@ export async function getPromptWebQueryCounts(
 		FROM prompt_runs, unnest(web_queries) AS web_query
 		WHERE prompt_id = ${promptId}
 			AND array_length(web_queries, 1) > 0
+			AND lower(btrim(web_query)) <> ${UNAVAILABLE_SENTINEL}
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
 		GROUP BY model, web_query
@@ -651,27 +661,6 @@ export async function getCitationUrlStats(
 // ============================================================================
 // Prompt-Level Citation Stats
 // ============================================================================
-
-export async function getPromptCitationStats(
-	promptId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-): Promise<CitationDomainStats[]> {
-	const rows = await queryPg<CitationDomainStats>(sql`
-		SELECT
-			domain,
-			count(*)::int AS count,
-			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
-		FROM citations
-		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-		GROUP BY domain
-		ORDER BY count DESC
-	`);
-	return rows;
-}
 
 export async function getPromptCitationUrlStats(
 	promptId: string,
@@ -1333,4 +1322,148 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 		ORDER BY target_date
 	`);
 	return rows;
+}
+
+// ============================================================================
+// Query Fanout
+//
+// The sub-queries an engine issues to the web while answering a prompt, read
+// from `prompt_runs.web_queries` — the single source for every figure, with no
+// provider-specific handling. Entries that aren't genuine fan-out are dropped
+// via `genuineFanoutWq`: the `unavailable` sentinel providers emit when a
+// search happened but the strings aren't exposed, and the prompt echoed
+// verbatim. A run that lists the same query twice counts it ONCE — one
+// instance per (run, normalized query) — so a single run can't satisfy the
+// count >= 2 Invisible/Won gate.
+// Every fan-out query joins `prompts` (to compare against the prompt text) so
+// columns are qualified (`pr.`, the join brings two `created_at` columns into
+// scope) and the shared unqualified filter helpers are inlined instead.
+// ============================================================================
+
+/**
+ * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`
+ * sentinel (OpenRouter and DataForSEO always; BrightData/Olostep on extraction
+ * failure), and not the prompt repeated verbatim. Shared by the breakdown, model
+ * totals, and per-prompt totals so all three count the same set. Requires a
+ * `wq` unnest alias plus the `pr` prompt_runs and `p` prompts rows in scope.
+ *
+ * The verbatim-repeat exclusion is a display rule, not data cleaning: engines
+ * genuinely search the prompt verbatim sometimes, and those entries stay in
+ * `web_queries` — but a repeat says nothing about how the prompt was rewritten,
+ * so it isn't fan-out. The comparison uses the prompt's CURRENT text, so after
+ * a prompt edit, searches of the old wording start surfacing as queries: for
+ * honest providers those are real searches; only pre-2026-06 DataForSEO rows
+ * (which fabricated `[prompt]` as their query field; the provider now writes
+ * the sentinel) would surface something that never ran, and those age out of
+ * the lookback windows.
+ */
+function genuineFanoutWq(): SQL {
+	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;
+}
+
+/**
+ * (prompt × model × query) fan-out counts with how often the brand was mentioned.
+ * The LATERAL emits each run's DISTINCT normalized queries, so a run that lists
+ * the same query twice contributes one instance (`count` = runs that searched it,
+ * keeping `brand_mentions <= count` and the count >= 2 Invisible/Won gate
+ * meaning "ran in 2+ runs"). Normalizing here (lowercase + trim) merges case
+ * variants exactly like the aggregator's `norm`.
+ */
+export async function getFanoutBreakdown(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutBreakdownRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<FanoutBreakdownRow>(sql`
+		SELECT
+			pr.prompt_id,
+			pr.model,
+			fq.query,
+			count(*)::int AS count,
+			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL (
+			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
+		WHERE pr.brand_id = ${brandId}
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.prompt_id, pr.model, fq.query
+	`);
+}
+
+/** Per-model run counts and fan-out totals (the denominators for fan-outs-per-execution). */
+export async function getFanoutModelTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutModelTotalRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	// `runs` counts every web-search-enabled run ("Search Prompt Runs"); `fanout_runs`
+	// and `total_queries` count only genuine fan-out (via `genuineFanoutWq`), so they
+	// stay consistent with `getFanoutBreakdown`. The per-run LATERAL yields one row per
+	// run holding its DISTINCT genuine-query count (per-run duplicates count once, as
+	// in the breakdown). Engines that don't expose their searches contribute runs
+	// but no queries.
+	return queryPg<FanoutModelTotalRow>(sql`
+		SELECT
+			pr.model,
+			count(*) FILTER (WHERE pr.web_search_enabled)::int AS runs,
+			count(*) FILTER (WHERE fq.cnt > 0)::int AS fanout_runs,
+			COALESCE(sum(fq.cnt), 0)::int AS total_queries
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL (
+			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
+		WHERE pr.brand_id = ${brandId}
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.model
+		ORDER BY total_queries DESC
+	`);
+}
+
+/**
+ * Per-prompt count of runs that produced ≥1 genuine fan-out query — the
+ * denominator for avg fan-out per run. Uses the same `genuineFanoutWq` filter as
+ * the breakdown, so echoes/sentinels don't inflate it.
+ */
+export async function getFanoutPromptTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutPromptTotalRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<FanoutPromptTotalRow>(sql`
+		SELECT
+			pr.prompt_id,
+			count(*) FILTER (WHERE fq.cnt > 0)::int AS runs
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL (
+			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
+		WHERE pr.brand_id = ${brandId}
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.prompt_id
+	`);
 }

@@ -26,10 +26,10 @@ import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils"
 import { computeShareOfVoice, shareOfVoiceLeaderboardLVCF, shareOfVoiceTimeSeriesLVCF } from "@/lib/visibility-stats";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 
-const LOOKBACK = z.enum(["1w", "1m", "3m", "6m", "1y", "all"]);
+export const LOOKBACK = z.enum(["1w", "1m", "3m", "6m", "1y", "all"]);
 
 /** Resolve a lookback + timezone into concrete from/to date strings (mirrors server/visibility.ts). */
-function resolveRange(lookback: LookbackPeriod, timezoneParam: string) {
+export function resolveRange(lookback: LookbackPeriod, timezoneParam: string) {
 	const timezone = resolveTimezone(timezoneParam);
 	const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookback, timezone, { allStrategy: "1y" }) as {
 		fromDateStr: string;
