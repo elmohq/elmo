@@ -1,11 +1,10 @@
 /**
  * Stories for the Share of Voice page (/app/$brand/share-of-voice). Renders the
  * real page with mocked brand + share-of-voice data. The page reads filters from
- * the URL via nuqs, so it's wrapped in NuqsTestingAdapter.
+ * the URL search params via the mocked router hooks (empty search = defaults).
  */
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ComponentType, ReactNode } from "react";
-import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { TooltipProvider } from "@workspace/ui/components/tooltip";
 import { Route } from "@/routes/_authed/app/$brand/share-of-voice";
 
@@ -30,17 +29,15 @@ const onboardedBrand = {
 
 function Shell({ children }: { children: ReactNode }) {
 	return (
-		<NuqsTestingAdapter>
-			<TooltipProvider>
-				<div className="bg-background text-foreground antialiased flex min-h-svh flex-col">
-					<div className="flex flex-1 flex-col">
-						<div className="@container/main flex flex-1 flex-col gap-2">
-							<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">{children}</div>
-						</div>
+		<TooltipProvider>
+			<div className="bg-background text-foreground antialiased flex min-h-svh flex-col">
+				<div className="flex flex-1 flex-col">
+					<div className="@container/main flex flex-1 flex-col gap-2">
+						<div className="flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6">{children}</div>
 					</div>
 				</div>
-			</TooltipProvider>
-		</NuqsTestingAdapter>
+			</div>
+		</TooltipProvider>
 	);
 }
 

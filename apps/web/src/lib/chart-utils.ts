@@ -11,7 +11,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
  * 
  * Note: We default to "1m" when data is unavailable because most established brands
  * have more than a week of data, and this prevents inconsistent defaults when brand
- * data loads asynchronously (which was causing chart type mismatches in nuqs).
+ * data loads asynchronously (which was causing chart type mismatches downstream).
  * 
  * @param earliestDataDate - ISO date string of the earliest data point, or null if no data
  * @returns The recommended default lookback period
@@ -19,7 +19,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
 	if (!earliestDataDate) {
 		// Data hasn't loaded yet - default to 1 month as a safe default
-		// (most brands have > 1 week of data, and this prevents nuqs default mismatches)
+		// (most brands have > 1 week of data, and this prevents default mismatches)
 		return "1m";
 	}
 
