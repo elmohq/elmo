@@ -4,7 +4,7 @@
  */
 import type { Meta } from "@storybook/react";
 import { computePromptDomainDistribution, type DomainKind } from "@workspace/lib/citation-landscape";
-import { CitationInsightsView, type CitationInsightsData } from "@/components/citation-insights";
+import { CitationInsightsView, type CitationInsightsData } from "@/components/citations/citation-insights";
 import type { CitationCategory } from "@/lib/domain-categories";
 
 const RATINGS: Record<string, number | null> = {

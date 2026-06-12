@@ -10,7 +10,7 @@
  */
 import type { Meta } from "@storybook/react";
 import { computeDrCorrelation, type DrPoint } from "@workspace/lib/dr-correlation";
-import { type DomainRatingData, DomainRatingCorrelationView } from "@/components/domain-rating-correlation";
+import { type DomainRatingData, DomainRatingCorrelationView } from "@/components/citations/domain-rating-correlation";
 import type { CitationCategory } from "@/lib/domain-categories";
 
 const CATEGORIES: CitationCategory[] = ["other", "institutional", "competitor", "google", "social_media", "brand"];

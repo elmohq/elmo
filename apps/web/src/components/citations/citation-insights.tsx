@@ -24,7 +24,7 @@ import {
 	CitedUrlsTable,
 	type DomainTableRow,
 	type UrlTableRow,
-} from "@/components/citation-tables";
+} from "@/components/citations/citation-tables";
 import { useCitationInsights } from "@/hooks/use-citation-insights";
 
 export interface CitationInsightsData {

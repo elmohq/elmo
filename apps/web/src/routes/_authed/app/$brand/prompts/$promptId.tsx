@@ -22,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ListPagination } from "@/components/list-pagination";
 import { CitationsDisplay, type CitationData } from "@/components/citations-display";
-import { CitedDomainsTable, CitedUrlsTable, type DomainTableRow, type UrlTableRow } from "@/components/citation-tables";
+import { CitedDomainsTable, CitedUrlsTable, type DomainTableRow, type UrlTableRow } from "@/components/citations/citation-tables";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { InfoTip, QueryWordsSection, UnknownQueriesNote, VariationsList, type VariationModelCount } from "@/components/fanout-sections";
 import { getDaysFromLookback } from "@/lib/chart-utils";
