@@ -5,8 +5,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
+import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
+import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
+import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -180,6 +183,55 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		}
 
 		return { success: true, brand };
+	});
+
+/**
+ * Create a new organization + admin membership + brand in one shot for the
+ * current user. Used by the local-mode multi-brand "create new brand" flow on
+ * the brand switcher. Gated by the canCreateBrands deployment feature so
+ * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ */
+export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+	.inputValidator(
+		z.object({
+			brandName: z.string().min(1).max(100),
+			website: z.string().min(1),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+		const deployment = getDeployment();
+
+		if (evaluateRequireCanCreateBrands(deployment.features.canCreateBrands) === "deny") {
+			throw new Error("Brand creation is not allowed in this deployment");
+		}
+
+		const urlValidation = validateWebsiteUrl(data.website);
+		if (!urlValidation.isValid) {
+			throw new Error(urlValidation.error);
+		}
+
+		const trimmedName = data.brandName.trim();
+		if (!trimmedName) {
+			throw new Error("Brand name must be a non-empty string");
+		}
+
+		const { orgId } = await provisionAdditionalLocalOrg({
+			userId: session.user.id,
+			name: trimmedName,
+		});
+
+		const defaultDomains = getDefaultBrandDomains();
+
+		await db.insert(brands).values({
+			id: orgId,
+			name: trimmedName,
+			website: urlValidation.formattedUrl,
+			enabled: true,
+			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+		});
+
+		return { brandId: orgId };
 	});
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "elmo",
-  "version": "0.1.0",
+  "version": "0.2.12",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@11.5.0",
@@ -18,7 +18,7 @@
     "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
     "cli:unlink": "npm unlink -g @elmohq/cli",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version-packages": "changeset version && node scripts/sync-root-version.mjs",
     "release": "pnpm build && changeset publish",
     "test:e2e": "pnpm --filter e2e test:e2e",
     "test:e2e-local": "bash e2e/run-local.sh",

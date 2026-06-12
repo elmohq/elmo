@@ -16,11 +16,11 @@ import {
 import { Badge } from "@workspace/ui/components/badge";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Separator } from "@workspace/ui/components/separator";
-import { Button } from "@workspace/ui/components/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconChevronLeft, IconChevronRight, IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { ProgressBarChart } from "@/components/progress-bar-chart";
+import { ListPagination } from "@/components/list-pagination";
 import { CitationsDisplay, type CitationData } from "@/components/citations-display";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { InfoTip, QueryWordsSection, UnknownQueriesNote, VariationsList, type VariationModelCount } from "@/components/fanout-sections";
@@ -511,49 +511,6 @@ function CitationsTab({
 	return <CitationsDisplay citationData={citationStats} brandId={brandId} brandName={brandName} showStats={true} maxDomains={10} maxUrls={50} />;
 }
 
-function PaginationControls({
-	className,
-	pagination,
-	currentPage,
-	onPageChange,
-	isLoading,
-}: {
-	className?: string;
-	pagination: any;
-	currentPage: number;
-	onPageChange: (page: number) => void;
-	isLoading: boolean;
-}) {
-	if (!pagination || pagination.totalPages <= 1) return null;
-	return (
-		<div className={`flex items-center gap-2 ${className || ""}`}>
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={() => onPageChange(currentPage - 1)}
-				disabled={!pagination.hasPrev || isLoading}
-				className="cursor-pointer disabled:cursor-not-allowed"
-			>
-				<IconChevronLeft className="h-4 w-4" />
-				Previous
-			</Button>
-			<span className="text-sm text-muted-foreground tabular-nums">
-				Page {pagination.page} of {pagination.totalPages}
-			</span>
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={() => onPageChange(currentPage + 1)}
-				disabled={!pagination.hasNext || isLoading}
-				className="cursor-pointer disabled:cursor-not-allowed"
-			>
-				Next
-				<IconChevronRight className="h-4 w-4" />
-			</Button>
-		</div>
-	);
-}
-
 function ResponsesTab({
 	runs,
 	pagination,
@@ -610,10 +567,7 @@ function ResponsesTab({
 
 	return (
 		<div className="space-y-4">
-			<div className="flex justify-between items-center">
-				<h3 className="text-base font-medium">Individual Prompt Runs</h3>
-				<PaginationControls pagination={pagination} currentPage={currentPage} onPageChange={onPageChange} isLoading={isLoading} />
-			</div>
+			<h3 className="text-base font-medium">Individual Prompt Runs</h3>
 
 			{runs.map((run: any) => (
 				<Card key={run.id}>
@@ -680,7 +634,12 @@ function ResponsesTab({
 				</Card>
 			))}
 
-			<PaginationControls className="justify-center pt-4" pagination={pagination} currentPage={currentPage} onPageChange={onPageChange} isLoading={isLoading} />
+			<ListPagination
+				page={currentPage - 1}
+				pageSize={pagination?.limit ?? 15}
+				totalItems={pagination?.total ?? runs.length}
+				onPageChange={(p) => onPageChange(p + 1)}
+			/>
 		</div>
 	);
 }
