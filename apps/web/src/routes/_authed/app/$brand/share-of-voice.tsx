@@ -17,7 +17,8 @@ import { useShareOfVoice } from "@/hooks/use-share-of-voice";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBrand } from "@/hooks/use-brands";
 import { PageHeader, FilterSection } from "@/components/page-header";
-import { FilterBar, getAvailableModels, usePageFilters } from "@/components/filter-bar";
+import { FilterBar, getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { useListFilters } from "@/hooks/use-list-filters";
 import { ColHead } from "@/components/col-head";
 import { ShareOfVoiceDonut } from "@/components/share-of-voice-donut";
 import { TrendChart } from "@/components/trend-chart";
@@ -55,16 +56,16 @@ const TIPS = {
 
 function ShareOfVoicePage() {
 	const { brand: brandId } = Route.useParams();
-	const { selectedModel, selectedLookback, selectedTags } = usePageFilters();
+	const { model, lookback, tags } = useListFilters();
 
 	const { brand } = useBrand(brandId);
 	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);
-	const modelParam = selectedModel === "all" ? undefined : selectedModel;
+	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
-	const { promptsSummary } = usePromptsSummary(brandId, { lookback: selectedLookback, model: modelParam });
+	const { promptsSummary } = usePromptsSummary(brandId, { lookback, model: modelParam });
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { data, isLoading } = useShareOfVoice(brandId, { lookback: selectedLookback, model: modelParam, tags: selectedTags });
+	const { data, isLoading } = useShareOfVoice(brandId, { lookback, model: modelParam, tags });
 
 	const infoContent = (
 		<>
