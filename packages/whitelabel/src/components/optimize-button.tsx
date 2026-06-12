@@ -21,30 +21,19 @@ export type { OptimizeButtonProps };
  * Template placeholders:
  * - {brandId} - Organization/brand ID
  * - {prompt} - The prompt text (URL encoded)
- * - {webQuery} - Web query if web search enabled (URL encoded, empty string if not)
+ * - {webQuery} - The search query (URL encoded); callers pass the prompt
+ *   itself when no genuine query is known
  */
 function generateOptimizationUrl(
   urlTemplate: string,
   promptValue: string,
   brandId: string,
-  webSearchEnabled?: boolean,
-  webQuery?: string,
+  webQuery: string,
 ): string {
-  const encodedPrompt = encodeURIComponent(promptValue);
-  const encodedBrandId = encodeURIComponent(brandId);
-  const encodedWebQuery = webSearchEnabled && webQuery
-    ? encodeURIComponent(webQuery)
-    : "";
-
-  let url = urlTemplate
-    .replace("{brandId}", encodedBrandId)
-    .replace("{prompt}", encodedPrompt)
-    .replace("{webQuery}", encodedWebQuery);
-
-  url = url.replace(/[&?]web_query=(?=&|$)/, "");
-  url = url.replace(/\?&/, "?");
-
-  return url;
+  return urlTemplate
+    .replace("{brandId}", encodeURIComponent(brandId))
+    .replace("{prompt}", encodeURIComponent(promptValue))
+    .replace("{webQuery}", encodeURIComponent(webQuery));
 }
 
 function getModelDisplayName(model: string): string {
@@ -93,22 +82,23 @@ export function OptimizeButton({
 			}
 
 			const url = generateOptimizationUrl(
-				optimizationUrlTemplate, 
-				promptName, 
-				brandId, 
-				!!webQuery,
-				webQuery || undefined
+				optimizationUrlTemplate,
+				promptName,
+				brandId,
+				// No genuine search query known (the engine searched the prompt
+				// verbatim or doesn't expose its queries) — the prompt itself is
+				// the best stand-in.
+				webQuery || promptName
 			);
-			
+
 			window.open(url, "_blank", "noopener,noreferrer");
 		} catch (error) {
 			console.error("Failed to fetch web query:", error);
 			const url = generateOptimizationUrl(
-				optimizationUrlTemplate, 
-				promptName, 
-				brandId, 
-				false,
-				undefined
+				optimizationUrlTemplate,
+				promptName,
+				brandId,
+				promptName
 			);
 			window.open(url, "_blank", "noopener,noreferrer");
 		} finally {
