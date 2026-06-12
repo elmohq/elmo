@@ -13,7 +13,6 @@
  */
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { cn } from "@workspace/ui/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -36,9 +35,11 @@ import { promptKeywords, type PromptFanoutStat, type TopQueryStat } from "@/lib/
 /** The active tab lives in `?tab=` so each tab is directly linkable. */
 const FANOUT_TABS = ["fanout", "top-queries", "words"] as const;
 type FanoutTab = (typeof FANOUT_TABS)[number];
-const fanoutTabParser = parseAsStringLiteral(FANOUT_TABS);
 
 export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
+	validateSearch: (search: Record<string, unknown>): { tab?: FanoutTab } => ({
+		tab: FANOUT_TABS.includes(search.tab as FanoutTab) ? (search.tab as FanoutTab) : undefined,
+	}),
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -58,7 +59,14 @@ export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
 function QueryFanoutPage() {
 	const { brand: brandId } = Route.useParams();
 	const { model, lookback, tags } = useListFilters();
-	const [tab, setTab] = useQueryState("tab", fanoutTabParser.withDefault("fanout"));
+	const tab = Route.useSearch({ select: (s) => s.tab ?? "fanout" });
+	const navigate = Route.useNavigate();
+	const setTab = (next: FanoutTab) =>
+		navigate({
+			search: (prev) => ({ ...prev, tab: next === "fanout" ? undefined : next }),
+			replace: true,
+			resetScroll: false,
+		});
 
 	const { brand } = useBrand(brandId);
 	const availableModels = getAvailableModels(brand?.effectiveModels ?? []);

@@ -47,7 +47,6 @@
 		"drizzle-orm": "^0.45.2",
 		"html2canvas-pro": "^2.0.4",
 		"lucide-react": "^1.17.0",
-		"nuqs": "^2.8.9",
 		"pg": "^8.21.0",
 		"pg-boss": "^12.18.2",
 		"posthog-js": "^1.382.0",

@@ -5,7 +5,6 @@
  */
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
 	Card,
@@ -60,12 +59,9 @@ const TABS: { key: TabKey; label: string }[] = [
 	{ key: "responses", label: "LLM Responses" },
 ];
 
-/** The active tab lives in `?tab=` so each tab is directly linkable. */
-const tabParser = parseAsStringLiteral(TAB_KEYS);
-
 export const Route = createFileRoute("/_authed/app/$brand/prompts/$promptId")({
 	// `tab` is part of the route's search schema so links can target a specific
-	// tab (e.g. View Details → web-queries); nuqs reads/writes the same param.
+	// tab (e.g. View Details → web-queries). Absent means the default tab.
 	validateSearch: (search: Record<string, unknown>): { tab?: TabKey } => ({
 		tab: TAB_KEYS.includes(search.tab as TabKey) ? (search.tab as TabKey) : undefined,
 	}),
@@ -88,7 +84,17 @@ function PromptHistoryPage() {
 	const lookback = useLookbackPeriod();
 	const days = getDaysFromLookback(lookback);
 
-	const [activeTab, setActiveTab] = useQueryState("tab", tabParser.withDefault("mentions"));
+	const activeTab = Route.useSearch({ select: (s) => s.tab ?? "mentions" });
+	const navigate = Route.useNavigate();
+	const setActiveTab = useCallback(
+		(tab: TabKey) =>
+			navigate({
+				search: (prev) => ({ ...prev, tab: tab === "mentions" ? undefined : tab }),
+				replace: true,
+				resetScroll: false,
+			}),
+		[navigate],
+	);
 	const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(() => new Set([activeTab]));
 	const [currentPage, setCurrentPage] = useState(1);
 	const [promptMeta, setPromptMeta] = useState<PromptMetadata | null>(null);

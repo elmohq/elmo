@@ -19,6 +19,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import BrandOnboarding from "@/components/brand-onboarding";
+import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 
 const getBrandData = createServerFn({ method: "GET" })
 	.inputValidator(z.object({ brandId: z.string() }))
@@ -116,6 +117,10 @@ function BrandLayoutSkeleton() {
 }
 
 export const Route = createFileRoute("/_authed/app/$brand")({
+	// The shared dashboard filters (model/lookback/tags/q) are validated here
+	// once so every child route inherits them in its search schema. The loader
+	// has no `loaderDeps`, so filter-only navigations never re-run it.
+	validateSearch: validateBrandFilterSearch,
 	loader: async ({ params }) => {
 		const result = await getBrandData({ data: { brandId: params.brand } });
 

@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useOptimistic, useRef, useState, useMemo, startTransition } from "react";
-import { useQueryState } from "nuqs";
+import { type ReactNode, useEffect, useRef, useState, useMemo } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot, SiMistralai } from "react-icons/si";
 import { MdSelectAll } from "react-icons/md";
 import { Sparkles } from "lucide-react";
@@ -20,13 +20,17 @@ import { useBrand } from "@/hooks/use-brands";
 import { getModelMeta } from "@workspace/lib/providers/models";
 export { ALL_MODELS_VALUE, getAvailableModels } from "@/lib/model-filter";
 import { ALL_MODELS_VALUE } from "@/lib/model-filter";
-// Shared URL parsers live with `useListFilters` (the data-consumer hook);
-// the widgets here keep their own per-key subscriptions built on them.
+// Filter state lives in the URL, validated by the `$brand` layout route's
+// search schema (see `validateBrandFilterSearch`). The widgets here keep
+// per-key `useSearch` selectors so one filter's click doesn't re-render the
+// others, and write through `useFilterNavigate` (replace, no scroll reset).
+// The router commits search updates synchronously within the interaction, so
+// no optimistic layer is needed (nuqs throttled URL writes, which is why the
+// old code wrapped every change in `useOptimistic` + `startTransition`).
 import {
-	modelParser,
-	lookbackParser,
-	tagsParser,
-	searchParser,
+	useFilterNavigate,
+	splitTags,
+	joinTags,
 	coerceLookback,
 } from "@/hooks/use-list-filters";
 
@@ -132,38 +136,30 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 	const defaultModel = availableModels.includes(ALL_MODELS_VALUE)
 		? ALL_MODELS_VALUE
 		: (availableModels[0] ?? ALL_MODELS_VALUE);
-	const [urlModel, setUrlModel] = useQueryState("model", modelParser.withDefault(defaultModel));
+	const urlModel = useSearch({ strict: false, select: (s) => s.model });
+	const setFilters = useFilterNavigate();
 	// If the URL has a model that isn't valid for this brand (e.g. stale deep
 	// link after a deployment change), fall back to the default rather than
 	// showing a trigger with an unknown value.
 	const selected = urlModel && availableModels.includes(urlModel) ? urlModel : defaultModel;
 
-	// `useOptimistic` renders `optimistic` as the dispatched value during
-	// the transition and snaps back to `selected` automatically once the
-	// URL setter's state update commits. No manual pushedRef sync — the
-	// optimistic lifecycle is tied to the transition itself.
-	const [optimistic, addOptimistic] = useOptimistic<string, string>(selected, (_, next) => next);
-
 	const handleChange = (next: string) => {
-		startTransition(() => {
-			addOptimistic(next);
-			setUrlModel(next);
-		});
+		setFilters({ model: next === defaultModel ? undefined : next });
 	};
 
 	if (availableModels.length <= 1) return null;
-	const isFiltered = optimistic !== ALL_MODELS_VALUE;
+	const isFiltered = selected !== ALL_MODELS_VALUE;
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
 				<FilterTriggerButton
-					icon={iconForModel(optimistic)}
-					label={labelForModel(optimistic)}
+					icon={iconForModel(selected)}
+					label={labelForModel(selected)}
 					active={isFiltered}
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup value={optimistic} onValueChange={handleChange}>
+				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
 					{availableModels.map((model) => (
 						<DropdownMenuRadioItem key={model} value={model} className="cursor-pointer gap-2">
 							{iconForModel(model)}
@@ -186,16 +182,12 @@ export function LookbackDropdown() {
 		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
 		[brand?.earliestDataDate],
 	);
-	const [urlLookback, setUrlLookback] = useQueryState("lookback", lookbackParser.withDefault(defaultLookback));
+	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
+	const setFilters = useFilterNavigate();
 	const selected = coerceLookback(urlLookback, defaultLookback);
 
-	const [optimistic, addOptimistic] = useOptimistic<LookbackPeriod, LookbackPeriod>(selected, (_, next) => next);
-
 	const handleChange = (next: LookbackPeriod) => {
-		startTransition(() => {
-			addOptimistic(next);
-			setUrlLookback(next);
-		});
+		setFilters({ lookback: next === defaultLookback ? undefined : next });
 	};
 
 	return (
@@ -203,12 +195,12 @@ export function LookbackDropdown() {
 			<DropdownMenuTrigger asChild>
 				<FilterTriggerButton
 					icon={<Clock className="size-3.5" />}
-					label={getLookbackLabel(optimistic)}
+					label={getLookbackLabel(selected)}
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup
-					value={optimistic}
+					value={selected}
 					onValueChange={(v) => handleChange(v as LookbackPeriod)}
 				>
 					{LOOKBACK_OPTIONS.map((opt) => (
@@ -229,21 +221,15 @@ export function LookbackDropdown() {
 // ------------------------------------------------------------------
 
 export function TagsDropdown({ availableTags }: { availableTags: readonly string[] }) {
-	const [urlTags, setUrlTags] = useQueryState("tags", tagsParser.withDefault([]));
-	const selected = urlTags ?? [];
-
-	const [optimistic, addOptimistic] = useOptimistic<string[], string[]>(selected, (_, next) => next);
+	const urlTags = useSearch({ strict: false, select: (s) => s.tags });
+	const setFilters = useFilterNavigate();
+	const selected = useMemo(() => splitTags(urlTags), [urlTags]);
 
 	const commit = (next: string[]) => {
-		startTransition(() => {
-			addOptimistic(next);
-			setUrlTags(next.length ? next : null);
-		});
+		setFilters({ tags: joinTags(next) });
 	};
 	const toggle = (tag: string) => {
-		commit(
-			optimistic.includes(tag) ? optimistic.filter((t) => t !== tag) : [...optimistic, tag],
-		);
+		commit(selected.includes(tag) ? selected.filter((t) => t !== tag) : [...selected, tag]);
 	};
 
 	const [open, setOpen] = useState(false);
@@ -254,14 +240,14 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 				<FilterTriggerButton
 					icon={<TagIcon className="size-3.5" />}
 					label="Tags"
-					active={optimistic.length > 0}
-					badgeCount={optimistic.length > 0 ? optimistic.length : undefined}
+					active={selected.length > 0}
+					badgeCount={selected.length > 0 ? selected.length : undefined}
 				/>
 			</PopoverTrigger>
 			<PopoverContent align="start" className="w-64 p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
 				<div className="flex items-center justify-between px-3 h-10 border-b">
 					<span className="font-medium text-sm">Tags</span>
-					{optimistic.length > 0 && (
+					{selected.length > 0 && (
 						<button
 							type="button"
 							onClick={() => commit([])}
@@ -276,7 +262,7 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 				) : (
 					<div className="py-1 max-h-64 overflow-y-auto">
 						{availableTags.map((tag) => {
-							const checked = optimistic.includes(tag);
+							const checked = selected.includes(tag);
 							return (
 								<div
 									key={tag}
@@ -316,16 +302,17 @@ export function TagsDropdown({ availableTags }: { availableTags: readonly string
 // ------------------------------------------------------------------
 
 export function SearchInput({ placeholder = "Search prompts..." }: { placeholder?: string }) {
-	const [urlValue, setUrlValue] = useQueryState("q", searchParser.withDefault(""));
+	const urlValue = useSearch({ strict: false, select: (s) => s.q });
+	const setFilters = useFilterNavigate();
 	const value = urlValue ?? "";
 
 	const [local, setLocal] = useState(value);
 	// `pendingTargetRef` holds the value we're currently pushing to the URL
-	// while the `setUrlValue` transition is in flight. While set, the sync
-	// effect ignores the stale `value` — without this, an urgent re-render
-	// that fires after `setLocal("")` but before the transition commits
-	// would see `value='abc'` and snap `local` back to 'abc'. That's what
-	// caused the "empty → abc → empty" flash when clicking the X.
+	// while the navigation commits. While set, the sync effect ignores the
+	// stale `value` — without this, a re-render that fires after
+	// `setLocal("")` but before the router commits would see `value='abc'`
+	// and snap `local` back to 'abc'. That's what caused the
+	// "empty → abc → empty" flash when clicking the X.
 	const pendingTargetRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -348,20 +335,16 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 		if (local === pendingTargetRef.current) return;
 		const timer = setTimeout(() => {
 			pendingTargetRef.current = local;
-			startTransition(() => {
-				setUrlValue(local.length ? local : null);
-			});
+			setFilters({ q: local.length ? local : undefined });
 		}, 250);
 		return () => clearTimeout(timer);
-	}, [local, value, setUrlValue]);
+	}, [local, value, setFilters]);
 
 	const clear = () => {
 		setLocal("");
 		if (value !== "") {
 			pendingTargetRef.current = "";
-			startTransition(() => {
-				setUrlValue(null);
-			});
+			setFilters({ q: undefined });
 		} else {
 			pendingTargetRef.current = null;
 		}
@@ -397,9 +380,9 @@ export function SearchInput({ placeholder = "Search prompts..." }: { placeholder
 // ------------------------------------------------------------------
 
 export function ResultCount({ count, total }: { count: number | undefined; total?: number }) {
-	const [tags] = useQueryState("tags", tagsParser.withDefault([]));
-	const [q] = useQueryState("q", searchParser.withDefault(""));
-	const active = (tags?.length ?? 0) > 0 || Boolean(q);
+	const tags = useSearch({ strict: false, select: (s) => s.tags });
+	const q = useSearch({ strict: false, select: (s) => s.q });
+	const active = Boolean(tags) || Boolean(q);
 	if (!active || count === undefined) return null;
 	const showTotal = total !== undefined && total !== count;
 	return (
