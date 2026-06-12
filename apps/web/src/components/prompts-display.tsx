@@ -8,14 +8,16 @@ import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBatchChartData } from "@/hooks/use-batch-chart-data";
 import { useBrand } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
 import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
 import { FilteredListShell } from "@/components/filtered-list-shell";
+import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
 import { VisibilityBarSection } from "@/components/visibility-bar-section";
+import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
@@ -49,6 +51,12 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 	const { brand } = useBrand(brandId);
 	const filters = useListFilters();
 	const { model, lookback, tags, search } = filters;
+	// `order` is this route's own search key (not a narrowing filter), so it
+	// rides outside `useListFilters` / `isFiltered`.
+	const order = useSearch({
+		strict: false,
+		select: (s) => coercePromptOrder((s as { order?: unknown }).order),
+	});
 
 	// Server hands us `effectiveModels` — the deployment-configured model ids
 	// this brand actually runs, after applying `enabledModels`. FilterBar
@@ -71,16 +79,18 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	// The prompt list is still search-filtered client-side for display. The
-	// chart/visibility sections no longer receive this id list — they resolve
-	// the same prompts server-side from the tag + search filters (issue #68).
+	// The prompt list is still search-filtered client-side for display, then
+	// re-ordered per the `order` control (#60). The chart/visibility sections
+	// no longer receive this id list — they resolve the same prompts
+	// server-side from the tag + search filters (issue #68).
 	const sortedPrompts = useMemo(() => {
 		if (!promptsSummary) return [];
 		const allPrompts = promptsSummary.prompts;
-		return search
-			? allPrompts.filter((p: { value: string }) => p.value.toLowerCase().includes(search.toLowerCase()))
+		const filtered = search
+			? allPrompts.filter((p) => p.value.toLowerCase().includes(search.toLowerCase()))
 			: allPrompts;
-	}, [promptsSummary, search]);
+		return orderPrompts(filtered, order);
+	}, [promptsSummary, search, order]);
 
 	const isInitialLoad = isLoadingSummary && !promptsSummary;
 
@@ -92,6 +102,7 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 			showSearch
 			showModelSelector
 			showResultCount
+			filterBarExtras={<PromptOrderDropdown />}
 			filterSectionExtras={<VisibilityBarSection brandId={brandId} />}
 			isLoading={isInitialLoad}
 			loadingState={<ContentLoadingSkeleton />}

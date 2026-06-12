@@ -14,6 +14,9 @@ interface FilteredListShellProps {
 	showModelSelector?: boolean;
 	/** Show "n results" / "n of m results" next to the filter dropdowns. */
 	showResultCount?: boolean;
+	/** Page-specific controls rendered inline with the filter-bar dropdown
+	 *  group (e.g. the prompts list's sort dropdown). */
+	filterBarExtras?: ReactNode;
 	/** Extra content inside the sticky filter section, below the bar
 	 *  (e.g. the visibility bar on the prompts page). */
 	filterSectionExtras?: ReactNode;
@@ -48,6 +51,7 @@ export function FilteredListShell({
 	showSearch = false,
 	showModelSelector = true,
 	showResultCount = false,
+	filterBarExtras,
 	filterSectionExtras,
 	isLoading = false,
 	loadingState,
@@ -103,6 +107,7 @@ export function FilteredListShell({
 					showModelSelector={showModelSelector}
 					resultCount={showResultCount && !isLoading ? effectiveFilteredCount : undefined}
 					resultTotal={showResultCount && !isLoading ? totalCount : undefined}
+					extraControls={filterBarExtras}
 				/>
 				{filterSectionExtras}
 			</FilterSection>
