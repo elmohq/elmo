@@ -54,10 +54,10 @@ export function PromptOrderDropdown() {
 					active={selected !== DEFAULT_PROMPT_ORDER}
 				/>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="w-48">
+			<DropdownMenuContent align="start" className="w-60">
 				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => setOrder(v as PromptOrder)}>
 					{PROMPT_ORDER_OPTIONS.map((o) => (
-						<DropdownMenuRadioItem key={o.value} value={o.value} className="cursor-pointer">
+						<DropdownMenuRadioItem key={o.value} value={o.value} className="cursor-pointer whitespace-nowrap">
 							{o.label}
 						</DropdownMenuRadioItem>
 					))}
