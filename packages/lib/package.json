@@ -29,14 +29,14 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.81",
-    "@ai-sdk/openai": "^3.0.67",
-    "@anthropic-ai/sdk": "^0.100.1",
-    "@better-auth/sso": "^1.6.12",
+    "@ai-sdk/openai": "^3.0.68",
+    "@anthropic-ai/sdk": "^0.102.0",
+    "@better-auth/sso": "^1.6.14",
     "@brightdata/sdk": "^1.1.0",
     "@workspace/config": "workspace:*",
-    "ai": "^6.0.193",
-    "better-auth": "^1.6.12",
-    "dataforseo-client": "^2.0.24",
+    "ai": "^6.0.197",
+    "better-auth": "^1.6.14",
+    "dataforseo-client": "^2.0.25",
     "drizzle-orm": "^0.45.2",
     "olostep": "^1.1.0",
     "pg": "^8.21.0",
@@ -46,6 +46,6 @@
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.8"
   }
 }
