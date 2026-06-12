@@ -23,6 +23,10 @@ overrides:
   fast-uri: "^3.1.2"
   ws: "^8.20.1"
   protobufjs: "^7.5.8"
+  # @better-auth/sso pins samlify ~2.10.2, which has the XML-injection privilege-escalation
+  # advisory (GHSA-34r5-q4jw-r36m). 2.13.x is the patched line and also drops the vulnerable
+  # uuid dep; force it until @better-auth/sso ships a fixed range.
+  samlify: "^2.13.1"
   # Keep one fumadocs-core copy across apps/www and packages/docs (a peer dep there).
   # Without this anchor, bumping fumadocs-core in www alone leaves @workspace/docs on a
   # stale version and the two PageTree types clash at the docs-page-layout boundary.
