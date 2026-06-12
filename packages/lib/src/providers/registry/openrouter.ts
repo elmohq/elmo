@@ -7,6 +7,7 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 import type { Citation } from "../../text-extraction";
+import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -159,7 +160,7 @@ export const openrouter: Provider = {
 		const citations = extractCitationsFromOpenRouterResponse(data);
 		// OpenRouter doesn't expose what search queries the model made internally.
 		// Only mark as "unavailable" when citations prove a web search happened.
-		const webQueries = citations.length > 0 ? ["unavailable"] : [];
+		const webQueries = citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [];
 
 		return {
 			rawOutput: data,

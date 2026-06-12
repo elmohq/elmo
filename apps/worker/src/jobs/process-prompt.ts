@@ -188,7 +188,12 @@ async function runModelIteration({
 		version: config.version,
 	});
 
-	const { rawOutput, webQueries, textContent, citations: extractedCitations, modelVersion } = result;
+	// `webQueries` is stored exactly as the provider reported it — engines do
+	// sometimes genuinely search the prompt verbatim, and that's real data. The
+	// fan-out page excludes verbatim repeats at read time as a display rule;
+	// providers whose query field is fabricated (DataForSEO) write the
+	// `unavailable` sentinel in their own extractor instead.
+	const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
 	// Trust the provider's normalized text when it's a real answer; otherwise
