@@ -10,12 +10,12 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "What is Elmo?",
 		answer:
-			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO). It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok — mention your brand, which competitors appear alongside you, and which sources each model cites.",
+			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — a self-hosted alternative to tools like Profound, Peec, and Otterly. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok — mention your brand, which competitors appear alongside you, and which sources each model cites.",
 	},
 	{
 		question: "What is Answer Engine Optimization (AEO)?",
 		answer:
-			"Answer Engine Optimization (AEO), also called generative engine optimization (GEO), is the practice of measuring and improving how often AI answer engines mention and cite your brand. Instead of ranking in a list of blue links, the goal is to be the source an AI quotes in its answer.",
+			"Answer Engine Optimization (AEO) — also called Generative Engine Optimization (GEO) or LLM Optimization (LLMO) — is the practice of measuring and improving how often AI answer engines mention and cite your brand. Instead of ranking in a list of blue links, the goal is to be the source an AI quotes in its answer. (LLMO is also where Elmo gets its name.)",
 	},
 	{
 		question: "Which AI models does Elmo track?",

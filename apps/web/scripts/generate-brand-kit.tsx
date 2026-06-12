@@ -28,7 +28,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ImageResponse } from "@takumi-rs/image-response";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -412,7 +412,7 @@ await addFile(
 console.log("\nPacking zip…");
 
 const output = createWriteStream(OUTPUT_ZIP);
-const archive = archiver("zip", { zlib: { level: 9 } });
+const archive = new ZipArchive({ zlib: { level: 9 } });
 
 const done = new Promise<void>((res, rej) => {
 	output.on("close", res);
