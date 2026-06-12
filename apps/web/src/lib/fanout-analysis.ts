@@ -6,12 +6,12 @@
  * "Query fanout" = the sub-queries an AI engine issues to the web while
  * answering a tracked prompt (`prompt_runs.web_queries`) — the single source
  * for every figure on the page, uniformly across providers. Two kinds of
- * entries are *not* genuine fan-out and are dropped (in the SQL that reads
- * web_queries, and defensively here): a query identical to the prompt (the
- * engine echoing it — the worker strips echoes for every provider at write
- * time via `stripPromptEcho`; the read-side filter covers rows written before
- * that guard existed), and the `"unavailable"` sentinel providers write when a
- * search happened but the real query strings aren't exposed (OpenRouter and
+ * entries are excluded as a read-time display rule (in the SQL that reads
+ * web_queries, and defensively here): a query identical to the prompt (engines
+ * do sometimes search the prompt verbatim — real data, kept in the DB, but a
+ * repeat says nothing about how the prompt was *rewritten*, which is what this
+ * page shows), and the `"unavailable"` sentinel providers write when a search
+ * happened but the real query strings aren't exposed (OpenRouter and
  * DataForSEO always; BrightData/Olostep on extraction failure). So every row
  * that reaches the aggregator is a genuine expansion, and engines that never
  * expose their searches simply contribute none.

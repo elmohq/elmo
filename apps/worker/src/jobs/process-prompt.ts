@@ -3,7 +3,6 @@ import { db } from "@workspace/lib/db/db";
 import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
-import { stripPromptEcho } from "@workspace/lib/web-queries";
 import {
 	getProvider,
 	parseScrapeTargets,
@@ -226,13 +225,13 @@ async function runModelIteration({
 		version: config.version,
 	});
 
-	const { rawOutput, textContent, citations: extractedCitations, modelVersion } = result;
+	// `webQueries` is stored exactly as the provider reported it — engines do
+	// sometimes genuinely search the prompt verbatim, and that's real data. The
+	// fan-out page excludes verbatim repeats at read time as a display rule;
+	// providers whose query field is fabricated (DataForSEO) write the
+	// `unavailable` sentinel in their own extractor instead.
+	const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
-
-	// Provider-agnostic guard: a "web query" echoing the prompt isn't fan-out,
-	// and only here — with the prompt text as run — can it be stripped reliably
-	// (read-time comparisons break once the prompt is edited).
-	const webQueries = stripPromptEcho(result.webQueries, promptValue, extractedCitations.length > 0);
 
 	const safeTextContent = typeof textContent === "string" ? textContent : "";
 

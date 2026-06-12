@@ -1244,16 +1244,19 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 /**
  * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`
  * sentinel (OpenRouter and DataForSEO always; BrightData/Olostep on extraction
- * failure), and not the prompt echoed verbatim. Shared by the breakdown, model
+ * failure), and not the prompt repeated verbatim. Shared by the breakdown, model
  * totals, and per-prompt totals so all three count the same set. Requires a
  * `wq` unnest alias plus the `pr` prompt_runs and `p` prompts rows in scope.
  *
- * The worker strips echoes for every provider at write time (`stripPromptEcho`
- * in @workspace/lib), where the prompt text as run is known. The read-side echo
- * comparison only covers rows written before that guard existed; for those, an
- * echo whose prompt is later edited would no longer match `prompts.value` and
- * could leak back in as a "query" — accepted as a uniform legacy edge case that
- * ages out, rather than special-casing providers here.
+ * The verbatim-repeat exclusion is a display rule, not data cleaning: engines
+ * genuinely search the prompt verbatim sometimes, and those entries stay in
+ * `web_queries` — but a repeat says nothing about how the prompt was rewritten,
+ * so it isn't fan-out. The comparison uses the prompt's CURRENT text, so after
+ * a prompt edit, searches of the old wording start surfacing as queries: for
+ * honest providers those are real searches; only pre-2026-06 DataForSEO rows
+ * (which fabricated `[prompt]` as their query field; the provider now writes
+ * the sentinel) would surface something that never ran, and those age out of
+ * the lookback windows.
  */
 function genuineFanoutWq(): SQL {
 	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;

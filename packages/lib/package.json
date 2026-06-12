@@ -17,7 +17,6 @@
     "./auth/client": "./src/auth/client.ts",
     "./auth/permissions": "./src/auth/permissions.ts",
     "./constants": "./src/constants.ts",
-    "./web-queries": "./src/web-queries.ts",
     "./text-extraction": "./src/text-extraction.ts",
     "./dataforseo": "./src/dataforseo.ts",
     "./onboarding": "./src/onboarding/index.ts",
