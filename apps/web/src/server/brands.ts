@@ -192,7 +192,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
  * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
  */
 export const createBrandWithOrgFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
