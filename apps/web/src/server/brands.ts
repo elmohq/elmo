@@ -122,7 +122,7 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
  * Get a single brand by ID
  */
 export const getBrand = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string() }))
+	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
@@ -139,7 +139,7 @@ export const getBrand = createServerFn({ method: "GET" })
  * Create a new brand
  */
 export const createBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			brandName: z.string(),
@@ -186,7 +186,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
  * Update a brand
  */
 export const updateBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			name: z.string().optional(),
@@ -246,7 +246,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
  * Get competitors for a brand
  */
 export const getCompetitors = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string() }))
+	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
@@ -260,7 +260,7 @@ export const getCompetitors = createServerFn({ method: "GET" })
  * Update competitors for a brand (bulk replace)
  */
 export const updateCompetitors = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			competitors: z.array(
@@ -314,7 +314,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
  * Add an additional domain to the brand itself
  */
 export const addDomainToBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			domain: z.string().min(1),
@@ -354,7 +354,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
  * Add a domain to an existing competitor
  */
 export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			competitorId: z.string(),
@@ -388,7 +388,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
  * Create a new competitor from a domain
  */
 export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			name: z.string().min(1),

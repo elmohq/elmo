@@ -60,7 +60,7 @@ export interface FilteredVisibilityResponse {
 // ============================================================================
 
 export const getBatchChartDataFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
@@ -144,7 +144,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	});
 
 export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),

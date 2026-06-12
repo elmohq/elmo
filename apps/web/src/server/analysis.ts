@@ -62,7 +62,7 @@ export interface ShareOfVoiceResponse {
 }
 
 export const getShareOfVoiceFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: LOOKBACK.default("1m"),

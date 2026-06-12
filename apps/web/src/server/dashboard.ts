@@ -46,7 +46,7 @@ export interface DashboardSummaryResponse {
  * Get dashboard summary with visibility and citation time series.
  */
 export const getDashboardSummaryFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),

@@ -39,7 +39,7 @@ import { buildGoogleModule } from "@/lib/google-module";
  * Get metadata for a single prompt
  */
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string(), promptId: z.string() }))
+	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
@@ -87,7 +87,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
  * Get prompts summary for a brand (visibility scores, tags, etc.)
  */
 export const getPromptsSummaryFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.string().optional().default("1m"),
@@ -239,7 +239,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
  * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
  */
 export const getPromptStatsFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			promptId: z.string(),
 			days: z.number().optional().default(7),
@@ -461,7 +461,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
  * Get paginated prompt runs
  */
 export const getPromptRunsFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			promptId: z.string(),
 			page: z.number().optional().default(1),
@@ -512,7 +512,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
  * Update prompts for a brand (add/edit/delete)
  */
 export const updatePromptsFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			prompts: z.array(
@@ -587,7 +587,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 // ============================================================================
 
 export const getPromptChartDataFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			promptId: z.string(),
@@ -762,7 +762,7 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 // ============================================================================
 
 export const getPromptWebQueryFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			promptId: z.string(),
