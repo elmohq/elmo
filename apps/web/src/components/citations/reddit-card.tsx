@@ -10,6 +10,12 @@ import type { CitationData } from "@/components/citations/types";
 
 const SUBREDDITS_PAGE_SIZE = 8;
 
+/** Exact-host check (citation `domain` is a normalized lowercase hostname).
+ *  A substring match would also catch lookalikes such as
+ *  "notreddit.com" or "reddit.com.evil.net" (CodeQL js/incomplete-url-substring-sanitization). */
+const isRedditDomain = (domain: string) =>
+	domain === "reddit.com" || domain.endsWith(".reddit.com");
+
 export function useSubredditData(
 	specificUrls: CitationData["specificUrls"],
 	whatsChanged: CitationData["whatsChanged"],
@@ -17,7 +23,7 @@ export function useSubredditData(
 	return useMemo(() => {
 		const droppedUrlSet = new Set(
 			whatsChanged?.droppedUrls
-				.filter((u) => u.domain.includes("reddit.com"))
+				.filter((u) => isRedditDomain(u.domain))
 				.map((u) => extractSubreddit(u.url))
 				.filter(Boolean) ?? [],
 		);
@@ -29,7 +35,7 @@ export function useSubredditData(
 			urls: { url: string; title?: string; count: number; isNew?: boolean }[];
 		}>();
 		for (const u of specificUrls) {
-			if (!u.domain.includes("reddit.com")) continue;
+			if (!isRedditDomain(u.domain)) continue;
 			const sub = extractSubreddit(u.url);
 			if (!sub) continue;
 			const existing = map.get(sub);
