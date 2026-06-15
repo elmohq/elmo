@@ -37,7 +37,7 @@ describe("round-trip", () => {
 		const configs: ModelConfig[] = [
 			{ model: "chatgpt", provider: "olostep", version: undefined, webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", version: undefined, webSearch: false },
-			{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-4-20250514", webSearch: true },
+			{ model: "claude", provider: "anthropic-api", version: "claude-sonnet-4-6", webSearch: true },
 			{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: false },
 			{ model: "chatgpt", provider: "openrouter", version: "openai/gpt-5-mini:free", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", version: undefined, webSearch: true },

@@ -396,7 +396,7 @@ const OLOSTEP_MODELS = [
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
