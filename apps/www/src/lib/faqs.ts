@@ -63,6 +63,36 @@ export const PRICING_FAQS: FaqItem[] = [
 	},
 ];
 
+// Off-Site AEO service FAQ. Rendered on "/off-site-aeo" and emitted as FAQPage
+// JSON-LD from the same route.
+export const OFFSITE_FAQS: FaqItem[] = [
+	{
+		question: "How does the off-site AEO service work?",
+		answer:
+			"It starts with a consultancy call where we review how AI answer engines currently talk about you and decide which prompts and gaps to target. Within 30 days, that month's posts are planned, written, humanized, and live on high-authority sites, and you get a report tying each placement to the issue it targets. We then keep publishing for you every month, adjusting the targets as your visibility shifts.",
+	},
+	{
+		question: "Are the articles AI-generated?",
+		answer:
+			"Yes, and we're upfront about it. We draft with AI, then it is reworked until it lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. That keeps quality high while keeping your brand mentioned in content the models actually trust and cite.",
+	},
+	{
+		question: "Do you offer refunds?",
+		answer:
+			"No. All plans are non-refundable. We commission and place real editorial inventory on third-party sites as soon as your month begins, so those costs are committed up front. You can cancel future months at any time before that cycle's work starts.",
+	},
+	{
+		question: "How is this different from buying backlinks?",
+		answer:
+			"It's a similar process. However, we make sure the content is useful for AEO, only place it on high-quality sites, and humanize the text to avoid detection. Many backlink services offer very low-quality placements with high spam scores, non-existent traffic, and gamed DRs, and either make you provide your own content or produce content that's low quality and easily detected as AI.",
+	},
+	{
+		question: "Will this help my traditional SEO too?",
+		answer:
+			"These all provide dofollow links on high-DR domains with actual traffic, so your search rankings should benefit as well. But the primary purpose is to provide more data points to AI searches for AEO.",
+	},
+];
+
 // AI Visibility Tool Directory FAQ.
 export const DIRECTORY_FAQS: FaqItem[] = [
 	{
