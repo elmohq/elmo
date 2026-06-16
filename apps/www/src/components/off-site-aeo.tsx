@@ -165,9 +165,9 @@ export function OffSiteValue() {
 						>
 							Jared Rhizor
 						</a>
-						, who's spent the last year building AEO tooling to serve top
-						e-commerce and B2B SaaS brands, finding the levers that help move the
-						needle on AI citations.
+						, who's spent the last year finding the levers that move the needle
+						on AI citations by building AEO tooling for top e-commerce and B2B
+						SaaS brands.
 					</p>
 				</div>
 			</div>
