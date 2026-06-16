@@ -50,11 +50,21 @@ describe("buildEvalReportHtml", () => {
 		expect(html).toContain('id="filter"');
 	});
 
-	it("renders response markdown to HTML and strips active content", () => {
+	it("renders response markdown to HTML and neutralizes raw HTML", () => {
 		const html = buildEvalReportHtml(makeReport());
 		expect(html).toContain("<strong>Nike</strong>");
-		// the injected <script> from the response body is stripped
-		expect(html).not.toContain("alert(1)");
+		// the injected <script> from the response body is escaped to inert text,
+		// not emitted as a live element (the report's own <script> has no "alert")
+		expect(html).not.toContain("<script>alert");
+		expect(html).toContain("&lt;script&gt;");
+	});
+
+	it("blocks dangerous link schemes from the response", () => {
+		const report = makeReport();
+		report.prompts[0].targets[0].runs[0].responseMarkdown = "[click](javascript:alert(1))";
+		const html = buildEvalReportHtml(report);
+		expect(html).not.toContain("javascript:alert");
+		expect(html).toContain('href="#"');
 	});
 
 	it("includes citations, fan-out queries, and share-of-voice", () => {

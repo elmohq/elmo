@@ -1,4 +1,4 @@
-import { marked } from "marked";
+import { Marked, type Tokens } from "marked";
 
 // ── Eval data model (shared by eval.ts, the report, and the CSV writers) ──────
 
@@ -65,20 +65,49 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Render model-supplied markdown to HTML for the local report. The content is
- * the user's own eval output opened from `file://`, but we still strip active
- * content (script/iframe/style tags, inline event handlers, javascript: urls)
- * as defense-in-depth.
+ * Allowlist link hrefs: relative paths, anchors, and a small set of safe
+ * schemes only. Anything else (javascript:, data:, vbscript:, file:, …) becomes
+ * an inert `#`. An allowlist avoids the "did you cover every dangerous scheme?"
+ * trap of denylist checks.
  */
+function safeHref(href: string): string {
+	// Strip ASCII control chars and spaces (browsers ignore them inside a scheme,
+	// so `java\tscript:` would otherwise slip past the scheme check below).
+	const value = [...(href ?? "")].filter((c) => c.charCodeAt(0) > 32).join("");
+	if (!value) return "#";
+	// http(s)/mailto, anchors, root- or dot-relative paths.
+	if (/^(?:https?:|mailto:|#|\/|\.)/i.test(value)) return value;
+	// No URL scheme at all → relative reference, safe to keep.
+	if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
+	return "#";
+}
+
+// Render model-supplied markdown safely. Rather than regex-stripping dangerous
+// HTML out of marked's output (brittle and bypassable), we configure the
+// renderer so raw HTML in the source is escaped to literal text — only marked's
+// own element set is ever emitted — and link/image targets are sanitized. The
+// content is the user's own eval opened from `file://`, but a malicious model
+// response must never produce live markup.
+const markdownRenderer = new Marked({ gfm: true });
+markdownRenderer.use({
+	renderer: {
+		html({ text }: Tokens.HTML | Tokens.Tag): string {
+			return escapeHtml(text);
+		},
+		link({ href, title, text }: Tokens.Link): string {
+			const safe = escapeHtml(safeHref(href));
+			const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+			return `<a href="${safe}"${titleAttr} target="_blank" rel="noopener">${escapeHtml(text)}</a>`;
+		},
+		image({ text }: Tokens.Image): string {
+			// Don't load remote/data images in a local report — show alt text.
+			return escapeHtml(text ?? "");
+		},
+	},
+});
+
 function renderMarkdown(md: string): string {
-	const html = marked.parse(md ?? "", { async: false }) as string;
-	return html
-		// Drop active blocks entirely (tags *and* their contents)…
-		.replace(/<(script|style|iframe)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
-		// …then any stray/unclosed tags, inline event handlers, and js: urls.
-		.replace(/<\/?(script|style|iframe)\b[^>]*>/gi, "")
-		.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-		.replace(/javascript:/gi, "");
+	return markdownRenderer.parse(md ?? "", { async: false }) as string;
 }
 
 function sovBar(label: string, sov: number | null, mentionCount?: number): string {
