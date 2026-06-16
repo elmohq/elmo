@@ -203,7 +203,7 @@ export function OffSiteProcess() {
 					/ HOW IT WORKS
 				</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					One call, many posts. Live within 30 days.
+					One call, quality posts. Live within 30 days.
 				</h2>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
