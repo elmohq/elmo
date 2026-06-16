@@ -35,6 +35,7 @@ const staticPages: SitemapEntry[] = [
 	{ path: "/", changefreq: "weekly", priority: 1.0 },
 	{ path: "/features", changefreq: "monthly", priority: 0.8 },
 	{ path: "/pricing", changefreq: "monthly", priority: 0.8 },
+	{ path: "/off-site-aeo", changefreq: "monthly", priority: 0.8 },
 	{ path: "/changelog", changefreq: "weekly", priority: 0.7 },
 	{ path: "/roadmap", changefreq: "weekly", priority: 0.7 },
 	{ path: "/docs", changefreq: "weekly", priority: 0.9 },

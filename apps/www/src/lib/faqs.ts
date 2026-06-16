@@ -63,6 +63,41 @@ export const PRICING_FAQS: FaqItem[] = [
 	},
 ];
 
+// Off-Site AEO service FAQ. Rendered on "/off-site-aeo" and emitted as FAQPage
+// JSON-LD from the same route.
+export const OFFSITE_FAQS: FaqItem[] = [
+	{
+		question: "How does the off-site AEO service work?",
+		answer:
+			"It starts with a consultancy call where we review how AI answer engines currently talk about you and decide which prompts and gaps to target. Within 30 days, that month's posts are planned, written, humanized, and live on high-authority sites, and you get a report tying each placement to the issue it targets. We then keep publishing for you every month, adjusting the targets as your visibility shifts.",
+	},
+	{
+		question: "Are the articles AI-generated?",
+		answer:
+			"Yes, and we're upfront about it. We draft with AI for speed, then a person edits and reworks every article so it reads naturally and lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. That keeps quality high and placements accepted by editors, while keeping your brand mentioned in content the models actually trust and cite.",
+	},
+	{
+		question: "Do you offer refunds?",
+		answer:
+			"No. All plans are non-refundable. We commission and place real editorial inventory on third-party sites as soon as your month begins, so those costs are committed up front. You can cancel future months at any time before that cycle's work starts.",
+	},
+	{
+		question: "How is this different from buying backlinks?",
+		answer:
+			"Cheap link packages drop generic posts wherever they fit. We start from your AEO data — the exact prompts and competitors where you're missing — write content that reads human, place it on sites AI trusts, and report on what each placement was for. The goal is durable data points that get AI to cite you. The SEO backlink value is a bonus, not the point.",
+	},
+	{
+		question: "Will this help my traditional SEO too?",
+		answer:
+			"Yes. These are genuine editorial placements with dofollow links on high-DR domains, so your classic search rankings benefit from the added authority. But the primary purpose is AEO: giving AI answer engines many trustworthy, recent sources that describe your brand the way you want.",
+	},
+	{
+		question: "Why a subscription model instead of one-time article creation?",
+		answer:
+			"AI answer engines favor recent sources and corroboration across many sites — they lean on this year's data over last year's. A one-time batch of articles fades as the models refresh. A steady monthly cadence keeps fresh, authoritative mentions flowing into the corpus the models read from, so you keep showing up over time. It's also a healthier, more natural backlink pattern for SEO than a single spike.",
+	},
+];
+
 // AI Visibility Tool Directory FAQ.
 export const DIRECTORY_FAQS: FaqItem[] = [
 	{

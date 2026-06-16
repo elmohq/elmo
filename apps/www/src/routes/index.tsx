@@ -5,6 +5,7 @@ import { Features } from "@/components/features";
 import { Stats } from "@/components/stats";
 import { Community } from "@/components/community";
 import { Pricing } from "@/components/pricing";
+import { OffSiteAeoPromo } from "@/components/off-site-aeo";
 import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
@@ -45,6 +46,7 @@ function HomePage() {
 				<Features />
 				<Community />
 				<Pricing />
+				<OffSiteAeoPromo />
 				<Faq items={HOME_FAQS} eyebrow="/ FAQ" />
 				<CTA />
 			</main>
