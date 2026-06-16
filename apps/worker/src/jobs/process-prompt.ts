@@ -3,6 +3,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
+import { analyzeMentions } from "@workspace/lib/mentions";
 import {
 	getProvider,
 	parseScrapeTargets,
@@ -100,48 +101,6 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		brand,
 		competitors: brandCompetitors,
 	};
-}
-
-function extractDomainFromUrl(urlOrDomain: string): string {
-	try {
-		const url = new URL(urlOrDomain.startsWith("http") ? urlOrDomain : `https://${urlOrDomain}`);
-		return url.hostname.replace(/^www\./, "").toLowerCase();
-	} catch {
-		return urlOrDomain.replace(/^www\./, "").toLowerCase();
-	}
-}
-
-function analyzeMentions(
-	content: string,
-	brand: Brand,
-	competitorsList: Competitor[],
-): {
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-} {
-	const contentLower = content.toLowerCase();
-
-	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
-	const brandDomains = [
-		extractDomainFromUrl(brand.website),
-		...(brand.additionalDomains || []).map(extractDomainFromUrl),
-	];
-	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
-
-	const competitorsMentioned = competitorsList
-		.filter((competitor) => {
-			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
-			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
 }
 
 async function savePromptRun(

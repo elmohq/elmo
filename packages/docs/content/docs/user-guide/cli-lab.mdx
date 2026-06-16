@@ -1,0 +1,132 @@
+---
+title: CLI Lab
+description: Run Elmo's core analysis as one-off commands — generate prompts, evaluate them, and plan AEO improvements — straight from your terminal.
+---
+
+The `elmo lab` commands give you most of Elmo's intelligence in a one-off, no-database capacity. They reuse the providers and API keys you already configured with [`elmo init`](/docs/getting-started) (read from `~/.elmo/.env`), so you can generate tracking prompts, evaluate them across models, and get AEO recommendations without standing up the full stack.
+
+The three commands are designed to be run in sequence:
+
+```bash
+elmo lab brainstorm <website>   # 1. discover what to track (prompts + competitors)
+elmo lab eval [prompts]         # 2. run them → responses, citations, mentions, share-of-voice, fan-out
+elmo lab plan <paths...>        # 3. turn your content + results into AEO recommendations
+```
+
+<Callout>
+These commands call real provider APIs and cost money per run, just like scheduled tracking. They never touch a database and never need `DATABASE_URL`.
+</Callout>
+
+## Prerequisites
+
+Run [`elmo init`](/docs/getting-started) once to configure providers and write `~/.elmo/.env`. The lab commands read that file for provider keys and your `SCRAPE_TARGETS`. If you keep config elsewhere, point any command at it with `--dir <path>`, or just export the keys (`OPENAI_API_KEY`, `BRIGHTDATA_API_TOKEN`, `SCRAPE_TARGETS`, …) in your shell.
+
+## Selecting a model & provider
+
+Every command targets models with the same `model:provider[:version][:online]` nomenclature used by [`SCRAPE_TARGETS`](/docs/user-guide/providers):
+
+```
+chatgpt:brightdata:online
+google-ai-mode:brightdata:online
+claude:anthropic-api:claude-sonnet-4-6:online
+```
+
+- **`brainstorm`** and **`plan`** do structured research, which only **direct‑API** providers support (Anthropic, OpenAI, OpenRouter, Mistral). Pass a single `-m`; omit it to use your configured default.
+- **`eval`** works with any provider. `-m` is **repeatable**, so you can compare several at once. With no `-m`, it falls back to every entry in your `SCRAPE_TARGETS`.
+
+```bash
+elmo lab eval --brand-file brand.json \
+  -m chatgpt:brightdata:online \
+  -m claude:anthropic-api:claude-sonnet-4-6:online
+```
+
+## Output
+
+By default every command writes its artifacts to the **current directory** and prints a short summary to stdout. Point somewhere else with `-o <dir>`, or pass `--stdout` to skip files and emit only to stdout (handy for piping).
+
+Structured data is written as `--format csv` (default) or `--format jsonl`; model responses are written as Markdown; and the **brand pack** is always `brand.json`.
+
+### The brand pack
+
+`brand.json` is the artifact that ties the commands together. `brainstorm` and `plan` produce it (brand name, aliases, domains, competitors, prompts); `eval` consumes it with `--brand-file` to get the brand and competitor context it needs for mentions and share-of-voice.
+
+## 1. Brainstorm prompts
+
+Generate a set of AI tracking prompts (mostly unbranded category/persona queries) and the brand's direct competitors:
+
+```bash
+elmo lab brainstorm nike.com --count 30 --competitors 10 -o ./nike
+```
+
+Writes `brand.json`, `prompts.csv`, and `competitors.csv` to `./nike`.
+
+| Option | Description |
+|---|---|
+| `-c, --count <n>` | Number of prompts (default 30) |
+| `--competitors <n>` | Number of competitors (default 10) |
+| `-m, --model <target>` | Research provider (direct API) |
+
+## 2. Evaluate prompts
+
+Run each prompt N times against each target and capture everything:
+
+```bash
+elmo lab eval --brand-file ./nike/brand.json \
+  -m chatgpt:brightdata:online \
+  -m claude:anthropic-api:claude-sonnet-4-6:online \
+  --runs 5 -o ./nike-eval
+```
+
+Prompts can come from `--brand-file`, positional arguments, repeated `--prompt`, a `--prompts-file` (one per line), or stdin (`-`). Brand/competitor context for mentions can come from the brand pack or from `--brand`, `--brand-domain`, `--alias`, and repeatable `--competitor name:domain` flags.
+
+The output directory contains:
+
+```
+nike-eval/
+├── responses/
+│   └── 001-best-running-shoes/
+│       ├── chatgpt__brightdata__run-1.md
+│       └── claude__anthropic-api__run-1.md
+├── citations.csv          # url, domain, title, prompt, model, run
+├── mentions.csv           # brand + competitor mentions per run
+├── share-of-voice.csv     # brand vs. competitors
+├── fan-out.csv            # the queries each model fanned out to
+├── summary.md             # human-readable rollup + content gaps
+├── run.json               # metadata + aggregates
+└── index.html             # ← open this to browse everything
+```
+
+`index.html` is a single self-contained file (no server, no internet) — open it in a browser to read every rendered response with its mention badges, citations, and fan-out queries, filterable by prompt or model.
+
+<Callout>
+**Query fan-out** is a byproduct of evaluation, not a separate command: whenever a target has web search (`:online`), `eval` records the sub-queries the model issued and aggregates them in `fan-out.csv`, the stdout summary, and the report.
+</Callout>
+
+| Option | Description |
+|---|---|
+| `-m, --model <target>` | Target (repeatable; default `SCRAPE_TARGETS`) |
+| `-n, --runs <count>` | Replications per prompt per target (default 5) |
+| `--brand-file <path>` | Brand pack for prompts + mention context |
+| `--competitor <name:domain>` | Add a competitor (repeatable) |
+| `--concurrency <n>` | Max concurrent provider calls (default 4) |
+
+## 3. Plan improvements
+
+Turn your own content (and, optionally, a prior eval) into a prioritized set of AEO recommendations:
+
+```bash
+elmo lab plan ./content --website nike.com \
+  --brand-file ./nike/brand.json \
+  --eval-dir ./nike-eval -o ./nike-plan
+```
+
+`plan` reads the files/directories you pass (plus an optional `--website` excerpt and `--eval-dir` to ground the advice in real results), then writes `plan.md`, `suggestions.csv`, a refreshed `competitors.csv`, and an augmented `brand.json`. Because it also surfaces competitors, its `brand.json` can feed straight back into `eval`.
+
+## End-to-end
+
+```bash
+# discover → evaluate → plan
+elmo lab brainstorm nike.com -o ./nike
+elmo lab eval --brand-file ./nike/brand.json -m chatgpt:brightdata:online -o ./nike-eval
+elmo lab plan ./content --brand-file ./nike/brand.json --eval-dir ./nike-eval -o ./nike-plan
+```

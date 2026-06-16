@@ -2,6 +2,7 @@ import { db } from "@workspace/lib/db/db";
 import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
+import { analyzeMentions } from "@workspace/lib/mentions";
 import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
@@ -170,8 +171,10 @@ function selectOptimalPrompts(
 	return selectedPrompts;
 }
 
-// Function to check for brand and competitor mentions
-function analyzeMentions(
+// Adapt the report's flat {name, domain} competitors to the shared
+// mention-detection shape. Mention logic lives in @workspace/lib/mentions so
+// day-to-day tracking, reports, and the CLI all agree.
+function analyzeReportMentions(
 	content: string,
 	brandName: string,
 	brandWebsite: string,
@@ -180,31 +183,11 @@ function analyzeMentions(
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
 } {
-	const contentLower = content.toLowerCase();
-	const brandNameLower = brandName.toLowerCase();
-
-	// Extract domain from brandWebsite using URL constructor
-	const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
-	const domain = url.hostname.replace(/^www\./, '').toLowerCase();
-
-	// Check for brand mention (brand name or domain)
-	const brandMentioned = contentLower.includes(brandNameLower) || contentLower.includes(domain);
-
-	// Check for competitor mentions (by name or domain)
-	const competitorsMentioned = competitors
-		.filter((competitor) => {
-			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
-			
-			// Extract domain from competitor website
-			const competitorUrl = new URL(competitor.domain.startsWith('http') ? competitor.domain : `https://${competitor.domain}`);
-			const competitorDomain = competitorUrl.hostname.replace(/^www\./, '').toLowerCase();
-			
-			const domainMatch = contentLower.includes(competitorDomain);
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
+	return analyzeMentions(
+		content,
+		{ name: brandName, website: brandWebsite },
+		competitors.map((c) => ({ name: c.name, domains: [c.domain] })),
+	);
 }
 
 // Function to run a prompt across different models and return results.
@@ -225,7 +208,7 @@ async function runPrompt(
 			webSearch: config.webSearch,
 			version: config.version,
 		});
-		const { brandMentioned, competitorsMentioned } = analyzeMentions(
+		const { brandMentioned, competitorsMentioned } = analyzeReportMentions(
 			result.textContent,
 			brandName,
 			brandWebsite,
