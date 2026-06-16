@@ -113,6 +113,10 @@ async function runEval(positionalPrompts: string[], options: EvalOptions): Promi
 		);
 	}
 
+	if (!brand.mentionBrand && (options.brandDomain || options.alias?.length)) {
+		log.warn("--brand-domain/--alias were ignored: no brand name was provided (pass --brand or --brand-file).");
+	}
+
 	const mentionBrand = brand.mentionBrand;
 	const mentionCompetitors: MentionCompetitor[] = toMentionCompetitors(brand.competitors);
 	const reportCompetitors: ReportCompetitor[] = toReportCompetitors(brand.competitors);
@@ -363,8 +367,13 @@ function formatFanoutLines(report: EvalReport): string {
 async function writeArtifacts(dir: string, report: EvalReport, format: DataFormat, brand: BrandContext): Promise<void> {
 	await ensureDir(dir);
 
-	// Markdown responses, one file per run.
+	// Clear our `responses/` tree first so a re-run (fewer runs/targets, or an
+	// edited prompt that changes the slug) can't leave orphaned markdown that
+	// looks like part of this run. Only our own subdir is removed; the rest of
+	// the output dir (which defaults to the cwd) is left untouched.
 	const responsesDir = path.join(dir, "responses");
+	await fs.rm(responsesDir, { recursive: true, force: true });
+
 	const citationRows: Row[] = [];
 	const mentionRows: Row[] = [];
 	const fanoutRows: Row[] = [];
@@ -417,11 +426,11 @@ async function writeArtifacts(dir: string, report: EvalReport, format: DataForma
 				for (const q of r.webQueries) {
 					fanoutRows.push({ prompt_n: p.index, prompt: p.prompt, model: t.model, provider: t.provider, query: q });
 				}
-				if (!r.error) {
+				if (!r.error && r.brandMentioned !== null) {
 					fullRuns.push({
 						promptId: String(p.index),
 						promptValue: p.prompt,
-						brandMentioned: Boolean(r.brandMentioned),
+						brandMentioned: r.brandMentioned,
 						competitorsMentioned: r.competitorsMentioned,
 						webQueries: r.webQueries,
 						textContent: r.responseMarkdown,

@@ -20,6 +20,16 @@ describe("toCsv", () => {
 	it("renders missing columns as empty", () => {
 		expect(toCsv([{ a: 1 }], ["a", "b"])).toBe("a,b\n1,");
 	});
+
+	it("neutralizes formula injection in text cells but not numbers", () => {
+		// prefixed with ' (no other special chars → not quoted)
+		expect(toCsv([{ q: "=danger" }], ["q"])).toBe("q\n'=danger");
+		expect(toCsv([{ q: "+1-800-CALL" }], ["q"])).toBe("q\n'+1-800-CALL");
+		// prefixed AND quoted when it also contains a comma
+		expect(toCsv([{ q: "=A1,B2" }], ["q"])).toBe(`q\n"'=A1,B2"`);
+		// negative numbers are emitted verbatim
+		expect(toCsv([{ n: -5 }], ["n"])).toBe("n\n-5");
+	});
 });
 
 describe("toJsonl", () => {

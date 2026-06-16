@@ -36,14 +36,26 @@ export function pad(n: number, width = 3): string {
 
 function csvCell(value: unknown): string {
 	let str: string;
+	// Only text-origin cells can carry formula-injection payloads; numbers and
+	// booleans are emitted verbatim so legitimate values (e.g. negatives) aren't
+	// mangled.
+	let isText = true;
 	if (value === null || value === undefined) {
 		str = "";
+	} else if (typeof value === "number" || typeof value === "boolean") {
+		str = String(value);
+		isText = false;
 	} else if (Array.isArray(value)) {
 		str = value.join("; ");
 	} else if (typeof value === "object") {
 		str = JSON.stringify(value);
 	} else {
 		str = String(value);
+	}
+	// Neutralize spreadsheet formula injection: prompts, citation titles, and
+	// fan-out queries are LLM/web-derived and may start with =, +, -, @, etc.
+	if (isText && /^[=+\-@\t\r]/.test(str)) {
+		str = `'${str}`;
 	}
 	if (/[",\n\r]/.test(str)) {
 		return `"${str.replace(/"/g, '""')}"`;
