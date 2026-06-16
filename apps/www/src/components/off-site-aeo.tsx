@@ -66,11 +66,10 @@ export function OffSiteHero() {
 					Get cited by AI on the sites it already trusts.
 				</h1>
 				<p className="mt-6 max-w-[60ch] text-pretty text-base text-zinc-600 md:text-lg">
-					We publish human-edited guest articles — listicles, guides, and
-					comparisons — on high-authority sites that AI answer engines read and
+					We publish humanized guest articles (listicles, guides, and
+					comparisons) on high-authority sites that AI answer engines read and
 					cite. Every placement targets a specific prompt where you're invisible
-					today, and you get a monthly report tying the work back to your own AEO
-					gaps.
+					today.
 				</p>
 				<div className="mt-8 flex flex-wrap items-center gap-2">
 					<BookButton plan="">
@@ -100,23 +99,23 @@ interface ValuePoint {
 const valuePoints: ValuePoint[] = [
 	{
 		icon: <Quote className="size-4" strokeWidth={2.5} />,
-		title: "AEO happens off your site, too",
-		body: "Answer engines build replies from the whole web, not just your homepage. They weight sources by authority and corroboration — when several independent, trusted sites describe you the same way, a model is far more confident citing you. Off-site is where you shape the corpus the models actually pull from.",
+		title: "What is off-site AEO?",
+		body: "Answer engines build replies from the whole web, not just your homepage. They weight sources by authority and corroboration. When several independent, trusted sites describe you the same way, a model is far more confident citing you.",
 	},
 	{
 		icon: <Target className="size-4" strokeWidth={2.5} />,
 		title: "Targeted, not spray-and-pray",
-		body: "We don't publish random posts. We start from your AI-visibility data: the prompts you're missing, the competitors cited instead of you, and the sources those models already trust. Then we plan each placement — topic, angle, and how your brand is mentioned — to close a specific gap.",
+		body: "We don't publish random posts. We start from your AI-visibility data and find the prompts you're missing, the competitors cited instead of you, and the sources those models already trust. Then we plan each placement to close a specific gap or reinforce your brand's authority.",
 	},
 	{
 		icon: <PenLine className="size-4" strokeWidth={2.5} />,
-		title: "Drafted with AI, edited by humans",
-		body: "We draft with AI for speed, then a person reworks every article so it reads naturally and lands under a 25% AI-detection score on both ZeroGPT and Pangram. Editors reject obvious machine text and models down-weight it, so that human touch-up is what keeps placements live and keeps your mentions in content the models trust enough to quote.",
+		title: "Drafted with AI, and humanized",
+		body: "After we come up with a plan, we create drafts of the guest posts using the best AI models. Then, we humanize the articles so they land under a 25% AI-detection score on both ZeroGPT and Pangram. This human touch-up improves the resiliency of your posts.",
 	},
 	{
 		icon: <CalendarClock className="size-4" strokeWidth={2.5} />,
 		title: "Fresh sources, every month",
-		body: "AI answers lean on recent data — this year's sources over last year's. A one-time burst fades. A steady monthly cadence keeps current, authoritative mentions flowing into the corpus, so you keep showing up as models refresh. It's a more natural backlink pattern for classic SEO, too.",
+		body: "AI answers lean on recent data. While a one-time burst fades, a steady publishing every month keeps data about your brand and industry current and authoritative. It's a more natural backlink pattern for classic SEO, too.",
 	},
 ];
 
@@ -128,13 +127,12 @@ export function OffSiteValue() {
 					/ WHY IT WORKS
 				</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					Many high-authority data points, built on purpose.
+					Many high-authority data points, built purposefully.
 				</h2>
 				<p className="mt-5 max-w-[60ch] text-pretty text-zinc-600 md:text-lg">
-					The primary goal is AEO: give AI answer engines a steady supply of
-					trustworthy sources that mention you in the right context. The genuine
-					dofollow backlinks on high-DR domains are a welcome bonus for your
-					traditional SEO.
+					We give AI answer engines a steady supply of trustworthy sources that
+					mention you in the right context. The dofollow backlinks on high-DR
+					domains are a welcome bonus for your traditional SEO.
 				</p>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-2">
@@ -158,16 +156,18 @@ export function OffSiteValue() {
 						/ WHO RUNS THIS
 					</p>
 					<p className="mt-3 max-w-[68ch] text-pretty text-zinc-700 md:text-lg">
-						We've spent over a year doing AEO for e-commerce and B2B SaaS brands —
-						the same work that led us to build{" "}
-						<Link
-							to="/"
+						Elmo is run by{" "}
+						<a
+							href="https://www.linkedin.com/in/jrhizor"
+							target="_blank"
+							rel={externalRel("https://www.linkedin.com/in/jrhizor")}
 							className="font-medium text-blue-600 underline-offset-4 hover:underline"
 						>
-							Elmo
-						</Link>
-						, the open-source AI visibility platform. We know which placements move
-						AI citations because we measure them every day.
+							Jared Rhizor
+						</a>
+						, who's spent the last year building AEO tooling to serve top
+						e-commerce and B2B SaaS brands, finding the levers that help move the
+						needle on AI citations.
 					</p>
 				</div>
 			</div>
@@ -180,18 +180,18 @@ export function OffSiteValue() {
 const steps = [
 	{
 		num: "01",
-		title: "Consultancy",
+		title: "Free Consultation",
 		body: "We review how AI talks about you today, find the prompts and competitors you're losing, and agree on what to target.",
 	},
 	{
 		num: "02",
 		title: "Live within 30 days",
-		body: "We plan, write, humanize, and place that month's posts on high-authority sites, then send a report mapping each one to your gaps.",
+		body: "We plan, write, humanize, and place that month's posts on high-authority sites, showing you which post maps to which prompt.",
 	},
 	{
 		num: "03",
-		title: "Every month after",
-		body: "We keep publishing on a steady cadence, adjusting targets as your visibility moves, so fresh mentions keep reaching the models.",
+		title: "Autopilot",
+		body: "We keep publishing on a steady cadence, adjusting targets as your visibility moves, keeping data fresh for AI models.",
 	},
 ];
 
@@ -203,7 +203,7 @@ export function OffSiteProcess() {
 					/ HOW IT WORKS
 				</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					A call, then posts live within 30 days.
+					One call, many posts. Live within 30 days.
 				</h2>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
@@ -258,12 +258,7 @@ const plans: OffSitePlan[] = [
 			{ dr: "DR30+", count: 1 },
 			{ dr: "DR40+", count: 1 },
 		],
-		features: [
-			"Monthly AEO gap report",
-			"1 strategy call / month",
-			"Human-written, detector-tested",
-			"Dofollow editorial links",
-		],
+		features: ["Monthly placement report", "Humanized text", "Dofollow links"],
 	},
 	{
 		id: "growth",
@@ -280,10 +275,10 @@ const plans: OffSitePlan[] = [
 			{ dr: "DR50+", count: 1 },
 		],
 		features: [
-			"Everything in Starter",
-			"Competitor-citation tracking",
-			"Priority topic planning",
-			"Reaches DR50+ publications",
+			"Monthly placement report",
+			"Humanized text",
+			"Dofollow links",
+			"Priority support",
 		],
 	},
 	{
@@ -301,10 +296,11 @@ const plans: OffSitePlan[] = [
 			{ dr: "DR60+", count: 1 },
 		],
 		features: [
-			"Everything in Growth",
-			"DR60+ flagship placement",
-			"2 strategy calls / month",
-			"Named-publication requests",
+			"Monthly placement report",
+			"Humanized text",
+			"Dofollow links",
+			"Priority support",
+			"Shared Slack channel",
 		],
 	},
 ];
@@ -339,7 +335,8 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 				<p className="mt-6 text-sm font-medium text-zinc-950">
 					{plan.posts} placements / month
 				</p>
-				<ul role="list" className="mt-3 space-y-1.5">
+				{/* Fixed height so the DR breakdown lines up across all plans. */}
+				<ul role="list" className="mt-3 min-h-[8rem] space-y-1.5">
 					{plan.buckets.map((b) => (
 						<li
 							key={b.dr}
@@ -383,7 +380,7 @@ export function OffSitePricing() {
 					/ PLANS
 				</p>
 				<h2 className="mt-4 max-w-[26ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-					Pick a monthly cadence. We handle the rest.
+					Pick your level. We handle the rest.
 				</h2>
 				<p className="mt-5 max-w-[56ch] text-pretty text-zinc-600">
 					Every plan is a managed monthly subscription: planning, writing,
@@ -397,14 +394,14 @@ export function OffSitePricing() {
 					))}
 				</div>
 
-				<div className="mt-px flex flex-col gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8">
+				<div className="mt-6 flex flex-col gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8">
 					<div>
 						<h3 className="text-lg font-semibold tracking-tight text-zinc-950">
-							Custom &amp; agency
+							Custom &amp; Agency
 						</h3>
 						<p className="mt-1 max-w-[60ch] text-pretty text-sm text-zinc-600">
-							15+ placements a month, DR70+ targets, specific publications, or
-							multi-brand and white-label programs. Built around your goals.
+							Need more reach, white-labeling, or agency support? Reach out to
+							discuss.
 						</p>
 					</div>
 					<BookButton plan="Custom" variant="ghost" className="shrink-0">
@@ -427,8 +424,7 @@ export function OffSiteCTA() {
 					Ready to get cited by AI?
 				</h2>
 				<p className="mt-5 max-w-[52ch] text-pretty text-zinc-600 md:text-lg">
-					Book a call and we'll map your AEO gaps and plan your first month of
-					placements.
+					Book a call and we'll map your AEO gaps and plan your posts.
 				</p>
 				<div className="mt-7">
 					<BookButton plan="">
@@ -456,9 +452,8 @@ export function OffSiteAeoPromo() {
 							Want us to do your off-site AEO for you?
 						</h2>
 						<p className="mt-5 max-w-[56ch] text-pretty text-zinc-600 md:text-lg">
-							Beyond the software, we publish human-edited guest posts on
-							high-authority sites so AI answer engines cite you — targeted to
-							your gaps and refreshed every month. Great backlinks, too.
+							Beyond tracking, we publish humanized guest posts on high-authority
+							sites so AI answer engines can cite you.
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
 							<Link

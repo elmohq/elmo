@@ -74,7 +74,7 @@ export const OFFSITE_FAQS: FaqItem[] = [
 	{
 		question: "Are the articles AI-generated?",
 		answer:
-			"Yes, and we're upfront about it. We draft with AI for speed, then a person edits and reworks every article so it reads naturally and lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. That keeps quality high and placements accepted by editors, while keeping your brand mentioned in content the models actually trust and cite.",
+			"Yes, and we're upfront about it. We draft with AI, then it is reworked until it lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. That keeps quality high while keeping your brand mentioned in content the models actually trust and cite.",
 	},
 	{
 		question: "Do you offer refunds?",
@@ -84,17 +84,12 @@ export const OFFSITE_FAQS: FaqItem[] = [
 	{
 		question: "How is this different from buying backlinks?",
 		answer:
-			"Cheap link packages drop generic posts wherever they fit. We start from your AEO data — the exact prompts and competitors where you're missing — write content that reads human, place it on sites AI trusts, and report on what each placement was for. The goal is durable data points that get AI to cite you. The SEO backlink value is a bonus, not the point.",
+			"It's a similar process. However, we make sure the content is useful for AEO, only place it on high-quality sites, and humanize the text to avoid detection. Many backlink services offer very low-quality placements with high spam scores, non-existent traffic, and gamed DRs, and either make you provide your own content or produce content that's low quality and easily detected as AI.",
 	},
 	{
 		question: "Will this help my traditional SEO too?",
 		answer:
-			"Yes. These are genuine editorial placements with dofollow links on high-DR domains, so your classic search rankings benefit from the added authority. But the primary purpose is AEO: giving AI answer engines many trustworthy, recent sources that describe your brand the way you want.",
-	},
-	{
-		question: "Why a subscription model instead of one-time article creation?",
-		answer:
-			"AI answer engines favor recent sources and corroboration across many sites — they lean on this year's data over last year's. A one-time batch of articles fades as the models refresh. A steady monthly cadence keeps fresh, authoritative mentions flowing into the corpus the models read from, so you keep showing up over time. It's also a healthier, more natural backlink pattern for SEO than a single spike.",
+			"These all provide dofollow links on high-DR domains with actual traffic, so your search rankings should benefit as well. But the primary purpose is to provide more data points to AI searches for AEO.",
 	},
 ];
 

@@ -138,16 +138,10 @@ export function Navbar() {
 					</a>
 					<Link
 						to="/off-site-aeo"
-						className="group/aeo relative hidden h-8 items-center overflow-hidden rounded-md bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-3 text-sm font-semibold leading-none text-white shadow-sm shadow-violet-600/30 ring-1 ring-inset ring-white/15 transition-[filter,box-shadow] hover:shadow-md hover:shadow-violet-600/40 hover:brightness-110 md:inline-flex"
+						className="hidden h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-950 hover:ring-zinc-300 md:inline-flex"
 					>
-						<span
-							aria-hidden="true"
-							className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover/aeo:translate-x-[200%]"
-						/>
-						<span className="relative inline-flex items-center gap-1.5">
-							<Sparkles className="size-3.5" />
-							Off-Site AEO
-						</span>
+						<Sparkles className="size-3.5 text-blue-600" />
+						Off-Site AEO
 					</Link>
 					<Link
 						to="/docs"
