@@ -1,4 +1,4 @@
-# Mode-compatibility guard (issue #341)
+# Deployment smoke tests (issue #341)
 #
 # Protects the elmo-cloud build-out (issue #8): open-source (local), demo, and
 # whitelabel deployments must keep booting unchanged while cloud lands.
@@ -14,7 +14,7 @@
 # in-process boot smoke, and ~15s of migration checks — so a mode-boot or
 # migration regression is caught regardless of which files changed.
 
-name: Mode Compatibility
+name: Deployment Smoke Tests
 
 on:
   push:
@@ -31,8 +31,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mode-compat:
-    name: Boot smoke + migrations
+  smoke:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     timeout-minutes: 10
 
