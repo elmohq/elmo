@@ -10,26 +10,17 @@
 #                    re-apply so a future backfill (e.g. #339 brands->org) that
 #                    breaks on existing data fails here before merge.
 #
-# Path-filtered to the shared packages / docker / migrations that can break a
-# mode's startup or a migration, so it stays off unrelated commits.
+# Runs on every push/PR (no path filter): the job is cheap — one install, an
+# in-process boot smoke, and ~15s of migration checks — so a mode-boot or
+# migration regression is caught regardless of which files changed.
 
 name: Mode Compatibility
 
 on:
   push:
     branches: [main]
-    paths: &paths
-      - "packages/config/**"
-      - "packages/lib/**"
-      - "packages/deployment/**"
-      - "packages/local/**"
-      - "packages/whitelabel/**"
-      - "docker/**"
-      - "apps/web/scripts/smoke-deployment-mode.ts"
-      - ".github/workflows/mode-compat.yaml"
   pull_request:
     branches: [main]
-    paths: *paths
   workflow_dispatch:
 
 permissions:
