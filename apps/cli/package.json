@@ -36,14 +36,14 @@
     "commander": "^15.0.0",
     "dotenv": "17.4.2",
     "picocolors": "^1.1.1",
-    "posthog-node": "^5.36.4",
-    "semver": "^7.8.2"
+    "posthog-node": "^5.37.0",
+    "semver": "^7.8.4"
   },
   "devDependencies": {
-    "@types/node": "^25.9.2",
+    "@types/node": "^25.9.3",
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
-    "rolldown": "^1.1.0",
+    "rolldown": "^1.1.1",
     "typescript": "^6.0.3"
   }
 }
