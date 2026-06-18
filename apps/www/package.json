@@ -31,7 +31,7 @@
 		"@workspace/ui": "workspace:*",
 		"fumadocs-core": "^16.9.3",
 		"fumadocs-mdx": "^15.0.11",
-		"fumadocs-openapi": "^10.10.3",
+		"fumadocs-openapi": "^11.0.2",
 		"fumadocs-ui": "^16.9.3",
 		"lucide-react": "^1.17.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
