@@ -34,13 +34,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # Persistent BuildKit layer cache on a Blacksmith sticky disk, so the
-      # docker build below reuses the pnpm-install layer across runs.
-      # (Blacksmith runners have ample disk, so no free-disk-space step is
-      # needed here — publish.yaml builds the same Dockerfile without one.)
-      - name: Setup Blacksmith Docker builder
-        if: ${{ !env.ACT }}
-        uses: useblacksmith/setup-docker-builder@v1
+      # NB: no free-disk-space step here — it predated the Blacksmith migration
+      # and is unnecessary on these runners (publish.yaml builds the same
+      # Dockerfile without it). We also deliberately do NOT use a buildx
+      # sticky-disk builder: `docker compose build` doesn't wire up its cache,
+      # and the container driver would serialize each image to load it back into
+      # the local daemon for `up` — that export/import tax outweighs any cache
+      # savings for this build-and-run-locally job. The default driver builds
+      # straight into the daemon's image store.
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
