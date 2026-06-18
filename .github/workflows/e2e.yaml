@@ -34,18 +34,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # without this, docker builds run out of space
-      - name: Free Disk Space
-        if: ${{ !env.ACT }}
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: true
-          swap-storage: true
+      # NB: no free-disk-space step here — it predated the Blacksmith migration
+      # and is unnecessary on these runners (publish.yaml builds the same
+      # Dockerfile without it). We also deliberately do NOT use a buildx
+      # sticky-disk builder: `docker compose build` doesn't wire up its cache,
+      # and the container driver would serialize each image to load it back into
+      # the local daemon for `up` — that export/import tax outweighs any cache
+      # savings for this build-and-run-locally job. The default driver builds
+      # straight into the daemon's image store.
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -64,6 +60,12 @@ jobs:
 
       - name: Unit tests
         run: pnpm turbo test
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
         run: pnpm -C apps/web exec playwright install chromium --with-deps
@@ -96,11 +98,20 @@ jobs:
           echo "=== elmo.yaml (services) ==="
           grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
 
-      - name: Start all services
-        run: docker compose -f e2e/.elmo/elmo.yaml up -d --build
+      # Build all images so a broken worker (or db-migrate) Dockerfile fails CI
+      # here, even though we don't run the worker. web/worker/migrate share the
+      # base/deps/builder stages, so BuildKit builds those once — building all
+      # three costs little more than building web alone. postgres is an image
+      # pull, so `build` skips it.
+      - name: Build images
+        run: docker compose -f e2e/.elmo/elmo.yaml build
 
-      - name: Stop worker
-        run: docker compose -f e2e/.elmo/elmo.yaml stop worker
+      # Start only web and its deps (db-migrate, postgres). The worker is
+      # intentionally not started (we skip it to avoid execution costs); it was
+      # only ever started to be immediately stopped, which gave no runtime
+      # safety, so we just don't start it.
+      - name: Start services
+        run: docker compose -f e2e/.elmo/elmo.yaml up -d --no-build web
 
       - name: Wait for web
         run: |
@@ -137,7 +148,3 @@ jobs:
           name: test-results
           path: e2e/test-results/
           retention-days: 7
-
-      - name: Cleanup Docker services
-        if: always()
-        run: docker compose -f e2e/.elmo/elmo.yaml down -v 2>/dev/null || true
