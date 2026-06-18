@@ -26,8 +26,10 @@ COPY packages/api-spec/package.json ./packages/api-spec/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Builder stage
-FROM base AS builder
+# Shared build context: dependencies + source. Built once, then shared by the
+# three per-target build stages below. Splitting the build into independent
+# stages lets BuildKit run them in parallel instead of one sequential stage.
+FROM base AS source
 WORKDIR /app
 
 # Copy dependencies
@@ -45,6 +47,10 @@ COPY --from=deps /app/packages/og/node_modules ./packages/og/node_modules
 # Copy source code
 COPY . .
 
+# Web build (Nitro output). Independent of the deploy stages, so BuildKit builds
+# all three concurrently.
+FROM source AS web-builder
+
 # Build arguments for VITE_ env vars (baked into client bundle)
 ARG DEPLOYMENT_MODE=local
 ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
@@ -53,9 +59,13 @@ ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
 # Build the web application (increase heap for large bundles)
 RUN pnpm --filter @workspace/web build
 
-# Create pruned standalone deployments (only each package's own deps)
+# Pruned standalone deployment for the worker (only its own deps)
 # --legacy: allows deploy without inject-workspace-packages (which breaks Alpine Docker builds)
+FROM source AS worker-builder
 RUN pnpm --filter @workspace/worker deploy --legacy /deploy/worker
+
+# Pruned standalone deployment for migrations (the lib package)
+FROM source AS lib-builder
 RUN pnpm --filter @workspace/lib deploy --legacy /deploy/lib
 
 # Runner stage for web app (Nitro)
@@ -73,7 +83,7 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Copy Nitro output - this is the entire server bundle
-COPY --from=builder --chown=elmo:nodejs /app/apps/web/.output ./.output
+COPY --from=web-builder --chown=elmo:nodejs /app/apps/web/.output ./.output
 
 USER elmo
 
@@ -88,7 +98,7 @@ CMD ["node", ".output/server/index.mjs"]
 FROM base AS migrate
 WORKDIR /app
 
-COPY --from=builder /deploy/lib ./
+COPY --from=lib-builder /deploy/lib ./
 
 CMD ["npx", "drizzle-kit", "migrate"]
 
@@ -104,7 +114,7 @@ RUN adduser --system --uid 1001 worker
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-COPY --from=builder --chown=worker:nodejs /deploy/worker ./
+COPY --from=worker-builder --chown=worker:nodejs /deploy/worker ./
 
 USER worker
 
