@@ -48,15 +48,39 @@ importers:
 
   apps/cli:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^3.0.81
+        version: 3.0.81(zod@4.4.3)
+      '@ai-sdk/openai':
+        specifier: ^3.0.68
+        version: 3.0.68(zod@4.4.3)
+      '@anthropic-ai/sdk':
+        specifier: ^0.102.0
+        version: 0.102.0(zod@4.4.3)
+      '@brightdata/sdk':
+        specifier: ^1.1.0
+        version: 1.1.0
       '@clack/prompts':
         specifier: ^1.5.1
         version: 1.5.1
+      ai:
+        specifier: ^6.0.197
+        version: 6.0.197(zod@4.4.3)
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      dataforseo-client:
+        specifier: ^2.0.25
+        version: 2.0.25
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
+      marked:
+        specifier: ^14.1.4
+        version: 14.1.4
+      olostep:
+        specifier: ^1.1.0
+        version: 1.1.0
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -66,6 +90,9 @@ importers:
       semver:
         specifier: ^7.8.2
         version: 7.8.2
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: ^25.9.2
@@ -76,12 +103,18 @@ importers:
       '@workspace/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@workspace/lib':
+        specifier: workspace:*
+        version: link:../../packages/lib
       rolldown:
         specifier: ^1.1.0
         version: 1.1.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.8
+        version: 4.1.8(@opentelemetry/api@1.9.1)(@types/node@25.9.2)(@vitest/browser-playwright@4.1.8)(@vitest/coverage-v8@4.1.8)(vite@8.0.16(@types/node@25.9.2)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   apps/web:
     dependencies:
@@ -6122,6 +6155,11 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  marked@14.1.4:
+    resolution: {integrity: sha512-vkVZ8ONmUdPnjCKc5uTRvmkRbx4EAi2OkTOXmfTDhZz3OFqMNBM1oTTWwTr4HY4uAEojhzPf+Fy8F1DWa3Sndg==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   mdast-util-find-and-replace@3.0.2:
     resolution: {integrity: sha512-Tmd1Vg/m3Xz43afeNxDIhWRtFZgM2VLyaf4vSTYwudTyeuTneoL3qtWMA5jeLyz/O1vDJmmV4QuScFCA2tBPwg==}
@@ -12730,6 +12768,8 @@ snapshots:
   markdown-extensions@2.0.0: {}
 
   markdown-table@3.0.4: {}
+
+  marked@14.1.4: {}
 
   mdast-util-find-and-replace@3.0.2:
     dependencies:

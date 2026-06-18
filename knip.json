@@ -23,6 +23,17 @@
       "ignore": [".source/**", "source.generated.ts"],
       "ignoreDependencies": ["@takumi-rs/wasm", "shiki"]
     },
+    "apps/cli": {
+      "ignoreDependencies": [
+        "@ai-sdk/anthropic",
+        "@ai-sdk/openai",
+        "@anthropic-ai/sdk",
+        "@brightdata/sdk",
+        "ai",
+        "dataforseo-client",
+        "olostep"
+      ]
+    },
     "apps/worker": {
       "entry": ["scripts/test-provider.ts"]
     },
