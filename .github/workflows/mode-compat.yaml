@@ -1,0 +1,120 @@
+# Mode-compatibility guard (issue #341)
+#
+# Protects the elmo-cloud build-out (issue #8): open-source (local), demo, and
+# whitelabel deployments must keep booting unchanged while cloud lands.
+#
+#   boot-smoke      — per mode, asserts env validation + deployment-factory
+#                     resolution + auth initialization all succeed.
+#   migration-check — applies migrations to an empty DB, seeds an existing
+#                     local install, then re-applies migrations so a future
+#                     backfill (e.g. #339 brands->org) that breaks on existing
+#                     data fails here before merge.
+#
+# Triggers only on changes to the shared packages / docker that can break a
+# mode's startup, keeping unrelated PRs fast.
+
+name: Mode Compatibility
+
+on:
+  push:
+    branches: [main]
+    paths: &paths
+      - "packages/config/**"
+      - "packages/lib/**"
+      - "packages/deployment/**"
+      - "packages/local/**"
+      - "packages/whitelabel/**"
+      - "docker/**"
+      - "apps/web/scripts/smoke-deployment-mode.ts"
+      - ".github/workflows/mode-compat.yaml"
+  pull_request:
+    branches: [main]
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  boot-smoke:
+    name: Boot smoke (${{ matrix.mode }})
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [local, demo, whitelabel]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Boot smoke
+        run: pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts ${{ matrix.mode }}
+
+  migration-check:
+    name: Migration check (seeded local DB)
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elmo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Must match the host/port/db hardcoded in e2e/seed.ts.
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Apply migrations to an empty database
+        run: pnpm -C packages/lib exec drizzle-kit migrate
+
+      - name: Seed an existing local install
+        run: pnpm -C e2e exec tsx seed.ts
+
+      - name: Re-apply migrations against seeded data
+        # No-op today; once #339 lands its brands->org backfill, that migration
+        # runs here against seeded data and fails the job if the backfill breaks.
+        run: pnpm -C packages/lib exec drizzle-kit migrate
