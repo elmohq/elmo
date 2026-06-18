@@ -222,6 +222,24 @@ export function evaluateRequireOrgAccess(
 }
 
 /**
+ * Evaluate org-scoped resource access — the pure core of the brand / prompt /
+ * promptRun / citation scoping (issue #339).
+ *
+ * Every brand carries an `organization_id`; a user may only read or mutate a
+ * resource whose owning org they are a member of. This mirrors the runtime
+ * checks — `checkOrgAccess` for a single resource and the
+ * `brands.organization_id IN (member orgs)` filter in `getBrands` — as a
+ * side-effect-free function, so the cross-tenant isolation guarantee ("a member
+ * of org A is denied org B's resources") is locked in by tests.
+ */
+export function evaluateOrgScope(
+	memberOrgIds: readonly string[],
+	resourceOrgId: string,
+): "allow" | "deny" {
+	return memberOrgIds.includes(resourceOrgId) ? "allow" : "deny";
+}
+
+/**
  * Evaluate read-only mode enforcement.
  * Used by `readOnlyMiddleware` for server functions.
  */

@@ -11,6 +11,7 @@ import { z } from "zod";
 import { eq, count } from "drizzle-orm";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors } from "@workspace/lib/db/schema";
+import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
@@ -301,10 +302,17 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	const additionalDomains = dedupeDomains(input.additionalDomains ?? []).filter((d) => d !== websiteHost);
 	const aliases = dedupeAliases(input.aliases ?? []);
 
+	// Brands are hard-scoped to an org via a NOT NULL FK. This create path (the
+	// admin API) supplies the brand id directly and historically created brands
+	// whose id == the org id, so materialize that org first. No-op when it
+	// already exists (e.g. a whitelabel org already synced from Auth0).
+	await ensureOrganization({ id: input.id, name: input.name });
+
 	const [inserted] = await db
 		.insert(brands)
 		.values({
 			id: input.id,
+			organizationId: input.id,
 			name: input.name,
 			website: formattedWebsite,
 			additionalDomains,
