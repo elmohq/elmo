@@ -143,10 +143,15 @@ export async function ensureOrganization(input: { id: string; name: string }): P
 		slug = `${baseSlug}-${suffix}`;
 	}
 
+	// Target the id explicitly: the early-return above already handles "org
+	// exists", so this only guards a concurrent insert of the same id (no-op).
+	// An untargeted onConflictDoNothing would also swallow a slug-unique
+	// collision, silently skip the insert, and leave the caller's brand FK to
+	// fail with a confusing error instead.
 	await db
 		.insert(organization)
 		.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
-		.onConflictDoNothing();
+		.onConflictDoNothing({ target: organization.id });
 }
 
 /**
