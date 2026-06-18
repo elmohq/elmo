@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint, real } from "drizzle-orm/pg-core";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -187,6 +187,26 @@ export type NewCitationRecord = typeof citations.$inferInsert;
 
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
+
+// Global, brand-independent cache of Ahrefs Domain Rating per domain.
+// `status` distinguishes a real rating ("ok") from a domain Ahrefs has no
+// rating for ("not_found"); transient API failures are NOT written (so the
+// cache is never poisoned). `fetched_at` drives the TTL (see DR loader).
+export const domainRatings = pgTable(
+	"domain_ratings",
+	{
+		domain: text("domain").primaryKey().notNull(),
+		rating: real("rating"), // null when status != 'ok'
+		status: text("status").notNull(), // 'ok' | 'not_found'
+		fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+	},
+	(table) => ({
+		fetchedAtIdx: index("domain_ratings_fetched_at_idx").on(table.fetchedAt),
+	}),
+).enableRLS();
+
+export type DomainRatingRecord = typeof domainRatings.$inferSelect;
+export type NewDomainRatingRecord = typeof domainRatings.$inferInsert;
 
 export const SYSTEM_TAGS = {
 	BRANDED: "branded",

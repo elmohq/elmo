@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/componen
 import { ProgressBarChart } from "@/components/progress-bar-chart";
 import { ListPagination } from "@/components/list-pagination";
 import { CitationsDisplay, type CitationData } from "@/components/citations-display";
+import { CitedDomainsTable, CitedUrlsTable, type DomainTableRow, type UrlTableRow } from "@/components/citations/citation-tables";
 import { LookbackSelector, useLookbackPeriod } from "@/components/lookback-selector";
 import { InfoTip, QueryWordsSection, UnknownQueriesNote, VariationsList, type VariationModelCount } from "@/components/fanout-sections";
 import { getDaysFromLookback } from "@/lib/chart-utils";
@@ -314,7 +315,7 @@ function PromptHistoryPage() {
 				)}
 
 				{activeTab === "citations" && (
-					<CitationsTab isLoading={isStatsLoading} citationStats={citationStats} brandId={brandId} brandName={brand?.name} />
+					<CitationsTab isLoading={isStatsLoading} citationStats={citationStats} brandId={brandId} />
 				)}
 
 				{activeTab === "responses" && (
@@ -495,12 +496,10 @@ function CitationsTab({
 	isLoading,
 	citationStats,
 	brandId,
-	brandName,
 }: {
 	isLoading: boolean;
 	citationStats: CitationData | undefined;
 	brandId: string;
-	brandName?: string;
 }) {
 	if (isLoading) return <TabLoadingSkeleton lines={6} />;
 
@@ -508,7 +507,46 @@ function CitationsTab({
 		return <div className="py-12 text-center text-muted-foreground text-sm">No citation data available for this time period.</div>;
 	}
 
-	return <CitationsDisplay citationData={citationStats} brandId={brandId} brandName={brandName} showStats={true} maxDomains={10} maxUrls={50} />;
+	const domainRows: DomainTableRow[] = citationStats.domainDistribution.map((d) => ({
+		domain: d.domain,
+		category: d.category,
+		citations: d.count,
+		rating: null,
+		volatility: null,
+	}));
+	const urlRows: UrlTableRow[] = citationStats.specificUrls.map((u) => ({
+		url: u.url,
+		title: u.title ?? null,
+		domain: u.domain,
+		category: u.category,
+		citations: u.count,
+		avgPosition: u.avgPosition ?? null,
+		prompts: u.promptCount ?? 0,
+	}));
+
+	return (
+		<div className="space-y-6">
+			<CitationsDisplay citationData={citationStats} brandId={brandId} showStats={true} />
+			<Card>
+				<CardHeader>
+					<CardTitle className="text-base">Cited domains</CardTitle>
+					<CardDescription>Domains cited for this prompt. Sort, search, or filter by category.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<CitedDomainsTable rows={domainRows} showDr={false} />
+				</CardContent>
+			</Card>
+			<Card>
+				<CardHeader>
+					<CardTitle className="text-base">Cited URLs</CardTitle>
+					<CardDescription>Pages cited for this prompt. Sort, search, or filter by category.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<CitedUrlsTable rows={urlRows} />
+				</CardContent>
+			</Card>
+		</div>
+	);
 }
 
 function ResponsesTab({

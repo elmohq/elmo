@@ -13,6 +13,8 @@ import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { useListFilters } from "@/hooks/use-list-filters";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { CitationsDisplay } from "@/components/citations-display";
+import { DomainRatingCorrelation } from "@/components/citations/domain-rating-correlation";
+import { CitationInsights } from "@/components/citations/citation-insights";
 import { FilteredListShell } from "@/components/filtered-list-shell";
 import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader } from "@/components/page-header";
@@ -123,21 +125,35 @@ function CitationsPage() {
 				}
 			>
 				{citationData && (
-					<CitationsDisplay
-						citationData={citationData}
-						brandId={brandId}
-						brandName={brand?.name}
-						showStats={true}
-						maxDomains={10}
-						maxUrls={20}
-						days={days}
-						onCompetitorAdded={() => {
-							revalidateCitations();
-							queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-							queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
-							queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
-						}}
-					/>
+					<>
+						<CitationsDisplay
+							citationData={citationData}
+							brandId={brandId}
+							brandName={brand?.name}
+							showStats={true}
+							maxDomains={10}
+							maxUrls={20}
+							days={days}
+							onCompetitorAdded={() => {
+								revalidateCitations();
+								queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+								queryClient.invalidateQueries({ queryKey: brandKeys.competitors(brandId) });
+								queryClient.invalidateQueries({ queryKey: brandKeys.detail(brandId) });
+							}}
+						/>
+						<DomainRatingCorrelation
+							brandId={brandId}
+							days={days}
+							tags={filters.tags.length > 0 ? filters.tags : undefined}
+							model={modelParam}
+						/>
+						<CitationInsights
+							brandId={brandId}
+							days={days}
+							tags={filters.tags.length > 0 ? filters.tags : undefined}
+							model={modelParam}
+						/>
+					</>
 				)}
 			</FilteredListShell>
 		</PageHeader>

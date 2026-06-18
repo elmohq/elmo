@@ -35,6 +35,7 @@
 		"@tanstack/react-router": "^1.170.15",
 		"@tanstack/react-router-ssr-query": "^1.167.1",
 		"@tanstack/react-start": "^1.168.25",
+		"@tanstack/react-table": "^8.21.3",
 		"@tanstack/react-virtual": "^3.14.2",
 		"@workspace/api-spec": "workspace:*",
 		"@workspace/config": "workspace:*",

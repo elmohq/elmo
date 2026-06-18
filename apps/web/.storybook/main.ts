@@ -49,6 +49,14 @@ const config: StorybookConfig = {
 					{ find: /^@\/server\/brands(\.ts)?$/, replacement: path.resolve(mocksDir, "server-brands.ts") },
 					{ find: /^@\/server\/prompts(\.ts)?$/, replacement: path.resolve(mocksDir, "server-prompts.ts") },
 					{ find: /^@\/server\/citations(\.ts)?$/, replacement: path.resolve(mocksDir, "server-citations.ts") },
+					{
+						find: /^@\/server\/domain-ratings(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-domain-ratings.ts"),
+					},
+					{
+						find: /^@\/server\/citation-insights(\.ts)?$/,
+						replacement: path.resolve(mocksDir, "server-citation-insights.ts"),
+					},
 					{ find: /^@\/server\/dashboard(\.ts)?$/, replacement: path.resolve(mocksDir, "server-dashboard.ts") },
 					{ find: /^@\/server\/analysis(\.ts)?$/, replacement: path.resolve(mocksDir, "server-analysis.ts") },
 					{ find: /^@\/server\/opportunities(\.ts)?$/, replacement: path.resolve(mocksDir, "server-opportunities.ts") },
