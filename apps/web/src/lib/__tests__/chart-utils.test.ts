@@ -1,6 +1,50 @@
 import { describe, it, expect } from "vitest";
-import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
+import {
+	citationDateWindow,
+	applyPerPromptKeyedLVCF,
+	getDefaultLookbackPeriod,
+	type LookbackPeriod,
+} from "@/lib/chart-utils";
 import { toRoundedPercentages } from "@/lib/domain-categories";
+
+describe("getDefaultLookbackPeriod", () => {
+	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+	describe("without a remembered selection (established defaults)", () => {
+		it("defaults to 1m before data has loaded", () => {
+			expect(getDefaultLookbackPeriod(null)).toBe("1m");
+			expect(getDefaultLookbackPeriod(undefined)).toBe("1m");
+		});
+
+		it.each<[number, LookbackPeriod]>([
+			[0, "1w"],
+			[7, "1w"],
+			[8, "1m"],
+			[400, "1m"],
+		])("uses %i days of history → %s", (days, expected) => {
+			expect(getDefaultLookbackPeriod(daysAgo(days))).toBe(expected);
+		});
+	});
+
+	describe("with a remembered selection", () => {
+		it("honors the remembered period when data hasn't loaded yet", () => {
+			expect(getDefaultLookbackPeriod(null, "3m")).toBe("3m");
+			expect(getDefaultLookbackPeriod(undefined, "all")).toBe("all");
+		});
+
+		it.each<[LookbackPeriod, number, LookbackPeriod]>([
+			// remembered window wider than available data → clamp down to the data span
+			["1y", 10, "1m"],
+			["6m", 60, "3m"],
+			["all", 400, "all"],
+			// remembered window narrower than (or equal to) the data span → keep it
+			["1w", 300, "1w"],
+			["3m", 300, "3m"],
+		])("clamps remembered %s with %i days of data → %s", (remembered, days, expected) => {
+			expect(getDefaultLookbackPeriod(daysAgo(days), remembered)).toBe(expected);
+		});
+	});
+});
 
 describe("citationDateWindow", () => {
 	it("builds a `days`-day current window + contiguous equal-length previous window (UTC)", () => {
