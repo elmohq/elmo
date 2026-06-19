@@ -11,6 +11,7 @@ import {
 	type Provider,
 } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
+import { detectRefusal } from "@workspace/lib/refusal-detection";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -235,7 +236,24 @@ async function runModelIteration({
 
 	const safeTextContent = typeof textContent === "string" ? textContent : "";
 
-	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
+	// Explicitly call out refusals (issue #30). A refusal ("I can't help with
+	// that") isn't a real answer, so it carries no visibility signal — skip
+	// mention analysis and record it as not mentioned, while surfacing it in logs
+	// and telemetry so operators can see how often engines decline.
+	const refusal = detectRefusal(safeTextContent);
+	if (refusal.isRefusal) {
+		console.warn(`${logPrefix} Model refused to answer (matched: "${refusal.matchedPhrase}")`);
+		trackWorkerEvent("prompt_refused", {
+			brand_id: brand.id,
+			model: config.model,
+			provider: config.provider ?? "unknown",
+			matched_phrase: refusal.matchedPhrase ?? "",
+		});
+	}
+
+	const { brandMentioned, competitorsMentioned } = refusal.isRefusal
+		? { brandMentioned: false, competitorsMentioned: [] as string[] }
+		: analyzeMentions(safeTextContent, brand, competitorsList);
 
 	const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
