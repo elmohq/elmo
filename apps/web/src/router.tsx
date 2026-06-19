@@ -26,14 +26,11 @@ export const getRouter = () => {
 		defaultStaleTime: 30_000, // Cache loader data for 30s to avoid re-fetching on navigations
 	});
 
+	// Sentry.init() runs in the client entry (client.tsx) before hydration; here
+	// we only attach the router-aware browser-tracing integration, which needs
+	// the router instance that doesn't exist yet at client-entry time. See #320.
 	if (!router.isServer && import.meta.env.VITE_SENTRY_DSN) {
-		Sentry.init({
-			dsn: import.meta.env.VITE_SENTRY_DSN,
-			environment: import.meta.env.MODE,
-			sendDefaultPii: true,
-			integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
-			tracesSampleRate: 1.0,
-		});
+		Sentry.addIntegration(Sentry.tanstackRouterBrowserTracingIntegration(router));
 	}
 
 	setupRouterSsrQueryIntegration({ router, queryClient: rqContext.queryClient });
