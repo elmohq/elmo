@@ -7,6 +7,8 @@ import {
 	extractCitationsFromOpenAI,
 	extractCitationsFromGoogle,
 	extractCitations,
+	isExtractionFailure,
+	EXTRACTION_FALLBACK_MESSAGES,
 } from "./text-extraction";
 
 describe("text-extraction", () => {
@@ -409,5 +411,33 @@ describe("text-extraction", () => {
 		it("should return empty array for unknown model group", () => {
 			expect(extractCitations({}, "unknown")).toEqual([]);
 		});
+	});
+});
+
+describe("isExtractionFailure", () => {
+	it.each<[string, string | null | undefined]>([
+		["null", null],
+		["undefined", undefined],
+		["empty string", ""],
+		["whitespace only", "   \n\t"],
+	])("treats %s as a failure", (_label, input) => {
+		expect(isExtractionFailure(input)).toBe(true);
+	});
+
+	it.each(EXTRACTION_FALLBACK_MESSAGES.map((m) => [m] as [string]))(
+		"treats placeholder %j as a failure",
+		(message) => {
+			expect(isExtractionFailure(message)).toBe(true);
+			// Surrounding whitespace shouldn't hide a placeholder.
+			expect(isExtractionFailure(`  ${message}  `)).toBe(true);
+		},
+	);
+
+	it.each<[string]>([
+		["Acme is a leading provider of widgets."],
+		["No content here, but the answer continues with real text."],
+		["The answer is: there is no single best option."],
+	])("treats real content %j as a success", (content) => {
+		expect(isExtractionFailure(content)).toBe(false);
 	});
 });

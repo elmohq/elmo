@@ -10,7 +10,7 @@ import {
 	type ModelConfig,
 	type Provider,
 } from "@workspace/lib/providers";
-import type { Citation } from "@workspace/lib/text-extraction";
+import { isExtractionFailure, type Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -234,6 +234,21 @@ async function runModelIteration({
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
 	const safeTextContent = typeof textContent === "string" ? textContent : "";
+
+	// Surface text-extraction failures loudly (issue #106). When a provider's
+	// response schema drifts, extraction silently returns a placeholder/empty
+	// string and the run is stored looking "successful" but empty. Call it out in
+	// logs and telemetry so the regression is noticed instead of corrupting data.
+	if (isExtractionFailure(safeTextContent)) {
+		console.error(
+			`${logPrefix} Text extraction returned no usable content (provider=${config.provider ?? "unknown"}, model=${config.model}); the provider response schema may have changed.`,
+		);
+		trackWorkerEvent("text_extraction_failed", {
+			brand_id: brand.id,
+			model: config.model,
+			provider: config.provider ?? "unknown",
+		});
+	}
 
 	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
 
