@@ -5,6 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { getMaxPrompts } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
@@ -538,6 +539,17 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 			(await db.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, data.brandId)))
 				.map((p) => p.id),
 		);
+
+		// Enforce the per-brand prompt cap server-side (issue #97). The editor caps
+		// it client-side, but this server function (and the public API) must not
+		// rely on that. Only brand-new prompts grow the count; updates don't.
+		const toInsertCount = data.prompts.filter((p) => !p.id).length;
+		const maxPrompts = getMaxPrompts();
+		if (existingIds.size + toInsertCount > maxPrompts) {
+			throw new Error(
+				`Cannot add prompts. Maximum of ${maxPrompts} prompts per brand reached (currently ${existingIds.size}, adding ${toInsertCount}).`,
+			);
+		}
 
 		const saved = await db.transaction(async (tx) => {
 			const toUpdate = data.prompts.filter((p) => p.id);

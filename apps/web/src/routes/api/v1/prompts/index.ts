@@ -8,6 +8,7 @@ import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq, count, desc } from "drizzle-orm";
 import { z } from "zod";
 import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
+import { getMaxPrompts } from "@workspace/lib/constants";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
 
@@ -70,6 +71,22 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					}
 
 					const brand = brandInfo[0];
+
+					// Enforce the per-brand prompt cap (issue #97).
+					const [promptCountResult] = await db
+						.select({ count: count() })
+						.from(prompts)
+						.where(eq(prompts.brandId, brandId));
+					const promptCount = promptCountResult?.count || 0;
+					const maxPrompts = getMaxPrompts();
+					if (promptCount + 1 > maxPrompts) {
+						throw new ApiError(
+							400,
+							"Validation Error",
+							`Brand already has ${promptCount}/${maxPrompts} prompts. Delete one before adding another.`,
+						);
+					}
+
 					const userTags = tags ? sanitizeUserTags(tags) : [];
 					const systemTags = computeSystemTags(value, brand.name, brand.website);
 
