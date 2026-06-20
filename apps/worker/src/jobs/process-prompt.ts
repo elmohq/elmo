@@ -10,7 +10,9 @@ import {
 	type ModelConfig,
 	type Provider,
 } from "@workspace/lib/providers";
-import type { Citation } from "@workspace/lib/text-extraction";
+import { isExtractionFailureMessage, tryExtractTextContent, type Citation } from "@workspace/lib/text-extraction";
+import { analyzeMentions } from "@workspace/lib/mention-analysis";
+import * as Sentry from "@sentry/node";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -102,48 +104,6 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 	};
 }
 
-function extractDomainFromUrl(urlOrDomain: string): string {
-	try {
-		const url = new URL(urlOrDomain.startsWith("http") ? urlOrDomain : `https://${urlOrDomain}`);
-		return url.hostname.replace(/^www\./, "").toLowerCase();
-	} catch {
-		return urlOrDomain.replace(/^www\./, "").toLowerCase();
-	}
-}
-
-function analyzeMentions(
-	content: string,
-	brand: Brand,
-	competitorsList: Competitor[],
-): {
-	brandMentioned: boolean;
-	competitorsMentioned: string[];
-} {
-	const contentLower = content.toLowerCase();
-
-	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
-	const brandDomains = [
-		extractDomainFromUrl(brand.website),
-		...(brand.additionalDomains || []).map(extractDomainFromUrl),
-	];
-	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
-
-	const competitorsMentioned = competitorsList
-		.filter((competitor) => {
-			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
-			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
-			return nameMatch || domainMatch;
-		})
-		.map((competitor) => competitor.name);
-
-	return { brandMentioned, competitorsMentioned };
-}
-
 async function savePromptRun(
 	promptId: string,
 	brandId: string,
@@ -152,6 +112,7 @@ async function savePromptRun(
 	version: string,
 	webSearchEnabled: boolean,
 	rawOutput: unknown,
+	textContent: string | null,
 	webQueries: string[],
 	brandMentioned: boolean,
 	competitorsMentioned: string[],
@@ -166,9 +127,11 @@ async function savePromptRun(
 			version,
 			webSearchEnabled,
 			rawOutput,
+			textContent,
 			webQueries,
 			brandMentioned,
 			competitorsMentioned,
+			analyzedAt: new Date(),
 		})
 		.returning({ id: promptRuns.id, createdAt: promptRuns.createdAt });
 
@@ -233,9 +196,30 @@ async function runModelIteration({
 	const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
 	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-	const safeTextContent = typeof textContent === "string" ? textContent : "";
+	// Trust the provider's normalized text when it's a real answer; otherwise
+	// retry extraction from rawOutput (covers providers whose run() returned a
+	// "No text content found..." sentinel instead of an answer).
+	const providerText =
+		typeof textContent === "string" && textContent.trim() && !isExtractionFailureMessage(textContent)
+			? textContent
+			: null;
+	const safeTextContent = providerText ?? tryExtractTextContent(rawOutput, config.provider);
 
-	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
+	if (safeTextContent === null) {
+		// Fail loudly (#106): a missing answer usually means the provider changed
+		// its output schema. Store NULL (never an empty string) so the run is
+		// visibly unanalyzed and gets retried by future backfills/re-analysis.
+		const message = `Text extraction yielded no content for provider "${config.provider}" (model "${config.model}")`;
+		console.error(`${logPrefix} ${message}`);
+		Sentry.withScope((scope) => {
+			scope.setTag("queue", "process-prompt");
+			scope.setTag("provider", config.provider);
+			scope.setContext("run", { promptId, model: config.model, brandId: brand.id });
+			Sentry.captureMessage(message, "error");
+		});
+	}
+
+	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent ?? "", brand, competitorsList);
 
 	const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
@@ -247,6 +231,7 @@ async function runModelIteration({
 		recordedVersion,
 		config.webSearch,
 		rawOutput,
+		safeTextContent,
 		webQueries,
 		brandMentioned,
 		competitorsMentioned,

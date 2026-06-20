@@ -51,6 +51,18 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 30, // 30 minute timeout
 	});
+	await boss.createQueue("backfill-text-content", {
+		retryLimit: 3,
+		retryDelay: 300,
+		retryBackoff: true,
+		expireInSeconds: 60 * 60, // resumable — a retry continues where it left off
+	});
+	await boss.createQueue("reanalyze-brand", {
+		retryLimit: 3,
+		retryDelay: 60,
+		retryBackoff: true,
+		expireInSeconds: 60 * 60,
+	});
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.createQueue("sync-auth0-memberships", {
 			retryLimit: 3,
@@ -68,6 +80,24 @@ async function main() {
 		{ tz: "UTC" },
 	);
 	console.log("Scheduled maintenance job (every 5 minutes)");
+
+	// One-off backfill of prompt_runs.text_content for historical rows. The
+	// job is idempotent (only touches rows where text_content IS NULL) and
+	// no-ops once the backfill is complete, so enqueueing on every startup is
+	// safe; the singleton key prevents pile-ups across restarts.
+	await boss.send(
+		"backfill-text-content",
+		{ source: "startup" },
+		{
+			singletonKey: "backfill-text-content",
+			singletonSeconds: 60 * 60,
+			retryLimit: 3,
+			retryDelay: 300,
+			retryBackoff: true,
+			expireInSeconds: 60 * 60,
+		},
+	);
+	console.log("Enqueued text-content backfill (singleton)");
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.schedule(

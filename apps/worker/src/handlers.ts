@@ -4,6 +4,8 @@ import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt"
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
 import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
 import { syncAuth0MembershipsJob, type SyncAuth0MembershipsData } from "./jobs/sync-auth0-memberships";
+import { backfillTextContentJob, type BackfillTextContentData } from "./jobs/backfill-text-content";
+import { reanalyzeBrandJob, type ReanalyzeBrandData } from "./jobs/reanalyze-brand";
 
 /** Wraps a pg-boss handler to report errors to Sentry before re-throwing. */
 function withSentry<T>(
@@ -47,6 +49,20 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("schedule-maintenance", scheduleMaintenanceJob),
 	);
 	console.log("Registered handler: schedule-maintenance");
+
+	await boss.work<BackfillTextContentData>(
+		"backfill-text-content",
+		{ localConcurrency: 1 },
+		withSentry("backfill-text-content", backfillTextContentJob),
+	);
+	console.log("Registered handler: backfill-text-content");
+
+	await boss.work<ReanalyzeBrandData>(
+		"reanalyze-brand",
+		{ localConcurrency: 1 },
+		withSentry("reanalyze-brand", reanalyzeBrandJob),
+	);
+	console.log("Registered handler: reanalyze-brand");
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(
