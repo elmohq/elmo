@@ -4,32 +4,60 @@ import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categor
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
+// Lookback periods ordered narrowest → widest. Used to compare/clamp periods.
+const LOOKBACK_ORDER: readonly LookbackPeriod[] = ["1w", "1m", "3m", "6m", "1y", "all"];
+
+/** The widest standard period worth showing for `days` of available history, so
+ *  the default window isn't mostly empty for a young brand. */
+function widestPeriodForDataSpan(days: number): LookbackPeriod {
+	if (days <= 7) return "1w";
+	if (days <= 30) return "1m";
+	if (days <= 90) return "3m";
+	if (days <= 180) return "6m";
+	if (days <= 365) return "1y";
+	return "all";
+}
+
+/** The narrower (shorter) of two lookback periods. */
+function narrowerPeriod(a: LookbackPeriod, b: LookbackPeriod): LookbackPeriod {
+	return LOOKBACK_ORDER.indexOf(a) <= LOOKBACK_ORDER.indexOf(b) ? a : b;
+}
+
 /**
- * Determines the default lookback period based on the brand's data history.
- * Returns "1m" (1 month) if the brand has more than 1 week of data or if data hasn't loaded yet,
- * otherwise returns "1w" (1 week) for new brands with less than a week of data.
- * 
- * Note: We default to "1m" when data is unavailable because most established brands
- * have more than a week of data, and this prevents inconsistent defaults when brand
- * data loads asynchronously (which was causing chart type mismatches downstream).
- * 
+ * Determines the default lookback period from the brand's data history and,
+ * optionally, the period the user last selected (issue #49).
+ *
+ * - With no remembered selection, keeps the established defaults: "1m" once the
+ *   brand has more than a week of data (also the safe default before data has
+ *   loaded), and "1w" for brand-new brands. Defaulting to "1m" when data is
+ *   unavailable avoids inconsistent defaults while brand data loads async (which
+ *   previously caused chart-type mismatches downstream).
+ * - With a remembered selection, honors it — but never widens the default beyond
+ *   the data actually available, so a remembered "1y" on a 5-day-old brand still
+ *   opens at "1w" instead of a near-empty chart.
+ *
  * @param earliestDataDate - ISO date string of the earliest data point, or null if no data
+ * @param previouslySelected - the lookback the user last chose, if remembered
  * @returns The recommended default lookback period
  */
-export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
+export function getDefaultLookbackPeriod(
+	earliestDataDate: string | null | undefined,
+	previouslySelected?: LookbackPeriod | null,
+): LookbackPeriod {
 	if (!earliestDataDate) {
-		// Data hasn't loaded yet - default to 1 month as a safe default
-		// (most brands have > 1 week of data, and this prevents default mismatches)
-		return "1m";
+		// Data hasn't loaded yet — honor a remembered choice, else 1 month as a
+		// safe default (most brands have > 1 week of data; prevents default mismatches).
+		return previouslySelected ?? "1m";
 	}
 
-	const earliestDate = new Date(earliestDataDate);
-	const now = new Date();
-	const diffInMs = now.getTime() - earliestDate.getTime();
-	const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+	const diffInDays = (Date.now() - new Date(earliestDataDate).getTime()) / (1000 * 60 * 60 * 24);
 
-	// If brand has more than 7 days of data, default to 1 month
-	// Otherwise, default to 1 week (for new brands)
+	if (previouslySelected) {
+		// Respect the user's last choice, clamped to what the data can fill.
+		return narrowerPeriod(previouslySelected, widestPeriodForDataSpan(diffInDays));
+	}
+
+	// No remembered choice: 1 month once there's more than a week of data, else 1 week.
 	return diffInDays > 7 ? "1m" : "1w";
 }
 
