@@ -10,6 +10,10 @@
 # - NPM_TOKEN: npm access token with publish permissions
 # - DOCKERHUB_USERNAME: Docker Hub username
 # - DOCKERHUB_TOKEN: Docker Hub access token
+#
+# Optional secrets:
+# - DISCORD_WEBHOOK_URL: when set, the new release is announced to this Discord
+#   webhook (e.g. the #releases channel). Skipped when unset.
 
 name: Release
 
@@ -71,6 +75,23 @@ jobs:
         run: |
           node scripts/generate-release-notes.mjs "$VERSION" > release-notes.md
           gh release create "v$VERSION" --title "v$VERSION" --notes-file release-notes.md
+
+      - name: Announce release on Discord
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ steps.version.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
+            echo "DISCORD_WEBHOOK_URL not set; skipping Discord announcement."
+            exit 0
+          fi
+          release_url="https://github.com/${REPO}/releases/tag/v${VERSION}"
+          payload=$(jq -n --arg content "🚀 **Elmo v${VERSION}** is out! ${release_url}" '{content: $content}')
+          # Non-fatal: a Discord hiccup must not fail an otherwise-successful release.
+          curl -sS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL" \
+            || echo "Discord announcement failed (non-fatal)."
 
   docker-build:
     name: Build images (${{ matrix.arch }})
