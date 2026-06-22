@@ -28,14 +28,24 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
 };
 
 const SUPPORTED_MODELS = new Set([...SERP_MODELS, ...Object.keys(LLM_MODELS)]);
+const MAX_PROMPT_CHARS = 500;
+
+interface DataForSeoLlmRequest {
+	user_prompt: string;
+	model_name: string;
+	web_search: boolean;
+}
 
 function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
 }
 
 function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
-	const username = process.env.DATAFORSEO_LOGIN!;
-	const password = process.env.DATAFORSEO_PASSWORD!;
+	const username = process.env.DATAFORSEO_LOGIN;
+	const password = process.env.DATAFORSEO_PASSWORD;
+	if (!username || !password) {
+		throw new Error("DataForSEO requires DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD");
+	}
 	const token = btoa(`${username}:${password}`);
 	return fetch(url, {
 		...init,
@@ -51,14 +61,22 @@ function createDfsAiApi() {
 	return new client.AiOptimizationApi("https://api.dataforseo.com", { fetch: authFetch });
 }
 
+function assertPromptLength(prompt: string) {
+	const length = Array.from(prompt).length;
+	if (length > MAX_PROMPT_CHARS) {
+		throw new Error(`DataForSEO prompts must be ${MAX_PROMPT_CHARS} characters or fewer (${length} provided)`);
+	}
+}
+
 /** Live LLM Responses call dispatch, keyed by Elmo model id. */
 const LLM_CALLS = {
-	chatgpt: (api: client.AiOptimizationApi, body: any) => api.chatGptLlmResponsesLive(body),
-	perplexity: (api: client.AiOptimizationApi, body: any) => api.perplexityLlmResponsesLive(body),
-	gemini: (api: client.AiOptimizationApi, body: any) => api.geminiLlmResponsesLive(body),
+	chatgpt: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) => api.chatGptLlmResponsesLive(body),
+	perplexity: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) => api.perplexityLlmResponsesLive(body),
+	gemini: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) => api.geminiLlmResponsesLive(body),
 } as const;
 
 async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
+	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
@@ -98,12 +116,14 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	const modelName = options?.version ?? spec.defaultModelName;
 	const webSearch = options?.webSearch ?? false;
 
-	const body: Record<string, any> = {
+	const body: DataForSeoLlmRequest = {
 		user_prompt: prompt,
 		model_name: modelName,
 		web_search: webSearch,
-		...(options?.country ? { web_search_country_iso_code: options.country } : {}),
 	};
+	// Do not expose country localization yet: DataForSEO's LLM Responses
+	// support differs by surface/model (ChatGPT has model caveats, Perplexity
+	// only documents it for Sonar models, and Gemini does not document it).
 
 	const response = await LLM_CALLS[spec.call](api, [body]);
 
@@ -123,7 +143,7 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 	// them as webQueries when web search was on; otherwise fall back to the
 	// "unavailable" marker when citations prove a search occurred.
 	const fanOut: string[] = Array.isArray(result.fan_out_queries)
-		? result.fan_out_queries.filter((q: any) => typeof q === "string" && q.trim())
+		? result.fan_out_queries.filter((q: unknown): q is string => typeof q === "string" && q.trim().length > 0)
 		: [];
 
 	return {
@@ -157,6 +177,7 @@ export const dataforseo: Provider = {
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		assertPromptLength(prompt);
 		if (SERP_MODELS.has(model)) {
 			return runGoogleAiMode(prompt);
 		}

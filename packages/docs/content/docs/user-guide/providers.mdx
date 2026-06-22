@@ -97,6 +97,8 @@ gemini:dataforseo:online
 
 Each LLM surface defaults to a sensible model (`gpt-4o`, `sonar`, `gemini-2.5-flash`). Override the underlying DataForSEO `model_name` via the version slug, e.g. `chatgpt:dataforseo:gpt-4.1:online`. All four require `:online`.
 
+DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
+
 ## Recommended setups
 
 **Starter (scrape the two that matter).** Pick one scraper and you're done:

@@ -17,7 +17,6 @@ export interface ScrapeResult {
 
 export interface ProviderOptions {
 	webSearch?: boolean;
-	country?: string;
 	version?: string;
 }
 
