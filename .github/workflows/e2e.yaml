@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # NB: no free-disk-space step here — it predated the Blacksmith migration
       # and is unnecessary on these runners (publish.yaml builds the same
