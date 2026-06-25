@@ -24,13 +24,22 @@ export function setMockOnboardingError(message: string | null) {
 	_shouldThrow = message;
 }
 
-export const analyzeBrandFn = async (_args: { data: unknown }) => {
-	if (_delayMs > 0) await new Promise((r) => setTimeout(r, _delayMs));
-	if (_shouldThrow) throw new Error(_shouldThrow);
+let _readyAt = 0;
+
+export const startAnalyzeBrandFn = async (_args: { data: unknown }) => {
+	// Mirror the real async flow: enqueue returns immediately; the result
+	// becomes available after the configured delay and is read by polling.
+	_readyAt = Date.now() + _delayMs;
+	return { jobId: "mock-analyze-job" };
+};
+
+export const getAnalyzeBrandStatusFn = async (_args: { data: unknown }) => {
+	if (_shouldThrow) return { status: "failed" as const, error: _shouldThrow };
+	if (Date.now() < _readyAt) return { status: "pending" as const };
 	if (!_suggestion) {
 		throw new Error("setMockOnboardingSuggestion() not called");
 	}
-	return _suggestion;
+	return { status: "done" as const, suggestion: _suggestion };
 };
 
 export const updateOnboardedBrandFn = async (_args: { data: unknown }) => {

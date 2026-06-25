@@ -17,7 +17,8 @@ import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
-import { analyzeBrandFn, updateOnboardedBrandFn } from "@/server/onboarding";
+import { startAnalyzeBrandFn, getAnalyzeBrandStatusFn, updateOnboardedBrandFn } from "@/server/onboarding";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
 import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
@@ -88,12 +89,33 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		setError(null);
 		setPhase("analyzing");
 		try {
-			const suggestion = await analyzeBrandFn({
+			// Brand analysis runs in the worker (LLM + web search, ~1 min), so we
+			// enqueue it and poll instead of holding one long request open — a
+			// long inline request gets killed by the reverse proxy (504).
+			const { jobId } = await startAnalyzeBrandFn({
 				data: {
 					website: brand.website,
 					brandName: brand.name,
 				},
 			});
+
+			const POLL_INTERVAL_MS = 2000;
+			const MAX_ATTEMPTS = 180; // ~6 minutes
+			let suggestion: OnboardingSuggestion | null = null;
+			for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+				await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+				const result = await getAnalyzeBrandStatusFn({ data: { jobId } });
+				if (result.status === "failed") {
+					throw new Error(result.error);
+				}
+				if (result.status === "done") {
+					suggestion = result.suggestion;
+					break;
+				}
+			}
+			if (!suggestion) {
+				throw new Error("Brand analysis timed out. Please try again.");
+			}
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
 				website: brand?.website || suggestion.website || "",

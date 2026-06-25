@@ -1,18 +1,23 @@
 import * as Sentry from "@sentry/node";
 import type { Job, PgBoss } from "pg-boss";
+import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
 import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
 import { syncAuth0MembershipsJob, type SyncAuth0MembershipsData } from "./jobs/sync-auth0-memberships";
+import { analyzeBrandJob, type AnalyzeBrandData } from "./jobs/analyze-brand";
 
-/** Wraps a pg-boss handler to report errors to Sentry before re-throwing. */
-function withSentry<T>(
+/**
+ * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
+ * Preserves the handler's return value (stored by pg-boss as the job output).
+ */
+function withSentry<T, R>(
 	queueName: string,
-	handler: (jobs: Job<T>[]) => Promise<void>,
-): (jobs: Job<T>[]) => Promise<void> {
+	handler: (jobs: Job<T>[]) => Promise<R>,
+): (jobs: Job<T>[]) => Promise<R> {
 	return async (jobs) => {
 		try {
-			await handler(jobs);
+			return await handler(jobs);
 		} catch (error) {
 			Sentry.withScope((scope) => {
 				scope.setTag("queue", queueName);
@@ -40,6 +45,15 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("generate-report", generateReportJob),
 	);
 	console.log("Registered handler: generate-report");
+
+	// batchSize: 1 keeps the returned suggestion mapped 1:1 to a single job's
+	// output, which the web app reads back via getJobById.
+	await boss.work<AnalyzeBrandData, OnboardingSuggestion>(
+		"analyze-brand",
+		{ batchSize: 1, localConcurrency: 2 },
+		withSentry("analyze-brand", analyzeBrandJob),
+	);
+	console.log("Registered handler: analyze-brand");
 
 	await boss.work<ScheduleMaintenanceData>(
 		"schedule-maintenance",

@@ -273,7 +273,7 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks POST /_server/* analyze server fn (no LLM access via wizard either)", () => {
-			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/analyzeBrandFn"));
+			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/startAnalyzeBrandFn"));
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 	});
