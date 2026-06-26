@@ -163,7 +163,6 @@ describe("MCP_TOOLS registry", () => {
 	});
 
 	it("buildMcpServer registers every tool without throwing", () => {
-		expect(() => buildMcpServer()).not.toThrow();
 		expect(buildMcpServer()).toBeDefined();
 	});
 });
@@ -198,11 +197,37 @@ describe("handleMcpPost auth", () => {
 	});
 });
 
-// NOTE: The full JSON-RPC round-trip (auth -> initialize -> tools/list) is NOT
-// exercised here. handleMcpPost builds a fresh stateless transport per request
-// (mirroring the SDK's Hono/Workers examples), and the transport rejects any
-// non-initialize request with "Server not initialized" until the init handshake
-// has run on that same transport instance. A single POST therefore cannot both
-// initialize and list, so a round-trip would require multi-request session
-// gymnastics that are brittle under vitest. That path is covered by the manual
-// MCP Inspector verification step instead.
+// --- Live round-trip: auth -> transport -> server -> tool registry ---------
+
+// In stateless mode (sessionIdGenerator: undefined) the transport's
+// validateSession() short-circuits, so a single tools/list POST round-trips
+// with no initialize handshake. tools/list only reads the registry; no tool
+// handler runs, so nothing touches the (mocked) db.
+describe("handleMcpPost round-trip", () => {
+	it("answers tools/list with the registered tool names", async () => {
+		vi.stubEnv("MCP_API_KEY", "secret");
+
+		const req = new Request("http://localhost/api/mcp", {
+			method: "POST",
+			headers: {
+				Authorization: "Bearer secret",
+				"Content-Type": "application/json",
+				Accept: "application/json, text/event-stream",
+			},
+			body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+		});
+
+		const res = await handleMcpPost(req);
+
+		expect(res.status).toBe(200);
+
+		const body = JSON.parse(await res.text());
+		expect(body.jsonrpc).toBe("2.0");
+		expect(body.id).toBe(1);
+
+		const names = (body.result.tools as { name: string }[]).map((t) => t.name).sort();
+		expect(names).toEqual(
+			["create_prompt", "delete_prompt", "get_prompt", "list_brands", "list_prompts", "update_prompt"].sort(),
+		);
+	});
+});
