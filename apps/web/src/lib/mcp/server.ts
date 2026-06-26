@@ -68,7 +68,14 @@ export async function handleMcpPost(request: Request): Promise<Response> {
 	// Instance-wide key (like ADMIN_API_KEYS): tenant-unscoped. Must be
 	// re-scoped before cloud multi-tenant mode ships.
 	if (keys.length === 0) {
-		return Response.json({ error: "Not Found", message: "MCP endpoint is not enabled" }, { status: 404 });
+		return Response.json(
+			{
+				error: "MCP server disabled",
+				message:
+					"The MCP endpoint is disabled because MCP_API_KEY is not set on this instance. Set MCP_API_KEY (a Bearer token) to enable /api/mcp.",
+			},
+			{ status: 404 },
+		);
 	}
 
 	const auth = evaluateApiKeyAuth(request.headers.get("Authorization"), keys);

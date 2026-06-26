@@ -181,12 +181,14 @@ describe("MCP_TOOLS registry", () => {
 // --- handleMcpPost auth (no transport reached on these paths) --------------
 
 describe("handleMcpPost auth", () => {
-	it("returns 404 when MCP_API_KEY is unset", async () => {
+	it("returns 404 naming MCP_API_KEY when it is unset", async () => {
 		vi.stubEnv("MCP_API_KEY", "");
 
 		const res = await handleMcpPost(new Request("http://x/api/mcp", { method: "POST" }));
 
 		expect(res.status).toBe(404);
+		const body = await res.json();
+		expect(body.message).toContain("MCP_API_KEY");
 	});
 
 	it("returns 401 with no Authorization header", async () => {
