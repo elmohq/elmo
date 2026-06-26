@@ -24,7 +24,7 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 					const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
 
-					return listPrompts({ brandId: brandId ?? undefined, page, limit });
+					return listPrompts({ brandId: brandId || undefined, page, limit });
 				},
 			}),
 

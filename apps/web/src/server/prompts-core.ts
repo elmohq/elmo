@@ -81,6 +81,10 @@ export async function updatePrompt(
 	promptId: string,
 	input: { value?: string; enabled?: boolean; tags?: string[] },
 ) {
+	if (input.value === undefined && input.enabled === undefined && input.tags === undefined) {
+		throw new Error("At least one of value, enabled, or tags must be provided");
+	}
+
 	const existingRows = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 	if (existingRows.length === 0) throw new PromptNotFoundError(promptId);
 	const existing = existingRows[0]!;

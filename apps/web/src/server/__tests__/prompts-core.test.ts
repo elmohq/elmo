@@ -192,6 +192,13 @@ describe("updatePrompt", () => {
 		expect(removePromptJobScheduler).not.toHaveBeenCalled();
 	});
 
+	it("empty input: throws before any DB call", async () => {
+		await expect(updatePrompt("p1", {})).rejects.toThrow(
+			"At least one of value, enabled, or tags must be provided",
+		);
+		expect(state.ops).toHaveLength(0);
+	});
+
 	it("prompt missing: throws PromptNotFoundError", async () => {
 		state.results = [[]];
 
