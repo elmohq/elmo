@@ -12,7 +12,7 @@
  *   4. API key authentication
  *   5. Read-only enforcement
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
@@ -23,6 +23,7 @@ import {
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	evaluateRequireOrgAccess,
+	getMcpApiKeys,
 	type RequestInfo,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
@@ -521,7 +522,68 @@ describe("evaluateApiKeyAuth", () => {
 });
 
 // ============================================================================
-// 5. Cross-cutting: Full scenario tests
+// 5. MCP API key parsing
+// ============================================================================
+
+describe("getMcpApiKeys", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it("returns [] when MCP_API_KEY is unset", () => {
+		vi.stubEnv("MCP_API_KEY", "");
+		expect(getMcpApiKeys()).toEqual([]);
+	});
+
+	it("returns [] when MCP_API_KEY is empty string", () => {
+		vi.stubEnv("MCP_API_KEY", "");
+		expect(getMcpApiKeys()).toEqual([]);
+	});
+
+	it("parses a single key", () => {
+		vi.stubEnv("MCP_API_KEY", "key1");
+		expect(getMcpApiKeys()).toEqual(["key1"]);
+	});
+
+	it("parses and trims multiple keys", () => {
+		vi.stubEnv("MCP_API_KEY", "key1, key2 ,key3");
+		expect(getMcpApiKeys()).toEqual(["key1", "key2", "key3"]);
+	});
+
+	it("drops empty segments", () => {
+		vi.stubEnv("MCP_API_KEY", "key1,,key2,");
+		expect(getMcpApiKeys()).toEqual(["key1", "key2"]);
+	});
+});
+
+// ============================================================================
+// 6. Read-only exemption for /api/mcp
+// ============================================================================
+
+describe("evaluateDeploymentPolicy — /api/mcp read-only exemption", () => {
+	it("allows POST /api/mcp in demo (read-only) mode", () => {
+		const result = evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp"));
+		expect(result.action).toBe("allow");
+	});
+
+	it("allows POST /api/mcp/ with trailing slash in demo mode", () => {
+		const result = evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/"));
+		expect(result.action).toBe("allow");
+	});
+
+	it("blocks POST /api/mcp/extra — exact-match only, not startsWith", () => {
+		const result = evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/mcp/extra"));
+		expect(result).toMatchObject({ action: "block", status: 403 });
+	});
+
+	it("still blocks other demo-mode API writes (sanity contrast)", () => {
+		const result = evaluateDeploymentPolicy(DEMO_FEATURES, req("POST", "/api/v1/prompts"));
+		expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+	});
+});
+
+// ============================================================================
+// 7. Cross-cutting: Full scenario tests
 //    These simulate a user journey through multiple policy layers.
 // ============================================================================
 
