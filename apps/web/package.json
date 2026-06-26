@@ -21,6 +21,7 @@
 	"dependencies": {
 		"@fontsource/geist-sans": "^5.2.5",
 		"@fontsource/titan-one": "^5.2.8",
+		"@modelcontextprotocol/sdk": "1.29.0",
 		"@sentry/tanstackstart-react": "^10.57.0",
 		"@tabler/icons-react": "^3.44.0",
 		"@tailwindcss/typography": "^0.5.20",
