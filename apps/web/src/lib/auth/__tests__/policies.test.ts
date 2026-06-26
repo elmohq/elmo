@@ -10,9 +10,11 @@
  *   2. Auth function-level policies       (requireAuth / requireAdmin / requireOrgAccess)
  *   3. Route guard policies               (_authed / admin / $brand beforeLoad)
  *   4. API key authentication
- *   5. Read-only enforcement
+ *   5. MCP API key parsing                (getMcpApiKeys)
+ *   6. Read-only exemption for /api/mcp   (deploymentMiddleware)
+ *   7. Cross-cutting full scenario tests
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
@@ -531,7 +533,7 @@ describe("getMcpApiKeys", () => {
 	});
 
 	it("returns [] when MCP_API_KEY is unset", () => {
-		vi.stubEnv("MCP_API_KEY", "");
+		vi.stubEnv("MCP_API_KEY", undefined);
 		expect(getMcpApiKeys()).toEqual([]);
 	});
 
