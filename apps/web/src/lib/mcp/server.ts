@@ -3,13 +3,14 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { evaluateApiKeyAuth, getMcpApiKeys } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { promptTools } from "./tools-prompts";
+import { analyticsTools } from "./tools-analytics";
 import type { ElmoTool } from "./types";
 
 /**
  * The MCP tool registry. Task 5 appends `...analyticsTools` here by adding a
  * `tools-analytics.ts` and one spread entry — no other change is required.
  */
-export const MCP_TOOLS: ElmoTool[] = [...promptTools];
+export const MCP_TOOLS: ElmoTool[] = [...promptTools, ...analyticsTools];
 
 export type McpToolResult = {
 	content: { type: "text"; text: string }[];

@@ -150,10 +150,21 @@ describe("list_brands", () => {
 // --- Registry sanity -------------------------------------------------------
 
 describe("MCP_TOOLS registry", () => {
-	it("includes the six expected tools with correct read-only flags", () => {
+	it("includes all expected tools with correct read-only flags", () => {
 		const names = MCP_TOOLS.map((t) => t.name).sort();
 		expect(names).toEqual(
-			["create_prompt", "delete_prompt", "get_prompt", "list_brands", "list_prompts", "update_prompt"].sort(),
+			[
+				"create_prompt",
+				"delete_prompt",
+				"get_opportunities",
+				"get_performance",
+				"get_prompt",
+				"get_prompt_stats",
+				"list_brands",
+				"list_models",
+				"list_prompts",
+				"update_prompt",
+			].sort(),
 		);
 
 		const mutating = ["create_prompt", "update_prompt", "delete_prompt"];
@@ -227,7 +238,18 @@ describe("handleMcpPost round-trip", () => {
 
 		const names = (body.result.tools as { name: string }[]).map((t) => t.name).sort();
 		expect(names).toEqual(
-			["create_prompt", "delete_prompt", "get_prompt", "list_brands", "list_prompts", "update_prompt"].sort(),
+			[
+				"create_prompt",
+				"delete_prompt",
+				"get_opportunities",
+				"get_performance",
+				"get_prompt",
+				"get_prompt_stats",
+				"list_brands",
+				"list_models",
+				"list_prompts",
+				"update_prompt",
+			].sort(),
 		);
 	});
 });
