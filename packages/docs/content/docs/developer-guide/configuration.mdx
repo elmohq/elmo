@@ -41,6 +41,13 @@ At least one provider is required for Elmo to track visibility. See [Providers](
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
 | `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
 
+### API Access
+
+| Variable | Description |
+|----------|-------------|
+| `ADMIN_API_KEYS` | Comma-separated bearer token(s) accepted by the REST API (`/api/v1`). Supports multiple values for key rotation. |
+| `MCP_API_KEY` | Comma-separated bearer token(s) accepted by the MCP server endpoint (`/api/mcp`). Supports multiple values for key rotation. The MCP endpoint is **disabled** (returns `404`) unless this variable is set. Like `ADMIN_API_KEYS`, this key is instance-wide — not scoped to a single brand; callers pass an explicit `brandId` to tools and can discover brands via the `list_brands` tool. |
+
 ## Updating Configuration
 
 To change environment variables after initial setup:

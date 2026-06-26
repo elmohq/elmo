@@ -27,3 +27,51 @@ Browse the available endpoints in the sidebar, grouped by resource:
 - **Competitors** — manage brand competitors
 - **Snapshots** — aggregated analytics snapshots for prompts
 - **Reports** — generate and retrieve AI Share of Voice reports
+
+## MCP server (Model Context Protocol)
+
+Elmo exposes a [Model Context Protocol](https://modelcontextprotocol.io) server at `POST /api/mcp`. Register it in any MCP client (e.g. the MCP Inspector, Claude Desktop, or an AI/SEO workflow) to give AI agents direct access to your visibility data.
+
+**URL:** `POST https://<your-instance>/api/mcp` — `GET`/`DELETE` return `405`.
+
+**Enablement:** the endpoint only exists when `MCP_API_KEY` is set on the server. Without it, `/api/mcp` returns `404`.
+
+**Auth:** `Authorization: Bearer <MCP_API_KEY>`. Missing or invalid key returns `401`.
+
+**Required request headers:**
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Accept` | `application/json, text/event-stream` |
+
+The transport is stateless JSON-RPC 2.0 over HTTP — no SSE stream, no session id required. Each call returns a single buffered JSON-RPC reply. Missing headers return `415`/`406`.
+
+**Read-only/demo mode:** read tools work normally. The mutating tools (`create_prompt`, `update_prompt`, `delete_prompt`) are rejected in read-only deployments.
+
+**Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `list_brands` | List tracked brands (id, name, website, enabled). |
+| `list_prompts` | List a brand's prompts (filter by enabled, paginated). |
+| `get_prompt` | Fetch a single prompt by id. |
+| `create_prompt` | Create a prompt for a brand (write). |
+| `update_prompt` | Update a prompt's value/enabled/tags (write). |
+| `delete_prompt` | Delete a prompt and its runs/citations (write). |
+| `list_models` | List trackable LLM models; pass a brandId for per-brand enablement. |
+| `get_performance` | Brand AI-visibility summary + per-model mention rates over a lookback. |
+| `get_prompt_stats` | Per-prompt mention summary, top competitors, run stats, cited pages. |
+| `get_opportunities` | Latest stored opportunities report for a brand (with age). |
+
+The server is self-describing — call `tools/list` to enumerate all tools and their input schemas.
+
+```bash
+curl -X POST https://<your-instance>/api/mcp \
+  -H "Authorization: Bearer $MCP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+The OpenAPI spec (`/api/v1/openapi.json`) does not cover MCP — use `tools/list` to discover the MCP interface.
