@@ -377,7 +377,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
-const OXYLABS_SIGNUP = "https://oxylabs.io/";
+const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
 const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
@@ -517,7 +517,7 @@ async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs", 
 		assertNotCancelled(key);
 		env.BRIGHTDATA_API_TOKEN = key;
 	} else if (scraper === "oxylabs") {
-		p.log.info(`Sign up: ${link(pc.cyan(OXYLABS_SIGNUP), OXYLABS_SIGNUP)}`);
+		p.log.info(`Sign up: ${link(pc.cyan(OXYLABS_AFFILIATE), OXYLABS_AFFILIATE)}`);
 		const username = await p.text({
 			message: "Oxylabs username",
 			validate: (v) => (!v ? "Required" : undefined),
@@ -632,7 +632,7 @@ async function collectOxylabs(env: EnvMap, targets: string[]): Promise<void> {
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	p.log.info(`Sign up and create Web Scraper API credentials: ${link(pc.cyan(OXYLABS_SIGNUP), OXYLABS_SIGNUP)}`);
+	p.log.info(`Sign up and create Web Scraper API credentials: ${link(pc.cyan(OXYLABS_AFFILIATE), OXYLABS_AFFILIATE)}`);
 	const username = await p.text({
 		message: "Oxylabs username",
 		validate: (v) => (!v ? "Required" : undefined),

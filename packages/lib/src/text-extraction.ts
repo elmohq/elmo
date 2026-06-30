@@ -397,8 +397,16 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 		const seen = new Set<string>();
 		let idx = 0;
 
+		const pushUrl = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) { citations.push(c); idx++; }
+		};
+
 		// Common citation fields across Oxylabs parsed AI sources.
-		// - ChatGPT / Google AI Mode: top-level `citations`, `external_links`, `links`
+		// - ChatGPT: top-level `citations` with `{ url, title }`
+		// - Google AI Mode: top-level `citations` with `{ text, urls: [...] }`
 		// - Perplexity: nested under `additional_results.sources_results`
 		const sourceArrays: any[][] = [];
 		for (const field of ["citations", "external_links", "links", "sources"]) {
@@ -409,11 +417,14 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 
 		for (const arr of sourceArrays) {
 			for (const item of arr) {
-				const url = typeof item === "string" ? item : item?.url ?? item?.link;
-				if (!url || typeof url !== "string" || !url.startsWith("http") || seen.has(url)) continue;
-				seen.add(url);
-				const c = parseCitationUrl(url, item?.title ?? item?.name, idx);
-				if (c) { citations.push(c); idx++; }
+				if (typeof item === "string") {
+					pushUrl(item, undefined);
+				} else if (Array.isArray(item?.urls)) {
+					// Google AI Mode groups one or more source URLs under each citation.
+					for (const u of item.urls) pushUrl(u, item?.title ?? item?.name);
+				} else {
+					pushUrl(item?.url ?? item?.link, item?.title ?? item?.name);
+				}
 			}
 		}
 		return citations;
