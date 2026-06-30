@@ -11,6 +11,7 @@ import {
 	type Provider,
 } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
+import { nameMentioned } from "@workspace/lib/mention-detection";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -121,19 +122,23 @@ function analyzeMentions(
 } {
 	const contentLower = content.toLowerCase();
 
-	const brandNames = [brand.name, ...(brand.aliases || [])].map((n) => n.toLowerCase());
+	// Name matches use absence-aware detection so responses like "I couldn't find
+	// any information about <brand>" don't count as a mention (issue #5). Domain
+	// matches keep plain substring semantics — a bare domain almost never appears
+	// inside an "I have no info on …" sentence, and it's a strong positive signal.
+	const brandNames = [brand.name, ...(brand.aliases || [])];
 	const brandDomains = [
 		extractDomainFromUrl(brand.website),
 		...(brand.additionalDomains || []).map(extractDomainFromUrl),
 	];
 	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
+		brandNames.some((n) => nameMentioned(content, n)) ||
 		brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
-			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
-			const nameMatch = names.some((n) => contentLower.includes(n));
+			const names = [competitor.name, ...(competitor.aliases || [])];
+			const nameMatch = names.some((n) => nameMentioned(content, n));
 			const domainMatch = (competitor.domains || []).some((d) =>
 				contentLower.includes(extractDomainFromUrl(d)),
 			);
