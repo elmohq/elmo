@@ -1,5 +1,5 @@
 ---
-"@workspace/lib": patch
+"@elmohq/cli": patch
 ---
 
-Extend the DataForSEO provider to track ChatGPT, Perplexity, and Gemini citations via DataForSEO's AI Optimization "LLM Responses" API. Previously DataForSEO only supported `google-ai-mode`, so DataForSEO-only users had to add BrightData for the other engines. You can now set targets like `chatgpt:dataforseo:online`, `perplexity:dataforseo:online`, and `gemini:dataforseo:online` (override the underlying model via the version slug, e.g. `chatgpt:dataforseo:gpt-4.1:online`). `google-ai-mode:dataforseo:online` is unchanged.
+Add ChatGPT, Perplexity, and Gemini support to the DataForSEO provider. `elmo init` now offers them when you enable DataForSEO, and `SCRAPE_TARGETS` accepts `chatgpt:dataforseo:online`, `perplexity:dataforseo:online`, and `gemini:dataforseo:online` (override the underlying model via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`). Configure via `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`.
