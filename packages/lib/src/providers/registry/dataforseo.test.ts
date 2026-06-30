@@ -139,7 +139,10 @@ describe("dataforseo provider", () => {
 		expect(result.citations[0].url).toBe(realUrl);
 		expect(result.citations[0].domain).toBe("whathifi.com");
 		// The raw output is rewritten in place, so re-extraction stays consistent.
-		const rawUrl = (result.rawOutput as any).tasks[0].result[0].items[0].sections[0].annotations[0].url;
+		const raw = result.rawOutput as {
+			tasks: { result: { items: { sections: { annotations: { url: string }[] }[] }[] }[] }[];
+		};
+		const rawUrl = raw.tasks[0].result[0].items[0].sections[0].annotations[0].url;
 		expect(rawUrl).toBe(realUrl);
 	});
 });

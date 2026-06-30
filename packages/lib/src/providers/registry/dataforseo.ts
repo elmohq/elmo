@@ -140,8 +140,12 @@ async function resolveGroundingRedirect(url: string): Promise<string> {
 }
 
 async function resolveGroundingRedirects(raw: unknown): Promise<void> {
-	const items = (raw as any)?.tasks?.[0]?.result?.[0]?.items ?? [];
-	const redirected: { url?: string }[] = [];
+	type RawAnnotation = { url?: string };
+	type RawLlmResponse = {
+		tasks?: { result?: { items?: { sections?: { annotations?: RawAnnotation[] }[] }[] }[] }[];
+	};
+	const items = (raw as RawLlmResponse)?.tasks?.[0]?.result?.[0]?.items ?? [];
+	const redirected: RawAnnotation[] = [];
 	for (const item of items) {
 		for (const section of item?.sections ?? []) {
 			for (const ann of section?.annotations ?? []) {
