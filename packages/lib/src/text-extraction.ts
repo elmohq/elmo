@@ -200,6 +200,43 @@ function tryGenericExtraction(rawOutput: any): string {
 }
 
 // ============================================================================
+// Extraction failure detection
+// ============================================================================
+
+// The placeholder strings the extractors above return when they can't find any
+// text. They're indistinguishable from a real (if empty) answer downstream, so
+// when a provider's response schema drifts the extraction silently "succeeds"
+// with a placeholder and the failure goes unnoticed (issue #106). Callers can
+// use `isExtractionFailure` to detect that case and surface it loudly.
+export const EXTRACTION_FALLBACK_MESSAGES: readonly string[] = [
+	"No text content found in OpenAI output.",
+	"No text content found in Anthropic output.",
+	"No AI overview content found.",
+	"No text content found in Mistral output.",
+	"No text content found in OpenRouter output.",
+	"No text content found in Olostep output.",
+	"No content in BrightData output.",
+	"No text content found in BrightData output.",
+	"Error extracting text content.",
+	"No content.",
+	"Unknown provider format - cannot extract text content.",
+];
+
+const EXTRACTION_FALLBACK_SET = new Set(EXTRACTION_FALLBACK_MESSAGES);
+
+/**
+ * True when `text` is empty/whitespace or one of the known extractor placeholder
+ * messages — i.e. extraction produced nothing usable. Used to turn silent
+ * schema drift into a visible, logged failure rather than empty stored data.
+ */
+export function isExtractionFailure(text: string | null | undefined): boolean {
+	if (text == null) return true;
+	const trimmed = text.trim();
+	if (trimmed === "") return true;
+	return EXTRACTION_FALLBACK_SET.has(trimmed);
+}
+
+// ============================================================================
 // Citation extraction by provider
 // ============================================================================
 
