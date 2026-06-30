@@ -199,6 +199,10 @@ async function main(): Promise<void> {
 	await send(ARROW_LEFT);
 	await send(ENTER);
 
+	// Oxylabs confirm (default No) → No
+	await waitFor("Configure Oxylabs?");
+	await send(ENTER);
+
 	// Olostep confirm (default No) → No
 	await waitFor("Configure Olostep?");
 	await send(ENTER);

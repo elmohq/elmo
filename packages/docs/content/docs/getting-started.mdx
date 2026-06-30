@@ -27,7 +27,7 @@ The wizard walks you through:
 
 1. **Config directory** — Where to store your `elmo.yaml` and `.env` files (default: `./elmo`)
 2. **PostgreSQL** — Run Postgres in Docker (recommended) or provide an existing `DATABASE_URL`
-3. **AI Providers** — Configure scrapers (BrightData, Olostep, DataForSEO) and/or direct model APIs (OpenAI, Anthropic, Mistral, OpenRouter); see [Providers](/docs/user-guide/providers) for details
+3. **AI Providers** — Configure scrapers (BrightData, Oxylabs, Olostep, DataForSEO) and/or direct model APIs (OpenAI, Anthropic, Mistral, OpenRouter); see [Providers](/docs/user-guide/providers) for details
 4. **Start** — Optionally start the stack immediately
 
 Once complete, Elmo generates two files in your config directory:
@@ -61,7 +61,7 @@ This pulls the Docker images and starts all services. Once they report healthy, 
 | **Worker** | Background scheduler that drives prompt runs |
 | **Postgres** | Shared database and job queue |
 | **LLM APIs** | Direct API calls (OpenAI, Anthropic, OpenRouter) |
-| **LLM Scraper** | Scrapers for ChatGPT, Claude, and Google AI Mode (Brightdata, Olostep) |
+| **LLM Scraper** | Scrapers for ChatGPT, Claude, and Google AI Mode (BrightData, Oxylabs, Olostep) |
 | **Elmo CLI** | Generates `elmo.yaml` + `.env` and runs `docker compose` |
 
 ## CLI Commands Reference

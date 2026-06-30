@@ -357,7 +357,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		postgres_mode: postgresMode,
 		dev_mode: Boolean(options.dev),
 		setup_mode: setupMode,
-		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY),
+		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY || env.OXYLABS_USERNAME),
 		has_direct_api: hasDirectApiConfigured(env),
 	});
 
@@ -378,6 +378,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
+const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
 const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
@@ -392,6 +393,8 @@ const OLOSTEP_MODELS = [
 	"gemini",
 	"grok",
 ] as const;
+
+const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DATAFORSEO_MODELS = ["google-ai-mode", "chatgpt", "perplexity", "gemini"] as const;
@@ -408,6 +411,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			"",
 			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
 			`     • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
+			`     • ${pc.cyan("Oxylabs")}    — sync realtime API, pay-as-you-go`,
 			`     • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
 			"",
 			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
@@ -446,6 +450,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 		message: "Scraper (tracks ChatGPT + Google AI Mode)",
 		options: [
 			{ value: "brightdata" as const, label: "BrightData — ~$0.45/mo per prompt (cheaper)" },
+			{ value: "oxylabs" as const, label: "Oxylabs — sync realtime API, pay-as-you-go" },
 			{ value: "olostep" as const, label: "Olostep — ~$2.25/mo per prompt (premium)" },
 		],
 		initialValue: "brightdata" as const,
@@ -493,6 +498,7 @@ async function configureProvidersCustom(env: EnvMap): Promise<void> {
 
 	p.log.step(pc.bold("Step 2 of 2 — Scrapers (optional, but needed to track ChatGPT / Google AI Mode)"));
 	await collectBrightData(env, targets);
+	await collectOxylabs(env, targets);
 	await collectOlostep(env, targets);
 	await collectDataForSEO(env, targets);
 
@@ -503,7 +509,7 @@ function hasDirectApiConfigured(env: EnvMap): boolean {
 	return Boolean(env.ANTHROPIC_API_KEY || env.OPENAI_API_KEY || env.MISTRAL_API_KEY || env.OPENROUTER_API_KEY);
 }
 
-async function collectScraperKey(scraper: "brightdata" | "olostep", env: EnvMap): Promise<void> {
+async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs", env: EnvMap): Promise<void> {
 	if (scraper === "brightdata") {
 		p.log.info(`Sign up: ${link(pc.cyan(BRIGHTDATA_AFFILIATE), BRIGHTDATA_AFFILIATE)}`);
 		const key = await p.password({
@@ -512,6 +518,20 @@ async function collectScraperKey(scraper: "brightdata" | "olostep", env: EnvMap)
 		});
 		assertNotCancelled(key);
 		env.BRIGHTDATA_API_TOKEN = key;
+	} else if (scraper === "oxylabs") {
+		p.log.info(`Sign up: ${link(pc.cyan(OXYLABS_AFFILIATE), OXYLABS_AFFILIATE)}`);
+		const username = await p.text({
+			message: "Oxylabs username",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(username);
+		env.OXYLABS_USERNAME = username;
+		const password = await p.password({
+			message: "Oxylabs password",
+			validate: (v) => (!v ? "Required" : undefined),
+		});
+		assertNotCancelled(password);
+		env.OXYLABS_PASSWORD = password;
 	} else {
 		p.log.info(`Sign up: ${link(pc.cyan(OLOSTEP_AFFILIATE), OLOSTEP_AFFILIATE)}`);
 		const key = await p.password({
@@ -606,9 +626,40 @@ async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
 	});
 }
 
+async function collectOxylabs(env: EnvMap, targets: string[]): Promise<void> {
+	const enable = await p.confirm({
+		message: `Configure ${pc.bold("Oxylabs")}? (sync realtime API, pay-as-you-go)`,
+		initialValue: false,
+	});
+	assertNotCancelled(enable);
+	if (!enable) return;
+
+	p.log.info(`Sign up and create Web Scraper API credentials: ${link(pc.cyan(OXYLABS_AFFILIATE), OXYLABS_AFFILIATE)}`);
+	const username = await p.text({
+		message: "Oxylabs username",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(username);
+	env.OXYLABS_USERNAME = username;
+
+	const password = await p.password({
+		message: "Oxylabs password",
+		validate: (v) => (!v ? "Required" : undefined),
+	});
+	assertNotCancelled(password);
+	env.OXYLABS_PASSWORD = password;
+
+	await pickScraperTargets({
+		providerLabel: "Oxylabs",
+		providerId: "oxylabs",
+		allModels: OXYLABS_MODELS as readonly string[],
+		targets,
+	});
+}
+
 async function pickScraperTargets(args: {
 	providerLabel: string;
-	providerId: "brightdata" | "olostep";
+	providerId: "brightdata" | "olostep" | "oxylabs";
 	allModels: readonly string[];
 	targets: string[];
 }): Promise<void> {

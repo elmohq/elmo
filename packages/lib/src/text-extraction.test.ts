@@ -4,6 +4,7 @@ import {
 	extractCitationsFromDataforseoLlm,
 	extractCitationsFromGoogle,
 	extractCitationsFromOpenAI,
+	extractCitationsFromOxylabs,
 	extractTextContent,
 	extractTextFromAnthropic,
 	extractTextFromDataforseoLlm,
@@ -443,6 +444,111 @@ describe("text-extraction", () => {
 		it("should handle empty output gracefully", () => {
 			expect(extractCitationsFromGoogle({})).toEqual([]);
 			expect(extractCitationsFromGoogle(null)).toEqual([]);
+		});
+	});
+
+	describe("extractCitationsFromOxylabs", () => {
+		it("should extract ChatGPT-style citations with a top-level url", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							citations: [
+								{ url: "https://www.forbes.com/article", title: "Best Speakers" },
+							],
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations).toHaveLength(1);
+			expect(citations[0]).toEqual({
+				url: "https://www.forbes.com/article",
+				title: "Best Speakers",
+				domain: "forbes.com",
+				citationIndex: 0,
+			});
+		});
+
+		it("should extract Google AI Mode citations from the nested urls array", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							citations: [
+								{
+									text: "The JBL Xtreme 5 is a newly released option.",
+									urls: [
+										"https://www.bgr.com/best-speakers",
+										"https://www.soundguys.com/jbl-xtreme-5",
+									],
+								},
+								{ text: "Other mentions.", urls: ["https://www.rtings.com/speaker"] },
+							],
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations.map((c) => c.domain)).toEqual([
+				"bgr.com",
+				"soundguys.com",
+				"rtings.com",
+			]);
+			expect(citations[0].citationIndex).toBe(0);
+			expect(citations[2].citationIndex).toBe(2);
+		});
+
+		it("should extract Perplexity citations from additional_results.sources_results", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							additional_results: {
+								sources_results: [
+									{ url: "https://www.rtings.com/best", title: "Best Bluetooth Speakers" },
+								],
+							},
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations).toHaveLength(1);
+			expect(citations[0].domain).toBe("rtings.com");
+		});
+
+		it("should dedupe URLs that repeat across citation entries", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							citations: [
+								{ text: "a", urls: ["https://example.com/x"] },
+								{ text: "b", urls: ["https://example.com/x", "https://other.com/y"] },
+							],
+						},
+					},
+				],
+			};
+
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations.map((c) => c.url)).toEqual([
+				"https://example.com/x",
+				"https://other.com/y",
+			]);
+		});
+
+		it("should skip invalid URLs and handle empty output gracefully", () => {
+			expect(extractCitationsFromOxylabs({})).toEqual([]);
+			expect(extractCitationsFromOxylabs(null)).toEqual([]);
+			const rawOutput = {
+				results: [{ content: { citations: [{ urls: ["not-a-url", "https://valid.com"] }] } }],
+			};
+			expect(extractCitationsFromOxylabs(rawOutput).map((c) => c.domain)).toEqual(["valid.com"]);
 		});
 	});
 

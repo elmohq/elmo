@@ -38,6 +38,10 @@ jobs:
         perplexity:brightdata:online,
         grok:brightdata:online,
         copilot:brightdata:online,
+        chatgpt:oxylabs,
+        chatgpt:oxylabs:online,
+        google-ai-mode:oxylabs:online,
+        perplexity:oxylabs:online,
         google-ai-mode:dataforseo:online,
         chatgpt:dataforseo:online,
         perplexity:dataforseo:online,
@@ -54,7 +58,7 @@ jobs:
         mistral:mistral-api:mistral-medium-latest,
         mistral:mistral-api:mistral-medium-latest:online
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -80,6 +84,8 @@ jobs:
         env:
           OLOSTEP_API_KEY: ${{ secrets.OLOSTEP_API_KEY }}
           BRIGHTDATA_API_TOKEN: ${{ secrets.BRIGHTDATA_API_TOKEN }}
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}

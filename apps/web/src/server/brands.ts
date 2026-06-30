@@ -14,6 +14,7 @@ import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
+import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
 
@@ -251,35 +252,16 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const updateData: Partial<Pick<Brand, "name" | "website" | "additionalDomains" | "aliases">> = {};
-
-		if (data.name !== undefined) {
-			if (!data.name.trim()) {
-				throw new Error("Brand name must be a non-empty string");
-			}
-			updateData.name = data.name.trim();
+		const normalized = normalizeBrandUpdate({
+			name: data.name,
+			website: data.website,
+			additionalDomains: data.additionalDomains,
+			aliases: data.aliases,
+		});
+		if (!normalized.ok) {
+			throw new Error(normalized.error);
 		}
-
-		if (data.website !== undefined) {
-			const urlValidation = validateWebsiteUrl(data.website);
-			if (!urlValidation.isValid) {
-				throw new Error(urlValidation.error);
-			}
-			updateData.website = urlValidation.formattedUrl;
-		}
-
-		if (data.additionalDomains !== undefined) {
-			const cleaned = data.additionalDomains.map((d) => cleanAndValidateDomain(d));
-			const invalid = data.additionalDomains.filter((_, i) => !cleaned[i]);
-			if (invalid.length > 0) {
-				throw new Error(`Invalid domain(s): ${invalid.join(", ")}`);
-			}
-			updateData.additionalDomains = [...new Set(cleaned.filter(Boolean) as string[])];
-		}
-
-		if (data.aliases !== undefined) {
-			updateData.aliases = [...new Set(data.aliases.map((a) => a.trim()).filter(Boolean))];
-		}
+		const updateData = normalized.updates;
 
 		const result = await db
 			.update(brands)

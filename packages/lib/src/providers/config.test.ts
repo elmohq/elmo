@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseScrapeTargets, validateScrapeTargets } from "./config";
 import { brightdata } from "./registry/brightdata";
+import { oxylabs } from "./registry/oxylabs";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
 import type { ModelConfig } from "./types";
@@ -162,6 +163,7 @@ describe("validateScrapeTargets", () => {
 		const configs = [
 			{ model: "chatgpt", provider: "olostep", webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", webSearch: true },
+			{ model: "chatgpt", provider: "oxylabs", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", webSearch: true },
 		];
 		expect(() =>
@@ -170,6 +172,7 @@ describe("validateScrapeTargets", () => {
 				makeGetProvider({
 					olostep: configuredProvider,
 					brightdata: configuredProvider,
+					oxylabs: configuredProvider,
 					dataforseo: configuredProvider,
 				}),
 			),
@@ -257,6 +260,29 @@ describe("provider validateTarget", () => {
 
 		it("rejects chatgpt/perplexity/gemini without :online", () => {
 			expect(dataforseo.validateTarget!(config("chatgpt", "dataforseo", false))).toMatch(/requires :online/);
+		});
+	});
+
+	describe("oxylabs", () => {
+		it("accepts chatgpt with and without :online", () => {
+			expect(oxylabs.validateTarget!(config("chatgpt", "oxylabs", true))).toBeNull();
+			expect(oxylabs.validateTarget!(config("chatgpt", "oxylabs", false))).toBeNull();
+		});
+
+		it("accepts perplexity and google-ai-mode with :online", () => {
+			expect(oxylabs.validateTarget!(config("perplexity", "oxylabs", true))).toBeNull();
+			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", true))).toBeNull();
+		});
+
+		it("rejects perplexity / google-ai-mode without :online", () => {
+			expect(oxylabs.validateTarget!(config("perplexity", "oxylabs", false))).toMatch(/requires :online/);
+			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unsupported models (e.g. copilot, gemini, grok)", () => {
+			expect(oxylabs.validateTarget!(config("copilot", "oxylabs", true))).toMatch(/does not support/);
+			expect(oxylabs.validateTarget!(config("gemini", "oxylabs", true))).toMatch(/does not support/);
+			expect(oxylabs.validateTarget!(config("grok", "oxylabs", true))).toMatch(/does not support/);
 		});
 	});
 });

@@ -82,6 +82,8 @@ describe("dataforseo provider", () => {
 			],
 		});
 
+		// country isn't a ProviderOptions field (intentionally not exposed); force it
+		// through to prove DataForSEO never forwards it as web_search_country_iso_code.
 		const options = { webSearch: true, country: "GB" } as unknown as Parameters<typeof dataforseo.run>[2];
 		await dataforseo.run("chatgpt", "What is a well-reviewed laptop this month?", options);
 
