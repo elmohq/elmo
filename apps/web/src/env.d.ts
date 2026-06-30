@@ -51,6 +51,8 @@ declare global {
 			readonly OPENROUTER_API_KEY?: string;
 			readonly OLOSTEP_API_KEY?: string;
 			readonly BRIGHTDATA_API_TOKEN?: string;
+			readonly OXYLABS_USERNAME?: string;
+			readonly OXYLABS_PASSWORD?: string;
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
 			readonly BETTER_AUTH_SECRET?: string;

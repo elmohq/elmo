@@ -174,6 +174,20 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "BrightData API token.",
 	},
 	{
+		name: "OXYLABS_USERNAME",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "oxylabs",
+		description: "Oxylabs Web Scraper API username.",
+	},
+	{
+		name: "OXYLABS_PASSWORD",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "oxylabs",
+		description: "Oxylabs Web Scraper API password.",
+	},
+	{
 		name: "OPENROUTER_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",

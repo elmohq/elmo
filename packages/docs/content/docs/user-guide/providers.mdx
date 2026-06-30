@@ -12,10 +12,11 @@ These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI r
 | Provider | Why | Rough cost per prompt/month* | Sign up |
 |---|---|---|---|
 | **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
+| **Oxylabs** | Synchronous realtime API — no snapshot polling. Good for ChatGPT, Perplexity, Google AI Mode. | pay-as-you-go | [oxylabs.io](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
 | **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
 
 <Callout>
-Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that. Actual cost depends on volume tier and provider promos. The sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
+Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that; Oxylabs Web Scraper API pricing depends on the plan. Actual cost depends on volume tier and provider promos. The BrightData, Oxylabs, and Olostep sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
 </Callout>
 
 ### BrightData
@@ -36,6 +37,24 @@ grok:brightdata:online
 ```
 
 You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:gd_abc123`.
+
+### Oxylabs
+
+```bash
+OXYLABS_USERNAME=...
+OXYLABS_PASSWORD=...
+```
+
+Supported scrape targets:
+
+```
+chatgpt:oxylabs:online
+chatgpt:oxylabs
+perplexity:oxylabs:online
+google-ai-mode:oxylabs:online
+```
+
+Oxylabs uses HTTP Basic auth (Web Scraper API username + password) and a synchronous realtime endpoint, so requests block until the answer is ready — no snapshot polling. `:online` toggles in-product web search for ChatGPT; Perplexity and Google AI Mode always search.
 
 ### Olostep
 
@@ -124,7 +143,7 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `gemini`, `perplexity`, `copilot`, `grok`).
-- `provider` — how to reach it (`brightdata`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
+- `provider` — how to reach it (`brightdata`, `oxylabs`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 

@@ -1,6 +1,7 @@
 import type { Provider } from "./types";
 import { olostep } from "./registry/olostep";
 import { brightdata } from "./registry/brightdata";
+import { oxylabs } from "./registry/oxylabs";
 import { openaiApi } from "./registry/openai-api";
 import { anthropicApi } from "./registry/anthropic-api";
 import { mistralApi } from "./registry/mistral-api";
@@ -24,6 +25,7 @@ export { selectTargetsForBrand } from "./runner";
 const providerMap: Record<string, Provider> = {
 	olostep,
 	brightdata,
+	oxylabs,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
 	"mistral-api": mistralApi,
