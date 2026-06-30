@@ -71,6 +71,7 @@ export function evaluateDeploymentPolicy(
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
+	const isMcpRoute = pathname === "/api/mcp" || pathname === "/api/mcp/";
 	const isOrgPluginMutation =
 		pathname.startsWith("/api/auth/organization/") && isWriteMethod;
 
@@ -89,7 +90,7 @@ export function evaluateDeploymentPolicy(
 	// 1. Read-only mode: block every write except the explicit allowlist
 	// (analytics events + the two auth endpoints a visitor needs to use).
 	if (features.readOnly && isWriteMethod) {
-		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
+		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite && !isMcpRoute) {
 			return {
 				action: "block",
 				status: 403,
@@ -185,6 +186,20 @@ export function evaluateApiKeyAuth(
  */
 export function getAdminApiKeys(): string[] {
 	return (process.env.ADMIN_API_KEYS || "")
+		.split(",")
+		.map((key) => key.trim())
+		.filter(Boolean);
+}
+
+/**
+ * Parse comma-separated MCP_API_KEY env var into a trimmed, non-empty array.
+ *
+ * NOTE: like ADMIN_API_KEYS, this key is instance-wide (tenant-unscoped).
+ * Both MCP_API_KEY and ADMIN_API_KEYS must be re-scoped per-tenant before the
+ * cloud multi-tenant mode ships.
+ */
+export function getMcpApiKeys(): string[] {
+	return (process.env.MCP_API_KEY || "")
 		.split(",")
 		.map((key) => key.trim())
 		.filter(Boolean);

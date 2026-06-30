@@ -213,6 +213,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Comma-separated bearer tokens accepted by the admin API.",
 	},
 	{
+		name: "MCP_API_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Comma-separated bearer tokens accepted by the MCP server endpoint (/api/mcp). When unset, the MCP endpoint returns 404.",
+	},
+	{
 		name: "DEFAULT_BRAND_DOMAINS",
 		scope: "server",
 		requiredBy: "optional",
