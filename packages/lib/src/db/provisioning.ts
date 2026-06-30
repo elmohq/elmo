@@ -113,6 +113,48 @@ async function findUniqueOrgId(baseSlug: string): Promise<string> {
 }
 
 /**
+ * Ensure an organization row exists for a brand created outside the normal
+ * signup / Auth0 flows — specifically the admin API (`POST /api/v1/brands`),
+ * which accepts a caller-supplied brand id and no longer has a session/org to
+ * lean on. Brands are hard-scoped to an org via a NOT NULL FK, so the org must
+ * exist before the brand is inserted.
+ *
+ * No-op when the org already exists: we never overwrite an org that was synced
+ * from Auth0 (whitelabel) or created on signup. The brand id is reused as the
+ * org id (the long-standing convention), with a collision-free slug.
+ */
+export async function ensureOrganization(input: { id: string; name: string }): Promise<void> {
+	const [existing] = await db
+		.select({ id: organization.id })
+		.from(organization)
+		.where(eq(organization.id, input.id))
+		.limit(1);
+	if (existing) return;
+
+	const baseSlug = slugifyOrgName(input.name);
+	let slug = baseSlug;
+	for (let suffix = 2; ; suffix++) {
+		const [conflict] = await db
+			.select({ id: organization.id })
+			.from(organization)
+			.where(eq(organization.slug, slug))
+			.limit(1);
+		if (!conflict) break;
+		slug = `${baseSlug}-${suffix}`;
+	}
+
+	// Target the id explicitly: the early-return above already handles "org
+	// exists", so this only guards a concurrent insert of the same id (no-op).
+	// An untargeted onConflictDoNothing would also swallow a slug-unique
+	// collision, silently skip the insert, and leave the caller's brand FK to
+	// fail with a confusing error instead.
+	await db
+		.insert(organization)
+		.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
+		.onConflictDoNothing({ target: organization.id });
+}
+
+/**
  * Provision an additional organization for an existing local-mode user — used
  * by the multi-brand "create new brand" flow. The id is a slug derived from
  * `name`, with a numeric suffix on collision, and is reused as the org slug
