@@ -22,7 +22,10 @@ const SERP_MODELS = new Set(["google-ai-mode"]);
  * `chatgpt:dataforseo:gpt-4.1:online`.
  */
 const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof LLM_CALLS }> = {
-	chatgpt: { defaultModelName: "gpt-4o", call: "chatgpt" },
+	// gpt-5.5 is the model behind ChatGPT's current default ("GPT-5.5 Instant").
+	// DataForSEO's `*-chat-latest` aliases lag the consumer product, so we pin a
+	// concrete current model and bump it as ChatGPT advances.
+	chatgpt: { defaultModelName: "gpt-5.5", call: "chatgpt" },
 	perplexity: { defaultModelName: "sonar", call: "perplexity" },
 	gemini: { defaultModelName: "gemini-2.5-flash", call: "gemini" },
 };
@@ -70,9 +73,12 @@ function assertPromptLength(prompt: string) {
 
 /** Live LLM Responses call dispatch, keyed by Elmo model id. */
 const LLM_CALLS = {
-	chatgpt: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) => api.chatGptLlmResponsesLive(body),
-	perplexity: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) => api.perplexityLlmResponsesLive(body),
-	gemini: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) => api.geminiLlmResponsesLive(body),
+	chatgpt: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) =>
+		api.chatGptLlmResponsesLive(body.map((b) => new client.AiOptimizationChatGptLlmResponsesLiveRequestInfo(b))),
+	perplexity: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) =>
+		api.perplexityLlmResponsesLive(body.map((b) => new client.AiOptimizationPerplexityLlmResponsesLiveRequestInfo(b))),
+	gemini: (api: client.AiOptimizationApi, body: DataForSeoLlmRequest[]) =>
+		api.geminiLlmResponsesLive(body.map((b) => new client.AiOptimizationGeminiLlmResponsesLiveRequestInfo(b))),
 } as const;
 
 async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
@@ -110,6 +116,53 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	};
 }
 
+/**
+ * Gemini (via DataForSEO) returns each citation `url` as a Google Vertex AI
+ * "grounding-api-redirect" link; the real source only appears as a bare domain
+ * in the annotation `title`. There is no DataForSEO setting or field that
+ * exposes the underlying URL (confirmed against their docs), so we resolve the
+ * redirect to its destination. These links are short-lived, so we do it at
+ * fetch time and rewrite the raw output in place — both the stored output and
+ * the extracted citations then carry the real source URL/domain. ChatGPT and
+ * Perplexity already return real URLs and are left untouched; resolution
+ * failures fall back to the original redirect URL.
+ */
+const GROUNDING_REDIRECT_PREFIX = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/";
+
+async function resolveGroundingRedirect(url: string): Promise<string> {
+	try {
+		const res = await fetch(url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(8000) });
+		const location = res.headers.get("location");
+		return location?.startsWith("http") ? location : url;
+	} catch {
+		return url;
+	}
+}
+
+async function resolveGroundingRedirects(raw: unknown): Promise<void> {
+	const items = (raw as any)?.tasks?.[0]?.result?.[0]?.items ?? [];
+	const redirected: { url?: string }[] = [];
+	for (const item of items) {
+		for (const section of item?.sections ?? []) {
+			for (const ann of section?.annotations ?? []) {
+				if (typeof ann?.url === "string" && ann.url.startsWith(GROUNDING_REDIRECT_PREFIX)) {
+					redirected.push(ann);
+				}
+			}
+		}
+	}
+	if (redirected.length === 0) return;
+	const resolved = new Map<string, string>();
+	await Promise.all(
+		[...new Set(redirected.map((a) => a.url as string))].map(async (u) =>
+			resolved.set(u, await resolveGroundingRedirect(u)),
+		),
+	);
+	for (const ann of redirected) {
+		ann.url = resolved.get(ann.url as string) ?? ann.url;
+	}
+}
+
 async function runLlmResponse(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 	const spec = LLM_MODELS[model];
 	const api = createDfsAiApi();
@@ -138,6 +191,9 @@ async function runLlmResponse(model: string, prompt: string, options?: ProviderO
 
 	const result = task.result[0];
 	const raw = sanitizeForJson(response);
+	// Replace Gemini's Vertex grounding-redirect citation URLs with the real
+	// source URLs before extraction (no-op for ChatGPT/Perplexity).
+	await resolveGroundingRedirects(raw);
 	const citations = extractCitationsFromDataforseoLlm(raw);
 	// DataForSEO exposes the LLM's expanded queries as fan_out_queries. Surface
 	// them as webQueries when web search was on; otherwise fall back to the

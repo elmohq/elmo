@@ -21,12 +21,28 @@ vi.mock("dataforseo-client", () => ({
 			Object.assign(this, args);
 		}
 	},
+	AiOptimizationChatGptLlmResponsesLiveRequestInfo: class {
+		constructor(args: Record<string, unknown>) {
+			Object.assign(this, args);
+		}
+	},
+	AiOptimizationPerplexityLlmResponsesLiveRequestInfo: class {
+		constructor(args: Record<string, unknown>) {
+			Object.assign(this, args);
+		}
+	},
+	AiOptimizationGeminiLlmResponsesLiveRequestInfo: class {
+		constructor(args: Record<string, unknown>) {
+			Object.assign(this, args);
+		}
+	},
 }));
 
 import { dataforseo } from "./dataforseo";
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.unstubAllGlobals();
 });
 
 describe("dataforseo provider", () => {
@@ -73,8 +89,57 @@ describe("dataforseo provider", () => {
 		expect(payload[0]).not.toHaveProperty("web_search_country_iso_code");
 		expect(payload[0]).toMatchObject({
 			user_prompt: "What is a well-reviewed laptop this month?",
-			model_name: "gpt-4o",
+			model_name: "gpt-5.5",
 			web_search: true,
 		});
+	});
+
+	it("resolves Gemini Vertex grounding-redirect citation URLs to the real source", async () => {
+		const realUrl = "https://www.whathifi.com/best-buys/hi-fi/best-hi-fi-speakers";
+		const redirectUrl = "https://vertexaisearch.cloud.google.com/grounding-api-redirect/ABC123";
+
+		dataforseoClient.geminiLlmResponsesLive.mockResolvedValueOnce({
+			tasks: [
+				{
+					status_code: 20000,
+					status_message: "Ok.",
+					result: [
+						{
+							model_name: "gemini-2.5-flash",
+							fan_out_queries: ["best speakers"],
+							items: [
+								{
+									type: "message",
+									sections: [
+										{
+											type: "text",
+											text: "The What Hi-Fi roundup highlights several strong speakers released recently for review.",
+											annotations: [{ url: redirectUrl, title: "whathifi.com" }],
+										},
+									],
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+
+		// resolveGroundingRedirect uses global fetch with redirect:"manual" and reads
+		// the Location header. The client call itself is mocked separately above.
+		const fetchMock = vi.fn().mockResolvedValue({
+			headers: { get: (k: string) => (k === "location" ? realUrl : null) },
+		});
+		vi.stubGlobal("fetch", fetchMock);
+
+		const result = await dataforseo.run("gemini", "What are well-reviewed speakers?", { webSearch: true });
+
+		expect(fetchMock).toHaveBeenCalledWith(redirectUrl, expect.objectContaining({ redirect: "manual" }));
+		expect(result.citations).toHaveLength(1);
+		expect(result.citations[0].url).toBe(realUrl);
+		expect(result.citations[0].domain).toBe("whathifi.com");
+		// The raw output is rewritten in place, so re-extraction stays consistent.
+		const rawUrl = (result.rawOutput as any).tasks[0].result[0].items[0].sections[0].annotations[0].url;
+		expect(rawUrl).toBe(realUrl);
 	});
 });
