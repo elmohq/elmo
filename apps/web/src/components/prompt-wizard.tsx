@@ -5,8 +5,8 @@
  * and edits before saving. Replaces the prior 4-step wizard that required
  * DataForSEO + Anthropic in tandem.
  */
-import { useState, useCallback, memo, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback, useEffect, memo, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -17,7 +17,12 @@ import { useBrand, brandKeys } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
-import { analyzeBrandFn, updateOnboardedBrandFn } from "@/server/onboarding";
+import {
+	startAnalyzeBrandFn,
+	getAnalyzeBrandStatusFn,
+	cancelAnalyzeBrandFn,
+	updateOnboardedBrandFn,
+} from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
 import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
@@ -25,6 +30,12 @@ import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/compon
 interface PromptWizardProps {
 	onComplete: () => void;
 }
+
+/** Brand analysis runs in the worker (LLM + web search, ~1 min); the client polls for the result. */
+const POLL_INTERVAL_MS = 2000;
+const ANALYZE_TIMEOUT_MS = 6 * 60 * 1000; // give up after ~6 minutes
+
+const analyzeStatusKey = (brandId: string) => ["analyze-brand", "status", brandId] as const;
 
 interface WizardData {
 	brandName: string;
@@ -83,17 +94,67 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		prompts: [],
 	});
 
-	const handleAnalyze = useCallback(async () => {
-		if (!brand?.website) return;
+	const brandId = brand?.id;
+
+	// Stop polling, drop the cached status so the next run starts clean, and
+	// (best-effort) cancel the worker job. `errorMessage` surfaces a reason
+	// (timeout); a bare cancel passes null.
+	const stopAnalyzing = useCallback(
+		(errorMessage: string | null) => {
+			setPhase("idle");
+			setError(errorMessage);
+			if (brandId) {
+				queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
+				cancelAnalyzeBrandFn({ data: { brandId } }).catch(() => {});
+			}
+		},
+		[brandId, queryClient],
+	);
+
+	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
+		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) =>
+			startAnalyzeBrandFn({ data: vars }),
+		onError: (err) => {
+			setError(err instanceof Error ? err.message : "Analysis failed");
+			setPhase("idle");
+		},
+	});
+
+	// Poll the job status while analyzing. The query stops itself once the job
+	// reaches a terminal state (refetchInterval returns false), and is disabled
+	// the moment we leave the analyzing phase.
+	const statusQuery = useQuery({
+		queryKey: analyzeStatusKey(brandId ?? "none"),
+		queryFn: () => getAnalyzeBrandStatusFn({ data: { brandId: brandId! } }),
+		// Only poll once the job is actually enqueued.
+		enabled: phase === "analyzing" && analysisEnqueued && !!brandId,
+		staleTime: 0,
+		gcTime: 0,
+		refetchInterval: (query) => (query.state.data?.status === "pending" ? POLL_INTERVAL_MS : false),
+		refetchIntervalInBackground: true,
+	});
+
+	const handleAnalyze = useCallback(() => {
+		if (!brand?.website || !brand?.id) return;
 		setError(null);
+		// Clear any stale status from a previous run before we start polling.
+		queryClient.removeQueries({ queryKey: analyzeStatusKey(brand.id) });
 		setPhase("analyzing");
-		try {
-			const suggestion = await analyzeBrandFn({
-				data: {
-					website: brand.website,
-					brandName: brand.name,
-				},
-			});
+		enqueueAnalysis({ brandId: brand.id, website: brand.website, brandName: brand.name });
+	}, [brand?.website, brand?.id, brand?.name, queryClient, enqueueAnalysis]);
+
+	// React to status transitions while analyzing.
+	const statusData = statusQuery.data;
+	useEffect(() => {
+		if (phase !== "analyzing" || !statusData) return;
+		if (statusData.status === "failed") {
+			setError(statusData.error);
+			setPhase("idle");
+			if (brandId) queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
+			return;
+		}
+		if (statusData.status === "done") {
+			const suggestion = statusData.suggestion;
 			setData({
 				brandName: suggestion.brandName || brand?.name || "",
 				website: brand?.website || suggestion.website || "",
@@ -116,12 +177,19 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				competitor_count: suggestion.competitors.length,
 				prompt_count: suggestion.suggestedPrompts.length,
 			});
-		} catch (err) {
-			const message = err instanceof Error ? err.message : "Analysis failed";
-			setError(message);
-			setPhase("idle");
+			if (brandId) queryClient.removeQueries({ queryKey: analyzeStatusKey(brandId) });
 		}
-	}, [brand?.website, brand?.name]);
+	}, [phase, statusData, brandId, brand?.name, brand?.website, queryClient]);
+
+	// Give up on a stuck analysis instead of polling forever.
+	useEffect(() => {
+		if (phase !== "analyzing") return;
+		const timer = window.setTimeout(
+			() => stopAnalyzing("Brand analysis timed out. Please try again."),
+			ANALYZE_TIMEOUT_MS,
+		);
+		return () => window.clearTimeout(timer);
+	}, [phase, stopAnalyzing]);
 
 	const updateBrandName = useCallback((brandName: string) => setData((p) => ({ ...p, brandName })), []);
 	const updateWebsite = useCallback((website: string) => setData((p) => ({ ...p, website })), []);
@@ -208,21 +276,28 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						<span>{error}</span>
 					</div>
 				)}
-				<Button
-					onClick={handleAnalyze}
-					disabled={phase === "analyzing"}
-					className="flex items-center gap-2 cursor-pointer"
-				>
-					{phase === "analyzing" ? (
-						<>
-							<Loader2 className="h-4 w-4 animate-spin" /> Analyzing brand…
-						</>
-					) : (
-						<>
-							<Play className="h-4 w-4" /> Analyze brand
-						</>
+				<div className="flex items-center gap-2">
+					<Button
+						onClick={handleAnalyze}
+						disabled={phase === "analyzing"}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						{phase === "analyzing" ? (
+							<>
+								<Loader2 className="h-4 w-4 animate-spin" /> Analyzing brand…
+							</>
+						) : (
+							<>
+								<Play className="h-4 w-4" /> Analyze brand
+							</>
+						)}
+					</Button>
+					{phase === "analyzing" && (
+						<Button variant="outline" onClick={() => stopAnalyzing(null)} className="cursor-pointer">
+							Cancel
+						</Button>
 					)}
-				</Button>
+				</div>
 			</div>
 		);
 	}

@@ -12,7 +12,8 @@
  * the mocks at bundle time.
  */
 import { useEffect } from "react";
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
+import { within, userEvent, expect, waitFor } from "storybook/test";
 import BrandOnboarding from "@/components/brand-onboarding";
 import PromptWizard from "@/components/prompt-wizard";
 import { setMockBrand } from "./_mocks/use-brands";
@@ -138,12 +139,16 @@ export const Review = () => {
 	);
 };
 
-/** Analyze fails (e.g. provider not configured) — the error renders inline. */
+/**
+ * Analyze fails — the wizard surfaces a generic, user-safe message inline. The
+ * real provider/stack detail stays server-side (captured by the worker's
+ * Sentry wrapper) and is never forwarded to the browser.
+ */
 export const AnalyzeError = () => {
 	useWizardSetup({
 		brand: MOCK_BRAND,
 		suggestion: RICH_SUGGESTION,
-		error: "Onboarding requires at least one LLM provider. Configure ANTHROPIC_API_KEY or similar.",
+		error: "Brand analysis failed. Please try again.",
 	});
 	return (
 		<>
@@ -151,4 +156,31 @@ export const AnalyzeError = () => {
 			<AutoAnalyze />
 		</>
 	);
+};
+
+/**
+ * Cancel mid-analysis. The analysis is mocked to take a long time so the
+ * "Analyzing brand…" loader and its Cancel button are visible; the play
+ * function clicks Analyze, then Cancel, and asserts the wizard returns to the
+ * idle state (analyze button enabled again, cancel button gone).
+ */
+export const Cancel: StoryObj = {
+	render: () => {
+		useWizardSetup({ brand: MOCK_BRAND, suggestion: RICH_SUGGESTION, delayMs: 60_000 });
+		return <PromptWizard onComplete={() => {}} />;
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+
+		await userEvent.click(await canvas.findByRole("button", { name: /analyze brand/i }));
+
+		// Cancel only appears while analyzing.
+		await userEvent.click(await canvas.findByRole("button", { name: /^cancel$/i }));
+
+		// Back to idle: analyze is enabled again and the cancel button is gone.
+		await waitFor(() => {
+			expect(canvas.getByRole("button", { name: /analyze brand/i })).toBeEnabled();
+		});
+		expect(canvas.queryByRole("button", { name: /^cancel$/i })).toBeNull();
+	},
 };
