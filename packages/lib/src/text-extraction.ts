@@ -135,6 +135,25 @@ export function extractTextFromBrightdata(rawOutput: any): string {
 	}
 }
 
+export function extractTextFromOxylabs(rawOutput: any): string {
+	try {
+		const content = rawOutput?.results?.[0]?.content;
+		if (!content) return "No content in Oxylabs output.";
+		for (const key of [
+			"markdown_text",       // ChatGPT parsed
+			"answer_results_md",   // Perplexity parsed
+			"response_text",       // ChatGPT / Google AI Mode fallback
+			"answer_text",
+			"answer",
+		]) {
+			if (typeof content[key] === "string" && content[key].trim()) return content[key].trim();
+		}
+		return "No text content found in Oxylabs output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
 /**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -163,6 +182,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 			return extractTextFromOlostep(rawOutput);
 		case "brightdata":
 			return extractTextFromBrightdata(rawOutput);
+		case "oxylabs":
+			return extractTextFromOxylabs(rawOutput);
 		default:
 			return tryGenericExtraction(rawOutput);
 	}
@@ -368,6 +389,50 @@ export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	}
 }
 
+export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
+	try {
+		const content = rawOutput?.results?.[0]?.content;
+		if (!content) return [];
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+
+		const pushUrl = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) { citations.push(c); idx++; }
+		};
+
+		// Common citation fields across Oxylabs parsed AI sources.
+		// - ChatGPT: top-level `citations` with `{ url, title }`
+		// - Google AI Mode: top-level `citations` with `{ text, urls: [...] }`
+		// - Perplexity: nested under `additional_results.sources_results`
+		const sourceArrays: any[][] = [];
+		for (const field of ["citations", "external_links", "links", "sources"]) {
+			if (Array.isArray(content[field])) sourceArrays.push(content[field]);
+		}
+		const perpSources = content?.additional_results?.sources_results;
+		if (Array.isArray(perpSources)) sourceArrays.push(perpSources);
+
+		for (const arr of sourceArrays) {
+			for (const item of arr) {
+				if (typeof item === "string") {
+					pushUrl(item, undefined);
+				} else if (Array.isArray(item?.urls)) {
+					// Google AI Mode groups one or more source URLs under each citation.
+					for (const u of item.urls) pushUrl(u, item?.title ?? item?.name);
+				} else {
+					pushUrl(item?.url ?? item?.link, item?.title ?? item?.name);
+				}
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -390,6 +455,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 			return extractCitationsFromOlostep(rawOutput);
 		case "brightdata":
 			return extractCitationsFromBrightdata(rawOutput);
+		case "oxylabs":
+			return extractCitationsFromOxylabs(rawOutput);
 		case "anthropic-api":
 		case "anthropic":
 		case "claude":
