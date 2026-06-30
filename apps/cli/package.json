@@ -29,7 +29,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check-types": "tsc -p tsconfig.json"
+    "check-types": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@clack/prompts": "^1.5.1",
@@ -44,6 +45,7 @@
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
     "rolldown": "^1.1.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }

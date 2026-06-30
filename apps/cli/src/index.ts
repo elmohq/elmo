@@ -11,6 +11,8 @@ import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
+import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
+import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -30,6 +32,11 @@ type InitOptions = {
 
 type DirOption = {
 	dir?: string;
+};
+
+type UpgradeOptions = {
+	dir?: string;
+	yes?: boolean;
 };
 
 type PostgresMode = "docker" | "external";
@@ -133,6 +140,14 @@ async function main() {
 		.argument("<env|compose>", "which config file to edit")
 		.action(async (target: string, _opts: object, cmd: Command) => {
 			await runEdit(target, cmd.optsWithGlobals<DirOption>());
+		});
+
+	program
+		.command("upgrade")
+		.description("upgrade your Elmo deployment to this CLI's version")
+		.option("--yes", "skip confirmation prompts")
+		.action(async (_opts: object, cmd: Command) => {
+			await runUpgrade(cmd.optsWithGlobals<UpgradeOptions>(), version);
 		});
 
 	await program.parseAsync(process.argv);
@@ -978,6 +993,226 @@ async function runEdit(target: string, options: DirOption): Promise<void> {
 	log.info("Restart the stack with `elmo compose up -d` to apply changes.");
 }
 
+// ── Command: upgrade ───────────────────────────────────────────────────────────
+
+async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<void> {
+	printBanner();
+	p.intro(pc.bold("Upgrading Elmo"));
+
+	// ── CLI freshness check ──────────────────────────────────────────────
+	const latestCli = await fetchLatestCliVersion();
+	if (latestCli && semver.valid(cliVersion) && semver.lt(cliVersion, latestCli)) {
+		log.warn(`Your CLI (${cliVersion}) is behind the latest published version (${latestCli}).`);
+		log.info("Recommended: upgrade the CLI first, then rerun this command:");
+		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
+		const proceed = options.yes
+			? true
+			: await p.confirm({
+					message: `Continue upgrading the stack with CLI ${cliVersion} anyway?`,
+					initialValue: false,
+				});
+		assertNotCancelled(proceed);
+		if (!proceed) {
+			p.cancel("Upgrade cancelled. Upgrade the CLI and rerun `elmo upgrade`.");
+			process.exit(0);
+		}
+	}
+
+	// ── Resolve config + the version it was last rendered with ───────────
+	const configDir = await resolveConfigDir(options.dir);
+	const composePath = path.join(configDir, "elmo.yaml");
+	const detectedVersion = await readRenderedVersion(composePath);
+	const fromVersion = detectedVersion ?? cliVersion;
+	if (!semver.valid(fromVersion)) {
+		throw new Error(`Could not determine the installed version from ${composePath}.`);
+	}
+
+	if (semver.gt(fromVersion, cliVersion)) {
+		log.warn(`Your deployment (${fromVersion}) is newer than this CLI (${cliVersion}).`);
+		log.info("Upgrade the CLI to match, then rerun:");
+		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
+		process.exit(1);
+	}
+
+	// ── Already current ──────────────────────────────────────────────────
+	// Only a *detected* matching version is "nothing to do". A legacy install
+	// with no version header (detectedVersion === null) still needs its image
+	// tags re-pinned, so it falls through to the upgrade path below.
+	if (detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
+		log.success(`Already at ${cliVersion}.`);
+		const pull = options.yes
+			? true
+			: await p.confirm({ message: "Pull images for this version anyway?", initialValue: false });
+		assertNotCancelled(pull);
+		if (pull) {
+			assertDockerRunning();
+			const wasRunning = await stackHasRunningServices(configDir);
+			log.step("Pulling images...");
+			await runDockerCompose(configDir, ["pull"]);
+			if (wasRunning) {
+				log.step("Restarting services...");
+				await runDockerCompose(configDir, ["up", "-d"]);
+			}
+		}
+		p.outro(pc.green("Nothing to upgrade."));
+		return;
+	}
+
+	// ── Plan migrations ──────────────────────────────────────────────────
+	// With no detected version we can't tell which migrations apply, so we skip
+	// them and just re-pin + pull. (planMigrations would also return [] here
+	// since from === to, but we special-case it for a clearer message.)
+	const plan = detectedVersion === null ? [] : planMigrations(fromVersion, cliVersion, MIGRATIONS);
+	if (detectedVersion === null) {
+		log.warn(`Couldn't detect the deployment's version — re-pinning images to ${pc.cyan(cliVersion)}.`);
+	} else {
+		log.info(`Upgrading from ${pc.cyan(fromVersion)} → ${pc.cyan(cliVersion)}`);
+	}
+	if (plan.length === 0) {
+		log.step("No migrations to run (docker images will be re-pinned and pulled).");
+	} else {
+		log.step(`Migrations to apply: ${plan.length}`);
+		for (const m of plan) {
+			console.log(`  • ${pc.bold(`${m.from} → ${m.to}`)} ${m.description}`);
+		}
+	}
+
+	const confirm = options.yes ? true : await p.confirm({ message: "Proceed with upgrade?", initialValue: true });
+	assertNotCancelled(confirm);
+	if (!confirm) {
+		p.cancel("Upgrade cancelled.");
+		process.exit(0);
+	}
+
+	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
+	assertDockerRunning();
+	const wasRunning = await stackHasRunningServices(configDir);
+	if (wasRunning) {
+		log.step("Stopping services...");
+		await runDockerCompose(configDir, ["down"]);
+	}
+
+	// ── Run migrations ───────────────────────────────────────────────────
+	const ctx = buildMigrationContext(configDir, cliVersion);
+	try {
+		await runMigrations(plan, ctx);
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+		log.error(`Migration failed: ${msg}`);
+		log.info("Your config version was left unchanged. Fix the issue and rerun `elmo upgrade`.");
+		if (wasRunning) {
+			log.info("The stack was stopped for the upgrade. Restart with `elmo compose up -d` after fixing.");
+		}
+		process.exit(1);
+	}
+
+	// ── Re-pin image tags + refresh the version recorded in the config ───
+	const isDev = await composeUsesBuild(composePath);
+	await repinComposeImages(composePath, cliVersion);
+	await refreshRenderedVersion(path.join(configDir, ".env"), cliVersion);
+	log.success(`Pinned config to ${cliVersion}.`);
+
+	// ── Pull new images (dev builds from source, so nothing to pull) ─────
+	if (isDev) {
+		log.info("Dev mode detected — rebuild with `elmo compose build` to apply the new version.");
+	} else {
+		log.step("Pulling images...");
+		await runDockerCompose(configDir, ["pull"]);
+	}
+
+	// ── Restart only if the stack was running before the upgrade ─────────
+	if (wasRunning) {
+		log.step("Starting services...");
+		await runDockerCompose(configDir, ["up", "-d"]);
+		const s = p.spinner();
+		s.start("Waiting for services to become healthy...");
+		const ok = await waitForHealthy(configDir, 180_000);
+		if (ok) {
+			s.stop("All services healthy!");
+		} else {
+			s.stop("Health check timed out.");
+			log.warn("Some services did not report healthy status.");
+		}
+	} else {
+		log.info("Stack was stopped before upgrade — leaving it stopped. Start with `elmo compose up -d`.");
+	}
+
+	await trackCliEvent(configDir, "cli_upgrade", {
+		from_version: fromVersion,
+		to_version: cliVersion,
+		migrations_run: plan.length,
+		was_running: wasRunning,
+		dev_mode: isDev,
+	});
+
+	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
+}
+
+async function stackHasRunningServices(configDir: string): Promise<boolean> {
+	try {
+		const services = await getComposeServices(configDir);
+		return services.some((s) => s.State?.startsWith("running") ?? false);
+	} catch {
+		return false;
+	}
+}
+
+// Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
+async function readRenderedVersion(filePath: string): Promise<string | null> {
+	try {
+		return parseRenderedVersion(await fs.readFile(filePath, "utf8"));
+	} catch {
+		return null;
+	}
+}
+
+async function composeUsesBuild(composePath: string): Promise<boolean> {
+	try {
+		const contents = await fs.readFile(composePath, "utf8");
+		return /^\s*build:/m.test(contents);
+	} catch {
+		return false;
+	}
+}
+
+// Rewrites `elmohq/elmo-*:<tag>` image tags in place, preserving any manual
+// edits the user made to the compose file, then refreshes the version header.
+async function repinComposeImages(composePath: string, version: string): Promise<void> {
+	const contents = await fs.readFile(composePath, "utf8");
+	await fs.writeFile(composePath, refreshHeaderVersion(repinImages(contents, version), version), "utf8");
+}
+
+async function refreshRenderedVersion(filePath: string, version: string): Promise<void> {
+	try {
+		const contents = await fs.readFile(filePath, "utf8");
+		await fs.writeFile(filePath, refreshHeaderVersion(contents, version), "utf8");
+	} catch {
+		// File is optional (e.g. .env may be absent in some setups).
+	}
+}
+
+function buildMigrationContext(configDir: string, version: string): MigrationContext {
+	const envPath = path.join(configDir, ".env");
+	return {
+		configDir,
+		log: {
+			info: (msg) => log.info(msg),
+			warn: (msg) => log.warn(msg),
+			step: (msg) => log.step(msg),
+		},
+		readEnv: async () => {
+			try {
+				return parseDotenv(await fs.readFile(envPath, "utf8"));
+			} catch {
+				return {};
+			}
+		},
+		writeEnv: async (env) => {
+			await fs.writeFile(envPath, buildEnvFile(env, version), "utf8");
+		},
+	};
+}
+
 // ── Compose YAML Builder ─────────────────────────────────────────────────────
 
 function buildComposeYaml(options: {
@@ -1366,13 +1601,6 @@ async function writeConfigFiles(
 	await fs.writeFile(composePath, initConfig.composeYaml, "utf8");
 }
 
-function renderedByHeader(version: string): string {
-	return [
-		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
-		"# Re-run `elmo init` after upgrading the CLI to refresh this file.",
-	].join("\n");
-}
-
 function buildEnvFile(env: EnvMap, version: string): string {
 	const lines = [renderedByHeader(version), "# WARNING: contains secrets. Do not commit.", ""];
 
@@ -1420,23 +1648,26 @@ async function getPackageVersion(): Promise<string> {
 	return json.version!;
 }
 
-async function maybeNotifyNewVersion(currentVersion: string): Promise<void> {
+async function fetchLatestCliVersion(): Promise<string | null> {
 	try {
 		const response = await fetch("https://registry.npmjs.org/@elmohq/cli/latest");
 		if (!response.ok) {
-			return;
+			return null;
 		}
-		const data = (await response.json()) as {
-			version?: string;
-		};
-		if (!data.version) {
-			return;
-		}
-		if (semver.valid(currentVersion) && semver.lt(currentVersion, data.version)) {
-			log.warn(`New CLI version available (${data.version}). Run: npm install -g @elmohq/cli@latest`);
-		}
+		const data = (await response.json()) as { version?: string };
+		return data.version ?? null;
 	} catch {
-		// Ignore update errors
+		return null;
+	}
+}
+
+async function maybeNotifyNewVersion(currentVersion: string): Promise<void> {
+	const latest = await fetchLatestCliVersion();
+	if (!latest) {
+		return;
+	}
+	if (semver.valid(currentVersion) && semver.lt(currentVersion, latest)) {
+		log.warn(`New CLI version available (${latest}). Run: npm install -g @elmohq/cli@latest`);
 	}
 }
 
