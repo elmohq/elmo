@@ -3,6 +3,9 @@ import { Link } from "@tanstack/react-router";
 import {
 	IconDashboard,
 	IconChartBar,
+	IconSpeakerphone,
+	IconSitemap,
+	IconTarget,
 	IconLink,
 	IconBuilding,
 	IconBuildings,
@@ -66,9 +69,24 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 					icon: IconChartBar,
 				},
 				{
+					title: "Share of Voice",
+					url: "/share-of-voice",
+					icon: IconSpeakerphone,
+				},
+				{
+					title: "Query Fan-Out",
+					url: "/query-fan-out",
+					icon: IconSitemap,
+				},
+				{
 					title: "Citations",
 					url: "/citations",
 					icon: IconLink,
+				},
+				{
+					title: "Opportunities",
+					url: "/opportunities",
+					icon: IconTarget,
 				},
 			);
 		}

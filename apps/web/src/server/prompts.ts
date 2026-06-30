@@ -11,7 +11,6 @@ import { eq, and, desc, gte, count, sql } from "drizzle-orm";
 import {
 	getPromptsSummary,
 	getPromptsFirstEvaluatedAt,
-	getPromptCitationStats,
 	getPromptCitationUrlStats,
 	getPromptDailyStats,
 	getPromptCompetitorDailyStats,
@@ -22,7 +21,17 @@ import { generateDateRange } from "@/lib/chart-utils";
 import type { LookbackPeriod } from "@/lib/chart-utils";
 import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
-import { extractDomain, normalizeUrl, categorizeDomain } from "@/lib/domain-categories";
+import {
+	extractDomain,
+	normalizeUrl,
+	emptyCategoryCounts,
+	emptyPageTypeCounts,
+	resolvePageType,
+	isGoogleSurfaceUrl,
+	CITATION_PAGE_TYPES,
+} from "@/lib/domain-categories";
+import { classifyUrl } from "@/lib/domain-categories.server";
+import { buildGoogleModule } from "@/lib/google-module";
 // Server Functions
 // ============================================================================
 
@@ -30,7 +39,7 @@ import { extractDomain, normalizeUrl, categorizeDomain } from "@/lib/domain-cate
  * Get metadata for a single prompt
  */
 export const getPromptMetadataFn = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string(), promptId: z.string() }))
+	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
@@ -78,7 +87,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
  * Get prompts summary for a brand (visibility scores, tags, etc.)
  */
 export const getPromptsSummaryFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.string().optional().default("1m"),
@@ -230,7 +239,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
  * Replicates: apps/web/src/app/api/prompts/[promptId]/stats/route.ts
  */
 export const getPromptStatsFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			promptId: z.string(),
 			days: z.number().optional().default(7),
@@ -256,8 +265,9 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const timezone = "UTC";
 		const timeCondition = gte(promptRuns.createdAt, fromDate);
 
-		// Run aggregation queries in parallel
-		const [mentionStatsResult, competitorMentionsResult, webQueryStatsResult, webSearchSummaryResult] =
+		// Run aggregation queries in parallel. Web-query stats used to be computed
+		// here too — the Web Queries tab now goes through getQueryFanoutFn instead.
+		const [mentionStatsResult, competitorMentionsResult] =
 			await Promise.all([
 				// Total runs + brand mentions
 				db
@@ -279,27 +289,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 							sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
 						),
 					),
-
-				// Web query stats
-				db
-					.select({ model: promptRuns.model, webQueries: promptRuns.webQueries })
-					.from(promptRuns)
-					.where(
-						and(
-							eq(promptRuns.promptId, data.promptId),
-							timeCondition,
-							sql`array_length(${promptRuns.webQueries}, 1) > 0`,
-						),
-					),
-
-				// Web search summary
-				db
-					.select({
-						totalRuns: count(),
-						webSearchEnabled: sql<number>`SUM(CASE WHEN ${promptRuns.webSearchEnabled} THEN 1 ELSE 0 END)`,
-					})
-					.from(promptRuns)
-					.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 			]);
 
 		// ---- Process mention stats ----
@@ -356,54 +345,15 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		// Sort by count desc, then alphabetically
 		mentionStats.sort((a, b) => (a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count));
 
-		// ---- Process web query stats ----
-		const allQueries: Record<string, number> = {};
-		const modelQueries: Record<string, Record<string, number>> = {};
-
-		webQueryStatsResult.forEach((row: any) => {
-			const queries = row.webQueries || [];
-			const model = row.model;
-			if (!modelQueries[model]) modelQueries[model] = {};
-			queries.forEach((query: string) => {
-				if (query?.trim()) {
-					allQueries[query] = (allQueries[query] || 0) + 1;
-					modelQueries[model][query] = (modelQueries[model][query] || 0) + 1;
-				}
-			});
-		});
-
-		const webQueryStats: {
-			overall: { name: string; count: number }[];
-			byModel: Record<string, { name: string; count: number }[]>;
-		} = { overall: [], byModel: {} };
-
-		for (const model of Object.keys(modelQueries)) {
-			webQueryStats.byModel[model] = Object.entries(modelQueries[model])
-				.map(([name, cnt]) => ({ name, count: cnt }))
-				.sort((a, b) => b.count - a.count)
-				.slice(0, 15);
-		}
-
-		webQueryStats.overall = Object.entries(allQueries)
-			.map(([name, cnt]) => ({ name, count: cnt }))
-			.sort((a, b) => b.count - a.count)
-			.slice(0, 20);
-
-		// ---- Web search summary ----
-		const webSearchData = webSearchSummaryResult[0];
-		const webSearchSummary = {
-			enabled: Number(webSearchData?.webSearchEnabled || 0),
-			disabled: Number(webSearchData?.totalRuns || 0) - Number(webSearchData?.webSearchEnabled || 0),
-			percentage: webSearchData?.totalRuns
-				? Math.round((Number(webSearchData.webSearchEnabled) / Number(webSearchData.totalRuns)) * 100)
-				: 0,
-		};
-
 		// ---- Citation stats ----
+		// Mirrors the brand-wide citations view (server/citations.ts) at the single-
+		// prompt level: classify each citation at the URL level, pull Google AI Mode
+		// search/shopping surfaces OUT of the source mix into a dedicated Google
+		// Shopping module, and rebuild the domain distribution from the URL data.
 		let citationStats = undefined;
 		const [brandInfo, competitorsList] = await Promise.all([
-			db.select({ website: brands.website, additionalDomains: brands.additionalDomains }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
-			db.select({ domains: competitors.domains }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
+			db.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
+			db.select({ id: competitors.id, name: competitors.name, domains: competitors.domains }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
 		const primaryBrandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : "";
@@ -411,57 +361,88 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		const brandDomains = new Set([primaryBrandDomain, ...additionalBrandDomains].filter(Boolean));
 		const competitorDomains = new Set(competitorsList.flatMap((c) => c.domains.map(extractDomain)).filter(Boolean));
 
-		const [domainStats, urlStats] = await Promise.all([
-			getPromptCitationStats(data.promptId, fromDateStr, toDateStr, timezone),
-			getPromptCitationUrlStats(data.promptId, fromDateStr, toDateStr, timezone),
-		]);
+		const urlStats = await getPromptCitationUrlStats(data.promptId, fromDateStr, toDateStr, timezone);
 
-		if (domainStats.length > 0) {
-			const domainDistribution = domainStats.map(({ domain, count: cnt }) => ({
-				domain,
-				count: Number(cnt),
-				category: categorizeDomain(domain, brandDomains, competitorDomains),
-			}));
+		if (urlStats.length > 0) {
+			// Google AI Mode module: Shopping products (brand vs competitor) + search
+			// queries. Built from the raw URL rows (it picks out the Google surfaces);
+			// those same surfaces are excluded from the source mix below.
+			const googleModule = buildGoogleModule(
+				urlStats.map((u) => ({ prompt_id: data.promptId, url: u.url, domain: u.domain, title: u.title, count: u.count })),
+				brandInfo[0]?.name ?? "",
+				competitorsList.map((c) => ({ id: c.id, name: c.name })),
+				() => prompt[0].value,
+			);
 
-			const urlCounts = new Map<string, { count: number; title?: string; domain: string }>();
-			for (const { url, domain, title, count: cnt } of urlStats) {
+			const urlCounts = new Map<string, { count: number; title?: string; domain: string; positionSum: number; positionCount: number }>();
+			for (const { url, domain, title, count: cnt, avg_position } of urlStats) {
+				if (isGoogleSurfaceUrl(url)) continue;
 				const normalized = normalizeUrl(url);
+				const c = Number(cnt);
+				const positionSum = avg_position != null ? Number(avg_position) * c : 0;
+				const positionCount = avg_position != null ? c : 0;
 				const existing = urlCounts.get(normalized);
 				if (existing) {
-					existing.count += Number(cnt);
+					existing.count += c;
+					existing.positionSum += positionSum;
+					existing.positionCount += positionCount;
 					if (!existing.title && title) existing.title = title;
 				} else {
-					urlCounts.set(normalized, { count: Number(cnt), title: title || undefined, domain });
+					urlCounts.set(normalized, { count: c, title: title || undefined, domain, positionSum, positionCount });
 				}
 			}
 
 			const specificUrls = Array.from(urlCounts.entries())
-				.map(([url, { count: cnt, title, domain }]) => ({
-					url, title, domain, count: cnt,
-					category: categorizeDomain(domain, brandDomains, competitorDomains),
-				}))
+				.map(([url, { count: cnt, title, domain, positionSum, positionCount }]) => {
+					const category = classifyUrl(domain, url, title, brandDomains, competitorDomains);
+					return {
+						url, title, domain, count: cnt, category,
+						pageType: resolvePageType(url, title, category),
+						avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
+					};
+				})
 				.sort((a, b) => b.count - a.count);
 
-			const brandCitations = domainDistribution.filter((d) => d.category === "brand").reduce((s, d) => s + d.count, 0);
-			const competitorCitations = domainDistribution.filter((d) => d.category === "competitor").reduce((s, d) => s + d.count, 0);
-			const socialMediaCitations = domainDistribution.filter((d) => d.category === "social_media").reduce((s, d) => s + d.count, 0);
-			const googleCitations = domainDistribution.filter((d) => d.category === "google").reduce((s, d) => s + d.count, 0);
-			const institutionalCitations = domainDistribution.filter((d) => d.category === "institutional").reduce((s, d) => s + d.count, 0);
-			const otherCitations = domainDistribution.filter((d) => d.category === "other").reduce((s, d) => s + d.count, 0);
-			const totalCitations = brandCitations + competitorCitations + socialMediaCitations + googleCitations + institutionalCitations + otherCitations;
+			// Domain distribution rebuilt from URL-level data, each domain taking its
+			// category from its top-cited URL (matches the brand-wide view).
+			const domainAgg = new Map<string, { count: number; category: (typeof specificUrls)[number]["category"]; topCount: number; exampleTitle?: string }>();
+			for (const u of specificUrls) {
+				const cur = domainAgg.get(u.domain);
+				if (cur) {
+					cur.count += u.count;
+					if (u.count > cur.topCount) {
+						cur.topCount = u.count;
+						cur.category = u.category;
+						cur.exampleTitle = u.title;
+					}
+				} else {
+					domainAgg.set(u.domain, { count: u.count, category: u.category, topCount: u.count, exampleTitle: u.title });
+				}
+			}
+			const domainDistribution = Array.from(domainAgg.entries())
+				.map(([domain, v]) => ({ domain, count: v.count, category: v.category, exampleTitle: v.exampleTitle }))
+				.sort((a, b) => b.count - a.count);
+
+			const categoryCounts = emptyCategoryCounts();
+			const pageTypeCounts = emptyPageTypeCounts();
+			for (const u of specificUrls) {
+				categoryCounts[u.category] += u.count;
+				pageTypeCounts[u.pageType] += u.count;
+			}
+			const totalCitations = domainDistribution.reduce((s, d) => s + d.count, 0);
+			const pageTypeDistribution = CITATION_PAGE_TYPES
+				.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] }))
+				.filter((d) => d.count > 0);
 
 			if (totalCitations > 0) {
 				citationStats = {
 					totalCitations,
 					uniqueDomains: domainDistribution.length,
-					brandCitations,
-					competitorCitations,
-					socialMediaCitations,
-					googleCitations,
-					institutionalCitations,
-					otherCitations,
+					categoryCounts,
 					domainDistribution,
 					specificUrls,
+					pageTypeDistribution,
+					googleModule,
 				};
 			}
 		}
@@ -470,8 +451,6 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			prompt: prompt[0],
 			aggregations: {
 				mentionStats,
-				webQueryStats,
-				webSearchSummary,
 				citationStats,
 				totalRuns: Number(mentionData?.totalRuns || 0),
 			},
@@ -482,7 +461,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
  * Get paginated prompt runs
  */
 export const getPromptRunsFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			promptId: z.string(),
 			page: z.number().optional().default(1),
@@ -533,7 +512,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
  * Update prompts for a brand (add/edit/delete)
  */
 export const updatePromptsFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			prompts: z.array(
@@ -608,7 +587,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 // ============================================================================
 
 export const getPromptChartDataFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			promptId: z.string(),
@@ -783,7 +762,7 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 // ============================================================================
 
 export const getPromptWebQueryFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			promptId: z.string(),

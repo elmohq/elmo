@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
+import { formatScrapeTarget, parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
@@ -398,7 +399,7 @@ const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-20250514";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const DEFAULT_OPENROUTER_MODEL = "anthropic/claude-sonnet-4.6";
 const DEFAULT_MISTRAL_MODEL = "mistral-medium-latest";
 
@@ -456,7 +457,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 	assertNotCancelled(scraper);
 	await collectScraperKey(scraper, env);
 	for (const model of DEFAULT_SCRAPER_MODELS) {
-		targets.push(`${model}:${scraper}:online`);
+		targets.push(formatScrapeTarget({ model, provider: scraper, webSearch: true }));
 	}
 
 	// ── Direct API ──────────────────────────────────────────────────────────
@@ -670,7 +671,7 @@ async function pickScraperTargets(args: {
 	assertNotCancelled(selected);
 
 	for (const model of selected) {
-		args.targets.push(`${model}:${args.providerId}:online`);
+		args.targets.push(formatScrapeTarget({ model, provider: args.providerId, webSearch: true }));
 	}
 }
 
@@ -703,7 +704,7 @@ async function collectAnthropic(env: EnvMap, targets: string[]): Promise<void> {
 	});
 	assertNotCancelled(webSearch);
 
-	targets.push(webSearch ? `claude:anthropic-api:${slug}:online` : `claude:anthropic-api:${slug}`);
+	targets.push(formatScrapeTarget({ model: "claude", provider: "anthropic-api", version: slug, webSearch }));
 }
 
 async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
@@ -735,7 +736,7 @@ async function collectOpenAI(env: EnvMap, targets: string[]): Promise<void> {
 	});
 	assertNotCancelled(webSearch);
 
-	targets.push(webSearch ? `chatgpt:openai-api:${slug}:online` : `chatgpt:openai-api:${slug}`);
+	targets.push(formatScrapeTarget({ model: "chatgpt", provider: "openai-api", version: slug, webSearch }));
 }
 
 async function collectMistral(env: EnvMap, targets: string[]): Promise<void> {
@@ -767,7 +768,7 @@ async function collectMistral(env: EnvMap, targets: string[]): Promise<void> {
 	});
 	assertNotCancelled(webSearch);
 
-	targets.push(webSearch ? `mistral:mistral-api:${slug}:online` : `mistral:mistral-api:${slug}`);
+	targets.push(formatScrapeTarget({ model: "mistral", provider: "mistral-api", version: slug, webSearch }));
 }
 
 async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> {
@@ -799,7 +800,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 	});
 	assertNotCancelled(webSearch);
 
-	targets.push(webSearch ? `claude:openrouter:${slug}:online` : `claude:openrouter:${slug}`);
+	targets.push(formatScrapeTarget({ model: "claude", provider: "openrouter", version: slug, webSearch }));
 }
 
 async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
@@ -830,7 +831,7 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 	});
 	assertNotCancelled(addTarget);
 	if (addTarget) {
-		targets.push("google-ai-mode:dataforseo:online");
+		targets.push(formatScrapeTarget({ model: "google-ai-mode", provider: "dataforseo", webSearch: true }));
 	}
 }
 
@@ -854,7 +855,7 @@ async function finalizeScrapeTargets(
 			const manual = await p.text({
 				message: "SCRAPE_TARGETS (model:provider[:version][:online], comma-separated)",
 				placeholder: "chatgpt:brightdata:online,google-ai-mode:brightdata:online",
-				validate: (v) => (!v ? "Required" : undefined),
+				validate: validateScrapeTargetsInput,
 			});
 			assertNotCancelled(manual);
 			env.SCRAPE_TARGETS = manual;
@@ -878,7 +879,7 @@ async function finalizeScrapeTargets(
 		const manual = await p.text({
 			message: "SCRAPE_TARGETS",
 			initialValue: deduped,
-			validate: (v) => (!v ? "Required" : undefined),
+			validate: validateScrapeTargetsInput,
 		});
 		assertNotCancelled(manual);
 		env.SCRAPE_TARGETS = manual;
@@ -886,6 +887,16 @@ async function finalizeScrapeTargets(
 	} else {
 		env.SCRAPE_TARGETS = deduped;
 	}
+}
+
+function validateScrapeTargetsInput(value: string | undefined): string | undefined {
+	if (!value) return "Required";
+	try {
+		parseScrapeTargets(value);
+	} catch (error) {
+		return error instanceof Error ? error.message.split("\n")[0] : String(error);
+	}
+	return undefined;
 }
 
 function dedupeTargets(targets: string[]): string {

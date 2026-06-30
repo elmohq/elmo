@@ -1,5 +1,11 @@
+import type { ModelConfig } from "@workspace/config/scrape-targets";
 import type { z } from "zod";
 import type { Citation } from "../text-extraction";
+
+// Canonical definition lives next to the SCRAPE_TARGETS parser in
+// @workspace/config; re-exported here so provider code keeps importing it
+// from "./types".
+export type { ModelConfig };
 
 export interface ScrapeResult {
 	textContent: string;
@@ -18,6 +24,12 @@ export interface ProviderOptions {
 export interface StructuredResearchOptions<T> {
 	prompt: string;
 	schema: z.ZodType<T>;
+	/**
+	 * Whether the model may use its web-search tool. Defaults to true (the
+	 * onboarding research path). Set false for a single completion over context
+	 * supplied entirely in the prompt — no tools, no agent loop.
+	 */
+	webSearch?: boolean;
 }
 
 export interface StructuredResearchResult<T> {
@@ -49,11 +61,4 @@ export interface TestResult {
 	latencyMs: number;
 	error?: string;
 	sampleOutput?: string;
-}
-
-export interface ModelConfig {
-	model: string;
-	provider: string;
-	version?: string;
-	webSearch: boolean;
 }

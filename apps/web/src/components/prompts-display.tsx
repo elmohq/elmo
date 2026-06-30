@@ -7,18 +7,18 @@ import { IconEditCircle } from "@tabler/icons-react";
 import { usePromptsSummary } from "@/hooks/use-prompts-summary";
 import { useBatchChartData } from "@/hooks/use-batch-chart-data";
 import { useBrand } from "@/hooks/use-brands";
-import { Link } from "@tanstack/react-router";
+import { useListFilters } from "@/hooks/use-list-filters";
+import { Link, useSearch } from "@tanstack/react-router";
 import { VirtualizedPromptList } from "@/components/virtualized-prompt-list";
 import { ChartDataProvider } from "@/contexts/chart-data-context";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { PageHeader, FilterSection } from "@/components/page-header";
-import {
-	FilterBar,
-	getAvailableModels,
-	usePageFilters,
-	usePageFilterSetters,
-} from "@/components/filter-bar";
+import { PageHeader } from "@/components/page-header";
+import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
+import { FilteredListShell } from "@/components/filtered-list-shell";
+import { PromptOrderDropdown } from "@/components/prompt-order-dropdown";
 import { VisibilityBarSection } from "@/components/visibility-bar-section";
+import { coercePromptOrder, orderPrompts } from "@/lib/prompt-order";
+import type { LookbackPeriod } from "@/lib/chart-utils";
 import type { Brand, Competitor } from "@workspace/lib/db/schema";
 
 interface PromptsDisplayProps {
@@ -49,8 +49,14 @@ export function PromptsDisplay({ pageTitle, pageDescription, pageInfoContent, ed
  *  and not `FilterBar` itself. */
 function PromptsContent({ brandId, editLink }: { brandId: string | undefined; editLink: string }) {
 	const { brand } = useBrand(brandId);
-	const { selectedModel, selectedLookback, selectedTags, searchQuery } = usePageFilters();
-	const { clearFilters } = usePageFilterSetters();
+	const filters = useListFilters();
+	const { model, lookback, tags, search } = filters;
+	// `order` is this route's own search key (not a narrowing filter), so it
+	// rides outside `useListFilters` / `isFiltered`.
+	const order = useSearch({
+		strict: false,
+		select: (s) => coercePromptOrder((s as { order?: unknown }).order),
+	});
 
 	// Server hands us `effectiveModels` — the deployment-configured model ids
 	// this brand actually runs, after applying `enabledModels`. FilterBar
@@ -60,99 +66,85 @@ function PromptsContent({ brandId, editLink }: { brandId: string | undefined; ed
 	const availableModels = useMemo(() => getAvailableModels(effectiveModels), [effectiveModels]);
 	const availableIndividualModels = effectiveModels;
 
-	const modelParam = selectedModel === "all" ? undefined : selectedModel;
+	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 	const {
 		promptsSummary,
 		isLoading: isLoadingSummary,
 		isError: summaryError,
 	} = usePromptsSummary(brandId, {
-		lookback: selectedLookback,
+		lookback,
 		model: modelParam,
-		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		tags: tags.length > 0 ? tags : undefined,
 	});
 
 	const availableTags = promptsSummary?.availableTags ?? [];
 
-	const { sortedPrompts, filteredPromptIds } = useMemo(() => {
-		if (!promptsSummary) return { sortedPrompts: [], filteredPromptIds: [] as string[] };
+	// The prompt list is still search-filtered client-side for display, then
+	// re-ordered per the `order` control (#60). The chart/visibility sections
+	// no longer receive this id list — they resolve the same prompts
+	// server-side from the tag + search filters (issue #68).
+	const sortedPrompts = useMemo(() => {
+		if (!promptsSummary) return [];
 		const allPrompts = promptsSummary.prompts;
-		const filtered = searchQuery
-			? allPrompts.filter((p: { value: string }) => p.value.toLowerCase().includes(searchQuery.toLowerCase()))
+		const filtered = search
+			? allPrompts.filter((p) => p.value.toLowerCase().includes(search.toLowerCase()))
 			: allPrompts;
-		return {
-			sortedPrompts: filtered,
-			filteredPromptIds: filtered.map((p: { id: string }) => p.id),
-		};
-	}, [promptsSummary, searchQuery]);
+		return orderPrompts(filtered, order);
+	}, [promptsSummary, search, order]);
 
 	const isInitialLoad = isLoadingSummary && !promptsSummary;
-	const hasNoPromptsAtAll =
-		!isInitialLoad &&
-		(promptsSummary?.prompts?.length ?? 0) === 0 &&
-		selectedTags.length === 0 &&
-		!searchQuery;
 
 	return (
-		<>
-			<FilterSection>
-				<FilterBar
-					availableTags={availableTags}
-					availableModels={availableModels}
-					showSearch
-					showModelSelector
-					resultCount={isInitialLoad ? undefined : sortedPrompts.length}
-				/>
-				<VisibilityBarSection brandId={brandId} promptIds={filteredPromptIds} />
-			</FilterSection>
-
-			<div className="space-y-6">
-				{isInitialLoad ? (
-					<ContentLoadingSkeleton />
-				) : summaryError ? (
-					<Card className="p-6">
-						<div className="text-center text-muted-foreground">
-							<p className="mb-2">Failed to load prompts data</p>
-							<p className="text-sm">Try refreshing the page</p>
-						</div>
-					</Card>
-				) : hasNoPromptsAtAll ? (
-					<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
-						<div className="text-center py-8 text-muted-foreground">
-							<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-							<p className="mb-4">No prompts yet.</p>
-							<Button asChild size="sm" className="h-7 flex cursor-pointer">
-								<Link to={editLink}>
-									<IconEditCircle />
-									<span>Edit</span>
-								</Link>
-							</Button>
-						</div>
+		<FilteredListShell
+			filters={filters}
+			availableTags={availableTags}
+			availableModels={availableModels}
+			showSearch
+			showModelSelector
+			showResultCount
+			filterBarExtras={<PromptOrderDropdown />}
+			filterSectionExtras={<VisibilityBarSection brandId={brandId} />}
+			isLoading={isInitialLoad}
+			loadingState={<ContentLoadingSkeleton />}
+			isError={Boolean(summaryError)}
+			errorState={
+				<Card className="p-6">
+					<div className="text-center text-muted-foreground">
+						<p className="mb-2">Failed to load prompts data</p>
+						<p className="text-sm">Try refreshing the page</p>
 					</div>
-				) : sortedPrompts.length === 0 ? (
-					<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
-						<div className="text-center py-8 text-muted-foreground">
-							<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
-							<p className="mb-2">No prompts match your filters.</p>
-							<p className="text-sm mb-4">Try adjusting your search or tag filters.</p>
-							<Button variant="outline" size="sm" onClick={clearFilters} className="cursor-pointer">
-								Clear filters
-							</Button>
-						</div>
+				</Card>
+			}
+			totalCount={promptsSummary?.prompts?.length}
+			filteredCount={sortedPrompts.length}
+			noMatchesTitle="No prompts match your filters."
+			noMatchesDescription="Try adjusting your search or tag filters."
+			emptyState={
+				<div className="border-2 border-dashed border-muted rounded-lg min-h-48 flex items-center justify-center">
+					<div className="text-center py-8 text-muted-foreground">
+						<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
+						<p className="mb-4">No prompts yet.</p>
+						<Button asChild size="sm" className="h-7 flex cursor-pointer">
+							<Link to={editLink}>
+								<IconEditCircle />
+								<span>Edit</span>
+							</Link>
+						</Button>
 					</div>
-				) : (
-					<ChartSection
-						brandId={brandId}
-						lookback={selectedLookback}
-						selectedModel={selectedModel}
-						modelParam={modelParam}
-						searchQuery={searchQuery}
-						sortedPrompts={sortedPrompts}
-						filteredPromptIds={filteredPromptIds}
-						availableIndividualModels={availableIndividualModels}
-					/>
-				)}
-			</div>
-		</>
+				</div>
+			}
+		>
+			<ChartSection
+				brandId={brandId}
+				lookback={lookback}
+				selectedModel={model}
+				modelParam={modelParam}
+				searchQuery={search}
+				selectedTags={tags}
+				sortedPrompts={sortedPrompts}
+				availableIndividualModels={availableIndividualModels}
+			/>
+		</FilteredListShell>
 	);
 }
 
@@ -166,23 +158,24 @@ function ChartSection({
 	selectedModel,
 	modelParam,
 	searchQuery,
+	selectedTags,
 	sortedPrompts,
-	filteredPromptIds,
 	availableIndividualModels,
 }: {
 	brandId: string | undefined;
-	lookback: ReturnType<typeof usePageFilters>["selectedLookback"];
-	selectedModel: ReturnType<typeof usePageFilters>["selectedModel"];
+	lookback: LookbackPeriod;
+	selectedModel: string;
 	modelParam: string | undefined;
 	searchQuery: string;
+	selectedTags: string[];
 	sortedPrompts: { id: string; value: string; firstEvaluatedAt?: Date | string | null }[];
-	filteredPromptIds: string[];
 	availableIndividualModels: string[];
 }) {
 	const { batchChartData, isLoading: isLoadingChartData } = useBatchChartData(brandId, {
 		lookback,
 		model: modelParam,
-		promptIds: filteredPromptIds,
+		tags: selectedTags.length > 0 ? selectedTags : undefined,
+		search: searchQuery || undefined,
 	});
 
 	const { startDate, endDate } = useMemo(() => {

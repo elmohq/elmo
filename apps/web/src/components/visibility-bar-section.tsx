@@ -1,15 +1,16 @@
 import { useRef } from "react";
 import { useFilteredVisibility } from "@/hooks/use-filtered-visibility";
 import { VisibilityBar, VisibilityBarSkeleton, VisibilityBarEmpty } from "@/components/visibility-bar";
-import { usePageFilters } from "@/components/filter-bar";
+import { useListFilters } from "@/hooks/use-list-filters";
+import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 
 /**
  * Self-contained visibility bar. Subscribes directly to the filter URL
- * keys it needs and fetches `useFilteredVisibility` itself, so it's a
- * sibling of the chart section rather than something the parent has to
- * wire through. The parent passes the already-search-filtered prompt
- * IDs since search is applied client-side and we don't want to duplicate
- * that logic here.
+ * keys it needs (lookback, model, tags, search) and fetches
+ * `useFilteredVisibility` itself, so it's a sibling of the chart section
+ * rather than something the parent has to wire through. The tag + search
+ * filters are resolved to prompt IDs server-side, so we pass the criteria
+ * rather than a prompt-id list (issue #68).
  *
  * The skeleton stays mounted inside a grid overlay so the bar reserves
  * its vertical space on load and doesn't shove the charts down when the
@@ -17,21 +18,20 @@ import { usePageFilters } from "@/components/filter-bar";
  */
 export function VisibilityBarSection({
 	brandId,
-	promptIds,
 }: {
 	brandId: string | undefined;
-	promptIds: string[];
 }) {
-	const { selectedLookback, selectedModel } = usePageFilters();
-	const modelParam = selectedModel === "all" ? undefined : selectedModel;
+	const { lookback, model, tags, search } = useListFilters();
+	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 
 	const {
 		filteredVisibility,
 		isLoading: isLoadingVisibility,
 		isValidating: isValidatingVisibility,
 	} = useFilteredVisibility(brandId, {
-		lookback: selectedLookback,
-		promptIds: promptIds.length > 0 ? promptIds : undefined,
+		lookback,
+		tags: tags.length > 0 ? tags : undefined,
+		search: search || undefined,
 		model: modelParam,
 	});
 

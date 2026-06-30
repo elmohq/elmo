@@ -10,12 +10,12 @@ export const HOME_FAQS: FaqItem[] = [
 	{
 		question: "What is Elmo?",
 		answer:
-			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO). It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok — mention your brand, which competitors appear alongside you, and which sources each model cites.",
+			"Elmo is an open-source AI visibility platform for Answer Engine Optimization (AEO) — a self-hosted alternative to tools like Profound, Peec, and Otterly. It tracks how AI answer engines — including ChatGPT, Google AI Overviews, Perplexity, Gemini, Copilot, and Grok — mention your brand, which competitors appear alongside you, and which sources each model cites.",
 	},
 	{
 		question: "What is Answer Engine Optimization (AEO)?",
 		answer:
-			"Answer Engine Optimization (AEO), also called generative engine optimization (GEO), is the practice of measuring and improving how often AI answer engines mention and cite your brand. Instead of ranking in a list of blue links, the goal is to be the source an AI quotes in its answer.",
+			"Answer Engine Optimization (AEO) — also called Generative Engine Optimization (GEO) or LLM Optimization (LLMO) — is the practice of measuring and improving how often AI answer engines mention and cite your brand. Instead of ranking in a list of blue links, the goal is to be the source an AI quotes in its answer. (LLMO is also where Elmo gets its name.)",
 	},
 	{
 		question: "Which AI models does Elmo track?",
@@ -60,6 +60,36 @@ export const PRICING_FAQS: FaqItem[] = [
 		question: "Do I need a credit card to get started?",
 		answer:
 			"No. Self-hosting Elmo does not require an account or a credit card. Clone the open-source repository, deploy with the CLI, and start tracking your AI visibility.",
+	},
+];
+
+// Off-Site AEO service FAQ. Rendered on "/off-site-aeo" and emitted as FAQPage
+// JSON-LD from the same route.
+export const OFFSITE_FAQS: FaqItem[] = [
+	{
+		question: "How does the off-site AEO service work?",
+		answer:
+			"It starts with a consultancy call where we review how AI answer engines currently talk about you and decide which prompts and gaps to target. Within 30 days, that month's posts are planned, written, humanized, and live on high-authority sites, and you get a report tying each placement to the issue it targets. We then keep publishing for you every month, adjusting the targets as your visibility shifts.",
+	},
+	{
+		question: "Are the articles AI-generated?",
+		answer:
+			"Yes, and we're upfront about it. We draft with AI, then it is reworked until it lands under a 25% AI-detection score on both ZeroGPT and Pangram before it goes live. That keeps quality high while keeping your brand mentioned in content the models actually trust and cite.",
+	},
+	{
+		question: "Do you offer refunds?",
+		answer:
+			"No. All plans are non-refundable. We commission and place real editorial inventory on third-party sites as soon as your month begins, so those costs are committed up front. You can cancel future months at any time before that cycle's work starts.",
+	},
+	{
+		question: "How is this different from buying backlinks?",
+		answer:
+			"It's a similar process. However, we make sure the content is useful for AEO, only place it on high-quality sites, and humanize the text to avoid detection. Many backlink services offer very low-quality placements with high spam scores, non-existent traffic, and gamed DRs, and either make you provide your own content or produce content that's low quality and easily detected as AI.",
+	},
+	{
+		question: "Will this help my traditional SEO too?",
+		answer:
+			"These all provide dofollow links on high-DR domains with actual traffic, so your search rankings should benefit as well. But the primary purpose is to provide more data points to AI searches for AEO.",
 	},
 ];
 

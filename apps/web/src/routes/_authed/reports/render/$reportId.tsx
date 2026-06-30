@@ -59,7 +59,7 @@ interface MockPrompt { id: string; brandId: string; value: string; enabled: bool
 // ---------- Server function ----------
 
 const loadReportData = createServerFn({ method: "GET" })
-	.inputValidator((d: string) => d)
+	.validator((d: string) => d)
 	.handler(async ({ data: reportId }) => {
 		const session = await requireAuthSession();
 		if (!hasReportAccess(session)) throw new Error("Not authorized");

@@ -92,7 +92,7 @@ These hit the provider API directly — cheaper per token than scrapers, but the
 Example scrape targets:
 
 ```
-claude:anthropic-api:claude-sonnet-4-20250514
+claude:anthropic-api:claude-sonnet-4-6
 chatgpt:openai-api:gpt-5-mini:online
 mistral:mistral-api:mistral-medium-latest:online
 claude:openrouter:anthropic/claude-sonnet-4.6
@@ -125,7 +125,7 @@ SCRAPE_TARGETS=chatgpt:olostep:online,google-ai-mode:olostep:online
 ```bash
 BRIGHTDATA_API_TOKEN=...
 ANTHROPIC_API_KEY=...
-SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude:anthropic-api:claude-sonnet-4-20250514
+SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude:anthropic-api:claude-sonnet-4-6
 ```
 
 **No scraper (APIs only).** Cheapest option, but you're tracking model APIs instead of the real consumer surfaces:
@@ -133,7 +133,7 @@ SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude
 ```bash
 OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
-SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4-20250514
+SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-sonnet-4-6
 ```
 
 ## SCRAPE_TARGETS format

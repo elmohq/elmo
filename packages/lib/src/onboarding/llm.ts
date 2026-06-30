@@ -24,6 +24,7 @@ import {
 	getProvider,
 	parseScrapeTargets,
 	type Provider,
+	type StructuredResearchResult,
 } from "../providers";
 
 /**
@@ -102,4 +103,24 @@ export async function runStructuredResearchPrompt<T>(prompt: string, schema: z.Z
 	}
 	const result = await provider.runStructuredResearch({ prompt, schema });
 	return result.object;
+}
+
+/**
+ * Like {@link runStructuredResearchPrompt} but with the web-search tool OFF — a
+ * single structured completion over context you assemble into the prompt. Same
+ * provider selection (honors `ONBOARDING_LLM_TARGET` / the preference order),
+ * no tools and no agent loop. Use when the prompt already carries all the data.
+ *
+ * Returns the validated object plus the resolved model id (`modelVersion`) so
+ * callers can record which model produced the result.
+ */
+export async function runStructuredCompletionPrompt<T>(
+	prompt: string,
+	schema: z.ZodType<T>,
+): Promise<StructuredResearchResult<T>> {
+	const provider = resolveResearchProvider();
+	if (!provider.runStructuredResearch) {
+		throw new Error(`Provider "${provider.id}" does not implement structured research`);
+	}
+	return provider.runStructuredResearch({ prompt, schema, webSearch: false });
 }

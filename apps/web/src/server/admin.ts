@@ -174,7 +174,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
  * Update delay override for a brand.
  */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			delayOverrideHours: z.number().nullable(),
@@ -201,7 +201,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
  * onboarding wizard and `POST /api/v1/tools/analyze` use.
  */
 export const adminAnalyzeBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			website: z.string().min(1),
 			brandName: z.string().optional(),
@@ -701,7 +701,7 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
  * Retry a prompt job (send immediate job for a prompt).
  */
 export const retryJobFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			promptId: z.string().optional(),
 			jobId: z.string().optional(),
@@ -736,7 +736,7 @@ export const retryJobFn = createServerFn({ method: "POST" })
  * Get logs for a specific job.
  */
 export const getJobLogsFn = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ jobId: z.string() }))
+	.validator(z.object({ jobId: z.string() }))
 	.handler(async ({ data }) => {
 		await requireAdmin();
 

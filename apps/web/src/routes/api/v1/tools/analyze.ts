@@ -8,69 +8,37 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { analyzeBrand } from "@workspace/lib/onboarding";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
+import { z } from "zod";
+import { analyzeBrand, cleanOnboardingDomain } from "@workspace/lib/onboarding";
+import { createApiHandler } from "@/lib/api/handler";
+
+const analyzeBody = z.object({
+	// Mirrors the cleanDomain() check inside analyzeBrand so an unparseable
+	// website is a 400 here instead of an opaque 500 from the analyzer.
+	website: z
+		.string("website is required")
+		.trim()
+		.min(1, "website is required")
+		.refine((website) => cleanOnboardingDomain(website) !== "", "website must be a valid domain or URL"),
+	brandName: z.string().trim().optional(),
+	maxCompetitors: z.int("maxCompetitors must be a non-negative integer").min(0, "maxCompetitors must be a non-negative integer").optional(),
+	maxPrompts: z.int("maxPrompts must be a non-negative integer").min(0, "maxPrompts must be a non-negative integer").optional(),
+});
 
 export const Route = createFileRoute("/api/v1/tools/analyze")({
 	server: {
 		handlers: {
-			POST: async ({ request }) => {
-				if (!validateApiKey(request)) {
-					return Response.json(
-						{ error: "Unauthorized", message: "Valid API key required" },
-						{ status: 401 },
-					);
-				}
-
-				let body: unknown;
-				try {
-					body = await request.json();
-				} catch {
-					return Response.json(
-						{ error: "Validation Error", message: "Request body must be valid JSON" },
-						{ status: 400 },
-					);
-				}
-
-				const parsed = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
-				const { website, brandName, maxCompetitors, maxPrompts } = parsed;
-
-				if (!website || typeof website !== "string" || !website.trim()) {
-					return Response.json(
-						{ error: "Validation Error", message: "website is required" },
-						{ status: 400 },
-					);
-				}
-				if (maxCompetitors !== undefined && (typeof maxCompetitors !== "number" || !Number.isInteger(maxCompetitors) || maxCompetitors < 0)) {
-					return Response.json(
-						{ error: "Validation Error", message: "maxCompetitors must be a non-negative integer" },
-						{ status: 400 },
-					);
-				}
-				if (maxPrompts !== undefined && (typeof maxPrompts !== "number" || !Number.isInteger(maxPrompts) || maxPrompts < 0)) {
-					return Response.json(
-						{ error: "Validation Error", message: "maxPrompts must be a non-negative integer" },
-						{ status: 400 },
-					);
-				}
-
-				try {
-					const suggestion = await analyzeBrand({
-						website: website.trim(),
-						brandName: typeof brandName === "string" ? brandName.trim() : undefined,
-						maxCompetitors: typeof maxCompetitors === "number" ? maxCompetitors : 20,
-						maxPrompts: typeof maxPrompts === "number" ? maxPrompts : undefined,
+			POST: createApiHandler({
+				body: analyzeBody,
+				handle: async ({ body }) => {
+					return await analyzeBrand({
+						website: body.website,
+						brandName: body.brandName,
+						maxCompetitors: body.maxCompetitors ?? 20,
+						maxPrompts: body.maxPrompts,
 					});
-					return Response.json(suggestion);
-				} catch (err) {
-					console.error("[tools.analyze] failed:", err);
-					const message = err instanceof Error ? err.message : "Analysis failed";
-					return Response.json(
-						{ error: "Internal Server Error", message },
-						{ status: 500 },
-					);
-				}
-			},
+				},
+			}),
 		},
 	},
 });

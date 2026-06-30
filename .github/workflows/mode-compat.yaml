@@ -1,0 +1,87 @@
+# Deployment smoke tests (issue #341)
+#
+# Protects the elmo-cloud build-out (issue #8): open-source (local), demo, and
+# whitelabel deployments must keep booting unchanged while cloud lands.
+#
+# One job, one `pnpm install`, two concerns:
+#   1. Boot smoke  — every non-cloud mode in a single process: env validation +
+#                    deployment-factory resolution + auth initialization. No DB.
+#   2. Migrations  — apply to an empty DB, seed an existing local install, then
+#                    re-apply so a future backfill (e.g. #339 brands->org) that
+#                    breaks on existing data fails here before merge.
+#
+# Runs on every push/PR (no path filter): the job is cheap — one install, an
+# in-process boot smoke, and ~15s of migration checks — so a mode-boot or
+# migration regression is caught regardless of which files changed.
+
+name: Deployment Smoke Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: elmo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Used by the migration steps below. The boot smoke ignores this and
+      # supplies its own dummy env per mode (it never connects to a DB).
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      # 1. Boot smoke — all non-cloud modes in one process.
+      - name: Boot smoke (local, demo, whitelabel)
+        run: pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts
+
+      # 2. Migrations — fail if they don't apply cleanly, or (once #339 lands)
+      #    if a backfill breaks on the seeded existing-install data.
+      - name: Apply migrations to an empty database
+        run: pnpm -C packages/lib exec drizzle-kit migrate
+
+      - name: Seed an existing local install
+        run: pnpm -C e2e exec tsx seed.ts
+
+      - name: Re-apply migrations against seeded data
+        run: pnpm -C packages/lib exec drizzle-kit migrate

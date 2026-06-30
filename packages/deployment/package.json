@@ -1,6 +1,6 @@
 {
   "name": "@workspace/deployment",
-  "version": "0.2.10",
+  "version": "0.2.13",
   "private": true,
   "license": "MIT",
   "main": "./src/index.ts",
@@ -14,7 +14,7 @@
     "@workspace/whitelabel": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.3",
     "typescript": "^6.0.3"
   }
 }

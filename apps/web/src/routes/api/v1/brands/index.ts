@@ -10,7 +10,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { count, desc } from "drizzle-orm";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
 import {
 	createBrand,
 	createBrandInputSchema,
@@ -19,16 +18,13 @@ import {
 	BrandConflictError,
 	InvalidDomainsError,
 } from "@/server/onboarding-core";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
+			GET: createApiHandler({
+				handle: async ({ request }) => {
 					const { searchParams } = new URL(request.url);
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
@@ -45,58 +41,29 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						.limit(limit)
 						.offset(offset);
 
-					return Response.json({
+					return {
 						brands: rows.map(buildBrandResult),
 						pagination: { page, limit, total: totalCount, totalPages },
-					});
-				} catch (err) {
-					console.error("[brands GET] failed:", err);
-					return Response.json({ error: "Internal Server Error" }, { status: 500 });
-				}
-			},
+					};
+				},
+			}),
 
-			POST: async ({ request }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				let body: unknown;
-				try {
-					body = await request.json();
-				} catch {
-					return Response.json(
-						{ error: "Validation Error", message: "Request body must be valid JSON" },
-						{ status: 400 },
-					);
-				}
-
-				const parsed = createBrandInputSchema.safeParse(body);
-				if (!parsed.success) {
-					return Response.json(
-						{
-							error: "Validation Error",
-							message: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
-						},
-						{ status: 400 },
-					);
-				}
-
-				try {
-					const internal = apiCreateInputToInternal(parsed.data);
-					const result = await createBrand(internal);
-					return Response.json(result, { status: 201 });
-				} catch (err) {
+			POST: createApiHandler({
+				body: createBrandInputSchema,
+				status: 201,
+				mapError: (err) => {
 					if (err instanceof InvalidDomainsError) {
-						return Response.json({ error: "Validation Error", message: err.message }, { status: 400 });
+						return new ApiError(400, "Validation Error", err.message);
 					}
 					if (err instanceof BrandConflictError) {
-						return Response.json({ error: "Conflict", message: err.message }, { status: 409 });
+						return new ApiError(409, "Conflict", err.message);
 					}
-					console.error("[brands POST] failed:", err);
-					const message = err instanceof Error ? err.message : "Failed to create brand";
-					return Response.json({ error: "Internal Server Error", message }, { status: 500 });
-				}
-			},
+				},
+				handle: async ({ body }) => {
+					const internal = apiCreateInputToInternal(body);
+					return await createBrand(internal);
+				},
+			}),
 		},
 	},
 });

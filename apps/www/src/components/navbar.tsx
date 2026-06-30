@@ -1,5 +1,5 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -20,6 +20,13 @@ const navigationLinks = [
 	{ href: "/roadmap", label: "Roadmap" },
 	{ href: "/vision", label: "Vision" },
 	{ href: "/docs", label: "Docs" },
+];
+
+// Off-Site AEO gets a standout button in the desktop action cluster, so it's
+// kept out of the inline nav above and surfaced here for the mobile menu only.
+const mobileLinks = [
+	{ href: "/off-site-aeo", label: "Off-Site AEO" },
+	...navigationLinks,
 ];
 
 export function Navbar() {
@@ -68,7 +75,7 @@ export function Navbar() {
 						<PopoverContent align="start" className="w-44 p-1 md:hidden">
 							<NavigationMenu className="max-w-none *:w-full">
 								<NavigationMenuList className="flex-col items-start gap-0">
-									{navigationLinks.map((link) => (
+									{mobileLinks.map((link) => (
 										<NavigationMenuItem key={link.href} className="w-full">
 											<NavigationMenuLink href={link.href} className="py-1.5">
 												{link.label}
@@ -129,6 +136,13 @@ export function Navbar() {
 							</span>
 						)}
 					</a>
+					<Link
+						to="/off-site-aeo"
+						className="hidden h-8 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium leading-none text-zinc-700 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-950 hover:ring-zinc-300 md:inline-flex"
+					>
+						<Sparkles className="size-3.5 text-blue-600" />
+						Off-Site AEO
+					</Link>
 					<Link
 						to="/docs"
 						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"

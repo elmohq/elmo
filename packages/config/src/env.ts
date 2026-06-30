@@ -1,59 +1,8 @@
+import { ENV_REGISTRY } from "./env-registry";
+import { parseScrapeTargets } from "./scrape-targets";
 import type { DeploymentMode, EnvRequirement } from "./types";
 
 export type EnvMap = Record<string, string | undefined>;
-
-const PROVIDER_KEY_MAP: Record<string, { keys: string[]; label: string }> = {
-	olostep: { keys: ["OLOSTEP_API_KEY"], label: "OLOSTEP_API_KEY" },
-	brightdata: { keys: ["BRIGHTDATA_API_TOKEN"], label: "BRIGHTDATA_API_TOKEN" },
-	oxylabs: { keys: ["OXYLABS_USERNAME", "OXYLABS_PASSWORD"], label: "OXYLABS_USERNAME + OXYLABS_PASSWORD" },
-	openrouter: { keys: ["OPENROUTER_API_KEY"], label: "OPENROUTER_API_KEY" },
-	"openai-api": { keys: ["OPENAI_API_KEY"], label: "OPENAI_API_KEY" },
-	"anthropic-api": { keys: ["ANTHROPIC_API_KEY"], label: "ANTHROPIC_API_KEY" },
-	"mistral-api": { keys: ["MISTRAL_API_KEY"], label: "MISTRAL_API_KEY" },
-	dataforseo: { keys: ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"], label: "DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD" },
-};
-
-/**
- * Parse SCRAPE_TARGETS to extract the unique provider IDs.
- */
-function parseProviders(scrapeTargets: string | undefined): string[] {
-	if (!scrapeTargets) return [];
-	const providers = new Set<string>();
-	for (const entry of scrapeTargets.split(",")) {
-		const parts = entry.trim().split(":");
-		if (parts.length < 2) continue;
-		providers.add(parts[1]);
-	}
-	return [...providers];
-}
-
-/**
- * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
- */
-function buildProviderKeyRequirements(): EnvRequirement[] {
-	const scrapeTargets = process.env.SCRAPE_TARGETS;
-	if (!scrapeTargets) return [];
-
-	const providers = parseProviders(scrapeTargets);
-	const requirements: EnvRequirement[] = [];
-	const seen = new Set<string>();
-
-	for (const provider of providers) {
-		const mapping = PROVIDER_KEY_MAP[provider];
-		if (!mapping || seen.has(mapping.label)) continue;
-		seen.add(mapping.label);
-
-		const useRequireAll = provider === "dataforseo" || provider === "oxylabs";
-		requirements.push({
-			id: `PROVIDER_${provider.toUpperCase().replace("-", "_")}`,
-			label: mapping.label,
-			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
-			isSatisfied: useRequireAll ? requireAll(mapping.keys) : requireAny(mapping.keys),
-		});
-	}
-
-	return requirements;
-}
 
 export interface MissingEnvVar {
 	id: string;
@@ -95,107 +44,49 @@ export function createEnvRequirement(key: string, description?: string): EnvRequ
 }
 
 /**
- * Common environment requirements for all deployment modes
+ * Requirements for every registry var hard-required by the given mode.
  */
-export const COMMON_REQUIREMENTS: EnvRequirement[] = [
-	{
-		id: "BETTER_AUTH_SECRET",
-		label: "BETTER_AUTH_SECRET",
-		description: "Session cookie encryption secret.",
-		isSatisfied: requireAll(["BETTER_AUTH_SECRET"]),
-	},
-	{
-		id: "DATABASE_URL",
-		label: "DATABASE_URL",
-		description: "PostgreSQL connection string.",
-		isSatisfied: requireAll(["DATABASE_URL"]),
-	},
-	{
-		id: "SCRAPE_TARGETS",
-		label: "SCRAPE_TARGETS",
-		description:
-			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
-		isSatisfied: requireAll(["SCRAPE_TARGETS"]),
-	},
-	...buildProviderKeyRequirements(),
-];
+function buildStaticRequirements(mode: DeploymentMode): EnvRequirement[] {
+	return ENV_REGISTRY.filter((spec) => Array.isArray(spec.requiredBy) && spec.requiredBy.includes(mode)).map((spec) =>
+		createEnvRequirement(spec.name, spec.description),
+	);
+}
 
 /**
- * Environment requirements specific to Auth0/whitelabel mode
+ * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
  */
-export const AUTH0_REQUIREMENTS: EnvRequirement[] = [
-	{
-		id: "AUTH0_MGMT_API_DOMAIN",
-		label: "AUTH0_MGMT_API_DOMAIN",
-		description: "Auth0 Management API domain.",
-		isSatisfied: requireAll(["AUTH0_MGMT_API_DOMAIN"]),
-	},
-	{
-		id: "AUTH0_CLIENT_ID",
-		label: "AUTH0_CLIENT_ID",
-		description: "Auth0 client ID.",
-		isSatisfied: requireAll(["AUTH0_CLIENT_ID"]),
-	},
-	{
-		id: "AUTH0_CLIENT_SECRET",
-		label: "AUTH0_CLIENT_SECRET",
-		description: "Auth0 client secret.",
-		isSatisfied: requireAll(["AUTH0_CLIENT_SECRET"]),
-	},
-];
+function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement[] {
+	let providers: string[];
+	try {
+		providers = [...new Set(parseScrapeTargets(env.SCRAPE_TARGETS).map((target) => target.provider))];
+	} catch {
+		// A missing or malformed SCRAPE_TARGETS is reported by its own
+		// requirement (and rejected at worker boot); provider keys can't be
+		// derived from it.
+		return [];
+	}
 
-/**
- * Environment requirements specific to whitelabel branding
- * All branding values must be provided - no defaults allowed
- *
- * TanStack Start uses VITE_* for client-side env vars.
- */
-export const WHITELABEL_BRANDING_REQUIREMENTS: EnvRequirement[] = [
-	{
-		id: "VITE_APP_NAME",
-		label: "VITE_APP_NAME",
-		description: "Application display name (e.g., 'Acme AI Search').",
-		isSatisfied: requireAll(["VITE_APP_NAME"]),
-	},
-	{
-		id: "VITE_APP_ICON",
-		label: "VITE_APP_ICON",
-		description: "Application icon URL (must be an external URL, e.g., 'https://cdn.example.com/icon.png').",
-		isSatisfied: requireAll(["VITE_APP_ICON"]),
-	},
-	{
-		id: "VITE_APP_URL",
-		label: "VITE_APP_URL",
-		description: "Application URL (e.g., 'https://ai.example.com/').",
-		isSatisfied: requireAll(["VITE_APP_URL"]),
-	},
-	{
-		id: "VITE_APP_PARENT_NAME",
-		label: "VITE_APP_PARENT_NAME",
-		description: "Parent application name (e.g., 'Acme').",
-		isSatisfied: requireAll(["VITE_APP_PARENT_NAME"]),
-	},
-	{
-		id: "VITE_APP_PARENT_URL",
-		label: "VITE_APP_PARENT_URL",
-		description: "Parent application URL (e.g., 'https://app.example.com/').",
-		isSatisfied: requireAll(["VITE_APP_PARENT_URL"]),
-	},
-	{
-		id: "VITE_OPTIMIZATION_URL_TEMPLATE",
-		label: "VITE_OPTIMIZATION_URL_TEMPLATE",
-		description:
-			"URL template for optimization with placeholders {brandId}, {prompt}, {webQuery} (e.g., 'https://app.example.com/optimize?org_id={brandId}&prompt={prompt}&web_query={webQuery}').",
-		isSatisfied: requireAll(["VITE_OPTIMIZATION_URL_TEMPLATE"]),
-	},
-	// VITE_ONBOARDING_REDIRECT_URL_TEMPLATE is optional - only needed if you want to redirect
-	// users to the parent app after completing onboarding. Uses {brandId} placeholder.
-];
+	const requirements: EnvRequirement[] = [];
+	for (const provider of providers) {
+		const keys = ENV_REGISTRY.filter(
+			(spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider === provider,
+		).map((spec) => spec.name);
+		if (keys.length === 0) continue;
+		requirements.push({
+			id: `PROVIDER_${provider.toUpperCase().replace(/-/g, "_")}`,
+			label: keys.join(" + "),
+			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
+			isSatisfied: requireAll(keys),
+		});
+	}
+
+	return requirements;
+}
 
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
-	local: [...COMMON_REQUIREMENTS],
-	demo: [...COMMON_REQUIREMENTS],
-	whitelabel: [...COMMON_REQUIREMENTS, ...AUTH0_REQUIREMENTS, ...WHITELABEL_BRANDING_REQUIREMENTS],
+	local: [...buildStaticRequirements("local"), ...buildProviderKeyRequirements()],
+	demo: [...buildStaticRequirements("demo"), ...buildProviderKeyRequirements()],
+	whitelabel: [...buildStaticRequirements("whitelabel"), ...buildProviderKeyRequirements()],
 	cloud: [], // todo
 };
 

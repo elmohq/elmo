@@ -141,6 +141,30 @@ export const reports = pgTable(
 	}),
 ).enableRLS();
 
+// One row per generated Opportunities report, per brand — append-only history
+// (every generation is kept, not overwritten). The page reads the latest row and
+// regenerates only when it's stale; see apps/web/src/server/opportunities.ts.
+export const brandOpportunities = pgTable(
+	"brand_opportunities",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.references(() => brands.id)
+			.notNull(),
+		/** The full enriched opportunities report the page renders (OpportunitiesReport JSON). */
+		report: json("report").notNull(),
+		/** Model/provider that generated it, when known. */
+		model: text("model"),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => ({
+		brandCreatedIdx: index("brand_opportunities_brand_id_created_at_idx").on(table.brandId, table.createdAt),
+	}),
+).enableRLS();
+
+export type BrandOpportunity = typeof brandOpportunities.$inferSelect;
+export type NewBrandOpportunity = typeof brandOpportunities.$inferInsert;
+
 export type Brand = typeof brands.$inferSelect;
 export type NewBrand = typeof brands.$inferInsert;
 

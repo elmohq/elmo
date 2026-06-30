@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { HeadContent, Outlet, ScriptOnce, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { NotFound } from "@/router-default-components";
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import { NuqsAdapter } from "nuqs/adapters/react";
 import type { QueryClient } from "@tanstack/react-query";
 import { DEFAULT_APP_ICON, ELMO_THEME_COLOR } from "@workspace/config/constants";
 import type { DeploymentMode } from "@workspace/config/types";
@@ -159,9 +158,7 @@ function RootComponent() {
 				<HeadContent />
 			</head>
 			<body className="font-sans antialiased">
-				<NuqsAdapter>
-					<Outlet />
-				</NuqsAdapter>
+				<Outlet />
 				<TanStackDevtools plugins={[queryDevtools]} />
 				<Scripts />
 			</body>

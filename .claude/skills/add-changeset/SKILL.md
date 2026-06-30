@@ -28,7 +28,7 @@ List only the packages affected. Default to `patch` unless the user asks for a d
 
 ## Writing the description
 
-- Keep it to 1–3 sentences. Length signals importance to readers, so make it proportional to the change.
+- Keep it to one concise sentence — roughly 160 characters or fewer. Length signals importance, so scale it to the change, but err short.
 - Plain text — no headers, bold, italics, or newlines inside the description. Inline `code` with single backticks and links are fine when genuinely useful.
 - End every sentence with a full stop.
 - Past tense for what the PR did: "Added", "Fixed", "Changed".

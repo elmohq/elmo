@@ -5,8 +5,14 @@
  * on prompt_runs and citations tables.
  */
 
+import { type SQL, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { sql, type SQL } from "drizzle-orm";
+import {
+	UNAVAILABLE_SENTINEL,
+	type FanoutBreakdownRow,
+	type FanoutModelTotalRow,
+	type FanoutPromptTotalRow,
+} from "@/lib/fanout-analysis";
 
 const db = drizzle(process.env.DATABASE_URL!);
 
@@ -101,17 +107,6 @@ export interface ProcessedBatchChartDataPoint {
 	competitor_counts: Record<string, number>;
 }
 
-export interface BatchVisibilityData {
-	visibilityTimeSeries: Array<{
-		date: string;
-		total_runs: number;
-		brand_mentioned_count: number;
-		is_branded: boolean;
-	}>;
-	totalRuns: number;
-	totalMentioned: number;
-}
-
 export interface AdminRunsOverTime {
 	date: string;
 	count: number;
@@ -144,7 +139,10 @@ function dateFilter(fromDate: string | null, toDate: string | null, timezone: st
 }
 
 function uuidList(ids: string[]): SQL {
-	return sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `);
+	return sql.join(
+		ids.map((id) => sql`${id}::uuid`),
+		sql`, `,
+	);
 }
 
 function promptIdFilter(enabledPromptIds?: string[]): SQL {
@@ -413,9 +411,7 @@ export async function getVisibilityTimeSeries(
 	enabledPromptIds?: string[],
 	model?: string,
 ): Promise<VisibilityTimeSeriesPoint[]> {
-	const isBranded = brandedPromptIds.length > 0
-		? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))`
-		: sql`FALSE`;
+	const isBranded = brandedPromptIds.length > 0 ? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))` : sql`FALSE`;
 	const rows = await queryPg<VisibilityTimeSeriesPoint>(sql`
 		SELECT
 			(created_at AT TIME ZONE ${timezone})::date AS date,
@@ -581,6 +577,9 @@ export async function getPromptWebQueryCounts(
 	timezone: string,
 	model?: string,
 ): Promise<WebQueryCount[]> {
+	// The `unavailable` sentinel (search happened, query strings unexposed) isn't
+	// a usable web query — without this filter it becomes a model's "top query"
+	// whenever a provider never exposes strings (OpenRouter; DataForSEO Google).
 	const rows = await queryPg<WebQueryCount>(sql`
 		SELECT
 			model,
@@ -589,6 +588,7 @@ export async function getPromptWebQueryCounts(
 		FROM prompt_runs, unnest(web_queries) AS web_query
 		WHERE prompt_id = ${promptId}
 			AND array_length(web_queries, 1) > 0
+			AND lower(btrim(web_query)) <> ${UNAVAILABLE_SENTINEL}
 			${dateFilter(fromDate, toDate, timezone)}
 			${modelFilter(model)}
 		GROUP BY model, web_query
@@ -613,7 +613,7 @@ export async function getCitationDomainStats(
 		SELECT
 			domain,
 			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS example_title
 		FROM citations
 		WHERE brand_id = ${brandId}
 			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
@@ -642,7 +642,7 @@ export async function getCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
 			count(*)::int AS count,
 			round(avg(citation_index)::numeric, 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
@@ -662,27 +662,6 @@ export async function getCitationUrlStats(
 // Prompt-Level Citation Stats
 // ============================================================================
 
-export async function getPromptCitationStats(
-	promptId: string,
-	fromDate: string,
-	toDate: string,
-	timezone: string,
-): Promise<CitationDomainStats[]> {
-	const rows = await queryPg<CitationDomainStats>(sql`
-		SELECT
-			domain,
-			count(*)::int AS count,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS example_title
-		FROM citations
-		WHERE prompt_id = ${promptId}
-			AND created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
-			AND created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
-		GROUP BY domain
-		ORDER BY count DESC
-	`);
-	return rows;
-}
-
 export async function getPromptCitationUrlStats(
 	promptId: string,
 	fromDate: string,
@@ -693,7 +672,7 @@ export async function getPromptCitationUrlStats(
 		SELECT
 			url,
 			domain,
-			(array_agg(title) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
 			count(*)::int AS count,
 			round(avg(citation_index)::numeric, 1)::float AS avg_position,
 			count(DISTINCT prompt_id)::int AS prompt_count
@@ -820,12 +799,276 @@ export async function getPerPromptDailyCitationStats(
 }
 
 // ============================================================================
+// Per-Prompt Run Stats (grounding coverage + mention rates)
+// ============================================================================
+
+export interface PerPromptRunStats {
+	prompt_id: string;
+	runs: number;
+	/** Distinct days on which this prompt was run (for the chosen model filter). */
+	run_days: number;
+	/** Fraction of runs in which the brand was mentioned, 0..1. */
+	brand_mention_rate: number;
+	/** Fraction of runs in which any tracked competitor was mentioned, 0..1. */
+	competitor_mention_rate: number;
+}
+
+export async function getPerPromptRunStats(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptRunStats[]> {
+	const rows = await queryPg<PerPromptRunStats>(sql`
+		SELECT
+			prompt_id,
+			count(*)::int AS runs,
+			count(DISTINCT (created_at AT TIME ZONE ${timezone})::date)::int AS run_days,
+			round(avg(CASE WHEN brand_mentioned THEN 1 ELSE 0 END)::numeric, 4)::float AS brand_mention_rate,
+			round(avg(CASE WHEN cardinality(competitors_mentioned) > 0 THEN 1 ELSE 0 END)::numeric, 4)::float AS competitor_mention_rate
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id
+	`);
+	return rows;
+}
+
+// ============================================================================
+// Share of Voice (competitor mention leaderboard)
+// ============================================================================
+
+export interface BrandMentionTotals {
+	total_runs: number;
+	brand_mentioned_runs: number;
+	/** Distinct prompts in which the brand was mentioned at least once. */
+	brand_mentioned_prompts: number;
+}
+
+export async function getBrandMentionTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<BrandMentionTotals> {
+	const rows = await queryPg<BrandMentionTotals>(sql`
+		SELECT
+			count(*)::int AS total_runs,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_runs,
+			count(DISTINCT prompt_id) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_prompts
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+	`);
+	return rows[0] ?? { total_runs: 0, brand_mentioned_runs: 0, brand_mentioned_prompts: 0 };
+}
+
+export interface PerPromptDailyMentionRow {
+	prompt_id: string;
+	date: string;
+	/** Runs that day (for this prompt) mentioning the brand. */
+	brand_mentions: number;
+	/** Competitor mention instances that day (for this prompt). */
+	competitor_mentions: number;
+}
+
+/** Per-prompt, per-day brand and competitor mention counts — feeds LVCF-smoothed share of voice. */
+export async function getPerPromptDailyMentions(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptDailyMentionRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyMentionRow>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date::text AS date,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentions,
+			COALESCE(sum(cardinality(competitors_mentioned)), 0)::int AS competitor_mentions
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, date
+		ORDER BY prompt_id, date
+	`);
+	return rows;
+}
+
+export interface PerPromptDailyCompetitorRow {
+	prompt_id: string;
+	date: string;
+	competitor: string;
+	/** Competitor mention instances that day (for this prompt). */
+	mentions: number;
+}
+
+/**
+ * Per-prompt, per-day, per-competitor mention counts. Feeds the LVCF "current
+ * standings" leaderboard so the headline number, donut, and table all reflect
+ * the same last-day state as the share-of-voice trend (rather than a whole-window
+ * aggregate that wouldn't match the line's end).
+ */
+export async function getPerPromptDailyCompetitorMentions(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptDailyCompetitorRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyCompetitorRow>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date::text AS date,
+			competitor,
+			count(*)::int AS mentions
+		FROM prompt_runs, unnest(competitors_mentioned) AS competitor
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, date, competitor
+		ORDER BY prompt_id, date
+	`);
+	return rows;
+}
+
+// ============================================================================
+// Per-Prompt Cited Pages (titles for the opportunities digest)
+// ============================================================================
+
+export interface PerPromptCitationPageRow {
+	prompt_id: string;
+	url: string | null;
+	domain: string;
+	/** A representative cited page title for this URL (most recent non-null). */
+	title: string | null;
+	count: number;
+}
+
+/** Per prompt, citations at the page (URL) level: one row per prompt+URL with a
+ * representative title and its domain, ordered by count. Aggregate to domains in
+ * JS for the landscape digest; use the URLs for the citation drill-downs. */
+export async function getPerPromptCitationPages(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptCitationPageRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptCitationPageRow>(sql`
+		SELECT
+			prompt_id,
+			url,
+			domain,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, url, domain
+		ORDER BY prompt_id, count DESC
+	`);
+	return rows;
+}
+
+export interface PerPromptDailyCitationPageRow {
+	prompt_id: string;
+	date: string;
+	url: string | null;
+	domain: string;
+	title: string | null;
+	count: number;
+}
+
+/** Per prompt + day + URL: citation counts with a representative title. Powers the
+ *  category and page-type time-series, which are classified in JS from url + title. */
+export async function getPerPromptDailyCitationPages(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<PerPromptDailyCitationPageRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<PerPromptDailyCitationPageRow>(sql`
+		SELECT
+			prompt_id,
+			(created_at AT TIME ZONE ${timezone})::date AS date,
+			url,
+			domain,
+			(array_agg(title ORDER BY created_at DESC) FILTER (WHERE title IS NOT NULL))[1] AS title,
+			count(*)::int AS count
+		FROM citations
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+			${modelFilter(model)}
+		GROUP BY prompt_id, date, url, domain
+		ORDER BY prompt_id, date
+	`);
+	return rows;
+}
+
+// ============================================================================
+// Brand Mention Rate by Model (per-platform standing for the digest)
+// ============================================================================
+
+export interface ModelMentionRateRow {
+	model: string;
+	runs: number;
+	brand_mentioned_count: number;
+}
+
+/** Brand mention rate grouped by model, over a window — how the brand is doing
+ * on each tracked platform. */
+export async function getBrandMentionRateByModel(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+): Promise<ModelMentionRateRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	const rows = await queryPg<ModelMentionRateRow>(sql`
+		SELECT
+			model,
+			count(*)::int AS runs,
+			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count
+		FROM prompt_runs
+		WHERE brand_id = ${brandId}
+			${dateFilter(fromDate, toDate, timezone)}
+			${promptIdFilter(enabledPromptIds)}
+		GROUP BY model
+		ORDER BY runs DESC
+	`);
+	return rows;
+}
+
+// ============================================================================
 // Brand Data Age
 // ============================================================================
 
-export async function getBrandEarliestRunDate(
-	brandId: string,
-): Promise<string | null> {
+export async function getBrandEarliestRunDate(brandId: string): Promise<string | null> {
 	const rows = await queryPg<{ earliest_date: string | null }>(sql`
 		SELECT min(created_at) AS earliest_date
 		FROM prompt_runs
@@ -911,54 +1154,6 @@ export async function getBatchChartData(
 }
 
 // ============================================================================
-// Batch Visibility Data
-// ============================================================================
-
-export async function getBatchVisibilityData(
-	brandId: string,
-	promptIds: string[],
-	brandedPromptIds: string[],
-	fromDate: string | null,
-	toDate: string | null,
-	timezone: string,
-): Promise<BatchVisibilityData> {
-	if (promptIds.length === 0) {
-		return { visibilityTimeSeries: [], totalRuns: 0, totalMentioned: 0 };
-	}
-
-	const isBranded = brandedPromptIds.length > 0
-		? sql`(prompt_id IN (${uuidList(brandedPromptIds)}))`
-		: sql`FALSE`;
-	const result = await queryPg<{
-		date: string;
-		total_runs: number;
-		brand_mentioned_count: number;
-		is_branded: boolean;
-	}>(sql`
-		SELECT
-			(created_at AT TIME ZONE ${timezone})::date AS date,
-			count(*)::int AS total_runs,
-			count(*) FILTER (WHERE brand_mentioned)::int AS brand_mentioned_count,
-			${isBranded} AS is_branded
-		FROM prompt_runs
-		WHERE brand_id = ${brandId}
-			AND prompt_id IN (${uuidList(promptIds)})
-			${dateFilter(fromDate, toDate, timezone)}
-		GROUP BY date, is_branded
-		ORDER BY date
-	`);
-
-	let totalRuns = 0;
-	let totalMentioned = 0;
-	for (const row of result) {
-		totalRuns += Number(row.total_runs);
-		totalMentioned += Number(row.brand_mentioned_count);
-	}
-
-	return { visibilityTimeSeries: result, totalRuns, totalMentioned };
-}
-
-// ============================================================================
 // Admin Stats
 // ============================================================================
 
@@ -1009,3 +1204,146 @@ export async function getAdminActiveBrandsOverTime(): Promise<AdminActiveBrandsO
 	return rows;
 }
 
+// ============================================================================
+// Query Fanout
+//
+// The sub-queries an engine issues to the web while answering a prompt, read
+// from `prompt_runs.web_queries` — the single source for every figure, with no
+// provider-specific handling. Entries that aren't genuine fan-out are dropped
+// via `genuineFanoutWq`: the `unavailable` sentinel providers emit when a
+// search happened but the strings aren't exposed, and the prompt echoed
+// verbatim. A run that lists the same query twice counts it ONCE — one
+// instance per (run, normalized query) — so a single run can't satisfy the
+// count >= 2 Invisible/Won gate.
+// Every fan-out query joins `prompts` (to compare against the prompt text) so
+// columns are qualified (`pr.`, the join brings two `created_at` columns into
+// scope) and the shared unqualified filter helpers are inlined instead.
+// ============================================================================
+
+/**
+ * Predicate selecting genuine fan-out queries: non-empty, not the `unavailable`
+ * sentinel (OpenRouter and DataForSEO always; BrightData/Olostep on extraction
+ * failure), and not the prompt repeated verbatim. Shared by the breakdown, model
+ * totals, and per-prompt totals so all three count the same set. Requires a
+ * `wq` unnest alias plus the `pr` prompt_runs and `p` prompts rows in scope.
+ *
+ * The verbatim-repeat exclusion is a display rule, not data cleaning: engines
+ * genuinely search the prompt verbatim sometimes, and those entries stay in
+ * `web_queries` — but a repeat says nothing about how the prompt was rewritten,
+ * so it isn't fan-out. The comparison uses the prompt's CURRENT text, so after
+ * a prompt edit, searches of the old wording start surfacing as queries: for
+ * honest providers those are real searches; only pre-2026-06 DataForSEO rows
+ * (which fabricated `[prompt]` as their query field; the provider now writes
+ * the sentinel) would surface something that never ran, and those age out of
+ * the lookback windows.
+ */
+function genuineFanoutWq(): SQL {
+	return sql`length(btrim(wq)) > 0 AND lower(btrim(wq)) <> ${UNAVAILABLE_SENTINEL} AND lower(btrim(wq)) <> lower(btrim(p.value))`;
+}
+
+/**
+ * (prompt × model × query) fan-out counts with how often the brand was mentioned.
+ * The LATERAL emits each run's DISTINCT normalized queries, so a run that lists
+ * the same query twice contributes one instance (`count` = runs that searched it,
+ * keeping `brand_mentions <= count` and the count >= 2 Invisible/Won gate
+ * meaning "ran in 2+ runs"). Normalizing here (lowercase + trim) merges case
+ * variants exactly like the aggregator's `norm`.
+ */
+export async function getFanoutBreakdown(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutBreakdownRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<FanoutBreakdownRow>(sql`
+		SELECT
+			pr.prompt_id,
+			pr.model,
+			fq.query,
+			count(*)::int AS count,
+			count(*) FILTER (WHERE pr.brand_mentioned)::int AS brand_mentions
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL (
+			SELECT DISTINCT lower(btrim(wq)) AS query FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
+		WHERE pr.brand_id = ${brandId}
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.prompt_id, pr.model, fq.query
+	`);
+}
+
+/** Per-model run counts and fan-out totals (the denominators for fan-outs-per-execution). */
+export async function getFanoutModelTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutModelTotalRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	// `runs` counts every web-search-enabled run ("Search Prompt Runs"); `fanout_runs`
+	// and `total_queries` count only genuine fan-out (via `genuineFanoutWq`), so they
+	// stay consistent with `getFanoutBreakdown`. The per-run LATERAL yields one row per
+	// run holding its DISTINCT genuine-query count (per-run duplicates count once, as
+	// in the breakdown). Engines that don't expose their searches contribute runs
+	// but no queries.
+	return queryPg<FanoutModelTotalRow>(sql`
+		SELECT
+			pr.model,
+			count(*) FILTER (WHERE pr.web_search_enabled)::int AS runs,
+			count(*) FILTER (WHERE fq.cnt > 0)::int AS fanout_runs,
+			COALESCE(sum(fq.cnt), 0)::int AS total_queries
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL (
+			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
+		WHERE pr.brand_id = ${brandId}
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.model
+		ORDER BY total_queries DESC
+	`);
+}
+
+/**
+ * Per-prompt count of runs that produced ≥1 genuine fan-out query — the
+ * denominator for avg fan-out per run. Uses the same `genuineFanoutWq` filter as
+ * the breakdown, so echoes/sentinels don't inflate it.
+ */
+export async function getFanoutPromptTotals(
+	brandId: string,
+	fromDate: string,
+	toDate: string,
+	timezone: string,
+	enabledPromptIds?: string[],
+	model?: string,
+): Promise<FanoutPromptTotalRow[]> {
+	if (!enabledPromptIds?.length) return [];
+	return queryPg<FanoutPromptTotalRow>(sql`
+		SELECT
+			pr.prompt_id,
+			count(*) FILTER (WHERE fq.cnt > 0)::int AS runs
+		FROM prompt_runs pr
+		JOIN prompts p ON p.id = pr.prompt_id
+		CROSS JOIN LATERAL (
+			SELECT count(DISTINCT lower(btrim(wq)))::int AS cnt FROM unnest(pr.web_queries) AS wq WHERE ${genuineFanoutWq()}
+		) fq
+		WHERE pr.brand_id = ${brandId}
+			AND pr.created_at >= (${fromDate}::date AT TIME ZONE ${timezone})
+			AND pr.created_at < ((${toDate}::date + interval '1 day') AT TIME ZONE ${timezone})
+			AND pr.prompt_id IN (${uuidList(enabledPromptIds)})
+			${model ? sql`AND pr.model = ${model}` : sql``}
+		GROUP BY pr.prompt_id
+	`);
+}
