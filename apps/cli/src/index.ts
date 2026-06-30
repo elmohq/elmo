@@ -11,6 +11,7 @@ import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
+import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
 import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 
@@ -969,7 +970,8 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	// ── Resolve config + the version it was last rendered with ───────────
 	const configDir = await resolveConfigDir(options.dir);
 	const composePath = path.join(configDir, "elmo.yaml");
-	const fromVersion = (await readRenderedVersion(composePath)) ?? cliVersion;
+	const detectedVersion = await readRenderedVersion(composePath);
+	const fromVersion = detectedVersion ?? cliVersion;
 	if (!semver.valid(fromVersion)) {
 		throw new Error(`Could not determine the installed version from ${composePath}.`);
 	}
@@ -982,7 +984,10 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	}
 
 	// ── Already current ──────────────────────────────────────────────────
-	if (semver.eq(fromVersion, cliVersion)) {
+	// Only a *detected* matching version is "nothing to do". A legacy install
+	// with no version header (detectedVersion === null) still needs its image
+	// tags re-pinned, so it falls through to the upgrade path below.
+	if (detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
 		log.success(`Already at ${cliVersion}.`);
 		const pull = options.yes
 			? true
@@ -1003,8 +1008,15 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	}
 
 	// ── Plan migrations ──────────────────────────────────────────────────
-	const plan = planMigrations(fromVersion, cliVersion, MIGRATIONS);
-	log.info(`Upgrading from ${pc.cyan(fromVersion)} → ${pc.cyan(cliVersion)}`);
+	// With no detected version we can't tell which migrations apply, so we skip
+	// them and just re-pin + pull. (planMigrations would also return [] here
+	// since from === to, but we special-case it for a clearer message.)
+	const plan = detectedVersion === null ? [] : planMigrations(fromVersion, cliVersion, MIGRATIONS);
+	if (detectedVersion === null) {
+		log.warn(`Couldn't detect the deployment's version — re-pinning images to ${pc.cyan(cliVersion)}.`);
+	} else {
+		log.info(`Upgrading from ${pc.cyan(fromVersion)} → ${pc.cyan(cliVersion)}`);
+	}
 	if (plan.length === 0) {
 		log.step("No migrations to run (docker images will be re-pinned and pulled).");
 	} else {
@@ -1097,9 +1109,7 @@ async function stackHasRunningServices(configDir: string): Promise<boolean> {
 // Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
 async function readRenderedVersion(filePath: string): Promise<string | null> {
 	try {
-		const contents = await fs.readFile(filePath, "utf8");
-		const match = contents.match(/^# Rendered by elmo (\S+) on /m);
-		return match ? match[1] : null;
+		return parseRenderedVersion(await fs.readFile(filePath, "utf8"));
 	} catch {
 		return null;
 	}
@@ -1118,8 +1128,7 @@ async function composeUsesBuild(composePath: string): Promise<boolean> {
 // edits the user made to the compose file, then refreshes the version header.
 async function repinComposeImages(composePath: string, version: string): Promise<void> {
 	const contents = await fs.readFile(composePath, "utf8");
-	const repinned = contents.replace(/(image:\s*elmohq\/elmo-[a-z-]+):\S+/g, `$1:${version}`);
-	await fs.writeFile(composePath, refreshHeaderVersion(repinned, version), "utf8");
+	await fs.writeFile(composePath, refreshHeaderVersion(repinImages(contents, version), version), "utf8");
 }
 
 async function refreshRenderedVersion(filePath: string, version: string): Promise<void> {
@@ -1129,16 +1138,6 @@ async function refreshRenderedVersion(filePath: string, version: string): Promis
 	} catch {
 		// File is optional (e.g. .env may be absent in some setups).
 	}
-}
-
-function refreshHeaderVersion(contents: string, version: string): string {
-	if (!/^# Rendered by elmo \S+ on /m.test(contents)) {
-		return contents;
-	}
-	return contents.replace(
-		/^# Rendered by elmo \S+ on .*$/m,
-		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
-	);
 }
 
 function buildMigrationContext(configDir: string, version: string): MigrationContext {
@@ -1549,13 +1548,6 @@ async function writeConfigFiles(
 	await ensureDir(configDir);
 	await fs.writeFile(envPath, buildEnvFile(initConfig.env, initConfig.version), "utf8");
 	await fs.writeFile(composePath, initConfig.composeYaml, "utf8");
-}
-
-function renderedByHeader(version: string): string {
-	return [
-		`# Rendered by elmo ${version} on ${new Date().toISOString()}`,
-		"# Run `elmo upgrade` after upgrading the CLI to refresh this file.",
-	].join("\n");
 }
 
 function buildEnvFile(env: EnvMap, version: string): string {
