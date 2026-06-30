@@ -18,6 +18,7 @@
     "./auth/permissions": "./src/auth/permissions.ts",
     "./constants": "./src/constants.ts",
     "./text-extraction": "./src/text-extraction.ts",
+    "./refusal-detection": "./src/refusal-detection.ts",
     "./dataforseo": "./src/dataforseo.ts",
     "./onboarding": "./src/onboarding/index.ts",
     "./tag-utils": "./src/tag-utils.ts",
