@@ -25,21 +25,29 @@ export function setMockOnboardingError(message: string | null) {
 }
 
 let _readyAt = 0;
+let _cancelled = false;
 
 export const startAnalyzeBrandFn = async (_args: { data: unknown }) => {
 	// Mirror the real async flow: enqueue returns immediately; the result
 	// becomes available after the configured delay and is read by polling.
 	_readyAt = Date.now() + _delayMs;
-	return { jobId: "mock-analyze-job" };
+	_cancelled = false;
+	return { ok: true as const };
 };
 
 export const getAnalyzeBrandStatusFn = async (_args: { data: unknown }) => {
+	if (_cancelled) return { status: "pending" as const };
 	if (_shouldThrow) return { status: "failed" as const, error: _shouldThrow };
 	if (Date.now() < _readyAt) return { status: "pending" as const };
 	if (!_suggestion) {
 		throw new Error("setMockOnboardingSuggestion() not called");
 	}
 	return { status: "done" as const, suggestion: _suggestion };
+};
+
+export const cancelAnalyzeBrandFn = async (_args: { data: unknown }) => {
+	_cancelled = true;
+	return { ok: true as const };
 };
 
 export const updateOnboardedBrandFn = async (_args: { data: unknown }) => {

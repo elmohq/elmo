@@ -276,6 +276,11 @@ describe("evaluateDeploymentPolicy", () => {
 			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/startAnalyzeBrandFn"));
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
+
+		it("blocks POST /_server/* analyze status poll (it is a POST, so demo mode rejects it)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/_server/getAnalyzeBrandStatusFn"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
 	});
 
 	// ────────────────────────────────────────────────────────────
