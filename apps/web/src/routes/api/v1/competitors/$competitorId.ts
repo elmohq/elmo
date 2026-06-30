@@ -3,7 +3,7 @@
  *
  * GET     fetch one competitor
  * PATCH   update name / domains / aliases (replace semantics on arrays)
- * DELETE  remove the competitor
+ * DELETE  remove the competitor (returns the deleted competitor)
  *
  * Protected by API key authentication.
  */
@@ -11,144 +11,82 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
+import { z } from "zod";
 import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
 
-function isValidUUID(id: string): boolean {
-	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	return uuidRegex.test(id);
-}
+// z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
+// always used; z.uuid() enforces RFC version bits and rejects existing IDs.
+const competitorParams = z.object({ competitorId: z.guid("Invalid competitor ID format") });
+
+const updateCompetitorBody = z
+	.object({
+		name: z.string().trim().min(1, "name must be a non-empty string").optional(),
+		domains: z.array(z.string()).optional(),
+		aliases: z.array(z.string()).optional(),
+	})
+	.refine((body) => Object.keys(body).length > 0, "At least one of name, domains, or aliases must be provided");
 
 export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
 		handlers: {
-			GET: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				const { competitorId } = params;
-				if (!isValidUUID(competitorId)) {
-					return Response.json(
-						{ error: "Validation Error", message: "Invalid competitor ID format" },
-						{ status: 400 },
-					);
-				}
-
-				try {
-					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
+			GET: createApiHandler({
+				params: competitorParams,
+				handle: async ({ params }) => {
+					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, params.competitorId) });
 					if (!row) {
-						return Response.json(
-							{ error: "Not Found", message: `Competitor with ID '${competitorId}' not found` },
-							{ status: 404 },
-						);
+						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
 					}
-					return Response.json(row);
-				} catch (err) {
-					console.error("[competitors GET one] failed:", err);
-					return Response.json({ error: "Internal Server Error" }, { status: 500 });
-				}
-			},
+					return row;
+				},
+			}),
 
-			PATCH: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
+			PATCH: createApiHandler({
+				params: competitorParams,
+				body: updateCompetitorBody,
+				handle: async ({ params, body }) => {
+					const { competitorId } = params;
 
-				const { competitorId } = params;
-				if (!isValidUUID(competitorId)) {
-					return Response.json(
-						{ error: "Validation Error", message: "Invalid competitor ID format" },
-						{ status: 400 },
-					);
-				}
-
-				let body: any;
-				try {
-					body = await request.json();
-				} catch {
-					return Response.json(
-						{ error: "Validation Error", message: "Request body must be valid JSON" },
-						{ status: 400 },
-					);
-				}
-
-				const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
-				if (!existing) {
-					return Response.json(
-						{ error: "Not Found", message: `Competitor with ID '${competitorId}' not found` },
-						{ status: 404 },
-					);
-				}
-
-				const { name, domains, aliases } = body ?? {};
-				const update: Partial<typeof competitors.$inferInsert> = {};
-
-				if (name !== undefined) {
-					if (typeof name !== "string" || !name.trim()) {
-						return Response.json(
-							{ error: "Validation Error", message: "name must be a non-empty string" },
-							{ status: 400 },
-						);
+					const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
+					if (!existing) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
 					}
-					update.name = name.trim();
-				}
-				if (domains !== undefined) {
-					if (!Array.isArray(domains)) {
-						return Response.json(
-							{ error: "Validation Error", message: "domains must be an array of strings" },
-							{ status: 400 },
-						);
+
+					const update: Partial<typeof competitors.$inferInsert> = {};
+					if (body.name !== undefined) {
+						update.name = body.name;
 					}
-					update.domains = dedupeDomains(domains as string[]);
-				}
-				if (aliases !== undefined) {
-					if (!Array.isArray(aliases)) {
-						return Response.json(
-							{ error: "Validation Error", message: "aliases must be an array of strings" },
-							{ status: 400 },
-						);
+					if (body.domains !== undefined) {
+						update.domains = dedupeDomains(body.domains);
 					}
-					update.aliases = dedupeAliases(aliases as string[]);
-				}
+					if (body.aliases !== undefined) {
+						update.aliases = dedupeAliases(body.aliases);
+					}
 
-				try {
-					const [updated] = await db.update(competitors).set(update).where(eq(competitors.id, competitorId)).returning();
-					return Response.json(updated);
-				} catch (err) {
-					console.error("[competitors PATCH] failed:", err);
-					const message = err instanceof Error ? err.message : "Failed to update competitor";
-					return Response.json({ error: "Internal Server Error", message }, { status: 500 });
-				}
-			},
+					const [updated] = await db
+						.update(competitors)
+						.set(update)
+						.where(eq(competitors.id, competitorId))
+						.returning();
+					// The existence check above can race with a concurrent delete;
+					// the update's returning() is the source of truth.
+					if (!updated) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
+					}
+					return updated;
+				},
+			}),
 
-			DELETE: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				const { competitorId } = params;
-				if (!isValidUUID(competitorId)) {
-					return Response.json(
-						{ error: "Validation Error", message: "Invalid competitor ID format" },
-						{ status: 400 },
-					);
-				}
-
-				try {
-					const [deleted] = await db.delete(competitors).where(eq(competitors.id, competitorId)).returning();
+			DELETE: createApiHandler({
+				params: competitorParams,
+				handle: async ({ params }) => {
+					const [deleted] = await db.delete(competitors).where(eq(competitors.id, params.competitorId)).returning();
 					if (!deleted) {
-						return Response.json(
-							{ error: "Not Found", message: `Competitor with ID '${competitorId}' not found` },
-							{ status: 404 },
-						);
+						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
 					}
-					return Response.json({ message: "Competitor deleted successfully", data: deleted });
-				} catch (err) {
-					console.error("[competitors DELETE] failed:", err);
-					return Response.json({ error: "Internal Server Error" }, { status: 500 });
-				}
-			},
+					return deleted;
+				},
+			}),
 		},
 	},
 });

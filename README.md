@@ -23,6 +23,17 @@
 
 <br />
 
+## About
+
+Elmo is an open-source, self-hosted platform for optimizing your AI visibility, which is also known as:
+* Answer Engine Optimization (AEO)
+* Generative Engine Optimization (GEO)
+* LLM Optimization (LLMO, which is where the name Elmo is from)
+
+Elmo tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe your brand, so you can benchmark competitors and grow your visibility in AI answers.
+
+It's a free alternative to tools like [Profound](https://www.elmohq.com/ai-visibility-tools/profound), [Peec](https://www.elmohq.com/ai-visibility-tools/peec-ai), and [Otterly](https://www.elmohq.com/ai-visibility-tools/otterly-ai). You can run it on your own infrastructure, own your data, and audit exactly how every metric is calculated.
+
 ## Demo
 
 Try the live demo at **[demo.elmohq.com](https://demo.elmohq.com)** to see how Elmo tracks prompts and analyzes citations.

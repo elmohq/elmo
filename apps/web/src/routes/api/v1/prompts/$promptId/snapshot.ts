@@ -1,19 +1,21 @@
+/**
+ * /api/v1/prompts/:promptId/snapshot — aggregated mention + citation stats
+ * for a prompt over a date range.
+ *
+ * Protected by API key authentication.
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
 	getPromptTopCompetitorMentions,
 } from "@/lib/postgres-read";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
 import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-
-function isValidUUID(id: string): boolean {
-	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	return uuidRegex.test(id);
-}
+import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,44 +27,30 @@ function isValidDate(dateStr: string): boolean {
 export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: {
-			GET: async ({ request, params }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
+			GET: createApiHandler({
+				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
+				handle: async ({ params, request }) => {
 					const { promptId } = params;
 					const { searchParams } = new URL(request.url);
-
-					if (!isValidUUID(promptId)) {
-						return Response.json({ error: "Validation Error", message: "Invalid prompt ID format" }, { status: 400 });
-					}
 
 					const startDate = searchParams.get("startDate");
 					const endDate = searchParams.get("endDate");
 					if (!startDate || !endDate) {
-						return Response.json(
-							{
-								error: "Validation Error",
-								message: "startDate and endDate query parameters are required (YYYY-MM-DD format)",
-							},
-							{ status: 400 },
+						throw new ApiError(
+							400,
+							"Validation Error",
+							"startDate and endDate query parameters are required (YYYY-MM-DD format)",
 						);
 					}
 					if (!isValidDate(startDate) || !isValidDate(endDate)) {
-						return Response.json(
-							{
-								error: "Validation Error",
-								message: "startDate and endDate must be valid dates in YYYY-MM-DD format",
-							},
-							{ status: 400 },
+						throw new ApiError(
+							400,
+							"Validation Error",
+							"startDate and endDate must be valid dates in YYYY-MM-DD format",
 						);
 					}
 					if (startDate > endDate) {
-						return Response.json(
-							{ error: "Validation Error", message: "startDate must be before or equal to endDate" },
-							{ status: 400 },
-						);
+						throw new ApiError(400, "Validation Error", "startDate must be before or equal to endDate");
 					}
 
 					const kMentionsParam = Number.parseInt(searchParams.get("kMentions") || "5", 10);
@@ -76,7 +64,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						.where(eq(prompts.id, promptId))
 						.limit(1);
 					if (promptResult.length === 0) {
-						return Response.json({ error: "Not Found", message: `Prompt with ID '${promptId}' not found` }, { status: 404 });
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 					const prompt = promptResult[0];
 
@@ -85,7 +73,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
 					]);
 					if (brandInfo.length === 0) {
-						return Response.json({ error: "Internal Server Error", message: "Brand not found for prompt" }, { status: 500 });
+						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
 					}
 					const brandDomains = new Set(
 						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(Boolean),
@@ -144,34 +132,28 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						count,
 					}));
 
-					return Response.json({
+					return {
 						brandId: prompt.brandId,
 						promptId: prompt.id,
 						promptValue: prompt.value,
 						startDate,
 						endDate,
-					mentions: {
-						mentionsTotal:
-							Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
-						brandMentionsTotal: Number(mentionData.brand_mentioned_count),
-						competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
-						mentionsTopK,
-					},
+						mentions: {
+							mentionsTotal:
+								Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
+							brandMentionsTotal: Number(mentionData.brand_mentioned_count),
+							competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
+							mentionsTopK,
+						},
 						citations: {
 							citationsTotal,
 							brandCitationsTotal,
 							competitorCitationsTotal,
 							citedUrlsTopK,
 						},
-					});
-				} catch (error) {
-					console.error("Error fetching prompt snapshot:", error);
-					return Response.json(
-						{ error: "Internal Server Error", message: "Failed to fetch prompt snapshot" },
-						{ status: 500 },
-					);
-				}
-			},
+					};
+				},
+			}),
 		},
 	},
 });

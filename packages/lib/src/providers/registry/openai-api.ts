@@ -73,12 +73,11 @@ export const openaiApi: Provider = {
 	async runStructuredResearch<T>({
 		prompt,
 		schema,
+		webSearch = true,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
-			tools: {
-				web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any,
-			},
+			...(webSearch ? { tools: { web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any } } : {}),
 			experimental_output: Output.object({ schema }),
 			prompt,
 		});

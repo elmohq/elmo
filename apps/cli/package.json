@@ -1,6 +1,6 @@
 {
   "name": "@elmohq/cli",
-  "version": "0.2.10",
+  "version": "0.2.13",
   "license": "MIT",
   "keywords": [
     "marketing",
@@ -28,20 +28,23 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/build.mjs",
+    "check-types": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
-    "@clack/prompts": "^1.4.0",
-    "commander": "^14.0.3",
+    "@clack/prompts": "^1.5.1",
+    "commander": "^15.0.0",
     "dotenv": "17.4.2",
     "picocolors": "^1.1.1",
-    "posthog-node": "^5.35.4",
-    "semver": "^7.8.1"
+    "posthog-node": "^5.37.0",
+    "semver": "^7.8.4"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.3",
     "@types/semver": "^7.7.1",
+    "@workspace/config": "workspace:*",
+    "rolldown": "^1.1.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   }

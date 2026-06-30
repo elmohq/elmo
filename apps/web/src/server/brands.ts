@@ -5,12 +5,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
+import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
+import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
+import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
+import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
 
@@ -122,7 +126,7 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
  * Get a single brand by ID
  */
 export const getBrand = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string() }))
+	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
@@ -139,7 +143,7 @@ export const getBrand = createServerFn({ method: "GET" })
  * Create a new brand
  */
 export const createBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			brandName: z.string(),
@@ -183,10 +187,59 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	});
 
 /**
+ * Create a new organization + admin membership + brand in one shot for the
+ * current user. Used by the local-mode multi-brand "create new brand" flow on
+ * the brand switcher. Gated by the canCreateBrands deployment feature so
+ * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ */
+export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+	.validator(
+		z.object({
+			brandName: z.string().min(1).max(100),
+			website: z.string().min(1),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+		const deployment = getDeployment();
+
+		if (evaluateRequireCanCreateBrands(deployment.features.canCreateBrands) === "deny") {
+			throw new Error("Brand creation is not allowed in this deployment");
+		}
+
+		const urlValidation = validateWebsiteUrl(data.website);
+		if (!urlValidation.isValid) {
+			throw new Error(urlValidation.error);
+		}
+
+		const trimmedName = data.brandName.trim();
+		if (!trimmedName) {
+			throw new Error("Brand name must be a non-empty string");
+		}
+
+		const { orgId } = await provisionAdditionalLocalOrg({
+			userId: session.user.id,
+			name: trimmedName,
+		});
+
+		const defaultDomains = getDefaultBrandDomains();
+
+		await db.insert(brands).values({
+			id: orgId,
+			name: trimmedName,
+			website: urlValidation.formattedUrl,
+			enabled: true,
+			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+		});
+
+		return { brandId: orgId };
+	});
+
+/**
  * Update a brand
  */
 export const updateBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			name: z.string().optional(),
@@ -199,35 +252,16 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		const updateData: Partial<Pick<Brand, "name" | "website" | "additionalDomains" | "aliases">> = {};
-
-		if (data.name !== undefined) {
-			if (!data.name.trim()) {
-				throw new Error("Brand name must be a non-empty string");
-			}
-			updateData.name = data.name.trim();
+		const normalized = normalizeBrandUpdate({
+			name: data.name,
+			website: data.website,
+			additionalDomains: data.additionalDomains,
+			aliases: data.aliases,
+		});
+		if (!normalized.ok) {
+			throw new Error(normalized.error);
 		}
-
-		if (data.website !== undefined) {
-			const urlValidation = validateWebsiteUrl(data.website);
-			if (!urlValidation.isValid) {
-				throw new Error(urlValidation.error);
-			}
-			updateData.website = urlValidation.formattedUrl;
-		}
-
-		if (data.additionalDomains !== undefined) {
-			const cleaned = data.additionalDomains.map((d) => cleanAndValidateDomain(d));
-			const invalid = data.additionalDomains.filter((_, i) => !cleaned[i]);
-			if (invalid.length > 0) {
-				throw new Error(`Invalid domain(s): ${invalid.join(", ")}`);
-			}
-			updateData.additionalDomains = [...new Set(cleaned.filter(Boolean) as string[])];
-		}
-
-		if (data.aliases !== undefined) {
-			updateData.aliases = [...new Set(data.aliases.map((a) => a.trim()).filter(Boolean))];
-		}
+		const updateData = normalized.updates;
 
 		const result = await db
 			.update(brands)
@@ -246,7 +280,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
  * Get competitors for a brand
  */
 export const getCompetitors = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string() }))
+	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
@@ -260,7 +294,7 @@ export const getCompetitors = createServerFn({ method: "GET" })
  * Update competitors for a brand (bulk replace)
  */
 export const updateCompetitors = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			competitors: z.array(
@@ -314,7 +348,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
  * Add an additional domain to the brand itself
  */
 export const addDomainToBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			domain: z.string().min(1),
@@ -354,7 +388,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
  * Add a domain to an existing competitor
  */
 export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			competitorId: z.string(),
@@ -388,7 +422,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
  * Create a new competitor from a domain
  */
 export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			name: z.string().min(1),

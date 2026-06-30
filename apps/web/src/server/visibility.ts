@@ -8,13 +8,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { brands, competitors } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { type LookbackPeriod } from "@/lib/chart-utils";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { resolveFilteredPrompts } from "@/server/prompt-resolution";
 import {
 	getBatchChartData,
-	getBatchVisibilityData,
 	getVisibilityDailyAggregate,
 	getCitationsTotalCount,
 	type ProcessedBatchChartDataPoint,
@@ -27,16 +27,6 @@ import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 export interface BatchChartDataResponse {
 	chartData: ProcessedBatchChartDataPoint[];
-	visibility: {
-		currentVisibility: number;
-		totalRuns: number;
-		visibilityTimeSeries: Array<{
-			date: string;
-			total_runs: number;
-			brand_mentioned_count: number;
-			is_branded: boolean;
-		}>;
-	};
 	brand: {
 		id: string;
 		name: string;
@@ -70,12 +60,13 @@ export interface FilteredVisibilityResponse {
 // ============================================================================
 
 export const getBatchChartDataFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
 			model: z.string().optional(),
-			promptIds: z.array(z.string()),
+			tags: z.string().optional(),
+			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -86,16 +77,22 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		const timezone = resolveTimezone(data.timezone);
 		const lookbackParam = data.lookback as LookbackPeriod;
 
+		// `allStrategy: "1y"` guarantees concrete bounds for every lookback
+		// (including "all"), so the dates are never null here.
 		const { fromDateStr, toDateStr } = getTimezoneLookbackRange(lookbackParam, timezone, {
 			allStrategy: "1y",
-		});
+		}) as { fromDateStr: string; toDateStr: string };
 
-		if (data.promptIds.length === 0) {
-			throw new Error("promptIds parameter is required");
-		}
+		// Resolve the in-scope prompts server-side from the filter criteria so
+		// the client never ships the full prompt-id list (issue #68).
+		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
+			tags: data.tags,
+			search: data.search,
+		});
+		const promptIds = resolvedPrompts.map((p) => p.id);
 
 		// Get brand and competitors from PostgreSQL
-		const [brandResult, competitorsResult, promptsResult] = await Promise.all([
+		const [brandResult, competitorsResult] = await Promise.all([
 			db
 				.select({ id: brands.id, name: brands.name })
 				.from(brands)
@@ -105,10 +102,6 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 				.select({ id: competitors.id, name: competitors.name })
 				.from(competitors)
 				.where(eq(competitors.brandId, data.brandId)),
-			db
-				.select({ id: prompts.id, value: prompts.value })
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), inArray(prompts.id, data.promptIds))),
 		]);
 
 		if (brandResult.length === 0) {
@@ -117,60 +110,47 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		const brand = brandResult[0];
 
-		// Determine branded prompt IDs
-		const brandedPromptIds = promptsResult
-			.filter((p) => p.value.toLowerCase().includes(brand.name.toLowerCase()))
-			.map((p) => p.id);
+		// No prompts match the current filters — return an empty-but-valid
+		// payload rather than erroring (the page renders an empty state).
+		if (promptIds.length === 0) {
+			return {
+				chartData: [],
+				brand: { id: brand.id, name: brand.name },
+				competitors: competitorsResult,
+				dateRange: { fromDate: fromDateStr, toDate: toDateStr },
+			};
+		}
 
-		// Fetch batch chart data and visibility data in parallel
-		const [chartData, visibilityData] = await Promise.all([
-			getBatchChartData(
-				data.brandId,
-				data.promptIds,
-				fromDateStr,
-				toDateStr,
-				timezone,
-				undefined,
-				data.model,
-			),
-			getBatchVisibilityData(
-				data.brandId,
-				data.promptIds,
-				brandedPromptIds,
-				fromDateStr,
-				toDateStr,
-				timezone,
-			),
-		]);
-
-		const currentVisibility =
-			visibilityData.totalRuns > 0
-				? Math.round((visibilityData.totalMentioned / visibilityData.totalRuns) * 100)
-				: 0;
+		// Fetch batch chart data
+		const chartData = await getBatchChartData(
+			data.brandId,
+			promptIds,
+			fromDateStr,
+			toDateStr,
+			timezone,
+			undefined,
+			data.model,
+		);
 
 		return {
 			chartData,
-			visibility: {
-				currentVisibility,
-				totalRuns: visibilityData.totalRuns,
-				visibilityTimeSeries: visibilityData.visibilityTimeSeries,
-			},
 			brand: { id: brand.id, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
-				fromDate: fromDateStr!,
-				toDate: toDateStr!,
+				fromDate: fromDateStr,
+				toDate: toDateStr,
 			},
 		};
 	});
 
 export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandId: z.string(),
 			lookback: z.enum(["1w", "1m", "3m", "6m", "1y", "all"]).default("1m"),
 			model: z.string().optional(),
-			promptIds: z.array(z.string()).default([]),
+			tags: z.string().optional(),
+			search: z.string().optional(),
 			timezone: z.string().default("UTC"),
 		}),
 	)
@@ -180,34 +160,14 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		if (data.promptIds.length === 0) {
-			return {
-				currentVisibility: 0,
-				totalRuns: 0,
-				totalPrompts: 0,
-				totalCitations: 0,
-				visibilityTimeSeries: [],
-				lookback: lookbackParam,
-			};
-		}
-
-		const timezone = resolveTimezone(data.timezone);
-
-		// Get brand name and prompt values for branded/non-branded determination
-		const [brandResult, promptsResult] = await Promise.all([
-			db.select({ name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
-			db
-				.select({
-					id: prompts.id,
-					value: prompts.value,
-					systemTags: prompts.systemTags,
-					tags: prompts.tags,
-				})
-				.from(prompts)
-				.where(and(eq(prompts.brandId, data.brandId), inArray(prompts.id, data.promptIds))),
-		]);
-
-		const totalPrompts = promptsResult.length;
+		// Resolve the in-scope prompts server-side from the filter criteria so
+		// the client never ships the full prompt-id list (issue #68).
+		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
+			tags: data.tags,
+			search: data.search,
+		});
+		const promptIds = resolvedPrompts.map((p) => p.id);
+		const totalPrompts = promptIds.length;
 
 		if (totalPrompts === 0) {
 			return {
@@ -220,12 +180,11 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 			};
 		}
 
-		// Determine branded prompt IDs
-		const brandedPromptIds = promptsResult
-			.filter((p) => {
-				const effectiveStatus = getEffectiveBrandedStatus(p.systemTags || [], p.tags || []);
-				return effectiveStatus.isBranded;
-			})
+		const timezone = resolveTimezone(data.timezone);
+
+		// Determine branded prompt IDs from effective branded status
+		const brandedPromptIds = resolvedPrompts
+			.filter((p) => getEffectiveBrandedStatus(p.systemTags, p.tags).isBranded)
 			.map((p) => p.id);
 
 		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so
@@ -244,33 +203,38 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 				fromDate,
 				toDate,
 				timezone,
-				data.promptIds,
+				promptIds,
 				brandedPromptIds,
 				data.model,
 			),
-			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, data.promptIds, data.model),
+			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
 		]);
 
-		// Roll the period totals from the raw observation sums (actual_*);
+		// Roll the period run totals from the raw observation sums (actual_*);
 		// the visibility time-series uses the per-day LVCF sums so gaps in
 		// individual prompt schedules don't scallop the line.
 		let totalBrandedRuns = 0;
-		let totalBrandedMentioned = 0;
 		let totalNonBrandedRuns = 0;
-		let totalNonBrandedMentioned = 0;
 		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
 			totalBrandedRuns += row.actual_branded_runs;
-			totalBrandedMentioned += row.actual_branded_mentioned;
 			totalNonBrandedRuns += row.actual_nonbranded_runs;
-			totalNonBrandedMentioned += row.actual_nonbranded_mentioned;
 			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
 			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
 			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
 		});
 
 		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
-		const currentVisibility = totalRuns > 0 ? Math.round((totalMentioned / totalRuns) * 100) : 0;
+		// "Current" = the latest plotted point (last non-null LVCF day), so the headline
+		// number matches the right end of the trend/sparkline beside it — and the
+		// overview's current-visibility hero — rather than the whole-window average.
+		let currentVisibility = 0;
+		for (let i = visibilityTimeSeries.length - 1; i >= 0; i--) {
+			const v = visibilityTimeSeries[i].visibility;
+			if (v != null) {
+				currentVisibility = v;
+				break;
+			}
+		}
 
 		return {
 			currentVisibility,

@@ -15,7 +15,7 @@ import { PromptsEditor } from "@/components/prompts-editor";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ brandId: z.string() }))
+	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);

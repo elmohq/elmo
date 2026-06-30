@@ -16,19 +16,22 @@ import type { Deployment, FeaturesConfig } from "@workspace/config/types";
 export const LOCAL_FEATURES: FeaturesConfig = {
 	readOnly: false,
 	showOptimizeButton: false,
-	supportsMultiOrg: false,
+	supportsMultiOrg: true,
+	canCreateBrands: true,
 };
 
 export const DEMO_FEATURES: FeaturesConfig = {
 	readOnly: true,
 	showOptimizeButton: false,
-	supportsMultiOrg: false,
+	supportsMultiOrg: true,
+	canCreateBrands: false,
 };
 
 export const WHITELABEL_FEATURES: FeaturesConfig = {
 	readOnly: false,
 	showOptimizeButton: true,
 	supportsMultiOrg: true,
+	canCreateBrands: false,
 };
 
 // ============================================================================

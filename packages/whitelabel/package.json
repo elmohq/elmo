@@ -1,6 +1,6 @@
 {
   "name": "@workspace/whitelabel",
-  "version": "0.2.10",
+  "version": "0.2.13",
   "private": true,
   "license": "MIT",
   "main": "./src/index.ts",
@@ -17,12 +17,12 @@
   },
   "peerDependencies": {
     "@tabler/icons-react": "^3.0.0",
-    "auth0": "^5.3.1",
+    "auth0": "^5.11.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "@types/react": "^19.2.15",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
     "typescript": "^6.0.3"
   }
 }

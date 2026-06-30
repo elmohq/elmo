@@ -7,14 +7,15 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 export interface BatchChartDataFilters {
 	lookback?: LookbackPeriod;
 	model?: string;
-	promptIds: string[];
+	/** Tag filter (resolved to prompt IDs server-side). */
+	tags?: string[];
+	/** Search term applied to prompt text (resolved server-side). */
+	search?: string;
 }
 
 export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilters) {
 	const params = useParams({ strict: false }) as { brand?: string };
 	const resolvedBrandId = brandId || params.brand;
-
-	const hasPromptIds = (filters?.promptIds?.length ?? 0) > 0;
 
 	const query = useQuery({
 		queryKey: [
@@ -22,7 +23,8 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 			resolvedBrandId,
 			filters?.lookback,
 			filters?.model,
-			filters?.promptIds?.join(","),
+			filters?.tags?.join(","),
+			filters?.search,
 		],
 		queryFn: () =>
 			getBatchChartDataFn({
@@ -30,11 +32,12 @@ export function useBatchChartData(brandId?: string, filters?: BatchChartDataFilt
 					brandId: resolvedBrandId!,
 					lookback: filters?.lookback || "1m",
 					model: filters?.model,
-					promptIds: filters?.promptIds || [],
+					tags: filters?.tags?.join(","),
+					search: filters?.search,
 					timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 				},
 			}),
-		enabled: !!resolvedBrandId && hasPromptIds,
+		enabled: !!resolvedBrandId,
 		staleTime: 60_000,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: true,

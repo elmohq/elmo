@@ -1,5 +1,6 @@
 import type { PerPromptVisibilityPoint, PerPromptDailyCitationStats } from "@/lib/postgres-read";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { type CitationCategory, CITATION_CATEGORIES } from "@/lib/domain-categories";
 
 export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 
@@ -10,7 +11,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
  * 
  * Note: We default to "1m" when data is unavailable because most established brands
  * have more than a week of data, and this prevents inconsistent defaults when brand
- * data loads asynchronously (which was causing chart type mismatches in nuqs).
+ * data loads asynchronously (which was causing chart type mismatches downstream).
  * 
  * @param earliestDataDate - ISO date string of the earliest data point, or null if no data
  * @returns The recommended default lookback period
@@ -18,7 +19,7 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
 export function getDefaultLookbackPeriod(earliestDataDate: string | null | undefined): LookbackPeriod {
 	if (!earliestDataDate) {
 		// Data hasn't loaded yet - default to 1 month as a safe default
-		// (most brands have > 1 week of data, and this prevents nuqs default mismatches)
+		// (most brands have > 1 week of data, and this prevents default mismatches)
 		return "1m";
 	}
 
@@ -59,6 +60,33 @@ export function generateDateRange(startDate: Date, endDate: Date): string[] {
 	}
 
 	return dates;
+}
+
+/**
+ * Citation comparison window for a lookback of `days` days — computed entirely in
+ * UTC so it's independent of server timezone. The current window is `days` calendar
+ * days ending on `today` (inclusive): [today-(days-1), today]. The previous window
+ * is the contiguous equal-length window ending the day before the current one
+ * starts. `dateRange` is the current window as one YYYY-MM-DD per day (what the
+ * trend charts iterate) so totals and charts cover exactly the same span.
+ */
+export function citationDateWindow(
+	today: Date,
+	days: number,
+): { fromDateStr: string; toDateStr: string; prevFromDateStr: string; prevToDateStr: string; dateRange: string[] } {
+	const iso = (d: Date) => d.toISOString().split("T")[0];
+	const shift = (base: Date, deltaDays: number) => {
+		const d = new Date(base);
+		d.setUTCDate(d.getUTCDate() + deltaDays);
+		return d;
+	};
+	const span = Math.max(1, days);
+	const from = shift(today, -(span - 1));
+	const prevTo = shift(from, -1);
+	const prevFrom = shift(prevTo, -(span - 1));
+	const dateRange: string[] = [];
+	for (let i = 0; i < span; i++) dateRange.push(iso(shift(from, i)));
+	return { fromDateStr: iso(from), toDateStr: iso(today), prevFromDateStr: iso(prevFrom), prevToDateStr: iso(prevTo), dateRange };
 }
 
 // ============================================================================
@@ -152,83 +180,69 @@ export function applyPerPromptLVCF(
 	return { dailyVisibilityMap, totalBrandedRuns, totalBrandedMentioned, totalNonBrandedRuns, totalNonBrandedMentioned };
 }
 
-export interface CitationCategories {
-	brand: number;
-	competitor: number;
-	socialMedia: number;
-	google: number;
-	institutional: number;
-	other: number;
-}
+export type CitationCategories = Record<CitationCategory, number>;
 
 /**
- * Per-prompt LVCF for citation data with cadence normalization.
- *
- * For each prompt, carries forward its last known citation counts per category,
- * normalized by the brand's cadence (citations_per_run / cadence_days) so the
- * daily total reflects a steady rate rather than spiking on run days.
- *
- * Pre-seeds each prompt with its earliest observation to avoid ramp-up artifacts.
+ * Generalized per-prompt LVCF with cadence normalization over arbitrary string
+ * keys (citation category, page type, …). For each prompt, carries forward its
+ * last known per-key counts, normalized by the brand's cadence so daily totals
+ * reflect a steady rate rather than spiking on run days. Pre-seeds each prompt
+ * with its earliest observation to avoid ramp-up artifacts.
  */
+export function applyPerPromptKeyedLVCF<K extends string>(
+	rows: { prompt_id: string; date: string | Date; key: K; count: number }[],
+	dateRange: string[],
+	cadenceHours: number | null | undefined,
+	allKeys: readonly K[],
+): Map<string, Record<K, number>> {
+	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
+	const empty = (): Record<K, number> => Object.fromEntries(allKeys.map((k) => [k, 0])) as Record<K, number>;
+
+	// Group by prompt_id -> date -> per-key totals
+	const byPrompt = new Map<string, Map<string, Record<K, number>>>();
+	for (const row of rows) {
+		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
+		const dateMap = byPrompt.get(row.prompt_id)!;
+		const dateStr = String(row.date);
+		if (!dateMap.has(dateStr)) dateMap.set(dateStr, empty());
+		dateMap.get(dateStr)![row.key] += Number(row.count);
+	}
+
+	const daily = new Map<string, Record<K, number>>();
+	for (const [, dateMap] of byPrompt) {
+		// Pre-seed with the earliest observation to avoid ramp-up
+		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+		let carried: Record<K, number> | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
+		for (const date of dateRange) {
+			const actual = dateMap.get(date);
+			if (actual) carried = actual;
+			if (!carried) continue;
+			if (!daily.has(date)) daily.set(date, empty());
+			const day = daily.get(date)!;
+			for (const k of allKeys) day[k] += carried[k] / cadenceDays;
+		}
+	}
+
+	// Values are intentionally left fractional (not rounded to ints): both consumers
+	// convert to percentages via toRoundedPercentages, where the 1/cadenceDays factor
+	// cancels exactly — so cadence can't shift the chart, and a tiny category isn't
+	// pre-zeroed by an intermediate round before the percentage is taken.
+	return daily;
+}
+
+/** Category-keyed LVCF (back-compat wrapper used by the dashboard). */
 export function applyPerPromptCitationLVCF(
 	perPromptData: PerPromptDailyCitationStats[],
 	dateRange: string[],
 	cadenceHours: number | null | undefined,
-	categorizeDomain: (domain: string) => "brand" | "competitor" | "social_media" | "google" | "institutional" | "other",
+	categorizeDomain: (domain: string) => CitationCategory,
 ): Map<string, CitationCategories> {
-	const cadenceDays = Math.max(1, Math.ceil((cadenceHours ?? getDefaultDelayHours()) / 24));
-
-	// Group by prompt_id -> date -> category totals
-	const byPrompt = new Map<string, Map<string, CitationCategories>>();
-	for (const row of perPromptData) {
-		if (!byPrompt.has(row.prompt_id)) byPrompt.set(row.prompt_id, new Map());
-		const dateMap = byPrompt.get(row.prompt_id)!;
-		const dateStr = String(row.date);
-		if (!dateMap.has(dateStr)) dateMap.set(dateStr, { brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 });
-		const bucket = dateMap.get(dateStr)!;
-		const cat = categorizeDomain(row.domain);
-		if (cat === "social_media") bucket.socialMedia += Number(row.count);
-		else bucket[cat] += Number(row.count);
-	}
-
-	const dailyCitations = new Map<string, CitationCategories>();
-
-	for (const [, dateMap] of byPrompt) {
-		// Pre-seed with the earliest observation to avoid ramp-up
-		const sortedEntries = [...dateMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-		let carried: CitationCategories | null = sortedEntries.length > 0 ? sortedEntries[0][1] : null;
-
-		for (const date of dateRange) {
-			const actual = dateMap.get(date);
-			if (actual) {
-				carried = actual;
-			}
-			if (!carried) continue;
-
-			if (!dailyCitations.has(date)) {
-				dailyCitations.set(date, { brand: 0, competitor: 0, socialMedia: 0, google: 0, institutional: 0, other: 0 });
-			}
-			const day = dailyCitations.get(date)!;
-			day.brand += carried.brand / cadenceDays;
-			day.competitor += carried.competitor / cadenceDays;
-			day.socialMedia += carried.socialMedia / cadenceDays;
-			day.google += carried.google / cadenceDays;
-			day.institutional += carried.institutional / cadenceDays;
-			day.other += carried.other / cadenceDays;
-		}
-	}
-
-	// Round final values
-	for (const [, v] of dailyCitations) {
-		v.brand = Math.round(v.brand);
-		v.competitor = Math.round(v.competitor);
-		v.socialMedia = Math.round(v.socialMedia);
-		v.google = Math.round(v.google);
-		v.institutional = Math.round(v.institutional);
-		v.other = Math.round(v.other);
-	}
-
-	return dailyCitations;
+	return applyPerPromptKeyedLVCF(
+		perPromptData.map((r) => ({ prompt_id: r.prompt_id, date: r.date, key: categorizeDomain(r.domain), count: Number(r.count) })),
+		dateRange,
+		cadenceHours,
+		CITATION_CATEGORIES,
+	);
 }
 
 // Function to normalize values from 0-500 range to 0-100% and round down to nearest 20%

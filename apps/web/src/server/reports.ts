@@ -39,7 +39,7 @@ export const getReportsFn = createServerFn({ method: "GET" }).handler(async () =
  * Get a single report by ID (includes rawOutput for rendering)
  */
 export const getReportByIdFn = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ reportId: z.string() }))
+	.validator(z.object({ reportId: z.string() }))
 	.handler(async ({ data }) => {
 		await requireReportAccess();
 
@@ -53,7 +53,7 @@ export const getReportByIdFn = createServerFn({ method: "GET" })
  * Create a new report and queue generation job
  */
 export const createReportFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			brandName: z.string().min(1),
 			brandWebsite: z.string().url(),

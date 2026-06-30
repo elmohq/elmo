@@ -19,7 +19,7 @@ import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onbo
 
 /** Run brand analysis without saving anything. */
 export const analyzeBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		z.object({
 			website: z.string().min(1),
 			brandName: z.string().optional(),
@@ -42,7 +42,7 @@ export const analyzeBrandFn = createServerFn({ method: "POST" })
  * already has access to.
  */
 export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
-	.inputValidator(wizardOnboardingInputSchema)
+	.validator(wizardOnboardingInputSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);

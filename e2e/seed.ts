@@ -168,7 +168,7 @@ async function seed() {
         id: RUN_IDS[1],
         promptId: PROMPT_IDS.branded1,
         model: "claude",
-        version: "claude-sonnet-4-20250514",
+        version: "claude-sonnet-4-6",
         webSearchEnabled: false,
         rawOutput: {
           response:
@@ -249,7 +249,7 @@ async function seed() {
         id: RUN_IDS[5],
         promptId: PROMPT_IDS.branded2,
         model: "claude",
-        version: "claude-sonnet-4-20250514",
+        version: "claude-sonnet-4-6",
         webSearchEnabled: false,
         rawOutput: {
           response:
@@ -290,7 +290,7 @@ async function seed() {
         id: RUN_IDS[7],
         promptId: PROMPT_IDS.unbranded1,
         model: "claude",
-        version: "claude-sonnet-4-20250514",
+        version: "claude-sonnet-4-6",
         webSearchEnabled: true,
         rawOutput: {
           response:

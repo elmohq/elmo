@@ -3,7 +3,6 @@
  * Provides stubs for the router hooks and components that the app uses.
  */
 import React, { createContext, useContext, type ReactNode } from "react";
-import type { ClientConfig } from "@workspace/config/types";
 
 // This mock is used for Storybook bundling. It intentionally provides a broad
 // surface-area of exports to satisfy app imports without pulling in a real router.
@@ -53,7 +52,12 @@ export function createRouter(_opts?: unknown) {
 export function createFileRoute(_path: string) {
 	return (config: any) => ({
 		...config,
+		// Mirror the real Route shape so stories can render a route's component via
+		// Route.options.component (without the route file having to export it).
+		options: config,
 		useParams: () => ({ brand: "mock-brand-id" }),
+		useSearch,
+		useNavigate,
 	});
 }
 
@@ -78,8 +82,12 @@ export function useLocation() {
 	return { pathname: "/app/mock-brand-id", search: "", hash: "" };
 }
 
-export function useSearch(_opts?: unknown) {
-	return {};
+// Stories render with an empty search (all filters at defaults). Honor
+// `select` so per-key subscribers (filter-bar widgets) get `undefined`
+// instead of the whole empty object.
+export function useSearch(opts?: { select?: (search: Record<string, unknown>) => unknown }) {
+	const search: Record<string, unknown> = {};
+	return opts?.select ? opts.select(search) : search;
 }
 
 export function useMatch(_opts?: unknown) {

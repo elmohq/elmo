@@ -206,6 +206,18 @@ test.describe("External API - CRUD Operations", () => {
     });
   });
 
+  test("PATCH rejects an empty body", async ({ request }) => {
+    const response = await request.patch(`/api/v1/prompts/00000000-0000-0000-0000-000000000001`, {
+      headers: authHeaders(),
+      data: {},
+    });
+    expect(response.status()).toBe(400);
+
+    const body = await response.json();
+    expect(body.error).toBe("Validation Error");
+    expect(body.message).toContain("At least one of");
+  });
+
   test("DELETE removes a prompt", async ({ request }) => {
     // First create a prompt to delete
     const createResponse = await request.post(`/api/v1/prompts`, {
@@ -223,8 +235,11 @@ test.describe("External API - CRUD Operations", () => {
     });
     expect(response.status()).toBe(200);
 
+    // DELETE returns the deleted resource bare, plus cascade info
     const body = await response.json();
-    expect(body.message).toContain("deleted");
+    expect(body.id).toBe(created.id);
+    expect(body.value).toContain("Prompt to be deleted");
+    expect(body.deletedRunsCount).toBe(0);
 
     // Verify it's gone
     const getResponse = await request.get(`/api/v1/prompts/${created.id}`, {

@@ -6,19 +6,22 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq, count, desc } from "drizzle-orm";
+import { z } from "zod";
 import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
-import { validateApiKeyFromRequest as validateApiKey } from "@/lib/auth/policies";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
+
+const createPromptBody = z.object({
+	brandId: z.string().trim().min(1, "brandId is required"),
+	value: z.string().trim().min(1, "value must be a non-empty string"),
+	tags: z.array(z.string()).optional(),
+});
 
 export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
+			GET: createApiHandler({
+				handle: async ({ request }) => {
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
@@ -46,61 +49,40 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 						.where(whereConditions)
 						.orderBy(desc(prompts.createdAt))
 						.limit(limit)
-						.offset(offset)
+						.offset(offset);
 
-					return Response.json({
+					return {
 						prompts: promptsList,
 						pagination: { page, limit, total: totalCount, totalPages },
-					})
-				} catch (error) {
-					console.error("Error fetching prompts:", error);
-					return Response.json({ error: "Internal Server Error" }, { status: 500 });
-				}
-			},
+					};
+				},
+			}),
 
-			POST: async ({ request }) => {
-				if (!validateApiKey(request)) {
-					return Response.json({ error: "Unauthorized", message: "Valid API key required" }, { status: 401 });
-				}
-
-				try {
-					const body = await request.json();
+			POST: createApiHandler({
+				body: createPromptBody,
+				status: 201,
+				handle: async ({ body }) => {
 					const { brandId, value, tags } = body;
-
-					if (!brandId || !value) {
-						return Response.json({ error: "Validation Error", message: "brandId and value are required" }, { status: 400 });
-					}
-
-					if (typeof value !== "string" || value.trim().length === 0) {
-						return Response.json({ error: "Validation Error", message: "value must be a non-empty string" }, { status: 400 });
-					}
-
-					if (tags !== undefined && !Array.isArray(tags)) {
-						return Response.json({ error: "Validation Error", message: "tags must be an array of strings" }, { status: 400 });
-					}
 
 					const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 					if (brandInfo.length === 0) {
-						return Response.json({ error: "Validation Error", message: `Brand with ID '${brandId}' not found` }, { status: 400 });
+						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
 					}
 
 					const brand = brandInfo[0];
 					const userTags = tags ? sanitizeUserTags(tags) : [];
-					const systemTags = computeSystemTags(value.trim(), brand.name, brand.website);
+					const systemTags = computeSystemTags(value, brand.name, brand.website);
 
 					const [newPrompt] = await db
 						.insert(prompts)
-						.values({ brandId: brandId.trim(), value: value.trim(), tags: userTags, systemTags, enabled: true })
-						.returning()
+						.values({ brandId, value, tags: userTags, systemTags, enabled: true })
+						.returning();
 
 					await createPromptJobScheduler(newPrompt.id);
 
-					return Response.json(newPrompt, { status: 201 });
-				} catch (error) {
-					console.error("Error creating prompt:", error);
-					return Response.json({ error: "Internal Server Error" }, { status: 500 });
-				}
-			},
+					return newPrompt;
+				},
+			}),
 		},
 	},
 });
