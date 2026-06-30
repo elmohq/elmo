@@ -25,6 +25,20 @@ export const MAX_COMPETITORS = 100;
 export const MAX_PROMPTS = 100;
 
 /**
+ * Resolves the maximum number of prompts allowed per brand. Reads
+ * MAX_PROMPTS_PER_BRAND from the environment; falls back to MAX_PROMPTS when
+ * unset, non-numeric, or <= 0. Server-only (process is undefined in browser
+ * bundles) — use this in server functions/API routes that enforce the cap.
+ */
+export function getMaxPrompts(): number {
+	const raw = typeof process !== "undefined" ? process.env.MAX_PROMPTS_PER_BRAND : undefined;
+	if (!raw) return MAX_PROMPTS;
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed) || parsed <= 0) return MAX_PROMPTS;
+	return parsed;
+}
+
+/**
  * Sentinel providers store in `prompt_runs.web_queries` when a web search
  * happened (citations prove it) but the provider doesn't expose the actual
  * query strings (OpenRouter always; BrightData/Olostep on extraction failure).
