@@ -1,5 +1,13 @@
 # @elmohq/cli
 
+## 0.2.14
+
+### Patch Changes
+
+- 0e90384: Add `elmo upgrade` to move a local deployment to the version supported by the installed CLI: runs any registered migrations, re-pins the Docker image tags, and restarts the stack (only if it was running before). Warns when the CLI itself is behind the latest published release.
+- 8ef5e23: Add ChatGPT, Perplexity, and Gemini support to the DataForSEO provider. `elmo init` now offers them when you enable DataForSEO, and `SCRAPE_TARGETS` accepts `chatgpt:dataforseo:online`, `perplexity:dataforseo:online`, and `gemini:dataforseo:online` (override the underlying model via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`). Configure via `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`.
+- d64c8fa: Add Oxylabs as a scraper provider. `elmo init` now offers Oxylabs alongside BrightData and Olostep, and `SCRAPE_TARGETS` accepts `chatgpt:oxylabs[:online]`, `perplexity:oxylabs:online`, and `google-ai-mode:oxylabs:online`. Configure via `OXYLABS_USERNAME` + `OXYLABS_PASSWORD`.
+
 ## 0.2.13
 
 ## 0.2.12

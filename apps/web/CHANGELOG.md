@@ -1,5 +1,18 @@
 # @workspace/web
 
+## 0.2.14
+
+### Patch Changes
+
+- bb674b9: Onboarding brand analysis now runs in the background and is more resilient to failures, avoiding timeouts on slow analyses.
+  - @workspace/api-spec@0.2.14
+  - @workspace/config@0.2.14
+  - @workspace/deployment@0.2.14
+  - @workspace/lib@0.2.14
+  - @workspace/og@0.2.14
+  - @workspace/ui@0.2.14
+  - @workspace/whitelabel@0.2.14
+
 ## 0.2.13
 
 ### Patch Changes
