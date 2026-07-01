@@ -21,6 +21,8 @@ import PromptWizard from "@/components/prompt-wizard";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { useListFilters } from "@/hooks/use-list-filters";
+import { LookbackDropdown, getLookbackLabel } from "@/components/filter-bar";
 import { TrendChart } from "@/components/trend-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
@@ -171,8 +173,13 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
-	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
-	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
+	// Shared brand-wide time-range filter (URL-persisted, validated by the $brand
+	// layout route). Drives both cards below, matching the lookback control on the
+	// Visibility and Citations pages.
+	const { lookback } = useListFilters();
+	const lookbackLabel = getLookbackLabel(lookback);
+	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, lookback);
+	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback });
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
 
@@ -356,6 +363,11 @@ function DashboardPage() {
 		<div className="flex flex-1 flex-col">
 			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
 
+				{/* Time-range filter — drives both cards below (shared brand-wide lookback) */}
+				<div className="flex items-center justify-end">
+					<LookbackDropdown />
+				</div>
+
 				{/* Section 1: AI Visibility */}
 				<section className="space-y-2">
 					<div className="flex items-center justify-between">
@@ -380,7 +392,7 @@ function DashboardPage() {
 						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 							<CardHeader className="border-b border-dotted pb-2!">
 								<CardTitleWithTooltip
-									title="Visibility Trends (30d)"
+									title={`Visibility Trends · ${lookbackLabel}`}
 									tooltip={`The percentage of AI answers to your prompts that mention your brand — the big number is the latest point on this line. For prompts that don't name your brand, it's ${nonBrandedVisibility}%. Visibility shifts as AI models, the prompts you track, or the sites AI scans change; the line is smoothed for staggered prompt schedules.`}
 								/>
 							</CardHeader>
@@ -421,7 +433,7 @@ function DashboardPage() {
 						<Card className="shadow-none lg:col-span-3 flex flex-col gap-3 py-4">
 							<CardHeader className="border-b border-dotted pb-2!">
 								<CardTitleWithTooltip
-									title="Share of Voice Trends (30d)"
+									title={`Share of Voice Trends · ${lookbackLabel}`}
 									tooltip="Your brand's share of all brand and competitor mentions across the AI answers to your prompts — the big number is the latest point on this line. It shifts as AI models change, as you and competitors publish, or as the sites AI scans move; the line is smoothed for staggered prompt schedules."
 								/>
 							</CardHeader>
@@ -460,9 +472,9 @@ function DashboardPage() {
 								/>
 								<StatWithTooltip
 									icon={IconActivity}
-									label="evaluations (30d)"
+									label={`evaluations · ${lookbackLabel}`}
 									value={totalRuns.toLocaleString()}
-									tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
+									tooltip={`Total number of times we have evaluated prompts against LLMs over the selected period (${lookbackLabel}). Each prompt is evaluated multiple times across different AI models.`}
 								/>
 								<StatWithTooltip
 									icon={IconClock}
