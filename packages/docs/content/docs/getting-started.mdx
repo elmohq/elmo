@@ -7,7 +7,8 @@ description: Get Elmo running on your infrastructure in under 5 minutes using th
 
 - **Docker** — Docker Engine 24+ with Docker Compose v2
 - **Node.js** — 18.x or later (for the CLI)
-- At least one AI provider API key (OpenAI or Anthropic)
+- At least one AI provider API key (OpenAI, Anthropic, or OpenRouter)
+- **(Recommended)** A scraping provider to track the real ChatGPT and Google AI Mode experiences — see [Providers](/docs/user-guide/providers)
 
 ## Install the CLI
 
@@ -27,7 +28,7 @@ The wizard walks you through:
 
 1. **Config directory** — Where to store your `elmo.yaml` and `.env` files (default: `./elmo`)
 2. **PostgreSQL** — Run Postgres in Docker (recommended) or provide an existing `DATABASE_URL`
-3. **AI Providers** — Configure scrapers (BrightData, Oxylabs, Olostep, DataForSEO) and/or direct model APIs (OpenAI, Anthropic, Mistral, OpenRouter); see [Providers](/docs/user-guide/providers) for details
+3. **AI Providers** — Configure scrapers ([BrightData](https://get.brightdata.com/67h1b7h0shcn), [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32), [Olostep](https://olostep.com/?ref=elmo), [DataForSEO](https://dataforseo.com/?aff=184966)) and/or direct model APIs (OpenAI, Anthropic, Mistral, OpenRouter); see [Providers](/docs/user-guide/providers) for details
 4. **Start** — Optionally start the stack immediately
 
 Once complete, Elmo generates two files in your config directory:
@@ -61,7 +62,7 @@ This pulls the Docker images and starts all services. Once they report healthy, 
 | **Worker** | Background scheduler that drives prompt runs |
 | **Postgres** | Shared database and job queue |
 | **LLM APIs** | Direct API calls (OpenAI, Anthropic, OpenRouter) |
-| **LLM Scraper** | Scrapers for ChatGPT, Claude, and Google AI Mode (BrightData, Oxylabs, Olostep) |
+| **LLM Scraper** | Scrapers for ChatGPT, Claude, and Google AI Mode ([BrightData](https://get.brightdata.com/67h1b7h0shcn), [Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32), [Olostep](https://olostep.com/?ref=elmo)) |
 | **Elmo CLI** | Generates `elmo.yaml` + `.env` and runs `docker compose` |
 
 ## CLI Commands Reference

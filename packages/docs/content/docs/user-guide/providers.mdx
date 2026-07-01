@@ -9,14 +9,36 @@ Elmo tracks which AI answer engines mention your brand. Most AI search traffic c
 
 These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI referral traffic.
 
-| Provider | Why | Rough cost per prompt/month* | Sign up |
-|---|---|---|---|
-| **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
-| **Oxylabs** | Synchronous realtime API — no snapshot polling. Good for ChatGPT, Perplexity, Google AI Mode. | pay-as-you-go | [oxylabs.io](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
-| **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
+Which surfaces each provider can scrape:
+
+| **Surface** | [**BrightData**](https://get.brightdata.com/67h1b7h0shcn) | [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | [**DataForSEO**](https://dataforseo.com/?aff=184966) | [**Olostep**](https://olostep.com/?ref=elmo) |
+|---|:---:|:---:|:---:|:---:|
+| ChatGPT | ✅ | ✅ | ✅ | ✅ |
+| Google AI Mode | ✅ | ✅ | ✅ | ✅ |
+| Google AI Overview | – | – | – | ✅ |
+| Perplexity | ✅ | ✅ | ✅ | ✅ |
+| Gemini | ✅ | – | ✅ | ✅ |
+| Copilot | ✅ | – | – | ✅ |
+| Grok | ✅ | – | – | ✅ |
+
+Summary, cost, and how each bills:
+
+| **Provider** | **Summary** | **Rough cost per prompt/month** | **Pay-as-you-go minimum** | **Cheapest monthly plan** |
+|---|---|---|---|---|
+| [**BrightData**](https://get.brightdata.com/67h1b7h0shcn) | Cheap, solid option with great coverage. | ~$0.45 | $10 | $499/mo |
+| [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) | Cheapest with a plan, decent coverage. | ~$0.40 | Not supported | $49/mo |
+| [**DataForSEO**](https://dataforseo.com/?aff=184966) | Another good option with decent coverage. | ~$1.35 | $50 | None |
+| [**Olostep**](https://olostep.com/?ref=elmo) | Premium option with best coverage. | ~$2.25 | $20 | $9/mo |
 
 <Callout>
-Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that; Oxylabs Web Scraper API pricing depends on the plan. Actual cost depends on volume tier and provider promos. The BrightData, Oxylabs, and Olostep sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
+Cost estimates assume Elmo's default cadence of about 5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode) — roughly 300 evals/mo per prompt.
+
+- [**BrightData**](https://get.brightdata.com/67h1b7h0shcn) — about $0.0015 per evaluation → **$0.45/mo per prompt**.
+- [**Oxylabs**](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) — $0.50–$1.35 per 1K successful results → **$0.40/mo per prompt**. No pay-as-you-go, so the $49/mo Micro plan (up to 98K results) is the floor.
+- [**DataForSEO**](https://dataforseo.com/?aff=184966) — Google AI Mode via SERP Live (about $0.004/call) plus ChatGPT via LLM Responses (about $0.0006 base + tokens, about $0.005/call) → **$1.35/mo per prompt**.
+- [**Olostep**](https://olostep.com/?ref=elmo) — roughly 5× BrightData → **$2.25/mo per prompt**.
+
+Pay-as-you-go minimums (BrightData, DataForSEO, Olostep) are one-time credit purchases with no recurring commitment — best for low volume. Actual cost depends on volume tier and provider promos. Provider links are Elmo affiliate links — they give us a small kickback and cost you nothing extra.
 </Callout>
 
 ### BrightData
@@ -54,7 +76,7 @@ perplexity:oxylabs:online
 google-ai-mode:oxylabs:online
 ```
 
-Oxylabs uses HTTP Basic auth (Web Scraper API username + password) and a synchronous realtime endpoint, so requests block until the answer is ready — no snapshot polling. `:online` toggles in-product web search for ChatGPT; Perplexity and Google AI Mode always search.
+[Oxylabs](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) uses HTTP Basic auth (Web Scraper API username + password) and a synchronous realtime endpoint, so requests block until the answer is ready — no snapshot polling. `:online` toggles in-product web search for ChatGPT; Perplexity and Google AI Mode always support web search.
 
 ### Olostep
 
@@ -74,13 +96,13 @@ perplexity:olostep:online
 grok:olostep:online
 ```
 
-Olostep models always use web search, so the `:online` suffix is required.
+[Olostep](https://olostep.com/?ref=elmo) models always use web search, so the `:online` suffix is required.
 
 ## Direct model APIs
 
 These hit the provider API directly — cheaper per token than scrapers, but they don't represent the actual ChatGPT / Google AI Mode experience. Use them alongside a scraper when you want extra Claude or OSS model coverage.
 
-| Provider | Tracks | Cost per prompt/month* |
+| **Provider** | **Tracks** | **Cost per prompt/month**\* |
 |---|---|---|
 | **Anthropic API** (`ANTHROPIC_API_KEY`) | Claude Sonnet / Opus / Haiku | ~$4–5 per tracked model |
 | **OpenAI API** (`OPENAI_API_KEY`) | `gpt-5-mini` with web search (ChatGPT-like, but not the real UI) | ~$2–3 per tracked model |
@@ -100,9 +122,9 @@ claude:openrouter:anthropic/claude-sonnet-4.6
 
 OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
 
-## DataForSEO (optional)
+## DataForSEO
 
-`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` enable several surfaces as an alternative to BrightData/Olostep:
+`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` enable several AI surfaces on pure pay-as-you-go pricing:
 
 ```bash
 google-ai-mode:dataforseo:online
@@ -111,7 +133,7 @@ perplexity:dataforseo:online
 gemini:dataforseo:online
 ```
 
-- `google-ai-mode` uses DataForSEO's SERP Google AI Mode endpoint (unchanged).
+- `google-ai-mode` uses [DataForSEO](https://dataforseo.com/?aff=184966)'s SERP Google AI Mode endpoint.
 - `chatgpt`, `perplexity`, and `gemini` use DataForSEO's [AI Optimization "LLM Responses"](https://docs.dataforseo.com/v3/ai_optimization-llm_responses-overview/) API with web search enabled, returning the answer text and cited source URLs.
 
 Each LLM surface defaults to a sensible model (`gpt-5.5`, `sonar`, `gemini-2.5-flash`). Override the underlying DataForSEO `model_name` via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`. All four require `:online`.
