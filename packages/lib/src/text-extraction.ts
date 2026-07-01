@@ -56,8 +56,15 @@ export function extractTextFromGoogle(rawOutput: any): string {
 
 export function extractTextFromDataforseo(rawOutput: any): string {
 	try {
-		if (rawOutput?.tasks?.[0]?.result?.[0]) {
-			const items = rawOutput.tasks[0].result[0].items || [];
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		if (result) {
+			const items = result.items || [];
+			// AI Optimization LLM Responses (chatgpt/perplexity/gemini) use
+			// items[].sections[].text; the SERP Google AI Mode shape below uses
+			// items[].type === "ai_overview". Detect and delegate.
+			if (items.some((item: any) => Array.isArray(item?.sections))) {
+				return extractTextFromDataforseoLlm(rawOutput);
+			}
 			const aiOverviewItems = items.filter((item: any) => item.type === "ai_overview");
 			if (aiOverviewItems.length > 0 && aiOverviewItems[0].markdown) {
 				return aiOverviewItems[0].markdown;
@@ -66,6 +73,34 @@ export function extractTextFromDataforseo(rawOutput: any): string {
 		return "No AI overview content found.";
 	} catch (error) {
 		console.error("Error extracting text from DataForSEO output:", error);
+		return "Error extracting text content.";
+	}
+}
+
+/**
+ * Text extraction for DataForSEO's AI Optimization "LLM Responses" API
+ * (chatgpt / perplexity / gemini), which has a different shape from the SERP
+ * Google AI Mode response handled by extractTextFromDataforseo:
+ *   tasks[].result[].items[].sections[].{type:"text", text}
+ * The reasoning items (type "reasoning") are skipped; only message text is kept.
+ */
+export function extractTextFromDataforseoLlm(rawOutput: any): string {
+	try {
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		if (!result) return "No text content found in DataForSEO LLM output.";
+		const texts: string[] = [];
+		for (const item of result.items ?? []) {
+			if (item?.type === "reasoning") continue;
+			for (const section of item?.sections ?? []) {
+				if (typeof section?.text === "string" && section.text.trim()) {
+					texts.push(section.text.trim());
+				}
+			}
+		}
+		if (texts.length) return texts.join("\n");
+		return "No text content found in DataForSEO LLM output.";
+	} catch (error) {
+		console.error("Error extracting text from DataForSEO LLM output:", error);
 		return "Error extracting text content.";
 	}
 }
@@ -126,7 +161,15 @@ export function extractTextFromBrightdata(rawOutput: any): string {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
 		if (!record) return "No content in BrightData output.";
-		for (const key of ["answer_text_markdown", "answer_text", "answer", "response_raw", "response", "text", "content"]) {
+		for (const key of [
+			"answer_text_markdown",
+			"answer_text",
+			"answer",
+			"response_raw",
+			"response",
+			"text",
+			"content",
+		]) {
 			if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
 		}
 		return "No text content found in BrightData output.";
@@ -235,7 +278,10 @@ export function extractCitationsFromOpenAI(rawOutput: any): Citation[] {
 						for (const ann of content.annotations) {
 							if (ann.type === "url_citation" && ann.url) {
 								const c = parseCitationUrl(ann.url, ann.title, idx);
-								if (c) { citations.push(c); idx++; }
+								if (c) {
+									citations.push(c);
+									idx++;
+								}
 							}
 						}
 					}
@@ -257,11 +303,52 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 		const citations: Citation[] = [];
 		let idx = 0;
 		const items = rawOutput?.tasks?.[0]?.result?.[0]?.items ?? [];
+		// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
+		// citations in items[].sections[].annotations[]; delegate when present.
+		if (items.some((item: any) => Array.isArray(item?.sections))) {
+			return extractCitationsFromDataforseoLlm(rawOutput);
+		}
 		for (const aiOverview of items.filter((i: any) => i.type === "ai_overview")) {
 			for (const ref of aiOverview.references ?? []) {
 				if (ref.url) {
 					const c = parseCitationUrl(ref.url, ref.title, idx);
-					if (c) { citations.push(c); idx++; }
+					if (c) {
+						citations.push(c);
+						idx++;
+					}
+				}
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Citation extraction for DataForSEO's AI Optimization "LLM Responses" API.
+ * Sources live at tasks[].result[].items[].sections[].annotations[].{title,url}.
+ * annotations is null when web_search was disabled, and may be empty when web
+ * search ran but cited nothing. Duplicate URLs are de-duped.
+ */
+export function extractCitationsFromDataforseoLlm(rawOutput: any): Citation[] {
+	try {
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		for (const item of result?.items ?? []) {
+			for (const section of item?.sections ?? []) {
+				for (const ann of section?.annotations ?? []) {
+					const url = ann?.url;
+					if (!url || typeof url !== "string" || !url.startsWith("http")) continue;
+					if (seen.has(url)) continue;
+					seen.add(url);
+					const c = parseCitationUrl(url, ann.title, idx);
+					if (c) {
+						citations.push(c);
+						idx++;
+					}
 				}
 			}
 		}
@@ -283,7 +370,10 @@ export function extractCitationsFromMistral(rawOutput: any): Citation[] {
 				if (seen.has(chunk.url)) continue;
 				seen.add(chunk.url);
 				const c = parseCitationUrl(chunk.url, chunk.title, idx);
-				if (c) { citations.push(c); idx++; }
+				if (c) {
+					citations.push(c);
+					idx++;
+				}
 			}
 		}
 		return citations;
@@ -305,7 +395,10 @@ export function extractCitationsFromOpenRouter(rawOutput: any): Citation[] {
 			if (seen.has(url)) continue;
 			seen.add(url);
 			const c = parseCitationUrl(url, cite.title, idx);
-			if (c) { citations.push(c); idx++; }
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
 		}
 		return citations;
 	} catch {
@@ -323,7 +416,10 @@ export function extractCitationsFromOlostep(rawOutput: any): Citation[] {
 			const url = typeof source === "string" ? source : source?.url;
 			if (url && typeof url === "string") {
 				const c = parseCitationUrl(url, source?.title ?? source?.label, idx);
-				if (c) { citations.push(c); idx++; }
+				if (c) {
+					citations.push(c);
+					idx++;
+				}
 			}
 		}
 		return citations;
@@ -345,7 +441,10 @@ export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
 					if (cit.type === "web_search_result_location" && cit.url && !seen.has(cit.url)) {
 						seen.add(cit.url);
 						const c = parseCitationUrl(cit.url, cit.title, idx);
-						if (c) { citations.push(c); idx++; }
+						if (c) {
+							citations.push(c);
+							idx++;
+						}
 					}
 				}
 			}
@@ -354,7 +453,10 @@ export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
 					if (result.type === "web_search_result" && result.url && !seen.has(result.url)) {
 						seen.add(result.url);
 						const c = parseCitationUrl(result.url, result.title, idx);
-						if (c) { citations.push(c); idx++; }
+						if (c) {
+							citations.push(c);
+							idx++;
+						}
 					}
 				}
 			}
@@ -380,7 +482,10 @@ export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 				if (!url || typeof url !== "string" || !url.startsWith("http") || seen.has(url)) continue;
 				seen.add(url);
 				const c = parseCitationUrl(url, item?.title, idx);
-				if (c) { citations.push(c); idx++; }
+				if (c) {
+					citations.push(c);
+					idx++;
+				}
 			}
 		}
 		return citations;

@@ -215,8 +215,11 @@ async function main(): Promise<void> {
 	await send(`placeholder@e2e.test${ENTER}`);
 	await waitFor("DataForSEO password");
 	await send(`placeholder-not-used${ENTER}`);
-	await waitFor("Also scrape Google AI Mode");
-	await send(ENTER); // No
+	// DataForSEO engine multiselect (google-ai-mode pre-selected). Toggle it off
+	// and submit an empty selection to keep this run's targets unchanged.
+	await waitFor("LLM Providers to track via DataForSEO");
+	await send(" "); // deselect the pre-selected google-ai-mode
+	await send(ENTER); // submit with nothing selected → no DataForSEO target
 
 	// SCRAPE_TARGETS edit confirm (default No)
 	await waitFor("Edit SCRAPE_TARGETS before saving?");

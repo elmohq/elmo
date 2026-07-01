@@ -1,14 +1,35 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-	extractTextFromOpenAI,
-	extractTextFromAnthropic,
-	extractTextFromGoogle,
-	extractTextContent,
-	extractCitationsFromOpenAI,
-	extractCitationsFromGoogle,
-	extractCitationsFromOxylabs,
 	extractCitations,
+	extractCitationsFromDataforseoLlm,
+	extractCitationsFromGoogle,
+	extractCitationsFromOpenAI,
+	extractCitationsFromOxylabs,
+	extractTextContent,
+	extractTextFromAnthropic,
+	extractTextFromDataforseoLlm,
+	extractTextFromGoogle,
+	extractTextFromOpenAI,
 } from "./text-extraction";
+
+/** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
+function dfsLlmResponse(opts: { reasoning?: boolean; annotations?: { title?: string; url: string }[] }) {
+	const items: any[] = [];
+	if (opts.reasoning) {
+		items.push({ type: "reasoning", sections: [{ type: "summary_text", text: "thinking..." }] });
+	}
+	items.push({
+		type: "message",
+		sections: [
+			{
+				type: "text",
+				text: "The answer text.",
+				annotations: opts.annotations ?? null,
+			},
+		],
+	});
+	return { tasks: [{ status_code: 20000, result: [{ model_name: "gpt-4o", items }] }] };
+}
 
 describe("text-extraction", () => {
 	describe("extractTextFromOpenAI", () => {
@@ -92,9 +113,7 @@ describe("text-extraction", () => {
 	describe("extractTextFromAnthropic", () => {
 		it("should extract text from content array", () => {
 			const rawOutput = {
-				content: [
-					{ type: "text", text: "Anthropic response" },
-				],
+				content: [{ type: "text", text: "Anthropic response" }],
 			};
 
 			expect(extractTextFromAnthropic(rawOutput)).toBe("Anthropic response");
@@ -125,9 +144,7 @@ describe("text-extraction", () => {
 		it("should handle missing content gracefully", () => {
 			expect(extractTextFromAnthropic({})).toBe("No text content found in Anthropic output.");
 			expect(extractTextFromAnthropic(null)).toBe("No text content found in Anthropic output.");
-			expect(extractTextFromAnthropic({ content: "not an array" })).toBe(
-				"No text content found in Anthropic output."
-			);
+			expect(extractTextFromAnthropic({ content: "not an array" })).toBe("No text content found in Anthropic output.");
 		});
 	});
 
@@ -159,9 +176,7 @@ describe("text-extraction", () => {
 					{
 						result: [
 							{
-								items: [
-									{ type: "organic", title: "Not AI overview" },
-								],
+								items: [{ type: "organic", title: "Not AI overview" }],
 							},
 						],
 					},
@@ -178,12 +193,66 @@ describe("text-extraction", () => {
 		});
 	});
 
+	describe("extractTextFromDataforseoLlm", () => {
+		it("extracts message section text and skips reasoning items", () => {
+			const raw = dfsLlmResponse({ reasoning: true });
+			expect(extractTextFromDataforseoLlm(raw)).toBe("The answer text.");
+		});
+
+		it("returns a fallback when no text is present", () => {
+			expect(extractTextFromDataforseoLlm({ tasks: [{ result: [{ items: [] }] }] })).toBe(
+				"No text content found in DataForSEO LLM output.",
+			);
+			expect(extractTextFromDataforseoLlm({})).toBe("No text content found in DataForSEO LLM output.");
+		});
+
+		it("is reachable through the dataforseo dispatch (shape auto-detect)", () => {
+			const raw = dfsLlmResponse({});
+			expect(extractTextFromGoogle(raw)).toBe("The answer text.");
+			expect(extractTextContent(raw, "dataforseo")).toBe("The answer text.");
+		});
+	});
+
+	describe("extractCitationsFromDataforseoLlm", () => {
+		it("extracts annotations as citations", () => {
+			const raw = dfsLlmResponse({
+				annotations: [
+					{ title: "Example", url: "https://www.example.com/a" },
+					{ title: "Other", url: "https://other.org/b" },
+				],
+			});
+			const citations = extractCitationsFromDataforseoLlm(raw);
+			expect(citations).toEqual([
+				{ url: "https://www.example.com/a", title: "Example", domain: "example.com", citationIndex: 0 },
+				{ url: "https://other.org/b", title: "Other", domain: "other.org", citationIndex: 1 },
+			]);
+		});
+
+		it("de-dupes repeated URLs and ignores non-http entries", () => {
+			const raw = dfsLlmResponse({
+				annotations: [{ url: "https://example.com/x" }, { url: "https://example.com/x" }, { url: "not-a-url" }],
+			});
+			const citations = extractCitationsFromDataforseoLlm(raw);
+			expect(citations).toHaveLength(1);
+			expect(citations[0].url).toBe("https://example.com/x");
+		});
+
+		it("returns [] when annotations are null (web search off)", () => {
+			expect(extractCitationsFromDataforseoLlm(dfsLlmResponse({}))).toEqual([]);
+			expect(extractCitationsFromDataforseoLlm({})).toEqual([]);
+		});
+
+		it("is reachable through the dataforseo dispatch (shape auto-detect)", () => {
+			const raw = dfsLlmResponse({ annotations: [{ url: "https://example.com/x" }] });
+			expect(extractCitationsFromGoogle(raw)).toHaveLength(1);
+			expect(extractCitations(raw, "dataforseo")).toHaveLength(1);
+		});
+	});
+
 	describe("extractTextContent", () => {
 		it("should route by provider name", () => {
 			const openaiOutput = {
-				output: [
-					{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] },
-				],
+				output: [{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] }],
 			};
 			const anthropicOutput = {
 				content: [{ type: "text", text: "Anthropic text" }],
@@ -199,9 +268,7 @@ describe("text-extraction", () => {
 
 		it("should route by legacy engine names for old data", () => {
 			const openaiOutput = {
-				output: [
-					{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] },
-				],
+				output: [{ type: "message", content: [{ type: "output_text", text: "OpenAI text" }] }],
 			};
 			expect(extractTextContent(openaiOutput, "openai")).toBe("OpenAI text");
 			expect(extractTextContent(openaiOutput, "chatgpt")).toBe("OpenAI text");
@@ -364,9 +431,7 @@ describe("text-extraction", () => {
 					{
 						result: [
 							{
-								items: [
-									{ type: "ai_overview", markdown: "No refs" },
-								],
+								items: [{ type: "ai_overview", markdown: "No refs" }],
 							},
 						],
 					},

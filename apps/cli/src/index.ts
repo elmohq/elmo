@@ -412,6 +412,7 @@ const OLOSTEP_MODELS = [
 const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
+const DATAFORSEO_MODELS = ["google-ai-mode", "chatgpt", "perplexity", "gemini"] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
@@ -820,7 +821,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 
 async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode scraping)`,
+		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode + LLM Responses)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
@@ -840,13 +841,16 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 	assertNotCancelled(pwd);
 	env.DATAFORSEO_PASSWORD = pwd;
 
-	const addTarget = await p.confirm({
-		message: "Also scrape Google AI Mode via DataForSEO? (google-ai-mode:dataforseo:online)",
-		initialValue: false,
-	});
-	assertNotCancelled(addTarget);
-	if (addTarget) {
-		targets.push(formatScrapeTarget({ model: "google-ai-mode", provider: "dataforseo", webSearch: true }));
+	const selected = (await p.multiselect({
+		message: "LLM Providers to track via DataForSEO",
+		options: DATAFORSEO_MODELS.map((model) => ({ value: model, label: model })),
+		required: false,
+		initialValues: ["google-ai-mode"],
+	})) as string[] | symbol;
+	assertNotCancelled(selected);
+
+	for (const model of selected) {
+		targets.push(formatScrapeTarget({ model, provider: "dataforseo", webSearch: true }));
 	}
 }
 

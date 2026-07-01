@@ -72,7 +72,6 @@ export const oxylabs: Provider = {
 		// ChatGPT's `search` flag toggles in-product web search. Other sources
 		// always search, so we don't send the flag for them.
 		if (model === "chatgpt") body.search = options?.webSearch ?? false;
-		if (options?.country) body.geo_location = options.country;
 
 		const res = await fetch(OXYLABS_REALTIME_URL, {
 			method: "POST",

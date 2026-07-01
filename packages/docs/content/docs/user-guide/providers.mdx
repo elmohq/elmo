@@ -102,7 +102,21 @@ OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the th
 
 ## DataForSEO (optional)
 
-`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` enable Google AI Mode scraping via `google-ai-mode:dataforseo:online` as an alternative to BrightData/Olostep.
+`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` enable several surfaces as an alternative to BrightData/Olostep:
+
+```bash
+google-ai-mode:dataforseo:online
+chatgpt:dataforseo:online
+perplexity:dataforseo:online
+gemini:dataforseo:online
+```
+
+- `google-ai-mode` uses DataForSEO's SERP Google AI Mode endpoint (unchanged).
+- `chatgpt`, `perplexity`, and `gemini` use DataForSEO's [AI Optimization "LLM Responses"](https://docs.dataforseo.com/v3/ai_optimization-llm_responses-overview/) API with web search enabled, returning the answer text and cited source URLs.
+
+Each LLM surface defaults to a sensible model (`gpt-5.5`, `sonar`, `gemini-2.5-flash`). Override the underlying DataForSEO `model_name` via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`. All four require `:online`.
+
+DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
 
 ## Recommended setups
 
