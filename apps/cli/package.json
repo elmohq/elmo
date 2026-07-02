@@ -33,19 +33,19 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@clack/prompts": "^1.5.1",
+    "@clack/prompts": "^1.6.0",
     "commander": "^15.0.0",
     "dotenv": "17.4.2",
     "picocolors": "^1.1.1",
-    "posthog-node": "^5.37.0",
-    "semver": "^7.8.4"
+    "posthog-node": "^5.38.6",
+    "semver": "^7.8.5"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
-    "rolldown": "^1.1.1",
+    "rolldown": "^1.1.3",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.9"
   }
 }
