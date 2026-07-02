@@ -9,13 +9,14 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { canAccessBrand } from "@/lib/api/scope";
+import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
 	getPromptTopCompetitorMentions,
 } from "@/lib/postgres-read";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 		handlers: {
 			GET: createApiHandler({
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				handle: async ({ params, request }) => {
+				handle: async ({ params, request, auth }) => {
 					const { promptId } = params;
 					const { searchParams } = new URL(request.url);
 
@@ -68,6 +69,10 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					}
 					const prompt = promptResult[0];
 
+					if (!canAccessBrand(auth, prompt.brandId)) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+					}
+
 					const [brandInfo, competitorsList] = await Promise.all([
 						db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),
 						db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
@@ -76,9 +81,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
 					}
 					const brandDomains = new Set(
-						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(Boolean),
+						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(
+							Boolean,
+						),
 					);
-					const competitorDomains = new Set(competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean));
+					const competitorDomains = new Set(
+						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
+					);
 
 					const isMatchingDomain = (domain: string, domainSet: Set<string>) => {
 						for (const d of domainSet) {
@@ -139,8 +148,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						startDate,
 						endDate,
 						mentions: {
-							mentionsTotal:
-								Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
+							mentionsTotal: Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
 							brandMentionsTotal: Number(mentionData.brand_mentioned_count),
 							competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
 							mentionsTopK,

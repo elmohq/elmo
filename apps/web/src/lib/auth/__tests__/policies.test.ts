@@ -5,17 +5,21 @@
  * deployment modes. If a policy changes, a test here MUST break — that's
  * the whole point.
  *
+ * Note on /api/v1: `evaluateDeploymentPolicy` no longer authenticates API v1
+ * requests (see the file header in policies.ts) — that moved into
+ * `createApiHandler`. The invariant that every v1 route actually calls
+ * `createApiHandler` is guarded separately by
+ * `src/lib/api/__tests__/v1-route-conformance.test.ts`, not by this file.
+ *
  * Structure:
  *   1. Deployment request policy matrix  (deploymentMiddleware)
  *   2. Auth function-level policies       (requireAuth / requireAdmin / requireOrgAccess)
  *   3. Route guard policies               (_authed / admin / $brand beforeLoad)
- *   4. API key authentication
- *   5. Read-only enforcement
+ *   4. Read-only enforcement
  */
 import { describe, expect, it } from "vitest";
 import {
 	evaluateAdminRouteGuard,
-	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
@@ -31,13 +35,9 @@ import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES }
 // Helpers
 // ============================================================================
 
-function req(method: string, pathname: string, authorizationHeader?: string): RequestInfo {
-	return { pathname, method, authorizationHeader };
+function req(method: string, pathname: string): RequestInfo {
+	return { pathname, method };
 }
-
-const VALID_API_KEY = "test-key-abc123";
-const INVALID_API_KEY = "wrong-key";
-const API_KEYS = [VALID_API_KEY, "another-key"];
 
 // ============================================================================
 // 1. Deployment Request Policy Matrix
@@ -75,27 +75,23 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks API v1 without key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"), { adminApiKeys: API_KEYS });
-			expect(result).toMatchObject({ action: "block", status: 401 });
-		});
-
-		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
+		// Deployment policy no longer gates /api/v1 auth at all — it falls
+		// through to "allow" regardless of Authorization header. Actual
+		// authentication happens in `createApiHandler` (resolveApiAuth), and
+		// the invariant that every v1 route uses it is enforced by
+		// v1-route-conformance.test.ts, not here.
+		it("allows GET /api/v1/* with no auth info (auth is enforced by createApiHandler)", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"));
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks API v1 with invalid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${INVALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
-			expect(result).toMatchObject({ action: "block", status: 401 });
+		it("allows POST /api/v1/* with no auth info (auth is enforced by createApiHandler)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/brands"));
+			expect(result.action).toBe("allow");
 		});
 
-		it("allows API v1 docs without key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"), { adminApiKeys: API_KEYS });
+		it("allows API v1 docs", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"));
 			expect(result.action).toBe("allow");
 		});
 
@@ -195,10 +191,12 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks POST to /api/v1 before reaching key check (read-only takes priority)", () => {
-			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
+		// Read-only mode blocks /api/v1 writes unconditionally — before any
+		// question of API-key auth is even reached (auth is a separate layer
+		// now, in createApiHandler). These regression-test the demo-mode
+		// deployment policy in isolation from that auth layer.
+		it("blocks POST to /api/v1/* (read-only mode blocks all API writes)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/prompts"));
 			expect(result).toMatchObject({
 				action: "block",
 				status: 403,
@@ -206,10 +204,8 @@ describe("evaluateDeploymentPolicy", () => {
 			});
 		});
 
-		it("allows GET to /api/v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
+		it("allows GET to /api/v1/*", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"));
 			expect(result.action).toBe("allow");
 		});
 
@@ -218,56 +214,38 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("serve-openapi");
 		});
 
-		it("blocks POST /api/v1/tools/analyze even with a valid key (demo can't burn LLM credit)", () => {
+		it("blocks POST /api/v1/tools/analyze (demo can't burn LLM credit)", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/tools/analyze"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/v1/brands", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/brands"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks PATCH /api/v1/brands/:brandId", () => {
+			const result = evaluateDeploymentPolicy(features, req("PATCH", "/api/v1/brands/acme"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks POST /api/v1/competitors", () => {
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/competitors"));
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
+		});
+
+		it("blocks PATCH /api/v1/competitors/:competitorId", () => {
 			const result = evaluateDeploymentPolicy(
 				features,
-				req("POST", "/api/v1/tools/analyze", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
+				req("PATCH", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef"),
 			);
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
-		it("blocks POST /api/v1/brands even with a valid key", () => {
+		it("blocks DELETE /api/v1/competitors/:competitorId", () => {
 			const result = evaluateDeploymentPolicy(
 				features,
-				req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks PATCH /api/v1/brands/:brandId even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("PATCH", "/api/v1/brands/acme", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks POST /api/v1/competitors even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks PATCH /api/v1/competitors/:competitorId even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("PATCH", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
-		});
-
-		it("blocks DELETE /api/v1/competitors/:competitorId even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("DELETE", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
+				req("DELETE", "/api/v1/competitors/01234567-89ab-cdef-0123-456789abcdef"),
 			);
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
@@ -309,15 +287,8 @@ describe("evaluateDeploymentPolicy", () => {
 			expect(result.action).toBe("allow");
 		});
 
-		it("blocks API v1 without key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"), { adminApiKeys: API_KEYS });
-			expect(result).toMatchObject({ action: "block", status: 401 });
-		});
-
-		it("allows API v1 with valid key", () => {
-			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
-				adminApiKeys: API_KEYS,
-			});
+		it("allows GET /api/v1/* (auth is enforced by createApiHandler)", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"));
 			expect(result.action).toBe("allow");
 		});
 	});
@@ -363,22 +334,13 @@ describe("evaluateDeploymentPolicy", () => {
 	// Custom / edge-case feature combos
 	// ────────────────────────────────────────────────────────────
 	describe("custom feature combinations", () => {
-		it("blocks API v1 when no keys are configured", () => {
-			const result = evaluateDeploymentPolicy(
-				LOCAL_FEATURES,
-				req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: [] },
-			);
-			expect(result).toMatchObject({ action: "block", status: 401 });
-		});
-
 		it("handles /api/v1/openapi.json with trailing slash", () => {
 			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/openapi.json/"));
 			expect(result.action).toBe("serve-openapi");
 		});
 
 		it("allows /api/v1/docs with trailing slash", () => {
-			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs/"), { adminApiKeys: API_KEYS });
+			const result = evaluateDeploymentPolicy(LOCAL_FEATURES, req("GET", "/api/v1/docs/"));
 			expect(result.action).toBe("allow");
 		});
 
@@ -481,52 +443,7 @@ describe("evaluateBrandRouteGuard", () => {
 });
 
 // ============================================================================
-// 4. API Key Authentication
-// ============================================================================
-
-describe("evaluateApiKeyAuth", () => {
-	const keys = ["key-1", "key-2", "key-3"];
-
-	it("rejects missing Authorization header", () => {
-		const result = evaluateApiKeyAuth(null, keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects empty Authorization header", () => {
-		const result = evaluateApiKeyAuth("", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects non-Bearer scheme", () => {
-		const result = evaluateApiKeyAuth("Basic abc123", keys);
-		expect(result).not.toBe("allow");
-	});
-
-	it("rejects invalid key", () => {
-		const result = evaluateApiKeyAuth("Bearer wrong-key", keys);
-		expect(result).not.toBe("allow");
-		if (result !== "allow") {
-			expect(result.message).toContain("Invalid API key");
-		}
-	});
-
-	it("rejects when no keys are configured", () => {
-		const result = evaluateApiKeyAuth("Bearer key-1", []);
-		expect(result).not.toBe("allow");
-	});
-
-	it("allows valid key", () => {
-		expect(evaluateApiKeyAuth("Bearer key-1", keys)).toBe("allow");
-	});
-
-	it("allows any of the configured keys", () => {
-		expect(evaluateApiKeyAuth("Bearer key-2", keys)).toBe("allow");
-		expect(evaluateApiKeyAuth("Bearer key-3", keys)).toBe("allow");
-	});
-});
-
-// ============================================================================
-// 5. Cross-cutting: Full scenario tests
+// 4. Cross-cutting: Full scenario tests
 //    These simulate a user journey through multiple policy layers.
 // ============================================================================
 

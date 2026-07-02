@@ -55,6 +55,7 @@ import { Route as AuthedAppBrandSettingsPromptsRouteImport } from './routes/_aut
 import { Route as AuthedAppBrandSettingsLlmsRouteImport } from './routes/_authed/app/$brand/settings/llms'
 import { Route as AuthedAppBrandSettingsCompetitorsRouteImport } from './routes/_authed/app/$brand/settings/competitors'
 import { Route as AuthedAppBrandSettingsBrandRouteImport } from './routes/_authed/app/$brand/settings/brand'
+import { Route as AuthedAppBrandSettingsApiKeysRouteImport } from './routes/_authed/app/$brand/settings/api-keys'
 import { Route as AuthedAppBrandPromptsEditRouteImport } from './routes/_authed/app/$brand/prompts/edit'
 import { Route as AuthedAppBrandPromptsPromptIdRouteImport } from './routes/_authed/app/$brand/prompts/$promptId'
 
@@ -301,6 +302,12 @@ const AuthedAppBrandSettingsBrandRoute =
     path: '/settings/brand',
     getParentRoute: () => AuthedAppBrandRoute,
   } as any)
+const AuthedAppBrandSettingsApiKeysRoute =
+  AuthedAppBrandSettingsApiKeysRouteImport.update({
+    id: '/settings/api-keys',
+    path: '/settings/api-keys',
+    getParentRoute: () => AuthedAppBrandRoute,
+  } as any)
 const AuthedAppBrandPromptsEditRoute =
   AuthedAppBrandPromptsEditRouteImport.update({
     id: '/prompts/edit',
@@ -354,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
+  '/app/$brand/settings/api-keys': typeof AuthedAppBrandSettingsApiKeysRoute
   '/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
@@ -399,6 +407,7 @@ export interface FileRoutesByTo {
   '/api/v1/reports': typeof ApiV1ReportsIndexRoute
   '/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
+  '/app/$brand/settings/api-keys': typeof AuthedAppBrandSettingsApiKeysRoute
   '/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
@@ -450,6 +459,7 @@ export interface FileRoutesById {
   '/api/v1/reports/': typeof ApiV1ReportsIndexRoute
   '/_authed/app/$brand/prompts/$promptId': typeof AuthedAppBrandPromptsPromptIdRoute
   '/_authed/app/$brand/prompts/edit': typeof AuthedAppBrandPromptsEditRoute
+  '/_authed/app/$brand/settings/api-keys': typeof AuthedAppBrandSettingsApiKeysRoute
   '/_authed/app/$brand/settings/brand': typeof AuthedAppBrandSettingsBrandRoute
   '/_authed/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/_authed/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
@@ -501,6 +511,7 @@ export interface FileRouteTypes {
     | '/api/v1/reports/'
     | '/app/$brand/prompts/$promptId'
     | '/app/$brand/prompts/edit'
+    | '/app/$brand/settings/api-keys'
     | '/app/$brand/settings/brand'
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
@@ -546,6 +557,7 @@ export interface FileRouteTypes {
     | '/api/v1/reports'
     | '/app/$brand/prompts/$promptId'
     | '/app/$brand/prompts/edit'
+    | '/app/$brand/settings/api-keys'
     | '/app/$brand/settings/brand'
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
@@ -596,6 +608,7 @@ export interface FileRouteTypes {
     | '/api/v1/reports/'
     | '/_authed/app/$brand/prompts/$promptId'
     | '/_authed/app/$brand/prompts/edit'
+    | '/_authed/app/$brand/settings/api-keys'
     | '/_authed/app/$brand/settings/brand'
     | '/_authed/app/$brand/settings/competitors'
     | '/_authed/app/$brand/settings/llms'
@@ -954,6 +967,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAppBrandSettingsBrandRouteImport
       parentRoute: typeof AuthedAppBrandRoute
     }
+    '/_authed/app/$brand/settings/api-keys': {
+      id: '/_authed/app/$brand/settings/api-keys'
+      path: '/settings/api-keys'
+      fullPath: '/app/$brand/settings/api-keys'
+      preLoaderRoute: typeof AuthedAppBrandSettingsApiKeysRouteImport
+      parentRoute: typeof AuthedAppBrandRoute
+    }
     '/_authed/app/$brand/prompts/edit': {
       id: '/_authed/app/$brand/prompts/edit'
       path: '/prompts/edit'
@@ -997,6 +1017,7 @@ interface AuthedAppBrandRouteChildren {
   AuthedAppBrandIndexRoute: typeof AuthedAppBrandIndexRoute
   AuthedAppBrandPromptsPromptIdRoute: typeof AuthedAppBrandPromptsPromptIdRoute
   AuthedAppBrandPromptsEditRoute: typeof AuthedAppBrandPromptsEditRoute
+  AuthedAppBrandSettingsApiKeysRoute: typeof AuthedAppBrandSettingsApiKeysRoute
   AuthedAppBrandSettingsBrandRoute: typeof AuthedAppBrandSettingsBrandRoute
   AuthedAppBrandSettingsCompetitorsRoute: typeof AuthedAppBrandSettingsCompetitorsRoute
   AuthedAppBrandSettingsLlmsRoute: typeof AuthedAppBrandSettingsLlmsRoute
@@ -1015,6 +1036,7 @@ const AuthedAppBrandRouteChildren: AuthedAppBrandRouteChildren = {
   AuthedAppBrandIndexRoute: AuthedAppBrandIndexRoute,
   AuthedAppBrandPromptsPromptIdRoute: AuthedAppBrandPromptsPromptIdRoute,
   AuthedAppBrandPromptsEditRoute: AuthedAppBrandPromptsEditRoute,
+  AuthedAppBrandSettingsApiKeysRoute: AuthedAppBrandSettingsApiKeysRoute,
   AuthedAppBrandSettingsBrandRoute: AuthedAppBrandSettingsBrandRoute,
   AuthedAppBrandSettingsCompetitorsRoute:
     AuthedAppBrandSettingsCompetitorsRoute,

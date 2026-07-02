@@ -24,7 +24,7 @@
 			"BearerAuth": {
 				"type": "http",
 				"scheme": "bearer",
-				"description": "Bearer API token for access"
+				"description": "API key created in the Elmo dashboard under Settings → API Keys, sent as `Authorization: Bearer elmo_...`. The key inherits its owner's access at request time: keys owned by an admin have instance-wide access, while keys owned by any other user are scoped to the brands of the organizations they belong to. Some endpoints require an admin key (see individual operations); others are scoped, returning 404 for resources outside the key's brands."
 			}
 		},
 		"schemas": {
@@ -562,6 +562,26 @@
 					}
 				}
 			},
+			"ForbiddenError": {
+				"description": "Admin API key required",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
+			"RateLimitError": {
+				"description": "Per-key rate limit or usage quota exceeded",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
 			"NotFoundError": {
 				"description": "Resource not found",
 				"content": {
@@ -608,7 +628,7 @@
 		"/tools/analyze": {
 			"post": {
 				"summary": "Analyze a website",
-				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.",
+				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts. Requires an admin API key.",
 				"operationId": "analyzeBrand",
 				"tags": ["Tools"],
 				"requestBody": {
@@ -630,6 +650,8 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
+					"403": { "$ref": "#/components/responses/ForbiddenError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			}
@@ -637,6 +659,7 @@
 		"/brands": {
 			"get": {
 				"summary": "List brands",
+				"description": "Non-admin keys only see brands they belong to; out-of-scope rows are excluded from the results.",
 				"operationId": "listBrands",
 				"tags": ["Brands"],
 				"parameters": [
@@ -663,11 +686,12 @@
 						}
 					},
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			},
 			"post": {
-				"summary": "Create a brand",
+				"summary": "Create a brand. Requires an admin API key.",
 				"operationId": "createBrand",
 				"tags": ["Brands"],
 				"requestBody": {
@@ -689,6 +713,8 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
+					"403": { "$ref": "#/components/responses/ForbiddenError" },
 					"409": { "$ref": "#/components/responses/ConflictError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
@@ -697,6 +723,7 @@
 		"/brands/{brandId}": {
 			"get": {
 				"summary": "Get a brand",
+				"description": "Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "getBrand",
 				"tags": ["Brands"],
 				"parameters": [
@@ -718,12 +745,14 @@
 						}
 					},
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			},
 			"patch": {
 				"summary": "Update a brand",
+				"description": "Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "updateBrand",
 				"tags": ["Brands"],
 				"parameters": [
@@ -754,6 +783,7 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
@@ -762,6 +792,7 @@
 		"/competitors": {
 			"get": {
 				"summary": "List competitors",
+				"description": "Non-admin keys only see brands they belong to; out-of-scope rows are excluded from the results.",
 				"operationId": "listCompetitors",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -794,11 +825,13 @@
 						}
 					},
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			},
 			"post": {
 				"summary": "Add a competitor",
+				"description": "Non-admin keys only see brands they belong to; specifying a brandId outside that scope returns 404.",
 				"operationId": "createCompetitor",
 				"tags": ["Competitors"],
 				"requestBody": {
@@ -820,6 +853,7 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"409": { "$ref": "#/components/responses/ConflictError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
@@ -828,6 +862,7 @@
 		"/competitors/{competitorId}": {
 			"get": {
 				"summary": "Get a competitor",
+				"description": "Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "getCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -850,12 +885,14 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			},
 			"patch": {
 				"summary": "Update a competitor",
+				"description": "Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "updateCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -886,12 +923,14 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			},
 			"delete": {
 				"summary": "Delete a competitor",
+				"description": "Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "deleteCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -914,6 +953,7 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"429": { "$ref": "#/components/responses/RateLimitError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
@@ -922,7 +962,7 @@
 		"/prompts": {
 			"get": {
 				"summary": "List all prompts",
-				"description": "Retrieve a paginated list of all prompts across all brands",
+				"description": "Retrieve a paginated list of all prompts across all brands. Non-admin keys only see brands they belong to; out-of-scope rows are excluded from the results.",
 				"operationId": "listPrompts",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -998,6 +1038,9 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
@@ -1005,7 +1048,7 @@
 			},
 			"post": {
 				"summary": "Create a new prompt",
-				"description": "Create a new prompt for a brand. This will automatically schedule the prompt for execution.",
+				"description": "Create a new prompt for a brand. This will automatically schedule the prompt for execution. Non-admin keys only see brands they belong to; specifying a brandId outside that scope returns 404.",
 				"operationId": "createPrompt",
 				"tags": ["Prompts"],
 				"requestBody": {
@@ -1035,6 +1078,9 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
@@ -1044,7 +1090,7 @@
 		"/prompts/{promptId}/snapshot": {
 			"get": {
 				"summary": "Get prompt snapshot",
-				"description": "Get an aggregated snapshot of mention and citation analytics for a specific prompt over a date range. Use this to identify competitive gaps, track brand visibility trends, and discover top cited URLs.",
+				"description": "Get an aggregated snapshot of mention and citation analytics for a specific prompt over a date range. Use this to identify competitive gaps, track brand visibility trends, and discover top cited URLs. Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "getPromptSnapshot",
 				"tags": ["Snapshots"],
 				"parameters": [
@@ -1156,6 +1202,9 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
 					},
@@ -1168,7 +1217,7 @@
 		"/prompts/{promptId}": {
 			"get": {
 				"summary": "Get a prompt",
-				"description": "Retrieve a specific prompt by ID",
+				"description": "Retrieve a specific prompt by ID. Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "getPrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -1200,6 +1249,9 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
 					},
@@ -1210,7 +1262,7 @@
 			},
 			"patch": {
 				"summary": "Update a prompt",
-				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
+				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job. Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "updatePrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -1252,6 +1304,9 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
 					},
@@ -1262,7 +1317,7 @@
 			},
 			"delete": {
 				"summary": "Delete a prompt",
-				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
+				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs. Non-admin keys only see brands they belong to; resources outside that scope return 404.",
 				"operationId": "deletePrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -1306,6 +1361,9 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
 					},
@@ -1318,7 +1376,7 @@
 		"/reports": {
 			"post": {
 				"summary": "Create a report",
-				"description": "Create a new AI Share of Voice report and queue it for generation. The report will evaluate the brand across multiple AI engines (ChatGPT, Claude, Google AI) using generated and optional custom prompts.",
+				"description": "Create a new AI Share of Voice report and queue it for generation. The report will evaluate the brand across multiple AI engines (ChatGPT, Claude, Google AI) using generated and optional custom prompts. Requires an admin API key.",
 				"operationId": "createReport",
 				"tags": ["Reports"],
 				"requestBody": {
@@ -1371,6 +1429,12 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
@@ -1378,7 +1442,7 @@
 			},
 			"get": {
 				"summary": "List reports",
-				"description": "Retrieve a paginated list of all reports, ordered by creation date (newest first).",
+				"description": "Retrieve a paginated list of all reports, ordered by creation date (newest first). Requires an admin API key.",
 				"operationId": "listReports",
 				"tags": ["Reports"],
 				"parameters": [
@@ -1437,6 +1501,12 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"
 					}
@@ -1446,7 +1516,7 @@
 		"/reports/{reportId}": {
 			"get": {
 				"summary": "Get report status and data",
-				"description": "Poll a report's status. When completed, returns per-prompt snapshot data with raw mention counts. Consumers are responsible for computing SoV and other derived metrics from the raw data.",
+				"description": "Poll a report's status. When completed, returns per-prompt snapshot data with raw mention counts. Consumers are responsible for computing SoV and other derived metrics from the raw data. Requires an admin API key.",
 				"operationId": "getReport",
 				"tags": ["Reports"],
 				"parameters": [
@@ -1611,6 +1681,12 @@
 					},
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
+					},
+					"429": {
+						"$ref": "#/components/responses/RateLimitError"
+					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
 					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"

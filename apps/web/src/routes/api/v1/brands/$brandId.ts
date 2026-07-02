@@ -10,15 +10,24 @@ import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { canAccessBrand } from "@/lib/api/scope";
 import {
+	apiUpdateInputToInternal,
+	BrandNotFoundError,
+	buildBrandResult,
+	InvalidDomainsError,
 	updateBrand,
 	updateBrandBodySchema,
-	apiUpdateInputToInternal,
-	buildBrandResult,
-	BrandNotFoundError,
-	InvalidDomainsError,
 } from "@/server/onboarding-core";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
+
+// Out-of-scope brand access must 404 exactly like a nonexistent brand does
+// below ("Brand \"<id>\" not found."), never a distinguishable 403 — that
+// wording differs from assertBrandAccess's generic default, so both GET and
+// PATCH throw this ApiError inline instead of using the shared helper.
+function brandNotFound(brandId: string): ApiError {
+	return new ApiError(404, "Not Found", `Brand "${brandId}" not found.`);
+}
 
 export const Route = createFileRoute("/api/v1/brands/$brandId")({
 	server: {
@@ -26,11 +35,14 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 			// No params schema: brand IDs are caller-chosen strings (e.g. "acme"),
 			// not UUIDs like the competitor/prompt/report routes validate.
 			GET: createApiHandler({
-				handle: async ({ params }) => {
+				handle: async ({ params, auth }) => {
 					const { brandId } = params;
+					if (!canAccessBrand(auth, brandId)) {
+						throw brandNotFound(brandId);
+					}
 					const row = await db.query.brands.findFirst({ where: eq(brands.id, brandId) });
 					if (!row) {
-						throw new ApiError(404, "Not Found", `Brand "${brandId}" not found.`);
+						throw brandNotFound(brandId);
 					}
 					return buildBrandResult(row);
 				},
@@ -49,7 +61,10 @@ export const Route = createFileRoute("/api/v1/brands/$brandId")({
 						return new ApiError(404, "Not Found", err.message);
 					}
 				},
-				handle: async ({ params, body }) => {
+				handle: async ({ params, body, auth }) => {
+					if (!canAccessBrand(auth, params.brandId)) {
+						throw brandNotFound(params.brandId);
+					}
 					const internal = apiUpdateInputToInternal(params.brandId, body);
 					return await updateBrand(internal);
 				},

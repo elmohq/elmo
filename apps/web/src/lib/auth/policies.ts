@@ -7,8 +7,18 @@
  *
  * The goal: every access-control decision in the app should be traceable
  * to one of these functions, making it trivial to write regression tests.
+ *
+ * Division of responsibility for `/api/v1/**`: this module (via
+ * `deploymentMiddleware`) only decides *deployment-mode* policy — read-only
+ * blocking, org-mutation blocking, OpenAPI serving. It does not authenticate
+ * API requests. Authentication is resolved per-request inside
+ * `createApiHandler` (see `@/lib/api/handler` and `resolveApiAuth` in
+ * `@/lib/auth/api-auth`), which every v1 route handler is required to call.
+ * That requirement is itself an invariant enforced by
+ * `src/lib/api/__tests__/v1-route-conformance.test.ts` — since nothing here
+ * gates `/api/v1/**` on auth anymore, a route that forgets to wrap itself in
+ * `createApiHandler` would otherwise be silently unauthenticated.
  */
-import { timingSafeEqual } from "node:crypto";
 import type { FeaturesConfig } from "@workspace/config/types";
 
 // ============================================================================
@@ -38,43 +48,36 @@ const DEMO_AUTH_WRITE_ALLOWLIST = new Set([
 
 export type DeploymentPolicyResult =
 	| { action: "allow" }
-	| { action: "block"; status: 401 | 403; error: string; message: string }
+	| { action: "block"; status: 403; error: string; message: string }
 	| { action: "redirect"; url: string }
 	| { action: "serve-openapi" };
 
 export interface RequestInfo {
 	pathname: string;
 	method: string;
-	authorizationHeader?: string | null;
 }
 
 /**
  * Evaluate request-level deployment access policy.
  *
  * Encodes the logic from `deploymentMiddleware` as a pure function:
- * 1. Read-only mode blocks API + server-function writes (except analytics events)
- * 2. Admin access control (disabled / readonly / full)
+ * 1. Org-plugin mutation blocking (always)
+ * 2. Read-only mode blocks API + server-function writes (except analytics events)
  * 3. OpenAPI spec serving
- * 4. API v1 key authentication
+ *
+ * Does NOT authenticate `/api/v1/**` requests — see the file header for why.
  */
-export function evaluateDeploymentPolicy(
-	features: FeaturesConfig,
-	request: RequestInfo,
-	options?: { adminApiKeys?: string[] },
-): DeploymentPolicyResult {
-	const { pathname, method, authorizationHeader } = request;
+export function evaluateDeploymentPolicy(features: FeaturesConfig, request: RequestInfo): DeploymentPolicyResult {
+	const { pathname, method } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
-	const isPlausibleEventRoute =
-		pathname === "/api/plausible/event" ||
-		pathname === "/api/plausible/event/";
+	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
 
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	const isOrgPluginMutation =
-		pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
 
-	// 0. Better-auth org plugin mutations are blocked everywhere. Orgs are
+	// 1. Better-auth org plugin mutations are blocked everywhere. Orgs are
 	// created server-side only — via the provisioning module (local/demo)
 	// or via Auth0 sync (whitelabel). No mode needs these endpoints.
 	if (isOrgPluginMutation) {
@@ -86,7 +89,7 @@ export function evaluateDeploymentPolicy(
 		};
 	}
 
-	// 1. Read-only mode: block every write except the explicit allowlist
+	// 2. Read-only mode: block every write except the explicit allowlist
 	// (analytics events + the two auth endpoints a visitor needs to use).
 	if (features.readOnly && isWriteMethod) {
 		if ((isApiRoute || isServerFunctionRoute) && !isPlausibleEventRoute && !isAllowedAuthWrite) {
@@ -99,104 +102,18 @@ export function evaluateDeploymentPolicy(
 		}
 	}
 
-	// 2. Serve OpenAPI spec
-	const isOpenApi =
-		pathname === "/api/v1/openapi.json" ||
-		pathname === "/api/v1/openapi.json/";
+	// 3. Serve OpenAPI spec
+	const isOpenApi = pathname === "/api/v1/openapi.json" || pathname === "/api/v1/openapi.json/";
 
 	if (isOpenApi && method === "GET") {
 		return { action: "serve-openapi" };
 	}
 
-	// 3. Public API v1 key authentication (except docs and spec)
-	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc =
-		pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
-
-	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		const keyResult = evaluateApiKeyAuth(
-			authorizationHeader,
-			options?.adminApiKeys ?? [],
-		);
-		if (keyResult !== "allow") {
-			return {
-				action: "block",
-				status: 401,
-				error: keyResult.error,
-				message: keyResult.message,
-			};
-		}
-	}
-
+	// No further checks: /api/v1/** requests (other than the OpenAPI spec
+	// above, and subject to the read-only block above) fall through to
+	// "allow" here. Authentication happens in `createApiHandler`, not in
+	// deployment policy — see the file header.
 	return { action: "allow" };
-}
-
-// ============================================================================
-// API Key Authentication
-// ============================================================================
-
-/**
- * Constant-time string comparison to prevent timing attacks on API keys.
- * Returns true if the strings are equal, false otherwise.
- */
-function timingSafeStringEqual(a: string, b: string): boolean {
-	const bufA = Buffer.from(a);
-	const bufB = Buffer.from(b);
-	if (bufA.length !== bufB.length) {
-		// Compare against itself to consume constant time, then return false
-		timingSafeEqual(bufA, bufA);
-		return false;
-	}
-	return timingSafeEqual(bufA, bufB);
-}
-
-/**
- * Evaluate Bearer token API key authentication.
- * Returns "allow" or an object with error details.
- * Uses timing-safe comparison to prevent timing attacks.
- */
-export function evaluateApiKeyAuth(
-	authorizationHeader: string | null | undefined,
-	adminApiKeys: string[],
-): "allow" | { error: string; message: string } {
-	if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
-		return {
-			error: "Unauthorized",
-			message:
-				"Valid API key required as Bearer token in Authorization header",
-		};
-	}
-
-	const token = authorizationHeader.substring(7);
-
-	if (adminApiKeys.length === 0 || !adminApiKeys.some((key) => timingSafeStringEqual(key, token))) {
-		return {
-			error: "Unauthorized",
-			message: "Invalid API key",
-		};
-	}
-
-	return "allow";
-}
-
-/**
- * Parse comma-separated ADMIN_API_KEYS env var into a trimmed, non-empty array.
- * Single source of truth — use this everywhere instead of inline parsing.
- */
-export function getAdminApiKeys(): string[] {
-	return (process.env.ADMIN_API_KEYS || "")
-		.split(",")
-		.map((key) => key.trim())
-		.filter(Boolean);
-}
-
-/**
- * Validate a Bearer API key from a request.
- * Convenience wrapper for use in API route handlers.
- */
-export function validateApiKeyFromRequest(request: Request): boolean {
-	const authHeader = request.headers.get("Authorization");
-	return evaluateApiKeyAuth(authHeader, getAdminApiKeys()) === "allow";
 }
 
 // ============================================================================
@@ -215,9 +132,7 @@ export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
  * Evaluate organization access requirement.
  * Used by server functions via `requireOrgAccess()` in auth helpers.
  */
-export function evaluateRequireOrgAccess(
-	hasAccess: boolean,
-): "allow" | "deny" {
+export function evaluateRequireOrgAccess(hasAccess: boolean): "allow" | "deny" {
 	return hasAccess ? "allow" : "deny";
 }
 
@@ -248,9 +163,7 @@ export type RouteGuardResult = "allow" | "redirect-to-login" | "not-found";
  * Evaluate the `/_authed` layout guard.
  * Mirrors the `beforeLoad` in `_authed.tsx`.
  */
-export function evaluateAuthedRouteGuard(
-	session: unknown | null,
-): RouteGuardResult {
+export function evaluateAuthedRouteGuard(session: unknown | null): RouteGuardResult {
 	if (!session) return "redirect-to-login";
 	return "allow";
 }
@@ -268,8 +181,6 @@ export function evaluateAdminRouteGuard(isAdmin: boolean): RouteGuardResult {
  * Evaluate the `/app/$brand` layout guard.
  * Mirrors the `loader` in `_authed/app/$brand.tsx`.
  */
-export function evaluateBrandRouteGuard(
-	hasAccess: boolean,
-): RouteGuardResult {
+export function evaluateBrandRouteGuard(hasAccess: boolean): RouteGuardResult {
 	return hasAccess ? "allow" : "not-found";
 }

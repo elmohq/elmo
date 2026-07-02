@@ -7,14 +7,17 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { reports, type NewReport } from "@workspace/lib/db/schema";
-import { desc, count, eq } from "drizzle-orm";
+import { type NewReport, reports } from "@workspace/lib/db/schema";
+import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { sendReportJob } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { sendReportJob } from "@/lib/job-scheduler";
 
 const createReportBody = z.object({
-	brandName: z.string("brandName is required and must be a non-empty string").trim().min(1, "brandName is required and must be a non-empty string"),
+	brandName: z
+		.string("brandName is required and must be a non-empty string")
+		.trim()
+		.min(1, "brandName is required and must be a non-empty string"),
 	brandWebsite: z
 		.string("brandWebsite is required and must be a non-empty string")
 		.trim()
@@ -34,6 +37,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 	server: {
 		handlers: {
 			POST: createApiHandler({
+				scope: "admin",
 				body: createReportBody,
 				status: 201,
 				handle: async ({ body }) => {
@@ -78,6 +82,7 @@ export const Route = createFileRoute("/api/v1/reports/")({
 			}),
 
 			GET: createApiHandler({
+				scope: "admin",
 				handle: async ({ request }) => {
 					const { searchParams } = new URL(request.url);
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));

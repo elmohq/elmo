@@ -1,43 +1,84 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import type { ApiAuthContext } from "@/lib/auth/api-auth";
 import { ApiError, createApiHandler } from "../handler";
 
-const API_KEY = "test-api-key";
+const { resolveApiAuth } = vi.hoisted(() => ({
+	resolveApiAuth: vi.fn(),
+}));
 
-function makeRequest(options?: { method?: string; body?: string; apiKey?: string | null }) {
-	const headers = new Headers();
-	const apiKey = options?.apiKey === undefined ? API_KEY : options.apiKey;
-	if (apiKey !== null) {
-		headers.set("Authorization", `Bearer ${apiKey}`);
-	}
+vi.mock("@/lib/auth/api-auth", () => ({
+	resolveApiAuth,
+}));
+
+const ADMIN_AUTH: ApiAuthContext = { type: "admin", userId: "admin-user-id", keyId: "admin-key-id" };
+
+function userAuth(brandIds: string[] = ["brand-1"]): ApiAuthContext {
+	return { type: "user", userId: "user-id", keyId: "user-key-id", brandIds };
+}
+
+function mockAuthAdmin() {
+	resolveApiAuth.mockResolvedValue({ ok: true, auth: ADMIN_AUTH });
+}
+
+function mockAuthUser(brandIds?: string[]) {
+	resolveApiAuth.mockResolvedValue({ ok: true, auth: userAuth(brandIds) });
+}
+
+function mockAuthFailure(status: 401 | 429, error: string, message: string) {
+	resolveApiAuth.mockResolvedValue({ ok: false, status, error, message });
+}
+
+function makeRequest(options?: { method?: string; body?: string }) {
 	return new Request("http://localhost/api/v1/test", {
 		method: options?.method ?? "GET",
-		headers,
 		body: options?.body,
 	});
 }
 
 describe("createApiHandler", () => {
 	beforeEach(() => {
-		vi.stubEnv("ADMIN_API_KEYS", API_KEY);
+		mockAuthAdmin();
 	});
 
 	afterEach(() => {
-		vi.unstubAllEnvs();
+		resolveApiAuth.mockReset();
 		vi.restoreAllMocks();
 	});
 
-	it("returns 401 when the API key is missing", async () => {
+	it("returns the resolver's error envelope verbatim on 401 failure", async () => {
+		mockAuthFailure(401, "Unauthorized", "Valid API key required as Bearer token in Authorization header");
 		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
-		const response = await handler({ request: makeRequest({ apiKey: null }), params: {} });
+		const response = await handler({ request: makeRequest(), params: {} });
 		expect(response.status).toBe(401);
-		expect(await response.json()).toEqual({ error: "Unauthorized", message: "Valid API key required" });
+		expect(await response.json()).toEqual({
+			error: "Unauthorized",
+			message: "Valid API key required as Bearer token in Authorization header",
+		});
 	});
 
-	it("returns 401 when the API key is wrong", async () => {
+	it("returns the resolver's error envelope verbatim on 429 failure", async () => {
+		mockAuthFailure(429, "Rate Limit Exceeded", "API key rate limit exceeded. Try again later.");
 		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
-		const response = await handler({ request: makeRequest({ apiKey: "wrong-key" }), params: {} });
-		expect(response.status).toBe(401);
+		const response = await handler({ request: makeRequest(), params: {} });
+		expect(response.status).toBe(429);
+		expect(await response.json()).toEqual({
+			error: "Rate Limit Exceeded",
+			message: "API key rate limit exceeded. Try again later.",
+		});
+	});
+
+	it("never evaluates params/body validation or handle when auth fails", async () => {
+		mockAuthFailure(401, "Unauthorized", "Invalid API key");
+		const params = vi.fn();
+		const handle = vi.fn(async () => ({ ok: true }));
+		const handler = createApiHandler({
+			params: { safeParse: params } as unknown as z.ZodType<Record<string, string>>,
+			handle,
+		});
+		await handler({ request: makeRequest(), params: { promptId: "not-a-uuid" } });
+		expect(params).not.toHaveBeenCalled();
+		expect(handle).not.toHaveBeenCalled();
 	});
 
 	it("wraps a plain object return in Response.json with status 200", async () => {
@@ -202,14 +243,94 @@ describe("createApiHandler", () => {
 	});
 
 	it("checks auth before validating params", async () => {
+		mockAuthFailure(401, "Unauthorized", "Valid API key required as Bearer token in Authorization header");
 		const handler = createApiHandler({
 			params: z.object({ promptId: z.guid() }),
 			handle: async () => ({ ok: true }),
 		});
 		const response = await handler({
-			request: makeRequest({ apiKey: null }),
+			request: makeRequest(),
 			params: { promptId: "not-a-uuid" },
 		});
 		expect(response.status).toBe(401);
+	});
+
+	it("calls resolveApiAuth exactly once per request, with the Request object", async () => {
+		const request = makeRequest();
+		const handler = createApiHandler({ handle: async () => ({ ok: true }) });
+		await handler({ request, params: {} });
+		expect(resolveApiAuth).toHaveBeenCalledOnce();
+		expect(resolveApiAuth).toHaveBeenCalledWith(request);
+	});
+
+	describe("scope: admin", () => {
+		it("returns 403 when a user-scoped key hits an admin-scoped endpoint", async () => {
+			mockAuthUser();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({ scope: "admin", handle });
+			const response = await handler({ request: makeRequest(), params: {} });
+			expect(response.status).toBe(403);
+			expect(await response.json()).toEqual({
+				error: "Forbidden",
+				message: "This endpoint requires an admin API key",
+			});
+			expect(handle).not.toHaveBeenCalled();
+		});
+
+		it("calls handle when an admin-scoped key hits an admin-scoped endpoint", async () => {
+			mockAuthAdmin();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({ scope: "admin", handle });
+			const response = await handler({ request: makeRequest(), params: {} });
+			expect(response.status).toBe(200);
+			expect(handle).toHaveBeenCalledOnce();
+		});
+
+		it("runs the scope check before params/body validation", async () => {
+			mockAuthUser();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({
+				scope: "admin",
+				params: z.object({ promptId: z.guid() }),
+				handle,
+			});
+			const response = await handler({ request: makeRequest(), params: { promptId: "not-a-uuid" } });
+			expect(response.status).toBe(403);
+			expect(handle).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("ctx.auth", () => {
+		it("passes the exact admin auth context through to handle when no scope is set", async () => {
+			mockAuthAdmin();
+			let received: ApiAuthContext | undefined;
+			const handler = createApiHandler({
+				handle: async (ctx) => {
+					received = ctx.auth;
+					return { ok: true };
+				},
+			});
+			await handler({ request: makeRequest(), params: {} });
+			expect(received).toEqual(ADMIN_AUTH);
+		});
+
+		it("passes the exact user auth context through to handle when no scope is set", async () => {
+			mockAuthUser(["brand-1", "brand-2"]);
+			let received: ApiAuthContext | undefined;
+			const handler = createApiHandler({
+				handle: async (ctx) => {
+					received = ctx.auth;
+					return { ok: true };
+				},
+			});
+			const response = await handler({ request: makeRequest(), params: {} });
+			expect(response.status).toBe(200);
+			expect(received).toEqual({
+				type: "user",
+				userId: "user-id",
+				keyId: "user-key-id",
+				brandIds: ["brand-1", "brand-2"],
+			});
+		});
 	});
 });

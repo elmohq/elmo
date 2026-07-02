@@ -207,12 +207,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Auth0 subject claim granted admin access.",
 	},
 	{
-		name: "ADMIN_API_KEYS",
-		scope: "server",
-		requiredBy: "optional",
-		description: "Comma-separated bearer tokens accepted by the admin API.",
-	},
-	{
 		name: "DEFAULT_BRAND_DOMAINS",
 		scope: "server",
 		requiredBy: "optional",

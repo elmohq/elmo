@@ -1,18 +1,30 @@
 /**
  * Shared handler factory for /api/v1 routes.
  *
- * Centralizes the cross-cutting concerns every external API endpoint needs:
- * API key authentication, zod validation of path params and JSON bodies,
- * uniform error envelopes (`{ error, message }`), and a catch-all that turns
- * unexpected failures into a logged 500. Route files supply only the
- * resource-specific logic via `handle`.
+ * This factory is THE auth gate for /api/v1 — the middleware layer no
+ * longer authenticates these routes. Every request is authenticated via
+ * better-auth API keys, resolved per-request by `resolveApiAuth` into an
+ * `ApiAuthContext` that is either instance-wide (`type: "admin"`) or scoped
+ * to the caller's organizations (`type: "user"`, with `brandIds`). Route
+ * handlers receive this context as `ctx.auth` and are responsible for using
+ * it to scope the resources they read or write.
+ *
+ * Endpoints that must only ever be called with an admin key can pass
+ * `scope: "admin"`; non-admin keys are rejected with 403 before the handler
+ * (or any params/body validation) runs.
+ *
+ * Beyond auth, the factory centralizes the other cross-cutting concerns
+ * every external API endpoint needs: zod validation of path params and JSON
+ * bodies, uniform error envelopes (`{ error, message }`), and a catch-all
+ * that turns unexpected failures into a logged 500. Route files supply only
+ * the resource-specific logic via `handle`.
  *
  * Handlers signal expected failures (404, 409, ...) by throwing `ApiError`.
  * A plain-object return value is wrapped in `Response.json()` with `status`
  * (default 200); returning a `Response` passes through untouched.
  */
 import type { z } from "zod";
-import { validateApiKeyFromRequest } from "@/lib/auth/policies";
+import { type ApiAuthContext, resolveApiAuth } from "@/lib/auth/api-auth";
 
 export class ApiError extends Error {
 	constructor(
@@ -39,6 +51,7 @@ export interface ApiHandlerContext<P, B> {
 	params: P;
 	body: B;
 	request: Request;
+	auth: ApiAuthContext;
 }
 
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
@@ -48,13 +61,20 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	body?: z.ZodType<B>;
 	/** Success status used when `handle` returns a plain object (default 200). */
 	status?: number;
+	/** Restrict this endpoint to admin API keys; non-admin keys receive 403. */
+	scope?: "admin";
 	/** Translate domain errors thrown by `handle` into `ApiError` before the generic 500. */
 	mapError?: (err: unknown) => ApiError | undefined;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
 }) {
 	return async ({ request, params }: { request: Request; params: Record<string, string> }): Promise<Response> => {
-		if (!validateApiKeyFromRequest(request)) {
-			return errorResponse(401, "Unauthorized", "Valid API key required");
+		const authResult = await resolveApiAuth(request);
+		if (!authResult.ok) {
+			return errorResponse(authResult.status, authResult.error, authResult.message);
+		}
+
+		if (opts.scope === "admin" && authResult.auth.type !== "admin") {
+			return errorResponse(403, "Forbidden", "This endpoint requires an admin API key");
 		}
 
 		let parsedParams = params as P;
@@ -82,7 +102,7 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 		}
 
 		try {
-			const result = await opts.handle({ params: parsedParams, body: parsedBody, request });
+			const result = await opts.handle({ params: parsedParams, body: parsedBody, request, auth: authResult.auth });
 			if (result instanceof Response) {
 				return result;
 			}

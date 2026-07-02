@@ -12,8 +12,9 @@ import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { canAccessBrand } from "@/lib/api/scope";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -32,9 +33,12 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 		handlers: {
 			GET: createApiHandler({
 				params: competitorParams,
-				handle: async ({ params }) => {
+				handle: async ({ params, auth }) => {
 					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, params.competitorId) });
 					if (!row) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
+					}
+					if (!canAccessBrand(auth, row.brandId)) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
 					}
 					return row;
@@ -44,11 +48,14 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 			PATCH: createApiHandler({
 				params: competitorParams,
 				body: updateCompetitorBody,
-				handle: async ({ params, body }) => {
+				handle: async ({ params, body, auth }) => {
 					const { competitorId } = params;
 
 					const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
 					if (!existing) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
+					}
+					if (!canAccessBrand(auth, existing.brandId)) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${competitorId}' not found`);
 					}
 
@@ -79,7 +86,15 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 
 			DELETE: createApiHandler({
 				params: competitorParams,
-				handle: async ({ params }) => {
+				handle: async ({ params, auth }) => {
+					const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, params.competitorId) });
+					if (!existing) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
+					}
+					if (!canAccessBrand(auth, existing.brandId)) {
+						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
+					}
+
 					const [deleted] = await db.delete(competitors).where(eq(competitors.id, params.competitorId)).returning();
 					if (!deleted) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);

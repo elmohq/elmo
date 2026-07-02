@@ -10,11 +10,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
-import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { canAccessBrand } from "@/lib/api/scope";
+import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 		handlers: {
 			GET: createApiHandler({
 				params: promptParams,
-				handle: async ({ params }) => {
+				handle: async ({ params, auth }) => {
 					const prompt = await db
 						.select({
 							id: prompts.id,
@@ -53,6 +54,10 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						throw new ApiError(404, "Not Found", `Prompt with ID '${params.promptId}' not found`);
 					}
 
+					if (!canAccessBrand(auth, prompt[0].brandId)) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${params.promptId}' not found`);
+					}
+
 					return prompt[0];
 				},
 			}),
@@ -60,12 +65,16 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			PATCH: createApiHandler({
 				params: promptParams,
 				body: updatePromptBody,
-				handle: async ({ params, body }) => {
+				handle: async ({ params, body, auth }) => {
 					const { promptId } = params;
 					const { value, enabled, tags } = body;
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+					}
+
+					if (!canAccessBrand(auth, existingPrompt[0].brandId)) {
 						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 
@@ -111,11 +120,15 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 
 			DELETE: createApiHandler({
 				params: promptParams,
-				handle: async ({ params }) => {
+				handle: async ({ params, auth }) => {
 					const { promptId } = params;
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
+						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+					}
+
+					if (!canAccessBrand(auth, existingPrompt[0].brandId)) {
 						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
 					}
 

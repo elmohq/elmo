@@ -12,10 +12,66 @@ Elmo provides a REST API for managing brands, prompts, and snapshots programmati
 Include your API key in the `Authorization` header:
 
 ```http
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer elmo_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-API keys are configured server-side via the `ADMIN_API_KEYS` environment variable.
+### Creating a key
+
+API keys are created per-user in the dashboard, not configured server-side. Go to **Settings → API Keys** (`/app/{brand}/settings/api-keys`) and create a key. The full key (`elmo_...`) is shown once, at creation time — copy it somewhere safe. Elmo stores only a hash, so a lost key can't be recovered; delete it and create a new one instead.
+
+### Access scope
+
+A key inherits its owner's access, evaluated on every request:
+
+- Keys owned by an **admin** get instance-wide access to all brands.
+- Keys owned by any other user are scoped to the brands of the organizations they belong to.
+
+This means access changes automatically as membership changes: removing a user from an organization or demoting an admin immediately narrows what their existing keys can reach, and deleting a user invalidates their keys entirely. There's no separate permission model to keep in sync — a key can never do more than its owner could do in the dashboard right now.
+
+Most endpoints are scoped rather than blocked outright for non-admin keys: requests for brands (and their prompts, competitors, and snapshots) outside the caller's organizations return `404 Not Found`, not `403`, so a key can't be used to discover what other brands exist. List endpoints silently exclude out-of-scope rows rather than erroring.
+
+A smaller set of endpoints are **admin-only** and reject non-admin keys with `403 Forbidden`:
+
+- `POST /brands`
+- `GET /reports`, `POST /reports`
+- `GET /reports/{reportId}`
+- `POST /tools/analyze`
+
+Everything else — `GET /brands`, `GET`/`PATCH /brands/{brandId}`, all `/prompts` and `/competitors` endpoints, and `GET /prompts/{promptId}/snapshot` — works with non-admin keys, scoped as described above.
+
+Keys can optionally be given an expiration date at creation time; by default they don't expire.
+
+### Rate limits
+
+Each key is limited to **120 requests per minute** by default. Exceeding the limit, or exhausting a key's usage quota (if one is configured), returns `429 Too Many Requests`.
+
+### Errors
+
+Errors are returned as a JSON envelope:
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "API key is invalid or has expired"
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `401 Unauthorized` | The key is missing, invalid, expired, or disabled. |
+| `403 Forbidden` | The endpoint requires an admin API key. |
+| `429 Rate Limit Exceeded` | Per-key rate limit or usage quota exceeded. |
+
+### Example
+
+```bash
+curl /api/v1/brands \
+  -H "Authorization: Bearer elmo_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+<Callout>
+`ADMIN_API_KEYS` has been removed. If you're upgrading from an older version, see [Configuration](/docs/developer-guide/configuration#api-access) for the upgrade path.
+</Callout>
 
 ## Endpoints
 

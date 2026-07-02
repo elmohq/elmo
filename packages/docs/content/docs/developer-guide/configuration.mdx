@@ -26,6 +26,10 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 | `BETTER_AUTH_SECRET` | Secret key for session encryption | Auto-generated |
 | `DISABLE_TELEMETRY` | Set to `1` to disable all telemetry. See [Telemetry](/docs/developer-guide/telemetry). | — |
 
+### API Access
+
+There's no environment variable for `/api/v1` access — API keys are created per-user in the dashboard under **Settings → API Keys** and inherit the creating user's brand access. See [API Authentication](/docs/api#authentication).
+
 ### AI Provider Keys
 
 At least one provider is required for Elmo to track visibility. See [Providers](/docs/user-guide/providers) for a full cost/capability breakdown and recommended setups.

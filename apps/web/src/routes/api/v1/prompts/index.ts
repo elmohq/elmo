@@ -4,12 +4,13 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq, count, desc } from "drizzle-orm";
+import { brands, prompts } from "@workspace/lib/db/schema";
+import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
+import { count, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { allowedBrandIds, canAccessBrand } from "@/lib/api/scope";
+import { createPromptJobScheduler } from "@/lib/job-scheduler";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -21,14 +22,39 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 					const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
 					const offset = (page - 1) * limit;
 
-					const whereConditions = brandId ? eq(prompts.brandId, brandId) : undefined;
+					// A brandId filter the caller can't access must answer exactly
+					// like a nonexistent brandId does (an empty list), never a 404 —
+					// existence of an out-of-scope brand must not leak.
+					if (brandId && !canAccessBrand(auth, brandId)) {
+						return {
+							prompts: [],
+							pagination: { page, limit, total: 0, totalPages: 0 },
+						};
+					}
+
+					let whereConditions = brandId ? eq(prompts.brandId, brandId) : undefined;
+					if (!brandId) {
+						const scoped = allowedBrandIds(auth);
+						// drizzle's inArray throws on an empty array, so a non-admin key
+						// belonging to zero organizations must short-circuit to an empty
+						// page instead of querying with `inArray(prompts.brandId, [])`.
+						if (scoped !== null && scoped.length === 0) {
+							return {
+								prompts: [],
+								pagination: { page, limit, total: 0, totalPages: 0 },
+							};
+						}
+						if (scoped !== null) {
+							whereConditions = inArray(prompts.brandId, scoped);
+						}
+					}
 
 					const [totalCountResult] = await db.select({ count: count() }).from(prompts).where(whereConditions);
 					const totalCount = totalCountResult?.count || 0;
@@ -61,8 +87,15 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 			POST: createApiHandler({
 				body: createPromptBody,
 				status: 201,
-				handle: async ({ body }) => {
+				handle: async ({ body, auth }) => {
 					const { brandId, value, tags } = body;
+
+					// Out-of-scope brandId must answer exactly like a nonexistent one
+					// (400 Validation Error below), never a 404 — existence of an
+					// out-of-scope brand must not leak.
+					if (!canAccessBrand(auth, brandId)) {
+						throw new ApiError(400, "Validation Error", `Brand with ID '${brandId}' not found`);
+					}
 
 					const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 					if (brandInfo.length === 0) {

@@ -2,14 +2,17 @@
  * Playwright global setup for authentication.
  *
  * Registers (or signs in) the E2E test user via better-auth's API,
- * then ensures org + membership rows exist, and saves session cookies
- * so all tests run as an authenticated admin user.
+ * then ensures org + membership rows exist, mints a real better-auth
+ * API key for the (now admin) user, and saves session cookies so all
+ * tests run as an authenticated admin user.
  */
+import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium, type FullConfig } from "@playwright/test";
 import pg from "pg";
 import { TEST_USER, TEST_BRAND_ID, TEST_BRAND_NAME } from "./seed";
 
 const AUTH_STATE_PATH = "e2e/.auth/user.json";
+const API_KEY_PATH = "e2e/.auth/api-key.json";
 const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
 
 export default async function globalSetup(config: FullConfig) {
@@ -90,6 +93,33 @@ export default async function globalSetup(config: FullConfig) {
 		} finally {
 			await client.end();
 		}
+
+		// Mint a real better-auth API key via the session-authenticated
+		// endpoint (the user was just promoted to a global admin above, so
+		// this is an admin key with full /api/v1 access). Keys accumulate
+		// across runs against a persistent DB, which is harmless — the
+		// create endpoint has no uniqueness check on `name`.
+		const apiKeyResponse = await page.request.post("/api/auth/api-key/create", {
+			data: { name: "e2e-api-key" },
+		});
+
+		if (!apiKeyResponse.ok()) {
+			const body = await apiKeyResponse.text();
+			throw new Error(
+				`[auth-setup] API key creation failed: ${apiKeyResponse.status()} ${body}`,
+			);
+		}
+
+		const apiKeyBody = await apiKeyResponse.json();
+		if (!apiKeyBody.key) {
+			throw new Error(
+				`[auth-setup] API key creation response missing "key": ${apiKeyResponse.status()} ${JSON.stringify(apiKeyBody)}`,
+			);
+		}
+
+		mkdirSync("e2e/.auth", { recursive: true });
+		writeFileSync(API_KEY_PATH, JSON.stringify({ key: apiKeyBody.key }));
+		console.log(`[auth-setup] Wrote API key to ${API_KEY_PATH}`);
 	} finally {
 		await browser.close();
 	}
