@@ -6,6 +6,7 @@
  * Auth0 org sync, cloud webhook handlers) can be injected.
  */
 
+import { apiKey } from "@better-auth/api-key";
 import { type SSOOptions, sso } from "@better-auth/sso";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -14,6 +15,17 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
 import { ac, adminRole, userRole } from "./permissions";
+
+/**
+ * Per-key rate limit applied to external API keys. The plugin default
+ * (10 requests/day) is unusable for a real API; keys get a generous
+ * per-minute budget instead. Adjustable per key server-side later.
+ */
+export const API_KEY_RATE_LIMIT_TIME_WINDOW_MS = 60 * 1000;
+export const API_KEY_RATE_LIMIT_MAX_REQUESTS = 120;
+
+/** Prefix on generated keys so they are identifiable in logs/secret scanners. */
+export const API_KEY_PREFIX = "elmo_";
 
 export interface CreateAuthOptions {
 	databaseHooks?: BetterAuthOptions["databaseHooks"];
@@ -97,6 +109,21 @@ export function createAuth(options?: CreateAuthOptions) {
 				roles: {
 					admin: adminRole,
 					user: userRole,
+				},
+			}),
+			// External API keys (/api/v1 auth). Keys are hashed at rest; only the
+			// first few characters are stored for display. Keys never act as app
+			// sessions (`enableSessionForAPIKeys` stays false) — they are resolved
+			// explicitly by the /api/v1 auth layer, which derives authority from
+			// the owning user's role and org memberships at request time.
+			apiKey({
+				defaultPrefix: API_KEY_PREFIX,
+				requireName: true,
+				enableMetadata: true,
+				rateLimit: {
+					enabled: true,
+					timeWindow: API_KEY_RATE_LIMIT_TIME_WINDOW_MS,
+					maxRequests: API_KEY_RATE_LIMIT_MAX_REQUESTS,
 				},
 			}),
 			sso(options?.sso),

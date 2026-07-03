@@ -12,10 +12,73 @@ Elmo provides a REST API for managing brands, prompts, and snapshots programmati
 Include your API key in the `Authorization` header:
 
 ```http
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer elmo_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-API keys are configured server-side via the `ADMIN_API_KEYS` environment variable.
+There are two kinds of key:
+
+- **Instance-admin keys**, configured by the operator via the `ADMIN_API_KEYS` environment variable. These are the original way to authenticate to `/api/v1` and continue to work exactly as before — full access to every endpoint, including admin-only ones. See [Configuration](/docs/developer-guide/configuration#api-access).
+- **Dashboard API keys**, created per-user in the dashboard. These are always scoped to the creating user's brands, and can additionally be restricted to a chosen subset of those brands and/or marked read-only.
+
+### Creating a dashboard key
+
+Go to **Settings → API Keys** (`/app/{brand}/settings/api-keys`) and create a key. The full key (`elmo_...`) is shown once, at creation time — copy it somewhere safe. Elmo stores only a hash, so a lost key can't be recovered; delete it and create a new one instead.
+
+### Access scope
+
+Instance-admin keys (from `ADMIN_API_KEYS`) get instance-wide access to all brands, including admin-only endpoints.
+
+Dashboard keys are always scoped to their owner and evaluated on every request:
+
+- By default, a dashboard key can reach the brands of every organization its owner belongs to.
+- Optionally, a key can be restricted at creation time to a chosen subset of those brands, narrowing it further.
+
+This means access changes automatically as membership changes: removing the owner from an organization immediately narrows what their existing keys can reach, and deleting the owner invalidates their keys entirely. A dashboard key can never do more than its owner could do in the dashboard right now, and it can never gain admin access.
+
+Most endpoints are scoped rather than blocked outright for dashboard keys: requests for brands (and their prompts, competitors, and snapshots) outside the key's scope return `404 Not Found`, not `403`, so a key can't be used to discover what other brands exist. List endpoints silently exclude out-of-scope rows rather than erroring.
+
+A smaller set of endpoints are **admin-only** and require an instance-admin key — dashboard keys get `403 Forbidden`:
+
+- `POST /brands`
+- `GET /reports`, `POST /reports`
+- `GET /reports/{reportId}`
+- `POST /tools/analyze`
+
+Everything else — `GET /brands`, `GET`/`PATCH /brands/{brandId}`, all `/prompts` and `/competitors` endpoints, and `GET /prompts/{promptId}/snapshot` — works with dashboard keys, scoped as described above.
+
+### Read-only keys
+
+A dashboard key can be marked **read-only** at creation time. A read-only key may only make read (`GET`) requests; any write (`POST`, `PUT`, `PATCH`, `DELETE`) returns `403 Forbidden`, regardless of scope. This is useful for integrations that only need to pull data — dashboards, exports, reporting scripts. Read-only can be combined with a brand restriction (e.g. a key that can only read one brand). Instance-admin keys are always full-access and cannot be made read-only.
+
+Dashboard keys can optionally be given an expiration date at creation time; by default they don't expire.
+
+### Rate limits
+
+Each key is limited to **120 requests per minute** by default. Exceeding the limit, or exhausting a key's usage quota (if one is configured), returns `429 Too Many Requests`.
+
+### Errors
+
+Errors are returned as a JSON envelope:
+
+```json
+{
+  "error": "Unauthorized",
+  "message": "API key is invalid or has expired"
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `401 Unauthorized` | The key is missing, invalid, expired, or disabled. |
+| `403 Forbidden` | The endpoint is admin-only and the key isn't an instance-admin key. |
+| `429 Rate Limit Exceeded` | Per-key rate limit or usage quota exceeded. |
+
+### Example
+
+```bash
+curl /api/v1/brands \
+  -H "Authorization: Bearer elmo_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
 
 ## Endpoints
 

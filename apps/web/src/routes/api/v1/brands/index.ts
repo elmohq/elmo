@@ -9,34 +9,48 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
-import { count, desc } from "drizzle-orm";
+import { count, desc, inArray } from "drizzle-orm";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { allowedBrandIds } from "@/lib/api/scope";
 import {
+	apiCreateInputToInternal,
+	BrandConflictError,
+	buildBrandResult,
 	createBrand,
 	createBrandInputSchema,
-	apiCreateInputToInternal,
-	buildBrandResult,
-	BrandConflictError,
 	InvalidDomainsError,
 } from "@/server/onboarding-core";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				handle: async ({ request, auth }) => {
 					const { searchParams } = new URL(request.url);
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
 
-					const [totalCountResult] = await db.select({ count: count() }).from(brands);
+					const scoped = allowedBrandIds(auth);
+					// drizzle's inArray throws on an empty array, so a non-admin key
+					// belonging to zero organizations must short-circuit to an empty
+					// page instead of querying with `inArray(brands.id, [])`.
+					if (scoped !== null && scoped.length === 0) {
+						return {
+							brands: [],
+							pagination: { page, limit, total: 0, totalPages: 0 },
+						};
+					}
+					const where = scoped !== null ? inArray(brands.id, scoped) : undefined;
+
+					const [totalCountResult] = await db.select({ count: count() }).from(brands).where(where);
 					const totalCount = totalCountResult?.count || 0;
 					const totalPages = Math.ceil(totalCount / limit);
 
 					const rows = await db
 						.select()
 						.from(brands)
+						.where(where)
 						.orderBy(desc(brands.createdAt))
 						.limit(limit)
 						.offset(offset);
@@ -49,6 +63,7 @@ export const Route = createFileRoute("/api/v1/brands/")({
 			}),
 
 			POST: createApiHandler({
+				scope: "admin",
 				body: createBrandInputSchema,
 				status: 201,
 				mapError: (err) => {
