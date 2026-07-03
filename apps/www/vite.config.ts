@@ -10,6 +10,7 @@ import tailwindcss from "@tailwindcss/vite";
 import mdx from "fumadocs-mdx/vite";
 import { embedBinaries } from "@workspace/og/vite-plugin";
 import * as MdxConfig from "./source.config";
+import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 const require = createRequire(import.meta.url);
@@ -29,6 +30,11 @@ const takumiNativeBindings = Object.keys(
 export default defineConfig({
 	server: {
 		port: 3001,
+	},
+	define: {
+		// Injected from this package's manifest, which shares the fixed
+		// workspace release version, so version badges auto-update on release.
+		__APP_VERSION__: JSON.stringify(pkg.version),
 	},
 	resolve: {
 		tsconfigPaths: true,
