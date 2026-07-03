@@ -18,7 +18,13 @@
  *   7. Deps call-order / argument assertions
  */
 import { describe, expect, it, vi } from "vitest";
-import { type ApiAuthDeps, parseBearerToken, parseBrandRestriction, resolveApiAuthWithDeps } from "@/lib/auth/api-auth";
+import {
+	type ApiAuthDeps,
+	parseBearerToken,
+	parseBrandRestriction,
+	parseReadOnly,
+	resolveApiAuthWithDeps,
+} from "@/lib/auth/api-auth";
 
 // ============================================================================
 // Helpers
@@ -377,7 +383,7 @@ describe("resolveApiAuthWithDeps: user key scope derivation", () => {
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result).toEqual({
 			ok: true,
-			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_a", "brand_b"] },
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_a", "brand_b"], readOnly: false },
 		});
 	});
 
@@ -388,7 +394,7 @@ describe("resolveApiAuthWithDeps: user key scope derivation", () => {
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result).toEqual({
 			ok: true,
-			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: [] },
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: [], readOnly: false },
 		});
 	});
 
@@ -415,7 +421,7 @@ describe("resolveApiAuthWithDeps: user key scope derivation", () => {
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result).toEqual({
 			ok: true,
-			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_b"] },
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_b"], readOnly: false },
 		});
 	});
 
@@ -431,7 +437,7 @@ describe("resolveApiAuthWithDeps: user key scope derivation", () => {
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result).toEqual({
 			ok: true,
-			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: [] },
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: [], readOnly: false },
 		});
 	});
 
@@ -466,10 +472,51 @@ describe("resolveApiAuthWithDeps: user key scope derivation", () => {
 			expect(result.auth.brandIds).toEqual(["brand_a"]);
 		}
 	});
+
+	it("marks the context read-only when metadata.readOnly is true", async () => {
+		const deps = makeDeps({
+			verifyApiKey: vi.fn(async () => ({
+				valid: true,
+				error: null,
+				key: { ...VALID_KEY, metadata: { readOnly: true } },
+			})),
+			listOrgIds: vi.fn(async () => ["brand_a"]),
+		});
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
+		expect(result).toEqual({
+			ok: true,
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_a"], readOnly: true },
+		});
+	});
+
+	it("defaults readOnly to false when the flag is absent", async () => {
+		const deps = makeDeps({ listOrgIds: vi.fn(async () => ["brand_a"]) });
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
+		expect(result.ok).toBe(true);
+		if (result.ok && result.auth.type === "user") {
+			expect(result.auth.readOnly).toBe(false);
+		}
+	});
+
+	it("combines a brand restriction and the read-only flag on one key", async () => {
+		const deps = makeDeps({
+			verifyApiKey: vi.fn(async () => ({
+				valid: true,
+				error: null,
+				key: { ...VALID_KEY, metadata: { brandIds: ["brand_a"], readOnly: true } },
+			})),
+			listOrgIds: vi.fn(async () => ["brand_a", "brand_b"]),
+		});
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
+		expect(result).toEqual({
+			ok: true,
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_a"], readOnly: true },
+		});
+	});
 });
 
 // ============================================================================
-// 6. parseBrandRestriction
+// 6. parseBrandRestriction / parseReadOnly
 // ============================================================================
 
 describe("parseBrandRestriction", () => {
@@ -500,6 +547,23 @@ describe("parseBrandRestriction", () => {
 
 	it("drops non-string entries (restricts to the valid ones only)", () => {
 		expect(parseBrandRestriction({ brandIds: ["a", 42, null, "b"] })).toEqual(["a", "b"]);
+	});
+});
+
+describe("parseReadOnly", () => {
+	it("returns true only for an explicit readOnly === true", () => {
+		expect(parseReadOnly({ readOnly: true })).toBe(true);
+	});
+
+	it("returns false for absent, non-object, or non-true readOnly", () => {
+		expect(parseReadOnly(undefined)).toBe(false);
+		expect(parseReadOnly(null)).toBe(false);
+		expect(parseReadOnly("readOnly")).toBe(false);
+		expect(parseReadOnly(["readOnly"])).toBe(false);
+		expect(parseReadOnly({})).toBe(false);
+		expect(parseReadOnly({ readOnly: false })).toBe(false);
+		expect(parseReadOnly({ readOnly: "true" })).toBe(false);
+		expect(parseReadOnly({ readOnly: 1 })).toBe(false);
 	});
 });
 

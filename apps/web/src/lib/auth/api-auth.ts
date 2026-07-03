@@ -23,7 +23,9 @@ import { member } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "./server";
 
-export type ApiAuthContext = { type: "admin" } | { type: "user"; userId: string; keyId: string; brandIds: string[] };
+export type ApiAuthContext =
+	| { type: "admin" }
+	| { type: "user"; userId: string; keyId: string; brandIds: string[]; readOnly: boolean };
 
 interface ApiAuthFailure {
 	status: 401 | 429;
@@ -116,6 +118,19 @@ export function parseBrandRestriction(metadata: unknown): string[] | null {
 }
 
 /**
+ * Whether a key's metadata marks it read-only. Only an explicit
+ * `readOnly === true` restricts; anything else (absent, malformed, false) is a
+ * normal read-write key. A read-only key may call GET endpoints only — the
+ * write-method rejection lives in `createApiHandler`, the single API gate.
+ */
+export function parseReadOnly(metadata: unknown): boolean {
+	if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
+		return false;
+	}
+	return (metadata as Record<string, unknown>).readOnly === true;
+}
+
+/**
  * Map a failed `verifyApiKey` outcome to the HTTP status/envelope we return
  * to API clients. Unknown or absent error codes fail closed as a generic
  * "Invalid API key" — we never leak which specific check failed beyond the
@@ -189,8 +204,9 @@ export async function resolveApiAuthWithDeps(request: Request, deps: ApiAuthDeps
 	// The intersection means a restriction can only narrow the owner-derived
 	// scope — a key must never grant more than its owner currently has.
 	const brandIds = restriction === null ? orgIds : orgIds.filter((id) => restriction.includes(id));
+	const readOnly = parseReadOnly(key.metadata);
 
-	return { ok: true, auth: { type: "user", userId: key.referenceId, keyId: key.id, brandIds } };
+	return { ok: true, auth: { type: "user", userId: key.referenceId, keyId: key.id, brandIds, readOnly } };
 }
 
 /**

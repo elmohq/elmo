@@ -14,6 +14,7 @@
 import { IconCopy, IconTrash } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/lib/auth/client";
+import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
@@ -117,6 +118,22 @@ function formatBrandScope(metadata: ApiKeySummary["metadata"], brands: BrandOpti
 	return names.join(", ");
 }
 
+/** Pulls the `readOnly` flag out of a key's metadata, tolerating a JSON-string form. */
+function isReadOnly(metadata: ApiKeySummary["metadata"]): boolean {
+	if (!metadata) return false;
+	let parsed: Record<string, unknown>;
+	if (typeof metadata === "string") {
+		try {
+			parsed = JSON.parse(metadata);
+		} catch {
+			return false;
+		}
+	} else {
+		parsed = metadata;
+	}
+	return parsed.readOnly === true;
+}
+
 function ApiKeysSettings() {
 	const [keys, setKeys] = useState<ApiKeySummary[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
@@ -205,7 +222,7 @@ function ApiKeysSettings() {
 						<TableRow>
 							<TableHead>Name</TableHead>
 							<TableHead>Key</TableHead>
-							<TableHead>Brands</TableHead>
+							<TableHead>Access</TableHead>
 							<TableHead>Created</TableHead>
 							<TableHead>Last used</TableHead>
 							<TableHead>Expires</TableHead>
@@ -221,7 +238,14 @@ function ApiKeysSettings() {
 									className="text-sm text-muted-foreground max-w-48 truncate"
 									title={formatBrandScope(key.metadata, brands)}
 								>
-									{formatBrandScope(key.metadata, brands)}
+									<div className="flex items-center gap-1.5">
+										{isReadOnly(key.metadata) && (
+											<Badge variant="secondary" className="shrink-0">
+												Read-only
+											</Badge>
+										)}
+										<span className="truncate">{formatBrandScope(key.metadata, brands)}</span>
+									</div>
 								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">{formatDate(key.createdAt)}</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
@@ -297,6 +321,7 @@ function CreateApiKeyDialog({
 	const [expiration, setExpiration] = useState<(typeof EXPIRATION_OPTIONS)[number]["value"]>("never");
 	const [brandScope, setBrandScope] = useState<(typeof BRAND_SCOPE_OPTIONS)[number]["value"]>("all");
 	const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
+	const [readOnly, setReadOnly] = useState(false);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -307,6 +332,7 @@ function CreateApiKeyDialog({
 		setExpiration("never");
 		setBrandScope("all");
 		setSelectedBrandIds([]);
+		setReadOnly(false);
 		setIsSubmitting(false);
 		setError("");
 		setCreatedKey(null);
@@ -344,10 +370,13 @@ function CreateApiKeyDialog({
 		setError("");
 
 		const expiresIn = EXPIRATION_OPTIONS.find((opt) => opt.value === expiration)?.seconds;
+		const metadata: Record<string, unknown> = {};
+		if (selectedBrandIds.length > 0) metadata.brandIds = selectedBrandIds;
+		if (readOnly) metadata.readOnly = true;
 		const { data, error: createError } = await authClient.apiKey.create({
 			name,
 			...(expiresIn ? { expiresIn } : {}),
-			...(selectedBrandIds.length > 0 ? { metadata: { brandIds: selectedBrandIds } } : {}),
+			...(Object.keys(metadata).length > 0 ? { metadata } : {}),
 		});
 
 		if (createError) {
@@ -465,6 +494,20 @@ function CreateApiKeyDialog({
 										{needsBrandSelection && <p className="text-xs text-destructive">Select at least one brand.</p>}
 									</>
 								)}
+							</div>
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<Checkbox
+										id="api-key-read-only"
+										checked={readOnly}
+										onCheckedChange={(checked) => setReadOnly(checked === true)}
+										disabled={isSubmitting}
+									/>
+									<Label htmlFor="api-key-read-only" className="font-normal cursor-pointer">
+										Read-only
+									</Label>
+								</div>
+								<p className="text-xs text-muted-foreground">Only allows GET requests (read data, no changes).</p>
 							</div>
 							{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 						</div>

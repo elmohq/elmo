@@ -18,7 +18,7 @@ Authorization: Bearer elmo_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 There are two kinds of key:
 
 - **Instance-admin keys**, configured by the operator via the `ADMIN_API_KEYS` environment variable. These are the original way to authenticate to `/api/v1` and continue to work exactly as before — full access to every endpoint, including admin-only ones. See [Configuration](/docs/developer-guide/configuration#api-access).
-- **Dashboard API keys**, created per-user in the dashboard. These are always scoped to the creating user's brands and can additionally be restricted to a chosen subset of those brands.
+- **Dashboard API keys**, created per-user in the dashboard. These are always scoped to the creating user's brands, and can additionally be restricted to a chosen subset of those brands and/or marked read-only.
 
 ### Creating a dashboard key
 
@@ -45,6 +45,10 @@ A smaller set of endpoints are **admin-only** and require an instance-admin key 
 - `POST /tools/analyze`
 
 Everything else — `GET /brands`, `GET`/`PATCH /brands/{brandId}`, all `/prompts` and `/competitors` endpoints, and `GET /prompts/{promptId}/snapshot` — works with dashboard keys, scoped as described above.
+
+### Read-only keys
+
+A dashboard key can be marked **read-only** at creation time. A read-only key may only make read (`GET`) requests; any write (`POST`, `PUT`, `PATCH`, `DELETE`) returns `403 Forbidden`, regardless of scope. This is useful for integrations that only need to pull data — dashboards, exports, reporting scripts. Read-only can be combined with a brand restriction (e.g. a key that can only read one brand). Instance-admin keys are always full-access and cannot be made read-only.
 
 Dashboard keys can optionally be given an expiration date at creation time; by default they don't expire.
 

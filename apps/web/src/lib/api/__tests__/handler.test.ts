@@ -13,8 +13,8 @@ vi.mock("@/lib/auth/api-auth", () => ({
 
 const ADMIN_AUTH: ApiAuthContext = { type: "admin" };
 
-function userAuth(brandIds: string[] = ["brand-1"]): ApiAuthContext {
-	return { type: "user", userId: "user-id", keyId: "user-key-id", brandIds };
+function userAuth(brandIds: string[] = ["brand-1"], readOnly = false): ApiAuthContext {
+	return { type: "user", userId: "user-id", keyId: "user-key-id", brandIds, readOnly };
 }
 
 function mockAuthAdmin() {
@@ -23,6 +23,10 @@ function mockAuthAdmin() {
 
 function mockAuthUser(brandIds?: string[]) {
 	resolveApiAuth.mockResolvedValue({ ok: true, auth: userAuth(brandIds) });
+}
+
+function mockAuthReadOnlyUser(brandIds?: string[]) {
+	resolveApiAuth.mockResolvedValue({ ok: true, auth: userAuth(brandIds, true) });
 }
 
 function mockAuthFailure(status: 401 | 429, error: string, message: string) {
@@ -300,6 +304,65 @@ describe("createApiHandler", () => {
 		});
 	});
 
+	describe("read-only keys", () => {
+		for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+			it(`returns 403 when a read-only key issues a ${method}`, async () => {
+				mockAuthReadOnlyUser();
+				const handle = vi.fn(async () => ({ ok: true }));
+				const handler = createApiHandler({ handle });
+				const response = await handler({ request: makeRequest({ method }), params: {} });
+				expect(response.status).toBe(403);
+				expect(await response.json()).toEqual({
+					error: "Forbidden",
+					message: "This API key is read-only and cannot perform write operations",
+				});
+				expect(handle).not.toHaveBeenCalled();
+			});
+		}
+
+		it("allows a read-only key to issue a GET", async () => {
+			mockAuthReadOnlyUser();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({ handle });
+			const response = await handler({ request: makeRequest({ method: "GET" }), params: {} });
+			expect(response.status).toBe(200);
+			expect(handle).toHaveBeenCalledTimes(1);
+		});
+
+		it("allows a normal (non-read-only) user key to issue a POST", async () => {
+			mockAuthUser();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({ status: 201, handle });
+			const response = await handler({ request: makeRequest({ method: "POST", body: "{}" }), params: {} });
+			expect(response.status).toBe(201);
+			expect(handle).toHaveBeenCalledTimes(1);
+		});
+
+		it("does not restrict admin (env) keys on writes", async () => {
+			mockAuthAdmin();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({ status: 201, handle });
+			const response = await handler({ request: makeRequest({ method: "POST", body: "{}" }), params: {} });
+			expect(response.status).toBe(201);
+			expect(handle).toHaveBeenCalledTimes(1);
+		});
+
+		it("runs the read-only check before params/body validation", async () => {
+			mockAuthReadOnlyUser();
+			const handle = vi.fn(async () => ({ ok: true }));
+			const handler = createApiHandler({
+				params: z.object({ promptId: z.guid() }),
+				handle,
+			});
+			const response = await handler({
+				request: makeRequest({ method: "DELETE" }),
+				params: { promptId: "not-a-uuid" },
+			});
+			expect(response.status).toBe(403);
+			expect(handle).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("ctx.auth", () => {
 		it("passes the exact admin auth context through to handle when no scope is set", async () => {
 			mockAuthAdmin();
@@ -330,6 +393,7 @@ describe("createApiHandler", () => {
 				userId: "user-id",
 				keyId: "user-key-id",
 				brandIds: ["brand-1", "brand-2"],
+				readOnly: false,
 			});
 		});
 	});

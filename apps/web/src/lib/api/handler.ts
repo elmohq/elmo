@@ -13,6 +13,12 @@
  * `scope: "admin"`; non-admin keys are rejected with 403 before the handler
  * (or any params/body validation) runs.
  *
+ * Read-only dashboard keys (a per-key opt-in) are rejected with 403 on any
+ * write-method request (POST/PUT/PATCH/DELETE), enforced here so no route has
+ * to remember to check. Every mutation in this API is a non-GET method and
+ * every GET is side-effect-free, so the HTTP method is a complete read/write
+ * signal — no per-endpoint annotation is needed.
+ *
  * Beyond auth, the factory centralizes the other cross-cutting concerns
  * every external API endpoint needs: zod validation of path params and JSON
  * bodies, uniform error envelopes (`{ error, message }`), and a catch-all
@@ -25,6 +31,9 @@
  */
 import type { z } from "zod";
 import { type ApiAuthContext, resolveApiAuth } from "@/lib/auth/api-auth";
+
+/** HTTP methods that mutate state — rejected for read-only keys. */
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export class ApiError extends Error {
 	constructor(
@@ -75,6 +84,10 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 
 		if (opts.scope === "admin" && authResult.auth.type !== "admin") {
 			return errorResponse(403, "Forbidden", "This endpoint requires an admin API key");
+		}
+
+		if (authResult.auth.type === "user" && authResult.auth.readOnly && WRITE_METHODS.has(request.method)) {
+			return errorResponse(403, "Forbidden", "This API key is read-only and cannot perform write operations");
 		}
 
 		let parsedParams = params as P;

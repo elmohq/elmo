@@ -6,7 +6,7 @@ import { allowedBrandIds, assertBrandAccess, canAccessBrand } from "../scope";
 const ADMIN_AUTH: ApiAuthContext = { type: "admin" };
 
 function userAuth(brandIds: string[]): ApiAuthContext {
-	return { type: "user", userId: "user-id", keyId: "user-key-id", brandIds };
+	return { type: "user", userId: "user-id", keyId: "user-key-id", brandIds, readOnly: false };
 }
 
 describe("canAccessBrand", () => {
