@@ -28,7 +28,11 @@ When you run `elmo init`, the CLI generates a `.env` file in your config directo
 
 ### API Access
 
-There's no environment variable for `/api/v1` access — API keys are created per-user in the dashboard under **Settings → API Keys** and inherit the creating user's brand access. See [API Authentication](/docs/api#authentication).
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADMIN_API_KEYS` | Comma-separated list of bearer tokens granting full admin access to `/api/v1`, including admin-only endpoints. Optional — omit it if you only need per-user dashboard keys. | — |
+
+Per-user API keys are also available without any server configuration: create one in the dashboard under **Settings → API Keys**. These inherit the creating user's brand access (optionally narrowed to a chosen subset of brands) rather than admin access. See [API Authentication](/docs/api#authentication).
 
 ### AI Provider Keys
 

@@ -4,13 +4,9 @@
  * Tests the public REST API endpoints for prompt management.
  * These endpoints require API key authentication via Bearer token.
  */
-import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 
-// Minted by e2e/auth-setup.ts (globalSetup) via the real better-auth
-// api-key/create endpoint, for the same (admin) user as e2e/.auth/user.json.
-// Path is CWD-relative, matching AUTH_STATE_PATH in auth-setup.ts / playwright.config.ts.
-const API_KEY = (JSON.parse(readFileSync("e2e/.auth/api-key.json", "utf8")) as { key: string }).key;
+const API_KEY = "test-api-key-e2e";
 const BRAND_ID = "default";
 
 // Helper to make authenticated API requests

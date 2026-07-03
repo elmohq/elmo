@@ -4,4 +4,4 @@
 "@workspace/api-spec": minor
 ---
 
-API keys for `/api/v1` are now created per-user in the dashboard (Settings → API Keys) instead of the `ADMIN_API_KEYS` environment variable, which has been removed. A key inherits its owner's access: admins get instance-wide access, everyone else is scoped to their own brands. To upgrade, run the database migrations, sign in, create an API key under Settings → API Keys, and update any integrations or scripts with the new key.
+You can now create personal API keys for `/api/v1` from **Settings → API Keys**, scoped to the brands of the organizations you belong to (optionally restricted to specific brands when you create the key). The existing `ADMIN_API_KEYS` environment variable is unchanged and continues to provide full admin access. This adds a new database table, so a database migration is required on upgrade.

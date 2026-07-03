@@ -11,7 +11,7 @@ vi.mock("@/lib/auth/api-auth", () => ({
 	resolveApiAuth,
 }));
 
-const ADMIN_AUTH: ApiAuthContext = { type: "admin", userId: "admin-user-id", keyId: "admin-key-id" };
+const ADMIN_AUTH: ApiAuthContext = { type: "admin" };
 
 function userAuth(brandIds: string[] = ["brand-1"]): ApiAuthContext {
 	return { type: "user", userId: "user-id", keyId: "user-key-id", brandIds };

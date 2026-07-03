@@ -2,20 +2,23 @@
  * External API (v1) authentication regression tests.
  *
  * These exercise `resolveApiAuthWithDeps` with fake dependencies so the
- * derived-authority logic (owner role + memberships -> access) is verified
- * without touching better-auth or the database. The real-deps binding
- * (`resolveApiAuth`) is intentionally not imported here — it pulls in the
- * live auth instance, which belongs in an integration/e2e layer instead.
+ * auth logic (env admin keys, membership-derived scope, per-key brand
+ * restrictions) is verified without touching better-auth or the database.
+ * The real-deps binding (`resolveApiAuth`) is intentionally not imported
+ * here — it pulls in the live auth instance, which belongs in an
+ * integration/e2e layer instead.
  *
  * Structure:
  *   1. parseBearerToken edge cases
  *   2. Token-missing / malformed-header resolution failure
- *   3. verifyApiKey failure outcomes (rate limit, usage, expired, disabled, invalid, throw)
- *   4. Success path: admin vs. user authority derivation
- *   5. Deps call-order / argument assertions
+ *   3. Instance-admin env keys (ADMIN_API_KEYS)
+ *   4. verifyApiKey failure outcomes (rate limit, usage, expired, disabled, invalid, throw)
+ *   5. User keys: membership-derived scope + per-key brand restriction
+ *   6. parseBrandRestriction edge cases
+ *   7. Deps call-order / argument assertions
  */
 import { describe, expect, it, vi } from "vitest";
-import { type ApiAuthDeps, parseBearerToken, resolveApiAuthWithDeps } from "@/lib/auth/api-auth";
+import { type ApiAuthDeps, parseBearerToken, parseBrandRestriction, resolveApiAuthWithDeps } from "@/lib/auth/api-auth";
 
 // ============================================================================
 // Helpers
@@ -33,12 +36,12 @@ const VALID_KEY = { id: "key_1", referenceId: "user_1" };
 
 function makeDeps(overrides?: Partial<ApiAuthDeps>): ApiAuthDeps {
 	return {
+		adminApiKeys: [],
 		verifyApiKey: vi.fn(async () => ({
 			valid: true,
 			error: null,
 			key: VALID_KEY,
 		})),
-		getOwner: vi.fn(async () => ({ role: "user" })),
 		listOrgIds: vi.fn(async () => []),
 		...overrides,
 	};
@@ -116,17 +119,61 @@ describe("resolveApiAuthWithDeps: missing or malformed Authorization header", ()
 		expect(result).toEqual(expectedFailure);
 	});
 
-	it("does not call verifyApiKey, getOwner, or listOrgIds when the header is malformed", async () => {
-		const deps = makeDeps();
+	it("does not call verifyApiKey or listOrgIds when the header is malformed", async () => {
+		const deps = makeDeps({ adminApiKeys: ["admin-key"] });
 		await resolveApiAuthWithDeps(makeRequest("Basic xyz"), deps);
 		expect(deps.verifyApiKey).not.toHaveBeenCalled();
-		expect(deps.getOwner).not.toHaveBeenCalled();
 		expect(deps.listOrgIds).not.toHaveBeenCalled();
 	});
 });
 
 // ============================================================================
-// 3. verifyApiKey failure outcomes
+// 3. Instance-admin env keys (ADMIN_API_KEYS)
+// ============================================================================
+
+describe("resolveApiAuthWithDeps: instance-admin env keys", () => {
+	it("grants the admin context on an exact env-key match", async () => {
+		const deps = makeDeps({ adminApiKeys: ["admin-key-1", "admin-key-2"] });
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer admin-key-2"), deps);
+		expect(result).toEqual({ ok: true, auth: { type: "admin" } });
+	});
+
+	it("does not call verifyApiKey on an env-key match (no rate-limit charge)", async () => {
+		const deps = makeDeps({ adminApiKeys: ["admin-key"] });
+		await resolveApiAuthWithDeps(makeRequest("Bearer admin-key"), deps);
+		expect(deps.verifyApiKey).not.toHaveBeenCalled();
+		expect(deps.listOrgIds).not.toHaveBeenCalled();
+	});
+
+	it("falls through to dashboard-key verification when the token matches no env key", async () => {
+		const deps = makeDeps({ adminApiKeys: ["admin-key"] });
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer other-token"), deps);
+		expect(deps.verifyApiKey).toHaveBeenCalledWith("other-token");
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.auth.type).toBe("user");
+		}
+	});
+
+	it("never treats a token as an env key when the list is empty", async () => {
+		const deps = makeDeps({ adminApiKeys: [] });
+		await resolveApiAuthWithDeps(makeRequest("Bearer anything"), deps);
+		expect(deps.verifyApiKey).toHaveBeenCalledWith("anything");
+	});
+
+	it("does not match on an env-key prefix (exact comparison only)", async () => {
+		const deps = makeDeps({ adminApiKeys: ["admin-key"] });
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer admin-key-longer"), deps);
+		expect(deps.verifyApiKey).toHaveBeenCalledWith("admin-key-longer");
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.auth.type).toBe("user");
+		}
+	});
+});
+
+// ============================================================================
+// 4. verifyApiKey failure outcomes
 // ============================================================================
 
 describe("resolveApiAuthWithDeps: verifyApiKey failure outcomes", () => {
@@ -305,7 +352,7 @@ describe("resolveApiAuthWithDeps: verifyApiKey failure outcomes", () => {
 		consoleErrorSpy.mockRestore();
 	});
 
-	it("does not call getOwner or listOrgIds when verification fails", async () => {
+	it("does not call listOrgIds when verification fails", async () => {
 		const deps = makeDeps({
 			verifyApiKey: vi.fn(async () => ({
 				valid: false,
@@ -314,51 +361,17 @@ describe("resolveApiAuthWithDeps: verifyApiKey failure outcomes", () => {
 			})),
 		});
 		await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(deps.getOwner).not.toHaveBeenCalled();
 		expect(deps.listOrgIds).not.toHaveBeenCalled();
 	});
 });
 
 // ============================================================================
-// 4. Success path: admin vs. user authority derivation
+// 5. User keys: membership-derived scope + per-key brand restriction
 // ============================================================================
 
-describe("resolveApiAuthWithDeps: success path authority derivation", () => {
-	it("fails closed when the key owner's user row is missing (deleted user)", async () => {
-		const deps = makeDeps({ getOwner: vi.fn(async () => null) });
-		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(result).toEqual({
-			ok: false,
-			status: 401,
-			error: "Unauthorized",
-			message: "Invalid API key",
-		});
-	});
-
-	it("does not call listOrgIds when the owner's user row is missing", async () => {
-		const deps = makeDeps({ getOwner: vi.fn(async () => null) });
-		await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(deps.listOrgIds).not.toHaveBeenCalled();
-	});
-
-	it("grants instance-wide admin access when the owner's role is admin", async () => {
-		const deps = makeDeps({ getOwner: vi.fn(async () => ({ role: "admin" })) });
-		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(result).toEqual({
-			ok: true,
-			auth: { type: "admin", userId: "user_1", keyId: "key_1" },
-		});
-	});
-
-	it("does not call listOrgIds for an admin owner", async () => {
-		const deps = makeDeps({ getOwner: vi.fn(async () => ({ role: "admin" })) });
-		await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(deps.listOrgIds).not.toHaveBeenCalled();
-	});
-
-	it("scopes access to member orgs when the owner's role is a non-admin string", async () => {
+describe("resolveApiAuthWithDeps: user key scope derivation", () => {
+	it("scopes an unrestricted key to the owner's member orgs", async () => {
 		const deps = makeDeps({
-			getOwner: vi.fn(async () => ({ role: "user" })),
 			listOrgIds: vi.fn(async () => ["brand_a", "brand_b"]),
 		});
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
@@ -368,36 +381,52 @@ describe("resolveApiAuthWithDeps: success path authority derivation", () => {
 		});
 	});
 
-	it("treats an existing owner with a null role as a scoped user, not an orphaned key", async () => {
-		// user.role is nullable — whitelabel SSO sync creates users without a
-		// global role. Only a *missing* user row invalidates the key.
+	it("yields an empty scope for an owner with no memberships (incl. deleted owners)", async () => {
+		// A deleted owner's `member` rows cascade away, so an orphaned key
+		// degrades to an empty scope — every brand-scoped request 404s.
+		const deps = makeDeps({ listOrgIds: vi.fn(async () => []) });
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
+		expect(result).toEqual({
+			ok: true,
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: [] },
+		});
+	});
+
+	it("preserves membership order in brandIds", async () => {
 		const deps = makeDeps({
-			getOwner: vi.fn(async () => ({ role: null })),
-			listOrgIds: vi.fn(async () => ["brand_a"]),
+			listOrgIds: vi.fn(async () => ["brand_z", "brand_a", "brand_m"]),
+		});
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
+		expect(result.ok).toBe(true);
+		if (result.ok && result.auth.type === "user") {
+			expect(result.auth.brandIds).toEqual(["brand_z", "brand_a", "brand_m"]);
+		}
+	});
+
+	it("intersects the owner scope with a metadata brand restriction", async () => {
+		const deps = makeDeps({
+			verifyApiKey: vi.fn(async () => ({
+				valid: true,
+				error: null,
+				key: { ...VALID_KEY, metadata: { brandIds: ["brand_b", "brand_c"] } },
+			})),
+			listOrgIds: vi.fn(async () => ["brand_a", "brand_b"]),
 		});
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result).toEqual({
 			ok: true,
-			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_a"] },
+			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_b"] },
 		});
 	});
 
-	it("scopes access to member orgs when the owner's role is an empty string", async () => {
+	it("never widens scope: a restriction naming a non-member brand grants nothing", async () => {
 		const deps = makeDeps({
-			getOwner: vi.fn(async () => ({ role: "" })),
+			verifyApiKey: vi.fn(async () => ({
+				valid: true,
+				error: null,
+				key: { ...VALID_KEY, metadata: { brandIds: ["brand_foreign"] } },
+			})),
 			listOrgIds: vi.fn(async () => ["brand_a"]),
-		});
-		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(result).toEqual({
-			ok: true,
-			auth: { type: "user", userId: "user_1", keyId: "key_1", brandIds: ["brand_a"] },
-		});
-	});
-
-	it("allows an empty brandIds array for a user owner with no memberships", async () => {
-		const deps = makeDeps({
-			getOwner: vi.fn(async () => ({ role: "user" })),
-			listOrgIds: vi.fn(async () => []),
 		});
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result).toEqual({
@@ -406,53 +435,93 @@ describe("resolveApiAuthWithDeps: success path authority derivation", () => {
 		});
 	});
 
-	it("preserves the order of multiple org ids in brandIds", async () => {
-		const orgIds = ["brand_z", "brand_a", "brand_m"];
+	it("treats an explicit empty restriction as scope-to-nothing (fail closed)", async () => {
 		const deps = makeDeps({
-			getOwner: vi.fn(async () => ({ role: "user" })),
-			listOrgIds: vi.fn(async () => orgIds),
+			verifyApiKey: vi.fn(async () => ({
+				valid: true,
+				error: null,
+				key: { ...VALID_KEY, metadata: { brandIds: [] } },
+			})),
+			listOrgIds: vi.fn(async () => ["brand_a"]),
 		});
 		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(result.ok).toBe(true);
 		if (result.ok && result.auth.type === "user") {
-			expect(result.auth.brandIds).toEqual(["brand_z", "brand_a", "brand_m"]);
+			expect(result.auth.brandIds).toEqual([]);
+		}
+	});
+
+	it("ignores malformed metadata (no restriction, full member scope)", async () => {
+		const deps = makeDeps({
+			verifyApiKey: vi.fn(async () => ({
+				valid: true,
+				error: null,
+				key: { ...VALID_KEY, metadata: { brandIds: "not-an-array" } },
+			})),
+			listOrgIds: vi.fn(async () => ["brand_a"]),
+		});
+		const result = await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
+		expect(result.ok).toBe(true);
+		if (result.ok && result.auth.type === "user") {
+			expect(result.auth.brandIds).toEqual(["brand_a"]);
 		}
 	});
 });
 
 // ============================================================================
-// 5. Deps call-order / argument assertions
+// 6. parseBrandRestriction
 // ============================================================================
 
-describe("resolveApiAuthWithDeps: dependency call arguments", () => {
-	it("passes the raw bearer token (not the full header) to verifyApiKey", async () => {
+describe("parseBrandRestriction", () => {
+	it("returns the string entries of a well-formed brandIds array", () => {
+		expect(parseBrandRestriction({ brandIds: ["a", "b"] })).toEqual(["a", "b"]);
+	});
+
+	it("returns null for absent metadata", () => {
+		expect(parseBrandRestriction(undefined)).toBeNull();
+		expect(parseBrandRestriction(null)).toBeNull();
+	});
+
+	it("returns null for non-object metadata", () => {
+		expect(parseBrandRestriction("string")).toBeNull();
+		expect(parseBrandRestriction(42)).toBeNull();
+		expect(parseBrandRestriction(["a"])).toBeNull();
+	});
+
+	it("returns null when brandIds is missing or not an array", () => {
+		expect(parseBrandRestriction({})).toBeNull();
+		expect(parseBrandRestriction({ brandIds: "a" })).toBeNull();
+		expect(parseBrandRestriction({ brandIds: { 0: "a" } })).toBeNull();
+	});
+
+	it("keeps an explicit empty array (restricts to nothing)", () => {
+		expect(parseBrandRestriction({ brandIds: [] })).toEqual([]);
+	});
+
+	it("drops non-string entries (restricts to the valid ones only)", () => {
+		expect(parseBrandRestriction({ brandIds: ["a", 42, null, "b"] })).toEqual(["a", "b"]);
+	});
+});
+
+// ============================================================================
+// 7. Deps call-order / argument assertions
+// ============================================================================
+
+describe("resolveApiAuthWithDeps: deps calls", () => {
+	it("calls verifyApiKey with the raw token", async () => {
 		const deps = makeDeps();
-		await resolveApiAuthWithDeps(makeRequest("Bearer my-raw-token"), deps);
-		expect(deps.verifyApiKey).toHaveBeenCalledWith("my-raw-token");
+		await resolveApiAuthWithDeps(makeRequest("Bearer my-secret-token"), deps);
+		expect(deps.verifyApiKey).toHaveBeenCalledWith("my-secret-token");
 		expect(deps.verifyApiKey).toHaveBeenCalledTimes(1);
 	});
 
-	it("calls getOwner with the key owner's referenceId", async () => {
+	it("calls listOrgIds with the key owner's referenceId", async () => {
 		const deps = makeDeps({
 			verifyApiKey: vi.fn(async () => ({
 				valid: true,
 				error: null,
 				key: { id: "key_9", referenceId: "user_42" },
 			})),
-		});
-		await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
-		expect(deps.getOwner).toHaveBeenCalledWith("user_42");
-		expect(deps.getOwner).toHaveBeenCalledTimes(1);
-	});
-
-	it("calls listOrgIds with the key owner's referenceId for non-admin owners", async () => {
-		const deps = makeDeps({
-			verifyApiKey: vi.fn(async () => ({
-				valid: true,
-				error: null,
-				key: { id: "key_9", referenceId: "user_42" },
-			})),
-			getOwner: vi.fn(async () => ({ role: "user" })),
 		});
 		await resolveApiAuthWithDeps(makeRequest("Bearer tok"), deps);
 		expect(deps.listOrgIds).toHaveBeenCalledWith("user_42");

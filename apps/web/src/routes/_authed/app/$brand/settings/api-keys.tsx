@@ -2,15 +2,20 @@
  * /app/$brand/settings/api-keys - API key management page
  *
  * Lets a user mint and revoke better-auth API keys for the elmo REST API
- * (`/api/v1`). Keys are account-wide (not scoped to the current brand) — a
- * key simply inherits the owning user's access, same as this page's brand
- * context has nothing to do with what the key can reach.
+ * (`/api/v1`). Keys created here always act on the owning user's behalf and
+ * are never admin keys — instance-admin access only comes from the
+ * `ADMIN_API_KEYS` env var, not the dashboard. A key's access is the brands
+ * of the orgs the owner belongs to, optionally narrowed at creation time to
+ * a chosen subset (stored as `metadata.brandIds`). Keys are account-wide
+ * (not scoped to the current brand) unless narrowed this way — this page's
+ * brand context has nothing to do with what the key can reach.
  */
 
 import { IconCopy, IconTrash } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { authClient } from "@workspace/lib/auth/client";
 import { Button } from "@workspace/ui/components/button";
+import { Checkbox } from "@workspace/ui/components/checkbox";
 import {
 	Dialog,
 	DialogClose,
@@ -27,6 +32,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { useCallback, useEffect, useState } from "react";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getBrands } from "@/server/brands";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/api-keys")({
 	head: ({ matches, match }) => {
@@ -52,6 +58,18 @@ interface ApiKeySummary {
 	lastRequest: string | Date | null;
 	expiresAt: string | Date | null;
 	enabled: boolean;
+	/**
+	 * Extra metadata stored with the key. better-auth normally returns this
+	 * already parsed (the DB column is transformed on read), but we defensively
+	 * handle a raw JSON string too in case that ever changes.
+	 */
+	metadata?: Record<string, unknown> | string | null;
+}
+
+/** Minimal brand shape this page needs — id + name from `getBrands()`. */
+interface BrandOption {
+	id: string;
+	name: string;
 }
 
 const EXPIRATION_OPTIONS = [
@@ -61,15 +79,50 @@ const EXPIRATION_OPTIONS = [
 	{ value: "1y", label: "1 year", seconds: 365 * 24 * 60 * 60 },
 ] as const;
 
+const BRAND_SCOPE_OPTIONS = [
+	{ value: "all", label: "All my brands" },
+	{ value: "specific", label: "Specific brands" },
+] as const;
+
 function formatDate(value: string | Date | null | undefined): string {
 	if (!value) return "—";
 	return new Date(value).toLocaleDateString();
+}
+
+/** Pulls `brandIds` out of a key's metadata, tolerating a JSON-string form. */
+function getRestrictedBrandIds(metadata: ApiKeySummary["metadata"]): string[] | null {
+	if (!metadata) return null;
+	let parsed: Record<string, unknown>;
+	if (typeof metadata === "string") {
+		try {
+			parsed = JSON.parse(metadata);
+		} catch {
+			return null;
+		}
+	} else {
+		parsed = metadata;
+	}
+	const brandIds = parsed.brandIds;
+	return Array.isArray(brandIds) && brandIds.every((id) => typeof id === "string") && brandIds.length > 0
+		? (brandIds as string[])
+		: null;
+}
+
+/** Renders a key's brand restriction: brand names if we have them loaded, else a count. */
+function formatBrandScope(metadata: ApiKeySummary["metadata"], brands: BrandOption[]): string {
+	const brandIds = getRestrictedBrandIds(metadata);
+	if (!brandIds) return "All";
+	if (brands.length === 0) return `${brandIds.length} brand${brandIds.length === 1 ? "" : "s"}`;
+	const names = brandIds.map((id) => brands.find((b) => b.id === id)?.name ?? id);
+	return names.join(", ");
 }
 
 function ApiKeysSettings() {
 	const [keys, setKeys] = useState<ApiKeySummary[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState("");
+
+	const [brands, setBrands] = useState<BrandOption[]>([]);
 
 	const [createOpen, setCreateOpen] = useState(false);
 	const [revokeTarget, setRevokeTarget] = useState<ApiKeySummary | null>(null);
@@ -89,6 +142,14 @@ function ApiKeysSettings() {
 	useEffect(() => {
 		loadKeys();
 	}, [loadKeys]);
+
+	useEffect(() => {
+		// Used for the create dialog's brand picker and to render brand names in
+		// the table; failures here shouldn't block the key list itself.
+		getBrands()
+			.then((data) => setBrands(data.map((b) => ({ id: b.id, name: b.name }))))
+			.catch(() => setBrands([]));
+	}, []);
 
 	const handleRevoke = useCallback(
 		async (keyId: string) => {
@@ -110,10 +171,12 @@ function ApiKeysSettings() {
 				<h1 className="text-3xl font-bold">API Keys</h1>
 				<p className="text-muted-foreground">
 					API keys authenticate requests to the elmo REST API (<code className="font-mono text-xs">/api/v1</code>) as
-					you — a key inherits your access (admins: instance-wide; everyone else: the brands of orgs you belong to).
+					you. Keys created here act on your behalf and are limited to your brands (the brands of organizations you
+					belong to) — they are never admin keys.
 				</p>
 				<p className="text-muted-foreground">
-					Keys apply account-wide, not just to this brand, even though this page lives under a brand's settings.
+					Keys apply account-wide, not just to this brand, even though this page lives under a brand's settings, unless
+					restricted to specific brands below.
 				</p>
 			</div>
 
@@ -142,6 +205,7 @@ function ApiKeysSettings() {
 						<TableRow>
 							<TableHead>Name</TableHead>
 							<TableHead>Key</TableHead>
+							<TableHead>Brands</TableHead>
 							<TableHead>Created</TableHead>
 							<TableHead>Last used</TableHead>
 							<TableHead>Expires</TableHead>
@@ -153,6 +217,12 @@ function ApiKeysSettings() {
 							<TableRow key={key.id}>
 								<TableCell className="font-medium">{key.name ?? "Unnamed key"}</TableCell>
 								<TableCell className="font-mono text-xs text-muted-foreground">{key.start}…</TableCell>
+								<TableCell
+									className="text-sm text-muted-foreground max-w-48 truncate"
+									title={formatBrandScope(key.metadata, brands)}
+								>
+									{formatBrandScope(key.metadata, brands)}
+								</TableCell>
 								<TableCell className="text-sm text-muted-foreground">{formatDate(key.createdAt)}</TableCell>
 								<TableCell className="text-sm text-muted-foreground">
 									{key.lastRequest ? formatDate(key.lastRequest) : "Never used"}
@@ -177,7 +247,7 @@ function ApiKeysSettings() {
 				</Table>
 			)}
 
-			<CreateApiKeyDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadKeys} />
+			<CreateApiKeyDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={loadKeys} brands={brands} />
 
 			<Dialog open={revokeTarget !== null} onOpenChange={(open) => !open && setRevokeTarget(null)}>
 				<DialogContent>
@@ -216,13 +286,17 @@ function CreateApiKeyDialog({
 	open,
 	onOpenChange,
 	onCreated,
+	brands,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onCreated: () => Promise<void>;
+	brands: BrandOption[];
 }) {
 	const [name, setName] = useState("");
 	const [expiration, setExpiration] = useState<(typeof EXPIRATION_OPTIONS)[number]["value"]>("never");
+	const [brandScope, setBrandScope] = useState<(typeof BRAND_SCOPE_OPTIONS)[number]["value"]>("all");
+	const [selectedBrandIds, setSelectedBrandIds] = useState<string[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState("");
 	const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -231,11 +305,19 @@ function CreateApiKeyDialog({
 	const reset = useCallback(() => {
 		setName("");
 		setExpiration("never");
+		setBrandScope("all");
+		setSelectedBrandIds([]);
 		setIsSubmitting(false);
 		setError("");
 		setCreatedKey(null);
 		setCopied(false);
 	}, []);
+
+	const toggleBrand = useCallback((brandId: string, checked: boolean) => {
+		setSelectedBrandIds((prev) => (checked ? [...prev, brandId] : prev.filter((id) => id !== brandId)));
+	}, []);
+
+	const needsBrandSelection = brandScope === "specific" && selectedBrandIds.length === 0;
 
 	const handleOpenChange = useCallback(
 		(next: boolean) => {
@@ -257,6 +339,7 @@ function CreateApiKeyDialog({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (needsBrandSelection) return;
 		setIsSubmitting(true);
 		setError("");
 
@@ -264,6 +347,7 @@ function CreateApiKeyDialog({
 		const { data, error: createError } = await authClient.apiKey.create({
 			name,
 			...(expiresIn ? { expiresIn } : {}),
+			...(selectedBrandIds.length > 0 ? { metadata: { brandIds: selectedBrandIds } } : {}),
 		});
 
 		if (createError) {
@@ -343,6 +427,45 @@ function CreateApiKeyDialog({
 									</SelectContent>
 								</Select>
 							</div>
+							<div className="space-y-2">
+								<Label htmlFor="api-key-brand-scope">Brand access</Label>
+								<Select value={brandScope} onValueChange={(v) => setBrandScope(v as typeof brandScope)}>
+									<SelectTrigger id="api-key-brand-scope" disabled={isSubmitting}>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{BRAND_SCOPE_OPTIONS.map((opt) => (
+											<SelectItem key={opt.value} value={opt.value}>
+												{opt.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								{brandScope === "specific" && (
+									<>
+										<div className="border rounded-md max-h-40 overflow-y-auto p-2 space-y-2">
+											{brands.length === 0 ? (
+												<p className="text-xs text-muted-foreground p-1">No brands available.</p>
+											) : (
+												brands.map((brand) => (
+													<div key={brand.id} className="flex items-center gap-2">
+														<Checkbox
+															id={`api-key-brand-${brand.id}`}
+															checked={selectedBrandIds.includes(brand.id)}
+															onCheckedChange={(checked) => toggleBrand(brand.id, checked === true)}
+															disabled={isSubmitting}
+														/>
+														<Label htmlFor={`api-key-brand-${brand.id}`} className="font-normal cursor-pointer">
+															{brand.name}
+														</Label>
+													</div>
+												))
+											)}
+										</div>
+										{needsBrandSelection && <p className="text-xs text-destructive">Select at least one brand.</p>}
+									</>
+								)}
+							</div>
 							{error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
 						</div>
 						<DialogFooter>
@@ -351,7 +474,7 @@ function CreateApiKeyDialog({
 									Cancel
 								</Button>
 							</DialogClose>
-							<Button type="submit" className="cursor-pointer" disabled={isSubmitting}>
+							<Button type="submit" className="cursor-pointer" disabled={isSubmitting || needsBrandSelection}>
 								{isSubmitting ? "Creating..." : "Create key"}
 							</Button>
 						</DialogFooter>

@@ -82,6 +82,14 @@ jobs:
           cd e2e
           npx tsx cli-driver.ts "$PWD/.elmo" "$GITHUB_WORKSPACE"
 
+      - name: Patch .env with test overrides
+        run: |
+          cat >> e2e/.elmo/.env <<'PATCH'
+
+          # E2E test overrides
+          ADMIN_API_KEYS=test-api-key-e2e
+          PATCH
+
       - name: Show generated config
         run: |
           echo "=== .env ==="

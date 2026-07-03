@@ -1,23 +1,29 @@
 /**
- * External API (v1) authentication: resolves a Bearer API key to an
+ * External API (v1) authentication: resolves a Bearer token to an
  * `ApiAuthContext`.
  *
- * Authority is *derived*, not stored on the key: we look up the key's
- * owner (`referenceId`) and read their current role and org memberships
- * at request time. An owner with `role === "admin"` gets instance-wide
- * access; any other owner is scoped to the organizations they belong to
- * (org id == brand id in this codebase). This means demoting an admin or
- * removing someone from an org instantly changes what their existing API
- * keys can reach — there is no separate authorization state to go stale.
+ * Two kinds of keys, deliberately asymmetric:
+ *
+ * - **Instance-admin keys** come from the `ADMIN_API_KEYS` env var
+ *   (comma-separated, compared timing-safe). Full access, including the
+ *   admin-only endpoints. Set by the instance operator for automation;
+ *   never stored in the database.
+ * - **Dashboard keys** are better-auth API keys (`apikey` table, created in
+ *   Settings → API Keys). They are never admin. Their scope is *derived*,
+ *   not stored: the owner's org memberships at request time (org id ==
+ *   brand id), optionally narrowed by a per-key brand restriction saved in
+ *   the key's metadata (`{ brandIds: [...] }`). Removing someone from an
+ *   org instantly changes what their keys reach, and deleting the owner
+ *   cascades their memberships away, leaving the key with access to
+ *   nothing — there is no authorization state to go stale.
  */
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@workspace/lib/db/db";
-import { member, user } from "@workspace/lib/db/schema";
+import { member } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "./server";
 
-export type ApiAuthContext =
-	| { type: "admin"; userId: string; keyId: string }
-	| { type: "user"; userId: string; keyId: string; brandIds: string[] };
+export type ApiAuthContext = { type: "admin" } | { type: "user"; userId: string; keyId: string; brandIds: string[] };
 
 interface ApiAuthFailure {
 	status: 401 | 429;
@@ -29,18 +35,13 @@ export type ApiAuthResult = { ok: true; auth: ApiAuthContext } | ({ ok: false } 
 
 /** Dependencies injected for unit testing; resolveApiAuth binds the real ones. */
 export interface ApiAuthDeps {
+	/** Parsed `ADMIN_API_KEYS` values; a timing-safe match grants admin. */
+	adminApiKeys: string[];
 	verifyApiKey(key: string): Promise<{
 		valid: boolean;
 		error: { code?: string | null; message?: string | null } | null;
-		key: { id: string; referenceId: string } | null;
+		key: { id: string; referenceId: string; metadata?: unknown } | null;
 	}>;
-	/**
-	 * Returns the owning user row (role may be null for users created outside
-	 * the admin plugin, e.g. whitelabel SSO sync) or null when no row exists.
-	 * "Row missing" and "role null" are distinct: the former orphans the key,
-	 * the latter is just a regular non-admin user.
-	 */
-	getOwner(userId: string): Promise<{ role: string | null } | null>;
 	/** Org ids the user is a member of (org id == brand id). */
 	listOrgIds(userId: string): Promise<string[]>;
 }
@@ -68,6 +69,50 @@ export function parseBearerToken(header: string | null | undefined): string | nu
 	}
 	const token = header.slice("Bearer ".length).trim();
 	return token.length > 0 ? token : null;
+}
+
+/** Parse comma-separated ADMIN_API_KEYS env var into a trimmed, non-empty array. */
+function getAdminApiKeys(): string[] {
+	return (process.env.ADMIN_API_KEYS || "")
+		.split(",")
+		.map((key) => key.trim())
+		.filter(Boolean);
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on API keys.
+ * Returns true if the strings are equal, false otherwise.
+ */
+function timingSafeStringEqual(a: string, b: string): boolean {
+	const bufA = Buffer.from(a);
+	const bufB = Buffer.from(b);
+	if (bufA.length !== bufB.length) {
+		// Compare against itself to consume constant time, then return false
+		timingSafeEqual(bufA, bufA);
+		return false;
+	}
+	return timingSafeEqual(bufA, bufB);
+}
+
+/**
+ * Extract the per-key brand restriction from key metadata.
+ *
+ * Only a well-formed `{ brandIds: [...] }` restricts, keeping the string
+ * entries. `null` means "no restriction". The asymmetry is deliberate: a
+ * missing or malformed field cannot *narrow* anything (the dashboard always
+ * writes a well-formed array), while a present array — even empty, even
+ * full of garbage — restricts to exactly its valid entries, so hand-rolled
+ * metadata can only ever shrink a key's reach, never widen it.
+ */
+export function parseBrandRestriction(metadata: unknown): string[] | null {
+	if (typeof metadata !== "object" || metadata === null || Array.isArray(metadata)) {
+		return null;
+	}
+	const brandIds = (metadata as Record<string, unknown>).brandIds;
+	if (!Array.isArray(brandIds)) {
+		return null;
+	}
+	return brandIds.filter((id): id is string => typeof id === "string");
 }
 
 /**
@@ -118,6 +163,12 @@ export async function resolveApiAuthWithDeps(request: Request, deps: ApiAuthDeps
 		return { ok: false, ...UNAUTHORIZED_MISSING_TOKEN };
 	}
 
+	// Instance-admin env keys are checked first and never touch the database
+	// (or a dashboard key's rate-limit counters).
+	if (deps.adminApiKeys.some((key) => timingSafeStringEqual(key, token))) {
+		return { ok: true, auth: { type: "admin" } };
+	}
+
 	let verified: Awaited<ReturnType<ApiAuthDeps["verifyApiKey"]>>;
 	try {
 		verified = await deps.verifyApiKey(token);
@@ -133,20 +184,13 @@ export async function resolveApiAuthWithDeps(request: Request, deps: ApiAuthDeps
 	}
 
 	const { key } = verified;
-	const userId = key.referenceId;
+	const orgIds = await deps.listOrgIds(key.referenceId);
+	const restriction = parseBrandRestriction(key.metadata);
+	// The intersection means a restriction can only narrow the owner-derived
+	// scope — a key must never grant more than its owner currently has.
+	const brandIds = restriction === null ? orgIds : orgIds.filter((id) => restriction.includes(id));
 
-	const owner = await deps.getOwner(userId);
-	if (owner === null) {
-		// Owner's user row is gone (deleted account) — the key is orphaned.
-		return { ok: false, ...UNAUTHORIZED_INVALID_KEY };
-	}
-
-	if (owner.role === "admin") {
-		return { ok: true, auth: { type: "admin", userId, keyId: key.id } };
-	}
-
-	const brandIds = await deps.listOrgIds(userId);
-	return { ok: true, auth: { type: "user", userId, keyId: key.id, brandIds } };
+	return { ok: true, auth: { type: "user", userId: key.referenceId, keyId: key.id, brandIds } };
 }
 
 /**
@@ -157,7 +201,7 @@ export async function resolveApiAuthWithDeps(request: Request, deps: ApiAuthDeps
  */
 const requestAuthCache = new WeakMap<Request, Promise<ApiAuthResult>>();
 
-const realDeps: ApiAuthDeps = {
+const realDeps: Omit<ApiAuthDeps, "adminApiKeys"> = {
 	async verifyApiKey(key: string) {
 		// better-auth's own return type mis-types `error.message` as the
 		// `RawError` object (not `string`) on one union branch — a narrow
@@ -168,12 +212,10 @@ const realDeps: ApiAuthDeps = {
 		return {
 			valid: result.valid,
 			error: result.error ? { code: result.error.code, message: String(result.error.message) } : null,
-			key: result.key,
+			key: result.key
+				? { id: result.key.id, referenceId: result.key.referenceId, metadata: result.key.metadata }
+				: null,
 		};
-	},
-	async getOwner(userId: string) {
-		const [row] = await db.select({ role: user.role }).from(user).where(eq(user.id, userId)).limit(1);
-		return row ? { role: row.role } : null;
 	},
 	async listOrgIds(userId: string) {
 		const rows = await db.select({ id: member.organizationId }).from(member).where(eq(member.userId, userId));
@@ -183,14 +225,14 @@ const realDeps: ApiAuthDeps = {
 
 /**
  * Resolve an `ApiAuthContext` for an incoming request, binding the real
- * better-auth / drizzle dependencies. Memoized per `Request` object — see
- * `requestAuthCache` above.
+ * better-auth / drizzle dependencies (env admin keys are re-read per call).
+ * Memoized per `Request` object — see `requestAuthCache` above.
  */
 export function resolveApiAuth(request: Request): Promise<ApiAuthResult> {
 	const cached = requestAuthCache.get(request);
 	if (cached) return cached;
 
-	const result = resolveApiAuthWithDeps(request, realDeps);
+	const result = resolveApiAuthWithDeps(request, { ...realDeps, adminApiKeys: getAdminApiKeys() });
 	requestAuthCache.set(request, result);
 	return result;
 }
