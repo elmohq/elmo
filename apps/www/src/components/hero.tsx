@@ -121,7 +121,7 @@ export function Hero() {
 						<div className="flex flex-wrap items-center gap-2">
 							<span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 font-mono text-[11px] text-zinc-700">
 								<span className="size-1.5 rounded-full bg-emerald-500" />
-								v0.2.6
+								v{__APP_VERSION__}
 							</span>
 							<a
 								href="https://github.com/elmohq/elmo"
