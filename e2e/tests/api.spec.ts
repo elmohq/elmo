@@ -248,3 +248,61 @@ test.describe("External API - CRUD Operations", () => {
     expect(getResponse.status()).toBe(404);
   });
 });
+
+test.describe("External API - GET /api/v1/brands/:brandId/visibility", () => {
+  // Wide window so it safely covers the seeded prompt runs, which are
+  // inserted relative to "now" rather than at fixed dates.
+  const FROM = "2020-01-01";
+  const TO = "2030-01-01";
+
+  test("returns 400 when from/to are missing", async ({ request }) => {
+    const response = await request.get(`/api/v1/brands/${BRAND_ID}/visibility`, {
+      headers: authHeaders(),
+    });
+    expect(response.status()).toBe(400);
+
+    const body = await response.json();
+    expect(body.error).toBe("Validation Error");
+  });
+
+  test("returns 200 with visibility series and totals for a valid range", async ({ request }) => {
+    const response = await request.get(`/api/v1/brands/${BRAND_ID}/visibility?from=${FROM}&to=${TO}`, {
+      headers: authHeaders(),
+    });
+    expect(response.status()).toBe(200);
+
+    const body = await response.json();
+    expect(body.brandId).toBe(BRAND_ID);
+
+    expect(body.range).toBeDefined();
+    expect(body.range.from).toBe(FROM);
+    expect(body.range.to).toBe(TO);
+    expect(body.range.timezone).toBe("UTC");
+
+    expect(typeof body.currentVisibility).toBe("number");
+    expect(typeof body.totalRuns).toBe("number");
+    expect(typeof body.totalPrompts).toBe("number");
+    expect(typeof body.totalCitations).toBe("number");
+
+    expect(Array.isArray(body.series)).toBeTruthy();
+    for (const point of body.series) {
+      expect(point).toHaveProperty("date");
+      expect(point).toHaveProperty("visibility");
+    }
+  });
+
+  test("returns 404 for a non-existent brand", async ({ request }) => {
+    const response = await request.get(`/api/v1/brands/does-not-exist/visibility?from=${FROM}&to=${TO}`, {
+      headers: authHeaders(),
+    });
+    expect(response.status()).toBe(404);
+
+    const body = await response.json();
+    expect(body.error).toBe("Not Found");
+  });
+
+  test("returns 401 without an API key", async ({ request }) => {
+    const response = await request.get(`/api/v1/brands/${BRAND_ID}/visibility?from=${FROM}&to=${TO}`);
+    expect(response.status()).toBe(401);
+  });
+});

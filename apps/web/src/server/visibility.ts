@@ -5,21 +5,16 @@
  *   - apps/web/src/app/api/brands/[id]/filtered-visibility/route.ts
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { type LookbackPeriod } from "@/lib/chart-utils";
+import { z } from "zod";
+import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import type { LookbackPeriod } from "@/lib/chart-utils";
+import { getBatchChartData, type ProcessedBatchChartDataPoint } from "@/lib/postgres-read";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
+import { getBrandVisibility } from "@/server/analytics-core";
 import { resolveFilteredPrompts } from "@/server/prompt-resolution";
-import {
-	getBatchChartData,
-	getVisibilityDailyAggregate,
-	getCitationsTotalCount,
-	type ProcessedBatchChartDataPoint,
-} from "@/lib/postgres-read";
-import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 
 // ============================================================================
 // Types
@@ -93,11 +88,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		// Get brand and competitors from PostgreSQL
 		const [brandResult, competitorsResult] = await Promise.all([
-			db
-				.select({ id: brands.id, name: brands.name })
-				.from(brands)
-				.where(eq(brands.id, data.brandId))
-				.limit(1),
+			db.select({ id: brands.id, name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db
 				.select({ id: competitors.id, name: competitors.name })
 				.from(competitors)
@@ -160,88 +151,32 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 
 		await requireOrgAccess(session.user.id, data.brandId);
 
-		// Resolve the in-scope prompts server-side from the filter criteria so
-		// the client never ships the full prompt-id list (issue #68).
-		const resolvedPrompts = await resolveFilteredPrompts(data.brandId, {
-			tags: data.tags,
-			search: data.search,
-		});
-		const promptIds = resolvedPrompts.map((p) => p.id);
-		const totalPrompts = promptIds.length;
-
-		if (totalPrompts === 0) {
-			return {
-				currentVisibility: 0,
-				totalRuns: 0,
-				totalPrompts: 0,
-				totalCitations: 0,
-				visibilityTimeSeries: [],
-				lookback: lookbackParam,
-			};
-		}
-
 		const timezone = resolveTimezone(data.timezone);
-
-		// Determine branded prompt IDs from effective branded status
-		const brandedPromptIds = resolvedPrompts
-			.filter((p) => getEffectiveBrandedStatus(p.systemTags, p.tags).isBranded)
-			.map((p) => p.id);
 
 		// `allStrategy: "1y"` caps the "all" lookback at a one-year window so
 		// the visibility bar matches the chart section. Every other lookback
 		// already returns concrete bounds, so we can destructure without
 		// null-checking.
-		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(
-			lookbackParam,
+		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(lookbackParam, timezone, {
+			allStrategy: "1y",
+		}) as { fromDateStr: string; toDateStr: string };
+
+		const result = await getBrandVisibility({
+			brandId: data.brandId,
+			fromDate,
+			toDate,
 			timezone,
-			{ allStrategy: "1y" },
-		) as { fromDateStr: string; toDateStr: string };
-
-		const [daily, totalCitations] = await Promise.all([
-			getVisibilityDailyAggregate(
-				data.brandId,
-				fromDate,
-				toDate,
-				timezone,
-				promptIds,
-				brandedPromptIds,
-				data.model,
-			),
-			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
-		]);
-
-		// Roll the period run totals from the raw observation sums (actual_*);
-		// the visibility time-series uses the per-day LVCF sums so gaps in
-		// individual prompt schedules don't scallop the line.
-		let totalBrandedRuns = 0;
-		let totalNonBrandedRuns = 0;
-		const visibilityTimeSeries: VisibilityTimeSeriesPoint[] = daily.map((row) => {
-			totalBrandedRuns += row.actual_branded_runs;
-			totalNonBrandedRuns += row.actual_nonbranded_runs;
-			const t = row.lvcf_branded_runs + row.lvcf_nonbranded_runs;
-			const m = row.lvcf_branded_mentioned + row.lvcf_nonbranded_mentioned;
-			return { date: row.date, visibility: t === 0 ? null : Math.round((m / t) * 100) };
+			model: data.model,
+			tags: data.tags,
+			search: data.search,
 		});
 
-		const totalRuns = totalBrandedRuns + totalNonBrandedRuns;
-		// "Current" = the latest plotted point (last non-null LVCF day), so the headline
-		// number matches the right end of the trend/sparkline beside it — and the
-		// overview's current-visibility hero — rather than the whole-window average.
-		let currentVisibility = 0;
-		for (let i = visibilityTimeSeries.length - 1; i >= 0; i--) {
-			const v = visibilityTimeSeries[i].visibility;
-			if (v != null) {
-				currentVisibility = v;
-				break;
-			}
-		}
-
 		return {
-			currentVisibility,
-			totalRuns,
-			totalPrompts,
-			totalCitations,
-			visibilityTimeSeries,
+			currentVisibility: result.currentVisibility,
+			totalRuns: result.totalRuns,
+			totalPrompts: result.totalPrompts,
+			totalCitations: result.totalCitations,
+			visibilityTimeSeries: result.series,
 			lookback: lookbackParam,
 		};
 	});

@@ -44,7 +44,7 @@ A smaller set of endpoints are **admin-only** and require an instance-admin key 
 - `GET /reports/{reportId}`
 - `POST /tools/analyze`
 
-Everything else — `GET /brands`, `GET`/`PATCH /brands/{brandId}`, all `/prompts` and `/competitors` endpoints, and `GET /prompts/{promptId}/snapshot` — works with dashboard keys, scoped as described above.
+Everything else — `GET /brands`, `GET`/`PATCH /brands/{brandId}`, all `/prompts` and `/competitors` endpoints, `GET /prompts/{promptId}/snapshot`, and `GET /brands/{brandId}/visibility` — works with dashboard keys, scoped as described above.
 
 ### Read-only keys
 
@@ -89,4 +89,5 @@ Browse the available endpoints in the sidebar, grouped by resource:
 - **Prompts** — manage brand prompts
 - **Competitors** — manage brand competitors
 - **Snapshots** — aggregated analytics snapshots for prompts
+- **Analytics** — dashboard metrics (visibility, and more to come) exposed over the API
 - **Reports** — generate and retrieve AI Share of Voice reports

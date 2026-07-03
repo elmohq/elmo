@@ -51,6 +51,7 @@ import { Route as ApiPlausibleJsScriptIndexRouteImport } from './routes/api/plau
 import { Route as AuthedAppBrandSettingsIndexRouteImport } from './routes/_authed/app/$brand/settings/index'
 import { Route as AuthedAppBrandPromptsIndexRouteImport } from './routes/_authed/app/$brand/prompts/index'
 import { Route as ApiV1PromptsPromptIdSnapshotRouteImport } from './routes/api/v1/prompts/$promptId/snapshot'
+import { Route as ApiV1BrandsBrandIdVisibilityRouteImport } from './routes/api/v1/brands/$brandId/visibility'
 import { Route as AuthedAppBrandSettingsPromptsRouteImport } from './routes/_authed/app/$brand/settings/prompts'
 import { Route as AuthedAppBrandSettingsLlmsRouteImport } from './routes/_authed/app/$brand/settings/llms'
 import { Route as AuthedAppBrandSettingsCompetitorsRouteImport } from './routes/_authed/app/$brand/settings/competitors'
@@ -278,6 +279,12 @@ const ApiV1PromptsPromptIdSnapshotRoute =
     path: '/snapshot',
     getParentRoute: () => ApiV1PromptsPromptIdRoute,
   } as any)
+const ApiV1BrandsBrandIdVisibilityRoute =
+  ApiV1BrandsBrandIdVisibilityRouteImport.update({
+    id: '/visibility',
+    path: '/visibility',
+    getParentRoute: () => ApiV1BrandsBrandIdRoute,
+  } as any)
 const AuthedAppBrandSettingsPromptsRoute =
   AuthedAppBrandSettingsPromptsRouteImport.update({
     id: '/settings/prompts',
@@ -347,7 +354,7 @@ export interface FileRoutesByFullPath {
   '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
@@ -366,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/brands/$brandId/visibility': typeof ApiV1BrandsBrandIdVisibilityRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
@@ -393,7 +401,7 @@ export interface FileRoutesByTo {
   '/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
@@ -412,6 +420,7 @@ export interface FileRoutesByTo {
   '/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/brands/$brandId/visibility': typeof ApiV1BrandsBrandIdVisibilityRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/app/$brand/prompts': typeof AuthedAppBrandPromptsIndexRoute
   '/app/$brand/settings': typeof AuthedAppBrandSettingsIndexRoute
@@ -445,7 +454,7 @@ export interface FileRoutesById {
   '/_authed/app/$brand/share-of-voice': typeof AuthedAppBrandShareOfVoiceRoute
   '/_authed/app/$brand/visibility': typeof AuthedAppBrandVisibilityRoute
   '/_authed/reports/render/$reportId': typeof AuthedReportsRenderReportIdRoute
-  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRoute
+  '/api/v1/brands/$brandId': typeof ApiV1BrandsBrandIdRouteWithChildren
   '/api/v1/competitors/$competitorId': typeof ApiV1CompetitorsCompetitorIdRoute
   '/api/v1/prompts/$promptId': typeof ApiV1PromptsPromptIdRouteWithChildren
   '/api/v1/reports/$reportId': typeof ApiV1ReportsReportIdRoute
@@ -464,6 +473,7 @@ export interface FileRoutesById {
   '/_authed/app/$brand/settings/competitors': typeof AuthedAppBrandSettingsCompetitorsRoute
   '/_authed/app/$brand/settings/llms': typeof AuthedAppBrandSettingsLlmsRoute
   '/_authed/app/$brand/settings/prompts': typeof AuthedAppBrandSettingsPromptsRoute
+  '/api/v1/brands/$brandId/visibility': typeof ApiV1BrandsBrandIdVisibilityRoute
   '/api/v1/prompts/$promptId/snapshot': typeof ApiV1PromptsPromptIdSnapshotRoute
   '/_authed/app/$brand/prompts/': typeof AuthedAppBrandPromptsIndexRoute
   '/_authed/app/$brand/settings/': typeof AuthedAppBrandSettingsIndexRoute
@@ -516,6 +526,7 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/prompts'
+    | '/api/v1/brands/$brandId/visibility'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts/'
     | '/app/$brand/settings/'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/app/$brand/settings/competitors'
     | '/app/$brand/settings/llms'
     | '/app/$brand/settings/prompts'
+    | '/api/v1/brands/$brandId/visibility'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/app/$brand/prompts'
     | '/app/$brand/settings'
@@ -613,6 +625,7 @@ export interface FileRouteTypes {
     | '/_authed/app/$brand/settings/competitors'
     | '/_authed/app/$brand/settings/llms'
     | '/_authed/app/$brand/settings/prompts'
+    | '/api/v1/brands/$brandId/visibility'
     | '/api/v1/prompts/$promptId/snapshot'
     | '/_authed/app/$brand/prompts/'
     | '/_authed/app/$brand/settings/'
@@ -629,7 +642,7 @@ export interface RootRouteChildren {
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
-  ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRoute
+  ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRouteWithChildren
   ApiV1CompetitorsCompetitorIdRoute: typeof ApiV1CompetitorsCompetitorIdRoute
   ApiV1PromptsPromptIdRoute: typeof ApiV1PromptsPromptIdRouteWithChildren
   ApiV1ReportsReportIdRoute: typeof ApiV1ReportsReportIdRoute
@@ -939,6 +952,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PromptsPromptIdSnapshotRouteImport
       parentRoute: typeof ApiV1PromptsPromptIdRoute
     }
+    '/api/v1/brands/$brandId/visibility': {
+      id: '/api/v1/brands/$brandId/visibility'
+      path: '/visibility'
+      fullPath: '/api/v1/brands/$brandId/visibility'
+      preLoaderRoute: typeof ApiV1BrandsBrandIdVisibilityRouteImport
+      parentRoute: typeof ApiV1BrandsBrandIdRoute
+    }
     '/_authed/app/$brand/settings/prompts': {
       id: '/_authed/app/$brand/settings/prompts'
       path: '/settings/prompts'
@@ -1095,6 +1115,17 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
+interface ApiV1BrandsBrandIdRouteChildren {
+  ApiV1BrandsBrandIdVisibilityRoute: typeof ApiV1BrandsBrandIdVisibilityRoute
+}
+
+const ApiV1BrandsBrandIdRouteChildren: ApiV1BrandsBrandIdRouteChildren = {
+  ApiV1BrandsBrandIdVisibilityRoute: ApiV1BrandsBrandIdVisibilityRoute,
+}
+
+const ApiV1BrandsBrandIdRouteWithChildren =
+  ApiV1BrandsBrandIdRoute._addFileChildren(ApiV1BrandsBrandIdRouteChildren)
+
 interface ApiV1PromptsPromptIdRouteChildren {
   ApiV1PromptsPromptIdSnapshotRoute: typeof ApiV1PromptsPromptIdSnapshotRoute
 }
@@ -1116,7 +1147,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiManifestIndexRoute: ApiManifestIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
-  ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRoute,
+  ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRouteWithChildren,
   ApiV1CompetitorsCompetitorIdRoute: ApiV1CompetitorsCompetitorIdRoute,
   ApiV1PromptsPromptIdRoute: ApiV1PromptsPromptIdRouteWithChildren,
   ApiV1ReportsReportIdRoute: ApiV1ReportsReportIdRoute,

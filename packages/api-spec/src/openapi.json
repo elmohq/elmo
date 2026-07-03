@@ -775,6 +775,97 @@
           }
         }
       },
+      "VisibilityPoint": {
+        "type": "object",
+        "description": "One day's plotted mention rate. LVCF-smoothed: a day with no runs carries forward as `null` rather than dropping to zero.",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Day this point represents (YYYY-MM-DD), in the requested timezone"
+          },
+          "visibility": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Brand mention rate for the day (0-100), or null when no runs were plotted that day"
+          }
+        },
+        "required": [
+          "date",
+          "visibility"
+        ]
+      },
+      "BrandVisibility": {
+        "type": "object",
+        "description": "Brand AI-visibility over a date range: a daily mention-rate series (LVCF-smoothed) plus period totals. Backed by the same computation as the dashboard's visibility chart, so the API and the UI never report different numbers.",
+        "properties": {
+          "brandId": {
+            "type": "string",
+            "description": "Brand identifier"
+          },
+          "range": {
+            "type": "object",
+            "description": "The resolved date range the response covers",
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date",
+                "description": "Inclusive start of the window (YYYY-MM-DD)"
+              },
+              "to": {
+                "type": "string",
+                "format": "date",
+                "description": "Inclusive end of the window (YYYY-MM-DD)"
+              },
+              "timezone": {
+                "type": "string",
+                "description": "IANA timezone the day buckets were computed in"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "timezone"
+            ]
+          },
+          "currentVisibility": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "The latest plotted mention rate (the right end of the series), 0-100"
+          },
+          "totalRuns": {
+            "type": "integer",
+            "description": "Total number of prompt runs across the window"
+          },
+          "totalPrompts": {
+            "type": "integer",
+            "description": "Total number of prompts included in the window"
+          },
+          "totalCitations": {
+            "type": "integer",
+            "description": "Total number of citations across the window"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VisibilityPoint"
+            },
+            "description": "Daily mention-rate series covering the requested range"
+          }
+        },
+        "required": [
+          "brandId",
+          "range",
+          "currentVisibility",
+          "totalRuns",
+          "totalPrompts",
+          "totalCitations",
+          "series"
+        ]
+      },
       "PromptSnapshot": {
         "type": "object",
         "properties": {
@@ -1170,6 +1261,130 @@
           },
           "403": {
             "$ref": "#/components/responses/ForbiddenError"
+          }
+        }
+      }
+    },
+    "/brands/{brandId}/visibility": {
+      "get": {
+        "summary": "Get brand visibility over time",
+        "description": "Brand AI-visibility over a date range: a daily mention-rate series (LVCF-smoothed so gaps don't scallop the line) plus period totals. Backed by the same computation as the dashboard's visibility chart, so the API and the UI never report different numbers. The first of a planned set of analytics endpoints exposing dashboard metrics via the API. Dashboard keys only see brands within their scope; resources outside that scope return 404, identical to a nonexistent brand.",
+        "operationId": "getBrandVisibility",
+        "tags": [
+          "Analytics"
+        ],
+        "parameters": [
+          {
+            "name": "brandId",
+            "in": "path",
+            "required": true,
+            "description": "Brand identifier",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "description": "Inclusive start of the date range (YYYY-MM-DD)",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "example": "2026-06-01"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "description": "Inclusive end of the date range (YYYY-MM-DD)",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "example": "2026-06-30"
+          },
+          {
+            "name": "timezone",
+            "in": "query",
+            "required": false,
+            "description": "IANA timezone the day buckets are computed in",
+            "schema": {
+              "type": "string",
+              "default": "UTC"
+            },
+            "example": "America/New_York"
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "description": "Restrict to a single model/platform",
+            "schema": {
+              "type": "string"
+            },
+            "example": "chatgpt"
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated tag filter, matching the dashboard's prompt list",
+            "schema": {
+              "type": "string"
+            },
+            "example": "branded,pricing"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Brand visibility series and totals for the requested window",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandVisibility"
+                },
+                "example": {
+                  "brandId": "acme",
+                  "range": {
+                    "from": "2026-06-01",
+                    "to": "2026-06-30",
+                    "timezone": "UTC"
+                  },
+                  "currentVisibility": 42,
+                  "totalRuns": 1234,
+                  "totalPrompts": 20,
+                  "totalCitations": 567,
+                  "series": [
+                    {
+                      "date": "2026-06-01",
+                      "visibility": 40
+                    },
+                    {
+                      "date": "2026-06-02",
+                      "visibility": null
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }
@@ -2312,6 +2527,10 @@
     {
       "name": "Snapshots",
       "description": "Aggregated analytics snapshots for prompts"
+    },
+    {
+      "name": "Analytics",
+      "description": "Dashboard metrics (visibility, and more to come) exposed over the API"
     },
     {
       "name": "Reports",
