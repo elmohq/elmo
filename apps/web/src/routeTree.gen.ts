@@ -19,6 +19,7 @@ import { Route as AuthedAppRouteImport } from './routes/_authed/app'
 import { Route as AuthedAdminRouteImport } from './routes/_authed/admin'
 import { Route as ApiSetupStatusIndexRouteImport } from './routes/api/setup-status/index'
 import { Route as ApiOgIndexRouteImport } from './routes/api/og/index'
+import { Route as ApiMcpIndexRouteImport } from './routes/api/mcp/index'
 import { Route as ApiManifestIndexRouteImport } from './routes/api/manifest/index'
 import { Route as AuthedReportsIndexRouteImport } from './routes/_authed/reports/index'
 import { Route as AuthedAppIndexRouteImport } from './routes/_authed/app/index'
@@ -105,6 +106,11 @@ const ApiSetupStatusIndexRoute = ApiSetupStatusIndexRouteImport.update({
 const ApiOgIndexRoute = ApiOgIndexRouteImport.update({
   id: '/api/og/',
   path: '/api/og/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMcpIndexRoute = ApiMcpIndexRouteImport.update({
+  id: '/api/mcp/',
+  path: '/api/mcp/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiManifestIndexRoute = ApiManifestIndexRouteImport.update({
@@ -331,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AuthedAppIndexRoute
   '/reports/': typeof AuthedReportsIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
+  '/api/mcp/': typeof ApiMcpIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
   '/app/$brand/$': typeof AuthedAppBrandSplatRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/app': typeof AuthedAppIndexRoute
   '/reports': typeof AuthedReportsIndexRoute
   '/api/manifest': typeof ApiManifestIndexRoute
+  '/api/mcp': typeof ApiMcpIndexRoute
   '/api/og': typeof ApiOgIndexRoute
   '/api/setup-status': typeof ApiSetupStatusIndexRoute
   '/app/$brand/$': typeof AuthedAppBrandSplatRoute
@@ -427,6 +435,7 @@ export interface FileRoutesById {
   '/_authed/app/': typeof AuthedAppIndexRoute
   '/_authed/reports/': typeof AuthedReportsIndexRoute
   '/api/manifest/': typeof ApiManifestIndexRoute
+  '/api/mcp/': typeof ApiMcpIndexRoute
   '/api/og/': typeof ApiOgIndexRoute
   '/api/setup-status/': typeof ApiSetupStatusIndexRoute
   '/_authed/app/$brand/$': typeof AuthedAppBrandSplatRoute
@@ -478,6 +487,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/reports/'
     | '/api/manifest/'
+    | '/api/mcp/'
     | '/api/og/'
     | '/api/setup-status/'
     | '/app/$brand/$'
@@ -523,6 +533,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/reports'
     | '/api/manifest'
+    | '/api/mcp'
     | '/api/og'
     | '/api/setup-status'
     | '/app/$brand/$'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/_authed/app/'
     | '/_authed/reports/'
     | '/api/manifest/'
+    | '/api/mcp/'
     | '/api/og/'
     | '/api/setup-status/'
     | '/_authed/app/$brand/$'
@@ -614,6 +626,7 @@ export interface RootRouteChildren {
   AuthRegisterRoute: typeof AuthRegisterRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiManifestIndexRoute: typeof ApiManifestIndexRoute
+  ApiMcpIndexRoute: typeof ApiMcpIndexRoute
   ApiOgIndexRoute: typeof ApiOgIndexRoute
   ApiSetupStatusIndexRoute: typeof ApiSetupStatusIndexRoute
   ApiV1BrandsBrandIdRoute: typeof ApiV1BrandsBrandIdRoute
@@ -700,6 +713,13 @@ declare module '@tanstack/react-router' {
       path: '/api/og'
       fullPath: '/api/og/'
       preLoaderRoute: typeof ApiOgIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mcp/': {
+      id: '/api/mcp/'
+      path: '/api/mcp'
+      fullPath: '/api/mcp/'
+      preLoaderRoute: typeof ApiMcpIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/manifest/': {
@@ -1092,6 +1112,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRegisterRoute: AuthRegisterRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiManifestIndexRoute: ApiManifestIndexRoute,
+  ApiMcpIndexRoute: ApiMcpIndexRoute,
   ApiOgIndexRoute: ApiOgIndexRoute,
   ApiSetupStatusIndexRoute: ApiSetupStatusIndexRoute,
   ApiV1BrandsBrandIdRoute: ApiV1BrandsBrandIdRoute,

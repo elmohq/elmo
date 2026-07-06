@@ -51,6 +51,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   // Sentry CLI – build-time tooling only, never distributed with Elmo.
   // FSL-1.1-MIT converts to MIT after two years.
   ["@sentry/cli", "FSL-1.1-MIT"],
+  ["@sentry/cli-darwin", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-arm64", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-x64", "FSL-1.1-MIT"],
   ["@sentry/cli-linux-arm", "FSL-1.1-MIT"],
