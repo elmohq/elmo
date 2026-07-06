@@ -7,7 +7,7 @@
  * `runStructuredResearch<T>(prompt, schema)` itself, picking the most
  * idiomatic combo for its API:
  *   • Anthropic / OpenAI — `generateText` + native web-search tool +
- *     `experimental_output: Output.object(schema)`.
+ *     `output: Output.object(schema)`.
  *   • OpenRouter — `generateObject` against a `:online`-suffixed slug
  *     (web search baked into the route).
  *   • Mistral — OpenAI-compat `generateObject` (no web search; users who

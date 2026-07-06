@@ -158,11 +158,11 @@ export const anthropicApi: Provider = {
 		const result = await generateText({
 			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
 			...(webSearch ? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }) } } : {}),
-			experimental_output: Output.object({ schema }),
+			output: Output.object({ schema }),
 			prompt,
 		});
 		return {
-			object: result.experimental_output as T,
+			object: result.output as T,
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},

@@ -78,11 +78,11 @@ export const openaiApi: Provider = {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
 			...(webSearch ? { tools: { web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any } } : {}),
-			experimental_output: Output.object({ schema }),
+			output: Output.object({ schema }),
 			prompt,
 		});
 		return {
-			object: result.experimental_output as T,
+			object: result.output as T,
 			modelVersion: DEFAULT_RESEARCH_MODEL,
 		};
 	},
