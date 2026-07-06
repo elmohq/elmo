@@ -28,7 +28,7 @@
     "./providers/types": "./src/providers/types.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.84",
+    "@ai-sdk/anthropic": "^4.0.5",
     "@ai-sdk/openai": "^3.0.71",
     "@anthropic-ai/sdk": "^0.104.1",
     "@better-auth/sso": "^1.6.18",
