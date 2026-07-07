@@ -26,6 +26,8 @@ Full setup instructions are in the developer guide (`packages/docs/content/docs/
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate`
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 
+Before finishing a change, run `pnpm lint` and `pnpm test`, plus `check-types` (`pnpm --filter <pkg> check-types`) for the packages you touched. Use `pnpm --filter <pkg> <script>` to scope any of these when iterating.
+
 ## Package management and supply-chain security
 
 - **Always use pnpm.** Never install or run dependencies with npm, yarn, or `npx` — that sidesteps the workspace's protections.
