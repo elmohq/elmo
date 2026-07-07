@@ -28,7 +28,7 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 - shadcn components: always install with the CLI (`pnpm dlx shadcn@latest add <component>`, from `packages/ui` or `apps/www` — each has its own `components.json`) — never hand-create them
 
-Run `pnpm format` before committing, and `check-types` for the packages you touched before opening the PR. Skip `pnpm lint` — CI doesn't gate on it. Only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them). Don't commit formatting churn in `apps/www` files you didn't touch — wholesale reformatting buries the real change.
+Run `pnpm format` before committing, and `check-types` for the packages you touched before opening the PR. Skip `pnpm lint` — CI doesn't gate on it. Only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them).
 
 ## Package management and supply-chain security
 
