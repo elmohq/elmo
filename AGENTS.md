@@ -26,7 +26,7 @@ Full setup instructions are in the developer guide (`packages/docs/content/docs/
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate`
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 
-Run `pnpm lint`, `pnpm format`, and `check-types` for the packages you touched once, right before opening the PR — not on every commit. Likewise only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them).
+Run `pnpm lint`, `pnpm format`, and `check-types` for the packages you touched once, right before opening the PR — not on every commit. Likewise only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them). Don't format `apps/www` files you didn't touch: it isn't format-enforced, and wholesale reformatting buries the real change.
 
 ## Package management and supply-chain security
 
