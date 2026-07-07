@@ -74,6 +74,14 @@ This requires `SCREENSHOT_ONE_ACCESS_KEY` and `BLOB_READ_WRITE_TOKEN` in `apps/w
 
 If the script fails, inform the user and continue with the data entry — the screenshot can be added later.
 
+**Verify the capture — don't trust it blindly.** ScreenshotOne uploads whatever the site serves, and sites with bot protection (Cloudflare, etc.) frequently return a captcha or block page to the headless browser, which then gets stored as the "screenshot." After a successful upload, download the blob URL the script printed and actually view the image:
+
+```bash
+curl -s -o /tmp/<slug>.jpg "<blob URL printed by the script>"
+```
+
+Open `/tmp/<slug>.jpg` and confirm it's genuinely the competitor's homepage/product — **not** a bot challenge ("Checking your browser…", "Select all squares with…", "verify you are human"), an access-denied / 403 page, or a blank/error page. If it's a challenge or error page, do NOT keep it: tell the user automated capture was blocked and ask them to send a real screenshot to upload manually (the script sets `allowOverwrite: true`, so re-uploading replaces the bad image).
+
 ## 6. Insert into data.ts
 
 Read `apps/www/src/lib/competitors/data.ts` and insert the new `Competitor` object into the `competitors` array (position in this array doesn't matter for display order).
