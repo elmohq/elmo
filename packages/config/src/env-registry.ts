@@ -195,6 +195,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "OpenRouter API key.",
 	},
 	{
+		name: "JINA_API_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Optional Jina Reader API key for website-excerpt fetching. When set, requests are authenticated (tracked by key, not IP), which raises the rate limit and avoids the anonymous 'bad network reputation' 401 block.",
+	},
+	{
 		name: "DEPLOYMENT_MODE",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
