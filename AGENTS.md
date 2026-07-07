@@ -9,8 +9,12 @@ Elmo is an open-source AI visibility platform (Answer Engine Optimization): it t
 - `apps/www` — marketing site, docs, and blog (port 3001)
 - `apps/cli` — `@elmohq/cli`, the Docker Compose deployment CLI
 - `packages/lib` — shared logic and the Drizzle schema/migrations
-- `packages/ui` — shared UI components
-- Other packages: `docs` (docs content), `og`, `deployment`, `config`, `api-spec`, `whitelabel`, `local`. Playwright tests live in `e2e/`.
+- `packages/ui` — shared shadcn-based UI components
+- `packages/docs` — user-facing docs content (MDX), rendered by `apps/www`
+- `packages/deployment` — deployment-mode config (reads `DEPLOYMENT_MODE`, exposes per-mode features)
+- `packages/config` — env validation and shared constants/types
+- `packages/api-spec` — OpenAPI spec
+- `e2e/` — Playwright end-to-end tests
 
 Full setup instructions are in the developer guide at `packages/docs/content/docs/developer-guide/`.
 
@@ -22,6 +26,7 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - `pnpm format` — Biome format
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate` (NEVER RUN THESE UNLESS EXPLICITLY INSTRUCTED BY THE USER)
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
+- shadcn components: always install with the CLI (`pnpm dlx shadcn@latest add <component>`, from `packages/ui` or `apps/www` — each has its own `components.json`) — never hand-create them
 
 Run `pnpm format` before committing, and `check-types` for the packages you touched before opening the PR. Skip `pnpm lint` — CI doesn't gate on it. Only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them). Don't commit formatting churn in `apps/www` files you didn't touch — wholesale reformatting buries the real change.
 
