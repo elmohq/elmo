@@ -1,13 +1,12 @@
 import {
-	type CitationCategory,
 	CATEGORY_CONFIG,
 	CITATION_CATEGORIES,
 	CITATION_PAGE_TYPES,
+	type CitationCategory,
 	PAGE_TYPE_CONFIG,
 } from "@/lib/domain-categories";
 
-export const getCategoryLabel = (category: string) =>
-	CATEGORY_CONFIG[category as CitationCategory]?.label ?? category;
+export const getCategoryLabel = (category: string) => CATEGORY_CONFIG[category as CitationCategory]?.label ?? category;
 
 export const getCategoryColorClass = (category: string) =>
 	CATEGORY_CONFIG[category as CitationCategory]?.badgeClass ?? "bg-gray-500/90 text-white";
@@ -74,13 +73,13 @@ export function UnderlineTabs<T extends string>({
 	onSelect: (key: T) => void;
 }) {
 	return (
-		<nav className="-mb-px flex gap-4 border-b border-border" aria-label="Tabs">
+		<nav className="-mb-px flex gap-4 overflow-x-auto border-b border-border" aria-label="Tabs">
 			{tabs.map(({ key, label }) => (
 				<button
 					key={key}
 					type="button"
 					onClick={() => onSelect(key)}
-					className={`cursor-pointer whitespace-nowrap pb-2.5 text-xs font-medium transition-colors border-b-2 ${
+					className={`shrink-0 cursor-pointer whitespace-nowrap pb-2.5 text-xs font-medium transition-colors border-b-2 ${
 						activeKey === key
 							? "border-foreground text-foreground"
 							: "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
