@@ -49,6 +49,12 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			// bootstrapped in local mode; visitors can only sign in as that
 			// pre-existing user.
 			return { disableSignUp: true };
+		case "cloud":
+			// Public self-serve signup with no single-user guard. Each user
+			// provisions their own org via the create-brand flow (canCreateBrands),
+			// so no user.create hook is needed here. Google OAuth and Resend
+			// email verification are layered on in follow-up cloud work.
+			return {};
 		default:
 			return getLocalAuthOptions();
 	}

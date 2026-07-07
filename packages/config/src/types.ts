@@ -25,10 +25,27 @@ export interface FeaturesConfig {
 	/** Whether multi-org brand switching is supported */
 	supportsMultiOrg: boolean;
 	/**
-	 * Whether the user can create new brands from the UI. True only in local mode —
-	 * whitelabel orgs come from Auth0, demo is read-only.
+	 * Whether the user can create new brands from the UI. True in local and
+	 * cloud modes — whitelabel orgs come from Auth0, demo is read-only.
 	 */
 	canCreateBrands: boolean;
+	/**
+	 * Whether public self-serve registration is available. True only in cloud
+	 * mode. Local allows a single bootstrap signup (see ClientConfig.canRegister);
+	 * demo/whitelabel never expose signup.
+	 */
+	selfServeSignup: boolean;
+	/**
+	 * Whether Stripe subscription billing is active. True only in cloud mode.
+	 * Gates the billing/usage surfaces and plan enforcement.
+	 */
+	billing: boolean;
+	/**
+	 * Whether the one-time report generator is available. True everywhere except
+	 * cloud, where reports are disabled entirely (no worker scheduling, no UI
+	 * entry points, and the per-user hasReportGeneratorAccess flag is ignored).
+	 */
+	reportGeneration: boolean;
 }
 
 /**
@@ -106,8 +123,9 @@ export interface ClientConfig {
 	/** Resolved default prompt cadence (hours) for brands without a delayOverrideHours */
 	defaultDelayHours: number;
 	/**
-	 * Whether /auth/register should be reachable. True only in local mode
-	 * when no user exists yet. Demo/whitelabel always false.
+	 * Whether /auth/register should be reachable. True in cloud mode (self-serve
+	 * signup) and in local mode before the first user is bootstrapped.
+	 * Demo/whitelabel always false.
 	 */
 	canRegister: boolean;
 	/** Whether any user account exists. */

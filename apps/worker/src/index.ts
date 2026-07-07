@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { getDeployment } from "@workspace/deployment";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
@@ -39,12 +40,14 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 15, // 15 minute timeout
 	});
-	await boss.createQueue("generate-report", {
-		retryLimit: 3,
-		retryDelay: 60,
-		retryBackoff: true,
-		expireInSeconds: 60 * 60, // 1 hour timeout for reports
-	});
+	if (getDeployment().features.reportGeneration) {
+		await boss.createQueue("generate-report", {
+			retryLimit: 3,
+			retryDelay: 60,
+			retryBackoff: true,
+			expireInSeconds: 60 * 60, // 1 hour timeout for reports
+		});
+	}
 	await boss.createQueue("analyze-brand", {
 		retryLimit: 1,
 		retryDelay: 10,

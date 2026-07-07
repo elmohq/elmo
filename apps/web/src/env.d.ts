@@ -73,6 +73,9 @@ declare global {
 			readonly SENTRY_PROJECT?: string;
 			readonly SENTRY_AUTH_TOKEN?: string;
 			readonly DISABLE_TELEMETRY?: string;
+			readonly STRIPE_SECRET_KEY?: string;
+			readonly STRIPE_WEBHOOK_SECRET?: string;
+			readonly RESEND_API_KEY?: string;
 		}
 	}
 }

@@ -9,6 +9,7 @@
     "./client": "./src/client.ts"
   },
   "dependencies": {
+    "@workspace/cloud": "workspace:*",
     "@workspace/config": "workspace:*",
     "@workspace/local": "workspace:*",
     "@workspace/whitelabel": "workspace:*"

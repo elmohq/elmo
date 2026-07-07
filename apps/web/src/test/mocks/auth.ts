@@ -18,6 +18,9 @@ export const LOCAL_FEATURES: FeaturesConfig = {
 	showOptimizeButton: false,
 	supportsMultiOrg: true,
 	canCreateBrands: true,
+	selfServeSignup: false,
+	billing: false,
+	reportGeneration: true,
 };
 
 export const DEMO_FEATURES: FeaturesConfig = {
@@ -25,6 +28,9 @@ export const DEMO_FEATURES: FeaturesConfig = {
 	showOptimizeButton: false,
 	supportsMultiOrg: true,
 	canCreateBrands: false,
+	selfServeSignup: false,
+	billing: false,
+	reportGeneration: true,
 };
 
 export const WHITELABEL_FEATURES: FeaturesConfig = {
@@ -32,6 +38,19 @@ export const WHITELABEL_FEATURES: FeaturesConfig = {
 	showOptimizeButton: true,
 	supportsMultiOrg: true,
 	canCreateBrands: false,
+	selfServeSignup: false,
+	billing: false,
+	reportGeneration: true,
+};
+
+export const CLOUD_FEATURES: FeaturesConfig = {
+	readOnly: false,
+	showOptimizeButton: false,
+	supportsMultiOrg: true,
+	canCreateBrands: true,
+	selfServeSignup: true,
+	billing: true,
+	reportGeneration: false,
 };
 
 // ============================================================================
@@ -53,12 +72,13 @@ export function createMockSession(overrides: Partial<{ id: string; name: string;
 // Mock Deployment
 // ============================================================================
 
-export type DeploymentMode = "local" | "demo" | "whitelabel";
+export type DeploymentMode = "local" | "demo" | "whitelabel" | "cloud";
 
 const FEATURES_BY_MODE: Record<DeploymentMode, FeaturesConfig> = {
 	local: LOCAL_FEATURES,
 	demo: DEMO_FEATURES,
 	whitelabel: WHITELABEL_FEATURES,
+	cloud: CLOUD_FEATURES,
 };
 
 export interface MockDeploymentOptions {

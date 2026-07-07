@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import {
 	IconDashboard,
 	IconChartBar,
@@ -45,8 +46,11 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, brand, ...props }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	// Reports are disabled entirely in cloud; hide the nav entry there.
+	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
-	const showAdminSection = isAdmin || hasReportAccess;
+	const showAdminSection = isAdmin || (hasReportAccess && reportsEnabled);
 
 	const groups: NavGroup[] = [];
 
@@ -128,6 +132,12 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 
 	// Admin section
 	if (showAdminSection) {
+		const reportsItem = {
+			title: "Reports",
+			url: "/reports",
+			icon: IconReport,
+			absolute: true,
+		};
 		const adminItems = isAdmin
 			? [
 					{
@@ -136,12 +146,7 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						icon: IconTable,
 						absolute: true,
 					},
-					{
-						title: "Reports",
-						url: "/reports",
-						icon: IconReport,
-						absolute: true,
-					},
+					...(reportsEnabled ? [reportsItem] : []),
 					{
 						title: "Workflows",
 						url: "/admin/workflows",
@@ -155,14 +160,7 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						absolute: true,
 					},
 				]
-			: [
-					{
-						title: "Reports",
-						url: "/reports",
-						icon: IconReport,
-						absolute: true,
-					},
-				];
+			: [reportsItem];
 
 		groups.push({
 			label: "Admin",

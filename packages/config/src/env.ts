@@ -87,7 +87,7 @@ export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 	local: [...buildStaticRequirements("local"), ...buildProviderKeyRequirements()],
 	demo: [...buildStaticRequirements("demo"), ...buildProviderKeyRequirements()],
 	whitelabel: [...buildStaticRequirements("whitelabel"), ...buildProviderKeyRequirements()],
-	cloud: [], // todo
+	cloud: [...buildStaticRequirements("cloud"), ...buildProviderKeyRequirements()],
 };
 
 /**
