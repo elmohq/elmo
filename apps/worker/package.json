@@ -10,17 +10,17 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@sentry/node": "^10.57.0",
+    "@sentry/node": "^10.63.0",
     "@workspace/lib": "workspace:*",
     "@workspace/whitelabel": "workspace:*",
-    "auth0": "^5.12.0",
+    "auth0": "^5.13.0",
     "drizzle-orm": "^0.45.2",
-    "pg": "^8.21.0",
-    "pg-boss": "^12.19.1",
-    "posthog-node": "^5.37.0"
+    "pg": "^8.22.0",
+    "pg-boss": "^12.24.1",
+    "posthog-node": "^5.39.2"
   },
   "devDependencies": {
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.1.0",
     "@types/pg": "^8.20.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
