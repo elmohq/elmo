@@ -60,8 +60,3 @@ Run `pnpm format` before committing, and `check-types` for the packages you touc
 
 - Don't commit image artifacts (screenshots, videos, Playwright reports) or one-off screenshot scripts — attach proof to the PR description instead.
 - Don't add "screenshot-only" tests whose sole purpose is producing PR images; new tests must make assertions that are valuable long-term.
-
-## Gotchas
-
-- `check-types` and lint miss MDX frontmatter and codegen errors in `apps/www` — run `pnpm --filter @workspace/www build` when touching docs, blog, routes, or `source.config`.
-- User-facing text and URLs write "fan-out" / "Query Fan-Out" with a hyphen; internal identifiers keep `fanout`.
