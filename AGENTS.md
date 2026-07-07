@@ -14,7 +14,7 @@ Elmo is an open-source AI visibility platform (Answer Engine Optimization): it t
 - `packages/ui` — shared UI components
 - Other packages: `docs` (docs content), `og`, `deployment`, `config`, `api-spec`, `whitelabel`, `local`. Playwright tests live in `e2e/`.
 
-Full setup instructions are in the developer guide (`packages/docs/content/docs/developer-guide/`, published at elmohq.com/docs/developer-guide).
+Full setup instructions are in the developer guide at `packages/docs/content/docs/developer-guide/`.
 
 ## Commands
 
