@@ -1,7 +1,5 @@
 # AGENTS.md
 
-Guidance for coding agents working in this repo.
-
 ## What this is
 
 Elmo is an open-source AI visibility platform (Answer Engine Optimization): it tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe brands. It is a **pnpm + Turborepo monorepo** on **Node.js 24** (enforced via `engines`), **TypeScript**, and **PostgreSQL**.
