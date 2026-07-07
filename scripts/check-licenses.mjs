@@ -39,6 +39,7 @@ const ALLOWED_LICENSES = new Set([
   "(MIT OR CC0-1.0)",
   "(MIT AND Zlib)",
   "MIT AND ISC",
+  "(Apache-2.0 AND MIT)",
   "(AFL-2.1 OR BSD-3-Clause)",
   "(BSD-3-Clause OR GPL-2.0)", // dual-licensed – we use BSD-3-Clause
   "(MPL-2.0 OR Apache-2.0)", // dual-licensed – we use Apache-2.0
