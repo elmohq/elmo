@@ -58,8 +58,3 @@ Run `pnpm format` before committing, and `check-types` for the packages you touc
 - Add one only for **user-facing** changes (something an end user of the product would notice). Internal refactors, dependency bumps, and CI tweaks don't get one.
 - Keep it to one short, product-focused sentence; default to `patch`; scope it to the packages actually affected.
 - If a non-package directory (like `e2e/`) breaks Changesets tooling, fix the tooling configuration rather than inventing versions.
-
-## Pull requests
-
-- Don't commit image artifacts (screenshots, videos, Playwright reports) or one-off screenshot scripts — attach proof to the PR description instead.
-- Don't add "screenshot-only" tests whose sole purpose is producing PR images; new tests must make assertions that are valuable long-term.
