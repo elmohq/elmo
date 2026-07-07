@@ -83,6 +83,7 @@ const blob = await put(`screenshots/${slug}.jpg`, Buffer.from(imageBuffer), {
 	access: "public",
 	contentType: "image/jpeg",
 	addRandomSuffix: false,
+	allowOverwrite: true,
 });
 
 console.log(`Uploaded: ${blob.url}`);

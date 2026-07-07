@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -8,27 +5,20 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import mdx from "fumadocs-mdx/vite";
-import { embedBinaries } from "@workspace/og/vite-plugin";
+import { embedBinaries, takumiWasmNitroModule } from "@workspace/og/vite-plugin";
 import * as MdxConfig from "./source.config";
+import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
-const require = createRequire(import.meta.url);
-const takumiCorePkgPath = resolve(
-	dirname(require.resolve("@takumi-rs/core")),
-	"..",
-	"package.json",
-);
-const takumiNativeBindings = Object.keys(
-	(
-		JSON.parse(readFileSync(takumiCorePkgPath, "utf8")) as {
-			optionalDependencies?: Record<string, string>;
-		}
-	).optionalDependencies ?? {},
-);
 
 export default defineConfig({
 	server: {
 		port: 3001,
+	},
+	define: {
+		// Injected from this package's manifest, which shares the fixed
+		// workspace release version, so version badges auto-update on release.
+		__APP_VERSION__: JSON.stringify(pkg.version),
 	},
 	resolve: {
 		tsconfigPaths: true,
@@ -45,8 +35,13 @@ export default defineConfig({
 		nitro({
 			alias: {
 				tslib: tslibEsm,
+				// takumi's image-response statically imports native @takumi-rs/core,
+				// whose top-level requireNative() crashes at startup in the standalone
+				// bundle. The wasm render path only uses two pure-JS resource helpers
+				// from that import, which @takumi-rs/helpers also exports.
+				"@takumi-rs/core": "@takumi-rs/helpers",
 			},
-			traceDeps: ["@takumi-rs/core", ...takumiNativeBindings],
+			modules: [takumiWasmNitroModule()],
 			vercel: {
 				config: {
 					version: 3,

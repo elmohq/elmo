@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -8,23 +5,10 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { embedBinaries } from "@workspace/og/vite-plugin";
+import { embedBinaries, takumiWasmNitroModule } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
-const require = createRequire(import.meta.url);
-const takumiCorePkgPath = resolve(
-	dirname(require.resolve("@takumi-rs/core")),
-	"..",
-	"package.json",
-);
-const takumiNativeBindings = Object.keys(
-	(
-		JSON.parse(readFileSync(takumiCorePkgPath, "utf8")) as {
-			optionalDependencies?: Record<string, string>;
-		}
-	).optionalDependencies ?? {},
-);
 
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
@@ -63,13 +47,18 @@ export default defineConfig({
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
+				// takumi's image-response statically imports native @takumi-rs/core,
+				// whose top-level requireNative() crashes at startup in the standalone
+				// bundle. The wasm render path only uses two pure-JS resource helpers
+				// from that import, which @takumi-rs/helpers also exports.
+				"@takumi-rs/core": "@takumi-rs/helpers",
 			},
 			noExternals: [
 				"@opentelemetry/instrumentation",
 				"@opentelemetry/api",
 				"@prisma/instrumentation",
 			],
-			traceDeps: ["@takumi-rs/core", ...takumiNativeBindings],
+			modules: [takumiWasmNitroModule()],
 			rollupConfig: {
 				external: ["fsevents"],
 			},

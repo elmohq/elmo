@@ -64,7 +64,7 @@ export function Footer() {
 						</p>
 						<div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 font-mono text-[11px] text-zinc-700">
 							<span className="size-1.5 rounded-full bg-emerald-500" />
-							v0.2.6
+							v{__APP_VERSION__}
 						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-10 md:col-span-9 md:grid-cols-4">

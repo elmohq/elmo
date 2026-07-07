@@ -10,13 +10,16 @@
 		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
+		"@takumi-rs/helpers": "^1.8.7",
+		"@takumi-rs/wasm": "^1.8.7",
 		"@workspace/config": "workspace:*",
 		"react": "^19.2.7"
 	},
 	"devDependencies": {
-		"@types/node": "^25.9.3",
+		"@types/node": "^26.1.0",
 		"@types/react": "^19.2.17",
+		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"typescript": "^6.0.3",
-		"vite": "^8.0.16"
+		"vite": "^8.1.3"
 	}
 }

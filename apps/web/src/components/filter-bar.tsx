@@ -1,6 +1,9 @@
 import { type ReactNode, useEffect, useRef, useState, useMemo } from "react";
 import { useSearch } from "@tanstack/react-router";
-import { SiOpenai, SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot, SiMistralai } from "react-icons/si";
+import { SiGoogle, SiAnthropic, SiPerplexity, SiX, SiGithubcopilot, SiMistralai } from "react-icons/si";
+// OpenAI's logo was removed from Simple Icons (react-icons `si`) in 5.7.0 for
+// trademark reasons; Remix Icon still ships the blossom mark.
+import { RiOpenaiFill } from "react-icons/ri";
 import { MdSelectAll } from "react-icons/md";
 import { Sparkles } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
@@ -48,7 +51,7 @@ export function iconForModel(model: string, className = "size-3.5") {
 	const { iconId } = getModelMeta(model);
 	switch (iconId) {
 		case "openai":
-			return <SiOpenai className={className} />;
+			return <RiOpenaiFill className={className} />;
 		case "anthropic":
 			return <SiAnthropic className={className} />;
 		case "google":

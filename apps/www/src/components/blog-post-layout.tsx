@@ -26,16 +26,31 @@ function isElmoHref(href: string): boolean {
 	}
 }
 
+// Outbound hosts we intentionally pass SEO equity to (dofollow), e.g. partners
+// we've agreed to link to. An explicit allowlist keeps the default nofollow.
+const DOFOLLOW_HOSTS = ["semrush.com"];
+
+function isDofollowHref(href: string): boolean {
+	try {
+		const { hostname } = new URL(href);
+		return DOFOLLOW_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+	} catch {
+		return false;
+	}
+}
+
 // Links inside post content: outbound links are nofollow and open in a new
 // tab, so blog posts don't pass SEO equity to external sites (e.g. competitors
 // we reference). Internal / elmohq-owned links stay followed; noopener keeps
-// the referrer for analytics on owned domains.
+// the referrer for analytics on owned domains. Hosts in DOFOLLOW_HOSTS are the
+// exception — followed outbound links for agreed partners.
 function BlogLink({ href = "", ...props }: ComponentPropsWithoutRef<"a">) {
 	if (isElmoHref(href)) {
 		const rel = /^https?:\/\//.test(href) ? "noopener" : undefined;
 		return <a {...props} href={href} rel={rel} />;
 	}
-	return <a {...props} href={href} target="_blank" rel="nofollow noopener noreferrer" />;
+	const rel = isDofollowHref(href) ? "noopener noreferrer" : "nofollow noopener noreferrer";
+	return <a {...props} href={href} target="_blank" rel={rel} />;
 }
 
 // getMDXComponents is a plain factory (no React hooks), so the components map
