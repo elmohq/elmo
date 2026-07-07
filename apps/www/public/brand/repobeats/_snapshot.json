@@ -1,0 +1,242 @@
+{
+  "repo": "elmohq/elmo",
+  "generatedAt": "2026-07-07T21:26:49.059Z",
+  "windowDays": 30,
+  "stars": 169,
+  "forks": 19,
+  "description": "open source ai visibility tracking",
+  "createdAt": "2025-08-29T20:44:38Z",
+  "pushedAt": "2026-07-07T21:13:22Z",
+  "commitsByWeek": [
+    {
+      "week": 1765670400,
+      "total": 0
+    },
+    {
+      "week": 1766275200,
+      "total": 15
+    },
+    {
+      "week": 1766880000,
+      "total": 31
+    },
+    {
+      "week": 1767484800,
+      "total": 0
+    },
+    {
+      "week": 1768089600,
+      "total": 4
+    },
+    {
+      "week": 1768694400,
+      "total": 14
+    },
+    {
+      "week": 1769299200,
+      "total": 12
+    },
+    {
+      "week": 1769904000,
+      "total": 40
+    },
+    {
+      "week": 1770508800,
+      "total": 0
+    },
+    {
+      "week": 1771113600,
+      "total": 23
+    },
+    {
+      "week": 1771718400,
+      "total": 10
+    },
+    {
+      "week": 1772323200,
+      "total": 0
+    },
+    {
+      "week": 1772928000,
+      "total": 23
+    },
+    {
+      "week": 1773532800,
+      "total": 31
+    },
+    {
+      "week": 1774137600,
+      "total": 29
+    },
+    {
+      "week": 1774742400,
+      "total": 17
+    },
+    {
+      "week": 1775347200,
+      "total": 30
+    },
+    {
+      "week": 1775952000,
+      "total": 30
+    },
+    {
+      "week": 1776556800,
+      "total": 27
+    },
+    {
+      "week": 1777161600,
+      "total": 15
+    },
+    {
+      "week": 1777766400,
+      "total": 15
+    },
+    {
+      "week": 1778371200,
+      "total": 35
+    },
+    {
+      "week": 1778976000,
+      "total": 3
+    },
+    {
+      "week": 1779580800,
+      "total": 10
+    },
+    {
+      "week": 1780185600,
+      "total": 18
+    },
+    {
+      "week": 1780790400,
+      "total": 19
+    },
+    {
+      "week": 1781395200,
+      "total": 10
+    },
+    {
+      "week": 1782000000,
+      "total": 5
+    },
+    {
+      "week": 1782604800,
+      "total": 8
+    },
+    {
+      "week": 1783209600,
+      "total": 9
+    }
+  ],
+  "churnByWeek": [],
+  "releaseWeeks": [
+    1782604800,
+    1780790400,
+    1778371200,
+    1777766400,
+    1776556800
+  ],
+  "kpis": {
+    "commits": 32,
+    "prsMerged": 46,
+    "prsOpened": 68,
+    "issuesClosed": 19,
+    "issuesOpened": 31,
+    "releases": 2,
+    "contributors": 6
+  },
+  "totals": {
+    "issuesOpen": 80,
+    "issuesClosed": 98,
+    "releases": 14
+  },
+  "latestRelease": {
+    "tag": "v0.2.14",
+    "date": "2026-07-01T00:59:37Z",
+    "prerelease": false
+  },
+  "contributors": [
+    {
+      "login": "jrhizor",
+      "htmlUrl": "https://github.com/jrhizor",
+      "contributions": 695,
+      "avatarDataUri": "<inlined 7134 chars>"
+    },
+    {
+      "login": "tuliren",
+      "htmlUrl": "https://github.com/tuliren",
+      "contributions": 3,
+      "avatarDataUri": "<inlined 1675 chars>"
+    },
+    {
+      "login": "rodriguescarson",
+      "htmlUrl": "https://github.com/rodriguescarson",
+      "contributions": 2,
+      "avatarDataUri": "<inlined 4454 chars>"
+    },
+    {
+      "login": "jrwrest",
+      "htmlUrl": "https://github.com/jrwrest",
+      "contributions": 1,
+      "avatarDataUri": "<inlined 4258 chars>"
+    },
+    {
+      "login": "PrashantIndurkar",
+      "htmlUrl": "https://github.com/PrashantIndurkar",
+      "contributions": 1,
+      "avatarDataUri": "<inlined 1427 chars>"
+    },
+    {
+      "login": "melalj",
+      "htmlUrl": "https://github.com/melalj",
+      "contributions": 1,
+      "avatarDataUri": "<inlined 1467 chars>"
+    }
+  ],
+  "contributorTotal": 6,
+  "areaLabels": [
+    {
+      "key": "area/core",
+      "label": "Core",
+      "count": 128,
+      "color": "#2563eb"
+    },
+    {
+      "key": "area/cloud",
+      "label": "Cloud",
+      "count": 15,
+      "color": "#efb118"
+    },
+    {
+      "key": "area/whitelabel",
+      "label": "White-label",
+      "count": 12,
+      "color": "#3ca951"
+    },
+    {
+      "key": "area/extensions",
+      "label": "Extensions",
+      "count": 12,
+      "color": "#ff725c"
+    },
+    {
+      "key": "area/admin",
+      "label": "Admin",
+      "count": 8,
+      "color": "#a463f2"
+    },
+    {
+      "key": "area/oss",
+      "label": "Open Source",
+      "count": 8,
+      "color": "#ff8ab7"
+    },
+    {
+      "key": "area/marketing",
+      "label": "Marketing",
+      "count": 1,
+      "color": "#38b2ac"
+    }
+  ]
+}

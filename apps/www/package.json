@@ -9,7 +9,8 @@
 		"build": "vite build",
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
-		"generate-icons": "tsx scripts/generate-brand-icons.tsx"
+		"generate-icons": "tsx scripts/generate-brand-icons.tsx",
+		"generate-repobeats": "tsx scripts/generate-repobeats-samples.ts"
 	},
 	"dependencies": {
 		"@fontsource/geist-mono": "^5.2.8",
