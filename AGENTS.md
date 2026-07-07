@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for coding agents working in this repo. `CLAUDE.md` imports this file.
+Guidance for coding agents working in this repo.
 
 ## What this is
 
@@ -26,7 +26,7 @@ Full setup instructions are in the developer guide (`packages/docs/content/docs/
 - Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate`
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 
-Before finishing a change, run `pnpm lint` and `pnpm test`, plus `check-types` (`pnpm --filter <pkg> check-types`) for the packages you touched. Use `pnpm --filter <pkg> <script>` to scope any of these when iterating.
+Run `pnpm lint`, `pnpm format`, and `check-types` for the packages you touched once, right before opening the PR — not on every commit. Likewise only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them).
 
 ## Package management and supply-chain security
 
@@ -46,9 +46,10 @@ Before finishing a change, run `pnpm lint` and `pnpm test`, plus `check-types` (
 - Never add `Co-Authored-By` or other AI attribution to commits (also enforced via `.claude/settings.json`).
 - Don't bump package versions; releases go through Changesets.
 
-## Code comments
+## Comments and docs
 
 - Comment only to explain **why** or to add context the code can't show. Never restate what the code already says.
+- The same applies to docs and this file: never write down what's already derivable from the repo (what a file imports, what a script runs, how code is structured).
 - Don't describe prior behavior ("previously this did X") and don't reference GitHub issues or tickets in code — that context belongs in the commit message or PR.
 
 ## Changesets
