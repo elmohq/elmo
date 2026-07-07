@@ -41,7 +41,7 @@
     "semver": "^7.8.4"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.1",
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
     "rolldown": "^1.1.1",

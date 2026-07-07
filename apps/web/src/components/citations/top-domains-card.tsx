@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Separator } from "@workspace/ui/components/separator";
-import { Input } from "@workspace/ui/components/input";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle, IconSearch } from "@tabler/icons-react";
-import { ProgressBarChart, DOMAIN_CATEGORY_COLORS } from "@/components/progress-bar-chart";
-import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Input } from "@workspace/ui/components/input";
+import { Separator } from "@workspace/ui/components/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useMemo, useState } from "react";
 import { UnderlineTabs } from "@/components/citations/shared";
+import { TrackDomainPopover } from "@/components/citations/track-domain-popover";
 import type { CitationData } from "@/components/citations/types";
+import { ListPagination, usePagedList } from "@/components/list-pagination";
+import { DOMAIN_CATEGORY_COLORS, ProgressBarChart } from "@/components/progress-bar-chart";
 
 export function TopDomainsCard({
 	domains,
@@ -28,7 +29,6 @@ export function TopDomainsCard({
 }) {
 	const [domainSearch, setDomainSearch] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("all");
-	const [visibleDomains, setVisibleDomains] = useState(maxDomains);
 
 	const filteredDomains = useMemo(() => {
 		let result = domains;
@@ -42,6 +42,8 @@ export function TopDomainsCard({
 		return result;
 	}, [domains, selectedCategory, domainSearch]);
 
+	const { page, setPage, pageItems, totalItems } = usePagedList(filteredDomains, maxDomains);
+
 	return (
 		<Card className="gap-4">
 			<CardHeader>
@@ -54,20 +56,22 @@ export function TopDomainsCard({
 									<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 								</TooltipTrigger>
 								<TooltipContent className="max-w-xs text-sm font-normal">
-									The most frequently cited domains across all prompt evaluations. Each domain is colored by its category (brand, competitor, etc.).
+									The most frequently cited domains across all prompt evaluations. Each domain is colored by its
+									category (brand, competitor, etc.).
 								</TooltipContent>
 							</Tooltip>
 						</CardTitle>
-						<CardDescription>
-							Which domains LLMs reference most when responding to your prompts
-						</CardDescription>
+						<CardDescription>Which domains LLMs reference most when responding to your prompts</CardDescription>
 					</div>
 					<div className="relative w-full sm:w-48 shrink-0">
 						<IconSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
 						<Input
 							placeholder="Search domains..."
 							value={domainSearch}
-							onChange={(e) => { setDomainSearch(e.target.value); setVisibleDomains(maxDomains); }}
+							onChange={(e) => {
+								setDomainSearch(e.target.value);
+								setPage(0);
+							}}
 							className="h-8 pl-8 text-xs"
 						/>
 					</div>
@@ -80,7 +84,10 @@ export function TopDomainsCard({
 						<UnderlineTabs
 							tabs={sourceTabs}
 							activeKey={selectedCategory}
-							onSelect={(key) => { setSelectedCategory(key); setVisibleDomains(maxDomains); }}
+							onSelect={(key) => {
+								setSelectedCategory(key);
+								setPage(0);
+							}}
 						/>
 					</div>
 				)}
@@ -90,32 +97,25 @@ export function TopDomainsCard({
 				{filteredDomains.length > 0 ? (
 					<>
 						<ProgressBarChart
-							items={filteredDomains.slice(0, visibleDomains).map((domain) => ({
+							items={pageItems.map((domain) => ({
 								label: domain.domain,
 								count: domain.count,
 								category: domain.category || "other",
-								action: domain.category === "other" && brandId && competitors ? (
-									<TrackDomainPopover
-										domain={domain.domain}
-										brandId={brandId}
-										brandName={brandName}
-										competitors={competitors}
-										onAdded={onCompetitorAdded}
-									/>
-								) : undefined,
+								action:
+									domain.category === "other" && brandId && competitors ? (
+										<TrackDomainPopover
+											domain={domain.domain}
+											brandId={brandId}
+											brandName={brandName}
+											competitors={competitors}
+											onAdded={onCompetitorAdded}
+										/>
+									) : undefined,
 							}))}
 							colorMapping={DOMAIN_CATEGORY_COLORS}
 							percentageMode="max"
 						/>
-						{filteredDomains.length > visibleDomains && visibleDomains < 100 && (
-							<button
-								type="button"
-								onClick={() => setVisibleDomains((prev) => Math.min(prev + 20, 100))}
-								className="mt-6 text-xs text-muted-foreground hover:text-foreground cursor-pointer px-3 py-1.5 rounded-md border border-border hover:bg-muted/60 transition-colors"
-							>
-								Show more
-							</button>
-						)}
+						<ListPagination page={page} pageSize={maxDomains} totalItems={totalItems} onPageChange={setPage} />
 					</>
 				) : (
 					<p className="text-sm text-muted-foreground text-center py-4">No domains match the current filters.</p>
