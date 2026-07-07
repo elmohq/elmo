@@ -42,7 +42,6 @@ Run `pnpm format` before committing, and `check-types` for the packages you touc
 - Work happens in PRs against `main`.
 - Commit as you go: small, atomic commits that show real progress. Don't rewrite history (amend, rebase, force-push) to make it look tidy afterward.
 - Commit subjects are plain imperative sentences — no conventional-commit prefixes. Write `paginate top cited domains`, not `feat(web): paginate top cited domains`.
-- Never add `Co-Authored-By` or other AI attribution to commits (also enforced via `.claude/settings.json`).
 - Don't bump package versions; releases go through Changesets.
 
 ## Comments and docs
