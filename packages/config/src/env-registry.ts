@@ -38,8 +38,8 @@ export interface EnvVarSpec {
 	description: string;
 }
 
-/** Modes with startup env validation. "cloud" requirements are TODO and intentionally excluded. */
-const VALIDATED_MODES: DeploymentMode[] = ["local", "demo", "whitelabel"];
+/** Modes with startup env validation. */
+const VALIDATED_MODES: DeploymentMode[] = ["local", "demo", "whitelabel", "cloud"];
 
 export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
@@ -51,8 +51,9 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "APP_URL",
 		scope: "server",
-		requiredBy: "optional",
-		description: "Public base URL of the web app (written by `elmo init`).",
+		requiredBy: ["cloud"],
+		description:
+			"Public base URL of the web app. Required in cloud (used for auth, email links, and Stripe redirects); written by `elmo init` for local.",
 	},
 	{
 		name: "BETTER_AUTH_SECRET",
@@ -365,5 +366,26 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		scope: "server",
 		requiredBy: "optional",
 		description: "Set to any value to disable telemetry.",
+	},
+	// Cloud-only service credentials. Consumed by the Stripe billing and
+	// Resend transactional-email integrations (implemented in follow-up work);
+	// required here so a cloud deployment fails startup validation without them.
+	{
+		name: "STRIPE_SECRET_KEY",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Stripe secret API key (sk_...) for subscription billing.",
+	},
+	{
+		name: "STRIPE_WEBHOOK_SECRET",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Stripe webhook signing secret (whsec_...) for verifying billing webhooks.",
+	},
+	{
+		name: "RESEND_API_KEY",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Resend API key for transactional email.",
 	},
 ];

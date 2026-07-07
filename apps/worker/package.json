@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@sentry/node": "^10.63.0",
+    "@workspace/deployment": "workspace:*",
     "@workspace/lib": "workspace:*",
     "@workspace/whitelabel": "workspace:*",
     "auth0": "^5.13.0",

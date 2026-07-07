@@ -5,6 +5,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
 import { member, organization } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getDeployment } from "@/lib/config/server";
 import { auth } from "./server";
 
 type SessionLike = { user: { id: string; [key: string]: unknown }; session?: unknown };
@@ -25,6 +26,9 @@ export function isAdmin(session: SessionLike): boolean {
 }
 
 export function hasReportAccess(session: SessionLike): boolean {
+	// Report generation is disabled entirely in deployments that don't support
+	// it (cloud), so the per-user flag is ignored there.
+	if (!getDeployment().features.reportGeneration) return false;
 	return session.user.hasReportGeneratorAccess === true;
 }
 

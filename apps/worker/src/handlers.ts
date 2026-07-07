@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import type { Job, PgBoss } from "pg-boss";
+import { getDeployment } from "@workspace/deployment";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
 import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
@@ -39,12 +40,14 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	);
 	console.log("Registered handler: process-prompt");
 
-	await boss.work<GenerateReportData>(
-		"generate-report",
-		{ localConcurrency: 2 },
-		withSentry("generate-report", generateReportJob),
-	);
-	console.log("Registered handler: generate-report");
+	if (getDeployment().features.reportGeneration) {
+		await boss.work<GenerateReportData>(
+			"generate-report",
+			{ localConcurrency: 2 },
+			withSentry("generate-report", generateReportJob),
+		);
+		console.log("Registered handler: generate-report");
+	}
 
 	// batchSize: 1 keeps the returned suggestion mapped 1:1 to a single job's
 	// output, which the web app reads back via getJobById.

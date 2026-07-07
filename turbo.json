@@ -51,7 +51,10 @@
     "VITE_SENTRY_DSN",
     "VITE_POSTHOG_KEY",
     "VITE_CHART_COLORS",
-    "DISABLE_TELEMETRY"
+    "DISABLE_TELEMETRY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "RESEND_API_KEY"
   ],
   "tasks": {
     "build": {

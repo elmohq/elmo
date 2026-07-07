@@ -6,6 +6,7 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./deployment": "./src/deployment.ts",
     "./auth-hooks": "./src/auth-hooks.ts",
     "./components/*": "./src/components/*.tsx"
   },

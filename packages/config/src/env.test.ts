@@ -1,0 +1,51 @@
+import { describe, expect, it } from "vitest";
+import { getEnvRequirements, validateEnvRequirements } from "./env";
+
+// Vars required specifically because the deployment is cloud.
+const CLOUD_ONLY_VARS = ["APP_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "RESEND_API_KEY"];
+// Infra vars every validated mode needs — cloud now among them.
+const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "SCRAPE_TARGETS", "DEPLOYMENT_MODE"];
+
+describe("cloud env requirements", () => {
+	const cloudReqs = getEnvRequirements("cloud");
+	const requiredIds = new Set(cloudReqs.map((requirement) => requirement.id));
+
+	it("requires the cloud-specific service credentials", () => {
+		for (const name of CLOUD_ONLY_VARS) {
+			expect(requiredIds.has(name), `${name} should be required in cloud`).toBe(true);
+		}
+	});
+
+	it("requires the shared infra vars", () => {
+		for (const name of CLOUD_SHARED_VARS) {
+			expect(requiredIds.has(name), `${name} should be required in cloud`).toBe(true);
+		}
+	});
+
+	it("flags every cloud var missing on an empty env", () => {
+		const { missing, isValid } = validateEnvRequirements(cloudReqs, {});
+		const missingIds = new Set(missing.map((entry) => entry.id));
+		for (const name of [...CLOUD_ONLY_VARS, ...CLOUD_SHARED_VARS]) {
+			expect(missingIds.has(name), `${name} should be reported missing`).toBe(true);
+		}
+		expect(isValid).toBe(false);
+	});
+
+	it("does not flag the cloud vars once they are set", () => {
+		const env: Record<string, string> = {
+			DEPLOYMENT_MODE: "cloud",
+			DATABASE_URL: "postgres://localhost/elmo",
+			BETTER_AUTH_SECRET: "secret",
+			SCRAPE_TARGETS: "chatgpt:olostep:online",
+			APP_URL: "https://app.elmo.com/",
+			STRIPE_SECRET_KEY: "sk_test_x",
+			STRIPE_WEBHOOK_SECRET: "whsec_x",
+			RESEND_API_KEY: "re_test_x",
+		};
+		const { missing } = validateEnvRequirements(cloudReqs, env);
+		const missingIds = new Set(missing.map((entry) => entry.id));
+		for (const name of [...CLOUD_ONLY_VARS, ...CLOUD_SHARED_VARS]) {
+			expect(missingIds.has(name), `${name} should be satisfied`).toBe(false);
+		}
+	});
+});
