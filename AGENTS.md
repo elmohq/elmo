@@ -22,7 +22,7 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - `pnpm test` — Vitest unit tests
 - `pnpm build` — build all packages
 - `pnpm format` — Biome format
-- Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate`
+- Migrations: from `packages/lib`, `pnpm exec drizzle-kit migrate` (NEVER RUN THESE UNLESS EXPLICITLY INSTRUCTED BY THE USER)
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 
 Run `pnpm format` before committing, and `check-types` for the packages you touched before opening the PR. Skip `pnpm lint` — CI doesn't gate on it. Only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them). Don't commit formatting churn in `apps/www` files you didn't touch — wholesale reformatting buries the real change.
