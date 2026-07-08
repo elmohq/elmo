@@ -8,9 +8,9 @@ import { renderFallback, renderRepoActivity } from "@/lib/repo-activity/svg";
  * external Repobeats embed that caches in Upstash (5-minute freshness) and
  * filters out bot contributors.
  *
- *   /api/repo-activity.svg
+ *   /repo-activity.svg
  */
-export const Route = createFileRoute("/api/repo-activity.svg")({
+export const Route = createFileRoute("/repo-activity.svg")({
 	server: {
 		handlers: {
 			GET: async () => {
