@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRepoActivityData } from "@/lib/repo-activity/cache";
+import { CACHE_TTL_SECONDS } from "@/lib/repo-activity/constants";
 import { renderFallback, renderRepoActivity } from "@/lib/repo-activity/svg";
 
 /**
@@ -24,8 +25,10 @@ export const Route = createFileRoute("/api/repo-activity.svg")({
 				return new Response(svg, {
 					headers: {
 						"Content-Type": "image/svg+xml; charset=utf-8",
-						"Cache-Control":
-							"public, max-age=300, s-maxage=300, stale-while-revalidate=86400",
+						// Match our snapshot lifetime so GitHub's Camo proxy refreshes the
+						// README at the same cadence. No long stale-while-revalidate — that
+						// let Camo serve a day-old image after max-age expired.
+						"Cache-Control": `public, max-age=${CACHE_TTL_SECONDS}, s-maxage=${CACHE_TTL_SECONDS}`,
 					},
 				});
 			},
