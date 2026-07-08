@@ -30,6 +30,16 @@ export interface CreateAuthOptions {
 	 * `databaseHooks.user.create.before` guard instead.
 	 */
 	disableSignUp?: boolean;
+	/** Require verified email before email/password sign-in (cloud). */
+	requireEmailVerification?: boolean;
+	/** Top-level better-auth emailVerification config (send callback, sendOnSignUp, ...). */
+	emailVerification?: BetterAuthOptions["emailVerification"];
+	/** Password-reset email sender, threaded into emailAndPassword. */
+	sendResetPassword?: NonNullable<BetterAuthOptions["emailAndPassword"]>["sendResetPassword"];
+	/** OAuth providers (e.g. Google in cloud). */
+	socialProviders?: BetterAuthOptions["socialProviders"];
+	/** Options for the organization plugin (e.g. sendInvitationEmail in cloud). */
+	organizationOptions?: Parameters<typeof organization>[0];
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -62,12 +72,15 @@ export function createAuth(options?: CreateAuthOptions) {
 
 		emailAndPassword: {
 			enabled: options?.emailAndPasswordEnabled !== false,
-			requireEmailVerification: false,
+			requireEmailVerification: options?.requireEmailVerification === true,
 			...(options?.minPasswordLength !== undefined && {
 				minPasswordLength: options.minPasswordLength,
 			}),
 			...(options?.disableSignUp === true && { disableSignUp: true }),
+			...(options?.sendResetPassword && { sendResetPassword: options.sendResetPassword }),
 		},
+		...(options?.emailVerification && { emailVerification: options.emailVerification }),
+		...(options?.socialProviders && { socialProviders: options.socialProviders }),
 
 		user: {
 			additionalFields: {
@@ -91,7 +104,7 @@ export function createAuth(options?: CreateAuthOptions) {
 		databaseHooks: options?.databaseHooks,
 
 		plugins: [
-			organization(),
+			organization(options?.organizationOptions),
 			admin({
 				ac,
 				roles: {
