@@ -1,5 +1,11 @@
 # @elmohq/cli
 
+## 0.2.15
+
+### Patch Changes
+
+- d89b787: Add an optional `JINA_API_KEY` env var to avoid anonymous rate limits when fetching website content during brand onboarding.
+
 ## 0.2.14
 
 ### Patch Changes

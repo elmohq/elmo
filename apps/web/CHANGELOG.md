@@ -1,5 +1,18 @@
 # @workspace/web
 
+## 0.2.15
+
+### Patch Changes
+
+- 43d23a3: Ensure the overview charts use the same timezone-specific x-axis.
+  - @workspace/api-spec@0.2.15
+  - @workspace/config@0.2.15
+  - @workspace/deployment@0.2.15
+  - @workspace/lib@0.2.15
+  - @workspace/og@0.2.15
+  - @workspace/ui@0.2.15
+  - @workspace/whitelabel@0.2.15
+
 ## 0.2.14
 
 ### Patch Changes
