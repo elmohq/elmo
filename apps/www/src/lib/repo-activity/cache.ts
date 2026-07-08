@@ -18,6 +18,8 @@ import type { RepoActivityData } from "./types";
 const DATA_KEY = `repo-activity:data:${REPO}`;
 const FRESH_KEY = `repo-activity:fresh:${REPO}`;
 const FRESH_TTL_SECONDS = 5 * 60;
+/** Shorter freshness when the commit chart is still empty, so it retries soon. */
+const RETRY_TTL_SECONDS = 60;
 const DATA_TTL_SECONDS = 24 * 60 * 60;
 
 function redisClient(): Redis | null {
@@ -39,9 +41,22 @@ export async function getRepoActivityData(): Promise<RepoActivityData> {
 
 	try {
 		const data = await fetchRepoActivityData();
+
+		// `/stats/commit_activity` answers 202 while GitHub computes it, so a fresh
+		// snapshot can arrive with an empty commit series. Don't let that regress a
+		// chart we already had: carry over the last-good week data, and mark the
+		// snapshot fresh for only a short window so it refetches (and heals) soon.
+		const missingCommits = data.commitsByWeek.length === 0;
+		if (missingCommits && lastGood && lastGood.commitsByWeek.length > 0) {
+			data.commitsByWeek = lastGood.commitsByWeek;
+			data.releaseWeeks = lastGood.releaseWeeks;
+			data.kpis.commits = lastGood.kpis.commits;
+		}
+		const stillMissing = data.commitsByWeek.length === 0;
+
 		await Promise.all([
 			redis.set(DATA_KEY, data, { ex: DATA_TTL_SECONDS }),
-			redis.set(FRESH_KEY, 1, { ex: FRESH_TTL_SECONDS }),
+			redis.set(FRESH_KEY, 1, { ex: stillMissing ? RETRY_TTL_SECONDS : FRESH_TTL_SECONDS }),
 		]);
 		return data;
 	} catch (error) {
