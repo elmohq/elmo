@@ -1,102 +1,121 @@
 /**
- * "Dashboard" — the rich snapshot: a row of KPI tiles, a hero commit chart with
- * release markers, and an insights panel (area distribution, open/closed issue
- * split, contributor avatars).
+ * The repo-activity graphic: a flat, airy Repobeats-style card. A row of
+ * 30-day KPI numerals, a full-width smooth commit-trend chart, and a bottom
+ * band with the area-label split, open/closed issue ratio, and bot-filtered
+ * contributor avatars. No logo, repo name, or star/fork counts — those are
+ * already on the GitHub page this renders above.
  */
 
 import { MAX_CONTRIB_AVATARS } from "../constants";
-import type { Palette } from "../theme";
 import type { RepobeatsData } from "../types";
-import { accentRule, avatarRow, barChart, fmt, panel, svgDoc, text } from "./primitives";
 import {
-	areaDistribution,
-	eMark,
-	eyebrow,
-	kpiStat,
-	metaChips,
-	ratioBar,
-	repoName,
-	updatedCaption,
-} from "./shared";
+	DISPLAY_FAMILY,
+	avatarRow,
+	fmt,
+	hairline,
+	monotonePath,
+	svgDoc,
+	text,
+} from "./primitives";
+import { areaDistribution, eyebrow, ratioBar } from "./shared";
 
 const W = 840;
-const H = 384;
-const P = 24;
-const RELEASE_COLOR = "#ee964b";
+const H = 360;
+const P = 28;
 
-function truncate(value: string, max: number): string {
-	return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+function shortDate(iso: string): string {
+	const d = new Date(iso);
+	return Number.isNaN(d.getTime())
+		? ""
+		: d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-export function renderDashboard(data: RepobeatsData, pal: Palette): string {
+/** A KPI: large Titan One numeral over a small tracked caption. `y` is the numeral baseline. */
+function kpi(x: number, y: number, value: string, label: string, accent = false): string {
+	return (
+		text(x, y, value, {
+			size: 31,
+			weight: 400,
+			family: DISPLAY_FAMILY,
+			cls: accent ? "rb-brand" : "rb-text",
+		}) + text(x, y + 21, label.toUpperCase(), { size: 10, weight: 600, cls: "rb-muted", letter: "0.09em" })
+	);
+}
+
+/** Smooth (monotone-spline) commit-per-week trend with a soft brand fill and a baseline. */
+function commitTrend(x: number, y: number, w: number, h: number, values: number[]): string {
+	if (values.length === 0) {
+		return text(x + w / 2, y + h / 2, "commit stats warming up…", {
+			size: 11,
+			cls: "rb-faint",
+			anchor: "middle",
+		});
+	}
+	const max = Math.max(1, ...values);
+	const n = values.length;
+	const xs = values.map((_, i) => (n <= 1 ? x + w / 2 : x + (i / (n - 1)) * w));
+	const ys = values.map((v) => y + h - (v / max) * h);
+	const line = monotonePath(xs, ys);
+	const area = `${line} L${xs[n - 1].toFixed(2)} ${(y + h).toFixed(2)} L${xs[0].toFixed(2)} ${(y + h).toFixed(2)} Z`;
+	const lastX = xs[n - 1].toFixed(2);
+	const lastY = ys[n - 1].toFixed(2);
+	return (
+		hairline(x, y + h, x + w, y + h) +
+		`<path d="${area}" fill="url(#rb-trend-fill)"/>` +
+		`<path d="${line}" class="rb-brand-s" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+		`<circle cx="${lastX}" cy="${lastY}" r="3.2" class="rb-brand"/>`
+	);
+}
+
+export function renderDashboard(data: RepobeatsData): string {
 	const contentW = W - P * 2;
 	let body = "";
 
-	// ---- Header --------------------------------------------------------------
-	body += eMark(P, 20, 44);
-	body += repoName(P + 60, 42, 17, data.repo);
-	if (data.description) {
-		body += text(P + 60, 61, truncate(data.description, 58), { size: 12.5, cls: "rb-muted" });
+	// ---- KPI band ------------------------------------------------------------
+	body += eyebrow(P, 42, "LAST 30 DAYS");
+	const updated = shortDate(data.generatedAt);
+	if (updated) {
+		body += text(W - P, 42, `UPDATED ${updated.toUpperCase()}`, {
+			size: 10,
+			weight: 600,
+			cls: "rb-faint",
+			letter: "0.09em",
+			anchor: "end",
+		});
 	}
-	const meta = metaChips(0, 0, data, 13);
-	body += metaChips(W - P - meta.width, 38, data, 13).svg;
-	body += updatedCaption(W - P, 58, data.generatedAt, "end");
-
-	// ---- KPI tiles -----------------------------------------------------------
-	body += eyebrow(P, 84, "LAST 30 DAYS");
 	const kpis = [
-		{ icon: "commit" as const, value: fmt(data.kpis.commits), label: "Commits" },
-		{ icon: "pr" as const, value: fmt(data.kpis.prsMerged), label: "PRs merged" },
-		{ icon: "issue" as const, value: fmt(data.kpis.issuesClosed), label: "Issues closed" },
-		{ icon: "tag" as const, value: fmt(data.kpis.releases), label: "Releases" },
-		{ icon: "people" as const, value: fmt(data.contributorTotal), label: "Contributors" },
+		{ value: fmt(data.kpis.commits), label: "Commits", accent: true },
+		{ value: fmt(data.kpis.prsMerged), label: "PRs merged" },
+		{ value: fmt(data.kpis.issuesClosed), label: "Issues closed" },
+		{ value: fmt(data.kpis.releases), label: "Releases" },
+		{ value: fmt(data.contributorTotal), label: "Contributors" },
 	];
-	const gap = 12;
-	const tileW = (contentW - gap * (kpis.length - 1)) / kpis.length;
-	const tileY = 94;
-	const tileH = 68;
+	const slot = contentW / kpis.length;
 	kpis.forEach((k, i) => {
-		const tx = P + i * (tileW + gap);
-		body += panel(tx, tileY, tileW, tileH, 12);
-		body += kpiStat(tx + 16, tileY + 40, { ...k, valueSize: 26, accent: i === 0 });
+		body += kpi(P + i * slot, 86, k.value, k.label, k.accent);
 	});
+	body += hairline(P, 126, W - P, 126);
 
-	// ---- Hero commit chart ---------------------------------------------------
-	const panelY = 178;
-	const panelH = 182;
-	const chartPanelW = 484;
-	body += panel(P, panelY, chartPanelW, panelH, 14);
-	body += eyebrow(P + 16, panelY + 26, "COMMITS PER WEEK · LAST 30 WEEKS");
-	body += `<circle cx="${P + chartPanelW - 74}" cy="${panelY + 22.5}" r="3" fill="${RELEASE_COLOR}"/>`;
-	body += text(P + chartPanelW - 66, panelY + 26, "release", { size: 10.5, weight: 600, cls: "rb-faint" });
-	const cX = P + 16;
-	const cW = chartPanelW - 32;
-	const cY = panelY + 48;
-	const cH = 96;
-	body += barChart(cX, cY, cW, cH, data.commitsByWeek, data.releaseWeeks, { markerTop: panelY + 36 });
-	body += text(cX, cY + cH + 20, "30 weeks ago", { size: 10, cls: "rb-faint" });
-	body += text(cX + cW, cY + cH + 20, "this week", { size: 10, cls: "rb-faint", anchor: "end" });
+	// ---- Commit trend (full width) ------------------------------------------
+	body += eyebrow(P, 158, "COMMITS PER WEEK");
+	body += text(W - P, 158, "last 30 weeks", { size: 10.5, weight: 500, cls: "rb-faint", anchor: "end" });
+	body += commitTrend(P, 172, contentW, 78, data.commitsByWeek.map((p) => p.total));
+	body += hairline(P, 278, W - P, 278);
 
-	// ---- Insights panel (stacked dynamically) --------------------------------
-	const insX = P + chartPanelW + 16;
-	const insW = contentW - chartPanelW - 16;
-	body += panel(insX, panelY, insW, panelH, 14);
-	const ix = insX + 16;
-	const iw = insW - 32;
+	// ---- Bottom band: area split · open/closed · contributors ----------------
+	const bandY = 300;
+	const areaW = 344;
+	body += areaDistribution(P, bandY, areaW, data.areaLabels, "rb-area", 3).svg;
 
-	const area = areaDistribution(ix, panelY + 24, iw, data.areaLabels, "dash-area", 4);
-	body += area.svg;
-	const ratioY = panelY + 24 + area.height + 16;
-	const ratio = ratioBar(ix, ratioY, iw, data, "dash-ratio");
-	body += ratio.svg;
-	const contribY = ratioY + ratio.height + 20;
-	body += eyebrow(ix, contribY, "CONTRIBUTORS");
+	const ratioX = P + areaW + 28;
+	const ratioW = 196;
+	body += ratioBar(ratioX, bandY, ratioW, data, "rb-ratio").svg;
+
+	const contribX = ratioX + ratioW + 32;
+	body += eyebrow(contribX, bandY, "CONTRIBUTORS");
 	const shown = data.contributors.slice(0, MAX_CONTRIB_AVATARS);
 	const extra = Math.max(0, data.contributorTotal - shown.length);
-	body += avatarRow(ix, contribY + 18, 11, shown, extra, "dash-av", 5);
+	body += avatarRow(contribX, bandY + 24, 12, shown, extra, "rb-av", 5);
 
-	// ---- Footer accent -------------------------------------------------------
-	body += accentRule(P, H - 8, contentW, 3, 1.5);
-
-	return svgDoc(W, H, pal, body, `${data.repo} — repository activity dashboard, last 30 days`);
+	return svgDoc(W, H, body, `${data.repo} — repository activity, last 30 days`);
 }

@@ -1,29 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getRepobeatsData } from "@/lib/repobeats/cache";
-import { renderFallback, renderRepobeats, resolveVariant } from "@/lib/repobeats/svg";
-import { resolveTheme } from "@/lib/repobeats/theme";
+import { renderFallback, renderRepobeats } from "@/lib/repobeats/svg";
 
 /**
  * Self-hosted, brand-matched repository-activity SVG — a replacement for the
  * external Repobeats embed that caches in Upstash (5-minute freshness) and
  * filters out bot contributors.
  *
- *   /api/repobeats.svg?variant=pulse|dashboard|card&theme=light|dark|auto
+ *   /api/repobeats.svg
  */
 export const Route = createFileRoute("/api/repobeats.svg")({
 	server: {
 		handlers: {
-			GET: async ({ request }) => {
-				const url = new URL(request.url);
-				const variant = resolveVariant(url.searchParams.get("variant"));
-				const theme = resolveTheme(url.searchParams.get("theme"));
-
+			GET: async () => {
 				let svg: string;
 				try {
 					const data = await getRepobeatsData();
-					svg = renderRepobeats(data, { variant, theme });
+					svg = renderRepobeats(data);
 				} catch {
-					svg = renderFallback(theme);
+					svg = renderFallback();
 				}
 
 				return new Response(svg, {

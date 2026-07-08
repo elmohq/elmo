@@ -36,9 +36,6 @@ export const AREA_LABEL_ORDER = [
 /** Brand chart palette (base tier) used for distribution segments. */
 export const CHART_COLORS = DEFAULT_CHART_COLORS.slice(0, 11);
 
-/** Accent gradient stops used for the footer rule + highlights. */
-export const ACCENT_GRADIENT = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
-
 /** Known automation accounts to exclude from the contributor list. */
 const BOT_LOGINS = new Set([
 	"dependabot",

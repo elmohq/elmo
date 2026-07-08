@@ -88,6 +88,3 @@ export interface RepobeatsData {
 	/** area/* label distribution across issues, sorted by count desc. */
 	areaLabels: LabelSlice[];
 }
-
-export type RepobeatsVariant = "pulse" | "dashboard" | "card";
-export type RepobeatsTheme = "light" | "dark" | "auto";
