@@ -122,7 +122,12 @@ export function renderDashboard(data: RepobeatsData): string {
 	body += eyebrow(contribX, rowY, "TOP CONTRIBUTORS");
 	const shown = data.contributors.slice(0, MAX_CONTRIB_AVATARS);
 	const extra = Math.max(0, data.contributorTotal - shown.length);
-	body += avatarRow(contribX, rowY + 22, 12, shown, extra, "rb-av", 5);
+	// Spread the avatars evenly across the section (first flush left, last flush
+	// right) rather than clustering them, so the row doesn't look sparse.
+	const avR = 14;
+	const avN = shown.length + (extra > 0 ? 1 : 0);
+	const avGap = avN > 1 ? (W - P - contribX - avN * 2 * avR) / (avN - 1) : 0;
+	body += avatarRow(contribX, rowY + 24, avR, shown, extra, "rb-av", avGap);
 
 	const H = rowY + 60;
 	return svgDoc(W, H, body, `${data.repo} — repository activity, last 30 days`);
