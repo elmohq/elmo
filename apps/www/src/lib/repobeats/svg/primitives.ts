@@ -156,7 +156,8 @@ ${themeStyleBlock()}
 </style>
 <linearGradient id="rb-trend-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${THEME.brand}" stop-opacity="0.24"/><stop offset="1" stop-color="${THEME.brand}" stop-opacity="0.02"/></linearGradient>
 </defs>
-<rect x="0.5" y="0.5" width="${width - 1}" height="${height - 1}" rx="11.5" class="rb-bg rb-line" stroke-width="1"/>
+<rect width="${width}" height="${height}" rx="12" class="rb-bg"/>
+<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="11" fill="none" class="rb-line" stroke-width="1"/>
 ${body}
 </svg>`;
 }

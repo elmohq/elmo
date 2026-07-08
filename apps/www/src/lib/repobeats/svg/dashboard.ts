@@ -23,11 +23,18 @@ const W = 840;
 const H = 360;
 const P = 28;
 
-function shortDate(iso: string): string {
+/** "Jul 8, 2:45 PM PDT" — San Francisco time, so the freshness reads consistently. */
+function updatedLabel(iso: string): string {
 	const d = new Date(iso);
-	return Number.isNaN(d.getTime())
-		? ""
-		: d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+	if (Number.isNaN(d.getTime())) return "";
+	return d.toLocaleString("en-US", {
+		timeZone: "America/Los_Angeles",
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+		timeZoneName: "short",
+	});
 }
 
 /** A KPI: large Titan One numeral over a small tracked caption. `y` is the numeral baseline. */
@@ -73,7 +80,7 @@ export function renderDashboard(data: RepobeatsData): string {
 
 	// ---- KPI band ------------------------------------------------------------
 	body += eyebrow(P, 42, "LAST 30 DAYS");
-	const updated = shortDate(data.generatedAt);
+	const updated = updatedLabel(data.generatedAt);
 	if (updated) {
 		body += text(W - P, 42, `UPDATED ${updated.toUpperCase()}`, {
 			size: 10,
