@@ -11,13 +11,13 @@
  */
 
 import { Redis } from "@upstash/redis";
-import { REPO } from "./constants";
+import { CACHE_TTL_SECONDS, REPO } from "./constants";
 import { fetchRepoActivityData } from "./github";
 import type { RepoActivityData } from "./types";
 
 const DATA_KEY = `repo-activity:data:${REPO}`;
 const FRESH_KEY = `repo-activity:fresh:${REPO}`;
-const FRESH_TTL_SECONDS = 5 * 60;
+const FRESH_TTL_SECONDS = CACHE_TTL_SECONDS;
 /** Shorter freshness when the commit chart is still empty, so it retries soon. */
 const RETRY_TTL_SECONDS = 60;
 const DATA_TTL_SECONDS = 24 * 60 * 60;

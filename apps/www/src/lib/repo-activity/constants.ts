@@ -4,6 +4,13 @@ import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 
 export const REPO = "elmohq/elmo";
 
+/**
+ * Snapshot lifetime: drives both the Upstash freshness window and the response
+ * `Cache-Control` max-age, so GitHub's Camo image proxy refreshes the README at
+ * the same cadence we recompute the data (instead of holding a stale copy).
+ */
+export const CACHE_TTL_SECONDS = 5 * 60;
+
 /** Rolling window for the "last N days" KPIs. */
 export const WINDOW_DAYS = 30;
 /** How many weeks of history the activity chart shows. */

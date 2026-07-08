@@ -14,6 +14,7 @@ import { Route as StatusRouteImport } from './routes/status'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as RepoActivityDotsvgRouteImport } from './routes/repo-activity[.]svg'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as OgDotpngRouteImport } from './routes/og[.]png'
 import { Route as OffSiteAeoRouteImport } from './routes/off-site-aeo'
@@ -34,7 +35,6 @@ import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
-import { Route as ApiRepoActivityDotsvgRouteImport } from './routes/api/repo-activity[.]svg'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
 import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
@@ -76,6 +76,11 @@ const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
 const RoadmapRoute = RoadmapRouteImport.update({
   id: '/roadmap',
   path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepoActivityDotsvgRoute = RepoActivityDotsvgRouteImport.update({
+  id: '/repo-activity.svg',
+  path: '/repo-activity.svg',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -176,11 +181,6 @@ const BlogSplatRoute = BlogSplatRouteImport.update({
 const ApiSearchRoute = ApiSearchRouteImport.update({
   id: '/api/search',
   path: '/api/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiRepoActivityDotsvgRoute = ApiRepoActivityDotsvgRouteImport.update({
-  id: '/api/repo-activity.svg',
-  path: '/api/repo-activity.svg',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOpenapiDotjsonRoute = ApiOpenapiDotjsonRouteImport.update({
@@ -289,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/off-site-aeo': typeof OffSiteAeoRoute
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
+  '/repo-activity.svg': typeof RepoActivityDotsvgRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -298,7 +299,6 @@ export interface FileRoutesByFullPath {
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
-  '/api/repo-activity.svg': typeof ApiRepoActivityDotsvgRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
@@ -334,6 +334,7 @@ export interface FileRoutesByTo {
   '/off-site-aeo': typeof OffSiteAeoRoute
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
+  '/repo-activity.svg': typeof RepoActivityDotsvgRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -343,7 +344,6 @@ export interface FileRoutesByTo {
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
-  '/api/repo-activity.svg': typeof ApiRepoActivityDotsvgRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
@@ -380,6 +380,7 @@ export interface FileRoutesById {
   '/off-site-aeo': typeof OffSiteAeoRoute
   '/og.png': typeof OgDotpngRoute
   '/pricing': typeof PricingRoute
+  '/repo-activity.svg': typeof RepoActivityDotsvgRoute
   '/roadmap': typeof RoadmapRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -389,7 +390,6 @@ export interface FileRoutesById {
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
-  '/api/repo-activity.svg': typeof ApiRepoActivityDotsvgRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
@@ -427,6 +427,7 @@ export interface FileRouteTypes {
     | '/off-site-aeo'
     | '/og.png'
     | '/pricing'
+    | '/repo-activity.svg'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -436,7 +437,6 @@ export interface FileRouteTypes {
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
-    | '/api/repo-activity.svg'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
@@ -472,6 +472,7 @@ export interface FileRouteTypes {
     | '/off-site-aeo'
     | '/og.png'
     | '/pricing'
+    | '/repo-activity.svg'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -481,7 +482,6 @@ export interface FileRouteTypes {
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
-    | '/api/repo-activity.svg'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
@@ -517,6 +517,7 @@ export interface FileRouteTypes {
     | '/off-site-aeo'
     | '/og.png'
     | '/pricing'
+    | '/repo-activity.svg'
     | '/roadmap'
     | '/robots.txt'
     | '/sitemap.xml'
@@ -526,7 +527,6 @@ export interface FileRouteTypes {
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
-    | '/api/repo-activity.svg'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
@@ -563,6 +563,7 @@ export interface RootRouteChildren {
   OffSiteAeoRoute: typeof OffSiteAeoRoute
   OgDotpngRoute: typeof OgDotpngRoute
   PricingRoute: typeof PricingRoute
+  RepoActivityDotsvgRoute: typeof RepoActivityDotsvgRoute
   RoadmapRoute: typeof RoadmapRoute
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -572,7 +573,6 @@ export interface RootRouteChildren {
   AiSearchSlugRoute: typeof AiSearchSlugRoute
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
-  ApiRepoActivityDotsvgRoute: typeof ApiRepoActivityDotsvgRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
@@ -634,6 +634,13 @@ declare module '@tanstack/react-router' {
       path: '/roadmap'
       fullPath: '/roadmap'
       preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repo-activity.svg': {
+      id: '/repo-activity.svg'
+      path: '/repo-activity.svg'
+      fullPath: '/repo-activity.svg'
+      preLoaderRoute: typeof RepoActivityDotsvgRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -776,13 +783,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/repo-activity.svg': {
-      id: '/api/repo-activity.svg'
-      path: '/api/repo-activity.svg'
-      fullPath: '/api/repo-activity.svg'
-      preLoaderRoute: typeof ApiRepoActivityDotsvgRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/openapi.json': {
       id: '/api/openapi.json'
       path: '/api/openapi.json'
@@ -915,6 +915,7 @@ const rootRouteChildren: RootRouteChildren = {
   OffSiteAeoRoute: OffSiteAeoRoute,
   OgDotpngRoute: OgDotpngRoute,
   PricingRoute: PricingRoute,
+  RepoActivityDotsvgRoute: RepoActivityDotsvgRoute,
   RoadmapRoute: RoadmapRoute,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -924,7 +925,6 @@ const rootRouteChildren: RootRouteChildren = {
   AiSearchSlugRoute: AiSearchSlugRoute,
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
-  ApiRepoActivityDotsvgRoute: ApiRepoActivityDotsvgRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,
