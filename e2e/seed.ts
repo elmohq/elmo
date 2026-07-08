@@ -66,11 +66,18 @@ async function seed() {
     await client.query("DELETE FROM brands");
 
     // -----------------------------------------------------------------------
-    // 1. Brand
+    // 1. Brand (scoped to an organization that shares its id)
     // -----------------------------------------------------------------------
+    // Signup provisions the "default" org as well, but the seed re-creates the
+    // brand independently — ensure the org exists for the NOT NULL FK.
     await client.query(
-      `INSERT INTO brands (id, name, website, enabled, onboarded, created_at, updated_at)
-       VALUES ($1, $2, $3, true, true, NOW(), NOW())`,
+      `INSERT INTO organization (id, name, slug, created_at)
+       VALUES ($1, $2, $1, NOW()) ON CONFLICT (id) DO NOTHING`,
+      [TEST_BRAND_ID, TEST_BRAND_NAME]
+    );
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $1, $2, $3, true, true, NOW(), NOW())`,
       [TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_WEBSITE]
     );
     console.log("  Created brand:", TEST_BRAND_ID);

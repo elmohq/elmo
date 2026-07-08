@@ -19,6 +19,7 @@ import {
 	evaluateAuthedRouteGuard,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
+	evaluateOrgScope,
 	evaluateReadOnly,
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
@@ -414,6 +415,39 @@ describe("evaluateRequireOrgAccess", () => {
 
 	it("allows when user has org access", () => {
 		expect(evaluateRequireOrgAccess(true)).toBe("allow");
+	});
+});
+
+// Brand/prompt/run/citation org scoping (issue #339). A brand's
+// organization_id is the tenancy boundary; membership is the access mechanism.
+describe("evaluateOrgScope", () => {
+	const ORG_A = "org-a";
+	const ORG_B = "org-b";
+
+	it("allows a member to access their own org's resource", () => {
+		expect(evaluateOrgScope([ORG_A], ORG_A)).toBe("allow");
+	});
+
+	it("denies a member of org A from accessing org B's resource", () => {
+		expect(evaluateOrgScope([ORG_A], ORG_B)).toBe("deny");
+	});
+
+	it("allows access for any org the user belongs to (multi-org member)", () => {
+		expect(evaluateOrgScope([ORG_A, ORG_B], ORG_B)).toBe("allow");
+	});
+
+	it("denies a resource in an org the multi-org user does not belong to", () => {
+		expect(evaluateOrgScope([ORG_A, ORG_B], "org-c")).toBe("deny");
+	});
+
+	it("denies when the user has no memberships", () => {
+		expect(evaluateOrgScope([], ORG_A)).toBe("deny");
+	});
+
+	it("does not treat the brand id as an org membership by itself", () => {
+		// Pre-#339 access leaned on brand.id == org.id; scoping must be driven
+		// by actual membership, not by the resource naming itself.
+		expect(evaluateOrgScope([], "org-a")).toBe("deny");
 	});
 });
 

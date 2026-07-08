@@ -10,7 +10,7 @@ import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
 import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
@@ -99,26 +99,32 @@ async function getBrandWithPromptsFromDb(
 // ============================================================================
 
 /**
- * Get all brands the current user has access to
+ * Get all brands the current user has access to.
+ *
+ * Org scoping is the access-control mechanism: we resolve the orgs the user is
+ * a member of and return only brands owned by those orgs (`brands.organization_id
+ * IN (...)`). A user in org A never sees org B's brands.
  */
 export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 	const session = await requireAuthSession();
-	const userBrands = await listUserOrganizations(session.user.id);
+	const userOrgs = await listUserOrganizations(session.user.id);
+	const orgIds = userOrgs.map((o) => o.id);
 
-	if (!userBrands || userBrands.length === 0) {
+	if (orgIds.length === 0) {
 		return [];
 	}
 
+	const scopedBrands = await db.query.brands.findMany({
+		where: inArray(brands.organizationId, orgIds),
+	});
+
 	const brandsData = await Promise.all(
-		userBrands.map(async (userBrand) => {
-			const dbBrand = await getBrandWithPromptsFromDb(userBrand.id);
-			return dbBrand ? { ...dbBrand, name: dbBrand.name } : null;
-		}),
+		scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id)),
 	);
 
 	return brandsData.filter(
 		(brand): brand is BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] } =>
-			brand !== null,
+			brand !== undefined,
 	);
 });
 
@@ -165,6 +171,9 @@ export const createBrandFn = createServerFn({ method: "POST" })
 			.insert(brands)
 			.values({
 				id: data.brandId,
+				// brandId is the org id from the URL (access verified above); the
+				// brand belongs to that org.
+				organizationId: data.brandId,
 				name: data.brandName,
 				website: urlValidation.formattedUrl,
 				enabled: true,
@@ -226,6 +235,7 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 
 		await db.insert(brands).values({
 			id: orgId,
+			organizationId: orgId,
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
 			enabled: true,
