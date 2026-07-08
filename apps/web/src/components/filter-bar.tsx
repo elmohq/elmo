@@ -84,7 +84,7 @@ const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
 	{ value: "all", label: "All time" },
 ];
 
-function getLookbackLabel(lookback: LookbackPeriod): string {
+export function getLookbackLabel(lookback: LookbackPeriod): string {
 	return LOOKBACK_OPTIONS.find((o) => o.value === lookback)?.label ?? lookback;
 }
 
