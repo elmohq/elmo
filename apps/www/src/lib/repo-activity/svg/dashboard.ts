@@ -123,10 +123,16 @@ export function renderDashboard(data: RepoActivityData): string {
 	const shown = data.contributors.slice(0, MAX_CONTRIB_AVATARS);
 	const extra = Math.max(0, data.contributorTotal - shown.length);
 	// Spread the avatars evenly across the section (first flush left, last flush
-	// right) rather than clustering them, so the row doesn't look sparse.
-	const avR = 14;
+	// right) rather than clustering them, so the row doesn't look sparse. The
+	// radius shrinks from 14 only when needed to keep a minimum gap, so the row
+	// scales from a handful up to the full dozen without crowding or overflowing.
+	const avRowW = W - P - contribX;
 	const avN = shown.length + (extra > 0 ? 1 : 0);
-	const avGap = avN > 1 ? (W - P - contribX - avN * 2 * avR) / (avN - 1) : 0;
+	const MAX_AV_R = 14;
+	const MIN_AV_GAP = 6;
+	const fitR = avN > 1 ? (avRowW - (avN - 1) * MIN_AV_GAP) / (2 * avN) : MAX_AV_R;
+	const avR = Math.max(10, Math.min(MAX_AV_R, fitR));
+	const avGap = avN > 1 ? (avRowW - avN * 2 * avR) / (avN - 1) : 0;
 	body += avatarRow(contribX, rowY + 24, avR, shown, extra, "rb-av", avGap);
 
 	const H = rowY + 60;
