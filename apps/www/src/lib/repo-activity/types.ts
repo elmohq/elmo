@@ -1,7 +1,7 @@
 /**
  * Shared data model for the self-hosted repo-activity SVG (a branded,
  * bot-filtered replacement for the Repobeats embed). The fetch layer
- * (`github.ts`) produces a `RepobeatsData`; the renderers (`svg/*`) consume it.
+ * (`github.ts`) produces a `RepoActivityData`; the renderers (`svg/*`) consume it.
  * Nothing here imports server-only modules so the sample generator can reuse it.
  */
 
@@ -40,7 +40,7 @@ export interface ReleaseInfo {
 	prerelease: boolean;
 }
 
-export interface RepobeatsData {
+export interface RepoActivityData {
 	repo: string;
 	/** ISO timestamp the snapshot was assembled. */
 	generatedAt: string;

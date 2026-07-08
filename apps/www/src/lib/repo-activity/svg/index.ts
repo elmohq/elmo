@@ -1,11 +1,11 @@
 /** Entry point for rendering the repo-activity SVG (single light-mode dashboard). */
 
 import { REPO } from "../constants";
-import type { RepobeatsData } from "../types";
+import type { RepoActivityData } from "../types";
 import { svgDoc, text } from "./primitives";
 import { renderDashboard } from "./dashboard";
 
-export function renderRepobeats(data: RepobeatsData): string {
+export function renderRepoActivity(data: RepoActivityData): string {
 	return renderDashboard(data);
 }
 

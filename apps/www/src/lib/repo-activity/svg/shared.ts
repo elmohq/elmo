@@ -1,6 +1,6 @@
 /** Mid-level, composable building blocks assembled by the dashboard layout. */
 
-import type { LabelSlice, RepobeatsData } from "../types";
+import type { LabelSlice, RepoActivityData } from "../types";
 import { fmt, rrect, stackedBar, text } from "./primitives";
 
 /** Rough advance width — good enough for laying out short label strings. */
@@ -30,7 +30,7 @@ export function ratioBar(
 	x: number,
 	y: number,
 	w: number,
-	data: RepobeatsData,
+	data: RepoActivityData,
 	clipId: string,
 ): Block {
 	const open = data.totals.issuesOpen;

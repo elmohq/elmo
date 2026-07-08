@@ -1,5 +1,5 @@
 /**
- * The repo-activity graphic: a flat, airy Repobeats-style card. A row of
+ * The repo-activity graphic: a flat, airy activity card. A row of
  * 30-day KPI numerals, a full-width smooth commit-trend chart, and a bottom
  * band with the area-label split, open/closed issue ratio, and bot-filtered
  * contributor avatars. No logo, repo name, or star/fork counts — those are
@@ -7,7 +7,7 @@
  */
 
 import { MAX_CONTRIB_AVATARS } from "../constants";
-import type { RepobeatsData } from "../types";
+import type { RepoActivityData } from "../types";
 import {
 	DISPLAY_FAMILY,
 	avatarRow,
@@ -73,7 +73,7 @@ function commitTrend(x: number, y: number, w: number, h: number, values: number[
 	);
 }
 
-export function renderDashboard(data: RepobeatsData): string {
+export function renderDashboard(data: RepoActivityData): string {
 	const contentW = W - P * 2;
 	let body = "";
 

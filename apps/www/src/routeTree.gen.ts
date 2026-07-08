@@ -34,7 +34,7 @@ import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
-import { Route as ApiRepobeatsDotsvgRouteImport } from './routes/api/repobeats[.]svg'
+import { Route as ApiRepoActivityDotsvgRouteImport } from './routes/api/repo-activity[.]svg'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
 import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
@@ -178,9 +178,9 @@ const ApiSearchRoute = ApiSearchRouteImport.update({
   path: '/api/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRepobeatsDotsvgRoute = ApiRepobeatsDotsvgRouteImport.update({
-  id: '/api/repobeats.svg',
-  path: '/api/repobeats.svg',
+const ApiRepoActivityDotsvgRoute = ApiRepoActivityDotsvgRouteImport.update({
+  id: '/api/repo-activity.svg',
+  path: '/api/repo-activity.svg',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOpenapiDotjsonRoute = ApiOpenapiDotjsonRouteImport.update({
@@ -298,7 +298,7 @@ export interface FileRoutesByFullPath {
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
-  '/api/repobeats.svg': typeof ApiRepobeatsDotsvgRoute
+  '/api/repo-activity.svg': typeof ApiRepoActivityDotsvgRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
@@ -343,7 +343,7 @@ export interface FileRoutesByTo {
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
-  '/api/repobeats.svg': typeof ApiRepobeatsDotsvgRoute
+  '/api/repo-activity.svg': typeof ApiRepoActivityDotsvgRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
@@ -389,7 +389,7 @@ export interface FileRoutesById {
   '/ai-search/$slug': typeof AiSearchSlugRoute
   '/ai-visibility-tools/$slug': typeof AiVisibilityToolsSlugRoute
   '/api/openapi.json': typeof ApiOpenapiDotjsonRoute
-  '/api/repobeats.svg': typeof ApiRepobeatsDotsvgRoute
+  '/api/repo-activity.svg': typeof ApiRepoActivityDotsvgRoute
   '/api/search': typeof ApiSearchRoute
   '/blog/$': typeof BlogSplatRoute
   '/blog/rss.xml': typeof BlogRssDotxmlRoute
@@ -436,7 +436,7 @@ export interface FileRouteTypes {
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
-    | '/api/repobeats.svg'
+    | '/api/repo-activity.svg'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
@@ -481,7 +481,7 @@ export interface FileRouteTypes {
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
-    | '/api/repobeats.svg'
+    | '/api/repo-activity.svg'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
@@ -526,7 +526,7 @@ export interface FileRouteTypes {
     | '/ai-search/$slug'
     | '/ai-visibility-tools/$slug'
     | '/api/openapi.json'
-    | '/api/repobeats.svg'
+    | '/api/repo-activity.svg'
     | '/api/search'
     | '/blog/$'
     | '/blog/rss.xml'
@@ -572,7 +572,7 @@ export interface RootRouteChildren {
   AiSearchSlugRoute: typeof AiSearchSlugRoute
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
-  ApiRepobeatsDotsvgRoute: typeof ApiRepobeatsDotsvgRoute
+  ApiRepoActivityDotsvgRoute: typeof ApiRepoActivityDotsvgRoute
   ApiSearchRoute: typeof ApiSearchRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
@@ -776,11 +776,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/repobeats.svg': {
-      id: '/api/repobeats.svg'
-      path: '/api/repobeats.svg'
-      fullPath: '/api/repobeats.svg'
-      preLoaderRoute: typeof ApiRepobeatsDotsvgRouteImport
+    '/api/repo-activity.svg': {
+      id: '/api/repo-activity.svg'
+      path: '/api/repo-activity.svg'
+      fullPath: '/api/repo-activity.svg'
+      preLoaderRoute: typeof ApiRepoActivityDotsvgRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/openapi.json': {
@@ -924,7 +924,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiSearchSlugRoute: AiSearchSlugRoute,
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
-  ApiRepobeatsDotsvgRoute: ApiRepobeatsDotsvgRoute,
+  ApiRepoActivityDotsvgRoute: ApiRepoActivityDotsvgRoute,
   ApiSearchRoute: ApiSearchRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,

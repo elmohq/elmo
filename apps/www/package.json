@@ -10,7 +10,7 @@
 		"start": "node .output/server/index.mjs",
 		"check-types": "tsc --noEmit",
 		"generate-icons": "tsx scripts/generate-brand-icons.tsx",
-		"generate-repobeats": "tsx scripts/generate-repobeats.ts"
+		"generate-repo-activity": "tsx scripts/generate-repo-activity.ts"
 	},
 	"dependencies": {
 		"@fontsource/geist-mono": "^5.2.8",

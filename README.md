@@ -78,4 +78,4 @@ elmo compose up -d
 
 ## Repo Activity
 
-![Repository activity](https://www.elmohq.com/api/repobeats.svg "Repository activity")
+![Repository activity](https://www.elmohq.com/api/repo-activity.svg "Repository activity")

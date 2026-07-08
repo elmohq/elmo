@@ -1,6 +1,6 @@
 /**
  * Pure GitHub data layer for the repo-activity SVG. No Redis / TanStack imports
- * so the sample generator (`scripts/generate-repobeats-samples.ts`) can call it
+ * so the sample generator (`scripts/generate-repo-activity.ts`) can call it
  * directly. Caching lives in `cache.ts`.
  *
  * A `GITHUB_TOKEN` is optional but recommended (same convention as
@@ -23,7 +23,7 @@ import type {
 	ChurnPoint,
 	LabelSlice,
 	RepoContributor,
-	RepobeatsData,
+	RepoActivityData,
 	ReleaseInfo,
 	WeekPoint,
 } from "./types";
@@ -181,9 +181,9 @@ async function fetchAreaLabels(token: string | undefined): Promise<LabelSlice[]>
 	return slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
 }
 
-export async function fetchRepobeatsData(
+export async function fetchRepoActivityData(
 	opts: { token?: string } = {},
-): Promise<RepobeatsData> {
+): Promise<RepoActivityData> {
 	const token = opts.token ?? process.env.GITHUB_TOKEN;
 	const now = new Date();
 	const sinceIso = new Date(now.getTime() - WINDOW_DAYS * 86_400_000)

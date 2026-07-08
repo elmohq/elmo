@@ -12,11 +12,11 @@
 
 import { Redis } from "@upstash/redis";
 import { REPO } from "./constants";
-import { fetchRepobeatsData } from "./github";
-import type { RepobeatsData } from "./types";
+import { fetchRepoActivityData } from "./github";
+import type { RepoActivityData } from "./types";
 
-const DATA_KEY = `repobeats:data:${REPO}`;
-const FRESH_KEY = `repobeats:fresh:${REPO}`;
+const DATA_KEY = `repo-activity:data:${REPO}`;
+const FRESH_KEY = `repo-activity:fresh:${REPO}`;
 const FRESH_TTL_SECONDS = 5 * 60;
 const DATA_TTL_SECONDS = 24 * 60 * 60;
 
@@ -27,18 +27,18 @@ function redisClient(): Redis | null {
 	return new Redis({ url, token });
 }
 
-export async function getRepobeatsData(): Promise<RepobeatsData> {
+export async function getRepoActivityData(): Promise<RepoActivityData> {
 	const redis = redisClient();
-	if (!redis) return fetchRepobeatsData();
+	if (!redis) return fetchRepoActivityData();
 
 	const [lastGood, fresh] = await Promise.all([
-		redis.get<RepobeatsData>(DATA_KEY),
+		redis.get<RepoActivityData>(DATA_KEY),
 		redis.get<number>(FRESH_KEY),
 	]);
 	if (lastGood && fresh) return lastGood;
 
 	try {
-		const data = await fetchRepobeatsData();
+		const data = await fetchRepoActivityData();
 		await Promise.all([
 			redis.set(DATA_KEY, data, { ex: DATA_TTL_SECONDS }),
 			redis.set(FRESH_KEY, 1, { ex: FRESH_TTL_SECONDS }),
