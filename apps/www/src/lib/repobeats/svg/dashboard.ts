@@ -20,7 +20,6 @@ import {
 import { areaDistribution, eyebrow, ratioBar } from "./shared";
 
 const W = 840;
-const H = 360;
 const P = 28;
 
 /** "Jul 8, 2:45 PM PDT" — San Francisco time, so the freshness reads consistently. */
@@ -109,20 +108,22 @@ export function renderDashboard(data: RepobeatsData): string {
 	body += commitTrend(P, 172, contentW, 78, data.commitsByWeek.map((p) => p.total));
 	body += hairline(P, 278, W - P, 278);
 
-	// ---- Bottom band: area split · open/closed · contributors ----------------
-	const bandY = 300;
-	const areaW = 344;
-	body += areaDistribution(P, bandY, areaW, data.areaLabels, "rb-area", 3).svg;
+	// ---- Issues by area (full width so every area label shows) ---------------
+	const areaY = 300;
+	const area = areaDistribution(P, areaY, contentW, data.areaLabels, "rb-area", 20);
+	body += area.svg;
 
-	const ratioX = P + areaW + 28;
-	const ratioW = 196;
-	body += ratioBar(ratioX, bandY, ratioW, data, "rb-ratio").svg;
+	// ---- Open/closed issues + top contributors -------------------------------
+	const rowY = areaY + area.height + 28;
+	body += hairline(P, rowY - 18, W - P, rowY - 18);
+	body += ratioBar(P, rowY, 320, data, "rb-ratio").svg;
 
-	const contribX = ratioX + ratioW + 32;
-	body += eyebrow(contribX, bandY, "CONTRIBUTORS");
+	const contribX = P + 396;
+	body += eyebrow(contribX, rowY, "TOP CONTRIBUTORS");
 	const shown = data.contributors.slice(0, MAX_CONTRIB_AVATARS);
 	const extra = Math.max(0, data.contributorTotal - shown.length);
-	body += avatarRow(contribX, bandY + 24, 12, shown, extra, "rb-av", 5);
+	body += avatarRow(contribX, rowY + 22, 12, shown, extra, "rb-av", 5);
 
+	const H = rowY + 60;
 	return svgDoc(W, H, body, `${data.repo} — repository activity, last 30 days`);
 }

@@ -8,8 +8,8 @@ export const REPO = "elmohq/elmo";
 export const WINDOW_DAYS = 30;
 /** How many weeks of history the activity chart shows. */
 export const HISTORY_WEEKS = 30;
-/** Cap on avatars rendered in the contributor row. */
-export const MAX_CONTRIB_AVATARS = 8;
+/** Cap on avatars rendered in the top-contributors row. */
+export const MAX_CONTRIB_AVATARS = 6;
 
 /** Friendly display names for the repo's `area/*` labels. */
 export const AREA_LABEL_NAMES: Record<string, string> = {

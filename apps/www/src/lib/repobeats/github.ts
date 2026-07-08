@@ -145,50 +145,40 @@ interface RawRelease {
 	prerelease: boolean;
 	draft: boolean;
 }
-interface RawIssue {
-	pull_request?: unknown;
-	labels?: Array<{ name: string }>;
+
+function areaFriendly(key: string): string {
+	if (AREA_LABEL_NAMES[key]) return AREA_LABEL_NAMES[key];
+	const bare = key.replace(/^area\//, "").replace(/[-_]/g, " ");
+	return bare.charAt(0).toUpperCase() + bare.slice(1);
 }
 
+/**
+ * Every `area/*` label's issue count, via the Search API's exact `total_count`
+ * (no pagination, so it never undercounts). Labels are discovered from the repo
+ * so newly-added areas show up automatically. Works with or without a token,
+ * though a token lifts the search rate limit.
+ */
 async function fetchAreaLabels(token: string | undefined): Promise<LabelSlice[]> {
-	const colorFor = (key: string) =>
-		CHART_COLORS[AREA_LABEL_ORDER.indexOf(key) % CHART_COLORS.length];
+	const discovered = await ghJson<Array<{ name: string }>>(`${API}/labels?per_page=100`, token)
+		.then((labels) => labels.map((l) => l.name).filter((n) => n.startsWith("area/")))
+		.catch(() => [] as string[]);
+	const names = discovered.length > 0 ? discovered : AREA_LABEL_ORDER;
 
-	// With a token, ask the Search API for exact per-label issue counts.
-	if (token) {
-		const slices = await Promise.all(
-			AREA_LABEL_ORDER.map(async (key) => ({
-				key,
-				label: AREA_LABEL_NAMES[key] ?? key,
-				count: (await searchCount(`repo:${REPO} is:issue label:${key}`, token)) ?? 0,
-				color: colorFor(key),
-			})),
-		);
-		return slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
-	}
+	// Canonical labels first (stable colours — Core stays brand blue), then any extras.
+	const ordered = [
+		...AREA_LABEL_ORDER.filter((k) => names.includes(k)),
+		...names.filter((n) => !AREA_LABEL_ORDER.includes(n)).sort(),
+	];
 
-	// Otherwise approximate from a sample of recent issues.
-	const issues = await ghJson<RawIssue[]>(
-		`${API}/issues?state=all&per_page=100`,
-		token,
-	).catch(() => [] as RawIssue[]);
-	const counts = new Map<string, number>();
-	for (const issue of issues) {
-		if (issue.pull_request) continue;
-		for (const label of issue.labels ?? []) {
-			if (AREA_LABEL_ORDER.includes(label.name)) {
-				counts.set(label.name, (counts.get(label.name) ?? 0) + 1);
-			}
-		}
-	}
-	return AREA_LABEL_ORDER.map((key) => ({
-		key,
-		label: AREA_LABEL_NAMES[key] ?? key,
-		count: counts.get(key) ?? 0,
-		color: colorFor(key),
-	}))
-		.filter((s) => s.count > 0)
-		.sort((a, b) => b.count - a.count);
+	const slices = await Promise.all(
+		ordered.map(async (key, i) => ({
+			key,
+			label: areaFriendly(key),
+			count: (await searchCount(`repo:${REPO} is:issue label:"${key}"`, token)) ?? 0,
+			color: CHART_COLORS[i % CHART_COLORS.length],
+		})),
+	);
+	return slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
 }
 
 export async function fetchRepobeatsData(
