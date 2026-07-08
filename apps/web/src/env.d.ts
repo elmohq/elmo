@@ -76,6 +76,9 @@ declare global {
 			readonly STRIPE_SECRET_KEY?: string;
 			readonly STRIPE_WEBHOOK_SECRET?: string;
 			readonly RESEND_API_KEY?: string;
+			readonly GOOGLE_CLIENT_ID?: string;
+			readonly GOOGLE_CLIENT_SECRET?: string;
+			readonly RESEND_FROM_EMAIL?: string;
 		}
 	}
 }

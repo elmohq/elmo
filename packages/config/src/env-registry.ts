@@ -388,4 +388,22 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: ["cloud"],
 		description: "Resend API key for transactional email.",
 	},
+	{
+		name: "GOOGLE_CLIENT_ID",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Google OAuth client ID for cloud social sign-in.",
+	},
+	{
+		name: "GOOGLE_CLIENT_SECRET",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Google OAuth client secret.",
+	},
+	{
+		name: "RESEND_FROM_EMAIL",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
+	},
 ];

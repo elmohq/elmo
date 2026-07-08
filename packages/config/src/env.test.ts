@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import { getEnvRequirements, validateEnvRequirements } from "./env";
 
 // Vars required specifically because the deployment is cloud.
-const CLOUD_ONLY_VARS = ["APP_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "RESEND_API_KEY"];
+const CLOUD_ONLY_VARS = [
+	"APP_URL",
+	"STRIPE_SECRET_KEY",
+	"STRIPE_WEBHOOK_SECRET",
+	"RESEND_API_KEY",
+	"GOOGLE_CLIENT_ID",
+	"GOOGLE_CLIENT_SECRET",
+	"RESEND_FROM_EMAIL",
+];
 // Infra vars every validated mode needs — cloud now among them.
 const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "SCRAPE_TARGETS", "DEPLOYMENT_MODE"];
 
@@ -41,6 +49,9 @@ describe("cloud env requirements", () => {
 			STRIPE_SECRET_KEY: "sk_test_x",
 			STRIPE_WEBHOOK_SECRET: "whsec_x",
 			RESEND_API_KEY: "re_test_x",
+			GOOGLE_CLIENT_ID: "test-google-client-id",
+			GOOGLE_CLIENT_SECRET: "test-google-client-secret",
+			RESEND_FROM_EMAIL: "Elmo <notifications@example.com>",
 		};
 		const { missing } = validateEnvRequirements(cloudReqs, env);
 		const missingIds = new Set(missing.map((entry) => entry.id));

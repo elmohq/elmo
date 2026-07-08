@@ -54,7 +54,10 @@
     "DISABLE_TELEMETRY",
     "STRIPE_SECRET_KEY",
     "STRIPE_WEBHOOK_SECRET",
-    "RESEND_API_KEY"
+    "RESEND_API_KEY",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "RESEND_FROM_EMAIL"
   ],
   "tasks": {
     "build": {
