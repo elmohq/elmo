@@ -87,10 +87,11 @@ async function ghStats<T>(
 async function searchCount(
 	query: string,
 	token: string | undefined,
+	index: "issues" | "commits" = "issues",
 ): Promise<number | null> {
 	try {
 		const res = await fetch(
-			`https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=1`,
+			`https://api.github.com/search/${index}?q=${encodeURIComponent(query)}&per_page=1`,
 			{ headers: ghHeaders(token) },
 		);
 		if (!res.ok) return null;
@@ -206,6 +207,7 @@ export async function fetchRepoActivityData(
 		issuesOpened,
 		issuesOpenTotal,
 		issuesClosedTotal,
+		commitCount,
 	] = await Promise.all([
 		ghJson<RepoCore>(API, token).catch(() => null),
 		ghStats<Array<{ week: number; total: number }>>("/stats/commit_activity", token),
@@ -222,6 +224,11 @@ export async function fetchRepoActivityData(
 		searchCount(q(`is:issue created:>=${sinceIso}`), token),
 		searchCount(q("is:issue is:open"), token),
 		searchCount(q("is:issue is:closed"), token),
+		// Exact commits on the default branch in the window — same live basis as
+		// the other KPIs. The weekly commit_activity stat lags and is week-aligned,
+		// so it can read lower than "PRs merged" even though every squash-merge is a
+		// commit; this keeps the number honest.
+		searchCount(q(`committer-date:>=${sinceIso}`), token, "commits"),
 	]);
 
 	const commitsByWeek: WeekPoint[] = (commitActivity ?? [])
@@ -263,7 +270,9 @@ export async function fetchRepoActivityData(
 		avatarDataUri: avatarUris[i],
 	}));
 
-	const commitsInWindow = commitsByWeek
+	// Fallback for the commit KPI if the commit search is unavailable (e.g. no
+	// token): sum the whole weeks inside the window from commit_activity.
+	const commitsFromWeeks = commitsByWeek
 		.filter((p) => p.week >= windowStartSec)
 		.reduce((sum, p) => sum + p.total, 0);
 	const releasesInWindow = releases.filter(
@@ -283,7 +292,7 @@ export async function fetchRepoActivityData(
 		churnByWeek,
 		releaseWeeks: [...releaseWeekSet],
 		kpis: {
-			commits: commitsInWindow,
+			commits: commitCount ?? commitsFromWeeks,
 			prsMerged: prsMerged ?? 0,
 			prsOpened: prsOpened ?? 0,
 			issuesClosed: issuesClosed ?? 0,
