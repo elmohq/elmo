@@ -78,4 +78,4 @@ elmo compose up -d
 
 ## Repo Activity
 
-![Repobeats analytics image](https://repobeats.axiom.co/api/embed/e602387f6d080bbec1161e6a16dccefb7ab76cca.svg "Repobeats analytics image")
+![Repository activity](https://www.elmohq.com/api/repo-activity.svg "Repository activity")
