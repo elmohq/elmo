@@ -23,6 +23,7 @@ export function createLocalDeployment(env: Record<string, string | undefined> = 
 			selfServeSignup: false,
 			billing: false,
 			reportGeneration: true,
+			teamInvites: false,
 		},
 		branding: {
 			name: getEnv("APP_NAME", DEFAULT_APP_NAME, env),
