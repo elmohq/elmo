@@ -71,6 +71,13 @@
       "when": 1780782746840,
       "tag": "0009_brand_opportunities",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784000000000,
+      "tag": "0010_scope_brands_to_orgs",
+      "breakpoints": true
     }
   ]
 }

@@ -224,6 +224,25 @@ export function evaluateRequireOrgAccess(
 }
 
 /**
+ * Org-scoped resource access rule (issue #339), in pure form.
+ *
+ * Every brand carries an `organization_id`; a user may only read or mutate a
+ * resource whose owning org they belong to. The runtime enforces this directly
+ * in SQL — `checkOrgAccess` for a single resource and the
+ * `brands.organization_id IN (member orgs)` filter in `getBrands`. This function
+ * is the canonical statement of that same rule, unit-tested in isolation
+ * (mirroring the sibling `evaluateRequireOrgAccess`); it documents and pins the
+ * "a member of org A is denied org B's resources" invariant, but is not itself
+ * the runtime gate.
+ */
+export function evaluateOrgScope(
+	memberOrgIds: readonly string[],
+	resourceOrgId: string,
+): "allow" | "deny" {
+	return memberOrgIds.includes(resourceOrgId) ? "allow" : "deny";
+}
+
+/**
  * Evaluate read-only mode enforcement.
  * Used by `readOnlyMiddleware` for server functions.
  */
