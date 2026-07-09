@@ -139,6 +139,8 @@ function UptimeBadge({ entries }: { entries: StatusEntry[] }) {
 }
 
 function UptimeBar({ entries }: { entries: StatusEntry[] }) {
+	const [hovered, setHovered] = useState<number | null>(null);
+	const [pos, setPos] = useState({ x: 0, y: 0 });
 	const deduped = dedupeEntries(entries);
 	if (deduped.length === 0) return null;
 
@@ -151,9 +153,14 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 	const currentBucketStart = Math.floor(Date.now() / bucketMs) * bucketMs;
 	const firstBucketStart = currentBucketStart - 27 * bucketMs;
 
-	// Track both the latest status and whether there was a mix of pass/fail
-	const buckets: { latest: "pass" | "fail" | "none"; hadFail: boolean }[] =
-		Array.from({ length: 28 }, () => ({ latest: "none", hadFail: false }));
+	// Per square: its window start, latest status, whether any run failed, and
+	// the latest run itself (for the latency/error shown on hover).
+	const buckets = Array.from({ length: 28 }, (_, i) => ({
+		start: firstBucketStart + i * bucketMs,
+		latest: "none" as "pass" | "fail" | "none",
+		hadFail: false,
+		latestEntry: null as StatusEntry | null,
+	}));
 	for (const entry of deduped) {
 		const bucketStart =
 			Math.floor(new Date(entry.ts).getTime() / bucketMs) * bucketMs;
@@ -161,13 +168,22 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 		if (bi < 0 || bi > 27) continue;
 		if (entry.status === "fail") buckets[bi].hadFail = true;
 		buckets[bi].latest = entry.status;
+		buckets[bi].latestEntry = entry;
 	}
+
+	const active = hovered !== null ? buckets[hovered] : null;
 
 	return (
 		<div className="flex gap-0.5">
 			{buckets.map((b, i) => (
 				<div
 					key={i}
+					onMouseEnter={(e) => {
+						const r = e.currentTarget.getBoundingClientRect();
+						setPos({ x: r.left + r.width / 2, y: r.top });
+						setHovered(i);
+					}}
+					onMouseLeave={() => setHovered(null)}
 					className={`h-6 flex-1 rounded-sm ${
 						b.latest === "none"
 							? "bg-zinc-100"
@@ -179,6 +195,51 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 					}`}
 				/>
 			))}
+			{active &&
+				createPortal(
+					<div
+						className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-950 shadow-lg"
+						style={{
+							left: pos.x,
+							top: pos.y,
+							transform: "translate(-50%, calc(-100% - 6px))",
+						}}
+					>
+						<div className="font-medium whitespace-nowrap">
+							{new Date(active.start).toLocaleDateString(undefined, {
+								month: "short",
+								day: "numeric",
+							})}
+							,{" "}
+							{new Date(active.start).toLocaleTimeString(undefined, {
+								hour: "numeric",
+							})}
+							{" – "}
+							{new Date(active.start + bucketMs).toLocaleTimeString(undefined, {
+								hour: "numeric",
+							})}
+						</div>
+						<div className="mt-0.5 text-zinc-600">
+							{active.latest === "none"
+								? "No data"
+								: active.latest === "fail"
+									? "Failing"
+									: active.hadFail
+										? "Recovered"
+										: "Operational"}
+							{active.latestEntry &&
+								active.latest !== "none" &&
+								` · ${formatLatency(active.latestEntry.latency)}`}
+						</div>
+						{active.latestEntry?.status === "fail" &&
+							active.latestEntry.error && (
+								<div className="mt-0.5 max-w-[16rem] text-red-500">
+									{active.latestEntry.error.slice(0, 120)}
+								</div>
+							)}
+					</div>,
+					document.body,
+				)}
 		</div>
 	);
 }
