@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEnvRequirements, validateEnvRequirements } from "./env";
+import { getEnvRequirements, requireEnvVars, validateEnvRequirements } from "./env";
 
 // Vars required specifically because the deployment is cloud.
 const CLOUD_ONLY_VARS = ["APP_URL", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "RESEND_API_KEY"];
@@ -47,5 +47,22 @@ describe("cloud env requirements", () => {
 		for (const name of [...CLOUD_ONLY_VARS, ...CLOUD_SHARED_VARS]) {
 			expect(missingIds.has(name), `${name} should be satisfied`).toBe(false);
 		}
+	});
+});
+
+describe("requireEnvVars", () => {
+	it("reports every missing required env var at once", () => {
+		expect(() =>
+			requireEnvVars(["VITE_APP_NAME", "VITE_APP_ICON", "VITE_APP_URL"], { VITE_APP_URL: "https://app.elmo.com" }),
+		).toThrow("Missing required environment variables: VITE_APP_NAME, VITE_APP_ICON");
+	});
+
+	it("uses the singular message when a single var is missing", () => {
+		expect(() => requireEnvVars(["VITE_APP_NAME"], {})).toThrow("Missing required environment variable: VITE_APP_NAME");
+	});
+
+	it("returns the resolved values when every var is present", () => {
+		const env = { VITE_APP_NAME: "Acme", VITE_APP_URL: "https://app.elmo.com" };
+		expect(requireEnvVars(["VITE_APP_NAME", "VITE_APP_URL"], env)).toEqual(env);
 	});
 });
