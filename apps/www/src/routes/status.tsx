@@ -142,19 +142,23 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 	const deduped = dedupeEntries(entries);
 	if (deduped.length === 0) return null;
 
-	// Show last 7 days as a horizontal bar of pass/fail dots
-	const now = Date.now();
-	const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+	// Show the last 7 days as 28 six-hour squares, anchored to fixed wall-clock
+	// boundaries (00/06/12/18 UTC) — the times the scheduled job actually runs.
+	// Anchoring to the clock instead of render time keeps a run's scheduling
+	// jitter from sliding it into a neighboring square, which would blank one
+	// square and double up its neighbor across every provider at once.
+	const bucketMs = 6 * 60 * 60 * 1000;
+	const currentBucketStart = Math.floor(Date.now() / bucketMs) * bucketMs;
+	const firstBucketStart = currentBucketStart - 27 * bucketMs;
 
-	// Bucket into 6-hour windows (28 buckets for 7 days)
 	// Track both the latest status and whether there was a mix of pass/fail
 	const buckets: { latest: "pass" | "fail" | "none"; hadFail: boolean }[] =
 		Array.from({ length: 28 }, () => ({ latest: "none", hadFail: false }));
 	for (const entry of deduped) {
-		const t = new Date(entry.ts).getTime();
-		if (t < sevenDaysAgo) continue;
-		const idx = Math.floor(((t - sevenDaysAgo) / (7 * 24 * 60 * 60 * 1000)) * 28);
-		const bi = Math.min(idx, 27);
+		const bucketStart =
+			Math.floor(new Date(entry.ts).getTime() / bucketMs) * bucketMs;
+		const bi = (bucketStart - firstBucketStart) / bucketMs;
+		if (bi < 0 || bi > 27) continue;
 		if (entry.status === "fail") buckets[bi].hadFail = true;
 		buckets[bi].latest = entry.status;
 	}
@@ -183,9 +187,16 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	// Merge all targets into a time-series chart
 	// Bucket by ~6 hours for a clean chart
 	const allTimestamps = new Set<string>();
+	const seriesMeta: Record<string, { modelLabel: string; providerLabel: string }> = {};
 	const targetNames = data.map((d) => {
 		const { model, provider } = parseTarget(d.target);
-		return `${formatModel(model)} (${formatProvider(provider)})`;
+		const name = `${formatModel(model)} (${formatProvider(provider)})`;
+		if (!seriesMeta[name])
+			seriesMeta[name] = {
+				modelLabel: formatModel(model),
+				providerLabel: formatProvider(provider),
+			};
+		return name;
 	});
 
 	// Build chart data: each row is a time bucket, columns are targets
@@ -261,16 +272,50 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 				<ChartTooltip
 					content={({ active, payload, label }: any) => {
 						if (!active || !payload?.length) return null;
-						const sorted = [...payload].sort((a: any, b: any) => (b.value ?? 0) - (a.value ?? 0));
+						// Group the hovered bucket by model; within each model list
+						// providers fastest-first. Model groups follow the same order
+						// as the page's sections (alphabetical).
+						const groups: Record<
+							string,
+							{ providerLabel: string; color: string; value: number }[]
+						> = {};
+						for (const item of payload as any[]) {
+							if (item.value == null) continue;
+							const meta = seriesMeta[item.name] ?? {
+								modelLabel: item.name,
+								providerLabel: item.name,
+							};
+							(groups[meta.modelLabel] ??= []).push({
+								providerLabel: meta.providerLabel,
+								color: item.color,
+								value: item.value as number,
+							});
+						}
+						const ordered = Object.entries(groups)
+							.map(([modelLabel, rows]) => ({
+								modelLabel,
+								rows: rows.sort((a, b) => a.value - b.value),
+							}))
+							.sort((a, b) => a.modelLabel.localeCompare(b.modelLabel));
+						if (ordered.length === 0) return null;
 						return (
-							<div className="border-border/50 bg-background min-w-[10rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+							<div className="border-border/50 bg-background min-w-[11rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 								<div className="font-medium mb-1.5">{label}</div>
-								<div className="grid gap-1.5">
-									{sorted.map((item: any) => (
-										<div key={item.dataKey} className="flex items-center gap-2">
-											<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
-											<span className="flex-1 text-zinc-600">{item.name}</span>
-											<span className="font-mono font-medium tabular-nums">{formatLatency(item.value as number)}</span>
+								<div className="grid gap-2">
+									{ordered.map((group) => (
+										<div key={group.modelLabel}>
+											<div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+												{group.modelLabel}
+											</div>
+											<div className="grid gap-1">
+												{group.rows.map((row) => (
+													<div key={row.providerLabel} className="flex items-center gap-2">
+														<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: row.color }} />
+														<span className="flex-1 text-zinc-600">{row.providerLabel}</span>
+														<span className="font-mono font-medium tabular-nums">{formatLatency(row.value)}</span>
+													</div>
+												))}
+											</div>
 										</div>
 									))}
 								</div>
