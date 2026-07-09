@@ -168,12 +168,26 @@ export function validateEnvRequirements(
 /**
  * Get a required environment variable or throw an error
  */
+function formatMissingEnvVars(keys: string[]): string {
+	return keys.length === 1
+		? `Missing required environment variable: ${keys[0]}`
+		: `Missing required environment variables: ${keys.join(", ")}`;
+}
+
 export function requireEnv(key: string, env: EnvMap = process.env): string {
 	const value = env[key];
 	if (!hasValue(value)) {
-		throw new Error(`Missing required environment variable: ${key}`);
+		throw new Error(formatMissingEnvVars([key]));
 	}
 	return value!;
+}
+
+export function requireEnvVars(keys: string[], env: EnvMap = process.env): Record<string, string> {
+	const missing = keys.filter((key) => !hasValue(env[key]));
+	if (missing.length > 0) {
+		throw new Error(formatMissingEnvVars(missing));
+	}
+	return Object.fromEntries(keys.map((key) => [key, env[key]!])) as Record<string, string>;
 }
 
 /**
