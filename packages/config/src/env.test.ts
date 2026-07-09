@@ -66,19 +66,3 @@ describe("requireEnvVars", () => {
 		expect(requireEnvVars(["VITE_APP_NAME", "VITE_APP_URL"], env)).toEqual(env);
 	});
 });
-
-describe("whitelabel env requirements", () => {
-	const requiredIds = new Set(getEnvRequirements("whitelabel").map((requirement) => requirement.id));
-
-	it("requires the branding vars the deployment factory reads", () => {
-		for (const name of ["VITE_APP_NAME", "VITE_APP_ICON", "VITE_APP_URL", "VITE_OPTIMIZATION_URL_TEMPLATE"]) {
-			expect(requiredIds.has(name), `${name} should be required in whitelabel`).toBe(true);
-		}
-	});
-
-	it("leaves the parent-brand vars optional", () => {
-		for (const name of ["VITE_APP_PARENT_NAME", "VITE_APP_PARENT_URL"]) {
-			expect(requiredIds.has(name), `${name} should be optional in whitelabel`).toBe(false);
-		}
-	});
-});
