@@ -14,6 +14,7 @@ import {
 	parseScrapeTargets,
 	getProvider,
 	getModelMeta,
+	STATUS_TARGETS,
 	type ScrapeResult,
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
@@ -56,6 +57,7 @@ Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-target
 
   <scrape-targets>  Comma-separated SCRAPE_TARGETS entries, e.g. "chatgpt:olostep:online,gemini:olostep:online"
                     When multiple targets are provided, they are all tested in parallel.
+                    Omit --target to test the full monitored set (STATUS_TARGETS).
   --output-json     Write results as JSON to the given path (for CI artifact collection)
   --dump            Write full raw output for each target to the given directory
 
@@ -69,10 +71,8 @@ Examples:
 			process.exit(0);
 		}
 	}
-	if (!target) {
-		console.error("Error: --target is required. Run with --help for usage.");
-		process.exit(1);
-	}
+	// No --target means the scheduled run: test the full monitored set.
+	if (!target) target = STATUS_TARGETS.join(",");
 	return { target, outputJson, dump };
 }
 
