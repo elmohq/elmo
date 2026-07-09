@@ -37,6 +37,7 @@
 		"@tanstack/react-start": "^1.168.27",
 		"@tanstack/react-virtual": "^3.14.5",
 		"@workspace/api-spec": "workspace:*",
+		"@workspace/cloud": "workspace:*",
 		"@workspace/config": "workspace:*",
 		"@workspace/deployment": "workspace:*",
 		"@workspace/lib": "workspace:*",

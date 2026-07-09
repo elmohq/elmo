@@ -7,6 +7,7 @@
  * This is the single source of truth for the server-side auth object.
  * All server functions, middleware, and route handlers import from here.
  */
+import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
 import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
 import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
@@ -52,9 +53,8 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 		case "cloud":
 			// Public self-serve signup with no single-user guard. Each user
 			// provisions their own org via the create-brand flow (canCreateBrands),
-			// so no user.create hook is needed here. Google OAuth and Resend
-			// email verification are layered on in follow-up cloud work.
-			return {};
+			// so no user.create hook is needed here.
+			return getCloudAuthOptions();
 		default:
 			return getLocalAuthOptions();
 	}
