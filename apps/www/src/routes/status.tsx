@@ -85,6 +85,32 @@ function formatProvider(provider: string) {
 	return names[provider] || provider;
 }
 
+// The three first-party API providers collapse into one "Direct API" filter.
+function providerCategory(provider: string) {
+	return provider === "openai-api" ||
+		provider === "anthropic-api" ||
+		provider === "mistral-api"
+		? "direct-api"
+		: provider;
+}
+
+const PROVIDER_FILTER_ORDER = [
+	"direct-api",
+	"openrouter",
+	"olostep",
+	"brightdata",
+	"oxylabs",
+	"dataforseo",
+];
+const PROVIDER_FILTER_LABELS: Record<string, string> = {
+	"direct-api": "Direct API",
+	openrouter: "OpenRouter",
+	olostep: "Olostep",
+	brightdata: "BrightData",
+	oxylabs: "Oxylabs",
+	dataforseo: "DataForSEO",
+};
+
 function formatLatency(ms: number) {
 	if (ms < 1000) return `${ms}ms`;
 	if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -302,7 +328,7 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	if (chartData.length === 0) {
 		return (
 			<div className="py-12 text-center text-sm text-zinc-600">
-				No latency data available yet. Data will appear after the first scheduled run.
+				No latency data for the current selection.
 			</div>
 		);
 	}
@@ -603,12 +629,95 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
+function filterPillClass(active: boolean) {
+	return `rounded-full border px-3 py-1 text-xs transition-colors ${
+		active
+			? "border-zinc-900 bg-zinc-900 text-white"
+			: "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+	}`;
+}
+
+function FilterRow({
+	label,
+	options,
+	selected,
+	onToggle,
+	onClear,
+}: {
+	label: string;
+	options: { value: string; label: string }[];
+	selected: Set<string>;
+	onToggle: (value: string) => void;
+	onClear: () => void;
+}) {
+	return (
+		<div className="flex flex-wrap items-center gap-1.5">
+			<span className="w-20 shrink-0 text-xs font-medium text-zinc-500">
+				{label}
+			</span>
+			<button
+				type="button"
+				onClick={onClear}
+				className={filterPillClass(selected.size === 0)}
+			>
+				All
+			</button>
+			{options.map((o) => (
+				<button
+					key={o.value}
+					type="button"
+					onClick={() => onToggle(o.value)}
+					className={filterPillClass(selected.has(o.value))}
+				>
+					{o.label}
+				</button>
+			))}
+		</div>
+	);
+}
+
 function StatusPage() {
 	const data = Route.useLoaderData();
-	const groups = groupByModel(data);
+	const [selectedProviders, setSelectedProviders] = useState<Set<string>>(
+		new Set(),
+	);
+	const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
 
-	// Overall stats
-	const allLatest = data
+	const toggleProvider = (value: string) =>
+		setSelectedProviders((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) next.delete(value);
+			else next.add(value);
+			return next;
+		});
+	const toggleModel = (value: string) =>
+		setSelectedModels((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) next.delete(value);
+			else next.add(value);
+			return next;
+		});
+
+	const providerOptions = PROVIDER_FILTER_ORDER.filter((c) =>
+		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
+	).map((c) => ({ value: c, label: PROVIDER_FILTER_LABELS[c] ?? c }));
+	const modelOptions = [...new Set(data.map((d) => parseTarget(d.target).model))]
+		.sort((a, b) => formatModel(a).localeCompare(formatModel(b)))
+		.map((m) => ({ value: m, label: formatModel(m) }));
+
+	const filteredData = data.filter((d) => {
+		const { model, provider } = parseTarget(d.target);
+		const providerOk =
+			selectedProviders.size === 0 ||
+			selectedProviders.has(providerCategory(provider));
+		const modelOk = selectedModels.size === 0 || selectedModels.has(model);
+		return providerOk && modelOk;
+	});
+
+	const groups = groupByModel(filteredData);
+
+	// Overall stats (scoped to the active filters)
+	const allLatest = filteredData
 		.map((d) => getLatest(dedupeEntries(d.entries)))
 		.filter((e): e is StatusEntry => e !== null);
 	const allOperational = allLatest.length > 0 && allLatest.every((e) => e.status === "pass");
@@ -629,6 +738,24 @@ function StatusPage() {
 						automatically 4 times per day. Latencies shown are for individual
 						prompt evaluations; batches can vary significantly.
 					</p>
+				</div>
+
+				{/* Filters */}
+				<div className="mb-8 space-y-2">
+					<FilterRow
+						label="Provider"
+						options={providerOptions}
+						selected={selectedProviders}
+						onToggle={toggleProvider}
+						onClear={() => setSelectedProviders(new Set())}
+					/>
+					<FilterRow
+						label="Model"
+						options={modelOptions}
+						selected={selectedModels}
+						onToggle={toggleModel}
+						onClear={() => setSelectedModels(new Set())}
+					/>
 				</div>
 
 				{/* Overall status banner */}
@@ -665,6 +792,11 @@ function StatusPage() {
 				</Card>
 
 				{/* Provider status rows grouped by model */}
+				{filteredData.length === 0 && (
+					<p className="rounded-md border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
+						No providers match the selected filters.
+					</p>
+				)}
 				<div className="space-y-8">
 					{Object.entries(groups)
 						.sort(([a], [b]) => a.localeCompare(b))
@@ -686,7 +818,7 @@ function StatusPage() {
 						<CardTitle>Evaluation Latency</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<LatencyChart data={data} />
+						<LatencyChart data={filteredData} />
 					</CardContent>
 				</Card>
 
