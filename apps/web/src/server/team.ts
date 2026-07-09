@@ -22,9 +22,18 @@ function requireTeamInvites(): void {
 	}
 }
 
+export type TeamData = {
+	members: { id: string; role: string; userId: string; name: string; email: string; createdAt: Date }[];
+	invitations: { id: string; email: string; role: string | null; expiresAt: Date }[];
+	currentUserId: string;
+};
+
 export const listTeamFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
-	.handler(async ({ data }) => {
+	// The explicit return type breaks the type-inference cycle between this
+	// fn and route loaders that both consume it and redirect to typed routes
+	// (same pattern as getOrganizations in routes/_authed/app/index.tsx).
+	.handler(async ({ data }): Promise<TeamData> => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);

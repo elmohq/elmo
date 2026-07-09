@@ -16,6 +16,7 @@ import {
 	IconReport,
 	IconTimeline,
 	IconTool,
+	IconUsers,
 } from "@tabler/icons-react";
 
 import {
@@ -125,6 +126,9 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						url: "/settings/llms",
 						icon: IconCpu,
 					},
+					...(context.clientConfig?.features.teamInvites
+						? [{ title: "Team", url: "/settings/members", icon: IconUsers }]
+						: []),
 				],
 			});
 		}
