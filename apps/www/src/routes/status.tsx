@@ -170,40 +170,15 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 	const deduped = dedupeEntries(entries);
 	if (deduped.length === 0) return null;
 
-	// Show the last 7 days as 28 six-hour squares, anchored to fixed wall-clock
-	// boundaries (00/06/12/18 UTC) — the times the scheduled job actually runs.
-	// Anchoring to the clock instead of render time keeps a run's scheduling
-	// jitter from sliding it into a neighboring square, which would blank one
-	// square and double up its neighbor across every provider at once.
-	const bucketMs = 6 * 60 * 60 * 1000;
-	const currentBucketStart = Math.floor(Date.now() / bucketMs) * bucketMs;
-	const firstBucketStart = currentBucketStart - 27 * bucketMs;
-
-	// Per square: its window start, latest status, whether any run failed, and
-	// the latest run itself (for the latency/error shown on hover).
-	const buckets = Array.from({ length: 28 }, (_, i) => ({
-		start: firstBucketStart + i * bucketMs,
-		latest: "none" as "pass" | "fail" | "none",
-		hadFail: false,
-		latestEntry: null as StatusEntry | null,
-	}));
-	for (const entry of deduped) {
-		const bucketStart =
-			Math.floor(new Date(entry.ts).getTime() / bucketMs) * bucketMs;
-		const bi = (bucketStart - firstBucketStart) / bucketMs;
-		if (bi < 0 || bi > 27) continue;
-		if (entry.status === "fail") buckets[bi].hadFail = true;
-		buckets[bi].latest = entry.status;
-		buckets[bi].latestEntry = entry;
-	}
-
-	const active = hovered !== null ? buckets[hovered] : null;
+	// One square per run, oldest to newest, colored by that run's status. A
+	// manual re-run just appends another square; a missed run leaves no gap.
+	const active = hovered !== null ? deduped[hovered] : null;
 
 	return (
 		<div className="flex gap-0.5">
-			{buckets.map((b, i) => (
+			{deduped.map((entry, i) => (
 				<div
-					key={i}
+					key={entry.ts}
 					onMouseEnter={(e) => {
 						const r = e.currentTarget.getBoundingClientRect();
 						setPos({ x: r.left + r.width / 2, y: r.top });
@@ -211,13 +186,7 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 					}}
 					onMouseLeave={() => setHovered(null)}
 					className={`h-6 flex-1 rounded-sm ${
-						b.latest === "none"
-							? "bg-zinc-100"
-							: b.latest === "fail"
-								? "bg-red-500"
-								: b.hadFail
-									? "bg-orange-400"
-									: "bg-green-500"
+						entry.status === "fail" ? "bg-red-500" : "bg-green-500"
 					}`}
 				/>
 			))}
@@ -232,37 +201,22 @@ function UptimeBar({ entries }: { entries: StatusEntry[] }) {
 						}}
 					>
 						<div className="font-medium whitespace-nowrap">
-							{new Date(active.start).toLocaleDateString(undefined, {
+							{new Date(active.ts).toLocaleString(undefined, {
 								month: "short",
 								day: "numeric",
-							})}
-							,{" "}
-							{new Date(active.start).toLocaleTimeString(undefined, {
 								hour: "numeric",
-							})}
-							{" – "}
-							{new Date(active.start + bucketMs).toLocaleTimeString(undefined, {
-								hour: "numeric",
+								minute: "2-digit",
 							})}
 						</div>
 						<div className="mt-0.5 text-zinc-600">
-							{active.latest === "none"
-								? "No data"
-								: active.latest === "fail"
-									? "Failing"
-									: active.hadFail
-										? "Recovered"
-										: "Operational"}
-							{active.latestEntry &&
-								active.latest !== "none" &&
-								` · ${formatLatency(active.latestEntry.latency)}`}
+							{active.status === "fail" ? "Failing" : "Operational"}
+							{` · ${formatLatency(active.latency)}`}
 						</div>
-						{active.latestEntry?.status === "fail" &&
-							active.latestEntry.error && (
-								<div className="mt-0.5 max-w-[16rem] text-red-500">
-									{active.latestEntry.error.slice(0, 120)}
-								</div>
-							)}
+						{active.status === "fail" && active.error && (
+							<div className="mt-0.5 max-w-[16rem] text-red-500">
+								{active.error.slice(0, 120)}
+							</div>
+						)}
 					</div>,
 					document.body,
 				)}
