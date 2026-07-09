@@ -259,13 +259,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "VITE_APP_PARENT_NAME",
 		scope: "client",
-		requiredBy: ["whitelabel"],
+		requiredBy: "optional",
 		description: "Parent application name (e.g., 'Acme').",
 	},
 	{
 		name: "VITE_APP_PARENT_URL",
 		scope: "client",
-		requiredBy: ["whitelabel"],
+		requiredBy: "optional",
 		description: "Parent application URL (e.g., 'https://app.example.com/').",
 	},
 	{

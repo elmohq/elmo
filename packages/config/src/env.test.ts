@@ -56,4 +56,29 @@ describe("requireEnvVars", () => {
 			requireEnvVars(["VITE_APP_NAME", "VITE_APP_ICON", "VITE_APP_URL"], { VITE_APP_URL: "https://app.elmo.com" }),
 		).toThrow("Missing required environment variables: VITE_APP_NAME, VITE_APP_ICON");
 	});
+
+	it("uses the singular message when a single var is missing", () => {
+		expect(() => requireEnvVars(["VITE_APP_NAME"], {})).toThrow("Missing required environment variable: VITE_APP_NAME");
+	});
+
+	it("returns the resolved values when every var is present", () => {
+		const env = { VITE_APP_NAME: "Acme", VITE_APP_URL: "https://app.elmo.com" };
+		expect(requireEnvVars(["VITE_APP_NAME", "VITE_APP_URL"], env)).toEqual(env);
+	});
+});
+
+describe("whitelabel env requirements", () => {
+	const requiredIds = new Set(getEnvRequirements("whitelabel").map((requirement) => requirement.id));
+
+	it("requires the branding vars the deployment factory reads", () => {
+		for (const name of ["VITE_APP_NAME", "VITE_APP_ICON", "VITE_APP_URL", "VITE_OPTIMIZATION_URL_TEMPLATE"]) {
+			expect(requiredIds.has(name), `${name} should be required in whitelabel`).toBe(true);
+		}
+	});
+
+	it("leaves the parent-brand vars optional", () => {
+		for (const name of ["VITE_APP_PARENT_NAME", "VITE_APP_PARENT_URL"]) {
+			expect(requiredIds.has(name), `${name} should be optional in whitelabel`).toBe(false);
+		}
+	});
 });
