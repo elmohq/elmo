@@ -5,7 +5,8 @@
   "license": "MIT",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./auth-hooks": "./src/auth-hooks.ts"
   },
   "scripts": {
     "test": "vitest run"
