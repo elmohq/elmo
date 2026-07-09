@@ -28,14 +28,14 @@
     "./providers/types": "./src/providers/types.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.5",
+    "@ai-sdk/anthropic": "^4.0.8",
     "@ai-sdk/openai": "^4.0.5",
     "@anthropic-ai/sdk": "^0.110.0",
     "@better-auth/sso": "^1.6.23",
     "@brightdata/sdk": "^1.1.0",
     "@mozilla/readability": "^0.6.0",
     "@workspace/config": "workspace:*",
-    "ai": "^7.0.11",
+    "ai": "^7.0.15",
     "better-auth": "^1.6.23",
     "dataforseo-client": "^2.0.25",
     "drizzle-orm": "^0.45.2",
