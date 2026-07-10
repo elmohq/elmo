@@ -74,6 +74,7 @@ export const STATUS_TARGETS = [
 	"gemini:brightdata:online",
 	"perplexity:brightdata:online",
 	"copilot:brightdata:online",
+	"chatgpt:oxylabs",
 	"chatgpt:oxylabs:online",
 	"google-ai-mode:oxylabs:online",
 	"perplexity:oxylabs:online",
