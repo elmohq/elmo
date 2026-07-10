@@ -11,10 +11,6 @@ import type {
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
-function sanitizeForJson(obj: unknown): unknown {
-	return JSON.parse(JSON.stringify(obj));
-}
-
 function getOpenAIResponsesModel(model: string) {
 	const provider = process.env.OPENAI_API_KEY
 		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -37,22 +33,35 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
 	});
 
-	const responseBody = result.response?.body as any;
+	// The AI SDK doesn't populate result.response.body for the Responses API, so
+	// rebuild the raw output from the parsed result (text + web-search sources)
+	// in the "output" shape the OpenAI extractors expect.
+	const annotations = (result.sources ?? [])
+		.filter((s: any) => s.sourceType === "url" && s.url)
+		.map((s: any) => ({ type: "url_citation", url: s.url, title: s.title }));
+	const rawOutput = {
+		output: [
+			{
+				type: "message",
+				content: [{ type: "output_text", text: result.text, annotations }],
+			},
+		],
+	};
 
+	// Search queries, when the model ran web search. The SDK doesn't reliably
+	// surface the raw query, so fall back to "unavailable" (a soft signal).
 	const webQueries: string[] = [];
-	if (responseBody?.output) {
-		for (const outputItem of responseBody.output) {
-			if (outputItem.type === "web_search_call" && outputItem.action?.query) {
-				webQueries.push(outputItem.action.query);
-			}
-		}
+	for (const part of result.content ?? []) {
+		const q = (part as any)?.input?.query ?? (part as any)?.action?.query;
+		if (typeof q === "string") webQueries.push(q);
 	}
+	if (options?.webSearch && webQueries.length === 0) webQueries.push("unavailable");
 
 	return {
-		rawOutput: sanitizeForJson(responseBody),
+		rawOutput,
 		webQueries,
-		textContent: extractTextFromOpenAI(responseBody),
-		citations: extractCitationsFromOpenAI(responseBody),
+		textContent: extractTextFromOpenAI(rawOutput),
+		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
 	};
 }
