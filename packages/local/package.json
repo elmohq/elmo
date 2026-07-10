@@ -1,6 +1,6 @@
 {
   "name": "@workspace/local",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "private": true,
   "license": "MIT",
   "main": "./src/index.ts",
