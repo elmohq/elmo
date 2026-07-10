@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
@@ -9,6 +10,14 @@ import boss from "../boss";
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
 }
+
+// A prompt counts as overdue for alerting only once it's more than this far past
+// its cadence (or, if it has never run, this long after being created) — a grace
+// window so normal jitter and freshly-created prompts don't trip it.
+const OVERDUE_ALERT_GRACE_MS = 30 * 60 * 1000;
+// Don't re-emit the Sentry error more often than this while an outage persists.
+const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
+let lastOverdueAlertMs = 0;
 
 /**
  * Minimum time since a prompt's last run before maintenance will expedite its
@@ -97,6 +106,14 @@ async function runMaintenanceCheck(): Promise<void> {
 	const now = Date.now();
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
 	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
+
+	reportOverduePrompts({
+		prompts: enabledPrompts,
+		brandDelayHours: brandDelayMap,
+		defaultDelayHours,
+		lastRunsMap,
+		now,
+	});
 
 	for (const prompt of enabledPrompts) {
 		const pendingJob = pendingJobMap.get(prompt.id);
@@ -211,6 +228,46 @@ async function runMaintenanceCheck(): Promise<void> {
 			`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
 		);
 	}
+}
+
+/**
+ * Report to Sentry (as an error, so it pages) when enabled prompts are overdue —
+ * i.e. haven't produced a run in more than their cadence plus a grace window, or
+ * have never run. Throttled in-process so a sustained outage doesn't emit a new
+ * event on every maintenance tick.
+ */
+function reportOverduePrompts(input: {
+	prompts: { id: string; brandId: string; createdAt: Date }[];
+	brandDelayHours: Record<string, number>;
+	defaultDelayHours: number;
+	lastRunsMap: Record<string, Record<string, Date>>;
+	now: number;
+}): void {
+	const { prompts: enabled, brandDelayHours, defaultDelayHours, lastRunsMap, now } = input;
+
+	let overduePrompts = 0;
+	for (const prompt of enabled) {
+		const cadenceMs = (brandDelayHours[prompt.brandId] ?? defaultDelayHours) * 60 * 60 * 1000;
+		const runs = lastRunsMap[prompt.id];
+		const runTimes = runs ? Object.values(runs).map((d) => new Date(d).getTime()) : [];
+		const overdue =
+			runTimes.length === 0
+				? now - new Date(prompt.createdAt).getTime() > OVERDUE_ALERT_GRACE_MS
+				: now - Math.max(...runTimes) > cadenceMs + OVERDUE_ALERT_GRACE_MS;
+		if (overdue) overduePrompts++;
+	}
+
+	if (overduePrompts === 0) return;
+	if (now - lastOverdueAlertMs < OVERDUE_ALERT_THROTTLE_MS) return;
+	lastOverdueAlertMs = now;
+
+	console.warn(`[schedule-maintenance] ${overduePrompts} prompt(s) overdue by >30m — reporting to Sentry`);
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "overdue-prompts");
+		scope.setFingerprint(["scheduler-overdue-prompts"]);
+		Sentry.captureMessage(`Scheduler: ${overduePrompts} prompt(s) overdue by >30m`, "error");
+	});
 }
 
 /**
