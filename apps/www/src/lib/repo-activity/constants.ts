@@ -5,9 +5,9 @@ import { DEFAULT_CHART_COLORS } from "@workspace/config/constants";
 export const REPO = "elmohq/elmo";
 
 /**
- * Snapshot lifetime: drives both the Upstash freshness window and the response
- * `Cache-Control` max-age, so GitHub's Camo image proxy refreshes the README at
- * the same cadence we recompute the data (instead of holding a stale copy).
+ * Response `Cache-Control` max-age: how often GitHub's Camo image proxy revalidates
+ * the README image. A Vercel cron refreshes the underlying data on its own cadence,
+ * so this only controls how promptly Camo picks up a newer snapshot.
  */
 export const CACHE_TTL_SECONDS = 5 * 60;
 
