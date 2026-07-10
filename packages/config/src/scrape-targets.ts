@@ -93,7 +93,7 @@ export const STATUS_TARGETS = [
 	"deepseek:openrouter:deepseek/deepseek-v3.2",
 	"grok:openrouter:x-ai/grok-4.5",
 	"grok:openrouter:x-ai/grok-4.5:online",
-	"mistral:openrouter:mistralai/mistral-medium",
+	"mistral:openrouter:mistralai/mistral-medium-3.1",
 	"mistral:mistral-api:mistral-medium-latest",
 	"mistral:mistral-api:mistral-medium-latest:online",
 ];
