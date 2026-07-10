@@ -1,7 +1,8 @@
+import * as Sentry from "@sentry/node";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
@@ -9,6 +10,14 @@ import boss from "../boss";
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
 }
+
+// A prompt counts as overdue for alerting only once it's more than this far past
+// its cadence (or, if it has never run, this long after being created) — a grace
+// window so normal jitter and freshly-created prompts don't trip it.
+const OVERDUE_ALERT_GRACE_MS = 30 * 60 * 1000;
+// Don't re-emit the Sentry error more often than this while an outage persists.
+const OVERDUE_ALERT_THROTTLE_MS = 30 * 60 * 1000;
+let lastOverdueAlertMs = 0;
 
 /**
  * Minimum time since a prompt's last run before maintenance will expedite its
@@ -73,6 +82,13 @@ async function runMaintenanceCheck(): Promise<void> {
 	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 	const modelNames = allModels.map((cfg) => cfg.model);
 
+	// Models each brand actually runs (respects brand.enabledModels), used by the
+	// overdue alert so a target a brand doesn't run can't count as "overdue".
+	const brandModelsMap: Record<string, string[]> = {};
+	for (const brand of enabledBrands) {
+		brandModelsMap[brand.id] = selectTargetsForBrand(allModels, brand.enabledModels).map((c) => c.model);
+	}
+
 	// Get last runs per prompt per model (matches dashboard overdue logic)
 	const lastRunsQuery = await db
 		.select({
@@ -97,6 +113,15 @@ async function runMaintenanceCheck(): Promise<void> {
 	const now = Date.now();
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
 	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
+
+	reportOverduePrompts({
+		prompts: enabledPrompts,
+		brandModels: brandModelsMap,
+		brandDelayHours: brandDelayMap,
+		defaultDelayHours,
+		lastRunsMap,
+		now,
+	});
 
 	for (const prompt of enabledPrompts) {
 		const pendingJob = pendingJobMap.get(prompt.id);
@@ -211,6 +236,59 @@ async function runMaintenanceCheck(): Promise<void> {
 			`[schedule-maintenance] Scheduled ${successCount} new jobs${failCount > 0 ? ` (${failCount} failed)` : ""}`,
 		);
 	}
+}
+
+/**
+ * Report to Sentry (as an error, so it pages) when any enabled prompt is overdue
+ * — >30m past its cadence, or never run — for a model its brand actually runs.
+ * This is the signal the expedite throttle deliberately suppresses: the re-fire
+ * storm stops, but a stalled provider still needs a human. Throttled in-process
+ * so a sustained outage doesn't emit a new event on every maintenance tick.
+ */
+function reportOverduePrompts(input: {
+	prompts: { id: string; brandId: string; createdAt: Date }[];
+	brandModels: Record<string, string[]>;
+	brandDelayHours: Record<string, number>;
+	defaultDelayHours: number;
+	lastRunsMap: Record<string, Record<string, Date>>;
+	now: number;
+}): void {
+	const { prompts: enabled, brandModels, brandDelayHours, defaultDelayHours, lastRunsMap, now } = input;
+
+	let overduePrompts = 0;
+	const overdueByModel: Record<string, number> = {};
+
+	for (const prompt of enabled) {
+		const cadenceMs = (brandDelayHours[prompt.brandId] ?? defaultDelayHours) * 60 * 60 * 1000;
+		const lastRuns = lastRunsMap[prompt.id] || {};
+		let promptOverdue = false;
+
+		for (const model of brandModels[prompt.brandId] ?? []) {
+			const lastRunAt = lastRuns[model];
+			const overdue = lastRunAt
+				? now - new Date(lastRunAt).getTime() > cadenceMs + OVERDUE_ALERT_GRACE_MS
+				: now - new Date(prompt.createdAt).getTime() > OVERDUE_ALERT_GRACE_MS;
+			if (overdue) {
+				promptOverdue = true;
+				overdueByModel[model] = (overdueByModel[model] ?? 0) + 1;
+			}
+		}
+
+		if (promptOverdue) overduePrompts++;
+	}
+
+	if (overduePrompts === 0) return;
+	if (now - lastOverdueAlertMs < OVERDUE_ALERT_THROTTLE_MS) return;
+	lastOverdueAlertMs = now;
+
+	console.warn(`[schedule-maintenance] ${overduePrompts} prompt(s) overdue by >30m — reporting to Sentry`);
+	Sentry.withScope((scope) => {
+		scope.setLevel("error");
+		scope.setTag("scheduler", "overdue-prompts");
+		scope.setFingerprint(["scheduler-overdue-prompts"]);
+		scope.setContext("overdue", { overduePrompts, byModel: overdueByModel });
+		Sentry.captureMessage(`Scheduler: ${overduePrompts} prompt(s) overdue by >30m`, "error");
+	});
 }
 
 /**
