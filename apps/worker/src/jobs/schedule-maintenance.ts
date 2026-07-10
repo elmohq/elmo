@@ -11,6 +11,15 @@ export interface ScheduleMaintenanceData {
 }
 
 /**
+ * Minimum time since a prompt's last run before maintenance will expedite its
+ * next job again. Without it, a target that never records a run (e.g. a
+ * consistently-failing provider) keeps every prompt perpetually "overdue", so
+ * maintenance re-fires it every tick — turning one broken provider into a
+ * fleet-wide run/cost storm. Mirrors the 1h throttle on the job-creation path.
+ */
+const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
+
+/**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
  * This is a self-healing mechanism that catches any prompts that fell through
  * the cracks (e.g., due to worker crashes, failed jobs, etc.).
@@ -119,6 +128,14 @@ async function runMaintenanceCheck(): Promise<void> {
 		if (!isOverdue) continue;
 
 		if (pendingJob && pendingJob.state === "created") {
+			// Throttle: if the prompt ran within the window it isn't really stalled,
+			// so don't drag its next job forward again. A never-recording target
+			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
+			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
+			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
+			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
+				continue;
+			}
 			// There's a future job scheduled - expedite it to run now
 			jobsToExpedite.push(pendingJob.jobId);
 		} else {
