@@ -15,6 +15,7 @@ import {
 } from "@/lib/postgres-read";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { getModelOverdueStatus } from "@workspace/lib/overdue";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
 import { parseScrapeTargets } from "@workspace/lib/providers";
@@ -604,23 +605,15 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 			for (const model of modelList) {
 				const lastRunAt = lastRuns[model] || null;
-				let isOverdue = false;
-				let overdueByMs: number | null = null;
-
-				if (prompt.enabled) {
-					if (lastRunAt) {
-						const timeSinceRun = now - new Date(lastRunAt).getTime();
-						if (timeSinceRun > runFrequencyMs) {
-							isOverdue = true;
-							overdueByMs = timeSinceRun - runFrequencyMs;
-							anyOverdue = true;
-						}
-					} else {
-						isOverdue = true;
-						anyOverdue = true;
-					}
-				}
-
+				const { isOverdue, overdueByMs } = prompt.enabled
+					? getModelOverdueStatus({
+							lastRunAt,
+							promptCreatedAt: prompt.createdAt,
+							runFrequencyMs,
+							now,
+						})
+					: { isOverdue: false, overdueByMs: null };
+				if (isOverdue) anyOverdue = true;
 				lastRunsByModel[model] = { lastRunAt, isOverdue, overdueByMs };
 			}
 
