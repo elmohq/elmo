@@ -227,6 +227,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Comma-separated domains added as default brands.",
 	},
 	{
+		name: "CLOUD_SIGNUP_ALLOWLIST",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Comma-separated allowlist gating cloud self-serve signup. Entries are exact emails or '@domain' suffixes; '*' opens it to everyone. Empty denies all signups (cloud fails closed).",
+	},
+	{
 		name: "ENVIRONMENT",
 		scope: "server",
 		requiredBy: "optional",

@@ -66,6 +66,7 @@ declare global {
 			readonly ADMIN_AUTH0_SUB?: string;
 			readonly ADMIN_API_KEYS?: string;
 			readonly DEFAULT_BRAND_DOMAINS?: string;
+			readonly CLOUD_SIGNUP_ALLOWLIST?: string;
 			readonly ENVIRONMENT?: string;
 			readonly DBOS_SYSTEM_DATABASE_URL?: string;
 			readonly SENTRY_DSN?: string;

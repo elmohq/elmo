@@ -24,6 +24,7 @@ import {
 	evaluateRequireAdmin,
 	evaluateRequireCanCreateBrands,
 	evaluateRequireOrgAccess,
+	evaluateSignupAllowed,
 	type RequestInfo,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
@@ -556,6 +557,58 @@ describe("evaluateApiKeyAuth", () => {
 	it("allows any of the configured keys", () => {
 		expect(evaluateApiKeyAuth("Bearer key-2", keys)).toBe("allow");
 		expect(evaluateApiKeyAuth("Bearer key-3", keys)).toBe("allow");
+	});
+});
+
+// ============================================================================
+// 4b. Signup Allowlist (cloud invite-only gate)
+// ============================================================================
+
+describe("evaluateSignupAllowed", () => {
+	it("denies everyone when the allowlist is empty (fails closed)", () => {
+		expect(evaluateSignupAllowed("anyone@example.com", [])).toBe("deny");
+	});
+
+	it("allows an exact email match", () => {
+		expect(evaluateSignupAllowed("alice@partner.com", ["alice@partner.com"])).toBe("allow");
+	});
+
+	it("denies an address that is not listed", () => {
+		expect(evaluateSignupAllowed("bob@partner.com", ["alice@partner.com"])).toBe("deny");
+	});
+
+	it("allows any address at an allowed domain", () => {
+		expect(evaluateSignupAllowed("anyone@elmohq.com", ["@elmohq.com"])).toBe("allow");
+		expect(evaluateSignupAllowed("someone.else@elmohq.com", ["@elmohq.com"])).toBe("allow");
+	});
+
+	it("denies an address at a domain that is not listed", () => {
+		expect(evaluateSignupAllowed("anyone@gmail.com", ["@elmohq.com"])).toBe("deny");
+	});
+
+	it("is case-insensitive on both the email and the entries", () => {
+		expect(evaluateSignupAllowed("Alice@Elmohq.com", ["@ELMOHQ.COM"])).toBe("allow");
+		expect(evaluateSignupAllowed("BOB@Partner.com", ["bob@partner.com"])).toBe("allow");
+	});
+
+	it("does not let a domain entry match a lookalike domain", () => {
+		expect(evaluateSignupAllowed("x@evil-elmohq.com", ["@elmohq.com"])).toBe("deny");
+		expect(evaluateSignupAllowed("x@elmohq.com.evil.com", ["@elmohq.com"])).toBe("deny");
+	});
+
+	it("opens signup to everyone when '*' is present", () => {
+		expect(evaluateSignupAllowed("anyone@anywhere.com", ["*"])).toBe("allow");
+		expect(evaluateSignupAllowed("anyone@anywhere.com", ["@elmohq.com", "*"])).toBe("allow");
+	});
+
+	it("ignores blank and whitespace-only entries", () => {
+		expect(evaluateSignupAllowed("a@b.com", ["", "  ", "a@b.com"])).toBe("allow");
+		expect(evaluateSignupAllowed("a@b.com", ["", "  "])).toBe("deny");
+	});
+
+	it("denies a malformed email with no domain unless listed exactly", () => {
+		expect(evaluateSignupAllowed("not-an-email", ["@elmohq.com"])).toBe("deny");
+		expect(evaluateSignupAllowed("not-an-email", ["not-an-email"])).toBe("allow");
 	});
 });
 
