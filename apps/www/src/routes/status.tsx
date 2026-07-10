@@ -85,6 +85,32 @@ function formatProvider(provider: string) {
 	return names[provider] || provider;
 }
 
+// The three first-party API providers collapse into one "Direct API" filter.
+function providerCategory(provider: string) {
+	return provider === "openai-api" ||
+		provider === "anthropic-api" ||
+		provider === "mistral-api"
+		? "direct-api"
+		: provider;
+}
+
+const PROVIDER_FILTER_ORDER = [
+	"direct-api",
+	"openrouter",
+	"olostep",
+	"brightdata",
+	"oxylabs",
+	"dataforseo",
+];
+const PROVIDER_FILTER_LABELS: Record<string, string> = {
+	"direct-api": "Direct API",
+	openrouter: "OpenRouter",
+	olostep: "Olostep",
+	brightdata: "BrightData",
+	oxylabs: "Oxylabs",
+	dataforseo: "DataForSEO",
+};
+
 function formatLatency(ms: number) {
 	if (ms < 1000) return `${ms}ms`;
 	if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -139,42 +165,61 @@ function UptimeBadge({ entries }: { entries: StatusEntry[] }) {
 }
 
 function UptimeBar({ entries }: { entries: StatusEntry[] }) {
+	const [hovered, setHovered] = useState<number | null>(null);
+	const [pos, setPos] = useState({ x: 0, y: 0 });
 	const deduped = dedupeEntries(entries);
 	if (deduped.length === 0) return null;
 
-	// Show last 7 days as a horizontal bar of pass/fail dots
-	const now = Date.now();
-	const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-
-	// Bucket into 6-hour windows (28 buckets for 7 days)
-	// Track both the latest status and whether there was a mix of pass/fail
-	const buckets: { latest: "pass" | "fail" | "none"; hadFail: boolean }[] =
-		Array.from({ length: 28 }, () => ({ latest: "none", hadFail: false }));
-	for (const entry of deduped) {
-		const t = new Date(entry.ts).getTime();
-		if (t < sevenDaysAgo) continue;
-		const idx = Math.floor(((t - sevenDaysAgo) / (7 * 24 * 60 * 60 * 1000)) * 28);
-		const bi = Math.min(idx, 27);
-		if (entry.status === "fail") buckets[bi].hadFail = true;
-		buckets[bi].latest = entry.status;
-	}
+	// One square per run, oldest to newest, colored by that run's status. A
+	// manual re-run just appends another square; a missed run leaves no gap.
+	const active = hovered !== null ? deduped[hovered] : null;
 
 	return (
 		<div className="flex gap-0.5">
-			{buckets.map((b, i) => (
+			{deduped.map((entry, i) => (
 				<div
-					key={i}
+					key={entry.ts}
+					onMouseEnter={(e) => {
+						const r = e.currentTarget.getBoundingClientRect();
+						setPos({ x: r.left + r.width / 2, y: r.top });
+						setHovered(i);
+					}}
+					onMouseLeave={() => setHovered(null)}
 					className={`h-6 flex-1 rounded-sm ${
-						b.latest === "none"
-							? "bg-zinc-100"
-							: b.latest === "fail"
-								? "bg-red-500"
-								: b.hadFail
-									? "bg-orange-400"
-									: "bg-green-500"
+						entry.status === "fail" ? "bg-red-500" : "bg-green-500"
 					}`}
 				/>
 			))}
+			{active &&
+				createPortal(
+					<div
+						className="pointer-events-none fixed z-50 rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-950 shadow-lg"
+						style={{
+							left: pos.x,
+							top: pos.y,
+							transform: "translate(-50%, calc(-100% - 6px))",
+						}}
+					>
+						<div className="font-medium whitespace-nowrap">
+							{new Date(active.ts).toLocaleString(undefined, {
+								month: "short",
+								day: "numeric",
+								hour: "numeric",
+								minute: "2-digit",
+							})}
+						</div>
+						<div className="mt-0.5 text-zinc-600">
+							{active.status === "fail" ? "Failing" : "Operational"}
+							{` · ${formatLatency(active.latency)}`}
+						</div>
+						{active.status === "fail" && active.error && (
+							<div className="mt-0.5 max-w-[16rem] text-red-500">
+								{active.error.slice(0, 120)}
+							</div>
+						)}
+					</div>,
+					document.body,
+				)}
 		</div>
 	);
 }
@@ -183,9 +228,16 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	// Merge all targets into a time-series chart
 	// Bucket by ~6 hours for a clean chart
 	const allTimestamps = new Set<string>();
+	const seriesMeta: Record<string, { modelLabel: string; providerLabel: string }> = {};
 	const targetNames = data.map((d) => {
 		const { model, provider } = parseTarget(d.target);
-		return `${formatModel(model)} (${formatProvider(provider)})`;
+		const name = `${formatModel(model)} (${formatProvider(provider)})`;
+		if (!seriesMeta[name])
+			seriesMeta[name] = {
+				modelLabel: formatModel(model),
+				providerLabel: formatProvider(provider),
+			};
+		return name;
 	});
 
 	// Build chart data: each row is a time bucket, columns are targets
@@ -230,7 +282,7 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 	if (chartData.length === 0) {
 		return (
 			<div className="py-12 text-center text-sm text-zinc-600">
-				No latency data available yet. Data will appear after the first scheduled run.
+				No latency data for the current selection.
 			</div>
 		);
 	}
@@ -261,16 +313,50 @@ function LatencyChart({ data }: { data: TargetStatus[] }) {
 				<ChartTooltip
 					content={({ active, payload, label }: any) => {
 						if (!active || !payload?.length) return null;
-						const sorted = [...payload].sort((a: any, b: any) => (b.value ?? 0) - (a.value ?? 0));
+						// Group the hovered bucket by model; within each model list
+						// providers fastest-first. Model groups follow the same order
+						// as the page's sections (alphabetical).
+						const groups: Record<
+							string,
+							{ providerLabel: string; color: string; value: number }[]
+						> = {};
+						for (const item of payload as any[]) {
+							if (item.value == null) continue;
+							const meta = seriesMeta[item.name] ?? {
+								modelLabel: item.name,
+								providerLabel: item.name,
+							};
+							(groups[meta.modelLabel] ??= []).push({
+								providerLabel: meta.providerLabel,
+								color: item.color,
+								value: item.value as number,
+							});
+						}
+						const ordered = Object.entries(groups)
+							.map(([modelLabel, rows]) => ({
+								modelLabel,
+								rows: rows.sort((a, b) => a.value - b.value),
+							}))
+							.sort((a, b) => a.modelLabel.localeCompare(b.modelLabel));
+						if (ordered.length === 0) return null;
 						return (
-							<div className="border-border/50 bg-background min-w-[10rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
+							<div className="border-border/50 bg-background min-w-[11rem] rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 								<div className="font-medium mb-1.5">{label}</div>
-								<div className="grid gap-1.5">
-									{sorted.map((item: any) => (
-										<div key={item.dataKey} className="flex items-center gap-2">
-											<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
-											<span className="flex-1 text-zinc-600">{item.name}</span>
-											<span className="font-mono font-medium tabular-nums">{formatLatency(item.value as number)}</span>
+								<div className="grid gap-2">
+									{ordered.map((group) => (
+										<div key={group.modelLabel}>
+											<div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+												{group.modelLabel}
+											</div>
+											<div className="grid gap-1">
+												{group.rows.map((row) => (
+													<div key={row.providerLabel} className="flex items-center gap-2">
+														<div className="size-2.5 shrink-0 rounded-[2px]" style={{ backgroundColor: row.color }} />
+														<span className="flex-1 text-zinc-600">{row.providerLabel}</span>
+														<span className="font-mono font-medium tabular-nums">{formatLatency(row.value)}</span>
+													</div>
+												))}
+											</div>
 										</div>
 									))}
 								</div>
@@ -497,12 +583,95 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
+function filterPillClass(active: boolean) {
+	return `rounded-full border px-3 py-1 text-xs transition-colors ${
+		active
+			? "border-zinc-900 bg-zinc-900 text-white"
+			: "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+	}`;
+}
+
+function FilterRow({
+	label,
+	options,
+	selected,
+	onToggle,
+	onClear,
+}: {
+	label: string;
+	options: { value: string; label: string }[];
+	selected: Set<string>;
+	onToggle: (value: string) => void;
+	onClear: () => void;
+}) {
+	return (
+		<div className="flex flex-wrap items-center gap-1.5">
+			<span className="w-20 shrink-0 text-xs font-medium text-zinc-500">
+				{label}
+			</span>
+			<button
+				type="button"
+				onClick={onClear}
+				className={filterPillClass(selected.size === 0)}
+			>
+				All
+			</button>
+			{options.map((o) => (
+				<button
+					key={o.value}
+					type="button"
+					onClick={() => onToggle(o.value)}
+					className={filterPillClass(selected.has(o.value))}
+				>
+					{o.label}
+				</button>
+			))}
+		</div>
+	);
+}
+
 function StatusPage() {
 	const data = Route.useLoaderData();
-	const groups = groupByModel(data);
+	const [selectedProviders, setSelectedProviders] = useState<Set<string>>(
+		new Set(),
+	);
+	const [selectedModels, setSelectedModels] = useState<Set<string>>(new Set());
 
-	// Overall stats
-	const allLatest = data
+	const toggleProvider = (value: string) =>
+		setSelectedProviders((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) next.delete(value);
+			else next.add(value);
+			return next;
+		});
+	const toggleModel = (value: string) =>
+		setSelectedModels((prev) => {
+			const next = new Set(prev);
+			if (next.has(value)) next.delete(value);
+			else next.add(value);
+			return next;
+		});
+
+	const providerOptions = PROVIDER_FILTER_ORDER.filter((c) =>
+		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
+	).map((c) => ({ value: c, label: PROVIDER_FILTER_LABELS[c] ?? c }));
+	const modelOptions = [...new Set(data.map((d) => parseTarget(d.target).model))]
+		.sort((a, b) => formatModel(a).localeCompare(formatModel(b)))
+		.map((m) => ({ value: m, label: formatModel(m) }));
+
+	const filteredData = data.filter((d) => {
+		const { model, provider } = parseTarget(d.target);
+		const providerOk =
+			selectedProviders.size === 0 ||
+			selectedProviders.has(providerCategory(provider));
+		const modelOk = selectedModels.size === 0 || selectedModels.has(model);
+		return providerOk && modelOk;
+	});
+
+	const groups = groupByModel(filteredData);
+
+	// Overall stats (scoped to the active filters)
+	const allLatest = filteredData
 		.map((d) => getLatest(dedupeEntries(d.entries)))
 		.filter((e): e is StatusEntry => e !== null);
 	const allOperational = allLatest.length > 0 && allLatest.every((e) => e.status === "pass");
@@ -523,6 +692,24 @@ function StatusPage() {
 						automatically 4 times per day. Latencies shown are for individual
 						prompt evaluations; batches can vary significantly.
 					</p>
+				</div>
+
+				{/* Filters */}
+				<div className="mb-8 space-y-2">
+					<FilterRow
+						label="Provider"
+						options={providerOptions}
+						selected={selectedProviders}
+						onToggle={toggleProvider}
+						onClear={() => setSelectedProviders(new Set())}
+					/>
+					<FilterRow
+						label="Model"
+						options={modelOptions}
+						selected={selectedModels}
+						onToggle={toggleModel}
+						onClear={() => setSelectedModels(new Set())}
+					/>
 				</div>
 
 				{/* Overall status banner */}
@@ -559,6 +746,11 @@ function StatusPage() {
 				</Card>
 
 				{/* Provider status rows grouped by model */}
+				{filteredData.length === 0 && (
+					<p className="rounded-md border border-zinc-200 bg-white p-4 text-sm text-zinc-500">
+						No providers match the selected filters.
+					</p>
+				)}
 				<div className="space-y-8">
 					{Object.entries(groups)
 						.sort(([a], [b]) => a.localeCompare(b))
@@ -580,7 +772,7 @@ function StatusPage() {
 						<CardTitle>Evaluation Latency</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<LatencyChart data={data} />
+						<LatencyChart data={filteredData} />
 					</CardContent>
 				</Card>
 

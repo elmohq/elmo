@@ -55,3 +55,45 @@ export function formatScrapeTarget(config: ModelConfig): string {
 	if (config.webSearch) parts.push("online");
 	return parts.join(":");
 }
+
+/**
+ * The provider:model targets shown on the public status page and exercised by
+ * the scheduled test-providers workflow. Both the page and the workflow read
+ * this one list so the "what we display" and "what we test" sets can't drift.
+ */
+export const STATUS_TARGETS = [
+	"chatgpt:olostep:online",
+	"google-ai-mode:olostep:online",
+	"google-ai-overview:olostep:online",
+	"gemini:olostep:online",
+	"copilot:olostep:online",
+	"perplexity:olostep:online",
+	"chatgpt:brightdata",
+	"chatgpt:brightdata:online",
+	"google-ai-mode:brightdata:online",
+	"gemini:brightdata:online",
+	"perplexity:brightdata:online",
+	"copilot:brightdata:online",
+	"chatgpt:oxylabs",
+	"chatgpt:oxylabs:online",
+	"google-ai-mode:oxylabs:online",
+	"perplexity:oxylabs:online",
+	"google-ai-mode:dataforseo:online",
+	"chatgpt:dataforseo:online",
+	"perplexity:dataforseo:online",
+	"gemini:dataforseo:online",
+	"chatgpt:openai-api:gpt-5-mini",
+	"chatgpt:openai-api:gpt-5-mini:online",
+	"claude:anthropic-api:claude-sonnet-4-6",
+	"claude:anthropic-api:claude-sonnet-4-6:online",
+	"claude:openrouter:anthropic/claude-sonnet-4.6",
+	"claude:openrouter:anthropic/claude-sonnet-4.6:online",
+	"chatgpt:openrouter:openai/gpt-5-mini",
+	"chatgpt:openrouter:openai/gpt-5-mini:online",
+	"deepseek:openrouter:deepseek/deepseek-v3.2",
+	"grok:openrouter:x-ai/grok-4.5",
+	"grok:openrouter:x-ai/grok-4.5:online",
+	"mistral:openrouter:mistralai/mistral-medium",
+	"mistral:mistral-api:mistral-medium-latest",
+	"mistral:mistral-api:mistral-medium-latest:online",
+];
