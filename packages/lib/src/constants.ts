@@ -1,4 +1,5 @@
-// Constants for prompt processing
+// Default runs per target per firing when a SCRAPE_TARGETS entry carries no
+// `xN` option (see providers/run-policy.ts); also the report sampling count.
 export const RUNS_PER_PROMPT = 5;
 
 // Fallback cadence (hours) when the DEFAULT_DELAY_HOURS env var is unset or invalid.

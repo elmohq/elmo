@@ -19,8 +19,27 @@ export type {
 } from "./types";
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
-export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export {
+	parseScrapeTargets,
+	validateScrapeTargets,
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	ANTHROPIC_WEB_SEARCH_MAX_USES,
+	OPENAI_WEB_SEARCH_MAX_TOOL_CALLS,
+	OPENROUTER_WEB_MAX_RESULTS,
+} from "./config";
 export { selectTargetsForBrand } from "./runner";
+export {
+	CLOUD_STANDARD_RUNS_PER_DAY,
+	CLOUD_ANTHROPIC_RUNS_PER_DAY,
+	CLOUD_MAX_RUNS_PER_DAY,
+	CLOUD_CADENCE_FLOOR_HOURS,
+	lastRunKey,
+	minCadenceHours,
+	parseOrgRunPolicyOverrides,
+	resolveTargetRunPolicy,
+	selectDueTargets,
+} from "./run-policy";
+export type { OrgRunPolicyOverrides, TargetRunPolicy } from "./run-policy";
 
 const providerMap: Record<string, Provider> = {
 	olostep,
