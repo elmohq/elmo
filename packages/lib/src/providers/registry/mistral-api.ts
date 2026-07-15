@@ -7,6 +7,7 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 import type { Citation } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -90,10 +91,14 @@ export const mistralApi: Provider = {
 		const version = options?.version ?? DEFAULT_MODEL;
 
 		if (options?.webSearch) {
+			// Mistral's web_search connector has no per-call search-count knob, so the
+			// token cap is the only budget bound (cloud does not offer Mistral on
+			// standard plans).
 			const data = await mistralPost("/v1/conversations", {
 				model: version,
 				inputs: prompt,
 				tools: [{ type: "web_search" }],
+				completion_args: { max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"] },
 			});
 			const parsed = parseConversationsResponse(data);
 			return { ...parsed, rawOutput: data, modelVersion: data?.model ?? version };
@@ -102,6 +107,7 @@ export const mistralApi: Provider = {
 		const data = await mistralPost("/v1/chat/completions", {
 			model: version,
 			messages: [{ role: "user", content: prompt }],
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"],
 		});
 		return {
 			rawOutput: data,
