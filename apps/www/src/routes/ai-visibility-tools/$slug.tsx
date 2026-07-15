@@ -2,7 +2,15 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { CompetitorComparison } from "@/components/competitor-comparison";
 import { Footer } from "@/components/footer";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import {
+	ogMeta,
+	canonicalUrl,
+	breadcrumbJsonLd,
+	faqJsonLd,
+	comparisonJsonLd,
+	softwareApplicationJsonLd,
+	ELMO_LISTING,
+} from "@/lib/seo";
 import {
 	competitors,
 	getComparisonSlug,
@@ -38,6 +46,11 @@ export const Route = createFileRoute("/ai-visibility-tools/$slug")({
 					{ name: `Elmo vs ${competitor.name}`, path },
 				]),
 				faqJsonLd(getComparisonFaqs(competitor)),
+				comparisonJsonLd([
+					ELMO_LISTING,
+					{ name: competitor.name, url: competitor.url },
+				]),
+				softwareApplicationJsonLd(),
 			],
 		};
 	},

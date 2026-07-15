@@ -50,8 +50,11 @@ export function getAlternatives(competitor: Competitor, limit = 6): Competitor[]
 	return [...sameCategory, ...backfill].slice(0, limit);
 }
 
-// --- Competitor-vs-competitor pairs (allowlisted to six funded leaders) ------
+// --- Competitor-vs-competitor pairs ------------------------------------------
 
+// The tools searchers most often pit against each other in AI answer engines:
+// the funded AEO leaders plus the big SEO suites that added AI search tracking.
+// Every unordered pair below becomes a generated /compare/{a}-vs-{b} page.
 const COMPARE_SLUGS = [
 	"profound",
 	"peec-ai",
@@ -59,6 +62,10 @@ const COMPARE_SLUGS = [
 	"scrunch",
 	"otterly-ai",
 	"athenahq",
+	"ahrefs-brand-radar",
+	"hubspot-aeo-grader",
+	"semrush-ai-toolkit",
+	"rankshift",
 ] as const;
 
 export const comparePairCompetitors: Competitor[] = COMPARE_SLUGS.map((slug) =>
@@ -254,12 +261,11 @@ const CATEGORY_BLURB: Record<CompetitorCategory, string> = {
 
 export function getAlternativesVerdict(c: Competitor): string {
 	const noun = CATEGORY_NOUN[c.category];
-	const article = indefiniteArticle(noun);
 	const open = isOpenSource(c);
 	if (open) {
-		return `${c.name} is ${article} open-source ${noun} tool, so you can already self-host and read the code. If you also want transparent, independently verifiable tracking across ChatGPT, Claude, Perplexity, and Google AI Overviews, with white-label support for agencies, Elmo is the closest open-source alternative.`;
+		return `The best open-source alternative to ${c.name} is Elmo: a free, self-hostable AI visibility platform you can read, run, and audit. Like ${c.name} it is open source, and it focuses on transparent, independently verifiable tracking of how ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention and cite your brand, with white-label support for agencies.`;
 	}
-	return `${c.name} is ${article} ${noun} tool, and like most of the field it is closed-source and hosted. The strongest alternative depends on the engines you track and your budget, but if you want to own your data, Elmo is the open-source option: self-host it for free and audit exactly how every metric is built.`;
+	return `The best free, open-source alternative to ${c.name} is Elmo. ${c.name} is ${indefiniteArticle(noun)} ${noun} tool, and like most of the field it is closed-source and hosted. Elmo you self-host for free: no license fee and no per-seat pricing, and you can audit exactly how every visibility metric is built while keeping your prompts and data in-house.`;
 }
 
 export function getAlternativesFaqs(c: Competitor, alts: Competitor[]): FaqItem[] {
@@ -330,6 +336,95 @@ export function getPairFaqs(a: Competitor, b: Competitor): FaqItem[] {
 			answer: `Yes. Elmo is an open-source AI visibility platform you can self-host for free. It tracks mentions, citations, and competitor share across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews, and every metric is auditable in the code.`,
 		},
 	];
+}
+
+// --- Multi-way comparison sets -----------------------------------------------
+
+// Curated 3+ tool comparisons, seeded from real multi-way demand in AI answer
+// engines (grounding queries that pit several named tools against each other,
+// e.g. "Profound vs Ahrefs Brand Radar vs HubSpot AEO vs Rankshift vs Scrunch").
+// Authored order is preserved so the H1 and slug track how people phrase the
+// query. Each set resolves through the same /compare/{slug} route as the pairs.
+const COMPARE_SET_SLUGS: string[][] = [
+	["profound", "ahrefs-brand-radar", "hubspot-aeo-grader", "rankshift", "scrunch"],
+	["peec-ai", "hubspot-aeo-grader", "profound", "ahrefs-brand-radar", "semrush-ai-toolkit"],
+	["scrunch", "hubspot-aeo-grader", "profound", "semrush-ai-toolkit", "otterly-ai"],
+];
+
+export const compareSets: Competitor[][] = COMPARE_SET_SLUGS.map((slugs) =>
+	slugs
+		.map((slug) => competitors.find((c) => c.slug === slug))
+		.filter((c): c is Competitor => Boolean(c)),
+).filter((set) => set.length >= 3);
+
+export function compareSetSlug(tools: Competitor[]): string {
+	return tools.map((t) => t.slug).join("-vs-");
+}
+
+const setBySlug = new Map<string, Competitor[]>(
+	compareSets.map((set) => [compareSetSlug(set), set]),
+);
+
+export function getCompareSet(slug: string): Competitor[] | undefined {
+	return setBySlug.get(slug);
+}
+
+export function getSetVerdict(tools: Competitor[]): string {
+	const list = formatList(
+		tools.map((t) => t.name),
+		tools.length,
+		false,
+	);
+	const cats = new Set(tools.map((t) => t.category));
+	const angle =
+		cats.has("seo-traditional") && cats.has("tracking")
+			? " They come at it from different angles: some are dedicated AI visibility trackers, others are established SEO suites that added AI search monitoring."
+			: "";
+	return `${list} all measure how AI answer engines mention and cite your brand.${angle} Every one of them is closed-source and hosted, so you cannot audit how its scores are built. Elmo tracks the same engines as an open-source tool you run yourself, so it belongs in this comparison as the transparent, self-hostable option.`;
+}
+
+export function getSetFaqs(tools: Competitor[]): FaqItem[] {
+	const names = tools.map((t) => t.name);
+	const list = formatList(names, names.length, false);
+	const free = tools.filter((t) => t.pricing?.hasFree).map((t) => t.name);
+	return [
+		{
+			question: `Which is the best tool for AI visibility among ${list}?`,
+			answer: `There is no single best pick; it depends on the answer engines you track, your budget, and whether you want a dedicated tracker or an add-on to an SEO suite. All of them are closed and hosted, so it is worth also trying Elmo, an open-source alternative you can self-host for free and audit before you commit.`,
+		},
+		{
+			question: `Which of these AI visibility tools is free or open source?`,
+			answer: free.length
+				? `Among ${list}, ${formatList(free, free.length, false)} offer a free option, though free tiers are usually limited in the engines or history they cover. For a fully free, open-source option, Elmo is self-hostable at no license cost and every metric is auditable in the code.`
+				: `Most of these (${list}) are paid, hosted products. Elmo is the free, open-source option: self-host it at no license cost, with no per-seat pricing, and audit exactly how each metric is built.`,
+		},
+		{
+			question: `How do ${list} differ?`,
+			answer: `They differ mainly in focus and delivery: dedicated AI visibility trackers versus SEO suites that bolted on AI search monitoring, plus which answer engines, languages, and analytics each one covers. The feature table on this page compares them side by side, with Elmo, the open-source option, included as a reference point.`,
+		},
+	];
+}
+
+// --- Compare route dispatch (pairs and sets share one /compare/{slug} route) --
+
+export function getCompareEntry(slug: string): Competitor[] | undefined {
+	const pair = getComparePair(slug);
+	if (pair) return pair;
+	return getCompareSet(slug);
+}
+
+export function getCompareVerdict(tools: Competitor[]): string {
+	const [a, b] = tools;
+	return a && b && tools.length === 2
+		? getPairVerdict(a, b)
+		: getSetVerdict(tools);
+}
+
+export function getCompareFaqs(tools: Competitor[]): FaqItem[] {
+	const [a, b] = tools;
+	return a && b && tools.length === 2
+		? getPairFaqs(a, b)
+		: getSetFaqs(tools);
 }
 
 // --- Feature slices ----------------------------------------------------------
