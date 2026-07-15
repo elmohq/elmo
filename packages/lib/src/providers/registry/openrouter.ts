@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENROUTER_WEB_MAX_RESULTS } from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -95,6 +96,8 @@ export const openrouter: Provider = {
 		};
 		// `engine: "native"` runs the underlying provider's real web-search tool
 		// (e.g. Anthropic's web_search_20250305) instead of the Exa fallback.
+		// Tracked runs (`run()` below) deliberately use the capped Exa plugin
+		// instead: recall matters more here, deterministic spend matters there.
 		if (webSearch) body.plugins = [{ id: "web", engine: "native" }];
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
@@ -124,12 +127,23 @@ export const openrouter: Provider = {
 		if (!modelSlug) {
 			throw new Error(
 				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
-				`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
+					`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
 		}
 
-		if (options?.webSearch && !modelSlug.includes(":online")) {
-			modelSlug = `${modelSlug}:online`;
+		// Web search is requested through the explicit plugin config below, never
+		// the ":online" slug alias (strip one if the configured version carries it).
+		modelSlug = modelSlug.replace(/:online$/, "");
+
+		const body: Record<string, unknown> = {
+			model: modelSlug,
+			messages: [{ role: "user", content: prompt }],
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
+		};
+		// Exa engine, not the native passthrough: fixed per-request result pricing
+		// and an explicit result cap, so per-call web spend is deterministic.
+		if (options?.webSearch) {
+			body.plugins = [{ id: "web", engine: "exa", max_results: OPENROUTER_WEB_MAX_RESULTS }];
 		}
 
 		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
@@ -145,10 +159,7 @@ export const openrouter: Provider = {
 				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 				"X-Title": "Elmo AEO",
 			},
-			body: JSON.stringify({
-				model: modelSlug,
-				messages: [{ role: "user", content: prompt }],
-			}),
+			body: JSON.stringify(body),
 		});
 
 		if (!res.ok) {
@@ -167,7 +178,7 @@ export const openrouter: Provider = {
 			textContent: extractTextFromOpenRouterResponse(data),
 			webQueries,
 			citations,
-			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			modelVersion: data?.model ?? modelSlug,
 		};
 	},
 };
