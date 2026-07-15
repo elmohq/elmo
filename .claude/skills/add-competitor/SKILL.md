@@ -50,14 +50,14 @@ Read the feature definitions in `apps/www/src/lib/competitors/types.ts` (the `FE
 
 Be conservative — only mark features as `true` if you can confirm them from the website.
 
-## 3. Fetch domain metrics
+## 3. Fetch the domain rating
 
 Extract the domain from the URL (e.g. `https://www.example.com/foo` → `example.com`). Then run:
 ```bash
-cd apps/www && node scripts/fetch-domain-metrics.mjs "<domain>"
+cd apps/www && node scripts/fetch-domain-rating.mjs "<domain>"
 ```
 
-This returns JSON with `ahrefsDR` and `ahrefsTraffic`. Use these values in the competitor entry.
+This returns JSON with `ahrefsDR`, from Ahrefs' free public API (no API key required). Use it for the competitor entry.
 
 ## 4. Generate the slug
 
@@ -99,7 +99,6 @@ Use the same code style as the existing entries. Example entry:
         "Longer 2-3 sentence description of the tool, its approach, and what makes it notable.",
     category: "tracking",
     ahrefsDR: 55,
-    ahrefsTraffic: 1234,
     status: "active",
     features: {
         multiLlmTracking: true,
@@ -148,7 +147,7 @@ pnpm exec tsc --noEmit
 
 After completing all steps, tell the user:
 - The competitor name and slug
-- The category, ahrefsDR, and ahrefsTraffic
+- The category and ahrefsDR
 - Which features you marked as true
 - Whether the screenshot uploaded successfully
 - The URL where the comparison page will be: `/ai-visibility-tools/elmo-vs-<slug>`
