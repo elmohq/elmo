@@ -1,0 +1,117 @@
+---
+title: "The Best Open-Source AEO Tools (2026)"
+description: "The best open-source AEO tools you can self-host and audit, no black box. We rank Elmo and every real open-source answer engine optimization project for 2026."
+date: "2026-07-15"
+author: ai
+metaTitle: "Best Open-Source AEO Tools (2026)"
+tags:
+  - aeo
+  - open-source
+  - tools
+  - ai-visibility
+itemList:
+  - name: Elmo
+    description: "The most complete open-source AEO platform: MIT-licensed, self-hosted, tracking mentions and citations across every major answer engine."
+  - name: OneGlanse
+    description: "MIT-licensed self-hosted tracker that captures answers from AI web interfaces, not just APIs."
+  - name: "GEO/AEO Tracker"
+    description: "MIT-licensed, local-first dashboard covering six AI platforms with your own API keys."
+  - name: Canonry
+    description: "Source-available, self-hosted agent-first AEO platform that ingests server logs to measure AI traffic."
+  - name: GetCito
+    description: "Open-source (MIT) tool centered on an AI crawlability audit of your site."
+  - name: Gego Analytics
+    description: "A minimal open-source AEO analytics project you can self-host and extend."
+faq:
+  - question: What are the best open-source AEO tools?
+    answer: "Elmo is the most complete open-source AEO tool: MIT-licensed, free to self-host, and covering ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews. Smaller projects fill out the rest of the space, including OneGlanse, GEO/AEO Tracker, GetCito, and Gego Analytics. Canonry is capable but source-available rather than fully open source today. Most are early, single-developer projects."
+  - question: Is there an open-source alternative to Profound or enterprise AEO tools?
+    answer: "Yes. Elmo is an open-source, self-hostable alternative to enterprise platforms like Profound. It tracks how AI answer engines mention and cite your brand, benchmarks competitors, and exports your data, all under the MIT license with every metric computed by code you can read. You run the infrastructure and supply your own model API keys instead of paying a subscription."
+  - question: Can I self-host an AEO tool?
+    answer: "Yes. Several open-source AEO tools are built to self-host. Elmo runs on Docker and PostgreSQL on your own infrastructure, so your prompts and visibility history never leave your environment. OneGlanse, GEO/AEO Tracker, and Canonry are self-hostable too. You bring your own LLM API keys, which carry usage costs, but there is no license fee or per-seat charge."
+  - question: Why use an open-source AI visibility tool?
+    answer: "Because you can audit it and own it. With open source, you read exactly how each visibility metric is collected and computed instead of trusting a black-box score that might land in a board report. You self-host it, so prompts and history stay on your own infrastructure, and there is nothing to migrate off if you switch. No vendor lock-in."
+---
+
+**The most complete open-source AEO tool is [Elmo](https://www.elmohq.com/): MIT-licensed, free to self-host, and auditable down to how each metric is computed.** Smaller open-source projects like OneGlanse, GEO/AEO Tracker, GetCito, and Gego Analytics exist too. Open source matters here because you can read the code, own your data, and avoid a black-box visibility score.
+
+This is a developer's list. It covers answer engine optimization tools whose source is public and that you run yourself, not free tiers of closed products. For those, see our guide to [free AI visibility tools](/blog/free-ai-visibility-tools). For the wider field of paid and hosted options, see the [best AEO tools](/blog/best-aeo-tools). And for the live directory of projects we track, see [open-source AI visibility tools](/ai-visibility-tools/category/open-source).
+
+The honest picture is that this is a thin, early space: one mature platform, a handful of small projects, and the option to script your own checks. Below is what actually exists in 2026.
+
+**Key takeaways**
+
+- Elmo is the most complete open-source answer engine optimization tool, MIT-licensed and free to self-host across ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews.
+- The rest of the field is small. OneGlanse, GEO/AEO Tracker, GetCito, and Gego Analytics are real but early, mostly single-developer projects.
+- Canonry is capable but source-available under the FSL, not fully open source until it converts to Apache 2.0.
+- Open source buys you three things a hosted tool cannot: auditable metrics, data you keep on your own infrastructure, and no vendor lock-in.
+- "Free to self-host" is not free to run. You supply the LLM API keys and the infrastructure.
+
+## Why open source matters for AEO
+
+Most AEO tools are closed and hosted. You send them your prompts, and you trust the number they hand back. Open source changes both halves of that. You can read exactly how a visibility score is built, and you can run the whole thing on hardware you control, so your prompts and history never leave your environment.
+
+For a number that might land in a board report or set a content budget, that auditability is the point. Nobody should have to take a black-box metric on faith. Owning the data matters just as much: no vendor holds your visibility history, and there is nothing to migrate off if you decide to leave. The trade is upkeep. You run the infrastructure, and you keep it current as engines change.
+
+## The best open-source AEO tools at a glance
+
+| Tool | License / open source | Self-host | What it tracks | Best for |
+|---|---|---|---|---|
+| **Elmo** | MIT, fully open source | Yes, free | Mentions and citations across ChatGPT, Claude, Perplexity, Gemini, Google AI Overviews | A complete platform you own and audit |
+| **OneGlanse** | MIT, fully open source | Yes | ChatGPT, Gemini, Perplexity, Claude, Google AI Overview | Capturing answers from AI web UIs, not just APIs |
+| **GEO/AEO Tracker** | MIT, fully open source | Yes, local-first | ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, Grok | A single-user local dashboard with your own keys |
+| **Canonry** | Source-available (FSL, Apache 2.0 later) | Yes | Gemini, ChatGPT, Claude, Perplexity, local LLMs; server-log AI traffic | Agent-first workflows and log-level attribution |
+| **GetCito** | MIT, fully open source | Yes | AI crawlability of your site | A quick read on whether AI bots can parse you |
+| **Gego Analytics** | Open source on GitHub | Yes | Basic brand mentions across models | A minimal, hackable starting point |
+
+Details and licenses reflect public information in mid-2026. Confirm current specifics in each project's repo.
+
+## Elmo
+
+[Elmo](https://www.elmohq.com/) is the most complete open-source AI visibility platform, and the reason this list has a clear top pick. It is released under the MIT license, free to self-host, and every metric is computed by code you can read. It tracks how AI answer engines mention and cite your brand across ChatGPT, Claude, Perplexity, Gemini, and Google's AI Overviews, among other engines, then turns that into a visibility score, citation analytics, brand-mention tracking, and competitor benchmarking. You can export everything through the API, and agencies can white-label it.
+
+It fits teams that want to own their AEO data outright. The self-hosted core runs on Docker and PostgreSQL. You supply your own model API keys, which carry usage costs, and there is no license fee or per-seat charge. Be clear on what it is not: Elmo does not do sentiment analysis, prompt-volume estimates, content generation, shopping-result tracking, or geographic breakdowns. It measures visibility and citations well, and leaves the content work to you. A managed cloud option is listed as coming soon, for teams that would rather not run the infrastructure.
+
+## OneGlanse
+
+[OneGlanse](https://oneglanse.com/) is an MIT-licensed, self-hosted tracker covering ChatGPT, Gemini, Perplexity, Claude, and Google AI Overview. Its distinguishing choice is how it collects answers. Instead of hitting the model APIs, it captures responses through authenticated accounts on the AI web interfaces, which is closer to what a real user sees. Data lands in a ClickHouse backend on your own infrastructure, and you bring your own API keys.
+
+It suits developers who care that the answers being scored come from the actual chat products, not the API surface, and who are comfortable standing up ClickHouse. Like most of the field, it is young, so weigh how actively it is maintained before you build on it.
+
+## GEO/AEO Tracker
+
+[GEO/AEO Tracker](https://github.com/danishashko/geo-aeo-tracker) is an MIT-licensed, local-first dashboard for watching brand visibility across six platforms: ChatGPT, Perplexity, Gemini, Copilot, Google AI Overview, and Grok. It stores everything client-side in IndexedDB, with no external database to run, and you provide your own keys for data fetching and model inference.
+
+The local-first design is the appeal. Nothing leaves your browser, setup is light, and the platform coverage is broad for a solo project. The flip side is scope. It is a single-user tool built around one person's dashboard, not a team platform, so treat it as a personal monitor rather than shared infrastructure.
+
+## Canonry
+
+[Canonry](https://github.com/AINYC/canonry) is the most ambitious of the independent projects. It is a self-hosted, agent-first AEO platform that tracks how Gemini, ChatGPT, Claude, Perplexity, and local models cite your site, ingests server logs to measure AI-driven traffic, and integrates with Google Search Console, GA4, Bing Webmaster, and Google Business Profile. A built-in agent named Aero exposes a 67-tool MCP adapter, and clients are configured declaratively in YAML.
+
+One honest caveat on the "open source" label. Canonry ships under the FSL-1.1-ALv2, a source-available license that converts to Apache 2.0 after two years. You can read and self-host the code today, but it is not OSI open source in the strict sense until that conversion. If server-log attribution and agent workflows matter to you, it is worth a look, with that license nuance understood.
+
+## GetCito
+
+[GetCito](https://getcito.com/) is an open-source AEO tool licensed under MIT, built around one sharp idea: an AI Crawlability Clinic that checks how well AI bots can reach and parse your content. The team also sells GEO playbooks and consulting. As a quick read on whether your pages are even legible to the crawlers behind AI answers, the concept is useful.
+
+The caveat is maintenance. The public repo has seen little substantive work since it launched in late 2025, and it is run by a marketing agency rather than a dedicated product team, so do not count on ongoing fixes or new engine support. Take it as a one-off crawlability check, not a platform to build on.
+
+## Gego Analytics
+
+[Gego Analytics](https://ai2hu.github.io/gego-analytics/) is an open-source AEO analytics project hosted on GitHub, offering basic AI visibility tracking for developers who want to self-host without proprietary dependencies. It handles brand-mention tracking across models and lets you export the data.
+
+It is the most minimal option here. Features are thin and it is early, so the value is as a small, hackable starting point you can read end to end and extend, rather than a finished monitor. If you want to understand the core loop by reading a compact codebase, it serves that.
+
+## Open source vs enterprise AEO software
+
+The real choice is not open source versus paid. It is who does the work and who holds the data. Enterprise AEO software like [Profound](/ai-visibility-tools/elmo-vs-profound) gives you a hosted dashboard your team can open tomorrow, managed engine coverage, and a vendor who keeps it running. You pay a subscription, usually metered by prompt or seat, and the scoring is typically a black box you cannot inspect. Your visibility history lives in their system.
+
+An open-source tool you self-host inverts that. There is no license fee, only your infrastructure and the AI provider API usage. You can audit every metric, and your prompts and history stay on your own machines. The cost moves from a subscription line to engineering time. You deploy it, you maintain it, and you own the coverage as engines change.
+
+For a regulated team, a data-sensitive brand, or an agency that wants to white-label the whole thing, transparency and ownership usually win. For a team that needs answers this afternoon and has budget instead of engineering hours, a managed platform is the pragmatic call. Open source is not a black box, and that is precisely its trade: you see everything, and you run everything.
+
+## How to choose
+
+Start with how you will use it, not a feature grid. If you want full control, auditable numbers, and no per-seat fees, a self-hosted open-source tool fits, and Elmo is the most complete one on offer. If you want the same open code with the smallest footprint, GEO/AEO Tracker's local-first design is worth a look. If your priority is server-log attribution, Canonry goes furthest, with its license caveat in mind.
+
+Then weigh coverage, maintenance, and your own capacity to run infrastructure against what a managed subscription would cost. If the honest answer is that you have no time to self-host, that is useful to know early: see the [best AEO tools](/blog/best-aeo-tools) for hosted options, or the [free AI visibility tools](/blog/free-ai-visibility-tools) guide for what a zero-budget setup can and cannot do. Whatever you pick, the job is the same. Get a reliable, repeatable read on whether AI answers cite you, from a tool you trust because you can see how it works.

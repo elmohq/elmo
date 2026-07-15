@@ -201,10 +201,11 @@ export const glossaryTerms: GlossaryTerm[] = [
 		term: "Share of voice",
 		group: "What to measure",
 		short:
-			"How often AI engines mention your brand versus competitors across a set of prompts.",
+			"The percentage of AI answers about your category in which your brand appears, measured against competitors.",
 		body: [
 			"Share of voice is the comparative metric, which is what makes it useful. A raw mention count tells you that you appeared. Share of voice tells you whether you are winning or losing the answer against specific rivals.",
-			"If an engine names a competitor in eight of ten category questions and you in three, the problem is concrete and you can prioritize it. This is usually the most actionable number in AI visibility.",
+			"There is no single formula. The two common methods are mention-count share, your mentions divided by the total across you and your competitors, and presence share, the portion of tracked prompts where your brand appears at all.",
+			"If an engine names a competitor in eight of ten category questions and you in three, the problem is concrete and you can prioritize it. This is usually the most actionable number in AI search.",
 		],
 		related: ["brand-mention", "ai-visibility", "visibility-score"],
 		seeAlso: [{ label: "AI share of voice", href: "/blog/ai-share-of-voice" }],
