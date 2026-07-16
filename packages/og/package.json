@@ -10,7 +10,7 @@
 		"./virtual": "./src/virtual.d.ts"
 	},
 	"dependencies": {
-		"@takumi-rs/helpers": "^1.8.7",
+		"@takumi-rs/helpers": "^2.0.3",
 		"@takumi-rs/wasm": "^1.8.7",
 		"@workspace/config": "workspace:*",
 		"react": "^19.2.7"
