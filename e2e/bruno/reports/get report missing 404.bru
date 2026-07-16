@@ -1,0 +1,15 @@
+meta {
+  name: get report missing 404
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports/{{missingUuid}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 404
+}

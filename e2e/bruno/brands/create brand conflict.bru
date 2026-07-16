@@ -1,0 +1,23 @@
+meta {
+  name: create brand conflict
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "id": "{{brandId}}",
+    "name": "Test Organization",
+    "domains": ["example.com"]
+  }
+}
+
+assert {
+  res.status: eq 409
+}

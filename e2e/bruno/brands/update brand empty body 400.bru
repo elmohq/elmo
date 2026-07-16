@@ -1,0 +1,19 @@
+meta {
+  name: update brand empty body 400
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/brands/{{brandId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 400
+}

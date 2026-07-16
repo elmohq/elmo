@@ -1,0 +1,17 @@
+meta {
+  name: list prompts
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts: isArray
+  res.body.pagination.total: gte 5
+}
