@@ -1,10 +1,10 @@
 /**
- * /app/new - Create a new brand (local mode only).
+ * /app/new - Create a new brand.
  *
- * Provisions a new organization + admin membership for the current user
- * and seeds the brand row with the supplied name + website. Whitelabel and
- * demo are blocked at both the loader (redirect to /app) and the server
- * function (canCreateBrands policy).
+ * Attaches a new brand to the current user's existing organization and seeds
+ * the brand row with the supplied name + website. Gated by the
+ * canCreateBrands deployment feature (local, cloud) at both the loader
+ * (redirect to /app) and the server function.
  */
 import { useState } from "react";
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
@@ -14,7 +14,7 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import FullPageCard from "@/components/full-page-card";
 import { trackEvent } from "@/lib/posthog";
-import { createBrandWithOrgFn } from "@/server/brands";
+import { createBrandInOrgFn } from "@/server/brands";
 import { getDeployment } from "@/lib/config/server";
 
 const getCanCreateBrands = createServerFn({ method: "GET" }).handler(async () => {
@@ -46,7 +46,7 @@ function NewBrandPage() {
 			const brandName = (formData.get("brandName") as string)?.trim() ?? "";
 			const website = (formData.get("website") as string)?.trim() ?? "";
 
-			const { brandId } = await createBrandWithOrgFn({
+			const { brandId } = await createBrandInOrgFn({
 				data: { brandName, website },
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
