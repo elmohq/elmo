@@ -1,0 +1,17 @@
+meta {
+  name: openapi spec is served
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/openapi.json
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.openapi: eq 3.0.3
+  res.body.paths: isDefined
+}
