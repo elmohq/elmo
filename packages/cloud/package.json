@@ -16,12 +16,12 @@
     "@workspace/lib": "workspace:*",
     "better-auth": "^1.6.23",
     "disposable-email-domains": "^1.0.62",
-    "resend": "^6.17.1"
+    "resend": "^6.17.2"
   },
   "devDependencies": {
     "@types/disposable-email-domains": "^1.0.6",
-    "@types/node": "^26.1.0",
+    "@types/node": "^26.1.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }
