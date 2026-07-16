@@ -1,7 +1,16 @@
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import { brands, organization, promptRuns, prompts } from "@workspace/lib/db/schema";
+import {
+	lastRunKey,
+	minCadenceHours,
+	parseOrgRunPolicyOverrides,
+	parseScrapeTargets,
+	resolveTargetRunPolicy,
+	selectDueTargets,
+	selectTargetsForBrand,
+	type OrgRunPolicyOverrides,
+} from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
@@ -44,10 +53,8 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	const brandIds = enabledBrands.map((b) => b.id);
 	const defaultDelayHours = getDefaultDelayHours();
-	const brandDelayMap: Record<string, number> = {};
-	for (const brand of enabledBrands) {
-		brandDelayMap[brand.id] = brand.delayOverrideHours ?? defaultDelayHours;
-	}
+	const deploymentMode = process.env.DEPLOYMENT_MODE ?? "";
+	const brandMap = new Map(enabledBrands.map((b) => [b.id, b]));
 
 	// Get all enabled prompts for enabled brands
 	const enabledPrompts = await db.query.prompts.findMany({
@@ -61,31 +68,46 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-	const modelNames = allModels.map((cfg) => cfg.model);
+	const allTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
 
-	// Get last runs per prompt per model (matches dashboard overdue logic)
+	// Batch the cloud org-override lookups into one query over the distinct org ids.
+	const orgOverridesMap = new Map<string, OrgRunPolicyOverrides | null>();
+	if (deploymentMode === "cloud") {
+		const orgIds = [...new Set(enabledBrands.map((b) => b.organizationId))];
+		const orgs = await db
+			.select({ id: organization.id, metadata: organization.metadata })
+			.from(organization)
+			.where(inArray(organization.id, orgIds));
+		for (const org of orgs) {
+			orgOverridesMap.set(org.id, parseOrgRunPolicyOverrides(org.metadata));
+		}
+	}
+
+	// Get last runs per prompt per (model, provider).
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
+			provider: promptRuns.provider,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model);
+		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider);
 
-	const lastRunsMap: Record<string, Record<string, Date>> = {};
+	const lastRunsMap = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
-		if (!lastRunsMap[run.promptId]) {
-			lastRunsMap[run.promptId] = {};
+		let perPrompt = lastRunsMap.get(run.promptId);
+		if (!perPrompt) {
+			perPrompt = new Map();
+			lastRunsMap.set(run.promptId, perPrompt);
 		}
-		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
+		perPrompt.set(lastRunKey(run.model, run.provider), new Date(run.lastRunAt));
 	}
 
 	// Get all pending jobs with their state info
 	const pendingJobMap = await getPendingJobMap();
 
-	const now = Date.now();
+	const now = new Date();
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
 	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
 
@@ -97,27 +119,31 @@ async function runMaintenanceCheck(): Promise<void> {
 			continue;
 		}
 
-		const cadenceHours = brandDelayMap[prompt.brandId] ?? defaultDelayHours;
-		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
-		const lastRuns = lastRunsMap[prompt.id] || {};
+		const brand = brandMap.get(prompt.brandId);
+		if (!brand) continue;
 
-		// Check if any model is overdue (matches dashboard logic)
-		let isOverdue = false;
-		for (const model of modelNames) {
-			const lastRunAt = lastRuns[model];
-			if (!lastRunAt) {
-				isOverdue = true;
-				break;
-			}
-			const timeSinceRun = now - new Date(lastRunAt).getTime();
-			if (timeSinceRun > runFrequencyMs) {
-				isOverdue = true;
-				break;
-			}
+		const brandCadenceHours = brand.delayOverrideHours ?? defaultDelayHours;
+
+		// Only the brand's selected targets count toward overdue — checking all
+		// configured models would forever mark subset brands overdue and expedite
+		// them every pass, bypassing cadence.
+		let selectedConfigs: ReturnType<typeof selectTargetsForBrand>;
+		try {
+			selectedConfigs = selectTargetsForBrand(allTargets, brand.enabledModels);
+		} catch (error) {
+			console.warn(`[schedule-maintenance] Cannot resolve targets for prompt ${prompt.id}, skipping:`, error);
+			continue;
 		}
 
-		if (!isOverdue) continue;
+		const orgOverrides = deploymentMode === "cloud" ? (orgOverridesMap.get(brand.organizationId) ?? null) : null;
+		const policies = selectedConfigs.map((config) =>
+			resolveTargetRunPolicy(config, { deploymentMode, brandCadenceHours, orgOverrides }),
+		);
 
+		const lastRuns = lastRunsMap.get(prompt.id) ?? new Map<string, Date>();
+		if (selectDueTargets(policies, lastRuns, now).length === 0) continue;
+
+		const cadenceHours = minCadenceHours(policies, brandCadenceHours);
 		if (pendingJob && pendingJob.state === "created") {
 			// There's a future job scheduled - expedite it to run now
 			jobsToExpedite.push(pendingJob.jobId);
