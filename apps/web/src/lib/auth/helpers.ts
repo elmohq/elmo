@@ -71,6 +71,19 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
 	}
 }
 
+/**
+ * Resolve a brand's owning org id — the umbrella org whose membership gates
+ * team management for that brand. Null when the brand doesn't exist.
+ */
+export async function getBrandOrganizationId(brandId: string): Promise<string | null> {
+	const [row] = await db
+		.select({ organizationId: brands.organizationId })
+		.from(brands)
+		.where(eq(brands.id, brandId))
+		.limit(1);
+	return row?.organizationId ?? null;
+}
+
 export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string }[]> {
 	return db
 		.select({ id: organization.id, name: organization.name })
