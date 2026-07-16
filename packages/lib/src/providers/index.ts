@@ -20,6 +20,7 @@ export type {
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
 export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 export { selectTargetsForBrand } from "./runner";
 
 const providerMap: Record<string, Provider> = {

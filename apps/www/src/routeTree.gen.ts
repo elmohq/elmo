@@ -36,6 +36,7 @@ import { Route as BlogRssDotxmlRouteImport } from './routes/blog/rss[.]xml'
 import { Route as BlogSplatRouteImport } from './routes/blog/$'
 import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiOpenapiDotjsonRouteImport } from './routes/api/openapi[.]json'
+import { Route as ApiRepoActivityRefreshRouteImport } from './routes/api/repo-activity/refresh'
 import { Route as AiVisibilityToolsSlugRouteImport } from './routes/ai-visibility-tools/$slug'
 import { Route as AiSearchSlugRouteImport } from './routes/ai-search/$slug'
 import { Route as AeoForSlugRouteImport } from './routes/aeo-for/$slug'
@@ -188,6 +189,11 @@ const ApiOpenapiDotjsonRoute = ApiOpenapiDotjsonRouteImport.update({
   path: '/api/openapi.json',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRepoActivityRefreshRoute = ApiRepoActivityRefreshRouteImport.update({
+  id: '/api/repo-activity/refresh',
+  path: '/api/repo-activity/refresh',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AiVisibilityToolsSlugRoute = AiVisibilityToolsSlugRouteImport.update({
   id: '/ai-visibility-tools/$slug',
   path: '/ai-visibility-tools/$slug',
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/ai-visibility-tools/features/': typeof AiVisibilityToolsFeaturesIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
+  '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -368,6 +375,7 @@ export interface FileRoutesByTo {
   '/ai-visibility-tools/features': typeof AiVisibilityToolsFeaturesIndexRoute
   '/api/plausible/event': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script': typeof ApiPlausibleJsScriptIndexRoute
+  '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -414,6 +422,7 @@ export interface FileRoutesById {
   '/ai-visibility-tools/features/': typeof AiVisibilityToolsFeaturesIndexRoute
   '/api/plausible/event/': typeof ApiPlausibleEventIndexRoute
   '/api/plausible/js/script/': typeof ApiPlausibleJsScriptIndexRoute
+  '/api/repo-activity/refresh': typeof ApiRepoActivityRefreshRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -461,6 +470,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/features/'
     | '/api/plausible/event/'
     | '/api/plausible/js/script/'
+    | '/api/repo-activity/refresh'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -506,6 +516,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/features'
     | '/api/plausible/event'
     | '/api/plausible/js/script'
+    | '/api/repo-activity/refresh'
   id:
     | '__root__'
     | '/'
@@ -551,6 +562,7 @@ export interface FileRouteTypes {
     | '/ai-visibility-tools/features/'
     | '/api/plausible/event/'
     | '/api/plausible/js/script/'
+    | '/api/repo-activity/refresh'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -574,6 +586,7 @@ export interface RootRouteChildren {
   AiVisibilityToolsSlugRoute: typeof AiVisibilityToolsSlugRoute
   ApiOpenapiDotjsonRoute: typeof ApiOpenapiDotjsonRoute
   ApiSearchRoute: typeof ApiSearchRoute
+  ApiRepoActivityRefreshRoute: typeof ApiRepoActivityRefreshRoute
   BlogSplatRoute: typeof BlogSplatRoute
   BlogRssDotxmlRoute: typeof BlogRssDotxmlRoute
   DocsSplatRoute: typeof DocsSplatRoute
@@ -783,6 +796,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/repo-activity/refresh': {
+      id: '/api/repo-activity/refresh'
+      path: '/api/repo-activity/refresh'
+      fullPath: '/api/repo-activity/refresh'
+      preLoaderRoute: typeof ApiRepoActivityRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/openapi.json': {
       id: '/api/openapi.json'
       path: '/api/openapi.json'
@@ -926,6 +946,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiVisibilityToolsSlugRoute: AiVisibilityToolsSlugRoute,
   ApiOpenapiDotjsonRoute: ApiOpenapiDotjsonRoute,
   ApiSearchRoute: ApiSearchRoute,
+  ApiRepoActivityRefreshRoute: ApiRepoActivityRefreshRoute,
   BlogSplatRoute: BlogSplatRoute,
   BlogRssDotxmlRoute: BlogRssDotxmlRoute,
   DocsSplatRoute: DocsSplatRoute,

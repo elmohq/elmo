@@ -1,25 +1,21 @@
 /**
- * Upstash-backed cache for the repo-activity snapshot, using a stale-while-
- * revalidate pattern:
- *  - `FRESH_KEY` (5 min TTL) marks the data as fresh; while set, we serve the
- *    cached copy without touching GitHub.
- *  - `DATA_KEY` (24 h TTL) holds the last-good snapshot. When the freshness flag
- *    expires we refetch; if GitHub errors (rate limit, outage) we keep serving
- *    the last-good copy rather than an empty graphic.
+ * Upstash-backed store for the repo-activity snapshot.
  *
- * With no Upstash env configured it falls back to fetching directly per request.
+ * Serving (`readRepoActivitySnapshot`) only ever reads `DATA_KEY`, so
+ * `/repo-activity.svg` responds instantly and never blocks on GitHub — otherwise
+ * the slow refetch rides on the request GitHub's Camo proxy is waiting for and it
+ * times out to a broken image. A Vercel cron calls `refreshRepoActivitySnapshot`
+ * to recompute and persist the snapshot out of band.
+ *
+ * With no Upstash env configured (local dev) both paths fetch directly.
  */
 
 import { Redis } from "@upstash/redis";
-import { CACHE_TTL_SECONDS, REPO } from "./constants";
+import { REPO } from "./constants";
 import { fetchRepoActivityData } from "./github";
 import type { RepoActivityData } from "./types";
 
 const DATA_KEY = `repo-activity:data:${REPO}`;
-const FRESH_KEY = `repo-activity:fresh:${REPO}`;
-const FRESH_TTL_SECONDS = CACHE_TTL_SECONDS;
-/** Shorter freshness when the commit chart is still empty, so it retries soon. */
-const RETRY_TTL_SECONDS = 60;
 const DATA_TTL_SECONDS = 24 * 60 * 60;
 
 function redisClient(): Redis | null {
@@ -29,38 +25,37 @@ function redisClient(): Redis | null {
 	return new Redis({ url, token });
 }
 
-export async function getRepoActivityData(): Promise<RepoActivityData> {
+/**
+ * Read-only serving path: the warm snapshot the cron maintains, or `null` when it's
+ * missing (cold start before the first cron run, or eviction) so the caller can fall
+ * back to a placeholder rather than fetch on the request. Fetches directly only when
+ * Upstash isn't configured (local dev), where Camo timeouts don't apply.
+ */
+export async function readRepoActivitySnapshot(): Promise<RepoActivityData | null> {
 	const redis = redisClient();
 	if (!redis) return fetchRepoActivityData();
+	return redis.get<RepoActivityData>(DATA_KEY);
+}
 
-	const [lastGood, fresh] = await Promise.all([
-		redis.get<RepoActivityData>(DATA_KEY),
-		redis.get<number>(FRESH_KEY),
-	]);
-	if (lastGood && fresh) return lastGood;
+/** Cron path: recompute from GitHub and persist. Throws (leaving the last-good snapshot
+ * intact) if the fetch fails, so a bad refresh never blanks the served image. */
+export async function refreshRepoActivitySnapshot(): Promise<RepoActivityData> {
+	const redis = redisClient();
+	const data = await fetchRepoActivityData();
+	if (!redis) return data;
 
-	try {
-		const data = await fetchRepoActivityData();
-
-		// `/stats/commit_activity` answers 202 while GitHub computes it, so a fresh
-		// snapshot can arrive with an empty commit series. Don't let that regress a
-		// chart we already had: carry over the last-good week data, and mark the
-		// snapshot fresh for only a short window so it refetches (and heals) soon.
-		const missingCommits = data.commitsByWeek.length === 0;
-		if (missingCommits && lastGood && lastGood.commitsByWeek.length > 0) {
+	// `/stats/commit_activity` answers 202 (empty body) while GitHub recomputes it, so
+	// a fresh snapshot can arrive with no commit series. Don't regress a chart we already
+	// had: carry the last-good week data forward until a later refresh heals it.
+	if (data.commitsByWeek.length === 0) {
+		const lastGood = await redis.get<RepoActivityData>(DATA_KEY);
+		if (lastGood && lastGood.commitsByWeek.length > 0) {
 			data.commitsByWeek = lastGood.commitsByWeek;
 			data.releaseWeeks = lastGood.releaseWeeks;
 			data.kpis.commits = lastGood.kpis.commits;
 		}
-		const stillMissing = data.commitsByWeek.length === 0;
-
-		await Promise.all([
-			redis.set(DATA_KEY, data, { ex: DATA_TTL_SECONDS }),
-			redis.set(FRESH_KEY, 1, { ex: stillMissing ? RETRY_TTL_SECONDS : FRESH_TTL_SECONDS }),
-		]);
-		return data;
-	} catch (error) {
-		if (lastGood) return lastGood;
-		throw error;
 	}
+
+	await redis.set(DATA_KEY, data, { ex: DATA_TTL_SECONDS });
+	return data;
 }

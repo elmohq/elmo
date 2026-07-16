@@ -202,6 +202,49 @@ export function validateApiKeyFromRequest(request: Request): boolean {
 }
 
 // ============================================================================
+// Signup Allowlist
+// ============================================================================
+
+/**
+ * Evaluate whether an email may register, given a signup allowlist.
+ *
+ * Gates cloud self-serve signup while the mode is still being hardened. Entry
+ * forms:
+ *   - exact address — "alice@partner.com"
+ *   - domain suffix — "@elmohq.com" admits any address at that domain
+ *   - "*" — opens signup to everyone (the public-launch escape hatch)
+ * An empty allowlist denies everyone, so cloud fails closed until configured.
+ * Matching is case-insensitive; a domain entry matches the whole domain only,
+ * never a lookalike suffix ("@elmohq.com" rejects "x@evil-elmohq.com").
+ */
+export function evaluateSignupAllowed(
+	email: string,
+	allowlist: readonly string[],
+): "allow" | "deny" {
+	const entries = allowlist.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
+	if (entries.includes("*")) return "allow";
+	if (entries.length === 0) return "deny";
+
+	const address = email.trim().toLowerCase();
+	const atIndex = address.lastIndexOf("@");
+	const domain = atIndex === -1 ? "" : address.slice(atIndex);
+
+	const allowed = entries.some((entry) => (entry.startsWith("@") ? entry === domain : entry === address));
+	return allowed ? "allow" : "deny";
+}
+
+/**
+ * Parse comma-separated CLOUD_SIGNUP_ALLOWLIST into trimmed, lowercased entries.
+ * Single source of truth — mirrors getAdminApiKeys.
+ */
+export function getSignupAllowlist(): string[] {
+	return (process.env.CLOUD_SIGNUP_ALLOWLIST || "")
+		.split(",")
+		.map((entry) => entry.trim().toLowerCase())
+		.filter(Boolean);
+}
+
+// ============================================================================
 // Auth Function-Level Policies
 // ============================================================================
 

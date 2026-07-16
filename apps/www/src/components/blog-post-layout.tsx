@@ -82,7 +82,10 @@ function PostFaq({ items }: { items: BlogPostFaqItem[] }) {
 
 export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 	return (
-		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }}>
+		<RootProvider
+			theme={{ defaultTheme: "light", forcedTheme: "light" }}
+			search={{ enabled: false }}
+		>
 			<div className="min-h-screen">
 				<Navbar />
 				<main className="mx-auto max-w-3xl px-4 py-12 md:px-6 lg:py-16">

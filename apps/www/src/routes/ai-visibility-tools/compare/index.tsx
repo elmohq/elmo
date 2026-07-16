@@ -13,16 +13,28 @@ import {
 	breadcrumbJsonLd,
 	itemListJsonLd,
 } from "@/lib/seo";
-import { comparePairs, comparePairSlug } from "@/lib/competitors";
+import {
+	comparePairs,
+	comparePairSlug,
+	compareSets,
+	compareSetSlug,
+} from "@/lib/competitors";
 
 const title = "Compare AI Visibility Tools Head-to-Head · Elmo";
 const description =
-	"Head-to-head comparisons of the leading AI visibility platforms — Profound, Peec AI, AirOps, Scrunch, OtterlyAI, and AthenaHQ — feature by feature, with Elmo as the open-source alternative.";
+	"Head-to-head comparisons of the leading AI visibility platforms and SEO suites — Profound, Peec AI, Ahrefs Brand Radar, HubSpot AEO, Semrush, Scrunch, and more — feature by feature, with Elmo as the free, open-source alternative.";
 
-const items = comparePairs.map(([a, b]) => ({
+const setItems = compareSets.map((tools) => ({
+	name: tools.map((t) => t.name).join(" vs "),
+	path: `/ai-visibility-tools/compare/${compareSetSlug(tools)}`,
+}));
+
+const pairItems = comparePairs.map(([a, b]) => ({
 	name: `${a.name} vs ${b.name}`,
 	path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
 }));
+
+const items = [...setItems, ...pairItems];
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/")({
 	head: () => ({
@@ -55,11 +67,25 @@ function CompareHub() {
 				<DirectoryHero
 					eyebrow="Compare"
 					title="AI visibility tools, head-to-head"
-					lead="Weighing two of the funded AI visibility platforms against each other? These side-by-side breakdowns compare their tracking, analytics, and pricing, and show where an open-source tool like Elmo fits in."
+					lead="Weighing the AI visibility tools against each other? These side-by-side breakdowns compare tracking, analytics, and pricing across the funded AEO platforms and the SEO suites that added AI search monitoring, and show where an open-source tool like Elmo fits in."
 				/>
+				<DirectorySection title="Compare several at once">
+					<ul className="grid gap-3 sm:grid-cols-2">
+						{setItems.map((item) => (
+							<li key={item.path}>
+								<a
+									href={item.path}
+									className="block rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-950"
+								>
+									{item.name}
+								</a>
+							</li>
+						))}
+					</ul>
+				</DirectorySection>
 				<DirectorySection title="Pick a matchup">
 					<ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-						{items.map((item) => (
+						{pairItems.map((item) => (
 							<li key={item.path}>
 								<a
 									href={item.path}

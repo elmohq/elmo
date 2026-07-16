@@ -160,7 +160,10 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 	const data = useFumadocsLoader(loaderData);
 
 	return (
-		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }}>
+		<RootProvider
+			theme={{ defaultTheme: "light", forcedTheme: "light" }}
+			search={{ enabled: false }}
+		>
 			<div className="min-h-screen">
 				<Navbar />
 				<div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">

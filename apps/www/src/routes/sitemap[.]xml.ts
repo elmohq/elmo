@@ -7,6 +7,8 @@ import {
 	isLowDR,
 	comparePairs,
 	comparePairSlug,
+	compareSets,
+	compareSetSlug,
 	indexedCompetitors,
 	indexableFeatureKeys,
 	FEATURE_SLUGS,
@@ -80,6 +82,11 @@ export const Route = createFileRoute("/sitemap.xml")({
 				{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
 				...comparePairs.map(([a, b]) => ({
 					path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
+					changefreq: "monthly",
+					priority: 0.6,
+				})),
+				...compareSets.map((tools) => ({
+					path: `/ai-visibility-tools/compare/${compareSetSlug(tools)}`,
 					changefreq: "monthly",
 					priority: 0.6,
 				})),

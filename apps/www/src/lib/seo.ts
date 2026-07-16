@@ -198,6 +198,32 @@ export function itemListJsonLd(items: { name: string; path?: string; url?: strin
 	});
 }
 
+/** Elmo's entry for a comparison ItemList (always the open-source option). */
+export const ELMO_LISTING = { name: SITE_NAME, url: SITE_URL };
+
+/**
+ * ItemList of the software products weighed on a comparison page, each as a
+ * SoftwareApplication. Honest structured data for "X vs Y" and "X vs Y vs Z"
+ * pages: it names the tools compared so answer engines can parse the matchup,
+ * without asserting prices or ratings we don't have for other vendors. Pair it
+ * with softwareApplicationJsonLd() so Elmo's free offer is stated explicitly.
+ */
+export function comparisonJsonLd(tools: { name: string; url?: string }[]) {
+	return jsonLd({
+		"@type": "ItemList",
+		itemListElement: tools.map((tool, index) => ({
+			"@type": "ListItem",
+			position: index + 1,
+			item: {
+				"@type": "SoftwareApplication",
+				name: tool.name,
+				applicationCategory: "BusinessApplication",
+				...(tool.url ? { url: tool.url } : {}),
+			},
+		})),
+	});
+}
+
 /**
  * DefinedTermSet schema for the glossary. Each term is a DefinedTerm; `url` is
  * an optional "see also" target (canonicalized when site-relative).

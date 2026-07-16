@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
@@ -220,40 +221,53 @@ async function runModelIteration({
 }): Promise<void> {
 	const logPrefix = `[${config.model}_${runIndex}]`;
 
-	const result = await providerImpl.run(config.model, promptValue, {
-		webSearch: config.webSearch,
-		version: config.version,
-	});
+	try {
+		const result = await providerImpl.run(config.model, promptValue, {
+			webSearch: config.webSearch,
+			version: config.version,
+		});
 
-	// `webQueries` is stored exactly as the provider reported it — engines do
-	// sometimes genuinely search the prompt verbatim, and that's real data. The
-	// fan-out page excludes verbatim repeats at read time as a display rule;
-	// providers whose query field is fabricated (DataForSEO) write the
-	// `unavailable` sentinel in their own extractor instead.
-	const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
-	console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
+		// `webQueries` is stored exactly as the provider reported it — engines do
+		// sometimes genuinely search the prompt verbatim, and that's real data. The
+		// fan-out page excludes verbatim repeats at read time as a display rule;
+		// providers whose query field is fabricated (DataForSEO) write the
+		// `unavailable` sentinel in their own extractor instead.
+		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
+		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
-	const safeTextContent = typeof textContent === "string" ? textContent : "";
+		const safeTextContent = typeof textContent === "string" ? textContent : "";
 
-	const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
+		const { brandMentioned, competitorsMentioned } = analyzeMentions(safeTextContent, brand, competitorsList);
 
-	const recordedVersion = modelVersion ?? config.version ?? config.provider;
+		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-	const { id: promptRunId, createdAt } = await savePromptRun(
-		promptId,
-		brand.id,
-		config.model,
-		config.provider,
-		recordedVersion,
-		config.webSearch,
-		rawOutput,
-		webQueries,
-		brandMentioned,
-		competitorsMentioned,
-	);
-	console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
+		const { id: promptRunId, createdAt } = await savePromptRun(
+			promptId,
+			brand.id,
+			config.model,
+			config.provider,
+			recordedVersion,
+			config.webSearch,
+			rawOutput,
+			webQueries,
+			brandMentioned,
+			competitorsMentioned,
+		);
+		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
-	await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
+		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
+	} catch (error) {
+		// A single run's failure doesn't fail the job (only an all-runs failure
+		// does), so report it here to keep per-provider failure rates visible.
+		Sentry.withScope((scope) => {
+			scope.setTag("queue", "process-prompt");
+			scope.setTag("provider", config.provider);
+			scope.setTag("model", config.model);
+			scope.setContext("run", { promptId, brandId: brand.id, runIndex });
+			Sentry.captureException(error);
+		});
+		throw error;
+	}
 }
 
 /**
