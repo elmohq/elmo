@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
@@ -42,7 +42,7 @@ export const getPromptMetadataFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), promptId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const prompt = await db.query.prompts.findFirst({
 			where: and(eq(prompts.id, data.promptId), eq(prompts.brandId, data.brandId)),
@@ -98,7 +98,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Get all prompts for the brand from DB
 		const allPrompts = await db
@@ -255,7 +255,7 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			.limit(1);
 
 		if (prompt.length === 0) throw new Error("Prompt not found");
-		await requireOrgAccess(session.user.id, prompt[0].brandId);
+		await requireBrandAccess(session.user.id, prompt[0].brandId);
 
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
@@ -476,7 +476,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 		if (!prompt) throw new Error("Prompt not found");
 
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, prompt.brandId);
+		await requireBrandAccess(session.user.id, prompt.brandId);
 
 		const fromDate = new Date();
 		fromDate.setDate(fromDate.getDate() - data.days);
@@ -527,7 +527,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, data.brandId),
@@ -599,7 +599,7 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const timezone = data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 		const lookbackParam = (data.lookback || "1m") as LookbackPeriod;
@@ -773,7 +773,7 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const timezone = data.timezone || "UTC";
 		const now = new Date();
