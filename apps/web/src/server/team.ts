@@ -9,7 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
-import { invitation, member, user } from "@workspace/lib/db/schema";
+import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess, getBrandOrganizationId } from "@/lib/auth/helpers";
@@ -26,6 +26,7 @@ export type TeamData = {
 	members: { id: string; role: string; userId: string; name: string; email: string; createdAt: Date }[];
 	invitations: { id: string; email: string; role: string | null; expiresAt: Date }[];
 	currentUserId: string;
+	organization: { id: string; name: string };
 };
 
 export const listTeamFn = createServerFn({ method: "GET" })
@@ -39,6 +40,11 @@ export const listTeamFn = createServerFn({ method: "GET" })
 		await requireBrandAccess(session.user.id, data.brandId);
 		const orgId = await getBrandOrganizationId(data.brandId);
 		if (!orgId) throw new Error("Brand not found");
+
+		const org = await db.query.organization.findFirst({
+			where: eq(organization.id, orgId),
+		});
+		if (!org) throw new Error("Organization not found");
 
 		const members = await db
 			.select({
@@ -63,7 +69,33 @@ export const listTeamFn = createServerFn({ method: "GET" })
 			.from(invitation)
 			.where(and(eq(invitation.organizationId, orgId), eq(invitation.status, "pending")));
 
-		return { members, invitations, currentUserId: session.user.id };
+		return {
+			members,
+			invitations,
+			currentUserId: session.user.id,
+			organization: { id: org.id, name: org.name },
+		};
+	});
+
+export const updateOrganizationFn = createServerFn({ method: "POST" })
+	.validator(z.object({ brandId: z.string(), name: z.string().min(1).max(100) }))
+	.handler(async ({ data }) => {
+		requireTeamInvites();
+		const session = await requireAuthSession();
+		await requireBrandAccess(session.user.id, data.brandId);
+		const orgId = await getBrandOrganizationId(data.brandId);
+		if (!orgId) throw new Error("Brand not found");
+
+		// Org rename is an admin action.
+		const [m] = await db
+			.select({ role: member.role })
+			.from(member)
+			.where(and(eq(member.userId, session.user.id), eq(member.organizationId, orgId)))
+			.limit(1);
+		if (m?.role !== "admin") throw new Error("Only admins can rename the workspace");
+
+		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, orgId));
+		return { success: true };
 	});
 
 export const inviteTeamMemberFn = createServerFn({ method: "POST" })
