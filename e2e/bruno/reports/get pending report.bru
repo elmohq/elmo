@@ -1,0 +1,17 @@
+meta {
+  name: get pending report
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports/{{pendingReportId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq pending
+  res.body.prompts: isUndefined
+}
