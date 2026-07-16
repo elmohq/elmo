@@ -9,7 +9,12 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { analyzeBrand, cleanOnboardingDomain } from "@workspace/lib/onboarding";
+import {
+	analyzeBrand,
+	cleanOnboardingDomain,
+	inferBrandNameFromDomain,
+	type OnboardingSuggestion,
+} from "@workspace/lib/onboarding";
 import { createApiHandler } from "@/lib/api/handler";
 
 const analyzeBody = z.object({
@@ -31,6 +36,24 @@ export const Route = createFileRoute("/api/v1/tools/analyze")({
 			POST: createApiHandler({
 				body: analyzeBody,
 				handle: async ({ body }) => {
+					if (process.env.E2E_FAKE_ANALYZE === "1") {
+						const website = cleanOnboardingDomain(body.website);
+						const fake: OnboardingSuggestion = {
+							brandName: body.brandName?.trim() || inferBrandNameFromDomain(website),
+							website,
+							additionalDomains: [],
+							aliases: [`${inferBrandNameFromDomain(website)} Inc`],
+							competitors: [
+								{ name: "Globex", domains: ["globex.com"], aliases: ["Globex Corp"] },
+								{ name: "Initech", domains: ["initech.com"], aliases: [] },
+							],
+							suggestedPrompts: [
+								{ prompt: "best widgets", tags: ["best-of"] },
+								{ prompt: "widgets vs alternatives", tags: ["comparison"] },
+							],
+						};
+						return fake;
+					}
 					return await analyzeBrand({
 						website: body.website,
 						brandName: body.brandName,

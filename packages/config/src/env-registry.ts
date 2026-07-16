@@ -221,6 +221,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Comma-separated bearer tokens accepted by the admin API.",
 	},
 	{
+		name: "E2E_FAKE_ANALYZE",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			'E2E tests only: when "1", POST /api/v1/tools/analyze returns a deterministic canned suggestion without any LLM or website call. Never set outside e2e.',
+	},
+	{
 		name: "DEFAULT_BRAND_DOMAINS",
 		scope: "server",
 		requiredBy: "optional",
@@ -411,6 +418,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "RESEND_FROM_EMAIL",
 		scope: "server",
 		requiredBy: ["cloud"],
-		description: "Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
+		description:
+			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
 ];

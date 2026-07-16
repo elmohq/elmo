@@ -88,6 +88,7 @@ jobs:
 
           # E2E test overrides
           ADMIN_API_KEYS=test-api-key-e2e
+          E2E_FAKE_ANALYZE=1
           PATCH
 
       - name: Show generated config
