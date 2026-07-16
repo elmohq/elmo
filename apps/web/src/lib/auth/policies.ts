@@ -286,6 +286,20 @@ export function evaluateOrgScope(
 }
 
 /**
+ * Brand-scoped access rule for the umbrella-org model: a user may act on a
+ * brand only if they are a member of the brand's owning org. `brandOrgId` is
+ * null when the brand does not exist — which must deny, never fall through to
+ * a brand-id-as-org-id match.
+ */
+export function evaluateBrandAccess(
+	memberOrgIds: readonly string[],
+	brandOrgId: string | null,
+): "allow" | "deny" {
+	if (brandOrgId === null) return "deny";
+	return memberOrgIds.includes(brandOrgId) ? "allow" : "deny";
+}
+
+/**
  * Evaluate read-only mode enforcement.
  * Used by `readOnlyMiddleware` for server functions.
  */
