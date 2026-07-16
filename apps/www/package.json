@@ -27,13 +27,13 @@
 		"@workspace/docs": "workspace:*",
 		"@workspace/og": "workspace:*",
 		"@workspace/ui": "workspace:*",
-		"fumadocs-core": "^16.10.7",
-		"fumadocs-mdx": "^15.0.13",
-		"fumadocs-openapi": "^11.0.6",
-		"fumadocs-ui": "^16.10.7",
-		"lucide-react": "^1.23.0",
+		"fumadocs-core": "^16.11.3",
+		"fumadocs-mdx": "^15.1.0",
+		"fumadocs-openapi": "^11.1.1",
+		"fumadocs-ui": "^16.11.3",
+		"lucide-react": "^1.24.0",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
-		"posthog-js": "^1.396.6",
+		"posthog-js": "^1.399.2",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",
 		"react-markdown": "^10.1.0",
@@ -47,13 +47,13 @@
 	},
 	"devDependencies": {
 		"@types/mdx": "^2.0.14",
-		"@types/node": "^26.1.0",
+		"@types/node": "^26.1.1",
 		"@types/react": "^19.2.17",
 		"@types/react-dom": "^19.2.3",
-		"@vercel/blob": "^2.5.0",
+		"@vercel/blob": "^2.6.1",
 		"@vitejs/plugin-react": "^6.0.3",
-		"png-to-ico": "^3.0.1",
+		"png-to-ico": "^3.0.2",
 		"typescript": "^6.0.3",
-		"vite": "^8.1.3"
+		"vite": "^8.1.4"
 	}
 }
