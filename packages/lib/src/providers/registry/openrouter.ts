@@ -8,7 +8,11 @@ import type {
 } from "../types";
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENROUTER_WEB_MAX_RESULTS } from "../config";
+import {
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	OPENROUTER_WEB_MAX_RESULTS,
+	OPENROUTER_WEB_SEARCH_CONTEXT_SIZE,
+} from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -140,10 +144,14 @@ export const openrouter: Provider = {
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
-		// Exa engine, not the native passthrough: fixed per-request result pricing
-		// and an explicit result cap, so per-call web spend is deterministic.
 		if (options?.webSearch) {
-			body.plugins = [{ id: "web", engine: "exa", max_results: OPENROUTER_WEB_MAX_RESULTS }];
+			// Engine omitted on purpose: OpenRouter uses the provider's NATIVE web
+			// search when available (the real consumer surface) and only falls back
+			// to Exa otherwise. Every path stays budget-bounded — search_context_size
+			// caps native cost, max_results caps the Exa fallback, max_tokens caps
+			// output either way — so no call is unbounded.
+			body.plugins = [{ id: "web", max_results: OPENROUTER_WEB_MAX_RESULTS }];
+			body.web_search_options = { search_context_size: OPENROUTER_WEB_SEARCH_CONTEXT_SIZE };
 		}
 
 		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema

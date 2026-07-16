@@ -21,8 +21,12 @@ export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
 export const ANTHROPIC_WEB_SEARCH_MAX_USES = 1;
 /** Caps built-in tool invocations on the OpenAI Responses API per run. */
 export const OPENAI_WEB_SEARCH_MAX_TOOL_CALLS = 2;
-/** Exa web-plugin results per OpenRouter run (fixed per-request pricing). */
+/** Result cap for the OpenRouter Exa fallback branch (ignored by native). */
 export const OPENROUTER_WEB_MAX_RESULTS = 5;
+/** Native web-search context tier for OpenRouter tracked runs; bounds native
+ *  passthrough cost. "low" | "medium" | "high" — "medium" is the provider
+ *  default, chosen to preserve parity with the real consumer surface. */
+export const OPENROUTER_WEB_SEARCH_CONTEXT_SIZE = "medium" as const;
 
 export function validateScrapeTargets(
 	configs: ModelConfig[],
