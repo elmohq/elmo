@@ -1,8 +1,3 @@
-declare module "virtual:takumi-wasm" {
-	const data: Buffer;
-	export default data;
-}
-
 declare module "virtual:font/titan-one-400" {
 	const data: Buffer;
 	export default data;

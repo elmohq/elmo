@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
-import ImageResponse from "@takumi-rs/image-response/wasm";
-import takumiWasm from "virtual:takumi-wasm";
+import ImageResponse from "@takumi-rs/image-response";
 import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
@@ -110,7 +109,6 @@ export const Route = createFileRoute("/api/og/")({
 					{
 						width: 1200,
 						height: 630,
-						module: takumiWasm,
 						fonts: [
 							{
 								name: "Titan One",
