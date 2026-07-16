@@ -72,11 +72,11 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 						...cloudOptions.databaseHooks?.user,
 						create: {
 							...cloudOptions.databaseHooks?.user?.create,
-							before: async (user) => {
+							before: async (user, context) => {
 								if (evaluateSignupAllowed(user.email, getSignupAllowlist()) === "deny") {
 									throw new Error("Sign-ups are invite-only right now.");
 								}
-								await rejectDisposableEmail?.(user);
+								await rejectDisposableEmail?.(user, context);
 							},
 						},
 					},
