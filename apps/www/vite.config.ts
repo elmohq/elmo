@@ -5,7 +5,7 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import mdx from "fumadocs-mdx/vite";
-import { embedBinaries, takumiWasmNitroModule } from "@workspace/og/vite-plugin";
+import { embedBinaries } from "@workspace/og/vite-plugin";
 import * as MdxConfig from "./source.config";
 import pkg from "./package.json" with { type: "json" };
 
@@ -35,13 +35,7 @@ export default defineConfig({
 		nitro({
 			alias: {
 				tslib: tslibEsm,
-				// takumi's image-response statically imports native @takumi-rs/core,
-				// whose top-level requireNative() crashes at startup in the standalone
-				// bundle. The wasm render path only uses two pure-JS resource helpers
-				// from that import, which @takumi-rs/helpers also exports.
-				"@takumi-rs/core": "@takumi-rs/helpers",
 			},
-			modules: [takumiWasmNitroModule()],
 			vercel: {
 				config: {
 					version: 3,

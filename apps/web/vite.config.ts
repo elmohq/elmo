@@ -5,7 +5,7 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { embedBinaries, takumiWasmNitroModule } from "@workspace/og/vite-plugin";
+import { embedBinaries } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
@@ -47,18 +47,12 @@ export default defineConfig({
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
-				// takumi's image-response statically imports native @takumi-rs/core,
-				// whose top-level requireNative() crashes at startup in the standalone
-				// bundle. The wasm render path only uses two pure-JS resource helpers
-				// from that import, which @takumi-rs/helpers also exports.
-				"@takumi-rs/core": "@takumi-rs/helpers",
 			},
 			noExternals: [
 				"@opentelemetry/instrumentation",
 				"@opentelemetry/api",
 				"@prisma/instrumentation",
 			],
-			modules: [takumiWasmNitroModule()],
 			rollupConfig: {
 				external: ["fsevents"],
 			},
