@@ -11,7 +11,7 @@
 	},
 	"dependencies": {
 		"@takumi-rs/helpers": "^1.8.7",
-		"@takumi-rs/wasm": "^1.8.7",
+		"@takumi-rs/wasm": "^2.0.3",
 		"@workspace/config": "workspace:*",
 		"react": "^19.2.7"
 	},
