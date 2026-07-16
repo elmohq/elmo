@@ -1,6 +1,7 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 import type {
 	Provider,
 	ScrapeResult,
@@ -16,9 +17,7 @@ function sanitizeForJson(obj: unknown): unknown {
 }
 
 function getOpenAIResponsesModel(model: string) {
-	const provider = process.env.OPENAI_API_KEY
-		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-		: openai;
+	const provider = process.env.OPENAI_API_KEY ? createOpenAI({ apiKey: process.env.OPENAI_API_KEY }) : openai;
 	return provider.responses(model);
 }
 
@@ -33,8 +32,12 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	const result = await generateText({
 		model: openai.responses(model),
 		prompt,
+		maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
 		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
+		...(Object.keys(tools).length > 0
+			? { providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } } }
+			: {}),
 	});
 
 	const responseBody = result.response?.body as any;
@@ -78,6 +81,7 @@ export const openaiApi: Provider = {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
 			...(webSearch ? { tools: { web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any } } : {}),
+			...(webSearch ? { providerOptions: { openai: { maxToolCalls: 5 } } } : {}),
 			output: Output.object({ schema }),
 			prompt,
 		});
