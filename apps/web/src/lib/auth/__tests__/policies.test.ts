@@ -17,6 +17,7 @@ import {
 	evaluateAdminRouteGuard,
 	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
+	evaluateBrandAccess,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateOrgScope,
@@ -445,6 +446,33 @@ describe("evaluateOrgScope", () => {
 		// Pre-#339 access leaned on brand.id == org.id; scoping must be driven
 		// by actual membership, not by the resource naming itself.
 		expect(evaluateOrgScope([], "org-a")).toBe("deny");
+	});
+});
+
+// Umbrella-org model (issue #432): a brand's owning org is resolved via
+// `brands.organizationId`, not assumed equal to the brand id.
+describe("evaluateBrandAccess", () => {
+	const ORG_A = "org-a";
+	const ORG_B = "org-b";
+
+	it("allows a member of the brand's owning org", () => {
+		expect(evaluateBrandAccess([ORG_A], ORG_A)).toBe("allow");
+	});
+
+	it("denies a member of a different org", () => {
+		expect(evaluateBrandAccess([ORG_A], ORG_B)).toBe("deny");
+	});
+
+	it("allows a multi-org member whose set includes the brand's org", () => {
+		expect(evaluateBrandAccess([ORG_A, ORG_B], ORG_B)).toBe("allow");
+	});
+
+	it("denies when the brand does not exist (brandOrgId is null)", () => {
+		expect(evaluateBrandAccess([ORG_A], null)).toBe("deny");
+	});
+
+	it("denies when the user has no memberships", () => {
+		expect(evaluateBrandAccess([], ORG_A)).toBe("deny");
 	});
 });
 
