@@ -133,6 +133,9 @@ jobs:
       - name: Run Playwright E2E tests
         run: pnpm test:e2e
 
+      - name: Run Bruno API tests
+        run: pnpm test:api
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
