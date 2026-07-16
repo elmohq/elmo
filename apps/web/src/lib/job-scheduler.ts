@@ -1,7 +1,16 @@
 import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
+import { prompts, brands, organization } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import {
+	minCadenceHours,
+	parseOrgRunPolicyOverrides,
+	parseScrapeTargets,
+	resolveTargetRunPolicy,
+	selectTargetsForBrand,
+	type ModelConfig,
+	type OrgRunPolicyOverrides,
+} from "@workspace/lib/providers";
 import { getBoss } from "@/lib/boss-client";
 
 /**
@@ -12,7 +21,22 @@ export function hoursToMs(hours: number): number {
 }
 
 /**
- * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
+ * Read a cloud org's per-target run-policy overrides from its better-auth
+ * metadata. Only called in cloud mode.
+ */
+async function getOrgRunPolicyOverrides(organizationId: string): Promise<OrgRunPolicyOverrides | null> {
+	const [org] = await db
+		.select({ metadata: organization.metadata })
+		.from(organization)
+		.where(eq(organization.id, organizationId))
+		.limit(1);
+	return parseOrgRunPolicyOverrides(org?.metadata);
+}
+
+/**
+ * Gets the effective cadence (delay before the first scheduled run) for a
+ * prompt: the fastest of its resolved per-target cadences, falling back to the
+ * brand's delay override or the deployment default.
  */
 export async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
@@ -37,13 +61,24 @@ export async function getPromptCadenceHours(promptId: string): Promise<number> {
 			return defaultDelayHours;
 		}
 
-		// Use override if set, otherwise use default
-		if (brand.delayOverrideHours !== null) {
-			console.log(`Using custom cadence for brand ${brand.name}: ${brand.delayOverrideHours}h`);
-			return brand.delayOverrideHours;
+		const brandCadenceHours = brand.delayOverrideHours ?? defaultDelayHours;
+
+		let selectedConfigs: ModelConfig[];
+		try {
+			selectedConfigs = selectTargetsForBrand(parseScrapeTargets(process.env.SCRAPE_TARGETS), brand.enabledModels);
+		} catch (error) {
+			// Stale enabledModels or misconfigured SCRAPE_TARGETS — fall back to the
+			// brand/default cadence rather than blocking scheduling.
+			console.warn(`Cannot resolve targets for prompt ${promptId}, using brand cadence:`, error);
+			return brandCadenceHours;
 		}
 
-		return defaultDelayHours;
+		const deploymentMode = process.env.DEPLOYMENT_MODE ?? "";
+		const orgOverrides = deploymentMode === "cloud" ? await getOrgRunPolicyOverrides(brand.organizationId) : null;
+		const policies = selectedConfigs.map((config) =>
+			resolveTargetRunPolicy(config, { deploymentMode, brandCadenceHours, orgOverrides }),
+		);
+		return minCadenceHours(policies, brandCadenceHours);
 	} catch (error) {
 		console.error(`Error fetching cadence for prompt ${promptId}:`, error);
 		return defaultDelayHours;
@@ -59,10 +94,7 @@ type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
 
-export async function createPromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
@@ -130,7 +162,7 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 		}
 
 		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data, 
+		// Note: pg-boss doesn't have a direct way to cancel by data,
 		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
@@ -148,9 +180,7 @@ export async function createMultiplePromptJobSchedulers(
 	promptIds: string[],
 	options: SchedulerOptions = {},
 ): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map((promptId) => createPromptJobScheduler(promptId, options)),
-	);
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -169,10 +199,7 @@ export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Pr
  * Recreates a schedule for a prompt (removes and creates).
  * Useful when cadence has changed or job needs to be reset.
  */
-export async function recreatePromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		// Remove existing schedule if any (ignore errors if it doesn't exist)
 		await removePromptJobScheduler(promptId);
@@ -193,9 +220,11 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
 
+		// force: bypass per-target due checks so a manual retry right after a
+		// scheduled run isn't silently skipped under mixed cadences.
 		await boss.send(
 			"process-prompt",
-			{ promptId, cadenceHours },
+			{ promptId, cadenceHours, force: true },
 			{
 				retryLimit: 3,
 				retryDelay: 60,

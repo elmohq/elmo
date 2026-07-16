@@ -1,14 +1,30 @@
 import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
-import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
+import {
+	brands,
+	citations,
+	competitors,
+	organization,
+	promptRuns,
+	prompts,
+	type Brand,
+	type Competitor,
+} from "@workspace/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
 import {
 	getProvider,
+	lastRunKey,
+	minCadenceHours,
+	parseOrgRunPolicyOverrides,
 	parseScrapeTargets,
+	resolveTargetRunPolicy,
+	selectDueTargets,
 	selectTargetsForBrand,
 	type ModelConfig,
+	type OrgRunPolicyOverrides,
 	type Provider,
+	type TargetRunPolicy,
 } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
@@ -16,7 +32,8 @@ import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
 	promptId: string;
-	cadenceHours?: number; // Hours until next run (for self-rescheduling)
+	cadenceHours?: number; // advisory/back-compat; the job recomputes cadence each firing
+	force?: boolean; // admin "run now": bypass per-target due checks
 }
 
 interface PromptContext {
@@ -53,23 +70,16 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
 }
 
 /**
- * Get the cadence hours for a prompt based on its brand's delay override.
+ * Read a cloud org's per-target run-policy overrides from its better-auth
+ * metadata. Only called in cloud mode.
  */
-async function getCadenceHours(promptId: string): Promise<number> {
-	const defaultDelayHours = getDefaultDelayHours();
-	const prompt = await db.query.prompts.findFirst({
-		where: eq(prompts.id, promptId),
-	});
-
-	if (!prompt) return defaultDelayHours;
-
-	const brand = await db.query.brands.findFirst({
-		where: eq(brands.id, prompt.brandId),
-	});
-
-	if (!brand) return defaultDelayHours;
-
-	return brand.delayOverrideHours ?? defaultDelayHours;
+async function getOrgRunPolicyOverrides(organizationId: string): Promise<OrgRunPolicyOverrides | null> {
+	const [org] = await db
+		.select({ metadata: organization.metadata })
+		.from(organization)
+		.where(eq(organization.id, organizationId))
+		.limit(1);
+	return parseOrgRunPolicyOverrides(org?.metadata);
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
@@ -127,16 +137,13 @@ function analyzeMentions(
 		...(brand.additionalDomains || []).map(extractDomainFromUrl),
 	];
 	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
+		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
 			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
 			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
+			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
 			return nameMatch || domainMatch;
 		})
 		.map((competitor) => competitor.name);
@@ -200,7 +207,6 @@ async function saveCitations(
 	);
 }
 
-
 async function runModelIteration({
 	promptId,
 	promptValue,
@@ -263,14 +269,12 @@ async function runModelIteration({
  */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
 	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const deploymentMode = process.env.DEPLOYMENT_MODE ?? "";
 
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { promptId, cadenceHours: providedCadence } = job.data;
+		const { promptId, force } = job.data;
 		console.log(`Processing prompt ${promptId}`);
-
-		// Get cadence hours - use provided value or look it up
-		const cadenceHours = providedCadence ?? (await getCadenceHours(promptId));
 
 		// Get prompt context
 		const context = await getPromptContext(promptId);
@@ -280,12 +284,14 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		}
 
 		const { prompt, brand, competitors: competitorsList } = context;
+		const brandCadenceHours = brand.delayOverrideHours ?? getDefaultDelayHours();
 
 		// Check if prompt and brand are enabled
 		if (!prompt.enabled || !brand.enabled) {
 			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-			// Still reschedule - the prompt might be enabled later
-			await scheduleNextRun(promptId, cadenceHours);
+			// Still reschedule - the prompt might be enabled later; targets are
+			// recomputed on the firing after re-enable.
+			await scheduleNextRun(promptId, brandCadenceHours);
 			continue;
 		}
 
@@ -294,21 +300,50 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 			console.log(`Prompt ${promptId} for brand ${brand.id} has no targets (brand.enabledModels=[])`);
 		}
 
+		const orgOverrides = deploymentMode === "cloud" ? await getOrgRunPolicyOverrides(brand.organizationId) : null;
+		const policies = selectedConfigs.map((config) =>
+			resolveTargetRunPolicy(config, { deploymentMode, brandCadenceHours, orgOverrides }),
+		);
+
+		// Uniform-cadence (the default and cloud shapes) and forced admin runs skip
+		// the due query and run every target — this is what keeps unchanged
+		// deployments at identical volume with no extra DB reads.
+		const uniformCadence = new Set(policies.map((p) => p.cadenceHours)).size <= 1;
+		let duePolicies: TargetRunPolicy[];
+		if (force || uniformCadence) {
+			duePolicies = policies;
+		} else {
+			const lastRuns = await db
+				.select({
+					model: promptRuns.model,
+					provider: promptRuns.provider,
+					lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+				})
+				.from(promptRuns)
+				.where(eq(promptRuns.promptId, promptId))
+				.groupBy(promptRuns.model, promptRuns.provider);
+			const lastRunMap = new Map<string, Date>();
+			for (const row of lastRuns) {
+				lastRunMap.set(lastRunKey(row.model, row.provider), new Date(row.lastRunAt));
+			}
+			duePolicies = selectDueTargets(policies, lastRunMap, new Date());
+		}
+
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
-		// Run all model iterations in parallel
+		// Run all due model iterations in parallel
 		const runPromises: Promise<void>[] = [];
 
-		for (const config of selectedConfigs) {
-			const providerImpl = getProvider(config.provider);
-			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+		for (const policy of duePolicies) {
+			const providerImpl = getProvider(policy.config.provider);
+			for (let i = 0; i < policy.replication; i++) {
 				runPromises.push(
 					runModelIteration({
 						promptId,
 						promptValue: prompt.value,
 						brand,
 						competitorsList,
-						config,
+						config: policy.config,
 						providerImpl,
 						runIndex: i + 1,
 					}),
@@ -338,14 +373,16 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			models: [...new Set(selectedConfigs.map((c) => c.model))],
-			providers: [...new Set(selectedConfigs.map((c) => c.provider))],
+			models: [...new Set(duePolicies.map((p) => p.config.model))],
+			providers: [...new Set(duePolicies.map((p) => p.config.provider))],
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,
 		});
 
-		// Schedule the next run
-		await scheduleNextRun(promptId, cadenceHours);
+		// Reschedule against the fastest selected target so mixed-cadence prompts
+		// fire often enough for their tightest cadence; the due check gates which
+		// targets actually run on each firing.
+		await scheduleNextRun(promptId, minCadenceHours(policies, brandCadenceHours));
 	}
 }
