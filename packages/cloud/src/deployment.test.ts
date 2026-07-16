@@ -13,6 +13,7 @@ describe("createCloudDeployment", () => {
 		expect(features.supportsMultiOrg).toBe(true);
 		expect(features.canCreateBrands).toBe(true);
 		expect(features.billing).toBe(true);
+		expect(features.teamInvites).toBe(true);
 	});
 
 	it("disables read-only, the optimize button, and report generation", () => {

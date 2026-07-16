@@ -1,7 +1,7 @@
 /**
  * Mode-compatibility boot smoke test (issue #341).
  *
- * For each non-cloud DEPLOYMENT_MODE, proves the boot path resolves:
+ * For each DEPLOYMENT_MODE — cloud included — proves the boot path resolves:
  *   1. env validation     — the canonical minimal env satisfies the registry
  *   2. factory resolution — getDeployment() returns the expected mode
  *   3. auth initialization — createAuth() constructs with the mode's options
@@ -20,17 +20,14 @@
  * Usage (from repo root):
  *   pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts            # all modes
  *   pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts whitelabel # one mode
- *
- * Cloud is intentionally skipped: the factory throws "not yet implemented"
- * and ENV_REQUIREMENTS.cloud is empty until #342.
  */
 import type { DeploymentMode } from "@workspace/config/types";
 import { getDeployment, resetDeploymentCache } from "@workspace/deployment";
 import { getEnvValidationState } from "@workspace/config/env";
 
-type SmokeMode = Exclude<DeploymentMode, "cloud">;
+type SmokeMode = DeploymentMode;
 
-const SMOKE_MODES: SmokeMode[] = ["local", "demo", "whitelabel"];
+const SMOKE_MODES: SmokeMode[] = ["local", "demo", "whitelabel", "cloud"];
 
 /**
  * Canonical minimal env that should satisfy each mode's startup requirements.
@@ -76,6 +73,17 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		VITE_APP_PARENT_URL: "https://parent.example.com/",
 		VITE_OPTIMIZATION_URL_TEMPLATE: "https://parent.example.com/optimize?org_id={brandId}&prompt={prompt}",
 	},
+	cloud: {
+		...SHARED_ENV,
+		DEPLOYMENT_MODE: "cloud",
+		APP_URL: "http://localhost:3000",
+		STRIPE_SECRET_KEY: "sk_test_smoke",
+		STRIPE_WEBHOOK_SECRET: "whsec_smoke",
+		RESEND_API_KEY: "re_smoke",
+		RESEND_FROM_EMAIL: "Smoke <smoke@example.com>",
+		GOOGLE_CLIENT_ID: "smoke-google-client-id",
+		GOOGLE_CLIENT_SECRET: "smoke-google-client-secret",
+	},
 };
 
 /** Every env key this script manages, so we can clear leakage between modes. */
@@ -93,12 +101,14 @@ function applyEnv(mode: SmokeMode): Record<string, string> {
 	return env;
 }
 
-function getAuthOptions(mode: SmokeMode, getWhitelabelAuthOptions: () => unknown) {
+function getAuthOptions(mode: SmokeMode, getWhitelabelAuthOptions: () => unknown, getCloudAuthOptions: () => unknown) {
 	switch (mode) {
 		case "demo":
 			return { disableSignUp: true };
 		case "whitelabel":
 			return getWhitelabelAuthOptions();
+		case "cloud":
+			return getCloudAuthOptions();
 		default:
 			// Mirrors apps/web's getDeploymentAuthOptions default branch. Local's
 			// real databaseHooks fire only at user-create runtime, not at init, so
@@ -137,7 +147,8 @@ async function smokeMode(mode: SmokeMode): Promise<string[]> {
 	try {
 		const { createAuth } = await import("@workspace/lib/auth/server");
 		const { getWhitelabelAuthOptions } = await import("@workspace/whitelabel/auth-hooks");
-		const options = getAuthOptions(mode, getWhitelabelAuthOptions);
+		const { getCloudAuthOptions } = await import("@workspace/cloud/auth-hooks");
+		const options = getAuthOptions(mode, getWhitelabelAuthOptions, getCloudAuthOptions);
 		// biome-ignore lint/suspicious/noExplicitAny: options shape varies per mode
 		const auth = createAuth(options as any);
 		if (typeof auth.handler !== "function" || typeof auth.api !== "object") {

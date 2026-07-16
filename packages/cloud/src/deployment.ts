@@ -28,6 +28,7 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 			selfServeSignup: true,
 			billing: true,
 			reportGeneration: false,
+			teamInvites: true,
 		},
 		branding: {
 			name: DEFAULT_APP_NAME,

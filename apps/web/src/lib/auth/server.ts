@@ -7,6 +7,7 @@
  * This is the single source of truth for the server-side auth object.
  * All server functions, middleware, and route handlers import from here.
  */
+import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
 import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
 import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
@@ -50,29 +51,38 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			// bootstrapped in local mode; visitors can only sign in as that
 			// pre-existing user.
 			return { disableSignUp: true };
-		case "cloud":
-			// Self-serve signup, gated by an allowlist while cloud is still being
-			// hardened. This hook is the real gate: it runs on every signup path
-			// (email/password, OAuth first-login) and on direct
-			// POST /api/auth/sign-up/email calls, unlike the UI's canRegister flag.
-			// Set CLOUD_SIGNUP_ALLOWLIST to admit people ("@elmohq.com,alice@x.com");
-			// empty denies everyone (fails closed); "*" opens it up at launch.
-			// Sign-in is unaffected — create hooks don't fire for existing users.
-			// Each user provisions their own org via the create-brand flow
-			// (canCreateBrands), so no after hook is needed.
+		case "cloud": {
+			// Full cloud auth stack (email verification, Google OAuth, Resend
+			// transactional email, team invitations, disposable-domain blocking).
+			// The invite-only signup allowlist is layered onto the cloud package's
+			// user.create.before hook so both gates run on every signup path
+			// (email/password, OAuth first-login, direct POST /api/auth/sign-up/email),
+			// unlike the UI's canRegister flag. Set CLOUD_SIGNUP_ALLOWLIST to admit
+			// people ("@elmohq.com,alice@x.com"); empty denies everyone (fails
+			// closed); "*" opens it up at launch. Sign-in is unaffected — create
+			// hooks don't fire for existing users. Each user provisions their own
+			// org via the create-brand flow (canCreateBrands), so no after hook.
+			const cloudOptions = getCloudAuthOptions();
+			const rejectDisposableEmail = cloudOptions.databaseHooks?.user?.create?.before;
 			return {
+				...cloudOptions,
 				databaseHooks: {
+					...cloudOptions.databaseHooks,
 					user: {
+						...cloudOptions.databaseHooks?.user,
 						create: {
-							before: async (user) => {
+							...cloudOptions.databaseHooks?.user?.create,
+							before: async (user, context) => {
 								if (evaluateSignupAllowed(user.email, getSignupAllowlist()) === "deny") {
 									throw new Error("Sign-ups are invite-only right now.");
 								}
+								await rejectDisposableEmail?.(user, context);
 							},
 						},
 					},
 				},
 			};
+		}
 		default:
 			return getLocalAuthOptions();
 	}
