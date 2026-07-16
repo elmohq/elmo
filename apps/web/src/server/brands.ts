@@ -226,13 +226,16 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		// Attach to the caller's existing org. canCreateBrands is only true in
-		// single-org modes (local, cloud), so the caller has exactly one org.
+		// Attach to the caller's active org (resolved in customSession); fall
+		// back to their first membership if the active org isn't one they belong
+		// to. Supports users in more than one org (e.g. an accepted team invite).
 		const orgs = await listUserOrganizations(session.user.id);
-		if (orgs.length !== 1) {
-			throw new Error("Expected exactly one organization for the current user");
+		if (orgs.length === 0) {
+			throw new Error("No organization for the current user");
 		}
-		const orgId = orgs[0].id;
+		const activeOrgId =
+			(session.session as { activeOrganizationId?: string | null } | undefined)?.activeOrganizationId ?? null;
+		const orgId = activeOrgId && orgs.some((o) => o.id === activeOrgId) ? activeOrgId : orgs[0].id;
 
 		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
