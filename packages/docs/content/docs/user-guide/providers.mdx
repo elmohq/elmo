@@ -153,12 +153,16 @@ SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-
 ## SCRAPE_TARGETS format
 
 ```
-model:provider[:version][:online]
+model:provider[:version][:online][:xN][:Ch]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `gemini`, `perplexity`, `copilot`, `grok`).
 - `provider` — how to reach it (`brightdata`, `oxylabs`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
+- `:xN` — runs per firing for this target (default 5).
+- `:Ch` — hours between firings for this target, e.g. `24h` (default: the brand's cadence / `DEFAULT_DELAY_HOURS`).
 
-Entries are comma-separated.
+The trailing options may appear in any order. Entries are comma-separated.
+
+For example, `claude:anthropic-api:claude-sonnet-4-6:online:x1:24h` runs Claude with web search once per firing, at most once a day.
