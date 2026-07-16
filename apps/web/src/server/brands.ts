@@ -9,7 +9,7 @@ import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
-import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
+import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -196,12 +196,12 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Create a new organization + admin membership + brand in one shot for the
- * current user. Used by the local-mode multi-brand "create new brand" flow on
- * the brand switcher. Gated by the canCreateBrands deployment feature so
- * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ * Attach a new brand to the current user's existing organization, with a
+ * fresh id decoupled from the org id. Used by the multi-brand "create new
+ * brand" flow on the brand switcher. Gated by the canCreateBrands deployment
+ * feature so whitelabel (orgs come from Auth0) and demo (read-only) reject it.
  */
-export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
@@ -226,15 +226,19 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		const { orgId } = await provisionAdditionalLocalOrg({
-			userId: session.user.id,
-			name: trimmedName,
-		});
+		// Attach to the caller's existing org. canCreateBrands is only true in
+		// single-org modes (local, cloud), so the caller has exactly one org.
+		const orgs = await listUserOrganizations(session.user.id);
+		if (orgs.length !== 1) {
+			throw new Error("Expected exactly one organization for the current user");
+		}
+		const orgId = orgs[0].id;
 
+		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
 
 		await db.insert(brands).values({
-			id: orgId,
+			id: brandId,
 			organizationId: orgId,
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
@@ -242,7 +246,7 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 		});
 
-		return { brandId: orgId };
+		return { brandId };
 	});
 
 /**
