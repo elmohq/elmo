@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
 // Homepage feature graphics
 //
-// Each graphic is an abstract, schematic illustration of the feature it sits
-// next to. Style is consistent across the seven: zinc + blue palette, dotted
-// grid backdrop, mono labels, geometric SVG, sharp corners.
+// Most sit next to their feature as a real product screenshot (see the
+// Screenshot helper below); the closing trends graphic is a schematic SVG.
+// Both share one language: zinc + blue palette, dotted grid backdrop, mono
+// labels, sharp corners.
 // ---------------------------------------------------------------------------
 
 function Grid() {
@@ -34,19 +35,9 @@ function Frame({
 	);
 }
 
-function Mono({
-	children,
-	className = "",
-}: {
-	children: React.ReactNode;
-	className?: string;
-}) {
+function Mono({ children, className = "" }: { children: React.ReactNode; className?: string }) {
 	return (
-		<span
-			className={`font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 ${className}`}
-		>
-			{children}
-		</span>
+		<span className={`font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 ${className}`}>{children}</span>
 	);
 }
 
@@ -79,9 +70,7 @@ function Screenshot({
 	objectPosition?: string;
 }) {
 	const useOptimized = import.meta.env.PROD;
-	const srcSet = useOptimized
-		? SCREENSHOT_WIDTHS.map((w) => `${optimizedSrc(src, w)} ${w}w`).join(", ")
-		: undefined;
+	const srcSet = useOptimized ? SCREENSHOT_WIDTHS.map((w) => `${optimizedSrc(src, w)} ${w}w`).join(", ") : undefined;
 	return (
 		<Frame aspect={aspect}>
 			<img
@@ -101,13 +90,11 @@ function Screenshot({
 // 01 — Dashboard
 // ---------------------------------------------------------------------------
 
-export function OverviewPageGraphic({
-	wide = false,
-}: { wide?: boolean } = {}) {
+export function OverviewPageGraphic({ wide = false }: { wide?: boolean } = {}) {
 	return (
 		<Screenshot
 			src="/screenshots/overview.png"
-			alt="Elmo dashboard overview showing AI visibility score, trends, and citation breakdown"
+			alt="Elmo dashboard overview showing AI visibility and share of voice scores with 30-day trend charts"
 			aspect={wide ? "aspect-[12/5]" : "aspect-[5/3]"}
 		/>
 	);
@@ -127,20 +114,59 @@ export function VisibilityPageGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 03 — Citations
+// 03 — Share of Voice
+// ---------------------------------------------------------------------------
+
+export function ShareOfVoicePageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/share-of-voice.png"
+			alt="Share of voice donut chart, 30-day trend, and a leaderboard ranking your brand's mention share against competitors"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 04 — Query Fan-Out
+// ---------------------------------------------------------------------------
+
+export function QueryFanOutPageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/query-fan-out.png"
+			alt="Query fan-out word cloud of the search terms AI engines generate, with a breakdown of how prompts get rewritten"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 05 — Citations
 // ---------------------------------------------------------------------------
 
 export function CitationsPageGraphic() {
 	return (
 		<Screenshot
 			src="/screenshots/citations.png"
-			alt="Citation analysis showing brand share, unique domains, total citations, and breakdown by domain type"
+			alt="Citation analysis showing brand citation share, unique domains, total citations, and category and page-type trends"
 		/>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// 04 — Prompts
+// 06 — Opportunities
+// ---------------------------------------------------------------------------
+
+export function OpportunitiesPageGraphic() {
+	return (
+		<Screenshot
+			src="/screenshots/opportunities.png"
+			alt="Opportunities page with an AI-generated summary and prioritized recommendations for content to create and sources to pitch"
+		/>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// 07 — Prompts
 // ---------------------------------------------------------------------------
 
 export function PromptSearchGraphic() {
@@ -153,88 +179,20 @@ export function PromptSearchGraphic() {
 }
 
 // ---------------------------------------------------------------------------
-// 05 — Competition: brand vs competitors stack-rank
-// ---------------------------------------------------------------------------
-
-export function CompetitorGraphic() {
-	const lanes = [
-		{ name: "Nike", initial: "N", pct: 78, isYou: true },
-		{ name: "Adidas", initial: "A", pct: 64 },
-		{ name: "New Balance", initial: "N", pct: 56 },
-		{ name: "Asics", initial: "A", pct: 48 },
-		{ name: "Hoka", initial: "H", pct: 42 },
-		{ name: "Puma", initial: "P", pct: 35 },
-		{ name: "Saucony", initial: "S", pct: 28 },
-		{ name: "Brooks", initial: "B", pct: 21 },
-		{ name: "Reebok", initial: "R", pct: 14 },
-	];
-
-	return (
-		<Frame>
-			<ul
-				role="list"
-				className="flex size-full flex-col justify-center gap-2 p-5 md:p-6"
-			>
-				{lanes.map((l) => (
-					<li
-						key={l.name}
-						className="grid grid-cols-[1.5rem_7rem_1fr_2.5rem] items-center gap-3"
-					>
-						<span
-							className={`flex size-6 items-center justify-center rounded-md font-mono text-[11px] font-medium ${
-								l.isYou
-									? "bg-blue-600 text-white"
-									: "bg-zinc-100 text-zinc-600"
-							}`}
-						>
-							{l.initial}
-						</span>
-						<span
-							className={`truncate text-[13px] ${
-								l.isYou ? "font-medium text-blue-700" : "text-zinc-700"
-							}`}
-						>
-							{l.name}
-						</span>
-						<div className="relative h-2.5 overflow-hidden rounded-sm bg-zinc-100">
-							<div
-								className={`h-full rounded-sm ${
-									l.isYou
-										? "bg-blue-600"
-										: "bg-linear-to-r from-zinc-300 to-zinc-400"
-								}`}
-								style={{ width: `${l.pct}%` }}
-							/>
-						</div>
-						<span
-							className={`text-right text-[13px] tabular-nums ${
-								l.isYou ? "font-medium text-blue-700" : "text-zinc-700"
-							}`}
-						>
-							{l.pct}%
-						</span>
-					</li>
-				))}
-			</ul>
-		</Frame>
-	);
-}
-
-// ---------------------------------------------------------------------------
-// 06 — Deep Dive
+// 08 — Deep Dive
 // ---------------------------------------------------------------------------
 
 export function PromptDetailGraphic() {
 	return (
 		<Screenshot
 			src="/screenshots/prompt-detail.png"
-			alt="Prompt history showing brand mention rates broken down by individual brand competitors"
+			alt="Prompt history detail showing an individual AI response with the brands it mentioned and the sources behind it"
 		/>
 	);
 }
 
 // ---------------------------------------------------------------------------
-// 07 — Trends: 12-month area chart
+// 09 — Trends: 12-month area chart
 // ---------------------------------------------------------------------------
 
 export function VisibilityTrendGraphic() {
@@ -266,12 +224,8 @@ export function VisibilityTrendGraphic() {
 					<div className="flex flex-col gap-0.5">
 						<Mono>BRAND VISIBILITY · 12M</Mono>
 						<div className="flex items-baseline gap-2">
-							<span className="text-3xl font-medium tracking-tight text-zinc-950 tabular-nums">
-								72%
-							</span>
-							<span className="font-mono text-[10px] tabular-nums text-emerald-600">
-								↑ 32 PT YoY
-							</span>
+							<span className="text-3xl font-medium tracking-tight text-zinc-950 tabular-nums">72%</span>
+							<span className="font-mono text-[10px] tabular-nums text-emerald-600">↑ 32 PT YoY</span>
 						</div>
 					</div>
 					<div className="flex flex-col items-end gap-1 font-mono text-[9px] uppercase tracking-[0.15em]">
@@ -287,11 +241,7 @@ export function VisibilityTrendGraphic() {
 				</div>
 
 				<div className="relative flex-1">
-					<svg
-						viewBox={`0 0 ${w} ${h}`}
-						className="size-full overflow-visible"
-						preserveAspectRatio="none"
-					>
+					<svg viewBox={`0 0 ${w} ${h}`} className="size-full overflow-visible" preserveAspectRatio="none">
 						<defs>
 							<linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
 								<stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />
