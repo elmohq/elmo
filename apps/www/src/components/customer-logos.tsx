@@ -6,6 +6,20 @@ interface Customer {
 	render: () => React.ReactNode;
 }
 
+// TradeSites brands their wordmark as gold "Trade" + near-white "Sites". White
+// won't read on our light strip, so we set it in a dark badge. Colors are their
+// exact brand tokens: --brand (45 80% 55%) and --primary-foreground (0 0% 98%).
+export function TradeSitesWordmark({ className = "" }: { className?: string }) {
+	return (
+		<span
+			className={`inline-flex h-5 items-center rounded bg-zinc-900 px-1.5 text-[11px] font-bold uppercase leading-none tracking-[0.05em] ${className}`}
+		>
+			<span className="text-[hsl(45_80%_55%)]">Trade</span>
+			<span className="text-[hsl(0_0%_98%)]">Sites</span>
+		</span>
+	);
+}
+
 const customers: Customer[] = [
 	{
 		name: "Fermat Commerce",
@@ -33,20 +47,22 @@ const customers: Customer[] = [
 	{
 		name: "Record Ranks",
 		url: "https://recordranks.com/?ref=elmo",
-		linkClass:
-			"group/rr flex h-5 items-center text-zinc-400 transition-colors hover:text-zinc-900",
+		linkClass: "group/rr flex h-5 items-center",
 		render: () => (
-			<span className="inline-flex h-5 items-center gap-1.5 leading-none">
-				<img
-					src="/recordranks-logo.png"
-					alt=""
-					aria-hidden="true"
-					className="size-5 shrink-0 rounded-sm grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
-				/>
-				<span className="text-[15px] font-semibold tracking-tight">
-					Record Ranks
-				</span>
-			</span>
+			<img
+				src="/recordranks-logo.svg"
+				alt=""
+				aria-hidden="true"
+				className="block h-5 w-auto grayscale transition-[filter] duration-150 group-hover/rr:grayscale-0"
+			/>
+		),
+	},
+	{
+		name: "TradeSites",
+		url: "https://www.tradesites.ai/?ref=elmo",
+		linkClass: "group/ts flex h-5 items-center",
+		render: () => (
+			<TradeSitesWordmark className="grayscale transition-[filter] duration-150 group-hover/ts:grayscale-0" />
 		),
 	},
 ];
