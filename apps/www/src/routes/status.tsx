@@ -2,7 +2,26 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
-import { getStatusData, type TargetStatus, type StatusEntry } from "@/lib/status";
+import { externalRel } from "@/lib/external-link";
+import { getStatusData } from "@/lib/status";
+import {
+	buildStatusMatrix,
+	dedupeEntries,
+	formatLatency,
+	formatModel,
+	formatProvider,
+	getLatest,
+	parseTarget,
+	passRate,
+	PROVIDER_FILTER_LABELS,
+	PROVIDER_FILTER_ORDER,
+	providerCategory,
+	rateTier,
+	type MatrixCell,
+	type RateTier,
+	type StatusEntry,
+	type TargetStatus,
+} from "@/lib/status-helpers";
 import {
 	ChartContainer,
 	ChartTooltip,
@@ -11,7 +30,7 @@ import {
 } from "@workspace/ui/components/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
 	LineChart,
@@ -31,7 +50,7 @@ export const Route = createFileRoute("/status")({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
-			...ogMeta({ title, description, path: "/status" }),
+			...ogMeta({ title, description, path: "/status", image: "/og/status.png" }),
 		],
 		links: [{ rel: "canonical", href: canonicalUrl("/status") }],
 		scripts: [
@@ -47,89 +66,6 @@ export const Route = createFileRoute("/status")({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-function parseTarget(target: string) {
-	const parts = target.split(":");
-	const model = parts[0];
-	const provider = parts[1];
-	const rest = parts.slice(2).join(":");
-	return { model, provider, rest };
-}
-
-function formatModel(model: string) {
-	const names: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		gemini: "Gemini",
-		grok: "Grok",
-		perplexity: "Perplexity",
-		copilot: "Copilot",
-		deepseek: "DeepSeek",
-		mistral: "Mistral",
-		"google-ai-mode": "Google AI Mode",
-		"google-ai-overview": "Google AI Overview",
-	};
-	return names[model] || model;
-}
-
-function formatProvider(provider: string) {
-	const names: Record<string, string> = {
-		olostep: "Olostep",
-		brightdata: "BrightData",
-		oxylabs: "Oxylabs",
-		dataforseo: "DataForSEO",
-		"openai-api": "OpenAI API",
-		"anthropic-api": "Anthropic API",
-		"mistral-api": "Mistral API",
-		openrouter: "OpenRouter",
-	};
-	return names[provider] || provider;
-}
-
-// The three first-party API providers collapse into one "Direct API" filter.
-function providerCategory(provider: string) {
-	return provider === "openai-api" ||
-		provider === "anthropic-api" ||
-		provider === "mistral-api"
-		? "direct-api"
-		: provider;
-}
-
-const PROVIDER_FILTER_ORDER = [
-	"direct-api",
-	"openrouter",
-	"olostep",
-	"brightdata",
-	"oxylabs",
-	"dataforseo",
-];
-const PROVIDER_FILTER_LABELS: Record<string, string> = {
-	"direct-api": "Direct API",
-	openrouter: "OpenRouter",
-	olostep: "Olostep",
-	brightdata: "BrightData",
-	oxylabs: "Oxylabs",
-	dataforseo: "DataForSEO",
-};
-
-function formatLatency(ms: number) {
-	if (ms < 1000) return `${ms}ms`;
-	if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
-	const s = Math.floor(ms / 1000);
-	const m = Math.floor(s / 60);
-	return m > 0 ? `${m}m${(s % 60).toString().padStart(2, "0")}s` : `${s}s`;
-}
-
-function getUptime(entries: StatusEntry[]) {
-	if (entries.length === 0) return null;
-	const passes = entries.filter((e) => e.status === "pass").length;
-	return (passes / entries.length) * 100;
-}
-
-function getLatest(entries: StatusEntry[]): StatusEntry | null {
-	if (entries.length === 0) return null;
-	return entries[entries.length - 1];
-}
-
 // Group targets by model for display
 function groupByModel(data: TargetStatus[]) {
 	const groups: Record<string, TargetStatus[]> = {};
@@ -141,19 +77,27 @@ function groupByModel(data: TargetStatus[]) {
 	return groups;
 }
 
-// Deduplicate entries that are within 5 minutes of each other (same run)
-function dedupeEntries(entries: StatusEntry[]): StatusEntry[] {
-	if (entries.length === 0) return [];
-	const result: StatusEntry[] = [entries[0]];
-	for (let i = 1; i < entries.length; i++) {
-		const prev = new Date(result[result.length - 1].ts).getTime();
-		const curr = new Date(entries[i].ts).getTime();
-		if (curr - prev > 5 * 60 * 1000) {
-			result.push(entries[i]);
-		}
-	}
-	return result;
-}
+// Tailwind classes per uptime tier for the light-themed matrix. Data cells are
+// light; the row/column health cells sit one shade darker; the overall corner
+// is solid.
+const TIER_CELL: Record<RateTier, string> = {
+	up: "bg-green-100 text-green-800",
+	warn: "bg-amber-100 text-amber-800",
+	down: "bg-red-100 text-red-800",
+	none: "bg-zinc-100 text-zinc-400",
+};
+const TIER_CELL_AVG: Record<RateTier, string> = {
+	up: "bg-green-200 text-green-900",
+	warn: "bg-amber-200 text-amber-900",
+	down: "bg-red-200 text-red-900",
+	none: "bg-zinc-100 text-zinc-400",
+};
+const TIER_SOLID: Record<RateTier, string> = {
+	up: "bg-green-600 text-white",
+	warn: "bg-amber-500 text-white",
+	down: "bg-red-600 text-white",
+	none: "bg-zinc-300 text-white",
+};
 
 // ─── Components ───────────────────────────────────────────────────────────
 
@@ -508,7 +452,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 	const { model, provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
 	const latest = getLatest(deduped);
-	const uptime = getUptime(deduped);
+	const uptime = passRate([data]);
 
 	// Build sparkline data from all deduped entries
 	const allTimestamps = deduped.map((e) => e.ts);
@@ -630,6 +574,120 @@ function FilterRow({
 	);
 }
 
+// ─── At-a-glance matrix ───────────────────────────────────────────────────
+
+function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
+	if (!cell) {
+		return (
+			<div className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300">
+				·
+			</div>
+		);
+	}
+	const tier = rateTier(cell.rate);
+	return (
+		<div
+			className={`flex h-9 items-center justify-center rounded-sm text-xs font-medium tabular-nums ${TIER_CELL[tier]} ${
+				cell.down ? "ring-2 ring-inset ring-red-500" : ""
+			}`}
+			title={cell.down ? "Last check failed" : undefined}
+		>
+			{cell.rate === null ? "—" : `${Math.round(cell.rate)}%`}
+		</div>
+	);
+}
+
+// Row / column / overall health cells: one shade darker than data cells, with
+// the overall corner solid.
+function MatrixSummaryCell({
+	rate,
+	solid,
+}: {
+	rate: number | null;
+	solid?: boolean;
+}) {
+	const tier = rateTier(rate);
+	return (
+		<div
+			className={`flex h-9 items-center justify-center rounded-sm text-xs font-semibold tabular-nums ${
+				solid ? TIER_SOLID[tier] : TIER_CELL_AVG[tier]
+			}`}
+		>
+			{rate === null ? "—" : `${Math.round(rate)}%`}
+		</div>
+	);
+}
+
+function StatusMatrix({ data }: { data: TargetStatus[] }) {
+	const matrix = buildStatusMatrix(data);
+	if (matrix.models.length === 0 || matrix.providers.length === 0) return null;
+	// A narrow spacer track sets the aggregate-health band (right column and
+	// bottom row) apart from the per-target cells — the darker shading and the
+	// solid corner then carry it without needing a label.
+	const gridColumns = `minmax(112px, 1.4fr) repeat(${matrix.providers.length}, minmax(52px, 1fr)) 10px minmax(60px, 0.9fr)`;
+
+	return (
+		<Card className="mb-8">
+			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
+				<CardTitle>LLM Provider Status</CardTitle>
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-green-100" />≥99%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-amber-100" />≥90%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-red-100" />&lt;90%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />last check failed
+					</span>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<div className="overflow-x-auto">
+					<div
+						className="grid min-w-[640px] gap-1"
+						style={{ gridTemplateColumns: gridColumns }}
+					>
+						<div />
+						{matrix.providers.map((p) => (
+							<div
+								key={p}
+								className="px-1 pb-1 text-center text-[11px] font-medium text-zinc-500"
+							>
+								{PROVIDER_FILTER_LABELS[p] ?? p}
+							</div>
+						))}
+						<div />
+						<div />
+						{matrix.models.map((model) => (
+							<Fragment key={model}>
+								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">
+									{formatModel(model)}
+								</div>
+								{matrix.providers.map((p) => (
+									<MatrixCellView key={p} cell={matrix.cell(model, p)} />
+								))}
+								<div />
+								<MatrixSummaryCell rate={matrix.rowRate(model)} />
+							</Fragment>
+						))}
+						<div className="col-span-full h-2" />
+						<div />
+						{matrix.providers.map((p) => (
+							<MatrixSummaryCell key={p} rate={matrix.colRate(p)} />
+						))}
+						<div />
+						<MatrixSummaryCell rate={matrix.overall} solid />
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
 function StatusPage() {
 	const data = Route.useLoaderData();
 	const [selectedProviders, setSelectedProviders] = useState<Set<string>>(
@@ -670,13 +728,6 @@ function StatusPage() {
 
 	const groups = groupByModel(filteredData);
 
-	// Overall stats (scoped to the active filters)
-	const allLatest = filteredData
-		.map((d) => getLatest(dedupeEntries(d.entries)))
-		.filter((e): e is StatusEntry => e !== null);
-	const allOperational = allLatest.length > 0 && allLatest.every((e) => e.status === "pass");
-	const failCount = allLatest.filter((e) => e.status === "fail").length;
-
 	return (
 		<div className="min-h-screen">
 			<Navbar />
@@ -694,7 +745,32 @@ function StatusPage() {
 					</p>
 				</div>
 
-				{/* Filters */}
+				{/* Elmo Cloud status pointer */}
+				<div className="mb-8 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+					<span>Looking for Elmo Cloud's status?</span>
+					<a
+						href="https://status.elmohq.com/"
+						target="_blank"
+						rel={externalRel("https://status.elmohq.com/")}
+						className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+					>
+						status.elmohq.com
+					</a>
+				</div>
+
+				{/* At-a-glance matrix — all providers, independent of the filters below */}
+				<StatusMatrix data={data} />
+
+				{/* Full breakdown — a titled rule separates the detail from the overview */}
+				<div className="mt-4 mb-6 border-t border-zinc-200 pt-10">
+					<h2 className="font-heading text-2xl text-zinc-950">Full breakdown</h2>
+					<p className="mt-1 text-sm text-zinc-600">
+						Filter to a provider or model, then expand any target for its 7-day
+						run history, latency, citations, and errors.
+					</p>
+				</div>
+
+				{/* Filters scope the per-provider detail and latency chart below */}
 				<div className="mb-8 space-y-2">
 					<FilterRow
 						label="Provider"
@@ -711,39 +787,6 @@ function StatusPage() {
 						onClear={() => setSelectedModels(new Set())}
 					/>
 				</div>
-
-				{/* Overall status banner */}
-				<Card className={`mb-8 border-2 ${allOperational ? "border-green-500/30" : failCount > 0 ? "border-red-500/30" : "border-zinc-200"}`}>
-					<CardContent className="flex items-center gap-5 py-8">
-						<div className="relative flex items-center justify-center">
-							<div
-								className={`size-5 rounded-full ${allOperational ? "bg-green-500" : failCount > 0 ? "bg-red-500" : "bg-zinc-200"}`}
-							/>
-							{(allOperational || failCount > 0) && (
-								<div
-									className={`absolute size-5 animate-ping rounded-full opacity-30 ${allOperational ? "bg-green-500" : "bg-red-500"}`}
-								/>
-							)}
-						</div>
-						<div>
-							<p className="text-xl font-semibold text-zinc-950">
-								{allLatest.length === 0
-									? "Waiting for data"
-									: allOperational
-										? "All Systems Operational"
-										: `${failCount} provider${failCount !== 1 ? "s" : ""} experiencing issues`}
-							</p>
-							{allLatest.length > 0 && (
-								<p className="mt-1 text-sm text-zinc-500">
-									Last checked{" "}
-									{new Date(
-										Math.max(...allLatest.map((e) => new Date(e.ts).getTime())),
-									).toLocaleString()}
-								</p>
-							)}
-						</div>
-					</CardContent>
-				</Card>
 
 				{/* Provider status rows grouped by model */}
 				{filteredData.length === 0 && (

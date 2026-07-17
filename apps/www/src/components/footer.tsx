@@ -22,6 +22,11 @@ const cols = [
 			{ label: "Blog", href: "/blog" },
 			{ label: "Documentation", href: "/docs" },
 			{ label: "API Reference", href: "/docs/api" },
+			{
+				label: "Elmo Cloud Status",
+				href: "https://status.elmohq.com/",
+				external: true,
+			},
 			{ label: "Provider Status", href: "/status" },
 			{
 				label: "Issues",
