@@ -737,7 +737,7 @@ function StatusPage() {
 						/ STATUS
 					</p>
 					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
-					<p className="mt-2 max-w-2xl text-zinc-600">
+					<p className="mt-2 text-zinc-600">
 						Status of the third-party AI providers and scraping services Elmo
 						uses to track your brand's visibility and citations. Tests run
 						automatically 4 times per day. Latencies shown are for individual
@@ -764,7 +764,7 @@ function StatusPage() {
 				{/* Full breakdown — a titled rule separates the detail from the overview */}
 				<div className="mt-4 mb-6 border-t border-zinc-200 pt-10">
 					<h2 className="font-heading text-2xl text-zinc-950">Full breakdown</h2>
-					<p className="mt-1 max-w-2xl text-sm text-zinc-600">
+					<p className="mt-1 text-sm text-zinc-600">
 						Filter to a provider or model, then expand any target for its 7-day
 						run history, latency, citations, and errors.
 					</p>
