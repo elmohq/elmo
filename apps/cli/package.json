@@ -45,7 +45,7 @@
     "@types/semver": "^7.7.1",
     "@workspace/config": "workspace:*",
     "rolldown": "^1.1.5",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   }
 }

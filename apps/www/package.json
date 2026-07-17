@@ -53,7 +53,7 @@
 		"@vercel/blob": "^2.6.1",
 		"@vitejs/plugin-react": "^6.0.3",
 		"png-to-ico": "^3.0.2",
-		"typescript": "^6.0.3",
+		"typescript": "^7.0.2",
 		"vite": "^8.1.4"
 	}
 }
