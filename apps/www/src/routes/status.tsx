@@ -2,7 +2,25 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
-import { getStatusData, type TargetStatus, type StatusEntry } from "@/lib/status";
+import { getStatusData } from "@/lib/status";
+import {
+	buildStatusMatrix,
+	dedupeEntries,
+	formatLatency,
+	formatModel,
+	formatProvider,
+	getLatest,
+	parseTarget,
+	passRate,
+	PROVIDER_FILTER_LABELS,
+	PROVIDER_FILTER_ORDER,
+	providerCategory,
+	rateTier,
+	type MatrixCell,
+	type RateTier,
+	type StatusEntry,
+	type TargetStatus,
+} from "@/lib/status-helpers";
 import {
 	ChartContainer,
 	ChartTooltip,
@@ -11,7 +29,7 @@ import {
 } from "@workspace/ui/components/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
-import { useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
 	LineChart,
@@ -31,7 +49,7 @@ export const Route = createFileRoute("/status")({
 		meta: [
 			{ title },
 			{ name: "description", content: description },
-			...ogMeta({ title, description, path: "/status" }),
+			...ogMeta({ title, description, path: "/status", image: "/og/status.png" }),
 		],
 		links: [{ rel: "canonical", href: canonicalUrl("/status") }],
 		scripts: [
@@ -47,89 +65,6 @@ export const Route = createFileRoute("/status")({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-function parseTarget(target: string) {
-	const parts = target.split(":");
-	const model = parts[0];
-	const provider = parts[1];
-	const rest = parts.slice(2).join(":");
-	return { model, provider, rest };
-}
-
-function formatModel(model: string) {
-	const names: Record<string, string> = {
-		chatgpt: "ChatGPT",
-		claude: "Claude",
-		gemini: "Gemini",
-		grok: "Grok",
-		perplexity: "Perplexity",
-		copilot: "Copilot",
-		deepseek: "DeepSeek",
-		mistral: "Mistral",
-		"google-ai-mode": "Google AI Mode",
-		"google-ai-overview": "Google AI Overview",
-	};
-	return names[model] || model;
-}
-
-function formatProvider(provider: string) {
-	const names: Record<string, string> = {
-		olostep: "Olostep",
-		brightdata: "BrightData",
-		oxylabs: "Oxylabs",
-		dataforseo: "DataForSEO",
-		"openai-api": "OpenAI API",
-		"anthropic-api": "Anthropic API",
-		"mistral-api": "Mistral API",
-		openrouter: "OpenRouter",
-	};
-	return names[provider] || provider;
-}
-
-// The three first-party API providers collapse into one "Direct API" filter.
-function providerCategory(provider: string) {
-	return provider === "openai-api" ||
-		provider === "anthropic-api" ||
-		provider === "mistral-api"
-		? "direct-api"
-		: provider;
-}
-
-const PROVIDER_FILTER_ORDER = [
-	"direct-api",
-	"openrouter",
-	"olostep",
-	"brightdata",
-	"oxylabs",
-	"dataforseo",
-];
-const PROVIDER_FILTER_LABELS: Record<string, string> = {
-	"direct-api": "Direct API",
-	openrouter: "OpenRouter",
-	olostep: "Olostep",
-	brightdata: "BrightData",
-	oxylabs: "Oxylabs",
-	dataforseo: "DataForSEO",
-};
-
-function formatLatency(ms: number) {
-	if (ms < 1000) return `${ms}ms`;
-	if (ms < 10_000) return `${(ms / 1000).toFixed(1)}s`;
-	const s = Math.floor(ms / 1000);
-	const m = Math.floor(s / 60);
-	return m > 0 ? `${m}m${(s % 60).toString().padStart(2, "0")}s` : `${s}s`;
-}
-
-function getUptime(entries: StatusEntry[]) {
-	if (entries.length === 0) return null;
-	const passes = entries.filter((e) => e.status === "pass").length;
-	return (passes / entries.length) * 100;
-}
-
-function getLatest(entries: StatusEntry[]): StatusEntry | null {
-	if (entries.length === 0) return null;
-	return entries[entries.length - 1];
-}
-
 // Group targets by model for display
 function groupByModel(data: TargetStatus[]) {
 	const groups: Record<string, TargetStatus[]> = {};
@@ -141,19 +76,25 @@ function groupByModel(data: TargetStatus[]) {
 	return groups;
 }
 
-// Deduplicate entries that are within 5 minutes of each other (same run)
-function dedupeEntries(entries: StatusEntry[]): StatusEntry[] {
-	if (entries.length === 0) return [];
-	const result: StatusEntry[] = [entries[0]];
-	for (let i = 1; i < entries.length; i++) {
-		const prev = new Date(result[result.length - 1].ts).getTime();
-		const curr = new Date(entries[i].ts).getTime();
-		if (curr - prev > 5 * 60 * 1000) {
-			result.push(entries[i]);
-		}
-	}
-	return result;
-}
+// Tailwind classes per uptime tier for the light-themed page surfaces.
+const TIER_PILL_ACTIVE: Record<RateTier, string> = {
+	up: "text-green-300",
+	warn: "text-amber-300",
+	down: "text-red-300",
+	none: "text-zinc-400",
+};
+const TIER_PILL_IDLE: Record<RateTier, string> = {
+	up: "text-green-600",
+	warn: "text-amber-600",
+	down: "text-red-600",
+	none: "text-zinc-400",
+};
+const TIER_CELL: Record<RateTier, string> = {
+	up: "bg-green-100 text-green-800",
+	warn: "bg-amber-100 text-amber-800",
+	down: "bg-red-100 text-red-800",
+	none: "bg-zinc-100 text-zinc-400",
+};
 
 // ─── Components ───────────────────────────────────────────────────────────
 
@@ -508,7 +449,7 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 	const { model, provider, rest } = parseTarget(data.target);
 	const deduped = dedupeEntries(data.entries);
 	const latest = getLatest(deduped);
-	const uptime = getUptime(deduped);
+	const uptime = passRate([data]);
 
 	// Build sparkline data from all deduped entries
 	const allTimestamps = deduped.map((e) => e.ts);
@@ -584,11 +525,24 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 function filterPillClass(active: boolean) {
-	return `rounded-full border px-3 py-1 text-xs transition-colors ${
+	return `inline-flex items-center rounded-full border px-3 py-1 text-xs transition-colors ${
 		active
 			? "border-zinc-900 bg-zinc-900 text-white"
 			: "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
 	}`;
+}
+
+// The share of passing squares for the subset a pill selects, colored by tier.
+// Idle pills read on white; the active (dark) pill needs the lighter shades.
+function PillRate({ rate, active }: { rate: number | null; active: boolean }) {
+	if (rate === null) return null;
+	const tier = rateTier(rate);
+	const color = active ? TIER_PILL_ACTIVE[tier] : TIER_PILL_IDLE[tier];
+	return (
+		<span className={`ml-1.5 font-medium tabular-nums ${color}`}>
+			{Math.round(rate)}%
+		</span>
+	);
 }
 
 function FilterRow({
@@ -597,12 +551,14 @@ function FilterRow({
 	selected,
 	onToggle,
 	onClear,
+	rateFor,
 }: {
 	label: string;
 	options: { value: string; label: string }[];
 	selected: Set<string>;
 	onToggle: (value: string) => void;
 	onClear: () => void;
+	rateFor: (value: string | null) => number | null;
 }) {
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
@@ -615,6 +571,7 @@ function FilterRow({
 				className={filterPillClass(selected.size === 0)}
 			>
 				All
+				<PillRate rate={rateFor(null)} active={selected.size === 0} />
 			</button>
 			{options.map((o) => (
 				<button
@@ -624,8 +581,121 @@ function FilterRow({
 					className={filterPillClass(selected.has(o.value))}
 				>
 					{o.label}
+					<PillRate rate={rateFor(o.value)} active={selected.has(o.value)} />
 				</button>
 			))}
+		</div>
+	);
+}
+
+// ─── At-a-glance matrix ───────────────────────────────────────────────────
+
+function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
+	if (!cell) {
+		return <div className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300">·</div>;
+	}
+	const tier = rateTier(cell.rate);
+	return (
+		<div
+			className={`flex h-9 items-center justify-center rounded-sm text-xs font-medium tabular-nums ${TIER_CELL[tier]} ${
+				cell.down ? "ring-2 ring-inset ring-red-500" : ""
+			}`}
+			title={cell.down ? "A provider in this cell is currently failing" : undefined}
+		>
+			{cell.rate === null ? "—" : `${Math.round(cell.rate)}%`}
+		</div>
+	);
+}
+
+function StatusMatrix({ data }: { data: TargetStatus[] }) {
+	const matrix = buildStatusMatrix(data);
+	if (matrix.models.length === 0 || matrix.providers.length === 0) return null;
+
+	return (
+		<Card className="mb-8">
+			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+				<CardTitle>Stability at a glance</CardTitle>
+				<div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-green-100" />≥99%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-amber-100" />≥90%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-red-100" />&lt;90%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />down now
+					</span>
+				</div>
+			</CardHeader>
+			<CardContent>
+				<div className="overflow-x-auto">
+					<div
+						className="grid min-w-[640px] gap-1"
+						style={{
+							gridTemplateColumns: `minmax(120px, 1.4fr) repeat(${matrix.providers.length}, minmax(56px, 1fr))`,
+						}}
+					>
+						<div />
+						{matrix.providers.map((p) => (
+							<div
+								key={p}
+								className="px-1 pb-1 text-center text-[11px] font-medium text-zinc-500"
+							>
+								{PROVIDER_FILTER_LABELS[p] ?? p}
+							</div>
+						))}
+						{matrix.models.map((model) => (
+							<Fragment key={model}>
+								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">
+									{formatModel(model)}
+								</div>
+								{matrix.providers.map((p) => (
+									<MatrixCellView key={p} cell={matrix.cell(model, p)} />
+								))}
+							</Fragment>
+						))}
+					</div>
+				</div>
+			</CardContent>
+		</Card>
+	);
+}
+
+// ─── Share ────────────────────────────────────────────────────────────────
+
+function ShareButtons() {
+	const [copied, setCopied] = useState(false);
+	const url = canonicalUrl("/status");
+
+	const copy = async () => {
+		try {
+			await navigator.clipboard.writeText(url);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch {
+			// Clipboard can be unavailable (insecure context / denied) — no-op.
+		}
+	};
+
+	return (
+		<div className="flex flex-wrap items-center gap-2">
+			<button
+				type="button"
+				onClick={copy}
+				className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+			>
+				{copied ? "Link copied" : "Copy link"}
+			</button>
+			<a
+				href="/og/status.png"
+				download="elmo-provider-status.png"
+				className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+			>
+				Save status card
+			</a>
 		</div>
 	);
 }
@@ -670,6 +740,30 @@ function StatusPage() {
 
 	const groups = groupByModel(filteredData);
 
+	// Pill percentages: a provider pill reflects that provider across the
+	// selected models (all when none selected); a model pill mirrors it. The
+	// "All" pill (value null) drops only its own dimension's filter.
+	const providerRate = (value: string | null) =>
+		passRate(
+			data.filter((d) => {
+				const { model, provider } = parseTarget(d.target);
+				const modelOk = selectedModels.size === 0 || selectedModels.has(model);
+				const provOk = value === null || providerCategory(provider) === value;
+				return modelOk && provOk;
+			}),
+		);
+	const modelRate = (value: string | null) =>
+		passRate(
+			data.filter((d) => {
+				const { model, provider } = parseTarget(d.target);
+				const provOk =
+					selectedProviders.size === 0 ||
+					selectedProviders.has(providerCategory(provider));
+				const modelOk = value === null || model === value;
+				return provOk && modelOk;
+			}),
+		);
+
 	// Overall stats (scoped to the active filters)
 	const allLatest = filteredData
 		.map((d) => getLatest(dedupeEntries(d.entries)))
@@ -681,17 +775,20 @@ function StatusPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-				<div className="mb-8">
-					<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ STATUS
-					</p>
-					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
-					<p className="mt-2 text-zinc-600">
-						Status of the third-party AI providers and scraping services Elmo
-						uses to track your brand's visibility and citations. Tests run
-						automatically 4 times per day. Latencies shown are for individual
-						prompt evaluations; batches can vary significantly.
-					</p>
+				<div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+					<div>
+						<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+							/ STATUS
+						</p>
+						<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
+						<p className="mt-2 max-w-2xl text-zinc-600">
+							Status of the third-party AI providers and scraping services Elmo
+							uses to track your brand's visibility and citations. Tests run
+							automatically 4 times per day. Latencies shown are for individual
+							prompt evaluations; batches can vary significantly.
+						</p>
+					</div>
+					<ShareButtons />
 				</div>
 
 				{/* Filters */}
@@ -702,6 +799,7 @@ function StatusPage() {
 						selected={selectedProviders}
 						onToggle={toggleProvider}
 						onClear={() => setSelectedProviders(new Set())}
+						rateFor={providerRate}
 					/>
 					<FilterRow
 						label="Model"
@@ -709,6 +807,7 @@ function StatusPage() {
 						selected={selectedModels}
 						onToggle={toggleModel}
 						onClear={() => setSelectedModels(new Set())}
+						rateFor={modelRate}
 					/>
 				</div>
 
@@ -744,6 +843,9 @@ function StatusPage() {
 						</div>
 					</CardContent>
 				</Card>
+
+				{/* At-a-glance stability matrix */}
+				<StatusMatrix data={filteredData} />
 
 				{/* Provider status rows grouped by model */}
 				{filteredData.length === 0 && (
