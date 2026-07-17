@@ -126,8 +126,11 @@ export type RateTier = "up" | "warn" | "down" | "none";
 
 export function rateTier(rate: number | null): RateTier {
 	if (rate === null) return "none";
-	if (rate >= 99) return "up";
-	if (rate >= 90) return "warn";
+	// Tier off the rounded percentage that gets displayed, so a cell reading
+	// "99%" is always green — never amber because the raw rate was 98.6%.
+	const pct = Math.round(rate);
+	if (pct >= 99) return "up";
+	if (pct >= 90) return "warn";
 	return "down";
 }
 
