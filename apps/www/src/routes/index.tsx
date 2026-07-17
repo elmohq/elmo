@@ -43,9 +43,9 @@ function HomePage() {
 			<Navbar />
 			<main>
 				<Hero />
-				<Testimonial />
 				<Stats />
 				<Features />
+				<Testimonial />
 				<Community />
 				<Pricing />
 				<OffSiteAeoPromo />
