@@ -1,0 +1,17 @@
+meta {
+  name: list brands
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.brands: isArray
+  res.body.pagination.total: gte 1
+}

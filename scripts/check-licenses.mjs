@@ -43,6 +43,9 @@ const ALLOWED_LICENSES = new Set([
   "(AFL-2.1 OR BSD-3-Clause)",
   "(BSD-3-Clause OR GPL-2.0)", // dual-licensed – we use BSD-3-Clause
   "(MPL-2.0 OR Apache-2.0)", // dual-licensed – we use Apache-2.0
+  // Transitive deps of @usebruno/cli (e2e API tests); every component permissive.
+  "(BSD-3-Clause AND Apache-2.0)", // google-protobuf
+  "(Public Domain OR MIT)", // tv4 – we use MIT
 ]);
 
 // ── Per-package exceptions ───────────────────────────────────────────
@@ -52,6 +55,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   // Sentry CLI – build-time tooling only, never distributed with Elmo.
   // FSL-1.1-MIT converts to MIT after two years.
   ["@sentry/cli", "FSL-1.1-MIT"],
+  ["@sentry/cli-darwin", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-arm64", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-x64", "FSL-1.1-MIT"],
   ["@sentry/cli-linux-arm", "FSL-1.1-MIT"],
@@ -87,6 +91,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   // Packages with "Unknown" in pnpm but verified MIT via LICENSE file.
   ["khroma", "Unknown"],
   ["spawndamnit", "Unknown"],
+  ["json-query", "Unknown"],
 ]);
 
 // ─────────────────────────────────────────────────────────────────────

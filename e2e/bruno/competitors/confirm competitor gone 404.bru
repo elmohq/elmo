@@ -1,0 +1,15 @@
+meta {
+  name: confirm competitor gone 404
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/competitors/{{createdCompetitorId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 404
+}

@@ -1,0 +1,20 @@
+meta {
+  name: create brand validation
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/brands
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 400
+  res.body.error: eq Validation Error
+}

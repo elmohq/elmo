@@ -1,0 +1,28 @@
+meta {
+  name: create prompt
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/prompts
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "brandId": "{{brandId}}",
+    "value": "Bruno E2E prompt — best testing framework?",
+    "tags": ["bruno-e2e"]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+}
+
+script:post-response {
+  bru.setVar("createdPromptId", res.getBody().id);
+}

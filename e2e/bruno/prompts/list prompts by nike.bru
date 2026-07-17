@@ -1,0 +1,20 @@
+meta {
+  name: list prompts by nike
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts?brandId={{nikeBrandId}}
+  body: none
+  auth: inherit
+}
+
+params:query {
+  brandId: {{nikeBrandId}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.prompts[0].brandId: eq nike
+}

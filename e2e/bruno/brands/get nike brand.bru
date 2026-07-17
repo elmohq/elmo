@@ -1,0 +1,16 @@
+meta {
+  name: get nike brand
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/brands/{{nikeBrandId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Nike
+}

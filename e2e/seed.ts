@@ -38,6 +38,25 @@ export const COMPETITOR_IDS = {
   competitorB: "00000000-0000-0000-0000-100000000002",
 } as const;
 
+export const REPORT_IDS = {
+  completed: "00000000-0000-0000-0000-300000000001",
+  pending: "00000000-0000-0000-0000-300000000002",
+  processing: "00000000-0000-0000-0000-300000000003",
+  failed: "00000000-0000-0000-0000-300000000004",
+} as const;
+
+// Second tenant — a brand in an org the E2E user is NOT a member of.
+export const NIKE_ORG_ID = "nike";
+export const NIKE_BRAND_ID = "nike";
+export const NIKE_PROMPT_IDS = {
+  training: "00000000-0000-0000-0000-400000000001",
+  lifestyle: "00000000-0000-0000-0000-400000000002",
+} as const;
+export const NIKE_COMPETITOR_IDS = {
+  adidas: "00000000-0000-0000-0000-410000000001",
+  puma: "00000000-0000-0000-0000-410000000002",
+} as const;
+
 // Prompt run IDs (for prompt detail page testing)
 const RUN_IDS = [
   "00000000-0000-0000-0000-200000000001",
@@ -363,6 +382,115 @@ async function seed() {
       }
     }
     console.log(`  Created ${citationCount} citations (Postgres)`);
+
+    // -----------------------------------------------------------------------
+    // 6. Reports (mocked worker output — the worker itself is never invoked)
+    // -----------------------------------------------------------------------
+    const completedReportRawOutput = {
+      competitors: [
+        { name: "Competitor Alpha", domain: "competitor-alpha.com" },
+        { name: "Competitor Beta", domain: "competitor-beta.com" },
+      ],
+      prompts: [
+        { brandId: REPORT_IDS.completed, value: "What is the best AI monitoring tool for tracking brand visibility?", enabled: true, tags: [], systemTags: ["branded"] },
+        { brandId: REPORT_IDS.completed, value: "Compare AI visibility platforms and their features", enabled: true, tags: [], systemTags: ["unbranded"] },
+      ],
+      promptRuns: [
+        {
+          promptValue: "What is the best AI monitoring tool for tracking brand visibility?",
+          runs: [
+            { model: "chatgpt", version: "gpt-4o", webSearchEnabled: true, rawOutput: {}, webQueries: [], textContent: "Test Organization leads for AI brand monitoring.", brandMentioned: true, competitorsMentioned: ["Competitor Alpha"] },
+            { model: "claude", version: "claude-sonnet-4-6", webSearchEnabled: false, rawOutput: {}, webQueries: [], textContent: "Test Organization is a strong option.", brandMentioned: true, competitorsMentioned: [] },
+            { model: "google-ai-mode", version: "gemini-2.5-pro", webSearchEnabled: true, rawOutput: {}, webQueries: [], textContent: "Options include Competitor Alpha and Competitor Beta.", brandMentioned: false, competitorsMentioned: ["Competitor Alpha", "Competitor Beta"] },
+          ],
+        },
+        {
+          promptValue: "Compare AI visibility platforms and their features",
+          runs: [
+            { model: "chatgpt", version: "gpt-4o", webSearchEnabled: false, rawOutput: {}, webQueries: [], textContent: "Test Organization stands out.", brandMentioned: true, competitorsMentioned: [] },
+          ],
+        },
+      ],
+    };
+
+    await client.query(
+      `INSERT INTO reports (id, brand_name, brand_website, status, progress, raw_output, created_at, completed_at, updated_at)
+       VALUES ($1, $2, $3, 'completed', 100, $4, NOW(), NOW(), NOW())`,
+      [REPORT_IDS.completed, TEST_BRAND_NAME, TEST_BRAND_WEBSITE, JSON.stringify(completedReportRawOutput)],
+    );
+
+    // Non-completed rows: exercise the status-only branch and list pagination.
+    for (const [id, status, progress] of [
+      [REPORT_IDS.pending, "pending", 0],
+      [REPORT_IDS.processing, "processing", 45],
+      [REPORT_IDS.failed, "failed", 20],
+    ] as const) {
+      await client.query(
+        `INSERT INTO reports (id, brand_name, brand_website, status, progress, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+        [id, TEST_BRAND_NAME, TEST_BRAND_WEBSITE, status, progress],
+      );
+    }
+    console.log("  Created 4 reports (1 completed, 1 pending, 1 processing, 1 failed)");
+
+    // -----------------------------------------------------------------------
+    // 7. Second tenant (Nike) — a brand in an org the E2E user is NOT a
+    //    member of. Invisible to the org-scoped dashboard; still visible to
+    //    the admin API key (Plan 004 uses this for access-control tests).
+    // -----------------------------------------------------------------------
+    await client.query(
+      `INSERT INTO organization (id, name, slug, created_at)
+       VALUES ($1, 'Nike', $1, NOW()) ON CONFLICT (id) DO NOTHING`,
+      [NIKE_ORG_ID],
+    );
+    await client.query(
+      `INSERT INTO brands (id, organization_id, name, website, additional_domains, aliases, enabled, onboarded, created_at, updated_at)
+       VALUES ($1, $2, 'Nike', 'https://nike.com', $3, $4, true, true, NOW(), NOW())`,
+      [NIKE_BRAND_ID, NIKE_ORG_ID, ["jordan.com", "converse.com"], ["Just Do It", "Swoosh", "Air Jordan"]],
+    );
+
+    const nikePrompts = [
+      { id: NIKE_PROMPT_IDS.training, value: "Best weightlifting shoes for squats and deadlifts", tags: ["training"] },
+      { id: NIKE_PROMPT_IDS.lifestyle, value: "Best white leather sneakers for everyday wear", tags: ["lifestyle"] },
+    ];
+    for (const p of nikePrompts) {
+      await client.query(
+        `INSERT INTO prompts (id, brand_id, value, enabled, tags, system_tags, created_at, updated_at)
+         VALUES ($1, $2, $3, true, $4, '{}', NOW(), NOW())`,
+        [p.id, NIKE_BRAND_ID, p.value, p.tags],
+      );
+    }
+
+    const nikeCompetitors = [
+      { id: NIKE_COMPETITOR_IDS.adidas, name: "Adidas", domains: ["adidas.com"], aliases: ["Three Stripes"] },
+      { id: NIKE_COMPETITOR_IDS.puma, name: "Puma", domains: ["puma.com"], aliases: ["Puma SE"] },
+    ];
+    for (const c of nikeCompetitors) {
+      await client.query(
+        `INSERT INTO competitors (id, brand_id, name, domains, aliases, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+        [c.id, NIKE_BRAND_ID, c.name, c.domains, c.aliases],
+      );
+    }
+
+    // A couple of realistic prompt runs + citations for the training prompt.
+    const nikeRunId = "00000000-0000-0000-0000-420000000001";
+    await client.query(
+      `INSERT INTO prompt_runs (id, prompt_id, brand_id, model, provider, version, web_search_enabled, raw_output, web_queries, brand_mentioned, competitors_mentioned, created_at)
+       VALUES ($1, $2, $3, 'chatgpt', 'brightdata', 'gpt-5-5', true, $4, $5, true, $6, NOW())`,
+      [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, JSON.stringify({ response: "Nike Metcon and Romaleos are top picks; Adidas Powerlift is an alternative." }), ["best weightlifting shoes"], ["Adidas"]],
+    );
+    for (const [i, cite] of [
+      { url: "https://runrepeat.com/best-weightlifting-shoes", domain: "runrepeat.com", title: "Best Weightlifting Shoes" },
+      { url: "https://www.nike.com/training", domain: "nike.com", title: "Nike Training" },
+    ].entries()) {
+      await client.query(
+        `INSERT INTO citations (prompt_run_id, prompt_id, brand_id, model, url, domain, title, citation_index, created_at)
+         VALUES ($1, $2, $3, 'chatgpt', $4, $5, $6, $7, NOW())`,
+        [nikeRunId, NIKE_PROMPT_IDS.training, NIKE_BRAND_ID, cite.url, cite.domain, cite.title, i],
+      );
+    }
+    console.log("  Created second tenant: Nike (brand, 2 prompts, 2 competitors, 1 run, 2 citations)");
 
     console.log("\nE2E database seeding complete!");
     console.log(`  Brand: ${TEST_BRAND_ID} (${TEST_BRAND_NAME})`);

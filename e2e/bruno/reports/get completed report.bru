@@ -1,0 +1,21 @@
+meta {
+  name: get completed report
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reports/{{completedReportId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq completed
+  res.body.prompts: isArray
+  res.body.unstable.sov: isNumber
+  res.body.unstable.visibility: isNumber
+  res.body.unstable.competitors: isArray
+  res.body.prompts[0].mentions.brandMentionsTotal: isNumber
+}

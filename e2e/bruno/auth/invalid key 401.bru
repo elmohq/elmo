@@ -1,0 +1,19 @@
+meta {
+  name: invalid api key is rejected
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/prompts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer invalid-key
+}
+
+assert {
+  res.status: eq 401
+}
