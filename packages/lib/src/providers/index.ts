@@ -7,6 +7,7 @@ import { anthropicApi } from "./registry/anthropic-api";
 import { mistralApi } from "./registry/mistral-api";
 import { dataforseo } from "./registry/dataforseo";
 import { openrouter } from "./registry/openrouter";
+import { stub } from "./registry/stub";
 
 export type {
 	Provider,
@@ -32,6 +33,7 @@ const providerMap: Record<string, Provider> = {
 	"mistral-api": mistralApi,
 	dataforseo,
 	openrouter,
+	stub,
 };
 
 export function getProvider(id: string): Provider {
