@@ -11,7 +11,6 @@ import {
 	formatModel,
 	formatProvider,
 	getLatest,
-	overallStatus,
 	parseTarget,
 	passRate,
 	PROVIDER_FILTER_LABELS,
@@ -622,68 +621,28 @@ function MatrixSummaryCell({
 function StatusMatrix({ data }: { data: TargetStatus[] }) {
 	const matrix = buildStatusMatrix(data);
 	if (matrix.models.length === 0 || matrix.providers.length === 0) return null;
-	const overall = overallStatus(data);
-	const gridColumns = `minmax(112px, 1.4fr) repeat(${matrix.providers.length}, minmax(52px, 1fr)) minmax(60px, 0.9fr)`;
+	// A narrow spacer track sets the aggregate-health band (right column and
+	// bottom row) apart from the per-target cells — the darker shading and the
+	// solid corner then carry it without needing a label.
+	const gridColumns = `minmax(112px, 1.4fr) repeat(${matrix.providers.length}, minmax(52px, 1fr)) 10px minmax(60px, 0.9fr)`;
 
 	return (
 		<Card className="mb-8">
-			<CardHeader>
-				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-					<div>
-						<CardTitle>LLM Provider Status</CardTitle>
-						<div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm">
-							<span className="relative flex size-2.5">
-								{(overall.operational || overall.failCount > 0) && (
-									<span
-										className={`absolute inline-flex size-full animate-ping rounded-full opacity-40 ${
-											overall.operational ? "bg-green-500" : "bg-red-500"
-										}`}
-									/>
-								)}
-								<span
-									className={`relative inline-flex size-2.5 rounded-full ${
-										overall.operational
-											? "bg-green-500"
-											: overall.failCount > 0
-												? "bg-red-500"
-												: "bg-zinc-300"
-									}`}
-								/>
-							</span>
-							<span className="font-medium text-zinc-700">
-								{overall.count === 0
-									? "Waiting for data"
-									: overall.operational
-										? "All systems operational"
-										: `${overall.failCount} failing check${overall.failCount !== 1 ? "s" : ""}`}
-							</span>
-							{overall.lastChecked !== null && (
-								<span className="text-zinc-400">
-									· checked{" "}
-									{new Date(overall.lastChecked).toLocaleString(undefined, {
-										month: "short",
-										day: "numeric",
-										hour: "numeric",
-										minute: "2-digit",
-									})}
-								</span>
-							)}
-						</div>
-					</div>
-					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
-						<span className="flex items-center gap-1.5">
-							<span className="size-3 rounded-sm bg-green-100" />≥99%
-						</span>
-						<span className="flex items-center gap-1.5">
-							<span className="size-3 rounded-sm bg-amber-100" />≥90%
-						</span>
-						<span className="flex items-center gap-1.5">
-							<span className="size-3 rounded-sm bg-red-100" />&lt;90%
-						</span>
-						<span className="flex items-center gap-1.5">
-							<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />last check failed
-						</span>
-					</div>
+			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
+				<CardTitle>LLM Provider Status</CardTitle>
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-green-100" />≥99%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-amber-100" />≥90%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm bg-red-100" />&lt;90%
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />last check failed
+					</span>
 				</div>
 			</CardHeader>
 			<CardContent>
@@ -701,9 +660,8 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 								{PROVIDER_FILTER_LABELS[p] ?? p}
 							</div>
 						))}
-						<div className="px-1 pb-1 text-center text-[11px] font-semibold text-zinc-600">
-							Health
-						</div>
+						<div />
+						<div />
 						{matrix.models.map((model) => (
 							<Fragment key={model}>
 								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">
@@ -712,56 +670,21 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 								{matrix.providers.map((p) => (
 									<MatrixCellView key={p} cell={matrix.cell(model, p)} />
 								))}
+								<div />
 								<MatrixSummaryCell rate={matrix.rowRate(model)} />
 							</Fragment>
 						))}
-						<div className="flex items-center pr-2 text-xs font-semibold text-zinc-600">
-							Health
-						</div>
+						<div className="col-span-full h-2" />
+						<div />
 						{matrix.providers.map((p) => (
 							<MatrixSummaryCell key={p} rate={matrix.colRate(p)} />
 						))}
+						<div />
 						<MatrixSummaryCell rate={matrix.overall} solid />
 					</div>
 				</div>
 			</CardContent>
 		</Card>
-	);
-}
-
-// ─── Share ────────────────────────────────────────────────────────────────
-
-function ShareButtons() {
-	const [copied, setCopied] = useState(false);
-	const url = canonicalUrl("/status");
-
-	const copy = async () => {
-		try {
-			await navigator.clipboard.writeText(url);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch {
-			// Clipboard can be unavailable (insecure context / denied) — no-op.
-		}
-	};
-
-	return (
-		<div className="flex flex-wrap items-center gap-2">
-			<button
-				type="button"
-				onClick={copy}
-				className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-			>
-				{copied ? "Link copied" : "Copy link"}
-			</button>
-			<a
-				href="/og/status.png"
-				download="elmo-provider-status.png"
-				className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
-			>
-				Save status card
-			</a>
-		</div>
 	);
 }
 
@@ -809,20 +732,17 @@ function StatusPage() {
 		<div className="min-h-screen">
 			<Navbar />
 			<main className="mx-auto max-w-6xl px-4 py-10 md:px-6">
-				<div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-					<div>
-						<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ STATUS
-						</p>
-						<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
-						<p className="mt-2 max-w-2xl text-zinc-600">
-							Status of the third-party AI providers and scraping services Elmo
-							uses to track your brand's visibility and citations. Tests run
-							automatically 4 times per day. Latencies shown are for individual
-							prompt evaluations; batches can vary significantly.
-						</p>
-					</div>
-					<ShareButtons />
+				<div className="mb-8">
+					<p className="mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+						/ STATUS
+					</p>
+					<h1 className="font-heading text-3xl text-zinc-950 md:text-4xl">Provider Status</h1>
+					<p className="mt-2 max-w-2xl text-zinc-600">
+						Status of the third-party AI providers and scraping services Elmo
+						uses to track your brand's visibility and citations. Tests run
+						automatically 4 times per day. Latencies shown are for individual
+						prompt evaluations; batches can vary significantly.
+					</p>
 				</div>
 
 				{/* Elmo Cloud status pointer */}
