@@ -761,6 +761,15 @@ function StatusPage() {
 				{/* At-a-glance matrix — all providers, independent of the filters below */}
 				<StatusMatrix data={data} />
 
+				{/* Full breakdown — a titled rule separates the detail from the overview */}
+				<div className="mt-4 mb-6 border-t border-zinc-200 pt-10">
+					<h2 className="font-heading text-2xl text-zinc-950">Full breakdown</h2>
+					<p className="mt-1 max-w-2xl text-sm text-zinc-600">
+						Filter to a provider or model, then expand any target for its 7-day
+						run history, latency, citations, and errors.
+					</p>
+				</div>
+
 				{/* Filters scope the per-provider detail and latency chart below */}
 				<div className="mb-8 space-y-2">
 					<FilterRow
