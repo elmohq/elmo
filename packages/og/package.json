@@ -17,7 +17,7 @@
 		"@types/node": "^26.1.1",
 		"@types/react": "^19.2.17",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
-		"typescript": "^6.0.3",
+		"typescript": "^7.0.2",
 		"vite": "^8.1.4"
 	}
 }
