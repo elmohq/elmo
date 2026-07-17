@@ -55,7 +55,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   // Sentry CLI – build-time tooling only, never distributed with Elmo.
   // FSL-1.1-MIT converts to MIT after two years.
   ["@sentry/cli", "FSL-1.1-MIT"],
-  ["@sentry/cli-darwin", "FSL-1.1-MIT"], // universal macOS binary in newer @sentry/cli; only surfaces on macOS
+  ["@sentry/cli-darwin", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-arm64", "FSL-1.1-MIT"],
   ["@sentry/cli-darwin-x64", "FSL-1.1-MIT"],
   ["@sentry/cli-linux-arm", "FSL-1.1-MIT"],
@@ -91,7 +91,7 @@ const PACKAGE_EXCEPTIONS = new Map([
   // Packages with "Unknown" in pnpm but verified MIT via LICENSE file.
   ["khroma", "Unknown"],
   ["spawndamnit", "Unknown"],
-  ["json-query", "Unknown"], // MIT per LICENSE file; no license field in package.json (via @usebruno/cli)
+  ["json-query", "Unknown"],
 ]);
 
 // ─────────────────────────────────────────────────────────────────────
