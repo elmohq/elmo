@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd } from "@/lib/seo";
+import { externalRel } from "@/lib/external-link";
 import { getStatusData } from "@/lib/status";
 import {
 	buildStatusMatrix,
@@ -10,6 +11,7 @@ import {
 	formatModel,
 	formatProvider,
 	getLatest,
+	overallStatus,
 	parseTarget,
 	passRate,
 	PROVIDER_FILTER_LABELS,
@@ -76,24 +78,26 @@ function groupByModel(data: TargetStatus[]) {
 	return groups;
 }
 
-// Tailwind classes per uptime tier for the light-themed page surfaces.
-const TIER_PILL_ACTIVE: Record<RateTier, string> = {
-	up: "text-green-300",
-	warn: "text-amber-300",
-	down: "text-red-300",
-	none: "text-zinc-400",
-};
-const TIER_PILL_IDLE: Record<RateTier, string> = {
-	up: "text-green-600",
-	warn: "text-amber-600",
-	down: "text-red-600",
-	none: "text-zinc-400",
-};
+// Tailwind classes per uptime tier for the light-themed matrix. Data cells are
+// light; the row/column health cells sit one shade darker; the overall corner
+// is solid.
 const TIER_CELL: Record<RateTier, string> = {
 	up: "bg-green-100 text-green-800",
 	warn: "bg-amber-100 text-amber-800",
 	down: "bg-red-100 text-red-800",
 	none: "bg-zinc-100 text-zinc-400",
+};
+const TIER_CELL_AVG: Record<RateTier, string> = {
+	up: "bg-green-200 text-green-900",
+	warn: "bg-amber-200 text-amber-900",
+	down: "bg-red-200 text-red-900",
+	none: "bg-zinc-100 text-zinc-400",
+};
+const TIER_SOLID: Record<RateTier, string> = {
+	up: "bg-green-600 text-white",
+	warn: "bg-amber-500 text-white",
+	down: "bg-red-600 text-white",
+	none: "bg-zinc-300 text-white",
 };
 
 // ─── Components ───────────────────────────────────────────────────────────
@@ -525,24 +529,11 @@ function ProviderRow({ data }: { data: TargetStatus }) {
 // ─── Page ─────────────────────────────────────────────────────────────────
 
 function filterPillClass(active: boolean) {
-	return `inline-flex items-center rounded-full border px-3 py-1 text-xs transition-colors ${
+	return `rounded-full border px-3 py-1 text-xs transition-colors ${
 		active
 			? "border-zinc-900 bg-zinc-900 text-white"
 			: "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
 	}`;
-}
-
-// The share of passing squares for the subset a pill selects, colored by tier.
-// Idle pills read on white; the active (dark) pill needs the lighter shades.
-function PillRate({ rate, active }: { rate: number | null; active: boolean }) {
-	if (rate === null) return null;
-	const tier = rateTier(rate);
-	const color = active ? TIER_PILL_ACTIVE[tier] : TIER_PILL_IDLE[tier];
-	return (
-		<span className={`ml-1.5 font-medium tabular-nums ${color}`}>
-			{Math.round(rate)}%
-		</span>
-	);
 }
 
 function FilterRow({
@@ -551,14 +542,12 @@ function FilterRow({
 	selected,
 	onToggle,
 	onClear,
-	rateFor,
 }: {
 	label: string;
 	options: { value: string; label: string }[];
 	selected: Set<string>;
 	onToggle: (value: string) => void;
 	onClear: () => void;
-	rateFor: (value: string | null) => number | null;
 }) {
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
@@ -571,7 +560,6 @@ function FilterRow({
 				className={filterPillClass(selected.size === 0)}
 			>
 				All
-				<PillRate rate={rateFor(null)} active={selected.size === 0} />
 			</button>
 			{options.map((o) => (
 				<button
@@ -581,7 +569,6 @@ function FilterRow({
 					className={filterPillClass(selected.has(o.value))}
 				>
 					{o.label}
-					<PillRate rate={rateFor(o.value)} active={selected.has(o.value)} />
 				</button>
 			))}
 		</div>
@@ -592,7 +579,11 @@ function FilterRow({
 
 function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
 	if (!cell) {
-		return <div className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300">·</div>;
+		return (
+			<div className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300">
+				·
+			</div>
+		);
 	}
 	const tier = rateTier(cell.rate);
 	return (
@@ -600,9 +591,30 @@ function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
 			className={`flex h-9 items-center justify-center rounded-sm text-xs font-medium tabular-nums ${TIER_CELL[tier]} ${
 				cell.down ? "ring-2 ring-inset ring-red-500" : ""
 			}`}
-			title={cell.down ? "A provider in this cell is currently failing" : undefined}
+			title={cell.down ? "Last check failed" : undefined}
 		>
 			{cell.rate === null ? "—" : `${Math.round(cell.rate)}%`}
+		</div>
+	);
+}
+
+// Row / column / overall health cells: one shade darker than data cells, with
+// the overall corner solid.
+function MatrixSummaryCell({
+	rate,
+	solid,
+}: {
+	rate: number | null;
+	solid?: boolean;
+}) {
+	const tier = rateTier(rate);
+	return (
+		<div
+			className={`flex h-9 items-center justify-center rounded-sm text-xs font-semibold tabular-nums ${
+				solid ? TIER_SOLID[tier] : TIER_CELL_AVG[tier]
+			}`}
+		>
+			{rate === null ? "—" : `${Math.round(rate)}%`}
 		</div>
 	);
 }
@@ -610,33 +622,75 @@ function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
 function StatusMatrix({ data }: { data: TargetStatus[] }) {
 	const matrix = buildStatusMatrix(data);
 	if (matrix.models.length === 0 || matrix.providers.length === 0) return null;
+	const overall = overallStatus(data);
+	const gridColumns = `minmax(112px, 1.4fr) repeat(${matrix.providers.length}, minmax(52px, 1fr)) minmax(60px, 0.9fr)`;
 
 	return (
 		<Card className="mb-8">
-			<CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-				<CardTitle>Stability at a glance</CardTitle>
-				<div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
-					<span className="flex items-center gap-1.5">
-						<span className="size-3 rounded-sm bg-green-100" />≥99%
-					</span>
-					<span className="flex items-center gap-1.5">
-						<span className="size-3 rounded-sm bg-amber-100" />≥90%
-					</span>
-					<span className="flex items-center gap-1.5">
-						<span className="size-3 rounded-sm bg-red-100" />&lt;90%
-					</span>
-					<span className="flex items-center gap-1.5">
-						<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />down now
-					</span>
+			<CardHeader>
+				<div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+					<div>
+						<CardTitle>LLM Provider Status</CardTitle>
+						<div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm">
+							<span className="relative flex size-2.5">
+								{(overall.operational || overall.failCount > 0) && (
+									<span
+										className={`absolute inline-flex size-full animate-ping rounded-full opacity-40 ${
+											overall.operational ? "bg-green-500" : "bg-red-500"
+										}`}
+									/>
+								)}
+								<span
+									className={`relative inline-flex size-2.5 rounded-full ${
+										overall.operational
+											? "bg-green-500"
+											: overall.failCount > 0
+												? "bg-red-500"
+												: "bg-zinc-300"
+									}`}
+								/>
+							</span>
+							<span className="font-medium text-zinc-700">
+								{overall.count === 0
+									? "Waiting for data"
+									: overall.operational
+										? "All systems operational"
+										: `${overall.failCount} failing check${overall.failCount !== 1 ? "s" : ""}`}
+							</span>
+							{overall.lastChecked !== null && (
+								<span className="text-zinc-400">
+									· checked{" "}
+									{new Date(overall.lastChecked).toLocaleString(undefined, {
+										month: "short",
+										day: "numeric",
+										hour: "numeric",
+										minute: "2-digit",
+									})}
+								</span>
+							)}
+						</div>
+					</div>
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+						<span className="flex items-center gap-1.5">
+							<span className="size-3 rounded-sm bg-green-100" />≥99%
+						</span>
+						<span className="flex items-center gap-1.5">
+							<span className="size-3 rounded-sm bg-amber-100" />≥90%
+						</span>
+						<span className="flex items-center gap-1.5">
+							<span className="size-3 rounded-sm bg-red-100" />&lt;90%
+						</span>
+						<span className="flex items-center gap-1.5">
+							<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />last check failed
+						</span>
+					</div>
 				</div>
 			</CardHeader>
 			<CardContent>
 				<div className="overflow-x-auto">
 					<div
 						className="grid min-w-[640px] gap-1"
-						style={{
-							gridTemplateColumns: `minmax(120px, 1.4fr) repeat(${matrix.providers.length}, minmax(56px, 1fr))`,
-						}}
+						style={{ gridTemplateColumns: gridColumns }}
 					>
 						<div />
 						{matrix.providers.map((p) => (
@@ -647,6 +701,9 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 								{PROVIDER_FILTER_LABELS[p] ?? p}
 							</div>
 						))}
+						<div className="px-1 pb-1 text-center text-[11px] font-semibold text-zinc-600">
+							Health
+						</div>
 						{matrix.models.map((model) => (
 							<Fragment key={model}>
 								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">
@@ -655,8 +712,16 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 								{matrix.providers.map((p) => (
 									<MatrixCellView key={p} cell={matrix.cell(model, p)} />
 								))}
+								<MatrixSummaryCell rate={matrix.rowRate(model)} />
 							</Fragment>
 						))}
+						<div className="flex items-center pr-2 text-xs font-semibold text-zinc-600">
+							Health
+						</div>
+						{matrix.providers.map((p) => (
+							<MatrixSummaryCell key={p} rate={matrix.colRate(p)} />
+						))}
+						<MatrixSummaryCell rate={matrix.overall} solid />
 					</div>
 				</div>
 			</CardContent>
@@ -740,37 +805,6 @@ function StatusPage() {
 
 	const groups = groupByModel(filteredData);
 
-	// Pill percentages: a provider pill reflects that provider across the
-	// selected models (all when none selected); a model pill mirrors it. The
-	// "All" pill (value null) drops only its own dimension's filter.
-	const providerRate = (value: string | null) =>
-		passRate(
-			data.filter((d) => {
-				const { model, provider } = parseTarget(d.target);
-				const modelOk = selectedModels.size === 0 || selectedModels.has(model);
-				const provOk = value === null || providerCategory(provider) === value;
-				return modelOk && provOk;
-			}),
-		);
-	const modelRate = (value: string | null) =>
-		passRate(
-			data.filter((d) => {
-				const { model, provider } = parseTarget(d.target);
-				const provOk =
-					selectedProviders.size === 0 ||
-					selectedProviders.has(providerCategory(provider));
-				const modelOk = value === null || model === value;
-				return provOk && modelOk;
-			}),
-		);
-
-	// Overall stats (scoped to the active filters)
-	const allLatest = filteredData
-		.map((d) => getLatest(dedupeEntries(d.entries)))
-		.filter((e): e is StatusEntry => e !== null);
-	const allOperational = allLatest.length > 0 && allLatest.every((e) => e.status === "pass");
-	const failCount = allLatest.filter((e) => e.status === "fail").length;
-
 	return (
 		<div className="min-h-screen">
 			<Navbar />
@@ -791,7 +825,23 @@ function StatusPage() {
 					<ShareButtons />
 				</div>
 
-				{/* Filters */}
+				{/* Elmo Cloud status pointer */}
+				<div className="mb-8 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+					<span>Looking for Elmo Cloud's status?</span>
+					<a
+						href="https://status.elmohq.com/"
+						target="_blank"
+						rel={externalRel("https://status.elmohq.com/")}
+						className="font-medium text-blue-600 underline underline-offset-2 hover:text-blue-700"
+					>
+						status.elmohq.com
+					</a>
+				</div>
+
+				{/* At-a-glance matrix — all providers, independent of the filters below */}
+				<StatusMatrix data={data} />
+
+				{/* Filters scope the per-provider detail and latency chart below */}
 				<div className="mb-8 space-y-2">
 					<FilterRow
 						label="Provider"
@@ -799,7 +849,6 @@ function StatusPage() {
 						selected={selectedProviders}
 						onToggle={toggleProvider}
 						onClear={() => setSelectedProviders(new Set())}
-						rateFor={providerRate}
 					/>
 					<FilterRow
 						label="Model"
@@ -807,45 +856,8 @@ function StatusPage() {
 						selected={selectedModels}
 						onToggle={toggleModel}
 						onClear={() => setSelectedModels(new Set())}
-						rateFor={modelRate}
 					/>
 				</div>
-
-				{/* Overall status banner */}
-				<Card className={`mb-8 border-2 ${allOperational ? "border-green-500/30" : failCount > 0 ? "border-red-500/30" : "border-zinc-200"}`}>
-					<CardContent className="flex items-center gap-5 py-8">
-						<div className="relative flex items-center justify-center">
-							<div
-								className={`size-5 rounded-full ${allOperational ? "bg-green-500" : failCount > 0 ? "bg-red-500" : "bg-zinc-200"}`}
-							/>
-							{(allOperational || failCount > 0) && (
-								<div
-									className={`absolute size-5 animate-ping rounded-full opacity-30 ${allOperational ? "bg-green-500" : "bg-red-500"}`}
-								/>
-							)}
-						</div>
-						<div>
-							<p className="text-xl font-semibold text-zinc-950">
-								{allLatest.length === 0
-									? "Waiting for data"
-									: allOperational
-										? "All Systems Operational"
-										: `${failCount} provider${failCount !== 1 ? "s" : ""} experiencing issues`}
-							</p>
-							{allLatest.length > 0 && (
-								<p className="mt-1 text-sm text-zinc-500">
-									Last checked{" "}
-									{new Date(
-										Math.max(...allLatest.map((e) => new Date(e.ts).getTime())),
-									).toLocaleString()}
-								</p>
-							)}
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* At-a-glance stability matrix */}
-				<StatusMatrix data={filteredData} />
 
 				{/* Provider status rows grouped by model */}
 				{filteredData.length === 0 && (
