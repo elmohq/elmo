@@ -50,6 +50,11 @@ const cols = [
 		links: [
 			{ label: "Vision", href: "/vision" },
 			{ label: "Brand Assets", href: "/brand" },
+			{
+				label: "Merch",
+				href: "https://shop.elmohq.com",
+				external: true,
+			},
 			{ label: "llms.txt", href: "/llms.txt" },
 		],
 	},
