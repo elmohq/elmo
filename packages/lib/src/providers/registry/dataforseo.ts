@@ -30,7 +30,11 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
 	gemini: { defaultModelName: "gemini-2.5-flash", call: "gemini" },
 };
 
-const SUPPORTED_MODELS = new Set([...SERP_MODELS, ...Object.keys(LLM_MODELS)]);
+// Google AI Overview is the AI summary block on a standard Google results page.
+// It comes from the Organic SERP endpoint (not AI Mode's dedicated SERP), so it
+// gets its own runner rather than joining SERP_MODELS.
+const AI_OVERVIEW_MODEL = "google-ai-overview";
+const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
 const MAX_PROMPT_CHARS = 500;
 
 interface DataForSeoLlmRequest {
@@ -107,6 +111,42 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	// strings anywhere in its response. Mark "unavailable" when citations
 	// prove a search, like the other providers; never echo the prompt (runs
 	// before this change did).
+	return {
+		rawOutput: sanitizeForJson(response),
+		webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+		textContent: extractTextFromGoogle(response),
+		citations,
+		modelVersion: "dataforseo",
+	};
+}
+
+async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+	assertPromptLength(prompt);
+	const api = createDfsSerpApi();
+	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
+		keyword: prompt,
+		location_code: 2840,
+		language_code: "en",
+		depth: 10,
+		// AI Overviews are generated on demand; without this DataForSEO only
+		// returns whatever it had cached, so most runs would come back empty.
+		load_async_ai_overview: true,
+	});
+
+	const response = await api.googleOrganicLiveAdvanced([requestInfo]);
+
+	if (!response?.tasks?.length) {
+		throw new Error(`DataForSEO API Error: No response or tasks.`);
+	}
+
+	const task = response.tasks[0];
+	if (task.status_code !== 20000 || !task.result?.length) {
+		throw new Error(`DataForSEO API Error: ${task.status_message}`);
+	}
+
+	// The SERP response carries the AI Overview as an items[].type "ai_overview"
+	// element, which the shared Google extractors already understand.
+	const citations = extractCitationsFromGoogle(response);
 	return {
 		rawOutput: sanitizeForJson(response),
 		webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
@@ -240,6 +280,9 @@ export const dataforseo: Provider = {
 		assertPromptLength(prompt);
 		if (SERP_MODELS.has(model)) {
 			return runGoogleAiMode(prompt);
+		}
+		if (model === AI_OVERVIEW_MODEL) {
+			return runGoogleAiOverview(prompt);
 		}
 		if (LLM_MODELS[model]) {
 			return runLlmResponse(model, prompt, options);

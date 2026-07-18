@@ -397,7 +397,15 @@ const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=
 const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
-const BRIGHTDATA_MODELS = ["chatgpt", "google-ai-mode", "perplexity", "copilot", "gemini", "grok"] as const;
+const BRIGHTDATA_MODELS = [
+	"chatgpt",
+	"google-ai-mode",
+	"google-ai-overview",
+	"perplexity",
+	"copilot",
+	"gemini",
+	"grok",
+] as const;
 
 const OLOSTEP_MODELS = [
 	"chatgpt",
@@ -412,7 +420,7 @@ const OLOSTEP_MODELS = [
 const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
-const DATAFORSEO_MODELS = ["google-ai-mode", "chatgpt", "perplexity", "gemini"] as const;
+const DATAFORSEO_MODELS = ["google-ai-mode", "google-ai-overview", "chatgpt", "perplexity", "gemini"] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";

@@ -1,7 +1,12 @@
 import { bdclient } from "@brightdata/sdk";
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import type { Citation } from "../../text-extraction";
+import { extractCitationsFromBrightdata, extractTextFromBrightdata, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+
+// Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
+// a normal Google results page, fetched through BrightData's SERP API instead of
+// the datasets/v3 collectors below.
+const AI_OVERVIEW_MODEL = "google-ai-overview";
 
 const BD_DATASET_IDS: Record<string, string> = {
 	chatgpt: "gd_m7aof0k82r803d5bjm",
@@ -15,7 +20,6 @@ const BD_DATASET_IDS: Record<string, string> = {
 const BD_BASE_URL: Record<string, string> = {
 	chatgpt: "https://chatgpt.com/",
 	"google-ai-mode": "https://google.com/aimode",
-	"google-ai-overview": "https://www.google.com/",
 	gemini: "https://gemini.google.com/",
 	copilot: "https://copilot.microsoft.com/chats",
 	perplexity: "https://www.perplexity.ai/",
@@ -24,6 +28,38 @@ const BD_BASE_URL: Record<string, string> = {
 
 function createClient(): bdclient {
 	return new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
+}
+
+/**
+ * Fetch Google's AI Overview through BrightData's SERP API (client.search.google
+ * → google.com/search?brd_json=1). This routes through a serp zone that the SDK
+ * auto-provisions from BRIGHTDATA_API_TOKEN, so it needs no dataset id and no
+ * extra credential. The parsed SERP carries an `ai_overview` field when Google
+ * shows one; the shared BrightData extractors read it (defensively, since the
+ * brd_json AI Overview shape isn't formally documented).
+ */
+async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+	const client = createClient();
+	try {
+		const res = await client.search.google(prompt, { format: "json" });
+		if (typeof res.status_code === "number" && res.status_code >= 400) {
+			throw new Error(`BrightData SERP failed (${res.status_code})`);
+		}
+		const parsed = typeof res.body === "string" ? JSON.parse(res.body) : res.body;
+
+		const citations = extractCitationsFromBrightdata(parsed);
+		return {
+			rawOutput: parsed,
+			textContent: extractTextFromBrightdata(parsed),
+			// The SERP API doesn't expose the query expansion behind the overview;
+			// mark it unavailable when sources prove a live result, else empty.
+			webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+			citations,
+			modelVersion: "brightdata-serp",
+		};
+	} finally {
+		await client.close();
+	}
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
@@ -87,9 +123,16 @@ export const brightdata: Provider = {
 	},
 
 	validateTarget(config: ModelConfig) {
+		// Google AI Overview goes through the SERP API, not a dataset collector.
+		if (config.model === AI_OVERVIEW_MODEL) {
+			if (!config.webSearch) {
+				return `${config.model}:brightdata requires :online — AI Overview always uses web search`;
+			}
+			return null;
+		}
 		// Allow custom dataset IDs via version slug (e.g. chatgpt:brightdata:gd_abc123)
 		if (!config.version && !BD_DATASET_IDS[config.model]) {
-			return `BrightData does not support model "${config.model}". Supported: ${Object.keys(BD_DATASET_IDS).join(", ")}`;
+			return `BrightData does not support model "${config.model}". Supported: ${[...Object.keys(BD_DATASET_IDS), AI_OVERVIEW_MODEL].join(", ")}`;
 		}
 		// ChatGPT has a web search toggle; all other chatbots always search
 		if (!config.webSearch && config.model !== "chatgpt") {
@@ -99,12 +142,16 @@ export const brightdata: Provider = {
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
+		if (model === AI_OVERVIEW_MODEL) {
+			return runGoogleAiOverview(prompt);
+		}
+
 		const datasetId = options?.version ?? BD_DATASET_IDS[model];
 		if (!datasetId) {
 			throw new Error(
 				`BrightData: no dataset ID for model "${model}". ` +
-				`Either use a known model (${Object.keys(BD_DATASET_IDS).join(", ")}) ` +
-				`or pass a dataset ID as the version slug: ${model}:brightdata:gd_abc123`,
+					`Either use a known model (${Object.keys(BD_DATASET_IDS).join(", ")}) ` +
+					`or pass a dataset ID as the version slug: ${model}:brightdata:gd_abc123`,
 			);
 		}
 
@@ -120,12 +167,14 @@ export const brightdata: Provider = {
 						Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify([{
-						url: BD_BASE_URL[model] ?? "",
-						prompt,
-						index: 1,
-						...(model === "chatgpt" ? { web_search: options?.webSearch ?? false } : {}),
-					}]),
+					body: JSON.stringify([
+						{
+							url: BD_BASE_URL[model] ?? "",
+							prompt,
+							index: 1,
+							...(model === "chatgpt" ? { web_search: options?.webSearch ?? false } : {}),
+						},
+					]),
 				},
 			);
 
@@ -156,7 +205,11 @@ export const brightdata: Provider = {
 				// and citations exist but no query strings were exposed.
 				// When web search is disabled, webQueries is always empty.
 				webQueries: options?.webSearch
-					? (webQueries.length > 0 ? webQueries : citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [])
+					? webQueries.length > 0
+						? webQueries
+						: citations.length > 0
+							? [WEB_QUERIES_UNAVAILABLE]
+							: []
 					: [],
 				citations,
 				modelVersion: record?.model ?? undefined,

@@ -30,6 +30,7 @@ Supported scrape targets out of the box:
 ```
 chatgpt:brightdata:online
 google-ai-mode:brightdata:online
+google-ai-overview:brightdata:online
 perplexity:brightdata:online
 copilot:brightdata:online
 gemini:brightdata:online
@@ -37,6 +38,8 @@ grok:brightdata:online
 ```
 
 You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:gd_abc123`.
+
+`google-ai-overview` is the one exception: it's the AI summary block on a normal Google results page, so it's fetched through BrightData's SERP API rather than a dataset collector — no dataset id, and the SERP zone is provisioned automatically from your `BRIGHTDATA_API_TOKEN`.
 
 ### Oxylabs
 
@@ -106,15 +109,17 @@ OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the th
 
 ```bash
 google-ai-mode:dataforseo:online
+google-ai-overview:dataforseo:online
 chatgpt:dataforseo:online
 perplexity:dataforseo:online
 gemini:dataforseo:online
 ```
 
 - `google-ai-mode` uses DataForSEO's SERP Google AI Mode endpoint (unchanged).
+- `google-ai-overview` uses DataForSEO's Google Organic SERP endpoint with `load_async_ai_overview` on, returning the AI Overview block and its cited sources.
 - `chatgpt`, `perplexity`, and `gemini` use DataForSEO's [AI Optimization "LLM Responses"](https://docs.dataforseo.com/v3/ai_optimization-llm_responses-overview/) API with web search enabled, returning the answer text and cited source URLs.
 
-Each LLM surface defaults to a sensible model (`gpt-5.5`, `sonar`, `gemini-2.5-flash`). Override the underlying DataForSEO `model_name` via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`. All four require `:online`.
+Each LLM surface defaults to a sensible model (`gpt-5.5`, `sonar`, `gemini-2.5-flash`). Override the underlying DataForSEO `model_name` via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`. All require `:online`.
 
 DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
 
@@ -156,7 +161,7 @@ SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-
 model:provider[:version][:online]
 ```
 
-- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `gemini`, `perplexity`, `copilot`, `grok`).
+- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`).
 - `provider` — how to reach it (`brightdata`, `oxylabs`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
