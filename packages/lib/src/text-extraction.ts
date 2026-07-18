@@ -509,6 +509,18 @@ export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
 	}
 }
 
+// BrightData suffixes AI Overview reference titles with UI noise like
+// ". Opens in new tab." Cut it at a plain indexOf and trim the trailing
+// punctuation — no backtracking regex over the (uncontrolled) title.
+function stripAioTitleNoise(title: string): string {
+	const marker = title.toLowerCase().indexOf("opens in new tab");
+	if (marker === -1) return title.trim();
+	return title
+		.slice(0, marker)
+		.replace(/[.\s]+$/, "")
+		.trim();
+}
+
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
@@ -534,10 +546,7 @@ export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 				if (!Array.isArray(aio[field])) continue;
 				for (const item of aio[field]) {
 					const url = typeof item === "string" ? item : (item?.href ?? item?.url ?? item?.link);
-					const title =
-						typeof item?.title === "string"
-							? item.title.replace(/\.?\s*Opens in new tab\.?\s*$/i, "").trim()
-							: item?.name;
+					const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
 					push(url, title);
 				}
 			}
