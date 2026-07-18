@@ -36,6 +36,12 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
 
+    env:
+      # One file set for every `docker compose` invocation below, so no step
+      # can silently run against a different effective config. The override
+      # scopes the worker to the no-network stub provider.
+      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -110,12 +116,12 @@ jobs:
       # builds those once — building all three costs little more than building
       # web alone. postgres is an image pull, so `build` skips it.
       - name: Build images
-        run: docker compose -f e2e/.elmo/elmo.yaml build
+        run: docker compose build
 
       # Start web only (with its deps db-migrate + postgres). The worker stays
       # down for now — it comes up in phase 2, after the fixture suites run.
       - name: Start web
-        run: docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml up -d --no-build web
+        run: docker compose up -d --no-build web
 
       - name: Wait for web
         run: |
@@ -128,7 +134,7 @@ jobs:
             sleep 3
           done
           echo "ERROR: Web did not become ready in time."
-          docker compose -f e2e/.elmo/elmo.yaml logs
+          docker compose logs
           exit 1
 
       - name: Seed test data
@@ -146,7 +152,7 @@ jobs:
       # No readiness wait: the job the spec submits is durable in pg-boss, so
       # the spec's own DB poll absorbs worker startup.
       - name: Start worker
-        run: docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml up -d --no-build worker
+        run: docker compose up -d --no-build worker
 
       # `github` keeps PR annotations on failure; omitting `html` leaves phase
       # 1's playwright-report/ untouched for the upload below.
@@ -155,7 +161,7 @@ jobs:
 
       - name: Dump worker logs
         if: failure()
-        run: docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml logs worker
+        run: docker compose logs worker
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
