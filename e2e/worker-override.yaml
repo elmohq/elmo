@@ -1,0 +1,16 @@
+# Compose override layered on top of the generated .elmo/elmo.yaml so the E2E
+# worker can process jobs without any paid API calls.
+#
+#   - SCRAPE_TARGETS=stub:stub  → process-prompt runs the no-network `stub`
+#     provider instead of the real (placeholder-keyed) targets in .env, so a
+#     submitted job records a prompt_run without reaching out to any LLM API.
+#   - WORKER_DISABLE_SCHEDULES=1 → the worker installs no recurring cron
+#     schedules, so it only runs jobs a test submits and never re-enqueues the
+#     seeded prompts.
+#
+# Worker-only: the web service keeps the real SCRAPE_TARGETS from .env.
+services:
+  worker:
+    environment:
+      SCRAPE_TARGETS: stub:stub
+      WORKER_DISABLE_SCHEDULES: "1"
