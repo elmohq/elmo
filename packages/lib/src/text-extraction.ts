@@ -157,22 +157,41 @@ export function extractTextFromOlostep(rawOutput: any): string {
 	}
 }
 
+// BrightData's SERP `ai_overview.texts` is a tree: paragraph blocks carry a
+// `snippet`, list blocks nest their items under `list` (which can themselves
+// nest), so walk it depth-first and collect snippets in reading order.
+function collectAioSnippets(node: any, out: string[], depth = 0): void {
+	if (node == null || depth > 8) return;
+	if (Array.isArray(node)) {
+		for (const child of node) collectAioSnippets(child, out, depth + 1);
+		return;
+	}
+	if (typeof node === "string") {
+		if (node.trim()) out.push(node.trim());
+		return;
+	}
+	if (typeof node === "object") {
+		if (typeof node.snippet === "string" && node.snippet.trim()) out.push(node.snippet.trim());
+		else if (typeof node.text === "string" && node.text.trim()) out.push(node.text.trim());
+		for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
+			if (Array.isArray(node[key])) collectAioSnippets(node[key], out, depth + 1);
+		}
+	}
+}
+
 // Google AI Overview arrives through BrightData's SERP API (brd_json), where the
-// overview sits under `ai_overview` rather than the chatbot answer fields. The
-// parsed shape isn't formally documented, so read defensively across the fields
-// BrightData's SERP output is known to use.
+// overview sits under `ai_overview` rather than the chatbot answer fields.
 function extractBrightdataAiOverviewText(record: any): string | null {
 	const aio = record?.ai_overview;
 	if (!aio || typeof aio !== "object") return null;
 	for (const key of ["markdown", "text", "aio_text", "content", "answer"]) {
 		if (typeof aio[key] === "string" && aio[key].trim()) return aio[key].trim();
 	}
-	for (const listKey of ["items", "text_blocks", "blocks", "paragraphs"]) {
+	for (const listKey of ["texts", "items", "text_blocks", "blocks", "paragraphs"]) {
 		if (!Array.isArray(aio[listKey])) continue;
-		const parts = aio[listKey]
-			.map((b: any) => (typeof b === "string" ? b : (b?.text ?? b?.snippet ?? b?.markdown)))
-			.filter((s: any): s is string => typeof s === "string" && s.trim().length > 0);
-		if (parts.length) return parts.join("\n").trim();
+		const snippets: string[] = [];
+		collectAioSnippets(aio[listKey], snippets);
+		if (snippets.length) return snippets.join("\n");
 	}
 	return null;
 }
@@ -506,13 +525,20 @@ export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 				idx++;
 			}
 		};
-		// SERP API (Google AI Overview) exposes its sources under `ai_overview`.
+		// SERP API (Google AI Overview) lists its sources under `ai_overview`,
+		// where each reference carries the URL as `href` and a title suffixed with
+		// UI noise (". Opens in new tab.") that we trim off.
 		const aio = record.ai_overview;
 		if (aio && typeof aio === "object") {
-			for (const field of ["source_links", "references", "sources", "links"]) {
+			for (const field of ["references", "source_links", "sources", "links"]) {
 				if (!Array.isArray(aio[field])) continue;
 				for (const item of aio[field]) {
-					push(typeof item === "string" ? item : (item?.url ?? item?.link), item?.title ?? item?.name);
+					const url = typeof item === "string" ? item : (item?.href ?? item?.url ?? item?.link);
+					const title =
+						typeof item?.title === "string"
+							? item.title.replace(/\.?\s*Opens in new tab\.?\s*$/i, "").trim()
+							: item?.name;
+					push(url, title);
 				}
 			}
 		}

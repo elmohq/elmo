@@ -39,7 +39,7 @@ grok:brightdata:online
 
 You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:gd_abc123`.
 
-`google-ai-overview` is the one exception: it's the AI summary block on a normal Google results page, so it's fetched through BrightData's SERP API rather than a dataset collector — no dataset id, and the SERP zone is provisioned automatically from your `BRIGHTDATA_API_TOKEN`.
+`google-ai-overview` is the one exception: it's the AI summary block on a normal Google results page, so it's fetched through BrightData's SERP API rather than a dataset collector — no dataset id needed. It runs through a serp zone (default `sdk_serp`, the zone the BrightData SDK auto-provisions; override with `BRIGHTDATA_SERP_ZONE`) billed to the same `BRIGHTDATA_API_TOKEN`.
 
 ### Oxylabs
 

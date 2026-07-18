@@ -541,48 +541,69 @@ describe("text-extraction", () => {
 	});
 
 	describe("extractTextFromBrightdata", () => {
-		it("should read the SERP AI Overview from the ai_overview field", () => {
+		it("reads the SERP AI Overview from ai_overview.texts, including nested list blocks", () => {
 			const rawOutput = {
 				ai_overview: {
-					markdown: "The Sonos Era 300 is a well-reviewed speaker with spatial audio support.",
-					source_links: [{ url: "https://www.whathifi.com/reviews/sonos-era-300", title: "Sonos Era 300" }],
+					texts: [
+						{ type: "paragraph", snippet: "The Sonos Era 300 is a well-reviewed speaker with spatial audio." },
+						{
+							type: "list",
+							snippet: "",
+							list: [
+								{ type: "paragraph", snippet: "Battery Life: 6 hours" },
+								{ type: "paragraph", snippet: "Water resistance: IP55" },
+							],
+						},
+					],
+					references: [
+						{
+							href: "https://www.whathifi.com/reviews/sonos-era-300",
+							title: "What Hi-Fi. Opens in new tab.",
+							index: 0,
+						},
+					],
 				},
 			};
-			expect(extractTextFromBrightdata(rawOutput)).toContain("Sonos Era 300");
+			expect(extractTextFromBrightdata(rawOutput)).toBe(
+				"The Sonos Era 300 is a well-reviewed speaker with spatial audio.\nBattery Life: 6 hours\nWater resistance: IP55",
+			);
 		});
 
-		it("should join an AI Overview split into text blocks", () => {
-			const rawOutput = {
-				ai_overview: {
-					items: [{ text: "First paragraph." }, "Second paragraph.", { snippet: "Third." }],
-				},
-			};
-			expect(extractTextFromBrightdata(rawOutput)).toBe("First paragraph.\nSecond paragraph.\nThird.");
+		it("falls back to other ai_overview text fields", () => {
+			expect(extractTextFromBrightdata({ ai_overview: { markdown: "Overview markdown." } })).toBe("Overview markdown.");
 		});
 
-		it("should still read chatbot dataset answers and report missing content", () => {
+		it("still reads chatbot dataset answers and reports missing content", () => {
 			expect(extractTextFromBrightdata({ answer_text_markdown: "Dataset answer." })).toBe("Dataset answer.");
 			expect(extractTextFromBrightdata({})).toBe("No text content found in BrightData output.");
 		});
 	});
 
 	describe("extractCitationsFromBrightdata", () => {
-		it("should extract AI Overview sources and de-dupe across fields", () => {
+		it("extracts AI Overview references by href, trims title noise, and de-dupes", () => {
 			const rawOutput = {
 				ai_overview: {
-					source_links: [
-						{ url: "https://www.whathifi.com/reviews/sonos-era-300", title: "What Hi-Fi" },
-						{ link: "https://www.rtings.com/speaker/reviews/sonos/era-300", name: "RTINGS" },
+					references: [
+						{
+							href: "https://www.whathifi.com/reviews/sonos-era-300",
+							title: "What Hi-Fi. Opens in new tab.",
+							index: 0,
+						},
+						{
+							href: "https://www.rtings.com/speaker/reviews/sonos/era-300",
+							title: "RTINGS. Opens in new tab.",
+							index: 1,
+						},
+						{ href: "https://www.whathifi.com/reviews/sonos-era-300", title: "dupe", index: 2 },
 					],
-					references: [{ url: "https://www.whathifi.com/reviews/sonos-era-300" }],
 				},
 			};
 			const citations = extractCitationsFromBrightdata(rawOutput);
 			expect(citations.map((c) => c.domain)).toEqual(["whathifi.com", "rtings.com"]);
-			expect(citations[1].title).toBe("RTINGS");
+			expect(citations[0].title).toBe("What Hi-Fi");
 		});
 
-		it("should still extract chatbot dataset citations", () => {
+		it("still extracts chatbot dataset citations", () => {
 			const rawOutput = { citations: [{ url: "https://example.com/a", title: "A" }] };
 			expect(extractCitationsFromBrightdata(rawOutput)).toHaveLength(1);
 		});

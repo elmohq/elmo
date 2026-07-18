@@ -30,36 +30,63 @@ function createClient(): bdclient {
 	return new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
 }
 
+const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
+
 /**
- * Fetch Google's AI Overview through BrightData's SERP API (client.search.google
- * → google.com/search?brd_json=1). This routes through a serp zone that the SDK
- * auto-provisions from BRIGHTDATA_API_TOKEN, so it needs no dataset id and no
- * extra credential. The parsed SERP carries an `ai_overview` field when Google
- * shows one; the shared BrightData extractors read it (defensively, since the
- * brd_json AI Overview shape isn't formally documented).
+ * Fetch Google's AI Overview through BrightData's SERP API. AI Overview is the
+ * AI summary block on a normal results page, so we request a US-English Google
+ * SERP as parsed JSON (`brd_json=1`) with `brd_ai_overview=2` — the flag that
+ * makes BrightData surface the overview; without it AIO shows up in only a
+ * fraction of SERPs. This runs through a serp zone (default `sdk_serp`, the zone
+ * the BrightData SDK auto-provisions; override with BRIGHTDATA_SERP_ZONE), billed
+ * to the same BRIGHTDATA_API_TOKEN — no dataset id or extra credential. The
+ * parsed SERP carries an `ai_overview` object when Google shows one.
  */
 async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
-	const client = createClient();
-	try {
-		const res = await client.search.google(prompt, { format: "json" });
-		if (typeof res.status_code === "number" && res.status_code >= 400) {
-			throw new Error(`BrightData SERP failed (${res.status_code})`);
-		}
-		const parsed = typeof res.body === "string" ? JSON.parse(res.body) : res.body;
+	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
+	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
 
-		const citations = extractCitationsFromBrightdata(parsed);
-		return {
-			rawOutput: parsed,
-			textContent: extractTextFromBrightdata(parsed),
-			// The SERP API doesn't expose the query expansion behind the overview;
-			// mark it unavailable when sources prove a live result, else empty.
-			webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-			citations,
-			modelVersion: "brightdata-serp",
-		};
-	} finally {
-		await client.close();
+	let lastError = "";
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const res = await fetch(BRIGHTDATA_REQUEST_URL, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+				"Content-Type": "application/json",
+			},
+			// `method: "GET"` tells BrightData how to fetch the target URL — without
+			// it the response comes back empty. `format: "raw"` returns the brd_json
+			// SERP directly as the body.
+			body: JSON.stringify({ zone, url, method: "GET", format: "raw" }),
+		});
+		const text = await res.text();
+
+		let parsed: unknown;
+		if (res.ok && text.trim()) {
+			try {
+				parsed = JSON.parse(text);
+			} catch {
+				// fall through to retry — a non-JSON body is a transient edge/error page
+			}
+		}
+
+		if (parsed !== undefined) {
+			const citations = extractCitationsFromBrightdata(parsed);
+			return {
+				rawOutput: parsed,
+				textContent: extractTextFromBrightdata(parsed),
+				// The SERP API doesn't expose the query expansion behind the overview;
+				// mark it unavailable when sources prove a live result, else empty.
+				webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+				citations,
+				modelVersion: "brightdata-serp",
+			};
+		}
+
+		lastError = `${res.status} ${text.slice(0, 200)}`.trim();
+		await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
 	}
+	throw new Error(`BrightData SERP request failed after 3 attempts — ${lastError}`);
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
