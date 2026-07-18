@@ -85,11 +85,17 @@ function formatLatency(ms: number): string {
 	return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
 
+// These probe prompts serve every target, so they need to both force the
+// chatbots to web-search (recency — a model can't answer "this week" or "in
+// 2026" from training) and trigger Google's AI Overview (commercial/
+// informational "best X" queries; live-data queries like stock prices or scores
+// get a widget, not an overview). runTarget retries down this list until one
+// yields citations, so the mix covers both kinds of target.
 const TEST_PROMPTS = [
 	"What is a well-reviewed speaker that was released last month?",
 	"What were the biggest tech news stories this week?",
-	"What is the current price of Bitcoin today?",
-	"Who won the most recent Formula 1 race?",
+	"What are the best running shoes for beginners in 2026?",
+	"What are the best noise cancelling headphones in 2026?",
 ];
 const MIN_TEXT_LENGTH = 50;
 

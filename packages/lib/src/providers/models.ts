@@ -13,6 +13,7 @@ export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	perplexity: { label: "Perplexity", iconId: "perplexity" },
 	grok: { label: "Grok", iconId: "x" },
 	mistral: { label: "Mistral", iconId: "mistral" },
+	deepseek: { label: "DeepSeek", iconId: "deepseek" },
 };
 
 export function getModelMeta(model: string): ModelMeta {
