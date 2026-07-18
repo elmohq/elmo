@@ -8,6 +8,8 @@
  *
  * Usage: tsx seed.ts
  */
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
@@ -502,7 +504,26 @@ async function seed() {
   }
 }
 
-seed().catch((err) => {
-  console.error("Seeding failed:", err);
-  process.exit(1);
-});
+/**
+ * True only when this file is the process entry (`tsx seed.ts`), not when it is
+ * imported for its exported fixture constants. Guarding the seed() call on this
+ * keeps `import { TEST_* } from "./seed"` side-effect free: otherwise globalSetup
+ * and any spec that reads a constant would re-run this destructive seed
+ * (DELETE + re-insert) on import and wipe rows out from under running tests.
+ */
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
+  seed().catch((err) => {
+    console.error("Seeding failed:", err);
+    process.exit(1);
+  });
+}

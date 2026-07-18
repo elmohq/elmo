@@ -14,9 +14,9 @@
  */
 import { test, expect } from "@playwright/test";
 import pg from "pg";
-import { TEST_BRAND_ID } from "../seed";
 
 const API_KEY = "test-api-key-e2e";
+const BRAND_ID = "default";
 const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
 
 // The stub provider records its runs under this model version.
@@ -28,7 +28,7 @@ test.describe("Worker job processing", { tag: "@worker" }, () => {
     const value = "worker e2e — does a submitted job get processed?";
     const createRes = await request.post("/api/v1/prompts", {
       headers: { Authorization: `Bearer ${API_KEY}` },
-      data: { brandId: TEST_BRAND_ID, value },
+      data: { brandId: BRAND_ID, value },
     });
     expect(createRes.status(), await createRes.text()).toBe(201);
     const prompt = (await createRes.json()) as { id: string };
