@@ -30,7 +30,22 @@ export default defineConfig({
 
   projects: [
     {
-      name: "chromium",
+      name: "fixtures",
+      testIgnore: /worker\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Run explicitly by CI phase 2 (--project=worker) once the worker
+    // container is up; `pnpm test:e2e` stays worker-free so a bare local run
+    // doesn't hang on (or feed a paid job to) whatever worker happens to be
+    // running. Separate outputDir because Playwright wipes the output dir of
+    // every project it runs — sharing test-results/ would delete phase 1's
+    // traces and the Bruno reports before CI uploads them. The timeout leaves
+    // room for the spec's 120s poll (worker startup + one pg-boss retry).
+    {
+      name: "worker",
+      testMatch: /worker\.spec\.ts/,
+      outputDir: "test-results-worker",
+      timeout: 150_000,
       use: { ...devices["Desktop Chrome"] },
     },
   ],
