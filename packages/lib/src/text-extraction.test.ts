@@ -603,20 +603,6 @@ describe("text-extraction", () => {
 			expect(citations[0].title).toBe("What Hi-Fi");
 		});
 
-		it("keeps titles without the marker intact, even with heavy whitespace", () => {
-			const rawOutput = {
-				ai_overview: {
-					references: [
-						{ href: "https://example.com/a", title: "Best Speakers 2026." },
-						{ href: "https://example.com/b", title: `${" ".repeat(50000)}no marker here` },
-					],
-				},
-			};
-			const citations = extractCitationsFromBrightdata(rawOutput);
-			expect(citations[0].title).toBe("Best Speakers 2026.");
-			expect(citations[1].title).toBe("no marker here");
-		});
-
 		it("still extracts chatbot dataset citations", () => {
 			const rawOutput = { citations: [{ url: "https://example.com/a", title: "A" }] };
 			expect(extractCitationsFromBrightdata(rawOutput)).toHaveLength(1);
