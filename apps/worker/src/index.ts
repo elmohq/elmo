@@ -70,24 +70,22 @@ async function main() {
 	}
 	console.log("Queues created");
 
-	// With WORKER_DISABLE_SCHEDULES set, the worker still processes jobs but
-	// installs none of the recurring cron schedules. The e2e suite relies on
-	// this so the worker only runs jobs a test explicitly submits — the
-	// self-healing maintenance pass counts any prompt with no run for the
-	// configured model as immediately overdue, so it would otherwise re-enqueue
-	// the seeded prompts and mutate fixture data the other tests assert on.
-	const schedulesDisabled = /^(1|true)$/i.test(process.env.WORKER_DISABLE_SCHEDULES ?? "");
+	await boss.schedule(
+		"schedule-maintenance",
+		"*/5 * * * *",
+		{ source: "scheduled" },
+		{ tz: "UTC" },
+	);
+	console.log("Scheduled maintenance job (every 5 minutes)");
 
-	if (schedulesDisabled) {
-		console.log("Recurring schedules disabled (WORKER_DISABLE_SCHEDULES)");
-	} else {
-		await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
-		console.log("Scheduled maintenance job (every 5 minutes)");
-
-		if (process.env.DEPLOYMENT_MODE === "whitelabel") {
-			await boss.schedule("sync-auth0-memberships", "*/15 * * * *", { source: "scheduled" }, { tz: "UTC" });
-			console.log("Scheduled Auth0 membership sync (every 15 minutes)");
-		}
+	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
+		await boss.schedule(
+			"sync-auth0-memberships",
+			"*/15 * * * *",
+			{ source: "scheduled" },
+			{ tz: "UTC" },
+		);
+		console.log("Scheduled Auth0 membership sync (every 15 minutes)");
 	}
 
 	// Register job handlers

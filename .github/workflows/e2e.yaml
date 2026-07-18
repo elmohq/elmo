@@ -1,11 +1,12 @@
 # End-to-End Integration Tests
 #
 # Verifies the open source local deployment works end-to-end.
-# Walks through the `elmo init --dev` CLI flow in CI mode, starts services
-# (web + worker) via Docker Compose with the worker pointed at the no-network
-# `stub` provider, seeds test data, and runs Playwright tests against the
-# Dockerized web app — including one that submits a job and asserts the worker
-# processes it.
+# Walks through the `elmo init --dev` CLI flow in CI mode, then runs in two
+# phases against the Dockerized stack: with the worker down, seed data and run
+# the fixture-dependent Playwright + Bruno suites; then start the worker (pointed
+# at the no-network `stub` provider) and run one spec that submits a job and
+# asserts the worker processes it. Starting the worker only after the fixture
+# suites finish keeps its self-healing scheduler from mutating seeded data.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
 # Run locally via: pnpm test:e2e  (uses https://github.com/nektos/act)
@@ -108,12 +109,10 @@ jobs:
       - name: Build images
         run: docker compose -f e2e/.elmo/elmo.yaml build
 
-      # Start web and the worker (both depend on db-migrate + postgres). The
-      # worker override points SCRAPE_TARGETS at the no-network `stub` provider
-      # and disables its recurring schedules, so it processes only the jobs the
-      # tests submit and makes no paid API calls.
-      - name: Start services
-        run: docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml up -d --no-build web worker
+      # Start web only (with its deps db-migrate + postgres). The worker stays
+      # down for now — it comes up in phase 2, after the fixture suites run.
+      - name: Start web
+        run: docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml up -d --no-build web
 
       - name: Wait for web
         run: |
@@ -129,28 +128,42 @@ jobs:
           docker compose -f e2e/.elmo/elmo.yaml logs
           exit 1
 
+      - name: Seed test data
+        run: cd e2e && npx tsx seed.ts
+
+      # Phase 1 — worker still down. Run everything that reads the seeded
+      # fixtures, so no background job can mutate them mid-suite.
+      - name: Run Playwright E2E tests
+        run: pnpm -C e2e exec playwright test --grep-invert @worker
+
+      - name: Run Bruno API tests
+        run: pnpm test:api
+
+      # Phase 2 — bring the worker up and prove it processes a submitted job.
+      - name: Start worker
+        run: docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml up -d --no-build worker
+
       - name: Wait for worker
         run: |
           echo "Waiting for the worker to register its handlers..."
           for i in $(seq 1 40); do
-            if docker compose -f e2e/.elmo/elmo.yaml logs worker 2>/dev/null | grep -q "worker is ready"; then
+            if docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml logs worker 2>/dev/null | grep -q "worker is ready"; then
               echo "Worker is ready."
               exit 0
             fi
             sleep 3
           done
           echo "ERROR: Worker did not become ready in time."
-          docker compose -f e2e/.elmo/elmo.yaml logs worker
+          docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml logs worker
           exit 1
 
-      - name: Seed test data
-        run: cd e2e && npx tsx seed.ts
-
-      - name: Run Playwright E2E tests
-        run: pnpm test:e2e
-
-      - name: Run Bruno API tests
-        run: pnpm test:api
+      - name: Run worker job-processing test
+        run: |
+          pnpm -C e2e exec playwright test --grep @worker --reporter=list || {
+            echo "=== worker logs ==="
+            docker compose -f e2e/.elmo/elmo.yaml -f e2e/worker-override.yaml logs worker
+            exit 1
+          }
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7

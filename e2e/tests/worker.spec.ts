@@ -7,9 +7,10 @@
  * run. We assert on the `prompt_runs` side effect rather than the job's own
  * state so the test only passes if the handler actually did its work.
  *
- * The worker is started with WORKER_DISABLE_SCHEDULES=1 (see
- * e2e/worker-override.yaml), so nothing but this submitted job runs — the
- * seeded fixtures the other specs depend on are left untouched.
+ * This spec is tagged @worker and runs in its own phase, after the worker is
+ * started. The fixture-dependent specs run earlier while the worker is still
+ * down, so the worker's self-healing scheduler can't re-enqueue the seeded
+ * prompts and mutate data they assert on (see .github/workflows/e2e.yaml).
  */
 import { test, expect } from "@playwright/test";
 import pg from "pg";
@@ -21,7 +22,7 @@ const DATABASE_URL = "postgres://postgres:postgres@localhost:5432/elmo";
 // The stub provider records its runs under this model version.
 const STUB_MODEL_VERSION = "stub";
 
-test.describe("Worker job processing", () => {
+test.describe("Worker job processing", { tag: "@worker" }, () => {
   test("a submitted prompt is dequeued and processed by the worker", async ({ request }) => {
     // Submit: creating a prompt enqueues an immediate process-prompt job.
     const value = "worker e2e — does a submitted job get processed?";
