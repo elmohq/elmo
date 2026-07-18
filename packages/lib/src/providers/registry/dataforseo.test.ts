@@ -5,6 +5,7 @@ const dataforseoClient = vi.hoisted(() => ({
 	perplexityLlmResponsesLive: vi.fn(),
 	geminiLlmResponsesLive: vi.fn(),
 	googleAiModeLiveAdvanced: vi.fn(),
+	googleOrganicLiveAdvanced: vi.fn(),
 }));
 
 vi.mock("dataforseo-client", () => ({
@@ -15,8 +16,14 @@ vi.mock("dataforseo-client", () => ({
 	},
 	SerpApi: class {
 		googleAiModeLiveAdvanced = dataforseoClient.googleAiModeLiveAdvanced;
+		googleOrganicLiveAdvanced = dataforseoClient.googleOrganicLiveAdvanced;
 	},
 	SerpGoogleAiModeLiveAdvancedRequestInfo: class {
+		constructor(args: Record<string, unknown>) {
+			Object.assign(this, args);
+		}
+	},
+	SerpGoogleOrganicLiveAdvancedRequestInfo: class {
 		constructor(args: Record<string, unknown>) {
 			Object.assign(this, args);
 		}
@@ -94,6 +101,47 @@ describe("dataforseo provider", () => {
 			model_name: "gpt-5.5",
 			web_search: true,
 		});
+	});
+
+	it("fetches Google AI Overview from the organic SERP endpoint with async loading on", async () => {
+		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValueOnce({
+			tasks: [
+				{
+					status_code: 20000,
+					status_message: "Ok.",
+					result: [
+						{
+							items: [
+								{ type: "organic", title: "some result" },
+								{
+									type: "ai_overview",
+									markdown: "The Sonos Era 300 is a well-reviewed speaker released recently.",
+									references: [
+										{ url: "https://www.whathifi.com/reviews/sonos-era-300", title: "Sonos Era 300 review" },
+									],
+								},
+							],
+						},
+					],
+				},
+			],
+		});
+
+		const result = await dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
+			webSearch: true,
+		});
+
+		const [payload] = dataforseoClient.googleOrganicLiveAdvanced.mock.calls[0];
+		expect(payload[0]).toMatchObject({
+			keyword: "What is a well-reviewed speaker released last month?",
+			location_code: 2840,
+			load_async_ai_overview: true,
+		});
+
+		expect(result.textContent).toContain("Sonos Era 300");
+		expect(result.citations).toHaveLength(1);
+		expect(result.citations[0].domain).toBe("whathifi.com");
+		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
 	it("resolves Gemini Vertex grounding-redirect citation URLs to the real source", async () => {

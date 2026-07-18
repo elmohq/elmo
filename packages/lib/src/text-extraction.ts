@@ -157,10 +157,51 @@ export function extractTextFromOlostep(rawOutput: any): string {
 	}
 }
 
+// BrightData's SERP `ai_overview.texts` is a tree: paragraph blocks carry a
+// `snippet`, list blocks nest their items under `list` (which can themselves
+// nest), so walk it depth-first and collect snippets in reading order.
+function collectAioSnippets(node: any, out: string[], depth = 0): void {
+	if (node == null || depth > 8) return;
+	if (Array.isArray(node)) {
+		for (const child of node) collectAioSnippets(child, out, depth + 1);
+		return;
+	}
+	if (typeof node === "string") {
+		if (node.trim()) out.push(node.trim());
+		return;
+	}
+	if (typeof node === "object") {
+		if (typeof node.snippet === "string" && node.snippet.trim()) out.push(node.snippet.trim());
+		else if (typeof node.text === "string" && node.text.trim()) out.push(node.text.trim());
+		for (const key of ["list", "texts", "items", "blocks", "paragraphs"]) {
+			if (Array.isArray(node[key])) collectAioSnippets(node[key], out, depth + 1);
+		}
+	}
+}
+
+// Google AI Overview arrives through BrightData's SERP API (brd_json), where the
+// overview sits under `ai_overview` rather than the chatbot answer fields.
+function extractBrightdataAiOverviewText(record: any): string | null {
+	const aio = record?.ai_overview;
+	if (!aio || typeof aio !== "object") return null;
+	for (const key of ["markdown", "text", "aio_text", "content", "answer"]) {
+		if (typeof aio[key] === "string" && aio[key].trim()) return aio[key].trim();
+	}
+	for (const listKey of ["texts", "items", "text_blocks", "blocks", "paragraphs"]) {
+		if (!Array.isArray(aio[listKey])) continue;
+		const snippets: string[] = [];
+		collectAioSnippets(aio[listKey], snippets);
+		if (snippets.length) return snippets.join("\n");
+	}
+	return null;
+}
+
 export function extractTextFromBrightdata(rawOutput: any): string {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
 		if (!record) return "No content in BrightData output.";
+		const aiOverview = extractBrightdataAiOverviewText(record);
+		if (aiOverview) return aiOverview;
 		for (const key of [
 			"answer_text_markdown",
 			"answer_text",
@@ -183,9 +224,9 @@ export function extractTextFromOxylabs(rawOutput: any): string {
 		const content = rawOutput?.results?.[0]?.content;
 		if (!content) return "No content in Oxylabs output.";
 		for (const key of [
-			"markdown_text",       // ChatGPT parsed
-			"answer_results_md",   // Perplexity parsed
-			"response_text",       // ChatGPT / Google AI Mode fallback
+			"markdown_text", // ChatGPT parsed
+			"answer_results_md", // Perplexity parsed
+			"response_text", // ChatGPT / Google AI Mode fallback
 			"answer_text",
 			"answer",
 		]) {
@@ -468,6 +509,18 @@ export function extractCitationsFromAnthropic(rawOutput: any): Citation[] {
 	}
 }
 
+// BrightData suffixes AI Overview reference titles with UI noise like
+// ". Opens in new tab." Cut it at a plain indexOf and trim the trailing
+// punctuation — no backtracking regex over the (uncontrolled) title.
+function stripAioTitleNoise(title: string): string {
+	const marker = title.toLowerCase().indexOf("opens in new tab");
+	if (marker === -1) return title.trim();
+	return title
+		.slice(0, marker)
+		.replace(/[.\s]+$/, "")
+		.trim();
+}
+
 export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 	try {
 		const record = Array.isArray(rawOutput) ? rawOutput[0] : rawOutput;
@@ -475,17 +528,34 @@ export function extractCitationsFromBrightdata(rawOutput: any): Citation[] {
 		const citations: Citation[] = [];
 		const seen = new Set<string>();
 		let idx = 0;
+		const push = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		};
+		// SERP API (Google AI Overview) lists its sources under `ai_overview`,
+		// where each reference carries the URL as `href` and a title suffixed with
+		// UI noise (". Opens in new tab.") that we trim off.
+		const aio = record.ai_overview;
+		if (aio && typeof aio === "object") {
+			for (const field of ["references", "source_links", "sources", "links"]) {
+				if (!Array.isArray(aio[field])) continue;
+				for (const item of aio[field]) {
+					const url = typeof item === "string" ? item : (item?.href ?? item?.url ?? item?.link);
+					const title = typeof item?.title === "string" ? stripAioTitleNoise(item.title) : item?.name;
+					push(url, title);
+				}
+			}
+		}
+		// Chatbot dataset citation fields.
 		for (const field of ["citations", "links_attached", "sources"]) {
 			if (!Array.isArray(record[field])) continue;
 			for (const item of record[field]) {
-				const url = typeof item === "string" ? item : item?.url;
-				if (!url || typeof url !== "string" || !url.startsWith("http") || seen.has(url)) continue;
-				seen.add(url);
-				const c = parseCitationUrl(url, item?.title, idx);
-				if (c) {
-					citations.push(c);
-					idx++;
-				}
+				push(typeof item === "string" ? item : item?.url, item?.title);
 			}
 		}
 		return citations;
@@ -506,7 +576,10 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
 			seen.add(url);
 			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
-			if (c) { citations.push(c); idx++; }
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
 		};
 
 		// Common citation fields across Oxylabs parsed AI sources.

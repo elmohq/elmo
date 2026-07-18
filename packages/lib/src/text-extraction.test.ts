@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
 	extractCitations,
+	extractCitationsFromBrightdata,
 	extractCitationsFromDataforseoLlm,
 	extractCitationsFromGoogle,
 	extractCitationsFromOpenAI,
 	extractCitationsFromOxylabs,
 	extractTextContent,
 	extractTextFromAnthropic,
+	extractTextFromBrightdata,
 	extractTextFromDataforseoLlm,
 	extractTextFromGoogle,
 	extractTextFromOpenAI,
@@ -453,9 +455,7 @@ describe("text-extraction", () => {
 				results: [
 					{
 						content: {
-							citations: [
-								{ url: "https://www.forbes.com/article", title: "Best Speakers" },
-							],
+							citations: [{ url: "https://www.forbes.com/article", title: "Best Speakers" }],
 						},
 					},
 				],
@@ -479,10 +479,7 @@ describe("text-extraction", () => {
 							citations: [
 								{
 									text: "The JBL Xtreme 5 is a newly released option.",
-									urls: [
-										"https://www.bgr.com/best-speakers",
-										"https://www.soundguys.com/jbl-xtreme-5",
-									],
+									urls: ["https://www.bgr.com/best-speakers", "https://www.soundguys.com/jbl-xtreme-5"],
 								},
 								{ text: "Other mentions.", urls: ["https://www.rtings.com/speaker"] },
 							],
@@ -492,11 +489,7 @@ describe("text-extraction", () => {
 			};
 
 			const citations = extractCitationsFromOxylabs(rawOutput);
-			expect(citations.map((c) => c.domain)).toEqual([
-				"bgr.com",
-				"soundguys.com",
-				"rtings.com",
-			]);
+			expect(citations.map((c) => c.domain)).toEqual(["bgr.com", "soundguys.com", "rtings.com"]);
 			expect(citations[0].citationIndex).toBe(0);
 			expect(citations[2].citationIndex).toBe(2);
 		});
@@ -507,9 +500,7 @@ describe("text-extraction", () => {
 					{
 						content: {
 							additional_results: {
-								sources_results: [
-									{ url: "https://www.rtings.com/best", title: "Best Bluetooth Speakers" },
-								],
+								sources_results: [{ url: "https://www.rtings.com/best", title: "Best Bluetooth Speakers" }],
 							},
 						},
 					},
@@ -536,10 +527,7 @@ describe("text-extraction", () => {
 			};
 
 			const citations = extractCitationsFromOxylabs(rawOutput);
-			expect(citations.map((c) => c.url)).toEqual([
-				"https://example.com/x",
-				"https://other.com/y",
-			]);
+			expect(citations.map((c) => c.url)).toEqual(["https://example.com/x", "https://other.com/y"]);
 		});
 
 		it("should skip invalid URLs and handle empty output gracefully", () => {
@@ -549,6 +537,75 @@ describe("text-extraction", () => {
 				results: [{ content: { citations: [{ urls: ["not-a-url", "https://valid.com"] }] } }],
 			};
 			expect(extractCitationsFromOxylabs(rawOutput).map((c) => c.domain)).toEqual(["valid.com"]);
+		});
+	});
+
+	describe("extractTextFromBrightdata", () => {
+		it("reads the SERP AI Overview from ai_overview.texts, including nested list blocks", () => {
+			const rawOutput = {
+				ai_overview: {
+					texts: [
+						{ type: "paragraph", snippet: "The Sonos Era 300 is a well-reviewed speaker with spatial audio." },
+						{
+							type: "list",
+							snippet: "",
+							list: [
+								{ type: "paragraph", snippet: "Battery Life: 6 hours" },
+								{ type: "paragraph", snippet: "Water resistance: IP55" },
+							],
+						},
+					],
+					references: [
+						{
+							href: "https://www.whathifi.com/reviews/sonos-era-300",
+							title: "What Hi-Fi. Opens in new tab.",
+							index: 0,
+						},
+					],
+				},
+			};
+			expect(extractTextFromBrightdata(rawOutput)).toBe(
+				"The Sonos Era 300 is a well-reviewed speaker with spatial audio.\nBattery Life: 6 hours\nWater resistance: IP55",
+			);
+		});
+
+		it("falls back to other ai_overview text fields", () => {
+			expect(extractTextFromBrightdata({ ai_overview: { markdown: "Overview markdown." } })).toBe("Overview markdown.");
+		});
+
+		it("still reads chatbot dataset answers and reports missing content", () => {
+			expect(extractTextFromBrightdata({ answer_text_markdown: "Dataset answer." })).toBe("Dataset answer.");
+			expect(extractTextFromBrightdata({})).toBe("No text content found in BrightData output.");
+		});
+	});
+
+	describe("extractCitationsFromBrightdata", () => {
+		it("extracts AI Overview references by href, trims title noise, and de-dupes", () => {
+			const rawOutput = {
+				ai_overview: {
+					references: [
+						{
+							href: "https://www.whathifi.com/reviews/sonos-era-300",
+							title: "What Hi-Fi. Opens in new tab.",
+							index: 0,
+						},
+						{
+							href: "https://www.rtings.com/speaker/reviews/sonos/era-300",
+							title: "RTINGS. Opens in new tab.",
+							index: 1,
+						},
+						{ href: "https://www.whathifi.com/reviews/sonos-era-300", title: "dupe", index: 2 },
+					],
+				},
+			};
+			const citations = extractCitationsFromBrightdata(rawOutput);
+			expect(citations.map((c) => c.domain)).toEqual(["whathifi.com", "rtings.com"]);
+			expect(citations[0].title).toBe("What Hi-Fi");
+		});
+
+		it("still extracts chatbot dataset citations", () => {
+			const rawOutput = { citations: [{ url: "https://example.com/a", title: "A" }] };
+			expect(extractCitationsFromBrightdata(rawOutput)).toHaveLength(1);
 		});
 	});
 
