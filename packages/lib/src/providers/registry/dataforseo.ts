@@ -133,27 +133,34 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 		load_async_ai_overview: true,
 	});
 
-	const response = await api.googleOrganicLiveAdvanced([requestInfo]);
-
-	if (!response?.tasks?.length) {
-		throw new Error(`DataForSEO API Error: No response or tasks.`);
+	// Loading the AI Overview asynchronously intermittently fails on DataForSEO's
+	// side with a task-level "Internal SE Server Error"; a couple of retries clear
+	// it, so a transient blip doesn't fail the run (matches the BrightData AI
+	// Overview runner).
+	let lastError = "No response or tasks.";
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const response = await api.googleOrganicLiveAdvanced([requestInfo]);
+			const task = response?.tasks?.[0];
+			if (task?.status_code === 20000 && task.result?.length) {
+				// The SERP response carries the AI Overview as an items[].type
+				// "ai_overview" element, which the shared Google extractors understand.
+				const citations = extractCitationsFromGoogle(response);
+				return {
+					rawOutput: sanitizeForJson(response),
+					webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
+					textContent: extractTextFromGoogle(response),
+					citations,
+					modelVersion: "dataforseo",
+				};
+			}
+			lastError = task?.status_message ?? "No response or tasks.";
+		} catch (error) {
+			lastError = error instanceof Error ? error.message : String(error);
+		}
+		if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
 	}
-
-	const task = response.tasks[0];
-	if (task.status_code !== 20000 || !task.result?.length) {
-		throw new Error(`DataForSEO API Error: ${task.status_message}`);
-	}
-
-	// The SERP response carries the AI Overview as an items[].type "ai_overview"
-	// element, which the shared Google extractors already understand.
-	const citations = extractCitationsFromGoogle(response);
-	return {
-		rawOutput: sanitizeForJson(response),
-		webQueries: citations.length > 0 ? [WEB_QUERIES_UNAVAILABLE] : [],
-		textContent: extractTextFromGoogle(response),
-		citations,
-		modelVersion: "dataforseo",
-	};
+	throw new Error(`DataForSEO API Error: ${lastError}`);
 }
 
 /**
