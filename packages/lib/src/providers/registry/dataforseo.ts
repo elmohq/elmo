@@ -154,7 +154,7 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 					modelVersion: "dataforseo",
 				};
 			}
-			lastError = task?.status_message ?? "No response or tasks.";
+			lastError = task ? `${task.status_code} ${task.status_message}` : "No response or tasks.";
 		} catch (error) {
 			lastError = error instanceof Error ? error.message : String(error);
 		}
