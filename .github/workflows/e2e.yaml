@@ -1,12 +1,18 @@
 # End-to-End Integration Tests
 #
 # Verifies the open source local deployment works end-to-end.
-# Walks through the `elmo init --dev` CLI flow in CI mode, starts services
-# via Docker Compose (skipping worker to avoid execution costs),
-# seeds test data, and runs Playwright tests against the Dockerized web app.
+# Walks through the `elmo init --dev` CLI flow in CI mode, then runs in two
+# phases against the Dockerized stack: with the worker down, seed data and run
+# the fixture-dependent Playwright + Bruno suites; then start the worker
+# (pointed at the no-network `stub` provider) and run the `worker` Playwright
+# project, which submits a job and asserts the worker processes it. Starting
+# the worker only after the fixture suites finish keeps its self-healing
+# scheduler from mutating seeded data.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
-# Run locally via: pnpm test:e2e  (uses https://github.com/nektos/act)
+# Run locally via: pnpm test:e2e-local  (replays this workflow with
+# https://github.com/nektos/act); `pnpm test:e2e` runs just the fixture specs
+# against an already-running stack.
 
 name: E2E Tests
 
@@ -29,6 +35,12 @@ jobs:
     name: E2E Integration Tests
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 30
+
+    env:
+      # One file set for every `docker compose` invocation below, so no step
+      # can silently run against a different effective config. The override
+      # scopes the worker to the no-network stub provider.
+      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
 
     steps:
       - name: Checkout
@@ -100,19 +112,16 @@ jobs:
           grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
 
       # Build all images so a broken worker (or db-migrate) Dockerfile fails CI
-      # here, even though we don't run the worker. web/worker/migrate share the
-      # base/deps/builder stages, so BuildKit builds those once — building all
-      # three costs little more than building web alone. postgres is an image
-      # pull, so `build` skips it.
+      # here. web/worker/migrate share the base/deps/builder stages, so BuildKit
+      # builds those once — building all three costs little more than building
+      # web alone. postgres is an image pull, so `build` skips it.
       - name: Build images
-        run: docker compose -f e2e/.elmo/elmo.yaml build
+        run: docker compose build
 
-      # Start only web and its deps (db-migrate, postgres). The worker is
-      # intentionally not started (we skip it to avoid execution costs); it was
-      # only ever started to be immediately stopped, which gave no runtime
-      # safety, so we just don't start it.
-      - name: Start services
-        run: docker compose -f e2e/.elmo/elmo.yaml up -d --no-build web
+      # Start web only (with its deps db-migrate + postgres). The worker stays
+      # down for now — it comes up in phase 2, after the fixture suites run.
+      - name: Start web
+        run: docker compose up -d --no-build web
 
       - name: Wait for web
         run: |
@@ -125,17 +134,34 @@ jobs:
             sleep 3
           done
           echo "ERROR: Web did not become ready in time."
-          docker compose -f e2e/.elmo/elmo.yaml logs
+          docker compose logs
           exit 1
 
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 
+      # Phase 1 — worker still down. Run everything that reads the seeded
+      # fixtures, so no background job can mutate them mid-suite.
       - name: Run Playwright E2E tests
-        run: pnpm test:e2e
+        run: pnpm -C e2e exec playwright test --project=fixtures
 
       - name: Run Bruno API tests
         run: pnpm test:api
+
+      # Phase 2 — bring the worker up and prove it processes a submitted job.
+      # No readiness wait: the job the spec submits is durable in pg-boss, so
+      # the spec's own DB poll absorbs worker startup.
+      - name: Start worker
+        run: docker compose up -d --no-build worker
+
+      # `github` keeps PR annotations on failure; omitting `html` leaves phase
+      # 1's playwright-report/ untouched for the upload below.
+      - name: Run worker job-processing test
+        run: pnpm -C e2e exec playwright test --project=worker --reporter=list,github
+
+      - name: Dump worker logs
+        if: failure()
+        run: docker compose logs worker
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
@@ -150,5 +176,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: test-results
-          path: e2e/test-results/
+          path: |
+            e2e/test-results/
+            e2e/test-results-worker/
           retention-days: 7
