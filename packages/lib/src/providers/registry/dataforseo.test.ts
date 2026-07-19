@@ -173,7 +173,7 @@ describe("dataforseo provider", () => {
 		const promise = dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
 			webSearch: true,
 		});
-		const assertion = expect(promise).rejects.toThrow("DataForSEO API Error: Internal SE Server Error.");
+		const assertion = expect(promise).rejects.toThrow("DataForSEO API Error: 40602 Internal SE Server Error.");
 		await vi.runAllTimersAsync();
 		await assertion;
 
