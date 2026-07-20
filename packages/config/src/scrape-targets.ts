@@ -78,6 +78,7 @@ export const STATUS_TARGETS = [
 	"chatgpt:oxylabs",
 	"chatgpt:oxylabs:online",
 	"google-ai-mode:oxylabs:online",
+	"google-ai-overview:oxylabs:online",
 	"perplexity:oxylabs:online",
 	"google-ai-mode:dataforseo:online",
 	"google-ai-overview:dataforseo:online",

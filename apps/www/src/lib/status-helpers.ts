@@ -63,24 +63,31 @@ export function providerCategory(provider: string) {
 		: provider;
 }
 
-// Provider categories reach a model one of two ways: by calling an LLM inference
-// API (Direct API, OpenRouter) or by scraping a live web surface.
-const LLM_API_CATEGORIES = new Set(["direct-api", "openrouter"]);
+// The matrix columns split into two kinds of route: Model APIs (Direct API,
+// OpenRouter) call an LLM inference endpoint, while AI Search Scrapers (Olostep,
+// BrightData, Oxylabs, DataForSEO) scrape a live web surface.
+export const MODEL_API_CATEGORIES = ["direct-api", "openrouter"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
 // Overview are Search features and Copilot is a consumer assistant — none expose
-// an inference API, so their Direct API / OpenRouter cells can't exist at all,
-// unlike a combination Elmo simply doesn't track yet.
-const SCRAPE_ONLY_MODELS = new Set([
-	"google-ai-mode",
-	"google-ai-overview",
-	"copilot",
-]);
+// an inference endpoint, so a Model API can't reach them at all.
+const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
+
+// Which models each scraper has a collector for. A model missing from a
+// scraper's set can't be reached through it — a hard capability gap, not merely
+// something Elmo hasn't wired up yet. Mirrors the provider registries in
+// @workspace/lib.
+const SCRAPER_MODELS: Record<string, Set<string>> = {
+	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
+	dataforseo: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity"]),
+};
 
 export type CellAvailability = "tracked" | "untracked" | "unavailable";
 
 // Classify a model × provider-category combination independent of run data:
-// "tracked" when Elmo runs it, "unavailable" when it can't exist at all,
+// "tracked" when Elmo runs it, "unavailable" when the combination can't exist,
 // "untracked" when it could exist but Elmo doesn't currently run it.
 export function cellAvailability(
 	model: string,
@@ -88,9 +95,14 @@ export function cellAvailability(
 	hasTarget: boolean,
 ): CellAvailability {
 	if (hasTarget) return "tracked";
-	if (SCRAPE_ONLY_MODELS.has(model) && LLM_API_CATEGORIES.has(provider)) {
-		return "unavailable";
+	// Model APIs reach only models with an inference endpoint — never the
+	// scrape-only Search/consumer surfaces.
+	if (MODEL_API_CATEGORIES.includes(provider)) {
+		return SCRAPE_ONLY_MODELS.has(model) ? "unavailable" : "untracked";
 	}
+	// Scrapers reach only the surfaces they have a collector for.
+	const scrapeable = SCRAPER_MODELS[provider];
+	if (scrapeable && !scrapeable.has(model)) return "unavailable";
 	return "untracked";
 }
 

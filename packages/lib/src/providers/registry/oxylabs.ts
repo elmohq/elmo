@@ -6,7 +6,9 @@ import {
 } from "../../text-extraction";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
-// ChatGPT and Perplexity use `prompt`; Google AI Mode uses `query` and requires `render: html`.
+// ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
+// require `render: html` — AI Mode via the `google_ai_mode` source, AI Overview
+// via a `google_search` SERP whose parsed result carries the overview block.
 const OXYLABS_SOURCES: Record<
 	string,
 	{ source: string; field: "prompt" | "query"; render?: string }
@@ -14,6 +16,7 @@ const OXYLABS_SOURCES: Record<
 	chatgpt: { source: "chatgpt", field: "prompt" },
 	perplexity: { source: "perplexity", field: "prompt" },
 	"google-ai-mode": { source: "google_ai_mode", field: "query", render: "html" },
+	"google-ai-overview": { source: "google_search", field: "query", render: "html" },
 };
 
 const OXYLABS_REALTIME_URL = "https://realtime.oxylabs.io/v1/queries";

@@ -261,14 +261,16 @@ describe("provider validateTarget", () => {
 			expect(oxylabs.validateTarget!(config("chatgpt", "oxylabs", false))).toBeNull();
 		});
 
-		it("accepts perplexity and google-ai-mode with :online", () => {
+		it("accepts perplexity, google-ai-mode, and google-ai-overview with :online", () => {
 			expect(oxylabs.validateTarget!(config("perplexity", "oxylabs", true))).toBeNull();
 			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", true))).toBeNull();
+			expect(oxylabs.validateTarget!(config("google-ai-overview", "oxylabs", true))).toBeNull();
 		});
 
-		it("rejects perplexity / google-ai-mode without :online", () => {
+		it("rejects perplexity / google-ai-mode / google-ai-overview without :online", () => {
 			expect(oxylabs.validateTarget!(config("perplexity", "oxylabs", false))).toMatch(/requires :online/);
 			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", false))).toMatch(/requires :online/);
+			expect(oxylabs.validateTarget!(config("google-ai-overview", "oxylabs", false))).toMatch(/requires :online/);
 		});
 
 		it("rejects unsupported models (e.g. copilot, gemini)", () => {
