@@ -33,6 +33,7 @@ export function formatModel(model: string) {
 		perplexity: "Perplexity",
 		copilot: "Copilot",
 		deepseek: "DeepSeek",
+		kimi: "Kimi",
 		mistral: "Mistral",
 		"google-ai-mode": "Google AI Mode",
 		"google-ai-overview": "Google AI Overview",

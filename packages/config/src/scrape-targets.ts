@@ -96,6 +96,7 @@ export const STATUS_TARGETS = [
 	"gemini:openrouter:google/gemini-2.5-flash",
 	"gemini:openrouter:google/gemini-2.5-flash:online",
 	"deepseek:openrouter:deepseek/deepseek-v3.2",
+	"kimi:openrouter:moonshotai/kimi-k3",
 	"grok:openrouter:x-ai/grok-4.5",
 	"grok:openrouter:x-ai/grok-4.5:online",
 	"mistral:openrouter:mistralai/mistral-medium-3.1",
