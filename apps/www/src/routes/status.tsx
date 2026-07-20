@@ -17,6 +17,7 @@ import {
 	PROVIDER_FILTER_ORDER,
 	providerCategory,
 	rateTier,
+	type CellAvailability,
 	type MatrixCell,
 	type RateTier,
 	type StatusEntry,
@@ -98,6 +99,11 @@ const TIER_SOLID: Record<RateTier, string> = {
 	down: "bg-red-600 text-white",
 	none: "bg-zinc-300 text-white",
 };
+
+// Diagonal hatch marking "not available" cells — a combination that can't exist,
+// distinct from the flat dot used for combinations Elmo just doesn't track yet.
+const HATCH_BG =
+	"repeating-linear-gradient(-45deg, rgb(228 228 231) 0, rgb(228 228 231) 1px, transparent 1px, transparent 6px)";
 
 // ─── Components ───────────────────────────────────────────────────────────
 
@@ -576,10 +582,30 @@ function FilterRow({
 
 // ─── At-a-glance matrix ───────────────────────────────────────────────────
 
-function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
+function MatrixCellView({
+	cell,
+	availability,
+}: {
+	cell: MatrixCell | null;
+	availability: CellAvailability;
+}) {
 	if (!cell) {
+		if (availability === "unavailable") {
+			return (
+				<div
+					className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-[10px] font-medium text-zinc-300"
+					style={{ backgroundImage: HATCH_BG }}
+					title="Not available through this type of provider"
+				>
+					N/A
+				</div>
+			);
+		}
 		return (
-			<div className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300">
+			<div
+				className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300"
+				title="Not currently tracked by Elmo"
+			>
 				·
 			</div>
 		);
@@ -643,6 +669,19 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 					<span className="flex items-center gap-1.5">
 						<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />last check failed
 					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="flex size-3 items-center justify-center rounded-sm bg-zinc-100 text-[9px] leading-none text-zinc-400">
+							·
+						</span>
+						not tracked
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span
+							className="size-3 rounded-sm bg-zinc-100"
+							style={{ backgroundImage: HATCH_BG }}
+						/>
+						not available
+					</span>
 				</div>
 			</CardHeader>
 			<CardContent>
@@ -668,7 +707,11 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 									{formatModel(model)}
 								</div>
 								{matrix.providers.map((p) => (
-									<MatrixCellView key={p} cell={matrix.cell(model, p)} />
+									<MatrixCellView
+										key={p}
+										cell={matrix.cell(model, p)}
+										availability={matrix.availability(model, p)}
+									/>
 								))}
 								<div />
 								<MatrixSummaryCell rate={matrix.rowRate(model)} />

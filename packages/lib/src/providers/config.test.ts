@@ -187,15 +187,7 @@ describe("provider validateTarget", () => {
 
 	describe("olostep", () => {
 		it("accepts valid online targets", () => {
-			for (const model of [
-				"chatgpt",
-				"google-ai-mode",
-				"google-ai-overview",
-				"gemini",
-				"copilot",
-				"perplexity",
-				"grok",
-			]) {
+			for (const model of ["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]) {
 				expect(olostep.validateTarget!(config(model, "olostep", true))).toBeNull();
 			}
 		});
@@ -216,13 +208,13 @@ describe("provider validateTarget", () => {
 		});
 
 		it("accepts other models with :online", () => {
-			for (const model of ["perplexity", "copilot", "gemini", "grok", "google-ai-mode"]) {
+			for (const model of ["perplexity", "copilot", "gemini", "google-ai-mode"]) {
 				expect(brightdata.validateTarget!(config(model, "brightdata", true))).toBeNull();
 			}
 		});
 
 		it("rejects non-chatgpt models without :online", () => {
-			expect(brightdata.validateTarget!(config("grok", "brightdata", false))).toMatch(/requires :online/);
+			expect(brightdata.validateTarget!(config("gemini", "brightdata", false))).toMatch(/requires :online/);
 			expect(brightdata.validateTarget!(config("perplexity", "brightdata", false))).toMatch(/requires :online/);
 		});
 
@@ -279,10 +271,9 @@ describe("provider validateTarget", () => {
 			expect(oxylabs.validateTarget!(config("google-ai-mode", "oxylabs", false))).toMatch(/requires :online/);
 		});
 
-		it("rejects unsupported models (e.g. copilot, gemini, grok)", () => {
+		it("rejects unsupported models (e.g. copilot, gemini)", () => {
 			expect(oxylabs.validateTarget!(config("copilot", "oxylabs", true))).toMatch(/does not support/);
 			expect(oxylabs.validateTarget!(config("gemini", "oxylabs", true))).toMatch(/does not support/);
-			expect(oxylabs.validateTarget!(config("grok", "oxylabs", true))).toMatch(/does not support/);
 		});
 	});
 });

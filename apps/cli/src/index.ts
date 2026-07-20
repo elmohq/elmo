@@ -404,7 +404,6 @@ const BRIGHTDATA_MODELS = [
 	"perplexity",
 	"copilot",
 	"gemini",
-	"grok",
 ] as const;
 
 const OLOSTEP_MODELS = [
@@ -414,7 +413,6 @@ const OLOSTEP_MODELS = [
 	"perplexity",
 	"copilot",
 	"gemini",
-	"grok",
 ] as const;
 
 const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;

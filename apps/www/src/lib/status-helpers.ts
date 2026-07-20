@@ -63,6 +63,37 @@ export function providerCategory(provider: string) {
 		: provider;
 }
 
+// Provider categories reach a model one of two ways: by calling an LLM inference
+// API (Direct API, OpenRouter) or by scraping a live web surface.
+const LLM_API_CATEGORIES = new Set(["direct-api", "openrouter"]);
+
+// Models that only exist as a scraped web surface. Google's AI Mode and AI
+// Overview are Search features and Copilot is a consumer assistant — none expose
+// an inference API, so their Direct API / OpenRouter cells can't exist at all,
+// unlike a combination Elmo simply doesn't track yet.
+const SCRAPE_ONLY_MODELS = new Set([
+	"google-ai-mode",
+	"google-ai-overview",
+	"copilot",
+]);
+
+export type CellAvailability = "tracked" | "untracked" | "unavailable";
+
+// Classify a model × provider-category combination independent of run data:
+// "tracked" when Elmo runs it, "unavailable" when it can't exist at all,
+// "untracked" when it could exist but Elmo doesn't currently run it.
+export function cellAvailability(
+	model: string,
+	provider: string,
+	hasTarget: boolean,
+): CellAvailability {
+	if (hasTarget) return "tracked";
+	if (SCRAPE_ONLY_MODELS.has(model) && LLM_API_CATEGORIES.has(provider)) {
+		return "unavailable";
+	}
+	return "untracked";
+}
+
 export const PROVIDER_FILTER_ORDER = [
 	"direct-api",
 	"openrouter",
@@ -174,6 +205,7 @@ export interface StatusMatrix {
 	models: string[];
 	providers: string[];
 	cell: (model: string, provider: string) => MatrixCell | null;
+	availability: (model: string, provider: string) => CellAvailability;
 	rowRate: (model: string) => number | null;
 	colRate: (provider: string) => number | null;
 	overall: number | null;
@@ -219,6 +251,10 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 				down: targets.some((t) => latestOf(t.entries)?.status === "fail"),
 				count: targets.length,
 			};
+		},
+		availability(model, provider) {
+			const targets = byCell.get(`${model} ${provider}`);
+			return cellAvailability(model, provider, !!targets && targets.length > 0);
 		},
 		rowRate: (model) => passRate(byModel.get(model) ?? []),
 		colRate: (provider) => passRate(byProvider.get(provider) ?? []),

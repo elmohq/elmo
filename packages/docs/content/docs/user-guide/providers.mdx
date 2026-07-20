@@ -34,7 +34,6 @@ google-ai-overview:brightdata:online
 perplexity:brightdata:online
 copilot:brightdata:online
 gemini:brightdata:online
-grok:brightdata:online
 ```
 
 You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:gd_abc123`.
@@ -74,7 +73,6 @@ google-ai-overview:olostep:online
 gemini:olostep:online
 copilot:olostep:online
 perplexity:olostep:online
-grok:olostep:online
 ```
 
 Olostep models always use web search, so the `:online` suffix is required.
@@ -99,6 +97,7 @@ claude:anthropic-api:claude-sonnet-4-6
 chatgpt:openai-api:gpt-5-mini:online
 mistral:mistral-api:mistral-medium-latest:online
 claude:openrouter:anthropic/claude-sonnet-4.6
+grok:openrouter:x-ai/grok-4.5:online
 ```
 
 OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
