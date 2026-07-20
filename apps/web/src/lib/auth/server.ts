@@ -10,6 +10,7 @@
 import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
 import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
 import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
+import { updateUserFlags } from "@workspace/lib/db/auth-sync";
 import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
 import { evaluateSignupAllowed, getSignupAllowlist } from "./policies";
 
@@ -35,6 +36,12 @@ function getLocalAuthOptions(): CreateAuthOptions {
 					},
 					after: async (user) => {
 						await provisionLocalOrg({ userId: user.id });
+						// The bootstrap user is also the instance admin: the
+						// instance-config surfaces gate on user.role === "admin",
+						// and nothing else grants that role in local mode (plan
+						// finding #2). The create.before guard makes this the
+						// first and only user.
+						await updateUserFlags(user.id, { role: "admin" });
 					},
 				},
 			},

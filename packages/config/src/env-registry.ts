@@ -23,11 +23,14 @@ export interface EnvVarSpec {
 	scope: EnvVarScope;
 	/**
 	 * - DeploymentMode[]: hard-required in those modes (startup validation reports it when missing)
-	 * - "dynamic-scrape-targets": required only when SCRAPE_TARGETS references `provider`
+	 * - "dynamic-scrape-targets": a provider credential key. Never required at
+	 *   startup — credential readiness is a runtime health concern (unready
+	 *   targets are skipped and surfaced), and the DB-backed secrets store
+	 *   derives its provider → keys mapping from these entries.
 	 * - "optional": never required at startup
 	 */
 	requiredBy: DeploymentMode[] | "dynamic-scrape-targets" | "optional";
-	/** Only for requiredBy: "dynamic-scrape-targets" — the SCRAPE_TARGETS provider id that needs this key. */
+	/** Only for requiredBy: "dynamic-scrape-targets" — the provider id whose credentials this var supplies. */
 	provider?: string;
 	/**
 	 * Set for vars read only by the marketing site (apps/www). They stay in
@@ -156,9 +159,9 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "SCRAPE_TARGETS",
 		scope: "server",
-		requiredBy: VALIDATED_MODES,
+		requiredBy: "optional",
 		description:
-			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+			"First-boot seed only: comma-separated model:provider[:version][:online] entries the worker imports into the model_targets catalog once, against an empty instance. After that the in-app target settings are authoritative and this variable is ignored.",
 	},
 	{
 		name: "OLOSTEP_API_KEY",
@@ -201,6 +204,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: "optional",
 		description:
 			"Optional Jina Reader API key for website-excerpt fetching. When set, requests are authenticated (tracked by key, not IP), which raises the rate limit and avoids the anonymous 'bad network reputation' 401 block.",
+	},
+	{
+		name: "ELMO_ENCRYPTION_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Base64-encoded 32-byte key enabling encrypted provider credentials stored in the database. Without it the credential storage UI is disabled; env-provided keys work regardless.",
 	},
 	{
 		name: "DEPLOYMENT_MODE",
@@ -411,6 +421,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "RESEND_FROM_EMAIL",
 		scope: "server",
 		requiredBy: ["cloud"],
-		description: "Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
+		description:
+			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
 ];
