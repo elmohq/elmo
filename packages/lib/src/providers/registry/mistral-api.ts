@@ -7,6 +7,7 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 import type { Citation } from "../../text-extraction";
+import { getCredential } from "../../secrets";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -19,7 +20,7 @@ async function mistralPost(path: string, body: object): Promise<any> {
 	const res = await fetch(`${MISTRAL_BASE_URL}${path}`, {
 		method: "POST",
 		headers: {
-			Authorization: `Bearer ${process.env.MISTRAL_API_KEY}`,
+			Authorization: `Bearer ${getCredential("MISTRAL_API_KEY")}`,
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify(body),
@@ -83,7 +84,7 @@ export const mistralApi: Provider = {
 	name: "Mistral API",
 
 	isConfigured() {
-		return !!process.env.MISTRAL_API_KEY;
+		return !!getCredential("MISTRAL_API_KEY");
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

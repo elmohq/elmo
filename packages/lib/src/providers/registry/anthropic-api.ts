@@ -10,13 +10,13 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 import type { Citation } from "../../text-extraction";
+import { getCredential } from "../../secrets";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
 
 function getAnthropicLanguageModel(model: string) {
-	return process.env.ANTHROPIC_API_KEY
-		? createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model)
-		: anthropic(model);
+	const apiKey = getCredential("ANTHROPIC_API_KEY");
+	return apiKey ? createAnthropic({ apiKey })(model) : anthropic(model);
 }
 
 function sanitizeForJson(obj: unknown): unknown {
@@ -24,7 +24,7 @@ function sanitizeForJson(obj: unknown): unknown {
 }
 
 function getClient(): Anthropic {
-	return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+	return new Anthropic({ apiKey: getCredential("ANTHROPIC_API_KEY")! });
 }
 
 async function runAnthropic(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
@@ -142,7 +142,7 @@ export const anthropicApi: Provider = {
 	name: "Anthropic API",
 
 	isConfigured() {
-		return !!process.env.ANTHROPIC_API_KEY;
+		return !!getCredential("ANTHROPIC_API_KEY");
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

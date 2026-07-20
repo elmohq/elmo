@@ -1,6 +1,7 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
+import { getCredential } from "../../secrets";
 import type {
 	Provider,
 	ScrapeResult,
@@ -12,9 +13,8 @@ import type {
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function getOpenAIResponsesModel(model: string) {
-	const provider = process.env.OPENAI_API_KEY
-		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-		: openai;
+	const apiKey = getCredential("OPENAI_API_KEY");
+	const provider = apiKey ? createOpenAI({ apiKey }) : openai;
 	return provider.responses(model);
 }
 
@@ -27,7 +27,9 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	}
 
 	const result = await generateText({
-		model: openai.responses(model),
+		// Routed through getOpenAIResponsesModel (not the bare `openai` global,
+		// which reads process.env internally) so overlay credentials apply here.
+		model: getOpenAIResponsesModel(model),
 		prompt,
 		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
@@ -71,7 +73,7 @@ export const openaiApi: Provider = {
 	name: "OpenAI API",
 
 	isConfigured() {
-		return !!process.env.OPENAI_API_KEY;
+		return !!getCredential("OPENAI_API_KEY");
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {

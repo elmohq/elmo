@@ -4,6 +4,7 @@ import {
 	extractCitationsFromOxylabs,
 	type Citation,
 } from "../../text-extraction";
+import { getCredential } from "../../secrets";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
 // ChatGPT and Perplexity use `prompt`; Google AI Mode uses `query` and requires `render: html`.
@@ -19,7 +20,7 @@ const OXYLABS_SOURCES: Record<
 const OXYLABS_REALTIME_URL = "https://realtime.oxylabs.io/v1/queries";
 
 function basicAuthHeader(): string {
-	const token = btoa(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`);
+	const token = btoa(`${getCredential("OXYLABS_USERNAME")}:${getCredential("OXYLABS_PASSWORD")}`);
 	return `Basic ${token}`;
 }
 
@@ -40,7 +41,7 @@ export const oxylabs: Provider = {
 	name: "Oxylabs",
 
 	isConfigured() {
-		return !!process.env.OXYLABS_USERNAME && !!process.env.OXYLABS_PASSWORD;
+		return !!getCredential("OXYLABS_USERNAME") && !!getCredential("OXYLABS_PASSWORD");
 	},
 
 	validateTarget(config: ModelConfig) {
