@@ -78,6 +78,13 @@
       "when": 1784000000000,
       "tag": "0010_scope_brands_to_orgs",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784534933949,
+      "tag": "0011_config_hierarchy",
+      "breakpoints": true
     }
   ]
 }

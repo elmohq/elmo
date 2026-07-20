@@ -11,6 +11,13 @@
   "exports": {
     "./db/db": "./src/db/db.ts",
     "./db/schema": "./src/db/schema.ts",
+    "./config/registry": "./src/config/registry.ts",
+    "./config/types": "./src/config/types.ts",
+    "./config/entitlements": "./src/config/entitlements.ts",
+    "./config/resolve": "./src/config/resolve.ts",
+    "./config/policy": "./src/config/policy.ts",
+    "./config/import": "./src/config/import.ts",
+    "./secrets": "./src/secrets/index.ts",
     "./db/auth-sync": "./src/db/auth-sync.ts",
     "./db/provisioning": "./src/db/provisioning.ts",
     "./auth/server": "./src/auth/server.ts",

@@ -10,7 +10,8 @@
     "./types": "./src/types.ts",
     "./constants": "./src/constants.ts",
     "./env": "./src/env.ts",
-    "./scrape-targets": "./src/scrape-targets.ts"
+    "./scrape-targets": "./src/scrape-targets.ts",
+    "./plans": "./src/plans.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
