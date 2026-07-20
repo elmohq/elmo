@@ -34,7 +34,6 @@ google-ai-overview:brightdata:online
 perplexity:brightdata:online
 copilot:brightdata:online
 gemini:brightdata:online
-grok:brightdata:online
 ```
 
 You can also pass a custom dataset id as the version slug: `chatgpt:brightdata:gd_abc123`.
@@ -55,9 +54,10 @@ chatgpt:oxylabs:online
 chatgpt:oxylabs
 perplexity:oxylabs:online
 google-ai-mode:oxylabs:online
+google-ai-overview:oxylabs:online
 ```
 
-Oxylabs uses HTTP Basic auth (Web Scraper API username + password) and a synchronous realtime endpoint, so requests block until the answer is ready — no snapshot polling. `:online` toggles in-product web search for ChatGPT; Perplexity and Google AI Mode always search.
+Oxylabs uses HTTP Basic auth (Web Scraper API username + password) and a synchronous realtime endpoint, so requests block until the answer is ready — no snapshot polling. `:online` toggles in-product web search for ChatGPT; Perplexity, Google AI Mode, and Google AI Overview always search.
 
 ### Olostep
 
@@ -74,7 +74,6 @@ google-ai-overview:olostep:online
 gemini:olostep:online
 copilot:olostep:online
 perplexity:olostep:online
-grok:olostep:online
 ```
 
 Olostep models always use web search, so the `:online` suffix is required.
@@ -99,6 +98,8 @@ claude:anthropic-api:claude-sonnet-4-6
 chatgpt:openai-api:gpt-5-mini:online
 mistral:mistral-api:mistral-medium-latest:online
 claude:openrouter:anthropic/claude-sonnet-4.6
+grok:openrouter:x-ai/grok-4.5:online
+kimi:openrouter:moonshotai/kimi-k3
 ```
 
 OpenAI/Anthropic/Mistral/OpenRouter entries all require a version slug as the third segment. For Mistral, append `:online` to route through the beta Conversations API with the `web_search` tool; without it the request goes to the standard chat completions endpoint and no citations are returned.
@@ -161,7 +162,7 @@ SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-
 model:provider[:version][:online]
 ```
 
-- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`).
+- `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
 - `provider` — how to reach it (`brightdata`, `oxylabs`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.

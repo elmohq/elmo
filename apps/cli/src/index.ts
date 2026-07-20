@@ -404,7 +404,6 @@ const BRIGHTDATA_MODELS = [
 	"perplexity",
 	"copilot",
 	"gemini",
-	"grok",
 ] as const;
 
 const OLOSTEP_MODELS = [
@@ -414,10 +413,9 @@ const OLOSTEP_MODELS = [
 	"perplexity",
 	"copilot",
 	"gemini",
-	"grok",
 ] as const;
 
-const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;
+const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DATAFORSEO_MODELS = ["google-ai-mode", "google-ai-overview", "chatgpt", "perplexity", "gemini"] as const;

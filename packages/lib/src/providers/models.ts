@@ -14,6 +14,7 @@ export const KNOWN_MODELS: Record<string, ModelMeta> = {
 	grok: { label: "Grok", iconId: "x" },
 	mistral: { label: "Mistral", iconId: "mistral" },
 	deepseek: { label: "DeepSeek", iconId: "deepseek" },
+	kimi: { label: "Kimi", iconId: "moonshotai" },
 };
 
 export function getModelMeta(model: string): ModelMeta {

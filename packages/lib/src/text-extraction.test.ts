@@ -12,6 +12,7 @@ import {
 	extractTextFromDataforseoLlm,
 	extractTextFromGoogle,
 	extractTextFromOpenAI,
+	extractTextFromOxylabs,
 } from "./text-extraction";
 
 /** A minimal DataForSEO AI Optimization "LLM Responses" payload. */
@@ -537,6 +538,71 @@ describe("text-extraction", () => {
 				results: [{ content: { citations: [{ urls: ["not-a-url", "https://valid.com"] }] } }],
 			};
 			expect(extractCitationsFromOxylabs(rawOutput).map((c) => c.domain)).toEqual(["valid.com"]);
+		});
+
+		it("extracts Google AI Overview references from answer fragments and the source panel", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							results: {
+								ai_overviews: [
+									{
+										answer_text: [
+											{
+												fragments: [
+													{
+														text: "a",
+														references: [{ source: "SoundGuys", url: "https://www.soundguys.com/jbl-flip" }],
+													},
+												],
+											},
+										],
+										source_panel: { items: [{ title: "RTINGS", url: "https://www.rtings.com/speaker" }] },
+									},
+								],
+							},
+						},
+					},
+				],
+			};
+			const citations = extractCitationsFromOxylabs(rawOutput);
+			expect(citations.map((c) => c.domain)).toEqual(["soundguys.com", "rtings.com"]);
+		});
+	});
+
+	describe("extractTextFromOxylabs", () => {
+		it("reads the Google AI Overview from nested answer fragments", () => {
+			const rawOutput = {
+				results: [
+					{
+						content: {
+							results: {
+								ai_overviews: [
+									{
+										answer_text: [
+											{
+												fragments: [
+													{ text: "The best budget speaker is the JBL Flip." },
+													{ text: "It offers strong bass for the price." },
+												],
+											},
+										],
+									},
+								],
+							},
+						},
+					},
+				],
+			};
+			expect(extractTextFromOxylabs(rawOutput)).toBe(
+				"The best budget speaker is the JBL Flip.\n\nIt offers strong bass for the price.",
+			);
+		});
+
+		it("falls back to SERP text fields when there is no AI Overview", () => {
+			const rawOutput = { results: [{ content: { markdown_text: "Plain answer." } }] };
+			expect(extractTextFromOxylabs(rawOutput)).toBe("Plain answer.");
 		});
 	});
 

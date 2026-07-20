@@ -219,10 +219,38 @@ export function extractTextFromBrightdata(rawOutput: any): string {
 	}
 }
 
+// Google AI Overview via Oxylabs' google_search source. The overview sits in the
+// parsed SERP as one or more blocks, each a list of answer fragments that may
+// carry reference URLs. The wrapping has shifted across Oxylabs revisions, so
+// probe both the nested-results and top-level shapes.
+function oxylabsAiOverviews(content: any): any[] {
+	const aio = content?.results?.ai_overviews ?? content?.ai_overviews;
+	return Array.isArray(aio) ? aio : [];
+}
+
+function extractOxylabsAiOverviewText(content: any): string | null {
+	const parts: string[] = [];
+	const push = (v: any) => {
+		if (typeof v === "string" && v.trim()) parts.push(v.trim());
+	};
+	for (const overview of oxylabsAiOverviews(content)) {
+		for (const answer of overview?.answer_text ?? []) {
+			if (typeof answer === "string") push(answer);
+			for (const fragment of answer?.fragments ?? []) push(fragment?.text);
+		}
+		if (parts.length === 0) push(overview?.text ?? overview?.markdown);
+	}
+	return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
 export function extractTextFromOxylabs(rawOutput: any): string {
 	try {
 		const content = rawOutput?.results?.[0]?.content;
 		if (!content) return "No content in Oxylabs output.";
+		// Google AI Overview (google_search source): prefer the overview block
+		// over the SERP's other text fields.
+		const aiOverview = extractOxylabsAiOverviewText(content);
+		if (aiOverview) return aiOverview;
 		for (const key of [
 			"markdown_text", // ChatGPT parsed
 			"answer_results_md", // Perplexity parsed
@@ -603,6 +631,19 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 				} else {
 					pushUrl(item?.url ?? item?.link, item?.title ?? item?.name);
 				}
+			}
+		}
+
+		// Google AI Overview references hang off each answer fragment, with any
+		// extra sources listed in the overview's source panel.
+		for (const overview of oxylabsAiOverviews(content)) {
+			for (const answer of overview?.answer_text ?? []) {
+				for (const fragment of answer?.fragments ?? []) {
+					for (const ref of fragment?.references ?? []) pushUrl(ref?.url, ref?.source);
+				}
+			}
+			for (const item of overview?.source_panel?.items ?? []) {
+				pushUrl(item?.url ?? item?.link, item?.title ?? item?.source);
 			}
 		}
 		return citations;

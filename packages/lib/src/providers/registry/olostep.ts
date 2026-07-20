@@ -34,11 +34,6 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 		urlTemplate: (q) => `https://www.perplexity.ai/?q=${encodeURIComponent(q)}`,
 		credits: 3,
 	},
-	grok: {
-		parserId: "@olostep/grok-results",
-		urlTemplate: (q) => `https://grok.com/?q=${encodeURIComponent(q)}`,
-		credits: 3,
-	},
 };
 
 let _client: Olostep | null = null;
