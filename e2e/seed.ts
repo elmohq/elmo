@@ -50,6 +50,11 @@ async function seed() {
     await client.query("DELETE FROM competitors");
     await client.query("DELETE FROM reports");
     await client.query("DELETE FROM brands");
+    // Config hierarchy: configs references model_targets (target_id), so drop it
+    // first. instance_meta has no FKs.
+    await client.query("DELETE FROM configs");
+    await client.query("DELETE FROM model_targets");
+    await client.query("DELETE FROM instance_meta");
 
     // -----------------------------------------------------------------------
     // 1. Brand (scoped to an organization that shares its id)
@@ -67,6 +72,22 @@ async function seed() {
       [TEST_BRAND_ID, TEST_BRAND_NAME, TEST_BRAND_WEBSITE]
     );
     console.log("  Created brand:", TEST_BRAND_ID);
+
+    // -----------------------------------------------------------------------
+    // 1b. Instance config (the config-hierarchy end-state)
+    // -----------------------------------------------------------------------
+    // The seeded catalog is what keeps E2E off paid APIs: the worker resolves
+    // targets from `model_targets`, and stamping `instance_meta` makes its
+    // first-boot SCRAPE_TARGETS import a no-op — so this single no-network
+    // `stub` row is the only target the worker ever runs (its identity tuple
+    // matches what `stub:stub` imports to). `ensureInstanceConfig` itself is
+    // exercised separately by config-import.ts.
+    await client.query(
+      `INSERT INTO model_targets (organization_id, model, provider, version, web_search, enabled)
+       VALUES (NULL, 'stub', 'stub', NULL, false, true)`
+    );
+    await client.query(`INSERT INTO instance_meta (id, env_imported_at) VALUES ('instance', NOW())`);
+    console.log("  Created instance config: stub catalog target + instance_meta");
 
     // -----------------------------------------------------------------------
     // 2. Prompts
