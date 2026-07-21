@@ -138,8 +138,10 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 									value={competitor.domains.filter(Boolean)}
 									onValueChange={(values) => update(competitor._key, { domains: values })}
 									placeholder="Add domain..."
+									searchPlaceholder="Paste a URL or add a domain..."
 									maxItems={10}
 									normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+									pasteSplitter={/[\n,\t]+/}
 									onValidate={validateDomain}
 								/>
 							</div>

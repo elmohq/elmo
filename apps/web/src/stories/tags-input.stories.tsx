@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { expect, userEvent, within } from "storybook/test";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
 const meta = {
   title: "Components/TagsInput",
@@ -64,6 +65,43 @@ export const WithValidation = () => {
       </div>
     </div>
   );
+};
+
+/** A full URL is normalized to its domain when pasted into a domain field. */
+export const UrlPaste: StoryObj = {
+  render: () => {
+    const [values, setValues] = useState<string[]>([]);
+
+    return (
+      <div className="p-8 max-w-xl space-y-6">
+        <div className="space-y-2">
+          <Label>Domains</Label>
+          <TagsInput
+            value={values}
+            onValueChange={setValues}
+            placeholder="Add domain..."
+            searchPlaceholder="Paste a URL or add a domain..."
+            normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+            pasteSplitter={/[\n,\t]+/}
+            onValidate={(value) =>
+              cleanAndValidateDomain(value) ? true : `"${value}" is not a valid domain`
+            }
+          />
+        </div>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const documentBody = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+    const input = await documentBody.findByPlaceholderText("Paste a URL or add a domain...");
+    await userEvent.type(input, "https://www.example.com/pricing?utm_source=ad");
+    await userEvent.keyboard("{Enter}");
+
+    await expect(canvas.findByText("example.com")).resolves.toBeVisible();
+  },
 };
 
 /**

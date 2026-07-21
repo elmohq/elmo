@@ -28,6 +28,8 @@ export interface TagsInputProps {
   emptyText?: string;
   allowCustomValues?: boolean;
   normalizeValue?: (raw: string) => string;
+  /** Splits clipboard text into values. Providing this also handles single-value pastes. */
+  pasteSplitter?: RegExp;
   /** Return `true` to accept the value, or an error string to reject it and show inline. */
   onValidate?: (value: string) => true | string;
   maxItems?: number;
@@ -47,6 +49,7 @@ export function TagsInput({
   emptyText = "No results.",
   allowCustomValues = true,
   normalizeValue,
+  pasteSplitter,
   onValidate,
   maxItems,
   minItems = 0,
@@ -213,9 +216,9 @@ export function TagsInput({
               onPaste={(e) => {
                 if (disabled || atMax) return;
                 const text = e.clipboardData.getData("text");
-                if (!PASTE_SPLITTER.test(text)) return;
+                if (!pasteSplitter && !PASTE_SPLITTER.test(text)) return;
                 e.preventDefault();
-                addMany(text.split(PASTE_SPLITTER));
+                addMany(text.split(pasteSplitter ?? PASTE_SPLITTER));
                 setQuery("");
               }}
             />
