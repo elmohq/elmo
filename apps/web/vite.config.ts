@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -13,13 +13,22 @@ const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
 		const { sentryTanstackStart } = await import("@sentry/tanstackstart-react/vite");
-		return [
-			sentryTanstackStart({
+		return sentryTanstackStart({
 				org: process.env.SENTRY_ORG,
 				project: process.env.SENTRY_PROJECT,
 				authToken: process.env.SENTRY_AUTH_TOKEN,
-			}),
-		];
+			})
+			.map((plugin) => {
+				if (plugin.name !== "sentry-vite-plugin") return plugin;
+
+				return {
+					...plugin,
+					// Nitro's WASM transform is incompatible with Sentry's chunk instrumentation.
+					applyToEnvironment: (
+						environment: Parameters<NonNullable<Plugin["applyToEnvironment"]>>[0],
+					) => environment.name !== "nitro",
+				};
+			});
 	}
 	return [];
 })();
