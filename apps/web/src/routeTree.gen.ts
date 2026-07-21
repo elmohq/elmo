@@ -30,6 +30,10 @@ import { Route as AuthedAppNewRouteImport } from './routes/_authed/app/new'
 import { Route as AuthedAppBrandRouteImport } from './routes/_authed/app/$brand'
 import { Route as AuthedAdminWorkflowsRouteImport } from './routes/_authed/admin/workflows'
 import { Route as AuthedAdminToolsRouteImport } from './routes/_authed/admin/tools'
+import { Route as AuthedAdminTargetsRouteImport } from './routes/_authed/admin/targets'
+import { Route as AuthedAdminProvidersRouteImport } from './routes/_authed/admin/providers'
+import { Route as AuthedAdminOrganizationsRouteImport } from './routes/_authed/admin/organizations'
+import { Route as AuthedAdminDefaultsRouteImport } from './routes/_authed/admin/defaults'
 import { Route as AuthedAcceptInvitationInvitationIdRouteImport } from './routes/_authed/accept-invitation/$invitationId'
 import { Route as ApiV1ReportsIndexRouteImport } from './routes/api/v1/reports/index'
 import { Route as ApiV1PromptsIndexRouteImport } from './routes/api/v1/prompts/index'
@@ -164,6 +168,27 @@ const AuthedAdminWorkflowsRoute = AuthedAdminWorkflowsRouteImport.update({
 const AuthedAdminToolsRoute = AuthedAdminToolsRouteImport.update({
   id: '/tools',
   path: '/tools',
+  getParentRoute: () => AuthedAdminRoute,
+} as any)
+const AuthedAdminTargetsRoute = AuthedAdminTargetsRouteImport.update({
+  id: '/targets',
+  path: '/targets',
+  getParentRoute: () => AuthedAdminRoute,
+} as any)
+const AuthedAdminProvidersRoute = AuthedAdminProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => AuthedAdminRoute,
+} as any)
+const AuthedAdminOrganizationsRoute =
+  AuthedAdminOrganizationsRouteImport.update({
+    id: '/organizations',
+    path: '/organizations',
+    getParentRoute: () => AuthedAdminRoute,
+  } as any)
+const AuthedAdminDefaultsRoute = AuthedAdminDefaultsRouteImport.update({
+  id: '/defaults',
+  path: '/defaults',
   getParentRoute: () => AuthedAdminRoute,
 } as any)
 const AuthedAcceptInvitationInvitationIdRoute =
@@ -351,6 +376,10 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
+  '/admin/defaults': typeof AuthedAdminDefaultsRoute
+  '/admin/organizations': typeof AuthedAdminOrganizationsRoute
+  '/admin/providers': typeof AuthedAdminProvidersRoute
+  '/admin/targets': typeof AuthedAdminTargetsRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/$brand': typeof AuthedAppBrandRouteWithChildren
@@ -401,6 +430,10 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
+  '/admin/defaults': typeof AuthedAdminDefaultsRoute
+  '/admin/organizations': typeof AuthedAdminOrganizationsRoute
+  '/admin/providers': typeof AuthedAdminProvidersRoute
+  '/admin/targets': typeof AuthedAdminTargetsRoute
   '/admin/tools': typeof AuthedAdminToolsRoute
   '/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/app/new': typeof AuthedAppNewRoute
@@ -455,6 +488,10 @@ export interface FileRoutesById {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/_authed/accept-invitation/$invitationId': typeof AuthedAcceptInvitationInvitationIdRoute
+  '/_authed/admin/defaults': typeof AuthedAdminDefaultsRoute
+  '/_authed/admin/organizations': typeof AuthedAdminOrganizationsRoute
+  '/_authed/admin/providers': typeof AuthedAdminProvidersRoute
+  '/_authed/admin/targets': typeof AuthedAdminTargetsRoute
   '/_authed/admin/tools': typeof AuthedAdminToolsRoute
   '/_authed/admin/workflows': typeof AuthedAdminWorkflowsRoute
   '/_authed/app/$brand': typeof AuthedAppBrandRouteWithChildren
@@ -510,6 +547,10 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/accept-invitation/$invitationId'
+    | '/admin/defaults'
+    | '/admin/organizations'
+    | '/admin/providers'
+    | '/admin/targets'
     | '/admin/tools'
     | '/admin/workflows'
     | '/app/$brand'
@@ -560,6 +601,10 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/accept-invitation/$invitationId'
+    | '/admin/defaults'
+    | '/admin/organizations'
+    | '/admin/providers'
+    | '/admin/targets'
     | '/admin/tools'
     | '/admin/workflows'
     | '/app/new'
@@ -613,6 +658,10 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/_authed/accept-invitation/$invitationId'
+    | '/_authed/admin/defaults'
+    | '/_authed/admin/organizations'
+    | '/_authed/admin/providers'
+    | '/_authed/admin/targets'
     | '/_authed/admin/tools'
     | '/_authed/admin/workflows'
     | '/_authed/app/$brand'
@@ -829,6 +878,34 @@ declare module '@tanstack/react-router' {
       path: '/tools'
       fullPath: '/admin/tools'
       preLoaderRoute: typeof AuthedAdminToolsRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
+    '/_authed/admin/targets': {
+      id: '/_authed/admin/targets'
+      path: '/targets'
+      fullPath: '/admin/targets'
+      preLoaderRoute: typeof AuthedAdminTargetsRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
+    '/_authed/admin/providers': {
+      id: '/_authed/admin/providers'
+      path: '/providers'
+      fullPath: '/admin/providers'
+      preLoaderRoute: typeof AuthedAdminProvidersRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
+    '/_authed/admin/organizations': {
+      id: '/_authed/admin/organizations'
+      path: '/organizations'
+      fullPath: '/admin/organizations'
+      preLoaderRoute: typeof AuthedAdminOrganizationsRouteImport
+      parentRoute: typeof AuthedAdminRoute
+    }
+    '/_authed/admin/defaults': {
+      id: '/_authed/admin/defaults'
+      path: '/defaults'
+      fullPath: '/admin/defaults'
+      preLoaderRoute: typeof AuthedAdminDefaultsRouteImport
       parentRoute: typeof AuthedAdminRoute
     }
     '/_authed/accept-invitation/$invitationId': {
@@ -1052,12 +1129,20 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedAdminRouteChildren {
+  AuthedAdminDefaultsRoute: typeof AuthedAdminDefaultsRoute
+  AuthedAdminOrganizationsRoute: typeof AuthedAdminOrganizationsRoute
+  AuthedAdminProvidersRoute: typeof AuthedAdminProvidersRoute
+  AuthedAdminTargetsRoute: typeof AuthedAdminTargetsRoute
   AuthedAdminToolsRoute: typeof AuthedAdminToolsRoute
   AuthedAdminWorkflowsRoute: typeof AuthedAdminWorkflowsRoute
   AuthedAdminIndexRoute: typeof AuthedAdminIndexRoute
 }
 
 const AuthedAdminRouteChildren: AuthedAdminRouteChildren = {
+  AuthedAdminDefaultsRoute: AuthedAdminDefaultsRoute,
+  AuthedAdminOrganizationsRoute: AuthedAdminOrganizationsRoute,
+  AuthedAdminProvidersRoute: AuthedAdminProvidersRoute,
+  AuthedAdminTargetsRoute: AuthedAdminTargetsRoute,
   AuthedAdminToolsRoute: AuthedAdminToolsRoute,
   AuthedAdminWorkflowsRoute: AuthedAdminWorkflowsRoute,
   AuthedAdminIndexRoute: AuthedAdminIndexRoute,

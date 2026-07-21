@@ -17,6 +17,10 @@ import {
 	IconTimeline,
 	IconTool,
 	IconUsers,
+	IconServer,
+	IconKey,
+	IconAdjustments,
+	IconBuildingSkyscraper,
 } from "@tabler/icons-react";
 
 import {
@@ -45,11 +49,19 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
-export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, brand, ...props }: AppSidebarProps) {
+export function AppSidebar({
+	isAdmin = false,
+	hasReportAccess = false,
+	adminOnly = false,
+	brand,
+	...props
+}: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+	// The org-entitlements admin surface only exists in cloud (§8 / decision 6).
+	const isCloud = context.clientConfig?.mode === "cloud";
 
 	const showAdminSection = isAdmin || (hasReportAccess && reportsEnabled);
 
@@ -150,6 +162,34 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 						icon: IconTable,
 						absolute: true,
 					},
+					{
+						title: "Targets",
+						url: "/admin/targets",
+						icon: IconServer,
+						absolute: true,
+					},
+					{
+						title: "Providers",
+						url: "/admin/providers",
+						icon: IconKey,
+						absolute: true,
+					},
+					{
+						title: "Defaults",
+						url: "/admin/defaults",
+						icon: IconAdjustments,
+						absolute: true,
+					},
+					...(isCloud
+						? [
+								{
+									title: "Organizations",
+									url: "/admin/organizations",
+									icon: IconBuildingSkyscraper,
+									absolute: true,
+								},
+							]
+						: []),
 					...(reportsEnabled ? [reportsItem] : []),
 					{
 						title: "Workflows",
@@ -177,14 +217,14 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-					<SidebarMenuButton size="lg" asChild>
-						<Link to="/app" onClick={() => setOpenMobile(false)}>
-							<Logo iconClassName="!size-5" />
-							<div className="ml-auto group-data-[collapsible=icon]:hidden">
-								<DemoModePill />
-							</div>
-						</Link>
-					</SidebarMenuButton>
+						<SidebarMenuButton size="lg" asChild>
+							<Link to="/app" onClick={() => setOpenMobile(false)}>
+								<Logo iconClassName="!size-5" />
+								<div className="ml-auto group-data-[collapsible=icon]:hidden">
+									<DemoModePill />
+								</div>
+							</Link>
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>

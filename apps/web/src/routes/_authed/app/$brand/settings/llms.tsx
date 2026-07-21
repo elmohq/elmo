@@ -1,19 +1,34 @@
 /**
- * /app/$brand/settings/llms - LLM configuration page
+ * /app/$brand/settings/llms — the brand's model selection (§8).
  *
- * Lists the AI models this brand is tracked against, data-driven from the
- * deployment's `SCRAPE_TARGETS` + `brand.enabledModels`. Each card renders
- * from `brand.effectiveModelConfigs` rather than a hardcoded model list so
- * any deployment-configured model shows up automatically.
+ * The first-ever write path for `run.enabled_models`: a checklist of standard
+ * models (checked = tracked), each showing its target implementations and, when
+ * applicable, exclusion-reason badges (B2). Saving all models reverts to the
+ * legacy "track all" (null) state by deleting the row. Cloud adds a pick-count
+ * meter and moves assignable models (Claude) to a per-prompt info block.
+ *
+ * Write access is gated by (readOnly === false) AND (mode !== whitelabel ||
+ * user is instance admin); the server enforces it regardless. Read-only viewers
+ * still see the current state.
  */
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ClientConfig } from "@workspace/config/types";
+import type { ExclusionReason } from "@workspace/lib/config/resolve";
+import { ASSIGNABLE_MODELS } from "@workspace/config/plans";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Button } from "@workspace/ui/components/button";
+import { Badge } from "@workspace/ui/components/badge";
+import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { useBrand } from "@/hooks/use-brands";
-import { iconForModel } from "@/components/filter-bar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { IconInfoCircle } from "@tabler/icons-react";
+import { iconForModel, labelForModel } from "@/components/filter-bar";
+import { brandKeys } from "@/hooks/use-brands";
+import { getEffectiveConfigFn, setConfigValuesFn } from "@/server/config-entries";
+import { EXCLUSION_REASON_COPY, enabledModelsEntries, impactSummary, isTrackingAll } from "@/lib/config-ui";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 	head: ({ matches, match }) => {
@@ -22,108 +37,324 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 		return {
 			meta: [
 				{ title: buildTitle("LLMs", { appName, brandName }) },
-				{ name: "description", content: "View tracked AI models and configuration." },
+				{ name: "description", content: "Choose which AI models this brand is tracked against." },
 			],
 		};
 	},
 	component: LlmsSettingsPage,
 });
 
+/** Exclusion reasons that are meaningful warnings on the brand page. "Not tracked"
+ *  (not-picked-by-brand) is just the unchecked state, and prompt-level reasons
+ *  don't apply here — both are filtered out. */
+const BRAND_WARNING_REASONS = new Set<ExclusionReason>([
+	"catalog-disabled",
+	"credentials-unready",
+	"requires-entitlement",
+	"not-in-plan-menu",
+	"pool-exhausted",
+]);
+
+interface ModelGroup {
+	model: string;
+	implementations: { provider: string; version?: string; webSearch: boolean }[];
+	running: boolean;
+	reasons: ExclusionReason[];
+	isAssignable: boolean;
+}
+
 function LlmsSettingsPage() {
-	const { brand, isLoading } = useBrand();
-	const configs = brand?.effectiveModelConfigs ?? [];
+	const { brand: brandId } = Route.useParams();
+	const context = useRouteContext({ strict: false }) as {
+		session?: { user?: { role?: string } } | null;
+		clientConfig?: ClientConfig;
+	};
+	const mode = context.clientConfig?.mode;
+	const readOnly = context.clientConfig?.features.readOnly ?? false;
+	const isAdmin = context.session?.user?.role === "admin";
+	const canEdit = !readOnly && (mode !== "whitelabel" || isAdmin);
+
+	const queryClient = useQueryClient();
+	const { data, isLoading } = useQuery({
+		queryKey: ["config", "brand", brandId],
+		queryFn: () => getEffectiveConfigFn({ data: { scope: "brand", id: brandId } }),
+		enabled: !!brandId,
+		staleTime: 30_000,
+	});
+
+	const { standardGroups, assignableGroups, pickable, picks, standardModelPicks, cadenceHours } = useMemo(() => {
+		const targets = data?.targets ?? [];
+		const excluded = data?.excluded ?? [];
+		const entitlements = data?.entitlements ?? null;
+		const classesEnforced = entitlements?.standardModelMenu != null;
+		const menu = entitlements?.standardModelMenu ?? null;
+
+		const groups = new Map<string, ModelGroup>();
+		const ensure = (model: string): ModelGroup => {
+			let group = groups.get(model);
+			if (!group) {
+				group = {
+					model,
+					implementations: [],
+					running: false,
+					reasons: [],
+					isAssignable: classesEnforced && (ASSIGNABLE_MODELS as readonly string[]).includes(model),
+				};
+				groups.set(model, group);
+			}
+			return group;
+		};
+
+		for (const target of targets) {
+			const group = ensure(target.model);
+			group.running = true;
+			group.implementations.push({ provider: target.provider, version: target.version, webSearch: target.webSearch });
+		}
+		for (const item of excluded) {
+			const group = ensure(item.target.model);
+			group.implementations.push({
+				provider: item.target.provider,
+				version: item.target.version ?? undefined,
+				webSearch: item.target.webSearch,
+			});
+			for (const reason of item.reasons) if (!group.reasons.includes(reason)) group.reasons.push(reason);
+		}
+
+		const all = [...groups.values()].sort((a, b) => a.model.localeCompare(b.model));
+		const standard = all.filter((g) => !g.isAssignable);
+		const assignable = all.filter((g) => g.isAssignable);
+		const standardModels = standard.map((g) => g.model);
+		const pickableModels = standardModels.filter((m) => menu === null || menu.includes(m));
+
+		return {
+			standardGroups: standard,
+			assignableGroups: assignable,
+			pickable: pickableModels,
+			picks: (data?.values?.enabledModels?.value ?? null) as string[] | null,
+			standardModelPicks: entitlements?.standardModelPicks ?? null,
+			cadenceHours: Number(data?.values?.cadenceHours?.value ?? 24),
+		};
+	}, [data]);
+
+	// Local checklist state, seeded from the resolved picks and re-seeded whenever
+	// the server truth changes (initial load / after a save refetch).
+	const [selected, setSelected] = useState<string[]>([]);
+	const signature = useMemo(() => JSON.stringify({ picks, pickable }), [picks, pickable]);
+	useEffect(() => {
+		setSelected(picks === null ? pickable : pickable.filter((m) => picks.includes(m)));
+	}, [signature]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [impact, setImpact] = useState<string | null>(null);
+
+	const atPickLimit = standardModelPicks !== null && selected.length >= standardModelPicks;
+
+	const toggle = (model: string, checked: boolean) => {
+		setImpact(null);
+		setSelected((prev) => (checked ? [...new Set([...prev, model])] : prev.filter((m) => m !== model)));
+	};
+
+	const save = async () => {
+		if (!canEdit) return;
+		setSaving(true);
+		setError(null);
+		setImpact(null);
+		try {
+			await setConfigValuesFn({
+				data: { scope: "brand", id: brandId, entries: enabledModelsEntries(selected, pickable) },
+			});
+			const refetched = await queryClient.fetchQuery({
+				queryKey: ["config", "brand", brandId],
+				queryFn: () => getEffectiveConfigFn({ data: { scope: "brand", id: brandId } }),
+			});
+			// Filter bars, dashboards, and the brand switcher read effective models too.
+			queryClient.invalidateQueries({ queryKey: brandKeys.all });
+			setImpact(impactSummary({ modelCount: refetched.targets?.length ?? 0, cadenceHours }));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to save");
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const trackingAll = isTrackingAll(selected, pickable);
 
 	return (
-		<div className="space-y-6 max-w-6xl">
+		<div className="space-y-6 max-w-4xl">
 			<div>
 				<h1 className="text-3xl font-bold">LLMs</h1>
 				<p className="text-muted-foreground">
-					Your prompts are evaluated against these AI models to track how your brand appears across different types of AI
-					search.
+					Choose which AI models this brand is evaluated against. Your prompts run against every model you track.
 				</p>
 			</div>
 
-			{isLoading && !brand ? (
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{[0, 1, 2].map((i) => (
-						<Card key={i} className="h-full">
-							<CardHeader className="py-2 border-b">
-								<Skeleton className="h-6 w-6 rounded" />
-							</CardHeader>
-							<CardContent className="pt-2 space-y-2">
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-4 w-3/4" />
-								<Skeleton className="h-4 w-2/3" />
-							</CardContent>
-						</Card>
+			{isLoading && !data ? (
+				<div className="space-y-3">
+					{[0, 1, 2, 3].map((i) => (
+						<Skeleton key={i} className="h-16 w-full" />
 					))}
 				</div>
-			) : configs.length === 0 ? (
+			) : standardGroups.length === 0 && assignableGroups.length === 0 ? (
 				<Card>
 					<CardContent className="pt-6 text-sm text-muted-foreground">
-						No models are configured for this brand. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code> at the
-						deployment level, or adjust this brand&apos;s <code className="font-mono text-xs">enabledModels</code>.
+						No models are configured for this deployment yet. The catalog is seeded on the worker&apos;s first boot, or
+						an admin can add targets under Admin → Targets.
 					</CardContent>
 				</Card>
 			) : (
-				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-					{configs.map((config) => (
-						<Card key={config.model} className="h-full">
-							<CardHeader className="py-2 border-b">
-								{iconForModel(config.model, "h-6 w-6")}
+				<>
+					<Card>
+						<CardHeader>
+							<div className="flex items-center justify-between gap-2">
+								<CardTitle className="text-base">Tracked models</CardTitle>
+								{standardModelPicks !== null && (
+									<span className="text-sm text-muted-foreground tabular-nums">
+										{selected.length} of {standardModelPicks} picks
+									</span>
+								)}
+							</div>
+							<CardDescription>
+								{trackingAll
+									? "Tracking all models (default)."
+									: `Tracking ${selected.length} of ${pickable.length} available models.`}
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="divide-y">
+							{standardGroups.map((group) => {
+								const isPickable = pickable.includes(group.model);
+								const checked = selected.includes(group.model);
+								const disabled = !canEdit || !isPickable || (!checked && atPickLimit);
+								return (
+									<ModelRow
+										key={group.model}
+										group={group}
+										checkable
+										checked={checked}
+										disabled={disabled}
+										onToggle={(next) => toggle(group.model, next)}
+									/>
+								);
+							})}
+						</CardContent>
+					</Card>
+
+					{canEdit && (
+						<div className="flex items-center gap-3">
+							<Button onClick={save} disabled={saving} className="cursor-pointer">
+								{saving ? "Saving…" : "Save"}
+							</Button>
+							{impact && <span className="text-sm text-green-600">{impact}</span>}
+							{error && <span className="text-sm text-destructive">{error}</span>}
+						</div>
+					)}
+					{!canEdit && (
+						<p className="text-sm text-muted-foreground">
+							{readOnly ? "This is a read-only demo." : "Only an administrator can change tracked models here."}
+						</p>
+					)}
+
+					{assignableGroups.length > 0 && (
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-base">Per-prompt models</CardTitle>
+								<CardDescription>
+									These models aren&apos;t tracked brand-wide. Enable them for individual prompts from the{" "}
+									<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }} className="underline">
+										prompt settings
+									</Link>
+									.
+								</CardDescription>
 							</CardHeader>
-							<CardContent className="pt-2">
-								<div className="divide-y text-sm">
-									<ConfigRow label="Model" tooltip="Which AI model this card covers.">
-										<span className="font-mono text-xs text-foreground">{config.model}</span>
-									</ConfigRow>
-									<ConfigRow label="Provider" tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc.">
-										<span className="font-mono text-xs text-foreground">{config.provider}</span>
-									</ConfigRow>
-									<ConfigRow label="Version" tooltip="Exact upstream model version requested from the provider.">
-										<span className="font-mono text-xs text-foreground">{config.version ?? "—"}</span>
-									</ConfigRow>
-									<ConfigRow label="Web search" tooltip="Is web search used to answer prompts?">
-										{config.webSearch ? (
-											<IconCircleCheck className="h-4 w-4 text-emerald-600" />
-										) : (
-											<IconCircleX className="h-4 w-4 text-muted-foreground" />
-										)}
-										<span className="sr-only">{config.webSearch ? "Enabled" : "Disabled"}</span>
-									</ConfigRow>
-								</div>
+							<CardContent className="divide-y">
+								{assignableGroups.map((group) => (
+									<ModelRow
+										key={group.model}
+										group={group}
+										checkable={false}
+										checked={false}
+										disabled
+										onToggle={() => {}}
+									/>
+								))}
 							</CardContent>
 						</Card>
-					))}
-				</div>
+					)}
+				</>
 			)}
 		</div>
 	);
 }
 
-function ConfigRow({
-	label,
-	tooltip,
-	children,
+function ModelRow({
+	group,
+	checkable,
+	checked,
+	disabled,
+	onToggle,
 }: {
-	label: string;
-	tooltip?: string;
-	children: React.ReactNode;
+	group: ModelGroup;
+	checkable: boolean;
+	checked: boolean;
+	disabled: boolean;
+	onToggle: (checked: boolean) => void;
 }) {
+	const warnings = group.reasons.filter((r) => BRAND_WARNING_REASONS.has(r));
 	return (
-		<div className="flex items-center justify-between py-2">
-			<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-				<span>{label}</span>
-				{tooltip && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<IconInfoCircle className="h-3.5 w-3.5 cursor-help" />
-						</TooltipTrigger>
-						<TooltipContent className="max-w-xs text-xs font-normal">{tooltip}</TooltipContent>
-					</Tooltip>
+		<div className="flex items-start justify-between gap-4 py-3">
+			<label className={`flex items-start gap-3 ${checkable && !disabled ? "cursor-pointer" : ""}`}>
+				{checkable && (
+					<Checkbox
+						checked={checked}
+						disabled={disabled}
+						onCheckedChange={(value) => onToggle(value === true)}
+						className="mt-0.5"
+					/>
 				)}
+				<div className="space-y-1.5">
+					<div className="flex items-center gap-2">
+						{iconForModel(group.model, "h-4 w-4")}
+						<span className="font-medium">{labelForModel(group.model)}</span>
+						<span className="font-mono text-xs text-muted-foreground">{group.model}</span>
+					</div>
+					<div className="flex flex-wrap gap-1.5">
+						{group.implementations.map((impl, i) => (
+							<Badge
+								key={`${impl.provider}-${impl.version ?? ""}-${i}`}
+								variant="outline"
+								className="font-mono text-[10px] font-normal"
+							>
+								{impl.provider}
+								{impl.version ? ` · ${impl.version}` : ""}
+								{impl.webSearch ? " · web" : ""}
+							</Badge>
+						))}
+					</div>
+				</div>
+			</label>
+			<div className="flex flex-wrap justify-end gap-1.5">
+				{warnings.map((reason) => (
+					<ReasonBadge key={reason} reason={reason} />
+				))}
 			</div>
-			<div className="flex items-center gap-2">{children}</div>
 		</div>
+	);
+}
+
+function ReasonBadge({ reason }: { reason: ExclusionReason }) {
+	const copy = EXCLUSION_REASON_COPY[reason];
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Badge
+					variant="outline"
+					className="font-normal border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 cursor-help gap-1"
+				>
+					<IconInfoCircle className="h-3 w-3" />
+					{copy.label}
+				</Badge>
+			</TooltipTrigger>
+			<TooltipContent className="max-w-xs text-xs font-normal">{copy.description}</TooltipContent>
+		</Tooltip>
 	);
 }
