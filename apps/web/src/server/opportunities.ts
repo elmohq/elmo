@@ -18,9 +18,9 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
-import { brandOpportunities, brands, competitors, prompts, promptRuns } from "@workspace/lib/db/schema";
+import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { extractDomain } from "@/lib/domain-categories";
@@ -478,24 +478,13 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 
 		// Serve the most recent stored report while it's fresh. Every generation is
 		// kept (append-only); we regenerate only when the latest is stale.
-		const [[latest], [evaluation]] = await Promise.all([
-			db
-				.select()
-				.from(brandOpportunities)
-				.where(eq(brandOpportunities.brandId, data.brandId))
-				.orderBy(desc(brandOpportunities.createdAt))
-				.limit(1),
-			db
-				.select({
-					lastEvaluatedAt: sql<string | null>`
-						to_char(max(${promptRuns.createdAt}) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z'
-					`,
-				})
-				.from(promptRuns)
-				.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
-				.where(and(eq(promptRuns.brandId, data.brandId), eq(prompts.enabled, true))),
-		]);
-		const lastEvaluatedAt = evaluation?.lastEvaluatedAt ?? null;
+		const [latest] = await db
+			.select()
+			.from(brandOpportunities)
+			.where(eq(brandOpportunities.brandId, data.brandId))
+			.orderBy(desc(brandOpportunities.createdAt))
+			.limit(1);
+		const lastEvaluatedAt = latest?.createdAt.toISOString() ?? null;
 		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
 		if (latest && isFresh) {
 			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
@@ -518,7 +507,15 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 		}
 
 		const report = enrichReport(generated.report, digest);
-		await db.insert(brandOpportunities).values({ brandId: data.brandId, report, model: generated.model });
+		const [savedReport] = await db
+			.insert(brandOpportunities)
+			.values({ brandId: data.brandId, report, model: generated.model })
+			.returning({ createdAt: brandOpportunities.createdAt });
 
-		return { report, reason: null, generatedFor: { brandName: digest.brandName }, lastEvaluatedAt };
+		return {
+			report,
+			reason: null,
+			generatedFor: { brandName: digest.brandName },
+			lastEvaluatedAt: savedReport?.createdAt.toISOString() ?? null,
+		};
 	});
