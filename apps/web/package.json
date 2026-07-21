@@ -6,7 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --port 3000",
-		"build": "vite build",
+		"build": "vite build && node scripts/verify-takumi-wasm.mjs",
 		"start": "node .output/server/index.mjs",
 		"preview": "vite preview",
 		"test": "vitest run --project=unit",

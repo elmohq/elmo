@@ -14,21 +14,19 @@ const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
 		const { sentryTanstackStart } = await import("@sentry/tanstackstart-react/vite");
 		return sentryTanstackStart({
-				org: process.env.SENTRY_ORG,
-				project: process.env.SENTRY_PROJECT,
-				authToken: process.env.SENTRY_AUTH_TOKEN,
-			})
-			.map((plugin) => {
-				if (plugin.name !== "sentry-vite-plugin") return plugin;
+			org: process.env.SENTRY_ORG,
+			project: process.env.SENTRY_PROJECT,
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+		}).map((plugin) => {
+			if (plugin.name !== "sentry-vite-plugin") return plugin;
 
-				return {
-					...plugin,
-					// Nitro's WASM transform is incompatible with Sentry's chunk instrumentation.
-					applyToEnvironment: (
-						environment: Parameters<NonNullable<Plugin["applyToEnvironment"]>>[0],
-					) => environment.name !== "nitro",
-				};
-			});
+			return {
+				...plugin,
+				// Nitro's WASM transform is incompatible with Sentry's chunk instrumentation.
+				applyToEnvironment: (environment: Parameters<NonNullable<Plugin["applyToEnvironment"]>>[0]) =>
+					environment.name !== "nitro",
+			};
+		});
 	}
 	return [];
 })();
@@ -57,11 +55,7 @@ export default defineConfig({
 			alias: {
 				tslib: tslibEsm,
 			},
-			noExternals: [
-				"@opentelemetry/instrumentation",
-				"@opentelemetry/api",
-				"@prisma/instrumentation",
-			],
+			noExternals: ["@opentelemetry/instrumentation", "@opentelemetry/api", "@prisma/instrumentation"],
 			rollupConfig: {
 				external: ["fsevents"],
 			},
