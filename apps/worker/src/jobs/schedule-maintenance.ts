@@ -1,12 +1,20 @@
 import * as Sentry from "@sentry/node";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import {
+	configRowsForBrand,
+	type EffectiveTarget,
+	fetchConfigRowsForBrands,
+	getInstanceCatalog,
+	resolveEffectiveTargets,
+} from "@workspace/lib/config/resolve";
+import { type Entitlements, getEntitlements } from "@workspace/lib/config/entitlements";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
-import { isPromptOverdue } from "@workspace/lib/overdue";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import { getProvider } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { fastestCadenceHours, isPromptOverdueByTargets, targetIdentityKey } from "./run-policy";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -29,6 +37,15 @@ let lastOverdueAlertMs = 0;
  */
 const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
 
+/** Live credential probe (reads the worker's refreshed overlay); fail-closed. */
+function credentialsReady(providerId: string): boolean {
+	try {
+		return getProvider(providerId).isConfigured();
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
  * This is a self-healing mechanism that catches any prompts that fell through
@@ -49,6 +66,14 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 }
 
 async function runMaintenanceCheck(): Promise<void> {
+	// An empty catalog means nothing can run yet (first boot before import, or a
+	// wiped catalog). Don't revive anything — boot already warned about it.
+	const catalog = await getInstanceCatalog();
+	if (catalog.length === 0) {
+		console.log("[schedule-maintenance] No targets configured — nothing to schedule");
+		return;
+	}
+
 	// Get all enabled brands
 	const enabledBrands = await db.query.brands.findMany({
 		where: eq(brands.enabled, true),
@@ -61,10 +86,6 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	const brandIds = enabledBrands.map((b) => b.id);
 	const defaultDelayHours = getDefaultDelayHours();
-	const brandDelayMap: Record<string, number> = {};
-	for (const brand of enabledBrands) {
-		brandDelayMap[brand.id] = brand.delayOverrideHours ?? defaultDelayHours;
-	}
 
 	// Get all enabled prompts for enabled brands
 	const enabledPrompts = await db.query.prompts.findMany({
@@ -78,25 +99,58 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-	const modelNames = allModels.map((cfg) => cfg.model);
+	// Batch-resolve every brand's effective targets in one config round trip
+	// (A8d): IN-list config rows + per-org entitlements + the cached catalog, fed
+	// to the pure resolver per brand. Never a per-brand resolveBrandTargets loop.
+	const orgIds = [...new Set(enabledBrands.map((b) => b.organizationId))];
+	const batch = await fetchConfigRowsForBrands(orgIds, brandIds);
+	const entitlementsByOrg = new Map<string, Entitlements>();
+	for (const orgId of orgIds) {
+		entitlementsByOrg.set(orgId, await getEntitlements(orgId));
+	}
 
-	// Get last runs per prompt per model (matches dashboard overdue logic)
+	const brandTargets = new Map<string, EffectiveTarget[]>();
+	let zeroTargetBrands = 0;
+	for (const brand of enabledBrands) {
+		const entitlements = entitlementsByOrg.get(brand.organizationId);
+		if (!entitlements) continue;
+		const { targets } = resolveEffectiveTargets({
+			catalog,
+			entitlements,
+			rows: configRowsForBrand(batch, brand.organizationId, brand.id),
+			level: "brand",
+			credentialsReady,
+		});
+		brandTargets.set(brand.id, targets);
+		if (targets.length === 0) zeroTargetBrands++;
+	}
+	if (zeroTargetBrands > 0) {
+		console.log(`[schedule-maintenance] ${zeroTargetBrands} brand(s) resolved to zero targets — skipped this pass`);
+	}
+
+	// Last run per prompt per target identity (model, provider, webSearch).
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
-			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+			provider: promptRuns.provider,
+			webSearch: promptRuns.webSearchEnabled,
+			lastRunAt: sql<string>`MAX(${promptRuns.createdAt})`,
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model);
+		.groupBy(promptRuns.promptId, promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
 
-	const lastRunsMap: Record<string, Record<string, Date>> = {};
+	const lastRunsMap = new Map<string, Map<string, Date>>();
 	for (const run of lastRunsQuery) {
-		if (!lastRunsMap[run.promptId]) {
-			lastRunsMap[run.promptId] = {};
+		let perPrompt = lastRunsMap.get(run.promptId);
+		if (!perPrompt) {
+			perPrompt = new Map();
+			lastRunsMap.set(run.promptId, perPrompt);
 		}
-		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
+		perPrompt.set(
+			targetIdentityKey({ model: run.model, provider: run.provider, webSearch: run.webSearch }),
+			new Date(run.lastRunAt),
+		);
 	}
 
 	// Get all pending jobs with their state info
@@ -106,14 +160,7 @@ async function runMaintenanceCheck(): Promise<void> {
 	const promptsToSchedule: { promptId: string; cadenceHours: number }[] = [];
 	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
 
-	reportOverduePrompts({
-		prompts: enabledPrompts,
-		brandDelayHours: brandDelayMap,
-		defaultDelayHours,
-		lastRunsMap,
-		modelNames,
-		now,
-	});
+	reportOverduePrompts({ prompts: enabledPrompts, brandTargets, lastRunsMap, now });
 
 	for (const prompt of enabledPrompts) {
 		const pendingJob = pendingJobMap.get(prompt.id);
@@ -123,25 +170,29 @@ async function runMaintenanceCheck(): Promise<void> {
 			continue;
 		}
 
-		const cadenceHours = brandDelayMap[prompt.brandId] ?? defaultDelayHours;
-		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
-		const lastRuns = lastRunsMap[prompt.id] || {};
+		// Only the brand's resolved targets count toward overdue, each at its own
+		// resolved cadence (the watchdog oversampling fix) — credentials-unready and
+		// otherwise-excluded targets are already dropped by resolveEffectiveTargets.
+		const targets = brandTargets.get(prompt.brandId) ?? [];
+		if (targets.length === 0) continue;
 
-		const isOverdue = isPromptOverdue({
-			models: modelNames,
-			lastRunByModel: lastRuns,
+		const lastRuns = lastRunsMap.get(prompt.id) ?? new Map<string, Date>();
+		const overdue = isPromptOverdueByTargets({
+			targets,
+			lastRunAtByKey: lastRuns,
 			promptCreatedAt: prompt.createdAt,
-			runFrequencyMs,
 			now,
 		});
+		if (!overdue) continue;
 
-		if (!isOverdue) continue;
+		const cadenceHours = fastestCadenceHours(targets, defaultDelayHours);
+		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
 
 		if (pendingJob && pendingJob.state === "created") {
 			// Throttle: if the prompt ran within the window it isn't really stalled,
 			// so don't drag its next job forward again. A never-recording target
 			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
-			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
+			const lastRunTimes = [...lastRuns.values()].map((d) => d.getTime());
 			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
 			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
 				continue;
@@ -149,7 +200,7 @@ async function runMaintenanceCheck(): Promise<void> {
 			// There's a future job scheduled - expedite it to run now
 			jobsToExpedite.push(pendingJob.jobId);
 		} else {
-			// No pending job at all - create a new one
+			// No pending job at all - create a new one (this un-idles A8b prompts)
 			promptsToSchedule.push({ promptId: prompt.id, cadenceHours });
 		}
 	}
@@ -189,9 +240,9 @@ async function runMaintenanceCheck(): Promise<void> {
 		let failCount = 0;
 
 		for (let i = 0; i < promptsToSchedule.length; i += BATCH_SIZE) {
-			const batch = promptsToSchedule.slice(i, i + BATCH_SIZE);
+			const batchToSchedule = promptsToSchedule.slice(i, i + BATCH_SIZE);
 			const results = await Promise.allSettled(
-				batch.map(({ promptId, cadenceHours }) =>
+				batchToSchedule.map(({ promptId, cadenceHours }) =>
 					boss.send(
 						"process-prompt",
 						{ promptId, cadenceHours },
@@ -224,29 +275,27 @@ async function runMaintenanceCheck(): Promise<void> {
 }
 
 /**
- * Report to Sentry (as an error, so it pages) when enabled prompts are overdue on
- * any of their models — the same per-model definition the dashboard uses — past a
- * grace window. Throttled in-process so a sustained outage doesn't emit a new event
- * on every maintenance tick.
+ * Report to Sentry (as an error, so it pages) when enabled prompts are overdue
+ * on any of their resolved targets — each at its own resolved cadence — past a
+ * grace window. Throttled in-process so a sustained outage doesn't emit a new
+ * event on every maintenance tick.
  */
 function reportOverduePrompts(input: {
 	prompts: { id: string; brandId: string; createdAt: Date }[];
-	brandDelayHours: Record<string, number>;
-	defaultDelayHours: number;
-	lastRunsMap: Record<string, Record<string, Date>>;
-	modelNames: string[];
+	brandTargets: Map<string, EffectiveTarget[]>;
+	lastRunsMap: Map<string, Map<string, Date>>;
 	now: number;
 }): void {
-	const { prompts: enabled, brandDelayHours, defaultDelayHours, lastRunsMap, modelNames, now } = input;
+	const { prompts: enabled, brandTargets, lastRunsMap, now } = input;
 
 	let overduePrompts = 0;
 	for (const prompt of enabled) {
-		const runFrequencyMs = (brandDelayHours[prompt.brandId] ?? defaultDelayHours) * 60 * 60 * 1000;
-		const overdue = isPromptOverdue({
-			models: modelNames,
-			lastRunByModel: lastRunsMap[prompt.id] ?? {},
+		const targets = brandTargets.get(prompt.brandId) ?? [];
+		if (targets.length === 0) continue;
+		const overdue = isPromptOverdueByTargets({
+			targets,
+			lastRunAtByKey: lastRunsMap.get(prompt.id) ?? new Map<string, Date>(),
 			promptCreatedAt: prompt.createdAt,
-			runFrequencyMs,
 			now,
 			graceMs: OVERDUE_ALERT_GRACE_MS,
 		});

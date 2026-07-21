@@ -8,6 +8,7 @@
 import { getDeploymentModeFromEnv } from "@workspace/config/env";
 import { PLANS, type PlanEntitlements, type PlanKey, UNLIMITED_COUNT } from "@workspace/config/plans";
 import type { DeploymentMode } from "@workspace/config/types";
+import { eq } from "drizzle-orm";
 
 export interface Entitlements extends PlanEntitlements {
 	planKey: string | null;
@@ -87,9 +88,10 @@ export function resolveEntitlements(input: {
 async function loadOrgSettings(
 	orgId: string,
 ): Promise<{ planKey: string | null; entitlementOverrides: Partial<Entitlements> | null } | null> {
-	const { db } = await import("../db/db");
-	const { organizationSettings } = await import("../db/schema");
-	const { eq } = await import("drizzle-orm");
+	// Explicit .js extensions: dynamic import() resolves as ESM even from a
+	// CJS-form file, so the worker's NodeNext typecheck requires them.
+	const { db } = await import("../db/db.js");
+	const { organizationSettings } = await import("../db/schema.js");
 	const rows = await db
 		.select({ planKey: organizationSettings.planKey, entitlementOverrides: organizationSettings.entitlementOverrides })
 		.from(organizationSettings)

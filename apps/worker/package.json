@@ -7,10 +7,12 @@
     "dev": "tsx --env-file=../web/.env src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@sentry/node": "^10.65.0",
+    "@workspace/config": "workspace:*",
     "@workspace/deployment": "workspace:*",
     "@workspace/lib": "workspace:*",
     "@workspace/whitelabel": "workspace:*",
@@ -24,6 +26,7 @@
     "@types/node": "^26.1.1",
     "@types/pg": "^8.20.0",
     "tsx": "^4.23.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }
