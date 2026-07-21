@@ -8,7 +8,13 @@ import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { eq, and, count } from "drizzle-orm";
-import { generateDateRange, applyPerPromptLVCF, applyPerPromptCitationLVCF, type LookbackPeriod } from "@/lib/chart-utils";
+import {
+	generateDateRange,
+	applyPerPromptLVCF,
+	applyPerPromptCitationLVCF,
+	type LookbackPeriod,
+} from "@/lib/chart-utils";
+import { resolveBrandCadenceHours } from "@/lib/brand-cadence";
 import { getTimezoneLookbackRange, resolveTimezone } from "@/lib/timezone-utils";
 import {
 	getDashboardSummary,
@@ -16,7 +22,12 @@ import {
 	getPerPromptDailyCitationStats,
 } from "@/lib/postgres-read";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
-import { type CitationCategory, extractDomain, toRoundedPercentages, emptyCategoryCounts } from "@/lib/domain-categories";
+import {
+	type CitationCategory,
+	extractDomain,
+	toRoundedPercentages,
+	emptyCategoryCounts,
+} from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 
 export interface VisibilityTimeSeriesPoint {
@@ -70,11 +81,25 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 
 		// Get brand info, competitors, and prompts from PostgreSQL
 		const [brandResult, competitorsList, enabledPromptsResult, totalPromptsResult] = await Promise.all([
-			db.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains, delayOverrideHours: brands.delayOverrideHours }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
+			db
+				.select({
+					name: brands.name,
+					website: brands.website,
+					additionalDomains: brands.additionalDomains,
+					organizationId: brands.organizationId,
+				})
+				.from(brands)
+				.where(eq(brands.id, data.brandId))
+				.limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
-			db.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags, tags: prompts.tags })
-				.from(prompts).where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
-			db.select({ count: count() }).from(prompts).where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			db
+				.select({ id: prompts.id, value: prompts.value, systemTags: prompts.systemTags, tags: prompts.tags })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
+			db
+				.select({ count: count() })
+				.from(prompts)
+				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true))),
 		]);
 
 		const brandWebsite = brandResult[0]?.website || "";
@@ -89,10 +114,13 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 			.filter((p) => getEffectiveBrandedStatus(p.systemTags || [], p.tags || []).isBranded)
 			.map((p) => p.id);
 
-		const [summaryResult, perPromptVisibility, perPromptCitations] = await Promise.all([
+		const [summaryResult, perPromptVisibility, perPromptCitations, resolvedCadenceHours] = await Promise.all([
 			getDashboardSummary(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 			getPerPromptVisibilityTimeSeries(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
 			getPerPromptDailyCitationStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds),
+			brandResult[0]
+				? resolveBrandCadenceHours(data.brandId, brandResult[0].organizationId)
+				: Promise.resolve(undefined),
 		]);
 
 		// Process summary
@@ -116,7 +144,8 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		const totalQualifyingRuns = totalBrandedRuns + totalNonBrandedRuns;
 		const totalMentioned = totalBrandedMentioned + totalNonBrandedMentioned;
 		const averageVisibility = totalQualifyingRuns > 0 ? Math.round((totalMentioned / totalQualifyingRuns) * 100) : 0;
-		const nonBrandedVisibility = totalNonBrandedRuns > 0 ? Math.round((totalNonBrandedMentioned / totalNonBrandedRuns) * 100) : 0;
+		const nonBrandedVisibility =
+			totalNonBrandedRuns > 0 ? Math.round((totalNonBrandedMentioned / totalNonBrandedRuns) * 100) : 0;
 		const brandedVisibility = totalBrandedRuns > 0 ? Math.round((totalBrandedMentioned / totalBrandedRuns) * 100) : 100;
 
 		// Build visibility time series directly from LVCF-smoothed data (no rolling window needed)
@@ -135,7 +164,9 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 		});
 
 		const smoothedCitations = applyPerPromptCitationLVCF(
-			perPromptCitations, dateRange, brandResult[0]?.delayOverrideHours,
+			perPromptCitations,
+			dateRange,
+			resolvedCadenceHours,
 			(domain: string) => categorizeDomain(domain, brandDomains, competitorDomains),
 		);
 		const citationTimeSeries: CitationTimeSeriesPoint[] = dateRange.map((date) => {

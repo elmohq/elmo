@@ -5,20 +5,25 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
+import { requireConfigWrite } from "@/lib/auth/config-gates";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
-import {
-	getAdminRunsOverTime,
-	getAdminBrandRunStats,
-	getAdminActiveBrandsOverTime,
-} from "@/lib/postgres-read";
+import { brands, configs, prompts, promptRuns, type Brand } from "@workspace/lib/db/schema";
+import { eq, and, isNull, sql, desc } from "drizzle-orm";
+import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { getModelOverdueStatus } from "@workspace/lib/overdue";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
-import { parseScrapeTargets } from "@workspace/lib/providers";
+import { assertValidConfigWrite } from "@workspace/lib/config/registry";
+import {
+	type BatchConfigRows,
+	clearConfigCache,
+	configRowsForBrand,
+	fetchConfigRowsForBrands,
+	getInstanceCatalog,
+	mergeConfigRows,
+} from "@workspace/lib/config/resolve";
 
 // ============================================================================
 // Admin guard helper
@@ -28,6 +33,33 @@ async function requireAdmin() {
 	const session = await requireAuthSession();
 	if (!isAdmin(session)) throw new Error("Unauthorized: Admin access required");
 	return session;
+}
+
+// ============================================================================
+// Brand cadence from the config hierarchy
+// ============================================================================
+
+const CADENCE_KEY = "run.cadence_hours";
+
+/**
+ * Cadence numbers for one brand out of a batch config fetch: the resolved
+ * effective hours (instance → org → brand merge; registry-default falls back to
+ * `getDefaultDelayHours()` for pre-import env parity) plus the brand-scope
+ * override value the admin dialog edits (null = no override).
+ */
+function brandCadenceFromBatch(
+	batch: BatchConfigRows,
+	brand: Pick<Brand, "id" | "organizationId">,
+): { resolvedCadenceHours: number; delayOverrideHours: number | null } {
+	const rows = configRowsForBrand(batch, brand.organizationId, brand.id);
+	const cadence = mergeConfigRows(rows, {}).cadenceHours;
+	const overrideRow = rows.find(
+		(row) => row.scope === "brand" && row.key === CADENCE_KEY && row.model === null && row.targetId === null,
+	);
+	return {
+		resolvedCadenceHours: cadence.provenance === "default" ? getDefaultDelayHours() : (cadence.value as number),
+		delayOverrideHours: typeof overrideRow?.value === "number" ? overrideRow.value : null,
+	};
 }
 
 // ============================================================================
@@ -63,57 +95,59 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const [
-		allBrands,
-		brandsOverTime,
-		promptsOverTime,
-		runsOverTimeData,
-		brandRunStats,
-		activeBrandsData,
-	] = await Promise.all([
-		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
+	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+		await Promise.all([
+			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-		// Cumulative brand count over time (last 30 days)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				count: sql<number>`COUNT(${brands.id})::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative brand count over time (last 30 days)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					count: sql<number>`COUNT(${brands.id})::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Cumulative prompts count over time (enabled vs disabled)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
-				disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative prompts count over time (enabled vs disabled)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
+					disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		getAdminRunsOverTime(),
-		getAdminBrandRunStats(),
-		getAdminActiveBrandsOverTime(),
-	]);
+			getAdminRunsOverTime(),
+			getAdminBrandRunStats(),
+			getAdminActiveBrandsOverTime(),
+		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
+
+	// Batch-resolved cadence for every brand (A8d): one config fetch, pure merge
+	// per brand. `delayOverrideHours` keeps the delay-override dialog's contract
+	// (the brand-scope row's value, null = default).
+	const cadenceBatch = await fetchConfigRowsForBrands(
+		[...new Set(allBrands.map((b) => b.organizationId))],
+		allBrands.map((b) => b.id),
+	);
 
 	const brandStats = await Promise.all(
 		allBrands.map(async (brand) => {
@@ -139,6 +173,7 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 
 			return {
 				...brand,
+				...brandCadenceFromBatch(cadenceBatch, brand),
 				totalPrompts: promptCounts[0]?.total || 0,
 				activePrompts: promptCounts[0]?.active || 0,
 				promptRuns7Days: runStats?.runs_7d || 0,
@@ -172,7 +207,11 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 // ============================================================================
 
 /**
- * Update delay override for a brand.
+ * Update the cadence override for a brand — writes/deletes the brand-scope
+ * `run.cadence_hours` configs row through the validated write path (registry
+ * shape check + per-key policy gate; sampling class → instance-admin, demo
+ * denied). Input shape unchanged so the admin dialog keeps working; null
+ * deletes the row (revert to the inherited default).
  */
 export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	.validator(
@@ -182,14 +221,59 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireAdmin();
-		const result = await db
-			.update(brands)
-			.set({ delayOverrideHours: data.delayOverrideHours, updatedAt: new Date() })
-			.where(eq(brands.id, data.brandId))
-			.returning();
-		if (!result[0]) throw new Error("Brand not found");
-		return result[0];
+		const session = await requireAdmin();
+
+		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+		if (!brand) throw new Error("Brand not found");
+
+		if (data.delayOverrideHours !== null) {
+			const check = assertValidConfigWrite({
+				key: CADENCE_KEY,
+				scope: "brand",
+				value: data.delayOverrideHours,
+			});
+			if (!check.ok) throw new Error(check.message);
+		}
+		await requireConfigWrite({ key: CADENCE_KEY, scope: "brand", orgId: brand.organizationId });
+
+		if (data.delayOverrideHours === null) {
+			await db
+				.delete(configs)
+				.where(
+					and(
+						eq(configs.scope, "brand"),
+						eq(configs.brandId, data.brandId),
+						eq(configs.key, CADENCE_KEY),
+						isNull(configs.model),
+						isNull(configs.targetId),
+					),
+				);
+		} else {
+			await db
+				.insert(configs)
+				.values({
+					scope: "brand",
+					brandId: data.brandId,
+					key: CADENCE_KEY,
+					value: data.delayOverrideHours,
+					updatedBy: session.user.id,
+				})
+				.onConflictDoUpdate({
+					target: [
+						configs.scope,
+						configs.organizationId,
+						configs.brandId,
+						configs.promptId,
+						configs.model,
+						configs.targetId,
+						configs.key,
+					],
+					set: { value: data.delayOverrideHours, updatedBy: session.user.id, updatedAt: new Date() },
+				});
+		}
+		clearConfigCache();
+
+		return { brandId: data.brandId, delayOverrideHours: data.delayOverrideHours };
 	});
 
 // ============================================================================
@@ -566,11 +650,16 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
 	}
 
-	const [recentJobs, scheduleMap, activeJobMap, queueStats] = await Promise.all([
+	const [recentJobs, scheduleMap, activeJobMap, queueStats, cadenceBatch, catalog] = await Promise.all([
 		getRecentJobs(5000),
 		getScheduleMap(),
 		getActiveJobMap(),
 		getQueueStats(),
+		fetchConfigRowsForBrands(
+			[...new Set(allBrands.map((b) => b.organizationId))],
+			allBrands.map((b) => b.id),
+		),
+		getInstanceCatalog(),
 	]);
 
 	const failuresByPrompt = new Map<string, number>();
@@ -581,19 +670,18 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 	}
 
 	const now = Date.now();
-	const defaultDelayHours = getDefaultDelayHours();
 	const defaultSchedulerInfo = { exists: false, nextRunAt: null as number | null, cadenceHours: null as number | null };
+	const modelList = [...new Set(catalog.filter((t) => t.enabled).map((t) => t.model))];
 
 	const brandSummaries = allBrands.map((brand) => {
 		const brandPrompts = promptsByBrand[brand.id] || [];
-		const delayHours = brand.delayOverrideHours ?? defaultDelayHours;
+		const delayHours = brandCadenceFromBatch(cadenceBatch, brand).resolvedCadenceHours;
 		const runFrequencyMs = delayHours * 60 * 60 * 1000;
 
 		let overduePrompts = 0;
 		let onSchedulePrompts = 0;
 		let scheduledCount = 0;
 
-		const modelList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
 		const promptStatuses = brandPrompts.map((prompt) => {
 			const lastRuns = lastRunsMap[prompt.id] || {};
 			const lastRunsByModel: Record<
@@ -783,7 +871,11 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		if (job.output) {
 			try {
 				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(job.state === "failed" ? `Error: ${JSON.stringify(output, null, 2)}` : `Output: ${JSON.stringify(output, null, 2)}`);
+				logs.push(
+					job.state === "failed"
+						? `Error: ${JSON.stringify(output, null, 2)}`
+						: `Output: ${JSON.stringify(output, null, 2)}`,
+				);
 			} catch {
 				logs.push(`Output: ${String(job.output)}`);
 			}

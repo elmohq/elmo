@@ -199,8 +199,6 @@ function ChartSection({
 				aliases: [],
 				enabled: true,
 				onboarded: true,
-				delayOverrideHours: null,
-				enabledModels: null,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			}

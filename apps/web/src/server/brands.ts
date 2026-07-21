@@ -8,45 +8,92 @@ import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/l
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
+import {
+	brands,
+	prompts,
+	competitors,
+	type BrandWithPrompts,
+	type Prompt,
+	type Competitor,
+} from "@workspace/lib/db/schema";
 import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
-import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { MAX_COMPETITORS, getDefaultDelayHours } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { getProvider } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
+import { getEntitlements } from "@workspace/lib/config/entitlements";
+import {
+	type ConfigRow,
+	type EffectiveTargetsResult,
+	type ExclusionReason,
+	configRowsForBrand,
+	fetchConfigRowsForBrands,
+	getInstanceCatalog,
+	mergeConfigRows,
+	resolveBrandTargets,
+	resolveEffectiveTargets,
+} from "@workspace/lib/config/resolve";
+import { assertBrandLimit } from "@/server/config-enforcement";
 
 /**
- * Deployment-configured models this brand actually runs, after applying
- * the brand's `enabledModels` override. The filter bar + LLMs info page +
- * any other UI that shows "which models is this brand tracking?" should
- * read from here instead of hardcoding a list — different deployments can
- * configure any arbitrary set of models via `SCRAPE_TARGETS`.
+ * The run-config slice of a brand response, resolved from the config hierarchy.
  *
- * `effectiveModels` is the flat id list that most callers want; the full
- * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
- * object for pages that render per-model metadata (e.g. settings/llms).
+ * `effectiveModels` / `effectiveModelConfigs` keep the legacy response shape
+ * (flat model ids; provider/version/webSearch metadata) so the filter bar, the
+ * LLMs page, and every other consumer keep working. `excludedTargets` (the B2
+ * exclusion reasons) and `resolvedCadenceHours` are new surface for the config
+ * UI round.
  */
-function computeEffectiveModels(brand: Brand): {
+export interface BrandRunConfig {
 	effectiveModels: string[];
 	effectiveModelConfigs: ModelConfig[];
-} {
-	try {
-		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const effective = selectTargetsForBrand(configs, brand.enabledModels);
-		return {
-			effectiveModels: effective.map((c) => c.model),
-			effectiveModelConfigs: effective,
-		};
-	} catch {
-		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to empty
-		// lists than crash the brand fetch.
-		return { effectiveModels: [], effectiveModelConfigs: [] };
-	}
+	excludedTargets: { model: string; provider: string; reasons: ExclusionReason[] }[];
+	resolvedCadenceHours: number;
 }
+
+function toBrandRunConfig(result: EffectiveTargetsResult, rows: ConfigRow[]): BrandRunConfig {
+	const cadence = mergeConfigRows(rows, {}).cadenceHours;
+	return {
+		effectiveModels: result.targets.map((t) => t.model),
+		effectiveModelConfigs: result.targets.map((t) => ({
+			model: t.model,
+			provider: t.provider,
+			version: t.version,
+			webSearch: t.webSearch,
+		})),
+		excludedTargets: result.excluded.map((e) => ({
+			model: e.target.model,
+			provider: e.target.provider,
+			reasons: e.reasons,
+		})),
+		// With no row anywhere the registry default and DEFAULT_DELAY_HOURS can
+		// differ pre-import; the env value is what the fleet actually runs, so
+		// prefer it for display/scheduling parity.
+		resolvedCadenceHours: cadence.provenance === "default" ? getDefaultDelayHours() : (cadence.value as number),
+	};
+}
+
+/** Memoized per-provider credential probe shared across a batch resolve (fail-closed). */
+function makeCredentialsReady(): (providerId: string) => boolean {
+	const cache = new Map<string, boolean>();
+	return (providerId) => {
+		let ready = cache.get(providerId);
+		if (ready === undefined) {
+			try {
+				ready = getProvider(providerId).isConfigured();
+			} catch {
+				ready = false;
+			}
+			cache.set(providerId, ready);
+		}
+		return ready;
+	};
+}
+
+export type BrandWithRunConfig = BrandWithPrompts & BrandRunConfig;
 
 function getDefaultBrandDomains(): string[] {
 	const raw = process.env.DEFAULT_BRAND_DOMAINS;
@@ -63,30 +110,24 @@ function getDefaultBrandDomains(): string[] {
 // Helper functions (migrated from apps/web/src/lib/metadata.ts)
 // ============================================================================
 
-async function getBrandWithPromptsFromDb(
-	brandId: string,
-): Promise<
-	| (BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] })
-	| undefined
-> {
+async function getBrandWithPromptsFromDb(brandId: string): Promise<BrandWithRunConfig | undefined> {
 	try {
 		const brand = await db.query.brands.findFirst({
 			where: eq(brands.id, brandId),
 		});
 		if (!brand) return undefined;
 
-		const brandPrompts = await db.query.prompts.findMany({
-			where: eq(prompts.brandId, brandId),
-		});
-		const brandCompetitors = await db.query.competitors.findMany({
-			where: eq(competitors.brandId, brandId),
-		});
+		const [brandPrompts, brandCompetitors, resolution] = await Promise.all([
+			db.query.prompts.findMany({ where: eq(prompts.brandId, brandId) }),
+			db.query.competitors.findMany({ where: eq(competitors.brandId, brandId) }),
+			resolveBrandTargets(brand, brand.organizationId, { credentialsReady: makeCredentialsReady() }),
+		]);
 
 		return {
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			...computeEffectiveModels(brand),
+			...toBrandRunConfig(resolution, resolution.rows),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -104,8 +145,12 @@ async function getBrandWithPromptsFromDb(
  * Org scoping is the access-control mechanism: we resolve the orgs the user is
  * a member of and return only brands owned by those orgs (`brands.organization_id
  * IN (...)`). A user in org A never sees org B's brands.
+ *
+ * Batch resolution (A8d): one config-row fetch for every org+brand, one catalog
+ * read, one entitlement lookup per distinct org — then the pure resolver runs
+ * per brand with no further awaits.
  */
-export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
+export const getBrands = createServerFn({ method: "GET" }).handler(async (): Promise<BrandWithRunConfig[]> => {
 	const session = await requireAuthSession();
 	const userOrgs = await listUserOrganizations(session.user.id);
 	const orgIds = userOrgs.map((o) => o.id);
@@ -117,15 +162,53 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 	const scopedBrands = await db.query.brands.findMany({
 		where: inArray(brands.organizationId, orgIds),
 	});
+	if (scopedBrands.length === 0) {
+		return [];
+	}
 
-	const brandsData = await Promise.all(
-		scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id)),
-	);
+	const brandIds = scopedBrands.map((b) => b.id);
+	const brandOrgIds = [...new Set(scopedBrands.map((b) => b.organizationId))];
 
-	return brandsData.filter(
-		(brand): brand is BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] } =>
-			brand !== undefined,
-	);
+	const [allPrompts, allCompetitors, batchRows, catalog, entitlementEntries] = await Promise.all([
+		db.query.prompts.findMany({ where: inArray(prompts.brandId, brandIds) }),
+		db.query.competitors.findMany({ where: inArray(competitors.brandId, brandIds) }),
+		fetchConfigRowsForBrands(brandOrgIds, brandIds),
+		getInstanceCatalog(),
+		Promise.all(brandOrgIds.map(async (orgId) => [orgId, await getEntitlements(orgId)] as const)),
+	]);
+	const entitlementsByOrg = new Map(entitlementEntries);
+
+	const promptsByBrand = new Map<string, Prompt[]>();
+	for (const prompt of allPrompts) {
+		const list = promptsByBrand.get(prompt.brandId);
+		if (list) list.push(prompt);
+		else promptsByBrand.set(prompt.brandId, [prompt]);
+	}
+	const competitorsByBrand = new Map<string, Competitor[]>();
+	for (const competitor of allCompetitors) {
+		const list = competitorsByBrand.get(competitor.brandId);
+		if (list) list.push(competitor);
+		else competitorsByBrand.set(competitor.brandId, [competitor]);
+	}
+
+	const credentialsReady = makeCredentialsReady();
+
+	return scopedBrands.map((brand) => {
+		const rows = configRowsForBrand(batchRows, brand.organizationId, brand.id);
+		const result = resolveEffectiveTargets({
+			catalog,
+			entitlements: entitlementsByOrg.get(brand.organizationId)!,
+			rows,
+			level: "brand",
+			credentialsReady,
+		});
+		return {
+			...brand,
+			prompts: promptsByBrand.get(brand.id) ?? [],
+			competitors: competitorsByBrand.get(brand.id) ?? [],
+			...toBrandRunConfig(result, rows),
+		};
+	});
 });
 
 /**
@@ -224,6 +307,28 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 		const trimmedName = data.brandName.trim();
 		if (!trimmedName) {
 			throw new Error("Brand name must be a non-empty string");
+		}
+
+		// maxBrands gate (§7), BEFORE provisioning. Counts every brand the caller's
+		// orgs own against the primary org's plan — exact under the umbrella-org
+		// model (one org holds all brands) and the local legacy layout (one org per
+		// brand, all held by the same user). Non-cloud entitlements are unlimited,
+		// so this is inert outside cloud.
+		const userOrgs = await listUserOrganizations(session.user.id);
+		if (userOrgs.length > 0) {
+			const entitlements = await getEntitlements(userOrgs[0].id);
+			if (entitlements.maxBrands !== null) {
+				const [row] = await db
+					.select({ count: count() })
+					.from(brands)
+					.where(
+						inArray(
+							brands.organizationId,
+							userOrgs.map((o) => o.id),
+						),
+					);
+				assertBrandLimit(entitlements, Number(row?.count ?? 0));
+			}
 		}
 
 		const { orgId } = await provisionAdditionalLocalOrg({
@@ -377,12 +482,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 				additionalDomains: sql`array_append(${brands.additionalDomains}, ${domain})`,
 				updatedAt: new Date(),
 			})
-			.where(
-				and(
-					eq(brands.id, data.brandId),
-					sql`NOT (${domain} = ANY(${brands.additionalDomains}))`,
-				),
-			)
+			.where(and(eq(brands.id, data.brandId), sql`NOT (${domain} = ANY(${brands.additionalDomains}))`))
 			.returning();
 
 		if (result) return result;

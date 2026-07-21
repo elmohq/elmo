@@ -2,6 +2,7 @@ import { db } from "@workspace/lib/db/db";
 import { prompts, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { resolveBrandCadenceHours } from "@/lib/brand-cadence";
 import { getBoss } from "@/lib/boss-client";
 
 /**
@@ -12,38 +13,26 @@ export function hoursToMs(hours: number): number {
 }
 
 /**
- * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
+ * Gets the cadence (delay between runs) for a prompt from the resolved config
+ * hierarchy (instance → org → brand `run.cadence_hours`), via the cadence-only
+ * fast path — the same two round trips this always took (prompt → cadence).
  */
 export async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
 	try {
-		// Get the prompt to find its brand
-		const prompt = await db.query.prompts.findFirst({
-			where: eq(prompts.id, promptId),
-		});
+		const [prompt] = await db
+			.select({ brandId: brands.id, organizationId: brands.organizationId })
+			.from(prompts)
+			.innerJoin(brands, eq(brands.id, prompts.brandId))
+			.where(eq(prompts.id, promptId))
+			.limit(1);
 
 		if (!prompt) {
 			console.warn(`Prompt ${promptId} not found, using default cadence`);
 			return defaultDelayHours;
 		}
 
-		// Get the brand to check for delay override
-		const brand = await db.query.brands.findFirst({
-			where: eq(brands.id, prompt.brandId),
-		});
-
-		if (!brand) {
-			console.warn(`Brand ${prompt.brandId} not found, using default cadence`);
-			return defaultDelayHours;
-		}
-
-		// Use override if set, otherwise use default
-		if (brand.delayOverrideHours !== null) {
-			console.log(`Using custom cadence for brand ${brand.name}: ${brand.delayOverrideHours}h`);
-			return brand.delayOverrideHours;
-		}
-
-		return defaultDelayHours;
+		return await resolveBrandCadenceHours(prompt.brandId, prompt.organizationId);
 	} catch (error) {
 		console.error(`Error fetching cadence for prompt ${promptId}:`, error);
 		return defaultDelayHours;
@@ -59,10 +48,7 @@ type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
 
-export async function createPromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
@@ -130,7 +116,7 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 		}
 
 		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data, 
+		// Note: pg-boss doesn't have a direct way to cancel by data,
 		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
@@ -148,9 +134,7 @@ export async function createMultiplePromptJobSchedulers(
 	promptIds: string[],
 	options: SchedulerOptions = {},
 ): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map((promptId) => createPromptJobScheduler(promptId, options)),
-	);
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -169,10 +153,7 @@ export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Pr
  * Recreates a schedule for a prompt (removes and creates).
  * Useful when cadence has changed or job needs to be reset.
  */
-export async function recreatePromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		// Remove existing schedule if any (ignore errors if it doesn't exist)
 		await removePromptJobScheduler(promptId);
@@ -186,7 +167,9 @@ export async function recreatePromptJobScheduler(
 
 /**
  * Sends an immediate job to process a prompt (outside of the schedule).
- * Useful for manual retries from the admin UI.
+ * Useful for manual retries from the admin UI. `force` makes the worker bypass
+ * the per-target due-check (never the spend budgets) so a manual "run now"
+ * isn't swallowed as not-yet-due; scheduled/normal enqueues must not set it.
  */
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
@@ -195,7 +178,7 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 
 		await boss.send(
 			"process-prompt",
-			{ promptId, cadenceHours },
+			{ promptId, cadenceHours, force: true },
 			{
 				retryLimit: 3,
 				retryDelay: 60,

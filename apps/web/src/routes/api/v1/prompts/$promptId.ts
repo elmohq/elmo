@@ -15,6 +15,8 @@ import { z } from "zod";
 import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { EntitlementLimitError } from "@/server/config-enforcement";
+import { assertEnableTransitionWithinPool } from "@/server/prompt-limits";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -74,6 +76,19 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
 					}
 					const brand = brandInfo[0];
+
+					// A5 enable-transition: re-enabling a prompt brings its Claude
+					// assignment back into the pool count. Inert outside cloud.
+					if (enabled === true && !existingPrompt[0].enabled) {
+						try {
+							await assertEnableTransitionWithinPool(brand.organizationId, [promptId]);
+						} catch (error) {
+							if (error instanceof EntitlementLimitError) {
+								throw new ApiError(403, "Plan Limit Exceeded", error.message);
+							}
+							throw error;
+						}
+					}
 
 					const updateData: Partial<typeof prompts.$inferInsert> = {};
 					if (value !== undefined) {

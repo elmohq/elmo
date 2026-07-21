@@ -1,19 +1,18 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import type { BrandWithPrompts, Competitor } from "@workspace/lib/db/schema";
-import type { ModelConfig } from "@workspace/lib/providers/types";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import type { BrandRunConfig } from "@/server/brands";
 import { getBrands, getBrand, getCompetitors } from "@/server/brands";
 
-export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
-	earliestDataDate?: string | null;
-	/** Deployment-configured model ids this brand actually runs, after
-	 *  `brand.enabledModels` is applied. Comes from the server so the UI
-	 *  doesn't have to hardcode a model list. */
-	effectiveModels: string[];
-	/** Same as `effectiveModels` but with provider / version / webSearch
-	 *  metadata, for pages that render per-model details. */
-	effectiveModelConfigs: ModelConfig[];
-};
+/**
+ * A brand plus its resolved run config (effective/excluded models, cadence),
+ * as returned by getBrand/getBrands. The UI reads models from here instead of
+ * hardcoding a list.
+ */
+export type BrandWithPromptsAndDataInfo = BrandWithPrompts &
+	BrandRunConfig & {
+		earliestDataDate?: string | null;
+	};
 
 // ============================================================================
 // Query keys

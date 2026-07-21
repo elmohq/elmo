@@ -9,6 +9,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCitationUrlStats, getPerPromptDailyCitationPages, getPerPromptCitationPages } from "@/lib/postgres-read";
+import { resolveBrandCadenceHours } from "@/lib/brand-cadence";
 import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
 import { citationDateWindow, applyPerPromptKeyedLVCF } from "@/lib/chart-utils";
 import {
@@ -24,7 +25,10 @@ import {
 	resolvePageType,
 	isGoogleSurfaceUrl,
 } from "@/lib/domain-categories";
-import { categorizeDomain as categorizeDomainShared, classifyUrl as classifyUrlShared } from "@/lib/domain-categories.server";
+import {
+	categorizeDomain as categorizeDomainShared,
+	classifyUrl as classifyUrlShared,
+} from "@/lib/domain-categories.server";
 import { buildGoogleModule, emptyGoogleModule } from "@/lib/google-module";
 
 /**
@@ -46,7 +50,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// Window: `data.days` calendar days ending today (inclusive), plus the
 		// contiguous equal-length previous window — all UTC (server-TZ independent).
 		// `dateRange` is reused for the trend charts so totals + charts span identically.
-		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(new Date(), data.days);
+		const { fromDateStr, toDateStr, prevFromDateStr, prevToDateStr, dateRange } = citationDateWindow(
+			new Date(),
+			data.days,
+		);
 		const timezone = "UTC";
 
 		// Get brand info, competitors, and all enabled prompts
@@ -83,9 +90,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		if (tagFilter.length > 0) {
 			const filterByBranded = tagFilter.includes(SYSTEM_TAGS.BRANDED);
 			const filterByUnbranded = tagFilter.includes(SYSTEM_TAGS.UNBRANDED);
-			const nonSystemFilterTags = tagFilter.filter(
-				(t) => t !== SYSTEM_TAGS.BRANDED && t !== SYSTEM_TAGS.UNBRANDED,
-			);
+			const nonSystemFilterTags = tagFilter.filter((t) => t !== SYSTEM_TAGS.BRANDED && t !== SYSTEM_TAGS.UNBRANDED);
 
 			const matchingPrompts = allPrompts.filter((p) => {
 				const systemTags = p.systemTags || [];
@@ -113,31 +118,74 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 					totalCitations: 0,
 					uniqueDomains: 0,
 					categoryCounts: emptyCategoryCounts(),
-					domainDistribution: [] as { domain: string; count: number; category: CitationCategory; exampleTitle?: string; previousCount: number; changePercent: number | null }[],
-					specificUrls: [] as { url: string; title?: string; domain: string; count: number; category: CitationCategory; pageType: CitationPageType; avgPosition: number | null; promptCount: number; isNew: boolean }[],
+					domainDistribution: [] as {
+						domain: string;
+						count: number;
+						category: CitationCategory;
+						exampleTitle?: string;
+						previousCount: number;
+						changePercent: number | null;
+					}[],
+					specificUrls: [] as {
+						url: string;
+						title?: string;
+						domain: string;
+						count: number;
+						category: CitationCategory;
+						pageType: CitationPageType;
+						avgPosition: number | null;
+						promptCount: number;
+						isNew: boolean;
+					}[],
 					pageTypeDistribution: [] as { pageType: CitationPageType; count: number }[],
 					googleModule: emptyGoogleModule(),
 					availableTags,
 					citationTimeSeries: [] as ({ date: string } & Record<CitationCategory, number>)[],
 					pageTypeTimeSeries: [] as ({ date: string } & Record<CitationPageType, number>)[],
 					competitors: competitorSummary,
-				competitorOnlyPrompts: [] as { id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }[],
-				whatsChanged: {
-					newUrls: [] as { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[],
-					droppedUrls: [] as { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[],
-					titleChanges: [] as { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[],
-					newDomains: [] as { domain: string; count: number; category: CitationCategory }[],
-					droppedDomains: [] as { domain: string; previousCount: number; category: CitationCategory }[],
-				},
+					competitorOnlyPrompts: [] as {
+						id: string;
+						value: string;
+						competitorCitationCount: number;
+						uniqueCompetitors: number;
+					}[],
+					whatsChanged: {
+						newUrls: [] as {
+							url: string;
+							domain: string;
+							count: number;
+							promptCount: number;
+							category: CitationCategory;
+						}[],
+						droppedUrls: [] as {
+							url: string;
+							domain: string;
+							previousCount: number;
+							currentCount: number;
+							category: CitationCategory;
+						}[],
+						titleChanges: [] as {
+							url: string;
+							domain: string;
+							currentTitle: string;
+							previousTitle: string;
+							category: CitationCategory;
+						}[],
+						newDomains: [] as { domain: string; count: number; category: CitationCategory }[],
+						droppedDomains: [] as { domain: string; previousCount: number; category: CitationCategory }[],
+					},
 				};
 			}
 		}
 
-		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats] = await Promise.all([
+		const [urlStats, perPromptDailyPages, perPromptPages, prevUrlStats, resolvedCadenceHours] = await Promise.all([
 			getCitationUrlStats(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptDailyCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getPerPromptCitationPages(data.brandId, fromDateStr, toDateStr, timezone, enabledPromptIds, data.model),
 			getCitationUrlStats(data.brandId, prevFromDateStr, prevToDateStr, timezone, enabledPromptIds, data.model),
+			brandResult[0]
+				? resolveBrandCadenceHours(data.brandId, brandResult[0].organizationId)
+				: Promise.resolve(undefined),
 		]);
 
 		function categorizeDomain(domain: string): CitationCategory {
@@ -170,7 +218,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 
 		// Categorize and normalize specific URLs with new fields
-		const urlCounts = new Map<string, { count: number; title?: string; domain: string; positionSum: number; positionCount: number; promptCount: number }>();
+		const urlCounts = new Map<
+			string,
+			{ count: number; title?: string; domain: string; positionSum: number; positionCount: number; promptCount: number }
+		>();
 		for (const { url, domain, title, count, avg_position, prompt_count } of urlStats) {
 			if (isGoogleSurfaceUrl(url)) continue;
 			const normalizedUrl = normalizeUrl(url);
@@ -216,7 +267,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// Domain distribution rebuilt from URL-level data: count + a per-domain
 		// category taken from its top-cited URL (so a domain that's mostly review
 		// articles reads as editorial rather than other), sorted by count.
-		const domainAgg = new Map<string, { count: number; category: CitationCategory; topCount: number; exampleTitle?: string }>();
+		const domainAgg = new Map<
+			string,
+			{ count: number; category: CitationCategory; topCount: number; exampleTitle?: string }
+		>();
 		for (const u of specificUrls) {
 			const cur = domainAgg.get(u.domain);
 			if (cur) {
@@ -252,9 +306,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			pageTypeCounts[u.pageType] += u.count;
 		}
 		const totalCitations = CITATION_CATEGORIES.reduce((s, c) => s + categoryCounts[c], 0);
-		const pageTypeDistribution = CITATION_PAGE_TYPES
-			.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] }))
-			.filter((d) => d.count > 0);
+		const pageTypeDistribution = CITATION_PAGE_TYPES.map((pageType) => ({
+			pageType,
+			count: pageTypeCounts[pageType],
+		})).filter((d) => d.count > 0);
 
 		// Google AI Mode module: Shopping products (brand vs competitor) + search
 		// queries, each tied to the prompts that triggered them.
@@ -270,7 +325,7 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		// axes are classified at the URL level (surfaces excluded), so the trends
 		// match the breakdown above and show every category / page type. `dateRange`
 		// (the current window) was computed once up top so charts + totals stay aligned.
-		const cadenceHours = brandResult[0]?.delayOverrideHours;
+		const cadenceHours = resolvedCadenceHours;
 		// Classify each URL ONCE (from specificUrls) and reuse it here, keyed by the
 		// normalized URL. The per-(prompt,day) rows carry their own title, so
 		// re-classifying them could land an "other"-domain URL in a different category
@@ -312,7 +367,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			.slice(0, 10)
 			.map((u) => ({ url: u.url, domain: u.domain, count: u.count, promptCount: u.promptCount, category: u.category }));
 
-		const droppedUrls: { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[] = [];
+		const droppedUrls: {
+			url: string;
+			domain: string;
+			previousCount: number;
+			currentCount: number;
+			category: CitationCategory;
+		}[] = [];
 		for (const [url, prevData] of prevUrlMap.entries()) {
 			if (prevData.count < MIN_COUNT_FOR_WHATS_CHANGED) continue;
 			const current = urlCounts.get(url);
@@ -330,7 +391,13 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		}
 		droppedUrls.sort((a, b) => b.previousCount - a.previousCount);
 
-		const titleChanges: { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[] = [];
+		const titleChanges: {
+			url: string;
+			domain: string;
+			currentTitle: string;
+			previousTitle: string;
+			category: CitationCategory;
+		}[] = [];
 		for (const [url, currentData] of urlCounts.entries()) {
 			const prevData = prevUrlMap.get(url);
 			if (!prevData) continue;
@@ -363,9 +430,9 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 		droppedDomains.sort((a, b) => b.previousCount - a.previousCount);
 
 		// Prompts with competitor citations but no brand citations (computed from already-fetched data)
-		const competitorDomainEntries = competitorsList.flatMap((c) =>
-			c.domains.map((d) => ({ domain: extractDomain(d), competitorId: c.id })),
-		).filter((e) => e.domain);
+		const competitorDomainEntries = competitorsList
+			.flatMap((c) => c.domains.map((d) => ({ domain: extractDomain(d), competitorId: c.id })))
+			.filter((e) => e.domain);
 
 		function resolveCompetitorId(citationDomain: string): string | undefined {
 			const normalized = extractDomain(citationDomain);
@@ -377,7 +444,10 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			return undefined;
 		}
 
-		const promptCitationFlags = new Map<string, { hasBrand: boolean; hasCompetitor: boolean; competitorCount: number; competitorIds: Set<string> }>();
+		const promptCitationFlags = new Map<
+			string,
+			{ hasBrand: boolean; hasCompetitor: boolean; competitorCount: number; competitorIds: Set<string> }
+		>();
 		for (const row of perPromptPages) {
 			const cat = categorizeDomain(row.domain);
 			let entry = promptCitationFlags.get(row.prompt_id);
@@ -399,7 +469,12 @@ export const getCitationsFn = createServerFn({ method: "GET" })
 			.map(([id, data]) => {
 				const prompt = promptLookup.get(id);
 				if (!prompt) return null;
-				return { id, value: prompt.value, competitorCitationCount: data.competitorCount, uniqueCompetitors: data.competitorIds.size };
+				return {
+					id,
+					value: prompt.value,
+					competitorCitationCount: data.competitorCount,
+					uniqueCompetitors: data.competitorIds.size,
+				};
 			})
 			.filter((p): p is NonNullable<typeof p> => p !== null)
 			.sort((a, b) => b.competitorCitationCount - a.competitorCitationCount);
