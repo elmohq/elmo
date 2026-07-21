@@ -205,10 +205,6 @@ export function TagsInput({
               placeholder={atMax ? "Maximum reached" : searchPlaceholder}
               disabled={disabled || atMax}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && showCreate) {
-                  e.preventDefault();
-                  handleCreate();
-                }
                 if (e.key === "Backspace" && query === "" && value.length > 0 && canRemove) {
                   e.preventDefault();
                   onValueChange(value.slice(0, -1));
