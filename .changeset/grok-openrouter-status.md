@@ -2,4 +2,4 @@
 "@elmohq/cli": patch
 ---
 
-Grok is now tracked through OpenRouter only, and the provider status page separates unavailable provider/model combinations from ones Elmo doesn't track yet.
+Grok is now only supported via OpenRouter, since unauthenticated access has been removed and all Grok scrapers are permanently failing.

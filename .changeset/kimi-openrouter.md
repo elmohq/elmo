@@ -2,4 +2,4 @@
 "@elmohq/cli": patch
 ---
 
-Added Kimi (`moonshotai/kimi-k3`) tracking via OpenRouter; `SCRAPE_TARGETS` now accepts `kimi:openrouter:moonshotai/kimi-k3`.
+Started tracking Kimi K3 on the [provider status page](https://www.elmohq.com/status). You can configure tracking with `SCRAPE_TARGETS`, which accepts `kimi:openrouter:moonshotai/kimi-k3`.

@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-DeepSeek renders with its own name and logo instead of a generic icon.
+DeepSeek and Moonshot/Kimi models render with their own logos instead of generic icons.
