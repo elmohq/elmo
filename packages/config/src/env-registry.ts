@@ -156,9 +156,9 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "SCRAPE_TARGETS",
 		scope: "server",
-		requiredBy: VALIDATED_MODES,
+		requiredBy: "optional",
 		description:
-			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
+			"Legacy one-time import source for database-backed evaluation targets. New deployments configure targets in the application.",
 	},
 	{
 		name: "OLOSTEP_API_KEY",
@@ -411,6 +411,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "RESEND_FROM_EMAIL",
 		scope: "server",
 		requiredBy: ["cloud"],
-		description: "Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
+		description:
+			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
 ];

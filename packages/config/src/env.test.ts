@@ -12,7 +12,7 @@ const CLOUD_ONLY_VARS = [
 	"RESEND_FROM_EMAIL",
 ];
 // Infra vars every validated mode needs — cloud now among them.
-const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "SCRAPE_TARGETS", "DEPLOYMENT_MODE"];
+const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "DEPLOYMENT_MODE"];
 
 describe("cloud env requirements", () => {
 	const cloudReqs = getEnvRequirements("cloud");
@@ -44,7 +44,6 @@ describe("cloud env requirements", () => {
 			DEPLOYMENT_MODE: "cloud",
 			DATABASE_URL: "postgres://localhost/elmo",
 			BETTER_AUTH_SECRET: "secret",
-			SCRAPE_TARGETS: "chatgpt:olostep:online",
 			APP_URL: "https://app.elmo.com/",
 			STRIPE_SECRET_KEY: "sk_test_x",
 			STRIPE_WEBHOOK_SECRET: "whsec_x",
