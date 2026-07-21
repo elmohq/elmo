@@ -228,7 +228,7 @@ export function TagsInput({
               )}
               {showHint && (
                 <div className="px-3 py-3 text-center text-xs text-muted-foreground">
-                  Type to add a value
+                  Type or paste to add a value
                 </div>
               )}
               {(showCreate || filteredOptions.length > 0) && (

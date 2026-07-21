@@ -80,7 +80,6 @@ export const UrlPaste: StoryObj = {
             value={values}
             onValueChange={setValues}
             placeholder="Add domain..."
-            searchPlaceholder="Paste a URL or add a domain..."
             normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
             pasteSplitter={/[\n,\t]+/}
             onValidate={(value) =>
@@ -96,7 +95,7 @@ export const UrlPaste: StoryObj = {
     const documentBody = within(canvasElement.ownerDocument.body);
 
     await userEvent.click(canvas.getByRole("combobox"));
-    const input = await documentBody.findByPlaceholderText("Paste a URL or add a domain...");
+    const input = await documentBody.findByPlaceholderText("Search...");
     await userEvent.type(input, "https://www.example.com/pricing?utm_source=ad");
     await userEvent.keyboard("{Enter}");
 
