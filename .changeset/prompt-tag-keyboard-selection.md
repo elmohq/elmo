@@ -3,4 +3,4 @@
 "@workspace/ui": patch
 ---
 
-Prompt tag matches can now be selected with the keyboard.
+You can now use the keyboard to select tags for filtering.
