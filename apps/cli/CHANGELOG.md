@@ -1,5 +1,13 @@
 # @elmohq/cli
 
+## 0.2.17
+
+### Patch Changes
+
+- 93a79f2: You can now track Google AI Overviews via the BrightData, DataForSEO, and Oxylabs providers; `SCRAPE_TARGETS` now accepts `google-ai-overview:brightdata:online`, `google-ai-overview:dataforseo:online`, and `google-ai-overview:oxylabs:online`.
+- c2fdd26: Grok is now only supported via OpenRouter, since unauthenticated access has been removed and all Grok scrapers are permanently failing.
+- c2fdd26: Started tracking Kimi K3 on the [provider status page](https://www.elmohq.com/status). You can configure tracking with `SCRAPE_TARGETS`, which accepts `kimi:openrouter:moonshotai/kimi-k3`.
+
 ## 0.2.16
 
 ## 0.2.15
