@@ -1,9 +1,12 @@
 import * as Sentry from "@sentry/node";
-import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import {
+	getEffectiveEvaluationTargetsForPrompts,
+	minimumCadenceHours,
+	type EffectiveEvaluationTarget,
+} from "@workspace/lib/evaluation-config";
 import { isPromptOverdue } from "@workspace/lib/overdue";
-import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
@@ -28,6 +31,22 @@ let lastOverdueAlertMs = 0;
  * fleet-wide run/cost storm. Mirrors the 1h throttle on the job-creation path.
  */
 const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
+
+function getLastRunsForTargets(
+	lastRuns: Record<string, Date>,
+	targets: readonly EffectiveEvaluationTarget[],
+): Record<string, Date> {
+	return Object.fromEntries(
+		targets.flatMap((target) => {
+			const targetRun = lastRuns[target.targetId];
+			const legacyModelRun = lastRuns[`legacy:${target.model}`];
+			const latest = [targetRun, legacyModelRun]
+				.filter((run): run is Date => run !== undefined)
+				.reduce<Date | undefined>((newest, run) => (!newest || run > newest ? run : newest), undefined);
+			return latest ? [[target.targetId, latest]] : [];
+		}),
+	);
+}
 
 /**
  * Maintenance job that ensures all enabled prompts have scheduled jobs.
@@ -60,12 +79,6 @@ async function runMaintenanceCheck(): Promise<void> {
 	}
 
 	const brandIds = enabledBrands.map((b) => b.id);
-	const defaultDelayHours = getDefaultDelayHours();
-	const brandDelayMap: Record<string, number> = {};
-	for (const brand of enabledBrands) {
-		brandDelayMap[brand.id] = brand.delayOverrideHours ?? defaultDelayHours;
-	}
-
 	// Get all enabled prompts for enabled brands
 	const enabledPrompts = await db.query.prompts.findMany({
 		where: and(eq(prompts.enabled, true), inArray(prompts.brandId, brandIds)),
@@ -78,25 +91,45 @@ async function runMaintenanceCheck(): Promise<void> {
 
 	console.log(`[schedule-maintenance] Checking ${enabledPrompts.length} enabled prompts`);
 
-	const allModels = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-	const modelNames = allModels.map((cfg) => cfg.model);
+	const effectiveTargetsByPrompt = await getEffectiveEvaluationTargetsForPrompts(
+		enabledPrompts.map((prompt) => prompt.id),
+	);
+	const schedulablePrompts = enabledPrompts.filter(
+		(prompt) => (effectiveTargetsByPrompt.get(prompt.id)?.length ?? 0) > 0,
+	);
+	if (schedulablePrompts.length === 0) {
+		console.log("[schedule-maintenance] No enabled prompts have effective evaluation targets");
+		return;
+	}
 
-	// Get last runs per prompt per model (matches dashboard overdue logic)
+	// New rows are identified by target ID. Historical rows have no target ID,
+	// so retain a model-key fallback until their normal cadence replaces them.
 	const lastRunsQuery = await db
 		.select({
 			promptId: promptRuns.promptId,
 			model: promptRuns.model,
+			evaluationTargetId: promptRuns.evaluationTargetId,
 			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
 		})
 		.from(promptRuns)
-		.groupBy(promptRuns.promptId, promptRuns.model);
+		.where(
+			inArray(
+				promptRuns.promptId,
+				schedulablePrompts.map((prompt) => prompt.id),
+			),
+		)
+		.groupBy(promptRuns.promptId, promptRuns.evaluationTargetId, promptRuns.model);
 
 	const lastRunsMap: Record<string, Record<string, Date>> = {};
 	for (const run of lastRunsQuery) {
 		if (!lastRunsMap[run.promptId]) {
 			lastRunsMap[run.promptId] = {};
 		}
-		lastRunsMap[run.promptId][run.model] = run.lastRunAt;
+		const key = run.evaluationTargetId ?? `legacy:${run.model}`;
+		const current = lastRunsMap[run.promptId][key];
+		if (!current || run.lastRunAt > current) {
+			lastRunsMap[run.promptId][key] = run.lastRunAt;
+		}
 	}
 
 	// Get all pending jobs with their state info
@@ -107,15 +140,14 @@ async function runMaintenanceCheck(): Promise<void> {
 	const jobsToExpedite: string[] = []; // Job IDs to expedite (move start_after to now)
 
 	reportOverduePrompts({
-		prompts: enabledPrompts,
-		brandDelayHours: brandDelayMap,
-		defaultDelayHours,
+		prompts: schedulablePrompts,
+		effectiveTargetsByPrompt,
 		lastRunsMap,
-		modelNames,
 		now,
 	});
 
-	for (const prompt of enabledPrompts) {
+	for (const prompt of schedulablePrompts) {
+		const targets = effectiveTargetsByPrompt.get(prompt.id) ?? [];
 		const pendingJob = pendingJobMap.get(prompt.id);
 
 		// Skip if there's an active or retry job (already being worked on)
@@ -123,12 +155,13 @@ async function runMaintenanceCheck(): Promise<void> {
 			continue;
 		}
 
-		const cadenceHours = brandDelayMap[prompt.brandId] ?? defaultDelayHours;
+		const cadenceHours = minimumCadenceHours(targets);
+		if (cadenceHours === undefined) continue;
 		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
-		const lastRuns = lastRunsMap[prompt.id] || {};
+		const lastRuns = getLastRunsForTargets(lastRunsMap[prompt.id] || {}, targets);
 
 		const isOverdue = isPromptOverdue({
-			models: modelNames,
+			models: targets.map((target) => target.targetId),
 			lastRunByModel: lastRuns,
 			promptCreatedAt: prompt.createdAt,
 			runFrequencyMs,
@@ -231,20 +264,21 @@ async function runMaintenanceCheck(): Promise<void> {
  */
 function reportOverduePrompts(input: {
 	prompts: { id: string; brandId: string; createdAt: Date }[];
-	brandDelayHours: Record<string, number>;
-	defaultDelayHours: number;
+	effectiveTargetsByPrompt: Map<string, EffectiveEvaluationTarget[]>;
 	lastRunsMap: Record<string, Record<string, Date>>;
-	modelNames: string[];
 	now: number;
 }): void {
-	const { prompts: enabled, brandDelayHours, defaultDelayHours, lastRunsMap, modelNames, now } = input;
+	const { prompts: enabled, effectiveTargetsByPrompt, lastRunsMap, now } = input;
 
 	let overduePrompts = 0;
 	for (const prompt of enabled) {
-		const runFrequencyMs = (brandDelayHours[prompt.brandId] ?? defaultDelayHours) * 60 * 60 * 1000;
+		const targets = effectiveTargetsByPrompt.get(prompt.id) ?? [];
+		const cadenceHours = minimumCadenceHours(targets);
+		if (cadenceHours === undefined) continue;
+		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
 		const overdue = isPromptOverdue({
-			models: modelNames,
-			lastRunByModel: lastRunsMap[prompt.id] ?? {},
+			models: targets.map((target) => target.targetId),
+			lastRunByModel: getLastRunsForTargets(lastRunsMap[prompt.id] ?? {}, targets),
 			promptCreatedAt: prompt.createdAt,
 			runFrequencyMs,
 			now,

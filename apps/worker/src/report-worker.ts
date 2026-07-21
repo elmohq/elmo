@@ -1,8 +1,11 @@
 import { db } from "@workspace/lib/db/db";
 import { reports, type Brand, brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT } from "@workspace/lib/constants";
-import { getProvider, parseScrapeTargets, type ModelConfig } from "@workspace/lib/providers";
+import {
+	getEffectiveEvaluationTargetsForInstance,
+	type EffectiveEvaluationTarget,
+} from "@workspace/lib/evaluation-config";
+import { getProvider } from "@workspace/lib/providers";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { isPromptBranded, computeSystemTags } from "@workspace/lib/tag-utils";
 
@@ -26,28 +29,26 @@ const MIN_BRAND_MENTIONS = 14;
 const MAX_BRAND_MENTIONS = 28;
 
 // Whitelabel deployments preserve the legacy asymmetric per-candidate sample
-// counts used before SCRAPE_TARGETS drove dispatch. Any model outside this map
-// on a whitelabel deployment is a configuration error (the legacy report flow
-// only knew how to sample these three). Other deployment modes use
-// RUNS_PER_PROMPT (same frequency as day-to-day prompt tracking).
+// counts. Any model outside this map is a configuration error because the
+// report renderer only knew how to sample these three surfaces.
 const WHITELABEL_REPORT_RUNS_PER_MODEL: Record<string, number> = {
 	chatgpt: 2,
 	claude: 1,
 	"google-ai-mode": 1,
 };
 
-function getReportRunsForModel(model: string): number {
+function getReportRunsForTarget(target: EffectiveEvaluationTarget): number {
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
-		const count = WHITELABEL_REPORT_RUNS_PER_MODEL[model];
+		const count = WHITELABEL_REPORT_RUNS_PER_MODEL[target.model];
 		if (count === undefined) {
 			throw new Error(
-				`Whitelabel report generation has no run count configured for model "${model}". ` +
+				`Whitelabel report generation has no run count configured for model "${target.model}". ` +
 					`Known models: ${Object.keys(WHITELABEL_REPORT_RUNS_PER_MODEL).join(", ")}.`,
 			);
 		}
 		return count;
 	}
-	return RUNS_PER_PROMPT;
+	return target.samplesPerDispatch;
 }
 
 export interface ReportJobData {
@@ -101,13 +102,13 @@ function selectOptimalPrompts(
 		const totalRuns = candidate.runs.length;
 		const brandMentionCount = candidate.runs.filter((r) => r.brandMentioned).length;
 		const competitorMentionCount = candidate.runs.filter((r) => r.competitorsMentioned.length > 0).length;
-		
+
 		const brandMentionRate = totalRuns > 0 ? brandMentionCount / totalRuns : 0;
 		const competitorMentionRate = totalRuns > 0 ? competitorMentionCount / totalRuns : 0;
-		
+
 		// Check if prompt is actually branded (contains brand name/domain)
 		const isActuallyBranded = isPromptBranded(candidate.promptValue, brandName, brandWebsite);
-		
+
 		return {
 			promptValue: candidate.promptValue,
 			brandedPrompt: candidate.brandedPrompt || isActuallyBranded,
@@ -117,11 +118,11 @@ function selectOptimalPrompts(
 			hasCompetitorMention: competitorMentionCount > 0,
 		};
 	});
-	
+
 	// Separate branded and non-branded prompts
 	const nonBrandedPrompts = scoredCandidates.filter((c) => !c.brandedPrompt);
 	const brandedPrompts = scoredCandidates.filter((c) => c.brandedPrompt);
-	
+
 	// Sort non-branded by: 1) has brand mention, 2) competitor mention rate, 3) brand mention rate
 	nonBrandedPrompts.sort((a, b) => {
 		if (a.hasBrandMention !== b.hasBrandMention) {
@@ -132,7 +133,7 @@ function selectOptimalPrompts(
 		}
 		return b.brandMentionRate - a.brandMentionRate;
 	});
-	
+
 	// Sort branded by: 1) brand mention rate, 2) competitor mention rate
 	brandedPrompts.sort((a, b) => {
 		if (Math.abs(a.brandMentionRate - b.brandMentionRate) > 0.1) {
@@ -140,21 +141,21 @@ function selectOptimalPrompts(
 		}
 		return b.competitorMentionRate - a.competitorMentionRate;
 	});
-	
+
 	// Select prompts to meet brand mention requirements
 	const selectedPrompts: string[] = [];
 	let currentBrandMentions = 0;
-	
+
 	// First, add non-branded prompts with brand mentions
 	for (const prompt of nonBrandedPrompts) {
 		if (selectedPrompts.length >= TARGET_PROMPTS_COUNT) break;
-		
+
 		selectedPrompts.push(prompt.promptValue);
 		if (prompt.hasBrandMention) {
 			currentBrandMentions++;
 		}
 	}
-	
+
 	// If we need more prompts or more brand mentions, add branded prompts
 	while (selectedPrompts.length < TARGET_PROMPTS_COUNT && brandedPrompts.length > 0) {
 		const prompt = brandedPrompts.shift()!;
@@ -163,10 +164,10 @@ function selectOptimalPrompts(
 			currentBrandMentions++;
 		}
 	}
-	
+
 	// Log selection summary
 	console.log(`Selected ${selectedPrompts.length} prompts with estimated ${currentBrandMentions} brand mentions`);
-	
+
 	return selectedPrompts;
 }
 
@@ -184,8 +185,8 @@ function analyzeMentions(
 	const brandNameLower = brandName.toLowerCase();
 
 	// Extract domain from brandWebsite using URL constructor
-	const url = new URL(brandWebsite.startsWith('http') ? brandWebsite : `https://${brandWebsite}`);
-	const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+	const url = new URL(brandWebsite.startsWith("http") ? brandWebsite : `https://${brandWebsite}`);
+	const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 
 	// Check for brand mention (brand name or domain)
 	const brandMentioned = contentLower.includes(brandNameLower) || contentLower.includes(domain);
@@ -194,11 +195,13 @@ function analyzeMentions(
 	const competitorsMentioned = competitors
 		.filter((competitor) => {
 			const nameMatch = contentLower.includes(competitor.name.toLowerCase());
-			
+
 			// Extract domain from competitor website
-			const competitorUrl = new URL(competitor.domain.startsWith('http') ? competitor.domain : `https://${competitor.domain}`);
-			const competitorDomain = competitorUrl.hostname.replace(/^www\./, '').toLowerCase();
-			
+			const competitorUrl = new URL(
+				competitor.domain.startsWith("http") ? competitor.domain : `https://${competitor.domain}`,
+			);
+			const competitorDomain = competitorUrl.hostname.replace(/^www\./, "").toLowerCase();
+
 			const domainMatch = contentLower.includes(competitorDomain);
 			return nameMatch || domainMatch;
 		})
@@ -207,19 +210,16 @@ function analyzeMentions(
 	return { brandMentioned, competitorsMentioned };
 }
 
-// Function to run a prompt across different models and return results.
-// Iterates SCRAPE_TARGETS; per-model run count comes from getReportRunsForModel
-// (whitelabel preserves the legacy 2+1+1 mapping; other modes match day-to-day
-// tracking frequency).
+// Function to run a prompt across configured instance targets and return results.
 async function runPrompt(
 	promptValue: string,
 	brandName: string,
 	brandWebsite: string,
 	competitors: CompetitorResult[],
-	scrapeConfigs: ModelConfig[],
+	targets: EffectiveEvaluationTarget[],
 	job: ReportJobContext,
 ): Promise<PromptRunResult> {
-	const runOne = async (config: ModelConfig) => {
+	const runOne = async (config: EffectiveEvaluationTarget) => {
 		const providerImpl = getProvider(config.provider);
 		const result = await providerImpl.run(config.model, promptValue, {
 			webSearch: config.webSearch,
@@ -243,8 +243,8 @@ async function runPrompt(
 		};
 	};
 
-	const runPromises = scrapeConfigs.flatMap((config) => {
-		const count = getReportRunsForModel(config.model);
+	const runPromises = targets.flatMap((config) => {
+		const count = getReportRunsForTarget(config);
 		return Array.from({ length: count }, () => runOne(config));
 	});
 
@@ -264,7 +264,10 @@ export async function processReportJob(job: ReportJobContext) {
 
 	job.log(`Processing report ID: ${reportId} for brand: ${brandName}`);
 
-	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	const scrapeConfigs = await getEffectiveEvaluationTargetsForInstance();
+	if (scrapeConfigs.length === 0) {
+		throw new Error("No instance evaluation targets are configured for report generation");
+	}
 
 	// Determine if we're using manual prompts
 	const useManualPrompts = manualPrompts && manualPrompts.length > 0;
@@ -334,7 +337,7 @@ export async function processReportJob(job: ReportJobContext) {
 				competitorsMentioned: string[];
 			}>;
 		}> = [];
-		
+
 		const totalCandidates = candidatePrompts.length;
 		let completedCandidates = 0;
 

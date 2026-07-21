@@ -1,16 +1,23 @@
 import * as Sentry from "@sentry/node";
 import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
-import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
 import {
-	getProvider,
-	parseScrapeTargets,
-	selectTargetsForBrand,
-	type ModelConfig,
-	type Provider,
-} from "@workspace/lib/providers";
+	brands,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+	type Brand,
+	type Competitor,
+} from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
+import {
+	getEffectiveEvaluationTargetsForPrompt,
+	getPromptCadenceHours,
+	type EffectiveEvaluationTarget,
+} from "@workspace/lib/evaluation-config";
+import { getProvider, type Provider } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
@@ -58,6 +65,9 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
  */
 async function getCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
+	const configuredCadenceHours = await getPromptCadenceHours(promptId);
+	if (configuredCadenceHours !== undefined) return configuredCadenceHours;
+
 	const prompt = await db.query.prompts.findFirst({
 		where: eq(prompts.id, promptId),
 	});
@@ -128,16 +138,13 @@ function analyzeMentions(
 		...(brand.additionalDomains || []).map(extractDomainFromUrl),
 	];
 	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
+		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
 			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
 			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
+			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
 			return nameMatch || domainMatch;
 		})
 		.map((competitor) => competitor.name);
@@ -148,6 +155,7 @@ function analyzeMentions(
 async function savePromptRun(
 	promptId: string,
 	brandId: string,
+	evaluationTargetId: string,
 	model: string,
 	provider: string | null,
 	version: string,
@@ -162,6 +170,7 @@ async function savePromptRun(
 		.values({
 			promptId,
 			brandId,
+			evaluationTargetId,
 			model,
 			provider,
 			version,
@@ -201,7 +210,6 @@ async function saveCitations(
 	);
 }
 
-
 async function runModelIteration({
 	promptId,
 	promptValue,
@@ -215,7 +223,7 @@ async function runModelIteration({
 	promptValue: string;
 	brand: Brand;
 	competitorsList: Competitor[];
-	config: ModelConfig;
+	config: EffectiveEvaluationTarget;
 	providerImpl: Provider;
 	runIndex: number;
 }): Promise<void> {
@@ -244,6 +252,7 @@ async function runModelIteration({
 		const { id: promptRunId, createdAt } = await savePromptRun(
 			promptId,
 			brand.id,
+			config.targetId,
 			config.model,
 			config.provider,
 			recordedVersion,
@@ -276,8 +285,6 @@ async function runModelIteration({
  * After successful completion, schedules the next run.
  */
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
-	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		const { promptId, cadenceHours: providedCadence } = job.data;
@@ -303,9 +310,10 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 			continue;
 		}
 
-		const selectedConfigs = selectTargetsForBrand(scrapeConfigs, brand.enabledModels);
-		if (selectedConfigs.length === 0) {
-			console.log(`Prompt ${promptId} for brand ${brand.id} has no targets (brand.enabledModels=[])`);
+		const selectedTargets = await getEffectiveEvaluationTargetsForPrompt(promptId);
+		if (selectedTargets.length === 0) {
+			console.log(`Prompt ${promptId} for brand ${brand.id} has no effective evaluation targets`);
+			continue;
 		}
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
@@ -313,9 +321,9 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		// Run all model iterations in parallel
 		const runPromises: Promise<void>[] = [];
 
-		for (const config of selectedConfigs) {
+		for (const config of selectedTargets) {
 			const providerImpl = getProvider(config.provider);
-			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+			for (let i = 0; i < config.samplesPerDispatch; i++) {
 				runPromises.push(
 					runModelIteration({
 						promptId,
@@ -352,14 +360,15 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			models: [...new Set(selectedConfigs.map((c) => c.model))],
-			providers: [...new Set(selectedConfigs.map((c) => c.provider))],
+			models: [...new Set(selectedTargets.map((c) => c.model))],
+			providers: [...new Set(selectedTargets.map((c) => c.provider))],
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,
 		});
 
 		// Schedule the next run
-		await scheduleNextRun(promptId, cadenceHours);
+		const nextCadenceHours = Math.min(...selectedTargets.map((target) => target.cadenceHours));
+		await scheduleNextRun(promptId, nextCadenceHours);
 	}
 }
