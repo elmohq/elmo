@@ -2,4 +2,4 @@
 "@workspace/web": patch
 ---
 
-Show when an Opportunities report was last evaluated.
+Show when an opportunities report was last evaluated.
