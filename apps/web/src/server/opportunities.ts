@@ -18,9 +18,9 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { db } from "@workspace/lib/db/db";
-import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schema";
+import { brandOpportunities, brands, competitors, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { extractDomain } from "@/lib/domain-categories";
@@ -109,6 +109,7 @@ export interface OpportunitiesResponse {
 	report: OpportunitiesReport | null;
 	reason: OpportunitiesReason;
 	generatedFor: { brandName: string } | null;
+	lastEvaluatedAt: string | null;
 }
 
 // ============================================================================
@@ -477,33 +478,47 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 
 		// Serve the most recent stored report while it's fresh. Every generation is
 		// kept (append-only); we regenerate only when the latest is stale.
-		const [latest] = await db
-			.select()
-			.from(brandOpportunities)
-			.where(eq(brandOpportunities.brandId, data.brandId))
-			.orderBy(desc(brandOpportunities.createdAt))
-			.limit(1);
+		const [[latest], [evaluation]] = await Promise.all([
+			db
+				.select()
+				.from(brandOpportunities)
+				.where(eq(brandOpportunities.brandId, data.brandId))
+				.orderBy(desc(brandOpportunities.createdAt))
+				.limit(1),
+			db
+				.select({
+					lastEvaluatedAt: sql<string | null>`
+						to_char(max(${promptRuns.createdAt}) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS') || '.000Z'
+					`,
+				})
+				.from(promptRuns)
+				.innerJoin(prompts, eq(promptRuns.promptId, prompts.id))
+				.where(and(eq(promptRuns.brandId, data.brandId), eq(prompts.enabled, true))),
+		]);
+		const lastEvaluatedAt = evaluation?.lastEvaluatedAt ?? null;
 		const isFresh = latest && Date.now() - new Date(latest.createdAt).getTime() < REFRESH_AFTER_DAYS * 86_400_000;
 		if (latest && isFresh) {
-			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null };
+			return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
 		}
 
 		const digest = await buildDigest(data.brandId, data.timezone);
 		if (!digest) {
-			if (latest) return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null };
-			return { report: null, reason: "insufficient-data", generatedFor: null };
+			if (latest)
+				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
+			return { report: null, reason: "insufficient-data", generatedFor: null, lastEvaluatedAt };
 		}
 
 		const prompt = `${GUIDANCE}\n\n=== BRAND DATA ===\n${digest.text}\n\n=== TASK ===\n${TASK}`;
 		const generated = await generateValidReport(prompt);
 		if (!generated) {
 			// Couldn't get a schema-valid report — serve the last good one if we have it.
-			if (latest) return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null };
+			if (latest)
+				return { report: latest.report as OpportunitiesReport, reason: null, generatedFor: null, lastEvaluatedAt };
 			throw new Error("Failed to generate a valid opportunities report");
 		}
 
 		const report = enrichReport(generated.report, digest);
 		await db.insert(brandOpportunities).values({ brandId: data.brandId, report, model: generated.model });
 
-		return { report, reason: null, generatedFor: { brandName: digest.brandName } };
+		return { report, reason: null, generatedFor: { brandName: digest.brandName }, lastEvaluatedAt };
 	});
