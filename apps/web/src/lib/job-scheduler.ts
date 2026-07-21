@@ -1,7 +1,8 @@
-import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import {
+	getEvaluationConfigurationVersion,
+	getPromptCadenceHours as getConfiguredPromptCadenceHours,
+} from "@workspace/lib/evaluation-config";
 import { getBoss } from "@/lib/boss-client";
 
 /**
@@ -11,43 +12,25 @@ export function hoursToMs(hours: number): number {
 	return hours * 60 * 60 * 1000;
 }
 
-/**
- * Gets the cadence (delay between runs) for a prompt based on its brand's delay override or the default
- */
+/** Gets the next scheduler cadence from the resolved evaluation configuration. */
 export async function getPromptCadenceHours(promptId: string): Promise<number> {
 	const defaultDelayHours = getDefaultDelayHours();
 	try {
-		// Get the prompt to find its brand
-		const prompt = await db.query.prompts.findFirst({
-			where: eq(prompts.id, promptId),
-		});
-
-		if (!prompt) {
-			console.warn(`Prompt ${promptId} not found, using default cadence`);
-			return defaultDelayHours;
-		}
-
-		// Get the brand to check for delay override
-		const brand = await db.query.brands.findFirst({
-			where: eq(brands.id, prompt.brandId),
-		});
-
-		if (!brand) {
-			console.warn(`Brand ${prompt.brandId} not found, using default cadence`);
-			return defaultDelayHours;
-		}
-
-		// Use override if set, otherwise use default
-		if (brand.delayOverrideHours !== null) {
-			console.log(`Using custom cadence for brand ${brand.name}: ${brand.delayOverrideHours}h`);
-			return brand.delayOverrideHours;
-		}
-
-		return defaultDelayHours;
+		return (await getConfiguredPromptCadenceHours(promptId)) ?? defaultDelayHours;
 	} catch (error) {
 		console.error(`Error fetching cadence for prompt ${promptId}:`, error);
 		return defaultDelayHours;
 	}
+}
+
+async function getPromptSchedulerConfiguration(
+	promptId: string,
+): Promise<{ cadenceHours: number; configurationVersion: number }> {
+	const [cadenceHours, configurationVersion] = await Promise.all([
+		getPromptCadenceHours(promptId),
+		getEvaluationConfigurationVersion(),
+	]);
+	return { cadenceHours, configurationVersion };
 }
 
 /**
@@ -59,13 +42,10 @@ type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
 
-export async function createPromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		const cadenceHours = await getPromptCadenceHours(promptId);
+		const { cadenceHours, configurationVersion } = await getPromptSchedulerConfiguration(promptId);
 		const sendImmediate = options.sendImmediate ?? true;
 
 		// Remove any old cron-based schedule (migration cleanup)
@@ -79,7 +59,7 @@ export async function createPromptJobScheduler(
 			// Send an immediate job
 			await boss.send(
 				"process-prompt",
-				{ promptId, cadenceHours },
+				{ promptId, cadenceHours, configurationVersion },
 				{
 					singletonKey: `prompt-${promptId}`,
 					singletonSeconds: 60 * 60, // 1 hour - prevent duplicate jobs
@@ -94,7 +74,7 @@ export async function createPromptJobScheduler(
 			const startAfterSeconds = cadenceHours * 60 * 60;
 			await boss.send(
 				"process-prompt",
-				{ promptId, cadenceHours },
+				{ promptId, cadenceHours, configurationVersion },
 				{
 					singletonKey: `prompt-${promptId}`,
 					singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
@@ -130,7 +110,7 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 		}
 
 		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data, 
+		// Note: pg-boss doesn't have a direct way to cancel by data,
 		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
@@ -148,9 +128,7 @@ export async function createMultiplePromptJobSchedulers(
 	promptIds: string[],
 	options: SchedulerOptions = {},
 ): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map((promptId) => createPromptJobScheduler(promptId, options)),
-	);
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -169,10 +147,7 @@ export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Pr
  * Recreates a schedule for a prompt (removes and creates).
  * Useful when cadence has changed or job needs to be reset.
  */
-export async function recreatePromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		// Remove existing schedule if any (ignore errors if it doesn't exist)
 		await removePromptJobScheduler(promptId);
@@ -191,11 +166,11 @@ export async function recreatePromptJobScheduler(
 export async function sendImmediatePromptJob(promptId: string): Promise<boolean> {
 	try {
 		const boss = await getBoss();
-		const cadenceHours = await getPromptCadenceHours(promptId);
+		const { cadenceHours, configurationVersion } = await getPromptSchedulerConfiguration(promptId);
 
 		await boss.send(
 			"process-prompt",
-			{ promptId, cadenceHours },
+			{ promptId, cadenceHours, configurationVersion, force: true },
 			{
 				retryLimit: 3,
 				retryDelay: 60,
@@ -219,11 +194,12 @@ export async function sendImmediatePromptJob(promptId: string): Promise<boolean>
 export async function scheduleNextPromptRun(promptId: string, cadenceHours: number): Promise<boolean> {
 	try {
 		const boss = await getBoss();
+		const configurationVersion = await getEvaluationConfigurationVersion();
 		const startAfterSeconds = cadenceHours * 60 * 60;
 
 		await boss.send(
 			"process-prompt",
-			{ promptId, cadenceHours },
+			{ promptId, cadenceHours, configurationVersion },
 			{
 				singletonKey: `prompt-${promptId}`,
 				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period

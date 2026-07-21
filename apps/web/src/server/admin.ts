@@ -8,17 +8,18 @@ import { requireAuthSession, isAdmin } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, promptRuns } from "@workspace/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import {
-	getAdminRunsOverTime,
-	getAdminBrandRunStats,
-	getAdminActiveBrandsOverTime,
-} from "@/lib/postgres-read";
+import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import {
+	ensureEvaluationConfig,
+	getEffectiveEvaluationTargetsForBrand,
+	minimumCadenceHours,
+	updateEvaluationTargetScopeConfig,
+} from "@workspace/lib/evaluation-config";
 import { getModelOverdueStatus } from "@workspace/lib/overdue";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
-import { parseScrapeTargets } from "@workspace/lib/providers";
 
 // ============================================================================
 // Admin guard helper
@@ -63,55 +64,49 @@ export const getAdminStatsFn = createServerFn({ method: "GET" }).handler(async (
 	const thirtyDaysAgo = new Date();
 	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-	const [
-		allBrands,
-		brandsOverTime,
-		promptsOverTime,
-		runsOverTimeData,
-		brandRunStats,
-		activeBrandsData,
-	] = await Promise.all([
-		db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
+	const [allBrands, brandsOverTime, promptsOverTime, runsOverTimeData, brandRunStats, activeBrandsData] =
+		await Promise.all([
+			db.query.brands.findMany({ orderBy: desc(brands.createdAt) }),
 
-		// Cumulative brand count over time (last 30 days)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				count: sql<number>`COUNT(${brands.id})::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative brand count over time (last 30 days)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					count: sql<number>`COUNT(${brands.id})::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(brands, sql`${brands.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		// Cumulative prompts count over time (enabled vs disabled)
-		db
-			.select({
-				date: sql<string>`date_series::date`,
-				enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
-				disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
-			})
-			.from(
-				sql`generate_series(
+			// Cumulative prompts count over time (enabled vs disabled)
+			db
+				.select({
+					date: sql<string>`date_series::date`,
+					enabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = true)::int`,
+					disabled: sql<number>`COUNT(*) FILTER (WHERE ${prompts.enabled} = false)::int`,
+				})
+				.from(
+					sql`generate_series(
 					NOW()::date - INTERVAL '30 days',
 					NOW()::date,
 					INTERVAL '1 day'
 				) AS date_series`,
-			)
-			.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
-			.groupBy(sql`date_series`)
-			.orderBy(sql`date_series`),
+				)
+				.leftJoin(prompts, sql`${prompts.createdAt}::date <= date_series::date`)
+				.groupBy(sql`date_series`)
+				.orderBy(sql`date_series`),
 
-		getAdminRunsOverTime(),
-		getAdminBrandRunStats(),
-		getAdminActiveBrandsOverTime(),
-	]);
+			getAdminRunsOverTime(),
+			getAdminBrandRunStats(),
+			getAdminActiveBrandsOverTime(),
+		]);
 
 	const brandRunStatsMap = new Map(brandRunStats.map((stat) => [stat.brand_id, stat]));
 
@@ -182,7 +177,16 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
-		await requireAdmin();
+		const session = await requireAdmin();
+		await ensureEvaluationConfig();
+		await updateEvaluationTargetScopeConfig(
+			{ scope: "brand", brandId: data.brandId },
+			{ targetId: null, cadenceHours: data.delayOverrideHours },
+			session.user.id,
+		);
+
+		// Keep the legacy column in sync while older dashboards and API clients
+		// still read it. Scheduling always reads the scoped configuration above.
 		const result = await db
 			.update(brands)
 			.set({ delayOverrideHours: data.delayOverrideHours, updatedAt: new Date() })
@@ -540,6 +544,11 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const allBrands = await db.query.brands.findMany({ orderBy: desc(brands.createdAt) });
 	const allPrompts = await db.query.prompts.findMany();
+	const effectiveTargetsByBrand = new Map(
+		await Promise.all(
+			allBrands.map(async (brand) => [brand.id, await getEffectiveEvaluationTargetsForBrand(brand.id)] as const),
+		),
+	);
 
 	const promptsByBrand: Record<string, typeof allPrompts> = {};
 	for (const prompt of allPrompts) {
@@ -586,14 +595,15 @@ export const getWorkflowDataFn = createServerFn({ method: "GET" }).handler(async
 
 	const brandSummaries = allBrands.map((brand) => {
 		const brandPrompts = promptsByBrand[brand.id] || [];
-		const delayHours = brand.delayOverrideHours ?? defaultDelayHours;
+		const targets = effectiveTargetsByBrand.get(brand.id) ?? [];
+		const delayHours = minimumCadenceHours(targets) ?? brand.delayOverrideHours ?? defaultDelayHours;
 		const runFrequencyMs = delayHours * 60 * 60 * 1000;
 
 		let overduePrompts = 0;
 		let onSchedulePrompts = 0;
 		let scheduledCount = 0;
 
-		const modelList = parseScrapeTargets(process.env.SCRAPE_TARGETS).map((t) => t.model);
+		const modelList = [...new Set(targets.map((target) => target.model))];
 		const promptStatuses = brandPrompts.map((prompt) => {
 			const lastRuns = lastRunsMap[prompt.id] || {};
 			const lastRunsByModel: Record<
@@ -783,7 +793,11 @@ export const getJobLogsFn = createServerFn({ method: "GET" })
 		if (job.output) {
 			try {
 				const output = typeof job.output === "string" ? JSON.parse(job.output) : job.output;
-				logs.push(job.state === "failed" ? `Error: ${JSON.stringify(output, null, 2)}` : `Output: ${JSON.stringify(output, null, 2)}`);
+				logs.push(
+					job.state === "failed"
+						? `Error: ${JSON.stringify(output, null, 2)}`
+						: `Output: ${JSON.stringify(output, null, 2)}`,
+				);
 			} catch {
 				logs.push(`Output: ${String(job.output)}`);
 			}

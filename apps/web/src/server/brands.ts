@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
@@ -15,36 +15,33 @@ import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 import { validateWebsiteUrl } from "@/lib/brand-website";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { getEffectiveEvaluationTargetsForBrand, minimumCadenceHours } from "@workspace/lib/evaluation-config";
 import type { ModelConfig } from "@workspace/lib/providers";
 
 /**
- * Deployment-configured models this brand actually runs, after applying
- * the brand's `enabledModels` override. The filter bar + LLMs info page +
- * any other UI that shows "which models is this brand tracking?" should
- * read from here instead of hardcoding a list — different deployments can
- * configure any arbitrary set of models via `SCRAPE_TARGETS`.
+ * Database-configured models this brand actually runs. The filter bar + LLMs
+ * info page + any other UI that shows "which models is this brand tracking?"
+ * should read from here instead of hardcoding a list.
  *
  * `effectiveModels` is the flat id list that most callers want; the full
  * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
  * object for pages that render per-model metadata (e.g. settings/llms).
  */
-function computeEffectiveModels(brand: Brand): {
+async function computeEffectiveModels(brand: Brand): Promise<{
 	effectiveModels: string[];
 	effectiveModelConfigs: ModelConfig[];
-} {
+	effectiveCadenceHours?: number;
+}> {
 	try {
-		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const effective = selectTargetsForBrand(configs, brand.enabledModels);
+		const effective = await getEffectiveEvaluationTargetsForBrand(brand.id);
 		return {
 			effectiveModels: effective.map((c) => c.model),
 			effectiveModelConfigs: effective,
+			effectiveCadenceHours: minimumCadenceHours(effective),
 		};
 	} catch {
-		// A misconfigured SCRAPE_TARGETS would already be surfacing via
-		// `validateScrapeTargets` at boot; here we'd rather degrade to empty
-		// lists than crash the brand fetch.
-		return { effectiveModels: [], effectiveModelConfigs: [] };
+		// A bad configuration should not make a brand inaccessible from the UI.
+		return { effectiveModels: [], effectiveModelConfigs: [], effectiveCadenceHours: undefined };
 	}
 }
 
@@ -63,10 +60,12 @@ function getDefaultBrandDomains(): string[] {
 // Helper functions (migrated from apps/web/src/lib/metadata.ts)
 // ============================================================================
 
-async function getBrandWithPromptsFromDb(
-	brandId: string,
-): Promise<
-	| (BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] })
+async function getBrandWithPromptsFromDb(brandId: string): Promise<
+	| (BrandWithPrompts & {
+			effectiveModels: string[];
+			effectiveModelConfigs: ModelConfig[];
+			effectiveCadenceHours?: number;
+	  })
 	| undefined
 > {
 	try {
@@ -86,7 +85,7 @@ async function getBrandWithPromptsFromDb(
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			...computeEffectiveModels(brand),
+			...(await computeEffectiveModels(brand)),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
@@ -118,13 +117,16 @@ export const getBrands = createServerFn({ method: "GET" }).handler(async () => {
 		where: inArray(brands.organizationId, orgIds),
 	});
 
-	const brandsData = await Promise.all(
-		scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id)),
-	);
+	const brandsData = await Promise.all(scopedBrands.map((brand) => getBrandWithPromptsFromDb(brand.id)));
 
 	return brandsData.filter(
-		(brand): brand is BrandWithPrompts & { effectiveModels: string[]; effectiveModelConfigs: ModelConfig[] } =>
-			brand !== undefined,
+		(
+			brand,
+		): brand is BrandWithPrompts & {
+			effectiveModels: string[];
+			effectiveModelConfigs: ModelConfig[];
+			effectiveCadenceHours?: number;
+		} => brand !== undefined,
 	);
 });
 
@@ -135,7 +137,7 @@ export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const brand = await getBrandWithPromptsFromDb(data.brandId);
 		if (!brand) {
@@ -260,7 +262,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
@@ -293,7 +295,7 @@ export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
@@ -318,7 +320,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Validate and clean domains
 		const cleanedCompetitors = data.competitors.map((c) => {
@@ -366,7 +368,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -377,12 +379,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 				additionalDomains: sql`array_append(${brands.additionalDomains}, ${domain})`,
 				updatedAt: new Date(),
 			})
-			.where(
-				and(
-					eq(brands.id, data.brandId),
-					sql`NOT (${domain} = ANY(${brands.additionalDomains}))`,
-				),
-			)
+			.where(and(eq(brands.id, data.brandId), sql`NOT (${domain} = ANY(${brands.additionalDomains}))`))
 			.returning();
 
 		if (result) return result;
@@ -407,7 +404,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -441,7 +438,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);

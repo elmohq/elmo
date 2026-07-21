@@ -6,13 +6,13 @@ import { getBrands, getBrand, getCompetitors } from "@/server/brands";
 
 export type BrandWithPromptsAndDataInfo = BrandWithPrompts & {
 	earliestDataDate?: string | null;
-	/** Deployment-configured model ids this brand actually runs, after
-	 *  `brand.enabledModels` is applied. Comes from the server so the UI
-	 *  doesn't have to hardcode a model list. */
+	/** Database-configured model ids this brand actually runs. */
 	effectiveModels: string[];
 	/** Same as `effectiveModels` but with provider / version / webSearch
 	 *  metadata, for pages that render per-model details. */
 	effectiveModelConfigs: ModelConfig[];
+	/** Fastest resolved cadence across the targets this brand currently runs. */
+	effectiveCadenceHours?: number;
 };
 
 // ============================================================================

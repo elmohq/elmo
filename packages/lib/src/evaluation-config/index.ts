@@ -1,6 +1,7 @@
 export {
 	bootstrapLegacyEvaluationConfig,
 	ensureEvaluationConfig,
+	getEvaluationConfigurationVersion,
 	getEffectiveEvaluationTargetsForBrand,
 	getEffectiveEvaluationTargetsForInstance,
 	getEffectiveEvaluationTargetsForPrompt,
@@ -11,7 +12,13 @@ export {
 	type LegacyBootstrapResult,
 	type LegacyBootstrapStatus,
 } from "./db";
-export { minimumCadenceHours, resolveEffectiveEvaluationTargets } from "./resolver";
+export {
+	isEffectiveEvaluationTargetOverdue,
+	mapLastRunsToEffectiveTargets,
+	minimumCadenceHours,
+	resolveEffectiveEvaluationTargets,
+	selectDueEvaluationTargets,
+} from "./resolver";
 export {
 	createEvaluationTarget,
 	getBrandOrganizationIdForEvaluation,

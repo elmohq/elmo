@@ -126,6 +126,8 @@ DataForSEO prompt text is limited to 500 characters. Country localization is int
 
 ## Recommended setups
 
+The examples below can be used as a legacy first-start import. New local deployments can instead add the provider key to `.env`, then create the target in **Settings → LLMs**. After a legacy import has completed, `SCRAPE_TARGETS` is no longer needed.
+
 **Starter (scrape the two that matter).** Pick one scraper and you're done:
 
 ```bash
@@ -157,6 +159,8 @@ SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-
 ```
 
 ## SCRAPE_TARGETS format
+
+This format is retained for the legacy one-time import path.
 
 ```
 model:provider[:version][:online]

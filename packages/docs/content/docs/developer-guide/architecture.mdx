@@ -87,8 +87,8 @@ Migrations are generated with `drizzle-kit generate` and applied with `drizzle-k
 
 All AI scraping flows through a single `Provider` interface in `packages/lib/src/providers/`. The runtime wiring:
 
-1. `SCRAPE_TARGETS` (env var) holds comma-separated `model:provider[:version][:online]` entries.
-2. `parseScrapeTargets()` turns the string into `ModelConfig[]`.
+1. `evaluation_targets` and `evaluation_target_scope_configs` resolve the instance → organization → brand → prompt target list.
+2. `SCRAPE_TARGETS` remains only as a one-time compatibility import for existing installs.
 3. `getProvider(providerId).run(model, prompt, { webSearch, version })` dispatches to a concrete `registry/` implementation and returns a normalized `ScrapeResult` (`textContent`, `rawOutput`, `webQueries`, `citations`, `modelVersion`).
 
 User-facing setup is documented in [Providers](/docs/user-guide/providers).

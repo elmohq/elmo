@@ -3,10 +3,13 @@ import { db } from "@workspace/lib/db/db";
 import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import {
 	getEffectiveEvaluationTargetsForPrompts,
+	getEvaluationConfigurationVersion,
+	isEffectiveEvaluationTargetOverdue,
+	mapLastRunsToEffectiveTargets,
 	minimumCadenceHours,
+	selectDueEvaluationTargets,
 	type EffectiveEvaluationTarget,
 } from "@workspace/lib/evaluation-config";
-import { isPromptOverdue } from "@workspace/lib/overdue";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
@@ -35,16 +38,14 @@ const EXPEDITE_MIN_INTERVAL_MS = 60 * 60 * 1000;
 function getLastRunsForTargets(
 	lastRuns: Record<string, Date>,
 	targets: readonly EffectiveEvaluationTarget[],
-): Record<string, Date> {
-	return Object.fromEntries(
-		targets.flatMap((target) => {
-			const targetRun = lastRuns[target.targetId];
-			const legacyModelRun = lastRuns[`legacy:${target.model}`];
-			const latest = [targetRun, legacyModelRun]
-				.filter((run): run is Date => run !== undefined)
-				.reduce<Date | undefined>((newest, run) => (!newest || run > newest ? run : newest), undefined);
-			return latest ? [[target.targetId, latest]] : [];
-		}),
+): Map<string, Date> {
+	return mapLastRunsToEffectiveTargets(
+		targets,
+		Object.entries(lastRuns).map(([key, lastRunAt]) => ({
+			evaluationTargetId: key.startsWith("legacy:") ? null : key,
+			model: key.startsWith("legacy:") ? key.slice("legacy:".length) : "",
+			lastRunAt,
+		})),
 	);
 }
 
@@ -94,6 +95,7 @@ async function runMaintenanceCheck(): Promise<void> {
 	const effectiveTargetsByPrompt = await getEffectiveEvaluationTargetsForPrompts(
 		enabledPrompts.map((prompt) => prompt.id),
 	);
+	const configurationVersion = await getEvaluationConfigurationVersion();
 	const schedulablePrompts = enabledPrompts.filter(
 		(prompt) => (effectiveTargetsByPrompt.get(prompt.id)?.length ?? 0) > 0,
 	);
@@ -157,26 +159,21 @@ async function runMaintenanceCheck(): Promise<void> {
 
 		const cadenceHours = minimumCadenceHours(targets);
 		if (cadenceHours === undefined) continue;
-		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
 		const lastRuns = getLastRunsForTargets(lastRunsMap[prompt.id] || {}, targets);
+		const dueTargets = selectDueEvaluationTargets(targets, lastRuns, new Date(now));
 
-		const isOverdue = isPromptOverdue({
-			models: targets.map((target) => target.targetId),
-			lastRunByModel: lastRuns,
-			promptCreatedAt: prompt.createdAt,
-			runFrequencyMs,
-			now,
-		});
-
-		if (!isOverdue) continue;
+		if (dueTargets.length === 0) continue;
 
 		if (pendingJob && pendingJob.state === "created") {
 			// Throttle: if the prompt ran within the window it isn't really stalled,
 			// so don't drag its next job forward again. A never-recording target
 			// would otherwise keep it perpetually "overdue" and re-fire it every tick.
-			const lastRunTimes = Object.values(lastRuns).map((d) => new Date(d).getTime());
+			const lastRunTimes = [...lastRuns.values()].map((d) => d.getTime());
 			const mostRecentRunMs = lastRunTimes.length > 0 ? Math.max(...lastRunTimes) : null;
-			if (mostRecentRunMs !== null && now - mostRecentRunMs < Math.min(runFrequencyMs, EXPEDITE_MIN_INTERVAL_MS)) {
+			if (
+				mostRecentRunMs !== null &&
+				now - mostRecentRunMs < Math.min(cadenceHours * 60 * 60 * 1000, EXPEDITE_MIN_INTERVAL_MS)
+			) {
 				continue;
 			}
 			// There's a future job scheduled - expedite it to run now
@@ -227,7 +224,7 @@ async function runMaintenanceCheck(): Promise<void> {
 				batch.map(({ promptId, cadenceHours }) =>
 					boss.send(
 						"process-prompt",
-						{ promptId, cadenceHours },
+						{ promptId, cadenceHours, configurationVersion },
 						{
 							singletonKey: `prompt-${promptId}`,
 							singletonSeconds: 60 * 60, // 1 hour - prevent duplicates
@@ -273,17 +270,16 @@ function reportOverduePrompts(input: {
 	let overduePrompts = 0;
 	for (const prompt of enabled) {
 		const targets = effectiveTargetsByPrompt.get(prompt.id) ?? [];
-		const cadenceHours = minimumCadenceHours(targets);
-		if (cadenceHours === undefined) continue;
-		const runFrequencyMs = cadenceHours * 60 * 60 * 1000;
-		const overdue = isPromptOverdue({
-			models: targets.map((target) => target.targetId),
-			lastRunByModel: getLastRunsForTargets(lastRunsMap[prompt.id] ?? {}, targets),
-			promptCreatedAt: prompt.createdAt,
-			runFrequencyMs,
-			now,
-			graceMs: OVERDUE_ALERT_GRACE_MS,
-		});
+		const lastRuns = getLastRunsForTargets(lastRunsMap[prompt.id] ?? {}, targets);
+		const overdue = targets.some((target) =>
+			isEffectiveEvaluationTargetOverdue({
+				target,
+				lastRunAt: lastRuns.get(target.targetId),
+				promptCreatedAt: prompt.createdAt,
+				now,
+				graceMs: OVERDUE_ALERT_GRACE_MS,
+			}),
+		);
 		if (overdue) overduePrompts++;
 	}
 

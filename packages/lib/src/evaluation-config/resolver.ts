@@ -1,10 +1,63 @@
 import type {
+	EvaluationEntitlementLimits,
 	EffectiveEvaluationTarget,
 	EvaluationConfigScope,
 	EvaluationTargetForResolution,
 	EvaluationTargetResolutionContext,
 	EvaluationTargetScopeConfigForResolution,
 } from "./types";
+
+export interface EvaluationEntitlementTargetUsage {
+	label: string;
+	targets: readonly EffectiveEvaluationTarget[];
+}
+
+/**
+ * Validates configuration-time limits after scope inheritance has been
+ * resolved. Runtime quotas deliberately live elsewhere: changing a target
+ * selection must not create extra allowance for executions already metered.
+ */
+export function assertEvaluationEntitlementLimits(input: {
+	limits: EvaluationEntitlementLimits;
+	configuredTargets: readonly EffectiveEvaluationTarget[];
+	brandTargets?: readonly EvaluationEntitlementTargetUsage[];
+	promptTargets?: readonly EvaluationEntitlementTargetUsage[];
+}): void {
+	const { limits, configuredTargets, brandTargets = [], promptTargets = [] } = input;
+	if (limits.maxConfiguredTargets !== null && configuredTargets.length > limits.maxConfiguredTargets) {
+		throw new Error(
+			`Configured target limit exceeded: ${configuredTargets.length} configured, maximum ${limits.maxConfiguredTargets}`,
+		);
+	}
+
+	const assertCountLimit = (
+		usages: readonly EvaluationEntitlementTargetUsage[],
+		limit: number | null,
+		label: string,
+	) => {
+		if (limit === null) return;
+		for (const usage of usages) {
+			if (usage.targets.length > limit) {
+				throw new Error(
+					`${label} target limit exceeded for ${usage.label}: ${usage.targets.length} configured, maximum ${limit}`,
+				);
+			}
+		}
+	};
+	assertCountLimit(brandTargets, limits.maxConfiguredTargetsPerBrand, "Brand");
+	assertCountLimit(promptTargets, limits.maxConfiguredTargetsPerPrompt, "Prompt");
+
+	if (limits.maxSamplesPerDispatch === null) return;
+	for (const usage of [{ label: "configuration", targets: configuredTargets }, ...brandTargets, ...promptTargets]) {
+		for (const target of usage.targets) {
+			if (target.samplesPerDispatch > limits.maxSamplesPerDispatch) {
+				throw new Error(
+					`Samples per dispatch limit exceeded for ${usage.label}: ${target.samplesPerDispatch} configured, maximum ${limits.maxSamplesPerDispatch}`,
+				);
+			}
+		}
+	}
+}
 
 interface ScopeContext {
 	scope: EvaluationConfigScope;
@@ -112,4 +165,56 @@ export function resolveEffectiveEvaluationTargets(
 export function minimumCadenceHours(targets: readonly EffectiveEvaluationTarget[]): number | undefined {
 	if (targets.length === 0) return undefined;
 	return Math.min(...targets.map((target) => target.cadenceHours));
+}
+
+/**
+ * Fold direct target history and pre-migration model-only history into the
+ * stable target IDs used by the scheduler. The model fallback is intentionally
+ * conservative: during the first cadence after migration it can delay a new
+ * target, but cannot create an unexpected extra provider call.
+ */
+export function mapLastRunsToEffectiveTargets(
+	targets: readonly EffectiveEvaluationTarget[],
+	history: readonly { evaluationTargetId: string | null; model: string; lastRunAt: Date }[],
+): Map<string, Date> {
+	const directRuns = new Map<string, Date>();
+	const legacyModelRuns = new Map<string, Date>();
+	for (const run of history) {
+		const runs = run.evaluationTargetId ? directRuns : legacyModelRuns;
+		const key = run.evaluationTargetId ?? run.model;
+		const previous = runs.get(key);
+		if (!previous || run.lastRunAt > previous) runs.set(key, run.lastRunAt);
+	}
+
+	const result = new Map<string, Date>();
+	for (const target of targets) {
+		const direct = directRuns.get(target.targetId);
+		const legacy = legacyModelRuns.get(target.model);
+		const latest = direct && legacy ? (direct > legacy ? direct : legacy) : (direct ?? legacy);
+		if (latest) result.set(target.targetId, latest);
+	}
+	return result;
+}
+
+/** A target is due only after its own cadence has fully elapsed. */
+export function selectDueEvaluationTargets(
+	targets: readonly EffectiveEvaluationTarget[],
+	lastRunAtByTargetId: ReadonlyMap<string, Date>,
+	now = new Date(),
+): EffectiveEvaluationTarget[] {
+	return targets.filter((target) => {
+		const lastRunAt = lastRunAtByTargetId.get(target.targetId);
+		return !lastRunAt || now.getTime() - lastRunAt.getTime() >= target.cadenceHours * 60 * 60 * 1000;
+	});
+}
+
+export function isEffectiveEvaluationTargetOverdue(input: {
+	target: EffectiveEvaluationTarget;
+	lastRunAt?: Date;
+	promptCreatedAt: Date;
+	now: number;
+	graceMs?: number;
+}): boolean {
+	const reference = input.lastRunAt ?? input.promptCreatedAt;
+	return input.now - reference.getTime() > input.target.cadenceHours * 60 * 60 * 1000 + (input.graceMs ?? 0);
 }

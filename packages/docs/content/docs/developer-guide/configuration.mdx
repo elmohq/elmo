@@ -41,7 +41,17 @@ At least one provider is required for Elmo to track visibility. See [Providers](
 | `OPENROUTER_API_KEY` | OpenRouter key — one key for Claude + other hosted models |
 | `DATAFORSEO_LOGIN` | DataForSEO login — optional, enables DataForSEO targets such as `google-ai-mode:dataforseo:online`, `chatgpt:dataforseo:online`, `perplexity:dataforseo:online`, and `gemini:dataforseo:online` |
 | `DATAFORSEO_PASSWORD` | DataForSEO password |
-| `SCRAPE_TARGETS` | Comma-separated `model:provider[:version][:online]` entries. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
+| `SCRAPE_TARGETS` | Optional legacy import source for `model:provider[:version][:online]` entries. On first startup, Elmo imports it into database-backed evaluation targets. See [Providers](/docs/user-guide/providers#scrape_targets-format). |
+
+### Evaluation targets
+
+Which models run, how frequently they run, and how many samples each run takes are stored in the database. In a local deployment, open **Settings → LLMs** to add instance targets and set brand-level overrides. Provider credentials remain server-side environment variables during this migration.
+
+Existing deployments can keep `SCRAPE_TARGETS` for one startup: Elmo imports the instance targets plus existing `enabledModels` and `delayOverrideHours` overrides into the database. Once the import is complete, removing `SCRAPE_TARGETS` is safe. New deployments can skip it and add their first target in the UI.
+
+Cloud configuration resolves instance → organization → brand → prompt. Organization owners and admins can select targets from their allowed catalog, while sampling and cadence stay server-controlled by the plan. Local supports instance → organization or brand → prompt. Whitelabel preserves its existing member experience: members can edit brand content, prompts, and competitors, but not evaluation targets or cadence. Demo mode never writes configuration.
+
+Plan entitlements constrain configuration atomically: target counts and samples per dispatch are checked after inheritance is resolved, so a child scope cannot use an override to exceed the plan. Daily execution allowance is deliberately stored separately from configuration limits; it belongs to the runtime metering layer, so changing a configured target never grants additional executions.
 
 ## Updating Configuration
 

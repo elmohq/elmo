@@ -1,4 +1,4 @@
-import type { ModelConfig } from "@workspace/config/scrape-targets";
+import { formatScrapeTarget, type ModelConfig } from "@workspace/config/scrape-targets";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import {
@@ -8,10 +8,15 @@ import {
 	evaluationTargetScopeConfigs,
 	evaluationTargets,
 	instanceSettings,
+	prompts,
 	providerConnections,
 } from "../db/schema";
 import { getProvider } from "../providers";
-import type { EvaluationConfigScope, EvaluationEntitlementLimits } from "./types";
+import { assertEvaluationEntitlementLimits, resolveEffectiveEvaluationTargets } from "./resolver";
+import type { EvaluationEntitlementLimits } from "./types";
+
+type DatabaseTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type EvaluationEntitlementRow = typeof evaluationEntitlements.$inferSelect;
 
 export interface CreateEvaluationTargetInput {
 	model: string;
@@ -49,13 +54,7 @@ export interface EntitlementPatch extends EvaluationEntitlementLimits {}
 function managedTargetKey(
 	input: Pick<CreateEvaluationTargetInput, "model" | "provider" | "version" | "webSearch">,
 ): string {
-	return [
-		"managed",
-		encodeURIComponent(input.provider),
-		encodeURIComponent(input.model),
-		encodeURIComponent(input.version ?? "default"),
-		input.webSearch ? "online" : "offline",
-	].join(":");
+	return `target:${formatScrapeTarget({ ...input, version: input.version ?? undefined })}`;
 }
 
 function legacyProviderConnectionKey(provider: string): string {
@@ -86,13 +85,11 @@ function validateTargetInput(input: CreateEvaluationTargetInput): void {
 	}
 }
 
-async function ensureInstanceSettingsInTransaction(
-	tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-): Promise<void> {
+async function ensureInstanceSettingsInTransaction(tx: DatabaseTransaction): Promise<void> {
 	await tx.insert(instanceSettings).values({ id: "default" }).onConflictDoNothing();
 }
 
-async function bumpConfigurationVersion(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<void> {
+async function bumpConfigurationVersion(tx: DatabaseTransaction): Promise<void> {
 	await tx
 		.update(instanceSettings)
 		.set({
@@ -103,7 +100,7 @@ async function bumpConfigurationVersion(tx: Parameters<Parameters<typeof db.tran
 }
 
 async function addAuditLog(
-	tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+	tx: DatabaseTransaction,
 	input: {
 		actorUserId?: string;
 		action: string;
@@ -120,6 +117,172 @@ async function addAuditLog(
 		promptId: input.owner?.scope === "prompt" ? input.owner.promptId : undefined,
 		diff: input.diff,
 	});
+}
+
+async function lockEvaluationEntitlements(tx: DatabaseTransaction, scopeKey: string): Promise<void> {
+	await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`elmo:evaluation-entitlements:${scopeKey}`}))`);
+}
+
+function combineEvaluationEntitlementLimits(rows: readonly EvaluationEntitlementRow[]): EvaluationEntitlementLimits {
+	const instance = rows.find((row) => row.scope === "instance");
+	const organization = rows.find((row) => row.scope === "organization");
+	const constrained = (field: keyof EvaluationEntitlementLimits): number | null => {
+		const values = [instance?.[field], organization?.[field]].filter(
+			(value): value is number => value !== null && value !== undefined,
+		);
+		return values.length > 0 ? Math.min(...values) : null;
+	};
+	return {
+		maxConfiguredTargets: constrained("maxConfiguredTargets"),
+		maxConfiguredTargetsPerBrand: constrained("maxConfiguredTargetsPerBrand"),
+		maxConfiguredTargetsPerPrompt: constrained("maxConfiguredTargetsPerPrompt"),
+		maxSamplesPerDispatch: constrained("maxSamplesPerDispatch"),
+		maxRunsPerDay: constrained("maxRunsPerDay"),
+	};
+}
+
+async function getResolutionTargetsInTransaction(tx: DatabaseTransaction) {
+	return tx
+		.select({
+			id: evaluationTargets.id,
+			key: evaluationTargets.key,
+			model: evaluationTargets.model,
+			provider: providerConnections.provider,
+			providerConnectionId: evaluationTargets.providerConnectionId,
+			providerConnectionEnabled: providerConnections.enabled,
+			version: evaluationTargets.version,
+			webSearch: evaluationTargets.webSearch,
+			enabled: evaluationTargets.enabled,
+			requiresPromptAssignment: evaluationTargets.requiresPromptAssignment,
+			defaultCadenceHours: evaluationTargets.defaultCadenceHours,
+			defaultSamplesPerDispatch: evaluationTargets.defaultSamplesPerDispatch,
+		})
+		.from(evaluationTargets)
+		.innerJoin(providerConnections, eq(evaluationTargets.providerConnectionId, providerConnections.id));
+}
+
+async function getOrganizationIdForScopeOwnerInTransaction(
+	tx: DatabaseTransaction,
+	owner: EvaluationScopeOwner,
+): Promise<string> {
+	if (owner.scope === "organization") return owner.organizationId;
+	if (owner.scope === "brand") {
+		const [brand] = await tx
+			.select({ organizationId: brands.organizationId })
+			.from(brands)
+			.where(eq(brands.id, owner.brandId))
+			.limit(1);
+		if (!brand) throw new Error("Brand not found");
+		return brand.organizationId;
+	}
+
+	const [prompt] = await tx
+		.select({ organizationId: brands.organizationId })
+		.from(prompts)
+		.innerJoin(brands, eq(prompts.brandId, brands.id))
+		.where(eq(prompts.id, owner.promptId))
+		.limit(1);
+	if (!prompt) throw new Error("Prompt not found");
+	return prompt.organizationId;
+}
+
+async function enforceOrganizationEvaluationEntitlements(
+	tx: DatabaseTransaction,
+	organizationId: string,
+): Promise<void> {
+	const [organizationBrands, targets, entitlementRows] = await Promise.all([
+		tx.select({ id: brands.id }).from(brands).where(eq(brands.organizationId, organizationId)),
+		getResolutionTargetsInTransaction(tx),
+		tx
+			.select()
+			.from(evaluationEntitlements)
+			.where(
+				or(
+					eq(evaluationEntitlements.scope, "instance"),
+					and(
+						eq(evaluationEntitlements.scope, "organization"),
+						eq(evaluationEntitlements.organizationId, organizationId),
+					),
+				),
+			),
+	]);
+	const brandIds = organizationBrands.map((brand) => brand.id);
+	const organizationPrompts =
+		brandIds.length === 0
+			? []
+			: await tx
+					.select({ id: prompts.id, brandId: prompts.brandId })
+					.from(prompts)
+					.where(inArray(prompts.brandId, brandIds));
+	const promptIds = organizationPrompts.map((prompt) => prompt.id);
+	const scopeConditions = [
+		and(
+			eq(evaluationTargetScopeConfigs.scope, "organization"),
+			eq(evaluationTargetScopeConfigs.organizationId, organizationId),
+		),
+		...(brandIds.length > 0
+			? [and(eq(evaluationTargetScopeConfigs.scope, "brand"), inArray(evaluationTargetScopeConfigs.brandId, brandIds))]
+			: []),
+		...(promptIds.length > 0
+			? [
+					and(
+						eq(evaluationTargetScopeConfigs.scope, "prompt"),
+						inArray(evaluationTargetScopeConfigs.promptId, promptIds),
+					),
+				]
+			: []),
+	];
+	const scopeConfigs = await tx
+		.select()
+		.from(evaluationTargetScopeConfigs)
+		.where(or(...scopeConditions));
+	const limits = combineEvaluationEntitlementLimits(entitlementRows);
+	const configuredTargets = resolveEffectiveEvaluationTargets(targets, scopeConfigs, { organizationId });
+	const brandTargets = organizationBrands.map((brand) => ({
+		label: brand.id,
+		targets: resolveEffectiveEvaluationTargets(targets, scopeConfigs, {
+			organizationId,
+			brandId: brand.id,
+		}),
+	}));
+	const promptTargets = organizationPrompts.map((prompt) => ({
+		label: prompt.id,
+		targets: resolveEffectiveEvaluationTargets(targets, scopeConfigs, {
+			organizationId,
+			brandId: prompt.brandId,
+			promptId: prompt.id,
+		}),
+	}));
+	assertEvaluationEntitlementLimits({ limits, configuredTargets, brandTargets, promptTargets });
+}
+
+async function enforceAllEvaluationEntitlements(tx: DatabaseTransaction): Promise<void> {
+	const [targets, entitlementRows, brandRows] = await Promise.all([
+		getResolutionTargetsInTransaction(tx),
+		tx.select().from(evaluationEntitlements).where(eq(evaluationEntitlements.scope, "instance")),
+		tx.select({ organizationId: brands.organizationId }).from(brands),
+	]);
+	assertEvaluationEntitlementLimits({
+		limits: combineEvaluationEntitlementLimits(entitlementRows),
+		configuredTargets: resolveEffectiveEvaluationTargets(targets, [], {}),
+	});
+
+	const organizationEntitlements = await tx
+		.select({ organizationId: evaluationEntitlements.organizationId })
+		.from(evaluationEntitlements)
+		.where(eq(evaluationEntitlements.scope, "organization"));
+	const organizationIds = [
+		...new Set(
+			[
+				...brandRows.map((brand) => brand.organizationId),
+				...organizationEntitlements.map((row) => row.organizationId),
+			].filter((id): id is string => id !== null),
+		),
+	].sort();
+	for (const organizationId of organizationIds) {
+		await lockEvaluationEntitlements(tx, organizationId);
+		await enforceOrganizationEvaluationEntitlements(tx, organizationId);
+	}
 }
 
 export async function listEvaluationTargets() {
@@ -151,6 +314,7 @@ export async function createEvaluationTarget(input: CreateEvaluationTargetInput,
 	return db.transaction(async (tx) => {
 		await ensureInstanceSettingsInTransaction(tx);
 		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`elmo:evaluation-target:${key}`}))`);
+		await lockEvaluationEntitlements(tx, "instance");
 
 		await tx
 			.insert(providerConnections)
@@ -188,6 +352,7 @@ export async function createEvaluationTarget(input: CreateEvaluationTargetInput,
 		if (!target) throw new Error("Could not create evaluation target");
 
 		if (created) {
+			await enforceAllEvaluationEntitlements(tx);
 			await bumpConfigurationVersion(tx);
 			await addAuditLog(tx, {
 				actorUserId,
@@ -202,6 +367,8 @@ export async function createEvaluationTarget(input: CreateEvaluationTargetInput,
 export async function updateEvaluationTarget(input: UpdateEvaluationTargetInput, actorUserId?: string) {
 	return db.transaction(async (tx) => {
 		await ensureInstanceSettingsInTransaction(tx);
+		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`elmo:evaluation-target:${input.targetId}`}))`);
+		await lockEvaluationEntitlements(tx, "instance");
 		const [target] = await tx.select().from(evaluationTargets).where(eq(evaluationTargets.id, input.targetId)).limit(1);
 		if (!target) throw new Error("Evaluation target not found");
 
@@ -222,6 +389,7 @@ export async function updateEvaluationTarget(input: UpdateEvaluationTargetInput,
 			.returning();
 		if (!updated) throw new Error("Could not update evaluation target");
 
+		await enforceAllEvaluationEntitlements(tx);
 		await bumpConfigurationVersion(tx);
 		await addAuditLog(tx, {
 			actorUserId,
@@ -272,6 +440,8 @@ export async function updateEvaluationTargetScopeConfig(
 ) {
 	return db.transaction(async (tx) => {
 		await ensureInstanceSettingsInTransaction(tx);
+		const organizationId = await getOrganizationIdForScopeOwnerInTransaction(tx, owner);
+		await lockEvaluationEntitlements(tx, organizationId);
 		await tx.execute(
 			sql`SELECT pg_advisory_xact_lock(hashtext(${`elmo:evaluation-scope:${owner.scope}:${scopeOwnerId(owner)}:${patch.targetId ?? "default"}`}))`,
 		);
@@ -295,6 +465,7 @@ export async function updateEvaluationTargetScopeConfig(
 		if (!hasOverrides) {
 			if (existing) {
 				await tx.delete(evaluationTargetScopeConfigs).where(eq(evaluationTargetScopeConfigs.id, existing.id));
+				await enforceOrganizationEvaluationEntitlements(tx, organizationId);
 				await bumpConfigurationVersion(tx);
 				await addAuditLog(tx, {
 					actorUserId,
@@ -318,6 +489,7 @@ export async function updateEvaluationTargetScopeConfig(
 					.returning();
 		if (!result) throw new Error("Could not update evaluation scope configuration");
 
+		await enforceOrganizationEvaluationEntitlements(tx, organizationId);
 		await bumpConfigurationVersion(tx);
 		await addAuditLog(tx, {
 			actorUserId,
@@ -345,21 +517,7 @@ export async function getEvaluationEntitlementLimits(organizationId?: string): P
 		.select()
 		.from(evaluationEntitlements)
 		.where(or(...conditions));
-	const instance = rows.find((row) => row.scope === "instance");
-	const organization = rows.find((row) => row.scope === "organization");
-	const constrained = (field: keyof EvaluationEntitlementLimits): number | null => {
-		const values = [instance?.[field], organization?.[field]].filter(
-			(value): value is number => value !== null && value !== undefined,
-		);
-		return values.length > 0 ? Math.min(...values) : null;
-	};
-	return {
-		maxConfiguredTargets: constrained("maxConfiguredTargets"),
-		maxConfiguredTargetsPerBrand: constrained("maxConfiguredTargetsPerBrand"),
-		maxConfiguredTargetsPerPrompt: constrained("maxConfiguredTargetsPerPrompt"),
-		maxSamplesPerDispatch: constrained("maxSamplesPerDispatch"),
-		maxRunsPerDay: constrained("maxRunsPerDay"),
-	};
+	return combineEvaluationEntitlementLimits(rows);
 }
 
 export async function updateEvaluationEntitlement(
@@ -373,6 +531,7 @@ export async function updateEvaluationEntitlement(
 
 	return db.transaction(async (tx) => {
 		await ensureInstanceSettingsInTransaction(tx);
+		await lockEvaluationEntitlements(tx, scope === "instance" ? "instance" : organizationId!);
 		const condition =
 			scope === "instance"
 				? eq(evaluationEntitlements.scope, "instance")
@@ -400,6 +559,11 @@ export async function updateEvaluationEntitlement(
 					.returning();
 		if (!result) throw new Error("Could not update evaluation entitlement");
 
+		if (scope === "instance") {
+			await enforceAllEvaluationEntitlements(tx);
+		} else {
+			await enforceOrganizationEvaluationEntitlements(tx, organizationId!);
+		}
 		await bumpConfigurationVersion(tx);
 		await addAuditLog(tx, {
 			actorUserId,

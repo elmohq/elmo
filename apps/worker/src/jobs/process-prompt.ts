@@ -10,11 +10,15 @@ import {
 	type Brand,
 	type Competitor,
 } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import {
 	getEffectiveEvaluationTargetsForPrompt,
+	getEvaluationConfigurationVersion,
 	getPromptCadenceHours,
+	mapLastRunsToEffectiveTargets,
+	minimumCadenceHours,
+	selectDueEvaluationTargets,
 	type EffectiveEvaluationTarget,
 } from "@workspace/lib/evaluation-config";
 import { getProvider, type Provider } from "@workspace/lib/providers";
@@ -25,6 +29,8 @@ import { trackWorkerEvent } from "../telemetry";
 export interface ProcessPromptData {
 	promptId: string;
 	cadenceHours?: number; // Hours until next run (for self-rescheduling)
+	configurationVersion?: number;
+	force?: boolean; // An explicit admin run may bypass cadence checks.
 }
 
 interface PromptContext {
@@ -36,13 +42,13 @@ interface PromptContext {
 /**
  * Schedule the next run for a prompt after the specified cadence.
  */
-async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<void> {
+async function scheduleNextRun(promptId: string, cadenceHours: number, configurationVersion?: number): Promise<void> {
 	const startAfterSeconds = cadenceHours * 60 * 60;
 
 	try {
 		await boss.send(
 			"process-prompt",
-			{ promptId, cadenceHours },
+			{ promptId, cadenceHours, configurationVersion },
 			{
 				singletonKey: `prompt-${promptId}`,
 				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
@@ -111,6 +117,26 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		brand,
 		competitors: brandCompetitors,
 	};
+}
+
+async function getLastRunByTargetId(
+	promptId: string,
+	targets: readonly EffectiveEvaluationTarget[],
+): Promise<Map<string, Date>> {
+	const history = await db
+		.select({
+			evaluationTargetId: promptRuns.evaluationTargetId,
+			model: promptRuns.model,
+			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+		})
+		.from(promptRuns)
+		.where(eq(promptRuns.promptId, promptId))
+		.groupBy(promptRuns.evaluationTargetId, promptRuns.model);
+
+	return mapLastRunsToEffectiveTargets(
+		targets,
+		history.map((run) => ({ ...run, lastRunAt: new Date(run.lastRunAt) })),
+	);
 }
 
 function extractDomainFromUrl(urlOrDomain: string): string {
@@ -287,7 +313,12 @@ async function runModelIteration({
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { promptId, cadenceHours: providedCadence } = job.data;
+		const {
+			promptId,
+			cadenceHours: providedCadence,
+			configurationVersion: queuedConfigurationVersion,
+			force = false,
+		} = job.data;
 		console.log(`Processing prompt ${promptId}`);
 
 		// Get cadence hours - use provided value or look it up
@@ -315,13 +346,28 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 			console.log(`Prompt ${promptId} for brand ${brand.id} has no effective evaluation targets`);
 			continue;
 		}
+		const configurationVersion = await getEvaluationConfigurationVersion();
+		const uniformCadence = new Set(selectedTargets.map((target) => target.cadenceHours)).size <= 1;
+		const mustCheckDueHistory =
+			!uniformCadence ||
+			(queuedConfigurationVersion !== undefined && queuedConfigurationVersion !== configurationVersion);
+		const dueTargets =
+			force || !mustCheckDueHistory
+				? selectedTargets
+				: selectDueEvaluationTargets(selectedTargets, await getLastRunByTargetId(promptId, selectedTargets));
+		const nextCadenceHours = minimumCadenceHours(selectedTargets);
+		if (dueTargets.length === 0) {
+			console.log(`Prompt ${promptId} has no targets due at this firing`);
+			if (nextCadenceHours !== undefined) await scheduleNextRun(promptId, nextCadenceHours, configurationVersion);
+			continue;
+		}
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
 		// Run all model iterations in parallel
 		const runPromises: Promise<void>[] = [];
 
-		for (const config of selectedTargets) {
+		for (const config of dueTargets) {
 			const providerImpl = getProvider(config.provider);
 			for (let i = 0; i < config.samplesPerDispatch; i++) {
 				runPromises.push(
@@ -360,15 +406,14 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			models: [...new Set(selectedTargets.map((c) => c.model))],
-			providers: [...new Set(selectedTargets.map((c) => c.provider))],
+			models: [...new Set(dueTargets.map((c) => c.model))],
+			providers: [...new Set(dueTargets.map((c) => c.provider))],
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,
 		});
 
 		// Schedule the next run
-		const nextCadenceHours = Math.min(...selectedTargets.map((target) => target.cadenceHours));
-		await scheduleNextRun(promptId, nextCadenceHours);
+		if (nextCadenceHours !== undefined) await scheduleNextRun(promptId, nextCadenceHours, configurationVersion);
 	}
 }

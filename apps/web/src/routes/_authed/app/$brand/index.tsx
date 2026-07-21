@@ -123,9 +123,7 @@ function StatWithTooltip({
 					<IconInfoCircle className="h-3.5 w-3.5 opacity-50" />
 				</div>
 			</TooltipTrigger>
-			<TooltipContent className="max-w-xs text-sm">
-				{tooltip}
-			</TooltipContent>
+			<TooltipContent className="max-w-xs text-sm">{tooltip}</TooltipContent>
 		</Tooltip>
 	);
 }
@@ -146,9 +144,7 @@ function CardTitleWithTooltip({
 				<TooltipTrigger asChild>
 					<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 				</TooltipTrigger>
-				<TooltipContent className="max-w-xs text-sm font-normal">
-					{tooltip}
-				</TooltipContent>
+				<TooltipContent className="max-w-xs text-sm font-normal">{tooltip}</TooltipContent>
 			</Tooltip>
 		</CardTitle>
 	);
@@ -175,6 +171,8 @@ function DashboardPage() {
 	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const clientConfig = context.clientConfig;
+	const runCadenceHours =
+		brand?.effectiveCadenceHours ?? brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24;
 
 	const isLoading = isLoadingBrand || isLoadingSummary;
 
@@ -260,10 +258,22 @@ function DashboardPage() {
 					{/* Footer stats skeleton */}
 					<section className="pt-2">
 						<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
-							<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
-							<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
-							<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
-							<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+							<div className="flex items-center gap-2">
+								<IconList className="h-4 w-4 flex-shrink-0" />
+								<Skeleton className="h-4 w-28" />
+							</div>
+							<div className="flex items-center gap-2">
+								<IconActivity className="h-4 w-4 flex-shrink-0" />
+								<Skeleton className="h-4 w-32" />
+							</div>
+							<div className="flex items-center gap-2">
+								<IconClock className="h-4 w-4 flex-shrink-0" />
+								<Skeleton className="h-4 w-24" />
+							</div>
+							<div className="flex items-center gap-2">
+								<IconRefresh className="h-4 w-4 flex-shrink-0" />
+								<Skeleton className="h-4 w-24" />
+							</div>
 						</div>
 					</section>
 				</div>
@@ -324,9 +334,7 @@ function DashboardPage() {
 				<h2 className="text-2xl font-bold mb-3">
 					{hasEnabledPrompts ? "Waiting for First Evaluation" : "No Data Yet"}
 				</h2>
-				<p className="text-muted-foreground mb-6 text-balance">
-					{getMessage()}
-				</p>
+				<p className="text-muted-foreground mb-6 text-balance">{getMessage()}</p>
 				<div className="flex flex-col gap-3 w-full">
 					{hasEnabledPrompts && (
 						<div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
@@ -339,7 +347,8 @@ function DashboardPage() {
 					)}
 					<Button asChild variant="outline" className="w-full">
 						<Link to="/app/$brand/settings/prompts" params={{ brand: brandId }}>
-							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"} <IconArrowRight className="h-4 w-4 ml-1" />
+							{hasEnabledPrompts ? "View Your Prompts" : hasPrompts ? "Edit Prompts" : "Set Up Prompts"}{" "}
+							<IconArrowRight className="h-4 w-4 ml-1" />
 						</Link>
 					</Button>
 				</div>
@@ -355,7 +364,6 @@ function DashboardPage() {
 	return (
 		<div className="flex flex-1 flex-col">
 			<div className="m-auto flex w-full max-w-[1600px] flex-col gap-3 p-4">
-
 				{/* Section 1: AI Visibility */}
 				<section className="space-y-2">
 					<div className="flex items-center justify-between">
@@ -372,7 +380,9 @@ function DashboardPage() {
 
 					<div className="grid gap-4 lg:grid-cols-4">
 						{/* Hero Visibility Score */}
-						<Card className={`shadow-none flex flex-col gap-3 py-4 ${currentVisibility === null ? "" : `${getVisibilityBgColor(currentVisibility)} ${getVisibilityBorderColor(currentVisibility)}`}`}>
+						<Card
+							className={`shadow-none flex flex-col gap-3 py-4 ${currentVisibility === null ? "" : `${getVisibilityBgColor(currentVisibility)} ${getVisibilityBorderColor(currentVisibility)}`}`}
+						>
 							<HeroStat value={currentVisibility} loading={isLoading} />
 						</Card>
 
@@ -414,7 +424,9 @@ function DashboardPage() {
 					</div>
 
 					<div className="grid gap-4 lg:grid-cols-4">
-						<Card className={`shadow-none flex flex-col gap-3 py-4 ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}>
+						<Card
+							className={`shadow-none flex flex-col gap-3 py-4 ${sovShare === null ? "" : `${getVisibilityBgColor(sovShare)} ${getVisibilityBorderColor(sovShare)}`}`}
+						>
 							<HeroStat value={sovShare} loading={isLoadingSov} />
 						</Card>
 
@@ -445,10 +457,22 @@ function DashboardPage() {
 					<div className="flex flex-wrap justify-center items-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
 						{isLoadingSummary ? (
 							<>
-								<div className="flex items-center gap-2"><IconList className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-28" /></div>
-								<div className="flex items-center gap-2"><IconActivity className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-32" /></div>
-								<div className="flex items-center gap-2"><IconClock className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
-								<div className="flex items-center gap-2"><IconRefresh className="h-4 w-4 flex-shrink-0" /><Skeleton className="h-4 w-24" /></div>
+								<div className="flex items-center gap-2">
+									<IconList className="h-4 w-4 flex-shrink-0" />
+									<Skeleton className="h-4 w-28" />
+								</div>
+								<div className="flex items-center gap-2">
+									<IconActivity className="h-4 w-4 flex-shrink-0" />
+									<Skeleton className="h-4 w-32" />
+								</div>
+								<div className="flex items-center gap-2">
+									<IconClock className="h-4 w-4 flex-shrink-0" />
+									<Skeleton className="h-4 w-24" />
+								</div>
+								<div className="flex items-center gap-2">
+									<IconRefresh className="h-4 w-4 flex-shrink-0" />
+									<Skeleton className="h-4 w-24" />
+								</div>
 							</>
 						) : (
 							<>
@@ -467,16 +491,17 @@ function DashboardPage() {
 								<StatWithTooltip
 									icon={IconClock}
 									label="run frequency"
-									value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
-									tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
+									value={formatRunFrequency(runCadenceHours)}
+									tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(runCadenceHours).replace("~", "")} on average to track changes in AI model responses over time.`}
 								/>
 								<StatWithTooltip
 									icon={IconRefresh}
 									label="last updated"
 									value={formatRelativeTime(lastUpdatedAt)}
-									tooltip={lastUpdatedAt
-										? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
-										: "No evaluations have been run yet."
+									tooltip={
+										lastUpdatedAt
+											? `The last prompts we evaluated for your brand were run on ${new Date(lastUpdatedAt).toLocaleString()}`
+											: "No evaluations have been run yet."
 									}
 								/>
 							</>

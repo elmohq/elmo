@@ -46,7 +46,7 @@ function legacyProviderConnectionKey(provider: string): string {
 }
 
 function legacyTargetKey(config: ModelConfig): string {
-	return `legacy:${formatScrapeTarget(config)}`;
+	return `target:${formatScrapeTarget(config)}`;
 }
 
 function getLegacyTargets(env: Record<string, string | undefined>): ModelConfig[] | null {
@@ -270,6 +270,21 @@ export async function ensureEvaluationConfig(
 		.limit(1);
 	if (instance?.legacyBootstrapAt) return { status: "already-bootstrapped", targetCount: 0 };
 	return bootstrapLegacyEvaluationConfig({ ...options, env });
+}
+
+/**
+ * A monotonically increasing revision carried by scheduled jobs. It lets a
+ * job detect that its cadence or target selection changed after it was queued
+ * without forcing an extra due-history query on unchanged, uniform schedules.
+ */
+export async function getEvaluationConfigurationVersion(): Promise<number> {
+	await ensureEvaluationConfig();
+	const [instance] = await db
+		.select({ configurationVersion: instanceSettings.configurationVersion })
+		.from(instanceSettings)
+		.where(eq(instanceSettings.id, "default"))
+		.limit(1);
+	return instance?.configurationVersion ?? 0;
 }
 
 async function getResolutionTargets(): Promise<EvaluationTargetForResolution[]> {
