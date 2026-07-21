@@ -37,6 +37,8 @@ interface PromptContext {
 	promptId: string;
 	brandId: string;
 	organizationId: string;
+	enabledModels: string[] | null;
+	delayOverrideHours: number | null;
 }
 
 function legacyProviderConnectionKey(provider: string): string {
@@ -55,6 +57,62 @@ function getLegacyTargets(env: Record<string, string | undefined>): ModelConfig[
 
 function isReadOnlyDeployment(env: Record<string, string | undefined>): boolean {
 	return env.DEPLOYMENT_MODE === "demo" || env.READ_ONLY === "true";
+}
+
+function legacyResolutionTargets(env: Record<string, string | undefined>): EvaluationTargetForResolution[] {
+	return (getLegacyTargets(env) ?? []).map((target) => ({
+		id: legacyTargetKey(target),
+		key: legacyTargetKey(target),
+		model: target.model,
+		provider: target.provider,
+		providerConnectionId: legacyProviderConnectionKey(target.provider),
+		providerConnectionEnabled: true,
+		version: target.version ?? null,
+		webSearch: target.webSearch,
+		enabled: true,
+		requiresPromptAssignment: false,
+		defaultCadenceHours: getDefaultDelayHours(),
+		defaultSamplesPerDispatch: RUNS_PER_PROMPT,
+	}));
+}
+
+function legacyScopeConfigs(
+	contexts: readonly PromptContext[],
+	targets: readonly EvaluationTargetForResolution[],
+): EvaluationTargetScopeConfigForResolution[] {
+	const configs: EvaluationTargetScopeConfigForResolution[] = [];
+	const configuredBrands = new Set<string>();
+	for (const context of contexts) {
+		if (configuredBrands.has(context.brandId)) continue;
+		configuredBrands.add(context.brandId);
+		if (context.delayOverrideHours !== null) {
+			configs.push({
+				targetId: null,
+				scope: "brand",
+				organizationId: null,
+				brandId: context.brandId,
+				promptId: null,
+				enabled: null,
+				cadenceHours: context.delayOverrideHours,
+				samplesPerDispatch: null,
+			});
+		}
+		if (context.enabledModels !== null) {
+			for (const target of targets) {
+				configs.push({
+					targetId: target.id,
+					scope: "brand",
+					organizationId: null,
+					brandId: context.brandId,
+					promptId: null,
+					enabled: context.enabledModels.includes(target.model),
+					cadenceHours: null,
+					samplesPerDispatch: null,
+				});
+			}
+		}
+	}
+	return configs;
 }
 
 async function ensureInstanceSettings(): Promise<void> {
@@ -271,6 +329,8 @@ async function getPromptContexts(promptIds: readonly string[]): Promise<PromptCo
 			promptId: prompts.id,
 			brandId: brands.id,
 			organizationId: brands.organizationId,
+			enabledModels: brands.enabledModels,
+			delayOverrideHours: brands.delayOverrideHours,
 		})
 		.from(prompts)
 		.innerJoin(brands, eq(prompts.brandId, brands.id))
@@ -289,7 +349,15 @@ export async function getEffectiveEvaluationTargetsForPrompts(
 	const result = new Map<string, EffectiveEvaluationTarget[]>();
 	if (contexts.length === 0) return result;
 
-	const [targets, scopeConfigs] = await Promise.all([getResolutionTargets(), getScopeConfigsForContexts(contexts)]);
+	const [databaseTargets, databaseScopeConfigs] = await Promise.all([
+		getResolutionTargets(),
+		getScopeConfigsForContexts(contexts),
+	]);
+	const useReadOnlyLegacyFallback = databaseTargets.length === 0 && isReadOnlyDeployment(process.env);
+	const targets = useReadOnlyLegacyFallback ? legacyResolutionTargets(process.env) : databaseTargets;
+	const scopeConfigs = useReadOnlyLegacyFallback
+		? [...databaseScopeConfigs, ...legacyScopeConfigs(contexts, targets)]
+		: databaseScopeConfigs;
 	for (const context of contexts) {
 		result.set(context.promptId, resolveEffectiveEvaluationTargets(targets, scopeConfigs, context));
 	}
@@ -304,20 +372,38 @@ export async function getEffectiveEvaluationTargetsForPrompt(promptId: string): 
 export async function getEffectiveEvaluationTargetsForBrand(brandId: string): Promise<EffectiveEvaluationTarget[]> {
 	await ensureEvaluationConfig();
 	const [brand] = await db
-		.select({ brandId: brands.id, organizationId: brands.organizationId })
+		.select({
+			brandId: brands.id,
+			organizationId: brands.organizationId,
+			enabledModels: brands.enabledModels,
+			delayOverrideHours: brands.delayOverrideHours,
+		})
 		.from(brands)
 		.where(eq(brands.id, brandId))
 		.limit(1);
 	if (!brand) return [];
 
 	const context: PromptContext = { ...brand, promptId: "" };
-	const [targets, scopeConfigs] = await Promise.all([getResolutionTargets(), getScopeConfigsForContexts([context])]);
+	const [databaseTargets, databaseScopeConfigs] = await Promise.all([
+		getResolutionTargets(),
+		getScopeConfigsForContexts([context]),
+	]);
+	const useReadOnlyLegacyFallback = databaseTargets.length === 0 && isReadOnlyDeployment(process.env);
+	const targets = useReadOnlyLegacyFallback ? legacyResolutionTargets(process.env) : databaseTargets;
+	const scopeConfigs = useReadOnlyLegacyFallback
+		? [...databaseScopeConfigs, ...legacyScopeConfigs([context], targets)]
+		: databaseScopeConfigs;
 	return resolveEffectiveEvaluationTargets(targets, scopeConfigs, brand);
 }
 
 export async function getEffectiveEvaluationTargetsForInstance(): Promise<EffectiveEvaluationTarget[]> {
 	await ensureEvaluationConfig();
-	return resolveEffectiveEvaluationTargets(await getResolutionTargets(), [], {});
+	const databaseTargets = await getResolutionTargets();
+	const targets =
+		databaseTargets.length === 0 && isReadOnlyDeployment(process.env)
+			? legacyResolutionTargets(process.env)
+			: databaseTargets;
+	return resolveEffectiveEvaluationTargets(targets, [], {});
 }
 
 export async function getPromptCadenceHours(promptId: string): Promise<number | undefined> {
