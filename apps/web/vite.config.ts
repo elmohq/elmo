@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { sentryTanstackStart } from "@sentry/tanstackstart-react/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -9,20 +10,6 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
-
-const sentryPlugins = await (async () => {
-	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
-		const { sentryTanstackStart } = await import("@sentry/tanstackstart-react/vite");
-		return [
-			sentryTanstackStart({
-				org: process.env.SENTRY_ORG,
-				project: process.env.SENTRY_PROJECT,
-				authToken: process.env.SENTRY_AUTH_TOKEN,
-			}),
-		];
-	}
-	return [];
-})();
 
 export default defineConfig({
 	build: {
@@ -44,6 +31,8 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
+			exportConditions: ["node", "import", "default", "!unwasm"],
+			traceDeps: ["@takumi-rs/core"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
@@ -58,6 +47,6 @@ export default defineConfig({
 			},
 		}),
 		viteReact(),
-		...sentryPlugins,
+		...sentryTanstackStart(),
 	],
 });
