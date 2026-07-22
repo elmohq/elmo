@@ -111,7 +111,7 @@ import {
 	listProviderCredentialsImpl,
 	setOrganizationSettingsImpl,
 	upsertProviderCredentialImpl,
-} from "./instance-config";
+} from "./instance-config.server";
 
 beforeEach(() => {
 	state.entityDeny = null;

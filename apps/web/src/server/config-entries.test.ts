@@ -92,7 +92,7 @@ vi.mock("@workspace/lib/db/db", () => {
 	};
 });
 
-import { setConfigValuesImpl } from "./config-entries";
+import { setConfigValuesImpl } from "./config-entries.server";
 
 const unlimitedEntitlements = {
 	standardModelMenu: null,
