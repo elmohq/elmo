@@ -10,7 +10,7 @@ import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { PromptsEditor } from "@/components/prompts-editor";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 
@@ -25,7 +25,7 @@ const getPromptsForEditing = createServerFn({ method: "GET" })
 			.select()
 			.from(prompts)
 			.where(eq(prompts.brandId, data.brandId))
-			.orderBy(desc(prompts.enabled), prompts.createdAt);
+			.orderBy(prompts.createdAt, prompts.id);
 
 		return brandPrompts;
 	});
