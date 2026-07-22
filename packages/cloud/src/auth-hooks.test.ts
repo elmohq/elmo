@@ -21,10 +21,11 @@ describe("getCloudAuthOptions", () => {
 		vi.stubEnv("RESEND_API_KEY", "re_test_x");
 	});
 
-	it("requires email verification and sends it on signup", () => {
+	it("requires email verification and sends it on signup and unverified sign-in", () => {
 		const options = getCloudAuthOptions();
 		expect(options.requireEmailVerification).toBe(true);
 		expect(options.emailVerification?.sendOnSignUp).toBe(true);
+		expect(options.emailVerification?.sendOnSignIn).toBe(true);
 	});
 
 	it("configures Google OAuth from env", () => {

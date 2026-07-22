@@ -17,6 +17,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 		requireEmailVerification: true,
 		emailVerification: {
 			sendOnSignUp: true,
+			sendOnSignIn: true,
 			autoSignInAfterVerification: true,
 			sendVerificationEmail: async ({ user, url }) => {
 				await sendEmail(user.email, verificationEmail({ url }));
