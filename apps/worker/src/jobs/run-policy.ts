@@ -155,6 +155,15 @@ export interface RunnableDecision<T extends RunPolicyTarget> {
  * (unless bypassed) → the target's own 24h budget → the org-wide assignable
  * budget. Org usage accrues locally as assignable targets are admitted, so two
  * assignable targets in one job can't both slip past a nearly-full pool.
+ *
+ * The org-wide budget is a SOFT cap across jobs: concurrent `process-prompt`
+ * jobs for different prompts in the same org each read the same trailing-24h
+ * snapshot (`orgAssignableUsedByModel`) before either records its runs, so under
+ * concurrency the pool × runs/day ceiling can be modestly exceeded. This is
+ * accepted by design — the overshoot is bounded by (concurrent same-org jobs ×
+ * replication), the window is rolling, and completion-anchored dueness makes it
+ * self-correct next cycle. It's a cost guard, not a hard invariant, so it isn't
+ * worth an advisory lock or a dedicated budget-counter row across count+insert.
  */
 export function selectRunnableTargets<T extends RunPolicyTarget>(input: RunnableDecisionInput<T>): RunnableDecision<T> {
 	const orgUsed = new Map(input.orgAssignableUsedByModel);

@@ -103,11 +103,11 @@ async function runMaintenanceCheck(): Promise<void> {
 	// (A8d): IN-list config rows + per-org entitlements + the cached catalog, fed
 	// to the pure resolver per brand. Never a per-brand resolveBrandTargets loop.
 	const orgIds = [...new Set(enabledBrands.map((b) => b.organizationId))];
-	const batch = await fetchConfigRowsForBrands(orgIds, brandIds);
-	const entitlementsByOrg = new Map<string, Entitlements>();
-	for (const orgId of orgIds) {
-		entitlementsByOrg.set(orgId, await getEntitlements(orgId));
-	}
+	const [batch, entitlementsList] = await Promise.all([
+		fetchConfigRowsForBrands(orgIds, brandIds),
+		Promise.all(orgIds.map((orgId) => getEntitlements(orgId))),
+	]);
+	const entitlementsByOrg = new Map<string, Entitlements>(orgIds.map((orgId, i) => [orgId, entitlementsList[i]]));
 
 	const brandTargets = new Map<string, EffectiveTarget[]>();
 	let zeroTargetBrands = 0;

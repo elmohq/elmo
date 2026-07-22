@@ -12,8 +12,10 @@ import {
 } from "@workspace/lib/db/schema";
 import { and, count, eq, gt, inArray, sql } from "drizzle-orm";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { ASSIGNABLE_MODELS } from "@workspace/config/plans";
 import {
 	type BrandResolution,
+	countAssignableModelUsage,
 	type EffectiveTarget,
 	resolveBrandTargets,
 	resolvePromptTargets,
@@ -80,18 +82,16 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		return null;
 	}
 
-	const brand = await db.query.brands.findFirst({
-		where: eq(brands.id, prompt.brandId),
-	});
+	// Brand and competitors both key only off prompt.brandId — fetch together.
+	const [brand, brandCompetitors] = await Promise.all([
+		db.query.brands.findFirst({ where: eq(brands.id, prompt.brandId) }),
+		db.query.competitors.findMany({ where: eq(competitors.brandId, prompt.brandId) }),
+	]);
 
 	if (!brand) {
 		console.error(`Brand not found: ${prompt.brandId}`);
 		return null;
 	}
-
-	const brandCompetitors = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, prompt.brandId),
-	});
 
 	return {
 		prompt,
@@ -345,7 +345,13 @@ function toModelConfig(target: EffectiveTarget): ModelConfig {
  * resolves to zero targets completes WITHOUT rescheduling (A8b) — maintenance
  * revives it when the catalog/config changes.
  */
+const CLAUDE = ASSIGNABLE_MODELS[0];
+
 export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
+	// The assignable (Claude) pool count is org-scoped and stable across this
+	// batch — the job only reads and runs, never mutates assignments — so compute
+	// it once per org and reuse it for every prompt in that org.
+	const assignablePoolByOrg = new Map<string, number>();
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
 		const { promptId, force = false } = job.data;
@@ -371,7 +377,12 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		// Resolve effective targets from the DB config hierarchy.
 		const brandResolution = await resolveBrandTargets(brand, brand.organizationId);
-		const { targets, excluded } = await resolvePromptTargets(prompt, brandResolution);
+		let assignablePoolUsage = assignablePoolByOrg.get(brand.organizationId);
+		if (assignablePoolUsage === undefined) {
+			assignablePoolUsage = await countAssignableModelUsage(brand.organizationId, CLAUDE);
+			assignablePoolByOrg.set(brand.organizationId, assignablePoolUsage);
+		}
+		const { targets, excluded } = await resolvePromptTargets(prompt, brandResolution, { assignablePoolUsage });
 
 		for (const ex of excluded) {
 			console.debug(
@@ -389,13 +400,10 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		const now = new Date();
 		const windowStart = new Date(now.getTime() - RUN_WINDOW_MS);
-		const { lastRunAtMsByKey, recentCountByKey } = await loadPromptRunHistory(promptId, windowStart);
-		const orgAssignableUsedByModel = await loadOrgAssignableUsage(
-			brand.organizationId,
-			targets,
-			brandResolution.entitlements,
-			windowStart,
-		);
+		const [{ lastRunAtMsByKey, recentCountByKey }, orgAssignableUsedByModel] = await Promise.all([
+			loadPromptRunHistory(promptId, windowStart),
+			loadOrgAssignableUsage(brand.organizationId, targets, brandResolution.entitlements, windowStart),
+		]);
 
 		const { runnable, skipped } = selectRunnableTargets({
 			targets,
