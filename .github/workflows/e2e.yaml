@@ -117,15 +117,7 @@ jobs:
       # builds those once — building all three costs little more than building
       # web alone. postgres is an image pull, so `build` skips it.
       - name: Build images
-        env:
-          SENTRY_AUTH_TOKEN: fake-sentry-auth-token
-          SENTRY_ORG: e2e
-          SENTRY_PROJECT: web
-        run: |
-          docker compose build \
-            --build-arg "SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}" \
-            --build-arg "SENTRY_ORG=${SENTRY_ORG}" \
-            --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT}"
+        run: docker compose build
 
       # Start web only (with its deps db-migrate + postgres). The worker stays
       # down for now — it comes up in phase 2, after the fixture suites run.

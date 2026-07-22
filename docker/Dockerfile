@@ -52,11 +52,6 @@ ARG DEPLOYMENT_MODE=local
 ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
 ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
 
-# Sentry's Vite plugin uses these during the build.
-ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_ORG
-ARG SENTRY_PROJECT
-
 # Build the web application (increase heap for large bundles)
 RUN pnpm --filter @workspace/web build
 
