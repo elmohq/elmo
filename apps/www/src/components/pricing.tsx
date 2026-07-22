@@ -11,10 +11,7 @@ interface Plan {
 	price: string;
 	priceLabel: string;
 	features: string[];
-	cta:
-		| { type: "link"; text: string; href: string }
-		| { type: "waitlist" }
-		| { type: "contact" };
+	cta: { type: "link"; text: string; href: string } | { type: "waitlist" } | { type: "contact" };
 }
 
 const plans: Plan[] = [
@@ -22,16 +19,16 @@ const plans: Plan[] = [
 		id: "self-hosted",
 		tag: "01",
 		name: "Self-Hosted",
-		desc: "Run on your own infra with full access.",
+		desc: "Run the tracker, prompts, and history in your own environment.",
 		price: "$0",
 		priceLabel: "",
 		features: [
-			"Unlimited prompts",
-			"All AI models supported",
-			"Citation analysis",
-			"Competitor tracking",
-			"Full source code access",
-			"Community support",
+			"Track as many prompts as you need",
+			"Choose models and answer surfaces",
+			"Citation data by domain and URL",
+			"Competitor mentions for each prompt",
+			"Read the MIT-licensed source code",
+			"Maintainer community in Discord",
 		],
 		cta: { type: "link", text: "Get started", href: "/docs" },
 	},
@@ -39,15 +36,15 @@ const plans: Plan[] = [
 		id: "cloud",
 		tag: "02",
 		name: "Cloud",
-		desc: "Managed hosting, no maintenance.",
+		desc: "Let Elmo operate the tracker when self-hosting is not your job.",
 		price: "Coming Soon",
 		priceLabel: "",
 		features: [
-			"Everything in Self-Hosted",
-			"Managed hosting",
-			"Automatic updates",
+			"Prompts, citations, and competitor tracking",
+			"Elmo-managed hosting",
+			"Planned automatic updates",
 			"Priority support",
-			"Daily backups",
+			"Planned daily backups",
 			"Usage analytics",
 		],
 		cta: { type: "waitlist" },
@@ -56,16 +53,16 @@ const plans: Plan[] = [
 		id: "white-label",
 		tag: "03",
 		name: "White Label",
-		desc: "Provide AEO for all of your customers.",
+		desc: "Give clients AI-visibility reporting under your own brand.",
 		price: "Custom",
 		priceLabel: "",
 		features: [
-			"Everything in Cloud",
-			"Custom branding",
-			"Custom domain",
-			"SSO",
+			"Managed tracking for client brands",
+			"Apply your visual identity",
+			"Serve dashboards on a custom domain",
+			"Single sign-on",
 			"Shared Slack channel",
-			"Prioritized features",
+			"Request feature prioritization",
 		],
 		cta: { type: "contact" },
 	},
@@ -76,35 +73,23 @@ export function Pricing() {
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div>
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ PRICING
-					</p>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PRICING</p>
 					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Self-host it, run it in our cloud, or white-label it for your
-						customers.
+						Choose where your AI-visibility data lives and who sees it.
 					</h2>
 				</div>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
 					{plans.map((plan) => (
-						<div
-							key={plan.id}
-							className="flex flex-col justify-between bg-white p-6 lg:p-8"
-						>
+						<div key={plan.id} className="flex flex-col justify-between bg-white p-6 lg:p-8">
 							<div>
 								<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
 									{plan.tag}
 								</span>
-								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">
-									{plan.name}
-								</h3>
-								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">
-									{plan.desc}
-								</p>
+								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
+								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">{plan.desc}</p>
 								<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
-									<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">
-										{plan.price}
-									</span>
+									<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">{plan.price}</span>
 									{plan.priceLabel && (
 										<span className="font-mono text-[11px] uppercase tracking-[0.15em] text-zinc-500">
 											{plan.priceLabel}
@@ -114,10 +99,7 @@ export function Pricing() {
 								<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
 									{plan.features.map((f) => (
 										<li key={f} className="flex items-start gap-2">
-											<Check
-												className="mt-0.5 size-3.5 shrink-0 text-blue-600"
-												strokeWidth={3}
-											/>
+											<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
 											<span>{f}</span>
 										</li>
 									))}
@@ -133,12 +115,8 @@ export function Pricing() {
 										<ArrowRight className="size-3.5" />
 									</Link>
 								)}
-								{plan.cta.type === "waitlist" && (
-									<WaitlistForm source="pricing" />
-								)}
-								{plan.cta.type === "contact" && (
-									<ContactForm source="pricing" />
-								)}
+								{plan.cta.type === "waitlist" && <WaitlistForm source="pricing" />}
+								{plan.cta.type === "contact" && <ContactForm source="pricing" />}
 							</div>
 						</div>
 					))}

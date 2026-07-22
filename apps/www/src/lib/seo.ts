@@ -2,7 +2,8 @@ import { getMarketingOgImage } from "./og";
 
 export const SITE_URL = "https://www.elmohq.com";
 export const SITE_NAME = "Elmo";
-export const SITE_DESCRIPTION = "Open source AI visibility tracking and optimization.";
+export const SITE_DESCRIPTION =
+	"Track how AI answer engines mention, cite, and compare your brand with open-source software you can self-host.";
 export const SITE_LOGO_URL = `${SITE_URL}/brand/icons/elmo-icon-512.png`;
 
 export function canonicalUrl(path: string): string {

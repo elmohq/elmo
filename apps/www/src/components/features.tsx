@@ -22,73 +22,73 @@ const features: Feature[] = [
 	{
 		num: "01",
 		eyebrow: "DASHBOARD",
-		title: "Your AI visibility command center.",
+		title: "Start with the questions that shape a buyer's shortlist.",
 		description:
-			"See everything at a glance — current visibility, share of voice, 30-day trends, and the key metrics behind every score.",
+			"See current visibility, share of voice, and 30-day trends, then open the prompt and model data behind each score.",
 		graphic: <OverviewPageGraphic />,
 	},
 	{
 		num: "02",
 		eyebrow: "VISIBILITY",
-		title: "Track visibility across every prompt and model.",
+		title: "Find the prompts where competitors replace you.",
 		description:
-			"Filter by AI model, time range, and tags. See per-prompt visibility scores with trend lines comparing your brand against competitors.",
+			"Filter by model, time range, and tag. Compare your visibility against named competitors for each tracked question.",
 		graphic: <VisibilityPageGraphic />,
 	},
 	{
 		num: "03",
 		eyebrow: "SHARE OF VOICE",
-		title: "See how you stack up against the competition.",
+		title: "See which brands AI names when buyers compare options.",
 		description:
-			"Compare your brand's mention share against every competitor. A live leaderboard ranks who AI engines name most — so you can see who dominates and where the gaps are.",
+			"Compare mention share against every competitor. The leaderboard shows the categories where your brand appears and the ones rivals own.",
 		graphic: <ShareOfVoicePageGraphic />,
 	},
 	{
 		num: "04",
 		eyebrow: "QUERY FAN-OUT",
-		title: "See the searches behind every AI answer.",
+		title: "See the web searches behind every AI answer.",
 		description:
-			"AI engines fan a single prompt out into dozens of web searches. Track the exact queries and keywords they generate — and how they rewrite your prompts along the way.",
+			"Follow the queries and keywords an engine generates from a single prompt, including the way it rewrites the original question.",
 		graphic: <QueryFanOutPageGraphic />,
 	},
 	{
 		num: "05",
 		eyebrow: "CITATIONS",
-		title: "Understand where AI gets its information.",
+		title: "See which sources an answer relies on.",
 		description:
-			"See which domains and URLs AI models cite most, track new and dropped sources over time, and break down citations by category — brand, competitor, social, and more.",
+			"Track cited domains and URLs over time, including new and dropped sources, then separate brand, competitor, social, and other citations.",
 		graphic: <CitationsPageGraphic />,
 	},
 	{
 		num: "06",
 		eyebrow: "OPPORTUNITIES",
-		title: "Know exactly what to do next.",
+		title: "Choose the next page or placement to pursue.",
 		description:
-			"Turn your data into action with AI-generated recommendations — content to create, pages to refresh, and third-party sources to pitch — each ranked by impact.",
+			"Review ranked recommendations for content to create, pages to refresh, and third-party sources to pitch, tied to the gaps in your tracked answers.",
 		graphic: <OpportunitiesPageGraphic />,
 	},
 	{
 		num: "07",
 		eyebrow: "PROMPTS",
-		title: "Search, tag, and organize your prompts.",
+		title: "Keep every tracked question tied to a topic or campaign.",
 		description:
-			"Find any prompt instantly with full-text search and highlight matching. Tag prompts for easy filtering and track visibility scores per prompt.",
+			"Search prompt text, tag questions for filtering, and track visibility for each prompt instead of losing the context in one blended score.",
 		graphic: <PromptSearchGraphic />,
 	},
 	{
 		num: "08",
 		eyebrow: "DEEP DIVE",
-		title: "Inspect every individual AI response.",
+		title: "Read the response before you act on the score.",
 		description:
-			"Drill into any prompt to see exactly what each AI model said, which brands were mentioned, what sources were cited, and how the response was constructed.",
+			"Open any prompt to read each model response, see the brands it mentioned, and review the sources it cited.",
 		graphic: <PromptDetailGraphic />,
 	},
 	{
 		num: "09",
 		eyebrow: "TRENDS",
-		title: "Track visibility trends over months.",
+		title: "See whether your work changes how AI names you.",
 		description:
-			"Watch how your brand's AI visibility changes over time compared to competitors. Spot the impact of content changes and market shifts.",
+			"Compare your visibility over time with competitors to spot changes after content work and shifts in the market.",
 		graphic: <VisibilityTrendGraphic />,
 	},
 ];
@@ -100,7 +100,7 @@ export function Features() {
 				<div>
 					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ FEATURES</p>
 					<h2 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						All you need to grow AI visibility.
+						Turn AI-answer gaps into the next move.
 					</h2>
 				</div>
 

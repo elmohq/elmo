@@ -97,43 +97,32 @@ export function Stats() {
 		<section className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div>
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ MODEL COVERAGE
-					</p>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ MODEL COVERAGE</p>
 					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Track any AI model.
+						Track the answer surfaces that shape buyer research.
 					</h2>
 					<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
-						See exactly what ChatGPT and other AI search users see exactly with
-						web scraping. Track LLM responses with their APIs or OpenRouter.
-						Bring your own keys.
+						Use browser collection for consumer AI search surfaces, or connect direct APIs and OpenRouter for model
+						responses. You choose the providers and keep the keys.
 					</p>
 				</div>
 
 				<div className="mt-12 overflow-hidden rounded-md border border-zinc-200 bg-zinc-200">
-					<ul
-						role="list"
-						className="grid grid-cols-2 gap-px bg-zinc-200 sm:grid-cols-3 md:grid-cols-5"
-					>
+					<ul role="list" className="grid grid-cols-2 gap-px bg-zinc-200 sm:grid-cols-3 md:grid-cols-5">
 						{models.map((m) => {
 							const Icon = m.icon;
 							return (
-								<li
-									key={m.name}
-									className="flex h-24 flex-col items-center justify-center gap-2 bg-white px-3 py-4"
-								>
+								<li key={m.name} className="flex h-24 flex-col items-center justify-center gap-2 bg-white px-3 py-4">
 									<span className="size-7 text-zinc-700">
 										<Icon />
 									</span>
-									<span className="text-center text-[13px] font-medium text-zinc-900">
-										{m.name}
-									</span>
+									<span className="text-center text-[13px] font-medium text-zinc-900">{m.name}</span>
 								</li>
 							);
 						})}
 					</ul>
 					<div className="border-t border-zinc-200 bg-zinc-50 px-4 py-3 text-center font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						and all the rest!
+						configure the engines you need
 					</div>
 				</div>
 			</div>

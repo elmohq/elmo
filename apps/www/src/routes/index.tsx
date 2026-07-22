@@ -11,22 +11,15 @@ import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
 import { HOME_FAQS } from "@/lib/faqs";
-import {
-	SITE_NAME,
-	SITE_DESCRIPTION,
-	ogMeta,
-	softwareApplicationJsonLd,
-	faqJsonLd,
-	canonicalUrl,
-} from "@/lib/seo";
+import { SITE_NAME, SITE_DESCRIPTION, ogMeta, softwareApplicationJsonLd, faqJsonLd, canonicalUrl } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
 	head: () => ({
 		meta: [
-			{ title: `${SITE_NAME} · Open Source AI Visibility` },
+			{ title: `${SITE_NAME} · AI Answer Visibility You Can Inspect` },
 			{ name: "description", content: SITE_DESCRIPTION },
 			...ogMeta({
-				title: `${SITE_NAME} · Open Source AI Visibility`,
+				title: `${SITE_NAME} · AI Answer Visibility You Can Inspect`,
 				description: SITE_DESCRIPTION,
 				path: "/",
 			}),
