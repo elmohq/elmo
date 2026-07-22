@@ -78,10 +78,10 @@ async function seed() {
     // -----------------------------------------------------------------------
     // The seeded catalog is what keeps E2E off paid APIs: the worker resolves
     // targets from `model_targets`, and stamping `instance_meta` makes its
-    // first-boot SCRAPE_TARGETS import a no-op — so this single no-network
-    // `stub` row is the only target the worker ever runs (its identity tuple
-    // matches what `stub:stub` imports to). `ensureInstanceConfig` itself is
-    // exercised separately by config-import.ts.
+    // first-boot env import a no-op — so this single no-network `stub` row is
+    // the only target the worker ever runs. The env→DB import path is a legacy,
+    // one-time migration covered by the config import unit tests; E2E seeds the
+    // catalog directly and never goes through SCRAPE_TARGETS.
     await client.query(
       `INSERT INTO model_targets (organization_id, model, provider, version, web_search, enabled)
        VALUES (NULL, 'stub', 'stub', NULL, false, true)`

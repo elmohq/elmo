@@ -140,11 +140,6 @@ jobs:
       - name: Seed test data
         run: cd e2e && npx tsx seed.ts
 
-      # Exercises the one-shot SCRAPE_TARGETS→catalog import directly against
-      # the database, then restores the seeded catalog state it started from.
-      - name: Verify env config import
-        run: cd e2e && npx tsx config-import.ts
-
       # Phase 1 — worker still down. Run everything that reads the seeded
       # fixtures, so no background job can mutate them mid-suite.
       - name: Run Playwright E2E tests
