@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { generateText, Output } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
+import { ANTHROPIC_WEB_SEARCH_MAX_USES, API_PROVIDER_MAX_OUTPUT_TOKENS, RESEARCH_WEB_SEARCH_MAX_USES } from "../config";
 import type {
 	Provider,
 	ScrapeResult,
@@ -14,9 +15,8 @@ import type { Citation } from "../../text-extraction";
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
 
 function getAnthropicLanguageModel(model: string) {
-	return process.env.ANTHROPIC_API_KEY
-		? createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(model)
-		: anthropic(model);
+	const apiKey = process.env.ANTHROPIC_API_KEY;
+	return apiKey ? createAnthropic({ apiKey })(model) : anthropic(model);
 }
 
 function sanitizeForJson(obj: unknown): unknown {
@@ -34,16 +34,17 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		tools.push({
 			type: "web_search_20250305",
 			name: "web_search",
-			max_uses: 1,
+			max_uses: ANTHROPIC_WEB_SEARCH_MAX_USES,
 		});
 	}
 
-	const makeRequest = () => client.messages.create({
-		model,
-		max_tokens: 4000,
-		messages: [{ role: "user", content: prompt }],
-		...(tools.length > 0 ? { tools } : {}),
-	});
+	const makeRequest = () =>
+		client.messages.create({
+			model,
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"],
+			messages: [{ role: "user", content: prompt }],
+			...(tools.length > 0 ? { tools } : {}),
+		});
 
 	let response = await makeRequest();
 
@@ -74,9 +75,7 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		return {
 			...block,
 			content: block.content.map((r: any) =>
-				r.type === "web_search_result"
-					? { type: r.type, url: r.url, title: r.title }
-					: r,
+				r.type === "web_search_result" ? { type: r.type, url: r.url, title: r.title } : r,
 			),
 		};
 	});
@@ -110,7 +109,9 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 							domain: parsed.hostname.replace(/^www\./, ""),
 							citationIndex: idx++,
 						});
-					} catch (e) { console.warn(`Anthropic: skipping invalid citation URL: ${cit.url}`, e); }
+					} catch (e) {
+						console.warn(`Anthropic: skipping invalid citation URL: ${cit.url}`, e);
+					}
 				}
 			}
 		}
@@ -128,7 +129,9 @@ function extractAnthropicCitations(content: Anthropic.Messages.ContentBlock[]): 
 							domain: parsed.hostname.replace(/^www\./, ""),
 							citationIndex: idx++,
 						});
-					} catch (e) { console.warn(`Anthropic: skipping invalid search result URL: ${result.url}`, e); }
+					} catch (e) {
+						console.warn(`Anthropic: skipping invalid search result URL: ${result.url}`, e);
+					}
 				}
 			}
 		}
@@ -157,7 +160,9 @@ export const anthropicApi: Provider = {
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getAnthropicLanguageModel(DEFAULT_RESEARCH_MODEL),
-			...(webSearch ? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: 5 }) } } : {}),
+			...(webSearch
+				? { tools: { web_search: anthropic.tools.webSearch_20250305({ maxUses: RESEARCH_WEB_SEARCH_MAX_USES }) } }
+				: {}),
 			output: Output.object({ schema }),
 			prompt,
 		});
@@ -167,4 +172,3 @@ export const anthropicApi: Provider = {
 		};
 	},
 };
-

@@ -1,6 +1,13 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
+import {
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+	OPENAI_WEB_SEARCH_MAX_TOOL_CALLS,
+	RESEARCH_WEB_SEARCH_CONTEXT_SIZE,
+	RESEARCH_WEB_SEARCH_MAX_USES,
+} from "../config";
 import type {
 	Provider,
 	ScrapeResult,
@@ -12,9 +19,8 @@ import type {
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function getOpenAIResponsesModel(model: string) {
-	const provider = process.env.OPENAI_API_KEY
-		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-		: openai;
+	const apiKey = process.env.OPENAI_API_KEY;
+	const provider = apiKey ? createOpenAI({ apiKey }) : openai;
 	return provider.responses(model);
 }
 
@@ -22,15 +28,21 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	const tools: Record<string, any> = {};
 	if (options?.webSearch) {
 		tools.web_search = openai.tools.webSearch({
-			searchContextSize: "low",
+			searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
 		}) as any;
 	}
 
 	const result = await generateText({
-		model: openai.responses(model),
+		// Routed through getOpenAIResponsesModel (not the bare `openai` global,
+		// which reads process.env internally) so overlay credentials apply here.
+		model: getOpenAIResponsesModel(model),
 		prompt,
+		maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
 		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
+		...(Object.keys(tools).length > 0
+			? { providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } } }
+			: {}),
 	});
 
 	// The AI SDK doesn't populate result.response.body for the Responses API, so
@@ -86,7 +98,14 @@ export const openaiApi: Provider = {
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
-			...(webSearch ? { tools: { web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any } } : {}),
+			...(webSearch
+				? {
+						tools: {
+							web_search: openai.tools.webSearch({ searchContextSize: RESEARCH_WEB_SEARCH_CONTEXT_SIZE }) as any,
+						},
+					}
+				: {}),
+			...(webSearch ? { providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } } } : {}),
 			output: Output.object({ schema }),
 			prompt,
 		});
