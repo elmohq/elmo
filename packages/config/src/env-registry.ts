@@ -351,6 +351,12 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Sentry auth token for sourcemap upload at build time.",
 	},
 	{
+		name: "SENTRY_BUILD_SMOKE",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Enable Sentry's offline build smoke-test mode.",
+	},
+	{
 		name: "VITE_SENTRY_DSN",
 		scope: "client",
 		requiredBy: "optional",

@@ -73,6 +73,7 @@ declare global {
 			readonly SENTRY_ORG?: string;
 			readonly SENTRY_PROJECT?: string;
 			readonly SENTRY_AUTH_TOKEN?: string;
+			readonly SENTRY_BUILD_SMOKE?: string;
 			readonly DISABLE_TELEMETRY?: string;
 			readonly STRIPE_SECRET_KEY?: string;
 			readonly STRIPE_WEBHOOK_SECRET?: string;

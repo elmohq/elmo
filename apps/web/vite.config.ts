@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -9,24 +9,39 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
+const isSentryBuildSmokeTest = process.env.SENTRY_BUILD_SMOKE === "1";
 
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
 		const { sentryTanstackStart } = await import("@sentry/tanstackstart-react/vite");
-		return sentryTanstackStart({
+		const plugins = sentryTanstackStart({
 			org: process.env.SENTRY_ORG,
 			project: process.env.SENTRY_PROJECT,
 			authToken: process.env.SENTRY_AUTH_TOKEN,
-		}).map((plugin) => {
-			if (plugin.name !== "sentry-vite-plugin") return plugin;
-
-			return {
-				...plugin,
-				// Nitro's WASM transform is incompatible with Sentry's chunk instrumentation.
-				applyToEnvironment: (environment: Parameters<NonNullable<Plugin["applyToEnvironment"]>>[0]) =>
-					environment.name !== "nitro",
-			};
+			...(isSentryBuildSmokeTest
+				? {
+						// Keep the complete source-map path on: disabling uploads skips the
+						// Nitro transformation that this test protects. The local endpoint and
+						// error handler ensure fake credentials never contact Sentry.
+						sentryUrl: "http://127.0.0.1:9",
+						errorHandler: () => {},
+						silent: true,
+						release: {
+							inject: false,
+							create: false,
+							finalize: false,
+							setCommits: false,
+						},
+						telemetry: false,
+					}
+				: {}),
 		});
+
+		// Both Vite and Nitro source maps are configured below. The adapter's
+		// automatic source-map config hook runs after Nitro derives its build
+		// environments, causing Unwasm to process Takumi's generated module twice.
+		// Keep Sentry's remaining plugins so debug IDs and source-map upload still run.
+		return plugins.filter((plugin) => plugin.name !== "sentry-tanstackstart-react-source-maps");
 	}
 	return [];
 })();
@@ -55,7 +70,11 @@ export default defineConfig({
 			alias: {
 				tslib: tslibEsm,
 			},
-			noExternals: ["@opentelemetry/instrumentation", "@opentelemetry/api", "@prisma/instrumentation"],
+			noExternals: [
+				"@opentelemetry/instrumentation",
+				"@opentelemetry/api",
+				"@prisma/instrumentation",
+			],
 			rollupConfig: {
 				external: ["fsevents"],
 			},

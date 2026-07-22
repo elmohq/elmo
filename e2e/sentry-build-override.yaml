@@ -1,0 +1,12 @@
+# Enables the real Sentry Vite plugin while E2E builds the Docker image. The
+# app's smoke-test mode retains the complete source-map path but redirects its
+# upload attempt to localhost; the DSNs in the workflow are non-production.
+services:
+  web:
+    build:
+      args:
+        SENTRY_AUTH_TOKEN: e2e-sentry-auth-token
+        SENTRY_ORG: e2e
+        SENTRY_PROJECT: e2e
+        SENTRY_BUILD_SMOKE: "1"
+        VITE_SENTRY_DSN: https://examplePublicKey@o0.ingest.sentry.io/0
