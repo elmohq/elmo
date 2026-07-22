@@ -50,16 +50,12 @@ COPY . .
 # Build arguments for VITE_ env vars (baked into client bundle)
 ARG DEPLOYMENT_MODE=local
 ARG VITE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE}
-ARG VITE_SENTRY_DSN
 ENV VITE_DEPLOYMENT_MODE=${VITE_DEPLOYMENT_MODE}
-ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
 
-# Sentry's Vite plugin uses these only while producing and uploading source maps.
+# Sentry's Vite plugin uses these during the build.
 ARG SENTRY_AUTH_TOKEN
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
-ARG SENTRY_RELEASE
-ARG SENTRY_URL
 
 # Build the web application (increase heap for large bundles)
 RUN pnpm --filter @workspace/web build

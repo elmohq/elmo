@@ -13,11 +13,13 @@ const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
 		const { sentryTanstackStart } = await import("@sentry/tanstackstart-react/vite");
-		return sentryTanstackStart({
-			org: process.env.SENTRY_ORG,
-			project: process.env.SENTRY_PROJECT,
-			authToken: process.env.SENTRY_AUTH_TOKEN,
-		});
+		return [
+			sentryTanstackStart({
+				org: process.env.SENTRY_ORG,
+				project: process.env.SENTRY_PROJECT,
+				authToken: process.env.SENTRY_AUTH_TOKEN,
+			}),
+		];
 	}
 	return [];
 })();
@@ -43,7 +45,6 @@ export default defineConfig({
 		tanstackStart(),
 		nitro({
 			exportConditions: ["!unwasm"],
-			traceDeps: ["@takumi-rs/core"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
