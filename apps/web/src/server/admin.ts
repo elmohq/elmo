@@ -57,7 +57,7 @@ function brandCadenceFromBatch(
 		(row) => row.scope === "brand" && row.key === CADENCE_KEY && row.model === null && row.targetId === null,
 	);
 	return {
-		resolvedCadenceHours: cadence.provenance === "default" ? getDefaultDelayHours() : (cadence.value as number),
+		resolvedCadenceHours: cadence.provenance === "default" ? getDefaultDelayHours() : cadence.value,
 		delayOverrideHours: typeof overrideRow?.value === "number" ? overrideRow.value : null,
 	};
 }

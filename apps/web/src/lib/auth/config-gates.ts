@@ -60,6 +60,23 @@ export async function requireConfigWrite(input: {
 	if (!decision.allowed) throw new Error(`Forbidden: ${decision.reason}`);
 }
 
+/**
+ * Batch form for a multi-key save that reuses an in-hand session: the actor is
+ * the same for every key at one (scope, org), so resolve it once (one `member`
+ * query) and check each key's per-key policy. Throws on the first denied key.
+ */
+export async function requireConfigWrites(
+	session: AuthSession,
+	input: { keys: string[]; scope: ConfigScope; orgId: string | null },
+): Promise<void> {
+	const actor = await getConfigActor(session, input.orgId);
+	const mode = getDeployment().mode;
+	for (const key of input.keys) {
+		const decision = evaluateConfigWrite({ mode, key, scope: input.scope, actor });
+		if (!decision.allowed) throw new Error(`Forbidden: ${decision.reason}`);
+	}
+}
+
 /** Throw unless the caller may write the given entity table (instance-admin only). */
 export async function requireEntityWrite(entity: ConfigEntity): Promise<void> {
 	const session = await requireAuthSession();

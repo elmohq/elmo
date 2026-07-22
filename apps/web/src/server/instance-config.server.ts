@@ -34,9 +34,7 @@ import {
 	type JsonValue,
 	type ProviderCredentialStatus,
 } from "@/server/config-enforcement";
-// Type-only (erased at runtime — no circular import): the write validator and
-// its inferred shape live in the wrapper module.
-import type { EntitlementOverridesInput } from "./instance-config";
+import type { EntitlementOverridesInput, ModelTargetInput, ModelTargetUpdateInput } from "./instance-config.schemas";
 
 /** Read gate for the admin config surfaces (demo renders them read-only). */
 export async function requireInstanceAdminRead() {
@@ -98,27 +96,6 @@ function toTargetRow(row: typeof modelTargets.$inferSelect) {
 }
 
 const DUPLICATE_TARGET_MESSAGE = "A target with this model, provider, version, and web-search flag already exists.";
-
-export interface ModelTargetInput {
-	model: string;
-	provider: string;
-	version?: string | null;
-	webSearch: boolean;
-	enabled: boolean;
-	priority: number;
-	requiredEntitlement?: "webSearchApiTargets" | "custom" | null;
-}
-
-export interface ModelTargetUpdateInput {
-	id: string;
-	model?: string;
-	provider?: string;
-	version?: string | null;
-	webSearch?: boolean;
-	enabled?: boolean;
-	priority?: number;
-	requiredEntitlement?: "webSearchApiTargets" | "custom" | null;
-}
 
 /** The instance catalog, every row (enabled and disabled), for the admin UI. */
 export async function listModelTargetsImpl() {
@@ -239,9 +216,11 @@ async function credentialStatusFor(providerId: string): Promise<ProviderCredenti
 /**
  * Credential status per provider that has registry-declared credential keys.
  * Providers without credential env vars (e.g. the stub) have nothing to store
- * and are omitted.
+ * and are omitted. Instance-admin only, like every read here — the gate lives
+ * in the impl so the exported function can't be called ungated.
  */
 export async function listProviderCredentialsImpl(): Promise<(ProviderCredentialStatus & { keys: string[] })[]> {
+	await requireInstanceAdminRead();
 	const rows = await fetchCredentialRowsSafe();
 	const byProvider = new Map(rows.map((row) => [row.provider, row]));
 

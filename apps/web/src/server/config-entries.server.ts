@@ -23,7 +23,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands, configs, organization, prompts } from "@workspace/lib/db/schema";
 import { and, eq, inArray, isNull, type SQL } from "drizzle-orm";
 import { isAdmin, requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
-import { requireConfigWrite } from "@/lib/auth/config-gates";
+import { requireConfigWrites } from "@/lib/auth/config-gates";
 import {
 	type ConfigEntryInput,
 	type ConfigWritePlan,
@@ -317,9 +317,11 @@ export async function setConfigValuesImpl(data: SetConfigValuesInput): Promise<{
 
 	const plans = data.entries.map((entry) => planConfigWrite(resolved.ids, entry));
 
-	for (const entry of data.entries) {
-		await requireConfigWrite({ key: entry.key, scope: data.scope, orgId: resolved.organizationId });
-	}
+	await requireConfigWrites(session, {
+		keys: data.entries.map((entry) => entry.key),
+		scope: data.scope,
+		orgId: resolved.organizationId,
+	});
 
 	if (resolved.organizationId !== null) {
 		const entitlements = await getEntitlements(resolved.organizationId);

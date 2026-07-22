@@ -34,9 +34,11 @@ vi.mock("@/lib/auth/helpers", () => ({
 }));
 
 vi.mock("@/lib/auth/config-gates", () => ({
-	requireConfigWrite: async (input: { key: string; scope: string; orgId: string | null }) => {
-		state.gateCalls.push(input);
-		if (state.denyKeys.has(input.key)) throw new Error("Forbidden: instance-admin-required");
+	requireConfigWrites: async (_session: unknown, input: { keys: string[]; scope: string; orgId: string | null }) => {
+		for (const key of input.keys) {
+			state.gateCalls.push({ key, scope: input.scope, orgId: input.orgId });
+			if (state.denyKeys.has(key)) throw new Error("Forbidden: instance-admin-required");
+		}
 	},
 }));
 

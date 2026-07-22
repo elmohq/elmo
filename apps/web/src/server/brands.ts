@@ -72,7 +72,7 @@ function toBrandRunConfig(result: EffectiveTargetsResult, rows: ConfigRow[]): Br
 		// With no row anywhere the registry default and DEFAULT_DELAY_HOURS can
 		// differ pre-import; the env value is what the fleet actually runs, so
 		// prefer it for display/scheduling parity.
-		resolvedCadenceHours: cadence.provenance === "default" ? getDefaultDelayHours() : (cadence.value as number),
+		resolvedCadenceHours: cadence.provenance === "default" ? getDefaultDelayHours() : cadence.value,
 	};
 }
 
