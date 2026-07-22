@@ -12,7 +12,7 @@ These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI r
 | Provider | Why | Rough cost per prompt/month* | Sign up |
 |---|---|---|---|
 | **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
-| **Oxylabs** | Synchronous realtime API — no snapshot polling. Good for ChatGPT, Perplexity, Google AI Mode. | pay-as-you-go | [oxylabs.io](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
+| **Oxylabs** | Asynchronous Push-Pull API. Good for ChatGPT, Perplexity, Google AI Mode. | pay-as-you-go | [oxylabs.io](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
 | **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
 
 <Callout>
@@ -57,7 +57,7 @@ google-ai-mode:oxylabs:online
 google-ai-overview:oxylabs:online
 ```
 
-Oxylabs uses HTTP Basic auth (Web Scraper API username + password) and a synchronous realtime endpoint, so requests block until the answer is ready — no snapshot polling. `:online` toggles in-product web search for ChatGPT; Perplexity, Google AI Mode, and Google AI Overview always search.
+Oxylabs uses HTTP Basic auth (Web Scraper API username + password). Elmo submits each request through the asynchronous Push-Pull API and polls until the result is ready, avoiding the Realtime API's connection timeout. `:online` toggles in-product web search for ChatGPT; Perplexity, Google AI Mode, and Google AI Overview always search.
 
 ### Olostep
 
