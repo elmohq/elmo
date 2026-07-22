@@ -17,6 +17,11 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 		requireEmailVerification: true,
 		emailVerification: {
 			sendOnSignUp: true,
+			// Resend the link when an unverified user signs in — otherwise the
+			// login page's "we just sent you a new verification link" is a lie and
+			// they can never get unstuck. Runs only after a valid password, so it
+			// isn't an open email-bombing vector.
+			sendOnSignIn: true,
 			autoSignInAfterVerification: true,
 			sendVerificationEmail: async ({ user, url }) => {
 				await sendEmail(user.email, verificationEmail({ url }));
