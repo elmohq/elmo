@@ -55,6 +55,9 @@ type Target = Awaited<ReturnType<typeof listModelTargetsFn>>[number];
 type CredStatus = Awaited<ReturnType<typeof listProviderCredentialsFn>>[number];
 
 /** Same set `validateScrapeTargets` / the server require a version slug for. */
+// Client mirror of providers/config.ts VERSION_REQUIRED_PROVIDERS (the server
+// source of truth) — kept local so this route doesn't pull the provider
+// registry into the client bundle. Keep in sync if that set changes.
 const VERSION_REQUIRED_PROVIDERS = new Set(["openai-api", "anthropic-api", "mistral-api", "openrouter"]);
 
 const ENTITLEMENT_OPTIONS = [

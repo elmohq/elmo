@@ -20,7 +20,7 @@ import { getEntitlements } from "@workspace/lib/config/entitlements";
 import { clearConfigCache } from "@workspace/lib/config/resolve";
 import { db } from "@workspace/lib/db/db";
 import { modelTargets, organization, organizationSettings, providerCredentials } from "@workspace/lib/db/schema";
-import { getAllProviders, getProvider } from "@workspace/lib/providers";
+import { getAllProviders, getProvider, VERSION_REQUIRED_PROVIDERS } from "@workspace/lib/providers";
 import {
 	encryptProviderCredentials,
 	getCredentialKeysForProvider,
@@ -46,9 +46,6 @@ export async function requireInstanceAdminRead() {
 // ============================================================================
 // Model targets (the catalog)
 // ============================================================================
-
-/** Same set `validateScrapeTargets` requires a version slug for. */
-const VERSION_REQUIRED_PROVIDERS = new Set(["openai-api", "anthropic-api", "mistral-api", "openrouter"]);
 
 /**
  * Shape/placement validation for a catalog row. Deliberately does NOT require

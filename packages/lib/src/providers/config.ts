@@ -27,6 +27,19 @@ export const OPENROUTER_WEB_MAX_RESULTS = 5;
  *  passthrough cost. "low" | "medium" | "high" — "medium" is the provider
  *  default, chosen to preserve parity with the real consumer surface. */
 export const OPENROUTER_WEB_SEARCH_CONTEXT_SIZE = "medium" as const;
+/** Web-search context tier for OpenAI tracked runs (cheapest tier). */
+export const OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low" as const;
+
+// The onboarding structured-research path (runStructuredResearch) is a one-shot,
+// non-recurring call, so it searches deeper than a tracked run: recurring tracked
+// runs are the cost surface and stay tightly capped above.
+/** Web-search budget for the structured-research path (openai maxToolCalls / anthropic maxUses). */
+export const RESEARCH_WEB_SEARCH_MAX_USES = 5;
+/** Web-search context tier for the structured-research path. */
+export const RESEARCH_WEB_SEARCH_CONTEXT_SIZE = "medium" as const;
+
+/** Providers whose targets require an explicit version slug (the model id). */
+export const VERSION_REQUIRED_PROVIDERS = new Set(["openai-api", "anthropic-api", "mistral-api", "openrouter"]);
 
 export function validateScrapeTargets(
 	configs: ModelConfig[],
@@ -39,13 +52,7 @@ export function validateScrapeTargets(
 		if (!provider) throw new Error(`SCRAPE_TARGETS: unknown provider "${config.provider}"`);
 		if (!provider.isConfigured())
 			throw new Error(`SCRAPE_TARGETS: provider "${config.provider}" requires API key(s) to be configured (see docs)`);
-		if (
-			(config.provider === "openai-api" ||
-				config.provider === "anthropic-api" ||
-				config.provider === "mistral-api" ||
-				config.provider === "openrouter") &&
-			!config.version
-		)
+		if (VERSION_REQUIRED_PROVIDERS.has(config.provider) && !config.version)
 			throw new Error(`SCRAPE_TARGETS: "${config.model}:${config.provider}" requires a version slug (third segment)`);
 		const targetError = provider.validateTarget?.(config);
 		if (targetError)

@@ -2,7 +2,13 @@ import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
 import { getCredential } from "../../secrets";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
+import {
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+	OPENAI_WEB_SEARCH_MAX_TOOL_CALLS,
+	RESEARCH_WEB_SEARCH_CONTEXT_SIZE,
+	RESEARCH_WEB_SEARCH_MAX_USES,
+} from "../config";
 import type {
 	Provider,
 	ScrapeResult,
@@ -23,7 +29,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 	const tools: Record<string, any> = {};
 	if (options?.webSearch) {
 		tools.web_search = openai.tools.webSearch({
-			searchContextSize: "low",
+			searchContextSize: OPENAI_WEB_SEARCH_CONTEXT_SIZE,
 		}) as any;
 	}
 
@@ -93,8 +99,14 @@ export const openaiApi: Provider = {
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
-			...(webSearch ? { tools: { web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any } } : {}),
-			...(webSearch ? { providerOptions: { openai: { maxToolCalls: 5 } } } : {}),
+			...(webSearch
+				? {
+						tools: {
+							web_search: openai.tools.webSearch({ searchContextSize: RESEARCH_WEB_SEARCH_CONTEXT_SIZE }) as any,
+						},
+					}
+				: {}),
+			...(webSearch ? { providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } } } : {}),
 			output: Output.object({ schema }),
 			prompt,
 		});

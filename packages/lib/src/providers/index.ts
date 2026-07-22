@@ -20,7 +20,7 @@ export type {
 } from "./types";
 export { KNOWN_MODELS, getModelMeta } from "./models";
 export type { ModelMeta } from "./models";
-export { parseScrapeTargets, validateScrapeTargets } from "./config";
+export { parseScrapeTargets, validateScrapeTargets, VERSION_REQUIRED_PROVIDERS } from "./config";
 export { STATUS_TARGETS } from "@workspace/config/scrape-targets";
 export { selectTargetsForBrand } from "./runner";
 
