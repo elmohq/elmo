@@ -5,7 +5,7 @@ description: Environment variables, deployment modes, and advanced configuration
 
 ## Requirements
 
-**PostgreSQL 15 or newer is required** — Elmo relies on `NULLS NOT DISTINCT` unique constraints for its configuration tables. 16 is recommended, and the `elmo` CLI provisions `postgres:16-alpine` by default.
+**PostgreSQL 16 is required.** The `elmo` CLI provisions `postgres:16-alpine` by default.
 
 ## Deployment Modes
 
@@ -65,4 +65,4 @@ elmo compose up -d
 
 By default, `elmo init` provisions a PostgreSQL container. To use an existing database instead, choose "Use existing Postgres" during `elmo init` and provide your connection string when prompted.
 
-Your database must be PostgreSQL 15 or later.
+Your database must be PostgreSQL 16.
