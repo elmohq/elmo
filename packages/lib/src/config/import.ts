@@ -161,7 +161,9 @@ export async function ensureInstanceConfig(): Promise<EnsureInstanceConfigResult
 		}
 
 		const rawOnboardingTarget = process.env.ONBOARDING_LLM_TARGET?.trim();
-		if (rawOnboardingTarget) {
+		// Same rule as cadence above: only a value that differs from the registry
+		// default becomes a row — defaults are never written.
+		if (rawOnboardingTarget && rawOnboardingTarget !== REGISTRY["onboarding.target"].default) {
 			configRows.push({ scope: "instance", key: "onboarding.target", value: rawOnboardingTarget });
 			instanceKeys.push("onboarding.target");
 		}
