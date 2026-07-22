@@ -39,8 +39,9 @@ jobs:
     env:
       # One file set for every `docker compose` invocation below, so no step
       # can silently run against a different effective config. The override
-      # scopes the worker to the no-network stub provider.
-      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
+      # files scope the worker to the no-network stub provider and let image
+      # builds reach the job's mock Sentry API.
+      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/sentry-build-override.yaml
 
     steps:
       - name: Checkout
@@ -112,12 +113,41 @@ jobs:
           echo "=== elmo.yaml (services) ==="
           grep -E '^\s{2}\w' e2e/.elmo/elmo.yaml || true
 
+      - name: Start mock Sentry API
+        run: |
+          node e2e/mock-sentry-api.mjs > "$RUNNER_TEMP/mock-sentry-api.log" 2>&1 &
+          for i in $(seq 1 10); do
+            if curl -sf http://127.0.0.1:7331/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/mock-sentry-api.log"
+          exit 1
+
       # Build all images so a broken worker (or db-migrate) Dockerfile fails CI
       # here. web/worker/migrate share the base/deps/builder stages, so BuildKit
       # builds those once — building all three costs little more than building
       # web alone. postgres is an image pull, so `build` skips it.
       - name: Build images
-        run: docker compose build
+        env:
+          SENTRY_AUTH_TOKEN: fake-sentry-auth-token
+          SENTRY_ORG: e2e
+          SENTRY_PROJECT: web
+          SENTRY_RELEASE: e2e-build
+          SENTRY_URL: http://127.0.0.1:7331
+          VITE_SENTRY_DSN: https://examplePublicKey@o0.ingest.sentry.io/0
+        run: |
+          docker compose build \
+            --build-arg "SENTRY_AUTH_TOKEN=${SENTRY_AUTH_TOKEN}" \
+            --build-arg "SENTRY_ORG=${SENTRY_ORG}" \
+            --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT}" \
+            --build-arg "SENTRY_RELEASE=${SENTRY_RELEASE}" \
+            --build-arg "SENTRY_URL=${SENTRY_URL}" \
+            --build-arg "VITE_SENTRY_DSN=${VITE_SENTRY_DSN}"
+
+      - name: Verify Sentry source map upload
+        run: curl --fail --show-error http://127.0.0.1:7331/__assert
 
       # Start web only (with its deps db-migrate + postgres). The worker stays
       # down for now — it comes up in phase 2, after the fixture suites run.
@@ -163,6 +193,10 @@ jobs:
       - name: Dump worker logs
         if: failure()
         run: docker compose logs worker
+
+      - name: Dump mock Sentry logs
+        if: failure()
+        run: cat "$RUNNER_TEMP/mock-sentry-api.log"
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7

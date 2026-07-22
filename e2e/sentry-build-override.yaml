@@ -1,0 +1,10 @@
+services:
+  db-migrate:
+    build:
+      network: host
+  web:
+    build:
+      network: host
+  worker:
+    build:
+      network: host
