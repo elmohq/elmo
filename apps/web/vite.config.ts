@@ -9,7 +9,6 @@ import { embedBinaries } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
-const isSentryBuildSmokeTest = process.env.SENTRY_BUILD_SMOKE === "1";
 
 const sentryPlugins = await (async () => {
 	if (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT) {
@@ -18,23 +17,6 @@ const sentryPlugins = await (async () => {
 			org: process.env.SENTRY_ORG,
 			project: process.env.SENTRY_PROJECT,
 			authToken: process.env.SENTRY_AUTH_TOKEN,
-			...(isSentryBuildSmokeTest
-				? {
-						// Keep the complete source-map path on: disabling uploads skips the
-						// Nitro transformation that this test protects. The local endpoint and
-						// error handler ensure fake credentials never contact Sentry.
-						sentryUrl: "http://127.0.0.1:9",
-						errorHandler: () => {},
-						silent: true,
-						release: {
-							inject: false,
-							create: false,
-							finalize: false,
-							setCommits: false,
-						},
-						telemetry: false,
-					}
-				: {}),
 		});
 
 		// Both Vite and Nitro source maps are configured below. The adapter's

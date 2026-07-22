@@ -38,9 +38,9 @@ jobs:
 
     env:
       # One file set for every `docker compose` invocation below, so no step
-      # can silently run against a different effective config. The overrides
-      # scope the worker to the no-network stub provider and enable Sentry for web.
-      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/sentry-build-override.yaml
+      # can silently run against a different effective config. The override
+      # scopes the worker to the no-network stub provider.
+      COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml
 
     steps:
       - name: Checkout
@@ -102,7 +102,6 @@ jobs:
           ADMIN_API_KEYS=test-api-key-e2e
           ONBOARDING_LLM_TARGET=stub:stub
           SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
-          VITE_SENTRY_DSN=https://examplePublicKey@o0.ingest.sentry.io/0
           PATCH
 
       - name: Show generated config

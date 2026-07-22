@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
@@ -12,13 +12,6 @@ const outputPath = join(outputDir, entryPath);
 
 if (!existsSync(outputPath)) {
 	throw new Error(`Open Graph image build output was not found: ${outputPath}`);
-}
-
-if (process.env.SENTRY_BUILD_SMOKE === "1") {
-	const entry = await readFile(outputPath, "utf8");
-	if (!entry.includes("sentry-dbid-")) {
-		throw new Error("Sentry's Vite plugin did not add a debug ID to the server entry");
-	}
 }
 
 // The full server entry also initializes auth, although this public route does

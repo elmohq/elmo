@@ -2,8 +2,8 @@
  * OG Image Generation E2E Tests
  *
  * `/api/og` renders social-share preview images with Takumi's production
- * renderer. The E2E Docker build enables Sentry's Vite integration with fake
- * credentials, so this catches failures at the Sentry + Nitro boundary.
+ * renderer. The E2E server runs with a fake Sentry DSN, so the request uses
+ * the same runtime instrumentation as a Sentry-enabled deployment.
  * It's a public route (social crawlers fetch it, unauthenticated) referenced
  * from every page's `og:image` meta tag (see apps/web src/routes/__root.tsx).
  *
