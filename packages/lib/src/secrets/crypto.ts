@@ -75,6 +75,10 @@ export function decryptSecret(payload: unknown, opts: { key: Buffer; aad: string
 	try {
 		if (!isEncryptedPayload(payload)) throw new Error("malformed payload");
 		if (payload.v !== CURRENT_VERSION) throw new Error(`unsupported payload version: ${payload.v}`);
+		// The key id is advisory: a mismatch means this row was encrypted under a
+		// different key (rotation / wrong env), so surface that precise cause
+		// instead of letting it fall through to an opaque GCM auth failure.
+		if (payload.keyId !== keyIdFor(opts.key)) throw new Error("payload encrypted under a different key");
 
 		const iv = Buffer.from(payload.iv, "base64");
 		const ct = Buffer.from(payload.ct, "base64");
