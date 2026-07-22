@@ -9,6 +9,11 @@ import type {
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import {
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	OPENROUTER_WEB_MAX_RESULTS,
+	OPENROUTER_WEB_SEARCH_CONTEXT_SIZE,
+} from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -125,12 +130,27 @@ export const openrouter: Provider = {
 		if (!modelSlug) {
 			throw new Error(
 				`OpenRouter requires a version slug in SCRAPE_TARGETS. ` +
-				`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
+					`Example: ${model}:openrouter:openai/gpt-5-mini:online`,
 			);
 		}
 
-		if (options?.webSearch && !modelSlug.includes(":online")) {
-			modelSlug = `${modelSlug}:online`;
+		// Web search is requested through the explicit plugin config below, never
+		// the ":online" slug alias (strip one if the configured version carries it).
+		modelSlug = modelSlug.replace(/:online$/, "");
+
+		const body: Record<string, unknown> = {
+			model: modelSlug,
+			messages: [{ role: "user", content: prompt }],
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
+		};
+		if (options?.webSearch) {
+			// Engine omitted on purpose: OpenRouter uses the provider's NATIVE web
+			// search when available (the real consumer surface) and only falls back
+			// to Exa otherwise. Every path stays budget-bounded — search_context_size
+			// caps native cost, max_results caps the Exa fallback, max_tokens caps
+			// output either way — so no call is unbounded.
+			body.plugins = [{ id: "web", max_results: OPENROUTER_WEB_MAX_RESULTS }];
+			body.web_search_options = { search_context_size: OPENROUTER_WEB_SEARCH_CONTEXT_SIZE };
 		}
 
 		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
@@ -146,10 +166,7 @@ export const openrouter: Provider = {
 				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 				"X-Title": "Elmo AEO",
 			},
-			body: JSON.stringify({
-				model: modelSlug,
-				messages: [{ role: "user", content: prompt }],
-			}),
+			body: JSON.stringify(body),
 		});
 
 		if (!res.ok) {
@@ -168,7 +185,7 @@ export const openrouter: Provider = {
 			textContent: extractTextFromOpenRouterResponse(data),
 			webQueries,
 			citations,
-			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			modelVersion: data?.model ?? modelSlug,
 		};
 	},
 };

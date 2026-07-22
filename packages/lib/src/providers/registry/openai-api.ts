@@ -2,6 +2,7 @@ import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
 import { getCredential } from "../../secrets";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 import type {
 	Provider,
 	ScrapeResult,
@@ -31,8 +32,12 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		// which reads process.env internally) so overlay credentials apply here.
 		model: getOpenAIResponsesModel(model),
 		prompt,
+		maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
 		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
+		...(Object.keys(tools).length > 0
+			? { providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } } }
+			: {}),
 	});
 
 	// The AI SDK doesn't populate result.response.body for the Responses API, so
@@ -89,6 +94,7 @@ export const openaiApi: Provider = {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
 			...(webSearch ? { tools: { web_search: openai.tools.webSearch({ searchContextSize: "medium" }) as any } } : {}),
+			...(webSearch ? { providerOptions: { openai: { maxToolCalls: 5 } } } : {}),
 			output: Output.object({ schema }),
 			prompt,
 		});
