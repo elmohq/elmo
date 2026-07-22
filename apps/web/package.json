@@ -73,7 +73,7 @@
 		"@vitest/browser-playwright": "^4.1.10",
 		"@vitest/coverage-v8": "^4.1.10",
 		"archiver": "^8.0.0",
-		"nitro": "3.0.260610-beta",
+		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"playwright": "^1.61.1",
 		"png-to-ico": "^3.0.2",
 		"storybook": "^10.5.0",

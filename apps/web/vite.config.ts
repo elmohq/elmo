@@ -44,7 +44,8 @@ export default defineConfig({
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			exportConditions: ["!unwasm"],
+			exportConditions: ["node", "import", "default", "!unwasm"],
+			traceDeps: ["@takumi-rs/core"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
