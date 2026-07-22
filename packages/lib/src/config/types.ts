@@ -35,10 +35,12 @@ export interface ScopeRule {
 
 /**
  * One config key's full declaration — the single source of truth for its
- * schema, default, allowed placement, and how it merges/clamps. `default` is
- * code-only and never written to the DB; `null` is the "absent" sentinel for
- * list-valued keys whose absence means something other than a concrete value
- * (e.g. `run.enabled_models` absent = all models).
+ * schema, default, allowed placement, and how it merges/clamps. A key's
+ * `default` is code-only; the cascading scalars are never written to the DB,
+ * while the per-prompt assignment keys (`run.model_enabled`, `run.model_mode`)
+ * intentionally persist a default-valued row as the assignment signal. `null`
+ * is the "absent" sentinel for list-valued keys whose absence means something
+ * other than a concrete value (e.g. `run.enabled_models` absent = all models).
  */
 export interface RegistryEntry {
 	key: string;

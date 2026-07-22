@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertValidConfigWrite, getPropertyForKey, getRegistryEntry, REGISTRY } from "./registry";
+import { assertValidConfigWrite, getRegistryEntry, REGISTRY } from "./registry";
 import type { RegistryEntry } from "./types";
 
 const entries = Object.entries(REGISTRY) as [string, RegistryEntry][];
@@ -47,9 +47,8 @@ describe("REGISTRY", () => {
 
 	it("maps every key to a unique camelCase property", () => {
 		const properties = entries.map(([, entry]) => entry.property);
-		for (const [key, entry] of entries) {
+		for (const [, entry] of entries) {
 			expect(entry.property).toMatch(PROPERTY_NAME);
-			expect(getPropertyForKey(key)).toBe(entry.property);
 		}
 		expect(new Set(properties).size, "properties must be unique").toBe(properties.length);
 	});
@@ -69,9 +68,7 @@ describe("REGISTRY", () => {
 				expect(entry.valueSchema.safeParse(value).success, `${key} should accept ${JSON.stringify(value)}`).toBe(true);
 			}
 			for (const value of sample.invalid) {
-				expect(entry.valueSchema.safeParse(value).success, `${key} should reject ${JSON.stringify(value)}`).toBe(
-					false,
-				);
+				expect(entry.valueSchema.safeParse(value).success, `${key} should reject ${JSON.stringify(value)}`).toBe(false);
 			}
 		}
 	});

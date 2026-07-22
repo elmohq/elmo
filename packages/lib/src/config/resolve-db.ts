@@ -63,6 +63,12 @@ function toConfigRow(row: Config): ConfigRow {
 	};
 }
 
+/** Select `configs` rows matching a predicate and map them to the pure-core shape. */
+async function selectConfigRows(where: SQL | undefined): Promise<ConfigRow[]> {
+	const rows = await db.select().from(configs).where(where);
+	return rows.map(toConfigRow);
+}
+
 /** The instance-wide catalog (`model_targets` with a null org). Cached 60s. */
 export async function getInstanceCatalog(): Promise<CatalogTarget[]> {
 	if (catalogCache && Date.now() - catalogCache.at < CACHE_TTL_MS) return catalogCache.value;
@@ -96,32 +102,20 @@ export async function fetchConfigRows(ref: {
 	];
 	if (ref.brandId) clauses.push(and(eq(configs.scope, "brand"), eq(configs.brandId, ref.brandId)));
 	if (ref.promptId) clauses.push(and(eq(configs.scope, "prompt"), eq(configs.promptId, ref.promptId)));
-	const rows = await db
-		.select()
-		.from(configs)
-		.where(or(...clauses));
-	return rows.map(toConfigRow);
+	return selectConfigRows(or(...clauses));
 }
 
 async function fetchOrgAndBrandRows(organizationId: string, brandId: string): Promise<ConfigRow[]> {
-	const rows = await db
-		.select()
-		.from(configs)
-		.where(
-			or(
-				and(eq(configs.scope, "organization"), eq(configs.organizationId, organizationId)),
-				and(eq(configs.scope, "brand"), eq(configs.brandId, brandId)),
-			),
-		);
-	return rows.map(toConfigRow);
+	return selectConfigRows(
+		or(
+			and(eq(configs.scope, "organization"), eq(configs.organizationId, organizationId)),
+			and(eq(configs.scope, "brand"), eq(configs.brandId, brandId)),
+		),
+	);
 }
 
 async function fetchPromptRows(promptId: string): Promise<ConfigRow[]> {
-	const rows = await db
-		.select()
-		.from(configs)
-		.where(and(eq(configs.scope, "prompt"), eq(configs.promptId, promptId)));
-	return rows.map(toConfigRow);
+	return selectConfigRows(and(eq(configs.scope, "prompt"), eq(configs.promptId, promptId)));
 }
 
 /** Config rows grouped by scope so the pure core can run per brand without more queries. */
@@ -158,12 +152,7 @@ export async function fetchConfigRowsForBrands(
 	if (brandIds.length > 0) {
 		clauses.push(and(eq(configs.scope, "brand"), inArray(configs.brandId, brandIds)));
 	}
-	const rows = (
-		await db
-			.select()
-			.from(configs)
-			.where(or(...clauses))
-	).map(toConfigRow);
+	const rows = await selectConfigRows(or(...clauses));
 	for (const row of rows) {
 		if (row.scope === "organization" && row.organizationId) pushGrouped(orgRows, row.organizationId, row);
 		else if (row.scope === "brand" && row.brandId) pushGrouped(brandRows, row.brandId, row);
@@ -259,10 +248,13 @@ export async function resolveBrandTargets(
 export async function resolvePromptTargets(
 	prompt: { id: string },
 	brandResolution: BrandResolution,
+	options: { assignablePoolUsage?: number } = {},
 ): Promise<EffectiveTargetsResult> {
+	// The pool count is org-scoped and identical for every prompt in the org, so
+	// a batch caller can compute it once and inject it here instead of per prompt.
 	const [promptRows, assignablePoolUsage] = await Promise.all([
 		fetchPromptRows(prompt.id),
-		countAssignableModelUsage(brandResolution.organizationId, CLAUDE),
+		options.assignablePoolUsage ?? countAssignableModelUsage(brandResolution.organizationId, CLAUDE),
 	]);
 	return resolveEffectiveTargets({
 		catalog: brandResolution.catalog,

@@ -130,7 +130,7 @@ describe("mergeConfigRows", () => {
 	it("ignores rows for keys not in the registry", () => {
 		const resolved = mergeConfigRows([makeRow("instance", "run.bogus", 99)]);
 		expect(Object.keys(resolved)).toHaveLength(6);
-		expect(resolved.bogus).toBeUndefined();
+		expect((resolved as unknown as Record<string, unknown>).bogus).toBeUndefined();
 	});
 
 	it("reports provenance with rowId and the row's selector", () => {

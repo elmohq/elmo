@@ -8,8 +8,11 @@
  * *exist* — targets, credentials, plans — is an entity collection and gets its
  * own table with real columns, FKs, and constraints; it never becomes a config
  * key holding a list. Every key requires a full entry below (schema, default,
- * allowed scopes/selectors, merge rule, permission class). Defaults are
- * code-only and are never written to the database.
+ * allowed scopes/selectors, merge rule, permission class). A key's default is
+ * code-only; the cascading scalars are never written to the DB (an absent row
+ * means the default), but the per-prompt assignment keys
+ * `run.model_enabled`/`run.model_mode` intentionally persist a default-valued
+ * row as the assignment signal the pool counter reads.
  */
 import { z } from "zod";
 import type { ConfigWriteResult, RegistryEntry, Selector, SelectorInput } from "./types";
@@ -110,18 +113,23 @@ export function getRegistryEntry(key: string): RegistryEntry | undefined {
 	return (REGISTRY as Record<string, RegistryEntry>)[key];
 }
 
-/** The camelCase property a key resolves to on the effective config object. */
-export function getPropertyForKey(key: string): string | undefined {
-	return getRegistryEntry(key)?.property;
+/**
+ * The single selector-kind ladder (targetId > model > none), shared by the
+ * resolver's row ranking/matching and the write-time selector check. Empty
+ * strings count as absent, so a blank form field is "none", not a "" selector.
+ */
+export function rowSelectorKind(selector: SelectorInput): Selector {
+	if (selector.targetId != null && selector.targetId !== "") return "target";
+	if (selector.model != null && selector.model !== "") return "model";
+	return "none";
 }
 
 function selectorKind(selector: SelectorInput | undefined): Selector | "conflict" {
-	const hasModel = selector?.model != null && selector.model !== "";
-	const hasTarget = selector?.targetId != null && selector.targetId !== "";
+	const sel = selector ?? {};
+	const hasModel = sel.model != null && sel.model !== "";
+	const hasTarget = sel.targetId != null && sel.targetId !== "";
 	if (hasModel && hasTarget) return "conflict";
-	if (hasTarget) return "target";
-	if (hasModel) return "model";
-	return "none";
+	return rowSelectorKind(sel);
 }
 
 /**

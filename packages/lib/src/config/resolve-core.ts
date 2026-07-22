@@ -18,8 +18,8 @@
  */
 import { ASSIGNABLE_MODELS } from "@workspace/config/plans";
 import type { Entitlements } from "./entitlements";
-import { REGISTRY } from "./registry";
-import type { ConfigScope } from "./types";
+import { REGISTRY, rowSelectorKind } from "./registry";
+import type { ConfigScope, Selector } from "./types";
 
 /**
  * A `configs`-shaped record — the subset the resolver reads. The full drizzle
@@ -76,8 +76,28 @@ export interface ResolvedEntry {
 	provenance: Provenance;
 }
 
-/** Resolved config keyed by registry `property` (camelCase). */
-export type ResolvedConfig = Record<string, ResolvedEntry>;
+/** A resolved entry with a concrete value type. */
+export interface TypedEntry<T> {
+	value: T;
+	provenance: Provenance;
+}
+
+/**
+ * Resolved config, one entry per registry key (by camelCase property), each
+ * value typed — so consumers read `resolved.cadenceHours.value` as `number`
+ * with no cast. Kept in lockstep with REGISTRY (registry.test.ts pins the
+ * key/property set); a new key adds a field here. `enabledModels` carries the
+ * `null` "absent" sentinel (= all models); the others always resolve to a
+ * concrete value (their default is a valid schema value).
+ */
+export interface ResolvedConfig {
+	cadenceHours: TypedEntry<number>;
+	replication: TypedEntry<number>;
+	enabledModels: TypedEntry<string[] | null>;
+	modelEnabled: TypedEntry<boolean>;
+	modelMode: TypedEntry<"base" | "web">;
+	onboardingTarget: TypedEntry<string>;
+}
 
 const SCOPE_RANK: Record<string, number> = { instance: 0, organization: 1, brand: 2, prompt: 3 };
 
@@ -85,23 +105,29 @@ function scopeRank(scope: string): number {
 	return SCOPE_RANK[scope] ?? -1;
 }
 
+const SELECTOR_RANK: Record<Selector, number> = { none: 0, model: 1, target: 2 };
+
 /** targetId row (2) beats model row (1) beats selector-less row (0). */
 function selectorRank(row: ConfigRow): number {
-	if (row.targetId != null) return 2;
-	if (row.model != null) return 1;
-	return 0;
+	return SELECTOR_RANK[rowSelectorKind(row)];
 }
 
 function rowMatchesContext(row: ConfigRow, context: MergeContext): boolean {
-	if (row.targetId != null) return context.targetId != null && row.targetId === context.targetId;
-	if (row.model != null) return context.model != null && row.model === context.model;
-	return true;
+	switch (rowSelectorKind(row)) {
+		case "target":
+			return context.targetId != null && row.targetId === context.targetId;
+		case "model":
+			return context.model != null && row.model === context.model;
+		default:
+			return true;
+	}
 }
 
 function provenanceFromRow(row: ConfigRow): RowProvenance {
 	const provenance: RowProvenance = { scope: row.scope as ConfigScope, rowId: row.id };
-	if (row.targetId != null) provenance.selector = { targetId: row.targetId };
-	else if (row.model != null) provenance.selector = { model: row.model };
+	const kind = rowSelectorKind(row);
+	if (kind === "target") provenance.selector = { targetId: row.targetId as string };
+	else if (kind === "model") provenance.selector = { model: row.model as string };
 	return provenance;
 }
 
@@ -131,7 +157,7 @@ function outranks(a: ConfigRow, b: ConfigRow): boolean {
  * drift, §13) is treated as absent: the code default applies, fail-safe.
  */
 export function mergeConfigRows(rows: ConfigRow[], context: MergeContext = {}): ResolvedConfig {
-	const resolved: ResolvedConfig = {};
+	const resolved: Record<string, ResolvedEntry> = {};
 	for (const entry of Object.values(REGISTRY)) {
 		let winner: ConfigRow | undefined;
 		for (const row of rows) {
@@ -144,7 +170,8 @@ export function mergeConfigRows(rows: ConfigRow[], context: MergeContext = {}): 
 				? { value: winner.value, provenance: provenanceFromRow(winner) }
 				: { value: entry.default, provenance: "default" };
 	}
-	return resolved;
+	// Built dynamically over REGISTRY; the key set is exactly ResolvedConfig's.
+	return resolved as unknown as ResolvedConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,8 +291,8 @@ function computeRunPolicy(
 ): { cadenceHours: number; replication: number; provenance: TargetProvenance } {
 	const cadenceEntry = resolved.cadenceHours;
 	const replicationEntry = resolved.replication;
-	const cadenceHours = cadenceEntry.value as number;
-	const replication = replicationEntry.value as number;
+	const cadenceHours = cadenceEntry.value;
+	const replication = replicationEntry.value;
 	const provenance: TargetProvenance = {
 		cadenceHours: cadenceEntry.provenance,
 		replication: replicationEntry.provenance,
@@ -365,7 +392,7 @@ function collectStandardReasons(args: {
 	const { reasons, resolved, level, model, menu } = args;
 	if (menu !== null && !menu.includes(model)) reasons.push("not-in-plan-menu");
 
-	const picks = resolved.enabledModels.value as string[] | null;
+	const picks = resolved.enabledModels.value;
 	if (picks !== null && !picks.includes(model)) reasons.push("not-picked-by-brand");
 
 	if (level === "prompt") {
