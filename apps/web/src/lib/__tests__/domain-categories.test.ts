@@ -91,6 +91,24 @@ describe("categorizeDomain priority", () => {
 		expect(cat("bhphotovideo.com")).toBe("ecommerce");
 	});
 
+	it.each<[string, string]>([
+		// Online IDEs / playgrounds + coding-practice platforms (were "other")
+		["codepen.io", "developer"],
+		["codesandbox.io", "developer"],
+		["replit.com", "developer"],
+		["stackblitz.com", "developer"],
+		["jsfiddle.net", "developer"],
+		["leetcode.com", "developer"],
+		["hackerrank.com", "developer"],
+		["codewars.com", "developer"],
+		// Additional social / creator networks (were "other")
+		["ok.ru", "social"],
+		["xing.com", "social"],
+		["soundcloud.com", "social"],
+	])("categorizes newly-added %s as %s", (domain, expected) => {
+		expect(cat(domain)).toBe(expected);
+	});
+
 	it("brand and competitor always win over list categories", () => {
 		const b = new Set(["amazon.com"]); // hypothetically the brand's own domain
 		const c = new Set(["github.com", "g2.com"]); // hypothetically tracked competitors

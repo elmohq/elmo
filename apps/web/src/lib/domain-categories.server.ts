@@ -17,6 +17,8 @@ const SOCIAL_MEDIA_DOMAINS = new Set([
 	"meetup.com", "rumble.com", "kick.com", "bilibili.com", "imgur.com",
 	// General Q&A (developer Q&A lives under "developer")
 	"quora.com",
+	// More networks / creator platforms
+	"ok.ru", "xing.com", "soundcloud.com",
 ]);
 
 // Code hosting, package registries, developer Q&A, docs, and model hubs.
@@ -38,6 +40,9 @@ const DEVELOPER_DOMAINS = new Set([
 	// More code hosts + package registries (Wikipedia: source-code hosting facilities)
 	"gitee.com", "launchpad.net", "savannah.gnu.org", "dev.azure.com",
 	"anaconda.org", "metacpan.org", "rosettacode.org",
+	// Online IDEs / playgrounds + coding-practice platforms
+	"codepen.io", "codesandbox.io", "replit.com", "stackblitz.com", "jsfiddle.net",
+	"leetcode.com", "hackerrank.com", "codewars.com",
 ]);
 
 // Press-release distribution wires — small, finite, unambiguous.
