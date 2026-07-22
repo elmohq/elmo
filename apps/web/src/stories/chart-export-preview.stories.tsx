@@ -3,10 +3,7 @@ import { ChartExportPreview, type ChartExportPreviewProps } from "@/components/c
 import { setMockRouteContext, MockRouteContextProvider } from "./_mocks/tanstack-router";
 import { setMockClientConfig, type ClientConfig } from "./_mocks/config-client";
 
-const CHART_COLORS = [
-	"#2563eb", "#efb118", "#3ca951", "#ff725c",
-	"#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e",
-];
+const CHART_COLORS = ["#2563eb", "#efb118", "#3ca951", "#ff725c", "#a463f2", "#ff8ab7", "#38b2ac", "#9c6b4e"];
 
 const mockBrand = {
 	id: "brand-1",
@@ -19,9 +16,30 @@ const mockBrand = {
 };
 
 const mockCompetitors = [
-	{ id: "comp-1", name: "Competitor Alpha", domain: "alpha.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-	{ id: "comp-2", name: "Competitor Beta", domain: "beta.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-	{ id: "comp-3", name: "Competitor Gamma", domain: "gamma.com", brandId: "brand-1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+	{
+		id: "comp-1",
+		name: "Competitor Alpha",
+		domain: "alpha.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	{
+		id: "comp-2",
+		name: "Competitor Beta",
+		domain: "beta.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
+	{
+		id: "comp-3",
+		name: "Competitor Gamma",
+		domain: "gamma.com",
+		brandId: "brand-1",
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+	},
 ];
 
 function generateChartData(days: number) {
@@ -48,7 +66,7 @@ function generateChartData(days: number) {
 
 const defaultClientConfig: ClientConfig = {
 	mode: "local",
-	features: { readOnly: false, showOptimizeButton: false, supportsMultiOrg: true, canCreateBrands: true },
+	features: { readOnly: false, showOptimizeButton: false, canCreateBrands: true },
 	branding: { name: "Elmo", chartColors: CHART_COLORS },
 	analytics: {},
 };

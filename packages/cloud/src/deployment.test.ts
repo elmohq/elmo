@@ -7,10 +7,9 @@ describe("createCloudDeployment", () => {
 		expect(createCloudDeployment({}).mode).toBe("cloud");
 	});
 
-	it("enables self-serve signup, multi-org, brand creation, and billing", () => {
+	it("enables self-serve signup, brand creation, and billing", () => {
 		const { features } = createCloudDeployment({});
 		expect(features.selfServeSignup).toBe(true);
-		expect(features.supportsMultiOrg).toBe(true);
 		expect(features.canCreateBrands).toBe(true);
 		expect(features.billing).toBe(true);
 		expect(features.teamInvites).toBe(true);

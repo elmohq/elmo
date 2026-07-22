@@ -32,7 +32,6 @@ const elmoConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: true,
 		canCreateBrands: true,
 	},
 	branding: {
@@ -47,7 +46,6 @@ const whitelabelConfig: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: true,
-		supportsMultiOrg: true,
 		canCreateBrands: false,
 	},
 	branding: {
@@ -80,10 +78,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function ColorSwatch({ color, label }: { color: string; label: string }) {
 	return (
 		<div className="flex flex-col items-center gap-1">
-			<div
-				className="w-12 h-12 rounded-lg border shadow-sm"
-				style={{ backgroundColor: color }}
-			/>
+			<div className="w-12 h-12 rounded-lg border shadow-sm" style={{ backgroundColor: color }} />
 			<span className="text-xs text-muted-foreground font-mono">{color}</span>
 			{label && <span className="text-xs text-muted-foreground">{label}</span>}
 		</div>
@@ -131,10 +126,21 @@ export const ElmoBrandKit = () => {
 						<div className="flex items-end gap-6 flex-wrap">
 							{iconSizes.map((size) => (
 								<div key={size} className="flex flex-col items-center gap-2">
-									<div className="border rounded-lg p-2 bg-background flex items-center justify-center" style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}>
-										<img src="/icons/elmo-icon.svg" alt={`Elmo icon ${size}px`} width={size} height={size} style={{ width: size, height: size }} />
+									<div
+										className="border rounded-lg p-2 bg-background flex items-center justify-center"
+										style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}
+									>
+										<img
+											src="/icons/elmo-icon.svg"
+											alt={`Elmo icon ${size}px`}
+											width={size}
+											height={size}
+											style={{ width: size, height: size }}
+										/>
 									</div>
-									<span className="text-xs text-muted-foreground font-mono">{size}×{size}</span>
+									<span className="text-xs text-muted-foreground font-mono">
+										{size}×{size}
+									</span>
 								</div>
 							))}
 						</div>
@@ -144,10 +150,21 @@ export const ElmoBrandKit = () => {
 						<div className="flex items-end gap-6 flex-wrap">
 							{iconSizes.map((size) => (
 								<div key={size} className="flex flex-col items-center gap-2">
-									<div className="rounded-lg p-2 bg-gray-900 flex items-center justify-center" style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}>
-										<img src="/icons/elmo-icon.svg" alt={`Elmo icon ${size}px on dark`} width={size} height={size} style={{ width: size, height: size }} />
+									<div
+										className="rounded-lg p-2 bg-gray-900 flex items-center justify-center"
+										style={{ minWidth: Math.max(size + 16, 48), minHeight: Math.max(size + 16, 48) }}
+									>
+										<img
+											src="/icons/elmo-icon.svg"
+											alt={`Elmo icon ${size}px on dark`}
+											width={size}
+											height={size}
+											style={{ width: size, height: size }}
+										/>
 									</div>
-									<span className="text-xs text-muted-foreground font-mono">{size}×{size}</span>
+									<span className="text-xs text-muted-foreground font-mono">
+										{size}×{size}
+									</span>
 								</div>
 							))}
 						</div>
@@ -169,11 +186,16 @@ export const ElmoBrandKit = () => {
 									style={{ width: size, height: size }}
 								/>
 							</div>
-							<span className="text-xs text-muted-foreground font-mono">{size}×{size}</span>
+							<span className="text-xs text-muted-foreground font-mono">
+								{size}×{size}
+							</span>
 						</div>
 					))}
 					<div className="flex flex-col items-center gap-2">
-						<div className="border rounded-full overflow-hidden flex items-center justify-center" style={{ width: 128, height: 128 }}>
+						<div
+							className="border rounded-full overflow-hidden flex items-center justify-center"
+							style={{ width: 128, height: 128 }}
+						>
 							<img
 								src="/icons/elmo-icon-maskable.svg"
 								alt="Elmo maskable icon circular crop"
@@ -203,17 +225,13 @@ export const ElmoBrandKit = () => {
 				<div className="flex flex-wrap gap-2">
 					{CHART_COLORS.map((color, i) => (
 						<div key={color} className="flex flex-col items-center gap-1">
-							<div
-								className="w-8 h-8 rounded border shadow-sm"
-								style={{ backgroundColor: color }}
-							/>
+							<div className="w-8 h-8 rounded border shadow-sm" style={{ backgroundColor: color }} />
 							<span className="text-[10px] text-muted-foreground font-mono">{i + 1}</span>
 						</div>
 					))}
 				</div>
 			</Section>
-
-			</div>
+		</div>
 	);
 };
 
