@@ -14,7 +14,6 @@ const BD_DATASET_IDS: Record<string, string> = {
 	perplexity: "gd_m7dhdot1vw9a7gc1n",
 	copilot: "gd_m7di5jy6s9geokz8w",
 	gemini: "gd_mbz66arm2mf9cu856y",
-	grok: "gd_m8ve0u141icu75ae74",
 	"google-ai-mode": "gd_mcswdt6z2elth3zqr2",
 };
 
@@ -24,7 +23,6 @@ const BD_BASE_URL: Record<string, string> = {
 	gemini: "https://gemini.google.com/",
 	copilot: "https://copilot.microsoft.com/chats",
 	perplexity: "https://www.perplexity.ai/",
-	grok: "https://grok.com/",
 };
 
 function createClient(): bdclient {
@@ -127,7 +125,7 @@ function extractSources(record: Record<string, any>): Citation[] {
 }
 
 function extractWebQueries(record: Record<string, any>): string[] {
-	// web_search_query is a direct array of strings (e.g. grok)
+	// web_search_query is a direct array of strings
 	if (Array.isArray(record.web_search_query)) {
 		return record.web_search_query.filter((q: any) => typeof q === "string" && q.trim());
 	}

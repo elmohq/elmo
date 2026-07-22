@@ -1,6 +1,6 @@
 {
   "name": "@workspace/cloud",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "private": true,
   "license": "MIT",
   "main": "./src/index.ts",

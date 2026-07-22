@@ -411,7 +411,6 @@ const BRIGHTDATA_MODELS = [
 	"perplexity",
 	"copilot",
 	"gemini",
-	"grok",
 ] as const;
 
 const OLOSTEP_MODELS = [
@@ -421,10 +420,9 @@ const OLOSTEP_MODELS = [
 	"perplexity",
 	"copilot",
 	"gemini",
-	"grok",
 ] as const;
 
-const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "perplexity"] as const;
+const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DATAFORSEO_MODELS = ["google-ai-mode", "google-ai-overview", "chatgpt", "perplexity", "gemini"] as const;
@@ -441,7 +439,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			"",
 			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
 			`     • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
-			`     • ${pc.cyan("Oxylabs")}    — sync realtime API, pay-as-you-go`,
+			`     • ${pc.cyan("Oxylabs")}    — async job API, pay-as-you-go`,
 			`     • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
 			"",
 			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
@@ -480,7 +478,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 		message: "Scraper (tracks ChatGPT + Google AI Mode)",
 		options: [
 			{ value: "brightdata" as const, label: "BrightData — ~$0.45/mo per prompt (cheaper)" },
-			{ value: "oxylabs" as const, label: "Oxylabs — sync realtime API, pay-as-you-go" },
+			{ value: "oxylabs" as const, label: "Oxylabs — async job API, pay-as-you-go" },
 			{ value: "olostep" as const, label: "Olostep — ~$2.25/mo per prompt (premium)" },
 		],
 		initialValue: "brightdata" as const,
@@ -658,7 +656,7 @@ async function collectOlostep(env: EnvMap, targets: string[]): Promise<void> {
 
 async function collectOxylabs(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Oxylabs")}? (sync realtime API, pay-as-you-go)`,
+		message: `Configure ${pc.bold("Oxylabs")}? (async job API, pay-as-you-go)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);

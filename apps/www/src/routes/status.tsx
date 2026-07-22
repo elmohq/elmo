@@ -13,10 +13,12 @@ import {
 	getLatest,
 	parseTarget,
 	passRate,
+	MODEL_API_CATEGORIES,
 	PROVIDER_FILTER_LABELS,
 	PROVIDER_FILTER_ORDER,
 	providerCategory,
 	rateTier,
+	type CellAvailability,
 	type MatrixCell,
 	type RateTier,
 	type StatusEntry,
@@ -30,7 +32,7 @@ import {
 } from "@workspace/ui/components/chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Badge } from "@workspace/ui/components/badge";
-import { Fragment, useState, useRef, useEffect } from "react";
+import { Fragment, useState, useRef, useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
 	LineChart,
@@ -98,6 +100,11 @@ const TIER_SOLID: Record<RateTier, string> = {
 	down: "bg-red-600 text-white",
 	none: "bg-zinc-300 text-white",
 };
+
+// Diagonal hatch marking "not available" cells — a combination that can't exist,
+// distinct from the flat dot used for combinations Elmo just doesn't track yet.
+const HATCH_BG =
+	"repeating-linear-gradient(-45deg, rgb(228 228 231) 0, rgb(228 228 231) 1px, transparent 1px, transparent 6px)";
 
 // ─── Components ───────────────────────────────────────────────────────────
 
@@ -576,10 +583,30 @@ function FilterRow({
 
 // ─── At-a-glance matrix ───────────────────────────────────────────────────
 
-function MatrixCellView({ cell }: { cell: MatrixCell | null }) {
+function MatrixCellView({
+	cell,
+	availability,
+}: {
+	cell: MatrixCell | null;
+	availability: CellAvailability;
+}) {
 	if (!cell) {
+		if (availability === "unavailable") {
+			return (
+				<div
+					className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-[10px] font-medium text-zinc-300"
+					style={{ backgroundImage: HATCH_BG }}
+					title="Not available through this type of provider"
+				>
+					N/A
+				</div>
+			);
+		}
 		return (
-			<div className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300">
+			<div
+				className="flex h-9 items-center justify-center rounded-sm bg-zinc-50 text-zinc-300"
+				title="Not currently tracked by Elmo"
+			>
 				·
 			</div>
 		);
@@ -621,10 +648,31 @@ function MatrixSummaryCell({
 function StatusMatrix({ data }: { data: TargetStatus[] }) {
 	const matrix = buildStatusMatrix(data);
 	if (matrix.models.length === 0 || matrix.providers.length === 0) return null;
+
+	// Columns split into two groups — Model APIs and AI Search Scrapers — with a
+	// gap between them. matrix.providers is already in PROVIDER_FILTER_ORDER, so
+	// the Model API categories sort ahead of the scrapers.
+	const apiProviders = matrix.providers.filter((p) => MODEL_API_CATEGORIES.includes(p));
+	const scraperProviders = matrix.providers.filter((p) => !MODEL_API_CATEGORIES.includes(p));
+	const grouped = apiProviders.length > 0 && scraperProviders.length > 0;
+
 	// A narrow spacer track sets the aggregate-health band (right column and
 	// bottom row) apart from the per-target cells — the darker shading and the
-	// solid corner then carry it without needing a label.
-	const gridColumns = `minmax(112px, 1.4fr) repeat(${matrix.providers.length}, minmax(52px, 1fr)) 10px minmax(60px, 0.9fr)`;
+	// solid corner then carry it without needing a label. When grouped, a wider
+	// track separates the two column groups.
+	const gridColumns = grouped
+		? `minmax(112px, 1.4fr) repeat(${apiProviders.length}, minmax(52px, 1fr)) 16px repeat(${scraperProviders.length}, minmax(52px, 1fr)) 10px minmax(60px, 0.9fr)`
+		: `minmax(112px, 1.4fr) repeat(${matrix.providers.length}, minmax(52px, 1fr)) 10px minmax(60px, 0.9fr)`;
+
+	// Model API columns, an optional group gap, then scraper columns — the cell
+	// order every row of the grid follows.
+	const renderProviderCells = (render: (p: string) => ReactNode) => (
+		<>
+			{apiProviders.map(render)}
+			{grouped && <div />}
+			{scraperProviders.map(render)}
+		</>
+	);
 
 	return (
 		<Card className="mb-8">
@@ -643,6 +691,19 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 					<span className="flex items-center gap-1.5">
 						<span className="size-3 rounded-sm ring-2 ring-inset ring-red-500" />last check failed
 					</span>
+					<span className="flex items-center gap-1.5">
+						<span className="flex size-3 items-center justify-center rounded-sm bg-zinc-100 text-[9px] leading-none text-zinc-400">
+							·
+						</span>
+						not tracked
+					</span>
+					<span className="flex items-center gap-1.5">
+						<span
+							className="size-3 rounded-sm bg-zinc-100"
+							style={{ backgroundImage: HATCH_BG }}
+						/>
+						not available
+					</span>
 				</div>
 			</CardHeader>
 			<CardContent>
@@ -651,8 +712,28 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						className="grid min-w-[640px] gap-1"
 						style={{ gridTemplateColumns: gridColumns }}
 					>
+						{grouped && (
+							<>
+								<div />
+								<div
+									className="border-b border-zinc-200 px-1 pb-1 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+									style={{ gridColumn: `span ${apiProviders.length}` }}
+								>
+									Model APIs
+								</div>
+								<div />
+								<div
+									className="border-b border-zinc-200 px-1 pb-1 text-center text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+									style={{ gridColumn: `span ${scraperProviders.length}` }}
+								>
+									AI Search Scrapers
+								</div>
+								<div />
+								<div />
+							</>
+						)}
 						<div />
-						{matrix.providers.map((p) => (
+						{renderProviderCells((p) => (
 							<div
 								key={p}
 								className="px-1 pb-1 text-center text-[11px] font-medium text-zinc-500"
@@ -667,8 +748,12 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 								<div className="flex items-center pr-2 text-sm font-medium text-zinc-700">
 									{formatModel(model)}
 								</div>
-								{matrix.providers.map((p) => (
-									<MatrixCellView key={p} cell={matrix.cell(model, p)} />
+								{renderProviderCells((p) => (
+									<MatrixCellView
+										key={p}
+										cell={matrix.cell(model, p)}
+										availability={matrix.availability(model, p)}
+									/>
 								))}
 								<div />
 								<MatrixSummaryCell rate={matrix.rowRate(model)} />
@@ -676,7 +761,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						))}
 						<div className="col-span-full h-2" />
 						<div />
-						{matrix.providers.map((p) => (
+						{renderProviderCells((p) => (
 							<MatrixSummaryCell key={p} rate={matrix.colRate(p)} />
 						))}
 						<div />

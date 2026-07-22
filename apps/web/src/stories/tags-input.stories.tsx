@@ -1,11 +1,17 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import { useState, useMemo } from "react";
+import { expect, userEvent, within } from "storybook/test";
 import { Label } from "@workspace/ui/components/label";
 import { TagsInput } from "@workspace/ui/components/tags-input";
+import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
-export default {
+const meta = {
   title: "Components/TagsInput",
 } satisfies Meta;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
 
 /** Standalone freeform input — each field manages its own values. */
 export const Freeform = () => {
@@ -59,6 +65,42 @@ export const WithValidation = () => {
       </div>
     </div>
   );
+};
+
+/** A full URL is normalized to its domain when pasted into a domain field. */
+export const UrlPaste: StoryObj = {
+  render: () => {
+    const [values, setValues] = useState<string[]>([]);
+
+    return (
+      <div className="p-8 max-w-xl space-y-6">
+        <div className="space-y-2">
+          <Label>Domains</Label>
+          <TagsInput
+            value={values}
+            onValueChange={setValues}
+            placeholder="Add domain..."
+            normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+            pasteSplitter={/[\n,\t]+/}
+            onValidate={(value) =>
+              cleanAndValidateDomain(value) ? true : `"${value}" is not a valid domain`
+            }
+          />
+        </div>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const documentBody = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+    const input = await documentBody.findByPlaceholderText("Search...");
+    await userEvent.type(input, "https://www.example.com/pricing?utm_source=ad");
+    await userEvent.keyboard("{Enter}");
+
+    await expect(canvas.findByText("example.com")).resolves.toBeVisible();
+  },
 };
 
 /**
@@ -121,4 +163,34 @@ export const SharedOptions = () => {
       </div>
     </div>
   );
+};
+
+export const KeyboardSelection: Story = {
+  render: () => {
+    const [values, setValues] = useState<string[]>([]);
+
+    return (
+      <div className="p-8 max-w-xl space-y-2">
+        <Label>Prompt tags</Label>
+        <TagsInput
+          value={values}
+          onValueChange={setValues}
+          options={[{ value: "marketing" }]}
+          placeholder="Add tag..."
+          searchPlaceholder="Search tags..."
+        />
+        <p data-testid="selected-tags">{values.join(", ")}</p>
+      </div>
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(canvas.getByRole("combobox"));
+    const input = await within(document.body).findByPlaceholderText("Search tags...");
+    await userEvent.type(input, "mark");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    await expect(canvas.getByTestId("selected-tags")).toHaveTextContent(/^marketing$/);
+  },
 };

@@ -9,7 +9,7 @@
  * server-side and regenerated only when stale — see server/opportunities.ts.
  */
 
-import { IconLoader2 } from "@tabler/icons-react";
+import { IconClock, IconLoader2 } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { OpportunitiesReport } from "@/components/opportunities-report";
@@ -59,8 +59,23 @@ function OpportunitiesPage() {
 			subtitle="What to create, pitch, and seed to earn more AI citations — generated from your tracked answer data."
 			infoContent={infoContent}
 		>
-			<div className="space-y-6">{content}</div>
+			<div className="space-y-6">
+				{data?.report && data.lastEvaluatedAt && <LastEvaluatedAt date={data.lastEvaluatedAt} />}
+				{content}
+			</div>
 		</PageHeader>
+	);
+}
+
+function LastEvaluatedAt({ date }: { date: string }) {
+	return (
+		<p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+			<IconClock className="size-4" aria-hidden />
+			Last evaluated{" "}
+			<time dateTime={date}>
+				{new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}
+			</time>
+		</p>
 	);
 }
 

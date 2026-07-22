@@ -1,5 +1,12 @@
 # @workspace/docs
 
+## 0.2.17
+
+### Patch Changes
+
+- Updated dependencies [5a0a40c]
+  - @workspace/ui@0.2.17
+
 ## 0.2.16
 
 ### Patch Changes

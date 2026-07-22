@@ -33,6 +33,7 @@ export function formatModel(model: string) {
 		perplexity: "Perplexity",
 		copilot: "Copilot",
 		deepseek: "DeepSeek",
+		kimi: "Kimi",
 		mistral: "Mistral",
 		"google-ai-mode": "Google AI Mode",
 		"google-ai-overview": "Google AI Overview",
@@ -61,6 +62,49 @@ export function providerCategory(provider: string) {
 		provider === "mistral-api"
 		? "direct-api"
 		: provider;
+}
+
+// The matrix columns split into two kinds of route: Model APIs (Direct API,
+// OpenRouter) call an LLM inference endpoint, while AI Search Scrapers (Olostep,
+// BrightData, Oxylabs, DataForSEO) scrape a live web surface.
+export const MODEL_API_CATEGORIES = ["direct-api", "openrouter"];
+
+// Models that only exist as a scraped web surface. Google's AI Mode and AI
+// Overview are Search features and Copilot is a consumer assistant — none expose
+// an inference endpoint, so a Model API can't reach them at all.
+const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
+
+// Which models each scraper has a collector for. A model missing from a
+// scraper's set can't be reached through it — a hard capability gap, not merely
+// something Elmo hasn't wired up yet. Mirrors the provider registries in
+// @workspace/lib.
+const SCRAPER_MODELS: Record<string, Set<string>> = {
+	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
+	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
+	dataforseo: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity"]),
+};
+
+export type CellAvailability = "tracked" | "untracked" | "unavailable";
+
+// Classify a model × provider-category combination independent of run data:
+// "tracked" when Elmo runs it, "unavailable" when the combination can't exist,
+// "untracked" when it could exist but Elmo doesn't currently run it.
+export function cellAvailability(
+	model: string,
+	provider: string,
+	hasTarget: boolean,
+): CellAvailability {
+	if (hasTarget) return "tracked";
+	// Model APIs reach only models with an inference endpoint — never the
+	// scrape-only Search/consumer surfaces.
+	if (MODEL_API_CATEGORIES.includes(provider)) {
+		return SCRAPE_ONLY_MODELS.has(model) ? "unavailable" : "untracked";
+	}
+	// Scrapers reach only the surfaces they have a collector for.
+	const scrapeable = SCRAPER_MODELS[provider];
+	if (scrapeable && !scrapeable.has(model)) return "unavailable";
+	return "untracked";
 }
 
 export const PROVIDER_FILTER_ORDER = [
@@ -174,6 +218,7 @@ export interface StatusMatrix {
 	models: string[];
 	providers: string[];
 	cell: (model: string, provider: string) => MatrixCell | null;
+	availability: (model: string, provider: string) => CellAvailability;
 	rowRate: (model: string) => number | null;
 	colRate: (provider: string) => number | null;
 	overall: number | null;
@@ -219,6 +264,10 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 				down: targets.some((t) => latestOf(t.entries)?.status === "fail"),
 				count: targets.length,
 			};
+		},
+		availability(model, provider) {
+			const targets = byCell.get(`${model} ${provider}`);
+			return cellAvailability(model, provider, !!targets && targets.length > 0);
 		},
 		rowRate: (model) => passRate(byModel.get(model) ?? []),
 		colRate: (provider) => passRate(byProvider.get(provider) ?? []),

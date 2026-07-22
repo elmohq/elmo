@@ -140,6 +140,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 									placeholder="Add domain..."
 									maxItems={10}
 									normalizeValue={(raw) => cleanAndValidateDomain(raw) ?? raw.trim()}
+									pasteSplitter={/[\n,\t]+/}
 									onValidate={validateDomain}
 								/>
 							</div>

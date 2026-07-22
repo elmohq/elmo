@@ -28,6 +28,8 @@ export interface TagsInputProps {
   emptyText?: string;
   allowCustomValues?: boolean;
   normalizeValue?: (raw: string) => string;
+  /** Splits clipboard text into values. Providing this also handles single-value pastes. */
+  pasteSplitter?: RegExp;
   /** Return `true` to accept the value, or an error string to reject it and show inline. */
   onValidate?: (value: string) => true | string;
   maxItems?: number;
@@ -47,6 +49,7 @@ export function TagsInput({
   emptyText = "No results.",
   allowCustomValues = true,
   normalizeValue,
+  pasteSplitter,
   onValidate,
   maxItems,
   minItems = 0,
@@ -205,10 +208,6 @@ export function TagsInput({
               placeholder={atMax ? "Maximum reached" : searchPlaceholder}
               disabled={disabled || atMax}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && showCreate) {
-                  e.preventDefault();
-                  handleCreate();
-                }
                 if (e.key === "Backspace" && query === "" && value.length > 0 && canRemove) {
                   e.preventDefault();
                   onValueChange(value.slice(0, -1));
@@ -217,9 +216,9 @@ export function TagsInput({
               onPaste={(e) => {
                 if (disabled || atMax) return;
                 const text = e.clipboardData.getData("text");
-                if (!PASTE_SPLITTER.test(text)) return;
+                if (!pasteSplitter && !PASTE_SPLITTER.test(text)) return;
                 e.preventDefault();
-                addMany(text.split(PASTE_SPLITTER));
+                addMany(text.split(pasteSplitter ?? PASTE_SPLITTER));
                 setQuery("");
               }}
             />
@@ -229,7 +228,7 @@ export function TagsInput({
               )}
               {showHint && (
                 <div className="px-3 py-3 text-center text-xs text-muted-foreground">
-                  Type to add a value
+                  Type or paste to add a value
                 </div>
               )}
               {(showCreate || filteredOptions.length > 0) && (

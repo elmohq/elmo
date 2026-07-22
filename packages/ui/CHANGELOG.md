@@ -1,5 +1,11 @@
 # @workspace/ui
 
+## 0.2.17
+
+### Patch Changes
+
+- 5a0a40c: You can now use the keyboard to select tags for filtering.
+
 ## 0.2.16
 
 ## 0.2.15

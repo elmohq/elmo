@@ -19,6 +19,7 @@ import {
 } from "@workspace/lib/providers";
 import { extractTextContent, extractCitations } from "@workspace/lib/text-extraction";
 import { appendFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { escapeGitHubSummaryTableCell } from "./github-summary";
 
 const colors = {
 	reset: "\x1b[0m",
@@ -348,13 +349,13 @@ function writeGitHubSummary(results: TargetResult[]) {
 
 	for (const r of results) {
 		const status = r.status === "pass" ? ":white_check_mark:" : ":x:";
-		const error = r.error ? r.error.slice(0, 100).replace(/\|/g, "\\|") : "";
+		const error = r.error ? escapeGitHubSummaryTableCell(r.error.slice(0, 100)) : "";
 		const rawKB = (r.rawOutputBytes / 1024).toFixed(1) + " KB";
 		const sample = r.sampleOutput
-			? `<details><summary>Show</summary><pre>${r.sampleOutput.replace(/\|/g, "\\|").replace(/\n/g, "<br>")}</pre></details>`
+			? `<details><summary>Show</summary><pre>${escapeGitHubSummaryTableCell(r.sampleOutput)}</pre></details>`
 			: "";
 		lines.push(
-			`| ${status} | \`${r.target}\` | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
+			`| ${status} | <code>${escapeGitHubSummaryTableCell(r.target)}</code> | ${formatLatency(r.latency)} | ${error} | ${r.textLength} | ${rawKB} | ${r.citations} | ${r.webQueries} | ${r.webSearch ? "enabled" : "disabled"} | ${sample} |`,
 		);
 	}
 
@@ -368,7 +369,9 @@ function writeGitHubSummary(results: TargetResult[]) {
 		lines.push("|----------|--------|-------|-------|");
 		for (const i of allIssues) {
 			const icon = i.severity === "error" ? ":x:" : ":warning:";
-			lines.push(`| ${icon} | \`${i.target}\` | \`${i.field}\` | ${i.message} |`);
+			lines.push(
+				`| ${icon} | <code>${escapeGitHubSummaryTableCell(i.target)}</code> | <code>${escapeGitHubSummaryTableCell(i.field)}</code> | ${escapeGitHubSummaryTableCell(i.message)} |`,
+			);
 		}
 	}
 
