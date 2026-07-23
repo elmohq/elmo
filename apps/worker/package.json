@@ -14,7 +14,7 @@
     "@workspace/deployment": "workspace:*",
     "@workspace/lib": "workspace:*",
     "@workspace/whitelabel": "workspace:*",
-    "auth0": "^5.14.0",
+    "auth0": "^6.0.0",
     "drizzle-orm": "^0.45.2",
     "pg": "^8.22.0",
     "pg-boss": "^12.26.0",
