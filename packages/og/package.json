@@ -6,13 +6,16 @@
 	"type": "module",
 	"exports": {
 		"./render": "./src/render.ts",
+		"./rasterize": "./src/rasterize.ts",
 		"./vite-plugin": "./src/vite-plugin.ts",
 		"./virtual": "./src/virtual.d.ts",
-		"./takumi-wasm-node-stub": "./src/takumi-wasm-node-stub.ts"
+		"./jsx": "./src/jsx.d.ts"
 	},
 	"dependencies": {
+		"@resvg/resvg-js": "^2.6.2",
 		"@workspace/config": "workspace:*",
-		"react": "^19.2.7"
+		"react": "^19.2.7",
+		"satori": "^0.28.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",

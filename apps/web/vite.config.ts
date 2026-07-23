@@ -6,14 +6,10 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { embedBinaries } from "@workspace/og/vite-plugin";
+import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
-
-// takumi's native backend statically references `@takumi-rs/wasm/node`, which
-// eagerly reads a WASM asset we never emit; stub it out (see the stub for why).
-const takumiWasmNodeStub = fileURLToPath(import.meta.resolve("@workspace/og/takumi-wasm-node-stub"));
 
 export default defineConfig({
 	build: {
@@ -31,16 +27,15 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
+		externalizeResvg(),
 		devtools(),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			exportConditions: ["node", "import", "default", "!unwasm"],
-			traceDeps: ["@takumi-rs/core"],
+			traceDeps: ["@resvg/resvg-js"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
-				"@takumi-rs/wasm/node": takumiWasmNodeStub,
 			},
 			noExternals: ["@opentelemetry/instrumentation", "@opentelemetry/api", "@prisma/instrumentation"],
 			rollupConfig: {
