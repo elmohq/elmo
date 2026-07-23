@@ -2,6 +2,7 @@ import type { Provider } from "./types";
 import { olostep } from "./registry/olostep";
 import { brightdata } from "./registry/brightdata";
 import { oxylabs } from "./registry/oxylabs";
+import { cloro } from "./registry/cloro";
 import { openaiApi } from "./registry/openai-api";
 import { anthropicApi } from "./registry/anthropic-api";
 import { mistralApi } from "./registry/mistral-api";
@@ -28,6 +29,7 @@ const providerMap: Record<string, Provider> = {
 	olostep,
 	brightdata,
 	oxylabs,
+	cloro,
 	"openai-api": openaiApi,
 	"anthropic-api": anthropicApi,
 	"mistral-api": mistralApi,

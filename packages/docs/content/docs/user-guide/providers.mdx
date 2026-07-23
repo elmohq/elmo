@@ -13,6 +13,7 @@ These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI r
 |---|---|---|---|
 | **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
 | **Oxylabs** | Asynchronous Push-Pull API. Good for ChatGPT, Perplexity, Google AI Mode. | pay-as-you-go | [oxylabs.io](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
+| **Cloro** | Asynchronous task API with the widest surface coverage — adds Copilot and Gemini. | pay-as-you-go | [cloro.dev](https://cloro.dev) |
 | **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
 
 <Callout>
@@ -58,6 +59,25 @@ google-ai-overview:oxylabs:online
 ```
 
 Oxylabs uses HTTP Basic auth (Web Scraper API username + password). Elmo submits each request through the asynchronous Push-Pull API and polls until the result is ready, avoiding the Realtime API's connection timeout. `:online` toggles in-product web search for ChatGPT; Perplexity, Google AI Mode, and Google AI Overview always search.
+
+### Cloro
+
+```bash
+CLORO_API_KEY=...
+```
+
+Supported scrape targets:
+
+```
+chatgpt:cloro:online
+perplexity:cloro:online
+copilot:cloro:online
+gemini:cloro:online
+google-ai-mode:cloro:online
+google-ai-overview:cloro:online
+```
+
+Cloro authenticates with a single bearer API key. Elmo submits each request through Cloro's [asynchronous task API](https://cloro.dev/docs/) and polls until the task completes, which also lets Cloro meter concurrency for us instead of holding a synchronous connection open. Every Cloro surface is the live web-search UI, so the `:online` suffix is required.
 
 ### Olostep
 
@@ -163,7 +183,7 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
-- `provider` — how to reach it (`brightdata`, `oxylabs`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
+- `provider` — how to reach it (`brightdata`, `oxylabs`, `cloro`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 

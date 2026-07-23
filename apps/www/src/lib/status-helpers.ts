@@ -46,6 +46,7 @@ export function formatProvider(provider: string) {
 		olostep: "Olostep",
 		brightdata: "BrightData",
 		oxylabs: "Oxylabs",
+		cloro: "Cloro",
 		dataforseo: "DataForSEO",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
@@ -82,6 +83,7 @@ const SCRAPER_MODELS: Record<string, Set<string>> = {
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
+	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	dataforseo: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity"]),
 };
 
@@ -113,6 +115,7 @@ export const PROVIDER_FILTER_ORDER = [
 	"olostep",
 	"brightdata",
 	"oxylabs",
+	"cloro",
 	"dataforseo",
 ];
 
@@ -122,6 +125,7 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	olostep: "Olostep",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
+	cloro: "Cloro",
 	dataforseo: "DataForSEO",
 };
 

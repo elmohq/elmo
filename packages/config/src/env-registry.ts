@@ -189,6 +189,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Oxylabs Web Scraper API password.",
 	},
 	{
+		name: "CLORO_API_KEY",
+		scope: "server",
+		requiredBy: "dynamic-scrape-targets",
+		provider: "cloro",
+		description: "Cloro API key.",
+	},
+	{
 		name: "OPENROUTER_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
