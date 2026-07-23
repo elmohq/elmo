@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseScrapeTargets, validateScrapeTargets } from "./config";
 import { brightdata } from "./registry/brightdata";
 import { oxylabs } from "./registry/oxylabs";
+import { cloro } from "./registry/cloro";
 import { dataforseo } from "./registry/dataforseo";
 import { olostep } from "./registry/olostep";
 import type { ModelConfig } from "./types";
@@ -164,6 +165,7 @@ describe("validateScrapeTargets", () => {
 			{ model: "chatgpt", provider: "olostep", webSearch: true },
 			{ model: "chatgpt", provider: "brightdata", webSearch: true },
 			{ model: "chatgpt", provider: "oxylabs", webSearch: true },
+			{ model: "chatgpt", provider: "cloro", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", webSearch: true },
 		];
 		expect(() =>
@@ -173,6 +175,7 @@ describe("validateScrapeTargets", () => {
 					olostep: configuredProvider,
 					brightdata: configuredProvider,
 					oxylabs: configuredProvider,
+					cloro: configuredProvider,
 					dataforseo: configuredProvider,
 				}),
 			),
@@ -276,6 +279,23 @@ describe("provider validateTarget", () => {
 		it("rejects unsupported models (e.g. copilot, gemini)", () => {
 			expect(oxylabs.validateTarget!(config("copilot", "oxylabs", true))).toMatch(/does not support/);
 			expect(oxylabs.validateTarget!(config("gemini", "oxylabs", true))).toMatch(/does not support/);
+		});
+	});
+
+	describe("cloro", () => {
+		it("accepts all supported surfaces with :online", () => {
+			for (const model of ["chatgpt", "perplexity", "copilot", "gemini", "google-ai-mode", "google-ai-overview"]) {
+				expect(cloro.validateTarget!(config(model, "cloro", true))).toBeNull();
+			}
+		});
+
+		it("rejects targets without :online", () => {
+			expect(cloro.validateTarget!(config("chatgpt", "cloro", false))).toMatch(/requires :online/);
+			expect(cloro.validateTarget!(config("perplexity", "cloro", false))).toMatch(/requires :online/);
+		});
+
+		it("rejects unknown models", () => {
+			expect(cloro.validateTarget!(config("grok", "cloro", true))).toMatch(/does not support/);
 		});
 	});
 });

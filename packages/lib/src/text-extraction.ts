@@ -266,6 +266,28 @@ export function extractTextFromOxylabs(rawOutput: any): string {
 	}
 }
 
+// Cloro returns a normalized answer object. Chatbot tasks (ChatGPT, Perplexity,
+// Copilot, Gemini) and Google AI Mode put the answer at the top level of the
+// stored `response`; the Google AI Overview task nests it under `aioverview`,
+// which is null when Google showed no overview.
+function cloroAnswer(rawOutput: any): any {
+	if (rawOutput && typeof rawOutput === "object" && "aioverview" in rawOutput) return rawOutput.aioverview;
+	return rawOutput;
+}
+
+export function extractTextFromCloro(rawOutput: any): string {
+	try {
+		const answer = cloroAnswer(rawOutput);
+		if (!answer || typeof answer !== "object") return "No content in Cloro output.";
+		for (const key of ["text", "markdown"]) {
+			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
+		}
+		return "No text content found in Cloro output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
 /**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -296,6 +318,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 			return extractTextFromBrightdata(rawOutput);
 		case "oxylabs":
 			return extractTextFromOxylabs(rawOutput);
+		case "cloro":
+			return extractTextFromCloro(rawOutput);
 		default:
 			return tryGenericExtraction(rawOutput);
 	}
@@ -652,6 +676,39 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 	}
 }
 
+export function extractCitationsFromCloro(rawOutput: any): Citation[] {
+	try {
+		const answer = cloroAnswer(rawOutput);
+		if (!answer || typeof answer !== "object") return [];
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+
+		const push = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		};
+
+		// `sources` is the answer's reference panel; `citationPills` are the inline
+		// citations (a denormalized subset); AI Overview adds `relatedLinks`. Each
+		// entry exposes the source URL as `url` and its title as `label`.
+		for (const field of ["sources", "citationPills", "relatedLinks"]) {
+			if (!Array.isArray(answer[field])) continue;
+			for (const item of answer[field]) {
+				push(item?.url ?? item?.link, item?.label ?? item?.title);
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -676,6 +733,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 			return extractCitationsFromBrightdata(rawOutput);
 		case "oxylabs":
 			return extractCitationsFromOxylabs(rawOutput);
+		case "cloro":
+			return extractCitationsFromCloro(rawOutput);
 		case "anthropic-api":
 		case "anthropic":
 		case "claude":
