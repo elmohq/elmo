@@ -1,5 +1,4 @@
 import { ENV_REGISTRY } from "./env-registry";
-import { parseScrapeTargets } from "./scrape-targets";
 import type { DeploymentMode, EnvRequirement } from "./types";
 
 export type EnvMap = Record<string, string | undefined>;
@@ -52,42 +51,14 @@ function buildStaticRequirements(mode: DeploymentMode): EnvRequirement[] {
 	);
 }
 
-/**
- * Build env requirements for exactly the provider keys referenced by SCRAPE_TARGETS.
- */
-function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement[] {
-	let providers: string[];
-	try {
-		providers = [...new Set(parseScrapeTargets(env.SCRAPE_TARGETS).map((target) => target.provider))];
-	} catch {
-		// A missing or malformed SCRAPE_TARGETS is reported by its own
-		// requirement (and rejected at worker boot); provider keys can't be
-		// derived from it.
-		return [];
-	}
-
-	const requirements: EnvRequirement[] = [];
-	for (const provider of providers) {
-		const keys = ENV_REGISTRY.filter(
-			(spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider === provider,
-		).map((spec) => spec.name);
-		if (keys.length === 0) continue;
-		requirements.push({
-			id: `PROVIDER_${provider.toUpperCase().replace(/-/g, "_")}`,
-			label: keys.join(" + "),
-			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
-			isSatisfied: requireAll(keys),
-		});
-	}
-
-	return requirements;
-}
-
+// Provider credential keys are deliberately not startup requirements: with the
+// DB-backed catalog and credential store, readiness is a runtime health concern
+// (unready targets are skipped and surfaced), not a boot gate.
 export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
-	local: [...buildStaticRequirements("local"), ...buildProviderKeyRequirements()],
-	demo: [...buildStaticRequirements("demo"), ...buildProviderKeyRequirements()],
-	whitelabel: [...buildStaticRequirements("whitelabel"), ...buildProviderKeyRequirements()],
-	cloud: [...buildStaticRequirements("cloud"), ...buildProviderKeyRequirements()],
+	local: buildStaticRequirements("local"),
+	demo: buildStaticRequirements("demo"),
+	whitelabel: buildStaticRequirements("whitelabel"),
+	cloud: buildStaticRequirements("cloud"),
 };
 
 /**

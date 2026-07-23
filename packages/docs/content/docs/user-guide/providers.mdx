@@ -5,6 +5,10 @@ description: Choose how Elmo tracks each AI answer engine — scrapers, direct A
 
 Elmo tracks which AI answer engines mention your brand. Most AI search traffic comes from **ChatGPT** and **Google AI Mode**, and neither exposes a public API. You can approximate their responses by calling the underlying model APIs (OpenAI, Anthropic, Mistral, OpenRouter) with web search enabled, but that's not the real consumer UI — scraping the actual surface is usually closer to what your customers see.
 
+<Callout>
+The `SCRAPE_TARGETS` and provider-key environment variables below seed the tracked-platform catalog the first time a deployment boots. After that, you manage which platforms Elmo tracks in the app under **Admin → Config → Targets** — the environment is no longer the source of truth. Provider keys can stay in the environment (fully supported) or be stored encrypted in the app; encrypted storage requires `ELMO_ENCRYPTION_KEY` (the CLI generates one for you). Setting keys in the environment remains the simplest way to configure a fresh install.
+</Callout>
+
 ## Recommended scrapers
 
 These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI referral traffic.
@@ -157,6 +161,8 @@ SCRAPE_TARGETS=chatgpt:openai-api:gpt-5-mini:online,claude:anthropic-api:claude-
 ```
 
 ## SCRAPE_TARGETS format
+
+`SCRAPE_TARGETS` seeds the tracked-platform catalog on a deployment's first boot (and drives the one-time environment → database import when you upgrade an existing install). The format below describes that seed string; once the catalog exists, targets are edited under **Admin → Config → Targets** rather than here.
 
 ```
 model:provider[:version][:online]

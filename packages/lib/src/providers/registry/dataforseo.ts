@@ -7,6 +7,7 @@ import {
 	extractTextFromGoogle,
 } from "../../text-extraction";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
+import { getCredential } from "../../secrets";
 
 /**
  * Models served via the SERP Google AI Mode endpoint (SerpApi). These always
@@ -48,8 +49,8 @@ function sanitizeForJson(obj: unknown): unknown {
 }
 
 function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
-	const username = process.env.DATAFORSEO_LOGIN;
-	const password = process.env.DATAFORSEO_PASSWORD;
+	const username = getCredential("DATAFORSEO_LOGIN");
+	const password = getCredential("DATAFORSEO_PASSWORD");
 	if (!username || !password) {
 		throw new Error("DataForSEO requires DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD");
 	}
@@ -267,7 +268,7 @@ export const dataforseo: Provider = {
 	name: "DataForSEO",
 
 	isConfigured() {
-		return !!process.env.DATAFORSEO_LOGIN && !!process.env.DATAFORSEO_PASSWORD;
+		return !!getCredential("DATAFORSEO_LOGIN") && !!getCredential("DATAFORSEO_PASSWORD");
 	},
 
 	validateTarget(config: ModelConfig) {

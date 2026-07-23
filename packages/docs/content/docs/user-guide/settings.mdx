@@ -41,19 +41,21 @@ Manage your tracking prompts:
 
 ## LLM Settings
 
-Configure which AI models Elmo queries:
+The **LLMs** page controls which AI platforms Elmo tracks for this brand. Check a platform to start tracking it or uncheck it to stop — the change takes effect on the next scheduled run. Each row shows where its value comes from (your plan, an instance default, or your own pick), and why a platform isn't running when it's unavailable.
 
-- **OpenAI (ChatGPT)** — Requires `OPENAI_API_KEY` in your environment
-- **Anthropic (Claude)** — Requires `ANTHROPIC_API_KEY` in your environment
-- **Google AI Overviews** — Tracks Google's AI-generated summaries
-
-You can enable or disable individual models and adjust query parameters.
+- The list of available platforms comes from your deployment's catalog, which admins manage under **Admin → Config** — not from this page or from `SCRAPE_TARGETS`.
+- On cloud plans the number of platforms you can track is capped by your plan, and the page shows how many picks you have left.
+- On local and cloud deployments, individual prompts can additionally turn specific models on or off (for example, adding a base or web-search Claude run) from the prompt's own page.
 
 {/* TODO: Screenshot of LLM settings */}
 
+## Admin Configuration
+
+Instance admins get an **Admin → Config** section for deployment-wide run configuration that members don't edit: the platform catalog (which providers and models exist), provider credentials, and default run cadence. On cloud, admins also set per-organization plan limits here. These surfaces are read-only in the demo.
+
 ## Updating Environment Variables
 
-Some settings (like API keys) are configured via environment variables rather than the UI. To update them:
+Some settings (like provider API keys) can be configured via environment variables; keys can also be stored encrypted in the app from the admin Providers surface. To update the environment:
 
 ```bash
 # Edit your .env file in the config directory

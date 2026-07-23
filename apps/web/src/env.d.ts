@@ -54,6 +54,7 @@ declare global {
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
 			readonly JINA_API_KEY?: string;
+			readonly ELMO_ENCRYPTION_KEY?: string;
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
 			readonly BETTER_AUTH_SECRET?: string;

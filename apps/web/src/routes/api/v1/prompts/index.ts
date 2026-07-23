@@ -10,6 +10,8 @@ import { z } from "zod";
 import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
 import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { EntitlementLimitError } from "@/server/config-enforcement";
+import { assertCanAddPromptsToOrg } from "@/server/prompt-limits";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -70,6 +72,18 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 					}
 
 					const brand = brandInfo[0];
+
+					// Org prompt-pool entitlement (§7) — closes the server-side gap
+					// behind the UI-only MAX_PROMPTS cap. Inert outside cloud.
+					try {
+						await assertCanAddPromptsToOrg(brand.organizationId, 1);
+					} catch (error) {
+						if (error instanceof EntitlementLimitError) {
+							throw new ApiError(403, "Plan Limit Exceeded", error.message);
+						}
+						throw error;
+					}
+
 					const userTags = tags ? sanitizeUserTags(tags) : [];
 					const systemTags = computeSystemTags(value, brand.name, brand.website);
 

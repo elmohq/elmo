@@ -1,23 +1,42 @@
 import * as Sentry from "@sentry/node";
 import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
-import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
 import {
-	getProvider,
-	parseScrapeTargets,
-	selectTargetsForBrand,
-	type ModelConfig,
-	type Provider,
-} from "@workspace/lib/providers";
+	brands,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+	type Brand,
+	type Competitor,
+} from "@workspace/lib/db/schema";
+import { and, count, eq, gt, inArray, sql } from "drizzle-orm";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { ASSIGNABLE_MODELS } from "@workspace/config/plans";
+import {
+	type BrandResolution,
+	countAssignableModelUsage,
+	type EffectiveTarget,
+	resolveBrandTargets,
+	resolvePromptTargets,
+} from "@workspace/lib/config/resolve";
+import { getProvider, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
+import {
+	isAssignableModel,
+	orgAssignableBudget,
+	rescheduleCadenceHours,
+	RUN_WINDOW_MS,
+	selectRunnableTargets,
+	targetIdentityKey,
+} from "./run-policy";
 
 export interface ProcessPromptData {
 	promptId: string;
-	cadenceHours?: number; // Hours until next run (for self-rescheduling)
+	cadenceHours?: number; // advisory/back-compat; the job recomputes cadence each firing from resolved targets
+	force?: boolean; // admin "run now": bypass the per-target due check (never the budgets)
 }
 
 interface PromptContext {
@@ -53,26 +72,6 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
 	}
 }
 
-/**
- * Get the cadence hours for a prompt based on its brand's delay override.
- */
-async function getCadenceHours(promptId: string): Promise<number> {
-	const defaultDelayHours = getDefaultDelayHours();
-	const prompt = await db.query.prompts.findFirst({
-		where: eq(prompts.id, promptId),
-	});
-
-	if (!prompt) return defaultDelayHours;
-
-	const brand = await db.query.brands.findFirst({
-		where: eq(brands.id, prompt.brandId),
-	});
-
-	if (!brand) return defaultDelayHours;
-
-	return brand.delayOverrideHours ?? defaultDelayHours;
-}
-
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
 	const prompt = await db.query.prompts.findFirst({
 		where: eq(prompts.id, promptId),
@@ -83,24 +82,88 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		return null;
 	}
 
-	const brand = await db.query.brands.findFirst({
-		where: eq(brands.id, prompt.brandId),
-	});
+	// Brand and competitors both key only off prompt.brandId — fetch together.
+	const [brand, brandCompetitors] = await Promise.all([
+		db.query.brands.findFirst({ where: eq(brands.id, prompt.brandId) }),
+		db.query.competitors.findMany({ where: eq(competitors.brandId, prompt.brandId) }),
+	]);
 
 	if (!brand) {
 		console.error(`Brand not found: ${prompt.brandId}`);
 		return null;
 	}
 
-	const brandCompetitors = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, prompt.brandId),
-	});
-
 	return {
 		prompt,
 		brand,
 		competitors: brandCompetitors,
 	};
+}
+
+/**
+ * Per-target run history for one prompt: the last run time (dueness) and the
+ * trailing-24h count (per-target budget), both keyed by target identity. One
+ * grouped query — indexed by `prompt_runs_prompt_id_created_at_idx`.
+ */
+async function loadPromptRunHistory(
+	promptId: string,
+	windowStart: Date,
+): Promise<{ lastRunAtMsByKey: Map<string, number>; recentCountByKey: Map<string, number> }> {
+	const rows = await db
+		.select({
+			model: promptRuns.model,
+			provider: promptRuns.provider,
+			webSearch: promptRuns.webSearchEnabled,
+			lastRunAt: sql<string>`MAX(${promptRuns.createdAt})`,
+			recent: sql<string>`COUNT(*) FILTER (WHERE ${promptRuns.createdAt} > ${windowStart})`,
+		})
+		.from(promptRuns)
+		.where(eq(promptRuns.promptId, promptId))
+		.groupBy(promptRuns.model, promptRuns.provider, promptRuns.webSearchEnabled);
+
+	const lastRunAtMsByKey = new Map<string, number>();
+	const recentCountByKey = new Map<string, number>();
+	for (const row of rows) {
+		const key = targetIdentityKey({ model: row.model, provider: row.provider, webSearch: row.webSearch });
+		if (row.lastRunAt) lastRunAtMsByKey.set(key, new Date(row.lastRunAt).getTime());
+		recentCountByKey.set(key, Number(row.recent));
+	}
+	return { lastRunAtMsByKey, recentCountByKey };
+}
+
+/**
+ * Org-wide trailing-24h run counts per assignable model, for the pool × runs/day
+ * budget (A5). Only queries when a capped assignable target is actually present,
+ * so unlimited (non-cloud) deployments do no extra work.
+ */
+async function loadOrgAssignableUsage(
+	organizationId: string,
+	targets: EffectiveTarget[],
+	entitlements: BrandResolution["entitlements"],
+	windowStart: Date,
+): Promise<Map<string, number>> {
+	const models = new Set<string>();
+	for (const target of targets) {
+		if (isAssignableModel(target.model) && orgAssignableBudget(entitlements, target.model) !== null) {
+			models.add(target.model);
+		}
+	}
+	if (models.size === 0) return new Map();
+
+	const rows = await db
+		.select({ model: promptRuns.model, n: count() })
+		.from(promptRuns)
+		.innerJoin(brands, eq(brands.id, promptRuns.brandId))
+		.where(
+			and(
+				eq(brands.organizationId, organizationId),
+				inArray(promptRuns.model, [...models]),
+				gt(promptRuns.createdAt, windowStart),
+			),
+		)
+		.groupBy(promptRuns.model);
+
+	return new Map(rows.map((row) => [row.model, Number(row.n)]));
 }
 
 function extractDomainFromUrl(urlOrDomain: string): string {
@@ -128,16 +191,13 @@ function analyzeMentions(
 		...(brand.additionalDomains || []).map(extractDomainFromUrl),
 	];
 	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
+		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
 			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
 			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
+			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
 			return nameMatch || domainMatch;
 		})
 		.map((competitor) => competitor.name);
@@ -200,7 +260,6 @@ async function saveCitations(
 		})),
 	);
 }
-
 
 async function runModelIteration({
 	promptId,
@@ -270,21 +329,33 @@ async function runModelIteration({
 	}
 }
 
+/** An effective target is dispatched through the provider layer as a ModelConfig. */
+function toModelConfig(target: EffectiveTarget): ModelConfig {
+	return { model: target.model, provider: target.provider, version: target.version, webSearch: target.webSearch };
+}
+
 /**
  * Process a prompt - runs AI models and saves results.
  * This is a pg-boss job handler, called when a scheduled job fires.
- * After successful completion, schedules the next run.
+ *
+ * Targets, replication, and cadence all come from the config resolver (catalog ∩
+ * entitlements ∩ resolved selections). Each firing runs every effective target
+ * that is both due at its resolved cadence and within its runnable budget, then
+ * reschedules at the fastest of the prompt's target cadences. A prompt that
+ * resolves to zero targets completes WITHOUT rescheduling (A8b) — maintenance
+ * revives it when the catalog/config changes.
  */
-export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
-	const scrapeConfigs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+const CLAUDE = ASSIGNABLE_MODELS[0];
 
+export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<void> {
+	// The assignable (Claude) pool count is org-scoped and stable across this
+	// batch — the job only reads and runs, never mutates assignments — so compute
+	// it once per org and reuse it for every prompt in that org.
+	const assignablePoolByOrg = new Map<string, number>();
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { promptId, cadenceHours: providedCadence } = job.data;
+		const { promptId, force = false } = job.data;
 		console.log(`Processing prompt ${promptId}`);
-
-		// Get cadence hours - use provided value or look it up
-		const cadenceHours = providedCadence ?? (await getCadenceHours(promptId));
 
 		// Get prompt context
 		const context = await getPromptContext(promptId);
@@ -298,24 +369,64 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		// Check if prompt and brand are enabled
 		if (!prompt.enabled || !brand.enabled) {
 			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-			// Still reschedule - the prompt might be enabled later
-			await scheduleNextRun(promptId, cadenceHours);
+			// Still reschedule - the prompt might be enabled later; targets are
+			// recomputed on the firing after re-enable.
+			await scheduleNextRun(promptId, getDefaultDelayHours());
 			continue;
 		}
 
-		const selectedConfigs = selectTargetsForBrand(scrapeConfigs, brand.enabledModels);
-		if (selectedConfigs.length === 0) {
-			console.log(`Prompt ${promptId} for brand ${brand.id} has no targets (brand.enabledModels=[])`);
+		// Resolve effective targets from the DB config hierarchy.
+		const brandResolution = await resolveBrandTargets(brand, brand.organizationId);
+		let assignablePoolUsage = assignablePoolByOrg.get(brand.organizationId);
+		if (assignablePoolUsage === undefined) {
+			assignablePoolUsage = await countAssignableModelUsage(brand.organizationId, CLAUDE);
+			assignablePoolByOrg.set(brand.organizationId, assignablePoolUsage);
+		}
+		const { targets, excluded } = await resolvePromptTargets(prompt, brandResolution, { assignablePoolUsage });
+
+		for (const ex of excluded) {
+			console.debug(
+				`[process-prompt] ${promptId} target ${ex.target.model}:${ex.target.provider} excluded: ${ex.reasons.join(", ")}`,
+			);
+		}
+
+		const nextCadenceHours = rescheduleCadenceHours(targets, getDefaultDelayHours());
+		if (nextCadenceHours === null) {
+			// A8b: a zero-target prompt must NOT self-reschedule (avoids idle churn);
+			// maintenance revives it once the catalog/config makes a target eligible.
+			console.log(`Prompt ${promptId} resolved to zero effective targets — completing without reschedule`);
+			continue;
+		}
+
+		const now = new Date();
+		const windowStart = new Date(now.getTime() - RUN_WINDOW_MS);
+		const [{ lastRunAtMsByKey, recentCountByKey }, orgAssignableUsedByModel] = await Promise.all([
+			loadPromptRunHistory(promptId, windowStart),
+			loadOrgAssignableUsage(brand.organizationId, targets, brandResolution.entitlements, windowStart),
+		]);
+
+		const { runnable, skipped } = selectRunnableTargets({
+			targets,
+			bypassDue: force,
+			nowMs: now.getTime(),
+			lastRunAtMsByKey,
+			recentCountByKey,
+			entitlements: brandResolution.entitlements,
+			orgAssignableUsedByModel,
+		});
+
+		for (const s of skipped) {
+			console.log(`[process-prompt] ${promptId} skipping ${s.target.model}:${s.target.provider} (${s.reason})`);
 		}
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
-		// Run all model iterations in parallel
+		// Run all runnable model iterations in parallel, each at its replication.
 		const runPromises: Promise<void>[] = [];
-
-		for (const config of selectedConfigs) {
-			const providerImpl = getProvider(config.provider);
-			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+		for (const target of runnable) {
+			const providerImpl = getProvider(target.provider);
+			const config = toModelConfig(target);
+			for (let i = 0; i < target.runPolicy.replication; i++) {
 				runPromises.push(
 					runModelIteration({
 						promptId,
@@ -330,36 +441,43 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 			}
 		}
 
-		const results = await Promise.allSettled(runPromises);
-		const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+		if (runPromises.length === 0) {
+			// Everything was skipped (not-due / budget) — a quiet, successful cycle.
+			console.log(`Prompt ${promptId}: all ${targets.length} target(s) skipped this cycle (not-due/budget)`);
+		} else {
+			const results = await Promise.allSettled(runPromises);
+			const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
 
-		if (failures.length > 0) {
-			const errorMessages = failures
-				.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
-				.join("; ");
+			if (failures.length > 0) {
+				const errorMessages = failures
+					.map((f, i) => `Run ${i + 1}: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`)
+					.join("; ");
 
-			// Log failures but don't throw if some succeeded
-			console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
+				// Log failures but don't throw if some succeeded
+				console.error(`Prompt ${promptId} had ${failures.length}/${runPromises.length} failed runs: ${errorMessages}`);
 
-			// If ALL runs failed, throw to trigger retry
-			if (failures.length === runPromises.length) {
-				throw new Error(`All runs failed for prompt ${promptId}: ${errorMessages}`);
+				// If ALL attempted runs failed, throw to trigger retry
+				if (failures.length === runPromises.length) {
+					throw new Error(`All runs failed for prompt ${promptId}: ${errorMessages}`);
+				}
 			}
+
+			const successCount = runPromises.length - failures.length;
+			console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
+
+			trackWorkerEvent("prompt_processed", {
+				brand_id: brand.id,
+				models: [...new Set(runnable.map((t) => t.model))],
+				providers: [...new Set(runnable.map((t) => t.provider))],
+				total_runs: runPromises.length,
+				successful_runs: successCount,
+				failed_runs: failures.length,
+			});
 		}
 
-		const successCount = runPromises.length - failures.length;
-		console.log(`Completed prompt ${promptId}: ${successCount}/${runPromises.length} successful runs`);
-
-		trackWorkerEvent("prompt_processed", {
-			brand_id: brand.id,
-			models: [...new Set(selectedConfigs.map((c) => c.model))],
-			providers: [...new Set(selectedConfigs.map((c) => c.provider))],
-			total_runs: runPromises.length,
-			successful_runs: successCount,
-			failed_runs: failures.length,
-		});
-
-		// Schedule the next run
-		await scheduleNextRun(promptId, cadenceHours);
+		// Reschedule against the fastest resolved cadence so mixed-cadence prompts
+		// fire often enough for their tightest target; the due check gates which
+		// targets actually run on each firing.
+		await scheduleNextRun(promptId, nextCadenceHours);
 	}
 }

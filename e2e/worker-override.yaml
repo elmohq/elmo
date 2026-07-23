@@ -1,9 +1,13 @@
-# Compose override layered on top of the generated .elmo/elmo.yaml so the E2E
-# worker processes jobs without any paid API calls: SCRAPE_TARGETS points at the
-# no-network `stub` provider, so a submitted job records a prompt_run without
-# reaching out to any LLM API. Worker-only — the web service keeps the real
-# SCRAPE_TARGETS from .env.
+# Compose override layered on top of the generated .elmo/elmo.yaml.
+#
+# The E2E worker used to be scoped off paid APIs by overriding SCRAPE_TARGETS to
+# `stub:stub`. That is no longer how targets are chosen: the worker resolves them
+# from the `model_targets` catalog in the database, which e2e/seed.ts seeds with a
+# single no-network `stub` row and stamps `instance_meta` so the worker's
+# first-boot import of SCRAPE_TARGETS is a no-op. The seeded catalog is now what
+# keeps E2E off paid APIs, so no SCRAPE_TARGETS override is needed here.
+#
+# This file is retained (empty worker override) only because the CI COMPOSE_FILE
+# list references it.
 services:
-  worker:
-    environment:
-      SCRAPE_TARGETS: stub:stub
+  worker: {}

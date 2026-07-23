@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getEnvRequirements, requireEnvVars, validateEnvRequirements } from "./env";
+import { ENV_REGISTRY } from "./env-registry";
+
+const MODES = ["local", "demo", "whitelabel", "cloud"] as const;
 
 // Vars required specifically because the deployment is cloud.
 const CLOUD_ONLY_VARS = [
@@ -12,7 +15,7 @@ const CLOUD_ONLY_VARS = [
 	"RESEND_FROM_EMAIL",
 ];
 // Infra vars every validated mode needs — cloud now among them.
-const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "SCRAPE_TARGETS", "DEPLOYMENT_MODE"];
+const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "DEPLOYMENT_MODE"];
 
 describe("cloud env requirements", () => {
 	const cloudReqs = getEnvRequirements("cloud");
@@ -44,7 +47,6 @@ describe("cloud env requirements", () => {
 			DEPLOYMENT_MODE: "cloud",
 			DATABASE_URL: "postgres://localhost/elmo",
 			BETTER_AUTH_SECRET: "secret",
-			SCRAPE_TARGETS: "chatgpt:olostep:online",
 			APP_URL: "https://app.elmo.com/",
 			STRIPE_SECRET_KEY: "sk_test_x",
 			STRIPE_WEBHOOK_SECRET: "whsec_x",
@@ -58,6 +60,38 @@ describe("cloud env requirements", () => {
 		for (const name of [...CLOUD_ONLY_VARS, ...CLOUD_SHARED_VARS]) {
 			expect(missingIds.has(name), `${name} should be satisfied`).toBe(false);
 		}
+	});
+});
+
+// The DB-backed config hierarchy demoted SCRAPE_TARGETS to a first-boot seed
+// and moved provider-key requiredness to runtime health (plan §10).
+describe("env demotion", () => {
+	it("no longer requires SCRAPE_TARGETS at startup in any mode", () => {
+		for (const mode of MODES) {
+			const ids = getEnvRequirements(mode).map((requirement) => requirement.id);
+			expect(ids, `${mode} must not require SCRAPE_TARGETS`).not.toContain("SCRAPE_TARGETS");
+		}
+	});
+
+	it("never requires provider credential keys at startup", () => {
+		const providerKeys = new Set(
+			ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets").map((spec) => spec.name),
+		);
+		for (const mode of MODES) {
+			for (const requirement of getEnvRequirements(mode)) {
+				expect(providerKeys.has(requirement.id), `${mode} must not require ${requirement.id}`).toBe(false);
+				expect(requirement.id.startsWith("PROVIDER_"), `${mode} still derives ${requirement.id}`).toBe(false);
+			}
+		}
+	});
+
+	it("accepts a minimal local env without SCRAPE_TARGETS or provider keys", () => {
+		const { isValid } = validateEnvRequirements(getEnvRequirements("local"), {
+			DEPLOYMENT_MODE: "local",
+			DATABASE_URL: "postgres://localhost/elmo",
+			BETTER_AUTH_SECRET: "secret",
+		});
+		expect(isValid).toBe(true);
 	});
 });
 
