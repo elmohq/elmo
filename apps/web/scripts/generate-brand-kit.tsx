@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Generates the Elmo brand kit as a zip of PNGs using Takumi (JSX → Image).
+ * Generates the Elmo brand kit as a zip of PNGs using Satori + resvg (JSX → PNG).
  *
  * Output: apps/web/elmo-brand-kit.zip
  *
@@ -27,7 +27,7 @@ import { readFileSync, createWriteStream } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ImageResponse } from "@takumi-rs/image-response";
+import { renderOgPng } from "@workspace/og/rasterize";
 import { ZipArchive } from "archiver";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,19 +51,19 @@ function loadFont(path: string): ArrayBuffer {
 const fonts = [
 	{
 		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"),
+		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 	{
 		name: "Geist Sans",
-		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff2"),
+		data: loadFont("@fontsource/geist-sans/files/geist-sans-latin-500-normal.woff"),
 		style: "normal" as const,
 		weight: 500 as const,
 	},
@@ -73,17 +73,8 @@ const fonts = [
 // Render helper
 // ---------------------------------------------------------------------------
 
-async function render(
-	element: React.ReactElement,
-	width: number,
-	height: number,
-): Promise<Buffer> {
-	const response = new ImageResponse(element, {
-		width,
-		height,
-		fonts,
-	});
-	return Buffer.from(await response.arrayBuffer());
+async function render(element: React.ReactElement, width: number, height: number): Promise<Buffer> {
+	return Buffer.from(await renderOgPng(element, { width, height, fonts }));
 }
 
 // ---------------------------------------------------------------------------
@@ -92,10 +83,7 @@ async function render(
 
 function Icon({ fill, bg, size }: { fill: string; bg?: string; size: number }) {
 	return (
-		<div
-			tw="flex items-center justify-center w-full h-full"
-			style={{ backgroundColor: bg || "transparent" }}
-		>
+		<div tw="flex items-center justify-center w-full h-full" style={{ backgroundColor: bg || "transparent" }}>
 			<div
 				style={{
 					fontFamily: "Titan One",
@@ -136,10 +124,7 @@ function MaskableIcon({ size }: { size: number }) {
 
 function Logo({ bg, fontSize }: { bg?: string; fontSize: number }) {
 	return (
-		<div
-			tw="flex items-center justify-center w-full h-full"
-			style={{ backgroundColor: bg || "transparent" }}
-		>
+		<div tw="flex items-center justify-center w-full h-full" style={{ backgroundColor: bg || "transparent" }}>
 			<div
 				style={{
 					fontFamily: "Titan One",
@@ -223,10 +208,7 @@ function PatternBanner({
 	}
 
 	return (
-		<div
-			tw="flex w-full h-full relative overflow-hidden"
-			style={{ backgroundColor: bg, opacity: 0.99 }}
-		>
+		<div tw="flex w-full h-full relative overflow-hidden" style={{ backgroundColor: bg, opacity: 0.99 }}>
 			<div
 				style={{
 					position: "absolute",
@@ -251,10 +233,7 @@ function PatternBanner({
 
 function OgImage({ title }: { title: string }) {
 	return (
-		<div
-			tw="flex w-full h-full relative overflow-hidden"
-			style={{ backgroundColor: "#ffffff" }}
-		>
+		<div tw="flex w-full h-full relative overflow-hidden" style={{ backgroundColor: "#ffffff" }}>
 			<div
 				style={{
 					position: "absolute",
@@ -281,20 +260,18 @@ function OgImage({ title }: { title: string }) {
 				>
 					elmo
 				</div>
-			<div
-				style={{
-					fontFamily: "Geist Sans",
-					fontSize: 44,
-					fontWeight: 500,
-					color: "#1e293b",
-					marginBottom: 16,
-				}}
-			>
-				{title}
-			</div>
-			<div style={{ fontFamily: "Geist Sans", fontSize: 24, color: "#64748b" }}>
-				{DESCRIPTION}
-			</div>
+				<div
+					style={{
+						fontFamily: "Geist Sans",
+						fontSize: 44,
+						fontWeight: 500,
+						color: "#1e293b",
+						marginBottom: 16,
+					}}
+				>
+					{title}
+				</div>
+				<div style={{ fontFamily: "Geist Sans", fontSize: 24, color: "#64748b" }}>{DESCRIPTION}</div>
 			</div>
 
 			<div
@@ -346,10 +323,7 @@ for (const v of iconVariants) {
 
 console.log("\nIcons — Maskable (PWA):");
 for (const size of [64, 128, 256, 512]) {
-	await addFile(
-		`icons/elmo-icon-maskable-${size}.png`,
-		render(<MaskableIcon size={size} />, size, size),
-	);
+	await addFile(`icons/elmo-icon-maskable-${size}.png`, render(<MaskableIcon size={size} />, size, size));
 }
 
 // Logos — always brand blue text
@@ -392,20 +366,12 @@ const sharedBannerStyle = {
 
 await addFile(
 	"banners/twitter-banner.png",
-	render(
-		<PatternBanner width={3000} height={1000} {...sharedBannerStyle} fontScale={0.105} />,
-		3000,
-		1000,
-	),
+	render(<PatternBanner width={3000} height={1000} {...sharedBannerStyle} fontScale={0.105} />, 3000, 1000),
 );
 
 await addFile(
 	"banners/linkedin-banner.png",
-	render(
-		<PatternBanner width={3384} height={573} {...sharedBannerStyle} fontScale={0.18} />,
-		3384,
-		573,
-	),
+	render(<PatternBanner width={3384} height={573} {...sharedBannerStyle} fontScale={0.18} />, 3384, 573),
 );
 
 // Write zip
@@ -430,6 +396,4 @@ await done;
 
 const zipSize = readFileSync(OUTPUT_ZIP).length;
 const kb = (zipSize / 1024).toFixed(1);
-console.log(
-	`\n✅ elmo-brand-kit.zip (${kb} KB, ${files.length} files) → ${OUTPUT_ZIP}`,
-);
+console.log(`\n✅ elmo-brand-kit.zip (${kb} KB, ${files.length} files) → ${OUTPUT_ZIP}`);

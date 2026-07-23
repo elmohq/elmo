@@ -6,7 +6,7 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
-import { embedBinaries } from "@workspace/og/vite-plugin";
+import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
 import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
@@ -27,21 +27,17 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
+		externalizeResvg(),
 		devtools(),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
-			exportConditions: ["node", "import", "default", "!unwasm"],
-			traceDeps: ["@takumi-rs/core"],
+			traceDeps: ["@resvg/resvg-js"],
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
 			},
-			noExternals: [
-				"@opentelemetry/instrumentation",
-				"@opentelemetry/api",
-				"@prisma/instrumentation",
-			],
+			noExternals: ["@opentelemetry/instrumentation", "@opentelemetry/api", "@prisma/instrumentation"],
 			rollupConfig: {
 				external: ["fsevents"],
 			},

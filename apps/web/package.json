@@ -21,11 +21,11 @@
 	"dependencies": {
 		"@fontsource/geist-sans": "^5.2.5",
 		"@fontsource/titan-one": "^5.2.8",
+		"@resvg/resvg-js": "^2.6.2",
 		"@sentry/tanstackstart-react": "^10.65.0",
 		"@tabler/icons-react": "^3.44.0",
 		"@tailwindcss/typography": "^0.5.20",
 		"@tailwindcss/vite": "^4.3.2",
-		"@takumi-rs/image-response": "^2.0.3",
 		"@tanstack/devtools-vite": "^0.8.1",
 		"@tanstack/react-devtools": "^0.10.8",
 		"@tanstack/react-query": "^5.101.2",

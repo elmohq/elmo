@@ -18,9 +18,11 @@
 import { execSync } from "node:child_process";
 
 // ── Allowed SPDX license identifiers ────────────────────────────────
-// These are all permissive licenses, compatible with MIT redistribution.
-// GPL/LGPL/AGPL and other copyleft licenses are intentionally NOT added
-// here — their terms would conflict with shipping Elmo under MIT.
+// Permissive licenses compatible with MIT redistribution, plus MPL-2.0.
+// MPL-2.0 is file-level copyleft: used as an unmodified dependency it places no
+// obligations on Elmo's own MIT-licensed code (e.g. satori/resvg for OG images,
+// lightningcss for CSS). Strong copyleft (GPL/LGPL/AGPL) is intentionally NOT
+// added — its terms would conflict with shipping Elmo under MIT.
 const ALLOWED_LICENSES = new Set([
   "MIT",
   "MIT-0",
@@ -33,6 +35,7 @@ const ALLOWED_LICENSES = new Set([
   "BlueOak-1.0.0",
   "CC0-1.0",
   "Unlicense",
+  "MPL-2.0",
   // Compound expressions where every component is permissive
   "(MIT OR Apache-2.0)",
   "MIT OR Apache-2.0",
@@ -63,19 +66,6 @@ const PACKAGE_EXCEPTIONS = new Map([
   ["@sentry/cli-linux-x64", "FSL-1.1-MIT"],
   ["@sentry/cli-win32-i686", "FSL-1.1-MIT"],
   ["@sentry/cli-win32-x64", "FSL-1.1-MIT"],
-
-  // lightningcss – build-time CSS compiler. MPL-2.0 is file-level copyleft;
-  // we don't modify it, and it's a build tool whose output is not covered.
-  ["lightningcss", "MPL-2.0"],
-  ["lightningcss-darwin-arm64", "MPL-2.0"],
-  ["lightningcss-darwin-x64", "MPL-2.0"],
-  ["lightningcss-linux-arm-gnueabihf", "MPL-2.0"],
-  ["lightningcss-linux-arm64-gnu", "MPL-2.0"],
-  ["lightningcss-linux-arm64-musl", "MPL-2.0"],
-  ["lightningcss-linux-x64-gnu", "MPL-2.0"],
-  ["lightningcss-linux-x64-musl", "MPL-2.0"],
-  ["lightningcss-win32-arm64-msvc", "MPL-2.0"],
-  ["lightningcss-win32-x64-msvc", "MPL-2.0"],
 
   // Web fonts – OFL-1.1 permits bundling in web applications.
   ["@fontsource/geist-mono", "OFL-1.1"],
