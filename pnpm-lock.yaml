@@ -769,8 +769,8 @@ importers:
         specifier: workspace:*
         version: link:../ui
       auth0:
-        specifier: ^5.11.0
-        version: 5.11.0
+        specifier: ^6.0.0
+        version: 6.0.0
       react:
         specifier: ^19.0.0
         version: 19.2.5
@@ -4842,10 +4842,6 @@ packages:
   auth0@4.37.1:
     resolution: {integrity: sha512-o9ca0P+hHSUbiwOSFW+DS2GmCA5c6T6E1UJZhWcgKmjAI2Aid16wLzY4/y+XNFb7Im1rM+wQc5YkkNZuTy5FOw==}
     engines: {node: '>=18'}
-
-  auth0@5.11.0:
-    resolution: {integrity: sha512-y84ghIWkpha+VXdkI78Z/DxbThGlMEX/rHbg6YyN1T0C02gmx/4fRuxj+dm+w1UvMcv6XwXb11EUldgjwCzPuA==}
-    engines: {node: ^20.19.0 || ^22.12.0 || ^24.0.0}
 
   auth0@6.0.0:
     resolution: {integrity: sha512-RnwCiNMTCBz0spbeTRBRyhsN1cDTOk5ubqGZA7q8/L6we6agATtp67+kca4YPoQW0fVv8p1ff82W456w5PmrSw==}
@@ -12732,12 +12728,6 @@ snapshots:
     dependencies:
       jose: 4.15.9
       undici-types: 6.27.0
-      uuid: 11.1.1
-
-  auth0@5.11.0:
-    dependencies:
-      auth0-legacy: auth0@4.37.1
-      jose: 4.15.9
       uuid: 11.1.1
 
   auth0@6.0.0:
