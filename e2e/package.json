@@ -12,8 +12,8 @@
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@types/pg": "^8.20.0",
-    "@usebruno/cli": "3.5.1",
+    "@usebruno/cli": "3.5.2",
     "pg": "^8.22.0",
-    "tsx": "^4.23.0"
+    "tsx": "^4.23.1"
   }
 }
