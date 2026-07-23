@@ -11,6 +11,10 @@ import pkg from "./package.json" with { type: "json" };
 
 const tslibEsm = fileURLToPath(import.meta.resolve("tslib/tslib.es6.mjs"));
 
+// takumi's native backend statically references `@takumi-rs/wasm/node`, which
+// eagerly reads a WASM asset we never emit; stub it out (see the stub for why).
+const takumiWasmNodeStub = fileURLToPath(import.meta.resolve("@workspace/og/takumi-wasm-node-stub"));
+
 export default defineConfig({
 	build: {
 		sourcemap: "hidden",
@@ -36,12 +40,9 @@ export default defineConfig({
 			sourcemap: true,
 			alias: {
 				tslib: tslibEsm,
+				"@takumi-rs/wasm/node": takumiWasmNodeStub,
 			},
-			noExternals: [
-				"@opentelemetry/instrumentation",
-				"@opentelemetry/api",
-				"@prisma/instrumentation",
-			],
+			noExternals: ["@opentelemetry/instrumentation", "@opentelemetry/api", "@prisma/instrumentation"],
 			rollupConfig: {
 				external: ["fsevents"],
 			},
