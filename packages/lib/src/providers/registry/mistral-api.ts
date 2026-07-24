@@ -92,7 +92,9 @@ export const mistralApi: Provider = {
 
 		if (options?.webSearch) {
 			// Mistral's web_search connector has no per-call search-count knob, so the
-			// token cap is the only budget bound.
+			// token cap (completion_args.max_tokens on this endpoint) is the only budget
+			// bound. The conversations response carries no finish_reason, so unlike the
+			// chat-completions path below there's no truncation signal to log here.
 			const data = await mistralPost("/v1/conversations", {
 				model: version,
 				inputs: prompt,
