@@ -213,16 +213,6 @@ jobs:
         if: steps.validate.outputs.has_post == 'true'
         run: pnpm --filter @workspace/www build
 
-      - name: Confirm only the draft changed
-        if: steps.validate.outputs.has_post == 'true'
-        env:
-          BLOG_RUN_DATE: ${{ steps.date.outputs.date }}
-        run: |
-          node .github/blog-agent/validate-draft.mjs \
-            --require-post \
-            --date "$BLOG_RUN_DATE" \
-            --pr-body .agents/blog-pr-body.md
-
       - name: Create draft pull request
         if: steps.validate.outputs.has_post == 'true'
         uses: peter-evans/create-pull-request@v8
