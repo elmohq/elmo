@@ -203,6 +203,48 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Optional Jina Reader API key for website-excerpt fetching. When set, requests are authenticated (tracked by key, not IP), which raises the rate limit and avoids the anonymous 'bad network reputation' 401 block.",
 	},
 	{
+		name: "ELMO_ENCRYPTION_KEY",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Base64-encoded 32-byte key enabling encrypted provider credentials in self-hosted deployments.",
+	},
+	{
+		name: "INFISICAL_CLIENT_ID",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Infisical machine identity client ID used by managed cloud.",
+	},
+	{
+		name: "INFISICAL_CLIENT_SECRET",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Infisical machine identity client secret used by managed cloud.",
+	},
+	{
+		name: "INFISICAL_PROJECT_ID",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Infisical project containing managed cloud provider credentials.",
+	},
+	{
+		name: "INFISICAL_ENVIRONMENT",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Infisical environment slug containing managed cloud provider credentials.",
+	},
+	{
+		name: "INFISICAL_SECRET_PATH",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Infisical path containing provider credentials. Defaults to the project root.",
+	},
+	{
+		name: "INFISICAL_SITE_URL",
+		scope: "server",
+		requiredBy: "optional",
+		description: "Infisical API site URL. Defaults to https://app.infisical.com.",
+	},
+	{
 		name: "DEPLOYMENT_MODE",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
@@ -415,3 +457,25 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
 ];
+
+/**
+ * provider id → the credential env-var names it needs, for every provider that
+ * declares one (`requiredBy: "dynamic-scrape-targets"`). The single source for
+ * credential grouping: startup validation (config), the credential overlay
+ * (lib), and cloud secret loading (Infisical) all read from here. Optional,
+ * env-only vars such as BRIGHTDATA_SERP_ZONE carry no provider marker and are
+ * excluded, keeping them out of the stored-credential lifecycle.
+ */
+export const PROVIDER_CREDENTIAL_KEYS: ReadonlyMap<string, readonly string[]> = (() => {
+	const index = new Map<string, string[]>();
+	for (const spec of ENV_REGISTRY) {
+		if (spec.requiredBy !== "dynamic-scrape-targets" || !spec.provider) continue;
+		const keys = index.get(spec.provider) ?? [];
+		keys.push(spec.name);
+		index.set(spec.provider, keys);
+	}
+	return index;
+})();
+
+/** Every canonical provider-credential env-var name, across all providers. */
+export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set([...PROVIDER_CREDENTIAL_KEYS.values()].flat());

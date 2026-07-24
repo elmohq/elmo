@@ -54,6 +54,13 @@ declare global {
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
 			readonly JINA_API_KEY?: string;
+			readonly ELMO_ENCRYPTION_KEY?: string;
+			readonly INFISICAL_CLIENT_ID?: string;
+			readonly INFISICAL_CLIENT_SECRET?: string;
+			readonly INFISICAL_PROJECT_ID?: string;
+			readonly INFISICAL_ENVIRONMENT?: string;
+			readonly INFISICAL_SECRET_PATH?: string;
+			readonly INFISICAL_SITE_URL?: string;
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
 			readonly BETTER_AUTH_SECRET?: string;

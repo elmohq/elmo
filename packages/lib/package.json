@@ -24,6 +24,7 @@
 		"./tag-utils": "./src/tag-utils.ts",
 		"./website-excerpt": "./src/website-excerpt.ts",
 		"./report-metrics": "./src/report-metrics.ts",
+		"./secrets": "./src/secrets/index.ts",
 		"./providers": "./src/providers/index.ts",
 		"./providers/models": "./src/providers/models.ts",
 		"./providers/types": "./src/providers/types.ts"
@@ -40,6 +41,7 @@
 		"better-auth": "^1.6.23",
 		"dataforseo-client": "^2.0.25",
 		"drizzle-orm": "^0.45.2",
+		"jose": "6.2.3",
 		"linkedom": "^0.18.13",
 		"olostep": "^1.2.2",
 		"pg": "^8.22.0",

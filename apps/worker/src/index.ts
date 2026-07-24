@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
+import { startCredentialRefresh } from "@workspace/deployment/credentials";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
@@ -15,6 +16,8 @@ if (process.env.SENTRY_DSN) {
 
 async function main() {
 	console.log("Starting pg-boss worker...");
+
+	await startCredentialRefresh();
 
 	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
 	// missing API keys, and per-provider target errors before any job runs.

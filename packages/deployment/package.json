@@ -6,11 +6,13 @@
 	"main": "./src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./client": "./src/client.ts"
+		"./client": "./src/client.ts",
+		"./credentials": "./src/credentials.ts"
 	},
 	"dependencies": {
 		"@workspace/cloud": "workspace:*",
 		"@workspace/config": "workspace:*",
+		"@workspace/lib": "workspace:*",
 		"@workspace/local": "workspace:*",
 		"@workspace/whitelabel": "workspace:*"
 	},

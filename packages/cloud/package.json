@@ -6,12 +6,14 @@
 	"main": "./src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./auth-hooks": "./src/auth-hooks.ts"
+		"./auth-hooks": "./src/auth-hooks.ts",
+		"./infisical-credentials": "./src/infisical-credentials.ts"
 	},
 	"scripts": {
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@infisical/sdk": "5.0.2",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"better-auth": "^1.6.23",

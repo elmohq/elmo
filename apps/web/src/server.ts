@@ -1,6 +1,17 @@
 import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { startCredentialRefresh } from "@workspace/deployment/credentials";
+
+let credentialsReady: Promise<NodeJS.Timeout> | undefined;
+
+function ensureCredentialsReady(): Promise<NodeJS.Timeout> {
+	credentialsReady ??= startCredentialRefresh().catch((error) => {
+		credentialsReady = undefined;
+		throw error;
+	});
+	return credentialsReady;
+}
 
 // HSTS asserts HTTPS-only for the host that served the response. Whitelabel
 // deployments run on customer-controlled custom domains, where `includeSubDomains`
@@ -43,6 +54,7 @@ function addSecurityHeaders(response: Response): Response {
 export default createServerEntry(
 	wrapFetchWithSentry({
 		async fetch(request: Request) {
+			await ensureCredentialsReady();
 			const response = await handler.fetch(request);
 			return addSecurityHeaders(response);
 		},
