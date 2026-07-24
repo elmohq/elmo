@@ -88,7 +88,7 @@ jobs:
             Blog conventions:
             - Only add or edit one MDX file in packages/docs/content/blog/.
             - For a new post, use date "${{ steps.date.outputs.date }}" and author: ai.
-            - For a refresh, preserve the original date and author and set updated: "${{ steps.date.outputs.date }}".
+            - Only refresh posts with author: ai. Preserve their original date and author and set updated: "${{ steps.date.outputs.date }}".
             - Follow the frontmatter, structure, tone, citations, and internal-linking conventions in the existing posts.
             - Do not add an H1, imports, scripts, placeholders, fabricated claims, or a changeset.
 
