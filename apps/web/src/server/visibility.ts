@@ -6,7 +6,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -72,7 +72,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }): Promise<BatchChartDataResponse> => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const timezone = resolveTimezone(data.timezone);
 		const lookbackParam = data.lookback as LookbackPeriod;
@@ -154,7 +154,7 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		const session = await requireAuthSession();
 		const lookbackParam = data.lookback as LookbackPeriod;
 
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Resolve the in-scope prompts server-side from the filter criteria so
 		// the client never ships the full prompt-id list (issue #68).

@@ -4,12 +4,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
+import { requireAuthSession, requireOrgAccess, requireBrandAccess, listUserOrganizations } from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
-import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
+import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -130,7 +130,7 @@ export const getBrand = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const brand = await getBrandWithPromptsFromDb(data.brandId);
 		if (!brand) {
@@ -191,12 +191,12 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Create a new organization + admin membership + brand in one shot for the
- * current user. Used by the local-mode multi-brand "create new brand" flow on
- * the brand switcher. Gated by the canCreateBrands deployment feature so
- * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ * Attach a new brand to the current user's existing organization, with a
+ * fresh id decoupled from the org id. Used by the multi-brand "create new
+ * brand" flow on the brand switcher. Gated by the canCreateBrands deployment
+ * feature so whitelabel (orgs come from Auth0) and demo (read-only) reject it.
  */
-export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
@@ -221,15 +221,22 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		const { orgId } = await provisionAdditionalLocalOrg({
-			userId: session.user.id,
-			name: trimmedName,
-		});
+		// Attach to the caller's active org (resolved in customSession); fall
+		// back to their first membership if the active org isn't one they belong
+		// to. Supports users in more than one org (e.g. an accepted team invite).
+		const orgs = await listUserOrganizations(session.user.id);
+		if (orgs.length === 0) {
+			throw new Error("No organization for the current user");
+		}
+		const activeOrgId =
+			(session.session as { activeOrganizationId?: string | null } | undefined)?.activeOrganizationId ?? null;
+		const orgId = activeOrgId && orgs.some((o) => o.id === activeOrgId) ? activeOrgId : orgs[0].id;
 
+		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
 
 		await db.insert(brands).values({
-			id: orgId,
+			id: brandId,
 			organizationId: orgId,
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
@@ -237,7 +244,7 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 		});
 
-		return { brandId: orgId };
+		return { brandId };
 	});
 
 /**
@@ -255,7 +262,7 @@ export const updateBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
@@ -288,7 +295,7 @@ export const getCompetitors = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		return db.query.competitors.findMany({
 			where: eq(competitors.brandId, data.brandId),
@@ -313,7 +320,7 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Validate and clean domains
 		const cleanedCompetitors = data.competitors.map((c) => {
@@ -361,7 +368,7 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
@@ -397,7 +404,7 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -431,7 +438,7 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);

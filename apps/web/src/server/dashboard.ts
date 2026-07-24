@@ -4,7 +4,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts, competitors, brands } from "@workspace/lib/db/schema";
 import { eq, and, count } from "drizzle-orm";
@@ -66,7 +66,7 @@ export const getDashboardSummaryFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }): Promise<DashboardSummaryResponse> => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const lookbackParam = data.lookback as LookbackPeriod;
 		const timezone = resolveTimezone(data.timezone);

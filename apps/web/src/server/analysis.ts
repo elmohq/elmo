@@ -15,7 +15,7 @@ import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { generateDateRange, type LookbackPeriod } from "@/lib/chart-utils";
 import {
 	getBrandMentionTotals,
@@ -74,7 +74,7 @@ export const getShareOfVoiceFn = createServerFn({ method: "GET" })
 	)
 	.handler(async ({ data }): Promise<ShareOfVoiceResponse> => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		const { timezone, fromDateStr, toDateStr } = resolveRange(data.lookback as LookbackPeriod, data.timezone);
 

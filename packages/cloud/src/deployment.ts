@@ -23,7 +23,6 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 		features: {
 			readOnly: false,
 			showOptimizeButton: false,
-			supportsMultiOrg: true,
 			canCreateBrands: true,
 			selfServeSignup: true,
 			billing: true,

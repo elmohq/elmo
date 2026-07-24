@@ -14,9 +14,9 @@
  * call is a bug and should fail at the database layer rather than
  * silently rewriting rows.
  */
-import { count, eq, or } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "./db";
-import { member, organization, user } from "./schema";
+import { brands, member, organization, user } from "./schema";
 
 /**
  * Number of users in the database.
@@ -70,14 +70,15 @@ export async function provisionLocalOrg(input: { userId: string }): Promise<{ or
 }
 
 /**
- * Slugify a brand name into the URL/id form used for new local-mode orgs.
- * Exported so the slug rules can be unit-tested directly without a database.
+ * Slugify a brand or org name into the URL/id form used for brand ids and
+ * org ids/slugs. Exported so the slug rules can be unit-tested directly
+ * without a database.
  *
  * Note: leading/trailing hyphens are trimmed via index walks instead of an
  * `^-+|-+$` alternation regex — the alternation form trips ReDoS scanners
  * on inputs like `"---"` even though the JS engine handles it linearly.
  */
-export function slugifyOrgName(name: string): string {
+export function slugify(name: string): string {
 	const cleaned = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 	let start = 0;
 	while (start < cleaned.length && cleaned[start] === "-") start++;
@@ -94,19 +95,42 @@ export function slugifyOrgName(name: string): string {
  */
 const RESERVED_ORG_SLUGS = new Set(["new"]);
 
-async function findUniqueOrgId(baseSlug: string): Promise<string> {
+/**
+ * Find a brand id that doesn't collide with an existing brand row or a
+ * reserved route slug, appending -2, -3, … on collision. Brand ids are
+ * globally unique — they appear directly in `/app/$brand` URLs — and, unlike
+ * the legacy org-per-brand convention, are independent of any organization id.
+ */
+export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
 		const isReserved = RESERVED_ORG_SLUGS.has(candidate);
 		const conflict = isReserved
 			? [{ id: candidate }]
-			: await db
-					.select({ id: organization.id })
-					.from(organization)
-					.where(or(eq(organization.id, candidate), eq(organization.slug, candidate)))
-					.limit(1);
+			: await db.select({ id: brands.id }).from(brands).where(eq(brands.id, candidate)).limit(1);
 		if (conflict.length === 0) return candidate;
+		candidate = `${baseSlug}-${suffix}`;
+		suffix++;
+	}
+}
+
+/**
+ * Find an organization slug that doesn't collide with an existing org,
+ * appending -2, -3, … on collision. Used by `provisionUmbrellaOrg`, where the
+ * org id itself is a random uuid (decoupled from any brand) but the slug
+ * still needs to be unique and human-readable.
+ */
+async function findUniqueOrgSlug(baseSlug: string): Promise<string> {
+	let candidate = baseSlug;
+	let suffix = 2;
+	for (;;) {
+		const [conflict] = await db
+			.select({ id: organization.id })
+			.from(organization)
+			.where(eq(organization.slug, candidate))
+			.limit(1);
+		if (!conflict) return candidate;
 		candidate = `${baseSlug}-${suffix}`;
 		suffix++;
 	}
@@ -131,7 +155,7 @@ export async function ensureOrganization(input: { id: string; name: string }): P
 		.limit(1);
 	if (existing) return;
 
-	const baseSlug = slugifyOrgName(input.name);
+	const baseSlug = slugify(input.name);
 	let slug = baseSlug;
 	for (let suffix = 2; ; suffix++) {
 		const [conflict] = await db
@@ -155,26 +179,17 @@ export async function ensureOrganization(input: { id: string; name: string }): P
 }
 
 /**
- * Provision an additional organization for an existing local-mode user — used
- * by the multi-brand "create new brand" flow. The id is a slug derived from
- * `name`, with a numeric suffix on collision, and is reused as the org slug
- * so that URLs and the org row stay in sync.
- *
- * The brand row itself is the caller's responsibility; provisioning only
- * handles the auth-level (org + admin membership) bits.
+ * Create the single customer ("umbrella") org + admin membership for a new
+ * user. The org id is decoupled from any brand (a random id), so brands can be
+ * attached later with their own ids. Used by the cloud user.create.after hook.
  */
-export async function provisionAdditionalLocalOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
-	const baseSlug = slugifyOrgName(input.name);
-	const orgId = await findUniqueOrgId(baseSlug);
+export async function provisionUmbrellaOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
+	const orgId = crypto.randomUUID();
+	const baseSlug = slugify(input.name);
+	const slug = await findUniqueOrgSlug(baseSlug);
 
 	await db.transaction(async (tx) => {
-		await tx.insert(organization).values({
-			id: orgId,
-			name: input.name,
-			slug: orgId,
-			createdAt: new Date(),
-		});
-
+		await tx.insert(organization).values({ id: orgId, name: input.name, slug, createdAt: new Date() });
 		await tx.insert(member).values({
 			id: crypto.randomUUID(),
 			organizationId: orgId,

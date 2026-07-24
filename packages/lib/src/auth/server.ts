@@ -11,6 +11,7 @@ import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, customSession, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { eq } from "drizzle-orm";
 import { db } from "../db/db";
 import * as schema from "../db/schema";
 import { ac, adminRole, userRole } from "./permissions";
@@ -115,13 +116,23 @@ export function createAuth(options?: CreateAuthOptions) {
 			sso(options?.sso),
 			customSession(async ({ user, session }) => {
 				const u = user as Record<string, unknown>;
+				const s = session as Record<string, unknown>;
+				let activeOrganizationId = (s.activeOrganizationId as string | null | undefined) ?? null;
+				if (!activeOrganizationId) {
+					const [m] = await db
+						.select({ orgId: schema.member.organizationId })
+						.from(schema.member)
+						.where(eq(schema.member.userId, user.id))
+						.limit(1);
+					activeOrganizationId = m?.orgId ?? null;
+				}
 				return {
 					user: {
 						...user,
 						role: (u.role as string) ?? "user",
 						hasReportGeneratorAccess: u.hasReportGeneratorAccess === true,
 					},
-					session,
+					session: { ...session, activeOrganizationId },
 				};
 			}),
 			tanstackStartCookies(),

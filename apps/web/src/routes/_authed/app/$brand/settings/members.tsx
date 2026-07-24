@@ -17,7 +17,14 @@ import { useState } from "react";
 import { getDeployment } from "@/lib/config/server";
 import { trackEvent } from "@/lib/posthog";
 import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { cancelInvitationFn, inviteTeamMemberFn, listTeamFn, removeTeamMemberFn, type TeamData } from "@/server/team";
+import {
+	cancelInvitationFn,
+	inviteTeamMemberFn,
+	listTeamFn,
+	removeTeamMemberFn,
+	updateOrganizationFn,
+	type TeamData,
+} from "@/server/team";
 
 const getTeamInvitesEnabled = createServerFn({ method: "GET" }).handler(async () => {
 	return { teamInvites: getDeployment().features.teamInvites };
@@ -46,12 +53,28 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/members")({
 
 function TeamSettingsPage() {
 	const { brand: brandId } = Route.useParams();
-	const { members, invitations, currentUserId } = Route.useLoaderData();
+	const { members, invitations, currentUserId, organization } = Route.useLoaderData();
 	const router = useRouter();
 	const [inviteEmail, setInviteEmail] = useState("");
 	const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
 	const [inviting, setInviting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [workspaceName, setWorkspaceName] = useState(organization.name);
+	const [savingWorkspace, setSavingWorkspace] = useState(false);
+
+	async function handleSaveWorkspace(e: React.FormEvent) {
+		e.preventDefault();
+		setError(null);
+		setSavingWorkspace(true);
+		try {
+			await updateOrganizationFn({ data: { brandId, name: workspaceName } });
+			await router.invalidate();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to update workspace name");
+		} finally {
+			setSavingWorkspace(false);
+		}
+	}
 
 	async function handleInvite(e: React.FormEvent) {
 		e.preventDefault();
@@ -94,7 +117,7 @@ function TeamSettingsPage() {
 		<div className="space-y-6">
 			<div>
 				<h1 className="text-3xl font-bold">Team</h1>
-				<p className="text-muted-foreground">Invite teammates and manage who has access to this brand.</p>
+				<p className="text-muted-foreground">Invite teammates and manage who has access to your workspace.</p>
 			</div>
 
 			{error && (
@@ -102,6 +125,25 @@ function TeamSettingsPage() {
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
 			)}
+
+			<div className="space-y-3">
+				<h2 className="text-lg font-semibold">Workspace</h2>
+				<form onSubmit={handleSaveWorkspace} className="flex flex-wrap items-end gap-3">
+					<div className="space-y-2">
+						<Label htmlFor="workspace-name">Name</Label>
+						<Input
+							id="workspace-name"
+							value={workspaceName}
+							onChange={(e) => setWorkspaceName(e.target.value)}
+							required
+							className="w-64"
+						/>
+					</div>
+					<Button type="submit" disabled={savingWorkspace}>
+						{savingWorkspace ? "Saving..." : "Save"}
+					</Button>
+				</form>
+			</div>
 
 			<form onSubmit={handleInvite} className="flex flex-wrap items-end gap-3">
 				<div className="space-y-2">

@@ -10,7 +10,7 @@
 import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
 import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
 import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
-import { countUsers, provisionLocalOrg } from "@workspace/lib/db/provisioning";
+import { countUsers, provisionLocalOrg, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import { evaluateSignupAllowed, getSignupAllowlist } from "./policies";
 
 /**
@@ -58,8 +58,9 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			// unlike the UI's canRegister flag. Set CLOUD_SIGNUP_ALLOWLIST to admit
 			// people ("@elmohq.com,alice@x.com"); empty denies everyone (fails
 			// closed); "*" opens it up at launch. Sign-in is unaffected — create
-			// hooks don't fire for existing users. Each user provisions their own
-			// org via the create-brand flow (canCreateBrands), so no after hook.
+			// hooks don't fire for existing users. The after hook provisions the
+			// user's umbrella org (mirroring local's user.create.after below);
+			// brands attach to it via the create-brand flow (canCreateBrands).
 			const cloudOptions = getCloudAuthOptions();
 			const rejectDisposableEmail = cloudOptions.databaseHooks?.user?.create?.before;
 			return {
@@ -75,6 +76,12 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 									throw new Error("Sign-ups are invite-only right now.");
 								}
 								await rejectDisposableEmail?.(user, context);
+							},
+							after: async (user) => {
+								await provisionUmbrellaOrg({
+									userId: user.id,
+									name: user.name?.trim() ? `${user.name.trim()}'s workspace` : "My workspace",
+								});
 							},
 						},
 					},

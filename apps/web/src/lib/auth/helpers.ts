@@ -3,7 +3,7 @@
  */
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "@workspace/lib/db/db";
-import { member, organization } from "@workspace/lib/db/schema";
+import { member, organization, brands } from "@workspace/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getDeployment } from "@/lib/config/server";
 import { auth } from "./server";
@@ -45,6 +45,43 @@ export async function requireOrgAccess(userId: string, orgId: string): Promise<v
 	if (!(await checkOrgAccess(userId, orgId))) {
 		throw new Error("Forbidden: No access to this organization");
 	}
+}
+
+/**
+ * Whether the user may access a brand, resolved through the brand's owning org
+ * (`brands.organizationId`) — the umbrella-org access rule. A single joined
+ * query: brand → its org → a membership row for this user.
+ */
+export async function checkBrandAccess(userId: string, brandId: string): Promise<boolean> {
+	const [row] = await db
+		.select({ id: member.id })
+		.from(brands)
+		.innerJoin(
+			member,
+			and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)),
+		)
+		.where(eq(brands.id, brandId))
+		.limit(1);
+	return !!row;
+}
+
+export async function requireBrandAccess(userId: string, brandId: string): Promise<void> {
+	if (!(await checkBrandAccess(userId, brandId))) {
+		throw new Error("Forbidden: No access to this brand");
+	}
+}
+
+/**
+ * Resolve a brand's owning org id — the umbrella org whose membership gates
+ * team management for that brand. Null when the brand doesn't exist.
+ */
+export async function getBrandOrganizationId(brandId: string): Promise<string | null> {
+	const [row] = await db
+		.select({ organizationId: brands.organizationId })
+		.from(brands)
+		.where(eq(brands.id, brandId))
+		.limit(1);
+	return row?.organizationId ?? null;
 }
 
 export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string }[]> {
