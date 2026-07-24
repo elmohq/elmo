@@ -10,11 +10,13 @@ export { parseScrapeTargets } from "@workspace/config/scrape-targets";
 // per-target request-policy overrides are a follow-up and are deliberately not
 // threaded through ProviderOptions yet.
 //
-// OpenAI and OpenRouter get double the headroom because their cap counts
-// reasoning tokens alongside visible output, and several tracked targets reason
-// by default (gpt-5, grok-4.5, gemini-2.5-flash, deepseek-v3.2).
+// Sized against ~30k tracked ChatGPT answers: p99 lands near 3.4k tokens and
+// the longest seen is ~16k, so 8k clears all but ~1 run in 3000. OpenAI and
+// OpenRouter get double that because their cap counts reasoning tokens
+// alongside visible output, and several tracked targets reason by default
+// (gpt-5, grok-4.5, gemini-2.5-flash, deepseek-v3.2).
 export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
-	"anthropic-api": 4000,
+	"anthropic-api": 8000,
 	"openai-api": 16000,
 	openrouter: 16000,
 	"mistral-api": 8000,
