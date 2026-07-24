@@ -4,28 +4,40 @@ import type { ModelConfig } from "./types";
 // of truth, shared with the CLI); re-exported here for compatibility.
 export { parseScrapeTargets } from "@workspace/config/scrape-targets";
 
-// Per-call spend caps for the direct API providers: the platform spend floor
-// that bounds a single tracked run's cost. These are code defaults; per-target
-// request-policy overrides are a follow-up and are deliberately not threaded
-// through ProviderOptions yet. OpenAI/OpenRouter get more output headroom
-// because their token cap also counts reasoning tokens on gpt-5-family models.
+// Per-call spend caps for the direct API providers: a worst-case bound on a
+// single tracked run, not a target length — they sit well above any answer we
+// expect, so hitting one means something went wrong. These are code defaults;
+// per-target request-policy overrides are a follow-up and are deliberately not
+// threaded through ProviderOptions yet.
+//
+// OpenAI and OpenRouter get double the headroom because their cap counts
+// reasoning tokens alongside visible output, and several tracked targets reason
+// by default (gpt-5, grok-4.5, gemini-2.5-flash, deepseek-v3.2).
 export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
 	"anthropic-api": 4000,
-	"openai-api": 8000,
-	openrouter: 8000,
-	"mistral-api": 4000,
+	"openai-api": 16000,
+	openrouter: 16000,
+	"mistral-api": 8000,
 };
+
+/**
+ * A capped response still stores as a normal run, so a clipped answer would
+ * land as a real-looking result with fewer brand mentions rather than an error.
+ * Log it — deliberately without failing the run — so the caps above can be
+ * tuned from evidence.
+ */
+export function warnIfOutputCapped(provider: string, model: string, finishReason: unknown): void {
+	if (finishReason === "length" || finishReason === "max_tokens") {
+		console.warn(
+			`[${provider}] hit the output cap on "${model}" (finish reason: ${finishReason}) — stored answer may be truncated`,
+		);
+	}
+}
 
 /** Web-search budget per tracked run. Anthropic bills per search. */
 export const ANTHROPIC_WEB_SEARCH_MAX_USES = 1;
 /** Caps built-in tool invocations on the OpenAI Responses API per run. */
 export const OPENAI_WEB_SEARCH_MAX_TOOL_CALLS = 2;
-/** Result cap for the OpenRouter Exa fallback branch (ignored by native). */
-export const OPENROUTER_WEB_MAX_RESULTS = 5;
-/** Native web-search context tier for OpenRouter tracked runs; bounds native
- *  passthrough cost. "low" | "medium" | "high" — "medium" is the provider
- *  default, chosen to preserve parity with the real consumer surface. */
-export const OPENROUTER_WEB_SEARCH_CONTEXT_SIZE = "medium" as const;
 /** Web-search context tier for OpenAI tracked runs (cheapest tier). */
 export const OPENAI_WEB_SEARCH_CONTEXT_SIZE = "low" as const;
 

@@ -7,6 +7,7 @@ import {
 	OPENAI_WEB_SEARCH_MAX_TOOL_CALLS,
 	RESEARCH_WEB_SEARCH_CONTEXT_SIZE,
 	RESEARCH_WEB_SEARCH_MAX_USES,
+	warnIfOutputCapped,
 } from "../config";
 import type {
 	Provider,
@@ -43,6 +44,8 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 			? { providerOptions: { openai: { maxToolCalls: OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } } }
 			: {}),
 	});
+
+	warnIfOutputCapped("openai-api", model, result.finishReason);
 
 	// The AI SDK doesn't populate result.response.body for the Responses API, so
 	// rebuild the raw output from the parsed result (text + web-search sources)

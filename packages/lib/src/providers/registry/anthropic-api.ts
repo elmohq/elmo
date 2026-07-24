@@ -2,7 +2,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import { generateText, Output } from "ai";
 import { extractTextFromAnthropic } from "../../text-extraction";
-import { ANTHROPIC_WEB_SEARCH_MAX_USES, API_PROVIDER_MAX_OUTPUT_TOKENS, RESEARCH_WEB_SEARCH_MAX_USES } from "../config";
+import {
+	ANTHROPIC_WEB_SEARCH_MAX_USES,
+	API_PROVIDER_MAX_OUTPUT_TOKENS,
+	RESEARCH_WEB_SEARCH_MAX_USES,
+	warnIfOutputCapped,
+} from "../config";
 import type {
 	Provider,
 	ScrapeResult,
@@ -58,6 +63,8 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 			break;
 		}
 	}
+
+	warnIfOutputCapped("anthropic-api", model, response.stop_reason);
 
 	const textContent = extractTextFromAnthropic(response);
 

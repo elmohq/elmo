@@ -18,6 +18,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.restoreAllMocks();
 });
 
 function sentArgs(): Record<string, any> {
@@ -43,5 +44,14 @@ describe("openai-api run", () => {
 		expect(args.toolChoice).toBe("none");
 		expect(args).not.toHaveProperty("tools");
 		expect(args).not.toHaveProperty("providerOptions");
+	});
+
+	it("logs a warning when the response stops on the output cap", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		aiMock.generateText.mockResolvedValue({ text: "clipped", finishReason: "length" });
+
+		await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
+
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});
 });

@@ -19,6 +19,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	vi.clearAllMocks();
+	vi.restoreAllMocks();
 });
 
 function sentArgs(): Record<string, any> {
@@ -42,5 +43,18 @@ describe("anthropic-api run", () => {
 		const args = sentArgs();
 		expect(args.max_tokens).toBe(CAP);
 		expect(args).not.toHaveProperty("tools");
+	});
+
+	it("logs a warning when the response stops on the output cap", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		anthropicClient.create.mockResolvedValue({
+			content: [],
+			model: "claude-sonnet-4-6",
+			stop_reason: "max_tokens",
+		});
+
+		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-4-6" });
+
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});
 });

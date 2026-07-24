@@ -1,17 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	API_PROVIDER_MAX_OUTPUT_TOKENS,
-	OPENROUTER_WEB_MAX_RESULTS,
-	OPENROUTER_WEB_SEARCH_CONTEXT_SIZE,
-} from "../config";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { openrouter } from "./openrouter";
 
-function stubFetch() {
+function stubFetch(overrides: Record<string, unknown> = {}) {
 	const fetchMock = vi.fn().mockResolvedValue({
 		ok: true,
 		json: async () => ({
 			model: "openai/gpt-5-mini-2025-08-07",
 			choices: [{ message: { content: "answer" } }],
+			...overrides,
 		}),
 	});
 	vi.stubGlobal("fetch", fetchMock);
@@ -25,47 +22,47 @@ function sentBody(fetchMock: ReturnType<typeof vi.fn>): Record<string, unknown> 
 
 afterEach(() => {
 	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 });
 
 describe("openrouter run", () => {
-	it("caps output tokens and requests the web plugin (native-first, Exa capped as fallback) when webSearch is on", async () => {
+	it("caps output tokens and requests web search via the :online alias", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: true, version: "openai/gpt-5-mini" });
 
 		const body = sentBody(fetchMock);
 		expect(body.max_tokens).toBe(API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter);
-		expect(body.plugins).toEqual([{ id: "web", max_results: OPENROUTER_WEB_MAX_RESULTS }]);
-		expect(body.web_search_options).toEqual({ search_context_size: OPENROUTER_WEB_SEARCH_CONTEXT_SIZE });
+		expect(body.model).toBe("openai/gpt-5-mini:online");
 		expect(body.messages).toEqual([{ role: "user", content: "prompt" }]);
 	});
 
-	it("sends no plugins or web_search_options when webSearch is off", async () => {
+	it("caps output tokens and leaves the slug bare when webSearch is off", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: false, version: "openai/gpt-5-mini" });
 
 		const body = sentBody(fetchMock);
 		expect(body.max_tokens).toBe(API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter);
-		expect(body).not.toHaveProperty("plugins");
-		expect(body).not.toHaveProperty("web_search_options");
+		expect(body.model).toBe("openai/gpt-5-mini");
 	});
 
-	it("strips a trailing :online from the version slug instead of forwarding it", async () => {
+	it("does not double-append :online when the version already carries it", async () => {
 		const fetchMock = stubFetch();
 
 		await openrouter.run("chatgpt", "prompt", { webSearch: true, version: "openai/gpt-5-mini:online" });
 
-		const body = sentBody(fetchMock);
-		expect(body.model).toBe("openai/gpt-5-mini");
-		expect(body.plugins).toEqual([{ id: "web", max_results: OPENROUTER_WEB_MAX_RESULTS }]);
+		expect(sentBody(fetchMock).model).toBe("openai/gpt-5-mini:online");
 	});
 
-	it("never appends :online for web-search runs", async () => {
-		const fetchMock = stubFetch();
+	it("logs a warning when the response stops on the output cap", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		stubFetch({ choices: [{ message: { content: "clipped" }, finish_reason: "length" }] });
 
-		await openrouter.run("chatgpt", "prompt", { webSearch: true, version: "openai/gpt-5-mini:free" });
+		const result = await openrouter.run("chatgpt", "prompt", { webSearch: false, version: "openai/gpt-5-mini" });
 
-		expect(sentBody(fetchMock).model).toBe("openai/gpt-5-mini:free");
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
+		// Logged, never thrown — the partial answer still flows through.
+		expect(result.textContent).toBe("clipped");
 	});
 });

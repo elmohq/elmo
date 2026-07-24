@@ -8,11 +8,7 @@ import type {
 } from "../types";
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
-import {
-	API_PROVIDER_MAX_OUTPUT_TOKENS,
-	OPENROUTER_WEB_MAX_RESULTS,
-	OPENROUTER_WEB_SEARCH_CONTEXT_SIZE,
-} from "../config";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -133,24 +129,18 @@ export const openrouter: Provider = {
 			);
 		}
 
-		// Web search is requested through the explicit plugin config below, never
-		// the ":online" slug alias (strip one if the configured version carries it).
-		modelSlug = modelSlug.replace(/:online$/, "");
+		// ":online" is exactly equivalent to plugins: [{ id: "web" }], and with the
+		// engine unset OpenRouter routes to the model provider's native web search
+		// (Exa only as a fallback) — which is the consumer surface Elmo tracks.
+		if (options?.webSearch && !modelSlug.includes(":online")) {
+			modelSlug = `${modelSlug}:online`;
+		}
 
 		const body: Record<string, unknown> = {
 			model: modelSlug,
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
 		};
-		if (options?.webSearch) {
-			// Engine omitted on purpose: OpenRouter uses the provider's NATIVE web
-			// search when available (the real consumer surface) and only falls back
-			// to Exa otherwise. Every path stays budget-bounded — search_context_size
-			// caps native cost, max_results caps the Exa fallback, max_tokens caps
-			// output either way — so no call is unbounded.
-			body.plugins = [{ id: "web", max_results: OPENROUTER_WEB_MAX_RESULTS }];
-			body.web_search_options = { search_context_size: OPENROUTER_WEB_SEARCH_CONTEXT_SIZE };
-		}
 
 		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
 		// strips annotations from responses, which contain web search citations.
@@ -174,6 +164,8 @@ export const openrouter: Provider = {
 
 		const data: any = await res.json();
 
+		warnIfOutputCapped("openrouter", modelSlug, data?.choices?.[0]?.finish_reason);
+
 		const citations = extractCitationsFromOpenRouterResponse(data);
 		// OpenRouter doesn't expose what search queries the model made internally.
 		// Only mark as "unavailable" when citations prove a web search happened.
@@ -184,7 +176,7 @@ export const openrouter: Provider = {
 			textContent: extractTextFromOpenRouterResponse(data),
 			webQueries,
 			citations,
-			modelVersion: data?.model ?? modelSlug,
+			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
 		};
 	},
 };

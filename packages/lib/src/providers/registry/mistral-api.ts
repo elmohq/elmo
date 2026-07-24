@@ -7,7 +7,7 @@ import type {
 	StructuredResearchResult,
 } from "../types";
 import type { Citation } from "../../text-extraction";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -108,6 +108,7 @@ export const mistralApi: Provider = {
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"],
 		});
+		warnIfOutputCapped("mistral-api", version, data?.choices?.[0]?.finish_reason);
 		return {
 			rawOutput: data,
 			textContent: data?.choices?.[0]?.message?.content ?? "",
