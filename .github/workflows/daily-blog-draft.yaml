@@ -49,6 +49,9 @@ jobs:
             --output .agents/blog-candidates.json \
             --summary "$GITHUB_STEP_SUMMARY"
 
+      - name: Log discovered candidates
+        run: cat .agents/blog-candidates.json
+
       # Reviewed 2026-07-24. Keep this SHA pinned and review upstream changes
       # before updating it; these files become instructions for the writing agent.
       - name: Checkout pinned marketing skills
