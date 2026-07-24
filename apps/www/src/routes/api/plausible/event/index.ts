@@ -39,8 +39,7 @@ export const Route = createFileRoute("/api/plausible/event/")({
 				return new Response(upstreamResponse.body, {
 					status: upstreamResponse.status,
 					headers: {
-						"Content-Type":
-							upstreamResponse.headers.get("content-type") ?? "text/plain",
+						"Content-Type": upstreamResponse.headers.get("content-type") ?? "text/plain",
 					},
 				});
 			},

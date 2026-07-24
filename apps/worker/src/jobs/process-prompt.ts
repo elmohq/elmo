@@ -1,7 +1,15 @@
 import * as Sentry from "@sentry/node";
 import type { Job } from "pg-boss";
 import { db } from "@workspace/lib/db/db";
-import { brands, citations, competitors, promptRuns, prompts, type Brand, type Competitor } from "@workspace/lib/db/schema";
+import {
+	brands,
+	citations,
+	competitors,
+	promptRuns,
+	prompts,
+	type Brand,
+	type Competitor,
+} from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
 import {
@@ -128,16 +136,13 @@ function analyzeMentions(
 		...(brand.additionalDomains || []).map(extractDomainFromUrl),
 	];
 	const brandMentioned =
-		brandNames.some((n) => contentLower.includes(n)) ||
-		brandDomains.some((d) => contentLower.includes(d));
+		brandNames.some((n) => contentLower.includes(n)) || brandDomains.some((d) => contentLower.includes(d));
 
 	const competitorsMentioned = competitorsList
 		.filter((competitor) => {
 			const names = [competitor.name, ...(competitor.aliases || [])].map((n) => n.toLowerCase());
 			const nameMatch = names.some((n) => contentLower.includes(n));
-			const domainMatch = (competitor.domains || []).some((d) =>
-				contentLower.includes(extractDomainFromUrl(d)),
-			);
+			const domainMatch = (competitor.domains || []).some((d) => contentLower.includes(extractDomainFromUrl(d)));
 			return nameMatch || domainMatch;
 		})
 		.map((competitor) => competitor.name);
@@ -200,7 +205,6 @@ async function saveCitations(
 		})),
 	);
 }
-
 
 async function runModelIteration({
 	promptId,

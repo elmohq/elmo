@@ -15,7 +15,7 @@
  *                                 elmo-icon-maskable-512.png
  *
  * Mirrors apps/web/scripts/generate-brand-icons.tsx — SVG built by embedding the
- * Titan One WOFF2 as base64, PNGs rasterized via Takumi, ICO packaged by
+ * Titan One WOFF2 as base64, PNGs rasterized via Satori + resvg, ICO packaged by
  * png-to-ico.
  *
  * Usage:
@@ -27,7 +27,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ImageResponse } from "@takumi-rs/image-response";
+import { renderOgPng } from "@workspace/og/rasterize";
 import pngToIco from "png-to-ico";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -42,9 +42,7 @@ const ICONS_DIR = resolve(PUBLIC_DIR, "icons");
 // ---------------------------------------------------------------------------
 
 function loadFontBase64(): string {
-	const fontPath = require.resolve(
-		"@fontsource/titan-one/files/titan-one-latin-400-normal.woff2",
-	);
+	const fontPath = require.resolve("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2");
 	return readFileSync(fontPath).toString("base64");
 }
 
@@ -68,7 +66,7 @@ function buildMaskableSvg(fontBase64: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PNG icons — rendered via Takumi (JSX → image)
+// PNG icons — rendered via Satori + resvg (JSX → image)
 // ---------------------------------------------------------------------------
 
 function loadFont(path: string): ArrayBuffer {
@@ -76,30 +74,22 @@ function loadFont(path: string): ArrayBuffer {
 	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
-const takumiFonts = [
+const fonts = [
 	{
 		name: "Titan One",
-		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2"),
+		data: loadFont("@fontsource/titan-one/files/titan-one-latin-400-normal.woff"),
 		style: "normal" as const,
 		weight: 400 as const,
 	},
 ];
 
 async function renderPng(element: React.ReactElement, size: number): Promise<Buffer> {
-	const response = new ImageResponse(element, {
-		width: size,
-		height: size,
-		fonts: takumiFonts,
-	});
-	return Buffer.from(await response.arrayBuffer());
+	return Buffer.from(await renderOgPng(element, { width: size, height: size, fonts }));
 }
 
 function StandardIcon({ bg, size }: { bg?: string; size: number }) {
 	return (
-		<div
-			tw="flex items-center justify-center w-full h-full"
-			style={{ backgroundColor: bg || "transparent" }}
-		>
+		<div tw="flex items-center justify-center w-full h-full" style={{ backgroundColor: bg || "transparent" }}>
 			<div
 				style={{
 					fontFamily: "Titan One",

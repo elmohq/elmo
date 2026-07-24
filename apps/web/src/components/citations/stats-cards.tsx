@@ -2,15 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/componen
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
 import { IconInfoCircle } from "@tabler/icons-react";
 
-function StatCard({
-	title,
-	tooltip,
-	value,
-}: {
-	title: string;
-	tooltip: React.ReactNode;
-	value: React.ReactNode;
-}) {
+function StatCard({ title, tooltip, value }: { title: string; tooltip: React.ReactNode; value: React.ReactNode }) {
 	return (
 		<Card className="flex flex-col">
 			<CardHeader className="gap-0">

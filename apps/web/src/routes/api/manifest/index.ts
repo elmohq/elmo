@@ -10,11 +10,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { getDeployment } from "@/lib/config/server";
-import {
-	DEFAULT_APP_ICON,
-	ELMO_THEME_COLOR,
-	ELMO_BACKGROUND_COLOR,
-} from "@workspace/config/constants";
+import { DEFAULT_APP_ICON, ELMO_THEME_COLOR, ELMO_BACKGROUND_COLOR } from "@workspace/config/constants";
 
 interface ManifestIcon {
 	src: string;

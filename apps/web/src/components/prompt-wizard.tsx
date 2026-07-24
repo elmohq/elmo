@@ -112,8 +112,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	);
 
 	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
-		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) =>
-			startAnalyzeBrandFn({ data: vars }),
+		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) => startAnalyzeBrandFn({ data: vars }),
 		onError: (err) => {
 			setError(err instanceof Error ? err.message : "Analysis failed");
 			setPhase("idle");
@@ -202,10 +201,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		(competitors: CompetitorEntry[]) => setData((p) => ({ ...p, competitors })),
 		[],
 	);
-	const updatePrompts = useCallback(
-		(prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })),
-		[],
-	);
+	const updatePrompts = useCallback((prompts: EditablePrompt[]) => setData((p) => ({ ...p, prompts })), []);
 
 	const previewCounts = useMemo(() => {
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
@@ -267,8 +263,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors,
-					additional domains/aliases, and a starter set of AI prompts to track.
+					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
+					domains/aliases, and a starter set of AI prompts to track.
 				</p>
 				{error && (
 					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -312,11 +308,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div className="space-y-3">
 					<div>
 						<p className="text-xs text-muted-foreground">Brand name</p>
-						<Input
-							value={data.brandName}
-							onChange={(e) => updateBrandName(e.target.value)}
-							placeholder="Brand name"
-						/>
+						<Input value={data.brandName} onChange={(e) => updateBrandName(e.target.value)} placeholder="Brand name" />
 					</div>
 					<div>
 						<p className="text-xs text-muted-foreground">Website URL</p>
@@ -364,7 +356,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 				<div>
 					<h2 className="text-2xl font-bold">Prompts</h2>
 					<p className="text-muted-foreground">
-						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the bottom.
+						Pick which AI tracking prompts to start with. Untick any you don't want, edit tags, or add your own at the
+						bottom.
 					</p>
 				</div>
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />

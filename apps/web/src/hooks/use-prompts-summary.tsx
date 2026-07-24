@@ -13,8 +13,7 @@ export interface PromptsSummaryFilters {
 
 export const promptsSummaryKeys = {
 	all: ["prompts-summary"] as const,
-	list: (brandId: string, filters?: PromptsSummaryFilters) =>
-		[...promptsSummaryKeys.all, brandId, filters] as const,
+	list: (brandId: string, filters?: PromptsSummaryFilters) => [...promptsSummaryKeys.all, brandId, filters] as const,
 };
 
 export function usePromptsSummary(brandId?: string, filters?: PromptsSummaryFilters) {

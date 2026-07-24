@@ -45,7 +45,13 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	brand?: BrandWithPrompts | null;
 }
 
-export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly = false, brand, ...props }: AppSidebarProps) {
+export function AppSidebar({
+	isAdmin = false,
+	hasReportAccess = false,
+	adminOnly = false,
+	brand,
+	...props
+}: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	// Reports are disabled entirely in cloud; hide the nav entry there.
@@ -177,14 +183,14 @@ export function AppSidebar({ isAdmin = false, hasReportAccess = false, adminOnly
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-					<SidebarMenuButton size="lg" asChild>
-						<Link to="/app" onClick={() => setOpenMobile(false)}>
-							<Logo iconClassName="!size-5" />
-							<div className="ml-auto group-data-[collapsible=icon]:hidden">
-								<DemoModePill />
-							</div>
-						</Link>
-					</SidebarMenuButton>
+						<SidebarMenuButton size="lg" asChild>
+							<Link to="/app" onClick={() => setOpenMobile(false)}>
+								<Logo iconClassName="!size-5" />
+								<div className="ml-auto group-data-[collapsible=icon]:hidden">
+									<DemoModePill />
+								</div>
+							</Link>
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>

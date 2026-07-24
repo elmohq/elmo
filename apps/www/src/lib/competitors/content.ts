@@ -19,10 +19,7 @@ export function indefiniteArticle(phrase: string): "a" | "an" {
 }
 
 export function isOpenSource(competitor: Competitor): boolean {
-	return (
-		(competitor.features.openSource ?? false) ||
-		competitor.category === "open-source"
-	);
+	return (competitor.features.openSource ?? false) || competitor.category === "open-source";
 }
 
 /**

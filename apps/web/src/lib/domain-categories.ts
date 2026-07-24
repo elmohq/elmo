@@ -175,10 +175,7 @@ export function isGoogleShoppingUrl(url: string): boolean {
 		if (!u.pathname.startsWith("/search")) return false;
 		const q = u.search;
 		return (
-			q.includes("prds=") ||
-			/productid(%3a|:)/i.test(q) ||
-			q.includes("tbm=shop") ||
-			u.searchParams.get("udm") === "28"
+			q.includes("prds=") || /productid(%3a|:)/i.test(q) || q.includes("tbm=shop") || u.searchParams.get("udm") === "28"
 		);
 	} catch {
 		return false;
@@ -241,9 +238,7 @@ export function attributeProduct(
 ): ProductAttribution {
 	const n = productName.toLowerCase();
 	if (brandName?.trim() && n.includes(brandName.trim().toLowerCase())) return { kind: "brand" };
-	const sorted = competitors
-		.filter((c) => c.name?.trim())
-		.sort((a, b) => b.name.length - a.name.length);
+	const sorted = competitors.filter((c) => c.name?.trim()).sort((a, b) => b.name.length - a.name.length);
 	for (const c of sorted) {
 		if (n.includes(c.name.trim().toLowerCase())) {
 			return { kind: "competitor", competitorId: c.id, competitorName: c.name };
@@ -271,23 +266,54 @@ export function attributeProduct(
  */
 export const FORUM_DOMAINS = new Set([
 	// general / large (incl. major non-US: zhihu = Chinese Q&A, nairaland = Nigerian)
-	"4chan.org", "somethingawful.com", "city-data.com", "gaiaonline.com",
-	"resetera.com", "neogaf.com", "thestudentroom.co.uk", "mumsnet.com",
-	"nairaland.com", "skyscrapercity.com", "whirlpool.net.au", "zhihu.com",
+	"4chan.org",
+	"somethingawful.com",
+	"city-data.com",
+	"gaiaonline.com",
+	"resetera.com",
+	"neogaf.com",
+	"thestudentroom.co.uk",
+	"mumsnet.com",
+	"nairaland.com",
+	"skyscrapercity.com",
+	"whirlpool.net.au",
+	"zhihu.com",
 	"news.ycombinator.com",
 	// academic / professional
-	"collegeconfidential.com", "studentdoctor.net", "boredofstudies.org",
-	"pprune.org", "eng-tips.com",
+	"collegeconfidential.com",
+	"studentdoctor.net",
+	"boredofstudies.org",
+	"pprune.org",
+	"eng-tips.com",
 	// hobby / enthusiast
-	"bogleheads.org", "physicsforums.com", "avsforum.com", "head-fi.org",
-	"audiosciencereview.com", "linustechtips.com", "androidforums.com",
-	"talkbass.com", "ultimate-guitar.com", "reef2reef.com", "fishlore.com",
-	"stripersonline.com", "ar15.com", "rollitup.org", "grasscity.com",
-	"twoplustwo.com", "healthboards.com", "airliners.net", "gearspace.com",
-	"teamliquid.net", "atariage.com", "websleuths.com",
+	"bogleheads.org",
+	"physicsforums.com",
+	"avsforum.com",
+	"head-fi.org",
+	"audiosciencereview.com",
+	"linustechtips.com",
+	"androidforums.com",
+	"talkbass.com",
+	"ultimate-guitar.com",
+	"reef2reef.com",
+	"fishlore.com",
+	"stripersonline.com",
+	"ar15.com",
+	"rollitup.org",
+	"grasscity.com",
+	"twoplustwo.com",
+	"healthboards.com",
+	"airliners.net",
+	"gearspace.com",
+	"teamliquid.net",
+	"atariage.com",
+	"websleuths.com",
 	// deals / travel / parenting / wedding (slickdeals lives in ecommerce, not here)
-	"redflagdeals.com", "flyertalk.com", "weddingbee.com",
-	"thenest.com", "cafemom.com",
+	"redflagdeals.com",
+	"flyertalk.com",
+	"weddingbee.com",
+	"thenest.com",
+	"cafemom.com",
 ]);
 
 /**
@@ -329,33 +355,71 @@ export function inferPageType(url: string, title?: string | null): CitationPageT
 	const t = (title ?? "").toLowerCase();
 	const hay = `${path} ${t}`;
 
-	if (/(^|\.)(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com)$/.test(host) || /\/(watch|shorts|embed|videos?)(\/|$|\?)/.test(path)) return "video";
-	if (isForumDomain(host) || /(^|\.)reddit\.com$/.test(host) || /\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) || /\/r\//.test(path)) return "forum";
+	if (
+		/(^|\.)(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|tiktok\.com)$/.test(host) ||
+		/\/(watch|shorts|embed|videos?)(\/|$|\?)/.test(path)
+	)
+		return "video";
+	if (
+		isForumDomain(host) ||
+		/(^|\.)reddit\.com$/.test(host) ||
+		/\/(comments|forums?|threads?|viewtopic|discussion)(\/|$)/.test(path) ||
+		/\/r\//.test(path)
+	)
+		return "forum";
 	if (/\/(docs?|documentation|developers?|api|sdk|reference)(\/|$)/.test(path)) return "doc";
 	if (/\breview(s|ed)?\b/.test(hay)) return "review";
-	if (/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) || /\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)) return "comparison";
 	if (
-		/\b(\d+\s+best|best\s+\d+|top\s+\d+|\d+\s+top|best\s+[a-z])\b/.test(t)
-		|| /^\s*(best|top)\b/.test(t)
+		/\b(vs\.?|versus|alternatives?|comparison)\b/.test(hay) ||
+		/\/(compare|comparison|vs|alternatives)(\/|$|-)/.test(path)
+	)
+		return "comparison";
+	if (
+		/\b(\d+\s+best|best\s+\d+|top\s+\d+|\d+\s+top|best\s+[a-z])\b/.test(t) ||
+		/^\s*(best|top)\b/.test(t) ||
 		// "best-"/"top-" in the URL slug (catches review domains whose title doesn't lead with "Best"),
 		// excluding store "best-seller" pages and commerce paths.
-		|| (/(^|\/)(best|top)-[a-z]/.test(path) && !/best-?sellers?|\/(products?|collections|shop|store|dp|gp|pdp|item|cart|buy)(\/|$|-)/.test(path))
-	) return "listicle";
-	if (/\b(how to|how-to|guide|tutorial|step[- ]by[- ]step|getting started|routine)\b/.test(hay) || /\/(how-to|guides?|tutorials?|routines?)(\/|$)/.test(path)) return "howto";
+		(/(^|\/)(best|top)-[a-z]/.test(path) &&
+			!/best-?sellers?|\/(products?|collections|shop|store|dp|gp|pdp|item|cart|buy)(\/|$|-)/.test(path))
+	)
+		return "listicle";
+	if (
+		/\b(how to|how-to|guide|tutorial|step[- ]by[- ]step|getting started|routine)\b/.test(hay) ||
+		/\/(how-to|guides?|tutorials?|routines?)(\/|$)/.test(path)
+	)
+		return "howto";
 	// Unambiguous policy / legal / contact pages stay "info" even when nested under a
 	// commerce path segment (e.g. /shop/shipping-policy, /store/locations). Matched as
 	// whole segments so product slugs (/products/location-tracker) aren't caught.
-	if (/\/(shipping-policy|returns?-policy|refund-policy|privacy-policy|privacy|terms|store-locator|locations?|about|about-us|contact|contact-us|faqs?)(\/|$)/.test(path)) return "info";
+	if (
+		/\/(shipping-policy|returns?-policy|refund-policy|privacy-policy|privacy|terms|store-locator|locations?|about|about-us|contact|contact-us|faqs?)(\/|$)/.test(
+			path,
+		)
+	)
+		return "info";
 	// Otherwise commerce paths win over the broader "info" list: /products/return-pillow
 	// is a product, not a returns page. The product matcher is segment-anchored ((\/|$)).
-	if (/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|cart|pricing|plans?)(\/|$)/.test(path)) return "product";
-	if (/\/(about|about-us|faq|faqs|contact|contact-us|shipping|shipping-policy|returns?|return-policy|refunds?|privacy|terms|policy|policies|legal|account|login|sign-?in|register|careers?|press|wholesale|store-locator|locations?|subscribe|subscription|rewards|loyalty|gift-?cards?)(\/|$|-)/.test(path)) return "info";
+	if (
+		/\/(dp|gp\/product|gp\/aw\/d|ip|itm|pdp|products?|item|shop|store|collections|buy|cart|pricing|plans?)(\/|$)/.test(
+			path,
+		)
+	)
+		return "product";
+	if (
+		/\/(about|about-us|faq|faqs|contact|contact-us|shipping|shipping-policy|returns?|return-policy|refunds?|privacy|terms|policy|policies|legal|account|login|sign-?in|register|careers?|press|wholesale|store-locator|locations?|subscribe|subscription|rewards|loyalty|gift-?cards?)(\/|$|-)/.test(
+			path,
+		)
+	)
+		return "info";
 	if (/\/(support|help|kb)(\/|$)/.test(path)) return "doc";
 	if (
-		/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?)(\/|$|-)/.test(path)
-		|| /\/\d{4}\/\d{2}\//.test(path)
-		|| /\/\d{4}\/[a-z]/.test(path)
-	) return "article";
+		/\/(blog|news|articles?|story|stories|posts?|magazine|tips|advice|journal|features?|insights?|resources?)(\/|$|-)/.test(
+			path,
+		) ||
+		/\/\d{4}\/\d{2}\//.test(path) ||
+		/\/\d{4}\/[a-z]/.test(path)
+	)
+		return "article";
 	return "other";
 }
 
@@ -368,7 +432,11 @@ const CONTENT_PUBLISHER_CATEGORIES = new Set<CitationCategory>(["editorial", "in
  * doesn't match a more specific type is treated as an article rather than left in
  * "other" — instead of hardcoding per-industry content paths.
  */
-export function resolvePageType(url: string, title: string | null | undefined, category: CitationCategory): CitationPageType {
+export function resolvePageType(
+	url: string,
+	title: string | null | undefined,
+	category: CitationCategory,
+): CitationPageType {
 	const pt = inferPageType(url, title);
 	if (pt === "other" && CONTENT_PUBLISHER_CATEGORIES.has(category)) return "article";
 	return pt;
@@ -388,7 +456,7 @@ export function toRoundedPercentages(counts: Record<string, number>): Record<str
 	let remainder = 100 - floored.reduce((s, r) => s + r.floor, 0);
 
 	// Distribute remaining points to entries with largest fractional parts
-	floored.sort((a, b) => (b.exact - b.floor) - (a.exact - a.floor));
+	floored.sort((a, b) => b.exact - b.floor - (a.exact - a.floor));
 	for (const entry of floored) {
 		if (remainder <= 0) break;
 		entry.floor += 1;
@@ -398,18 +466,71 @@ export function toRoundedPercentages(counts: Record<string, number>): Record<str
 	return Object.fromEntries(floored.map((r) => [r.key, r.floor]));
 }
 
-export const CATEGORY_CONFIG: Record<CitationCategory, { label: string; chartColor: string; badgeClass: string; chartDotClass: string }> = {
-	brand: { label: "Brand", chartColor: "#2563eb", badgeClass: "bg-blue-600/90 text-white", chartDotClass: "bg-blue-600" },
-	competitor: { label: "Competitor", chartColor: "#ef4444", badgeClass: "bg-red-500/90 text-white", chartDotClass: "bg-red-500" },
-	editorial: { label: "Editorial", chartColor: "#a463f2", badgeClass: "bg-purple-500/90 text-white", chartDotClass: "bg-purple-500" },
-	reviews: { label: "Reviews", chartColor: "#efb118", badgeClass: "bg-amber-500/90 text-white", chartDotClass: "bg-amber-500" },
-	ecommerce: { label: "Ecommerce", chartColor: "#36b39a", badgeClass: "bg-teal-500/90 text-white", chartDotClass: "bg-teal-500" },
-	social: { label: "Social", chartColor: "#ff8ab7", badgeClass: "bg-pink-400/90 text-white", chartDotClass: "bg-pink-400" },
-	developer: { label: "Developer", chartColor: "#3ca951", badgeClass: "bg-green-600/90 text-white", chartDotClass: "bg-green-600" },
+export const CATEGORY_CONFIG: Record<
+	CitationCategory,
+	{ label: string; chartColor: string; badgeClass: string; chartDotClass: string }
+> = {
+	brand: {
+		label: "Brand",
+		chartColor: "#2563eb",
+		badgeClass: "bg-blue-600/90 text-white",
+		chartDotClass: "bg-blue-600",
+	},
+	competitor: {
+		label: "Competitor",
+		chartColor: "#ef4444",
+		badgeClass: "bg-red-500/90 text-white",
+		chartDotClass: "bg-red-500",
+	},
+	editorial: {
+		label: "Editorial",
+		chartColor: "#a463f2",
+		badgeClass: "bg-purple-500/90 text-white",
+		chartDotClass: "bg-purple-500",
+	},
+	reviews: {
+		label: "Reviews",
+		chartColor: "#efb118",
+		badgeClass: "bg-amber-500/90 text-white",
+		chartDotClass: "bg-amber-500",
+	},
+	ecommerce: {
+		label: "Ecommerce",
+		chartColor: "#36b39a",
+		badgeClass: "bg-teal-500/90 text-white",
+		chartDotClass: "bg-teal-500",
+	},
+	social: {
+		label: "Social",
+		chartColor: "#ff8ab7",
+		badgeClass: "bg-pink-400/90 text-white",
+		chartDotClass: "bg-pink-400",
+	},
+	developer: {
+		label: "Developer",
+		chartColor: "#3ca951",
+		badgeClass: "bg-green-600/90 text-white",
+		chartDotClass: "bg-green-600",
+	},
 	pr: { label: "PR", chartColor: "#f58518", badgeClass: "bg-orange-500/90 text-white", chartDotClass: "bg-orange-500" },
-	reference: { label: "Reference", chartColor: "#b279a2", badgeClass: "bg-fuchsia-500/90 text-white", chartDotClass: "bg-fuchsia-500" },
-	institutional: { label: "Institutional", chartColor: "#79a8e8", badgeClass: "bg-sky-500/90 text-white", chartDotClass: "bg-sky-500" },
-	other: { label: "Other", chartColor: "#9498a0", badgeClass: "bg-slate-400/90 text-white", chartDotClass: "bg-slate-400" },
+	reference: {
+		label: "Reference",
+		chartColor: "#b279a2",
+		badgeClass: "bg-fuchsia-500/90 text-white",
+		chartDotClass: "bg-fuchsia-500",
+	},
+	institutional: {
+		label: "Institutional",
+		chartColor: "#79a8e8",
+		badgeClass: "bg-sky-500/90 text-white",
+		chartDotClass: "bg-sky-500",
+	},
+	other: {
+		label: "Other",
+		chartColor: "#9498a0",
+		badgeClass: "bg-slate-400/90 text-white",
+		chartDotClass: "bg-slate-400",
+	},
 };
 
 export const DOMAIN_CATEGORY_COLORS: Record<string, string> = Object.fromEntries(

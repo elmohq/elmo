@@ -30,9 +30,7 @@ export interface BrandUpdateFields {
 	aliases?: string[];
 }
 
-export type NormalizeBrandUpdateResult =
-	| { ok: true; updates: BrandUpdateFields }
-	| { ok: false; error: string };
+export type NormalizeBrandUpdateResult = { ok: true; updates: BrandUpdateFields } | { ok: false; error: string };
 
 export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpdateResult {
 	const updates: BrandUpdateFields = {};

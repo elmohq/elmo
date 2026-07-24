@@ -4,11 +4,7 @@ import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
 import { PairComparison } from "@/components/pair-comparison";
 import { MultiComparison } from "@/components/multi-comparison";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	ElmoCta,
-} from "@/components/directory-shell";
+import { DirectoryBackLink, DirectoryHero, ElmoCta } from "@/components/directory-shell";
 import {
 	ogMeta,
 	canonicalUrl,
@@ -18,12 +14,7 @@ import {
 	softwareApplicationJsonLd,
 	ELMO_LISTING,
 } from "@/lib/seo";
-import {
-	getCompareEntry,
-	getCompareVerdict,
-	getCompareFaqs,
-	type Competitor,
-} from "@/lib/competitors";
+import { getCompareEntry, getCompareVerdict, getCompareFaqs, type Competitor } from "@/lib/competitors";
 
 export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 	head: ({ params }) => {
@@ -31,19 +22,13 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 		if (!tools) return {};
 		const names = tools.map((t) => t.name).join(" vs ");
 		const isPair = tools.length === 2;
-		const title = isPair
-			? `${names} | AI Visibility Tool Comparison · Elmo`
-			: `${names} · Elmo`;
+		const title = isPair ? `${names} | AI Visibility Tool Comparison · Elmo` : `${names} · Elmo`;
 		const description = isPair
 			? `Compare ${names} for AI visibility tracking — feature by feature, with Elmo as the open-source alternative.`
 			: `Compare ${names} for AI visibility and answer engine monitoring, feature by feature, with Elmo as the free, open-source alternative.`;
 		const path = `/ai-visibility-tools/compare/${params.slug}`;
 		return {
-			meta: [
-				{ title },
-				{ name: "description", content: description },
-				...ogMeta({ title, description, path }),
-			],
+			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
 				breadcrumbJsonLd([
@@ -52,10 +37,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/$slug")({
 					{ name: names, path },
 				]),
 				faqJsonLd(getCompareFaqs(tools)),
-				comparisonJsonLd([
-					...tools.map((t) => ({ name: t.name, url: t.url })),
-					ELMO_LISTING,
-				]),
+				comparisonJsonLd([...tools.map((t) => ({ name: t.name, url: t.url })), ELMO_LISTING]),
 				softwareApplicationJsonLd(),
 			],
 		};
@@ -77,16 +59,8 @@ function ComparePage() {
 			<Navbar />
 			<main>
 				<DirectoryBackLink />
-				<DirectoryHero
-					eyebrow="Comparison"
-					title={names}
-					lead={getCompareVerdict(tools)}
-				/>
-				{a && b && tools.length === 2 ? (
-					<PairComparison a={a} b={b} />
-				) : (
-					<MultiComparison tools={tools} />
-				)}
+				<DirectoryHero eyebrow="Comparison" title={names} lead={getCompareVerdict(tools)} />
+				{a && b && tools.length === 2 ? <PairComparison a={a} b={b} /> : <MultiComparison tools={tools} />}
 				<Faq items={getCompareFaqs(tools)} eyebrow="/ FAQ" />
 				<ElmoCta />
 			</main>

@@ -406,14 +406,7 @@ const BRIGHTDATA_MODELS = [
 	"gemini",
 ] as const;
 
-const OLOSTEP_MODELS = [
-	"chatgpt",
-	"google-ai-mode",
-	"google-ai-overview",
-	"perplexity",
-	"copilot",
-	"gemini",
-] as const;
+const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
 
 const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"] as const;
 

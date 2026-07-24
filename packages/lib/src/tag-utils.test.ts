@@ -82,7 +82,7 @@ describe("tag-utils", () => {
 		it("should return exactly one tag", () => {
 			const brandedTags = computeSystemTags("acme products", "Acme", "https://acme.com");
 			const unbrandedTags = computeSystemTags("generic products", "Acme", "https://acme.com");
-			
+
 			expect(brandedTags).toHaveLength(1);
 			expect(unbrandedTags).toHaveLength(1);
 		});

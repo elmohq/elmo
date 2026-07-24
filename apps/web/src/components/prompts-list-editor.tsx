@@ -120,13 +120,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 						>
 							Disable
 						</Button>
-						<Button
-							type="button"
-							size="sm"
-							variant="ghost"
-							onClick={clearSelection}
-							className="cursor-pointer"
-						>
+						<Button type="button" size="sm" variant="ghost" onClick={clearSelection} className="cursor-pointer">
 							Clear
 						</Button>
 					</div>
@@ -161,7 +155,9 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 								<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 							</TooltipTrigger>
 							<TooltipContent>
-								<p className="max-w-xs">Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.</p>
+								<p className="max-w-xs">
+									Auto-generated tags like &quot;branded&quot; or &quot;unbranded&quot; based on prompt content.
+								</p>
 							</TooltipContent>
 						</Tooltip>
 					</div>
@@ -194,11 +190,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 					{prompts.map((prompt, index) => (
 						<div key={prompt._key} className={!prompt.enabled ? "opacity-60" : ""}>
 							{/* Mobile: stacked, no selection/bulk */}
-							<div
-								className={`md:hidden flex flex-col gap-2 pb-3 ${
-									index < prompts.length - 1 ? "border-b" : ""
-								}`}
-							>
+							<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < prompts.length - 1 ? "border-b" : ""}`}>
 								<div className="flex items-start gap-2">
 									<Input
 										value={prompt.value}

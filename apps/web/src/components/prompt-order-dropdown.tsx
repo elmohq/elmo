@@ -8,12 +8,7 @@ import {
 	DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
 import { FilterTriggerButton } from "@/components/filter-bar";
-import {
-	PROMPT_ORDER_OPTIONS,
-	DEFAULT_PROMPT_ORDER,
-	coercePromptOrder,
-	type PromptOrder,
-} from "@/lib/prompt-order";
+import { PROMPT_ORDER_OPTIONS, DEFAULT_PROMPT_ORDER, coercePromptOrder, type PromptOrder } from "@/lib/prompt-order";
 
 /** Sort control for the prompts list (#60). Reads/writes the `order` URL key
  *  the visibility route declares in its `validateSearch`. Like the filter-bar

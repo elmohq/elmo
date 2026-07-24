@@ -12,7 +12,9 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
-    "format": "biome format --write .",
+    "format": "biome format --write --config-path=biome.json .",
+    "format-and-lint": "biome check --config-path=biome.json .",
+    "format-and-lint:fix": "biome check --write --config-path=biome.json .",
     "knip": "knip",
     "elmo": "tsx apps/cli/src/index.ts",
     "cli:link": "npm unlink -g @elmohq/cli || true && pnpm -C apps/cli build && (cd apps/cli && npm link)",
@@ -26,11 +28,11 @@
     "license-check": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.3",
-    "@changesets/cli": "^2.31.0",
-    "knip": "^6.26.0",
-    "tsx": "^4.23.0",
-    "turbo": "^2.10.4",
+    "@biomejs/biome": "2.5.4",
+    "@changesets/cli": "^2.31.1",
+    "knip": "^6.27.0",
+    "tsx": "^4.23.1",
+    "turbo": "^2.10.5",
     "typescript": "^7.0.2"
   }
 }

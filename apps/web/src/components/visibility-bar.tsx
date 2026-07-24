@@ -1,4 +1,3 @@
-
 import { Area, AreaChart, ResponsiveContainer, YAxis } from "recharts";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
@@ -72,19 +71,21 @@ export function VisibilityBar({
 	const showChart = lookback !== "1w";
 
 	// Prepare chart data
-	const chartData = visibilityTimeSeries.map(point => ({
+	const chartData = visibilityTimeSeries.map((point) => ({
 		date: point.date,
 		value: point.visibility ?? 0,
 	}));
 
 	return (
-		<div className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border ${colors.bg} ${colors.border}`}>
+		<div
+			className={`flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 min-h-10 px-3 py-2 rounded-lg border ${colors.bg} ${colors.border}`}
+		>
 			{/* Left side: visibility + chart + info */}
 			<div className="flex items-center gap-2 min-w-0 shrink-0">
 				<span className={`text-base sm:text-lg font-semibold whitespace-nowrap ${colors.text}`}>
 					{currentVisibility}% <span className="font-normal">Visibility</span>
 				</span>
-				
+
 				{showChart && (
 					<div className="w-24 h-6 hidden sm:block shrink-0">
 						<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
@@ -111,16 +112,24 @@ export function VisibilityBar({
 						<IconInfoCircle className={`h-3.5 w-3.5 shrink-0 ${colors.muted} cursor-help`} />
 					</TooltipTrigger>
 					<TooltipContent side="bottom" className="max-w-xs text-sm">
-						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? 's' : ''} shown below, calculated as the percentage of AI responses that mention your brand over the time period for the selected filters.
+						AI visibility for the {totalPrompts.toLocaleString()} prompt{totalPrompts !== 1 ? "s" : ""} shown below,
+						calculated as the percentage of AI responses that mention your brand over the time period for the selected
+						filters.
 					</TooltipContent>
 				</Tooltip>
 			</div>
-			
+
 			{/* Right side: stats */}
 			<div className={`flex items-center gap-x-3 text-xs sm:text-sm ${colors.muted}`}>
-				<span><span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts</span>
-				<span><span className="font-medium">{totalRuns.toLocaleString()}</span> runs</span>
-				<span><span className="font-medium">{totalCitations.toLocaleString()}</span> citations</span>
+				<span>
+					<span className="font-medium">{totalPrompts.toLocaleString()}</span> prompts
+				</span>
+				<span>
+					<span className="font-medium">{totalRuns.toLocaleString()}</span> runs
+				</span>
+				<span>
+					<span className="font-medium">{totalCitations.toLocaleString()}</span> citations
+				</span>
 			</div>
 		</div>
 	);
@@ -145,9 +154,7 @@ export function VisibilityBarSkeleton() {
 export function VisibilityBarEmpty() {
 	return (
 		<div className="flex items-center min-h-10 px-3 py-2 rounded-lg border border-border/60 bg-muted/20">
-			<span className="text-sm text-muted-foreground">
-				No visibility data for the selected time range and filters.
-			</span>
+			<span className="text-sm text-muted-foreground">No visibility data for the selected time range and filters.</span>
 		</div>
 	);
 }

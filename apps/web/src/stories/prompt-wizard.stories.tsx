@@ -107,9 +107,7 @@ function AutoAnalyze() {
  * once the user submits, createBrandFn writes the row and the route
  * re-renders into the wizard.
  */
-export const Setup = () => (
-	<BrandOnboarding brandId="mock-brand-id" brandName="Acme" />
-);
+export const Setup = () => <BrandOnboarding brandId="mock-brand-id" brandName="Acme" />;
 
 /** Initial state — analyze button visible, no suggestion fetched yet. */
 export const Idle = () => {

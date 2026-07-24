@@ -57,9 +57,7 @@ export function formatProvider(provider: string) {
 
 // The three first-party API providers collapse into one "Direct API" filter.
 export function providerCategory(provider: string) {
-	return provider === "openai-api" ||
-		provider === "anthropic-api" ||
-		provider === "mistral-api"
+	return provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api"
 		? "direct-api"
 		: provider;
 }
@@ -90,11 +88,7 @@ export type CellAvailability = "tracked" | "untracked" | "unavailable";
 // Classify a model × provider-category combination independent of run data:
 // "tracked" when Elmo runs it, "unavailable" when the combination can't exist,
 // "untracked" when it could exist but Elmo doesn't currently run it.
-export function cellAvailability(
-	model: string,
-	provider: string,
-	hasTarget: boolean,
-): CellAvailability {
+export function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
 	if (hasTarget) return "tracked";
 	// Model APIs reach only models with an inference endpoint — never the
 	// scrape-only Search/consumer surfaces.
@@ -107,14 +101,7 @@ export function cellAvailability(
 	return "untracked";
 }
 
-export const PROVIDER_FILTER_ORDER = [
-	"direct-api",
-	"openrouter",
-	"olostep",
-	"brightdata",
-	"oxylabs",
-	"dataforseo",
-];
+export const PROVIDER_FILTER_ORDER = ["direct-api", "openrouter", "olostep", "brightdata", "oxylabs", "dataforseo"];
 
 export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	"direct-api": "Direct API",
@@ -193,18 +180,14 @@ export interface OverallStatus {
 }
 
 export function overallStatus(targets: TargetStatus[]): OverallStatus {
-	const latests = targets
-		.map((t) => latestOf(t.entries))
-		.filter((e): e is StatusEntry => e !== null);
+	const latests = targets.map((t) => latestOf(t.entries)).filter((e): e is StatusEntry => e !== null);
 	const failCount = latests.filter((e) => e.status === "fail").length;
 	return {
 		count: latests.length,
 		failCount,
 		operational: latests.length > 0 && failCount === 0,
 		uptime: passRate(targets),
-		lastChecked: latests.length
-			? Math.max(...latests.map((e) => new Date(e.ts).getTime()))
-			: null,
+		lastChecked: latests.length ? Math.max(...latests.map((e) => new Date(e.ts).getTime())) : null,
 	};
 }
 
@@ -229,8 +212,8 @@ export interface StatusMatrix {
 // per row, per column, and overall. Cells with no target return null so the
 // grid can render a blank.
 export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
-	const models = [...new Set(data.map((d) => parseTarget(d.target).model))].sort(
-		(a, b) => formatModel(a).localeCompare(formatModel(b)),
+	const models = [...new Set(data.map((d) => parseTarget(d.target).model))].sort((a, b) =>
+		formatModel(a).localeCompare(formatModel(b)),
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
 		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),

@@ -61,6 +61,13 @@
     "RESEND_FROM_EMAIL"
   ],
   "tasks": {
+    "//#format": {
+      "cache": false
+    },
+    "//#format-and-lint": {},
+    "//#format-and-lint:fix": {
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build", "check-types"],
       "outputs": [".output/**", ".vercel/output/**", "dist/**"]

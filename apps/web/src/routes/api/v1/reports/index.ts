@@ -14,7 +14,10 @@ import { sendReportJob } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 const createReportBody = z.object({
-	brandName: z.string("brandName is required and must be a non-empty string").trim().min(1, "brandName is required and must be a non-empty string"),
+	brandName: z
+		.string("brandName is required and must be a non-empty string")
+		.trim()
+		.min(1, "brandName is required and must be a non-empty string"),
 	brandWebsite: z
 		.string("brandWebsite is required and must be a non-empty string")
 		.trim()

@@ -12,10 +12,7 @@ function DiscordIcon({ className = "" }: { className?: string }) {
 
 export function Community() {
 	return (
-		<section
-			id="community"
-			className="border-b border-zinc-200 bg-white"
-		>
+		<section id="community" className="border-b border-zinc-200 bg-white">
 			<div className="relative mx-auto max-w-6xl overflow-hidden px-4 py-16 md:px-6 lg:py-24">
 				<div
 					aria-hidden="true"
@@ -37,15 +34,13 @@ export function Community() {
 				</div>
 
 				<div className="relative">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ COMMUNITY
-					</p>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ COMMUNITY</p>
 					<h2 className="mt-4 max-w-[20ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 						Talk to us!
 					</h2>
 					<p className="mt-5 max-w-[58ch] text-pretty text-zinc-600 md:text-lg">
-						Hop into our Discord to ask questions and get help straight from
-						the maintainers. We'd love to hear from you.
+						Hop into our Discord to ask questions and get help straight from the maintainers. We'd love to hear from
+						you.
 					</p>
 					<div className="mt-7 flex flex-wrap items-center gap-3">
 						<a

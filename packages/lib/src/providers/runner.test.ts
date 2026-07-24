@@ -34,9 +34,7 @@ describe("selectTargetsForBrand", () => {
 	});
 
 	it("throws when enabledModels mixes known and unknown models", () => {
-		expect(() => selectTargetsForBrand(configs, ["chatgpt", "does-not-exist"])).toThrow(
-			/does-not-exist/,
-		);
+		expect(() => selectTargetsForBrand(configs, ["chatgpt", "does-not-exist"])).toThrow(/does-not-exist/);
 	});
 
 	it("keeps duplicates in configs when the model is allowed (multi-sample case)", () => {

@@ -123,11 +123,21 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 			const toDate = new Date();
 			const fromDate = new Date();
 			switch (lookbackParam) {
-				case "1w": fromDate.setDate(fromDate.getDate() - 7); break;
-				case "1m": fromDate.setMonth(fromDate.getMonth() - 1); break;
-				case "3m": fromDate.setMonth(fromDate.getMonth() - 3); break;
-				case "6m": fromDate.setMonth(fromDate.getMonth() - 6); break;
-				case "1y": fromDate.setFullYear(fromDate.getFullYear() - 1); break;
+				case "1w":
+					fromDate.setDate(fromDate.getDate() - 7);
+					break;
+				case "1m":
+					fromDate.setMonth(fromDate.getMonth() - 1);
+					break;
+				case "3m":
+					fromDate.setMonth(fromDate.getMonth() - 3);
+					break;
+				case "6m":
+					fromDate.setMonth(fromDate.getMonth() - 6);
+					break;
+				case "1y":
+					fromDate.setFullYear(fromDate.getFullYear() - 1);
+					break;
 			}
 			fromDateStr = fromDate.toISOString().split("T")[0];
 			toDateStr = toDate.toISOString().split("T")[0];
@@ -137,15 +147,7 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		const webSearchEnabled = data.webSearchEnabled != null ? data.webSearchEnabled === "true" : undefined;
 
 		const [summaryData, firstEvaluatedData] = await Promise.all([
-			getPromptsSummary(
-				data.brandId,
-				fromDateStr,
-				toDateStr,
-				timezone,
-				webSearchEnabled,
-				data.model,
-				promptIds,
-			),
+			getPromptsSummary(data.brandId, fromDateStr, toDateStr, timezone, webSearchEnabled, data.model, promptIds),
 			getPromptsFirstEvaluatedAt(data.brandId, promptIds),
 		]);
 
@@ -183,7 +185,9 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 				brandMentionRate: stats ? Number(stats.brand_mention_rate) : 0,
 				competitorMentionRate: stats ? Number(stats.competitor_mention_rate) : 0,
 				averageWeightedMentions,
-				hasVisibilityData: totalRuns > 0 && (Number(stats?.brand_mention_rate || 0) > 0 || Number(stats?.competitor_mention_rate || 0) > 0),
+				hasVisibilityData:
+					totalRuns > 0 &&
+					(Number(stats?.brand_mention_rate || 0) > 0 || Number(stats?.competitor_mention_rate || 0) > 0),
 				lastRunAt: stats?.last_run_date ? new Date(stats.last_run_date) : null,
 				firstEvaluatedAt: firstEvalMap.get(p.id) ? new Date(firstEvalMap.get(p.id)!) : null,
 				tags: effectiveTags,
@@ -191,9 +195,8 @@ export const getPromptsSummaryFn = createServerFn({ method: "GET" })
 		});
 
 		// Apply tag filter
-		const filteredPrompts = tagFilter.length > 0
-			? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t)))
-			: promptSummaries;
+		const filteredPrompts =
+			tagFilter.length > 0 ? promptSummaries.filter((p) => tagFilter.some((t) => p.tags.includes(t))) : promptSummaries;
 
 		// Sort by visibility data priority, then by weighted mentions, then alphabetically
 		const sortedPrompts = filteredPrompts.sort((a, b) => {
@@ -267,29 +270,28 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 		// Run aggregation queries in parallel. Web-query stats used to be computed
 		// here too — the Web Queries tab now goes through getQueryFanoutFn instead.
-		const [mentionStatsResult, competitorMentionsResult] =
-			await Promise.all([
-				// Total runs + brand mentions
-				db
-					.select({
-						totalRuns: count(),
-						brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
-					})
-					.from(promptRuns)
-					.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
+		const [mentionStatsResult, competitorMentionsResult] = await Promise.all([
+			// Total runs + brand mentions
+			db
+				.select({
+					totalRuns: count(),
+					brandMentions: sql<number>`SUM(CASE WHEN ${promptRuns.brandMentioned} THEN 1 ELSE 0 END)`,
+				})
+				.from(promptRuns)
+				.where(and(eq(promptRuns.promptId, data.promptId), timeCondition)),
 
-				// Competitor mentions (separate to avoid unnest issues)
-				db
-					.select({ competitorsMentioned: promptRuns.competitorsMentioned })
-					.from(promptRuns)
-					.where(
-						and(
-							eq(promptRuns.promptId, data.promptId),
-							timeCondition,
-							sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
-						),
+			// Competitor mentions (separate to avoid unnest issues)
+			db
+				.select({ competitorsMentioned: promptRuns.competitorsMentioned })
+				.from(promptRuns)
+				.where(
+					and(
+						eq(promptRuns.promptId, data.promptId),
+						timeCondition,
+						sql`array_length(${promptRuns.competitorsMentioned}, 1) > 0`,
 					),
-			]);
+				),
+		]);
 
 		// ---- Process mention stats ----
 		const mentionData = mentionStatsResult[0];
@@ -308,7 +310,9 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 			// Initialize all competitors with 0 counts
 			const competitorCounts: Record<string, number> = {};
-			allCompetitors.forEach((c) => { competitorCounts[c.name] = 0; });
+			allCompetitors.forEach((c) => {
+				competitorCounts[c.name] = 0;
+			});
 
 			// Tally competitor mentions
 			competitorMentionsResult.forEach((row: any) => {
@@ -352,8 +356,15 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 		// Shopping module, and rebuild the domain distribution from the URL data.
 		let citationStats = undefined;
 		const [brandInfo, competitorsList] = await Promise.all([
-			db.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains }).from(brands).where(eq(brands.id, prompt[0].brandId)).limit(1),
-			db.select({ id: competitors.id, name: competitors.name, domains: competitors.domains }).from(competitors).where(eq(competitors.brandId, prompt[0].brandId)),
+			db
+				.select({ name: brands.name, website: brands.website, additionalDomains: brands.additionalDomains })
+				.from(brands)
+				.where(eq(brands.id, prompt[0].brandId))
+				.limit(1),
+			db
+				.select({ id: competitors.id, name: competitors.name, domains: competitors.domains })
+				.from(competitors)
+				.where(eq(competitors.brandId, prompt[0].brandId)),
 		]);
 
 		const primaryBrandDomain = brandInfo[0] ? extractDomain(brandInfo[0].website) : "";
@@ -368,13 +379,22 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 			// queries. Built from the raw URL rows (it picks out the Google surfaces);
 			// those same surfaces are excluded from the source mix below.
 			const googleModule = buildGoogleModule(
-				urlStats.map((u) => ({ prompt_id: data.promptId, url: u.url, domain: u.domain, title: u.title, count: u.count })),
+				urlStats.map((u) => ({
+					prompt_id: data.promptId,
+					url: u.url,
+					domain: u.domain,
+					title: u.title,
+					count: u.count,
+				})),
 				brandInfo[0]?.name ?? "",
 				competitorsList.map((c) => ({ id: c.id, name: c.name })),
 				() => prompt[0].value,
 			);
 
-			const urlCounts = new Map<string, { count: number; title?: string; domain: string; positionSum: number; positionCount: number }>();
+			const urlCounts = new Map<
+				string,
+				{ count: number; title?: string; domain: string; positionSum: number; positionCount: number }
+			>();
 			for (const { url, domain, title, count: cnt, avg_position } of urlStats) {
 				if (isGoogleSurfaceUrl(url)) continue;
 				const normalized = normalizeUrl(url);
@@ -396,7 +416,11 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				.map(([url, { count: cnt, title, domain, positionSum, positionCount }]) => {
 					const category = classifyUrl(domain, url, title, brandDomains, competitorDomains);
 					return {
-						url, title, domain, count: cnt, category,
+						url,
+						title,
+						domain,
+						count: cnt,
+						category,
 						pageType: resolvePageType(url, title, category),
 						avgPosition: positionCount > 0 ? Math.round((positionSum / positionCount) * 10) / 10 : null,
 					};
@@ -405,7 +429,10 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 
 			// Domain distribution rebuilt from URL-level data, each domain taking its
 			// category from its top-cited URL (matches the brand-wide view).
-			const domainAgg = new Map<string, { count: number; category: (typeof specificUrls)[number]["category"]; topCount: number; exampleTitle?: string }>();
+			const domainAgg = new Map<
+				string,
+				{ count: number; category: (typeof specificUrls)[number]["category"]; topCount: number; exampleTitle?: string }
+			>();
 			for (const u of specificUrls) {
 				const cur = domainAgg.get(u.domain);
 				if (cur) {
@@ -430,9 +457,10 @@ export const getPromptStatsFn = createServerFn({ method: "GET" })
 				pageTypeCounts[u.pageType] += u.count;
 			}
 			const totalCitations = domainDistribution.reduce((s, d) => s + d.count, 0);
-			const pageTypeDistribution = CITATION_PAGE_TYPES
-				.map((pageType) => ({ pageType, count: pageTypeCounts[pageType] }))
-				.filter((d) => d.count > 0);
+			const pageTypeDistribution = CITATION_PAGE_TYPES.map((pageType) => ({
+				pageType,
+				count: pageTypeCounts[pageType],
+			})).filter((d) => d.count > 0);
 
 			if (totalCitations > 0) {
 				citationStats = {
@@ -485,10 +513,7 @@ export const getPromptRunsFn = createServerFn({ method: "GET" })
 
 		const [runs, totalResult] = await Promise.all([
 			db.query.promptRuns.findMany({
-				where: and(
-					eq(promptRuns.promptId, data.promptId),
-					gte(promptRuns.createdAt, fromDate),
-				),
+				where: and(eq(promptRuns.promptId, data.promptId), gte(promptRuns.createdAt, fromDate)),
 				orderBy: desc(promptRuns.createdAt),
 				limit: data.limit,
 				offset,
@@ -535,8 +560,7 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		if (!brand) throw new Error("Brand not found");
 
 		const existingIds = new Set(
-			(await db.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, data.brandId)))
-				.map((p) => p.id),
+			(await db.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, data.brandId))).map((p) => p.id),
 		);
 
 		const saved = await db.transaction(async (tx) => {
@@ -617,11 +641,21 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 			toDateStr = todayStr;
 			const fromDate = new Date(now);
 			switch (lookbackParam) {
-				case "1w": fromDate.setDate(fromDate.getDate() - 6); break;
-				case "1m": fromDate.setMonth(fromDate.getMonth() - 1); break;
-				case "3m": fromDate.setMonth(fromDate.getMonth() - 3); break;
-				case "6m": fromDate.setMonth(fromDate.getMonth() - 6); break;
-				case "1y": fromDate.setFullYear(fromDate.getFullYear() - 1); break;
+				case "1w":
+					fromDate.setDate(fromDate.getDate() - 6);
+					break;
+				case "1m":
+					fromDate.setMonth(fromDate.getMonth() - 1);
+					break;
+				case "3m":
+					fromDate.setMonth(fromDate.getMonth() - 3);
+					break;
+				case "6m":
+					fromDate.setMonth(fromDate.getMonth() - 6);
+					break;
+				case "1y":
+					fromDate.setFullYear(fromDate.getFullYear() - 1);
+					break;
 			}
 			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
 			startDate = new Date(fromDateStr);
@@ -634,8 +668,11 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 
 		// Get metadata from DB
 		const [promptData, brandData, competitorsData] = await Promise.all([
-			db.select({ id: prompts.id, value: prompts.value, brandId: prompts.brandId })
-				.from(prompts).where(eq(prompts.id, data.promptId)).limit(1),
+			db
+				.select({ id: prompts.id, value: prompts.value, brandId: prompts.brandId })
+				.from(prompts)
+				.where(eq(prompts.id, data.promptId))
+				.limit(1),
 			db.select().from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db.select().from(competitors).where(eq(competitors.brandId, data.brandId)),
 		]);
@@ -689,7 +726,9 @@ export const getPromptChartDataFn = createServerFn({ method: "GET" })
 
 			if (totalRuns === 0) {
 				dataPoint[brand.id] = null;
-				sortedCompetitors.forEach((c) => { dataPoint[c.id] = null; });
+				sortedCompetitors.forEach((c) => {
+					dataPoint[c.id] = null;
+				});
 				return dataPoint;
 			}
 
@@ -784,22 +823,26 @@ export const getPromptWebQueryFn = createServerFn({ method: "GET" })
 		if (data.lookback && data.lookback !== "all") {
 			const fromDate = new Date(now);
 			switch (data.lookback) {
-				case "1w": fromDate.setDate(fromDate.getDate() - 6); break;
-				case "1m": fromDate.setMonth(fromDate.getMonth() - 1); break;
-				case "3m": fromDate.setMonth(fromDate.getMonth() - 3); break;
-				case "6m": fromDate.setMonth(fromDate.getMonth() - 6); break;
-				case "1y": fromDate.setFullYear(fromDate.getFullYear() - 1); break;
+				case "1w":
+					fromDate.setDate(fromDate.getDate() - 6);
+					break;
+				case "1m":
+					fromDate.setMonth(fromDate.getMonth() - 1);
+					break;
+				case "3m":
+					fromDate.setMonth(fromDate.getMonth() - 3);
+					break;
+				case "6m":
+					fromDate.setMonth(fromDate.getMonth() - 6);
+					break;
+				case "1y":
+					fromDate.setFullYear(fromDate.getFullYear() - 1);
+					break;
 			}
 			fromDateStr = fromDate.toLocaleDateString("en-CA", { timeZone: timezone });
 		}
 
-		const webQueryData = await getPromptWebQueryCounts(
-			data.promptId,
-			fromDateStr,
-			toDateStr,
-			timezone,
-			data.model,
-		);
+		const webQueryData = await getPromptWebQueryCounts(data.promptId, fromDateStr, toDateStr, timezone, data.model);
 
 		let webQuery: string | null = null;
 		const modelWebQueries: Record<string, string> = {};

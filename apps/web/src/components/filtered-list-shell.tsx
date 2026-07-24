@@ -79,15 +79,8 @@ export function FilteredListShell({
 				<div className="text-center py-8 text-muted-foreground">
 					<Inbox className="h-12 w-12 mx-auto mb-4 opacity-50" />
 					<p className="mb-2">{noMatchesTitle ?? "No results match your filters."}</p>
-					<p className="text-sm mb-4">
-						{noMatchesDescription ?? "Try adjusting your search or filters."}
-					</p>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={filters.clearFilters}
-						className="cursor-pointer"
-					>
+					<p className="text-sm mb-4">{noMatchesDescription ?? "Try adjusting your search or filters."}</p>
+					<Button variant="outline" size="sm" onClick={filters.clearFilters} className="cursor-pointer">
 						Clear filters
 					</Button>
 				</div>

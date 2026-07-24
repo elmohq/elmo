@@ -13,12 +13,7 @@ import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getDeployment } from "@/lib/config/server";
 import openApiSpec from "@workspace/api-spec";
-import {
-	evaluateDeploymentPolicy,
-	evaluateReadOnly,
-	evaluateApiKeyAuth,
-	getAdminApiKeys,
-} from "@/lib/auth/policies";
+import { evaluateDeploymentPolicy, evaluateReadOnly, evaluateApiKeyAuth, getAdminApiKeys } from "@/lib/auth/policies";
 
 /**
  * Global request middleware - provides deployment config context
@@ -41,10 +36,10 @@ export const deploymentMiddleware = createMiddleware().server(async ({ next }) =
 
 	switch (result.action) {
 		case "block":
-			throw new Response(
-				JSON.stringify({ error: result.error, message: result.message }),
-				{ status: result.status, headers: { "Content-Type": "application/json" } },
-			);
+			throw new Response(JSON.stringify({ error: result.error, message: result.message }), {
+				status: result.status,
+				headers: { "Content-Type": "application/json" },
+			});
 		case "redirect":
 			throw Response.redirect(new URL(result.url, request.url), 302);
 		case "serve-openapi":
@@ -94,10 +89,10 @@ export const apiKeyMiddleware = createMiddleware().server(async ({ next }) => {
 	const result = evaluateApiKeyAuth(authHeader, getAdminApiKeys());
 
 	if (result !== "allow") {
-		throw new Response(
-			JSON.stringify({ error: result.error, message: result.message }),
-			{ status: 401, headers: { "Content-Type": "application/json" } },
-		);
+		throw new Response(JSON.stringify({ error: result.error, message: result.message }), {
+			status: 401,
+			headers: { "Content-Type": "application/json" },
+		});
 	}
 
 	return next();

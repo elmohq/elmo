@@ -39,10 +39,7 @@ describe("computePromptSoV", () => {
 	});
 
 	it("returns null SoV when no one is mentioned", () => {
-		const runs = [
-			makeRun({ promptId: "p1" }),
-			makeRun({ promptId: "p1" }),
-		];
+		const runs = [makeRun({ promptId: "p1" }), makeRun({ promptId: "p1" })];
 		const result = computePromptSoV("p1", runs, competitors);
 		expect(result.sov).toBeNull();
 		expect(result.totalRuns).toBe(2);
@@ -86,9 +83,7 @@ describe("computePromptSoV", () => {
 	});
 
 	it("ignores competitors not in the competitors list", () => {
-		const runs = [
-			makeRun({ promptId: "p1", brandMentioned: true, competitorsMentioned: ["Unknown"] }),
-		];
+		const runs = [makeRun({ promptId: "p1", brandMentioned: true, competitorsMentioned: ["Unknown"] })];
 		const result = computePromptSoV("p1", runs, competitors);
 		expect(result.sov).toBe(100);
 		expect(result.totalCompetitorMentions).toBe(0);
@@ -127,10 +122,7 @@ describe("computeOverallSoV", () => {
 	});
 
 	it("returns 100% when only brand mentioned across prompts", () => {
-		const runs = [
-			makeRun({ promptId: "p1", brandMentioned: true }),
-			makeRun({ promptId: "p2", brandMentioned: true }),
-		];
+		const runs = [makeRun({ promptId: "p1", brandMentioned: true }), makeRun({ promptId: "p2", brandMentioned: true })];
 		expect(computeOverallSoV(runs, competitors)).toBe(100);
 	});
 });
@@ -156,9 +148,7 @@ describe("computeCompetitorSoVs", () => {
 	});
 
 	it("handles competitors with zero mentions", () => {
-		const runs = [
-			makeRun({ promptId: "p1", brandMentioned: true, competitorsMentioned: ["CompA"] }),
-		];
+		const runs = [makeRun({ promptId: "p1", brandMentioned: true, competitorsMentioned: ["CompA"] })];
 		const result = computeCompetitorSoVs(runs, competitors);
 		const compB = result.find((c) => c.name === "CompB");
 		expect(compB?.sov).toBe(0);
@@ -171,10 +161,38 @@ describe("selectRepresentativePrompts", () => {
 
 	it("selects 2 strengths and 2 opportunities", () => {
 		const sovs: PromptSoV[] = [
-			{ promptId: "p1", sov: 80, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
-			{ promptId: "p2", sov: 60, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 2, competitorMentions: { CompA: 2 } },
-			{ promptId: "p3", sov: 10, brandMentionCount: 1, totalRuns: 5, totalCompetitorMentions: 9, competitorMentions: { CompA: 5, CompB: 4 } },
-			{ promptId: "p4", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 4, competitorMentions: { CompA: 4 } },
+			{
+				promptId: "p1",
+				sov: 80,
+				brandMentionCount: 4,
+				totalRuns: 5,
+				totalCompetitorMentions: 1,
+				competitorMentions: { CompA: 1 },
+			},
+			{
+				promptId: "p2",
+				sov: 60,
+				brandMentionCount: 3,
+				totalRuns: 5,
+				totalCompetitorMentions: 2,
+				competitorMentions: { CompA: 2 },
+			},
+			{
+				promptId: "p3",
+				sov: 10,
+				brandMentionCount: 1,
+				totalRuns: 5,
+				totalCompetitorMentions: 9,
+				competitorMentions: { CompA: 5, CompB: 4 },
+			},
+			{
+				promptId: "p4",
+				sov: 0,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 4,
+				competitorMentions: { CompA: 4 },
+			},
 		];
 
 		const result = selectRepresentativePrompts(sovs, isBranded);
@@ -193,9 +211,30 @@ describe("selectRepresentativePrompts", () => {
 
 	it("fills from other bucket when one has fewer than 2", () => {
 		const sovs: PromptSoV[] = [
-			{ promptId: "p1", sov: 80, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: {} },
-			{ promptId: "p2", sov: 60, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 2, competitorMentions: {} },
-			{ promptId: "p3", sov: 50, brandMentionCount: 2, totalRuns: 5, totalCompetitorMentions: 2, competitorMentions: {} },
+			{
+				promptId: "p1",
+				sov: 80,
+				brandMentionCount: 4,
+				totalRuns: 5,
+				totalCompetitorMentions: 1,
+				competitorMentions: {},
+			},
+			{
+				promptId: "p2",
+				sov: 60,
+				brandMentionCount: 3,
+				totalRuns: 5,
+				totalCompetitorMentions: 2,
+				competitorMentions: {},
+			},
+			{
+				promptId: "p3",
+				sov: 50,
+				brandMentionCount: 2,
+				totalRuns: 5,
+				totalCompetitorMentions: 2,
+				competitorMentions: {},
+			},
 		];
 
 		// No real opportunities (no prompts with competitor mentions but low brand SoV)
@@ -205,11 +244,46 @@ describe("selectRepresentativePrompts", () => {
 
 	it("prefers non-branded prompts", () => {
 		const sovs: PromptSoV[] = [
-			{ promptId: "branded1", sov: 90, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: {} },
-			{ promptId: "p1", sov: 70, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 2, competitorMentions: {} },
-			{ promptId: "p2", sov: 50, brandMentionCount: 2, totalRuns: 5, totalCompetitorMentions: 3, competitorMentions: {} },
-			{ promptId: "p3", sov: 10, brandMentionCount: 1, totalRuns: 5, totalCompetitorMentions: 5, competitorMentions: { CompA: 5 } },
-			{ promptId: "p4", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 4, competitorMentions: { CompA: 4 } },
+			{
+				promptId: "branded1",
+				sov: 90,
+				brandMentionCount: 4,
+				totalRuns: 5,
+				totalCompetitorMentions: 1,
+				competitorMentions: {},
+			},
+			{
+				promptId: "p1",
+				sov: 70,
+				brandMentionCount: 3,
+				totalRuns: 5,
+				totalCompetitorMentions: 2,
+				competitorMentions: {},
+			},
+			{
+				promptId: "p2",
+				sov: 50,
+				brandMentionCount: 2,
+				totalRuns: 5,
+				totalCompetitorMentions: 3,
+				competitorMentions: {},
+			},
+			{
+				promptId: "p3",
+				sov: 10,
+				brandMentionCount: 1,
+				totalRuns: 5,
+				totalCompetitorMentions: 5,
+				competitorMentions: { CompA: 5 },
+			},
+			{
+				promptId: "p4",
+				sov: 0,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 4,
+				competitorMentions: { CompA: 4 },
+			},
 		];
 
 		const result = selectRepresentativePrompts(sovs, isBranded);
@@ -219,11 +293,46 @@ describe("selectRepresentativePrompts", () => {
 
 	it("allows at most 1 zero-SoV prompt", () => {
 		const sovs: PromptSoV[] = [
-			{ promptId: "p1", sov: 80, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
-			{ promptId: "p2", sov: 60, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 2, competitorMentions: { CompA: 2 } },
-			{ promptId: "p3", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 5, competitorMentions: { CompA: 5 } },
-			{ promptId: "p4", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 4, competitorMentions: { CompA: 4 } },
-			{ promptId: "p5", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 3, competitorMentions: { CompA: 3 } },
+			{
+				promptId: "p1",
+				sov: 80,
+				brandMentionCount: 4,
+				totalRuns: 5,
+				totalCompetitorMentions: 1,
+				competitorMentions: { CompA: 1 },
+			},
+			{
+				promptId: "p2",
+				sov: 60,
+				brandMentionCount: 3,
+				totalRuns: 5,
+				totalCompetitorMentions: 2,
+				competitorMentions: { CompA: 2 },
+			},
+			{
+				promptId: "p3",
+				sov: 0,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 5,
+				competitorMentions: { CompA: 5 },
+			},
+			{
+				promptId: "p4",
+				sov: 0,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 4,
+				competitorMentions: { CompA: 4 },
+			},
+			{
+				promptId: "p5",
+				sov: 0,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 3,
+				competitorMentions: { CompA: 3 },
+			},
 		];
 
 		const result = selectRepresentativePrompts(sovs, isBranded);
@@ -233,10 +342,38 @@ describe("selectRepresentativePrompts", () => {
 
 	it("prefers non-zero SoV opportunities over zero SoV", () => {
 		const sovs: PromptSoV[] = [
-			{ promptId: "p1", sov: 80, brandMentionCount: 4, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
-			{ promptId: "p2", sov: 70, brandMentionCount: 3, totalRuns: 5, totalCompetitorMentions: 1, competitorMentions: { CompA: 1 } },
-			{ promptId: "p3", sov: 15, brandMentionCount: 1, totalRuns: 5, totalCompetitorMentions: 6, competitorMentions: { CompA: 6 } },
-			{ promptId: "p4", sov: 0, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 10, competitorMentions: { CompA: 10 } },
+			{
+				promptId: "p1",
+				sov: 80,
+				brandMentionCount: 4,
+				totalRuns: 5,
+				totalCompetitorMentions: 1,
+				competitorMentions: { CompA: 1 },
+			},
+			{
+				promptId: "p2",
+				sov: 70,
+				brandMentionCount: 3,
+				totalRuns: 5,
+				totalCompetitorMentions: 1,
+				competitorMentions: { CompA: 1 },
+			},
+			{
+				promptId: "p3",
+				sov: 15,
+				brandMentionCount: 1,
+				totalRuns: 5,
+				totalCompetitorMentions: 6,
+				competitorMentions: { CompA: 6 },
+			},
+			{
+				promptId: "p4",
+				sov: 0,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 10,
+				competitorMentions: { CompA: 10 },
+			},
 		];
 
 		const result = selectRepresentativePrompts(sovs, isBranded);
@@ -251,8 +388,22 @@ describe("selectRepresentativePrompts", () => {
 
 	it("handles case where all prompts have null SoV", () => {
 		const sovs: PromptSoV[] = [
-			{ promptId: "p1", sov: null, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 0, competitorMentions: {} },
-			{ promptId: "p2", sov: null, brandMentionCount: 0, totalRuns: 5, totalCompetitorMentions: 0, competitorMentions: {} },
+			{
+				promptId: "p1",
+				sov: null,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 0,
+				competitorMentions: {},
+			},
+			{
+				promptId: "p2",
+				sov: null,
+				brandMentionCount: 0,
+				totalRuns: 5,
+				totalCompetitorMentions: 0,
+				competitorMentions: {},
+			},
 		];
 		const result = selectRepresentativePrompts(sovs, isBranded);
 		expect(result).toEqual([]);
@@ -296,10 +447,7 @@ describe("findContentGaps", () => {
 	});
 
 	it("excludes prompts with no competitor mentions", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1" }),
-			makeFullRun({ promptId: "p1" }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1" }), makeFullRun({ promptId: "p1" })];
 		expect(findContentGaps(runs)).toEqual([]);
 	});
 
@@ -362,26 +510,19 @@ describe("analyzeWebQueries", () => {
 	});
 
 	it("skips short queries (< 3 chars)", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", webQueries: ["ab", "", "valid query"] }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", webQueries: ["ab", "", "valid query"] })];
 		const insights = analyzeWebQueries(runs);
 		expect(insights).toHaveLength(1);
 		expect(insights[0].query).toBe("valid query");
 	});
 
 	it("returns empty for runs with no web queries", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", webQueries: [] }),
-			makeFullRun({ promptId: "p2" }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", webQueries: [] }), makeFullRun({ promptId: "p2" })];
 		expect(analyzeWebQueries(runs)).toEqual([]);
 	});
 
 	it("respects maxResults", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", webQueries: ["query a", "query b", "query c"] }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", webQueries: ["query a", "query b", "query c"] })];
 		const insights = analyzeWebQueries(runs, 2);
 		expect(insights).toHaveLength(2);
 	});
@@ -424,9 +565,7 @@ describe("analyzeCompetitorFrequency", () => {
 	});
 
 	it("handles competitors with zero mentions", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", competitorsMentioned: ["CompA"] }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", competitorsMentioned: ["CompA"] })];
 		const result = analyzeCompetitorFrequency(runs, competitors);
 		const compB = result.find((c) => c.name === "CompB")!;
 		expect(compB.mentionCount).toBe(0);
@@ -435,9 +574,7 @@ describe("analyzeCompetitorFrequency", () => {
 	});
 
 	it("ignores competitors not in the list", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", competitorsMentioned: ["Unknown"] }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", competitorsMentioned: ["Unknown"] })];
 		const result = analyzeCompetitorFrequency(runs, competitors);
 		expect(result.every((c) => c.mentionCount === 0)).toBe(true);
 	});
@@ -482,18 +619,14 @@ describe("analyzeByEngine", () => {
 	});
 
 	it("title-cases unknown engine ids via getModelMeta", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", model: "my-custom-engine", brandMentioned: true }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", model: "my-custom-engine", brandMentioned: true })];
 		const result = analyzeByEngine(runs);
 		// `getModelMeta` turns unknown ids into title-cased labels.
 		expect(result[0].engine).toBe("My Custom Engine");
 	});
 
 	it("renames known engine ids to their display labels", () => {
-		const runs: FullPromptRun[] = [
-			makeFullRun({ promptId: "p1", model: "perplexity", brandMentioned: true }),
-		];
+		const runs: FullPromptRun[] = [makeFullRun({ promptId: "p1", model: "perplexity", brandMentioned: true })];
 		const result = analyzeByEngine(runs);
 		expect(result[0].engine).toBe("Perplexity");
 	});

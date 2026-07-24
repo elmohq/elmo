@@ -1,4 +1,3 @@
-
 import { Fragment } from "react";
 
 interface TextHighlighterProps {
@@ -40,4 +39,3 @@ export function TextHighlighter({
 		</span>
 	);
 }
-

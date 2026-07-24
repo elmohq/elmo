@@ -12,10 +12,7 @@ import { useMDXComponents } from "@/components/mdx";
 import { ClientAPIPage } from "@/components/api-page";
 import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
 import { Feedback } from "@workspace/docs/components/feedback/client";
-import type {
-	PageFeedback,
-	ActionResponse,
-} from "@workspace/docs/components/feedback/schema";
+import type { PageFeedback, ActionResponse } from "@workspace/docs/components/feedback/schema";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { DocsSidebar } from "@workspace/docs/components/docs-sidebar";
@@ -47,11 +44,7 @@ export const clientLoader = browserCollections.docs.createClientLoader({
 			<div className="flex gap-10">
 				<article className="prose min-w-0 max-w-none flex-1">
 					<h1>{frontmatter.title}</h1>
-					{frontmatter.description && (
-						<p className="lead text-muted-foreground">
-							{frontmatter.description}
-						</p>
-					)}
+					{frontmatter.description && <p className="lead text-muted-foreground">{frontmatter.description}</p>}
 					<MDX components={useMDXComponents()} />
 					<div className="not-prose">
 						<Feedback onSendAction={onFeedback} />
@@ -70,13 +63,7 @@ export const clientLoader = browserCollections.docs.createClientLoader({
 	},
 });
 
-function DocsPageActions({
-	filePath,
-	mdUrl,
-}: {
-	filePath: string;
-	mdUrl: string;
-}) {
+function DocsPageActions({ filePath, mdUrl }: { filePath: string; mdUrl: string }) {
 	const editUrl = `https://github.com/${REPO}/edit/${BRANCH}/${filePath}`;
 	const issueUrl = `https://github.com/${REPO}/issues/new?labels=docs&title=Docs+issue:+`;
 	const discordUrl = "https://discord.gg/s24nubCtKz";
@@ -89,8 +76,17 @@ function DocsPageActions({
 				rel="noopener noreferrer"
 				className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
 			>
-				<svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-					<path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z" />
+				<svg
+					className="size-3.5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<path d="M12 20h9" />
+					<path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.855z" />
 				</svg>
 				Edit this page
 			</a>
@@ -101,8 +97,19 @@ function DocsPageActions({
 				rel="noopener"
 				className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
 			>
-				<svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-					<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" /><path d="M14 2v5h5" /><path d="M9 13h6" /><path d="M9 17h6" />
+				<svg
+					className="size-3.5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z" />
+					<path d="M14 2v5h5" />
+					<path d="M9 13h6" />
+					<path d="M9 17h6" />
 				</svg>
 				View as Markdown
 			</a>
@@ -113,8 +120,18 @@ function DocsPageActions({
 				rel="noopener noreferrer"
 				className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
 			>
-				<svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-					<circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+				<svg
+					className="size-3.5"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<circle cx="12" cy="12" r="10" />
+					<line x1="12" y1="8" x2="12" y2="12" />
+					<line x1="12" y1="16" x2="12.01" y2="16" />
 				</svg>
 				Report an issue
 			</a>
@@ -146,9 +163,7 @@ function OpenApiContent({
 	return (
 		<article className="prose min-w-0 max-w-none flex-1">
 			<h1>{title}</h1>
-			{description && (
-				<p className="lead text-muted-foreground">{description}</p>
-			)}
+			{description && <p className="lead text-muted-foreground">{description}</p>}
 			<div className="not-prose">
 				<ClientAPIPage {...apiProps} />
 			</div>
@@ -160,10 +175,7 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 	const data = useFumadocsLoader(loaderData);
 
 	return (
-		<RootProvider
-			theme={{ defaultTheme: "light", forcedTheme: "light" }}
-			search={{ enabled: false }}
-		>
+		<RootProvider theme={{ defaultTheme: "light", forcedTheme: "light" }} search={{ enabled: false }}>
 			<div className="min-h-screen">
 				<Navbar />
 				<div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">
@@ -176,18 +188,11 @@ export function DocsPageLayout({ loaderData }: { loaderData: LoaderData }) {
 
 						<main className="min-w-0 flex-1">
 							{data.type === "openapi" ? (
-								<OpenApiContent
-									title={data.title}
-									description={data.description}
-									apiProps={data.apiProps}
-								/>
+								<OpenApiContent title={data.title} description={data.description} apiProps={data.apiProps} />
 							) : (
 								<>
 									<Suspense>{clientLoader.useContent(data.path)}</Suspense>
-									<DocsPageActions
-										filePath={data.filePath}
-										mdUrl={docsMarkdownPath(data.slugs)}
-									/>
+									<DocsPageActions filePath={data.filePath} mdUrl={docsMarkdownPath(data.slugs)} />
 								</>
 							)}
 						</main>

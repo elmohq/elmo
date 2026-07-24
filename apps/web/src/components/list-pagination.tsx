@@ -55,9 +55,6 @@ export function usePagedList<T>(items: readonly T[], pageSize: number) {
 	const [rawPage, setPage] = useState(0);
 	const maxPage = Math.max(0, Math.ceil(items.length / pageSize) - 1);
 	const page = Math.min(rawPage, maxPage);
-	const pageItems = useMemo(
-		() => items.slice(page * pageSize, (page + 1) * pageSize),
-		[items, page, pageSize],
-	);
+	const pageItems = useMemo(() => items.slice(page * pageSize, (page + 1) * pageSize), [items, page, pageSize]);
 	return { page, setPage, pageItems, pageSize, totalItems: items.length };
 }

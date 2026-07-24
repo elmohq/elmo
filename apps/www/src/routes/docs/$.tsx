@@ -1,13 +1,7 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { getPageImage } from "@/lib/og";
-import {
-	SITE_NAME,
-	ogMeta,
-	canonicalUrl,
-	articleJsonLd,
-	breadcrumbJsonLd,
-} from "@/lib/seo";
+import { SITE_NAME, ogMeta, canonicalUrl, articleJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 import { DocsPageLayout } from "@/components/docs-page-layout";
 import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
 import type { SerializedPageTree } from "fumadocs-core/source/client";
@@ -109,9 +103,7 @@ export const serverLoader = createServerFn({
 		const slugPath = slugs.join("/");
 		const docsRoot = resolve(`../../${DOCS_DIR}`);
 		const indexPath = resolve(docsRoot, `${slugPath}/index.mdx`);
-		const filePath = existsSync(indexPath)
-			? `${DOCS_DIR}/${slugPath}/index.mdx`
-			: `${DOCS_DIR}/${slugPath}.mdx`;
+		const filePath = existsSync(indexPath) ? `${DOCS_DIR}/${slugPath}/index.mdx` : `${DOCS_DIR}/${slugPath}.mdx`;
 
 		return {
 			type: "docs",

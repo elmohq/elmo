@@ -27,12 +27,13 @@ async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<strin
 	}
 }
 
-export async function upsertOrganization(org: {
-	id: string;
-	name: string;
-	slug?: string;
-}): Promise<void> {
-	const baseSlug = org.slug ?? org.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+export async function upsertOrganization(org: { id: string; name: string; slug?: string }): Promise<void> {
+	const baseSlug =
+		org.slug ??
+		org.name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, "-")
+			.replace(/^-|-$/g, "");
 	const slug = await uniqueSlug(baseSlug, org.id);
 
 	await db
@@ -49,11 +50,7 @@ export async function upsertOrganization(org: {
 		});
 }
 
-export async function ensureMembership(
-	userId: string,
-	orgId: string,
-	role = "member",
-): Promise<void> {
+export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
 	const existing = await db
 		.select({ id: member.id })
 		.from(member)
@@ -80,10 +77,7 @@ export interface SyncMembershipsResult {
  * Reconciles a user's org memberships to match the given set of org IDs.
  * Adds missing memberships and removes stale ones in a single transaction.
  */
-export async function syncMemberships(
-	userId: string,
-	orgIds: string[],
-): Promise<SyncMembershipsResult> {
+export async function syncMemberships(userId: string, orgIds: string[]): Promise<SyncMembershipsResult> {
 	const added: string[] = [];
 	const removed: string[] = [];
 
@@ -111,7 +105,12 @@ export async function syncMemberships(
 
 		const stale = existing.filter((m) => !targetOrgIds.has(m.organizationId));
 		if (stale.length > 0) {
-			await tx.delete(member).where(inArray(member.id, stale.map((m) => m.id)));
+			await tx.delete(member).where(
+				inArray(
+					member.id,
+					stale.map((m) => m.id),
+				),
+			);
 			removed.push(...stale.map((m) => m.organizationId));
 		}
 	});

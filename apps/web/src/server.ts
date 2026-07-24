@@ -8,9 +8,7 @@ import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 // is scoped to our own deployments. Browsers ignore HSTS received over plain
 // HTTP, so it stays inert on localhost.
 const strictTransportSecurity =
-	process.env.DEPLOYMENT_MODE === "whitelabel"
-		? "max-age=63072000"
-		: "max-age=63072000; includeSubDomains";
+	process.env.DEPLOYMENT_MODE === "whitelabel" ? "max-age=63072000" : "max-age=63072000; includeSubDomains";
 
 const SECURITY_HEADERS: Record<string, string> = {
 	"Content-Security-Policy": [
@@ -32,8 +30,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 	// same-origin-allow-popups (not same-origin) keeps OAuth/SSO popups that rely on
 	// window.opener working while still isolating us from cross-origin openers.
 	"Cross-Origin-Opener-Policy": "same-origin-allow-popups",
-	"Permissions-Policy":
-		"camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+	"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
 };
 
 function addSecurityHeaders(response: Response): Response {
