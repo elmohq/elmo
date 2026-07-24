@@ -30,7 +30,7 @@ export function LookbackSelector({ defaultPeriod, onLookbackChange }: LookbackSe
 	const { brand } = useBrand();
 	const computedDefaultPeriod = useMemo(
 		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[defaultPeriod, brand?.earliestDataDate]
+		[defaultPeriod, brand?.earliestDataDate],
 	);
 
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
@@ -66,7 +66,7 @@ export function useLookbackPeriod(defaultPeriod?: LookbackPeriod) {
 	const { brand } = useBrand();
 	const computedDefaultPeriod = useMemo(
 		() => defaultPeriod ?? getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[defaultPeriod, brand?.earliestDataDate]
+		[defaultPeriod, brand?.earliestDataDate],
 	);
 
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });

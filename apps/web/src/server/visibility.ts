@@ -93,11 +93,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		// Get brand and competitors from PostgreSQL
 		const [brandResult, competitorsResult] = await Promise.all([
-			db
-				.select({ id: brands.id, name: brands.name })
-				.from(brands)
-				.where(eq(brands.id, data.brandId))
-				.limit(1),
+			db.select({ id: brands.id, name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
 			db
 				.select({ id: competitors.id, name: competitors.name })
 				.from(competitors)
@@ -191,22 +187,12 @@ export const getFilteredVisibilityFn = createServerFn({ method: "GET" })
 		// the visibility bar matches the chart section. Every other lookback
 		// already returns concrete bounds, so we can destructure without
 		// null-checking.
-		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(
-			lookbackParam,
-			timezone,
-			{ allStrategy: "1y" },
-		) as { fromDateStr: string; toDateStr: string };
+		const { fromDateStr: fromDate, toDateStr: toDate } = getTimezoneLookbackRange(lookbackParam, timezone, {
+			allStrategy: "1y",
+		}) as { fromDateStr: string; toDateStr: string };
 
 		const [daily, totalCitations] = await Promise.all([
-			getVisibilityDailyAggregate(
-				data.brandId,
-				fromDate,
-				toDate,
-				timezone,
-				promptIds,
-				brandedPromptIds,
-				data.model,
-			),
+			getVisibilityDailyAggregate(data.brandId, fromDate, toDate, timezone, promptIds, brandedPromptIds, data.model),
 			getCitationsTotalCount(data.brandId, fromDate, toDate, timezone, promptIds, data.model),
 		]);
 

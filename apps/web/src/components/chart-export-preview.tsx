@@ -44,9 +44,7 @@ export function ChartExportPreview({
 }: ChartExportPreviewProps) {
 	const name = branding.name || DEFAULT_APP_NAME;
 	const isWhitelabel = branding.isWhitelabel && branding.name !== DEFAULT_APP_NAME;
-	const domain = isWhitelabel
-		? branding.parentUrl?.replace(/^https?:\/\//, "").replace(/\/$/, "") || ""
-		: "elmohq.com";
+	const domain = isWhitelabel ? branding.parentUrl?.replace(/^https?:\/\//, "").replace(/\/$/, "") || "" : "elmohq.com";
 	const hasCustomIcon = branding.icon && branding.icon !== DEFAULT_APP_ICON;
 
 	return (
@@ -59,11 +57,7 @@ export function ChartExportPreview({
 				style={{ height: HEADER_H, marginBottom: GAP_HEADER_CARD }}
 				className="flex items-center justify-between px-10 gap-6 shrink-0"
 			>
-				<h2
-					className="font-semibold text-gray-900 truncate flex-1 min-w-0"
-					style={{ fontSize: 22 }}
-					title={promptName}
-				>
+				<h2 className="font-semibold text-gray-900 truncate flex-1 min-w-0" style={{ fontSize: 22 }} title={promptName}>
 					{promptName}
 				</h2>
 				{visibility !== null && (
@@ -109,14 +103,18 @@ export function ChartExportPreview({
 						/>
 					)}
 					{isWhitelabel ? (
-						<span style={{ fontSize: 18 }} className="text-gray-500 font-semibold">{name}</span>
+						<span style={{ fontSize: 18 }} className="text-gray-500 font-semibold">
+							{name}
+						</span>
 					) : (
 						<span className="font-titan-one font-normal lowercase text-blue-600" style={{ fontSize: 24 }}>
 							elmo
 						</span>
 					)}
 				</div>
-				<span style={{ fontSize: 18 }} className="text-gray-400 font-medium">{domain}</span>
+				<span style={{ fontSize: 18 }} className="text-gray-400 font-medium">
+					{domain}
+				</span>
 			</div>
 		</div>
 	);

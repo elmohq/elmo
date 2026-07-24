@@ -9,12 +9,7 @@ interface LogoProps extends ComponentPropsWithoutRef<"div"> {
 	textClassName?: string;
 }
 
-export function Logo({
-	className,
-	iconClassName,
-	textClassName,
-	...props
-}: LogoProps) {
+export function Logo({ className, iconClassName, textClassName, ...props }: LogoProps) {
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const branding = context.clientConfig?.branding;
 	const hasCustomBranding =
@@ -24,14 +19,7 @@ export function Logo({
 	if (!hasCustomBranding) {
 		return (
 			<div {...props} className={cn("flex items-center gap-2", className)}>
-				<span
-					className={cn(
-						"font-titan-one text-3xl font-normal lowercase text-blue-600",
-						textClassName,
-					)}
-				>
-					elmo
-				</span>
+				<span className={cn("font-titan-one text-3xl font-normal lowercase text-blue-600", textClassName)}>elmo</span>
 			</div>
 		);
 	}
@@ -46,9 +34,7 @@ export function Logo({
 					fetchPriority="low"
 				/>
 			)}
-			<span className={cn("text-base font-semibold", textClassName)}>
-				{branding?.name}
-			</span>
+			<span className={cn("text-base font-semibold", textClassName)}>{branding?.name}</span>
 		</div>
 	);
 }

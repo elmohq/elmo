@@ -9,7 +9,13 @@ import { createFileRoute, Outlet, notFound } from "@tanstack/react-router";
 import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, isAdmin, hasReportAccess, checkOrgAccess, listUserOrganizations } from "@/lib/auth/helpers";
+import {
+	requireAuthSession,
+	isAdmin,
+	hasReportAccess,
+	checkOrgAccess,
+	listUserOrganizations,
+} from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -23,61 +29,65 @@ import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
-	.handler(async ({ data }): Promise<{
-		brand: BrandWithPrompts | null;
-		brandName: string | null;
-		isAdmin: boolean;
-		hasReportAccess: boolean;
-		hasAccess: boolean;
-	}> => {
-		const session = await requireAuthSession();
+	.handler(
+		async ({
+			data,
+		}): Promise<{
+			brand: BrandWithPrompts | null;
+			brandName: string | null;
+			isAdmin: boolean;
+			hasReportAccess: boolean;
+			hasAccess: boolean;
+		}> => {
+			const session = await requireAuthSession();
 
-		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+			const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
 
-		if (brand) {
-			const hasAccess = await checkOrgAccess(session.user.id, brand.organizationId);
+			if (brand) {
+				const hasAccess = await checkOrgAccess(session.user.id, brand.organizationId);
+				if (!hasAccess) {
+					return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+				}
+
+				const brandPrompts = await db.query.prompts.findMany({
+					where: eq(prompts.brandId, data.brandId),
+				});
+				const brandCompetitors = await db.query.competitors.findMany({
+					where: eq(competitors.brandId, data.brandId),
+				});
+
+				return {
+					brand: {
+						...brand,
+						prompts: brandPrompts,
+						competitors: brandCompetitors,
+					},
+					brandName: brand.name,
+					isAdmin: isAdmin(session),
+					hasReportAccess: hasReportAccess(session),
+					hasAccess: true,
+				};
+			}
+
+			// No brand row: legacy onboarding path where the URL param is an org id
+			// (brand.id === org.id). Whitelabel empty-org onboarding depends on this.
+			const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
 			if (!hasAccess) {
 				return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
 			}
 
-			const brandPrompts = await db.query.prompts.findMany({
-				where: eq(prompts.brandId, data.brandId),
-			});
-			const brandCompetitors = await db.query.competitors.findMany({
-				where: eq(competitors.brandId, data.brandId),
-			});
+			const orgs = await listUserOrganizations(session.user.id);
+			const orgMeta = orgs.find((o) => o.id === data.brandId);
 
 			return {
-				brand: {
-					...brand,
-					prompts: brandPrompts,
-					competitors: brandCompetitors,
-				},
-				brandName: brand.name,
+				brand: null,
+				brandName: orgMeta?.name || data.brandId,
 				isAdmin: isAdmin(session),
 				hasReportAccess: hasReportAccess(session),
 				hasAccess: true,
 			};
-		}
-
-		// No brand row: legacy onboarding path where the URL param is an org id
-		// (brand.id === org.id). Whitelabel empty-org onboarding depends on this.
-		const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
-		if (!hasAccess) {
-			return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
-		}
-
-		const orgs = await listUserOrganizations(session.user.id);
-		const orgMeta = orgs.find((o) => o.id === data.brandId);
-
-		return {
-			brand: null,
-			brandName: orgMeta?.name || data.brandId,
-			isAdmin: isAdmin(session),
-			hasReportAccess: hasReportAccess(session),
-			hasAccess: true,
-		};
-	});
+		},
+	);
 
 function BrandLayoutSkeleton() {
 	return (
@@ -147,9 +157,7 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 				{ title: brandName ? `${brandName} · ${appName}` : appName },
 				{
 					name: "description",
-					content: brandName
-						? `AI visibility tracking for ${brandName}.`
-						: "AI visibility tracking and optimization.",
+					content: brandName ? `AI visibility tracking for ${brandName}.` : "AI visibility tracking and optimization.",
 				},
 			],
 		};

@@ -3,8 +3,7 @@
  * Respects white-label / deployment branding configuration.
  */
 
-const DEFAULT_DESCRIPTION =
-	"Track and optimize your brand's visibility across AI models.";
+const DEFAULT_DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
 
 interface RouteMatchContext {
 	context?: {
@@ -35,9 +34,7 @@ export function getAppUrl(match: RouteMatchContext): string | undefined {
  * Get the brand name from the matched routes hierarchy.
  * Searches for the $brand layout match which stores brandName in loader data.
  */
-export function getBrandName(
-	matches: Array<{ loaderData?: Record<string, unknown> }>,
-): string | undefined {
+export function getBrandName(matches: Array<{ loaderData?: Record<string, unknown> }>): string | undefined {
 	for (const m of matches) {
 		if (m.loaderData && typeof m.loaderData.brandName === "string") {
 			return m.loaderData.brandName;
@@ -51,10 +48,7 @@ export function getBrandName(
  *   "PageName | BrandName · AppName"  (with brand context)
  *   "PageName · AppName"              (without brand context)
  */
-export function buildTitle(
-	pageName: string,
-	opts: { appName: string; brandName?: string },
-): string {
+export function buildTitle(pageName: string, opts: { appName: string; brandName?: string }): string {
 	if (opts.brandName) {
 		return `${pageName} | ${opts.brandName} · ${opts.appName}`;
 	}

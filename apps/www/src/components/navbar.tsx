@@ -7,11 +7,7 @@ import {
 	NavigationMenuLink,
 	NavigationMenuList,
 } from "@workspace/ui/components/navigation-menu";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@workspace/ui/components/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
@@ -24,10 +20,7 @@ const navigationLinks = [
 
 // Off-Site AEO gets a standout button in the desktop action cluster, so it's
 // kept out of the inline nav above and surfaced here for the mobile menu only.
-const mobileLinks = [
-	{ href: "/off-site-aeo", label: "Off-Site AEO" },
-	...navigationLinks,
-];
+const mobileLinks = [{ href: "/off-site-aeo", label: "Off-Site AEO" }, ...navigationLinks];
 
 export function Navbar() {
 	const rootData = useLoaderData({ from: "__root__" });
@@ -39,12 +32,7 @@ export function Navbar() {
 				<div className="flex items-center gap-3 md:gap-8">
 					<Popover>
 						<PopoverTrigger asChild>
-							<Button
-								className="group size-8 md:hidden"
-								variant="ghost"
-								size="icon"
-								aria-label="Open menu"
-							>
+							<Button className="group size-8 md:hidden" variant="ghost" size="icon" aria-label="Open menu">
 								<svg
 									className="pointer-events-none"
 									width={16}
@@ -93,10 +81,7 @@ export function Navbar() {
 						<NavigationMenuList className="gap-1">
 							{navigationLinks.map((link) => (
 								<NavigationMenuItem key={link.href}>
-									<NavigationMenuLink
-										href={link.href}
-										className="py-1.5 font-medium text-zinc-600 hover:text-zinc-950"
-									>
+									<NavigationMenuLink href={link.href} className="py-1.5 font-medium text-zinc-600 hover:text-zinc-950">
 										{link.label}
 									</NavigationMenuLink>
 								</NavigationMenuItem>

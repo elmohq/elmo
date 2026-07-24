@@ -68,23 +68,19 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 		features: {
 			multiLlmTracking: {
 				label: "Multi-LLM Tracking",
-				description:
-					"Track across ChatGPT, Claude, Gemini, Perplexity, and more",
+				description: "Track across ChatGPT, Claude, Gemini, Perplexity, and more",
 			},
 			visibilityScore: {
 				label: "AI Visibility Score",
-				description:
-					"Aggregate score showing brand presence across AI responses",
+				description: "Aggregate score showing brand presence across AI responses",
 			},
 			citationAnalytics: {
 				label: "Citation Analytics",
-				description:
-					"Track which websites and sources are cited in AI responses",
+				description: "Track which websites and sources are cited in AI responses",
 			},
 			competitorBenchmarking: {
 				label: "Competitor Benchmarking",
-				description:
-					"Compare visibility against competitors for each prompt",
+				description: "Compare visibility against competitors for each prompt",
 			},
 			brandMentionTracking: {
 				label: "Brand Mention Tracking",
@@ -130,13 +126,11 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 			},
 			socialMediaTracking: {
 				label: "Social Media Tracking",
-				description:
-					"Monitor brand mentions on Reddit and social platforms",
+				description: "Monitor brand mentions on Reddit and social platforms",
 			},
 			shoppingTracking: {
 				label: "Shopping Tracking",
-				description:
-					"Monitor product visibility in AI shopping features",
+				description: "Monitor product visibility in AI shopping features",
 			},
 			multiLanguage: {
 				label: "Multi-Language",
@@ -149,13 +143,11 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 		features: {
 			actionRecommendations: {
 				label: "Action Recommendations",
-				description:
-					"Prioritized action items based on visibility gaps",
+				description: "Prioritized action items based on visibility gaps",
 			},
 			contentGapAnalysis: {
 				label: "Content Gap Analysis",
-				description:
-					"Detect content gaps where competitors are cited but you aren't",
+				description: "Detect content gaps where competitors are cited but you aren't",
 			},
 			siteAudits: {
 				label: "AI Site Audits",
@@ -163,8 +155,7 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 			},
 			keywordResearch: {
 				label: "AI Keyword Research",
-				description:
-					"Discover conversational prompts users ask on AI platforms",
+				description: "Discover conversational prompts users ask on AI platforms",
 			},
 		},
 	},
@@ -181,16 +172,15 @@ export const FEATURE_CATEGORIES: Record<string, FeatureCategory> = {
 			},
 			biConnectors: {
 				label: "BI Connectors",
-				description:
-					"Native connectors to Looker Studio, NinjaCat, and other BI tools",
+				description: "Native connectors to Looker Studio, NinjaCat, and other BI tools",
 			},
 		},
 	},
 };
 
-export const ALL_FEATURE_KEYS: FeatureKey[] = Object.values(
-	FEATURE_CATEGORIES,
-).flatMap((cat) => Object.keys(cat.features) as FeatureKey[]);
+export const ALL_FEATURE_KEYS: FeatureKey[] = Object.values(FEATURE_CATEGORIES).flatMap(
+	(cat) => Object.keys(cat.features) as FeatureKey[],
+);
 
 export function getFeatureLabel(key: FeatureKey): string {
 	for (const cat of Object.values(FEATURE_CATEGORIES)) {

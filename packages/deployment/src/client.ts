@@ -7,9 +7,7 @@
  */
 import type { ClientConfig, OptimizeButtonProps } from "@workspace/config/types";
 import { OptimizeButton as LocalOptimizeButton } from "@workspace/local/components/optimize-button";
-import {
-	OptimizeButton as WhitelabelOptimizeButton,
-} from "@workspace/whitelabel/components/optimize-button";
+import { OptimizeButton as WhitelabelOptimizeButton } from "@workspace/whitelabel/components/optimize-button";
 
 export type { OptimizeButtonProps, WebQueryResult } from "@workspace/config/types";
 
@@ -30,8 +28,6 @@ const OPTIMIZE_BUTTON_BY_MODE: Record<ClientConfig["mode"], OptimizeButtonCompon
 /**
  * Select the correct OptimizeButton component for the current deployment mode.
  */
-export function getOptimizeButtonForMode(
-	mode: ClientConfig["mode"],
-): OptimizeButtonComponent {
+export function getOptimizeButtonForMode(mode: ClientConfig["mode"]): OptimizeButtonComponent {
 	return OPTIMIZE_BUTTON_BY_MODE[mode];
 }

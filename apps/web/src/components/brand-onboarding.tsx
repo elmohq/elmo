@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
@@ -48,14 +47,7 @@ export default function BrandOnboarding({ brandId, brandName }: BrandOnboardingP
 
 				<div className="space-y-2">
 					<Label htmlFor="website">Website</Label>
-					<Input
-						id="website"
-						name="website"
-						type="text"
-						placeholder="example.com"
-						required
-						disabled={isLoading}
-					/>
+					<Input id="website" name="website" type="text" placeholder="example.com" required disabled={isLoading} />
 					<p className="text-xs text-muted-foreground">Enter your brand's website</p>
 				</div>
 

@@ -10,8 +10,7 @@ export interface CitationFilters {
 
 export const citationKeys = {
 	all: ["citations"] as const,
-	list: (brandId: string, filters?: CitationFilters) =>
-		[...citationKeys.all, brandId, filters] as const,
+	list: (brandId: string, filters?: CitationFilters) => [...citationKeys.all, brandId, filters] as const,
 };
 
 export function useCitations(brandId?: string, filters?: CitationFilters) {

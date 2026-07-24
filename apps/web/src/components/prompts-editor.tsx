@@ -96,12 +96,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 			<PromptsListEditor prompts={prompts} onChange={setPrompts} />
 
 			<div className="flex gap-2 items-center">
-				<Button
-					onClick={savePrompts}
-					disabled={isLoading}
-					size="sm"
-					className="flex items-center gap-2 cursor-pointer"
-				>
+				<Button onClick={savePrompts} disabled={isLoading} size="sm" className="flex items-center gap-2 cursor-pointer">
 					{isLoading ? (
 						<>Saving...</>
 					) : (

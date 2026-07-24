@@ -57,7 +57,14 @@ export function computePromptSoV(
 	const totalRuns = promptRuns.length;
 
 	if (totalRuns === 0) {
-		return { promptId, sov: null, brandMentionCount: 0, totalRuns: 0, totalCompetitorMentions: 0, competitorMentions: {} };
+		return {
+			promptId,
+			sov: null,
+			brandMentionCount: 0,
+			totalRuns: 0,
+			totalCompetitorMentions: 0,
+			competitorMentions: {},
+		};
 	}
 
 	const brandMentionCount = promptRuns.filter((r) => r.brandMentioned).length;
@@ -86,10 +93,7 @@ export function computePromptSoV(
  * Compute overall Share of Voice across all prompts.
  * Aggregates brand mentions and competitor mentions across all runs.
  */
-export function computeOverallSoV(
-	runs: ReportPromptRun[],
-	competitors: ReportCompetitor[],
-): number | null {
+export function computeOverallSoV(runs: ReportPromptRun[], competitors: ReportCompetitor[]): number | null {
 	let totalBrandMentions = 0;
 	let totalCompetitorMentions = 0;
 
@@ -112,10 +116,7 @@ export function computeOverallSoV(
 /**
  * Compute per-competitor Share of Voice.
  */
-export function computeCompetitorSoVs(
-	runs: ReportPromptRun[],
-	competitors: ReportCompetitor[],
-): CompetitorSoV[] {
+export function computeCompetitorSoVs(runs: ReportPromptRun[], competitors: ReportCompetitor[]): CompetitorSoV[] {
 	let totalBrandMentions = 0;
 	const competitorMentionCounts: Record<string, number> = {};
 
@@ -130,19 +131,20 @@ export function computeCompetitorSoVs(
 		}
 	}
 
-	const totalAllMentions = totalBrandMentions +
-		Object.values(competitorMentionCounts).reduce((sum, c) => sum + c, 0);
+	const totalAllMentions = totalBrandMentions + Object.values(competitorMentionCounts).reduce((sum, c) => sum + c, 0);
 
 	if (totalAllMentions === 0) return [];
 
-	return competitors.map((comp) => {
-		const mentionCount = competitorMentionCounts[comp.name] || 0;
-		return {
-			name: comp.name,
-			sov: Math.round((mentionCount / totalAllMentions) * 100),
-			mentionCount,
-		};
-	}).sort((a, b) => b.sov - a.sov);
+	return competitors
+		.map((comp) => {
+			const mentionCount = competitorMentionCounts[comp.name] || 0;
+			return {
+				name: comp.name,
+				sov: Math.round((mentionCount / totalAllMentions) * 100),
+				mentionCount,
+			};
+		})
+		.sort((a, b) => b.sov - a.sov);
 }
 
 // ---------- Prompt Selection ----------
@@ -263,10 +265,7 @@ export interface WebQueryInsight {
  * Find content gaps: prompts where competitors are mentioned but the brand is not.
  * These are the highest-value opportunities for content creation.
  */
-export function findContentGaps(
-	runs: FullPromptRun[],
-	maxResults: number = 5,
-): ContentGap[] {
+export function findContentGaps(runs: FullPromptRun[], maxResults: number = 5): ContentGap[] {
 	// Group by promptId
 	const byPrompt = new Map<string, FullPromptRun[]>();
 	for (const run of runs) {
@@ -297,18 +296,13 @@ export function findContentGaps(
 		});
 	}
 
-	return gaps
-		.sort((a, b) => b.competitorCount - a.competitorCount)
-		.slice(0, maxResults);
+	return gaps.sort((a, b) => b.competitorCount - a.competitorCount).slice(0, maxResults);
 }
 
 /**
  * Extract top web search queries used by AI models and how often they led to brand mentions.
  */
-export function analyzeWebQueries(
-	runs: FullPromptRun[],
-	maxResults: number = 10,
-): WebQueryInsight[] {
+export function analyzeWebQueries(runs: FullPromptRun[], maxResults: number = 10): WebQueryInsight[] {
 	const queryStats = new Map<string, { count: number; brandMentions: number }>();
 
 	for (const run of runs) {
@@ -499,16 +493,21 @@ export function computeReportUnstableStats(raw: ReportRawPromptRuns): ReportUnst
 		totalPromptRuns,
 		promptsWithBrandMentions: promptsWithBrand.size,
 		promptRunsWithBrandMentions: brandMentionCount,
-		competitors: totalAllMentions === 0 ? [] : raw.competitors.map((comp) => {
-			const promptRunsWithMentions = competitorRunCounts.get(comp.name) || 0;
-			return {
-				name: comp.name,
-				sov: promptRunsWithMentions / totalAllMentions,
-				visibility: totalPromptRuns === 0 ? 0 : promptRunsWithMentions / totalPromptRuns,
-				promptsWithMentions: competitorPrompts.get(comp.name)?.size || 0,
-				promptRunsWithMentions,
-			};
-		}).sort((a, b) => b.sov - a.sov),
+		competitors:
+			totalAllMentions === 0
+				? []
+				: raw.competitors
+						.map((comp) => {
+							const promptRunsWithMentions = competitorRunCounts.get(comp.name) || 0;
+							return {
+								name: comp.name,
+								sov: promptRunsWithMentions / totalAllMentions,
+								visibility: totalPromptRuns === 0 ? 0 : promptRunsWithMentions / totalPromptRuns,
+								promptsWithMentions: competitorPrompts.get(comp.name)?.size || 0,
+								promptRunsWithMentions,
+							};
+						})
+						.sort((a, b) => b.sov - a.sov),
 	};
 }
 
@@ -521,8 +520,12 @@ export function getSoVColor(sov: number | null): string {
 	return "text-rose-500";
 }
 
-export function getSoVBadgeClasses(sov: number | null): { variant: "default" | "secondary" | "destructive"; className: string } {
-	if (sov === null || sov < 20) return { variant: "destructive", className: "bg-rose-500 hover:bg-rose-500 text-white" };
+export function getSoVBadgeClasses(sov: number | null): {
+	variant: "default" | "secondary" | "destructive";
+	className: string;
+} {
+	if (sov === null || sov < 20)
+		return { variant: "destructive", className: "bg-rose-500 hover:bg-rose-500 text-white" };
 	if (sov < 40) return { variant: "secondary", className: "bg-amber-500 hover:bg-amber-500 text-white" };
 	return { variant: "default", className: "bg-emerald-600 hover:bg-emerald-600 text-white" };
 }

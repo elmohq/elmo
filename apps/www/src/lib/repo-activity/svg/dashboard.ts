@@ -8,15 +8,7 @@
 
 import { MAX_CONTRIB_AVATARS } from "../constants";
 import type { RepoActivityData } from "../types";
-import {
-	DISPLAY_FAMILY,
-	avatarRow,
-	fmt,
-	hairline,
-	monotonePath,
-	svgDoc,
-	text,
-} from "./primitives";
+import { DISPLAY_FAMILY, avatarRow, fmt, hairline, monotonePath, svgDoc, text } from "./primitives";
 import { areaDistribution, eyebrow, ratioBar } from "./shared";
 
 const W = 840;
@@ -105,7 +97,13 @@ export function renderDashboard(data: RepoActivityData): string {
 	// ---- Commit trend (full width) ------------------------------------------
 	body += eyebrow(P, 158, "COMMITS PER WEEK");
 	body += text(W - P, 158, "last 30 weeks", { size: 10.5, weight: 500, cls: "rb-faint", anchor: "end" });
-	body += commitTrend(P, 172, contentW, 78, data.commitsByWeek.map((p) => p.total));
+	body += commitTrend(
+		P,
+		172,
+		contentW,
+		78,
+		data.commitsByWeek.map((p) => p.total),
+	);
 	body += hairline(P, 278, W - P, 278);
 
 	// ---- Issues by area (full width so every area label shows) ---------------

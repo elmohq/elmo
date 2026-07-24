@@ -21,11 +21,7 @@ export const aeoVerticals: AeoVertical[] = [
 			"Agencies tend to feel the shift to AI search first, because clients start asking why a competitor shows up in ChatGPT and they do not. AEO turns into a service line: measure each client's presence across the answer engines, find the gaps, and show the work.",
 			"The hard part is doing that across many clients without paying per seat for each one. An open-source, self-hostable tool changes the math, especially one with white-label support, so the dashboards carry your brand instead of a vendor's.",
 		],
-		examplePrompts: [
-			"best [client category] companies",
-			"[client] vs [competitor]",
-			"is [client] worth it",
-		],
+		examplePrompts: ["best [client category] companies", "[client] vs [competitor]", "is [client] worth it"],
 		plays: [
 			{
 				name: "Run a prompt set per client",
@@ -62,8 +58,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "saas",
 		audience: "SaaS companies",
-		short:
-			"Win the 'best [category] software' and 'X vs Y' answers where buyers now build their shortlists.",
+		short: "Win the 'best [category] software' and 'X vs Y' answers where buyers now build their shortlists.",
 		intro: [
 			"SaaS buyers increasingly ask an AI engine to shortlist tools before they ever reach a vendor site. Best project management software, Notion vs Asana, alternatives to a given tool. If the model does not name you, you are out of the consideration set before the demo.",
 			"These comparison and alternatives prompts are high intent and winnable. The same content that ranks a comparison page can earn the citation in an AI answer, as long as it is clear, current, and backed by sources the model trusts.",
@@ -110,17 +105,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "ecommerce",
 		audience: "e-commerce brands",
-		short:
-			"Make sure AI shopping answers and buying-guide queries surface your products, not just your competitors'.",
+		short: "Make sure AI shopping answers and buying-guide queries surface your products, not just your competitors'.",
 		intro: [
 			"Shoppers ask AI engines to compare products and recommend the best option, and some engines now have dedicated shopping features. Best running shoes for flat feet, cheapest option under a hundred dollars. The answer usually names a few brands and skips the rest.",
 			"Product and category content, clean structured data, and reviews on trusted sources are what get your catalog into those answers. The work overlaps with SEO, but the target is the recommendation rather than the ranking.",
 		],
-		examplePrompts: [
-			"best [product] for [need]",
-			"[product] under [price]",
-			"[your brand] vs [competitor] [product]",
-		],
+		examplePrompts: ["best [product] for [need]", "[product] under [price]", "[your brand] vs [competitor] [product]"],
 		plays: [
 			{
 				name: "Track buying-guide prompts",
@@ -157,8 +147,7 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "b2b",
 		audience: "B2B companies",
-		short:
-			"Show up when buyers research categories, vendors, and you, across long and considered purchases.",
+		short: "Show up when buyers research categories, vendors, and you, across long and considered purchases.",
 		intro: [
 			"B2B purchases involve a lot of research, and much of it now starts with an AI engine. Buyers ask what a category is, who the serious vendors are, and whether you are credible, long before they fill out a form.",
 			"Because the cycle is long and the deals are large, a single AI answer that omits or misframes you carries outsized cost. The fix is durable authority: clear content, trusted mentions, and accurate descriptions across the engines your buyers use.",
@@ -204,17 +193,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "startups",
 		audience: "startups",
-		short:
-			"Build AI visibility from zero without enterprise pricing, on a tool you can self-host for free.",
+		short: "Build AI visibility from zero without enterprise pricing, on a tool you can self-host for free.",
 		intro: [
 			"A new brand starts out invisible to AI engines, because there is little for the models to have learned. The job is to build a credible footprint quickly: clear content, early reviews, and mentions on sources the models trust.",
 			"Budgets are tight, which is the catch with most tools in this space. An open-source platform you self-host for free lets you start measuring on day one and only pay for the API calls you actually make.",
 		],
-		examplePrompts: [
-			"best [new category] tools",
-			"alternatives to [incumbent]",
-			"what is [your brand]",
-		],
+		examplePrompts: ["best [new category] tools", "alternatives to [incumbent]", "what is [your brand]"],
 		plays: [
 			{
 				name: "Define a tight prompt set",
@@ -251,17 +235,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "enterprise",
 		audience: "enterprises",
-		short:
-			"Track AI visibility at scale while keeping your prompts and history on your own infrastructure.",
+		short: "Track AI visibility at scale while keeping your prompts and history on your own infrastructure.",
 		intro: [
 			"Large brands have the most to lose when an AI engine describes them wrongly, and the most scrutiny over where their data goes. Many AI visibility tools are closed and hosted, which means handing your prompt strategy and history to a third party.",
 			"Self-hosting changes that. An open-source platform runs on your own infrastructure, keeps your data in house, and lets your team verify exactly how each metric is computed, which matters when the number ends up in a board report.",
 		],
-		examplePrompts: [
-			"is [brand] trustworthy",
-			"[brand] vs [competitor]",
-			"best [category] for enterprise",
-		],
+		examplePrompts: ["is [brand] trustworthy", "[brand] vs [competitor]", "best [category] for enterprise"],
 		plays: [
 			{
 				name: "Self-host for data control",
@@ -298,17 +277,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "healthcare",
 		audience: "healthcare brands",
-		short:
-			"Monitor and correct how AI engines describe your healthcare brand, where accuracy is not optional.",
+		short: "Monitor and correct how AI engines describe your healthcare brand, where accuracy is not optional.",
 		intro: [
 			"Health topics are exactly where AI engines are most cautious, and where errors do the most damage. An inaccurate description of a provider, product, or service is a real risk, not a cosmetic one.",
 			"Accuracy and data control both matter here. Authoritative, well-sourced content shapes what the models say, and self-hosting keeps sensitive prompt data on your own infrastructure rather than a vendor's.",
 		],
-		examplePrompts: [
-			"is [treatment] safe",
-			"best [specialty] near me",
-			"what does [brand] treat",
-		],
+		examplePrompts: ["is [treatment] safe", "best [specialty] near me", "what does [brand] treat"],
 		plays: [
 			{
 				name: "Publish authoritative content",
@@ -345,17 +319,12 @@ export const aeoVerticals: AeoVertical[] = [
 	{
 		slug: "financial-services",
 		audience: "financial services",
-		short:
-			"Track how AI engines describe your financial brand, with the accuracy and data control the sector demands.",
+		short: "Track how AI engines describe your financial brand, with the accuracy and data control the sector demands.",
 		intro: [
 			"Finance is another area where engines tread carefully, and where a wrong answer about rates, products, or eligibility carries compliance weight. Buyers ask AI engines for recommendations and comparisons all the same.",
 			"Authoritative content earns the citation, and self-hosting keeps your prompt data and visibility history on infrastructure you control, which fits a regulated environment better than a closed third-party dashboard.",
 		],
-		examplePrompts: [
-			"best [product] for [need]",
-			"is [brand] legit",
-			"[brand] vs [competitor] fees",
-		],
+		examplePrompts: ["best [product] for [need]", "is [brand] legit", "[brand] vs [competitor] fees"],
 		plays: [
 			{
 				name: "Publish clear, accurate product content",

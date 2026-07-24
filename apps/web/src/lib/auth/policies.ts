@@ -64,15 +64,12 @@ export function evaluateDeploymentPolicy(
 ): DeploymentPolicyResult {
 	const { pathname, method, authorizationHeader } = request;
 	const isWriteMethod = WRITE_METHODS.has(method);
-	const isPlausibleEventRoute =
-		pathname === "/api/plausible/event" ||
-		pathname === "/api/plausible/event/";
+	const isPlausibleEventRoute = pathname === "/api/plausible/event" || pathname === "/api/plausible/event/";
 
 	const isApiRoute = pathname.startsWith("/api/");
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
-	const isOrgPluginMutation =
-		pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
 
 	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
 	// Orgs are created server-side only — via the provisioning module
@@ -102,9 +99,7 @@ export function evaluateDeploymentPolicy(
 	}
 
 	// 2. Serve OpenAPI spec
-	const isOpenApi =
-		pathname === "/api/v1/openapi.json" ||
-		pathname === "/api/v1/openapi.json/";
+	const isOpenApi = pathname === "/api/v1/openapi.json" || pathname === "/api/v1/openapi.json/";
 
 	if (isOpenApi && method === "GET") {
 		return { action: "serve-openapi" };
@@ -112,14 +107,10 @@ export function evaluateDeploymentPolicy(
 
 	// 3. Public API v1 key authentication (except docs and spec)
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
-	const isPublicApiV1Doc =
-		pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
+	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
 	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		const keyResult = evaluateApiKeyAuth(
-			authorizationHeader,
-			options?.adminApiKeys ?? [],
-		);
+		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
 		if (keyResult !== "allow") {
 			return {
 				action: "block",
@@ -164,8 +155,7 @@ export function evaluateApiKeyAuth(
 	if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
 		return {
 			error: "Unauthorized",
-			message:
-				"Valid API key required as Bearer token in Authorization header",
+			message: "Valid API key required as Bearer token in Authorization header",
 		};
 	}
 
@@ -217,10 +207,7 @@ export function validateApiKeyFromRequest(request: Request): boolean {
  * Matching is case-insensitive; a domain entry matches the whole domain only,
  * never a lookalike suffix ("@elmohq.com" rejects "x@evil-elmohq.com").
  */
-export function evaluateSignupAllowed(
-	email: string,
-	allowlist: readonly string[],
-): "allow" | "deny" {
+export function evaluateSignupAllowed(email: string, allowlist: readonly string[]): "allow" | "deny" {
 	const entries = allowlist.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
 	if (entries.includes("*")) return "allow";
 	if (entries.length === 0) return "deny";
@@ -260,9 +247,7 @@ export function evaluateRequireAdmin(isAdmin: boolean): "allow" | "deny" {
  * Evaluate organization access requirement.
  * Used by server functions via `requireOrgAccess()` in auth helpers.
  */
-export function evaluateRequireOrgAccess(
-	hasAccess: boolean,
-): "allow" | "deny" {
+export function evaluateRequireOrgAccess(hasAccess: boolean): "allow" | "deny" {
 	return hasAccess ? "allow" : "deny";
 }
 
@@ -278,10 +263,7 @@ export function evaluateRequireOrgAccess(
  * "a member of org A is denied org B's resources" invariant, but is not itself
  * the runtime gate.
  */
-export function evaluateOrgScope(
-	memberOrgIds: readonly string[],
-	resourceOrgId: string,
-): "allow" | "deny" {
+export function evaluateOrgScope(memberOrgIds: readonly string[], resourceOrgId: string): "allow" | "deny" {
 	return memberOrgIds.includes(resourceOrgId) ? "allow" : "deny";
 }
 
@@ -326,9 +308,7 @@ export type RouteGuardResult = "allow" | "redirect-to-login" | "not-found";
  * Evaluate the `/_authed` layout guard.
  * Mirrors the `beforeLoad` in `_authed.tsx`.
  */
-export function evaluateAuthedRouteGuard(
-	session: unknown | null,
-): RouteGuardResult {
+export function evaluateAuthedRouteGuard(session: unknown | null): RouteGuardResult {
 	if (!session) return "redirect-to-login";
 	return "allow";
 }
@@ -346,8 +326,6 @@ export function evaluateAdminRouteGuard(isAdmin: boolean): RouteGuardResult {
  * Evaluate the `/app/$brand` layout guard.
  * Mirrors the `loader` in `_authed/app/$brand.tsx`.
  */
-export function evaluateBrandRouteGuard(
-	hasAccess: boolean,
-): RouteGuardResult {
+export function evaluateBrandRouteGuard(hasAccess: boolean): RouteGuardResult {
 	return hasAccess ? "allow" : "not-found";
 }

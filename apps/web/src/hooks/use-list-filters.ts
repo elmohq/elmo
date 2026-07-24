@@ -43,13 +43,8 @@ export function joinTags(tags: readonly string[]): string | undefined {
 }
 
 const LOOKBACK_VALUES = ["1w", "1m", "3m", "6m", "1y", "all"] as const;
-export function coerceLookback(
-	raw: string | null | undefined,
-	fallback: LookbackPeriod,
-): LookbackPeriod {
-	return (LOOKBACK_VALUES as readonly string[]).includes(raw ?? "")
-		? (raw as LookbackPeriod)
-		: fallback;
+export function coerceLookback(raw: string | null | undefined, fallback: LookbackPeriod): LookbackPeriod {
+	return (LOOKBACK_VALUES as readonly string[]).includes(raw ?? "") ? (raw as LookbackPeriod) : fallback;
 }
 
 /** Write side of the filter URL state: one router navigation per interaction
@@ -80,10 +75,7 @@ export function useFilterNavigate() {
  *  re-render the whole bar. */
 export function useListFilters() {
 	const { brand } = useBrand();
-	const defaultLookback = useMemo(
-		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[brand?.earliestDataDate],
-	);
+	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 
 	const urlFilters: BrandFilterSearch = useSearch({ strict: false });
 	const setFilters = useFilterNavigate();

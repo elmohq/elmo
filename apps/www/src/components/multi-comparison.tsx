@@ -11,11 +11,7 @@ import {
 function Cell({ on, highlight }: { on: boolean; highlight?: boolean }) {
 	return (
 		<td className={`px-3 py-3 text-center ${highlight ? "bg-blue-50" : ""}`}>
-			{on ? (
-				<Check className="mx-auto h-4 w-4 text-blue-600" />
-			) : (
-				<X className="mx-auto h-4 w-4 text-zinc-300" />
-			)}
+			{on ? <Check className="mx-auto h-4 w-4 text-blue-600" /> : <X className="mx-auto h-4 w-4 text-zinc-300" />}
 		</td>
 	);
 }
@@ -27,9 +23,7 @@ function ToolSummary({ tool }: { tool: Competitor }) {
 			<div className="mt-2 flex flex-wrap gap-2">
 				<Badge variant="secondary">{CATEGORY_LABELS[tool.category]}</Badge>
 				{tool.pricing?.hasFree && <Badge variant="secondary">Free tier</Badge>}
-				{tool.pricing?.startingPrice && (
-					<Badge variant="secondary">From {tool.pricing.startingPrice}</Badge>
-				)}
+				{tool.pricing?.startingPrice && <Badge variant="secondary">From {tool.pricing.startingPrice}</Badge>}
 			</div>
 			<p className="mt-3 text-sm text-zinc-600">{tool.tagline}</p>
 			{tool.url && tool.domain && (
@@ -67,8 +61,8 @@ export function MultiComparison({ tools }: { tools: Competitor[] }) {
 							<Badge variant="secondary">Free</Badge>
 						</div>
 						<p className="mt-3 text-sm text-zinc-600">
-							Open-source AEO platform. Self-host for free and track AI
-							visibility across every major answer engine with full transparency.
+							Open-source AEO platform. Self-host for free and track AI visibility across every major answer engine with
+							full transparency.
 						</p>
 					</div>
 				</div>
@@ -82,20 +76,13 @@ export function MultiComparison({ tools }: { tools: Competitor[] }) {
 						<table className="w-full text-sm">
 							<thead>
 								<tr className="border-b border-zinc-200">
-									<th className="py-3 pr-4 text-left font-semibold text-zinc-950">
-										Feature
-									</th>
+									<th className="py-3 pr-4 text-left font-semibold text-zinc-950">Feature</th>
 									{tools.map((tool) => (
-										<th
-											key={tool.slug}
-											className="w-28 px-3 py-3 text-center font-semibold text-zinc-950"
-										>
+										<th key={tool.slug} className="w-28 px-3 py-3 text-center font-semibold text-zinc-950">
 											{tool.name}
 										</th>
 									))}
-									<th className="w-28 px-3 py-3 text-center font-semibold text-zinc-950">
-										Elmo
-									</th>
+									<th className="w-28 px-3 py-3 text-center font-semibold text-zinc-950">Elmo</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -112,13 +99,8 @@ export function MultiComparison({ tools }: { tools: Competitor[] }) {
 										const k = featureKey as FeatureKey;
 										const elmo = ELMO_FEATURES[k] ?? false;
 										return (
-											<tr
-												key={featureKey}
-												className="border-b border-dashed border-zinc-200 last:border-solid"
-											>
-												<td className="py-3 pr-4 text-sm text-zinc-600">
-													{featureDef.label}
-												</td>
+											<tr key={featureKey} className="border-b border-dashed border-zinc-200 last:border-solid">
+												<td className="py-3 pr-4 text-sm text-zinc-600">{featureDef.label}</td>
 												{tools.map((tool) => (
 													<Cell key={tool.slug} on={tool.features[k] ?? false} />
 												))}

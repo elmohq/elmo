@@ -71,9 +71,7 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 								<span className="text-sm text-muted-foreground italic">Unnamed competitor</span>
 							)}
 							{competitor.domains.some(Boolean) && (
-								<span className="text-xs text-muted-foreground ml-2">
-									{competitor.domains.filter(Boolean)[0]}
-								</span>
+								<span className="text-xs text-muted-foreground ml-2">{competitor.domains.filter(Boolean)[0]}</span>
 							)}
 						</div>
 						<Button
@@ -108,7 +106,8 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											The primary name used to detect this competitor in AI responses. Mention detection applies to <strong>future</strong> prompt runs only.
+											The primary name used to detect this competitor in AI responses. Mention detection applies to{" "}
+											<strong>future</strong> prompt runs only.
 										</TooltipContent>
 									</Tooltip>
 								</Label>
@@ -130,7 +129,8 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											All domains owned by this competitor. Citation categorization updates retroactively &mdash; existing citations from these domains will immediately be classified as &quot;competitor&quot;.
+											All domains owned by this competitor. Citation categorization updates retroactively &mdash;
+											existing citations from these domains will immediately be classified as &quot;competitor&quot;.
 										</TooltipContent>
 									</Tooltip>
 								</Label>
@@ -153,7 +153,8 @@ export function CompetitorsEditor({ competitors, onChange, disabled }: Competito
 											<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs text-xs font-normal">
-											Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively.
+											Alternative names for this competitor (sub-brands, product names, abbreviations). Used for mention
+											detection in <strong>future</strong> prompt runs only &mdash; does not apply retroactively.
 										</TooltipContent>
 									</Tooltip>
 								</Label>

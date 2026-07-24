@@ -6,18 +6,22 @@
 	"type": "module",
 	"exports": {
 		"./render": "./src/render.ts",
+		"./rasterize": "./src/rasterize.ts",
 		"./vite-plugin": "./src/vite-plugin.ts",
-		"./virtual": "./src/virtual.d.ts"
+		"./virtual": "./src/virtual.d.ts",
+		"./jsx": "./src/jsx.d.ts"
 	},
 	"dependencies": {
+		"@resvg/resvg-js": "^2.6.2",
 		"@workspace/config": "workspace:*",
-		"react": "^19.2.7"
+		"react": "^19.2.7",
+		"satori": "^0.28.0"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",
 		"@types/react": "^19.2.17",
 		"nitro": "npm:nitro-nightly@3.0.1-20260223-102354-c0b46421",
 		"typescript": "^7.0.2",
-		"vite": "^8.1.4"
+		"vite": "^8.1.5"
 	}
 }

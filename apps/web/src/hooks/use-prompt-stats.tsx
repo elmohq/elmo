@@ -3,8 +3,7 @@ import { getPromptStatsFn } from "@/server/prompts";
 
 export const promptStatsKeys = {
 	all: ["prompt-stats"] as const,
-	detail: (promptId: string, days: number) =>
-		[...promptStatsKeys.all, promptId, days] as const,
+	detail: (promptId: string, days: number) => [...promptStatsKeys.all, promptId, days] as const,
 };
 
 export function usePromptStats(promptId?: string, options?: { days?: number }) {

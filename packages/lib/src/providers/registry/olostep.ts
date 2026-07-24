@@ -124,10 +124,7 @@ export const olostep: Provider = {
 		const url = parserConfig.urlTemplate(prompt);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers
-		const batch = await client.batches.create(
-			[{ url, customId: "1" }],
-			{ parser: { id: parserConfig.parserId } },
-		);
+		const batch = await client.batches.create([{ url, customId: "1" }], { parser: { id: parserConfig.parserId } });
 
 		await batch.waitTillDone({ checkEveryNSecs: 5, timeoutSeconds: 1200 });
 
@@ -144,8 +141,7 @@ export const olostep: Provider = {
 		const retrieved = await client.retrieve(retrieveId, ["json" as any]);
 
 		const jsonContent = retrieved.json_content;
-		const parsed =
-			typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
+		const parsed = typeof jsonContent === "string" ? JSON.parse(jsonContent) : (jsonContent ?? retrieved);
 
 		const webQueries = extractWebQueries(parsed);
 		const citations = extractCitationsFromOlostep(parsed);

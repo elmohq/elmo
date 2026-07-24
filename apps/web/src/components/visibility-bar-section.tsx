@@ -16,11 +16,7 @@ import { ALL_MODELS_VALUE } from "@/lib/model-filter";
  * its vertical space on load and doesn't shove the charts down when the
  * real bar comes in.
  */
-export function VisibilityBarSection({
-	brandId,
-}: {
-	brandId: string | undefined;
-}) {
+export function VisibilityBarSection({ brandId }: { brandId: string | undefined }) {
 	const { lookback, model, tags, search } = useListFilters();
 	const modelParam = model === ALL_MODELS_VALUE ? undefined : model;
 

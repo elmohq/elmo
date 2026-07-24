@@ -32,6 +32,4 @@ export async function loadStatusData(): Promise<TargetStatus[]> {
 	);
 }
 
-export const getStatusData = createServerFn({ method: "GET" }).handler(
-	async () => loadStatusData(),
-);
+export const getStatusData = createServerFn({ method: "GET" }).handler(async () => loadStatusData());

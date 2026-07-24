@@ -2,7 +2,13 @@ import { useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
 import { Separator } from "@workspace/ui/components/separator";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@workspace/ui/components/tooltip";
-import { IconExternalLink, IconInfoCircle, IconPlus, IconArrowDownRight, IconSwitchHorizontal } from "@tabler/icons-react";
+import {
+	IconExternalLink,
+	IconInfoCircle,
+	IconPlus,
+	IconArrowDownRight,
+	IconSwitchHorizontal,
+} from "@tabler/icons-react";
 import type { CitationData } from "@/components/citations/types";
 import { formatPeriodLabel, formatUrlForDisplay, UnderlineTabs } from "@/components/citations/shared";
 
@@ -51,13 +57,12 @@ export function RecentChangesCard({
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and dropped pages, title changes, and new and dropped domains.
+							Compares this {formatPeriodLabel(days)} with the {formatPeriodLabel(days)} before it. Shows new and
+							dropped pages, title changes, and new and dropped domains.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>
-					How AI citations have shifted over the past {formatPeriodLabel(days)}
-				</CardDescription>
+				<CardDescription>How AI citations have shifted over the past {formatPeriodLabel(days)}</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent className="flex-1">
@@ -72,14 +77,17 @@ export function RecentChangesCard({
 						const rawUrl = "url" in change ? (change.url as string) : undefined;
 						const domain = "domain" in change ? (change.domain as string) : undefined;
 						const url = rawUrl ?? (isDomainChange && domain ? `https://${domain}` : undefined);
-						const displayLabel = isDomainChange ? domain ?? "" : rawUrl ? formatUrlForDisplay(rawUrl) : "";
+						const displayLabel = isDomainChange ? (domain ?? "") : rawUrl ? formatUrlForDisplay(rawUrl) : "";
 						const key = isDomainChange ? `${change.type}-${domain}` : `${change.type}-${url ?? ""}`;
 
-						const icon = (change.type === "new_pages" || change.type === "new_domains")
-							? <IconPlus className="h-3.5 w-3.5 text-green-600" />
-							: (change.type === "dropped_pages" || change.type === "dropped_domains")
-								? <IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />
-								: <IconSwitchHorizontal className="h-3.5 w-3.5 text-amber-600" />;
+						const icon =
+							change.type === "new_pages" || change.type === "new_domains" ? (
+								<IconPlus className="h-3.5 w-3.5 text-green-600" />
+							) : change.type === "dropped_pages" || change.type === "dropped_domains" ? (
+								<IconArrowDownRight className="h-3.5 w-3.5 text-red-600" />
+							) : (
+								<IconSwitchHorizontal className="h-3.5 w-3.5 text-amber-600" />
+							);
 
 						let description: React.ReactNode = null;
 						if (change.type === "new_pages" && "promptCount" in change) {
@@ -105,8 +113,14 @@ export function RecentChangesCard({
 								<div className="shrink-0 mt-0.5">{icon}</div>
 								<div className="min-w-0 flex-1">
 									<div className="flex items-center gap-1.5">
-										<span className={`text-sm font-medium truncate text-foreground${url ? " group-hover:underline" : ""}`}>{displayLabel}</span>
-										{url && <IconExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
+										<span
+											className={`text-sm font-medium truncate text-foreground${url ? " group-hover:underline" : ""}`}
+										>
+											{displayLabel}
+										</span>
+										{url && (
+											<IconExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+										)}
 									</div>
 									{description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
 								</div>
@@ -127,7 +141,8 @@ export function RecentChangesCard({
 					})}
 					{visibleChanges.length === 0 && (
 						<p className="text-sm text-muted-foreground text-center py-4">
-							No {CHANGE_TYPE_TABS.find((t) => t.key === changeTypeFilter)?.label.toLowerCase() ?? changeTypeFilter} changes in this period.
+							No {CHANGE_TYPE_TABS.find((t) => t.key === changeTypeFilter)?.label.toLowerCase() ?? changeTypeFilter}{" "}
+							changes in this period.
 						</p>
 					)}
 				</div>

@@ -76,9 +76,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
 					}
 					const brandDomains = new Set(
-						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(Boolean),
+						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(
+							Boolean,
+						),
 					);
-					const competitorDomains = new Set(competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean));
+					const competitorDomains = new Set(
+						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),
+					);
 
 					const isMatchingDomain = (domain: string, domainSet: Set<string>) => {
 						for (const d of domainSet) {
@@ -139,8 +143,7 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 						startDate,
 						endDate,
 						mentions: {
-							mentionsTotal:
-								Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
+							mentionsTotal: Number(mentionData.brand_mentioned_count) + Number(mentionData.competitor_mentioned_count),
 							brandMentionsTotal: Number(mentionData.brand_mentioned_count),
 							competitorMentionsTotal: Number(mentionData.competitor_mentioned_count),
 							mentionsTopK,

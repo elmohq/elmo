@@ -46,11 +46,28 @@ export interface CitationData {
 	citationTimeSeries?: Array<{ date: string } & Partial<Record<CitationCategory, number>>>;
 	pageTypeTimeSeries?: Array<{ date: string } & Partial<Record<CitationPageType, number>>>;
 	competitors?: Array<{ id: string; name: string; domains: string[] }>;
-	competitorOnlyPrompts?: Array<{ id: string; value: string; competitorCitationCount: number; uniqueCompetitors: number }>;
+	competitorOnlyPrompts?: Array<{
+		id: string;
+		value: string;
+		competitorCitationCount: number;
+		uniqueCompetitors: number;
+	}>;
 	whatsChanged?: {
 		newUrls: { url: string; domain: string; count: number; promptCount: number; category: CitationCategory }[];
-		droppedUrls: { url: string; domain: string; previousCount: number; currentCount: number; category: CitationCategory }[];
-		titleChanges: { url: string; domain: string; currentTitle: string; previousTitle: string; category: CitationCategory }[];
+		droppedUrls: {
+			url: string;
+			domain: string;
+			previousCount: number;
+			currentCount: number;
+			category: CitationCategory;
+		}[];
+		titleChanges: {
+			url: string;
+			domain: string;
+			currentTitle: string;
+			previousTitle: string;
+			category: CitationCategory;
+		}[];
 		newDomains: { domain: string; count: number; category: CitationCategory }[];
 		droppedDomains: { domain: string; previousCount: number; category: CitationCategory }[];
 	};

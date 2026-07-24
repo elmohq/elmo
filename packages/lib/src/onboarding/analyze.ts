@@ -14,13 +14,7 @@
 import { z } from "zod";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
-import {
-	cleanAndValidateDomain,
-	cleanDomain,
-	inferBrandNameFromDomain,
-	uniqueLowercase,
-	uniqueTrim,
-} from "./utils";
+import { cleanAndValidateDomain, cleanDomain, inferBrandNameFromDomain, uniqueLowercase, uniqueTrim } from "./utils";
 
 // Tags are free-form and brand-tailored: the LLM invents a small vocabulary
 // (≤5 distinct values) that's actually useful for filtering THIS brand's
@@ -30,7 +24,7 @@ const TAG_GUIDANCE =
 	"Tags should be tailored to this specific brand and the prompt set you're producing. Aim for tags that describe WHAT a prompt is about (a product category, audience segment, sub-feature, competitor name) — not WHAT the user wants to do with the answer (compare, evaluate, buy). Goal-style intent tags tend to apply to most prompts in the set and don't discriminate. Prefer single-word tags; only use multi-word tags (lowercase, single hyphens between words) when no single word captures the concept. Each tag should describe ONE axis — don't fuse two ideas into a compound hyphenated label. Don't use 'branded' or 'unbranded' as tag values; the system computes that classification automatically from the prompt text. Pick a small shared vocabulary (no more than 5 distinct values across all prompts), and only attach a tag to a prompt if it actually discriminates that prompt from others — if the same tag would apply to most prompts, don't use it.";
 
 const ALIAS_GUIDANCE =
-	"Skip variants that contain the canonical name as a substring (e.g. don't add \"Asics America\" for \"Asics\" — substring matching catches it already). DO include genuinely distinct names like parent companies or sub-brands the company owns (e.g. \"Converse\" for Nike).";
+	'Skip variants that contain the canonical name as a substring (e.g. don\'t add "Asics America" for "Asics" — substring matching catches it already). DO include genuinely distinct names like parent companies or sub-brands the company owns (e.g. "Converse" for Nike).';
 
 const competitorSchema = z.object({
 	name: z.string().describe("Company name"),
@@ -46,7 +40,7 @@ const promptSchema = z.object({
 	prompt: z
 		.string()
 		.describe(
-			'Short search-style fragment, lowercase, under ~12 words. NOT a full sentence — the kind of thing people actually type into ChatGPT.',
+			"Short search-style fragment, lowercase, under ~12 words. NOT a full sentence — the kind of thing people actually type into ChatGPT.",
 		),
 	tags: z
 		.array(z.string())
@@ -58,7 +52,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		brandName: z
 			.string()
 			.describe(
-				"Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use \"Nike\" (not \"Nike, Inc.\"). Don't include legal entity suffixes like \"Inc.\" or \"Ltd.\"",
+				'Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use "Nike" (not "Nike, Inc."). Don\'t include legal entity suffixes like "Inc." or "Ltd."',
 			),
 		additionalDomains: z
 			.array(z.string())
@@ -227,9 +221,7 @@ function buildPrompt(args: {
 	includeCompetitors: boolean;
 	includePrompts: boolean;
 }): string {
-	const excerptBlock = args.websiteExcerpt
-		? `\nText from ${args.website}:\n---\n${args.websiteExcerpt}\n---\n`
-		: "\n";
+	const excerptBlock = args.websiteExcerpt ? `\nText from ${args.website}:\n---\n${args.websiteExcerpt}\n---\n` : "\n";
 
 	const skipNotes: string[] = [];
 	if (!args.includeCompetitors) skipNotes.push("Return an empty array for competitors.");

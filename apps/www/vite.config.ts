@@ -5,7 +5,7 @@ import { nitro } from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import mdx from "fumadocs-mdx/vite";
-import { embedBinaries } from "@workspace/og/vite-plugin";
+import { embedBinaries, externalizeResvg } from "@workspace/og/vite-plugin";
 import * as MdxConfig from "./source.config";
 import pkg from "./package.json" with { type: "json" };
 
@@ -29,10 +29,12 @@ export default defineConfig({
 	},
 	plugins: [
 		embedBinaries(),
+		externalizeResvg(),
 		mdx(MdxConfig),
 		tailwindcss(),
 		tanstackStart(),
 		nitro({
+			traceDeps: ["@resvg/resvg-js"],
 			alias: {
 				tslib: tslibEsm,
 			},
@@ -49,9 +51,7 @@ export default defineConfig({
 					// `/repo-activity.svg` only ever reads cache. Every 15 min stays
 					// well under GitHub's 30/min Search API limit (~14 search calls
 					// per refresh).
-					crons: [
-						{ path: "/api/repo-activity/refresh", schedule: "*/15 * * * *" },
-					],
+					crons: [{ path: "/api/repo-activity/refresh", schedule: "*/15 * * * *" }],
 				},
 			},
 		}),
