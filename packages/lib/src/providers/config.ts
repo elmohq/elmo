@@ -4,21 +4,21 @@ import type { ModelConfig } from "./types";
 // of truth, shared with the CLI); re-exported here for compatibility.
 export { parseScrapeTargets } from "@workspace/config/scrape-targets";
 
-// Per-call spend caps for the direct API providers: a worst-case bound on a
-// single tracked run, not a target length — they sit well above any answer we
-// expect, so hitting one means something went wrong. These are code defaults;
-// per-target request-policy overrides are a follow-up and are deliberately not
+// Per-call output caps for the direct API providers: a worst-case bound on a
+// single tracked run, not a target length — sized well above any answer we
+// expect, so hitting one means something went wrong (warnIfOutputCapped logs
+// it). These are code defaults; per-target overrides are a follow-up and aren't
 // threaded through ProviderOptions yet.
 //
-// Sized against ~30k tracked ChatGPT answers: p99 lands near 3.4k tokens and
-// the longest seen is ~16k, so 8k clears all but ~1 run in 3000. OpenAI and
-// OpenRouter get double that because their cap counts reasoning tokens
-// alongside visible output, and several tracked targets reason by default
-// (gpt-5, grok-4.5, gemini-2.5-flash, deepseek-v3.2).
+// anthropic-api stays at 4000 to match its long-standing production cap, so
+// nothing changes for Anthropic. The others sit at 8000; note OpenAI's and
+// OpenRouter's cap also counts reasoning tokens, so on reasoning-by-default
+// targets (gpt-5, grok-4.5, gemini-2.5-flash, deepseek-v3.2) that ceiling
+// covers reasoning plus visible output.
 export const API_PROVIDER_MAX_OUTPUT_TOKENS: Record<string, number> = {
-	"anthropic-api": 8000,
-	"openai-api": 16000,
-	openrouter: 16000,
+	"anthropic-api": 4000,
+	"openai-api": 8000,
+	openrouter: 8000,
 	"mistral-api": 8000,
 };
 
