@@ -2,8 +2,8 @@ name: Daily Blog Draft
 
 on:
   schedule:
-    # Avoid the top of the hour, when scheduled Actions runs are most likely to queue.
-    - cron: "17 10 * * *"
+    # 9:00 a.m. PST (UTC-8).
+    - cron: "0 17 * * *"
   workflow_dispatch:
 
 permissions: {}
