@@ -34,7 +34,9 @@ jobs:
 
       - name: Set run date
         id: date
-        run: date -u '+date=%F' >> "$GITHUB_OUTPUT"
+        run: |
+          date -u '+date=%F' >> "$GITHUB_OUTPUT"
+          date -u '+label=%B %-d' >> "$GITHUB_OUTPUT"
 
       - name: Discover current AEO signals
         env:
@@ -101,6 +103,27 @@ jobs:
             --allowedTools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
             --disallowedTools "Bash,NotebookEdit,Task"
 
+      - name: Prepare pull request details
+        id: pr
+        run: |
+          change="$(git status --porcelain=v1 --untracked-files=all -- packages/docs/content/blog | head -n 1)"
+          status="${change:0:2}"
+          path="${change:3}"
+
+          if [ -n "$path" ]
+          then
+            frontmatter() {
+              sed -n "s/^$1:[[:space:]]*//p" "$path" | head -n 1 | sed -E "s/^[\"']//; s/[\"']$//"
+            }
+            if [ "$status" = "??" ]
+            then
+              body="$(frontmatter description)"
+            else
+              body="Updated \"$(frontmatter title)\"."
+            fi
+            echo "body=$body" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -113,14 +136,13 @@ jobs:
       - name: Build marketing site
         run: pnpm --filter @workspace/www build
 
-      - name: Create draft pull request
+      - name: Create pull request
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ github.token }}
           branch: automation/daily-aeo-blog-${{ github.run_id }}
           delete-branch: true
-          draft: always-true
           add-paths: packages/docs/content/blog/*.mdx
           commit-message: draft daily blog update
-          title: "Draft: Daily blog update"
-          body: This automated draft was researched and written by Claude Opus 5.
+          title: Daily blog post (${{ steps.date.outputs.label }})
+          body: ${{ steps.pr.outputs.body }}
