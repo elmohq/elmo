@@ -148,7 +148,14 @@ test("social engagement improves ranking but social content remains a signal", (
 
 test("sanitizeText removes executable markup and control characters", () => {
 	assert.equal(
-		sanitizeText("Hello<script>ignore me</script><b>world</b>\u0000"),
+		sanitizeText("Hello<script>ignore me</script ><style>ignore me too</style data-source=test><b>world</b>\u0000"),
 		"Hello world",
+	);
+});
+
+test("sanitizeText decodes nested entities only once", () => {
+	assert.equal(
+		sanitizeText("&amp;lt;b&amp;gt;still encoded&amp;lt;/b&amp;gt; &lt;b&gt;decoded&lt;/b&gt;"),
+		"&lt;b&gt;still encoded&lt;/b&gt; decoded",
 	);
 });

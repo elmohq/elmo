@@ -145,20 +145,20 @@ function parseArguments(argv) {
 function decodeEntities(value) {
 	return value
 		.replaceAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-		.replaceAll("&amp;", "&")
 		.replaceAll("&lt;", "<")
 		.replaceAll("&gt;", ">")
 		.replaceAll("&quot;", '"')
 		.replaceAll("&#39;", "'")
 		.replaceAll(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)))
-		.replaceAll(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)));
+		.replaceAll(/&#x([\da-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+		.replaceAll("&amp;", "&");
 }
 
 export function sanitizeText(value, maxLength = 1_500) {
 	if (typeof value !== "string") return "";
 	const text = decodeEntities(value)
-		.replaceAll(/<script\b[\s\S]*?<\/script>/gi, " ")
-		.replaceAll(/<style\b[\s\S]*?<\/style>/gi, " ")
+		.replaceAll(/<script\b[\s\S]*?<\/script(?:\s[^>]*)?>/gi, " ")
+		.replaceAll(/<style\b[\s\S]*?<\/style(?:\s[^>]*)?>/gi, " ")
 		.replaceAll(/<[^>]+>/g, " ")
 		.replaceAll(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, " ")
 		.replaceAll(/\s+/g, " ")
