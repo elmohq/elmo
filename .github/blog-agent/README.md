@@ -1,0 +1,68 @@
+# Daily AEO blog agent
+
+The daily workflow discovers current AEO questions, asks Claude Opus 5 to decide whether one deserves a post, validates the result, and opens a draft pull request. It never publishes directly and it is valid for a run to produce no post.
+
+## Source strategy
+
+Discovery uses sources that do not require separate paid social subscriptions:
+
+| Source | Cost/authentication | Role |
+| --- | --- | --- |
+| Google News RSS | Free, no key | Recent reporting and company announcements |
+| Bluesky public search | Free, no key | Practitioner questions and discussion signals |
+| Hacker News via Algolia | Free, no key | Technical discussion and linked projects |
+| GitHub Search | Workflow token | New open-source tools and experiments |
+| arXiv API | Free, no key | Recent research |
+| Oxylabs Google Search | Optional existing credentials | Broader web results plus indexed Reddit, LinkedIn, and X signals |
+
+The workflow does not call Reddit, X, or LinkedIn APIs or scrape those sites directly. Their access terms and pricing change frequently, and social posts are weak factual evidence. When Oxylabs is configured, Google result snippets from those domains help identify questions; Claude still has to verify claims against primary or reputable sources.
+
+Oxylabs is optional. If `OXYLABS_USERNAME` and `OXYLABS_PASSWORD` are absent or an optional source fails, the workflow continues with the free sources. Candidate data exists only on the runner under the ignored `.agents/` directory and is not committed.
+
+## Repository setup
+
+1. Add `ANTHROPIC_API_KEY` as a GitHub Actions secret.
+2. Optionally add the existing `OXYLABS_USERNAME` and `OXYLABS_PASSWORD` secrets.
+3. In **Settings → Actions → General → Workflow permissions**, allow GitHub Actions to create pull requests.
+
+The workflow uses the repository `GITHUB_TOKEN` to create a draft PR. It runs formatting, draft validation, type checking, and the marketing-site build before creating the PR, so review does not depend on a second workflow being triggered by the bot token.
+
+Only one automation PR can be open at a time. Daily runs skip while `automation/daily-aeo-blog` is awaiting review.
+Claude is capped at 14 agent turns and $3 per run; hitting either limit fails safely without opening a PR.
+
+## Marketing skills
+
+The workflow checks out a pinned revision of [`coreyhaines31/marketingskills`](https://github.com/coreyhaines31/marketingskills) and installs only `product-marketing`, `content-strategy`, `ai-seo`, and `copywriting` into the runner's Claude skills directory. The pin makes editorial behavior reviewable and avoids executing a package installer during CI.
+
+The skills provide planning and structural guidance; they are not factual sources. The repository-specific [product marketing brief](./product-marketing.md) and workflow prompt override any conflicting generic advice.
+
+To update the skills, review the upstream changes, update the commit SHA in `daily-blog-draft.yaml`, and run the local tests below.
+
+## Quality and safety gates
+
+Claude may add exactly one new MDX file or make no changes. Validation rejects a draft that:
+
+- modifies any existing file or adds more than one post;
+- duplicates an existing slug or closely overlaps an existing title;
+- lacks the AI byline, current date, required metadata, FAQs, or internal links;
+- falls outside 1,000–3,000 words;
+- cites fewer than two distinct non-social evidence domains;
+- contains imports, scripts, an H1, or placeholders.
+
+External text is explicitly treated as untrusted. Claude cannot run shell commands, and any change outside the one allowed blog file fails the job.
+
+## Local checks
+
+Run discovery with free sources:
+
+```sh
+node .github/blog-agent/discover.mjs \
+  --lookback-days 7 \
+  --output .agents/blog-candidates.json
+```
+
+Add Oxylabs credentials to the environment to exercise its Google Search path. Run the deterministic tests with:
+
+```sh
+node --test .github/blog-agent/*.test.mjs
+```
