@@ -3,7 +3,7 @@ name: Daily Blog Draft
 on:
   schedule:
     # 9:00 a.m. PST (UTC-8).
-    - cron: "0 17 * * *"
+    - cron: "0 17 * * 1-5"
   workflow_dispatch:
 
 permissions: {}
@@ -80,6 +80,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          display_report: true
           prompt: |
             Use /content-strategy, /ai-seo, and /copywriting.
 
@@ -97,7 +99,6 @@ jobs:
             If nothing is worth publishing, make no changes.
           claude_args: |
             --model claude-opus-5
-            --max-turns 14
             --max-budget-usd 3.00
             --tools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
             --allowedTools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
