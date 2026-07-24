@@ -1,6 +1,6 @@
 # Daily AEO blog agent
 
-The daily workflow discovers current AEO questions, asks Claude Opus 5 to decide whether one deserves a post, validates the result, and opens a draft pull request. It never publishes directly and it is valid for a run to produce no post.
+The daily workflow discovers current AEO questions, asks Claude Opus 5 to choose between creating one post, substantively refreshing one existing post, or making no change, validates the result, and opens a draft pull request. It never publishes directly.
 
 ## Source strategy
 
@@ -38,16 +38,22 @@ The skills provide planning and structural guidance; they are not factual source
 
 To update the skills, review the upstream changes, update the commit SHA in `daily-blog-draft.yaml`, and run the local tests below.
 
-## Quality and safety gates
+## New posts and content refreshes
 
-Claude may add exactly one new MDX file or make no changes. Validation rejects a draft that:
+Claude may add one new MDX file, modify one existing MDX file, or make no changes. It cannot do more than one of those in a run. The workflow prefers a refresh when new evidence directly serves an existing post’s search intent, reducing overlapping coverage.
 
-- modifies any existing file or adds more than one post;
-- duplicates an existing slug or closely overlaps an existing title;
-- lacks the AI byline, current date, required metadata, FAQs, or internal links;
-- falls outside 1,000–3,000 words;
+A refresh preserves the post’s filename, original `date`, and `author`, then sets `updated` to the run date. The article page displays both the updated and published dates, `BlogPosting` JSON-LD exposes `dateModified`, and the sitemap uses the update as its genuine `lastmod`. RSS publication dates and blog ordering continue to use the original publication date.
+
+Validation rejects a change that:
+
+- changes more than one post or touches anything outside the blog directory;
+- duplicates an existing slug or closely overlaps an existing title for a new post;
+- lacks required metadata, FAQs, evidence citations, or internal links;
+- puts a new post outside the 1,000–3,000-word validation range;
 - cites fewer than two distinct non-social evidence domains;
 - contains imports, scripts, an H1, or placeholders.
+
+A refresh is also rejected if it changes the original publication metadata, omits today’s `updated` date, adds no new evidence URL, or changes fewer than 40 word occurrences in the body. Legacy posts have a wider 350–4,500 word range so useful corrections are not blocked by their original format; all other quality gates still apply.
 
 External text is explicitly treated as untrusted. Claude cannot run shell commands, and any change outside the one allowed blog file fails the job.
 

@@ -7,6 +7,9 @@ import { pathToFileURL } from "node:url";
 const BLOG_DIRECTORY = "packages/docs/content/blog";
 const MIN_WORDS = 1_000;
 const MAX_WORDS = 3_000;
+const MIN_REFRESH_WORDS = 350;
+const MAX_REFRESH_WORDS = 4_500;
+const MIN_CHANGED_WORDS = 40;
 const MAX_TITLE_LENGTH = 80;
 const MAX_META_TITLE_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 170;
@@ -106,6 +109,7 @@ export function parseFrontmatter(content) {
 		title: scalar(match[1], "title"),
 		description: scalar(match[1], "description"),
 		date: scalar(match[1], "date"),
+		updated: scalar(match[1], "updated"),
 		author: scalar(match[1], "author"),
 		metaTitle: scalar(match[1], "metaTitle"),
 		tags: arrayValues(match[1], "tags"),
@@ -126,6 +130,19 @@ function markdownWordCount(body) {
 
 function markdownLinks(body) {
 	return [...body.matchAll(/\[[^\]]+\]\(([^)\s]+)\)/g)].map((match) => match[1]);
+}
+
+function changedWordCount(left, right) {
+	const frequencies = new Map();
+	for (const [content, direction] of [
+		[left, 1],
+		[right, -1],
+	]) {
+		for (const token of content.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []) {
+			frequencies.set(token, (frequencies.get(token) ?? 0) + direction);
+		}
+	}
+	return [...frequencies.values()].reduce((total, difference) => total + Math.abs(difference), 0);
 }
 
 function domain(value) {
@@ -170,15 +187,20 @@ export function validateDraftContent({
 	expectedDate,
 	existingTitles = [],
 	existingSlugs = [],
+	operation = "create",
+	originalContent,
 }) {
 	const errors = [];
 	const frontmatter = parseFrontmatter(content);
 	const slug = basename(filename, ".mdx");
+	const original = operation === "refresh" && originalContent ? parseFrontmatter(originalContent) : undefined;
 
 	if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.mdx$/.test(basename(filename))) {
 		errors.push("The filename must be a lowercase kebab-case .mdx slug");
 	}
-	if (existingSlugs.includes(slug)) errors.push(`The slug "${slug}" already exists`);
+	if (operation === "create" && existingSlugs.includes(slug)) errors.push(`The slug "${slug}" already exists`);
+	if (!["create", "refresh"].includes(operation)) errors.push(`Unknown editorial operation: ${operation}`);
+	if (operation === "refresh" && !original) errors.push("A refresh requires the original post from HEAD");
 
 	if (!frontmatter.title) errors.push("Frontmatter requires title");
 	if (frontmatter.title.length > MAX_TITLE_LENGTH) {
@@ -188,10 +210,23 @@ export function validateDraftContent({
 	if (frontmatter.description.length > MAX_DESCRIPTION_LENGTH) {
 		errors.push(`The description must be at most ${MAX_DESCRIPTION_LENGTH} characters`);
 	}
-	if (frontmatter.date !== expectedDate) {
-		errors.push(`Frontmatter date must be ${expectedDate}`);
+	if (operation === "create") {
+		if (frontmatter.date !== expectedDate) {
+			errors.push(`Frontmatter date must be ${expectedDate}`);
+		}
+		if (frontmatter.updated) errors.push("A new post may not set updated");
+		if (frontmatter.author !== "ai") errors.push('Frontmatter author must be "ai"');
+	} else if (original) {
+		if (frontmatter.date !== original.date) errors.push("A refresh must preserve the original publication date");
+		if (frontmatter.author !== original.author) errors.push("A refresh must preserve the original author");
+		if (frontmatter.updated !== expectedDate) {
+			errors.push(`Frontmatter updated must be ${expectedDate}`);
+		}
+		const previousContentDate = original.updated || original.date;
+		if (frontmatter.updated && frontmatter.updated <= previousContentDate) {
+			errors.push(`Frontmatter updated must be later than the previous content date (${previousContentDate})`);
+		}
 	}
-	if (frontmatter.author !== "ai") errors.push('Frontmatter author must be "ai"');
 	if (frontmatter.metaTitle && frontmatter.metaTitle.length > MAX_META_TITLE_LENGTH) {
 		errors.push(`metaTitle must be at most ${MAX_META_TITLE_LENGTH} characters`);
 	}
@@ -202,8 +237,12 @@ export function validateDraftContent({
 	if (frontmatter.faqCount < 3) errors.push("Frontmatter requires at least three FAQ entries");
 
 	const wordCount = markdownWordCount(frontmatter.body);
-	if (wordCount < MIN_WORDS || wordCount > MAX_WORDS) {
-		errors.push(`The body must contain ${MIN_WORDS.toLocaleString()}-${MAX_WORDS.toLocaleString()} words (found ${wordCount})`);
+	const minimumWords = operation === "refresh" ? MIN_REFRESH_WORDS : MIN_WORDS;
+	const maximumWords = operation === "refresh" ? MAX_REFRESH_WORDS : MAX_WORDS;
+	if (wordCount < minimumWords || wordCount > maximumWords) {
+		errors.push(
+			`The body must contain ${minimumWords.toLocaleString()}-${maximumWords.toLocaleString()} words (found ${wordCount})`,
+		);
 	}
 
 	const h2Count = (frontmatter.body.match(/^##\s+\S.+$/gm) ?? []).length;
@@ -222,6 +261,24 @@ export function validateDraftContent({
 	if (evidenceDomains.length < 2) {
 		errors.push("The body must link to at least two distinct non-social, non-Elmo evidence domains");
 	}
+	const originalEvidenceLinks = original
+		? new Set(
+				markdownLinks(original.body).filter((link) => {
+					const host = domain(link);
+					return (
+						link.startsWith("https://") &&
+						host &&
+						host !== "elmohq.com" &&
+						!host.endsWith(".elmohq.com") &&
+						!isSocialDomain(link)
+					);
+				}),
+			)
+		: new Set();
+	const newEvidenceLinks = evidenceLinks.filter((link) => !originalEvidenceLinks.has(link));
+	if (operation === "refresh" && newEvidenceLinks.length === 0) {
+		errors.push("A refresh must cite at least one new non-social, non-Elmo evidence URL");
+	}
 
 	const internalBlogLinks = [...new Set(links.filter((link) => /^\/blog\/[a-z0-9-]+(?:[#?].*)?$/.test(link)))];
 	if (internalBlogLinks.length < 2) errors.push("The body must include at least two internal links to existing blog posts");
@@ -237,6 +294,10 @@ export function validateDraftContent({
 	}
 	if (hasPlaceholder(content)) errors.push("The draft contains a placeholder");
 	if (/^#\s+\S/m.test(frontmatter.body)) errors.push("The body may not repeat the title as an H1");
+	const changedWords = original ? changedWordCount(original.body, frontmatter.body) : undefined;
+	if (operation === "refresh" && (changedWords ?? 0) < MIN_CHANGED_WORDS) {
+		errors.push(`A refresh must make at least ${MIN_CHANGED_WORDS} words of substantive body changes`);
+	}
 
 	const similarTitle = existingTitles
 		.map((title) => ({ title, similarity: titleSimilarity(frontmatter.title, title) }))
@@ -258,7 +319,10 @@ export function validateDraftContent({
 		externalLinks,
 		evidenceLinks,
 		evidenceDomains,
+		newEvidenceLinks,
 		internalBlogLinks,
+		operation,
+		changedWords,
 	};
 }
 
@@ -289,6 +353,10 @@ async function existingBlogMetadata(excludedPath) {
 	return { titles, slugs };
 }
 
+function headContent(path) {
+	return execFileSync("git", ["show", `HEAD:${path}`], { encoding: "utf8" });
+}
+
 function writeOutput(key, value) {
 	if (!process.env.GITHUB_OUTPUT) return;
 	const safeValue = String(value).replaceAll("\n", " ");
@@ -301,14 +369,22 @@ async function appendSummary(path, lines) {
 
 async function writePrBody(path, draft) {
 	const sourceLines = draft.evidenceLinks.map((url) => `- [${domain(url)}](${url})`);
+	const isRefresh = draft.operation === "refresh";
 	const body = [
-		"## Automated editorial draft",
+		isRefresh ? "## Automated content refresh" : "## Automated editorial draft",
 		"",
-		"This draft was researched and written by Claude Opus 5. It was created as a draft PR and will not publish until a maintainer reviews and merges it.",
+		`This ${isRefresh ? "refresh" : "draft"} was researched and written by Claude Opus 5. It will not publish until a maintainer reviews and merges this draft PR.`,
 		"",
 		`- **Article:** ${draft.title}`,
+		`- **Operation:** ${isRefresh ? "Refresh existing post" : "Create new post"}`,
 		`- **Length:** ${draft.wordCount.toLocaleString()} words`,
 		`- **Slug:** \`${draft.slug}\``,
+		...(isRefresh
+			? [
+					`- **Updated:** ${draft.updated}`,
+					`- **Body change:** ${draft.changedWords.toLocaleString()} changed word occurrences`,
+				]
+			: []),
 		"",
 		"### Evidence sources cited",
 		"",
@@ -317,7 +393,9 @@ async function writePrBody(path, draft) {
 		"### Review checklist",
 		"",
 		"- [ ] Claims and source interpretations are accurate",
-		"- [ ] The angle adds useful information beyond the linked sources",
+		isRefresh
+			? "- [ ] The new evidence materially improves the article and justifies its updated date"
+			: "- [ ] The angle adds useful information beyond the linked sources",
 		"- [ ] Search intent and internal links are appropriate",
 		"- [ ] Tone matches the rest of the Elmo blog",
 		"",
@@ -357,32 +435,43 @@ async function main() {
 	}
 
 	const change = candidateChanges[0];
-	if (!["??", "A ", "AM"].includes(change.status)) {
-		throw new Error(`The agent may only add a new post; found git status "${change.status}" for ${change.path}`);
+	const isNewPost = ["??", "A ", "AM"].includes(change.status);
+	const isRefresh = [" M", "M ", "MM"].includes(change.status);
+	if (!isNewPost && !isRefresh) {
+		throw new Error(
+			`The agent may only add one post or modify one existing post; found git status "${change.status}" for ${change.path}`,
+		);
 	}
 
 	const content = await readFile(change.path, "utf8");
 	const existing = await existingBlogMetadata(change.path);
+	const operation = isRefresh ? "refresh" : "create";
+	const originalContent = isRefresh ? headContent(change.path) : undefined;
 	const draft = validateDraftContent({
 		content,
 		filename: change.path,
 		expectedDate: options.expectedDate,
 		existingTitles: existing.titles,
 		existingSlugs: existing.slugs,
+		operation,
+		originalContent,
 	});
 
 	await writePrBody(options.prBody, draft);
 	writeOutput("has_post", "true");
+	writeOutput("operation", operation);
 	writeOutput("draft_path", change.path);
 	writeOutput("slug", draft.slug);
 	writeOutput("title", draft.title);
+	writeOutput("pr_title", isRefresh ? `Refresh: ${draft.title}` : `Draft: ${draft.title}`);
+	writeOutput("commit_message", isRefresh ? `refresh ${draft.slug} blog post` : `draft ${draft.slug} blog post`);
 	await appendSummary(options.summary, [
-		"## Draft validation",
+		isRefresh ? "## Refresh validation" : "## Draft validation",
 		"",
-		`Validated **${draft.title}** (${draft.wordCount.toLocaleString()} words, ${draft.evidenceDomains.length} evidence domains, ${draft.internalBlogLinks.length} internal links).`,
+		`Validated **${draft.title}** (${draft.wordCount.toLocaleString()} words, ${draft.evidenceDomains.length} evidence domains, ${draft.internalBlogLinks.length} internal links${isRefresh ? `, ${draft.changedWords.toLocaleString()} changed word occurrences` : ""}).`,
 		"",
 	]);
-	console.log(`Validated ${change.path} (${draft.wordCount} words)`);
+	console.log(`Validated ${operation} for ${change.path} (${draft.wordCount} words)`);
 }
 
 const entrypoint = process.argv[1] ? pathToFileURL(resolve(process.argv[1])).href : "";

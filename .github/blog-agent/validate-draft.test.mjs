@@ -13,7 +13,7 @@ function validDraft(overrides = {}) {
 title: "A Fresh Study of AI Search Source Selection"
 description: "A new study shows how AI search engines select sources and what marketers can learn without overgeneralizing the results."
 date: "${overrides.date ?? "2026-07-24"}"
-author: ai
+${overrides.updated ? `updated: "${overrides.updated}"\n` : ""}author: ${overrides.author ?? "ai"}
 metaTitle: "How AI Search Engines Select Sources"
 tags:
   - aeo
@@ -53,6 +53,7 @@ test("parseFrontmatter reads the fields used by the blog schema", () => {
 	const parsed = parseFrontmatter(validDraft());
 	assert.equal(parsed.title, "A Fresh Study of AI Search Source Selection");
 	assert.equal(parsed.date, "2026-07-24");
+	assert.equal(parsed.updated, "");
 	assert.equal(parsed.author, "ai");
 	assert.deepEqual(parsed.tags, ["aeo", "ai-search"]);
 	assert.equal(parsed.faqCount, 3);
@@ -71,6 +72,81 @@ test("validateDraftContent accepts an evidence-led draft", () => {
 	assert.ok(draft.wordCount >= 1_000);
 	assert.equal(draft.evidenceLinks.length, 2);
 	assert.equal(draft.internalBlogLinks.length, 2);
+});
+
+test("validateDraftContent rejects an updated date on a new post", () => {
+	assert.throws(
+		() =>
+			validateDraftContent({
+				content: validDraft({ updated: "2026-07-24" }),
+				filename: "packages/docs/content/blog/ai-search-source-selection-study.mdx",
+				expectedDate: "2026-07-24",
+				existingSlugs: ["ai-citations", "answer-engine-optimization"],
+			}),
+		/new post may not set updated/,
+	);
+});
+
+test("validateDraftContent accepts a substantive refresh with new evidence", () => {
+	const originalContent = validDraft({ date: "2026-06-01", author: "jrhizor" });
+	const content = validDraft({ date: "2026-06-01", updated: "2026-07-24", author: "jrhizor" }).replace(
+		"Teams can turn the finding into a small, repeatable measurement plan.",
+		`Teams can turn the finding into a small, repeatable measurement plan. A newly published [evaluation appendix](https://benchmark.researcharchive.org/ai-search-evaluation) adds a separate benchmark, sampling notes, prompt categories, scoring definitions, retrieval observations, and reproducibility guidance. Those details materially narrow the original recommendation: teams should segment navigational and comparative prompts, record citation availability independently from answer presence, repeat measurements across several dates, document regional settings, and treat engine-level differences as hypotheses until their own prompt portfolio reproduces them.`,
+	);
+
+	const draft = validateDraftContent({
+		content,
+		filename: "packages/docs/content/blog/ai-search-source-selection-study.mdx",
+		expectedDate: "2026-07-24",
+		existingTitles: ["What Is Answer Engine Optimization?"],
+		existingSlugs: ["ai-citations", "answer-engine-optimization"],
+		operation: "refresh",
+		originalContent,
+	});
+
+	assert.equal(draft.operation, "refresh");
+	assert.equal(draft.updated, "2026-07-24");
+	assert.ok(draft.changedWords >= 40);
+	assert.deepEqual(draft.newEvidenceLinks, ["https://benchmark.researcharchive.org/ai-search-evaluation"]);
+});
+
+test("validateDraftContent rejects a timestamp-only refresh", () => {
+	const originalContent = validDraft({ date: "2026-06-01" });
+	const content = validDraft({ date: "2026-06-01", updated: "2026-07-24" });
+
+	assert.throws(
+		() =>
+			validateDraftContent({
+				content,
+				filename: "packages/docs/content/blog/ai-search-source-selection-study.mdx",
+				expectedDate: "2026-07-24",
+				existingSlugs: ["ai-citations", "answer-engine-optimization"],
+				operation: "refresh",
+				originalContent,
+			}),
+		/new non-social[\s\S]*40 words of substantive body changes/,
+	);
+});
+
+test("validateDraftContent preserves refresh publication metadata", () => {
+	const originalContent = validDraft({ date: "2026-06-01", author: "jrhizor" });
+	const content = validDraft({ date: "2026-06-02", updated: "2026-07-24", author: "ai" }).replace(
+		"Teams can turn the finding into a small, repeatable measurement plan.",
+		`Teams can use the new [evaluation appendix](https://benchmark.researcharchive.org/ai-search-evaluation) to build a more careful measurement plan with segmented prompts, repeated observations, documented settings, explicit scoring definitions, retrieval checks, regional controls, and confidence bounds. The added method is useful because it distinguishes citation availability from answer presence and makes engine-level comparisons easier to reproduce without turning one benchmark into a universal ranking claim.`,
+	);
+
+	assert.throws(
+		() =>
+			validateDraftContent({
+				content,
+				filename: "packages/docs/content/blog/ai-search-source-selection-study.mdx",
+				expectedDate: "2026-07-24",
+				existingSlugs: ["ai-citations", "answer-engine-optimization"],
+				operation: "refresh",
+				originalContent,
+			}),
+		/preserve the original publication date[\s\S]*preserve the original author/,
+	);
 });
 
 test("validateDraftContent rejects stale dates and social-only evidence", () => {
