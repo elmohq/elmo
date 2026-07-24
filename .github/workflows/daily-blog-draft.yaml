@@ -81,7 +81,7 @@ jobs:
           prompt: |
             Use /content-strategy, /ai-seo, and /copywriting.
 
-            Read .agents/blog-candidates.json and the existing posts in packages/docs/content/blog/.
+            Read .agents/blog-candidates.json. List the posts in packages/docs/content/blog/ and read relevant posts as needed.
 
             Decide whether the recent research warrants one new post, one useful refresh of an existing post, or no change. Do not duplicate existing coverage. Verify claims with primary sources using WebSearch and WebFetch.
 
