@@ -9,38 +9,8 @@ on:
 permissions: {}
 
 jobs:
-  check:
-    name: Check for pending draft
-    runs-on: blacksmith-2vcpu-ubuntu-2404
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      pending: ${{ steps.pending.outputs.pending }}
-    steps:
-      - name: Find an open automation PR
-        id: pending
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          if gh pr list \
-            --repo "$GH_REPO" \
-            --head "automation/daily-aeo-blog" \
-            --state open \
-            --json number \
-            --jq 'length > 0' | grep -q true
-          then
-            echo "pending=true" >> "$GITHUB_OUTPUT"
-            echo "An automated blog draft is already awaiting review." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "pending=false" >> "$GITHUB_OUTPUT"
-          fi
-
   draft:
     name: Research and draft
-    needs: check
-    if: needs.check.outputs.pending != 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
     permissions:
@@ -215,7 +185,7 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ github.token }}
-          branch: automation/daily-aeo-blog
+          branch: automation/daily-aeo-blog-${{ github.run_id }}
           delete-branch: true
           draft: always-true
           add-paths: packages/docs/content/blog/*.mdx

@@ -25,9 +25,8 @@ Oxylabs is optional. If `OXYLABS_USERNAME` and `OXYLABS_PASSWORD` are absent or 
 2. Optionally add the existing `OXYLABS_USERNAME` and `OXYLABS_PASSWORD` secrets.
 3. In **Settings → Actions → General → Workflow permissions**, allow GitHub Actions to create pull requests.
 
-The workflow uses the repository `GITHUB_TOKEN` to create a draft PR. It runs formatting, draft validation, type checking, and the marketing-site build before creating the PR, so review does not depend on a second workflow being triggered by the bot token.
+The workflow uses the repository `GITHUB_TOKEN` and a run-scoped branch to create each draft PR. Existing automated PRs do not block or get reused by later runs. It runs formatting, draft validation, type checking, and the marketing-site build before creating the PR, so review does not depend on a second workflow being triggered by the bot token.
 
-Only one automation PR can be open at a time. Daily runs skip while `automation/daily-aeo-blog` is awaiting review.
 Claude is capped at 14 agent turns and $3 per run; hitting either limit fails safely without opening a PR.
 
 ## Marketing skills
