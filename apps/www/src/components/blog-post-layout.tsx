@@ -97,7 +97,7 @@ export function BlogPostLayout({ data }: { data: BlogPostLoaderData }) {
 						<h1 className="mb-3 text-balance">{data.title}</h1>
 						{data.description && <p className="lead mt-0 text-zinc-600">{data.description}</p>}
 						<div className="not-prose mb-10 mt-6 border-b border-zinc-200 pb-8">
-							<AuthorByline author={data.author} date={data.date} />
+							<AuthorByline author={data.author} date={data.date} updated={data.updated} />
 						</div>
 						<Suspense>{clientLoader.useContent(data.path)}</Suspense>
 						{data.faq && data.faq.length > 0 && <PostFaq items={data.faq} />}

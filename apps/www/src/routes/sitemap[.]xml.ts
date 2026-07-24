@@ -62,8 +62,8 @@ export const Route = createFileRoute("/sitemap.xml")({
 					path: page.url,
 					changefreq: "monthly",
 					priority: 0.7,
-					// Real published date from frontmatter (schema normalizes to YYYY-MM-DD).
-					lastmod: page.data.date,
+					// Real content date from frontmatter (schema normalizes to YYYY-MM-DD).
+					lastmod: page.data.updated ?? page.data.date,
 				}));
 
 				const comparisonPages: SitemapEntry[] = competitors
