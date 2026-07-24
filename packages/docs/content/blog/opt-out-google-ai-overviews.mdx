@@ -1,0 +1,124 @@
+---
+title: "Should You Opt Out of Google's AI Overviews?"
+description: "Google now has a Search Console toggle that removes your site from AI Overviews and AI Mode without hurting your rankings. Here's who it's for, and why most brands shouldn't touch it."
+date: "2026-07-24"
+author: ai
+metaTitle: "Google AI Overviews Opt-Out: Should You Use It? (2026)"
+tags:
+  - aeo
+  - ai-search
+  - technical-seo
+howTo:
+  name: "How to decide whether to opt out of Google's AI Overviews"
+  description: "Work through the trade-off between losing AI Overview presence and keeping the clicks it displaces, using your own numbers instead of industry averages."
+  steps:
+    - name: Confirm the control is available to you
+      text: "Check the settings in Google Search Console for a generative AI features control. Google began testing it with a subset of UK site owners in June 2026, so it may not have reached your property yet."
+    - name: Establish how much AI Search traffic you actually have
+      text: "Open the Search Generative AI performance report in Search Console and note your impressions and which pages appear in AI responses. This tells you your exposure, not its value."
+    - name: Measure what a click is worth to you
+      text: "Separate revenue that depends on a pageview (ad impressions, subscription walls, affiliate clicks) from revenue that depends on being named (software trials, considered B2B purchases, local services). The first loses more from an AI answer than the second."
+    - name: Check whether opting out removes the answer or just removes you
+      text: "Run your key prompts and see whether Google generates an AI Overview at all. If it does, opting out does not restore the blue link; it hands the citation slot to a competitor."
+    - name: Weigh the leverage you gain
+      text: "The opt-out exists because the UK CMA wanted publishers to have bargaining power. If you are large enough to negotiate a licensing deal with Google, the threat of opting out is worth more than the setting itself."
+    - name: Test before committing, and keep measuring
+      text: "Prefer a reversible, scoped test over a site-wide switch, and track your presence across ChatGPT, Perplexity, Gemini, and AI Overviews throughout so you can tell what changed."
+faq:
+  - question: Can you opt out of Google AI Overviews?
+    answer: "Yes. In June 2026 Google began testing a toggle in Search Console that lets a site opt out of AI Overviews, AI Mode, and AI Overviews in Discover while continuing to appear in regular Google Search results. It launched with a subset of website owners in the UK ahead of a global rollout, so it may not be available on your property yet."
+  - question: Does opting out of AI Overviews hurt your Google rankings?
+    answer: "No, according to Google. Its announcement states the control will not be used as a ranking signal for search results outside of its generative AI Search features. Sites that opt out keep appearing in regular Search and in the Discover feed, but receive no traffic or impressions from the generative AI features."
+  - question: Why did Google add an AI Overviews opt-out?
+    answer: "The UK's Competition and Markets Authority imposed a conduct requirement on Google in June 2026, after designating it with strategic market status in general search. The requirement obliges Google to give publishers effective tools to keep their content out of AI features in Search, to attribute publisher content with clear links in AI answers, and to allow publishers to opt out of AI model fine-tuning."
+  - question: What is the difference between the Search Console opt-out and nosnippet?
+    answer: "The nosnippet, data-nosnippet, and max-snippet directives limit the information Google shows from your pages across Search, so using them to stay out of AI Overviews also removes your ordinary text snippet from regular results. The Search Console toggle separates the two, removing you from the generative AI surfaces while leaving your normal search listing intact."
+  - question: Does opting out of AI Overviews affect ChatGPT or Perplexity?
+    answer: "No. The Search Console control governs Google's own generative Search features only. ChatGPT, Perplexity, Claude, and Copilot read your site through their own crawlers, which are governed by robots.txt. Opting out of AI Overviews leaves your visibility in every other answer engine unchanged."
+  - question: Should most businesses opt out of AI Overviews?
+    answer: "Most should not. Opting out does not stop Google from generating an AI Overview for a query; it only removes you as a source, so the answer gets written from your competitors instead. The opt-out mainly makes sense for publishers whose revenue depends on the pageview itself, and who have the scale to use it as negotiating leverage."
+---
+
+**For the first time, you can leave Google's AI Overviews without leaving Google Search.** In June 2026 Google began testing a Search Console toggle that removes a site from AI Overviews, AI Mode, and AI Overviews in Discover while keeping it in ordinary results, and it says the setting is not a ranking signal. That is a genuinely new option. It is also the wrong move for most brands, for a reason that has nothing to do with rankings.
+
+**Key takeaways**
+
+- The control is real and Google is explicit about the ranking question: it "will not be used as a ranking signal for search results outside of these generative AI Search features."
+- It exists because of regulation, not product strategy. The UK's Competition and Markets Authority ordered it in June 2026 to give publishers bargaining power.
+- Before this, the only lever was `nosnippet`, which took your regular search snippet down with it. The toggle finally separates the two surfaces.
+- Opting out does not delete the AI Overview. Google still answers the query, using someone else's page. You lose the slot; the competitor keeps it.
+- Search Console launched the matching report with impressions but no clicks or click-through rate, so it shows what you would give up without showing what it is worth.
+- None of this touches ChatGPT, Perplexity, or Claude. Those are still a [robots.txt](/blog/robots-txt-ai-crawlers) question.
+
+## What the opt-out actually does
+
+Google announced the control on 3 June 2026, in a post by Mrinalini Loew, General Manager of the Search ecosystem, alongside [new controls and insights for website owners](https://blog.google/products-and-platforms/products/search/new-controls-website-owners/). It is a toggle in Search Console, applied at the site level, and the scope is specific.
+
+| | Opted in (default) | Opted out |
+|---|---|---|
+| AI Overviews | Eligible | Excluded |
+| AI Mode | Eligible | Excluded |
+| AI Overviews in Discover | Eligible | Excluded |
+| Regular Google Search results | Unchanged | Unchanged |
+| Discover feed | Unchanged | Unchanged |
+| Ranking in regular Search | Unchanged | Unchanged, per Google |
+| ChatGPT, Perplexity, Claude, Copilot | Unchanged | Unchanged |
+
+Google's wording on the cost is blunt: "Sites that opt out will not receive traffic or impressions from our generative AI features." On the ranking question it is equally direct: "This control will not be used as a ranking signal for search results outside of these generative AI Search features."
+
+Two limits are worth noting before you go looking for it. Testing started with a subset of website owners in the UK ahead of a global rollout, so the toggle may not be on your property yet. And Google's own [documentation on AI features](https://developers.google.com/search/docs/appearance/ai-features) still points site owners to `nosnippet`, `data-nosnippet`, `max-snippet`, and Googlebot's robots.txt rules as the way to manage AI appearance, which is what you would expect while a control is in a regional test.
+
+## Why it exists: the CMA forced it
+
+Google did not build this because site owners asked nicely. On the same day, the UK's Competition and Markets Authority announced a [conduct requirement for Google Search](https://www.gov.uk/government/news/cma-secures-fairer-deal-for-publishers-and-improves-google-search-services-in-uk), imposed after designating Google with strategic market status in general search services. The CMA called the result a world first: publishers get "effective tools to prevent their content being used to power AI features in search, such as AI Overviews."
+
+The requirement has three parts that matter here. Publishers can keep their content out of AI features. Google must attribute publisher content "using clear links" in AI-generated results. And, after consultation feedback, publishers can also opt out of their content being used for the fine-tuning of AI models. Google has a nine-month window to implement the changes and must report on compliance every six months for the first year, though the CMA expects important parts to land well before the deadline.
+
+Reading the intent matters, because it tells you who the tool is for. The CMA's stated goal is bargaining power: putting publishers "in a stronger position to negotiate content deals with Google." The opt-out is a lever in a licensing negotiation. If you are not in one, you are holding someone else's tool.
+
+## The old way was all-or-nothing
+
+The reason this counts as news is that the previous options were bad. Google's documented controls for limiting what appears from your pages, `nosnippet`, `data-nosnippet`, `max-snippet`, and `noindex`, work across Search rather than per surface. Google's framing is that "AI is built into Search and integral to how Search functions," so the snippet controls apply to AI features because they apply to Search.
+
+In practice that meant using `nosnippet` to stay out of AI Overviews also stripped the ordinary text snippet from your regular search listing, leaving a bare title and URL. You could avoid the AI summary only by making your normal result worse. `data-nosnippet` let you fence off a single section, which is useful for a price or a paywalled excerpt but useless if the problem is the whole page being summarized.
+
+The Search Console toggle is the first control that treats the generative surfaces as separate from the classic one. Whatever you decide, that separation is the durable improvement.
+
+## The case for opting out
+
+The traffic argument is well documented. The [Pew Research Center](https://www.pewresearch.org/short-reads/2025/07/22/google-users-are-less-likely-to-click-on-links-when-an-ai-summary-appears-in-the-results/) analyzed roughly 69,000 Google searches by about 900 US adults and found users clicked a traditional result in 8% of searches where an AI summary appeared, against 15% where none did. Links inside the AI summary itself were clicked in about 1% of visits. The summary answers the question, and the click never happens.
+
+For publishers, that shows up in the accounts. In July 2026 The Wall Street Journal [reported](https://www.techspot.com/news/113199-reddit-major-publishers-consider-blocking-google-ai-search.html) that Reddit, USA Today, Reuters, Politico, The Economist, and People Inc. were all reconsidering how much access they give Google. On Semrush figures cited in that reporting, US organic search traffic between June 2025 and June 2026 fell by close to half at USA Today, 23% at Politico, around 25% at CNN, and more than 85% at Business Insider. "It's time to take a stand and say enough is enough," USA Today Co. chief executive Mike Reed said.
+
+If your revenue is earned on the page, through ad impressions, a subscription wall, or affiliate clicks, then an answer that satisfies the reader without the visit is pure loss. Opting out is a defensible response, and it is exactly the constituency the CMA had in mind.
+
+## The case against, for almost everyone else
+
+Here is the part the coverage tends to skip. **Opting out does not remove the AI Overview from the results page. It removes you from it.**
+
+Google decides whether a query gets a generative answer based on the query, not on your participation. Opt out and the summary still appears; it is simply written from the pages of the competitors who stayed in. You do not recover the click, because the click was displaced by the format, not by your presence in it. You trade being one of the named sources for being absent from the answer your buyers read.
+
+That trade is bad for any business where the goal is to be named rather than to be visited. If you sell software, run an agency, or provide a local service, an AI answer that describes your product accurately and links to you is a good outcome even at a low click-through rate, because the alternative is an answer that describes three of your competitors and not you. The purchase does not happen on the page either way.
+
+There is a second asymmetry. Opting out is available to you and to your competitors, but AI answers are a roster, not a single slot. When a large publisher exits a category, the remaining sources absorb the citations. In our study of [citation volatility](/blog/citation-volatility) we found AI answers routinely name a field of brands rather than one winner, and that the leaders on any given prompt rotate. Vacated slots get filled quickly.
+
+And the opt-out is narrow. It covers Google's generative Search features and nothing else. Buyers who start in ChatGPT, Perplexity, or Claude will still find whatever those engines can crawl, which is governed by [robots.txt and the AI crawlers](/blog/robots-txt-ai-crawlers) you allow, not by a Search Console setting. Opting out of AI Overviews to "get out of AI search" solves a fraction of the stated problem.
+
+## The number Google didn't give you
+
+The same announcement brought Search Generative AI performance reports to Search Console: impressions, which pages appear in AI responses, and the countries they appear in. Google says it is "continuing to work with website owners to understand what insights will be most helpful" and will "introduce additional metrics over time."
+
+Clicks and click-through rate are not in that list at launch. So the report tells you how often you show up in AI answers, but not what showing up delivers, which is the one number the decision turns on. You are handed an exit and a count of what is behind the door, with no way to price it.
+
+That gap is the practical argument for measuring outside Search Console. Presence in AI answers, who else is named alongside you, and how those answers describe your brand are all observable if you sample the prompts your buyers actually ask, on a schedule, across engines. That is the method in our guide to [tracking your brand in AI search](/blog/track-brand-ai-search), and it is what [Elmo](https://www.elmohq.com/) automates: an open-source, self-hosted platform that runs your prompts across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records every mention, citation, and competitor named beside you. Before you consider switching a surface off, know your [share of voice](/blog/ai-share-of-voice) on it.
+
+## How to decide
+
+1. **Confirm the control is available to you.** Look for a generative AI features setting in Search Console. If it is not there, the UK test has not reached your property, and the decision is not yet live.
+2. **Establish how much AI Search exposure you have.** Read impressions and affected pages in the generative AI performance report. That is your exposure, not its value.
+3. **Measure what a click is worth to you.** Revenue earned on the pageview loses far more to an AI answer than revenue earned by being named and later bought.
+4. **Check whether opting out removes the answer or just removes you.** Run your key prompts. If Google generates an overview regardless, absence hands the slot to a competitor.
+5. **Weigh the leverage.** The opt-out was created as a negotiating instrument. If you are not big enough to negotiate with Google, the threat is worth more to a publisher than the setting is to you.
+6. **Test reversibly, and keep measuring.** Track presence across engines before and after, so you can attribute any change instead of guessing.
+
+For most brands the honest answer is to stay in and compete for the citation. That work is [answer engine optimization](/blog/answer-engine-optimization): clear answers high on the page, clean structure, consistent facts, and the third-party presence that makes an engine trust you enough to [cite you](/blog/ai-citations). The opt-out is a real improvement in publisher control, and a genuine win for the outlets that fought for it. It is not a growth strategy.
