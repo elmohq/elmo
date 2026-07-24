@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -128,9 +129,18 @@ export const openrouter: Provider = {
 			);
 		}
 
+		// ":online" is exactly equivalent to plugins: [{ id: "web" }], and with the
+		// engine unset OpenRouter routes to the model provider's native web search
+		// (Exa only as a fallback) — which is the consumer surface Elmo tracks.
 		if (options?.webSearch && !modelSlug.includes(":online")) {
 			modelSlug = `${modelSlug}:online`;
 		}
+
+		const body: Record<string, unknown> = {
+			model: modelSlug,
+			messages: [{ role: "user", content: prompt }],
+			max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS.openrouter,
+		};
 
 		// Use raw fetch instead of SDK — the SDK's ChatAssistantMessage Zod schema
 		// strips annotations from responses, which contain web search citations.
@@ -145,10 +155,7 @@ export const openrouter: Provider = {
 				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 				"X-Title": "Elmo AEO",
 			},
-			body: JSON.stringify({
-				model: modelSlug,
-				messages: [{ role: "user", content: prompt }],
-			}),
+			body: JSON.stringify(body),
 		});
 
 		if (!res.ok) {
@@ -156,6 +163,8 @@ export const openrouter: Provider = {
 		}
 
 		const data: any = await res.json();
+
+		warnIfOutputCapped("openrouter", modelSlug, data?.choices?.[0]?.finish_reason);
 
 		const citations = extractCitationsFromOpenRouterResponse(data);
 		// OpenRouter doesn't expose what search queries the model made internally.
