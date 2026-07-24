@@ -2,20 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { cn } from "@workspace/ui/lib/utils";
-import {
-	AnchorProvider,
-	ScrollProvider,
-	TOCItem,
-	useActiveAnchors,
-	type TOCItemType,
-} from "fumadocs-core/toc";
+import { AnchorProvider, ScrollProvider, TOCItem, useActiveAnchors, type TOCItemType } from "fumadocs-core/toc";
 import { useOnChange } from "fumadocs-core/utils/use-on-change";
 
-function TocThumb({
-	containerRef,
-}: {
-	containerRef: React.RefObject<HTMLElement | null>;
-}) {
+function TocThumb({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
 	const thumbRef = useRef<HTMLDivElement>(null);
 	const active = useActiveAnchors();
 
@@ -36,16 +26,8 @@ function TocThumb({
 			const anchor = container.querySelector(`a[href="#${id}"]`);
 			if (!anchor || !(anchor instanceof HTMLElement)) continue;
 			const styles = getComputedStyle(anchor);
-			upper = Math.min(
-				upper,
-				anchor.offsetTop + parseFloat(styles.paddingTop),
-			);
-			lower = Math.max(
-				lower,
-				anchor.offsetTop +
-					anchor.clientHeight -
-					parseFloat(styles.paddingBottom),
-			);
+			upper = Math.min(upper, anchor.offsetTop + parseFloat(styles.paddingTop));
+			lower = Math.max(lower, anchor.offsetTop + anchor.clientHeight - parseFloat(styles.paddingBottom));
 		}
 
 		element.style.setProperty("--toc-top", `${upper}px`);
@@ -77,10 +59,7 @@ function TocItems({ toc }: { toc: TOCItemType[] }) {
 	return (
 		<>
 			<TocThumb containerRef={containerRef} />
-			<div
-				ref={containerRef}
-				className="flex flex-col border-l border-border/50"
-			>
+			<div ref={containerRef} className="flex flex-col border-l border-border/50">
 				<ScrollProvider containerRef={containerRef}>
 					{toc.map((item) => (
 						<TOCItem

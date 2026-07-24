@@ -6,11 +6,7 @@ const PLAUSIBLE_SCRIPT_URL = "https://plausible.io/js/script.js";
  * Response headers to forward from Plausible's upstream response.
  * Preserving ETag/Last-Modified enables conditional caching on repeat fetches.
  */
-const UPSTREAM_HEADERS_TO_FORWARD = [
-	"content-type",
-	"etag",
-	"last-modified",
-] as const;
+const UPSTREAM_HEADERS_TO_FORWARD = ["content-type", "etag", "last-modified"] as const;
 
 export const Route = createFileRoute("/api/plausible/js/script/")({
 	server: {

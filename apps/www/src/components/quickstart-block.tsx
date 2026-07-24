@@ -23,9 +23,7 @@ export function QuickstartBlock() {
 			<div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
 				<div className="flex items-center gap-2 text-zinc-400">
 					<Terminal className="size-3.5" />
-					<span className="text-[11px] uppercase tracking-[0.15em]">
-						Quickstart
-					</span>
+					<span className="text-[11px] uppercase tracking-[0.15em]">Quickstart</span>
 				</div>
 				<button
 					type="button"
@@ -41,8 +39,7 @@ export function QuickstartBlock() {
 				<div className="flex gap-3">
 					<span className="text-zinc-500 select-none">$</span>
 					<span>
-						npm install -g{" "}
-						<span className="text-blue-400">@elmohq/cli</span>
+						npm install -g <span className="text-blue-400">@elmohq/cli</span>
 					</span>
 				</div>
 				<div className="flex gap-3">

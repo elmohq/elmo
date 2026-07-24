@@ -23,13 +23,15 @@ export function resolveTimezone(timezoneParam?: string, resolvedFallback?: strin
 		}
 	}
 
-	const resolved = resolvedFallback ?? (() => {
-		try {
-			return Intl.DateTimeFormat().resolvedOptions().timeZone;
-		} catch {
-			return undefined;
-		}
-	})();
+	const resolved =
+		resolvedFallback ??
+		(() => {
+			try {
+				return Intl.DateTimeFormat().resolvedOptions().timeZone;
+			} catch {
+				return undefined;
+			}
+		})();
 
 	return resolved || "UTC";
 }

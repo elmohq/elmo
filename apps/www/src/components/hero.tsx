@@ -28,11 +28,7 @@ function PrimaryCTA({
 	}
 	if (href) {
 		return (
-			<a
-				href={href}
-				className={cls}
-				{...(external ? { target: "_blank", rel: externalRel(href) } : {})}
-			>
+			<a href={href} className={cls} {...(external ? { target: "_blank", rel: externalRel(href) } : {})}>
 				{children}
 			</a>
 		);
@@ -63,11 +59,7 @@ function GhostCTA({
 	}
 	if (href) {
 		return (
-			<a
-				href={href}
-				className={cls}
-				{...(external ? { target: "_blank", rel: externalRel(href) } : {})}
-			>
+			<a href={href} className={cls} {...(external ? { target: "_blank", rel: externalRel(href) } : {})}>
 				{children}
 			</a>
 		);
@@ -120,8 +112,7 @@ export function Hero() {
 					<div className="lg:col-span-7">
 						<div className="flex flex-wrap items-center gap-2">
 							<span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 font-mono text-[11px] text-zinc-700">
-								<span className="size-1.5 rounded-full bg-emerald-500" />
-								v{__APP_VERSION__}
+								<span className="size-1.5 rounded-full bg-emerald-500" />v{__APP_VERSION__}
 							</span>
 							<a
 								href="https://github.com/elmohq/elmo"
@@ -137,10 +128,8 @@ export function Hero() {
 							Know How AI Talks About Your Brand
 						</h1>
 						<p className="mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-							Track your brand's visibility across any AI model. Monitor
-							mentions, analyze citations, and benchmark competitors. Open
-							source and self-hosted, so your data stays yours and you'll never
-							get locked in.
+							Track your brand's visibility across any AI model. Monitor mentions, analyze citations, and benchmark
+							competitors. Open source and self-hosted, so your data stays yours and you'll never get locked in.
 						</p>
 						<div className="mt-8 flex flex-wrap items-center gap-2">
 							<PrimaryCTA to="/docs">

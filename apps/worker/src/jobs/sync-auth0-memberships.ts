@@ -24,9 +24,7 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function syncAuth0MembershipsJob(
-	jobs: Job<SyncAuth0MembershipsData>[],
-): Promise<void> {
+export async function syncAuth0MembershipsJob(jobs: Job<SyncAuth0MembershipsData>[]): Promise<void> {
 	for (const _job of jobs) {
 		const accounts = await listAuth0Accounts();
 		console.log(`[sync-auth0-memberships] Syncing ${accounts.length} users`);
@@ -37,9 +35,7 @@ export async function syncAuth0MembershipsJob(
 		for (let i = 0; i < accounts.length; i += BATCH_SIZE) {
 			const batch = accounts.slice(i, i + BATCH_SIZE);
 
-			const results = await Promise.allSettled(
-				batch.map(({ userId, accountId }) => syncAuth0User(userId, accountId)),
-			);
+			const results = await Promise.allSettled(batch.map(({ userId, accountId }) => syncAuth0User(userId, accountId)));
 
 			for (const [idx, result] of results.entries()) {
 				if (result.status === "fulfilled") {
@@ -58,8 +54,6 @@ export async function syncAuth0MembershipsJob(
 			}
 		}
 
-		console.log(
-			`[sync-auth0-memberships] Done: ${synced} synced, ${failed} failed`,
-		);
+		console.log(`[sync-auth0-memberships] Done: ${synced} synced, ${failed} failed`);
 	}
 }

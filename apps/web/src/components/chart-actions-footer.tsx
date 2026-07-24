@@ -1,4 +1,3 @@
-
 import { useCallback } from "react";
 import { Download } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
@@ -39,7 +38,7 @@ export function ChartActionsFooter({
 	lookback = "1m",
 }: ChartActionsFooterProps) {
 	const isSinglePrompt = Boolean(promptId && brandId);
-	
+
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	const mode = context.clientConfig?.mode ?? "local";
 	const showOptimizeButton = context.clientConfig?.features.showOptimizeButton ?? false;
@@ -70,11 +69,7 @@ export function ChartActionsFooter({
 		<ChartFooter>
 			<div className="flex flex-wrap items-center justify-between gap-2 w-full">
 				<div className="flex flex-wrap items-center gap-2">
-					<HistoryButton
-						promptName={promptName}
-						promptId={promptId}
-						brandId={brandId}
-					/>
+					<HistoryButton promptName={promptName} promptId={promptId} brandId={brandId} />
 					{onDownload && (
 						<Button
 							onClick={onDownload}

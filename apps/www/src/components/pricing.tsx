@@ -11,10 +11,7 @@ interface Plan {
 	price: string;
 	priceLabel: string;
 	features: string[];
-	cta:
-		| { type: "link"; text: string; href: string }
-		| { type: "waitlist" }
-		| { type: "contact" };
+	cta: { type: "link"; text: string; href: string } | { type: "waitlist" } | { type: "contact" };
 }
 
 const plans: Plan[] = [
@@ -76,35 +73,23 @@ export function Pricing() {
 		<section id="pricing" className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div>
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ PRICING
-					</p>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PRICING</p>
 					<h2 className="mt-4 max-w-[28ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
-						Self-host it, run it in our cloud, or white-label it for your
-						customers.
+						Self-host it, run it in our cloud, or white-label it for your customers.
 					</h2>
 				</div>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
 					{plans.map((plan) => (
-						<div
-							key={plan.id}
-							className="flex flex-col justify-between bg-white p-6 lg:p-8"
-						>
+						<div key={plan.id} className="flex flex-col justify-between bg-white p-6 lg:p-8">
 							<div>
 								<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
 									{plan.tag}
 								</span>
-								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">
-									{plan.name}
-								</h3>
-								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">
-									{plan.desc}
-								</p>
+								<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
+								<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">{plan.desc}</p>
 								<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
-									<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">
-										{plan.price}
-									</span>
+									<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">{plan.price}</span>
 									{plan.priceLabel && (
 										<span className="font-mono text-[11px] uppercase tracking-[0.15em] text-zinc-500">
 											{plan.priceLabel}
@@ -114,10 +99,7 @@ export function Pricing() {
 								<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
 									{plan.features.map((f) => (
 										<li key={f} className="flex items-start gap-2">
-											<Check
-												className="mt-0.5 size-3.5 shrink-0 text-blue-600"
-												strokeWidth={3}
-											/>
+											<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
 											<span>{f}</span>
 										</li>
 									))}
@@ -133,12 +115,8 @@ export function Pricing() {
 										<ArrowRight className="size-3.5" />
 									</Link>
 								)}
-								{plan.cta.type === "waitlist" && (
-									<WaitlistForm source="pricing" />
-								)}
-								{plan.cta.type === "contact" && (
-									<ContactForm source="pricing" />
-								)}
+								{plan.cta.type === "waitlist" && <WaitlistForm source="pricing" />}
+								{plan.cta.type === "contact" && <ContactForm source="pricing" />}
 							</div>
 						</div>
 					))}

@@ -103,4 +103,3 @@ describe("resolveResearchProvider", () => {
 		expect(() => resolveResearchProvider({})).toThrow(/at least one direct LLM API/);
 	});
 });
-

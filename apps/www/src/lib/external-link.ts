@@ -5,9 +5,7 @@
 const OWNED_DOMAINS = ["elmohq.com", "bluewhale.dev", "jrhizor.dev"];
 
 function isOwnedHost(hostname: string): boolean {
-	return OWNED_DOMAINS.some(
-		(domain) => hostname === domain || hostname.endsWith(`.${domain}`),
-	);
+	return OWNED_DOMAINS.some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
 }
 
 /**

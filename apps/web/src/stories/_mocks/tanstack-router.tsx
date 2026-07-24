@@ -22,13 +22,7 @@ export function setMockRouteContext(ctx: Record<string, unknown>) {
 /**
  * Wraps story content so that useRouteContext returns the provided value.
  */
-export function MockRouteContextProvider({
-	value,
-	children,
-}: {
-	value: Record<string, unknown>;
-	children: ReactNode;
-}) {
+export function MockRouteContextProvider({ value, children }: { value: Record<string, unknown>; children: ReactNode }) {
 	return <RouteCtx.Provider value={value}>{children}</RouteCtx.Provider>;
 }
 
@@ -158,12 +152,7 @@ export const Link = React.forwardRef<HTMLButtonElement, any>(function LinkMock(
 	ref,
 ) {
 	return (
-		<button
-			type="button"
-			ref={ref}
-			onClick={onClick}
-			{...props}
-		>
+		<button type="button" ref={ref} onClick={onClick} {...props}>
 			{children}
 		</button>
 	);

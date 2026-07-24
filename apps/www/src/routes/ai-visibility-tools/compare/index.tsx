@@ -1,24 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
-import {
-	comparePairs,
-	comparePairSlug,
-	compareSets,
-	compareSetSlug,
-} from "@/lib/competitors";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
+import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
+import { comparePairs, comparePairSlug, compareSets, compareSetSlug } from "@/lib/competitors";
 
 const title = "Compare AI Visibility Tools Head-to-Head · Elmo";
 const description =
@@ -43,9 +28,7 @@ export const Route = createFileRoute("/ai-visibility-tools/compare/")({
 			{ name: "description", content: description },
 			...ogMeta({ title, description, path: "/ai-visibility-tools/compare" }),
 		],
-		links: [
-			{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/compare") },
-		],
+		links: [{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/compare") }],
 		scripts: [
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },

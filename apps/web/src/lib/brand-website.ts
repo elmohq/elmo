@@ -1,8 +1,6 @@
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
 
-export type WebsiteValidationResult =
-	| { isValid: true; formattedUrl: string }
-	| { isValid: false; error: string };
+export type WebsiteValidationResult = { isValid: true; formattedUrl: string } | { isValid: false; error: string };
 
 /**
  * Validate a user-entered brand website. Accepts either a bare domain

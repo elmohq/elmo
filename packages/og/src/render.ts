@@ -1,13 +1,9 @@
 import { createElement } from "react";
-import {
-	DEFAULT_APP_NAME,
-	ELMO_BRAND_COLOR,
-} from "@workspace/config/constants";
+import { DEFAULT_APP_NAME, ELMO_BRAND_COLOR } from "@workspace/config/constants";
 
 export const ACCENT_COLORS = ["#2563eb", "#f4d35e", "#ee964b", "#f95738"];
 export const DEFAULT_TAGLINE = "AI Search Optimization";
-export const DEFAULT_DESCRIPTION =
-	"Track and optimize your brand's visibility across AI models.";
+export const DEFAULT_DESCRIPTION = "Track and optimize your brand's visibility across AI models.";
 
 export interface OgImageOptions {
 	appName: string;
@@ -17,21 +13,11 @@ export interface OgImageOptions {
 	iconDataUri?: string;
 }
 
-export function renderOgImage({
-	appName,
-	title,
-	description,
-	accentColors,
-	iconDataUri,
-}: OgImageOptions) {
+export function renderOgImage({ appName, title, description, accentColors, iconDataUri }: OgImageOptions) {
 	const isElmo = appName === DEFAULT_APP_NAME;
-	const brandColor = isElmo
-		? ELMO_BRAND_COLOR
-		: (accentColors?.[0] ?? "#1e293b");
+	const brandColor = isElmo ? ELMO_BRAND_COLOR : (accentColors?.[0] ?? "#1e293b");
 	const desc = description || DEFAULT_DESCRIPTION;
-	const watermarkColor = isElmo
-		? "rgba(37,99,235,0.04)"
-		: "rgba(0,0,0,0.03)";
+	const watermarkColor = isElmo ? "rgba(37,99,235,0.04)" : "rgba(0,0,0,0.03)";
 	const gradientColors = isElmo
 		? ACCENT_COLORS
 		: accentColors && accentColors.length >= 2
@@ -113,7 +99,7 @@ export function renderOgImage({
 						marginBottom: 28,
 					},
 				},
-				isElmo ? (title || DEFAULT_TAGLINE) : appName,
+				isElmo ? title || DEFAULT_TAGLINE : appName,
 			),
 			createElement(
 				"div",

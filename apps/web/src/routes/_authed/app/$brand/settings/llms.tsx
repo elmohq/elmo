@@ -38,8 +38,8 @@ function LlmsSettingsPage() {
 			<div>
 				<h1 className="text-3xl font-bold">LLMs</h1>
 				<p className="text-muted-foreground">
-					Your prompts are evaluated against these AI models to track how your brand appears across different types of AI
-					search.
+					Your prompts are evaluated against these AI models to track how your brand appears across different types of
+					AI search.
 				</p>
 			</div>
 
@@ -61,23 +61,24 @@ function LlmsSettingsPage() {
 			) : configs.length === 0 ? (
 				<Card>
 					<CardContent className="pt-6 text-sm text-muted-foreground">
-						No models are configured for this brand. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code> at the
-						deployment level, or adjust this brand&apos;s <code className="font-mono text-xs">enabledModels</code>.
+						No models are configured for this brand. Set <code className="font-mono text-xs">SCRAPE_TARGETS</code> at
+						the deployment level, or adjust this brand&apos;s <code className="font-mono text-xs">enabledModels</code>.
 					</CardContent>
 				</Card>
 			) : (
 				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{configs.map((config) => (
 						<Card key={config.model} className="h-full">
-							<CardHeader className="py-2 border-b">
-								{iconForModel(config.model, "h-6 w-6")}
-							</CardHeader>
+							<CardHeader className="py-2 border-b">{iconForModel(config.model, "h-6 w-6")}</CardHeader>
 							<CardContent className="pt-2">
 								<div className="divide-y text-sm">
 									<ConfigRow label="Model" tooltip="Which AI model this card covers.">
 										<span className="font-mono text-xs text-foreground">{config.model}</span>
 									</ConfigRow>
-									<ConfigRow label="Provider" tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc.">
+									<ConfigRow
+										label="Provider"
+										tooltip="How this deployment reaches the model — direct API, a scraping proxy, etc."
+									>
 										<span className="font-mono text-xs text-foreground">{config.provider}</span>
 									</ConfigRow>
 									<ConfigRow label="Version" tooltip="Exact upstream model version requested from the provider.">
@@ -101,15 +102,7 @@ function LlmsSettingsPage() {
 	);
 }
 
-function ConfigRow({
-	label,
-	tooltip,
-	children,
-}: {
-	label: string;
-	tooltip?: string;
-	children: React.ReactNode;
-}) {
+function ConfigRow({ label, tooltip, children }: { label: string; tooltip?: string; children: React.ReactNode }) {
 	return (
 		<div className="flex items-center justify-between py-2">
 			<div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">

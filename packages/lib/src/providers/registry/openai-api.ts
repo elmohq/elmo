@@ -12,9 +12,7 @@ import type {
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function getOpenAIResponsesModel(model: string) {
-	const provider = process.env.OPENAI_API_KEY
-		? createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
-		: openai;
+	const provider = process.env.OPENAI_API_KEY ? createOpenAI({ apiKey: process.env.OPENAI_API_KEY }) : openai;
 	return provider.responses(model);
 }
 

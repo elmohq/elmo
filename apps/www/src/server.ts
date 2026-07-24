@@ -21,8 +21,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 	"X-Frame-Options": "DENY",
 	"X-Content-Type-Options": "nosniff",
 	"Referrer-Policy": "strict-origin-when-cross-origin",
-	"Permissions-Policy":
-		"camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
+	"Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
 };
 
 function addSecurityHeaders(response: Response): Response {
@@ -39,18 +38,9 @@ function addSecurityHeaders(response: Response): Response {
 //   • /docs/foo  with `Accept: text/markdown` — content negotiation for agents
 // Pages are resolved by slug, so the `.md` suffix works even though every
 // source file is `.mdx`. See https://fumadocs.dev/docs/integrations/llms#accept
-const { rewrite: stripMdSuffix } = rewritePath(
-	"/docs{/*path}.md",
-	"/llms.mdx/docs{/*path}",
-);
-const { rewrite: stripMdxSuffix } = rewritePath(
-	"/docs{/*path}.mdx",
-	"/llms.mdx/docs{/*path}",
-);
-const { rewrite: toMarkdownRoute } = rewritePath(
-	"/docs{/*path}",
-	"/llms.mdx/docs{/*path}",
-);
+const { rewrite: stripMdSuffix } = rewritePath("/docs{/*path}.md", "/llms.mdx/docs{/*path}");
+const { rewrite: stripMdxSuffix } = rewritePath("/docs{/*path}.mdx", "/llms.mdx/docs{/*path}");
+const { rewrite: toMarkdownRoute } = rewritePath("/docs{/*path}", "/llms.mdx/docs{/*path}");
 
 export default createServerEntry({
 	async fetch(request) {
@@ -61,8 +51,7 @@ export default createServerEntry({
 		let target = stripMdSuffix(path) || stripMdxSuffix(path);
 
 		// A bare docs page negotiates HTML vs. markdown on the Accept header.
-		const negotiable =
-			!target && (path === "/docs" || path.startsWith("/docs/"));
+		const negotiable = !target && (path === "/docs" || path.startsWith("/docs/"));
 		if (negotiable && isMarkdownPreferred(request)) {
 			target = toMarkdownRoute(path);
 		}

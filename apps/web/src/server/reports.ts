@@ -95,10 +95,7 @@ export const createReportFn = createServerFn({ method: "POST" })
 			);
 			if (!success) throw new Error("Failed to send report job");
 		} catch (error) {
-			await db
-				.update(reports)
-				.set({ status: "failed", updatedAt: new Date() })
-				.where(eq(reports.id, createdReport.id));
+			await db.update(reports).set({ status: "failed", updatedAt: new Date() }).where(eq(reports.id, createdReport.id));
 			throw new Error("Failed to queue report generation");
 		}
 

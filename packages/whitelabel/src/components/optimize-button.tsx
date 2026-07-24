@@ -24,24 +24,23 @@ export type { OptimizeButtonProps };
  * - {webQuery} - The search query (URL encoded); callers pass the prompt
  *   itself when no genuine query is known
  */
-function generateOptimizationUrl(
-  urlTemplate: string,
-  promptValue: string,
-  brandId: string,
-  webQuery: string,
-): string {
-  return urlTemplate
-    .replace("{brandId}", encodeURIComponent(brandId))
-    .replace("{prompt}", encodeURIComponent(promptValue))
-    .replace("{webQuery}", encodeURIComponent(webQuery));
+function generateOptimizationUrl(urlTemplate: string, promptValue: string, brandId: string, webQuery: string): string {
+	return urlTemplate
+		.replace("{brandId}", encodeURIComponent(brandId))
+		.replace("{prompt}", encodeURIComponent(promptValue))
+		.replace("{webQuery}", encodeURIComponent(webQuery));
 }
 
 function getModelDisplayName(model: string): string {
 	switch (model) {
-		case "openai": return "ChatGPT";
-		case "anthropic": return "Claude";
-		case "google": return "Gemini";
-		default: return model;
+		case "openai":
+			return "ChatGPT";
+		case "anthropic":
+			return "Claude";
+		case "google":
+			return "Gemini";
+		default:
+			return model;
 	}
 }
 
@@ -62,13 +61,10 @@ export function OptimizeButton({
 		return null;
 	}
 
-	const handleOptimizeClick = async (
-		e: React.MouseEvent,
-		model?: string,
-	) => {
+	const handleOptimizeClick = async (e: React.MouseEvent, model?: string) => {
 		e.preventDefault();
 
-		const key = `${model || 'all'}-${promptId}`;
+		const key = `${model || "all"}-${promptId}`;
 		setLoadingKey(key);
 
 		try {
@@ -76,9 +72,7 @@ export function OptimizeButton({
 
 			if (fetchWebQuery) {
 				const webQueryData = await fetchWebQuery(promptId, lookback ?? "1m", model);
-				webQuery = model
-					? webQueryData.modelWebQueries[model]
-					: webQueryData.webQuery;
+				webQuery = model ? webQueryData.modelWebQueries[model] : webQueryData.webQuery;
 			}
 
 			const url = generateOptimizationUrl(
@@ -88,18 +82,13 @@ export function OptimizeButton({
 				// No genuine search query known (the engine searched the prompt
 				// verbatim or doesn't expose its queries) — the prompt itself is
 				// the best stand-in.
-				webQuery || promptName
+				webQuery || promptName,
 			);
 
 			window.open(url, "_blank", "noopener,noreferrer");
 		} catch (error) {
 			console.error("Failed to fetch web query:", error);
-			const url = generateOptimizationUrl(
-				optimizationUrlTemplate,
-				promptName,
-				brandId,
-				promptName
-			);
+			const url = generateOptimizationUrl(optimizationUrlTemplate, promptName, brandId, promptName);
 			window.open(url, "_blank", "noopener,noreferrer");
 		} finally {
 			setLoadingKey(null);
@@ -107,15 +96,15 @@ export function OptimizeButton({
 	};
 
 	const isLoading = (model: string | undefined) => {
-		return loadingKey === `${model || 'all'}-${promptId}`;
+		return loadingKey === `${model || "all"}-${promptId}`;
 	};
 
 	// Simple button for single model selection
 	if (selectedModel !== "all") {
 		const loading = isLoading(selectedModel);
 		return (
-			<Button 
-				size="sm" 
+			<Button
+				size="sm"
 				className="text-xs cursor-pointer p-0 m-0 h-6"
 				onClick={(e) => handleOptimizeClick(e, selectedModel)}
 				disabled={loading}
@@ -144,7 +133,7 @@ export function OptimizeButton({
 						<div key={model}>
 							{index > 0 && <DropdownMenuSeparator />}
 							<DropdownMenuLabel>Optimize for {modelName}</DropdownMenuLabel>
-							<DropdownMenuItem 
+							<DropdownMenuItem
 								className="cursor-pointer"
 								onClick={(e) => handleOptimizeClick(e, model)}
 								disabled={loading}

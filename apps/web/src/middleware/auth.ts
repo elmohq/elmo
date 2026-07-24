@@ -64,4 +64,3 @@ export const requireAdminMiddleware = createMiddleware({ type: "function" })
 
 		return next();
 	});
-

@@ -66,52 +66,43 @@ async function fetchJson<T>(url: string): Promise<T> {
 	return (await res.json()) as T;
 }
 
-export const getGitHubRoadmap = createServerFn({ method: "GET" }).handler(
-	async (): Promise<RoadmapData> => {
-		try {
-			const cached = await redis.get<RoadmapData>(CACHE_KEY);
-			if (cached && Array.isArray(cached.issues)) return cached;
+export const getGitHubRoadmap = createServerFn({ method: "GET" }).handler(async (): Promise<RoadmapData> => {
+	try {
+		const cached = await redis.get<RoadmapData>(CACHE_KEY);
+		if (cached && Array.isArray(cached.issues)) return cached;
 
-			const pages = await Promise.all([
-				fetchJson<RawIssue[]>(
-					`${API_BASE}/issues?state=open&sort=created&direction=desc&per_page=100&page=1`,
-				),
-				fetchJson<RawIssue[]>(
-					`${API_BASE}/issues?state=open&sort=created&direction=desc&per_page=100&page=2`,
-				),
-			]);
+		const pages = await Promise.all([
+			fetchJson<RawIssue[]>(`${API_BASE}/issues?state=open&sort=created&direction=desc&per_page=100&page=1`),
+			fetchJson<RawIssue[]>(`${API_BASE}/issues?state=open&sort=created&direction=desc&per_page=100&page=2`),
+		]);
 
-			const issues: RoadmapIssue[] = pages
-				.flat()
-				.filter((i) => !i.pull_request)
-				.map((i) => {
-					const reactions = i.reactions?.total_count ?? 0;
-					const comments = i.comments ?? 0;
-					const areaLabel = i.labels.find((l) => l.name.startsWith("area/"));
-					const area =
-						(areaLabel && AREA_LABELS[areaLabel.name]) ??
-						areaLabel?.name ??
-						"Other";
-					return {
-						number: i.number,
-						title: i.title,
-						html_url: i.html_url,
-						labels: i.labels.map((l) => ({ name: l.name, color: l.color })),
-						created_at: i.created_at,
-						reactions,
-						comments,
-						engagement: reactions + comments,
-						area,
-					};
-				});
+		const issues: RoadmapIssue[] = pages
+			.flat()
+			.filter((i) => !i.pull_request)
+			.map((i) => {
+				const reactions = i.reactions?.total_count ?? 0;
+				const comments = i.comments ?? 0;
+				const areaLabel = i.labels.find((l) => l.name.startsWith("area/"));
+				const area = (areaLabel && AREA_LABELS[areaLabel.name]) ?? areaLabel?.name ?? "Other";
+				return {
+					number: i.number,
+					title: i.title,
+					html_url: i.html_url,
+					labels: i.labels.map((l) => ({ name: l.name, color: l.color })),
+					created_at: i.created_at,
+					reactions,
+					comments,
+					engagement: reactions + comments,
+					area,
+				};
+			});
 
-			const data: RoadmapData = { issues, totalCount: issues.length };
-			await redis.set(CACHE_KEY, data, { ex: TTL_SECONDS });
-			return data;
-		} catch {
-			const empty: RoadmapData = { issues: [], totalCount: 0 };
-			await redis.set(CACHE_KEY, empty, { ex: ERROR_TTL_SECONDS });
-			return empty;
-		}
-	},
-);
+		const data: RoadmapData = { issues, totalCount: issues.length };
+		await redis.set(CACHE_KEY, data, { ex: TTL_SECONDS });
+		return data;
+	} catch {
+		const empty: RoadmapData = { issues: [], totalCount: 0 };
+		await redis.set(CACHE_KEY, empty, { ex: ERROR_TTL_SECONDS });
+		return empty;
+	}
+});

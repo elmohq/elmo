@@ -52,99 +52,99 @@ export const Route = createFileRoute("/sitemap.xml")({
 	server: {
 		handlers: {
 			GET: async () => {
-			const docsPages: SitemapEntry[] = source.getPages().map((page) => ({
-				path: page.url,
-				changefreq: "weekly",
-				priority: 0.7,
-			}));
-
-			const blogPages: SitemapEntry[] = blogSource.getPages().map((page) => ({
-				path: page.url,
-				changefreq: "monthly",
-				priority: 0.7,
-				// Real published date from frontmatter (schema normalizes to YYYY-MM-DD).
-				lastmod: page.data.date,
-			}));
-
-			const comparisonPages: SitemapEntry[] = competitors
-				.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
-				.map((c) => ({
-					path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
-					changefreq: "monthly",
-					priority: 0.6,
+				const docsPages: SitemapEntry[] = source.getPages().map((page) => ({
+					path: page.url,
+					changefreq: "weekly",
+					priority: 0.7,
 				}));
 
-			// Programmatic directory sub-pages (hubs + generated pages).
-			const directorySubPages: SitemapEntry[] = [
-				{ path: "/ai-visibility-tools/compare", changefreq: "monthly", priority: 0.5 },
-				{ path: "/ai-visibility-tools/alternatives", changefreq: "monthly", priority: 0.5 },
-				{ path: "/ai-visibility-tools/features", changefreq: "monthly", priority: 0.5 },
-				{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
-				...comparePairs.map(([a, b]) => ({
-					path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
+				const blogPages: SitemapEntry[] = blogSource.getPages().map((page) => ({
+					path: page.url,
 					changefreq: "monthly",
-					priority: 0.6,
-				})),
-				...compareSets.map((tools) => ({
-					path: `/ai-visibility-tools/compare/${compareSetSlug(tools)}`,
-					changefreq: "monthly",
-					priority: 0.6,
-				})),
-				...indexedCompetitors.map((c) => ({
-					path: `/ai-visibility-tools/alternatives/${c.slug}`,
-					changefreq: "monthly",
-					priority: 0.6,
-				})),
-				...indexableFeatureKeys().map((key) => ({
-					path: `/ai-visibility-tools/features/${FEATURE_SLUGS[key]}`,
-					changefreq: "monthly",
-					priority: 0.5,
-				})),
-				...indexableCategories.map((cat) => ({
-					path: `/ai-visibility-tools/category/${CATEGORY_SLUGS[cat]}`,
-					changefreq: "monthly",
-					priority: 0.5,
-				})),
-			];
+					priority: 0.7,
+					// Real published date from frontmatter (schema normalizes to YYYY-MM-DD).
+					lastmod: page.data.date,
+				}));
 
-			// Editorial programmatic sections.
-			const glossaryPages: SitemapEntry[] = [
-				{ path: "/glossary", changefreq: "monthly", priority: 0.7 },
-				...glossaryTerms.map((t) => ({
-					path: `/glossary/${t.slug}`,
-					changefreq: "monthly",
-					priority: 0.5,
-				})),
-			];
+				const comparisonPages: SitemapEntry[] = competitors
+					.filter((c) => c.status !== "shutting-down" && c.category !== "other" && !isLowDR(c))
+					.map((c) => ({
+						path: `/ai-visibility-tools/${getComparisonSlug(c)}`,
+						changefreq: "monthly",
+						priority: 0.6,
+					}));
 
-			const aiSearchPages: SitemapEntry[] = [
-				{ path: "/ai-search", changefreq: "monthly", priority: 0.7 },
-				...aiSearchEngines.map((e) => ({
-					path: `/ai-search/${e.slug}`,
-					changefreq: "monthly",
-					priority: 0.6,
-				})),
-			];
+				// Programmatic directory sub-pages (hubs + generated pages).
+				const directorySubPages: SitemapEntry[] = [
+					{ path: "/ai-visibility-tools/compare", changefreq: "monthly", priority: 0.5 },
+					{ path: "/ai-visibility-tools/alternatives", changefreq: "monthly", priority: 0.5 },
+					{ path: "/ai-visibility-tools/features", changefreq: "monthly", priority: 0.5 },
+					{ path: "/ai-visibility-tools/category", changefreq: "monthly", priority: 0.5 },
+					...comparePairs.map(([a, b]) => ({
+						path: `/ai-visibility-tools/compare/${comparePairSlug(a, b)}`,
+						changefreq: "monthly",
+						priority: 0.6,
+					})),
+					...compareSets.map((tools) => ({
+						path: `/ai-visibility-tools/compare/${compareSetSlug(tools)}`,
+						changefreq: "monthly",
+						priority: 0.6,
+					})),
+					...indexedCompetitors.map((c) => ({
+						path: `/ai-visibility-tools/alternatives/${c.slug}`,
+						changefreq: "monthly",
+						priority: 0.6,
+					})),
+					...indexableFeatureKeys().map((key) => ({
+						path: `/ai-visibility-tools/features/${FEATURE_SLUGS[key]}`,
+						changefreq: "monthly",
+						priority: 0.5,
+					})),
+					...indexableCategories.map((cat) => ({
+						path: `/ai-visibility-tools/category/${CATEGORY_SLUGS[cat]}`,
+						changefreq: "monthly",
+						priority: 0.5,
+					})),
+				];
 
-			const aeoForPages: SitemapEntry[] = [
-				{ path: "/aeo-for", changefreq: "monthly", priority: 0.7 },
-				...aeoVerticals.map((v) => ({
-					path: `/aeo-for/${v.slug}`,
-					changefreq: "monthly",
-					priority: 0.6,
-				})),
-			];
+				// Editorial programmatic sections.
+				const glossaryPages: SitemapEntry[] = [
+					{ path: "/glossary", changefreq: "monthly", priority: 0.7 },
+					...glossaryTerms.map((t) => ({
+						path: `/glossary/${t.slug}`,
+						changefreq: "monthly",
+						priority: 0.5,
+					})),
+				];
 
-			const allPages: SitemapEntry[] = [
-				...staticPages,
-				...docsPages,
-				...blogPages,
-				...comparisonPages,
-				...directorySubPages,
-				...glossaryPages,
-				...aiSearchPages,
-				...aeoForPages,
-			];
+				const aiSearchPages: SitemapEntry[] = [
+					{ path: "/ai-search", changefreq: "monthly", priority: 0.7 },
+					...aiSearchEngines.map((e) => ({
+						path: `/ai-search/${e.slug}`,
+						changefreq: "monthly",
+						priority: 0.6,
+					})),
+				];
+
+				const aeoForPages: SitemapEntry[] = [
+					{ path: "/aeo-for", changefreq: "monthly", priority: 0.7 },
+					...aeoVerticals.map((v) => ({
+						path: `/aeo-for/${v.slug}`,
+						changefreq: "monthly",
+						priority: 0.6,
+					})),
+				];
+
+				const allPages: SitemapEntry[] = [
+					...staticPages,
+					...docsPages,
+					...blogPages,
+					...comparisonPages,
+					...directorySubPages,
+					...glossaryPages,
+					...aiSearchPages,
+					...aeoForPages,
+				];
 
 				const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

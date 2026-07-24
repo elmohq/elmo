@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "@workspace/ui/components/badge";
@@ -126,9 +125,9 @@ export function BaseChartPrint({
 					)}
 				</div>
 			)}
-		<div className="h-[300px] w-full">
-			<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
-				<BarChart data={sortedEntities} margin={{ top: 20, right: 15, left: 20, bottom: 0 }} barCategoryGap="20%">
+			<div className="h-[300px] w-full">
+				<ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height: 1 }}>
+					<BarChart data={sortedEntities} margin={{ top: 20, right: 15, left: 20, bottom: 0 }} barCategoryGap="20%">
 						<XAxis
 							dataKey="name"
 							axisLine={false}

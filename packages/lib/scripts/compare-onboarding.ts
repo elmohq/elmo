@@ -287,7 +287,9 @@ async function main() {
 		console.error("Options:");
 		console.error("  --max-prompts N       Pass through to analyzeBrand (default: production default)");
 		console.error("  --max-competitors N   Pass through to analyzeBrand (default: production default)");
-		console.error(`  --only IDS            Comma-separated provider IDs (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`);
+		console.error(
+			`  --only IDS            Comma-separated provider IDs (default all of: ${RESEARCH_PROVIDER_PREFERENCE.join(",")})`,
+		);
 		console.error("  --skip IDS            Comma-separated provider IDs to skip");
 		console.error("  --env-file PATH       Load API keys from this .env before defaults");
 		console.error("  --timeout SECONDS     Hard timeout per provider (default 180)");

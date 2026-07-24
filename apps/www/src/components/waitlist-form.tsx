@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogTitle,
-} from "@workspace/ui/components/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { trackEvent, identifyByEmail } from "@/lib/posthog";
 
 interface WaitlistFormProps {
@@ -60,9 +56,7 @@ export function WaitlistForm({ source }: WaitlistFormProps) {
 					<DialogTitle>Join the Cloud Waitlist</DialogTitle>
 					{submitted ? (
 						<div className="py-6 text-center">
-							<p className="text-sm text-muted-foreground">
-								You're on the list! We'll notify you when Cloud is ready.
-							</p>
+							<p className="text-sm text-muted-foreground">You're on the list! We'll notify you when Cloud is ready.</p>
 						</div>
 					) : (
 						<form onSubmit={handleSubmit} className="space-y-3">

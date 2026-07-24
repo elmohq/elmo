@@ -17,9 +17,7 @@ if (!target) {
 	process.exit(1);
 }
 
-const url = `https://api.ahrefs.com/v3/public/domain-rating-free?target=${encodeURIComponent(
-	target,
-)}`;
+const url = `https://api.ahrefs.com/v3/public/domain-rating-free?target=${encodeURIComponent(target)}`;
 
 const res = await fetch(url, {
 	headers: { Accept: "application/json" },

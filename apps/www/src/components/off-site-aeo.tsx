@@ -1,13 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-	ArrowRight,
-	ArrowUpRight,
-	CalendarClock,
-	Check,
-	PenLine,
-	Quote,
-	Target,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, CalendarClock, Check, PenLine, Quote, Target } from "lucide-react";
 import { externalRel } from "@/lib/external-link";
 
 // Cal.com booking page. The selected plan is prefilled into the booking
@@ -31,19 +23,13 @@ function BookButton({
 	className?: string;
 }) {
 	const href = calLink(plan);
-	const base =
-		"inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium leading-none";
+	const base = "inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium leading-none";
 	const styles =
 		variant === "primary"
 			? "bg-blue-600 text-white ring-1 ring-blue-600 hover:bg-blue-700"
 			: "bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:ring-zinc-300";
 	return (
-		<a
-			href={href}
-			target="_blank"
-			rel={externalRel(href)}
-			className={`${base} ${styles} ${className}`}
-		>
+		<a href={href} target="_blank" rel={externalRel(href)} className={`${base} ${styles} ${className}`}>
 			{children}
 		</a>
 	);
@@ -59,17 +45,13 @@ export function OffSiteHero() {
 				className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,rgb(0_0_0/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(0_0_0/0.04)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_85%)]"
 			/>
 			<div className="relative mx-auto max-w-6xl px-4 pb-16 pt-16 md:px-6 lg:pb-24 lg:pt-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-					/ OFF-SITE AEO
-				</p>
+				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ OFF-SITE AEO</p>
 				<h1 className="mt-6 max-w-[20ch] text-5xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 sm:text-6xl">
 					Get cited by AI on the sites it already trusts.
 				</h1>
 				<p className="mt-6 max-w-[60ch] text-pretty text-base text-zinc-600 md:text-lg">
-					We publish humanized guest articles (listicles, guides, and
-					comparisons) on high-authority sites that AI answer engines read and
-					cite. Every placement targets a specific prompt where you're invisible
-					today.
+					We publish humanized guest articles (listicles, guides, and comparisons) on high-authority sites that AI
+					answer engines read and cite. Every placement targets a specific prompt where you're invisible today.
 				</p>
 				<div className="mt-8 flex flex-wrap items-center gap-2">
 					<BookButton plan="">
@@ -123,16 +105,13 @@ export function OffSiteValue() {
 	return (
 		<section className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-					/ WHY IT WORKS
-				</p>
+				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ WHY IT WORKS</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 					Many high-authority data points, built purposefully.
 				</h2>
 				<p className="mt-5 max-w-[60ch] text-pretty text-zinc-600 md:text-lg">
-					We give AI answer engines a steady supply of trustworthy sources that
-					mention you in the right context. The dofollow backlinks on high-DR
-					domains are a welcome bonus for your traditional SEO.
+					We give AI answer engines a steady supply of trustworthy sources that mention you in the right context. The
+					dofollow backlinks on high-DR domains are a welcome bonus for your traditional SEO.
 				</p>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-2">
@@ -141,20 +120,14 @@ export function OffSiteValue() {
 							<span className="inline-flex size-8 items-center justify-center rounded-md bg-blue-50 text-blue-600">
 								{p.icon}
 							</span>
-							<h3 className="mt-4 text-lg font-semibold tracking-tight text-zinc-950">
-								{p.title}
-							</h3>
-							<p className="mt-2 max-w-[52ch] text-pretty text-sm leading-relaxed text-zinc-600">
-								{p.body}
-							</p>
+							<h3 className="mt-4 text-lg font-semibold tracking-tight text-zinc-950">{p.title}</h3>
+							<p className="mt-2 max-w-[52ch] text-pretty text-sm leading-relaxed text-zinc-600">{p.body}</p>
 						</div>
 					))}
 				</div>
 
 				<div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-50 p-6 lg:p-8">
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-						/ WHO RUNS THIS
-					</p>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ WHO RUNS THIS</p>
 					<p className="mt-3 max-w-[68ch] text-pretty text-zinc-700 md:text-lg">
 						Elmo is run by{" "}
 						<a
@@ -165,9 +138,8 @@ export function OffSiteValue() {
 						>
 							Jared Rhizor
 						</a>
-						, who's spent the last year finding the levers that move the needle
-						on AI citations by building AEO tooling for top e-commerce and B2B
-						SaaS brands.
+						, who's spent the last year finding the levers that move the needle on AI citations by building AEO tooling
+						for top e-commerce and B2B SaaS brands.
 					</p>
 				</div>
 			</div>
@@ -199,9 +171,7 @@ export function OffSiteProcess() {
 	return (
 		<section className="border-b border-zinc-200 bg-white">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-					/ HOW IT WORKS
-				</p>
+				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ HOW IT WORKS</p>
 				<h2 className="mt-4 max-w-[24ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 					One call, quality posts. Live within 30 days.
 				</h2>
@@ -212,12 +182,8 @@ export function OffSiteProcess() {
 							<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
 								{s.num}
 							</span>
-							<h3 className="mt-4 text-xl font-semibold tracking-tight text-zinc-950">
-								{s.title}
-							</h3>
-							<p className="mt-2 max-w-[40ch] text-pretty text-sm leading-relaxed text-zinc-600">
-								{s.body}
-							</p>
+							<h3 className="mt-4 text-xl font-semibold tracking-tight text-zinc-950">{s.title}</h3>
+							<p className="mt-2 max-w-[40ch] text-pretty text-sm leading-relaxed text-zinc-600">{s.body}</p>
 						</div>
 					))}
 				</div>
@@ -274,12 +240,7 @@ const plans: OffSitePlan[] = [
 			{ dr: "DR40+", count: 2 },
 			{ dr: "DR50+", count: 1 },
 		],
-		features: [
-			"Monthly placement report",
-			"Humanized text",
-			"Dofollow links",
-			"Priority support",
-		],
+		features: ["Monthly placement report", "Humanized text", "Dofollow links", "Priority support"],
 	},
 	{
 		id: "authority",
@@ -314,34 +275,19 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 				</span>
 			)}
 			<div>
-				<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">
-					{plan.tag}
-				</span>
-				<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">
-					{plan.name}
-				</h3>
-				<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">
-					{plan.desc}
-				</p>
+				<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-blue-600 tabular-nums">{plan.tag}</span>
+				<h3 className="mt-5 text-2xl font-semibold tracking-tight text-zinc-950">{plan.name}</h3>
+				<p className="mt-2 max-w-[36ch] text-pretty text-sm text-zinc-600">{plan.desc}</p>
 				<div className="mt-6 flex items-baseline gap-2 border-y border-zinc-200 py-4">
-					<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">
-						{plan.price}
-					</span>
-					<span className="font-mono text-[11px] uppercase tracking-[0.15em] text-zinc-500">
-						/ month
-					</span>
+					<span className="text-4xl font-semibold tracking-tight text-zinc-950 tabular-nums">{plan.price}</span>
+					<span className="font-mono text-[11px] uppercase tracking-[0.15em] text-zinc-500">/ month</span>
 				</div>
 
-				<p className="mt-6 text-sm font-medium text-zinc-950">
-					{plan.posts} placements / month
-				</p>
+				<p className="mt-6 text-sm font-medium text-zinc-950">{plan.posts} placements / month</p>
 				{/* Fixed height so the DR breakdown lines up across all plans. */}
 				<ul role="list" className="mt-3 min-h-[8rem] space-y-1.5">
 					{plan.buckets.map((b) => (
-						<li
-							key={b.dr}
-							className="flex items-center gap-2 text-sm text-zinc-700"
-						>
+						<li key={b.dr} className="flex items-center gap-2 text-sm text-zinc-700">
 							<span className="inline-flex min-w-7 justify-center rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-zinc-600">
 								{b.count}×
 							</span>
@@ -353,10 +299,7 @@ function PlanCard({ plan }: { plan: OffSitePlan }) {
 				<ul role="list" className="mt-6 space-y-2.5 text-sm text-zinc-700">
 					{plan.features.map((f) => (
 						<li key={f} className="flex items-start gap-2">
-							<Check
-								className="mt-0.5 size-3.5 shrink-0 text-blue-600"
-								strokeWidth={3}
-							/>
+							<Check className="mt-0.5 size-3.5 shrink-0 text-blue-600" strokeWidth={3} />
 							<span>{f}</span>
 						</li>
 					))}
@@ -376,16 +319,13 @@ export function OffSitePricing() {
 	return (
 		<section id="plans" className="border-b border-zinc-200 bg-white scroll-mt-16">
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-					/ PLANS
-				</p>
+				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ PLANS</p>
 				<h2 className="mt-4 max-w-[26ch] text-4xl font-semibold leading-[1.05] tracking-tight text-balance text-zinc-950 md:text-5xl">
 					Pick your level. We handle the rest.
 				</h2>
 				<p className="mt-5 max-w-[56ch] text-pretty text-zinc-600">
-					Every plan is a managed monthly subscription: planning, writing,
-					humanization, placement, and reporting included. All plans are
-					non-refundable.
+					Every plan is a managed monthly subscription: planning, writing, humanization, placement, and reporting
+					included. All plans are non-refundable.
 				</p>
 
 				<div className="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 md:grid-cols-3">
@@ -396,12 +336,9 @@ export function OffSitePricing() {
 
 				<div className="mt-6 flex flex-col gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-6 sm:flex-row sm:items-center sm:justify-between lg:p-8">
 					<div>
-						<h3 className="text-lg font-semibold tracking-tight text-zinc-950">
-							Custom &amp; Agency
-						</h3>
+						<h3 className="text-lg font-semibold tracking-tight text-zinc-950">Custom &amp; Agency</h3>
 						<p className="mt-1 max-w-[60ch] text-pretty text-sm text-zinc-600">
-							Need more reach, white-labeling, or agency support? Reach out to
-							discuss.
+							Need more reach, white-labeling, or agency support? Reach out to discuss.
 						</p>
 					</div>
 					<BookButton plan="Custom" variant="ghost" className="shrink-0">
@@ -445,15 +382,13 @@ export function OffSiteAeoPromo() {
 			<div className="mx-auto max-w-6xl px-4 py-16 md:px-6 lg:py-24">
 				<div className="grid items-center gap-10 lg:grid-cols-12">
 					<div className="lg:col-span-7">
-						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-							/ OFF-SITE AEO
-						</p>
+						<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ OFF-SITE AEO</p>
 						<h2 className="mt-4 max-w-[22ch] text-3xl font-semibold leading-[1.1] tracking-tight text-balance text-zinc-950 md:text-4xl">
 							Want us to do your off-site AEO for you?
 						</h2>
 						<p className="mt-5 max-w-[56ch] text-pretty text-zinc-600 md:text-lg">
-							Beyond tracking, we publish humanized guest posts on high-authority
-							sites so AI answer engines can cite you.
+							Beyond tracking, we publish humanized guest posts on high-authority sites so AI answer engines can cite
+							you.
 						</p>
 						<div className="mt-7 flex flex-wrap items-center gap-2">
 							<Link
@@ -476,14 +411,9 @@ export function OffSiteAeoPromo() {
 									posts: "14 placements / mo",
 								},
 							].map((t) => (
-								<div
-									key={t.name}
-									className="flex items-center justify-between gap-4 px-5 py-4"
-								>
+								<div key={t.name} className="flex items-center justify-between gap-4 px-5 py-4">
 									<div>
-										<dt className="text-sm font-semibold text-zinc-950">
-											{t.name}
-										</dt>
+										<dt className="text-sm font-semibold text-zinc-950">{t.name}</dt>
 										<dd className="text-xs text-zinc-500">{t.posts}</dd>
 									</div>
 									<span className="font-mono text-sm tabular-nums text-zinc-950">

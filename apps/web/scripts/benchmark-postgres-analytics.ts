@@ -65,17 +65,16 @@ async function bench(name: string, pgFn: () => Promise<unknown>): Promise<BenchR
 // Main
 // ============================================================================
 
-async function benchBrand(
-	brandId: string,
-	runCount: number,
-	hasCitations: boolean,
-): Promise<BenchResult[]> {
+async function benchBrand(brandId: string, runCount: number, hasCitations: boolean): Promise<BenchResult[]> {
 	const promptResult = await db.execute<{ id: string }>(sql`
 		SELECT id FROM prompts WHERE brand_id = ${brandId} AND enabled = true LIMIT 20
 	`);
 	const promptIds = promptResult.rows.map((r) => r.id);
 	const firstPromptId = promptIds[0];
-	if (!firstPromptId) { console.log(`  Skipping ${brandId} — no enabled prompts`); return []; }
+	if (!firstPromptId) {
+		console.log(`  Skipping ${brandId} — no enabled prompts`);
+		return [];
+	}
 
 	const toDate = new Date().toISOString().split("T")[0];
 	const fromDate = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
@@ -86,51 +85,74 @@ async function benchBrand(
 
 	const results: BenchResult[] = [];
 
-	results.push(await bench("getDashboardSummary",
-		() => pgRead.getDashboardSummary(brandId, fromDate, toDate, tz, promptIds)));
+	results.push(
+		await bench("getDashboardSummary", () => pgRead.getDashboardSummary(brandId, fromDate, toDate, tz, promptIds)),
+	);
 
-	results.push(await bench("getVisibilityTimeSeries",
-		() => pgRead.getVisibilityTimeSeries(brandId, fromDate, toDate, tz, brandedPromptIds, promptIds)));
+	results.push(
+		await bench("getVisibilityTimeSeries", () =>
+			pgRead.getVisibilityTimeSeries(brandId, fromDate, toDate, tz, brandedPromptIds, promptIds),
+		),
+	);
 
-	results.push(await bench("getPromptsSummary",
-		() => pgRead.getPromptsSummary(brandId, fromDate, toDate, tz)));
+	results.push(await bench("getPromptsSummary", () => pgRead.getPromptsSummary(brandId, fromDate, toDate, tz)));
 
-	results.push(await bench("getPromptsFirstEvaluatedAt",
-		() => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
+	results.push(await bench("getPromptsFirstEvaluatedAt", () => pgRead.getPromptsFirstEvaluatedAt(brandId, promptIds)));
 
-	results.push(await bench("getPromptDailyStats",
-		() => pgRead.getPromptDailyStats(firstPromptId, fromDate, toDate, tz)));
+	results.push(
+		await bench("getPromptDailyStats", () => pgRead.getPromptDailyStats(firstPromptId, fromDate, toDate, tz)),
+	);
 
-	results.push(await bench("getPromptCompetitorDailyStats",
-		() => pgRead.getPromptCompetitorDailyStats(firstPromptId, fromDate, toDate, tz)));
+	results.push(
+		await bench("getPromptCompetitorDailyStats", () =>
+			pgRead.getPromptCompetitorDailyStats(firstPromptId, fromDate, toDate, tz),
+		),
+	);
 
-	results.push(await bench("getPromptWebQueriesForMapping",
-		() => pgRead.getPromptWebQueriesForMapping(firstPromptId, fromDate, toDate, tz)));
+	results.push(
+		await bench("getPromptWebQueriesForMapping", () =>
+			pgRead.getPromptWebQueriesForMapping(firstPromptId, fromDate, toDate, tz),
+		),
+	);
 
-	results.push(await bench("getPromptMentionSummary",
-		() => pgRead.getPromptMentionSummary(firstPromptId, fromDate, toDate, tz)));
+	results.push(
+		await bench("getPromptMentionSummary", () => pgRead.getPromptMentionSummary(firstPromptId, fromDate, toDate, tz)),
+	);
 
-	results.push(await bench("getPromptTopCompetitorMentions",
-		() => pgRead.getPromptTopCompetitorMentions(firstPromptId, fromDate, toDate, tz, 10)));
+	results.push(
+		await bench("getPromptTopCompetitorMentions", () =>
+			pgRead.getPromptTopCompetitorMentions(firstPromptId, fromDate, toDate, tz, 10),
+		),
+	);
 
-	results.push(await bench("getBatchChartData",
-		() => pgRead.getBatchChartData(brandId, promptIds, fromDate, toDate, tz)));
+	results.push(
+		await bench("getBatchChartData", () => pgRead.getBatchChartData(brandId, promptIds, fromDate, toDate, tz)),
+	);
 
-	results.push(await bench("getBrandEarliestRunDate",
-		() => pgRead.getBrandEarliestRunDate(brandId)));
+	results.push(await bench("getBrandEarliestRunDate", () => pgRead.getBrandEarliestRunDate(brandId)));
 
 	if (hasCitations) {
-		results.push(await bench("getCitationDomainStats",
-			() => pgRead.getCitationDomainStats(brandId, fromDate, toDate, tz, promptIds)));
+		results.push(
+			await bench("getCitationDomainStats", () =>
+				pgRead.getCitationDomainStats(brandId, fromDate, toDate, tz, promptIds),
+			),
+		);
 
-		results.push(await bench("getCitationUrlStats",
-			() => pgRead.getCitationUrlStats(brandId, fromDate, toDate, tz, promptIds)));
+		results.push(
+			await bench("getCitationUrlStats", () => pgRead.getCitationUrlStats(brandId, fromDate, toDate, tz, promptIds)),
+		);
 
-		results.push(await bench("getDailyCitationStats",
-			() => pgRead.getDailyCitationStats(brandId, fromDate, toDate, tz, promptIds)));
+		results.push(
+			await bench("getDailyCitationStats", () =>
+				pgRead.getDailyCitationStats(brandId, fromDate, toDate, tz, promptIds),
+			),
+		);
 
-		results.push(await bench("getPromptCitationUrlStats",
-			() => pgRead.getPromptCitationUrlStats(firstPromptId, fromDate, toDate, tz)));
+		results.push(
+			await bench("getPromptCitationUrlStats", () =>
+				pgRead.getPromptCitationUrlStats(firstPromptId, fromDate, toDate, tz),
+			),
+		);
 	}
 
 	return results;
@@ -147,7 +169,10 @@ async function main(): Promise<void> {
 		FROM prompt_runs WHERE brand_id IS NOT NULL
 		GROUP BY brand_id ORDER BY run_count DESC LIMIT ${NUM_BRANDS}
 	`);
-	if (topBrands.rows.length === 0) { console.error("No prompt_runs with brand_id."); process.exit(1); }
+	if (topBrands.rows.length === 0) {
+		console.error("No prompt_runs with brand_id.");
+		process.exit(1);
+	}
 
 	const citResult = await db.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM citations`);
 	const hasCitations = citResult.rows[0].count > 0;

@@ -3,11 +3,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useDocsSearch } from "fumadocs-core/search/client";
-import {
-	Dialog,
-	DialogContent,
-	DialogTitle,
-} from "@workspace/ui/components/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@workspace/ui/components/dialog";
 import { cn } from "@workspace/ui/lib/utils";
 import { Search, FileText, Hash, Text } from "lucide-react";
 import type { SortedResult } from "fumadocs-core/search";
@@ -23,13 +19,7 @@ function ResultIcon({ type }: { type: SortedResult["type"] }) {
 	}
 }
 
-export function SearchDialog({
-	open,
-	onOpenChange,
-}: {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-}) {
+export function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
 	const navigate = useNavigate();
 	const { search, setSearch, query } = useDocsSearch({
 		type: "fetch",
@@ -38,8 +28,7 @@ export function SearchDialog({
 	const inputRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
-	const results =
-		query.data && query.data !== "empty" ? query.data : [];
+	const results = query.data && query.data !== "empty" ? query.data : [];
 
 	useEffect(() => {
 		setActiveIndex(0);
@@ -79,9 +68,7 @@ export function SearchDialog({
 	);
 
 	useEffect(() => {
-		const active = listRef.current?.querySelector(
-			`[data-index="${activeIndex}"]`,
-		);
+		const active = listRef.current?.querySelector(`[data-index="${activeIndex}"]`);
 		active?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex]);
 
@@ -107,14 +94,9 @@ export function SearchDialog({
 						ESC
 					</kbd>
 				</div>
-				<div
-					ref={listRef}
-					className="max-h-80 overflow-y-auto"
-				>
+				<div ref={listRef} className="max-h-80 overflow-y-auto">
 					{query.isLoading && search.length > 0 && (
-						<div className="px-4 py-8 text-center text-sm text-muted-foreground">
-							Searching...
-						</div>
+						<div className="px-4 py-8 text-center text-sm text-muted-foreground">Searching...</div>
 					)}
 					{!query.isLoading && search.length > 0 && results.length === 0 && (
 						<div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -131,9 +113,7 @@ export function SearchDialog({
 										onClick={() => handleSelect(result.url)}
 										className={cn(
 											"flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors",
-											index === activeIndex
-												? "bg-accent text-accent-foreground"
-												: "hover:bg-accent/50",
+											index === activeIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
 										)}
 									>
 										<ResultIcon type={result.type} />
@@ -144,12 +124,11 @@ export function SearchDialog({
 													__html: String(result.content),
 												}}
 											/>
-											{result.breadcrumbs &&
-												result.breadcrumbs.length > 0 && (
-													<span className="block truncate text-xs text-muted-foreground">
-														{result.breadcrumbs.join(" > ")}
-													</span>
-												)}
+											{result.breadcrumbs && result.breadcrumbs.length > 0 && (
+												<span className="block truncate text-xs text-muted-foreground">
+													{result.breadcrumbs.join(" > ")}
+												</span>
+											)}
 										</div>
 									</button>
 								</li>
@@ -157,20 +136,16 @@ export function SearchDialog({
 						</ul>
 					)}
 					{search.length === 0 && (
-						<div className="px-4 py-8 text-center text-sm text-muted-foreground">
-							Type to search documentation
-						</div>
+						<div className="px-4 py-8 text-center text-sm text-muted-foreground">Type to search documentation</div>
 					)}
 				</div>
 				<div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
 					<span>
 						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↑</kbd>{" "}
-						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↓</kbd>{" "}
-						to navigate
+						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↓</kbd> to navigate
 					</span>
 					<span>
-						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↵</kbd>{" "}
-						to select
+						<kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">↵</kbd> to select
 					</span>
 				</div>
 			</DialogContent>

@@ -1,54 +1,54 @@
 {
-  "name": "@workspace/lib",
-  "version": "0.2.17",
-  "private": true,
-  "license": "MIT",
-  "scripts": {
-    "test": "vitest run",
-    "compare:onboarding": "tsx scripts/compare-onboarding.ts",
-    "generate:auth-schema": "bash scripts/generate-auth-schema.sh"
-  },
-  "exports": {
-    "./db/db": "./src/db/db.ts",
-    "./db/schema": "./src/db/schema.ts",
-    "./db/auth-sync": "./src/db/auth-sync.ts",
-    "./db/provisioning": "./src/db/provisioning.ts",
-    "./auth/server": "./src/auth/server.ts",
-    "./auth/client": "./src/auth/client.ts",
-    "./auth/permissions": "./src/auth/permissions.ts",
-    "./constants": "./src/constants.ts",
-    "./overdue": "./src/overdue.ts",
-    "./text-extraction": "./src/text-extraction.ts",
-    "./dataforseo": "./src/dataforseo.ts",
-    "./onboarding": "./src/onboarding/index.ts",
-    "./tag-utils": "./src/tag-utils.ts",
-    "./website-excerpt": "./src/website-excerpt.ts",
-    "./report-metrics": "./src/report-metrics.ts",
-    "./providers": "./src/providers/index.ts",
-    "./providers/models": "./src/providers/models.ts",
-    "./providers/types": "./src/providers/types.ts"
-  },
-  "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.16",
-    "@ai-sdk/openai": "^4.0.16",
-    "@anthropic-ai/sdk": "^0.112.3",
-    "@better-auth/sso": "^1.6.23",
-    "@brightdata/sdk": "^1.1.0",
-    "@mozilla/readability": "^0.6.0",
-    "@workspace/config": "workspace:*",
-    "ai": "^7.0.31",
-    "better-auth": "^1.6.23",
-    "dataforseo-client": "^2.0.25",
-    "drizzle-orm": "^0.45.2",
-    "linkedom": "^0.18.13",
-    "olostep": "^1.2.2",
-    "pg": "^8.22.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
-  }
+	"name": "@workspace/lib",
+	"version": "0.2.17",
+	"private": true,
+	"license": "MIT",
+	"scripts": {
+		"test": "vitest run",
+		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
+		"generate:auth-schema": "bash scripts/generate-auth-schema.sh"
+	},
+	"exports": {
+		"./db/db": "./src/db/db.ts",
+		"./db/schema": "./src/db/schema.ts",
+		"./db/auth-sync": "./src/db/auth-sync.ts",
+		"./db/provisioning": "./src/db/provisioning.ts",
+		"./auth/server": "./src/auth/server.ts",
+		"./auth/client": "./src/auth/client.ts",
+		"./auth/permissions": "./src/auth/permissions.ts",
+		"./constants": "./src/constants.ts",
+		"./overdue": "./src/overdue.ts",
+		"./text-extraction": "./src/text-extraction.ts",
+		"./dataforseo": "./src/dataforseo.ts",
+		"./onboarding": "./src/onboarding/index.ts",
+		"./tag-utils": "./src/tag-utils.ts",
+		"./website-excerpt": "./src/website-excerpt.ts",
+		"./report-metrics": "./src/report-metrics.ts",
+		"./providers": "./src/providers/index.ts",
+		"./providers/models": "./src/providers/models.ts",
+		"./providers/types": "./src/providers/types.ts"
+	},
+	"dependencies": {
+		"@ai-sdk/anthropic": "^4.0.16",
+		"@ai-sdk/openai": "^4.0.16",
+		"@anthropic-ai/sdk": "^0.112.3",
+		"@better-auth/sso": "^1.6.23",
+		"@brightdata/sdk": "^1.1.0",
+		"@mozilla/readability": "^0.6.0",
+		"@workspace/config": "workspace:*",
+		"ai": "^7.0.31",
+		"better-auth": "^1.6.23",
+		"dataforseo-client": "^2.0.25",
+		"drizzle-orm": "^0.45.2",
+		"linkedom": "^0.18.13",
+		"olostep": "^1.2.2",
+		"pg": "^8.22.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@types/pg": "^8.20.0",
+		"drizzle-kit": "^0.31.10",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
 }
