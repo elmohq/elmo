@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
@@ -20,7 +21,7 @@ const DEFAULT_RESEARCH_MODEL = "openai/gpt-5-mini";
 
 function openrouterHeaders(): Record<string, string> {
 	return {
-		Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+		Authorization: `Bearer ${getCredential("OPENROUTER_API_KEY")}`,
 		"Content-Type": "application/json",
 		"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 		"X-Title": "Elmo AEO",
@@ -75,7 +76,7 @@ export const openrouter: Provider = {
 	name: "OpenRouter",
 
 	isConfigured() {
-		return !!process.env.OPENROUTER_API_KEY;
+		return !!getCredential("OPENROUTER_API_KEY");
 	},
 
 	async runStructuredResearch<T>({
@@ -150,7 +151,7 @@ export const openrouter: Provider = {
 		const res = await fetch(OPENROUTER_API_URL, {
 			method: "POST",
 			headers: {
-				Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+				Authorization: `Bearer ${getCredential("OPENROUTER_API_KEY")}`,
 				"Content-Type": "application/json",
 				"HTTP-Referer": process.env.APP_URL ?? "https://github.com/elmohq/elmo",
 				"X-Title": "Elmo AEO",

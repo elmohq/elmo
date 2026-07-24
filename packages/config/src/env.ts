@@ -1,4 +1,4 @@
-import { ENV_REGISTRY } from "./env-registry";
+import { ENV_REGISTRY, PROVIDER_CREDENTIAL_KEYS } from "./env-registry";
 import { parseScrapeTargets } from "./scrape-targets";
 import type { DeploymentMode, EnvRequirement } from "./types";
 
@@ -68,15 +68,13 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 
 	const requirements: EnvRequirement[] = [];
 	for (const provider of providers) {
-		const keys = ENV_REGISTRY.filter(
-			(spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider === provider,
-		).map((spec) => spec.name);
-		if (keys.length === 0) continue;
+		const keys = PROVIDER_CREDENTIAL_KEYS.get(provider);
+		if (!keys || keys.length === 0) continue;
 		requirements.push({
 			id: `PROVIDER_${provider.toUpperCase().replace(/-/g, "_")}`,
 			label: keys.join(" + "),
 			description: `Required by SCRAPE_TARGETS provider "${provider}".`,
-			isSatisfied: requireAll(keys),
+			isSatisfied: requireAll([...keys]),
 		});
 	}
 
@@ -87,7 +85,9 @@ export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 	local: [...buildStaticRequirements("local"), ...buildProviderKeyRequirements()],
 	demo: [...buildStaticRequirements("demo"), ...buildProviderKeyRequirements()],
 	whitelabel: [...buildStaticRequirements("whitelabel"), ...buildProviderKeyRequirements()],
-	cloud: [...buildStaticRequirements("cloud"), ...buildProviderKeyRequirements()],
+	// Cloud provider credentials are loaded from Infisical before providers are
+	// validated, so their legacy env vars are not startup requirements.
+	cloud: buildStaticRequirements("cloud"),
 };
 
 /**
