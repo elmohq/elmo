@@ -1,6 +1,6 @@
 # Daily AEO blog agent
 
-The daily workflow discovers current AEO questions, asks Claude Opus 5 to choose between creating one post, substantively refreshing one existing post, or making no change, validates the result, and opens a draft pull request. It never publishes directly.
+The daily workflow reviews signals from the previous seven days, asks Claude Opus 5 to choose between creating one post, substantively refreshing one existing post, or making no change, validates the result, and opens a draft pull request. It never publishes directly.
 
 ## Source strategy
 
@@ -40,7 +40,7 @@ To update the skills, review the upstream changes, update the commit SHA in `dai
 
 ## New posts and content refreshes
 
-Claude may add one new MDX file, modify one existing MDX file, or make no changes. It cannot do more than one of those in a run. The workflow prefers a refresh when new evidence directly serves an existing post’s search intent, reducing overlapping coverage.
+Claude may add one new MDX file, modify one existing MDX file, or make no changes. It cannot do more than one of those in a run. Before choosing, it reviews the complete blog inventory and fully reads posts with potentially overlapping search intent. The workflow prefers a refresh when new evidence directly serves an existing post, reducing duplicate coverage.
 
 A refresh preserves the post’s filename, original `date`, and `author`, then sets `updated` to the run date. The article page displays both the updated and published dates, `BlogPosting` JSON-LD exposes `dateModified`, and the sitemap uses the update as its genuine `lastmod`. RSS publication dates and blog ordering continue to use the original publication date.
 
