@@ -118,12 +118,14 @@ export function blogPostingJsonLd({
 	description,
 	path,
 	datePublished,
+	dateModified,
 	authorName,
 }: {
 	title: string;
 	description: string;
 	path: string;
 	datePublished: string;
+	dateModified?: string;
 	/** A real person's name. Omit for AI-generated posts — the org is credited. */
 	authorName?: string;
 }) {
@@ -133,6 +135,7 @@ export function blogPostingJsonLd({
 		description,
 		url: canonicalUrl(path),
 		datePublished,
+		...(dateModified ? { dateModified } : {}),
 		author: authorName
 			? { "@type": "Person", name: authorName }
 			: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
