@@ -11,21 +11,35 @@ async function getCredentialSource(env: Record<string, string | undefined>): Pro
 	return createInfisicalCredentialLoader({ env });
 }
 
-/** Load provider credentials, then keep them fresh on an interval. Rejects if the
- *  first load fails, so a process that cannot run a job without credentials —
- *  the worker — dies at boot rather than picking up work it will fail. */
+/** Load provider credentials, then keep them fresh on an interval. The interval
+ *  is scheduled either way, so a source that is briefly unreachable recovers on
+ *  its own rather than leaving the process permanently stale.
+ *
+ *  Managed cloud rethrows a failed first load: it has no environment fallback, so
+ *  a worker that started anyway would only pick up jobs it cannot run. Every
+ *  other mode logs and continues — self-hosted deployments still have their
+ *  `.env` credentials, and on an upgrade the database may not be migrated yet. */
 export async function startCredentialRefresh(
 	env: Record<string, string | undefined> = process.env,
 ): Promise<NodeJS.Timeout> {
 	const source = await getCredentialSource(env);
 	const refresh = () => refreshCredentialOverlay(source);
-	await refresh();
 	const timer = setInterval(() => {
 		refresh().catch((error) => {
 			console.error("[secrets] credential refresh failed — serving the previous values:", error);
 		});
 	}, CREDENTIAL_REFRESH_INTERVAL_MS);
 	timer.unref();
+
+	try {
+		await refresh();
+	} catch (error) {
+		if (getDeploymentModeFromEnv(env) === "cloud") {
+			clearInterval(timer);
+			throw error;
+		}
+		console.error("[secrets] could not load stored credentials — using environment credentials for now:", error);
+	}
 	return timer;
 }
 
