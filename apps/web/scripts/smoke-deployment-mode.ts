@@ -83,6 +83,10 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		RESEND_FROM_EMAIL: "Smoke <smoke@example.com>",
 		GOOGLE_CLIENT_ID: "smoke-google-client-id",
 		GOOGLE_CLIENT_SECRET: "smoke-google-client-secret",
+		INFISICAL_CLIENT_ID: "smoke-client-id",
+		INFISICAL_CLIENT_SECRET: "smoke-client-secret",
+		INFISICAL_PROJECT_ID: "smoke-project-id",
+		INFISICAL_ENVIRONMENT: "prod",
 	},
 };
 

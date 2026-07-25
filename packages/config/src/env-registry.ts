@@ -208,32 +208,32 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		requiredBy: "optional",
 		description: "Base64-encoded 32-byte key enabling encrypted provider credentials in self-hosted deployments.",
 	},
-	// Only the managed-cloud worker talks to Infisical. The cloud web app reads
-	// provider credentials from its environment, which Infisical's Vercel secret
-	// sync populates at deploy time — so these are not web startup requirements,
-	// and createInfisicalCredentialLoader fails the worker fast if any is absent.
+	// Only the worker reads these at runtime — the cloud web app gets provider
+	// credentials from the environment Infisical's Vercel sync populates. They are
+	// still required across cloud so a deployment cannot be provisioned with a
+	// worker that has no way to reach Infisical.
 	{
 		name: "INFISICAL_CLIENT_ID",
 		scope: "server",
-		requiredBy: "optional",
+		requiredBy: ["cloud"],
 		description: "Infisical machine identity client ID used by the managed cloud worker.",
 	},
 	{
 		name: "INFISICAL_CLIENT_SECRET",
 		scope: "server",
-		requiredBy: "optional",
+		requiredBy: ["cloud"],
 		description: "Infisical machine identity client secret used by the managed cloud worker.",
 	},
 	{
 		name: "INFISICAL_PROJECT_ID",
 		scope: "server",
-		requiredBy: "optional",
+		requiredBy: ["cloud"],
 		description: "Infisical project containing managed cloud provider credentials.",
 	},
 	{
 		name: "INFISICAL_ENVIRONMENT",
 		scope: "server",
-		requiredBy: "optional",
+		requiredBy: ["cloud"],
 		description: "Infisical environment slug containing managed cloud provider credentials.",
 	},
 	{

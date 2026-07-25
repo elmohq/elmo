@@ -12,17 +12,19 @@ The auth and email features in this package need:
 | `RESEND_FROM_EMAIL` | Sender address, e.g. `Elmo <notifications@updates.example.com>` |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID for social sign-in |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-
-The worker additionally needs the Infisical variables below. The web app does not — see the Infisical section for why.
-
-| Variable | Purpose |
-| --- | --- |
 | `INFISICAL_CLIENT_ID` | Infisical machine identity client ID |
 | `INFISICAL_CLIENT_SECRET` | Infisical machine identity client secret |
 | `INFISICAL_PROJECT_ID` | Project containing provider credentials |
 | `INFISICAL_ENVIRONMENT` | Environment slug containing provider credentials |
-| `INFISICAL_SECRET_PATH` | Optional credentials path; defaults to `/` |
-| `INFISICAL_SITE_URL` | Optional Infisical site URL; defaults to the US cloud |
+
+Only the worker reads the Infisical variables at runtime — see the Infisical section — but they are required across cloud so a deployment cannot go out with a worker that has no way to reach Infisical.
+
+These two are optional everywhere:
+
+| Variable | Purpose |
+| --- | --- |
+| `INFISICAL_SECRET_PATH` | Credentials path; defaults to `/` |
+| `INFISICAL_SITE_URL` | Infisical site URL; defaults to the US cloud |
 
 The canonical list of every cloud-required variable (Stripe, database, etc.) lives in `packages/config/src/env-registry.ts`; env validation fails cloud startup when any of them is missing.
 

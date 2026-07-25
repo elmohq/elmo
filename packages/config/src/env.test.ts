@@ -10,6 +10,10 @@ const CLOUD_ONLY_VARS = [
 	"GOOGLE_CLIENT_ID",
 	"GOOGLE_CLIENT_SECRET",
 	"RESEND_FROM_EMAIL",
+	"INFISICAL_CLIENT_ID",
+	"INFISICAL_CLIENT_SECRET",
+	"INFISICAL_PROJECT_ID",
+	"INFISICAL_ENVIRONMENT",
 ];
 // Infra vars every validated mode needs — cloud now among them.
 const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "SCRAPE_TARGETS", "DEPLOYMENT_MODE"];
@@ -52,6 +56,10 @@ describe("cloud env requirements", () => {
 			GOOGLE_CLIENT_ID: "test-google-client-id",
 			GOOGLE_CLIENT_SECRET: "test-google-client-secret",
 			RESEND_FROM_EMAIL: "Elmo <notifications@example.com>",
+			INFISICAL_CLIENT_ID: "client-id",
+			INFISICAL_CLIENT_SECRET: "client-secret",
+			INFISICAL_PROJECT_ID: "project-id",
+			INFISICAL_ENVIRONMENT: "prod",
 		};
 		const { missing } = validateEnvRequirements(cloudReqs, env);
 		const missingIds = new Set(missing.map((entry) => entry.id));
