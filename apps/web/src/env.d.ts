@@ -59,8 +59,6 @@ declare global {
 			readonly INFISICAL_CLIENT_SECRET?: string;
 			readonly INFISICAL_PROJECT_ID?: string;
 			readonly INFISICAL_ENVIRONMENT?: string;
-			readonly INFISICAL_SECRET_PATH?: string;
-			readonly INFISICAL_SITE_URL?: string;
 			readonly DATAFORSEO_LOGIN: string;
 			readonly DATAFORSEO_PASSWORD: string;
 			readonly BETTER_AUTH_SECRET?: string;

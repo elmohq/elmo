@@ -6,8 +6,6 @@ const ENV = {
 	INFISICAL_CLIENT_SECRET: "client-secret",
 	INFISICAL_PROJECT_ID: "project-id",
 	INFISICAL_ENVIRONMENT: "prod",
-	INFISICAL_SECRET_PATH: "/elmo/providers",
-	INFISICAL_SITE_URL: "https://eu.infisical.com",
 };
 
 function fakeClient(secrets: Array<{ secretKey: string; secretValue: string }>) {
@@ -35,17 +33,17 @@ describe("createInfisicalCredentialLoader", () => {
 
 		const credentials = await load();
 
-		expect(clientFactory).toHaveBeenCalledWith("https://eu.infisical.com");
 		expect(credentials).toEqual(
 			new Map([
 				["OPENAI_API_KEY", "sk-cloud"],
 				["OXYLABS_USERNAME", "user"],
 			]),
 		);
+		// Root of the environment, and not recursive: the whole folder contract.
 		expect(listSecretsWithImports).toHaveBeenCalledWith({
 			environment: "prod",
 			projectId: "project-id",
-			secretPath: "/elmo/providers",
+			secretPath: "/",
 			expandSecretReferences: true,
 			viewSecretValue: true,
 		});

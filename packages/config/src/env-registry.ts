@@ -237,18 +237,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Infisical environment slug containing managed cloud provider credentials.",
 	},
 	{
-		name: "INFISICAL_SECRET_PATH",
-		scope: "server",
-		requiredBy: "optional",
-		description: "Infisical path containing provider credentials. Defaults to the project root.",
-	},
-	{
-		name: "INFISICAL_SITE_URL",
-		scope: "server",
-		requiredBy: "optional",
-		description: "Infisical API site URL. Defaults to https://app.infisical.com.",
-	},
-	{
 		name: "DEPLOYMENT_MODE",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,

@@ -6,8 +6,11 @@ const CLIENT_ID_ENV = "INFISICAL_CLIENT_ID";
 const CLIENT_SECRET_ENV = "INFISICAL_CLIENT_SECRET";
 const PROJECT_ID_ENV = "INFISICAL_PROJECT_ID";
 const ENVIRONMENT_ENV = "INFISICAL_ENVIRONMENT";
-const SECRET_PATH_ENV = "INFISICAL_SECRET_PATH";
-const SITE_URL_ENV = "INFISICAL_SITE_URL";
+
+/** Provider credentials live at the root of the configured environment. Combined
+ *  with a non-recursive read, that is the entire folder contract: one flat set of
+ *  canonically named secrets, and nothing else in the project is even fetched. */
+const SECRET_PATH = "/";
 
 interface InfisicalClient {
 	auth(): {
@@ -28,7 +31,7 @@ interface InfisicalClient {
 
 export interface InfisicalCredentialLoaderOptions {
 	env?: Record<string, string | undefined>;
-	clientFactory?: (siteUrl?: string) => InfisicalClient;
+	clientFactory?: () => InfisicalClient;
 }
 
 function required(env: Record<string, string | undefined>, name: string): string {
@@ -45,13 +48,11 @@ export function createInfisicalCredentialLoader(options: InfisicalCredentialLoad
 	const clientSecret = required(env, CLIENT_SECRET_ENV);
 	const projectId = required(env, PROJECT_ID_ENV);
 	const environment = required(env, ENVIRONMENT_ENV);
-	const secretPath = env[SECRET_PATH_ENV]?.trim() || "/";
-	const siteUrl = env[SITE_URL_ENV]?.trim() || undefined;
-	const clientFactory = options.clientFactory ?? ((url) => new InfisicalSDK(url ? { siteUrl: url } : undefined));
+	const clientFactory = options.clientFactory ?? (() => new InfisicalSDK());
 
 	let clientPromise: Promise<InfisicalClient> | null = null;
 	const authenticate = () => {
-		clientPromise ??= clientFactory(siteUrl).auth().universalAuth.login({ clientId, clientSecret });
+		clientPromise ??= clientFactory().auth().universalAuth.login({ clientId, clientSecret });
 		return clientPromise;
 	};
 	const list = async () => {
@@ -62,7 +63,7 @@ export function createInfisicalCredentialLoader(options: InfisicalCredentialLoad
 		return client.secrets().listSecretsWithImports({
 			environment,
 			projectId,
-			secretPath,
+			secretPath: SECRET_PATH,
 			expandSecretReferences: true,
 			viewSecretValue: true,
 		});
@@ -86,12 +87,12 @@ export function createInfisicalCredentialLoader(options: InfisicalCredentialLoad
 			}
 		}
 		// Cloud has no environment fallback, so "the call succeeded and returned
-		// nothing" is an outage — a revoked read grant, or a path/environment slug
-		// that no longer resolves. Throwing keeps the last good overlay in place
-		// instead of quietly unconfiguring every provider.
+		// nothing" is an outage — a revoked read grant, or an environment slug that
+		// no longer resolves. Throwing keeps the last good overlay in place instead
+		// of quietly unconfiguring every provider.
 		if (credentials.size === 0) {
 			throw new Error(
-				`Infisical returned no provider credentials from ${secretPath} in "${environment}" — check the machine identity's read access and ${SECRET_PATH_ENV}`,
+				`Infisical returned no provider credentials from ${SECRET_PATH} in "${environment}" — check the machine identity's read access and that ${ENVIRONMENT_ENV} is correct`,
 			);
 		}
 		return credentials;
