@@ -3,7 +3,6 @@ CREATE TABLE "provider_credentials" (
 	"organization_id" text,
 	"provider" text NOT NULL,
 	"encrypted_data" text NOT NULL,
-	"hint" text,
 	"last_verified_at" timestamp with time zone,
 	"last_verify_error" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,

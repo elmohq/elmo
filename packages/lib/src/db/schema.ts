@@ -247,7 +247,6 @@ export const providerCredentials = pgTable(
 		organizationId: text("organization_id").references(() => organization.id, { onDelete: "cascade" }),
 		provider: text("provider").notNull(),
 		encryptedData: text("encrypted_data").notNull(),
-		hint: text("hint"),
 		lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
 		lastVerifyError: text("last_verify_error"),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

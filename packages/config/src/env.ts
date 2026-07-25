@@ -85,8 +85,10 @@ export const ENV_REQUIREMENTS: Record<DeploymentMode, EnvRequirement[]> = {
 	local: [...buildStaticRequirements("local"), ...buildProviderKeyRequirements()],
 	demo: [...buildStaticRequirements("demo"), ...buildProviderKeyRequirements()],
 	whitelabel: [...buildStaticRequirements("whitelabel"), ...buildProviderKeyRequirements()],
-	// Cloud provider credentials are loaded from Infisical before providers are
-	// validated, so their legacy env vars are not startup requirements.
+	// Managed cloud provisions provider credentials out of band — Infisical's
+	// Vercel secret sync for the web app, the Infisical SDK for the worker — so a
+	// missing one is an operator alert, not a reason to replace the whole app with
+	// the setup screen the self-hosted modes rely on.
 	cloud: buildStaticRequirements("cloud"),
 };
 

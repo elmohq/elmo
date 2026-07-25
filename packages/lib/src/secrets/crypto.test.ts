@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { CompactEncrypt, decodeProtectedHeader } from "jose";
+import { decodeProtectedHeader } from "jose";
 import { describe, expect, it } from "vitest";
 import { decryptSecret, EncryptionKeyError, encryptSecret, getEncryptionKey, SecretDecryptError } from "./crypto";
 
@@ -16,13 +16,7 @@ describe("encryptSecret / decryptSecret", () => {
 	it("uses the standard direct A256GCM JWE format with authenticated metadata", async () => {
 		const payload = await encryptSecret("x", { key: KEY, aad: AAD });
 		expect(payload.split(".")).toHaveLength(5);
-		expect(decodeProtectedHeader(payload)).toEqual({
-			alg: "dir",
-			enc: "A256GCM",
-			typ: "elmo-provider-credentials",
-			v: 1,
-			ctx: AAD,
-		});
+		expect(decodeProtectedHeader(payload)).toEqual({ alg: "dir", enc: "A256GCM", ctx: AAD });
 	});
 
 	it("uses a fresh IV every call (no GCM nonce reuse)", async () => {
@@ -70,17 +64,14 @@ describe("encryptSecret / decryptSecret", () => {
 			await expect(decryptSecret(segments.join("."), { key: KEY, aad: AAD })).rejects.toThrow(SecretDecryptError);
 		});
 
-		it("unknown version", async () => {
-			const payload = await new CompactEncrypt(new TextEncoder().encode("top-secret-value"))
-				.setProtectedHeader({
-					alg: "dir",
-					enc: "A256GCM",
-					typ: "elmo-provider-credentials",
-					v: 2,
-					ctx: AAD,
-				})
-				.encrypt(KEY);
-			await expect(decryptSecret(payload, { key: KEY, aad: AAD })).rejects.toThrow(SecretDecryptError);
+		// Someone with DB write access moves this row to another provider and
+		// relabels the header to match. The header is the AEAD's additional data,
+		// so rewriting it breaks the tag rather than re-homing the credential.
+		it("ctx rewritten to the provider it was moved to", async () => {
+			const target = "provider-credentials:anthropic-api";
+			const segments = (await fresh()).split(".");
+			segments[0] = Buffer.from(JSON.stringify({ alg: "dir", enc: "A256GCM", ctx: target })).toString("base64url");
+			await expect(decryptSecret(segments.join("."), { key: KEY, aad: target })).rejects.toThrow(SecretDecryptError);
 		});
 
 		it("malformed payloads", async () => {

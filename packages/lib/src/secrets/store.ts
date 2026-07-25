@@ -47,6 +47,7 @@ function aadForProvider(provider: string): string {
  *  load (the source throws) keeps the last good values. */
 export async function refreshCredentialOverlay(source: CredentialSource): Promise<void> {
 	const managed = await source();
+	const previous = new Set(overlay.keys());
 	overlay.clear();
 	for (const [provider, keys] of PROVIDER_CREDENTIAL_KEYS) {
 		const found = keys
@@ -55,7 +56,17 @@ export async function refreshCredentialOverlay(source: CredentialSource): Promis
 		if (found.length === keys.length) {
 			for (const [name, value] of found) overlay.set(name, value);
 		} else if (found.length > 0) {
-			console.warn(`[secrets] ignoring partial managed credential for "${provider}"`);
+			const missing = keys.filter((name) => !found.some(([found]) => found === name));
+			console.error(
+				`[secrets] managed credential for "${provider}" is missing ${missing.join(", ")} — dropping the whole bundle so it cannot pair with an unrelated environment value`,
+			);
+		}
+	}
+	// A credential that was managed a minute ago and is not any more means the
+	// source lost it, not that the operator meant to fall back to the environment.
+	for (const name of previous) {
+		if (!overlay.has(name)) {
+			console.error(`[secrets] managed credential ${name} is no longer provided by its source`);
 		}
 	}
 }
@@ -72,7 +83,7 @@ export const instanceCredentialSource: CredentialSource = async () => {
 		key = getEncryptionKey();
 	} catch (e) {
 		if (!(e instanceof EncryptionKeyError)) throw e;
-		console.warn(`[secrets] ${e.message} — encrypted credentials skipped, env credentials unaffected`);
+		console.error(`[secrets] ${e.message} — every stored credential is unreadable until this is corrected`);
 	}
 	if (!key) return managed;
 
@@ -88,7 +99,11 @@ export const instanceCredentialSource: CredentialSource = async () => {
 		try {
 			record = JSON.parse(await decryptSecret(row.encryptedData, { key, aad: aadForProvider(row.provider) }));
 		} catch {
-			console.warn(`[secrets] ignoring undecryptable credential for "${row.provider}"`);
+			// There is no key id in the payload, so this cannot distinguish a
+			// rotated key from a corrupted row — the message has to cover both.
+			console.error(
+				`[secrets] stored credential for "${row.provider}" cannot be decrypted with the current ${ENCRYPTION_KEY_ENV} — re-enter it, or restore the key it was saved under`,
+			);
 			continue;
 		}
 		if (typeof record !== "object" || record === null) continue;
@@ -101,13 +116,12 @@ export const instanceCredentialSource: CredentialSource = async () => {
 	return managed;
 };
 
-/** Encrypt a provider's full credential set for the write path. `hint` is the
- *  last 4 chars of the longest value — enough to recognise which secret is stored
- *  without revealing it. Throws when no encryption key is set. */
+/** Encrypt a provider's full credential set for the write path. Throws when no
+ *  encryption key is set. */
 export async function encryptProviderCredentials(
 	providerId: string,
 	record: Record<string, string>,
-): Promise<{ encryptedData: EncryptedPayload; hint: string }> {
+): Promise<EncryptedPayload> {
 	const keys = getCredentialKeysForProvider(providerId);
 	if (keys.length === 0) {
 		throw new Error(`Provider "${providerId}" has no storable credentials`);
@@ -123,14 +137,5 @@ export async function encryptProviderCredentials(
 	if (!key) {
 		throw new EncryptionKeyError(`${ENCRYPTION_KEY_ENV} is not set — cannot store encrypted credentials`);
 	}
-	const encryptedData = await encryptSecret(JSON.stringify(record), { key, aad: aadForProvider(providerId) });
-	return { encryptedData, hint: hintFor(record) };
-}
-
-function hintFor(record: Record<string, string>): string {
-	let longest = "";
-	for (const value of Object.values(record)) {
-		if (value.length > longest.length) longest = value;
-	}
-	return longest.slice(-4);
+	return encryptSecret(JSON.stringify(record), { key, aad: aadForProvider(providerId) });
 }

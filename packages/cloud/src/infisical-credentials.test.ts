@@ -46,10 +46,19 @@ describe("createInfisicalCredentialLoader", () => {
 			environment: "prod",
 			projectId: "project-id",
 			secretPath: "/elmo/providers",
-			recursive: true,
 			expandSecretReferences: true,
 			viewSecretValue: true,
 		});
+	});
+
+	// Cloud has no environment fallback, so an empty read has to fail loudly —
+	// otherwise a revoked grant or a stale path silently unconfigures every
+	// provider and the fleet stops scraping with no error anywhere.
+	it("throws rather than reporting zero credentials", async () => {
+		const { client } = fakeClient([{ secretKey: "NOT_AN_ELMO_CREDENTIAL", secretValue: "ignored" }]);
+		const load = createInfisicalCredentialLoader({ env: ENV, clientFactory: () => client });
+
+		await expect(load()).rejects.toThrow(/no provider credentials/);
 	});
 
 	it("reuses the authenticated client across successful refreshes", async () => {

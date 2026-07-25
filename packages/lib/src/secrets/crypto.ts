@@ -1,16 +1,14 @@
 import { compactDecrypt, CompactEncrypt } from "jose";
 
 const KEY_BYTES = 32; // 256-bit
-const CURRENT_VERSION = 1;
-const JWE_TYPE = "elmo-provider-credentials";
 
 export const ENCRYPTION_KEY_ENV = "ELMO_ENCRYPTION_KEY";
 
 /** Compact JWE using direct symmetric encryption (`dir`) and AES-256-GCM. */
 export type EncryptedPayload = string;
 
-/** Thrown for ANY decryption failure — bad tag, wrong AAD, wrong key,
- *  malformed payload, unknown version. Never leaks plaintext or key material. */
+/** Thrown for ANY decryption failure — bad tag, wrong context, wrong key,
+ *  malformed payload. Never leaks plaintext or key material. */
 export class SecretDecryptError extends Error {
 	constructor(message: string, options?: { cause?: unknown }) {
 		super(message, options);
@@ -31,13 +29,7 @@ export async function encryptSecret(
 	opts: { key: Uint8Array; aad: string },
 ): Promise<EncryptedPayload> {
 	return new CompactEncrypt(new TextEncoder().encode(plaintext))
-		.setProtectedHeader({
-			alg: "dir",
-			enc: "A256GCM",
-			typ: JWE_TYPE,
-			v: CURRENT_VERSION,
-			ctx: opts.aad,
-		})
+		.setProtectedHeader({ alg: "dir", enc: "A256GCM", ctx: opts.aad })
 		.encrypt(opts.key);
 }
 
@@ -48,10 +40,11 @@ export async function decryptSecret(payload: unknown, opts: { key: Uint8Array; a
 			keyManagementAlgorithms: ["dir"],
 			contentEncryptionAlgorithms: ["A256GCM"],
 		});
-		if (protectedHeader.typ !== JWE_TYPE) throw new Error("unexpected payload type");
-		if (protectedHeader.v !== CURRENT_VERSION) {
-			throw new Error(`unsupported payload version: ${String(protectedHeader.v)}`);
-		}
+		// Both halves are needed. The protected header is the AEAD's additional
+		// data, so editing `ctx` breaks the tag — but jose authenticates the
+		// header the payload carries, not the one the caller expected. Comparing
+		// them is what stops a whole ciphertext being moved to another provider's
+		// row by someone with DB write access.
 		if (protectedHeader.ctx !== opts.aad) throw new Error("payload context mismatch");
 		return new TextDecoder("utf-8", { fatal: true }).decode(plaintext);
 	} catch (cause) {

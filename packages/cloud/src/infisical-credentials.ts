@@ -20,7 +20,6 @@ interface InfisicalClient {
 			environment: string;
 			projectId: string;
 			secretPath: string;
-			recursive: boolean;
 			expandSecretReferences: boolean;
 			viewSecretValue: boolean;
 		}): Promise<Array<{ secretKey: string; secretValue: string }>>;
@@ -57,11 +56,13 @@ export function createInfisicalCredentialLoader(options: InfisicalCredentialLoad
 	};
 	const list = async () => {
 		const client = await authenticate();
+		// Non-recursive: the identity reads exactly one folder, so unrelated
+		// project secrets never reach this process and two folders cannot both
+		// define OPENAI_API_KEY with no defined winner.
 		return client.secrets().listSecretsWithImports({
 			environment,
 			projectId,
 			secretPath,
-			recursive: true,
 			expandSecretReferences: true,
 			viewSecretValue: true,
 		});
@@ -83,6 +84,15 @@ export function createInfisicalCredentialLoader(options: InfisicalCredentialLoad
 			if (CREDENTIAL_ENV_NAMES.has(secret.secretKey) && secret.secretValue.trim().length > 0) {
 				credentials.set(secret.secretKey, secret.secretValue);
 			}
+		}
+		// Cloud has no environment fallback, so "the call succeeded and returned
+		// nothing" is an outage — a revoked read grant, or a path/environment slug
+		// that no longer resolves. Throwing keeps the last good overlay in place
+		// instead of quietly unconfiguring every provider.
+		if (credentials.size === 0) {
+			throw new Error(
+				`Infisical returned no provider credentials from ${secretPath} in "${environment}" — check the machine identity's read access and ${SECRET_PATH_ENV}`,
+			);
 		}
 		return credentials;
 	};

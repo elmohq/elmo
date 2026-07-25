@@ -34,6 +34,7 @@ beforeEach(() => {
 	dbState.rows = [];
 	clearCredentialOverlay();
 	vi.spyOn(console, "warn").mockImplementation(() => {});
+	vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -209,16 +210,42 @@ describe("refreshCredentialOverlay", () => {
 		).rejects.toThrow("Infisical unavailable");
 		expect(getCredential("OPENAI_API_KEY")).toBe("current");
 	});
+
+	it("reports a managed credential that its source stopped providing", async () => {
+		await refreshCredentialOverlay(async () => new Map([["OPENAI_API_KEY", "managed"]]));
+		await refreshCredentialOverlay(async () => new Map());
+
+		expect(console.error).toHaveBeenCalledWith(expect.stringContaining("OPENAI_API_KEY is no longer provided"));
+	});
+});
+
+// This PR only adds the ability to store credentials; nobody is moved off
+// environment variables yet, so an install with no rows and no key has to behave
+// exactly as it did before.
+describe("deployments with nothing stored", () => {
+	it("is a no-op: env credentials win and nothing is logged", async () => {
+		vi.stubEnv("ELMO_ENCRYPTION_KEY", undefined);
+		vi.stubEnv("OPENAI_API_KEY", "env-value");
+		vi.stubEnv("OXYLABS_USERNAME", "env-user");
+		vi.stubEnv("OXYLABS_PASSWORD", "env-password");
+		dbState.rows = [];
+
+		await refreshCredentialOverlay(instanceCredentialSource);
+
+		expect(getCredential("OPENAI_API_KEY")).toBe("env-value");
+		expect(getCredential("OXYLABS_USERNAME")).toBe("env-user");
+		expect(getCredential("OXYLABS_PASSWORD")).toBe("env-password");
+		expect(console.error).not.toHaveBeenCalled();
+	});
 });
 
 describe("encryptProviderCredentials", () => {
-	it("produces a payload that round-trips through the overlay, with a longest-value hint", async () => {
+	it("produces a payload that round-trips through the overlay", async () => {
 		vi.stubEnv("ELMO_ENCRYPTION_KEY", KEY_B64);
-		const { encryptedData, hint } = await encryptProviderCredentials("oxylabs", {
+		const encryptedData = await encryptProviderCredentials("oxylabs", {
 			OXYLABS_USERNAME: "user",
 			OXYLABS_PASSWORD: "longer-secret",
 		});
-		expect(hint).toBe("cret"); // last 4 of the longest value "longer-secret"
 
 		dbState.rows = [{ provider: "oxylabs", encryptedData }];
 		await refreshCredentialOverlay(instanceCredentialSource);

@@ -12,6 +12,11 @@ The auth and email features in this package need:
 | `RESEND_FROM_EMAIL` | Sender address, e.g. `Elmo <notifications@updates.example.com>` |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID for social sign-in |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+
+The worker additionally needs the Infisical variables below. The web app does not — see the Infisical section for why.
+
+| Variable | Purpose |
+| --- | --- |
 | `INFISICAL_CLIENT_ID` | Infisical machine identity client ID |
 | `INFISICAL_CLIENT_SECRET` | Infisical machine identity client secret |
 | `INFISICAL_PROJECT_ID` | Project containing provider credentials |
@@ -31,11 +36,23 @@ Email templates are code — `packages/cloud/src/email-templates.ts` — not Res
 
 ## Infisical setup
 
-1. Create a machine identity with Universal Auth and read access to the provider-credential path.
-2. Add provider credentials using their canonical environment-variable names, such as `OPENAI_API_KEY`, `OXYLABS_USERNAME`, and `OXYLABS_PASSWORD`.
-3. Configure the required project, environment, client ID, and client secret variables above.
+Provider credentials live in one Infisical folder, named exactly as the canonical environment variables (`OPENAI_API_KEY`, `OXYLABS_USERNAME`, `OXYLABS_PASSWORD`, …). The two runtimes read that folder differently.
 
-The web server and worker load credentials at startup and refresh them every minute. Failed refreshes retain the last successfully loaded values. Infisical is used only by `DEPLOYMENT_MODE=cloud`; self-hosted deployments use encrypted database credentials or environment variables.
+**Worker** — a long-lived VM, so it authenticates once with the SDK and refreshes every minute. Rotating a credential in Infisical reaches it without a deploy.
+
+1. Create a machine identity with Universal Auth and read access to the provider-credential path — that path only, since the loader is not recursive.
+2. Set the Infisical variables above on the worker.
+
+A refresh that fails, or that returns no provider credentials at all, keeps the last known-good values and logs an error; the worker refuses to start if the very first load fails.
+
+**Web app** — runs on Vercel serverless. Use Infisical's [Vercel secret sync](https://infisical.com/docs/integrations/secret-syncs/vercel) to push the same folder into the project's environment variables, and the app reads them from `process.env`.
+
+1. Add a Vercel app connection in Infisical, then a secret sync from the provider-credential folder to the Vercel project.
+2. Enable auto-sync, and redeploy after a rotation — Vercel bakes environment variables in at deploy time.
+
+Reading Infisical at runtime instead would put an authentication round trip on every cold start and Infisical's availability in front of the whole site, to serve credentials the request path barely uses.
+
+Infisical is only used by `DEPLOYMENT_MODE=cloud`. Self-hosted deployments use encrypted database credentials or environment variables.
 
 ## Google OAuth setup
 

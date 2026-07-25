@@ -866,12 +866,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "hint": {
-          "name": "hint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "last_verified_at": {
           "name": "last_verified_at",
           "type": "timestamp with time zone",
