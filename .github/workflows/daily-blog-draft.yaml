@@ -36,7 +36,7 @@ jobs:
         id: date
         run: |
           date -u '+date=%F' >> "$GITHUB_OUTPUT"
-          date -u '+label=%B %-d' >> "$GITHUB_OUTPUT"
+          echo "label=$(date -u '+%B %-d' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Discover current AEO signals
         env:
@@ -147,6 +147,6 @@ jobs:
           branch: automation/daily-aeo-blog-${{ github.run_id }}
           delete-branch: true
           add-paths: packages/docs/content/blog/*.mdx
-          commit-message: draft daily blog update
-          title: Daily blog post (${{ steps.date.outputs.label }})
+          commit-message: daily blog post (${{ steps.date.outputs.label }})
+          title: daily blog post (${{ steps.date.outputs.label }})
           body: ${{ steps.pr.outputs.body }}
