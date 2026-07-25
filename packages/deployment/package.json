@@ -7,7 +7,8 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./client": "./src/client.ts",
-		"./credentials": "./src/credentials.ts"
+		"./credentials": "./src/credentials.ts",
+		"./credentials-worker": "./src/credentials-worker.ts"
 	},
 	"dependencies": {
 		"@workspace/cloud": "workspace:*",

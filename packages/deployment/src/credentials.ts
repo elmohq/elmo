@@ -3,26 +3,19 @@ import { type CredentialSource, instanceCredentialSource, refreshCredentialOverl
 
 const CREDENTIAL_REFRESH_INTERVAL_MS = 60_000;
 
-/** Managed cloud loads provider credentials from Infisical; every other mode
- *  reads the encrypted provider_credentials table (with env fallback). */
-async function getCredentialSource(env: Record<string, string | undefined>): Promise<CredentialSource> {
-	if (getDeploymentModeFromEnv(env) !== "cloud") return instanceCredentialSource;
-	const { createInfisicalCredentialLoader } = await import("@workspace/cloud/infisical-credentials");
-	return createInfisicalCredentialLoader({ env });
-}
-
-/** Load provider credentials, then keep them fresh on an interval. The interval
- *  is scheduled either way, so a source that is briefly unreachable recovers on
- *  its own rather than leaving the process permanently stale.
+/** Keep the credential overlay fresh from `source`. The interval is scheduled
+ *  before the first load, so a source that is briefly unreachable recovers on its
+ *  own instead of leaving the process permanently stale.
  *
- *  Managed cloud rethrows a failed first load: it has no environment fallback, so
- *  a worker that started anyway would only pick up jobs it cannot run. Every
- *  other mode logs and continues — self-hosted deployments still have their
- *  `.env` credentials, and on an upgrade the database may not be migrated yet. */
+ *  `required` says whether the caller can run without credentials. Only managed
+ *  cloud sets it: there is no environment fallback there, so a worker that
+ *  started anyway would take jobs it cannot run. Self-hosted deployments always
+ *  have their `.env` credentials, and on an upgrade the database may not even be
+ *  migrated yet, so they log and carry on. */
 export async function startCredentialRefresh(
-	env: Record<string, string | undefined> = process.env,
+	source: CredentialSource,
+	{ required }: { required: boolean },
 ): Promise<NodeJS.Timeout> {
-	const source = await getCredentialSource(env);
 	const refresh = () => refreshCredentialOverlay(source);
 	const timer = setInterval(() => {
 		refresh().catch((error) => {
@@ -34,7 +27,7 @@ export async function startCredentialRefresh(
 	try {
 		await refresh();
 	} catch (error) {
-		if (getDeploymentModeFromEnv(env) === "cloud") {
+		if (required) {
 			clearInterval(timer);
 			throw error;
 		}
@@ -54,7 +47,7 @@ export async function startCredentialRefresh(
  *  money against these credentials, keeps the live SDK loader. */
 export function startBackgroundCredentialRefresh(env: Record<string, string | undefined> = process.env): void {
 	if (getDeploymentModeFromEnv(env) === "cloud") return;
-	void startCredentialRefresh(env).catch((error) => {
+	void startCredentialRefresh(instanceCredentialSource, { required: false }).catch((error) => {
 		console.error("[secrets] initial credential load failed — falling back to environment credentials:", error);
 	});
 }
