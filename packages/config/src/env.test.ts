@@ -61,6 +61,20 @@ describe("cloud env requirements", () => {
 	});
 });
 
+describe("ELMO_ENCRYPTION_KEY", () => {
+	it("is required by local, which the CLI provisions", () => {
+		const ids = new Set(getEnvRequirements("local").map((requirement) => requirement.id));
+		expect(ids.has("ELMO_ENCRYPTION_KEY")).toBe(true);
+	});
+
+	it("is not required by the modes provisioned out of band", () => {
+		for (const mode of ["demo", "whitelabel", "cloud"] as const) {
+			const ids = new Set(getEnvRequirements(mode).map((requirement) => requirement.id));
+			expect(ids.has("ELMO_ENCRYPTION_KEY"), `${mode} should not require it`).toBe(false);
+		}
+	});
+});
+
 describe("requireEnvVars", () => {
 	it("reports every missing required env var at once", () => {
 		expect(() =>

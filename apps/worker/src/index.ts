@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
+import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
 import { shutdownTelemetry } from "./telemetry";
@@ -15,6 +16,9 @@ if (process.env.SENTRY_DSN) {
 
 async function main() {
 	console.log("Starting pg-boss worker...");
+
+	// Awaited so a stored credential counts toward the validation below.
+	await startCredentialRefresh();
 
 	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
 	// missing API keys, and per-provider target errors before any job runs.

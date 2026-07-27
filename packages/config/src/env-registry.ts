@@ -203,6 +203,23 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Optional Jina Reader API key for website-excerpt fetching. When set, requests are authenticated (tracked by key, not IP), which raises the rate limit and avoids the anonymous 'bad network reputation' 401 block.",
 	},
 	{
+		name: "ELMO_ENCRYPTION_KEY",
+		scope: "server",
+		// Local only: `elmo init` generates it and the CLI backfills it on
+		// upgrade, so every self-hosted deployment has one. The hosted modes are
+		// provisioned out of band and store no credentials of their own.
+		requiredBy: ["local"],
+		description:
+			"Base64-encoded 32-byte key used to encrypt provider credentials stored in the database. Generate one with: openssl rand -base64 32",
+	},
+	{
+		name: "ELMO_ENCRYPTION_KEY_OLD",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Previous ELMO_ENCRYPTION_KEY values, comma-separated, kept readable while rotating. Set only during a rotation.",
+	},
+	{
 		name: "DEPLOYMENT_MODE",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
@@ -415,3 +432,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Sender address for transactional email, in the form: Elmo <notifications@updates.example.com>. The domain must be verified in Resend.",
 	},
 ];
+
+export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
+	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),
+);

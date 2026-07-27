@@ -2,6 +2,7 @@ import { bdclient } from "@brightdata/sdk";
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import { extractCitationsFromBrightdata, extractTextFromBrightdata, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -25,7 +26,7 @@ const BD_BASE_URL: Record<string, string> = {
 };
 
 function createClient(): bdclient {
-	return new bdclient({ apiKey: process.env.BRIGHTDATA_API_TOKEN });
+	return new bdclient({ apiKey: getCredential("BRIGHTDATA_API_TOKEN") });
 }
 
 const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
@@ -49,7 +50,7 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 		const res = await fetch(BRIGHTDATA_REQUEST_URL, {
 			method: "POST",
 			headers: {
-				Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+				Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
 				"Content-Type": "application/json",
 			},
 			// `method: "GET"` tells BrightData how to fetch the target URL — without
@@ -144,7 +145,7 @@ export const brightdata: Provider = {
 	name: "BrightData",
 
 	isConfigured() {
-		return !!process.env.BRIGHTDATA_API_TOKEN;
+		return !!getCredential("BRIGHTDATA_API_TOKEN");
 	},
 
 	validateTarget(config: ModelConfig) {
@@ -189,7 +190,7 @@ export const brightdata: Provider = {
 				{
 					method: "POST",
 					headers: {
-						Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}`,
+						Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}`,
 						"Content-Type": "application/json",
 					},
 					body: JSON.stringify([
@@ -286,7 +287,7 @@ async function pollUntilReady(snapshotId: string): Promise<void> {
 async function getSnapshotStatus(snapshotId: string): Promise<string> {
 	try {
 		const res = await fetch(`https://api.brightdata.com/datasets/v3/progress/${snapshotId}`, {
-			headers: { Authorization: `Bearer ${process.env.BRIGHTDATA_API_TOKEN}` },
+			headers: { Authorization: `Bearer ${getCredential("BRIGHTDATA_API_TOKEN")}` },
 		});
 		if (!res.ok) return "pending";
 		const body = (await res.json()) as { status?: string };

@@ -10,6 +10,7 @@
 		"./types": "./src/types.ts",
 		"./constants": "./src/constants.ts",
 		"./env": "./src/env.ts",
+		"./env-registry": "./src/env-registry.ts",
 		"./scrape-targets": "./src/scrape-targets.ts"
 	},
 	"devDependencies": {

@@ -90,8 +90,8 @@ function assertNotCancelled<T>(value: T | symbol): asserts value is T {
 	}
 }
 
-function generateSecret(bytes = 32): string {
-	return crypto.randomBytes(bytes).toString("base64url");
+function generateSecret(bytes = 32, encoding: BufferEncoding = "base64url"): string {
+	return crypto.randomBytes(bytes).toString(encoding);
 }
 
 function link(text: string, url: string): string {
@@ -244,6 +244,10 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	env.VITE_DEPLOYMENT_MODE = "local";
 	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
+	// Standard base64 (not base64url): the app decodes this with Buffer.from(key,
+	// "base64") and requires exactly 32 bytes. Enables storing provider
+	// credentials encrypted in the database via the in-app Providers UI.
+	env.ELMO_ENCRYPTION_KEY = generateSecret(32, "base64");
 	env.APP_NAME = DEFAULT_APP_NAME;
 	env.APP_ICON = DEFAULT_APP_ICON;
 	env.VITE_APP_NAME = DEFAULT_APP_NAME;

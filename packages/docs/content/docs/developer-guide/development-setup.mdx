@@ -32,6 +32,7 @@ At minimum, you need:
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `BETTER_AUTH_SECRET` | Any random string for session encryption |
+| `ELMO_ENCRYPTION_KEY` | Key for provider credentials stored in the database — `openssl rand -base64 32` |
 
 Add AI provider API keys if you want to test visibility tracking:
 

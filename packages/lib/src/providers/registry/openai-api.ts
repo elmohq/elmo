@@ -1,6 +1,7 @@
 import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
+import { getCredential } from "../../secrets";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
@@ -20,7 +21,8 @@ import type {
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
 function getOpenAIResponsesModel(model: string) {
-	const provider = process.env.OPENAI_API_KEY ? createOpenAI({ apiKey: process.env.OPENAI_API_KEY }) : openai;
+	const apiKey = getCredential("OPENAI_API_KEY");
+	const provider = apiKey ? createOpenAI({ apiKey }) : openai;
 	return provider.responses(model);
 }
 
@@ -85,7 +87,7 @@ export const openaiApi: Provider = {
 	name: "OpenAI API",
 
 	isConfigured() {
-		return !!process.env.OPENAI_API_KEY;
+		return !!getCredential("OPENAI_API_KEY");
 	},
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
