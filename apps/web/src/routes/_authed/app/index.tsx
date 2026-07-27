@@ -22,6 +22,7 @@ import { inArray } from "drizzle-orm";
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
 		brands: { id: string; name: string }[];
+		unprovisionedOrgs: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
 		const session = await requireAuthSession();
@@ -43,13 +44,21 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 			orgIds.length === 0
 				? []
 				: await db
-						.select({ id: brands.id, name: brands.name })
+						.select({ id: brands.id, name: brands.name, organizationId: brands.organizationId })
 						.from(brands)
 						.where(inArray(brands.organizationId, orgIds));
 
+		// An org with no brand row yet is only reachable through the legacy
+		// `/app/$orgId` onboarding wizard. Modes that can create brands from the
+		// UI use that flow instead, so surfacing the org there would offer two
+		// paths to the same thing.
+		const canCreateBrands = deployment.features.canCreateBrands;
+		const provisioned = new Set(scopedBrands.map((b) => b.organizationId));
+
 		return {
-			brands: scopedBrands,
-			canCreateBrands: deployment.features.canCreateBrands,
+			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
+			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
+			canCreateBrands,
 		};
 	},
 );
@@ -73,19 +82,28 @@ export const Route = createFileRoute("/_authed/app/")({
 });
 
 function BrandSwitcherPage() {
-	const { brands: brandList, canCreateBrands } = Route.useLoaderData();
+	const { brands: brandList, unprovisionedOrgs, canCreateBrands } = Route.useLoaderData();
 
 	return (
 		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
 			<div className="flex flex-col space-y-3 min-w-[200px]">
-				{brandList.length > 0 ? (
-					brandList.map((brand) => (
-						<Button key={brand.id} asChild variant="secondary">
-							<Link to="/app/$brand" params={{ brand: brand.id }}>
-								{brand.name}
-							</Link>
-						</Button>
-					))
+				{brandList.length > 0 || unprovisionedOrgs.length > 0 ? (
+					<>
+						{brandList.map((brand) => (
+							<Button key={brand.id} asChild variant="secondary">
+								<Link to="/app/$brand" params={{ brand: brand.id }}>
+									{brand.name}
+								</Link>
+							</Button>
+						))}
+						{unprovisionedOrgs.map((org) => (
+							<Button key={org.id} asChild variant="outline">
+								<Link to="/app/$brand" params={{ brand: org.id }}>
+									Set up {org.name}
+								</Link>
+							</Button>
+						))}
+					</>
 				) : (
 					<p className="text-muted-foreground text-center">No brands available</p>
 				)}
