@@ -1,0 +1,118 @@
+---
+title: "Multi-Turn AI Search: What Prompt Tracking Misses"
+description: "New research finds the last prompt in an AI conversation carries about a third of what the user actually said. Here's what that means for measuring AI visibility."
+date: "2026-07-27"
+author: ai
+metaTitle: "Multi-Turn AI Search & the Limits of Prompt Tracking"
+tags:
+  - prompt-tracking
+  - ai-visibility
+  - ai-search
+  - aeo
+definedTerms:
+  - term: Request state
+    definition: "Request state is the set of constraints, preferences, and rejections a user has established over the course of an AI conversation: budget, location, use case, required features, options already ruled out. It accumulates across turns rather than living in any single prompt."
+  - term: Multi-turn conversation
+    definition: "A multi-turn conversation is an exchange in which the user sends several prompts in sequence and the AI engine answers each one with the earlier turns still in context, so later answers are conditioned on everything said before."
+  - term: Single-turn prompt replay
+    definition: "Single-turn prompt replay is the standard AI visibility measurement method: sending each prompt in a tracked set to an engine in isolation, with no conversation history, and recording the answer."
+howTo:
+  name: "How to account for multi-turn conversations in your prompt set"
+  description: "Adapt a flat prompt set so it reflects how buyers actually talk to AI engines, without losing the comparable trend line that flat tracking gives you."
+  steps:
+    - name: Load your prompts with the constraints buyers state
+      text: "For each broad prompt, add a fully specified sibling that names a budget, a team size, a use case, and a must-have feature. These qualifiers decide which brands survive into a shortlist, and a bare category prompt never tests them."
+    - name: Add correction and rejection prompts
+      text: "Write prompts that rule something out, in the form users actually type: 'not [competitor], we already ruled that out'. Redirects are common in real sessions and almost absent from most tracked prompt sets."
+    - name: Run your highest-value prompts as real chains
+      text: "Pick a handful of prompts that matter most and run them as genuine multi-turn conversations with history retained, three or four turns deep. Record the turn at which your brand first appears and the turn at which it drops out."
+    - name: Version your history policy
+      text: "Write down how much context you supply on every run, and treat a change to it as a change to the instrument. If you quietly start sending history, your trend line breaks and the break looks like a visibility movement."
+    - name: Keep the flat set as your trend line
+      text: "Single-turn replay stays the measurement you chart week over week, because comparability requires a fixed instrument. Use conversation chains as a periodic audit that tells you what the chart cannot see."
+faq:
+  - question: What is multi-turn AI search?
+    answer: "Multi-turn AI search is when someone reaches an answer through a sequence of prompts rather than one query, adding constraints, asking for evidence, and ruling out options as they go. The engine answers each turn with the earlier turns still in context, so the final answer is conditioned on the whole session, not the last prompt alone."
+  - question: Does prompt tracking still work if people ask follow-up questions?
+    answer: "Yes, with a caveat about what it measures. Single-turn prompt replay is still the only practical way to get a comparable time series across engines, because a trend needs a fixed instrument. What it cannot tell you is how you fare once a buyer has stated a budget, named a use case, and rejected a competitor, because those constraints never enter the prompt you replay."
+  - question: What is request state in an AI conversation?
+    answer: "Request state is everything the user has established over the conversation: price limits, location, persona or use case, required attributes, time constraints, alternatives raised, corrections made, comparisons requested, and evidence demanded. A 2026 preprint by Benjamin Tannenbaum found that in 50.3% of commercial conversations studied, at least one of these dimensions appeared in the history but not in the final prompt."
+  - question: Do LLMs perform worse in multi-turn conversations?
+    answer: "Yes, measurably. In \"LLMs Get Lost In Multi-Turn Conversation\" (arXiv 2505.06120), Laban and colleagues ran more than 200,000 simulated conversations and found every top open- and closed-weight model scored an average of 39% lower when a fully specified instruction was delivered piece by piece across turns instead of all at once. The authors attribute it mainly to unreliability rather than lost capability: \"when LLMs take a wrong turn in a conversation, they get lost and do not recover.\""
+  - question: How much of an AI conversation is in the final prompt?
+    answer: "About a third, by one measure. Across 670 commercial multi-turn conversations and 7,463 conversations from the public PRISM dataset, the final prompt contained a median of 35.6% and 36.4% of the session's unique user-side content vocabulary. In 68.4% and 74.3% of conversations respectively, it held at most half."
+---
+
+**Almost every AI visibility tool works the same way: take a prompt, send it to an engine with no history, record what comes back.** A [preprint posted on 24 July 2026](https://arxiv.org/abs/2607.22392) argues that the prompt is not the query. Across 670 commercial AI conversations and 7,463 public ones, the last prompt in a session carried a median of roughly 36% of the unique wording the user had contributed. In about half of them, a constraint the user had already stated — a budget, a location, an option they had ruled out — appeared nowhere in the prompt the model was answering.
+
+**Key takeaways**
+
+- The final prompt in a multi-turn conversation holds a median 35.6% (commercial corpus) and 36.4% (PRISM) of the session's unique user-side vocabulary. It is a fragment, not a summary.
+- In 50.3% and 44.8% of conversations, a stated constraint lived in the history and not in the final prompt. Among conversations that carried constraints at all, only about 26% restated the full set at the end.
+- The final prompt also adds a *new* constraint 17.9–19.3% of the time. It is another state update, not a recap.
+- Separately, models handle pieced-together requests worse: an average [39% performance drop](https://arxiv.org/abs/2505.06120) when the same fully specified instruction is split across turns.
+- What this does not show is that your mention rate changes. The paper is explicit that it never removed history to test that. Treat it as a limit on interpretation, not a reason to stop tracking.
+- The practical fix is cheap: load your prompts with real constraints, add rejection turns, and run a few genuine conversation chains as a periodic audit.
+
+## The finding, in numbers
+
+The paper replaces the usual talk of "intent" with something you can count. Instead of inferring what a user meant, Benjamin Tannenbaum measures what they literally said, turn by turn, using transparent keyword rules. A prompt counts as carrying a budget constraint only if it contains explicit terms like "budget" or "must"; nothing is inferred by a model.
+
+Two corpora, the same design run twice: a proprietary set of 670 English commercial multi-turn conversations, split into a 302-conversation discovery cohort and a non-overlapping 368-conversation replication cohort, plus 7,463 conversations from 1,389 participants in the public [PRISM dataset](https://arxiv.org/abs/2404.16019). The figures land in nearly the same place in both.
+
+| Measure | Commercial (670) | PRISM (7,463) |
+|---|---|---|
+| Median share of the session's unique user-side vocabulary in the final prompt | 35.6% | 36.4% |
+| Conversations where the final prompt holds at most half that vocabulary | 68.4% | 74.3% |
+| Conversations with a stated constraint in history but not in the final prompt | 50.3% | 44.8% |
+| Constraint-bearing conversations whose final prompt reproduces the full set | 26.1% | 26.2% |
+| Conversations where the final prompt introduces a constraint not seen before | 17.9% | 19.3% |
+
+Read the last row twice, because it rules out the obvious workaround. If the final prompt were merely an abbreviated pointer back to the conversation, you could recover the request by reading the history. But roughly one in five final prompts adds something new. The endpoint is neither a summary nor a reference. It is one more update to a state that was built across the whole session.
+
+## The constraints that go missing are the commercial ones
+
+The paper detects nine dimensions of request state: price or budget, location or proximity, persona or use case, attribute requirement, time, alternatives, correction or redirect, comparison or evaluation, and explanation or evidence.
+
+That list should be uncomfortably familiar to anyone doing [answer engine optimization](/blog/answer-engine-optimization), because it is the qualifier set that decides which brands survive into a shortlist. "Best CRM" and "best CRM under $50 a seat for a two-person agency, and not HubSpot, we already ruled that out" are not the same question, and they do not produce the same roster of names. In half the conversations studied, at least one qualifier of that kind sat in the history rather than in the prompt the model answered.
+
+This is the same gap that shows up in Microsoft's own citation data, one layer up. Clarity's [grounding queries](/blog/microsoft-clarity-ai-citations) are the phrasings an engine retrieved on, and Microsoft warns they "may differ from the exact phrases users type." Tannenbaum's result says the phrase the user typed last is not the whole request either. There are now two documented layers of translation between a buyer's actual need and the string anybody measures.
+
+## Splitting a request across turns changes the answer
+
+Distribution alone would be a curiosity if models handled distributed requests as well as whole ones. They do not.
+
+In [LLMs Get Lost In Multi-Turn Conversation](https://arxiv.org/abs/2505.06120), Philippe Laban, Hiroaki Hayashi, Yingbo Zhou, and Jennifer Neville ran more than 200,000 simulated conversations across six generation tasks. Every top open- and closed-weight model they tested scored an average of 39% lower when a fully specified instruction was delivered in pieces across turns rather than all at once. The cause was mostly not lost capability but lost consistency: as the authors put it, "when LLMs take a wrong turn in a conversation, they get lost and do not recover."
+
+Put the two papers side by side and the shape of the problem is clear. Real requests arrive in pieces, and models answer pieced-together requests less reliably than whole ones. A single-turn prompt set measures the well-specified case, which is the case that goes best.
+
+## What this does not prove
+
+Being straight about the limits matters more here than the headline, because it is easy to overclaim from a preprint.
+
+Tannenbaum states the central caveat himself: the study is observational. It shows that conversation history contains request state relevant to the answer, and it explicitly "does not show how much a model answer would change when history is removed." Nobody has demonstrated that your brand's mention rate differs between a bare prompt and the same request assembled over four turns. That experiment has not been run.
+
+The provenance deserves flagging too. This is a single-author preprint, not peer-reviewed work. The commercial corpus is proprietary and its collection method is not fully disclosed, and PRISM conversations were elicited for research rather than captured from people actually shopping. The replication across two independent corpora is the reason to take the numbers seriously; the sourcing is the reason not to treat them as settled.
+
+None of it makes flat [prompt tracking](/blog/ai-prompt-tracking) wrong. A trend needs a fixed instrument, and an instrument that ignores conversation history is still fixed. Our own study of [citation volatility](/blog/citation-volatility) found the set of domains cited for a prompt turning over 60–70% from one day to the next, which is a reminder that run-to-run noise already demands a stable, repeated method. Adding history to every run would make the series less comparable, not more truthful.
+
+The claim to retire is narrower: that your dashboard number is what buyers see. It is what buyers see on the opening question.
+
+## How to adapt your prompt set
+
+Four adjustments, none of which require abandoning the tracking you already do.
+
+1. **Load your prompts with constraints.** For every broad category prompt, write a fully specified sibling that names a budget, a team size, a use case, and a must-have feature. If you drop out of the answer the moment a price ceiling appears, that is worth knowing before a buyer discovers it.
+2. **Add rejection and correction prompts.** "Not [competitor], we already ruled that out" is a normal turn in a real session and almost unheard of in a tracked prompt set. It also happens to be the turn where a challenger brand has its best shot.
+3. **Run your top prompts as real chains.** Take the handful of prompts that decide deals and run them as genuine multi-turn conversations, three or four turns deep, with history retained. Record the turn where your brand first appears and the turn where it disappears. That single measurement tells you more about a contested category than another week of flat data.
+4. **Version your history policy.** The paper's own recommendation to researchers applies directly to marketers: preserve turn boundaries, version the history policy, and record which constraints were available at generation time. Change how much context you send without noting it, and the break in your chart will look like a visibility movement.
+
+Then leave the flat set alone. It is your trend line, and its value is precisely that it does not change.
+
+## Where this leaves measurement
+
+AI visibility measurement is roughly where keyword rank tracking was when personalization arrived: the instrument is still useful, and the thing it reports is narrower than the thing people believe it reports. Single-turn prompt replay gives you a comparable, engine-agnostic signal about how you fare on well-formed opening questions. That is real, and it is most of what you can act on. It is not a transcript of how buyers actually arrive at a shortlist.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, citation, and competitor named alongside you. Because you run it yourself and the data is yours to query, the constraint-loaded and rejection prompts described above are just more prompts, and the raw answers are there when you want to check whether a conversation-shaped question gets a conversation-shaped result.
+
+For the fundamentals, start with [how to track your brand in AI search](/blog/track-brand-ai-search) and our guide to [AI share of voice](/blog/ai-share-of-voice). For the vocabulary, see the [AI search glossary](/glossary).
