@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { decodeProtectedHeader } from "jose";
+import { CompactEncrypt, decodeProtectedHeader } from "jose";
 import { describe, expect, it } from "vitest";
 import { decryptSecret, EncryptionKeyError, encryptSecret, getEncryptionKey, SecretDecryptError } from "./crypto";
 
 const KEY = Buffer.alloc(32, 7);
-const AAD = "provider-credentials:openai-api";
+const AAD = "secret:OPENAI_API_KEY";
 
 describe("encryptSecret / decryptSecret", () => {
 	it("round-trips arbitrary plaintext", async () => {
@@ -28,6 +28,20 @@ describe("encryptSecret / decryptSecret", () => {
 		expect(ivs.size).toBe(200);
 	});
 
+	// A JWE names its own algorithms, so without an allowlist an attacker with
+	// database write access could re-encrypt under a weaker one and have it
+	// honoured. These are valid tokens under the same key — only the allowlist
+	// rejects them.
+	it.each([
+		{ header: { alg: "dir", enc: "A128CBC-HS256" }, key: Buffer.alloc(32, 7) },
+		{ header: { alg: "A256KW", enc: "A256GCM" }, key: Buffer.alloc(32, 7) },
+	])("rejects a payload re-encrypted under $header.alg/$header.enc", async ({ header, key }) => {
+		const payload = await new CompactEncrypt(new TextEncoder().encode("top-secret-value"))
+			.setProtectedHeader({ ...header, ctx: AAD } as Parameters<CompactEncrypt["setProtectedHeader"]>[0])
+			.encrypt(key);
+		await expect(decryptSecret(payload, { key: KEY, aad: AAD })).rejects.toThrow(SecretDecryptError);
+	});
+
 	describe("tamper matrix — every failure throws SecretDecryptError, never garbage", () => {
 		function fresh(): Promise<string> {
 			return encryptSecret("top-secret-value", { key: KEY, aad: AAD });
@@ -47,9 +61,9 @@ describe("encryptSecret / decryptSecret", () => {
 		});
 
 		it("wrong AAD", async () => {
-			await expect(
-				decryptSecret(await fresh(), { key: KEY, aad: "provider-credentials:anthropic-api" }),
-			).rejects.toThrow(SecretDecryptError);
+			await expect(decryptSecret(await fresh(), { key: KEY, aad: "secret:ANTHROPIC_API_KEY" })).rejects.toThrow(
+				SecretDecryptError,
+			);
 		});
 
 		it("wrong key", async () => {
@@ -64,11 +78,11 @@ describe("encryptSecret / decryptSecret", () => {
 			await expect(decryptSecret(segments.join("."), { key: KEY, aad: AAD })).rejects.toThrow(SecretDecryptError);
 		});
 
-		// Someone with DB write access moves this row to another provider and
+		// Someone with DB write access moves this row onto another credential and
 		// relabels the header to match. The header is the AEAD's additional data,
 		// so rewriting it breaks the tag rather than re-homing the credential.
-		it("ctx rewritten to the provider it was moved to", async () => {
-			const target = "provider-credentials:anthropic-api";
+		it("ctx rewritten to the name it was moved to", async () => {
+			const target = "secret:ANTHROPIC_API_KEY";
 			const segments = (await fresh()).split(".");
 			segments[0] = Buffer.from(JSON.stringify({ alg: "dir", enc: "A256GCM", ctx: target })).toString("base64url");
 			await expect(decryptSecret(segments.join("."), { key: KEY, aad: target })).rejects.toThrow(SecretDecryptError);

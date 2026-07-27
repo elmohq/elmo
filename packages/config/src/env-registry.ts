@@ -426,12 +426,6 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	},
 ];
 
-/**
- * The env-var names that may be overridden by a stored secret: every var a
- * provider declares as its credential. Optional, env-only vars such as
- * BRIGHTDATA_SERP_ZONE carry no provider marker and are excluded, keeping them
- * out of the stored-secret lifecycle.
- */
 export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
 	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),
 );
