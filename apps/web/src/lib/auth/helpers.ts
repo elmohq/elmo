@@ -72,16 +72,26 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
 }
 
 /**
- * Resolve a brand's owning org id — the umbrella org whose membership gates
- * team management for that brand. Null when the brand doesn't exist.
+ * The brand's owning org plus the caller's membership in it — for callers that
+ * need the org itself, not just an access verdict. Resolves both in the one
+ * query that `requireBrandAccess` would have spent on the check alone.
+ *
+ * A missing brand and a brand in someone else's org are deliberately the same
+ * error: the caller has no business distinguishing them.
  */
-export async function getBrandOrganizationId(brandId: string): Promise<string | null> {
+export async function requireBrandOrganization(
+	userId: string,
+	brandId: string,
+): Promise<{ id: string; name: string; role: string }> {
 	const [row] = await db
-		.select({ organizationId: brands.organizationId })
+		.select({ id: organization.id, name: organization.name, role: member.role })
 		.from(brands)
+		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
+		.innerJoin(organization, eq(organization.id, brands.organizationId))
 		.where(eq(brands.id, brandId))
 		.limit(1);
-	return row?.organizationId ?? null;
+	if (!row) throw new Error("Forbidden: No access to this brand");
+	return row;
 }
 
 export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string }[]> {

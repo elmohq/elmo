@@ -12,7 +12,7 @@ import { db } from "@workspace/lib/db/db";
 import { invitation, member, organization, user } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess, getBrandOrganizationId } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
 import { auth } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
 
@@ -37,14 +37,7 @@ export const listTeamFn = createServerFn({ method: "GET" })
 	.handler(async ({ data }): Promise<TeamData> => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		const orgId = await getBrandOrganizationId(data.brandId);
-		if (!orgId) throw new Error("Brand not found");
-
-		const org = await db.query.organization.findFirst({
-			where: eq(organization.id, orgId),
-		});
-		if (!org) throw new Error("Organization not found");
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		const members = await db
 			.select({
@@ -57,7 +50,7 @@ export const listTeamFn = createServerFn({ method: "GET" })
 			})
 			.from(member)
 			.innerJoin(user, eq(member.userId, user.id))
-			.where(eq(member.organizationId, orgId));
+			.where(eq(member.organizationId, org.id));
 
 		const invitations = await db
 			.select({
@@ -67,7 +60,7 @@ export const listTeamFn = createServerFn({ method: "GET" })
 				expiresAt: invitation.expiresAt,
 			})
 			.from(invitation)
-			.where(and(eq(invitation.organizationId, orgId), eq(invitation.status, "pending")));
+			.where(and(eq(invitation.organizationId, org.id), eq(invitation.status, "pending")));
 
 		return {
 			members,
@@ -82,19 +75,12 @@ export const updateOrganizationFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		const orgId = await getBrandOrganizationId(data.brandId);
-		if (!orgId) throw new Error("Brand not found");
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		// Org rename is an admin action.
-		const [m] = await db
-			.select({ role: member.role })
-			.from(member)
-			.where(and(eq(member.userId, session.user.id), eq(member.organizationId, orgId)))
-			.limit(1);
-		if (m?.role !== "admin") throw new Error("Only admins can rename the workspace");
+		if (org.role !== "admin") throw new Error("Only admins can rename the workspace");
 
-		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, orgId));
+		await db.update(organization).set({ name: data.name.trim() }).where(eq(organization.id, org.id));
 		return { success: true };
 	});
 
@@ -109,12 +95,10 @@ export const inviteTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		const orgId = await getBrandOrganizationId(data.brandId);
-		if (!orgId) throw new Error("Brand not found");
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		await auth.api.createInvitation({
-			body: { email: data.email, role: data.role, organizationId: orgId },
+			body: { email: data.email, role: data.role, organizationId: org.id },
 			headers: getRequestHeaders(),
 		});
 
@@ -127,8 +111,6 @@ export const cancelInvitationFn = createServerFn({ method: "POST" })
 		requireTeamInvites();
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
-		const orgId = await getBrandOrganizationId(data.brandId);
-		if (!orgId) throw new Error("Brand not found");
 
 		await auth.api.cancelInvitation({
 			body: { invitationId: data.invitationId },
@@ -143,21 +125,19 @@ export const removeTeamMemberFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		requireTeamInvites();
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		const orgId = await getBrandOrganizationId(data.brandId);
-		if (!orgId) throw new Error("Brand not found");
+		const org = await requireBrandOrganization(session.user.id, data.brandId);
 
 		const [row] = await db
 			.select({ userId: member.userId })
 			.from(member)
-			.where(and(eq(member.id, data.memberId), eq(member.organizationId, orgId)))
+			.where(and(eq(member.id, data.memberId), eq(member.organizationId, org.id)))
 			.limit(1);
 		if (row?.userId === session.user.id) {
 			throw new Error("You cannot remove yourself from the team");
 		}
 
 		await auth.api.removeMember({
-			body: { memberIdOrEmail: data.memberId, organizationId: orgId },
+			body: { memberIdOrEmail: data.memberId, organizationId: org.id },
 			headers: getRequestHeaders(),
 		});
 
