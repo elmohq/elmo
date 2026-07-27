@@ -221,9 +221,9 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		// Attach to the caller's active org (resolved in customSession); fall
-		// back to their first membership if the active org isn't one they belong
-		// to. Supports users in more than one org (e.g. an accepted team invite).
+		// Attach to the caller's active org, falling back to their first
+		// membership when none is set or it isn't one they belong to. Supports
+		// users in more than one org (e.g. an accepted team invite).
 		const orgs = await listUserOrganizations(session.user.id);
 		if (orgs.length === 0) {
 			throw new Error("No organization for the current user");
