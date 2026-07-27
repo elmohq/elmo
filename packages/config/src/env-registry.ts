@@ -205,8 +205,12 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "ELMO_ENCRYPTION_KEY",
 		scope: "server",
-		requiredBy: "optional",
-		description: "Base64-encoded 32-byte key enabling encrypted provider credentials stored in the database.",
+		// Local only: `elmo init` generates it and the CLI backfills it on
+		// upgrade, so every self-hosted deployment has one. The hosted modes are
+		// provisioned out of band and store no credentials of their own.
+		requiredBy: ["local"],
+		description:
+			"Base64-encoded 32-byte key used to encrypt provider credentials stored in the database. Generate one with: openssl rand -base64 32",
 	},
 	{
 		name: "DEPLOYMENT_MODE",
