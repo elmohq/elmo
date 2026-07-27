@@ -1,7 +1,6 @@
-import { PROVIDER_CREDENTIAL_KEYS } from "@workspace/config/env-registry";
-import { isNull } from "drizzle-orm";
+import { CREDENTIAL_ENV_NAMES } from "@workspace/config/env-registry";
 import { db } from "../db/db";
-import { providerCredentials } from "../db/schema";
+import { secrets } from "../db/schema";
 import {
 	decryptSecret,
 	ENCRYPTION_KEY_ENV,
@@ -11,73 +10,31 @@ import {
 	getEncryptionKey,
 } from "./crypto";
 
-// Providers read every credential through getCredential: a managed override if
-// one exists, otherwise process.env. The overlay of managed overrides is rebuilt
-// on an interval by refreshCredentialOverlay from a CredentialSource — Infisical
-// in managed cloud, the encrypted provider_credentials table when self-hosted.
+// Providers read every credential through getCredential: a stored override if
+// one exists, otherwise process.env. The overlay of stored overrides is rebuilt
+// on an interval by refreshCredentialOverlay (see ./refresh).
 const overlay = new Map<string, string>();
 
-/** A managed credential source: a flat env-name→value map. Only whole provider
- *  bundles from it reach the overlay (see refreshCredentialOverlay). */
-export type CredentialSource = () => Promise<ReadonlyMap<string, string>>;
-
-/** Managed override if present, else process.env. Sync so `isConfigured()` stays sync. */
+/** Stored override if present, else process.env. Sync so `isConfigured()` stays sync. */
 export function getCredential(name: string): string | undefined {
 	return overlay.get(name) ?? process.env[name];
-}
-
-/** A provider's credential env-var names (fresh array, safe to mutate). */
-export function getCredentialKeysForProvider(providerId: string): string[] {
-	return [...(PROVIDER_CREDENTIAL_KEYS.get(providerId) ?? [])];
 }
 
 export function clearCredentialOverlay(): void {
 	overlay.clear();
 }
 
-/** AAD binds each ciphertext to one provider, so a payload can't be replayed
- *  under a different provider even by someone with DB write access. */
-function aadForProvider(provider: string): string {
-	return `provider-credentials:${provider}`;
+/** AAD binds each ciphertext to the env var it stands in for, so a payload can't
+ *  be replayed under a different name even by someone with DB write access. */
+function aadForName(name: string): string {
+	return `secret:${name}`;
 }
 
-/** Rebuild the overlay from a managed source. A provider's keys are taken only as
- *  a complete, non-empty set, so a managed username never pairs with an env
- *  password. The overlay is swapped only after the source resolves, so a failed
- *  load (the source throws) keeps the last good values. */
-export async function refreshCredentialOverlay(source: CredentialSource): Promise<void> {
-	const managed = await source();
-	const previous = new Set(overlay.keys());
-	overlay.clear();
-	for (const [provider, keys] of PROVIDER_CREDENTIAL_KEYS) {
-		const found = keys
-			.map((name): [string, string | undefined] => [name, managed.get(name)])
-			.filter((entry): entry is [string, string] => entry[1] !== undefined && entry[1].trim().length > 0);
-		if (found.length === keys.length) {
-			for (const [name, value] of found) overlay.set(name, value);
-		} else if (found.length > 0) {
-			const missing = keys.filter((name) => !found.some(([found]) => found === name));
-			console.error(
-				`[secrets] managed credential for "${provider}" is missing ${missing.join(", ")} — dropping the whole bundle so it cannot pair with an unrelated environment value`,
-			);
-		}
-	}
-	// A credential that was managed a minute ago and is not any more means the
-	// source lost it, not that the operator meant to fall back to the environment.
-	for (const name of previous) {
-		if (!overlay.has(name)) {
-			console.error(`[secrets] managed credential ${name} is no longer provided by its source`);
-		}
-	}
-}
-
-/** Self-hosted source: decrypt the organization-less provider_credentials rows
- *  into a flat env-name→value map, scoping each row to the keys its provider
- *  declares. A missing key, unknown provider, or undecryptable row contributes
- *  nothing rather than throwing, so one bad row can't take out the others. */
-export const instanceCredentialSource: CredentialSource = async () => {
-	const managed = new Map<string, string>();
-
+/** Rebuild the overlay from the secrets table. A row whose name is not a known
+ *  credential, or that will not decrypt, contributes nothing rather than
+ *  throwing, so one bad row can't take out the others. The overlay is swapped
+ *  only after every row has been read, so a failed load leaves it untouched. */
+export async function refreshCredentialOverlay(): Promise<void> {
 	let key: Buffer | null = null;
 	try {
 		key = getEncryptionKey();
@@ -85,57 +42,41 @@ export const instanceCredentialSource: CredentialSource = async () => {
 		if (!(e instanceof EncryptionKeyError)) throw e;
 		console.error(`[secrets] ${e.message} — every stored credential is unreadable until this is corrected`);
 	}
-	if (!key) return managed;
+	// No key means nothing can be stored, so there is no query to make.
+	if (!key) {
+		overlay.clear();
+		return;
+	}
 
-	const rows = await db
-		.select({ provider: providerCredentials.provider, encryptedData: providerCredentials.encryptedData })
-		.from(providerCredentials)
-		.where(isNull(providerCredentials.organizationId));
+	const rows = await db.select({ name: secrets.name, encryptedValue: secrets.encryptedValue }).from(secrets);
 
+	const next = new Map<string, string>();
 	for (const row of rows) {
-		const keys = PROVIDER_CREDENTIAL_KEYS.get(row.provider);
-		if (!keys) continue;
-		let record: unknown;
+		if (!CREDENTIAL_ENV_NAMES.has(row.name)) continue;
 		try {
-			record = JSON.parse(await decryptSecret(row.encryptedData, { key, aad: aadForProvider(row.provider) }));
+			next.set(row.name, await decryptSecret(row.encryptedValue, { key, aad: aadForName(row.name) }));
 		} catch {
 			// There is no key id in the payload, so this cannot distinguish a
 			// rotated key from a corrupted row — the message has to cover both.
 			console.error(
-				`[secrets] stored credential for "${row.provider}" cannot be decrypted with the current ${ENCRYPTION_KEY_ENV} — re-enter it, or restore the key it was saved under`,
+				`[secrets] stored secret "${row.name}" cannot be decrypted with the current ${ENCRYPTION_KEY_ENV} — re-enter it, or restore the key it was saved under`,
 			);
-			continue;
-		}
-		if (typeof record !== "object" || record === null) continue;
-		for (const name of keys) {
-			const value = (record as Record<string, unknown>)[name];
-			if (typeof value === "string") managed.set(name, value);
 		}
 	}
 
-	return managed;
-};
+	overlay.clear();
+	for (const [name, value] of next) overlay.set(name, value);
+}
 
-/** Encrypt a provider's full credential set for the write path. Throws when no
- *  encryption key is set. */
-export async function encryptProviderCredentials(
-	providerId: string,
-	record: Record<string, string>,
-): Promise<EncryptedPayload> {
-	const keys = getCredentialKeysForProvider(providerId);
-	if (keys.length === 0) {
-		throw new Error(`Provider "${providerId}" has no storable credentials`);
+/** Encrypt one credential for the write path. Throws when the name is not an
+ *  overridable credential, or when no encryption key is set. */
+export async function encryptCredential(name: string, value: string): Promise<EncryptedPayload> {
+	if (!CREDENTIAL_ENV_NAMES.has(name)) {
+		throw new Error(`"${name}" is not an overridable credential`);
 	}
-	const isExactBundle =
-		Object.keys(record).length === keys.length &&
-		keys.every((name) => typeof record[name] === "string" && record[name].trim().length > 0);
-	if (!isExactBundle) {
-		throw new Error(`Credentials for "${providerId}" must contain exactly: ${keys.join(", ")}`);
-	}
-
 	const key = getEncryptionKey();
 	if (!key) {
 		throw new EncryptionKeyError(`${ENCRYPTION_KEY_ENV} is not set — cannot store encrypted credentials`);
 	}
-	return encryptSecret(JSON.stringify(record), { key, aad: aadForProvider(providerId) });
+	return encryptSecret(value, { key, aad: aadForName(name) });
 }

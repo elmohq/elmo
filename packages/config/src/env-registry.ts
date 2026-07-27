@@ -206,35 +206,7 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "ELMO_ENCRYPTION_KEY",
 		scope: "server",
 		requiredBy: "optional",
-		description: "Base64-encoded 32-byte key enabling encrypted provider credentials in self-hosted deployments.",
-	},
-	// Only the worker reads these at runtime — the cloud web app gets provider
-	// credentials from the environment Infisical's Vercel sync populates. They are
-	// still required across cloud so a deployment cannot be provisioned with a
-	// worker that has no way to reach Infisical.
-	{
-		name: "INFISICAL_CLIENT_ID",
-		scope: "server",
-		requiredBy: ["cloud"],
-		description: "Infisical machine identity client ID used by the managed cloud worker.",
-	},
-	{
-		name: "INFISICAL_CLIENT_SECRET",
-		scope: "server",
-		requiredBy: ["cloud"],
-		description: "Infisical machine identity client secret used by the managed cloud worker.",
-	},
-	{
-		name: "INFISICAL_PROJECT_ID",
-		scope: "server",
-		requiredBy: ["cloud"],
-		description: "Infisical project containing managed cloud provider credentials.",
-	},
-	{
-		name: "INFISICAL_ENVIRONMENT",
-		scope: "server",
-		requiredBy: ["cloud"],
-		description: "Infisical environment slug containing managed cloud provider credentials.",
+		description: "Base64-encoded 32-byte key enabling encrypted provider credentials stored in the database.",
 	},
 	{
 		name: "DEPLOYMENT_MODE",
@@ -451,23 +423,11 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 ];
 
 /**
- * provider id → the credential env-var names it needs, for every provider that
- * declares one (`requiredBy: "dynamic-scrape-targets"`). The single source for
- * credential grouping: startup validation (config), the credential overlay
- * (lib), and cloud secret loading (Infisical) all read from here. Optional,
- * env-only vars such as BRIGHTDATA_SERP_ZONE carry no provider marker and are
- * excluded, keeping them out of the stored-credential lifecycle.
+ * The env-var names that may be overridden by a stored secret: every var a
+ * provider declares as its credential. Optional, env-only vars such as
+ * BRIGHTDATA_SERP_ZONE carry no provider marker and are excluded, keeping them
+ * out of the stored-secret lifecycle.
  */
-export const PROVIDER_CREDENTIAL_KEYS: ReadonlyMap<string, readonly string[]> = (() => {
-	const index = new Map<string, string[]>();
-	for (const spec of ENV_REGISTRY) {
-		if (spec.requiredBy !== "dynamic-scrape-targets" || !spec.provider) continue;
-		const keys = index.get(spec.provider) ?? [];
-		keys.push(spec.name);
-		index.set(spec.provider, keys);
-	}
-	return index;
-})();
-
-/** Every canonical provider-credential env-var name, across all providers. */
-export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set([...PROVIDER_CREDENTIAL_KEYS.values()].flat());
+export const CREDENTIAL_ENV_NAMES: ReadonlySet<string> = new Set(
+	ENV_REGISTRY.filter((spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider).map((spec) => spec.name),
+);

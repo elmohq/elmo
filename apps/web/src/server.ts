@@ -1,9 +1,11 @@
 import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
-import { startBackgroundCredentialRefresh } from "@workspace/deployment/credentials";
+import { startCredentialRefresh } from "@workspace/lib/secrets";
 
-startBackgroundCredentialRefresh();
+// Not awaited: the app has to serve sign-in and settings whether or not the
+// credential store is reachable.
+void startCredentialRefresh();
 
 // HSTS asserts HTTPS-only for the host that served the response. Whitelabel
 // deployments run on customer-controlled custom domains, where `includeSubDomains`

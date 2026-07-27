@@ -7,12 +7,5 @@ export {
 	getEncryptionKey,
 	SecretDecryptError,
 } from "./crypto";
-export {
-	type CredentialSource,
-	clearCredentialOverlay,
-	encryptProviderCredentials,
-	getCredential,
-	getCredentialKeysForProvider,
-	instanceCredentialSource,
-	refreshCredentialOverlay,
-} from "./store";
+export { startCredentialRefresh } from "./refresh";
+export { clearCredentialOverlay, encryptCredential, getCredential, refreshCredentialOverlay } from "./store";

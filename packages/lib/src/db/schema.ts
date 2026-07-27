@@ -1,16 +1,4 @@
-import {
-	pgEnum,
-	pgTable,
-	uuid,
-	text,
-	timestamp,
-	boolean,
-	json,
-	index,
-	integer,
-	smallint,
-	unique,
-} from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
@@ -238,26 +226,14 @@ export const SYSTEM_TAGS = {
 
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
 
-// Self-hosted provider secrets — separate table, strictest access. Managed
-// cloud credentials stay in Infisical and never enter this table.
-export const providerCredentials = pgTable(
-	"provider_credentials",
-	{
-		id: uuid("id").defaultRandom().primaryKey().notNull(),
-		organizationId: text("organization_id").references(() => organization.id, { onDelete: "cascade" }),
-		provider: text("provider").notNull(),
-		encryptedData: text("encrypted_data").notNull(),
-		lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
-		lastVerifyError: text("last_verify_error"),
-		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-		updatedAt: timestamp("updated_at", { withTimezone: true })
-			.defaultNow()
-			.$onUpdate(() => new Date())
-			.notNull(),
-	},
-	(table) => ({
-		providerOrgUnique: unique("provider_credentials_provider_org_uidx")
-			.on(table.provider, table.organizationId)
-			.nullsNotDistinct(),
-	}),
-).enableRLS();
+// Encrypted overrides for credential environment variables, keyed by the env-var
+// name they stand in for. Separate table, strictest access.
+export const secrets = pgTable("secrets", {
+	name: text("name").primaryKey().notNull(),
+	encryptedValue: text("encrypted_value").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
