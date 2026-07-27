@@ -225,3 +225,15 @@ export const SYSTEM_TAGS = {
 } as const;
 
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
+
+// Encrypted overrides for credential environment variables, keyed by the env-var
+// name they stand in for. Separate table, strictest access.
+export const secrets = pgTable("secrets", {
+	name: text("name").primaryKey().notNull(),
+	encryptedValue: text("encrypted_value").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();

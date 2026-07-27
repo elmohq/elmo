@@ -1,5 +1,6 @@
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import { extractTextFromOxylabs, extractCitationsFromOxylabs, type Citation } from "../../text-extraction";
+import { getCredential } from "../../secrets";
 
 // Oxylabs Web Scraper API sources for AI surfaces.
 // ChatGPT and Perplexity use `prompt`; the Google surfaces use `query` and
@@ -30,7 +31,7 @@ interface OxylabsPayload {
 }
 
 function basicAuthHeader(): string {
-	const token = btoa(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`);
+	const token = btoa(`${getCredential("OXYLABS_USERNAME")}:${getCredential("OXYLABS_PASSWORD")}`);
 	return `Basic ${token}`;
 }
 
@@ -158,7 +159,7 @@ export const oxylabs: Provider = {
 	name: "Oxylabs",
 
 	isConfigured() {
-		return !!process.env.OXYLABS_USERNAME && !!process.env.OXYLABS_PASSWORD;
+		return !!getCredential("OXYLABS_USERNAME") && !!getCredential("OXYLABS_PASSWORD");
 	},
 
 	validateTarget(config: ModelConfig) {

@@ -2,6 +2,7 @@ import Olostep from "olostep";
 import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
 import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -37,9 +38,14 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 };
 
 let _client: Olostep | null = null;
+let _clientApiKey: string | undefined;
 function getClient(): Olostep {
-	if (!_client) {
-		_client = new Olostep({ apiKey: process.env.OLOSTEP_API_KEY, retry: { maxRetries: 3, initialDelayMs: 2000 } });
+	// Re-key the memoized client on the credential so a refreshed overlay
+	// (DB-stored key) takes effect without a process restart.
+	const apiKey = getCredential("OLOSTEP_API_KEY");
+	if (!_client || _clientApiKey !== apiKey) {
+		_client = new Olostep({ apiKey, retry: { maxRetries: 3, initialDelayMs: 2000 } });
+		_clientApiKey = apiKey;
 	}
 	return _client;
 }
@@ -103,7 +109,7 @@ export const olostep: Provider = {
 	name: "Olostep",
 
 	isConfigured() {
-		return !!process.env.OLOSTEP_API_KEY;
+		return !!getCredential("OLOSTEP_API_KEY");
 	},
 
 	validateTarget(config: ModelConfig) {

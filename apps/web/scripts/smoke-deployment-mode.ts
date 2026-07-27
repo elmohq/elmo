@@ -53,6 +53,7 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		...SHARED_ENV,
 		DEPLOYMENT_MODE: "local",
 		APP_URL: "http://localhost:3000",
+		ELMO_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString("base64"),
 	},
 	demo: {
 		...SHARED_ENV,

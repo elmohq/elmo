@@ -38,7 +38,7 @@ Run `pnpm format` before committing, and `check-types` for the packages you touc
 
 ## Environment
 
-`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `VITE_DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`. Env validation also requires `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DATAFORSEO_LOGIN`, and `DATAFORSEO_PASSWORD` — placeholder values work for UI-only work.
+`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `VITE_DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`. Env validation also requires `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DATAFORSEO_LOGIN`, and `DATAFORSEO_PASSWORD` — placeholder values work for UI-only work.
 
 ## Git workflow
 

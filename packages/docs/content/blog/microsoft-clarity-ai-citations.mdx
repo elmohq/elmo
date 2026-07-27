@@ -1,0 +1,121 @@
+---
+title: "Microsoft Clarity AI Citations: What It Tracks (and What It Misses)"
+description: "Clarity's Citation dashboard is free, first-party data on which of your pages AI answers cite. Here's what its metrics mean, and the one ecosystem it can see."
+date: "2026-07-25"
+author: ai
+metaTitle: "Microsoft Clarity AI Citations: What It Tracks & Misses"
+tags:
+  - ai-citations
+  - ai-visibility
+  - tools
+  - free
+howTo:
+  name: "How to set up and read Microsoft Clarity's Citation dashboard"
+  description: "Turn on Clarity's AI Visibility reports, then interpret the citation metrics without over-reading what a single ecosystem's logs can tell you."
+  steps:
+    - name: Verify your domain
+      text: "A project administrator verifies domain ownership in one of three ways: installing the Clarity tracking code on the site, connecting the domain through Google Search Console, or connecting it through Bing Webmaster Tools. It is a one-time setup per domain."
+    - name: Open the Citation dashboard
+      text: "Select AI Visibility, then Citation, from the dropdown menu. Citation data begins appearing automatically once verification completes."
+    - name: Read cited pages before totals
+      text: "Start with the My cited pages table, which lists the pages referenced in AI answers with their citation counts and associated queries. It tells you which content is doing the work."
+    - name: Mine the grounding queries
+      text: "Review the queries AI systems used to retrieve your content. These are retrieval phrasings rather than what users typed, so treat them as a map of how the engine decomposes topics."
+    - name: Treat share of authority as directional
+      text: "Microsoft calculates it daily and excludes days where you were not cited for a query, which inflates the figure relative to broader calculations. Watch its trend rather than its absolute value."
+    - name: Cover the engines Clarity cannot see
+      text: "Clarity reports citations across supported AI experiences, which does not include ChatGPT's own search, Gemini, or Perplexity. Sample those with prompt tracking so your read on AI visibility is not one ecosystem wide."
+faq:
+  - question: Does Microsoft Clarity track AI citations?
+    answer: "Yes. Clarity's Citation dashboard, part of its AI Visibility reports, shows which of your pages were referenced in AI-generated answers, how often, and which queries retrieved them. It became generally available on 13 May 2026. Microsoft's documentation is explicit that it tracks citation activity in AI answers only, not search rankings, impressions, or click-through rates."
+  - question: Is Microsoft Clarity's AI Visibility free?
+    answer: "Yes. Microsoft's own FAQ states that \"Clarity is a free service forever\" with no traffic limits and no paid upgrade, and the AI Visibility reports are part of the product. The documented caveat is eligibility rather than price: AI Visibility features are available for eligible website categories, so some projects may not have access to every report."
+  - question: Does Clarity show ChatGPT or Perplexity citations?
+    answer: "No, not directly. Microsoft's documentation says Citations covers \"supported AI experiences\" without naming them, and the data is built from Microsoft's own grounding and crawl signals. ChatGPT's own search, Gemini, and Perplexity do not share their internal grounding logs with Microsoft, so citations there do not appear in the dashboard."
+  - question: What is a grounding query in Microsoft Clarity?
+    answer: "A grounding query is the search phrase an AI system used to retrieve your content before writing its answer. Microsoft notes these \"may differ from the exact phrases users type,\" because the model rewrites a question into retrieval terms. The table reports each query alongside volume, citation frequency, and citation rate."
+  - question: What is share of authority in Clarity?
+    answer: "Share of authority is the percentage of total citations attributed to your domain: your citations divided by total citations from all domains, calculated daily. Microsoft notes that days when your domain was not cited for a query are excluded, so the metric \"focuses on active participation and may lead to higher Share of authority values compared to broader calculations.\""
+  - question: Is Clarity a replacement for an AI visibility tool?
+    answer: "Not on its own. Clarity gives you observed citations from one ecosystem's logs, which is data no prompt-based tool can reproduce. It cannot tell you what an answer said about your brand, which competitors were named beside you, or what happens in ChatGPT, Gemini, and Perplexity. Most teams need both the log view and cross-engine prompt sampling."
+  - question: Does Clarity report AI referral traffic?
+    answer: "Yes. The AI referral traffic metric shows the percentage of sessions on your site that arrived from AI assistants, calculated as AI-referred sessions divided by total sessions for the period. That makes it a rare free source for the downstream number Google's Search Console AI report omits, since that report launched with impressions but no clicks or click-through rate."
+---
+
+**Microsoft Clarity now reports which of your pages AI answers cite, for free, using data you cannot get from prompt tracking.** The Citation dashboard went generally available on 13 May 2026, and it is built from the citation logs of the systems that generated the answers rather than from sampling. That makes it genuinely new. It also sees one ecosystem, which is the part most coverage skips.
+
+**Key takeaways**
+
+- Clarity is free with no traffic limits, and the Citation dashboard is part of it. The gating factor is eligibility, not price: AI Visibility is "available for eligible website categories."
+- It is *observed* citation data, not sampled. Microsoft is reporting what its own retrieval actually did, so there is no prompt set to design and no run-to-run noise.
+- Coverage is the catch. Microsoft's docs say "supported AI experiences" without naming them, and ChatGPT's own search, Gemini, and Perplexity do not hand their grounding logs to Microsoft.
+- Grounding queries are the most useful part: the phrasings the engine actually retrieved on, which are not the phrasings users typed.
+- Read share of authority carefully. Microsoft says its daily calculation "may lead to higher Share of authority values compared to broader calculations."
+- It reports AI referral traffic, the downstream number [Google's own AI report](/blog/opt-out-google-ai-overviews) still does not give you.
+
+## What the Citation dashboard actually shows
+
+Clarity's [Citation dashboard](https://learn.microsoft.com/en-us/clarity/ai-visibility/ai-citations) sits under AI Visibility and reports five things. Microsoft's definitions are precise enough to be worth taking literally.
+
+| Metric | What Microsoft says it is |
+|---|---|
+| **Page citations** | "The total number of times pages from your site were referenced in AI-generated answers during the selected period." |
+| **Share of authority** | "The percentage of total citations attributed to your domain, calculated as your citations divided by total citations from all domains." |
+| **AI referral traffic** | "The percentage of sessions on your site that arrived from AI assistants." |
+| **Grounding queries** | "The queries that AI systems used to retrieve your content before generating an answer." |
+| **My cited pages** | The pages referenced in AI answers, "along with their citation counts and associated queries." |
+
+Two notes in the documentation do more work than the metric definitions. The first sets the scope: "The Citation dashboard tracks citation activity in AI-generated answers only. It does not measure traditional search rankings, impressions, or click-through rates." The second is a warning against reading citations as placement: counts "reflect how often a page was referenced, not its ranking or prominence within an AI-generated answer." Being cited third in a hedged paragraph and being the source an answer is built on count the same.
+
+Setup is a one-time domain verification by a project administrator, through the Clarity tracking code, Google Search Console, or Bing Webmaster Tools. On 9 July 2026 Microsoft added [Topic Insights](https://clarity.microsoft.com/blog/topic-insights-announcement/) on top, grouping citations into topics with content recommendations. It ships in beta, and Microsoft's own framing is that it "should only be used for directional monitoring and insights."
+
+## Observed citations vs sampled prompts
+
+Here is the distinction that makes this worth your attention. There are two ways to know whether AI answers cite you, and they answer different questions.
+
+**Observed data** comes from the logs of the system that generated the answer. Clarity can tell you your pages were cited 400 times last week because Microsoft's infrastructure did the citing. There is no sample, no estimate, and no prompt set to argue about.
+
+**Sampled data** comes from running prompts yourself and reading what comes back, which is the method behind [prompt tracking](/blog/ai-prompt-tracking) and [share of voice](/blog/ai-share-of-voice). It is an estimate, and it is engine-agnostic: you can point it at anything with an API or an interface.
+
+| | Clarity (observed) | Prompt tracking (sampled) |
+|---|---|---|
+| Source of truth | The platform's own citation logs | Answers you generate and record |
+| Engine coverage | "Supported AI experiences" only | Any engine you choose to query |
+| Tells you the answer's wording | No | Yes |
+| Tells you who was named beside you | Only as competing domains | Yes, by brand |
+| Sentiment and accuracy | No | Yes |
+| Cost | Free | Your time, or a tool, plus API usage |
+
+Neither supersedes the other. Observed data settles volume questions that sampling can only approximate. Sampling answers the questions a log cannot: what the engine said about you, whether it got your pricing right, and which three competitors it recommended instead. Our study of [citation volatility](/blog/citation-volatility) is an example of the second kind, and it also explains why a single sampled check is weak evidence: across 28 prompts tracked daily for six weeks, the set of cited domains turned over by roughly 60–70% day to day.
+
+## The coverage limit, stated plainly
+
+Microsoft describes Citations as surfacing activity "across supported AI experiences" and does not publish the list. What the product does disclose is where the data comes from: it unifies signals from Bing Webmaster Tools and Clarity, spanning crawling and indexing through to citation and AI-referred traffic. That is Microsoft's own retrieval stack.
+
+The practical read, as [Search Engine Journal](https://www.searchenginejournal.com/microsoft-clarity-now-shows-grounding-queries-behind-ai-citations/575279/) put it in May 2026, is that Clarity captures citations "primarily across Microsoft's AI surfaces (like Copilot and Bing generative search)" and "is not giving you a direct window into how OpenAI's ChatGPT (using its own search), Google Gemini, or Perplexity are citing your links, because those platforms do not share their internal grounding logs with Microsoft."
+
+That is not a flaw in the tool; it is the structural condition of first-party AI data. Every platform can only report on its own retrieval, and none of them will report on each other's. So a dashboard fed by one ecosystem's logs is precise and narrow at the same time. Treat the number as accurate for what it covers, and do not let it stand in for [AI citations](/blog/ai-citations) generally.
+
+## Read share of authority carefully
+
+Share of authority looks like a share-of-voice metric and behaves slightly differently, in a way Microsoft documents openly. The calculation runs at a daily level: "If your domain is cited for a query on a given day, all citation instances for that query on that day are included; if not, that day is excluded." Microsoft then says what follows from that, which is the useful part: the approach "focuses on active participation and may lead to higher Share of authority values compared to broader calculations."
+
+In other words, days you lost are not fully in the denominator. A 30% share of authority is not the same claim as "we appear in 30% of relevant AI answers." It measures your slice of the citations on the queries and days where you were already in the running, which is a narrower and more flattering base.
+
+That makes it a good trend line and a bad boardroom number. Watch it move, and pair it with a presence-style measure across your actual prompt set if you need to answer "how often do we show up at all?"
+
+## Grounding queries are the real find
+
+The metric with the most to teach you is the least headline-friendly. Grounding queries are the phrasings the engine used to retrieve, and Microsoft is upfront that they "may differ from the exact phrases users type." A model takes a conversational question, decomposes it, and issues its own retrieval terms, which is the mechanism that makes grounding work at all.
+
+Seeing those terms is close to reading the engine's notes. You learn which of your pages satisfied which retrieval intent, where a single page is absorbing queries that deserve their own coverage, and which adjacent phrasings retrieve competitors instead of you. That is a concrete content brief, and it is the kind of input [answer engine optimization](/blog/answer-engine-optimization) usually has to infer.
+
+The caveat is the same one as above. These are one ecosystem's retrieval patterns. They generalize reasonably, because engines that ground answers face similar retrieval problems, but "generalizes reasonably" is an assumption, not a measurement.
+
+## Where it fits in a free stack
+
+If you are assembling AI visibility measurement without a budget, Clarity is a real addition rather than another grader. It gives you observed citations, grounding queries, and AI referral traffic for nothing, which no free prompt-based option can match on precision.
+
+It leaves three gaps: the engines outside Microsoft's stack, the wording and sentiment of the answers themselves, and the competitor set named beside you. Those need sampling. The method is in our guide to [tracking your brand in AI search](/blog/track-brand-ai-search), and [Elmo](https://www.elmohq.com/) automates it as an open-source, self-hosted platform that runs your prompts across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces and records every mention, citation, and rival named alongside you. For the rest of the no-cost options, see our roundup of [free AI visibility tools](/blog/free-ai-visibility-tools); for the paid category, the [best AI visibility tools](/blog/best-ai-visibility-tools) comparison and the [AI visibility software](/ai-visibility-tools) hub.
+
+The short version: turn Clarity on, because free observed data about your own citations is worth having. Just do not mistake one ecosystem's logs for a view of AI search.

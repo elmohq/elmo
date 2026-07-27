@@ -3,6 +3,10 @@ import { pageSchema } from "fumadocs-core/source/schema";
 import { defineConfig, defineDocs } from "fumadocs-mdx/config";
 import { z } from "zod";
 
+const frontmatterDate = z
+	.union([z.string(), z.date()])
+	.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value));
+
 export const docs = defineDocs({
 	dir: "../../packages/docs/content/docs",
 	docs: {
@@ -23,9 +27,10 @@ export const blog = defineDocs({
 			// into a Date, while a quoted one ("2026-05-30") stays a string.
 			// Accept either and normalize to a YYYY-MM-DD string so downstream
 			// code (byline, JSON-LD, RSS) only ever deals with a string.
-			date: z
-				.union([z.string(), z.date()])
-				.transform((value) => (value instanceof Date ? value.toISOString().slice(0, 10) : value)),
+			date: frontmatterDate,
+			// Set only when an existing post receives a substantive content
+			// refresh. The original publication date remains unchanged.
+			updated: frontmatterDate.optional(),
 			author: z.string(),
 			tags: z.array(z.string()).optional(),
 			// Optional SEO <title> override. The post `title` is the on-page H1;
