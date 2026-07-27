@@ -42,12 +42,13 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 		const scopedBrands =
 			orgIds.length === 0
 				? []
-				: await db.query.brands.findMany({
-						where: inArray(brands.organizationId, orgIds),
-					});
+				: await db
+						.select({ id: brands.id, name: brands.name })
+						.from(brands)
+						.where(inArray(brands.organizationId, orgIds));
 
 		return {
-			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
+			brands: scopedBrands,
 			canCreateBrands: deployment.features.canCreateBrands,
 		};
 	},
