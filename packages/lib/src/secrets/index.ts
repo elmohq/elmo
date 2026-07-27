@@ -4,8 +4,12 @@ export {
 	type EncryptedPayload,
 	EncryptionKeyError,
 	encryptSecret,
-	getEncryptionKey,
+	getKeyring,
+	keyId,
+	type Keyring,
+	RETIRED_KEYS_ENV,
 	SecretDecryptError,
+	UnknownKeyError,
 } from "./crypto";
 export { startCredentialRefresh } from "./refresh";
 export { clearCredentialOverlay, encryptCredential, getCredential, refreshCredentialOverlay } from "./store";

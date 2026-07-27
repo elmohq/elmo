@@ -7,7 +7,9 @@ import {
 	type EncryptedPayload,
 	EncryptionKeyError,
 	encryptSecret,
-	getEncryptionKey,
+	getKeyring,
+	type Keyring,
+	UnknownKeyError,
 } from "./crypto";
 
 // Providers read every credential through getCredential: a stored override if
@@ -35,15 +37,15 @@ function aadForName(name: string): string {
  *  throwing, so one bad row can't take out the others. The overlay is swapped
  *  only after every row has been read, so a failed load leaves it untouched. */
 export async function refreshCredentialOverlay(): Promise<void> {
-	let key: Buffer | null = null;
+	let keyring: Keyring | null = null;
 	try {
-		key = getEncryptionKey();
+		keyring = getKeyring();
 	} catch (e) {
 		if (!(e instanceof EncryptionKeyError)) throw e;
 		console.error(`[secrets] ${e.message} — every stored credential is unreadable until this is corrected`);
 	}
 	// No key means nothing can be stored, so there is no query to make.
-	if (!key) {
+	if (!keyring) {
 		overlay.clear();
 		return;
 	}
@@ -54,12 +56,12 @@ export async function refreshCredentialOverlay(): Promise<void> {
 	for (const row of rows) {
 		if (!CREDENTIAL_ENV_NAMES.has(row.name)) continue;
 		try {
-			next.set(row.name, await decryptSecret(row.encryptedValue, { key, aad: aadForName(row.name) }));
-		} catch {
-			// There is no key id in the payload, so this cannot distinguish a
-			// rotated key from a corrupted row — the message has to cover both.
+			next.set(row.name, await decryptSecret(row.encryptedValue, { keyring, aad: aadForName(row.name) }));
+		} catch (e) {
 			console.error(
-				`[secrets] stored secret "${row.name}" cannot be decrypted with the current ${ENCRYPTION_KEY_ENV} — re-enter it, or restore the key it was saved under`,
+				e instanceof UnknownKeyError
+					? `[secrets] stored secret "${row.name}" is ${e.message} — restore that key there to finish the rotation`
+					: `[secrets] stored secret "${row.name}" will not decrypt under the key it names — it may be corrupt or tampered with`,
 			);
 		}
 	}
@@ -74,9 +76,9 @@ export async function encryptCredential(name: string, value: string): Promise<En
 	if (!CREDENTIAL_ENV_NAMES.has(name)) {
 		throw new Error(`"${name}" is not an overridable credential`);
 	}
-	const key = getEncryptionKey();
-	if (!key) {
+	const keyring = getKeyring();
+	if (!keyring) {
 		throw new EncryptionKeyError(`${ENCRYPTION_KEY_ENV} is not set — cannot store encrypted credentials`);
 	}
-	return encryptSecret(value, { key, aad: aadForName(name) });
+	return encryptSecret(value, { key: keyring.primary, aad: aadForName(name) });
 }

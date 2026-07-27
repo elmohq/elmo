@@ -121,6 +121,27 @@ describe("refreshCredentialOverlay", () => {
 		expect(getCredential("BRIGHTDATA_API_TOKEN")).toBeUndefined();
 	});
 
+	it("keeps serving rows written under a retired key mid-rotation", async () => {
+		const retired = Buffer.alloc(32, 4);
+		vi.stubEnv("ELMO_ENCRYPTION_KEY_OLD", retired.toString("base64"));
+		dbState.rows = [await encryptedRow("OPENAI_API_KEY", "written-before-rotation", retired)];
+
+		await refreshCredentialOverlay();
+
+		expect(getCredential("OPENAI_API_KEY")).toBe("written-before-rotation");
+		expect(console.error).not.toHaveBeenCalled();
+	});
+
+	it("names the key a stranded row needs instead of blaming the row", async () => {
+		vi.stubEnv("OPENAI_API_KEY", undefined);
+		dbState.rows = [await encryptedRow("OPENAI_API_KEY", "stranded", Buffer.alloc(32, 4))];
+
+		await refreshCredentialOverlay();
+
+		expect(getCredential("OPENAI_API_KEY")).toBeUndefined();
+		expect(console.error).toHaveBeenCalledWith(expect.stringContaining("ELMO_ENCRYPTION_KEY_OLD"));
+	});
+
 	it("leaves the overlay untouched when the query fails", async () => {
 		dbState.rows = [await encryptedRow("OPENAI_API_KEY", "current")];
 		await refreshCredentialOverlay();

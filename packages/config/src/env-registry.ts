@@ -213,6 +213,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Base64-encoded 32-byte key used to encrypt provider credentials stored in the database. Generate one with: openssl rand -base64 32",
 	},
 	{
+		name: "ELMO_ENCRYPTION_KEY_OLD",
+		scope: "server",
+		requiredBy: "optional",
+		description:
+			"Previous ELMO_ENCRYPTION_KEY values, comma-separated, kept readable while rotating. Set only during a rotation.",
+	},
+	{
 		name: "DEPLOYMENT_MODE",
 		scope: "server",
 		requiredBy: VALIDATED_MODES,
