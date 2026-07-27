@@ -19,6 +19,12 @@ import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
 /**
+ * The db handle or an open transaction — lets a provisioning step join a
+ * caller's transaction so a later failure rolls its writes back too.
+ */
+export type DbConnection = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
  * Number of users in the database.
  *
  * Used by the local-mode signup guard — "allow the first signup, reject
@@ -147,8 +153,11 @@ async function findUniqueOrgSlug(baseSlug: string): Promise<string> {
  * from Auth0 (whitelabel) or created on signup. The brand id is reused as the
  * org id (the long-standing convention), with a collision-free slug.
  */
-export async function ensureOrganization(input: { id: string; name: string }): Promise<void> {
-	const [existing] = await db
+export async function ensureOrganization(
+	input: { id: string; name: string },
+	conn: DbConnection = db,
+): Promise<void> {
+	const [existing] = await conn
 		.select({ id: organization.id })
 		.from(organization)
 		.where(eq(organization.id, input.id))
@@ -158,7 +167,7 @@ export async function ensureOrganization(input: { id: string; name: string }): P
 	const baseSlug = slugify(input.name);
 	let slug = baseSlug;
 	for (let suffix = 2; ; suffix++) {
-		const [conflict] = await db
+		const [conflict] = await conn
 			.select({ id: organization.id })
 			.from(organization)
 			.where(eq(organization.slug, slug))
@@ -172,7 +181,7 @@ export async function ensureOrganization(input: { id: string; name: string }): P
 	// An untargeted onConflictDoNothing would also swallow a slug-unique
 	// collision, silently skip the insert, and leave the caller's brand FK to
 	// fail with a confusing error instead.
-	await db
+	await conn
 		.insert(organization)
 		.values({ id: input.id, name: input.name, slug, createdAt: new Date() })
 		.onConflictDoNothing({ target: organization.id });
