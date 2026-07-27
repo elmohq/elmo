@@ -2,8 +2,7 @@ name: Daily Blog Draft
 
 on:
   schedule:
-    # 9:00 a.m. PST (UTC-8).
-    - cron: "0 17 * * 1-5"
+    - cron: "0 13 * * *"
   workflow_dispatch:
 
 permissions: {}
