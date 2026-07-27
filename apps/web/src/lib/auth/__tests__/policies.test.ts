@@ -18,6 +18,7 @@ import {
 	evaluateApiKeyAuth,
 	evaluateAuthedRouteGuard,
 	evaluateBrandAccess,
+	resolveBrandOrganization,
 	evaluateBrandRouteGuard,
 	evaluateDeploymentPolicy,
 	evaluateOrgScope,
@@ -473,6 +474,31 @@ describe("evaluateBrandAccess", () => {
 
 	it("denies when the user has no memberships", () => {
 		expect(evaluateBrandAccess([], ORG_A)).toBe("deny");
+	});
+});
+
+describe("resolveBrandOrganization", () => {
+	const ORG_A = "org-a";
+	const ORG_B = "org-b";
+
+	it("uses the sole membership when no org is requested", () => {
+		expect(resolveBrandOrganization([ORG_A], undefined)).toEqual({ ok: true, organizationId: ORG_A });
+	});
+
+	it("refuses to pick when the user belongs to several orgs", () => {
+		expect(resolveBrandOrganization([ORG_A, ORG_B], undefined)).toEqual({ ok: false, reason: "ambiguous" });
+	});
+
+	it("honors an explicit choice among several orgs", () => {
+		expect(resolveBrandOrganization([ORG_A, ORG_B], ORG_B)).toEqual({ ok: true, organizationId: ORG_B });
+	});
+
+	it("rejects an org the user does not belong to", () => {
+		expect(resolveBrandOrganization([ORG_A], ORG_B)).toEqual({ ok: false, reason: "forbidden" });
+	});
+
+	it("reports no membership before considering the request", () => {
+		expect(resolveBrandOrganization([], ORG_A)).toEqual({ ok: false, reason: "no-organization" });
 	});
 });
 

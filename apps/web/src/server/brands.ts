@@ -5,7 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess, requireBrandAccess, listUserOrganizations } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
+import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
@@ -17,6 +17,12 @@ import { validateWebsiteUrl } from "@/lib/brand-website";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
+
+const BRAND_ORG_ERRORS = {
+	"no-organization": "No organization for the current user",
+	forbidden: "Forbidden: No access to this organization",
+	ambiguous: "Choose a workspace for this brand",
+} as const;
 
 /**
  * Deployment-configured models this brand actually runs, after applying
@@ -201,6 +207,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		z.object({
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
+			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -221,16 +228,20 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		// Attach to the caller's active org, falling back to their first
-		// membership when none is set or it isn't one they belong to. Supports
-		// users in more than one org (e.g. an accepted team invite).
+		// Which workspace owns the brand is only ambiguous when the caller belongs
+		// to more than one — a cloud user who accepted a team invite, or a local
+		// install from when creating a brand minted an org for it. /app/new asks
+		// in that case; picking for them would be a coin flip that decides who
+		// can see the brand and, later, who gets billed for it.
 		const orgs = await listUserOrganizations(session.user.id);
-		if (orgs.length === 0) {
-			throw new Error("No organization for the current user");
+		const choice = resolveBrandOrganization(
+			orgs.map((o) => o.id),
+			data.organizationId,
+		);
+		if (!choice.ok) {
+			throw new Error(BRAND_ORG_ERRORS[choice.reason]);
 		}
-		const activeOrgId =
-			(session.session as { activeOrganizationId?: string | null } | undefined)?.activeOrganizationId ?? null;
-		const orgId = activeOrgId && orgs.some((o) => o.id === activeOrgId) ? activeOrgId : orgs[0].id;
+		const orgId = choice.organizationId;
 
 		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();

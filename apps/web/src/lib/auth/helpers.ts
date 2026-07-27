@@ -94,10 +94,16 @@ export async function requireBrandOrganization(
 	return row;
 }
 
+/**
+ * Oldest membership first, so a user's own workspace precedes any they were
+ * invited into. `organization.id` breaks ties, which a batch Auth0 sync
+ * produces by stamping every membership it creates with the same timestamp.
+ */
 export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string }[]> {
 	return db
 		.select({ id: organization.id, name: organization.name })
 		.from(member)
 		.innerJoin(organization, eq(member.organizationId, organization.id))
-		.where(eq(member.userId, userId));
+		.where(eq(member.userId, userId))
+		.orderBy(member.createdAt, organization.id);
 }
