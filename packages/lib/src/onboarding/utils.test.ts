@@ -13,6 +13,7 @@ describe("cleanUrl", () => {
 		expect(cleanUrl(" www.example.com/golf?category=clubs#featured ")).toBe(
 			"https://www.example.com/golf?category=clubs#featured",
 		);
+		expect(cleanUrl("nike.com")).toBe("https://nike.com/");
 		expect(cleanUrl("HTTP://EXAMPLE.COM:8080/Golf")).toBe("http://example.com:8080/Golf");
 	});
 

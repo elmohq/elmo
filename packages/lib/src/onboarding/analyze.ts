@@ -143,10 +143,10 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 	} = options;
 
 	const normalizedWebsite = cleanDomain(website);
-	if (!normalizedWebsite) {
+	const analysisUrl = cleanUrl(website);
+	if (!normalizedWebsite || !analysisUrl) {
 		throw new Error(`Could not parse website "${website}"`);
 	}
-	const analysisUrl = cleanUrl(website) || normalizedWebsite;
 
 	const brandNameHint = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
 	const websiteExcerpt = await safeGetExcerpt(analysisUrl);

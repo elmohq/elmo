@@ -57,6 +57,14 @@ describe("analyzeBrand", () => {
 		expect(ctx.website).toBe("example.com");
 	});
 
+	it("rejects unsupported protocols before calling analysis services", async () => {
+		await expect(buildAnalysisContext({ website: "ftp://example.com/private" })).rejects.toThrow(
+			'Could not parse website "ftp://example.com/private"',
+		);
+
+		expect(getWebsiteExcerpt).not.toHaveBeenCalled();
+	});
+
 	it("normalizes brand fields, dedupes domains, and filters self-referential competitors", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",
@@ -120,6 +128,10 @@ describe("analyzeBrand", () => {
 		});
 
 		const result = await analyzeBrand({ website: "nike.com" });
+		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith("https://nike.com/");
+		expect(prompt).toContain("Analyze the brand at https://nike.com/.");
 		expect(result.brandName).toBe("Nike");
 	});
 
