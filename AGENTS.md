@@ -30,6 +30,12 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 
 Run `pnpm format` before committing, and `check-types` for the packages you touched before opening the PR. Skip `pnpm lint` — CI doesn't gate on it. Only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them).
 
+## Tests
+
+- Add tests for the purpose and externally observable behavior of the code, not its implementation shape. Do not test that internal helpers, component structure, configuration objects, or incidental markup have a particular form unless that form is itself a supported contract.
+- Prefer tests that exercise a user outcome, public API, business rule, failure mode, or regression. A refactor that preserves behavior should not require test changes.
+- Do not add tests that only prove a page renders, a heading or control exists, or a mock was called. Assert the outcome the rendering, control, or dependency call enables.
+
 ## Package management and supply-chain security
 
 - **Always use pnpm.** Never install or run dependencies with npm, yarn, or `npx` — that sidesteps the workspace's protections.
