@@ -14,7 +14,14 @@
 import { z } from "zod";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
-import { cleanAndValidateDomain, cleanDomain, inferBrandNameFromDomain, uniqueLowercase, uniqueTrim } from "./utils";
+import {
+	cleanAndValidateDomain,
+	cleanDomain,
+	cleanUrl,
+	inferBrandNameFromDomain,
+	uniqueLowercase,
+	uniqueTrim,
+} from "./utils";
 
 // Tags are free-form and brand-tailored: the LLM invents a small vocabulary
 // (≤5 distinct values) that's actually useful for filtering THIS brand's
@@ -118,6 +125,7 @@ const DEFAULT_MAX_PROMPTS = 30;
  * compare-onboarding script so every provider sees identical input.
  */
 export interface AnalysisContext {
+	/** Host-only identity used by downstream mention and citation matching. */
 	website: string;
 	brandNameHint: string;
 	prompt: string;
@@ -138,12 +146,13 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 	if (!normalizedWebsite) {
 		throw new Error(`Could not parse website "${website}"`);
 	}
+	const analysisUrl = cleanUrl(website) || normalizedWebsite;
 
 	const brandNameHint = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
-	const websiteExcerpt = await safeGetExcerpt(normalizedWebsite);
+	const websiteExcerpt = await safeGetExcerpt(analysisUrl);
 
 	const prompt = buildPrompt({
-		website: normalizedWebsite,
+		website: analysisUrl,
 		brandNameHint,
 		websiteExcerpt,
 		includeCompetitors: maxCompetitors > 0,

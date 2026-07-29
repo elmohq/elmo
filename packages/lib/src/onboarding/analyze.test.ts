@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// Mock the LLM and excerpt modules so the test exercises only normalization.
+// Mock the LLM and excerpt modules so the tests never call external services.
 vi.mock("./llm", () => ({
 	resolveResearchTarget: vi.fn(() => ({
 		provider: { id: "anthropic-api", isConfigured: () => true } as any,
@@ -12,14 +12,51 @@ vi.mock("../website-excerpt", () => ({
 	getWebsiteExcerpt: vi.fn(async () => ""),
 }));
 
+import { getWebsiteExcerpt } from "../website-excerpt";
+import { analyzeBrand, buildAnalysisContext } from "./analyze";
 import { runStructuredResearchPrompt } from "./llm";
-import { analyzeBrand } from "./analyze";
 
 afterEach(() => {
 	vi.clearAllMocks();
 });
 
 describe("analyzeBrand", () => {
+	it("uses the full page URL for analysis while retaining the domain identity", async () => {
+		const pageUrl = "https://www.nike.com/golf?category=clubs#featured";
+		vi.mocked(getWebsiteExcerpt).mockResolvedValueOnce("Nike Golf page excerpt");
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Nike Golf",
+			additionalDomains: [],
+			aliases: [],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		const result = await analyzeBrand({
+			website: pageUrl,
+			brandName: "Nike Golf",
+		});
+		const prompt = vi.mocked(runStructuredResearchPrompt).mock.calls[0]?.[0];
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith(pageUrl);
+		expect(prompt).toContain(`Analyze the brand at ${pageUrl}.`);
+		expect(prompt).toContain(`Text from ${pageUrl}:`);
+		expect(result.website).toBe("nike.com");
+	});
+
+	it("does not disclose embedded URL credentials to analysis services", async () => {
+		const privateUrl = "https://alice:secret@example.com/private?view=summary";
+		const safeUrl = "https://example.com/private?view=summary";
+
+		const ctx = await buildAnalysisContext({ website: privateUrl });
+
+		expect(getWebsiteExcerpt).toHaveBeenCalledWith(safeUrl);
+		expect(ctx.prompt).toContain(`Analyze the brand at ${safeUrl}.`);
+		expect(ctx.prompt).not.toContain("alice");
+		expect(ctx.prompt).not.toContain("secret");
+		expect(ctx.website).toBe("example.com");
+	});
+
 	it("normalizes brand fields, dedupes domains, and filters self-referential competitors", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",

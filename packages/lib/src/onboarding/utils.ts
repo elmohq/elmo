@@ -6,6 +6,32 @@
 
 const DOMAIN_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 
+/**
+ * Normalize a URL for website analysis without dropping its path, query, or
+ * fragment. Embedded credentials are removed because this value is sent to
+ * external analysis services. Query values are intentionally preserved, so
+ * callers must provide a URL that is safe to disclose to those services.
+ */
+export function cleanUrl(input: string): string {
+	if (!input) return "";
+	const trimmed = input.trim();
+	if (!trimmed) return "";
+
+	const explicitScheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(trimmed);
+	if (explicitScheme && !/^https?$/i.test(explicitScheme[1])) return "";
+
+	try {
+		const hasProtocol = /^https?:\/\//i.test(trimmed);
+		const url = new URL(hasProtocol ? trimmed : `https://${trimmed}`);
+		if (!url.hostname || (url.protocol !== "http:" && url.protocol !== "https:")) return "";
+		url.username = "";
+		url.password = "";
+		return url.toString();
+	} catch {
+		return "";
+	}
+}
+
 export function cleanDomain(input: string): string {
 	if (!input) return "";
 	const trimmed = input.trim();

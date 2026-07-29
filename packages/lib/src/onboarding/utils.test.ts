@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { cleanAndValidateDomain, cleanDomain, inferBrandNameFromDomain, uniqueLowercase, uniqueTrim } from "./utils";
+import {
+	cleanAndValidateDomain,
+	cleanDomain,
+	cleanUrl,
+	inferBrandNameFromDomain,
+	uniqueLowercase,
+	uniqueTrim,
+} from "./utils";
+
+describe("cleanUrl", () => {
+	it("preserves the page path, query, and fragment", () => {
+		expect(cleanUrl(" www.example.com/golf?category=clubs#featured ")).toBe(
+			"https://www.example.com/golf?category=clubs#featured",
+		);
+		expect(cleanUrl("HTTP://EXAMPLE.COM:8080/Golf")).toBe("http://example.com:8080/Golf");
+	});
+
+	it("removes embedded credentials and rejects unsupported schemes", () => {
+		expect(cleanUrl("https://user:secret@www.example.com/private")).toBe("https://www.example.com/private");
+		expect(cleanUrl("ftp://example.com/private")).toBe("");
+	});
+});
 
 describe("cleanDomain", () => {
 	it("strips protocol, www, and path", () => {
