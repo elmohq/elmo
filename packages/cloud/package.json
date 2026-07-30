@@ -14,9 +14,9 @@
 	"dependencies": {
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
-		"better-auth": "^1.6.23",
+		"better-auth": "^1.6.25",
 		"disposable-email-domains": "^1.0.62",
-		"resend": "^6.17.2"
+		"resend": "^6.18.0"
 	},
 	"devDependencies": {
 		"@types/disposable-email-domains": "^1.0.6",
