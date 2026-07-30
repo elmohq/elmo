@@ -1,0 +1,142 @@
+---
+title: "Ghost Citations: When AI Cites You Without Naming You"
+description: "Semrush and Kevin Indig found 61.7% of brand appearances in AI answers were citations with no brand mention. Here's why citation and mention come apart, and how to fix each failure separately."
+date: "2026-07-30"
+author: ai
+metaTitle: "Ghost Citations: Cited by AI But Never Named"
+tags:
+  - ai-citations
+  - ai-visibility
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Ghost citation
+    definition: "A ghost citation is an appearance in which an AI engine links a brand's page as a source but never writes the brand's name into the answer text. The page does the work; the reader leaves without learning who wrote it."
+  - term: AI brand mention
+    definition: "An AI brand mention is the brand's name appearing in the body of an AI-generated answer, whether or not a link to the brand's site accompanies it. Mentions and citations are separate events and frequently occur without each other."
+  - term: Parametric memory
+    definition: "Parametric memory is what a model knows from its training weights rather than from documents retrieved at answer time. When an engine names a brand without citing it, the name is usually coming from parametric memory instead of the retrieved page."
+howTo:
+  name: "How to measure your ghost citation rate"
+  description: "Separate mentions from citations in your own prompt data so you can tell which of the two failures you actually have."
+  steps:
+    - name: Record the two signals independently
+      text: "For every prompt run, log whether your brand name appears in the answer text and whether one of your URLs appears in the citation list. Store them as two fields, not one visibility flag."
+    - name: Cross-tabulate them into four outcomes
+      text: "Bucket every run into named and cited, named only, cited only, or neither. The four counts are your diagnosis; a single blended score is not."
+    - name: Compute the rate over a stated denominator
+      text: "Divide cited-only runs by total runs in which you were cited at all, and write the denominator down. Published ghost citation rates disagree mostly because they divide by different things."
+    - name: Split the four buckets by engine
+      text: "ChatGPT and Gemini fail in opposite directions, so an aggregate number averages away the finding. Run the cross-tab per engine."
+    - name: Split it again by prompt intent
+      text: "Separate informational prompts from comparative and recommendation prompts. Mention rates are far higher on the latter, so a set weighted toward how-to questions will look worse than it is."
+    - name: Open the ghost-cited pages and read them
+      text: "Check whether your brand name is the grammatical subject of the claims on the page a model is lifting. A page that says 'research shows' where it could say '[Brand]'s research shows' hands the model an anonymous fact."
+    - name: Re-measure after two months, not two weeks
+      text: "Entity strength moves on the timescale of model updates and off-site coverage. Judge a fix on a quarterly trend line, not the next run."
+faq:
+  - question: What is a ghost citation?
+    answer: "A ghost citation is when an AI engine uses your page as a source and links to it, but never writes your brand name into the answer. The reader gets the information and a link, and no impression of who produced it. The term comes from Kevin Indig's Growth Memo, which analysed the pattern with Semrush in June 2026."
+  - question: What percentage of AI citations don't mention the brand?
+    answer: "The most-quoted figure is 61.7%, and it is a share of brand appearances rather than of citations. Semrush and Kevin Indig examined 3,981 domain appearances across 115 prompts, 14 countries, and four engines, and found 61.7% were citations without a brand mention, 13.2% were both cited and mentioned, and 25.1% were mentions with no citation. Vendor figures range from 61.7% to 73%, and a separate AirOps analysis reports that only about 28% of answers contain a brand that is both mentioned and cited. The spread is mostly a difference in what each study divides by."
+  - question: Which AI engines name brands and which just cite them?
+    answer: "They split cleanly. In the Semrush and Indig data, ChatGPT cited in 87% of appearances but named the brand in only 20.7%. Gemini did the reverse, naming brands in 83.7% and citing in 21.4%. Google AI Mode named brands about 40% of the time, roughly twice ChatGPT's rate."
+  - question: Do ghost citations still help my brand?
+    answer: "They help traffic more than memory. A linked citation can still send a click, and being cited is evidence your page is retrievable and trusted. What it does not do is put your name in front of a reader who never clicks, which on a surface where most sessions end without a click is most readers."
+  - question: How do I get AI to name my brand and not just cite my page?
+    answer: "Make the brand the subject of the claims on the page rather than an anonymous narrator, strengthen the entity signals that let a model resolve your name (consistent naming, Organization schema, Wikidata and Wikipedia accuracy), and earn third-party coverage that names you in recommendation contexts. Seer Interactive's analysis of 541,213 responses recommends those three layers in that order and warns the payoff arrives over months."
+  - question: Why does being mentioned make a citation more likely?
+    answer: "The two travel together because both depend on the model associating your name with the category. Seer Interactive found citation rates of 53.1% when a brand was mentioned against 10.6% when it was not, a five-fold gap. That is a correlation, not a demonstrated cause: the likeliest explanation is that entity strength drives both, rather than one producing the other."
+---
+
+**A citation looks like a win in every dashboard. Then you read the answer and your name is nowhere in it.** Semrush and Kevin Indig examined 3,981 domain appearances across 115 prompts, 14 countries, and four AI engines, and found that [61.7% were citations with no brand mention](https://www.semrush.com/blog/the-ghost-citations-study/): the page was linked as a source, and the answer never said who wrote it. Only 13.2% of appearances got both. Indig's name for the pattern, **ghost citation**, has stuck because it describes something most measurement setups cannot see — they record one visibility signal where there are two.
+
+**Key takeaways**
+
+- In the Semrush and Indig study, 61.7% of appearances were cited without a mention, 13.2% were both, and 25.1% were mentioned with no citation. Citation and mention are weakly coupled events.
+- Engines fail in opposite directions. ChatGPT cited in 87% of appearances and named the brand in 20.7%; Gemini named brands in 83.7% and cited in 21.4%.
+- Comparative prompts name brands at 43.3%, about 2.4x the rate of informational prompts. Your prompt mix largely sets your mention rate.
+- The pair is what persists. AirOps reports that brands earning both signals are 40% more likely to resurface in the next run than citation-only brands.
+- Published figures disagree — 61.7% and 73% ghost rates, ~28% of answers carrying both signals — because each vendor divides by a different denominator. Take the direction, not the decimal.
+- The fix is not a content tweak. It is entity strength, which moves over months.
+
+## The four outcomes your dashboard collapses into one
+
+Two independent things can happen when an AI engine answers a question your brand is relevant to. It can write your name into the answer. It can link one of your pages as a source. Neither implies the other, which gives four outcomes rather than two.
+
+| Outcome | What the reader takes away | What it tells you |
+|---|---|---|
+| Named and cited | Knows who you are, can click through | Both retrieval and entity recognition are working |
+| Named only | Knows who you are, no link | The model knows you from training; your pages are not being retrieved |
+| Cited only (ghost) | Gets your information, learns nothing about you | Your pages are retrievable; your name is not associated with the claim |
+| Neither | Nothing | You are absent from this prompt entirely |
+
+Most tools resolve this into a single flag: visible or not. That is the mistake, because the middle two rows have opposite fixes. Named-only says your content is not being retrieved, so structure, freshness, and crawlability are the levers. Ghost-cited says the retrieval works and the attribution does not, which no amount of heading tidying will change.
+
+The third row of that table is the one with no obvious lever, because attribution is not something on the page. A model that lifts your finding and presents it as a fact about the world has treated the fact as belonging to nobody. Indig describes the same decoupling running the other way, in the quarter of appearances that are a name with no source: "The AI knows the information about the brand came from somewhere, but doesn't feel the need to explicitly say so to users. The brand name carries on its own." Either direction, the engine is deciding independently whether to hand over the link and whether to hand over the name.
+
+## The numbers disagree, and the disagreement is instructive
+
+Search for a ghost citation rate and you will find 61.7%, 73%, and a widely repeated "about 28%" all presented as the number. They are not measuring the same thing, and one of them is measuring the opposite thing.
+
+| Source | Headline figure | What it counts |
+|---|---|---|
+| [Semrush with Kevin Indig](https://www.semrush.com/blog/the-ghost-citations-study/), June 2026 | 61.7% ghost, 13.2% both, 25.1% mention-only | 3,981 domain appearances, 115 prompts, 14 countries, 4 engines |
+| [AirOps, 2026 State of AI Search](https://www.airops.com/report/the-2026-state-of-ai-search) | ~28% of answers contain a brand both mentioned and cited | Answers, across an undisclosed sample |
+| [Superlines](https://www.superlines.io/articles/ghost-citations-invisible-ai-citations-brands-miss) | 73% of citations | "Thousands" of responses across 10 platforms, no published method |
+
+Read the third column and the range stops being contradictory. AirOps counts the overlap rather than the gap, and counts it over answers rather than over domain appearances, so its 28% is not a rival estimate of Semrush's 61.7% — it is a different measurement. A figure with no stated method, meanwhile, cannot be checked at all. Semrush's is the one to quote because it publishes what it divided by; AirOps' report explicitly leans on "millions of datapoints" without disclosing prompts, brands, or period; Superlines' 73% is a vendor number about its own tracking.
+
+What survives all three is the shape: the overlap between being cited and being named is small, and every independent attempt to measure it lands somewhere between a fifth and a third of appearances. That is enough to act on. It is not enough to put a specific percentage in a board deck.
+
+## ChatGPT cites without naming; Gemini names without citing
+
+The per-engine split in the Semrush data is the most actionable part of it, because the two leading engines fail in mirror images of each other.
+
+| | Citation rate | Mention rate |
+|---|---|---|
+| ChatGPT | 87% | 20.7% |
+| Gemini | 21.4% | 83.7% |
+| Google AI Mode | — | ~40% |
+
+On ChatGPT, you will mostly be a link. On Gemini, you will mostly be a name with no link. Google AI Mode named brands roughly 40% of the time, close to twice ChatGPT's rate. Anyone reporting a blended "AI visibility score" across these engines is averaging two opposite behaviours into a number that describes neither.
+
+Prompt intent moves it as much as the engine does. Informational prompts in the same study cited at 89.3% and mentioned at 18%. Comparative prompts named brands 43.3% of the time, about 2.4 times the informational rate — which makes sense, since an answer comparing options has to name the options. Language mattered too: mention rates reached about 50% in India and Sweden against 18–22% in Italy, Brazil, and the Netherlands. If your tracked [prompt set](/blog/ai-prompt-tracking) is mostly how-to questions, a low mention rate is partly a property of the set, not a verdict on the brand.
+
+## The two signals travel together, which is the encouraging part
+
+Seer Interactive analysed 541,213 LLM responses across 20 brands and six platforms in February 2026, using Scrunch AI data, and found the two signals strongly linked: [when a brand was mentioned, its citation rate was 53.1%; when it was not mentioned, 10.6%](https://www.seerinteractive.com/insights/llm-ghost-citations-why-your-content-is-working-and-your-brand-isnt). A five-fold difference.
+
+Be careful with the direction of that arrow. Nobody has shown that earning a mention causes a citation. The likelier reading is that both are downstream of the same thing — how strongly the model associates your name with the category — so they rise and fall together. That is still useful, because it means the work that fixes one tends to fix the other, and it explains why purely on-page changes move neither.
+
+AirOps adds the durability angle: brands earning both a mention and a citation were 40% more likely to resurface in consecutive runs than citation-only brands, in a landscape where only 30% of brands stayed visible across back-to-back answers and 20% survived five consecutive runs. That matches what we measured directly in our own [42-day citation study](/blog/citation-volatility), where the set of domains cited for a prompt turned over 60–70% day to day and only a small stable core appeared every day. Ghost citations, in other words, are also the least durable kind of appearance.
+
+Seer's sharpest illustration is a single client: a compliance software page that earned more than 100 citations in 25 days without a single brand mention. Perfect retrieval, zero recognition.
+
+## What this does not prove
+
+Three limits worth stating before anyone rebuilds a strategy on this.
+
+**The samples are small or undisclosed.** 115 prompts across 14 countries is roughly eight prompts per market. Seer's response count is large but covers 20 brands in one month. AirOps publishes no methodology at all. These are vendor studies from companies selling AI visibility products, and the direction is consistent enough to trust while the precision is not.
+
+**Nobody has priced a ghost citation.** It is intuitive that an unnamed citation builds no brand equity, and that intuition is probably right on a surface where most sessions end without a click. But no published work compares conversion or recall between named and unnamed citations. The cost is asserted, not measured.
+
+**A ghost citation is still a citation.** It means your page was retrieved, judged useful, and linked — the hard part of [earning AI citations](/blog/ai-citations) already worked. Treating a 61.7% ghost rate as 61.7% failure inverts that. The failure is narrower: the last step, attribution, did not happen.
+
+## What actually moves the mention
+
+Seer recommends three layers, in an order that matches how much control you have over each.
+
+1. **Make your brand the grammatical subject of your own claims.** A page that says "research shows onboarding time drops by a third" hands a model an ownerless fact. "Acme's 2026 benchmark found onboarding time drops by a third" gives it a subject to carry. This is the cheapest change on the list and the only one you can ship this week.
+2. **Strengthen the entity signals that let a model resolve your name.** Consistent naming across every property, accurate Wikidata and Wikipedia entries, and `Organization` schema on your site. Our guide to [structured data for AI search](/blog/structured-data-for-ai-search) covers the markup side; the off-site reference entries matter at least as much.
+3. **Earn third-party mentions in recommendation contexts.** Being named in analyst notes, comparison articles, press coverage, and community threads is what builds the association a model draws on when it names a brand without a source. This is the slow, unglamorous half, and it is the same conclusion our review of [where AI citations come from](/blog/where-ai-citations-come-from) reached from the other direction: 84% of citations point at domains the brand does not own, and AirOps puts 85% of *mentions* off-domain too.
+
+Seer's own caveat on timing is the one to internalise: expect weeks to months before any of this shows up, not days. Entity strength is not a deployable change.
+
+## Measure the two signals separately
+
+The practical instruction is short. Stop recording one visibility flag and start recording two, then cross-tabulate them per engine and per prompt intent. The moment you do, the question changes from "how visible are we" to "which of the four outcomes are we getting, and on which prompts" — and only the second question has a next action attached to it.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording brand mentions and cited domains as separate fields on every run alongside the competitors named next to you. Because you run it yourself and the data is yours to query, the four-quadrant cross-tab above is a `GROUP BY` over your own results rather than a feature request.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [AI share of voice](/blog/ai-share-of-voice), then [how to track your brand in AI search](/blog/track-brand-ai-search). For how the sources themselves shift underneath you, see [citation volatility](/blog/citation-volatility) and [multi-turn AI search](/blog/multi-turn-ai-search). For the vocabulary, see the [AI search glossary](/glossary).
