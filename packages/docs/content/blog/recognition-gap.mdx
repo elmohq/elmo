@@ -1,0 +1,155 @@
+---
+title: "The Recognition Gap: AI Knows Your Brand and Won't Name It"
+description: "A study of 175 brands found AI platforms described 96% of them accurately when asked directly, and never named 89% of them in the category questions buyers actually ask."
+date: "2026-07-31"
+author: ai
+metaTitle: "The AI Recognition Gap: 96% Known, 11% Mentioned"
+tags:
+  - ai-visibility
+  - ai-citations
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Recognition gap
+    definition: "The recognition gap is the distance between an AI engine describing a brand correctly when asked about it by name and that same engine naming the brand unprompted in answers to category questions. Recognition is a fact the model holds; a mention is a choice it makes."
+  - term: Branded prompt
+    definition: "A branded prompt names the brand in the question, as in 'what does Acme do' or 'is Acme any good'. It tests whether an engine holds accurate information about a company it has already been pointed at."
+  - term: Category research prompt
+    definition: "A category research prompt asks for options without naming any, as in 'best project management tools for agencies'. The engine chooses which brands to name, which makes it the prompt type that reflects commercial demand."
+  - term: Co-occurrence
+    definition: "Co-occurrence is how often a brand's name appears in the same source, page, or passage as its category and its competitors. It is one of the signals that lets a model treat a brand as a candidate answer to a category question rather than a fact to recall."
+howTo:
+  name: "How to test whether AI recommends you, not just recognises you"
+  description: "Restructure a prompt set and a scoreboard so they measure unprompted mentions on commercial questions instead of the branded questions every brand passes."
+  steps:
+    - name: Pull branded prompts out of your headline number
+      text: "Keep tracking them, because they catch factual errors, but report them separately. A visibility score that averages branded and unbranded prompts together will sit high for reasons that have nothing to do with demand."
+    - name: Split the remaining prompts by buyer stage
+      text: "Separate problem-awareness questions from comparison and shortlist questions. Mention rates differ by roughly an order of magnitude between the two, so a blended figure describes neither."
+    - name: Measure unprompted mention rate as your primary metric
+      text: "For each unbranded prompt, record whether your name appears in the answer text at all. That single rate is the closest available proxy for whether an engine considers you a candidate in your category."
+    - name: Record who was named instead of you
+      text: "Every answer that omits you names somebody. The recurring set of names is your real competitive set in AI search, and it often differs from the one in your positioning deck."
+    - name: Baseline your off-site mention volume
+      text: "Count how many third-party pages mention your brand today and track it quarterly. It is the strongest published correlate of being named, and unlike your own pages it is a number you have to earn rather than edit."
+    - name: Check the co-occurrence of your name with your category
+      text: "Look at whether the pages that mention you also name your category and your competitors. A brand discussed only in its own terms is harder for a model to retrieve as an answer to a category question."
+    - name: Judge changes over quarters, not weeks
+      text: "Off-site mention volume and entity association move on the timescale of coverage and model updates. A month of flat data after a fix is not evidence the fix failed."
+faq:
+  - question: Why does ChatGPT describe my company accurately but never recommend it?
+    answer: "Because the two are different operations. Describing your company is recall from what the model already holds about a name it has been handed. Recommending it means selecting you from a category, which depends on whether third-party sources associate your name with that category strongly enough for you to be retrieved as a candidate. Victorious's Q2 2026 study of 175 brands found 96% were described accurately when asked directly and 89% were never named in answers to category research questions."
+  - question: What is the recognition gap in AI search?
+    answer: "The recognition gap is the difference between an AI engine knowing who you are and an AI engine bringing you up. It matters because the standard self-test — asking ChatGPT about your own brand — measures only the first, which almost every brand passes, and says nothing about the second, which most brands fail."
+  - question: Do AI engines mention brands in early-stage questions?
+    answer: "Very rarely. In the same study, brands were named in roughly one in a thousand answers to problem-awareness questions such as 'how do I know if my business needs a lawyer'. Comparison and evaluation questions named brands at about twelve times that rate. Early-funnel AI answers are largely brand-free."
+  - question: How many third-party mentions do you need to be named by AI?
+    answer: "Victorious reports a threshold-shaped curve rather than a single number: brands with under 2,000 third-party mentions were named about 3% of the time, brands around 20,000 mentions were roughly even odds, and brands above 30,000 were named 64% of the time. Treat it as a correlation, not a target, because mention volume is also a proxy for company size."
+  - question: Do AI engines cite brand websites in category research answers?
+    answer: "Almost never, on this evidence. Of just under 50,000 citations analysed across roughly 6,000 answers, 99.99% pointed at third-party domains, and only 4 of the 150 companies studied received a citation to their own site. Broader studies that mix in how-to and branded questions put the off-domain share nearer 84%, which suggests the prompt type is what drives the difference."
+  - question: Which AI platforms recognise brands least reliably?
+    answer: "Perplexity and Meta AI in this study. ChatGPT, Gemini, Copilot, Google AI Overviews, and Google AI Mode each described brands accurately more than 93% of the time, while Perplexity managed 67% overall and under 55% in SaaS and ecommerce, and Meta AI recognised 46% of SaaS brands."
+---
+
+**The easiest way to feel good about your AI visibility is to ask an AI about your own brand.** It will almost certainly get you right. Victorious's [Q2 2026 Quarterly Search Report](https://victorious.com/quarterly-search-report/) tested 175 brands across eight AI platforms and five industries and found 96% were described accurately when asked about directly. The same study found 89% of those brands were never named in answers to the category questions their buyers actually ask. As the report puts it: "AI knowing you and AI mentioning you barely have anything to do with each other."
+
+**Key takeaways**
+
+- 96% of brands were described accurately when named in the prompt. 89% were never mentioned in category research answers. Recognition is close to universal; being named is rare.
+- The self-test everyone runs — "what do you know about Acme?" — measures the metric almost nobody fails, which is why so many AI visibility audits open on a false positive.
+- Buyer stage moves it by an order of magnitude. Brands were named in about one in a thousand problem-awareness answers, and roughly twelve times as often on comparison questions.
+- 99.99% of just under 50,000 citations pointed at third-party domains. Four of 150 companies got a citation to their own site.
+- Off-site mention volume tracked being named in a threshold-shaped way: ~3% named under 2,000 mentions, even odds around 20,000, 64% above 30,000.
+- It is a vendor study, and the mention curve is correlational. The direction is credible; the numbers are not settled.
+
+## Two questions, two different answers
+
+Ask an engine "what is Acme Analytics?" and you are testing recall. The name is in the prompt, the model has been pointed at an entity, and it returns what it holds about that entity. Ask "best analytics tools for ecommerce teams" and you are testing selection. The engine has to decide, from everything it can retrieve about the category, which handful of names belong in a short answer.
+
+Almost every brand passes the first test. Most fail the second, and the failure is invisible if you only ever run the first.
+
+| Measure | Figure |
+|---|---|
+| Brands described accurately when asked directly | 96% |
+| Brands never named in category research answers | 89% |
+| Brands named in problem-awareness answers | ~0.1% of answers (about 1 in 1,000) |
+| Comparison-question mention rate vs awareness stage | ~12x |
+| Citations pointing at third-party domains | 99.99% |
+| Companies receiving a citation to their own site | 4 of 150 |
+
+Two of those rows use different denominators — 89% counts brands that never appeared at all, while the 0.1% counts answers — so they are not two versions of one number. That distinction matters more than it sounds. Published AI visibility figures disagree with each other mostly because each vendor divides by something different, a problem we ran into measuring [ghost citations](/blog/ghost-citations), where three studies reported 61.7%, 73%, and 28% for what looked like the same thing.
+
+The per-platform recognition figures are worth a note of their own, because they are the one place where a brand can be genuinely unknown rather than merely unmentioned. ChatGPT, Gemini, Copilot, Google AI Overviews, and Google AI Mode all cleared 93% accuracy. Perplexity sat at 67% overall and under 55% in SaaS and ecommerce. Meta AI recognised 46% of SaaS brands. If Perplexity matters to your buyers, "does it know us" is still a live question; on Google's surfaces it is settled.
+
+## The earlier the question, the less you exist
+
+The buyer-stage split is the most useful finding in the report, and the least discussed.
+
+Problem-awareness questions — "how do I know if my business needs a lawyer", "why is my checkout conversion dropping" — named a brand in roughly one answer in a thousand. Comparison and evaluation questions named brands about twelve times as often. Early-funnel AI answers are, in effect, brand-free explanations of a problem.
+
+This should reset a common expectation. A lot of AEO advice recommends building top-of-funnel content precisely because that is where the search volume sits, and then measures success by whether the brand appears in AI answers for those questions. On this evidence, it mostly will not, regardless of how good the content is, because the answer to "how do I know if I need a lawyer" does not want a vendor in it. The content can still earn a citation. It will rarely earn a mention.
+
+Where mentions are available is further down: comparison prompts, shortlist prompts, "best X for Y" prompts, and the constraint-loaded questions buyers ask once they know what they want. That is the same conclusion the [ghost citations](/blog/ghost-citations) data reached from a different angle, where comparative prompts named brands 43.3% of the time against 18% for informational ones. Two independent studies, same shape: **the mention lives in the commercial half of the funnel.**
+
+So weight your [prompt set](/blog/ai-prompt-tracking) accordingly, and stop scoring awareness-stage prompts on mention rate. Score them on citation rate, which is the outcome actually on offer.
+
+## The citations went almost entirely somewhere else
+
+Of just under 50,000 citations across roughly 6,000 answers, 99.99% pointed at a domain the brand did not own. Only four of 150 companies received a single citation to their own website.
+
+That is a much starker number than the 84% off-domain share Muck Rack reported across 25 million links, which we covered in [where AI citations come from](/blog/where-ai-citations-come-from). The two are compatible, and the gap between them is informative rather than contradictory. Muck Rack sampled across all query types in 17 industries, including the how-to and branded questions where a vendor's own documentation genuinely does get cited. Victorious sampled category research and problem awareness only — the two stages where an engine has least reason to quote a participant in the market it is describing.
+
+Read together, they say something more precise than either alone: **your own domain's citation ceiling depends almost entirely on which questions you are trying to win.** On "how do I configure X", your docs are a legitimate source. On "who are the best providers of X", you are an interested party, and the engine goes to the people writing about you instead.
+
+The report's ranked predictors of being named follow from that. In order: referring domains, third-party mentions, and co-occurrence relevance — how often your name shows up alongside your category and your competitors. None of the three is a property of your website. All three are properties of what the rest of the web has written about you.
+
+## The mention threshold
+
+The most quotable finding, and the one to handle most carefully, is a curve rather than a coefficient.
+
+| Third-party mentions | Chance of being named |
+|---|---|
+| Under 2,000 | ~3% |
+| ~20,000 | Roughly even |
+| Over 30,000 | 64% |
+
+A threshold shape like that is intuitively satisfying: below some level of ambient coverage, a model has no reason to treat you as a candidate answer; above it, you are hard to leave out. It also lines up with the stability finding in our own [42-day citation study](/blog/citation-volatility), where a small core of heavily covered domains appeared in almost every answer while everything else rotated.
+
+But be careful what you do with it. Mention volume is not an independent variable you can dial. It is one of the tightest available proxies for company size, age, and marketing spend, and large companies are named more often for many reasons at once. The curve may be describing "big brands get mentioned" as much as "mentions cause mentions." Nobody has run the experiment that would separate them, which would require watching mention volume change and naming follow, holding everything else still.
+
+Treat 20,000 as a description of the terrain, not a KPI. What it is genuinely good for is calibration: if you have 800 third-party mentions and you are wondering why an engine will not shortlist you, the answer is probably not your heading structure.
+
+## What this does not prove
+
+Four limits, and the first is the important one.
+
+**This is a vendor study.** Victorious is an SEO agency, the [Search Engine Journal write-up](https://www.searchenginejournal.com/ai-brand-mention-study-victorious-spa/582765/) is labelled sponsored content, and the conclusion — that visibility comes from off-site authority of the kind an agency sells — is the conclusion its business favours. That does not make it wrong. The 96%-versus-89% contrast is a hard result about a large sample, and it points in the same direction as independent work. It does mean the framing deserves a discount.
+
+**"Accurately described" is the study's own judgement.** No public methodology explains how accuracy was scored across 140 brands, and accuracy is not the same as favourability. An engine can describe you correctly and unflatteringly, or correctly using positioning you abandoned two years ago. Recognition passing at 96% is not evidence that [how AI characterises your brand](/blog/ai-brand-sentiment) is fine.
+
+**The mention curve is correlational**, as above, and the top three predictors are all plausibly downstream of company size.
+
+**A missing mention is not always a loss.** On problem-awareness questions, no brand is named, including your competitors. A 0.1% mention rate on those prompts is a property of the question type, not a verdict on you. The prompts where a rival is named and you are not are the ones that cost you something, and they are a small subset of the prompts most tools chart.
+
+## How to test yourself honestly
+
+The fix is a measurement change more than a content change.
+
+1. **Take branded prompts out of your headline number.** Keep running them — they are how you catch a wrong price or a deprecated feature — but report them in their own column. Averaged into a single score, they inflate it for reasons unrelated to demand.
+2. **Split the rest by buyer stage** and set different expectations for each. Awareness prompts are scored on citations. Comparison and shortlist prompts are scored on mentions.
+3. **Make unprompted mention rate your primary metric.** Not "does AI know us", but "does AI bring us up when nobody asked about us".
+4. **Log who gets named instead.** Every answer that omits you names somebody, and the recurring names are your actual [competitive set in AI search](/blog/ai-competitor-analysis), which may not match the one you assumed.
+5. **Baseline your off-site mention volume and track it quarterly.** It is the strongest published correlate of being named, and it is the one input you cannot edit into existence.
+6. **Check co-occurrence, not just volume.** Pages that mention you without mentioning your category do less work than pages that place you among your competitors. Being in the comparison is the point.
+
+None of this is fast. Off-site coverage and entity association move over quarters, which is the honest reason so much AEO advice concentrates on the parts of the problem you can ship on a Thursday.
+
+## The reframe
+
+The recognition gap is uncomfortable because it removes the most reassuring signal in AI visibility work. Asking ChatGPT about your own company feels like measurement and is closer to a spell-check. It confirms the model holds a correct record of you, which almost every brand gets for free, and it tells you nothing about whether you are ever offered to a buyer who did not already know your name.
+
+The question worth putting on the dashboard is narrower and less flattering: on the prompts where somebody is choosing, how often is it us?
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, citation, and competitor named alongside you. Because you tag your own prompts and query the raw results directly, splitting branded from unbranded and awareness from comparison is a filter over your own data rather than a feature you wait for.
+
+For the fundamentals, start with [answer engine optimization](/blog/answer-engine-optimization) and [how to track your brand in AI search](/blog/track-brand-ai-search), then [AI share of voice](/blog/ai-share-of-voice). For the neighbouring failure modes, see [ghost citations](/blog/ghost-citations) and [where AI citations come from](/blog/where-ai-citations-come-from). For the vocabulary, see the [AI search glossary](/glossary).
