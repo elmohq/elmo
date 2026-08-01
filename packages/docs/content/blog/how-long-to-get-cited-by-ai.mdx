@@ -1,0 +1,143 @@
+---
+title: "How Long Does It Take to Get Cited by AI?"
+description: "Presence builds over weeks, not days, and the content AI cites is typically months old. Three 2026 datasets on the clock behind AI citations, and what it changes about your measurement window."
+date: "2026-08-01"
+author: ai
+metaTitle: "How Long It Takes to Get Cited by AI Search"
+tags:
+  - ai-citations
+  - aeo
+  - ai-visibility
+  - ai-search
+definedTerms:
+  - term: Response presence rate
+    definition: "Response presence rate is the share of AI responses to a prompt set in which a brand is present at all, whether by name, by a citation to its own domain, or by a citation to a third-party page carrying its story. It is broader than a citation rate because it counts unlinked mentions."
+  - term: Median citation age
+    definition: "Median citation age is the midpoint of the publish-or-update ages of the pages an AI engine cites. A median of six months means half the cited pages were fresher than six months old and half were older."
+  - term: Citation decay curve
+    definition: "A citation decay curve describes how a page's likelihood of being cited falls as it ages. A steep curve means an engine concentrates its citations on recent content; a shallow curve means older pages keep earning citations."
+howTo:
+  name: "How to measure your own time to AI citation"
+  description: "Establish how long your content takes to appear in AI answers on each engine, so you stop reading a four-week ramp as a failure and stop reading a first-week spike as a win."
+  steps:
+    - name: Record a publish or refresh date for every page you care about
+      text: "You cannot measure a lag without a start point. Log the date a page went live or was materially updated, separately from any automated timestamp, so the clock starts when the content actually changed."
+    - name: Hold the measurement for four full weeks
+      text: "Check weekly but judge at week four. Presence on some engines keeps climbing through the first month, so a week-one reading is a partial result rather than an early one."
+    - name: Split the result by engine
+      text: "Run the same prompts on each engine separately and chart them separately. The engines pick content up on different timelines, and an average across them hides the pattern you need."
+    - name: Log the age of your own pages when they get cited
+      text: "For each citation you earn, record how old that page was on the day it was cited. After a few months you have your category's own version of the median citation age, which beats any published benchmark."
+    - name: Set a refresh cadence from the engine mix that matters to you
+      text: "If your buyers use engines that concentrate on recent content, a page left untouched for a quarter is a page sliding out of contention. Put your cited pages on a review schedule rather than refreshing on instinct."
+    - name: Re-baseline after every refresh
+      text: "A substantive update restarts the clock, so mark it on the chart. Otherwise a post-refresh climb reads as a mysterious trend instead of a measured effect."
+faq:
+  - question: How long does it take to get cited by AI?
+    answer: "Longer than a week, and it varies by engine. In Stacker's July 2026 analysis of 245 brand stories tracked for four weeks after distribution, Google AI Overviews and AI Mode spiked early and then normalized slightly lower, while Claude compounded: 118 of the 132 stories that had presence on Claude saw it grow between the first and fourth weeks. Stacker's own advice is to wait for week four before reading the result."
+  - question: How old is the content that AI engines cite?
+    answer: "Months old, typically. Discovered Labs analyzed 2 million citation observations across 10,000 cited URLs and found median citation ages of 5.1 months on Claude, 6.0 on Google AI, 7.8 on Gemini, and 8.0 on ChatGPT. AirOps' 2026 State of AI Search report puts more than 70% of cited pages within 12 months of their last update."
+  - question: Does refreshing content improve AI visibility?
+    answer: "It appears to protect visibility more than it creates it. AirOps found pages that go more than three months without an update are over 3x more likely to lose visibility than recently refreshed ones. But in Discovered Labs' regression, page age was a weak predictor (β = +0.05) next to how well a page matched the prompt (β = +0.37), so re-dating a page that does not answer the question will not earn a citation."
+  - question: Which AI engine cites the freshest content?
+    answer: "Claude, by the available data. Discovered Labs found 60% of Claude's citations pointed at content under six months old, against 40% for ChatGPT, giving Claude the steepest decay curve and ChatGPT the shallowest of the four engines measured."
+  - question: Why did my new page not show up in AI answers this week?
+    answer: "Because a week is not long enough to conclude anything. Engines pick up new content on different timelines, and day-to-day citation churn is high in its own right: in our 42-day study the set of domains cited for a prompt turned over 60-70% from one day to the next. Judge new content at four weeks, per engine, not on a single check."
+  - question: How often should I update content for AI search?
+    answer: "Tie the cadence to the engines your buyers use and the queries you are targeting. AirOps reports that 83% of citations on commercial and evaluation-stage queries came from pages updated within the last year and more than 60% from pages refreshed within six months, so a quarterly review of your cited pages is a reasonable default for commercial content."
+---
+
+**Publish a page, check ChatGPT the next morning, see nothing, conclude the page failed.** Three separate 2026 datasets say that reading is wrong in both directions: presence in AI answers builds over weeks rather than hours, and the content these engines cite is typically several months old. AI citation has a clock, the clock runs at a different speed on every engine, and almost nobody is measuring against it.
+
+**Key takeaways**
+
+- Presence keeps climbing after week one. In [Stacker's analysis](https://stacker.com/blog/content-strategy-ai-platform-differences) of 245 brand stories tracked for four weeks, Google's surfaces spiked early and then settled slightly lower, while 118 of the 132 stories with any Claude presence grew between weeks one and four.
+- The pages AI cites are old. [Discovered Labs](https://discoveredlabs.com/research/what-drives-ai-citations) measured median citation ages of 5.1 months on Claude, 6.0 on Google AI, 7.8 on Gemini, and 8.0 on ChatGPT across 2 million citation observations.
+- Freshness looks like a floor, not a lever. [AirOps](https://www.airops.com/report/the-2026-state-of-ai-search) found pages unrefreshed for more than three months were over 3x more likely to lose visibility, while Discovered Labs' regression ranked page age far below prompt-content alignment as a predictor of being cited at all.
+- The engines invert each other. Claude is slowest to pick content up and quickest to let it age out. ChatGPT is hardest to break into and slowest to drop you.
+- A one-week verdict on new content is not an early result. It is a wrong one.
+
+## Presence builds over weeks
+
+Stacker's newswire study, published on 31 July 2026 by Madeline Stone, tracked 245 brand stories across six AI platforms for the four weeks after distribution. It measures **response presence rate**: whether the brand showed up at all, by name, by a citation to its own domain, or by a citation to a page carrying its story.
+
+| Platform | Average presence | Median presence | Stories with any presence |
+|---|---|---|---|
+| Google AI Overviews | 20% | 13% | 187 of 245 |
+| Google AI Mode | 19% | 13% | 172 of 245 |
+| Claude | 16% | 8% | 132 of 245 |
+| Perplexity | 13% | 10% | 168 of 245 |
+| Gemini | 12% | 7% | 151 of 245 |
+| ChatGPT | 9% | 3% | 122 of 245 |
+
+The ranking is interesting, but the trajectory is the finding. Google AI Overviews and AI Mode "spike early and then normalize at a slightly lower level." Claude does the opposite and compounds: 118 of the 132 stories that registered on Claude at all were more visible in week four than in week one. Stacker's own recommendation is to "wait for Week 4 after Stacker distribution to get the full picture — especially for results from Claude."
+
+That single sentence invalidates a lot of routine reporting. If your content team ships a page and checks its AI visibility the following Monday, the number they write down is a Google number with a Claude blank next to it, and the Claude blank is not yet a result.
+
+One more detail worth stealing: pieces framed as a question outperformed statement-style headlines on every platform except ChatGPT, and the 75 strongest stories — those clearing 20% presence — averaged over 40% on Google's surfaces, 36% on Claude, and 30% on Perplexity. The characteristics that win are consistent across engines. Only the timeline differs.
+
+## The content being cited is months old
+
+The other end of the clock is how long a page stays in play, and here the data is blunt.
+
+Discovered Labs analyzed 2 million citation observations over six months, crawling 10,000 distinct cited URLs and computing more than 60 features per page across ChatGPT, Claude, Google AI, and Gemini. The median age of a cited page ranged from 5.1 months to 8.0 months depending on the engine. Claude showed the steepest decay curve, with 60% of its citations on content under six months old; ChatGPT showed the shallowest, at 40%.
+
+AirOps' 2026 State of AI Search report, produced with Kevin Indig and published in December 2025, comes at freshness from the maintenance side and lands compatibly: more than 70% of cited pages had been updated within 12 months, more than 50% within six, and pages left more than three months without an update were over 3x more likely to lose visibility. On commercial and evaluation-stage queries the window tightens — 83% of citations came from pages updated within the year, and more than 60% from pages refreshed within six months.
+
+Read together, the two studies describe a window rather than a threshold. Content is not cited on the day it publishes and it is not cited indefinitely. Somewhere between a few weeks and a few months is where most citations live.
+
+## Claude and ChatGPT are opposite problems
+
+Line the two studies up and the engines separate into distinct strategic problems. This table joins figures from different studies measuring different things, so treat it as a shape rather than a scoreboard.
+
+| Engine | Avg presence in the four weeks after publishing | Median age of the content it cites | What the combination means |
+|---|---|---|---|
+| Google AI Overviews | 20% | 6.0 months (Google AI) | Fastest to notice new content, then settles. Win early, hold with refreshes |
+| Google AI Mode | 19% | — | Tracks AI Overviews closely on timing |
+| Claude | 16% | 5.1 months | Slowest to pick you up, quickest to age you out. The narrowest window |
+| Perplexity | 13% | — | Mid-pack on pickup; freshness behavior not measured here |
+| Gemini | 12% | 7.8 months | Slow-moving in both directions |
+| ChatGPT | 9% | 8.0 months | Hardest to break into, and the most durable once you are in |
+
+Presence figures are Stacker's four-week averages across 245 distributed stories; median citation ages are Discovered Labs' across 2 million citation observations. Blanks are engines one study covered and the other did not.
+
+The Claude column is the counterintuitive one, and it deserves a moment. Claude is simultaneously the engine that takes longest to register new content and the engine that most prefers recent content. Those sound contradictory and are not: a slow pickup and a steep decay curve together mean the interval in which a Claude citation is both earned and still fresh is narrower than anywhere else. Publish and forget, and on Claude you may miss the window in both directions.
+
+ChatGPT is the mirror image, and it explains a pattern plenty of teams have noticed without naming. Breaking into ChatGPT is genuinely hard — it had the lowest presence rate in Stacker's set by some distance, with a median of 3% — but its citations sit on the oldest content of any engine measured. The wins are expensive and they last. That is a different budgeting decision from Claude's, and averaging the two engines into one "AI visibility" number destroys the distinction.
+
+It fits what we found measuring the sources themselves. Our [42-day citation volatility study](/blog/citation-volatility) showed Google AI Mode pinning about 56% of its citations on a stable core of domains while ChatGPT's stable core carried only 23%, with even its leading sources rotating. Different studies, different metrics, same conclusion: these engines are not one surface with one clock.
+
+## What this does not prove
+
+The tempting misreading is "refresh everything and you will get cited." The same body of data argues against it.
+
+In Discovered Labs' model, page age was a weak predictor (β = +0.05) against prompt-content alignment at β = +0.37 — roughly seven times the effect, and about three times the next-best page-level signal. Freshness keeps a page eligible. Answering the question is what gets it cited. A batch job that bumps dates and rewrites intros across a content library is optimizing the wrong variable, and it is the kind of scaled, low-substance updating that [Google's guidance on AI features](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide) warns about directly.
+
+The provenance needs flagging too. Stacker sells newswire distribution, and its unit of analysis is a story pushed through its own network, with "network citations" to syndicated copies counting toward presence — so the absolute rates say more about distributed press content than about a page on your own domain. That does not undermine the week-one-versus-week-four contrast, which is an internal comparison, but it does mean the 20% and 9% are not benchmarks for your blog. Discovered Labs is an AEO agency and its research, though unusually well documented on method, is observational: it shows which features accompany citations, not which ones cause them. AirOps does not publish a sample size or methodology for its freshness figures at all, which is why they belong in a corroborating role rather than a load-bearing one.
+
+None of the three studies isolates the variable cleanly. Nobody has published a controlled experiment that takes matched pages, refreshes half, and measures the citation difference per engine. Until someone does, "content in AI answers skews recent" is well supported and "refreshing content causes citations" is not.
+
+Freshness is also only one axis. Most of what decides your citations happens on pages you do not own: 84% of AI citations point at [domains outside the cited brand's control](/blog/where-ai-citations-come-from), and no refresh cadence on your own site reaches them.
+
+## How to measure your own time to citation
+
+The published medians are a prior. Your own numbers are the decision, and the instrumentation is cheap.
+
+1. **Record a real publish or refresh date** for every page you care about, separately from whatever timestamp your CMS emits. Without a start point there is no lag to measure.
+2. **Check weekly, judge at week four.** Treat anything before that as an incomplete reading, particularly on Claude.
+3. **Chart every engine separately.** An average across six engines with six different clocks is a number that describes none of them.
+4. **Log the age of each page on the day it earns a citation.** A few months of that gives you your category's own median citation age, which is worth more than any published benchmark because your buyers ask narrower questions than a general corpus samples.
+5. **Set a refresh cadence from your engine mix,** not from a blog post. Commercial pages competing on evaluation-stage queries have the tightest freshness window in the data; a quarterly review of the pages that actually get cited is a defensible default.
+6. **Mark every substantive refresh on the chart.** A refresh restarts the clock, and an unmarked restart turns a measurable effect into a mystery trend.
+
+The through-line is patience with an end date. Four weeks is long enough that a null result means something and short enough to act on.
+
+## Where this leaves your reporting
+
+AI visibility reporting has inherited a habit from rank tracking, where a change is visible within days. That instinct is wrong here in both directions: it declares failure a week after publishing, and it declares victory on a citation that will quietly age out two quarters later while the dashboard still shows a green line.
+
+The reframe worth carrying: a citation is not a state you reach, it is a position you hold for a while. Measure the lag getting in, and the age of what is holding you there.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, citation, and competitor named alongside you, on a schedule. Because it stores every run with its date and the data is yours to query directly, the four-week ramp and the age-at-citation analysis above are queries over your own history rather than a manual spreadsheet.
+
+For the fundamentals, start with [AI citations](/blog/ai-citations) and [answer engine optimization](/blog/answer-engine-optimization), then [how to track your brand in AI search](/blog/track-brand-ai-search). For how much citations move on a daily timescale, see [citation volatility](/blog/citation-volatility); for the gap between being cited and being named, see [ghost citations](/blog/ghost-citations). For the vocabulary, see the [AI search glossary](/glossary).
