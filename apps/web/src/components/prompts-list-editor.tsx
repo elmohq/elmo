@@ -8,16 +8,19 @@
  * keeps it inline. The `showSystemTags` prop hides the System Tags column
  * in the wizard since onboarding hasn't yet computed any system tags.
  */
-import { useMemo, useState } from "react";
+
+import { IconInfoCircle } from "@tabler/icons-react";
+import { describeSkipped, parseBulkPrompts } from "@workspace/lib/bulk-prompts";
+import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
 import { Checkbox } from "@workspace/ui/components/checkbox";
+import { Input } from "@workspace/ui/components/input";
 import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
+import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Plus, Inbox } from "lucide-react";
-import { IconInfoCircle } from "@tabler/icons-react";
-import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { Copy, Inbox, Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 
 export interface EditablePrompt {
 	id?: string;
@@ -61,6 +64,28 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 	const add = () => {
 		if (prompts.length >= MAX_PROMPTS) return;
 		onChange([...prompts, newPromptEntry()]);
+	};
+
+	// Bulk paste. The parse is pure and lives in @workspace/lib so the rules
+	// (trim, dedupe, cap) are tested without a DOM, and it runs on every
+	// keystroke only to label the button and warn about what will be dropped.
+	const [bulkOpen, setBulkOpen] = useState(false);
+	const [bulkText, setBulkText] = useState("");
+
+	const bulkPreview = useMemo(
+		() => parseBulkPrompts(bulkText, { existing: prompts.map((p) => p.value), limit: MAX_PROMPTS }),
+		[bulkText, prompts],
+	);
+	const bulkNotice = bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null;
+
+	const closeBulk = () => {
+		setBulkOpen(false);
+		setBulkText("");
+	};
+	const addBulk = () => {
+		if (bulkPreview.added.length === 0) return;
+		onChange([...prompts, ...bulkPreview.added.map((value) => newPromptEntry({ value }))]);
+		closeBulk();
 	};
 
 	// Count selection against current prompts so stale keys (e.g. after the
@@ -256,15 +281,48 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 			)}
 
 			{prompts.length < MAX_PROMPTS && (
-				<Button
-					variant="outline"
-					size="sm"
-					type="button"
-					onClick={add}
-					className="flex items-center gap-2 cursor-pointer"
-				>
-					<Plus className="h-4 w-4" /> Add Prompt
-				</Button>
+				<div className="flex flex-wrap items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						type="button"
+						onClick={add}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						<Plus className="h-4 w-4" /> Add Prompt
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						type="button"
+						onClick={() => setBulkOpen((open) => !open)}
+						className="flex items-center gap-2 cursor-pointer"
+					>
+						<Copy className="h-4 w-4" /> Paste in Bulk
+					</Button>
+				</div>
+			)}
+
+			{bulkOpen && prompts.length < MAX_PROMPTS && (
+				<div className="space-y-2 rounded-md border bg-muted/40 p-3">
+					<Textarea
+						value={bulkText}
+						onChange={(e) => setBulkText(e.target.value)}
+						placeholder={"One prompt per line\nbest running shoes for flat feet\nmost durable trail runners"}
+						rows={6}
+						aria-label="Prompts to add, one per line"
+					/>
+					<div className="flex flex-wrap items-center gap-2">
+						<Button size="sm" type="button" onClick={addBulk} disabled={bulkText.trim().length === 0}>
+							Add {bulkPreview.added.length > 0 ? `${bulkPreview.added.length} ` : ""}
+							{bulkPreview.added.length === 1 ? "Prompt" : "Prompts"}
+						</Button>
+						<Button variant="ghost" size="sm" type="button" onClick={closeBulk}>
+							Cancel
+						</Button>
+						{bulkNotice && <span className="text-xs text-muted-foreground">{bulkNotice}</span>}
+					</div>
+				</div>
 			)}
 
 			{prompts.length >= MAX_PROMPTS && (
