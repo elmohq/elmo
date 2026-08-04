@@ -1,9 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import ImageResponse from "@takumi-rs/image-response";
 import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { renderOgPng } from "@workspace/og/rasterize";
 import { renderOgImage } from "@workspace/og/render";
 import { source } from "@/lib/source";
 
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/og/docs/$")({
 				const page = source.getPage(slugs);
 				if (!page) throw notFound();
 
-				const response = new ImageResponse(
+				const png = await renderOgPng(
 					renderOgImage({
 						appName: DEFAULT_APP_NAME,
 						title: page.data.title,
@@ -47,11 +47,10 @@ export const Route = createFileRoute("/og/docs/$")({
 					},
 				);
 
-				return new Response(response.body, {
+				return new Response(png, {
 					headers: {
 						"Content-Type": "image/png",
-						"Cache-Control":
-							"public, max-age=86400, s-maxage=604800",
+						"Cache-Control": "public, max-age=86400, s-maxage=604800",
 					},
 				});
 			},

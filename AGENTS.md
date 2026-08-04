@@ -28,7 +28,12 @@ Full setup instructions are in the developer guide at `packages/docs/content/doc
 - E2E tests need Playwright browsers (`pnpm exec playwright install`) and a running app; they are separate from unit tests
 - shadcn components: always install with the CLI (`pnpm dlx shadcn@latest add <component>`, from `packages/ui` or `apps/www` — each has its own `components.json`) — never hand-create them
 
-Run `pnpm format` before committing, and `check-types` for the packages you touched before opening the PR. Skip `pnpm lint` — CI doesn't gate on it. Only run tests mid-work when they help you iterate (`pnpm --filter <pkg> test` to scope them).
+Do not routinely run formatting, linting, type checks, or tests after making changes; CI provides the default validation and these commands should not be part of every agent interaction. Run a targeted command only when it is strictly necessary to diagnose or iterate on the current work, or when the user explicitly requests it. Never run `pnpm lint` or the full test suite by default.
+
+## Tests
+
+- Add tests for the purpose and externally observable behavior of the code, not its implementation shape. Do not test that internal helpers, component structure, configuration objects, or incidental markup have a particular form unless that form is itself a supported contract.
+- Prefer tests that exercise a user outcome, public API, business rule, failure mode, or regression. A refactor that preserves behavior should not require test changes.
 
 ## Package management and supply-chain security
 
@@ -38,7 +43,7 @@ Run `pnpm format` before committing, and `check-types` for the packages you touc
 
 ## Environment
 
-`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `VITE_DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`. Env validation also requires `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DATAFORSEO_LOGIN`, and `DATAFORSEO_PASSWORD` — placeholder values work for UI-only work.
+`.env` must exist at **both** the repo root and `apps/web/.env` (Vite reads its project root; the worker reads `apps/web/.env` via `--env-file`). Minimum for local mode: `DATABASE_URL`, `DEPLOYMENT_MODE=local`, `VITE_DEPLOYMENT_MODE=local`, `BETTER_AUTH_SECRET`, `ELMO_ENCRYPTION_KEY` (`openssl rand -base64 32`), `APP_URL`/`VITE_APP_URL`, `DISABLE_TELEMETRY=1`. Env validation also requires `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DATAFORSEO_LOGIN`, and `DATAFORSEO_PASSWORD` — placeholder values work for UI-only work.
 
 ## Git workflow
 

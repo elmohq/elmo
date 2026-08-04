@@ -59,10 +59,7 @@ type SchedulerOptions = {
 	sendImmediate?: boolean;
 };
 
-export async function createPromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function createPromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		const boss = await getBoss();
 		const cadenceHours = await getPromptCadenceHours(promptId);
@@ -130,7 +127,7 @@ export async function removePromptJobScheduler(promptId: string): Promise<boolea
 		}
 
 		// Cancel any pending jobs for this prompt
-		// Note: pg-boss doesn't have a direct way to cancel by data, 
+		// Note: pg-boss doesn't have a direct way to cancel by data,
 		// but the singletonKey prevents duplicates
 		console.log(`Removed schedule for prompt ${promptId}`);
 		return true;
@@ -148,9 +145,7 @@ export async function createMultiplePromptJobSchedulers(
 	promptIds: string[],
 	options: SchedulerOptions = {},
 ): Promise<boolean[]> {
-	const results = await Promise.allSettled(
-		promptIds.map((promptId) => createPromptJobScheduler(promptId, options)),
-	);
+	const results = await Promise.allSettled(promptIds.map((promptId) => createPromptJobScheduler(promptId, options)));
 
 	return results.map((result) => (result.status === "fulfilled" ? result.value : false));
 }
@@ -169,10 +164,7 @@ export async function removeMultiplePromptJobSchedulers(promptIds: string[]): Pr
  * Recreates a schedule for a prompt (removes and creates).
  * Useful when cadence has changed or job needs to be reset.
  */
-export async function recreatePromptJobScheduler(
-	promptId: string,
-	options: SchedulerOptions = {},
-): Promise<boolean> {
+export async function recreatePromptJobScheduler(promptId: string, options: SchedulerOptions = {}): Promise<boolean> {
 	try {
 		// Remove existing schedule if any (ignore errors if it doesn't exist)
 		await removePromptJobScheduler(promptId);

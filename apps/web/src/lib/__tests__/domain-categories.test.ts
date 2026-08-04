@@ -103,11 +103,17 @@ describe("categorizeDomain priority", () => {
 
 describe("classifyUrl fallback (shrinks 'other')", () => {
 	it("treats unknown-domain review/article pages as editorial", () => {
-		expect(classify("thestripe.com", "https://thestripe.com/my-u-beauty-review", "My U Beauty Review")).toBe("editorial");
-		expect(classify("bowsandsequins.com", "https://bowsandsequins.com/2024/02/28/my-review", "A review")).toBe("editorial");
+		expect(classify("thestripe.com", "https://thestripe.com/my-u-beauty-review", "My U Beauty Review")).toBe(
+			"editorial",
+		);
+		expect(classify("bowsandsequins.com", "https://bowsandsequins.com/2024/02/28/my-review", "A review")).toBe(
+			"editorial",
+		);
 	});
 	it("treats unknown-domain storefront/product pages as ecommerce", () => {
-		expect(classify("shoprescuespa.com", "https://shoprescuespa.com/products/resurfacing-compound", "Resurfacing Compound")).toBe("ecommerce");
+		expect(
+			classify("shoprescuespa.com", "https://shoprescuespa.com/products/resurfacing-compound", "Resurfacing Compound"),
+		).toBe("ecommerce");
 	});
 	it("treats unknown-domain forum pages as social", () => {
 		expect(classify("randomforum.xyz", "https://randomforum.xyz/forums/thread-123", "A thread")).toBe("social");
@@ -141,7 +147,10 @@ describe("Google AI Mode URL detection", () => {
 });
 
 describe("attributeProduct", () => {
-	const comps = [{ id: "1", name: "La Roche Posay" }, { id: "2", name: "The Ordinary" }];
+	const comps = [
+		{ id: "1", name: "La Roche Posay" },
+		{ id: "2", name: "The Ordinary" },
+	];
 
 	it("attributes to brand, competitor, or other by name match", () => {
 		expect(attributeProduct("U Beauty The Super Hydrator", "U Beauty", comps).kind).toBe("brand");
@@ -185,7 +194,12 @@ describe("inferPageType", () => {
 	});
 	it("detects 'best/top' in the URL slug, but not store best-seller pages", () => {
 		// title doesn't lead with "Best", but the slug does
-		expect(inferPageType("https://urbanstylefootwear.com/best-white-sneakers-2026-tested", "I Tested Every Sneaker This Year")).toBe("listicle");
+		expect(
+			inferPageType(
+				"https://urbanstylefootwear.com/best-white-sneakers-2026-tested",
+				"I Tested Every Sneaker This Year",
+			),
+		).toBe("listicle");
 		expect(inferPageType("https://runrepeat.com/guides/best-trail-running-shoes", "Trail shoes")).toBe("listicle");
 		// storefront best-seller / commerce paths are NOT listicles
 		expect(inferPageType("https://shop.com/products/best-seller-serum", "Hydrating Serum")).toBe("product");
@@ -196,8 +210,16 @@ describe("inferPageType", () => {
 describe("resolvePageType (niche-independent article fallback)", () => {
 	it("treats untyped content-publisher pages as articles", () => {
 		// niche health paths have no generic page-type signal, but the source is a publisher
-		expect(resolvePageType("https://mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/x", "Acne treatment", "institutional")).toBe("article");
-		expect(resolvePageType("https://aad.org/public/diseases/acne/derm-treat/treat", "Acne", "institutional")).toBe("article");
+		expect(
+			resolvePageType(
+				"https://mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/x",
+				"Acne treatment",
+				"institutional",
+			),
+		).toBe("article");
+		expect(resolvePageType("https://aad.org/public/diseases/acne/derm-treat/treat", "Acne", "institutional")).toBe(
+			"article",
+		);
 		expect(resolvePageType("https://en.wikipedia.org/wiki/Acne", "Acne", "reference")).toBe("article");
 	});
 	it("does not turn brand utility / typed pages into articles", () => {

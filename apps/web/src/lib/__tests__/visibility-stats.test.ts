@@ -54,9 +54,7 @@ describe("computeVolatility", () => {
 		// A dominant 'hub' every day (80% of volume) with a fully-rotating tail.
 		// Set churn is high (most distinct domains change) but volume churn is low
 		// (the source that carries the answer is stable).
-		const r = computeVolatility(
-			rows({ "2026-01-01": { hub: 8, x: 1, y: 1 }, "2026-01-02": { hub: 8, z: 1, w: 1 } }),
-		);
+		const r = computeVolatility(rows({ "2026-01-01": { hub: 8, x: 1, y: 1 }, "2026-01-02": { hub: 8, z: 1, w: 1 } }));
 		expect(r.setVolatility).toBe(0.8); // inter {hub}=1, union 5 -> 1 - 1/5
 		expect(r.weightedVolatility).toBeCloseTo(0.2, 5); // overlap = min(hub .8,.8) = .8
 	});

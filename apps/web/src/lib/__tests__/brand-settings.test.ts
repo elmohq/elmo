@@ -23,15 +23,15 @@ describe("normalizeBrandUpdate", () => {
 			expect(result).toEqual({ ok: true, updates: { name: "Acme" } });
 		});
 
-		it.each([["empty string", ""], ["whitespace only", "   "]])(
-			"rejects a %s name",
-			(_label, name) => {
-				expect(normalizeBrandUpdate({ name })).toEqual({
-					ok: false,
-					error: "Brand name must be a non-empty string",
-				});
-			},
-		);
+		it.each([
+			["empty string", ""],
+			["whitespace only", "   "],
+		])("rejects a %s name", (_label, name) => {
+			expect(normalizeBrandUpdate({ name })).toEqual({
+				ok: false,
+				error: "Brand name must be a non-empty string",
+			});
+		});
 	});
 
 	describe("website", () => {

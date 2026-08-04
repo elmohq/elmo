@@ -31,14 +31,9 @@ function SidebarFolder({ folder }: { folder: Folder }) {
 	const isActive = folder.children.some(
 		(child) =>
 			(child.type === "page" && location.pathname === child.url) ||
-			(child.type === "folder" &&
-				child.children.some(
-					(c) => c.type === "page" && location.pathname === c.url,
-				)),
+			(child.type === "folder" && child.children.some((c) => c.type === "page" && location.pathname === c.url)),
 	);
-	const [open, setOpen] = useState(
-		folder.defaultOpen ?? isActive ?? false,
-	);
+	const [open, setOpen] = useState(folder.defaultOpen ?? isActive ?? false);
 
 	return (
 		<div className="pt-3 first:pt-0">
@@ -48,10 +43,7 @@ function SidebarFolder({ folder }: { folder: Folder }) {
 				className="flex w-full items-center gap-1.5 px-3 py-1 text-sm font-semibold transition-colors hover:text-foreground"
 			>
 				<ChevronRight
-					className={cn(
-						"size-3 shrink-0 text-muted-foreground transition-transform",
-						open && "rotate-90",
-					)}
+					className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
 				/>
 				{folder.name}
 			</button>
@@ -77,12 +69,7 @@ function SidebarNodes({ nodes }: { nodes: Node[] }) {
 				}
 				if (node.type === "separator") {
 					if (!node.name) {
-						return (
-							<div
-								key={node.$id ?? i}
-								className="my-3 border-t"
-							/>
-						);
+						return <div key={node.$id ?? i} className="my-3 border-t" />;
 					}
 					return (
 						<div
@@ -111,9 +98,7 @@ export function DocsSidebar({ tree }: { tree: Root }) {
 			>
 				<Search className="size-3.5 shrink-0" />
 				<span className="flex-1 text-left">Search docs...</span>
-				<kbd className="rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium">
-					⌘K
-				</kbd>
+				<kbd className="rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
 			</button>
 			<SearchDialog open={open} onOpenChange={setOpen} />
 			<SidebarNodes nodes={tree.children} />

@@ -19,14 +19,7 @@ import {
 	WINDOW_DAYS,
 	isBot,
 } from "./constants";
-import type {
-	ChurnPoint,
-	LabelSlice,
-	RepoContributor,
-	RepoActivityData,
-	ReleaseInfo,
-	WeekPoint,
-} from "./types";
+import type { ChurnPoint, LabelSlice, RepoContributor, RepoActivityData, ReleaseInfo, WeekPoint } from "./types";
 
 const API = `https://api.github.com/repos/${REPO}`;
 const WEEK_SECONDS = 7 * 24 * 60 * 60;
@@ -52,11 +45,7 @@ async function ghJson<T>(url: string, token: string | undefined): Promise<T> {
  * The `/stats/*` endpoints answer 202 (empty body) while GitHub recomputes them,
  * and occasionally 200 with an empty array. Retry a few times with backoff.
  */
-async function ghStats<T>(
-	path: string,
-	token: string | undefined,
-	tries = 4,
-): Promise<T | null> {
+async function ghStats<T>(path: string, token: string | undefined, tries = 4): Promise<T | null> {
 	for (let attempt = 0; attempt < tries; attempt++) {
 		try {
 			const res = await fetch(`${API}${path}`, { headers: ghHeaders(token) });
@@ -90,10 +79,9 @@ async function searchCount(
 	index: "issues" | "commits" = "issues",
 ): Promise<number | null> {
 	try {
-		const res = await fetch(
-			`https://api.github.com/search/${index}?q=${encodeURIComponent(query)}&per_page=1`,
-			{ headers: ghHeaders(token) },
-		);
+		const res = await fetch(`https://api.github.com/search/${index}?q=${encodeURIComponent(query)}&per_page=1`, {
+			headers: ghHeaders(token),
+		});
 		if (!res.ok) return null;
 		const json = (await res.json()) as { total_count?: number };
 		return typeof json.total_count === "number" ? json.total_count : null;
@@ -182,17 +170,11 @@ async function fetchAreaLabels(token: string | undefined): Promise<LabelSlice[]>
 	return slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
 }
 
-export async function fetchRepoActivityData(
-	opts: { token?: string } = {},
-): Promise<RepoActivityData> {
+export async function fetchRepoActivityData(opts: { token?: string } = {}): Promise<RepoActivityData> {
 	const token = opts.token ?? process.env.GITHUB_TOKEN;
 	const now = new Date();
-	const sinceIso = new Date(now.getTime() - WINDOW_DAYS * 86_400_000)
-		.toISOString()
-		.slice(0, 10);
-	const windowStartSec = Math.floor(
-		(now.getTime() - WINDOW_DAYS * 86_400_000) / 1000,
-	);
+	const sinceIso = new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+	const windowStartSec = Math.floor((now.getTime() - WINDOW_DAYS * 86_400_000) / 1000);
 	const q = (rest: string) => `repo:${REPO} ${rest}`;
 
 	const [
@@ -211,12 +193,8 @@ export async function fetchRepoActivityData(
 	] = await Promise.all([
 		ghJson<RepoCore>(API, token).catch(() => null),
 		ghStats<Array<{ week: number; total: number }>>("/stats/commit_activity", token),
-		ghJson<RawContributor[]>(`${API}/contributors?per_page=100&anon=false`, token).catch(
-			() => [] as RawContributor[],
-		),
-		ghJson<RawRelease[]>(`${API}/releases?per_page=100`, token).catch(
-			() => [] as RawRelease[],
-		),
+		ghJson<RawContributor[]>(`${API}/contributors?per_page=100&anon=false`, token).catch(() => [] as RawContributor[]),
+		ghJson<RawRelease[]>(`${API}/releases?per_page=100`, token).catch(() => [] as RawRelease[]),
 		fetchAreaLabels(token),
 		searchCount(q(`is:pr is:merged merged:>=${sinceIso}`), token),
 		searchCount(q(`is:pr created:>=${sinceIso}`), token),
@@ -272,9 +250,7 @@ export async function fetchRepoActivityData(
 
 	// Fallback for the commit KPI if the commit search is unavailable (e.g. no
 	// token): sum the whole weeks inside the window from commit_activity.
-	const commitsFromWeeks = commitsByWeek
-		.filter((p) => p.week >= windowStartSec)
-		.reduce((sum, p) => sum + p.total, 0);
+	const commitsFromWeeks = commitsByWeek.filter((p) => p.week >= windowStartSec).reduce((sum, p) => sum + p.total, 0);
 	const releasesInWindow = releases.filter(
 		(r) => Date.parse(r.published_at as string) >= now.getTime() - WINDOW_DAYS * 86_400_000,
 	).length;

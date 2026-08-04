@@ -1,18 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import {
-	DirectoryBackLink,
-	DirectoryHero,
-	DirectorySection,
-	ElmoCta,
-} from "@/components/directory-shell";
-import {
-	ogMeta,
-	canonicalUrl,
-	breadcrumbJsonLd,
-	itemListJsonLd,
-} from "@/lib/seo";
+import { DirectoryBackLink, DirectoryHero, DirectorySection, ElmoCta } from "@/components/directory-shell";
+import { ogMeta, canonicalUrl, breadcrumbJsonLd, itemListJsonLd } from "@/lib/seo";
 import {
 	FEATURE_CATEGORIES,
 	FEATURE_SLUGS,
@@ -33,9 +23,7 @@ const indexableKeys = new Set(indexableFeatureKeys());
 const featureGroups = Object.values(FEATURE_CATEGORIES)
 	.map((section) => ({
 		label: section.label,
-		keys: (Object.keys(section.features) as FeatureKey[]).filter((key) =>
-			indexableKeys.has(key),
-		),
+		keys: (Object.keys(section.features) as FeatureKey[]).filter((key) => indexableKeys.has(key)),
 	}))
 	.filter((group) => group.keys.length > 0);
 
@@ -51,9 +39,7 @@ export const Route = createFileRoute("/ai-visibility-tools/features/")({
 			{ name: "description", content: description },
 			...ogMeta({ title, description, path: "/ai-visibility-tools/features" }),
 		],
-		links: [
-			{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/features") },
-		],
+		links: [{ rel: "canonical", href: canonicalUrl("/ai-visibility-tools/features") }],
 		scripts: [
 			breadcrumbJsonLd([
 				{ name: "Home", path: "/" },
@@ -87,9 +73,7 @@ function FeatureHub() {
 										className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-950"
 									>
 										<span>{getFeatureLabel(key)}</span>
-										<span className="font-mono text-[11px] text-zinc-400">
-											{toolsWithFeature(key).length}
-										</span>
+										<span className="font-mono text-[11px] text-zinc-400">{toolsWithFeature(key).length}</span>
 									</a>
 								</li>
 							))}

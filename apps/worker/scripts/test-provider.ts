@@ -49,9 +49,18 @@ function parseArgs(): ParsedArgs {
 	let dump: string | undefined;
 
 	for (let i = 0; i < argv.length; i++) {
-		if (argv[i] === "--target" && argv[i + 1]) { target = argv[++i]; continue; }
-		if (argv[i] === "--output-json" && argv[i + 1]) { outputJson = argv[++i]; continue; }
-		if (argv[i] === "--dump" && argv[i + 1]) { dump = argv[++i]; continue; }
+		if (argv[i] === "--target" && argv[i + 1]) {
+			target = argv[++i];
+			continue;
+		}
+		if (argv[i] === "--output-json" && argv[i + 1]) {
+			outputJson = argv[++i];
+			continue;
+		}
+		if (argv[i] === "--dump" && argv[i + 1]) {
+			dump = argv[++i];
+			continue;
+		}
 		if (argv[i] === "--help" || argv[i] === "-h") {
 			console.log(`
 Usage: pnpm tsx --env-file=.env scripts/test-provider.ts --target <scrape-targets> [--output-json <path>] [--dump <path>]
@@ -152,7 +161,11 @@ function validateResult(result: ScrapeResult, providerId: string, webSearch: boo
 
 	if (result.rawOutput != null) {
 		const reExtracted = extractTextContent(result.rawOutput, providerId);
-		if (reExtracted.startsWith("No text content") || reExtracted.startsWith("Unknown") || reExtracted.startsWith("Error")) {
+		if (
+			reExtracted.startsWith("No text content") ||
+			reExtracted.startsWith("Unknown") ||
+			reExtracted.startsWith("Error")
+		) {
 			issues.push({
 				field: "rawOutput re-extraction",
 				message: `extractTextContent(rawOutput, "${providerId}") returned: "${reExtracted.slice(0, 80)}"`,
@@ -256,7 +269,10 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 	// Retry with different prompts if web search was expected but no citations/queries came back
 	if (config.webSearch && result.citations.length === 0 && !hasRealWebQueries(result.webQueries)) {
 		for (let i = 1; i < TEST_PROMPTS.length; i++) {
-			tlog(`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`, colors.yellow);
+			tlog(
+				`No citations or web queries — retrying with prompt ${i + 1}/${TEST_PROMPTS.length}: "${TEST_PROMPTS[i]}"`,
+				colors.yellow,
+			);
 			retries++;
 			try {
 				attemptStart = Date.now();
@@ -268,7 +284,9 @@ async function runTarget(target: string, dumpDir?: string): Promise<{ result: Ta
 					result = retry;
 					break;
 				}
-			} catch { /* keep previous result */ }
+			} catch {
+				/* keep previous result */
+			}
 		}
 	}
 
@@ -359,9 +377,7 @@ function writeGitHubSummary(results: TargetResult[]) {
 		);
 	}
 
-	const allIssues = results.flatMap((r) =>
-		r.issues.map((i) => ({ target: r.target, ...i })),
-	);
+	const allIssues = results.flatMap((r) => r.issues.map((i) => ({ target: r.target, ...i })));
 
 	if (allIssues.length > 0) {
 		lines.push("", "### Validation Issues", "");
@@ -381,7 +397,10 @@ function writeGitHubSummary(results: TargetResult[]) {
 
 async function main() {
 	const { target: targetArg, outputJson, dump } = parseArgs();
-	const targets = targetArg.split(",").map((t) => t.trim()).filter(Boolean);
+	const targets = targetArg
+		.split(",")
+		.map((t) => t.trim())
+		.filter(Boolean);
 
 	// Run all targets in parallel. Each is almost entirely waiting on an external
 	// HTTP call, so there's no benefit to throttling. Logs are buffered per target
@@ -399,7 +418,10 @@ async function main() {
 
 	if (targets.length > 1) {
 		log(`\n${"=".repeat(40)}`, colors.bright);
-		log(`Results: ${passed} passed, ${failed} failed out of ${targets.length} targets`, failed > 0 ? colors.red : colors.green);
+		log(
+			`Results: ${passed} passed, ${failed} failed out of ${targets.length} targets`,
+			failed > 0 ? colors.red : colors.green,
+		);
 	}
 
 	if (outputJson) {

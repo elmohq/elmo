@@ -48,7 +48,8 @@ export const Route = createFileRoute("/_authed/app/$brand/query-fan-out")({
 				{ title: buildTitle("Query Fan-Out", { appName, brandName }) },
 				{
 					name: "description",
-					content: "See the web searches AI engines run when answering your prompts, and how they rewrite your wording.",
+					content:
+						"See the web searches AI engines run when answering your prompts, and how they rewrite your wording.",
 				},
 			],
 		};
@@ -83,8 +84,9 @@ function QueryFanoutPage() {
 
 	const infoContent = (
 		<p>
-			When an AI engine with web search capabilities responds to a prompt, it may choose to make a number of web searches
-			before creating its answer. These underlying web searches, or web queries, are only available for some engines.
+			When an AI engine with web search capabilities responds to a prompt, it may choose to make a number of web
+			searches before creating its answer. These underlying web searches, or web queries, are only available for some
+			engines.
 		</p>
 	);
 
@@ -137,9 +139,18 @@ function QueryFanoutPage() {
 	}
 
 	return (
-		<PageHeader title="Query Fan-Out" subtitle="The web searches AI engines run when answering your prompts." infoContent={infoContent}>
+		<PageHeader
+			title="Query Fan-Out"
+			subtitle="The web searches AI engines run when answering your prompts."
+			infoContent={infoContent}
+		>
 			<FilterSection>
-				<FilterBar availableTags={availableTags} availableModels={availableModels} showSearch={false} showModelSelector />
+				<FilterBar
+					availableTags={availableTags}
+					availableModels={availableModels}
+					showSearch={false}
+					showModelSelector
+				/>
 			</FilterSection>
 			{content}
 		</PageHeader>
@@ -170,8 +181,8 @@ function RunsTooltip({ breakdown }: { breakdown: FanoutData["byModel"] }) {
 	return (
 		<>
 			<p>
-				Prompt runs that produced at least one web search. Some engines do not expose web searches, so this number may be
-				lower than expected.
+				Prompt runs that produced at least one web search. Some engines do not expose web searches, so this number may
+				be lower than expected.
 			</p>
 			{breakdown.length > 0 && (
 				<div className="border-border/60 mt-2 space-y-0.5 border-t pt-2">
@@ -286,7 +297,17 @@ function EmptyState({ message }: { message: string }) {
 
 type SortKey = "queries" | "avg";
 
-function SortHead<K extends string>({ k, label, sort, setSort }: { k: K; label: string; sort: K; setSort: (k: K) => void }) {
+function SortHead<K extends string>({
+	k,
+	label,
+	sort,
+	setSort,
+}: {
+	k: K;
+	label: string;
+	sort: K;
+	setSort: (k: K) => void;
+}) {
 	return (
 		<button
 			type="button"
@@ -304,8 +325,8 @@ function SortHead<K extends string>({ k, label, sort, setSort }: { k: K; label: 
 const GRID = "grid grid-cols-[1.25rem_1fr_4.5rem_7rem] items-center gap-3";
 
 function Prompts({ prompts, brandId }: { prompts: PromptFanoutStat[]; brandId: string }) {
-	const [expanded, setExpanded] = useState<Set<string>>(() =>
-		new Set(prompts.length === 1 ? [prompts[0].promptId] : []),
+	const [expanded, setExpanded] = useState<Set<string>>(
+		() => new Set(prompts.length === 1 ? [prompts[0].promptId] : []),
 	);
 	const [sort, setSort] = useState<SortKey>("queries");
 	const [search, setSearch] = useState("");
@@ -399,7 +420,12 @@ function Prompts({ prompts, brandId }: { prompts: PromptFanoutStat[]; brandId: s
 											</div>
 										)}
 										<div className="pt-1">
-											<HistoryButton brandId={brandId} promptId={p.promptId} promptName={p.promptValue} tab="web-queries" />
+											<HistoryButton
+												brandId={brandId}
+												promptId={p.promptId}
+												promptName={p.promptValue}
+												tab="web-queries"
+											/>
 										</div>
 									</div>
 								)}

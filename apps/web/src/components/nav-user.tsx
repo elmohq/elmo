@@ -1,10 +1,4 @@
-import {
-	IconSelector,
-	IconExternalLink,
-	IconLogout,
-	IconStatusChange,
-	IconUser,
-} from "@tabler/icons-react";
+import { IconSelector, IconExternalLink, IconLogout, IconStatusChange, IconUser } from "@tabler/icons-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
 import {
@@ -34,8 +28,7 @@ export function NavUser() {
 	// when there's no session — so `user` is always present at this point.
 	if (!user) return null;
 
-	const isNameEmailSame =
-		user.name?.trim().toLowerCase() === user.email?.trim().toLowerCase();
+	const isNameEmailSame = user.name?.trim().toLowerCase() === user.email?.trim().toLowerCase();
 
 	return (
 		<SidebarMenu>
@@ -69,9 +62,9 @@ export function NavUser() {
 							<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 								<Avatar className="h-8 w-8 rounded-lg">
 									<AvatarImage src={user.picture} alt={user.name} />
-								<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
-									<IconUser className="size-4" />
-								</AvatarFallback>
+									<AvatarFallback className="rounded-lg bg-primary/10 text-primary">
+										<IconUser className="size-4" />
+									</AvatarFallback>
 								</Avatar>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">{user.name}</span>
@@ -96,23 +89,23 @@ export function NavUser() {
 								</DropdownMenuItem>
 							)}
 						</DropdownMenuGroup>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem
-						className="cursor-pointer"
-						onClick={() => {
-							authClient.signOut({
-								fetchOptions: {
-									onSuccess: () => {
-										resetPostHog();
-										window.location.href = "/auth/logout";
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							className="cursor-pointer"
+							onClick={() => {
+								authClient.signOut({
+									fetchOptions: {
+										onSuccess: () => {
+											resetPostHog();
+											window.location.href = "/auth/logout";
+										},
 									},
-								},
-							});
-						}}
-					>
-						<IconLogout />
-						Log out
-					</DropdownMenuItem>
+								});
+							}}
+						>
+							<IconLogout />
+							Log out
+						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

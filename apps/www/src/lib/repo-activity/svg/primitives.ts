@@ -8,8 +8,7 @@ import { TITAN_ONE_DATA_URI } from "../fonts";
 import { THEME, themeStyleBlock } from "../theme";
 import type { LabelSlice, RepoContributor } from "../types";
 
-const SANS =
-	"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 /** Titan One — the brand display face, used for the large KPI numerals. */
 export const DISPLAY_FAMILY = "'Titan One','Trebuchet MS',system-ui,sans-serif";
 
@@ -47,8 +46,7 @@ interface TextOpts {
 }
 
 export function text(x: number, y: number, content: string, opts: TextOpts = {}): string {
-	const { size = 13, weight = 400, cls = "rb-text", anchor = "start", family, letter, opacity } =
-		opts;
+	const { size = 13, weight = 400, cls = "rb-text", anchor = "start", family, letter, opacity } = opts;
 	const attrs = [
 		`x="${round(x)}"`,
 		`y="${round(y)}"`,
@@ -69,14 +67,7 @@ interface RectOpts {
 	opacity?: number;
 }
 
-export function rrect(
-	x: number,
-	y: number,
-	w: number,
-	h: number,
-	r: number,
-	opts: RectOpts = {},
-): string {
+export function rrect(x: number, y: number, w: number, h: number, r: number, opts: RectOpts = {}): string {
 	const attrs = [
 		`x="${round(x)}"`,
 		`y="${round(y)}"`,
@@ -91,13 +82,7 @@ export function rrect(
 }
 
 /** 1px separator line; pass `.5` offsets on the fixed axis for crisp rendering. */
-export function hairline(
-	x1: number,
-	y1: number,
-	x2: number,
-	y2: number,
-	opts: { cls?: string } = {},
-): string {
+export function hairline(x1: number, y1: number, x2: number, y2: number, opts: { cls?: string } = {}): string {
 	return `<line x1="${round(x1)}" y1="${round(y1)}" x2="${round(x2)}" y2="${round(y2)}" class="${opts.cls ?? "rb-line"}" stroke-width="1"/>`;
 }
 
@@ -163,14 +148,7 @@ ${body}
 }
 
 /** Proportional horizontal stacked bar (rounded pill), used for label distributions. */
-export function stackedBar(
-	x: number,
-	y: number,
-	w: number,
-	h: number,
-	slices: LabelSlice[],
-	clipId: string,
-): string {
+export function stackedBar(x: number, y: number, w: number, h: number, slices: LabelSlice[], clipId: string): string {
 	const total = slices.reduce((sum, s) => sum + s.count, 0) || 1;
 	let segments = "";
 	let cursor = x;

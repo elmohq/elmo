@@ -87,9 +87,7 @@ function AnalyzeBrandDialog() {
 			<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Analyze brand</DialogTitle>
-					<DialogDescription>
-						Run the onboarding analysis for any website.
-					</DialogDescription>
+					<DialogDescription>Run the onboarding analysis for any website.</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4 py-4">
@@ -231,10 +229,7 @@ export const Route = createFileRoute("/_authed/admin/tools")({
 	head: ({ match }) => {
 		const appName = getAppName(match);
 		return {
-			meta: [
-				{ title: `Tools · ${appName}` },
-				{ name: "description", content: "Brand onboarding analysis." },
-			],
+			meta: [{ title: `Tools · ${appName}` }, { name: "description", content: "Brand onboarding analysis." }],
 		};
 	},
 	component: ToolsPage,
@@ -259,8 +254,8 @@ function ToolsPage() {
 							Brand analysis
 						</CardTitle>
 						<CardDescription>
-							Analyze a website to discover its competitors, additional brand domains, aliases, and
-							suggested AI tracking prompts. Works with any configured LLM provider.
+							Analyze a website to discover its competitors, additional brand domains, aliases, and suggested AI
+							tracking prompts. Works with any configured LLM provider.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

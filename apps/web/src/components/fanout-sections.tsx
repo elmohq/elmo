@@ -96,7 +96,10 @@ export function VariationLine({
 				))}
 			</div>
 			{modelCounts?.length ? (
-				<span className="text-muted-foreground shrink-0 text-right text-xs tabular-nums leading-6" title="Times each engine ran this search">
+				<span
+					className="text-muted-foreground shrink-0 text-right text-xs tabular-nums leading-6"
+					title="Times each engine ran this search"
+				>
 					{modelCounts.map((mc) => `${mc.count.toLocaleString()}× ${getModelDisplayName(mc.model)}`).join(" · ")}
 				</span>
 			) : (

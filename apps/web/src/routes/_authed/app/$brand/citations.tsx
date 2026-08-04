@@ -18,7 +18,6 @@ import { getDaysFromLookback } from "@/lib/chart-utils";
 import { PageHeader } from "@/components/page-header";
 import { getAvailableModels, ALL_MODELS_VALUE } from "@/components/filter-bar";
 
-
 export const Route = createFileRoute("/_authed/app/$brand/citations")({
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
@@ -59,7 +58,8 @@ function CitationsPage() {
 	const infoContent = (
 		<>
 			<p className="mb-2">
-				Citations are the links and sources that AI models include in their responses when answering your prompts. They show which websites the AI considers authoritative or relevant to your topics.
+				Citations are the links and sources that AI models include in their responses when answering your prompts. They
+				show which websites the AI considers authoritative or relevant to your topics.
 			</p>
 			<p>
 				<strong>Competitor</strong> domains are only those you&apos;ve added to your{" "}

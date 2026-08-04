@@ -1,4 +1,3 @@
-
 import * as React from "react";
 import { Line, LineChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -103,26 +102,27 @@ export function BaseChart({
 	// For bar charts, filter out days where ALL entities have null values
 	// For line charts, keep all days to maintain proper time-based spacing on x-axis
 	// and extend lines to chart edges to fill gaps at start/end of data collection
-	const chartData = chartType === "bar" 
-		? completeData.filter(point => {
-				// Keep the data point if ANY tracked entity has a non-null value
-				return dataKeys.some(key => {
-					const value = point[key];
-					return value !== null && value !== undefined;
-				});
-			})
-		: extendLinesToChartEdges(completeData, dataKeys).map(point => {
-				// Add _solid versions of each key that have null for extended points
-				const newPoint = { ...point };
-				for (const key of dataKeys) {
-					if (isExtendedDataPoint(point, key)) {
-						newPoint[`${key}_solid`] = null;
-					} else {
-						newPoint[`${key}_solid`] = point[key];
+	const chartData =
+		chartType === "bar"
+			? completeData.filter((point) => {
+					// Keep the data point if ANY tracked entity has a non-null value
+					return dataKeys.some((key) => {
+						const value = point[key];
+						return value !== null && value !== undefined;
+					});
+				})
+			: extendLinesToChartEdges(completeData, dataKeys).map((point) => {
+					// Add _solid versions of each key that have null for extended points
+					const newPoint = { ...point };
+					for (const key of dataKeys) {
+						if (isExtendedDataPoint(point, key)) {
+							newPoint[`${key}_solid`] = null;
+						} else {
+							newPoint[`${key}_solid`] = point[key];
+						}
 					}
-				}
-				return newPoint;
-			});
+					return newPoint;
+				});
 
 	return (
 		<div className="flex-1 space-y-2">
@@ -136,9 +136,9 @@ export function BaseChart({
 					)}
 				</div>
 			)}
-		{chartType === "bar" ? (
-			<ChartContainer config={chartConfig} className="aspect-auto w-full" style={{ height: chartHeight }}>
-				<BarChart data={chartData}>
+			{chartType === "bar" ? (
+				<ChartContainer config={chartConfig} className="aspect-auto w-full" style={{ height: chartHeight }}>
+					<BarChart data={chartData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
 							dataKey="date"
@@ -174,9 +174,9 @@ export function BaseChart({
 							cursor={false}
 							content={
 								<ChartTooltipContent
-								labelFormatter={(value) => {
-									const [year, month, day] = String(value).split("-").map(Number);
-									const date = new Date(year, month - 1, day);
+									labelFormatter={(value) => {
+										const [year, month, day] = String(value).split("-").map(Number);
+										const date = new Date(year, month - 1, day);
 										return date.toLocaleDateString("en-US", {
 											month: "short",
 											day: "numeric",
@@ -210,12 +210,14 @@ export function BaseChart({
 						{dataKeys.map((key, index) => (
 							<Bar key={key} dataKey={key} fill={`var(--color-${key})`} minPointSize={2} radius={2} />
 						))}
-						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />} />
+						<ChartLegend
+							content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />}
+						/>
 					</BarChart>
 				</ChartContainer>
-		) : (
-			<ChartContainer config={chartConfig} className="aspect-auto w-full" style={{ height: chartHeight }}>
-				<LineChart data={chartData}>
+			) : (
+				<ChartContainer config={chartConfig} className="aspect-auto w-full" style={{ height: chartHeight }}>
+					<LineChart data={chartData}>
 						<CartesianGrid vertical={false} />
 						<XAxis
 							dataKey="date"
@@ -251,24 +253,24 @@ export function BaseChart({
 							cursor={false}
 							content={({ active, payload, label }) => {
 								if (!active || !payload?.length) return null;
-								
+
 								// Filter to only show:
 								// 1. Original keys (not _solid versions) from the dashed lines
 								// 2. Only non-extended values
 								const filteredPayload = payload.filter((item: any) => {
 									const key = item.dataKey as string;
 									// Skip _solid keys - we only want the original keys from dashed lines
-									if (key.endsWith('_solid')) return false;
+									if (key.endsWith("_solid")) return false;
 									// Skip extended data points
 									if (item.payload && isExtendedDataPoint(item.payload, key)) return false;
 									// Skip null/undefined values
 									if (item.value === null || item.value === undefined) return false;
 									return true;
 								});
-								
+
 								// If no real data to show, hide tooltip entirely
 								if (filteredPayload.length === 0) return null;
-								
+
 								// Format the date label
 								const [year, month, day] = (label as string).split("-").map(Number);
 								const date = new Date(year, month - 1, day);
@@ -276,7 +278,7 @@ export function BaseChart({
 									month: "short",
 									day: "numeric",
 								});
-								
+
 								return (
 									<div className="border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl">
 										<div className="font-medium">{formattedDate}</div>
@@ -293,9 +295,7 @@ export function BaseChart({
 															<span className="text-muted-foreground">
 																{chartConfig[item.dataKey as string]?.label || item.dataKey}
 															</span>
-															<span className="text-foreground font-mono font-xs tabular-nums">
-																{item.value}%
-															</span>
+															<span className="text-foreground font-mono font-xs tabular-nums">{item.value}%</span>
 														</div>
 													</div>
 												);
@@ -305,73 +305,75 @@ export function BaseChart({
 								);
 							}}
 						/>
-					{/* Render two lines per entity: dashed for extended data, solid for real data */}
-					{dataKeys.flatMap((key) => [
-						// First: Dashed line showing extended/extrapolated portions (hidden from legend)
-						<Line
-							key={`${key}-dashed`}
-							dataKey={key}
-							name={`${key}-dashed`}
-							type="bump"
-							stroke={`var(--color-${key})`}
-							strokeWidth={2}
-							strokeDasharray="4 4"
-							dot={false}
-							activeDot={false}
-							connectNulls={true}
-							isAnimationActive={isAnimationActive}
-							legendType="none"
-						/>,
-						// Second: Solid line overlay for real data (shows in legend)
-						<Line
-							key={`${key}-solid`}
-							dataKey={`${key}_solid`}
-							name={key}
-							type="bump"
-							stroke={`var(--color-${key})`}
-							strokeWidth={2}
-							// Custom dot that only shows for real data points
-						dot={({ cx, cy, payload, value }: any) => {
-							// Don't render dot for extended points or null values
-							// Return empty <g> element instead of null to satisfy Recharts types
-							if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-								return <g key={`dot-empty-${key}-${cx}`} />;
-							}
-							return (
-								<circle
-									key={`dot-${key}-${cx}`}
-									cx={cx}
-									cy={cy}
-									r={2}
-									fill={`var(--color-${key})`}
-									stroke={`var(--color-${key})`}
-									strokeWidth={2}
-								/>
-							);
-						}}
-						activeDot={({ cx, cy, payload, value }: any) => {
-							// Don't render active dot for extended points or null values
-							// Return empty <g> element instead of null to satisfy Recharts types
-							if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
-								return <g key={`activedot-empty-${key}-${cx}`} />;
-							}
-							return (
-								<circle
-									key={`activedot-${key}-${cx}`}
-									cx={cx}
-									cy={cy}
-									r={4}
-									fill={`var(--color-${key})`}
-									stroke={`var(--color-${key})`}
-									strokeWidth={2}
-								/>
-							);
-						}}
-							connectNulls={true}
-							isAnimationActive={isAnimationActive}
-						/>,
-					])}
-						<ChartLegend content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />} />
+						{/* Render two lines per entity: dashed for extended data, solid for real data */}
+						{dataKeys.flatMap((key) => [
+							// First: Dashed line showing extended/extrapolated portions (hidden from legend)
+							<Line
+								key={`${key}-dashed`}
+								dataKey={key}
+								name={`${key}-dashed`}
+								type="bump"
+								stroke={`var(--color-${key})`}
+								strokeWidth={2}
+								strokeDasharray="4 4"
+								dot={false}
+								activeDot={false}
+								connectNulls={true}
+								isAnimationActive={isAnimationActive}
+								legendType="none"
+							/>,
+							// Second: Solid line overlay for real data (shows in legend)
+							<Line
+								key={`${key}-solid`}
+								dataKey={`${key}_solid`}
+								name={key}
+								type="bump"
+								stroke={`var(--color-${key})`}
+								strokeWidth={2}
+								// Custom dot that only shows for real data points
+								dot={({ cx, cy, payload, value }: any) => {
+									// Don't render dot for extended points or null values
+									// Return empty <g> element instead of null to satisfy Recharts types
+									if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+										return <g key={`dot-empty-${key}-${cx}`} />;
+									}
+									return (
+										<circle
+											key={`dot-${key}-${cx}`}
+											cx={cx}
+											cy={cy}
+											r={2}
+											fill={`var(--color-${key})`}
+											stroke={`var(--color-${key})`}
+											strokeWidth={2}
+										/>
+									);
+								}}
+								activeDot={({ cx, cy, payload, value }: any) => {
+									// Don't render active dot for extended points or null values
+									// Return empty <g> element instead of null to satisfy Recharts types
+									if (!payload || isExtendedDataPoint(payload, key) || value === null || value === undefined) {
+										return <g key={`activedot-empty-${key}-${cx}`} />;
+									}
+									return (
+										<circle
+											key={`activedot-${key}-${cx}`}
+											cx={cx}
+											cy={cy}
+											r={4}
+											fill={`var(--color-${key})`}
+											stroke={`var(--color-${key})`}
+											strokeWidth={2}
+										/>
+									);
+								}}
+								connectNulls={true}
+								isAnimationActive={isAnimationActive}
+							/>,
+						])}
+						<ChartLegend
+							content={() => <ChartLegendContent payload={legendPayload} className="flex-wrap gap-x-4 gap-y-1" />}
+						/>
 					</LineChart>
 				</ChartContainer>
 			)}

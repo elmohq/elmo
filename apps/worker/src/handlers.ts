@@ -12,10 +12,7 @@ import { analyzeBrandJob, type AnalyzeBrandData } from "./jobs/analyze-brand";
  * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
  * Preserves the handler's return value (stored by pg-boss as the job output).
  */
-function withSentry<T, R>(
-	queueName: string,
-	handler: (jobs: Job<T>[]) => Promise<R>,
-): (jobs: Job<T>[]) => Promise<R> {
+function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promise<R>): (jobs: Job<T>[]) => Promise<R> {
 	return async (jobs) => {
 		try {
 			return await handler(jobs);

@@ -39,12 +39,7 @@ import { ALL_MODELS_VALUE } from "@/lib/model-filter";
 // The router commits search updates synchronously within the interaction, so
 // no optimistic layer is needed (nuqs throttled URL writes, which is why the
 // old code wrapped every change in `useOptimistic` + `startTransition`).
-import {
-	useFilterNavigate,
-	splitTags,
-	joinTags,
-	coerceLookback,
-} from "@/hooks/use-list-filters";
+import { useFilterNavigate, splitTags, joinTags, coerceLookback } from "@/hooks/use-list-filters";
 
 /** "all" is the no-filter sentinel; any other string is a concrete model id
  *  from the deployment's `SCRAPE_TARGETS`. Deployments can configure arbitrary
@@ -86,7 +81,6 @@ export function labelForModel(model: string): string {
 	if (model === ALL_MODELS_VALUE) return "All models";
 	return getModelMeta(model).label;
 }
-
 
 const LOOKBACK_OPTIONS: { value: LookbackPeriod; label: string }[] = [
 	{ value: "1w", label: "Last 7 days" },
@@ -170,11 +164,7 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton
-					icon={iconForModel(selected)}
-					label={labelForModel(selected)}
-					active={isFiltered}
-				/>
+				<FilterTriggerButton icon={iconForModel(selected)} label={labelForModel(selected)} active={isFiltered} />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
 				<DropdownMenuRadioGroup value={selected} onValueChange={handleChange}>
@@ -196,10 +186,7 @@ export function ModelDropdown({ availableModels }: { availableModels: string[] }
 
 export function LookbackDropdown() {
 	const { brand } = useBrand();
-	const defaultLookback = useMemo(
-		() => getDefaultLookbackPeriod(brand?.earliestDataDate),
-		[brand?.earliestDataDate],
-	);
+	const defaultLookback = useMemo(() => getDefaultLookbackPeriod(brand?.earliestDataDate), [brand?.earliestDataDate]);
 	const urlLookback = useSearch({ strict: false, select: (s) => s.lookback });
 	const setFilters = useFilterNavigate();
 	const selected = coerceLookback(urlLookback, defaultLookback);
@@ -211,16 +198,10 @@ export function LookbackDropdown() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<FilterTriggerButton
-					icon={<Clock className="size-3.5" />}
-					label={getLookbackLabel(selected)}
-				/>
+				<FilterTriggerButton icon={<Clock className="size-3.5" />} label={getLookbackLabel(selected)} />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="w-48">
-				<DropdownMenuRadioGroup
-					value={selected}
-					onValueChange={(v) => handleChange(v as LookbackPeriod)}
-				>
+				<DropdownMenuRadioGroup value={selected} onValueChange={(v) => handleChange(v as LookbackPeriod)}>
 					{LOOKBACK_OPTIONS.map((opt) => (
 						<DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">
 							{opt.label}

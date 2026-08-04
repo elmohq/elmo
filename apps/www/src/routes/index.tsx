@@ -11,14 +11,7 @@ import { CTA } from "@/components/cta";
 import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
 import { HOME_FAQS } from "@/lib/faqs";
-import {
-	SITE_NAME,
-	SITE_DESCRIPTION,
-	ogMeta,
-	softwareApplicationJsonLd,
-	faqJsonLd,
-	canonicalUrl,
-} from "@/lib/seo";
+import { SITE_NAME, SITE_DESCRIPTION, ogMeta, softwareApplicationJsonLd, faqJsonLd, canonicalUrl } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
 	head: () => ({

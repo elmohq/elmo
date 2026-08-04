@@ -26,19 +26,16 @@ export type EffectiveBrandedStatus = {
 
 /**
  * Determine the effective branded status for a prompt, considering user tag overrides.
- * 
+ *
  * Rules:
  * - If user tags contain "branded" (and not "unbranded"), treat as branded
  * - If user tags contain "unbranded" (and not "branded"), treat as unbranded
  * - If user tags contain both "branded" and "unbranded", use the system tag
  * - If user tags contain neither, use the system tag
- * 
+ *
  * All comparisons are case-insensitive.
  */
-export function getEffectiveBrandedStatus(
-	systemTags: string[],
-	userTags: string[],
-): EffectiveBrandedStatus {
+export function getEffectiveBrandedStatus(systemTags: string[], userTags: string[]): EffectiveBrandedStatus {
 	const systemTagsLower = systemTags.map((t) => t.toLowerCase());
 	const userTagsLower = userTags.map((t) => t.toLowerCase());
 
@@ -88,7 +85,9 @@ export function isPromptBranded(promptValue: string, brandName: string, brandWeb
 		const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 		const domainWithoutTld = domain.split(".")[0];
 
-		return promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld);
+		return (
+			promptLower.includes(brandNameLower) || promptLower.includes(domain) || promptLower.includes(domainWithoutTld)
+		);
 	} catch {
 		return promptLower.includes(brandNameLower);
 	}

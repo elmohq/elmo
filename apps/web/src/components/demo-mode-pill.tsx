@@ -17,9 +17,7 @@ export function DemoModePill() {
 					Demo
 				</span>
 			</TooltipTrigger>
-			<TooltipContent>
-				This is a read-only demo. Any edits will fail.
-			</TooltipContent>
+			<TooltipContent>This is a read-only demo. Any edits will fail.</TooltipContent>
 		</Tooltip>
 	);
 }

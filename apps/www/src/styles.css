@@ -42,8 +42,7 @@
 	font-family: "Titan One";
 	font-style: normal;
 	font-weight: 400;
-	src: url("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2")
-		format("woff2");
+	src: url("@fontsource/titan-one/files/titan-one-latin-400-normal.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -59,8 +58,7 @@
 	font-family: "Geist Sans";
 	font-style: normal;
 	font-weight: 100 900;
-	src: url("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2")
-		format("woff2");
+	src: url("@fontsource/geist-sans/files/geist-sans-latin-400-normal.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -68,8 +66,7 @@
 	font-family: "Geist Mono";
 	font-style: normal;
 	font-weight: 100 900;
-	src: url("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2")
-		format("woff2");
+	src: url("@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2") format("woff2");
 	font-display: swap;
 }
 

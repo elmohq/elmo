@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	cleanAndValidateDomain,
-	cleanDomain,
-	inferBrandNameFromDomain,
-	uniqueLowercase,
-	uniqueTrim,
-} from "./utils";
+import { cleanAndValidateDomain, cleanDomain, inferBrandNameFromDomain, uniqueLowercase, uniqueTrim } from "./utils";
 
 describe("cleanDomain", () => {
 	it("strips protocol, www, and path", () => {

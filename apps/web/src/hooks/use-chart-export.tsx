@@ -3,10 +3,7 @@ import { createPortal } from "react-dom";
 import html2canvas from "html2canvas-pro";
 import { useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import {
-	ChartExportPreview,
-	type ChartExportPreviewProps,
-} from "@/components/chart-export-preview";
+import { ChartExportPreview, type ChartExportPreviewProps } from "@/components/chart-export-preview";
 
 export function useChartExport(fileName: string) {
 	const [isExporting, setIsExporting] = useState(false);

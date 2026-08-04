@@ -230,11 +230,9 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks POST /api/v1/brands even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/brands", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 
@@ -248,11 +246,9 @@ describe("evaluateDeploymentPolicy", () => {
 		});
 
 		it("blocks POST /api/v1/competitors even with a valid key", () => {
-			const result = evaluateDeploymentPolicy(
-				features,
-				req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`),
-				{ adminApiKeys: API_KEYS },
-			);
+			const result = evaluateDeploymentPolicy(features, req("POST", "/api/v1/competitors", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
 			expect(result).toMatchObject({ action: "block", status: 403, error: "Demo Mode" });
 		});
 

@@ -26,13 +26,7 @@ interface Block {
 }
 
 /** Open vs. closed issue split as a two-tone pill with counts beneath. */
-export function ratioBar(
-	x: number,
-	y: number,
-	w: number,
-	data: RepoActivityData,
-	clipId: string,
-): Block {
+export function ratioBar(x: number, y: number, w: number, data: RepoActivityData, clipId: string): Block {
 	const open = data.totals.issuesOpen;
 	const closed = data.totals.issuesClosed;
 	const total = open + closed;

@@ -8,11 +8,11 @@ export type LookbackPeriod = "1w" | "1m" | "3m" | "6m" | "1y" | "all";
  * Determines the default lookback period based on the brand's data history.
  * Returns "1m" (1 month) if the brand has more than 1 week of data or if data hasn't loaded yet,
  * otherwise returns "1w" (1 week) for new brands with less than a week of data.
- * 
+ *
  * Note: We default to "1m" when data is unavailable because most established brands
  * have more than a week of data, and this prevents inconsistent defaults when brand
  * data loads asynchronously (which was causing chart type mismatches downstream).
- * 
+ *
  * @param earliestDataDate - ISO date string of the earliest data point, or null if no data
  * @returns The recommended default lookback period
  */
@@ -86,7 +86,13 @@ export function citationDateWindow(
 	const prevFrom = shift(prevTo, -(span - 1));
 	const dateRange: string[] = [];
 	for (let i = 0; i < span; i++) dateRange.push(iso(shift(from, i)));
-	return { fromDateStr: iso(from), toDateStr: iso(today), prevFromDateStr: iso(prevFrom), prevToDateStr: iso(prevTo), dateRange };
+	return {
+		fromDateStr: iso(from),
+		toDateStr: iso(today),
+		prevFromDateStr: iso(prevFrom),
+		prevToDateStr: iso(prevTo),
+		dateRange,
+	};
 }
 
 // ============================================================================
@@ -238,7 +244,12 @@ export function applyPerPromptCitationLVCF(
 	categorizeDomain: (domain: string) => CitationCategory,
 ): Map<string, CitationCategories> {
 	return applyPerPromptKeyedLVCF(
-		perPromptData.map((r) => ({ prompt_id: r.prompt_id, date: r.date, key: categorizeDomain(r.domain), count: Number(r.count) })),
+		perPromptData.map((r) => ({
+			prompt_id: r.prompt_id,
+			date: r.date,
+			key: categorizeDomain(r.domain),
+			count: Number(r.count),
+		})),
 		dateRange,
 		cadenceHours,
 		CITATION_CATEGORIES,
@@ -479,15 +490,12 @@ export function filterAndCompleteChartData(chartData: ChartDataPoint[], lookback
  * to fill the start of the chart, and extends the last non-null value forward
  * to fill the end of the chart. This prevents gaps at the edges of the chart
  * when data collection started mid-period or hasn't been collected yet for recent dates.
- * 
+ *
  * Extended points are marked with `_extended_{key}: true` so the chart can:
  * - Skip rendering dots for extended points
  * - Skip showing extended values in tooltips
  */
-export function extendLinesToChartEdges(
-	chartData: ChartDataPoint[],
-	dataKeys: string[]
-): ChartDataPoint[] {
+export function extendLinesToChartEdges(chartData: ChartDataPoint[], dataKeys: string[]): ChartDataPoint[] {
 	if (chartData.length === 0) return chartData;
 
 	// Deep clone the chart data to avoid mutating the original

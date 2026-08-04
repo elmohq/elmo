@@ -1,12 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/navbar";
-import {
-	OffSiteHero,
-	OffSiteValue,
-	OffSiteProcess,
-	OffSitePricing,
-	OffSiteCTA,
-} from "@/components/off-site-aeo";
+import { OffSiteHero, OffSiteValue, OffSiteProcess, OffSitePricing, OffSiteCTA } from "@/components/off-site-aeo";
 import { Footer } from "@/components/footer";
 import { Faq } from "@/components/faq";
 import { OFFSITE_FAQS } from "@/lib/faqs";

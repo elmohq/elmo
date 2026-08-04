@@ -38,7 +38,15 @@ export function ShareOfVoiceDonut({ entries, topN = 6 }: { entries: ShareOfVoice
 	return (
 		<ChartContainer config={{}} className="aspect-square h-[180px] w-[180px]">
 			<PieChart>
-				<Pie data={slices} dataKey="value" nameKey="name" innerRadius={48} outerRadius={84} paddingAngle={1} strokeWidth={1}>
+				<Pie
+					data={slices}
+					dataKey="value"
+					nameKey="name"
+					innerRadius={48}
+					outerRadius={84}
+					paddingAngle={1}
+					strokeWidth={1}
+				>
 					{slices.map((s) => (
 						<Cell key={s.name} fill={s.color} />
 					))}

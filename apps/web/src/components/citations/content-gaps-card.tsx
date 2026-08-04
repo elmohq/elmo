@@ -26,13 +26,12 @@ export function ContentGapsCard({
 							<IconInfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
 						</TooltipTrigger>
 						<TooltipContent className="max-w-xs text-sm font-normal">
-							Prompts where competitors are cited but your brand isn&apos;t — opportunities to improve your citation presence.
+							Prompts where competitors are cited but your brand isn&apos;t — opportunities to improve your citation
+							presence.
 						</TooltipContent>
 					</Tooltip>
 				</CardTitle>
-				<CardDescription>
-					Prompts where competitors are cited but your brand isn&apos;t
-				</CardDescription>
+				<CardDescription>Prompts where competitors are cited but your brand isn&apos;t</CardDescription>
 			</CardHeader>
 			<Separator />
 			<CardContent className="flex-1 flex flex-col">
@@ -49,10 +48,14 @@ export function ContentGapsCard({
 							</div>
 							<div className="min-w-0 flex-1">
 								<div className="flex items-center gap-1.5">
-									<span className="text-sm font-medium truncate text-foreground group-hover:underline">{prompt.value}</span>
+									<span className="text-sm font-medium truncate text-foreground group-hover:underline">
+										{prompt.value}
+									</span>
 								</div>
 								<p className="text-xs text-muted-foreground mt-0.5">
-									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited {prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash; your brand cited 0 times
+									{prompt.uniqueCompetitors} {prompt.uniqueCompetitors === 1 ? "competitor" : "competitors"} cited{" "}
+									{prompt.competitorCitationCount} {prompt.competitorCitationCount === 1 ? "time" : "times"} &mdash;
+									your brand cited 0 times
 								</p>
 							</div>
 						</Link>

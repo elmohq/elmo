@@ -15,11 +15,7 @@ export interface GlossaryTerm {
 	seeAlso?: { label: string; href: string }[];
 }
 
-export type GlossaryGroup =
-	| "Core disciplines"
-	| "Where AI answers appear"
-	| "What to measure"
-	| "How engines work";
+export type GlossaryGroup = "Core disciplines" | "Where AI answers appear" | "What to measure" | "How engines work";
 
 export const GLOSSARY_GROUPS: GlossaryGroup[] = [
 	"Core disciplines",
@@ -35,45 +31,33 @@ export const glossaryTerms: GlossaryTerm[] = [
 		term: "Answer Engine Optimization",
 		aka: ["AEO"],
 		group: "Core disciplines",
-		short:
-			"The practice of measuring and improving how often AI answer engines mention and cite your brand.",
+		short: "The practice of measuring and improving how often AI answer engines mention and cite your brand.",
 		body: [
 			"Answer engine optimization is what SEO becomes when the result is a written answer instead of a list of links. The goal shifts from ranking a page to being the source an engine quotes when someone asks about your category.",
 			"In practice that means publishing clear, well-structured content, earning mentions on sources the models already trust, and tracking the prompts that matter to your brand. You want to see where you show up, and where a competitor shows up instead.",
 		],
-		related: [
-			"generative-engine-optimization",
-			"llmo",
-			"ai-visibility",
-			"ai-citation",
-		],
-		seeAlso: [
-			{ label: "Full AEO guide", href: "/blog/answer-engine-optimization" },
-		],
+		related: ["generative-engine-optimization", "llmo", "ai-visibility", "ai-citation"],
+		seeAlso: [{ label: "Full AEO guide", href: "/blog/answer-engine-optimization" }],
 	},
 	{
 		slug: "generative-engine-optimization",
 		term: "Generative Engine Optimization",
 		aka: ["GEO", "Generative SEO"],
 		group: "Core disciplines",
-		short:
-			"Optimizing content to appear inside AI-generated answers. Largely a synonym for AEO.",
+		short: "Optimizing content to appear inside AI-generated answers. Largely a synonym for AEO.",
 		body: [
 			"GEO and AEO describe nearly the same work. Both aim to get your brand surfaced in answers from engines like ChatGPT, Perplexity, and Google AI Overviews. The difference is mostly emphasis: GEO tends to stress the generative side, meaning how a model assembles an answer from the sources it retrieves.",
 			"You will also see LLMO and LLM SEO used for the same idea. None of these labels should change what you actually do, which is make your content easy to retrieve, quote, and trust.",
 		],
 		related: ["answer-engine-optimization", "llmo", "retrieval-augmented-generation"],
-		seeAlso: [
-			{ label: "What is generative SEO?", href: "/blog/what-is-generative-seo" },
-		],
+		seeAlso: [{ label: "What is generative SEO?", href: "/blog/what-is-generative-seo" }],
 	},
 	{
 		slug: "llmo",
 		term: "LLMO",
 		aka: ["LLM Optimization", "LLM SEO"],
 		group: "Core disciplines",
-		short:
-			"Large language model optimization: another name for the work of getting cited in AI answers.",
+		short: "Large language model optimization: another name for the work of getting cited in AI answers.",
 		body: [
 			"LLMO puts the large language model at the center of the name, but the practice is the same one described by AEO and GEO. The terminology in this space is still settling, and the labels overlap more than they differ.",
 			"Pick whichever term your team finds clearest and move on. What counts is whether the models that answer your buyers' questions know your brand and treat it as a trustworthy source.",
@@ -84,16 +68,13 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "ai-visibility",
 		term: "AI visibility",
 		group: "Core disciplines",
-		short:
-			"How present your brand is across AI answers: how often it is mentioned, cited, and described accurately.",
+		short: "How present your brand is across AI answers: how often it is mentioned, cited, and described accurately.",
 		body: [
 			"AI visibility is the outcome AEO works toward. It is the share of relevant AI answers where your brand appears, the sources those answers cite, and whether the description of you is correct.",
 			"Because answers vary between runs and shift over time, visibility is something you sample rather than check once. Tracking a consistent set of prompts on a schedule gives a far more reliable read than a single manual look.",
 		],
 		related: ["share-of-voice", "visibility-score", "brand-mention", "prompt-tracking"],
-		seeAlso: [
-			{ label: "AI visibility software", href: "/ai-visibility-tools" },
-		],
+		seeAlso: [{ label: "AI visibility software", href: "/ai-visibility-tools" }],
 	},
 
 	// --- Where AI answers appear ---------------------------------------------
@@ -101,8 +82,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "answer-engine",
 		term: "Answer engine",
 		group: "Where AI answers appear",
-		short:
-			"A system that responds to a question with a synthesized answer rather than a page of links.",
+		short: "A system that responds to a question with a synthesized answer rather than a page of links.",
 		body: [
 			"An answer engine reads a question, gathers relevant sources, and writes a direct response. ChatGPT, Perplexity, Gemini, and Google's AI Overviews all work this way, even though they differ in how much they browse the live web.",
 			"The shift matters because the unit of visibility changes. There is often no ranking to hold. There is one answer, and your brand is either named in it or it is not.",
@@ -113,16 +93,13 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "ai-search-engine",
 		term: "AI search engine",
 		group: "Where AI answers appear",
-		short:
-			"A search product that returns AI-written answers with citations instead of a ranked list.",
+		short: "A search product that returns AI-written answers with citations instead of a ranked list.",
 		body: [
 			"AI search engines pair a language model with live retrieval, then cite the sources they used. Perplexity is the clearest example, but ChatGPT Search and Google's AI Mode work along the same lines.",
 			"For brands, the citation is the prize. Being named in the answer drives awareness, and being cited with a link drives the qualified clicks that remain.",
 		],
 		related: ["answer-engine", "ai-citation", "chatgpt-search"],
-		seeAlso: [
-			{ label: "AI search engines compared", href: "/blog/best-ai-search-engine" },
-		],
+		seeAlso: [{ label: "AI search engines compared", href: "/blog/best-ai-search-engine" }],
 	},
 	{
 		slug: "google-ai-overviews",
@@ -135,39 +112,31 @@ export const glossaryTerms: GlossaryTerm[] = [
 			"Appearing in them comes down to the same fundamentals as the rest of AEO: a clear direct answer, solid structure, topical authority, and a technically sound page that Google can crawl and trust.",
 		],
 		related: ["google-ai-mode", "answer-engine", "ai-citation"],
-		seeAlso: [
-			{ label: "How to show up in AI Overviews", href: "/ai-search/google-ai-overviews" },
-		],
+		seeAlso: [{ label: "How to show up in AI Overviews", href: "/ai-search/google-ai-overviews" }],
 	},
 	{
 		slug: "google-ai-mode",
 		term: "Google AI Mode",
 		group: "Where AI answers appear",
-		short:
-			"Google's full conversational search experience, a dedicated AI answer surface separate from AI Overviews.",
+		short: "Google's full conversational search experience, a dedicated AI answer surface separate from AI Overviews.",
 		body: [
 			"AI Mode is a chat-style version of Google search that handles follow-up questions and longer reasoning. It runs on Gemini, as do AI Overviews and the standalone Gemini app, though each surface behaves a little differently.",
 			"Treat the three as related but distinct places your brand can appear. The levers that get you into one tend to help with the others.",
 		],
 		related: ["google-ai-overviews", "answer-engine"],
-		seeAlso: [
-			{ label: "How to show up in Gemini", href: "/ai-search/gemini" },
-		],
+		seeAlso: [{ label: "How to show up in Gemini", href: "/ai-search/gemini" }],
 	},
 	{
 		slug: "chatgpt-search",
 		term: "ChatGPT Search",
 		group: "Where AI answers appear",
-		short:
-			"ChatGPT's web-browsing mode, which retrieves live pages and cites them in its answers.",
+		short: "ChatGPT's web-browsing mode, which retrieves live pages and cites them in its answers.",
 		body: [
 			"ChatGPT draws on two things: what it learned in training, and what it can fetch from the web when it browses. ChatGPT Search is the browsing path, and it is where fresh content and live citations come into play.",
 			"That split is why a brand can be absent from the base model yet appear once the model searches. Tracking both modes gives you the full picture.",
 		],
 		related: ["ai-search-engine", "ai-citation", "answer-engine"],
-		seeAlso: [
-			{ label: "How to appear in ChatGPT", href: "/ai-search/chatgpt" },
-		],
+		seeAlso: [{ label: "How to appear in ChatGPT", href: "/ai-search/chatgpt" }],
 	},
 
 	// --- What to measure -----------------------------------------------------
@@ -188,8 +157,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "brand-mention",
 		term: "Brand mention",
 		group: "What to measure",
-		short:
-			"Any time an AI answer names your brand, whether or not it links to you.",
+		short: "Any time an AI answer names your brand, whether or not it links to you.",
 		body: [
 			"A mention is the model saying your name. It builds awareness even without a link, and in answer engines that awareness often matters more than a click, because many searches end without one.",
 			"Mentions and citations are worth tracking separately. You can be named without being cited, and cited without being named, and the gap between the two tells you where to focus.",
@@ -214,8 +182,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "prompt-volume",
 		term: "Prompt volume",
 		group: "What to measure",
-		short:
-			"The number of prompts an engine is queried with when tracking visibility. Tools often meter usage by it.",
+		short: "The number of prompts an engine is queried with when tracking visibility. Tools often meter usage by it.",
 		body: [
 			"Prompt volume is roughly the AI-era equivalent of search volume, though it is harder to pin down. Broader coverage gives a more reliable read of your visibility.",
 			"Relevance beats raw volume, though. Fifty prompts that match real buyer questions are worth more than a thousand generic ones, and they cost less to run.",
@@ -240,8 +207,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "visibility-score",
 		term: "AI visibility score",
 		group: "What to measure",
-		short:
-			"An aggregate metric rolling mentions, citations, and competitor presence into a single number.",
+		short: "An aggregate metric rolling mentions, citations, and competitor presence into a single number.",
 		body: [
 			"A visibility score compresses several signals into one figure so you can track direction at a glance. The exact formula varies by tool, which is precisely why how it is calculated matters.",
 			"A score you cannot inspect is hard to trust or reproduce. Open methodology lets you see what went into the number, rather than taking a vendor's word for it.",
@@ -252,8 +218,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "ai-brand-sentiment",
 		term: "AI brand sentiment",
 		group: "What to measure",
-		short:
-			"How AI engines characterize your brand, not just whether they mention it.",
+		short: "How AI engines characterize your brand, not just whether they mention it.",
 		body: [
 			"Sentiment is the tone and framing of what the model says about you. An engine can mention your brand accurately, vaguely, or wrongly, and the difference shapes what a buyer takes away.",
 			"Inaccuracies creep in through stale information, hallucinations, and skew when the loudest sources are not the most accurate. The result is a view of your brand you did not author, which is worth watching and correcting.",
@@ -280,39 +245,32 @@ export const glossaryTerms: GlossaryTerm[] = [
 		term: "Structured data",
 		aka: ["Schema markup"],
 		group: "How engines work",
-		short:
-			"Machine-readable markup that labels what content is, helping engines extract and trust it.",
+		short: "Machine-readable markup that labels what content is, helping engines extract and trust it.",
 		body: [
 			"Structured data, usually schema.org markup in JSON-LD, tells a machine that a block of text is an FAQ, a product, an article, or an organization. That makes your content easier to parse and quote.",
 			"It does not guarantee a citation, but it removes ambiguity. When an engine can cleanly extract a fact, it is likelier to use it.",
 		],
 		related: ["entity", "llms-txt"],
-		seeAlso: [
-			{ label: "Structured data for AI search", href: "/blog/structured-data-for-ai-search" },
-		],
+		seeAlso: [{ label: "Structured data for AI search", href: "/blog/structured-data-for-ai-search" }],
 	},
 	{
 		slug: "llms-txt",
 		term: "llms.txt",
 		group: "How engines work",
-		short:
-			"A proposed plain-text file that points AI crawlers to your most important content in Markdown.",
+		short: "A proposed plain-text file that points AI crawlers to your most important content in Markdown.",
 		body: [
 			"The llms.txt convention is a simple file at your domain root that lists key pages, often with Markdown versions that are easy for models to read. Adoption is inconsistent and its impact is debated.",
 			"The honest read is that the downside is low and the upside is uncertain. It is cheap to add, so most sites may as well, while keeping expectations modest.",
 		],
 		related: ["structured-data", "ai-crawler"],
-		seeAlso: [
-			{ label: "Do llms.txt files matter?", href: "/blog/do-llms-txt-files-matter-for-aeo" },
-		],
+		seeAlso: [{ label: "Do llms.txt files matter?", href: "/blog/do-llms-txt-files-matter-for-aeo" }],
 	},
 	{
 		slug: "retrieval-augmented-generation",
 		term: "Retrieval-augmented generation",
 		aka: ["RAG"],
 		group: "How engines work",
-		short:
-			"A method where a model fetches relevant documents at answer time and writes from them.",
+		short: "A method where a model fetches relevant documents at answer time and writes from them.",
 		body: [
 			"RAG is why a model can answer questions about events after its training cutoff, and why fresh, well-structured content can show up in answers quickly. The engine retrieves sources, then generates a response grounded in them.",
 			"It also explains the leverage AEO has. If you are among the documents retrieved for a query, you can influence the answer, even though you never see the index.",
@@ -323,8 +281,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "grounding",
 		term: "Grounding",
 		group: "How engines work",
-		short:
-			"Tying a model's answer to specific sources so claims can be traced and checked.",
+		short: "Tying a model's answer to specific sources so claims can be traced and checked.",
 		body: [
 			"A grounded answer is one backed by retrieved documents rather than the model's memory alone. Grounding is what makes citations possible and reduces, though does not eliminate, made-up details.",
 			"For brands, grounding is the opening. Be a clear, trustworthy source on your topic and you become something the model can ground its answer in.",
@@ -335,8 +292,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "hallucination",
 		term: "Hallucination",
 		group: "How engines work",
-		short:
-			"When a model states something false or invented with the same confidence as a fact.",
+		short: "When a model states something false or invented with the same confidence as a fact.",
 		body: [
 			"Hallucinations happen because models predict plausible text, not verified truth. Applied to your brand, that can mean a wrong price, a feature you do not offer, or a confident claim with no basis.",
 			"Grounding and good source material reduce the risk. Monitoring matters too, since the only way to catch a hallucination about your brand is to look for it.",
@@ -347,8 +303,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "ai-crawler",
 		term: "AI crawler",
 		group: "How engines work",
-		short:
-			"A bot that fetches web pages for AI training or live retrieval, such as GPTBot or PerplexityBot.",
+		short: "A bot that fetches web pages for AI training or live retrieval, such as GPTBot or PerplexityBot.",
 		body: [
 			"AI crawlers are how engines read your site, whether to train on it or to retrieve it at answer time. If your important pages are blocked or slow, you make yourself harder to cite.",
 			"Some tools track these visits as a signal of AI interest in your content. At minimum, make sure your robots rules do not accidentally shut the door on engines you want to reach.",
@@ -359,8 +314,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "zero-click-search",
 		term: "Zero-click search",
 		group: "How engines work",
-		short:
-			"A search that ends without a click because the answer appears directly on the results surface.",
+		short: "A search that ends without a click because the answer appears directly on the results surface.",
 		body: [
 			"Zero-click searches were already common with featured snippets. AI Overviews and answer engines push the share higher by resolving the question in place.",
 			"This is the strategic reason AEO matters. If buyers read an answer and never click, being named in that answer is the visibility that counts.",
@@ -371,8 +325,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "knowledge-graph",
 		term: "Knowledge graph",
 		group: "How engines work",
-		short:
-			"A structured map of entities and the relationships between them that engines use to ground answers.",
+		short: "A structured map of entities and the relationships between them that engines use to ground answers.",
 		body: [
 			"A knowledge graph records that a company makes a product, is based somewhere, and competes with others, as connected facts rather than loose text. Engines lean on these maps to answer entity questions confidently.",
 			"Consistent information about your brand across the web, plus clear structured data, helps engines place you correctly in their graph.",
@@ -383,8 +336,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "semantic-search",
 		term: "Semantic search",
 		group: "How engines work",
-		short:
-			"Search that matches on meaning rather than exact keywords, usually via embeddings.",
+		short: "Search that matches on meaning rather than exact keywords, usually via embeddings.",
 		body: [
 			"Semantic search compares the meaning of a query and a document, so a page can match a question even when it shares few of the same words. It is the retrieval style behind most AI answer engines.",
 			"The practical takeaway is to write for the question, not the keyword. Cover the topic clearly and you become findable across the many ways people phrase the same intent.",
@@ -395,8 +347,7 @@ export const glossaryTerms: GlossaryTerm[] = [
 		slug: "embedding",
 		term: "Embedding",
 		group: "How engines work",
-		short:
-			"A numeric representation of text that lets a model compare meaning and find related content.",
+		short: "A numeric representation of text that lets a model compare meaning and find related content.",
 		body: [
 			"An embedding turns a piece of text into a vector, a list of numbers, so that similar meanings sit close together. Engines use embeddings to retrieve the documents most relevant to a query.",
 			"You do not optimize embeddings directly. You optimize the content behind them: clear, focused, well-organized text that captures a topic cleanly.",

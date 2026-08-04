@@ -1,4 +1,3 @@
-
 import { Download } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import { ChartFooter } from "./chart-footer";
@@ -27,4 +26,3 @@ export function ChartDownloadFooter({ onDownload, isDownloading }: ChartDownload
 		</div>
 	);
 }
-

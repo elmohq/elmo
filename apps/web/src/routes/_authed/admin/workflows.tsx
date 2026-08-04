@@ -336,7 +336,11 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 			<DialogContent className="max-w-[90vw] sm:max-w-[90vw] w-full max-h-[80vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						{isFailed ? <XCircle className="h-5 w-5 text-red-500" /> : <CheckCircle2 className="h-5 w-5 text-emerald-500" />}
+						{isFailed ? (
+							<XCircle className="h-5 w-5 text-red-500" />
+						) : (
+							<CheckCircle2 className="h-5 w-5 text-emerald-500" />
+						)}
 						{isFailed ? "Failed Job Details" : "Completed Job Details"}
 					</DialogTitle>
 					<DialogDescription>Job ID: {job.id}</DialogDescription>
@@ -371,9 +375,13 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 								Loading logs...
 							</div>
 						) : logsError ? (
-							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">Error loading logs: {logsError}</div>
+							<div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">
+								Error loading logs: {logsError}
+							</div>
 						) : logs.length > 0 ? (
-							<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-80 whitespace-pre-wrap">{logs.join("\n")}</pre>
+							<pre className="bg-muted rounded p-3 text-xs overflow-x-auto max-h-80 whitespace-pre-wrap">
+								{logs.join("\n")}
+							</pre>
 						) : (
 							<p className="text-sm text-muted-foreground italic">No logs available</p>
 						)}
@@ -389,7 +397,11 @@ function JobDetailsDialog({ job, onRetrySuccess }: { job: RecentJob; onRetrySucc
 							) : (
 								<>
 									<Button onClick={handleRetry} disabled={retryLoading} className="cursor-pointer">
-										{retryLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+										{retryLoading ? (
+											<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+										) : (
+											<Play className="h-4 w-4 mr-2" />
+										)}
 										Retry This Job
 									</Button>
 									{retryError && <span className="text-sm text-red-600">{retryError}</span>}
@@ -417,14 +429,19 @@ function BrandRow({
 	onRefresh: () => void;
 }) {
 	const hasOverdue = brand.overduePrompts > 0;
-	const scheduleHealth = brand.enabledPrompts > 0 ? Math.round((brand.onSchedulePrompts / brand.enabledPrompts) * 100) : 100;
+	const scheduleHealth =
+		brand.enabledPrompts > 0 ? Math.round((brand.onSchedulePrompts / brand.enabledPrompts) * 100) : 100;
 
 	return (
 		<>
 			<TableRow className={`cursor-pointer hover:bg-muted/50 ${hasOverdue ? "bg-amber-50/50" : ""}`} onClick={onToggle}>
 				<TableCell>
 					<div className="flex items-center gap-2">
-						{isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+						{isExpanded ? (
+							<ChevronDown className="h-4 w-4 text-muted-foreground" />
+						) : (
+							<ChevronRight className="h-4 w-4 text-muted-foreground" />
+						)}
 						<div>
 							<Link
 								to="/app/$brand"
@@ -450,7 +467,9 @@ function BrandRow({
 				<TableCell className="text-center">
 					<div className="flex items-center justify-center gap-2">
 						<Progress value={scheduleHealth} className="w-20 h-2" />
-						<span className={`text-sm font-medium ${scheduleHealth < 80 ? "text-amber-600" : "text-emerald-600"}`}>{scheduleHealth}%</span>
+						<span className={`text-sm font-medium ${scheduleHealth < 80 ? "text-amber-600" : "text-emerald-600"}`}>
+							{scheduleHealth}%
+						</span>
 					</div>
 				</TableCell>
 				<TableCell className="text-center">
@@ -475,7 +494,9 @@ function BrandRow({
 										<TableHead className="w-[250px]">Prompt</TableHead>
 										<TableHead className="text-center">Status</TableHead>
 										{Object.keys(brand.prompts[0]?.lastRunsByModel || {}).map((model) => (
-											<TableHead key={model} className="text-center capitalize">{model}</TableHead>
+											<TableHead key={model} className="text-center capitalize">
+												{model}
+											</TableHead>
 										))}
 										<TableHead className="text-center">Prod Scheduler</TableHead>
 										<TableHead className="text-center">Last Job</TableHead>
@@ -486,9 +507,7 @@ function BrandRow({
 									{[...brand.prompts]
 										.sort((a, b) => {
 											const getCategory = (p: typeof a) => {
-												const isOverdue =
-													p.enabled &&
-													Object.values(p.lastRunsByModel).some((e) => e?.isOverdue);
+												const isOverdue = p.enabled && Object.values(p.lastRunsByModel).some((e) => e?.isOverdue);
 												if (isOverdue) return 0;
 												if (p.enabled) return 1;
 												return 2;
@@ -496,9 +515,7 @@ function BrandRow({
 											return getCategory(a) - getCategory(b);
 										})
 										.map((prompt) => {
-											const isStuck =
-												prompt.enabled &&
-												Object.values(prompt.lastRunsByModel).some((e) => e?.isOverdue);
+											const isStuck = prompt.enabled && Object.values(prompt.lastRunsByModel).some((e) => e?.isOverdue);
 											const promptJobs = recentJobs
 												.filter((j) => j.data?.promptId === prompt.promptId)
 												.sort((a, b) => b.timestamp - a.timestamp);
@@ -553,9 +570,15 @@ function BrandRow({
 													</TableCell>
 													<TableCell className="text-center">
 														{showRetry && <RetryButton promptId={prompt.promptId} onSuccess={onRefresh} />}
-														{prompt.jobStatus === "active" && <span className="text-xs text-muted-foreground">Processing...</span>}
-														{prompt.jobStatus === "created" && <span className="text-xs text-muted-foreground">In queue</span>}
-														{prompt.jobStatus === "retry" && <span className="text-xs text-muted-foreground">Retrying soon</span>}
+														{prompt.jobStatus === "active" && (
+															<span className="text-xs text-muted-foreground">Processing...</span>
+														)}
+														{prompt.jobStatus === "created" && (
+															<span className="text-xs text-muted-foreground">In queue</span>
+														)}
+														{prompt.jobStatus === "retry" && (
+															<span className="text-xs text-muted-foreground">Retrying soon</span>
+														)}
 													</TableCell>
 												</TableRow>
 											);
@@ -634,9 +657,9 @@ function WorkflowsPage() {
 					<Skeleton className="h-4 w-96" />
 				</div>
 				<div className="grid gap-4 md:grid-cols-4">
-				{[0, 1, 2, 3].map((n) => (
-					<Skeleton key={n} className="h-32" />
-				))}
+					{[0, 1, 2, 3].map((n) => (
+						<Skeleton key={n} className="h-32" />
+					))}
 				</div>
 				<Card>
 					<CardHeader>
@@ -644,9 +667,9 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
-						{[0, 1, 2, 3, 4].map((n) => (
-							<Skeleton key={n} className="h-16 w-full" />
-						))}
+							{[0, 1, 2, 3, 4].map((n) => (
+								<Skeleton key={n} className="h-16 w-full" />
+							))}
 						</div>
 					</CardContent>
 				</Card>
@@ -713,7 +736,9 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
-							<span className={`text-3xl font-bold ${data.summary.percentOnSchedule >= 80 ? "text-emerald-600" : "text-amber-600"}`}>
+							<span
+								className={`text-3xl font-bold ${data.summary.percentOnSchedule >= 80 ? "text-emerald-600" : "text-amber-600"}`}
+							>
 								{data.summary.percentOnSchedule}%
 							</span>
 							<span className="text-muted-foreground text-sm">on schedule</span>
@@ -738,7 +763,11 @@ function WorkflowsPage() {
 					</CardContent>
 				</Card>
 
-				<Card className={overdueBreakdown.severe > 0 ? "border-red-500/50" : overdueBreakdown.total > 0 ? "border-amber-500/50" : ""}>
+				<Card
+					className={
+						overdueBreakdown.severe > 0 ? "border-red-500/50" : overdueBreakdown.total > 0 ? "border-amber-500/50" : ""
+					}
+				>
 					<CardHeader className="pb-2">
 						<CardTitle className="text-sm font-medium flex items-center gap-2">
 							<AlertTriangle className={`h-4 w-4 ${overdueBreakdown.severe > 0 ? "text-red-500" : "text-amber-500"}`} />
@@ -747,12 +776,16 @@ function WorkflowsPage() {
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-baseline gap-2">
-							<span className={`text-3xl font-bold ${overdueBreakdown.severe > 0 ? "text-red-600" : "text-muted-foreground"}`}>
+							<span
+								className={`text-3xl font-bold ${overdueBreakdown.severe > 0 ? "text-red-600" : "text-muted-foreground"}`}
+							>
 								{overdueBreakdown.severe}
 							</span>
 							<span className="text-muted-foreground text-sm">prompts</span>
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">{overdueBreakdown.total - overdueBreakdown.severe} additional recently expired</p>
+						<p className="text-xs text-muted-foreground mt-1">
+							{overdueBreakdown.total - overdueBreakdown.severe} additional recently expired
+						</p>
 					</CardContent>
 				</Card>
 

@@ -35,8 +35,7 @@ export function usePromptChartData(
 	enabled: boolean = true,
 ) {
 	const params = useParams({ strict: false });
-	const resolvedBrandId =
-		brandId || (params && "brand" in params ? (params.brand as string) : undefined);
+	const resolvedBrandId = brandId || (params && "brand" in params ? (params.brand as string) : undefined);
 
 	const { data, error, isLoading, refetch } = useQuery({
 		queryKey: ["promptChartData", resolvedBrandId, promptId, filters],

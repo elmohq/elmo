@@ -3,11 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
-import {
-	getGlossaryTerm,
-	glossaryTerms,
-	type GlossaryTerm,
-} from "@/data/glossary";
+import { getGlossaryTerm, glossaryTerms, type GlossaryTerm } from "@/data/glossary";
 
 export const Route = createFileRoute("/glossary/$slug")({
 	head: ({ params }) => {
@@ -17,11 +13,7 @@ export const Route = createFileRoute("/glossary/$slug")({
 		const description = t.short;
 		const path = `/glossary/${t.slug}`;
 		return {
-			meta: [
-				{ title },
-				{ name: "description", content: description },
-				...ogMeta({ title, description, path }),
-			],
+			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
 				breadcrumbJsonLd([
@@ -70,73 +62,61 @@ function GlossaryTermPage() {
 
 				<article className="mx-auto max-w-6xl px-4 py-10 md:px-6">
 					<div className="max-w-3xl">
-					<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">
-						{term.term}
-					</h1>
-					{term.aka && term.aka.length > 0 && (
-						<p className="mt-2 text-sm text-zinc-500">
-							Also known as {term.aka.join(", ")}
-						</p>
-					)}
-					<p className="mt-5 text-lg leading-relaxed text-balance text-zinc-700">
-						{term.short}
-					</p>
-					<div className="mt-6 space-y-5 leading-relaxed text-zinc-600">
-						{term.body.map((p) => (
-							<p key={p.slice(0, 32)}>{p}</p>
-						))}
-					</div>
-
-					{term.seeAlso && term.seeAlso.length > 0 && (
-						<div className="mt-8 rounded-md border border-zinc-200 bg-zinc-50 p-5">
-							<h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-								Go deeper
-							</h2>
-							<ul className="mt-3 space-y-2">
-								{term.seeAlso.map((link) => (
-									<li key={link.href}>
-										<a
-											href={link.href}
-											className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
-										>
-											{link.label}
-											<ArrowRight className="h-3.5 w-3.5" />
-										</a>
-									</li>
-								))}
-							</ul>
+						<h1 className="font-heading text-4xl text-balance text-zinc-950 md:text-5xl">{term.term}</h1>
+						{term.aka && term.aka.length > 0 && (
+							<p className="mt-2 text-sm text-zinc-500">Also known as {term.aka.join(", ")}</p>
+						)}
+						<p className="mt-5 text-lg leading-relaxed text-balance text-zinc-700">{term.short}</p>
+						<div className="mt-6 space-y-5 leading-relaxed text-zinc-600">
+							{term.body.map((p) => (
+								<p key={p.slice(0, 32)}>{p}</p>
+							))}
 						</div>
-					)}
 
-					{related.length > 0 && (
-						<div className="mt-8">
-							<h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-								Related terms
-							</h2>
-							<div className="mt-3 flex flex-wrap gap-2">
-								{related.map((r) => (
-									<a
-										key={r.slug}
-										href={`/glossary/${r.slug}`}
-										className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-950"
-									>
-										{r.term}
-									</a>
-								))}
+						{term.seeAlso && term.seeAlso.length > 0 && (
+							<div className="mt-8 rounded-md border border-zinc-200 bg-zinc-50 p-5">
+								<h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">Go deeper</h2>
+								<ul className="mt-3 space-y-2">
+									{term.seeAlso.map((link) => (
+										<li key={link.href}>
+											<a
+												href={link.href}
+												className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-900"
+											>
+												{link.label}
+												<ArrowRight className="h-3.5 w-3.5" />
+											</a>
+										</li>
+									))}
+								</ul>
 							</div>
-						</div>
-					)}
+						)}
+
+						{related.length > 0 && (
+							<div className="mt-8">
+								<h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">Related terms</h2>
+								<div className="mt-3 flex flex-wrap gap-2">
+									{related.map((r) => (
+										<a
+											key={r.slug}
+											href={`/glossary/${r.slug}`}
+											className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-700 transition-colors hover:border-zinc-300 hover:text-zinc-950"
+										>
+											{r.term}
+										</a>
+									))}
+								</div>
+							</div>
+						)}
 					</div>
 				</article>
 
 				<section className="border-t border-zinc-200 bg-zinc-50 py-12">
 					<div className="mx-auto max-w-3xl px-4 text-center md:px-6">
-						<h2 className="font-heading text-2xl text-zinc-950">
-							See it in your own data
-						</h2>
+						<h2 className="font-heading text-2xl text-zinc-950">See it in your own data</h2>
 						<p className="mx-auto mt-3 max-w-xl text-zinc-600">
-							Elmo is an open-source AI visibility platform. Self-host it for free
-							and track how AI answer engines mention and cite your brand.
+							Elmo is an open-source AI visibility platform. Self-host it for free and track how AI answer engines
+							mention and cite your brand.
 						</p>
 						<div className="mt-6 flex flex-wrap justify-center gap-3">
 							<Link

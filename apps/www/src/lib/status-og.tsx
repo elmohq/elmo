@@ -26,10 +26,9 @@ const TIER_CHIP: Record<RateTier, { bg: string; border: string }> = {
 	none: { bg: "#fafafa", border: "#e4e4e7" },
 };
 
-// Rendered by @takumi-rs/image-response, which is satori-compatible: every
-// element with multiple children needs display:flex, styles are inline, and the
-// only usable font faces are the ones the route loads (Titan One 400, Geist
-// Sans 400/500) — so avoid heavier weights.
+// Rendered by Satori: every element with multiple children needs display:flex,
+// styles are inline, and the only usable font faces are the ones the route
+// loads (Titan One 400, Geist Sans 400/500) — so avoid heavier weights.
 export function renderStatusOgImage(data: TargetStatus[]) {
 	const overall = overallStatus(data);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
@@ -37,17 +36,11 @@ export function renderStatusOgImage(data: TargetStatus[]) {
 	);
 	const providerStats = providers.map((c) => ({
 		label: PROVIDER_FILTER_LABELS[c] ?? c,
-		rate: passRate(
-			data.filter((d) => providerCategory(parseTarget(d.target).provider) === c),
-		),
+		rate: passRate(data.filter((d) => providerCategory(parseTarget(d.target).provider) === c)),
 	}));
 	const modelCount = new Set(data.map((d) => parseTarget(d.target).model)).size;
 
-	const dotColor = overall.operational
-		? "#22c55e"
-		: overall.failCount > 0
-			? "#ef4444"
-			: "#d4d4d8";
+	const dotColor = overall.operational ? "#22c55e" : overall.failCount > 0 ? "#ef4444" : "#d4d4d8";
 	const headline =
 		overall.count === 0
 			? "Waiting for data"
@@ -56,8 +49,7 @@ export function renderStatusOgImage(data: TargetStatus[]) {
 				: `${overall.failCount} provider${overall.failCount !== 1 ? "s" : ""} experiencing issues`;
 
 	const subParts: string[] = [];
-	if (overall.uptime !== null)
-		subParts.push(`${overall.uptime.toFixed(1)}% uptime over 7 days`);
+	if (overall.uptime !== null) subParts.push(`${overall.uptime.toFixed(1)}% uptime over 7 days`);
 	subParts.push(`${providerStats.length} providers`);
 	subParts.push(`${modelCount} models`);
 	if (overall.lastChecked !== null)
@@ -124,13 +116,9 @@ export function renderStatusOgImage(data: TargetStatus[]) {
 							marginRight: 20,
 						}}
 					/>
-					<div style={{ fontSize: 62, fontWeight: 500, color: "#1e293b" }}>
-						{headline}
-					</div>
+					<div style={{ fontSize: 62, fontWeight: 500, color: "#1e293b" }}>{headline}</div>
 				</div>
-				<div style={{ fontSize: 28, color: "#64748b", marginTop: 14 }}>
-					{subParts.join(" · ")}
-				</div>
+				<div style={{ fontSize: 28, color: "#64748b", marginTop: 14 }}>{subParts.join(" · ")}</div>
 			</div>
 
 			<div
@@ -165,9 +153,7 @@ export function renderStatusOgImage(data: TargetStatus[]) {
 							}}
 						>
 							<div style={{ fontSize: 24, color: "#475569" }}>{p.label}</div>
-							<div
-								style={{ fontSize: 48, fontWeight: 500, color: TIER_TEXT[tier] }}
-							>
+							<div style={{ fontSize: 48, fontWeight: 500, color: TIER_TEXT[tier] }}>
 								{p.rate === null ? "—" : `${Math.round(p.rate)}%`}
 							</div>
 						</div>

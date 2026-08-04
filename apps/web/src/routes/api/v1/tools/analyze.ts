@@ -21,8 +21,14 @@ const analyzeBody = z.object({
 		.min(1, "website is required")
 		.refine((website) => cleanOnboardingDomain(website) !== "", "website must be a valid domain or URL"),
 	brandName: z.string().trim().optional(),
-	maxCompetitors: z.int("maxCompetitors must be a non-negative integer").min(0, "maxCompetitors must be a non-negative integer").optional(),
-	maxPrompts: z.int("maxPrompts must be a non-negative integer").min(0, "maxPrompts must be a non-negative integer").optional(),
+	maxCompetitors: z
+		.int("maxCompetitors must be a non-negative integer")
+		.min(0, "maxCompetitors must be a non-negative integer")
+		.optional(),
+	maxPrompts: z
+		.int("maxPrompts must be a non-negative integer")
+		.min(0, "maxPrompts must be a non-negative integer")
+		.optional(),
 });
 
 export const Route = createFileRoute("/api/v1/tools/analyze")({

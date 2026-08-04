@@ -25,8 +25,7 @@ const customers: Customer[] = [
 		name: "Fermat Commerce",
 		url: "https://www.fermatcommerce.com/?ref=elmo",
 		nofollow: true,
-		linkClass:
-			"flex h-5 items-center text-zinc-500 transition-colors hover:text-[#0d3b25]",
+		linkClass: "flex h-5 items-center text-zinc-500 transition-colors hover:text-[#0d3b25]",
 		render: () => (
 			<svg
 				viewBox="0 2.5 66 22.5"
@@ -73,20 +72,13 @@ export function CustomerLogosInline() {
 			<p className="flex h-5 items-center font-mono text-[10px] uppercase leading-none tracking-[0.2em] text-zinc-500">
 				Trusted by
 			</p>
-			<ul
-				role="list"
-				className="flex flex-wrap items-center gap-x-6 gap-y-3"
-			>
+			<ul role="list" className="flex flex-wrap items-center gap-x-6 gap-y-3">
 				{customers.map((c) => (
 					<li key={c.name} className="flex h-5 items-center">
 						<a
 							href={c.url}
 							target="_blank"
-							rel={
-								c.nofollow
-									? "nofollow noopener noreferrer"
-									: "noopener noreferrer"
-							}
+							rel={c.nofollow ? "nofollow noopener noreferrer" : "noopener noreferrer"}
 							className={c.linkClass}
 							aria-label={c.name}
 						>

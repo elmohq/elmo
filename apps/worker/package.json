@@ -1,29 +1,29 @@
 {
-  "name": "@workspace/worker",
-  "version": "0.2.17",
-  "private": true,
-  "license": "MIT",
-  "scripts": {
-    "dev": "tsx --env-file=../web/.env src/index.ts",
-    "start": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "check-types": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@sentry/node": "^10.65.0",
-    "@workspace/deployment": "workspace:*",
-    "@workspace/lib": "workspace:*",
-    "@workspace/whitelabel": "workspace:*",
-    "auth0": "^5.14.0",
-    "drizzle-orm": "^0.45.2",
-    "pg": "^8.22.0",
-    "pg-boss": "^12.26.0",
-    "posthog-node": "^5.41.0"
-  },
-  "devDependencies": {
-    "@types/node": "^26.1.1",
-    "@types/pg": "^8.20.0",
-    "tsx": "^4.23.0",
-    "typescript": "^7.0.2"
-  }
+	"name": "@workspace/worker",
+	"version": "0.2.17",
+	"private": true,
+	"license": "MIT",
+	"scripts": {
+		"dev": "tsx --env-file=../web/.env src/index.ts",
+		"start": "tsx src/index.ts",
+		"build": "tsc -p tsconfig.json",
+		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@sentry/node": "^10.66.0",
+		"@workspace/deployment": "workspace:*",
+		"@workspace/lib": "workspace:*",
+		"@workspace/whitelabel": "workspace:*",
+		"auth0": "^6.0.0",
+		"drizzle-orm": "^0.45.2",
+		"pg": "^8.22.0",
+		"pg-boss": "^12.26.1",
+		"posthog-node": "^5.45.2"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.1",
+		"@types/pg": "^8.20.0",
+		"tsx": "^4.23.1",
+		"typescript": "^7.0.2"
+	}
 }

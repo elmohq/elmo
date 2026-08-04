@@ -11,16 +11,18 @@ import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar"
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 
-const checkAdminAccess = createServerFn({ method: "GET" }).handler(async (): Promise<{
-	isAdmin: boolean;
-	hasReportAccess: boolean;
-}> => {
-	const session = await requireAuthSession();
-	return {
-		isAdmin: isAdmin(session),
-		hasReportAccess: hasReportAccess(session),
-	};
-});
+const checkAdminAccess = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{
+		isAdmin: boolean;
+		hasReportAccess: boolean;
+	}> => {
+		const session = await requireAuthSession();
+		return {
+			isAdmin: isAdmin(session),
+			hasReportAccess: hasReportAccess(session),
+		};
+	},
+);
 
 export const Route = createFileRoute("/_authed/admin")({
 	beforeLoad: async () => {

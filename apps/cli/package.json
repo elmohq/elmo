@@ -1,51 +1,51 @@
 {
-  "name": "@elmohq/cli",
-  "version": "0.2.17",
-  "license": "MIT",
-  "keywords": [
-    "marketing",
-    "typescript",
-    "tools",
-    "aio",
-    "seo",
-    "geo",
-    "gemini",
-    "copilot",
-    "grok",
-    "aso",
-    "perplexity",
-    "aeo",
-    "llmo",
-    "chatgpt",
-    "ai-visibility"
-  ],
-  "bin": {
-    "elmo": "dist/index.js"
-  },
-  "files": [
-    "dist",
-    "templates"
-  ],
-  "type": "module",
-  "scripts": {
-    "build": "node scripts/build.mjs",
-    "check-types": "tsc -p tsconfig.json",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@clack/prompts": "^1.7.0",
-    "commander": "^15.0.0",
-    "dotenv": "17.4.2",
-    "picocolors": "^1.1.1",
-    "posthog-node": "^5.41.0",
-    "semver": "^7.8.5"
-  },
-  "devDependencies": {
-    "@types/node": "^26.1.1",
-    "@types/semver": "^7.7.1",
-    "@workspace/config": "workspace:*",
-    "rolldown": "^1.1.5",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
-  }
+	"name": "@elmohq/cli",
+	"version": "0.2.17",
+	"license": "MIT",
+	"keywords": [
+		"marketing",
+		"typescript",
+		"tools",
+		"aio",
+		"seo",
+		"geo",
+		"gemini",
+		"copilot",
+		"grok",
+		"aso",
+		"perplexity",
+		"aeo",
+		"llmo",
+		"chatgpt",
+		"ai-visibility"
+	],
+	"bin": {
+		"elmo": "dist/index.js"
+	},
+	"files": [
+		"dist",
+		"templates"
+	],
+	"type": "module",
+	"scripts": {
+		"build": "node scripts/build.mjs",
+		"check-types": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@clack/prompts": "^1.7.0",
+		"commander": "^15.0.0",
+		"dotenv": "17.4.2",
+		"picocolors": "^1.1.1",
+		"posthog-node": "^5.45.2",
+		"semver": "^7.8.5"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.1",
+		"@types/semver": "^7.7.1",
+		"@workspace/config": "workspace:*",
+		"rolldown": "^1.2.0",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
 }

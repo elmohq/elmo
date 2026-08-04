@@ -1,21 +1,17 @@
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { createFileRoute } from "@tanstack/react-router";
-import ImageResponse from "@takumi-rs/image-response";
 import titanOne400Data from "virtual:font/titan-one-400";
 import geistSans400Data from "virtual:font/geist-sans-400";
 import geistSans500Data from "virtual:font/geist-sans-500";
 import { DEFAULT_APP_NAME } from "@workspace/config/constants";
+import { renderOgPng } from "@workspace/og/rasterize";
 import { renderOgImage } from "@workspace/og/render";
 import { getDeployment } from "@/lib/config/server";
 
 const publicDir = new URL("../../../../public/", import.meta.url);
 
-async function fetchIconAsDataUri(
-	iconPath: string,
-	appUrl: string,
-	requestUrl: string,
-): Promise<string | undefined> {
+async function fetchIconAsDataUri(iconPath: string, appUrl: string, requestUrl: string): Promise<string | undefined> {
 	const readPublicIcon = (pathname: string): string | undefined => {
 		try {
 			const iconFile = new URL(`.${pathname}`, publicDir);
@@ -39,17 +35,12 @@ async function fetchIconAsDataUri(
 		return readPublicIcon(iconPath);
 	}
 
-	const url = iconPath.startsWith("http")
-		? iconPath
-		: `${appUrl.replace(/\/$/, "")}${iconPath}`;
+	const url = iconPath.startsWith("http") ? iconPath : `${appUrl.replace(/\/$/, "")}${iconPath}`;
 
 	try {
 		const iconUrl = new URL(url);
 		const currentUrl = new URL(requestUrl);
-		if (
-			iconUrl.origin === currentUrl.origin &&
-			iconUrl.pathname.startsWith("/")
-		) {
+		if (iconUrl.origin === currentUrl.origin && iconUrl.pathname.startsWith("/")) {
 			return readPublicIcon(iconUrl.pathname);
 		}
 	} catch {
@@ -72,11 +63,9 @@ export const Route = createFileRoute("/api/og/")({
 		handlers: {
 			GET: async ({ request }) => {
 				const url = new URL(request.url);
-				const forceDefault =
-					url.searchParams.get("defaultBranding") === "true";
+				const forceDefault = url.searchParams.get("defaultBranding") === "true";
 				const title = url.searchParams.get("title") ?? undefined;
-				const description =
-					url.searchParams.get("description") ?? undefined;
+				const description = url.searchParams.get("description") ?? undefined;
 
 				const deployment = getDeployment();
 				const { branding } = deployment;
@@ -84,26 +73,16 @@ export const Route = createFileRoute("/api/og/")({
 				const appName = forceDefault ? DEFAULT_APP_NAME : branding.name;
 
 				let iconDataUri: string | undefined;
-				if (
-					!forceDefault &&
-					appName !== DEFAULT_APP_NAME &&
-					branding.icon
-				) {
-					iconDataUri = await fetchIconAsDataUri(
-						branding.icon,
-						branding.url,
-						request.url,
-					);
+				if (!forceDefault && appName !== DEFAULT_APP_NAME && branding.icon) {
+					iconDataUri = await fetchIconAsDataUri(branding.icon, branding.url, request.url);
 				}
 
-				const response = new ImageResponse(
+				const png = await renderOgPng(
 					renderOgImage({
 						appName,
 						title,
 						description,
-						accentColors: forceDefault
-							? undefined
-							: branding.chartColors.slice(0, 4),
+						accentColors: forceDefault ? undefined : branding.chartColors.slice(0, 4),
 						iconDataUri,
 					}),
 					{
@@ -132,11 +111,10 @@ export const Route = createFileRoute("/api/og/")({
 					},
 				);
 
-				return new Response(response.body, {
+				return new Response(png, {
 					headers: {
 						"Content-Type": "image/png",
-						"Cache-Control":
-							"public, max-age=86400, s-maxage=604800",
+						"Cache-Control": "public, max-age=86400, s-maxage=604800",
 					},
 				});
 			},

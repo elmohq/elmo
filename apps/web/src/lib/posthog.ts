@@ -19,10 +19,7 @@ export function initPostHog(apiKey: string): void {
 	initialized = true;
 }
 
-export function identifyUser(
-	userId: string,
-	properties?: Record<string, string | number | boolean | undefined>,
-): void {
+export function identifyUser(userId: string, properties?: Record<string, string | number | boolean | undefined>): void {
 	if (!initialized) return;
 	posthog.identify(userId, properties);
 }
@@ -35,9 +32,7 @@ export function trackEvent(
 	posthog.capture(eventName, properties);
 }
 
-export function setPersonProperties(
-	properties: Record<string, string | number | boolean | undefined>,
-): void {
+export function setPersonProperties(properties: Record<string, string | number | boolean | undefined>): void {
 	if (!initialized) return;
 	posthog.people.set(properties);
 }

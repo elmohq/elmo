@@ -34,11 +34,7 @@ export const Route = createFileRoute("/ai-visibility-tools/category/$slug")({
 		const description = `A comparison of ${heading} for tracking your brand in AI search, including Elmo — the open-source, self-hosted option.`;
 		const path = `/ai-visibility-tools/category/${params.slug}`;
 		return {
-			meta: [
-				{ title },
-				{ name: "description", content: description },
-				...ogMeta({ title, description, path }),
-			],
+			meta: [{ title }, { name: "description", content: description }, ...ogMeta({ title, description, path })],
 			links: [{ rel: "canonical", href: canonicalUrl(path) }],
 			scripts: [
 				breadcrumbJsonLd([

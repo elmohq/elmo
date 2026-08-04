@@ -48,8 +48,7 @@ export const Route = createFileRoute("/ai-visibility-tools/")({
 const browseLinks = [
 	{
 		title: "Compare head-to-head",
-		description:
-			"Side-by-side breakdowns of the leading platforms, with Elmo in the mix.",
+		description: "Side-by-side breakdowns of the leading platforms, with Elmo in the mix.",
 		href: "/ai-visibility-tools/compare",
 	},
 	{
@@ -59,8 +58,7 @@ const browseLinks = [
 	},
 	{
 		title: "Browse by feature",
-		description:
-			"Which tools offer citation analytics, white-label, sentiment, and more.",
+		description: "Which tools offer citation analytics, white-label, sentiment, and more.",
 		href: "/ai-visibility-tools/features",
 	},
 	{
@@ -79,12 +77,10 @@ function AiVisibilitySoftwarePage() {
 				<AiVisibilitySoftwareHub />
 				<section className="border-b border-zinc-200 bg-zinc-50 py-12 lg:py-20">
 					<div className="mx-auto max-w-6xl px-4 md:px-6">
-						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">
-							Browse the directory
-						</h2>
+						<h2 className="font-heading text-2xl text-zinc-950 md:text-3xl">Browse the directory</h2>
 						<p className="mt-3 max-w-3xl text-zinc-600">
-							Compare tools head-to-head, find alternatives to one you're
-							evaluating, or filter the field by feature and category.
+							Compare tools head-to-head, find alternatives to one you're evaluating, or filter the field by feature and
+							category.
 						</p>
 						<div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 							{browseLinks.map((link) => (
@@ -94,9 +90,7 @@ function AiVisibilitySoftwarePage() {
 									className="flex flex-col rounded-md border border-zinc-200 bg-white p-5 transition-colors hover:border-zinc-300"
 								>
 									<h3 className="font-semibold text-zinc-950">{link.title}</h3>
-									<p className="mt-2 text-sm leading-relaxed text-zinc-600">
-										{link.description}
-									</p>
+									<p className="mt-2 text-sm leading-relaxed text-zinc-600">{link.description}</p>
 								</a>
 							))}
 						</div>

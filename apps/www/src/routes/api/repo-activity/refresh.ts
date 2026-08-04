@@ -23,10 +23,9 @@ export const Route = createFileRoute("/api/repo-activity/refresh")({
 
 				try {
 					const data = await refreshRepoActivitySnapshot();
-					return new Response(
-						JSON.stringify({ ok: true, commitWeeks: data.commitsByWeek.length }),
-						{ headers: { "Content-Type": "application/json" } },
-					);
+					return new Response(JSON.stringify({ ok: true, commitWeeks: data.commitsByWeek.length }), {
+						headers: { "Content-Type": "application/json" },
+					});
 				} catch (error) {
 					console.error("repo-activity refresh failed", error);
 					return new Response("Refresh failed", { status: 500 });

@@ -7,8 +7,7 @@ export type { DashboardSummaryResponse, VisibilityTimeSeriesPoint, CitationTimeS
 
 export const dashboardKeys = {
 	all: ["dashboard"] as const,
-	summary: (brandId: string, lookback: LookbackPeriod) =>
-		[...dashboardKeys.all, "summary", brandId, lookback] as const,
+	summary: (brandId: string, lookback: LookbackPeriod) => [...dashboardKeys.all, "summary", brandId, lookback] as const,
 };
 
 export function useDashboardSummary(brandId?: string, lookback: LookbackPeriod = "1m") {

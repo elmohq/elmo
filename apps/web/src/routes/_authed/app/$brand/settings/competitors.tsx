@@ -117,7 +117,8 @@ function CompetitorsSettingsPage() {
 				<AlertTriangle className="h-4 w-4 text-yellow-600" />
 				<AlertTitle>Warning</AlertTitle>
 				<AlertDescription className="text-yellow-700">
-					Updating competitors will only apply to future prompt evaluations. Citation categorization updates retroactively.
+					Updating competitors will only apply to future prompt evaluations. Citation categorization updates
+					retroactively.
 				</AlertDescription>
 			</Alert>
 

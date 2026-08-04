@@ -1,27 +1,27 @@
 {
-  "name": "@workspace/cloud",
-  "version": "0.2.17",
-  "private": true,
-  "license": "MIT",
-  "main": "./src/index.ts",
-  "exports": {
-    ".": "./src/index.ts",
-    "./auth-hooks": "./src/auth-hooks.ts"
-  },
-  "scripts": {
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@workspace/config": "workspace:*",
-    "@workspace/lib": "workspace:*",
-    "better-auth": "^1.6.23",
-    "disposable-email-domains": "^1.0.62",
-    "resend": "^6.17.2"
-  },
-  "devDependencies": {
-    "@types/disposable-email-domains": "^1.0.6",
-    "@types/node": "^26.1.1",
-    "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
-  }
+	"name": "@workspace/cloud",
+	"version": "0.2.17",
+	"private": true,
+	"license": "MIT",
+	"main": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./auth-hooks": "./src/auth-hooks.ts"
+	},
+	"scripts": {
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@workspace/config": "workspace:*",
+		"@workspace/lib": "workspace:*",
+		"better-auth": "^1.6.23",
+		"disposable-email-domains": "^1.0.62",
+		"resend": "^6.17.2"
+	},
+	"devDependencies": {
+		"@types/disposable-email-domains": "^1.0.6",
+		"@types/node": "^26.1.1",
+		"typescript": "^7.0.2",
+		"vitest": "^4.1.10"
+	}
 }

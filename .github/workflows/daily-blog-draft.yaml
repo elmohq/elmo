@@ -1,0 +1,233 @@
+name: Daily Blog Draft
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  draft:
+    name: Research and draft
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Checkout Elmo
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Set run date
+        id: date
+        run: |
+          date -u '+date=%F' >> "$GITHUB_OUTPUT"
+          echo "label=$(date -u '+%B %-d' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Discover current AEO signals
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+        run: |
+          node .github/blog-agent/discover.mjs \
+            --lookback-days 7 \
+            --output .agents/blog-candidates.json \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Log discovered candidates
+        run: cat .agents/blog-candidates.json
+
+      # Reviewed 2026-07-24. Keep this SHA pinned and review upstream changes
+      # before updating it; these files become instructions for the writing agent.
+      - name: Checkout pinned marketing skills
+        uses: actions/checkout@v7
+        with:
+          repository: coreyhaines31/marketingskills
+          ref: c21a984a56da10fb6085e6334f6f60929220a4da
+          path: .agents/marketingskills
+          sparse-checkout: |
+            skills/ai-seo
+            skills/content-strategy
+            skills/copywriting
+
+      - name: Install reviewed skills for this run
+        run: |
+          for skill in ai-seo content-strategy copywriting
+          do
+            target=".claude/skills/$skill"
+            if [ -e "$target" ]
+            then
+              echo "Refusing to overwrite $target"
+              exit 1
+            fi
+            cp -R ".agents/marketingskills/skills/$skill" "$target"
+            echo "/$target/" >> .git/info/exclude
+          done
+
+      - name: Decide whether to create or refresh a post
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          display_report: true
+          prompt: |
+            Use /content-strategy, /ai-seo, and /copywriting.
+
+            Read .agents/blog-candidates.json. List the posts in packages/docs/content/blog/ and read relevant posts as needed.
+
+            Decide whether the recent research warrants one new post, one useful refresh of an existing post, or no change. Do not duplicate existing coverage. Verify claims with primary sources using WebSearch and WebFetch.
+
+            Blog conventions:
+            - Only add or edit one MDX file in packages/docs/content/blog/.
+            - For a new post, use date "${{ steps.date.outputs.date }}" and author: ai.
+            - Only refresh posts with author: ai. Preserve their original date and author and set updated: "${{ steps.date.outputs.date }}".
+            - Follow the frontmatter, structure, tone, citations, and internal-linking conventions in the existing posts.
+            - Do not add an H1, imports, scripts, placeholders, fabricated claims, or a changeset.
+
+            If nothing is worth publishing, make no changes.
+          claude_args: |
+            --model claude-opus-5
+            --max-budget-usd 3.00
+            --tools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
+            --allowedTools "Read,Glob,Grep,Write,Edit,WebSearch,WebFetch,Skill"
+            --disallowedTools "Bash,NotebookEdit,Task"
+
+      - name: Prepare pull request details
+        id: pr
+        run: |
+          mkdir -p .agents
+          : > .agents/pr-body.md
+
+          change="$(git status --porcelain=v1 --untracked-files=all -- packages/docs/content/blog | head -n 1)"
+          status="${change:0:2}"
+          path="${change:3}"
+
+          if [ -n "$path" ]
+          then
+            frontmatter() {
+              sed -n "s/^$1:[[:space:]]*//p" "$path" | head -n 1 | sed -E "s/^[\"']//; s/[\"']$//"
+            }
+            if [ "$status" = "??" ]
+            then
+              frontmatter description > .agents/pr-body.md
+              slug="$(basename "$path" .mdx)"
+              # Domain mirrors SITE_URL in apps/www/src/lib/seo.ts.
+              {
+                echo "is_new=true"
+                echo "path=$path"
+                echo "url=https://www.elmohq.com/blog/$slug"
+              } >> "$GITHUB_OUTPUT"
+            else
+              printf 'Updated "%s".\n' "$(frontmatter title)" > .agents/pr-body.md
+              echo "is_new=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format repository
+        run: pnpm format
+
+      - name: Check marketing site types
+        run: pnpm --filter @workspace/www check-types
+
+      - name: Build marketing site
+        run: pnpm --filter @workspace/www build
+
+      - name: Draft social copy for the new post
+        if: steps.pr.outputs.is_new == 'true'
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          display_report: true
+          prompt: |
+            Use /copywriting.
+
+            Read the new blog post at "${{ steps.pr.outputs.path }}". Its public URL is ${{ steps.pr.outputs.url }}.
+
+            Write copy-pastable social posts promoting this article for Elmo's own accounts, and save them to .agents/social.md. Elmo is an AI visibility platform (Answer Engine Optimization) that tracks how AI answer engines like ChatGPT, Claude, Perplexity, Gemini, and Google AI Overviews mention, cite, and describe brands. Lead with the article's insight rather than pitching Elmo; a light brand touch is fine. Use a confident, useful, non-hype B2B voice. No clickbait, no emoji spam, and only claims the post actually supports.
+
+            Produce exactly four pieces:
+            - X/Twitter main tweet: a standalone hook, at most 270 characters, with no link. At most 2 hashtags, and only if they help.
+            - X/Twitter reply: a short follow-up that ends with the URL, at most 270 characters including the URL.
+            - LinkedIn post: roughly 90-150 words over a few short lines — a hook first line, one or two concrete takeaways, and a soft call to action. Do not put the link in the post body. At most 3 hashtags at the end.
+            - LinkedIn reply: one or two lines that point to the full article and end with the URL (to be posted as the first comment).
+
+            Write .agents/social.md with exactly this structure, putting each piece inside its own fenced code block and using no backticks inside the copy itself:
+
+            ## Social copy
+
+            Post each main item first, then add its reply underneath. On LinkedIn, post the reply as the first comment.
+
+            ### X / Twitter
+
+            **Main tweet**
+
+            ```
+            <tweet>
+            ```
+
+            **Reply (with link)**
+
+            ```
+            <reply ending with the URL>
+            ```
+
+            ### LinkedIn
+
+            **Post**
+
+            ```
+            <post>
+            ```
+
+            **Reply (with link)**
+
+            ```
+            <reply ending with the URL>
+            ```
+
+            Do not add any other commentary to the file.
+          claude_args: |
+            --model claude-opus-5
+            --max-budget-usd 1.00
+            --tools "Read,Write,Skill"
+            --allowedTools "Read,Write,Skill"
+            --disallowedTools "Bash,NotebookEdit,Task,WebSearch,WebFetch,Edit,Glob,Grep"
+
+      - name: Add the social copy to the pull request body
+        if: steps.pr.outputs.is_new == 'true'
+        run: |
+          if [ -s .agents/social.md ]
+          then
+            printf '\n---\n\n' >> .agents/pr-body.md
+            cat .agents/social.md >> .agents/pr-body.md
+          fi
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ github.token }}
+          branch: automation/daily-aeo-blog-${{ github.run_id }}
+          delete-branch: true
+          add-paths: packages/docs/content/blog/*.mdx
+          commit-message: daily blog post (${{ steps.date.outputs.label }})
+          title: daily blog post (${{ steps.date.outputs.label }})
+          body-path: .agents/pr-body.md

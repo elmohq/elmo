@@ -163,10 +163,7 @@ export async function ensureOrganization(input: { id: string; name: string }): P
  * The brand row itself is the caller's responsibility; provisioning only
  * handles the auth-level (org + admin membership) bits.
  */
-export async function provisionAdditionalLocalOrg(input: {
-	userId: string;
-	name: string;
-}): Promise<{ orgId: string }> {
+export async function provisionAdditionalLocalOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
 	const baseSlug = slugifyOrgName(input.name);
 	const orgId = await findUniqueOrgId(baseSlug);
 

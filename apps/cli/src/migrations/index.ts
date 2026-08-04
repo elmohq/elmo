@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Migration } from "./types.js";
 
 export * from "./planner.js";
@@ -23,4 +24,23 @@ export * from "./types.js";
 //     }
 //   },
 // }
-export const MIGRATIONS: readonly Migration[] = [];
+export const MIGRATIONS: readonly Migration[] = [
+	{
+		// Keyed to the last published version without the key (0.2.17) so every
+		// existing install picks it up on its next upgrade; the planner fires a
+		// `from` entry when the deployment's version is at or below it.
+		from: "0.2.17",
+		to: "0.2.18",
+		description: "add ELMO_ENCRYPTION_KEY for encrypted in-app provider credentials",
+		async run(ctx) {
+			const env = await ctx.readEnv();
+			if (env.ELMO_ENCRYPTION_KEY !== undefined) return;
+			// Standard base64 (not base64url): decoded with Buffer.from(key,
+			// "base64") to exactly 32 bytes. Absent key = storage UI disabled and
+			// env-provided credentials keep working, so this is purely additive.
+			env.ELMO_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+			await ctx.writeEnv(env);
+			ctx.log.info("Added ELMO_ENCRYPTION_KEY — lets you store provider credentials encrypted in the app.");
+		},
+	},
+];

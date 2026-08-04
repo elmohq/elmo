@@ -1,12 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { ArrowRight, ExternalLink } from "lucide-react";
-import {
-	CATEGORY_LABELS,
-	getComparisonSlug,
-	getPopularityGrade,
-	type Competitor,
-} from "@/lib/competitors";
+import { CATEGORY_LABELS, getComparisonSlug, getPopularityGrade, type Competitor } from "@/lib/competitors";
 
 function ToolCard({ competitor }: { competitor: Competitor }) {
 	const grade = getPopularityGrade(competitor);
@@ -15,9 +10,7 @@ function ToolCard({ competitor }: { competitor: Competitor }) {
 			<div className="flex items-start justify-between gap-3">
 				<h3 className="font-semibold text-zinc-950">{competitor.name}</h3>
 				{grade !== "N/A" && (
-					<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">
-						{grade}
-					</span>
+					<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-400">{grade}</span>
 				)}
 			</div>
 			<div className="mt-2 flex flex-wrap gap-1.5">
@@ -27,9 +20,7 @@ function ToolCard({ competitor }: { competitor: Competitor }) {
 					<Badge variant="secondary">From {competitor.pricing.startingPrice}</Badge>
 				)}
 			</div>
-			<p className="mt-3 flex-1 text-sm leading-relaxed text-zinc-600">
-				{competitor.tagline}
-			</p>
+			<p className="mt-3 flex-1 text-sm leading-relaxed text-zinc-600">{competitor.tagline}</p>
 			<div className="mt-4 flex items-center justify-between">
 				<Link
 					to="/ai-visibility-tools/$slug"
