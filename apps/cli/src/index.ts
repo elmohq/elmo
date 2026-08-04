@@ -398,8 +398,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
 const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
-// Not an affiliate link, unlike the three above — Elmo has no deal with Cloro.
-const CLORO_SIGNUP = "https://cloro.dev";
+const CLORO_AFFILIATE = "https://cloro.dev?fpr=elmo";
 const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
@@ -558,7 +557,7 @@ async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs" |
 		assertNotCancelled(password);
 		env.OXYLABS_PASSWORD = password;
 	} else if (scraper === "cloro") {
-		p.log.info(`Sign up: ${link(pc.cyan(CLORO_SIGNUP), CLORO_SIGNUP)}`);
+		p.log.info(`Sign up: ${link(pc.cyan(CLORO_AFFILIATE), CLORO_AFFILIATE)}`);
 		const key = await p.password({
 			message: "Cloro API key",
 			validate: (v) => (!v ? "Required" : undefined),
@@ -698,7 +697,7 @@ async function collectCloro(env: EnvMap, targets: string[]): Promise<void> {
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	p.log.info(`Sign up and create an API key: ${link(pc.cyan(CLORO_SIGNUP), CLORO_SIGNUP)}`);
+	p.log.info(`Sign up and create an API key: ${link(pc.cyan(CLORO_AFFILIATE), CLORO_AFFILIATE)}`);
 	const key = await p.password({
 		message: "Cloro API key",
 		validate: (v) => (!v ? "Required" : undefined),
