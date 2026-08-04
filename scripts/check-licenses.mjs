@@ -113,7 +113,11 @@ function run() {
       maxBuffer: 50 * 1024 * 1024,
     });
   } catch (err) {
+    // pnpm reports its own failures (e.g. ERR_PNPM_MISSING_PACKAGE_INDEX_FILE)
+    // as JSON on stdout, which execSync captures rather than forwards.
     console.error("Failed to run pnpm licenses list:", err.message);
+    if (err.stdout) console.error(err.stdout.toString().trim());
+    if (err.stderr) console.error(err.stderr.toString().trim());
     process.exit(1);
   }
 
