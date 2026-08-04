@@ -84,6 +84,8 @@ export const STATUS_TARGETS = [
 	"perplexity:cloro:online",
 	"copilot:cloro:online",
 	"gemini:cloro:online",
+	"google-ai-mode:cloro:online",
+	"google-ai-overview:cloro:online",
 	"google-ai-mode:dataforseo:online",
 	"google-ai-overview:dataforseo:online",
 	"chatgpt:dataforseo:online",
