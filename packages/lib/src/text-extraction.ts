@@ -676,6 +676,19 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 	}
 }
 
+// Google's AI surfaces mix product-widget links in among their sources. These
+// point back into Google Shopping rather than at a page that says anything about
+// the brand, so counting them would put google.com in the cited-domain reports.
+function isGoogleProductWidget(url: string): boolean {
+	try {
+		const { hostname, pathname, search } = new URL(url);
+		if (!/(^|\.)google\.[a-z.]+$/.test(hostname) || pathname !== "/search") return false;
+		return search.includes("prds=") || search.includes("ibp=oshop");
+	} catch {
+		return false;
+	}
+}
+
 export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 	try {
 		const answer = cloroAnswer(rawOutput);
@@ -686,6 +699,7 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 
 		const push = (url: any, title: any) => {
 			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			if (isGoogleProductWidget(url)) return;
 			seen.add(url);
 			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
 			if (c) {
@@ -694,10 +708,11 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 			}
 		};
 
-		// `sources` is the answer's reference panel; `citationPills` are the inline
-		// citations (a denormalized subset); AI Overview adds `relatedLinks`. Each
-		// entry exposes the source URL as `url` and its title as `label`.
-		for (const field of ["sources", "citationPills", "relatedLinks"]) {
+		// `sources` is the answer's reference panel and `citationPills` are the
+		// inline citations (a denormalized subset). Each entry exposes the source
+		// URL as `url` and its title as `label`. AI Overview's `relatedLinks` is
+		// left out entirely — it holds only the shopping widget, never a source.
+		for (const field of ["sources", "citationPills"]) {
 			if (!Array.isArray(answer[field])) continue;
 			for (const item of answer[field]) {
 				push(item?.url ?? item?.link, item?.label ?? item?.title);

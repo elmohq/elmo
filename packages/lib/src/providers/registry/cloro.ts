@@ -130,12 +130,15 @@ function cloroAnswer(response: Record<string, any>): Record<string, any> {
 }
 
 // Cloro exposes the model's own web-search queries under different keys per
-// surface: ChatGPT/Copilot use `searchQueries`, Perplexity `search_model_queries`.
-function extractWebQueries(answer: Record<string, any>): string[] {
-	for (const key of ["searchQueries", "search_model_queries", "mapSearchQueries"]) {
+// surface: ChatGPT/Copilot use `searchQueries`, Perplexity `related_queries`.
+// Perplexity's `search_model_queries` is read last because it echoes the prompt
+// back verbatim rather than reporting a search; dropping any query equal to the
+// prompt keeps that echo out of the fan-out on every surface.
+function extractWebQueries(answer: Record<string, any>, prompt: string): string[] {
+	for (const key of ["searchQueries", "related_queries", "search_model_queries", "mapSearchQueries"]) {
 		const arr = answer[key];
 		if (Array.isArray(arr)) {
-			const queries = arr.filter((q: any) => typeof q === "string" && q.trim());
+			const queries = arr.filter((q: any) => typeof q === "string" && q.trim() && q.trim() !== prompt.trim());
 			if (queries.length > 0) return queries;
 		}
 	}
@@ -175,7 +178,7 @@ export const cloro: Provider = {
 
 		const textContent = extractTextFromCloro(response);
 		const citations: Citation[] = extractCitationsFromCloro(response);
-		const webQueries = extractWebQueries(answer);
+		const webQueries = extractWebQueries(answer, prompt);
 
 		return {
 			rawOutput: response,

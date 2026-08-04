@@ -44,6 +44,44 @@ const AI_OVERVIEW_RESPONSE = {
 	},
 };
 
+// Perplexity reports its fan-out under `related_queries`; `search_model_queries`
+// only ever comes back as the prompt verbatim.
+const PERPLEXITY_RESPONSE = {
+	text: "The Sonos Era 100 lasts longer than the Bose SoundLink Flex.",
+	sources: [{ position: 1, url: "https://www.soundguys.com/era-100-review", label: "Era 100 review" }],
+	search_model_queries: ["Compare the Sonos Era 100 and the Bose SoundLink Flex"],
+	related_queries: ["Era 100 battery life playback hours", "SoundLink Flex 2nd Gen IP rating"],
+};
+
+// Google renders `relatedLinks` as a shopping widget, so its entries are
+// google.com search URLs rather than sources for the answer.
+const AI_OVERVIEW_WITH_RELATED_LINKS = {
+	aioverview: {
+		text: "The Audioengine A2+ is a well-reviewed compact desktop speaker system.",
+		sources: [{ position: 1, url: "https://www.wired.com/best-computer-speakers", label: "Best computer speakers" }],
+		relatedLinks: [
+			{
+				citationPillId: 1,
+				url: "https://www.google.com/search?q=product&prds=pvt:hg,productid:15072490242561411628",
+				label: "Audioengine A2+ Bluetooth Speaker",
+			},
+		],
+	},
+};
+
+// AI Mode files the same shopping widget under `sources`, alongside real ones.
+const AI_MODE_RESPONSE = {
+	text: "The Bose SoundLink Flex is a well-reviewed portable speaker.",
+	sources: [
+		{ position: 1, url: "https://www.cnet.com/best-bluetooth-speaker", label: "Best Bluetooth speakers" },
+		{
+			position: 2,
+			url: "https://www.google.com/search?q=product&prds=pvt:hg,productid:12633455567724893623&ibp=oshop",
+			label: "Bose SoundLink Flex Portable Bluetooth Speaker",
+		},
+	],
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -127,6 +165,57 @@ describe("cloro provider", () => {
 		expect(result.citations[0].domain).toBe("runnersworld.com");
 		// The overview exposes no query strings, but its citations prove a search ran.
 		expect(result.webQueries).toEqual(["unavailable"]);
+	});
+
+	it("reports Perplexity's fan-out rather than the prompt echoed back", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-pplx", status: "QUEUED" } }))
+			.mockResolvedValueOnce(
+				jsonResponse({ task: { id: "task-pplx", status: "COMPLETED" }, response: PERPLEXITY_RESPONSE }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("perplexity", "Compare the Sonos Era 100 and the Bose SoundLink Flex");
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		expect(result.webQueries).toEqual(["Era 100 battery life playback hours", "SoundLink Flex 2nd Gen IP rating"]);
+	});
+
+	it("leaves Google's shopping-widget links out of AI Overview citations", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-rl", status: "QUEUED" } }))
+			.mockResolvedValueOnce(
+				jsonResponse({ task: { id: "task-rl", status: "COMPLETED" }, response: AI_OVERVIEW_WITH_RELATED_LINKS }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("google-ai-overview", "best desktop speakers");
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		expect(result.citations.map((c) => c.domain)).toEqual(["wired.com"]);
+	});
+
+	it("leaves the shopping widget out when AI Mode files it under sources", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ success: true, task: { id: "task-aim", status: "QUEUED" } }))
+			.mockResolvedValueOnce(
+				jsonResponse({ task: { id: "task-aim", status: "COMPLETED" }, response: AI_MODE_RESPONSE }),
+			);
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = cloro.run("google-ai-mode", "best portable speakers");
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com"]);
 	});
 
 	it("keeps polling through transient and no-content status responses", async () => {
