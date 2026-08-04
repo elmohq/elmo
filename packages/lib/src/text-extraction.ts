@@ -266,19 +266,22 @@ export function extractTextFromOxylabs(rawOutput: any): string {
 	}
 }
 
-// Cloro returns a normalized answer object. Chatbot tasks (ChatGPT, Perplexity,
-// Copilot, Gemini) and Google AI Mode put the answer at the top level of the
-// stored `response`; the Google AI Overview task nests it under `aioverview`,
-// which is null when Google showed no overview.
-function cloroAnswer(rawOutput: any): any {
-	if (rawOutput && typeof rawOutput === "object" && "aioverview" in rawOutput) return rawOutput.aioverview;
-	return rawOutput;
+/**
+ * The answer object inside a Cloro task `response`, or null when there isn't
+ * one. Chatbot tasks (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
+ * put the answer at the top level; the Google AI Overview task nests it under
+ * `aioverview`, which is null when Google showed no overview.
+ */
+export function cloroAnswer(rawOutput: any): Record<string, any> | null {
+	const answer =
+		rawOutput && typeof rawOutput === "object" && "aioverview" in rawOutput ? rawOutput.aioverview : rawOutput;
+	return answer && typeof answer === "object" ? answer : null;
 }
 
 export function extractTextFromCloro(rawOutput: any): string {
 	try {
 		const answer = cloroAnswer(rawOutput);
-		if (!answer || typeof answer !== "object") return "No content in Cloro output.";
+		if (!answer) return "No content in Cloro output.";
 		for (const key of ["text", "markdown"]) {
 			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
 		}
@@ -692,7 +695,7 @@ function isGoogleProductWidget(url: string): boolean {
 export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 	try {
 		const answer = cloroAnswer(rawOutput);
-		if (!answer || typeof answer !== "object") return [];
+		if (!answer) return [];
 		const citations: Citation[] = [];
 		const seen = new Set<string>();
 		let idx = 0;

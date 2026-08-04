@@ -1,5 +1,5 @@
 import type { Provider, ScrapeResult, ModelConfig } from "../types";
-import { extractTextFromCloro, extractCitationsFromCloro, type Citation } from "../../text-extraction";
+import { extractTextFromCloro, extractCitationsFromCloro, cloroAnswer, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
 
@@ -121,14 +121,6 @@ async function runAsyncTask(taskType: string, payload: Record<string, any>): Pro
 	throw new Error(`Cloro task ${taskId} timed out after ${CLORO_TASK_TIMEOUT_MS / 1000}s`);
 }
 
-// Google AI Overview nests the answer under `aioverview` (null when Google
-// showed no overview); every chatbot task returns the answer fields at the top
-// level of the task `response`.
-function cloroAnswer(response: Record<string, any>): Record<string, any> {
-	if (response && "aioverview" in response) return response.aioverview ?? {};
-	return response ?? {};
-}
-
 // Cloro exposes the model's own web-search queries under different keys per
 // surface: ChatGPT/Copilot use `searchQueries`, Perplexity `search_model_queries`.
 // Perplexity's entry is the prompt echoed back verbatim on every request seen so
@@ -176,7 +168,7 @@ export const cloro: Provider = {
 		if (task.include) payload.include = task.include;
 
 		const response = await runAsyncTask(task.taskType, payload);
-		const answer = cloroAnswer(response);
+		const answer = cloroAnswer(response) ?? {};
 
 		const textContent = extractTextFromCloro(response);
 		const citations: Citation[] = extractCitationsFromCloro(response);
