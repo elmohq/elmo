@@ -306,23 +306,29 @@ export async function createBrand(input: CreateBrandInput): Promise<BrandResult>
 	// admin API) supplies the brand id directly and historically created brands
 	// whose id == the org id, so materialize that org first. No-op when it
 	// already exists (e.g. a whitelabel org already synced from Auth0).
-	await ensureOrganization({ id: input.id, name: input.name });
+	//
+	// Both writes share a transaction so a conflicting brand id doesn't strand
+	// the org we just made: brand ids and org ids are independent now, so a
+	// taken brand id no longer implies the org already exists.
+	await db.transaction(async (tx) => {
+		await ensureOrganization({ id: input.id, name: input.name }, tx);
 
-	const [inserted] = await db
-		.insert(brands)
-		.values({
-			id: input.id,
-			organizationId: input.id,
-			name: input.name,
-			website: formattedWebsite,
-			additionalDomains,
-			aliases,
-			enabled: true,
-			onboarded: true,
-		})
-		.onConflictDoNothing()
-		.returning({ id: brands.id });
-	if (!inserted) throw new BrandConflictError(input.id);
+		const [inserted] = await tx
+			.insert(brands)
+			.values({
+				id: input.id,
+				organizationId: input.id,
+				name: input.name,
+				website: formattedWebsite,
+				additionalDomains,
+				aliases,
+				enabled: true,
+				onboarded: true,
+			})
+			.onConflictDoNothing()
+			.returning({ id: brands.id });
+		if (!inserted) throw new BrandConflictError(input.id);
+	});
 
 	await insertCompetitors({
 		brandId: input.id,

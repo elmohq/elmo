@@ -1,11 +1,13 @@
 /**
  * /app - Brand switcher page
  *
- * In single-org mode (local/demo): redirects to the default org
- * In multi-org mode (whitelabel): shows brand switcher
+ * Lists every brand the user's organization(s) own. Most modes have exactly
+ * one org, but whitelabel users can belong to several Auth0-synced orgs, so
+ * this is a brand list scoped across all of the user's orgs, not a 1:1 org
+ * list.
  */
 
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -13,11 +15,14 @@ import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
+import { inArray } from "drizzle-orm";
 
-const getOrganizations = createServerFn({ method: "GET" }).handler(
+const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
-		organizations: { id: string; name: string }[];
-		supportsMultiOrg: boolean;
+		brands: { id: string; name: string }[];
+		unprovisionedOrgs: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
 		const session = await requireAuthSession();
@@ -32,11 +37,28 @@ const getOrganizations = createServerFn({ method: "GET" }).handler(
 			}
 		}
 
-		const organizations = await listUserOrganizations(session.user.id);
+		const orgs = await listUserOrganizations(session.user.id);
+		const orgIds = orgs.map((o) => o.id);
+
+		const scopedBrands =
+			orgIds.length === 0
+				? []
+				: await db
+						.select({ id: brands.id, name: brands.name, organizationId: brands.organizationId })
+						.from(brands)
+						.where(inArray(brands.organizationId, orgIds));
+
+		// An org with no brand row yet is only reachable through the legacy
+		// `/app/$orgId` onboarding wizard. Modes that can create brands from the
+		// UI use that flow instead, so surfacing the org there would offer two
+		// paths to the same thing.
+		const canCreateBrands = deployment.features.canCreateBrands;
+		const provisioned = new Set(scopedBrands.map((b) => b.organizationId));
+
 		return {
-			organizations,
-			supportsMultiOrg: deployment.features.supportsMultiOrg,
-			canCreateBrands: deployment.features.canCreateBrands,
+			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
+			unprovisionedOrgs: canCreateBrands ? [] : orgs.filter((o) => !provisioned.has(o.id)),
+			canCreateBrands,
 		};
 	},
 );
@@ -55,33 +77,33 @@ function OrgSwitcherSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrgSwitcherSkeleton,
-	loader: async () => {
-		const result = await getOrganizations();
-
-		// Single-org mode: redirect to the user's one org (created on signup).
-		if (!result.supportsMultiOrg && result.organizations.length > 0) {
-			throw redirect({ to: "/app/$brand", params: { brand: result.organizations[0].id } });
-		}
-
-		return result;
-	},
+	loader: async () => getBrandSwitcherData(),
 	component: BrandSwitcherPage,
 });
 
 function BrandSwitcherPage() {
-	const { organizations, canCreateBrands } = Route.useLoaderData();
+	const { brands: brandList, unprovisionedOrgs, canCreateBrands } = Route.useLoaderData();
 
 	return (
 		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
 			<div className="flex flex-col space-y-3 min-w-[200px]">
-				{organizations.length > 0 ? (
-					organizations.map((org: { id: string; name: string }) => (
-						<Button key={org.id} asChild variant="secondary">
-							<Link to="/app/$brand" params={{ brand: org.id }}>
-								{org.name}
-							</Link>
-						</Button>
-					))
+				{brandList.length > 0 || unprovisionedOrgs.length > 0 ? (
+					<>
+						{brandList.map((brand) => (
+							<Button key={brand.id} asChild variant="secondary">
+								<Link to="/app/$brand" params={{ brand: brand.id }}>
+									{brand.name}
+								</Link>
+							</Button>
+						))}
+						{unprovisionedOrgs.map((org) => (
+							<Button key={org.id} asChild variant="outline">
+								<Link to="/app/$brand" params={{ brand: org.id }}>
+									Set up {org.name}
+								</Link>
+							</Button>
+						))}
+					</>
 				) : (
 					<p className="text-muted-foreground text-center">No brands available</p>
 				)}

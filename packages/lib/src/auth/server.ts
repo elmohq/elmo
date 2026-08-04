@@ -113,6 +113,9 @@ export function createAuth(options?: CreateAuthOptions) {
 				},
 			}),
 			sso(options?.sso),
+			// Replaces the /get-session endpoint, so this runs on every session
+			// read — including cookie-cache hits, which otherwise touch no
+			// database. Keep it free of queries.
 			customSession(async ({ user, session }) => {
 				const u = user as Record<string, unknown>;
 				return {
