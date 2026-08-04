@@ -5,6 +5,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
@@ -540,14 +541,16 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			prompts: z.array(
-				z.object({
-					id: z.string().optional(),
-					value: z.string(),
-					enabled: z.boolean().optional().default(true),
-					tags: z.array(z.string()).optional(),
-				}),
-			),
+			prompts: z
+				.array(
+					z.object({
+						id: z.string().optional(),
+						value: z.string(),
+						enabled: z.boolean().optional().default(true),
+						tags: z.array(z.string()).optional(),
+					}),
+				)
+				.max(MAX_PROMPTS, `A brand may have at most ${MAX_PROMPTS} prompts.`),
 		}),
 	)
 	.handler(async ({ data }) => {

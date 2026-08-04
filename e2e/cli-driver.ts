@@ -203,6 +203,10 @@ async function main(): Promise<void> {
 	await waitFor("Configure Oxylabs?");
 	await send(ENTER);
 
+	// Cloro confirm (default No) → No
+	await waitFor("Configure Cloro?");
+	await send(ENTER);
+
 	// Olostep confirm (default No) → No
 	await waitFor("Configure Olostep?");
 	await send(ENTER);

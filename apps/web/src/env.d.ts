@@ -53,6 +53,7 @@ declare global {
 			readonly BRIGHTDATA_API_TOKEN?: string;
 			readonly OXYLABS_USERNAME?: string;
 			readonly OXYLABS_PASSWORD?: string;
+			readonly CLORO_API_KEY?: string;
 			readonly JINA_API_KEY?: string;
 			readonly ELMO_ENCRYPTION_KEY?: string;
 			readonly ELMO_ENCRYPTION_KEY_OLD?: string;

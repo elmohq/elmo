@@ -21,6 +21,7 @@
 		"./text-extraction": "./src/text-extraction.ts",
 		"./onboarding": "./src/onboarding/index.ts",
 		"./tag-utils": "./src/tag-utils.ts",
+		"./bulk-prompts": "./src/bulk-prompts.ts",
 		"./website-excerpt": "./src/website-excerpt.ts",
 		"./report-metrics": "./src/report-metrics.ts",
 		"./secrets": "./src/secrets/index.ts",

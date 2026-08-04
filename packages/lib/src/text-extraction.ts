@@ -267,6 +267,31 @@ export function extractTextFromOxylabs(rawOutput: any): string {
 }
 
 /**
+ * The answer object inside a Cloro task `response`, or null when there isn't
+ * one. Chatbot tasks (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
+ * put the answer at the top level; the Google AI Overview task nests it under
+ * `aioverview`, which is null when Google showed no overview.
+ */
+export function cloroAnswer(rawOutput: any): Record<string, any> | null {
+	const answer =
+		rawOutput && typeof rawOutput === "object" && "aioverview" in rawOutput ? rawOutput.aioverview : rawOutput;
+	return answer && typeof answer === "object" ? answer : null;
+}
+
+export function extractTextFromCloro(rawOutput: any): string {
+	try {
+		const answer = cloroAnswer(rawOutput);
+		if (!answer) return "No content in Cloro output.";
+		for (const key of ["text", "markdown"]) {
+			if (typeof answer[key] === "string" && answer[key].trim()) return answer[key].trim();
+		}
+		return "No text content found in Cloro output.";
+	} catch {
+		return "Error extracting text content.";
+	}
+}
+
+/**
  * Extract text content from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
  * (for old data where provider column may be null).
@@ -296,6 +321,8 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 			return extractTextFromBrightdata(rawOutput);
 		case "oxylabs":
 			return extractTextFromOxylabs(rawOutput);
+		case "cloro":
+			return extractTextFromCloro(rawOutput);
 		default:
 			return tryGenericExtraction(rawOutput);
 	}
@@ -652,6 +679,45 @@ export function extractCitationsFromOxylabs(rawOutput: any): Citation[] {
 	}
 }
 
+export function extractCitationsFromCloro(rawOutput: any): Citation[] {
+	try {
+		const answer = cloroAnswer(rawOutput);
+		if (!answer) return [];
+		const citations: Citation[] = [];
+		const seen = new Set<string>();
+		let idx = 0;
+
+		const push = (url: any, title: any) => {
+			if (typeof url !== "string" || !url.startsWith("http") || seen.has(url)) return;
+			seen.add(url);
+			const c = parseCitationUrl(url, typeof title === "string" ? title : undefined, idx);
+			if (c) {
+				citations.push(c);
+				idx++;
+			}
+		};
+
+		// `sources` is the answer's reference panel and `citationPills` are the
+		// inline citations (a denormalized subset). Each entry exposes the source
+		// URL as `url` and its title as `label`. AI Overview's `relatedLinks` is
+		// the block of links Google offers alongside the answer, not sources it
+		// drew on, so it is not read.
+		//
+		// Google's own Shopping deep links do turn up inside these two fields, and
+		// they stay: the citations page splits them out of the source mix by URL
+		// and builds the Google Shopping module from them.
+		for (const field of ["sources", "citationPills"]) {
+			if (!Array.isArray(answer[field])) continue;
+			for (const item of answer[field]) {
+				push(item?.url ?? item?.link, item?.label ?? item?.title);
+			}
+		}
+		return citations;
+	} catch {
+		return [];
+	}
+}
+
 /**
  * Extract citations from stored rawOutput.
  * Dispatches based on provider (how data was fetched), falling back to engine
@@ -676,6 +742,8 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 			return extractCitationsFromBrightdata(rawOutput);
 		case "oxylabs":
 			return extractCitationsFromOxylabs(rawOutput);
+		case "cloro":
+			return extractCitationsFromCloro(rawOutput);
 		case "anthropic-api":
 		case "anthropic":
 		case "claude":
