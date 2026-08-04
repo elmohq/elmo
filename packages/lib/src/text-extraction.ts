@@ -697,13 +697,16 @@ export function extractCitationsFromCloro(rawOutput: any): Citation[] {
 			}
 		};
 
-		// `sources` is the answer's reference panel; `citationPills` are the inline
-		// citations (a denormalized subset); AI Overview adds `relatedLinks`. Each
-		// entry exposes the source URL as `url` and its title as `label`.
-		// Google's own Shopping deep links arrive mixed in among these and are kept:
-		// the citations page splits them out of the source mix by URL and builds the
-		// Google Shopping module from them.
-		for (const field of ["sources", "citationPills", "relatedLinks"]) {
+		// `sources` is the answer's reference panel and `citationPills` are the
+		// inline citations (a denormalized subset). Each entry exposes the source
+		// URL as `url` and its title as `label`. AI Overview's `relatedLinks` is
+		// the block of links Google offers alongside the answer, not sources it
+		// drew on, so it is not read.
+		//
+		// Google's own Shopping deep links do turn up inside these two fields, and
+		// they stay: the citations page splits them out of the source mix by URL
+		// and builds the Google Shopping module from them.
+		for (const field of ["sources", "citationPills"]) {
 			if (!Array.isArray(answer[field])) continue;
 			for (const item of answer[field]) {
 				push(item?.url ?? item?.link, item?.label ?? item?.title);

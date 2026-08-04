@@ -53,8 +53,8 @@ const PERPLEXITY_RESPONSE = {
 	related_queries: ["Which is better for a pool party", "What about the JBL Charge 6"],
 };
 
-// Google renders `relatedLinks` as a shopping widget, so its entries are
-// google.com Shopping deep links, which the citations page turns into products.
+// `relatedLinks` is what Google offers alongside the overview, not what it drew
+// on — here a Shopping deep link, which is still not a source for the answer.
 const AI_OVERVIEW_WITH_RELATED_LINKS = {
 	aioverview: {
 		text: "The Audioengine A2+ is a well-reviewed compact desktop speaker system.",
@@ -186,7 +186,7 @@ describe("cloro provider", () => {
 		expect(result.webQueries).toEqual(["Compare the Sonos Era 100 and the Bose SoundLink Flex"]);
 	});
 
-	it("keeps AI Overview's Shopping links so the citations page can build products", async () => {
+	it("does not cite AI Overview's related links", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
 			.fn()
@@ -200,7 +200,7 @@ describe("cloro provider", () => {
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["wired.com", "google.com"]);
+		expect(result.citations.map((c) => c.domain)).toEqual(["wired.com"]);
 	});
 
 	it("keeps the Shopping link AI Mode files under sources", async () => {
