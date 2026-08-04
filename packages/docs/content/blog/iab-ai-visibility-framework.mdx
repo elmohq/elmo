@@ -1,0 +1,132 @@
+---
+title: "The IAB Just Defined What 'Decision-Grade' AI Visibility Means"
+description: "The IAB's new measurement guidance splits AI visibility data into decision-grade and directional. Most tracking programs, including well-run ones, land on the directional side."
+date: "2026-08-04"
+author: ai
+metaTitle: "IAB AI Visibility Framework: Decision-Grade Rules"
+tags:
+  - ai-visibility
+  - ai-citations
+  - aeo
+  - ai-search
+definedTerms:
+  - term: Decision-grade measurement
+    definition: "In the IAB's AI visibility guidance, decision-grade measurement is data rigorous enough to allocate budget or judge performance against. It requires a large and diverse query set, enough responses per query for a stable distribution, weekly or more frequent collection, per-platform reporting, and a documented reproducibility process."
+  - term: Directional measurement
+    definition: "Directional measurement is AI visibility data good enough to spot a trend or brief a team, but not to spend against. It is the tier most current tracking programs occupy, and the IAB's guidance treats it as legitimate rather than deficient, provided it is labelled as such."
+  - term: The 4 P's of AI Visibility
+    definition: "The IAB's metric hierarchy for AI visibility: presence (does the brand appear at all), prominence (where and how visibly), portrayal (in what context and with what accuracy), and persuasion (does the appearance move anyone)."
+howTo:
+  name: "How to audit your AI visibility program against the IAB guidance"
+  description: "Work out whether the numbers you report are decision-grade or directional, and fix the gaps that actually change the answer."
+  steps:
+    - name: Count your queries
+      text: "The guidance treats a program running fewer than 50 queries as exploratory, on the grounds that it cannot meaningfully characterise a category. Count yours, then check the spread across categories and subcategories rather than just the total."
+    - name: Check your intent mix
+      text: "Decision-grade coverage requires informational, comparison, recommendation, and transactional prompts, with results segmented by intent type. Most prompt sets are heavy on recommendation phrasing and thin everywhere else."
+    - name: Establish how many responses you collect per query
+      text: "One response per query per period cannot produce a stable distribution on a probabilistic system. Record your responses-per-query figure, because it is the number that decides whether a movement in your metric means anything."
+    - name: Define your acceptable variation range
+      text: "Before reading any trend, work out how much your metric moves within a seven-day window when nothing has changed. That range is your noise floor, and any change smaller than it is not a result."
+    - name: Report every platform separately
+      text: "Blended cross-platform scores hide the variation that matters, and a single Google figure averages two surfaces that retrieve differently. Keep per-platform numbers and disclose any weighting you apply on top."
+    - name: Write down your own methodology
+      text: "Query selection rationale, how raw responses become numbers, whether live retrieval was on, and what you re-baseline after a model update. If you cannot answer these about your own program, you cannot ask a vendor to."
+    - name: Label the tier on the report itself
+      text: "Mark each number as decision-grade or directional where it is presented. The failure mode the guidance targets is not weak data, it is unlabelled data reaching a budget meeting."
+faq:
+  - question: What is the IAB AI visibility framework?
+    answer: "It is a set of measurement guidelines called \"Measuring Visibility in the AI Era\", released by the IAB on 3 August 2026. It gives the market a shared vocabulary for AI visibility metrics, organises them into a hierarchy the IAB calls the 4 P's, and sets out what a provider must disclose about its methodology. It covers organic visibility across ChatGPT, Google Gemini, Microsoft Copilot, Perplexity, and Claude."
+  - question: What are the 4 P's of AI visibility?
+    answer: "Presence, prominence, portrayal, and persuasion. Presence asks whether a brand appears or a publisher gets cited, measured through mention rate, citation rate, share of voice, and visibility momentum. Prominence covers position and rank order within the response. Portrayal covers sentiment, framing, hallucination rate, and factual inaccuracy rate. Persuasion covers recommendation strength and post-citation click-through."
+  - question: What is the difference between decision-grade and directional AI visibility data?
+    answer: "Directional data is fit for spotting trends and competitive awareness but not for spending decisions. Decision-grade data meets higher bars on query volume, responses per query, prompt intent coverage, collection cadence, and reproducibility, and comes with documented methodology. The distinction exists so a buyer can tell which one they are holding."
+  - question: How many prompts do you need to track AI visibility?
+    answer: "More than most programs run. The IAB guidance classifies a program of fewer than 50 queries as exploratory, because that few cannot characterise a category, and decision-grade work requires a large, diverse set with coverage across categories and subcategories. Volume alone is not enough: the set also has to span informational, comparison, recommendation, and transactional intent."
+  - question: How often should you measure AI visibility?
+    answer: "The guidance ties cadence to use. Monthly or quarterly suits trend monitoring, weekly to biweekly suits competitive benchmarking, and weekly or more frequent collection is required where the data informs budget allocation. Our own citation study is the reason why: the domains AI engines cite turned over by roughly 60 to 70% from one day to the next."
+  - question: Is the IAB framework a standard?
+    answer: "No, and the IAB says so. Its VP of AI, Caroline Giegerich, who led the working group, told AdExchanger that standards require a stability the category does not yet have. The document is guidance: it sets disclosure requirements and quality criteria without rating providers or prescribing tools."
+  - question: Only 16% of brands track AI visibility. Where does that number come from?
+    answer: "McKinsey's CMO surveys, cited within the IAB guidance as evidence that the absence of shared measurement standards is holding adoption back. It is a striking figure to read next to the more than 20 companies now selling AI visibility measurement tools."
+---
+
+**Twenty-plus vendors will sell you an AI visibility number. The IAB's new guidance is the first serious attempt to tell you which of those numbers you are allowed to spend money against.** "Measuring Visibility in the AI Era" [landed on 3 August 2026](https://www.iab.com/guidelines/measuring-visibility-in-the-ai-era/), and its most useful contribution is not the metric taxonomy. It is a two-tier split — decision-grade versus directional — plus a specific list of things you must be able to say about your data before you claim the first tier. Run an honest program against that list and the result is uncomfortable: most tracking, including careful tracking, is directional.
+
+**Key takeaways**
+
+- The guidance names the actual problem. More than 20 companies sell AI visibility measurement, using methods that produce different answers for the same brand, while McKinsey's CMO surveys put the share of brands systematically tracking it at 16%.
+- Metrics are organised into the **4 P's**: presence, prominence, portrayal, persuasion. It is a causal hierarchy, not a menu — appearing is upstream of being described well, which is upstream of being acted on.
+- **Decision-grade** requires a large diverse query set, enough responses per query for a stable distribution, weekly-or-better cadence, per-platform reporting, and documented reproducibility. Below 50 queries, a program is classed as exploratory.
+- The reproducibility requirement is the one with teeth: define acceptable variation within a seven-day window before reading any trend. Our [42-day citation study](/blog/citation-volatility) found cited-domain sets churning 60–70% day to day, which is what that requirement is defending against.
+- It is guidance, not a standard. IAB's VP of AI [told AdExchanger](https://www.adexchanger.com/ai/iabs-new-advice-on-how-to-measure-ai-search-visibility/) that standardisation needs a stability this category does not have yet.
+- Nothing here demands a vendor. Every disclosure it asks of a provider is answerable about your own program, which makes it a free audit.
+
+## The 4 P's, and why the order matters
+
+The hierarchy is the part that will get quoted, so it is worth reading as a causal chain rather than four buckets. Presence is upstream of everything: you cannot be described badly in an answer you do not appear in. Persuasion is downstream of all of it and the hardest to observe.
+
+| | The question it asks | Metrics named |
+|---|---|---|
+| **Presence** | Does the brand appear, or the publisher get cited? | Mention rate, citation rate, [share of voice](/blog/ai-share-of-voice), visibility momentum; citation decay rate for publishers |
+| **Prominence** | Where, and how prominently? | Position and rank order within the response as users see it; content utilisation rate for publishers |
+| **Portrayal** | In what context, and with what accuracy? | [Sentiment](/blog/ai-brand-sentiment), framing, hallucination rate, factual inaccuracy rate |
+| **Persuasion** | Does the appearance move anyone? | Recommendation strength, post-citation click-through rate |
+
+Two of these definitions are sharper than the industry's usual usage. Separating **mention rate** from **citation rate** formalises a gap we have written about as [ghost citations](/blog/ghost-citations): being the source an answer was built from is a different event from being named in it, and a tool that reports one number for both is telling you less than it appears to. And splitting **hallucination rate** from **factual inaccuracy rate** — fabricated associations with "no basis in any underlying source" versus accurate references carrying materially incorrect information — is a distinction with an operational consequence, because the second is usually your own stale page being read correctly. Giegerich's own framing to AdExchanger was that outdated data, not hallucination, is what keeps her up at night.
+
+**Recommendation strength** is the quietly ambitious one. It asks whether a brand is actively recommended or merely cited, which is the difference between being consulted and being shortlisted. Almost nobody measures it, and it is closer to the thing marketers actually want than mention rate is.
+
+## What decision-grade actually requires
+
+Here is the checklist, as [summarised by PPC Land](https://ppc.land/only-16-of-brands-track-ai-visibility-as-iab-sets-measurement-standard/) from the document, against what a typical well-intentioned program does.
+
+| Requirement | Decision-grade bar | Common practice |
+|---|---|---|
+| Query volume | Large, diverse set with category and subcategory coverage; under 50 queries is exploratory | 20–40 prompts, mostly one category |
+| Responses per query | "Enough responses per query to establish a stable distribution," with the figure disclosed | One run per prompt per period |
+| Intent coverage | Informational, comparison, recommendation, and transactional, segmented and disclosed | Recommendation-heavy, others incidental |
+| Cadence | Weekly or more frequent where the data informs budget | Monthly refresh |
+| Reproducibility | Acceptable variation ranges within a 7-day window, confidence levels, documented verification | Not defined |
+| Platform coverage | Platforms representing a substantial majority of consumer AI traffic, with weighting disclosed | Two or three engines, unweighted |
+| Aggregation | Per-platform results reported separately, with cross-platform variation shown | One blended score |
+
+Most programs fail on responses-per-query and reproducibility, and those two are the same failure wearing different clothes. AI answers are probabilistic. A single response to a single prompt is one draw from a distribution, and a month-over-month change built from single draws is mostly sampling noise with a narrative attached.
+
+This is where our own data is directly relevant. Tracking 28 prompts daily across ChatGPT and Google AI Mode for six weeks, the set of domains cited turned over by roughly 60–70% from one day to the next. Underneath the churn sat a stable core, and it differed sharply by engine: on Google AI Mode a small set of domains took about 56% of citations every day, while ChatGPT's stable core captured only about 23%. So "acceptable variation within a seven-day window" is not a governance nicety. On some engines it is most of your metric's movement, and a program without that range cannot distinguish a lost position from a Tuesday.
+
+## The prompt library is the real methodology
+
+The guidance calls prompt library construction "one of the most consequential methodological choices in AI visibility measurement," which is the correct emphasis and an awkward one for the category. Everything downstream inherits the prompt set's biases, and prompt sets are usually assembled from keyword exports because that is the data marketers already have.
+
+The document's specific worry is that synthetic prompt libraries drift from real behaviour, noting that AI platforms "do not simply search for what a user typed." That is worth sitting with alongside two things we have measured. Google's own AI surfaces decompose a question into their own retrieval terms, which is why Microsoft Clarity's [grounding query data](/blog/microsoft-clarity-ai-citations) reads so differently from a keyword report. And research on [multi-turn AI search](/blog/multi-turn-ai-search) found the final prompt in a conversation carries a median of only about 36% of what the user said across the session — the budget, the location, the option already ruled out all live in the history. A prompt set of clean single-shot keyword phrases is testing a surface users are not using.
+
+The disclosure requirement that follows is the one to hold vendors to: whether the library is grounded in real consumer search volume or synthetic data, how it is clustered, how often it is refreshed, and how intent is distributed. Ask for those four in writing. A provider who cannot answer them is selling a directional number at a decision-grade price.
+
+## Per-platform reporting kills the single score
+
+The aggregation requirement is the most immediately actionable item, because the fix costs nothing but a dashboard change: report each platform separately, show the cross-platform variation, and disclose any weighting.
+
+The reason is that engine behaviour diverges more than a blended average can survive. Beyond the stability gap above, the retrieval pathways differ enough that [rank-to-citation overlap](/blog/rankings-and-ai-citations) estimates range from 12% to 76% depending on engine and study. And Google alone is two surfaces now — AI Overviews on [about 43% of US searches](/blog/ai-overviews-share-of-searches), with AI Mode conversations behind them — which a single "Google" row averages into meaninglessness.
+
+The guidance also asks for a protocol nobody has: when a new platform enters your program, establish a fresh baseline, keep the old one, and report both until you have history. Same for model updates, which force re-baselining and should be disclosed as triggering events with a before-and-after comparison. If your trend line silently spans a model change, it is two trend lines in a trench coat.
+
+## What this does and does not settle
+
+The IAB is explicit that the document does not rate providers or prescribe tools, and Giegerich is explicit that it is not a standard. What it supplies is vocabulary and a disclosure format — [MediaPost quotes her](https://www.mediapost.com/publications/article/416970/iab-expands-into-ai-visibility-measurement.html) as "trying to give companies a good idea of what good looks like." [Marketing Dive's read](https://www.marketingdive.com/news/iab-shares-playbook-for-measuring-brand-visibility-in-ai-powered-platforms/826830/) is that it lets vendors differentiate on rigour rather than claims, which is the mechanism by which guidance like this does its work: not enforcement, but making a specific question awkward to dodge.
+
+Expect the disclosure gap to be visible fast. Some of these requirements — per-platform breakdowns, intent segmentation, documented cadence — are product features a vendor either has or does not. Others, particularly reproducibility ranges and validation against external signals, are methodological commitments that are cheap to claim and slow to verify. Read the first list from the interface and the second from the documentation.
+
+The tier language is the part worth adopting internally this week. Directional data is not bad data; the guidance treats it as legitimate for trend detection and competitive awareness. The failure mode is an unlabelled directional number arriving in a budget meeting as though it were decision-grade. Labelling the tier on the report costs nothing and is the single highest-leverage change most teams can make.
+
+## Where to start
+
+1. **Count your queries and your responses per query.** If either number embarrasses you, fix the second one first — it is cheaper and it is what makes trends readable.
+2. **Measure your own noise floor.** Run your set daily for two weeks with nothing changed, and record how much your headline metric moves. That is your acceptable variation range.
+3. **Split every blended score by platform**, and split Google into its two surfaces.
+4. **Segment your prompts by intent** and write the missing ones, especially transactional and comparison phrasing.
+5. **Write your methodology down** — query rationale, retrieval settings, re-baselining rules — and label every number's tier where it is reported.
+
+[Elmo](https://www.elmohq.com/) is an open-source, self-hosted AI visibility platform that runs your prompt sets across ChatGPT, Claude, Gemini, Perplexity, and Google's AI surfaces, recording every mention, citation, and competitor named alongside you, per engine. Because it is self-hosted and the raw runs sit in your own Postgres, the disclosure questions above are answerable by inspection rather than by asking a vendor: you set the cadence, you choose how many responses to collect per prompt, and you can compute your own variation ranges from the underlying data. Portrayal is the gap to plan around — Elmo does not score sentiment, so accuracy and framing still need a read of the answers themselves.
+
+New to this? Start with [answer engine optimization](/blog/answer-engine-optimization), then [how to track your brand in AI search](/blog/track-brand-ai-search) and [AI prompt tracking](/blog/ai-prompt-tracking). For the tooling landscape, see the [best AI visibility tools](/blog/best-ai-visibility-tools) comparison and the [AI visibility software](/ai-visibility-tools) hub. For the vocabulary, the [AI search glossary](/glossary).
