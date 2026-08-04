@@ -10,7 +10,7 @@
     "seed": "tsx seed.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@types/pg": "^8.20.0",
     "@usebruno/cli": "4.0.0",
     "pg": "^8.22.0",
