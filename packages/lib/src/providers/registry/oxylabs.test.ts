@@ -14,6 +14,20 @@ const RESULT_PAYLOAD = {
 	],
 };
 
+// Perplexity exposes no searches of its own, only the follow-up questions it
+// suggests below an answer.
+const PERPLEXITY_PAYLOAD = {
+	results: [
+		{
+			content: {
+				markdown_text: "The Sonos Era 300 is a well-reviewed speaker released recently.",
+				citations: [{ url: "https://www.whathifi.com/reviews/sonos-era-300", title: "Sonos Era 300 review" }],
+				related_queries: ["What about the JBL Charge 6", "Which is better for a pool party"],
+			},
+		},
+	],
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -69,6 +83,24 @@ describe("oxylabs provider", () => {
 		expect(result.citations).toHaveLength(1);
 		expect(result.webQueries).toEqual(["recent speaker reviews"]);
 		expect(result.modelVersion).toBe("gpt-5");
+	});
+
+	it("does not count Perplexity's suggested follow-ups as searches", async () => {
+		vi.useFakeTimers();
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse({ id: "job-pplx", status: "pending" }, 202))
+			.mockResolvedValueOnce(jsonResponse({ id: "job-pplx", status: "done" }))
+			.mockResolvedValueOnce(jsonResponse(PERPLEXITY_PAYLOAD));
+		vi.stubGlobal("fetch", fetchMock);
+
+		const promise = oxylabs.run("perplexity", "What is a well-reviewed speaker?", { webSearch: true });
+		await vi.runAllTimersAsync();
+		const result = await promise;
+
+		// Citations prove a search ran, but Oxylabs never reports what was searched.
+		expect(result.citations).toHaveLength(1);
+		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
 	it("uses the same asynchronous flow for Google AI Mode", async () => {
