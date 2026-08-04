@@ -101,7 +101,10 @@ function BrandLayoutSkeleton() {
 					</div>
 				</div>
 			</div>
-			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
+			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
+			    corners, but `hidden` makes this a scroll container, which stops
+			    descendants from sticking to the viewport (the site header included). */}
+			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-clip">
 				{/* Header skeleton */}
 				<div className="flex h-14 items-center gap-2 px-4 border-b">
 					<Skeleton className="h-6 w-6" />
@@ -177,7 +180,10 @@ function BrandLayout() {
 	return (
 		<SidebarProvider>
 			<AppSidebar isAdmin={isAdmin} hasReportAccess={hasReportAccess} brand={brand} />
-			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-hidden">
+			{/* `overflow-clip` rather than `overflow-hidden`: both clip to the rounded
+			    corners, but `hidden` makes this a scroll container, which stops
+			    descendants from sticking to the viewport (the site header included). */}
+			<SidebarInset className="md:border md:border-border/60 md:rounded-xl overflow-clip">
 				<SiteHeader />
 				<div className="flex flex-1 flex-col">
 					<div className="@container/main flex flex-1 flex-col gap-2">
