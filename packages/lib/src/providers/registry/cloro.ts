@@ -1,6 +1,7 @@
 import type { Provider, ScrapeResult, ModelConfig } from "../types";
 import { extractTextFromCloro, extractCitationsFromCloro, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
 
 // Cloro monitors live AI answer engines. Each Elmo model maps to a Cloro task
 // type: the chatbots (ChatGPT, Perplexity, Copilot, Gemini) and Google AI Mode
@@ -42,7 +43,7 @@ interface CloroTaskResponse {
 
 function requestHeaders(): Record<string, string> {
 	return {
-		Authorization: `Bearer ${process.env.CLORO_API_KEY}`,
+		Authorization: `Bearer ${getCredential("CLORO_API_KEY")}`,
 		"Content-Type": "application/json",
 	};
 }
@@ -146,7 +147,7 @@ export const cloro: Provider = {
 	name: "Cloro",
 
 	isConfigured() {
-		return !!process.env.CLORO_API_KEY;
+		return !!getCredential("CLORO_API_KEY");
 	},
 
 	validateTarget(config: ModelConfig) {
