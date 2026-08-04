@@ -13,10 +13,11 @@ These cover the ChatGPT + Google AI Mode experiences that drive the bulk of AI r
 |---|---|---|---|
 | **BrightData** | Cheapest solid option. Battle-tested dataset collectors for each major AI surface. | ~$0.45 | [get.brightdata.com](https://get.brightdata.com/67h1b7h0shcn) |
 | **Oxylabs** | Asynchronous Push-Pull API. Good for ChatGPT, Perplexity, Google AI Mode. | pay-as-you-go | [oxylabs.io](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32) |
+| **Cloro** | Asynchronous task API covering every surface Elmo scrapes. Credit-based plans from $30/mo. | ~$0.65 | [cloro.dev](https://cloro.dev?fpr=elmo) |
 | **Olostep** | Powers most large-scale AI visibility trackers today. Good reliability at scale. | ~$2.25 | [olostep.com](https://olostep.com/?ref=elmo) |
 
 <Callout>
-Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that; Oxylabs Web Scraper API pricing depends on the plan. Actual cost depends on volume tier and provider promos. The BrightData, Oxylabs, and Olostep sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
+Monthly estimates assume Elmo's default cadence of ~5 runs/day per target across 2 surfaces (ChatGPT + Google AI Mode). BrightData's list price is ~$0.0015 per evaluation (5/day × 30 days × 2 surfaces ≈ 300 evals/mo × $0.0015 ≈ **$0.45/mo per prompt**); Olostep runs roughly 5× that; Oxylabs Web Scraper API pricing depends on the plan. Cloro sells credits on a monthly plan rather than per request — ChatGPT costs 7 credits and Google AI Mode 4, so the same 300 evaluations run ≈1,650 credits/mo, about **$0.65/mo per prompt** on its mid-tier plans (nearer $1.30 on the $30 entry plan). Because the plan fee is fixed, a handful of prompts costs the same as a plan's worth. Actual cost depends on volume tier and provider promos. The BrightData, Oxylabs, Cloro, and Olostep sign-up links above are Elmo's affiliate links — they give us a small kickback and cost you nothing extra.
 </Callout>
 
 ### BrightData
@@ -58,6 +59,27 @@ google-ai-overview:oxylabs:online
 ```
 
 Oxylabs uses HTTP Basic auth (Web Scraper API username + password). Elmo submits each request through the asynchronous Push-Pull API and polls until the result is ready, avoiding the Realtime API's connection timeout. `:online` toggles in-product web search for ChatGPT; Perplexity, Google AI Mode, and Google AI Overview always search.
+
+### Cloro
+
+```bash
+CLORO_API_KEY=...
+```
+
+Supported scrape targets:
+
+```
+chatgpt:cloro:online
+perplexity:cloro:online
+copilot:cloro:online
+gemini:cloro:online
+google-ai-mode:cloro:online
+google-ai-overview:cloro:online
+```
+
+Cloro authenticates with a single bearer API key. Elmo submits each request through Cloro's [asynchronous task API](https://cloro.dev/docs/) and polls until the task completes, which also lets Cloro meter concurrency for us instead of holding a synchronous connection open. Every Cloro surface is the live web-search UI, so the `:online` suffix is required.
+
+Cloro bills [credits from a monthly plan](https://cloro.dev/pricing/), not per request, and each surface costs a different number: Perplexity 3, Gemini and Google AI Mode 4, Copilot and Google AI Overview 5, ChatGPT 7. The asynchronous API Elmo uses carries no surcharge — the synchronous endpoints add 2 credits per request — and failed requests aren't charged.
 
 ### Olostep
 
@@ -163,7 +185,7 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
-- `provider` — how to reach it (`brightdata`, `oxylabs`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
+- `provider` — how to reach it (`brightdata`, `oxylabs`, `cloro`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
 - `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
