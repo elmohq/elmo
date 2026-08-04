@@ -76,6 +76,18 @@ export function useLocation() {
 	return { pathname: "/app/mock-brand-id", search: "", hash: "" };
 }
 
+// Stories never navigate, so the blocker is always idle.
+export function useBlocker(_opts?: unknown) {
+	return {
+		status: "idle",
+		current: undefined,
+		next: undefined,
+		action: undefined,
+		proceed: undefined,
+		reset: undefined,
+	};
+}
+
 // Stories render with an empty search (all filters at defaults). Honor
 // `select` so per-key subscribers (filter-bar widgets) get `undefined`
 // instead of the whole empty object.

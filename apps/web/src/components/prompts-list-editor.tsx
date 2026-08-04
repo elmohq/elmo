@@ -19,6 +19,7 @@ import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { cn } from "@workspace/ui/lib/utils";
 import { Inbox, ListPlus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -47,9 +48,12 @@ interface PromptsListEditorProps {
 	onChange: (next: EditablePrompt[]) => void;
 	/** Show the read-only System Tags column. Default true. */
 	showSystemTags?: boolean;
+	/** `_key`s of rows edited since the last save, flagged with an accent rail
+	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
+	changedKeys?: ReadonlySet<string>;
 }
 
-export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: PromptsListEditorProps) {
+export function PromptsListEditor({ prompts, onChange, showSystemTags = true, changedKeys }: PromptsListEditorProps) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
 	const allTagOptions = useMemo(() => {
@@ -227,7 +231,15 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 			) : (
 				<div className="space-y-3">
 					{prompts.map((prompt, index) => (
-						<div key={prompt._key} className={!prompt.enabled ? "opacity-60" : ""}>
+						<div
+							key={prompt._key}
+							className={cn(
+								"-ml-3 border-l-2 pl-3 transition-colors",
+								changedKeys?.has(prompt._key) ? "border-amber-500" : "border-transparent",
+								!prompt.enabled && "opacity-60",
+							)}
+						>
+							{changedKeys?.has(prompt._key) && <span className="sr-only">Has unsaved changes</span>}
 							{/* Mobile: stacked, no selection/bulk */}
 							<div className={`md:hidden flex flex-col gap-2 pb-3 ${index < prompts.length - 1 ? "border-b" : ""}`}>
 								<div className="flex items-start gap-2">
