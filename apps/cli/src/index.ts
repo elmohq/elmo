@@ -376,9 +376,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		postgres_mode: postgresMode,
 		dev_mode: Boolean(options.dev),
 		setup_mode: setupMode,
-		has_scraper: Boolean(
-			env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY || env.OXYLABS_USERNAME || env.CLORO_API_KEY,
-		),
+		has_scraper: Boolean(env.BRIGHTDATA_API_TOKEN || env.OLOSTEP_API_KEY || env.OXYLABS_USERNAME || env.CLORO_API_KEY),
 		has_direct_api: hasDirectApiConfigured(env),
 	});
 
@@ -417,14 +415,7 @@ const OLOSTEP_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perp
 
 const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"] as const;
 
-const CLORO_MODELS = [
-	"chatgpt",
-	"google-ai-mode",
-	"google-ai-overview",
-	"perplexity",
-	"copilot",
-	"gemini",
-] as const;
+const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
 const DATAFORSEO_MODELS = ["google-ai-mode", "google-ai-overview", "chatgpt", "perplexity", "gemini"] as const;
