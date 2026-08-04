@@ -19,7 +19,7 @@ import { Switch } from "@workspace/ui/components/switch";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { Copy, Inbox, Plus } from "lucide-react";
+import { Inbox, ListPlus, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 export interface EditablePrompt {
@@ -72,18 +72,32 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 	const [bulkOpen, setBulkOpen] = useState(false);
 	const [bulkText, setBulkText] = useState("");
 
+	// A row only takes a slot once it has text. Blank rows are how this editor
+	// stages a new prompt and they're dropped on save, so counting them against
+	// the cap would refuse prompts the list still has room for.
+	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
+	const atCapacity = filledValues.length >= MAX_PROMPTS;
+
 	const bulkPreview = useMemo(
-		() => parseBulkPrompts(bulkText, { existing: prompts.map((p) => p.value), limit: MAX_PROMPTS }),
-		[bulkText, prompts],
+		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
+		[bulkText, filledValues],
 	);
 	const bulkNotice = bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null;
+
+	// Over capacity blocks the whole paste rather than quietly taking the lines
+	// that fit, so nobody submits a list believing all of it landed.
+	const overCapacity = bulkPreview.skipped.overCapacity.length;
+	const bulkError =
+		overCapacity > 0
+			? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+			: null;
 
 	const closeBulk = () => {
 		setBulkOpen(false);
 		setBulkText("");
 	};
 	const addBulk = () => {
-		if (bulkPreview.added.length === 0) return;
+		if (bulkPreview.added.length === 0 || overCapacity > 0) return;
 		onChange([...prompts, ...bulkPreview.added.map((value) => newPromptEntry({ value }))]);
 		closeBulk();
 	};
@@ -280,17 +294,19 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 				</div>
 			)}
 
-			{prompts.length < MAX_PROMPTS && (
+			{!atCapacity && (
 				<div className="flex flex-wrap items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						type="button"
-						onClick={add}
-						className="flex items-center gap-2 cursor-pointer"
-					>
-						<Plus className="h-4 w-4" /> Add Prompt
-					</Button>
+					{prompts.length < MAX_PROMPTS && (
+						<Button
+							variant="outline"
+							size="sm"
+							type="button"
+							onClick={add}
+							className="flex items-center gap-2 cursor-pointer"
+						>
+							<Plus className="h-4 w-4" /> Add Prompt
+						</Button>
+					)}
 					<Button
 						variant="outline"
 						size="sm"
@@ -298,22 +314,27 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 						onClick={() => setBulkOpen((open) => !open)}
 						className="flex items-center gap-2 cursor-pointer"
 					>
-						<Copy className="h-4 w-4" /> Paste in Bulk
+						<ListPlus className="h-4 w-4" /> Add Multiple
 					</Button>
 				</div>
 			)}
 
-			{bulkOpen && prompts.length < MAX_PROMPTS && (
+			{bulkOpen && !atCapacity && (
 				<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 					<Textarea
 						value={bulkText}
 						onChange={(e) => setBulkText(e.target.value)}
-						placeholder={"One prompt per line\nbest running shoes for flat feet\nmost durable trail runners"}
+						placeholder="One prompt per line"
 						rows={6}
 						aria-label="Prompts to add, one per line"
 					/>
 					<div className="flex flex-wrap items-center gap-2">
-						<Button size="sm" type="button" onClick={addBulk} disabled={bulkText.trim().length === 0}>
+						<Button
+							size="sm"
+							type="button"
+							onClick={addBulk}
+							disabled={bulkPreview.added.length === 0 || overCapacity > 0}
+						>
 							Add {bulkPreview.added.length > 0 ? `${bulkPreview.added.length} ` : ""}
 							{bulkPreview.added.length === 1 ? "Prompt" : "Prompts"}
 						</Button>
@@ -322,10 +343,15 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true }: 
 						</Button>
 						{bulkNotice && <span className="text-xs text-muted-foreground">{bulkNotice}</span>}
 					</div>
+					{bulkError && (
+						<p role="alert" className="text-xs text-destructive">
+							{bulkError}
+						</p>
+					)}
 				</div>
 			)}
 
-			{prompts.length >= MAX_PROMPTS && (
+			{atCapacity && (
 				<p className="text-xs text-muted-foreground">
 					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
 				</p>
