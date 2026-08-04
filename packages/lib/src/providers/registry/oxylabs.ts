@@ -144,7 +144,10 @@ async function runAsyncQuery(body: Record<string, any>): Promise<OxylabsPayload>
 
 function extractWebQueries(content: Record<string, any>): string[] {
 	// Oxylabs exposes search queries under different keys depending on the source.
-	for (const key of ["search_queries", "related_queries", "web_search_queries"]) {
+	// `related_queries` is not one of them: Oxylabs documents it as the follow-up
+	// questions Perplexity suggests below an answer, so counting it would report
+	// searches that never ran.
+	for (const key of ["search_queries", "web_search_queries"]) {
 		const arr = content[key];
 		if (Array.isArray(arr)) {
 			const queries = arr.filter((q: any) => typeof q === "string" && q.trim());
