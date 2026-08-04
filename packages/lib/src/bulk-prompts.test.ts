@@ -14,11 +14,11 @@ describe("bulk-prompts", () => {
 			expect(added).toEqual(["one", "two", "three"]);
 		});
 
-		it("should count blank lines without reporting them as an error", () => {
+		it("should skip blank lines and say how many", () => {
 			const { added, skipped } = parseBulkPrompts("one\n\n   \ntwo\n");
 			expect(added).toEqual(["one", "two"]);
 			expect(skipped.blank).toBe(3);
-			expect(describeSkipped(skipped)).toBeNull();
+			expect(describeSkipped(skipped)).toBe("Skipped 3 blank lines.");
 		});
 
 		it("should drop lines already in the list", () => {
@@ -83,8 +83,20 @@ describe("bulk-prompts", () => {
 	});
 
 	describe("describeSkipped", () => {
-		it("should say nothing when only blank lines were dropped", () => {
-			expect(describeSkipped({ blank: 4, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: [] })).toBeNull();
+		it("should say nothing when nothing was dropped", () => {
+			expect(describeSkipped({ blank: 0, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: [] })).toBeNull();
+		});
+
+		it("should report blank lines", () => {
+			expect(describeSkipped({ blank: 4, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: [] })).toBe(
+				"Skipped 4 blank lines.",
+			);
+		});
+
+		it("should use the singular for one blank line", () => {
+			expect(describeSkipped({ blank: 1, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: [] })).toBe(
+				"Skipped 1 blank line.",
+			);
 		});
 
 		it("should count both kinds of duplicate together", () => {
@@ -99,10 +111,16 @@ describe("bulk-prompts", () => {
 			);
 		});
 
-		it("should name both reasons when both applied", () => {
+		it("should name duplicates and blank lines together", () => {
+			expect(describeSkipped({ blank: 2, duplicateOfExisting: ["a"], duplicateInPaste: [], overCapacity: [] })).toBe(
+				"Skipped 1 duplicate and 2 blank lines.",
+			);
+		});
+
+		it("should leave over-capacity lines out, since they block the paste instead", () => {
 			expect(
-				describeSkipped({ blank: 0, duplicateOfExisting: ["a"], duplicateInPaste: [], overCapacity: ["b", "c"] }),
-			).toBe("Skipped 1 duplicate and 2 over the limit.");
+				describeSkipped({ blank: 0, duplicateOfExisting: [], duplicateInPaste: [], overCapacity: ["b", "c"] }),
+			).toBeNull();
 		});
 	});
 });

@@ -104,9 +104,10 @@ export function parseBulkPrompts(text: string, options: ParseBulkPromptsOptions 
 }
 
 /**
- * One sentence naming everything the parse dropped, or null when it dropped
- * nothing worth saying. Blank lines are counted but never mentioned, because
- * a trailing newline is not a mistake anyone needs told about.
+ * One sentence naming what the parse dropped, or null when it dropped nothing.
+ *
+ * Over-capacity lines are deliberately absent: they block the paste outright
+ * rather than being skipped, so the caller reports those as an error instead.
  */
 export function describeSkipped(skipped: SkippedLines): string | null {
 	const parts: string[] = [];
@@ -114,8 +115,8 @@ export function describeSkipped(skipped: SkippedLines): string | null {
 	if (duplicates > 0) {
 		parts.push(`${duplicates} duplicate${duplicates === 1 ? "" : "s"}`);
 	}
-	if (skipped.overCapacity.length > 0) {
-		parts.push(`${skipped.overCapacity.length} over the limit`);
+	if (skipped.blank > 0) {
+		parts.push(`${skipped.blank} blank line${skipped.blank === 1 ? "" : "s"}`);
 	}
 	if (parts.length === 0) return null;
 	return `Skipped ${parts.join(" and ")}.`;
