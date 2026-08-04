@@ -398,7 +398,8 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 const BRIGHTDATA_AFFILIATE = "https://get.brightdata.com/67h1b7h0shcn";
 const OLOSTEP_AFFILIATE = "https://olostep.com/?ref=elmo";
 const OXYLABS_AFFILIATE = "https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=2263&url_id=32";
-const CLORO_AFFILIATE = "https://cloro.dev";
+// Not an affiliate link, unlike the three above — Elmo has no deal with Cloro.
+const CLORO_SIGNUP = "https://cloro.dev";
 const PROVIDERS_DOC_URL = "https://docs.elmohq.com/docs/user-guide/providers";
 
 // Surfaces each scraper can track — the first two are the "recommended starter" set.
@@ -433,7 +434,7 @@ async function configureProvidersInteractive(env: EnvMap): Promise<"recommended"
 			pc.bold("1. A scraper") + " — to track ChatGPT and Google AI Mode (no public APIs):",
 			`     • ${pc.cyan("BrightData")} — cheap solid option, ~$0.45/mo per prompt`,
 			`     • ${pc.cyan("Oxylabs")}    — async job API, pay-as-you-go`,
-			`     • ${pc.cyan("Cloro")}      — async task API, pay-as-you-go`,
+			`     • ${pc.cyan("Cloro")}      — every surface, credit plans from $30/mo, ~$0.65/mo per prompt`,
 			`     • ${pc.cyan("Olostep")}    — premium option, powers Peec/AirOps, ~$2.25/mo per prompt`,
 			"",
 			pc.bold("2. A direct LLM API") + " — for low-latency tasks (onboarding analysis, sentiment scoring,",
@@ -473,7 +474,7 @@ async function configureProvidersRecommended(env: EnvMap): Promise<void> {
 		options: [
 			{ value: "brightdata" as const, label: "BrightData — ~$0.45/mo per prompt (cheaper)" },
 			{ value: "oxylabs" as const, label: "Oxylabs — async job API, pay-as-you-go" },
-			{ value: "cloro" as const, label: "Cloro — async task API, pay-as-you-go" },
+			{ value: "cloro" as const, label: "Cloro — ~$0.65/mo per prompt (credit plans from $30/mo)" },
 			{ value: "olostep" as const, label: "Olostep — ~$2.25/mo per prompt (premium)" },
 		],
 		initialValue: "brightdata" as const,
@@ -557,7 +558,7 @@ async function collectScraperKey(scraper: "brightdata" | "olostep" | "oxylabs" |
 		assertNotCancelled(password);
 		env.OXYLABS_PASSWORD = password;
 	} else if (scraper === "cloro") {
-		p.log.info(`Sign up: ${link(pc.cyan(CLORO_AFFILIATE), CLORO_AFFILIATE)}`);
+		p.log.info(`Sign up: ${link(pc.cyan(CLORO_SIGNUP), CLORO_SIGNUP)}`);
 		const key = await p.password({
 			message: "Cloro API key",
 			validate: (v) => (!v ? "Required" : undefined),
@@ -691,13 +692,13 @@ async function collectOxylabs(env: EnvMap, targets: string[]): Promise<void> {
 
 async function collectCloro(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("Cloro")}? (async task API, pay-as-you-go)`,
+		message: `Configure ${pc.bold("Cloro")}? (async task API, credit plans from $30/mo)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
 	if (!enable) return;
 
-	p.log.info(`Sign up and create an API key: ${link(pc.cyan(CLORO_AFFILIATE), CLORO_AFFILIATE)}`);
+	p.log.info(`Sign up and create an API key: ${link(pc.cyan(CLORO_SIGNUP), CLORO_SIGNUP)}`);
 	const key = await p.password({
 		message: "Cloro API key",
 		validate: (v) => (!v ? "Required" : undefined),
