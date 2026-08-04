@@ -54,7 +54,7 @@ const PERPLEXITY_RESPONSE = {
 };
 
 // Google renders `relatedLinks` as a shopping widget, so its entries are
-// google.com search URLs rather than sources for the answer.
+// google.com Shopping deep links, which the citations page turns into products.
 const AI_OVERVIEW_WITH_RELATED_LINKS = {
 	aioverview: {
 		text: "The Audioengine A2+ is a well-reviewed compact desktop speaker system.",
@@ -69,7 +69,7 @@ const AI_OVERVIEW_WITH_RELATED_LINKS = {
 	},
 };
 
-// AI Mode files the same shopping widget under `sources`, alongside real ones.
+// AI Mode files the same kind of Shopping link under `sources`, alongside pages.
 const AI_MODE_RESPONSE = {
 	text: "The Bose SoundLink Flex is a well-reviewed portable speaker.",
 	sources: [
@@ -186,7 +186,7 @@ describe("cloro provider", () => {
 		expect(result.webQueries).toEqual(["Compare the Sonos Era 100 and the Bose SoundLink Flex"]);
 	});
 
-	it("leaves Google's shopping-widget links out of AI Overview citations", async () => {
+	it("keeps AI Overview's Shopping links so the citations page can build products", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
 			.fn()
@@ -200,10 +200,10 @@ describe("cloro provider", () => {
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["wired.com"]);
+		expect(result.citations.map((c) => c.domain)).toEqual(["wired.com", "google.com"]);
 	});
 
-	it("leaves the shopping widget out when AI Mode files it under sources", async () => {
+	it("keeps the Shopping link AI Mode files under sources", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
 			.fn()
@@ -217,7 +217,7 @@ describe("cloro provider", () => {
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
-		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com"]);
+		expect(result.citations.map((c) => c.domain)).toEqual(["cnet.com", "google.com"]);
 	});
 
 	it("keeps polling through transient and no-content status responses", async () => {
