@@ -44,13 +44,13 @@ const AI_OVERVIEW_RESPONSE = {
 	},
 };
 
-// Perplexity reports its fan-out under `related_queries`; `search_model_queries`
-// only ever comes back as the prompt verbatim.
+// Perplexity echoes the prompt back under `search_model_queries`, and suggests
+// follow-up questions under `related_queries`.
 const PERPLEXITY_RESPONSE = {
 	text: "The Sonos Era 100 lasts longer than the Bose SoundLink Flex.",
 	sources: [{ position: 1, url: "https://www.soundguys.com/era-100-review", label: "Era 100 review" }],
 	search_model_queries: ["Compare the Sonos Era 100 and the Bose SoundLink Flex"],
-	related_queries: ["Era 100 battery life playback hours", "SoundLink Flex 2nd Gen IP rating"],
+	related_queries: ["Which is better for a pool party", "What about the JBL Charge 6"],
 };
 
 // Google renders `relatedLinks` as a shopping widget, so its entries are
@@ -167,7 +167,7 @@ describe("cloro provider", () => {
 		expect(result.webQueries).toEqual(["unavailable"]);
 	});
 
-	it("reports Perplexity's fan-out rather than the prompt echoed back", async () => {
+	it("stores Perplexity's reported query verbatim and ignores its follow-up suggestions", async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi
 			.fn()
@@ -181,7 +181,9 @@ describe("cloro provider", () => {
 		await vi.runAllTimersAsync();
 		const result = await promise;
 
-		expect(result.webQueries).toEqual(["Era 100 battery life playback hours", "SoundLink Flex 2nd Gen IP rating"]);
+		// The prompt echo is kept as reported — excluding it is the fan-out read
+		// path's job — and `related_queries` never counts as a search.
+		expect(result.webQueries).toEqual(["Compare the Sonos Era 100 and the Bose SoundLink Flex"]);
 	});
 
 	it("leaves Google's shopping-widget links out of AI Overview citations", async () => {

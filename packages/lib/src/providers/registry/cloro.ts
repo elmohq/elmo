@@ -130,15 +130,17 @@ function cloroAnswer(response: Record<string, any>): Record<string, any> {
 }
 
 // Cloro exposes the model's own web-search queries under different keys per
-// surface: ChatGPT/Copilot use `searchQueries`, Perplexity `related_queries`.
-// Perplexity's `search_model_queries` is read last because it echoes the prompt
-// back verbatim rather than reporting a search; dropping any query equal to the
-// prompt keeps that echo out of the fan-out on every surface.
-function extractWebQueries(answer: Record<string, any>, prompt: string): string[] {
-	for (const key of ["searchQueries", "related_queries", "search_model_queries", "mapSearchQueries"]) {
+// surface: ChatGPT/Copilot use `searchQueries`, Perplexity `search_model_queries`.
+// Perplexity's entry is the prompt echoed back verbatim on every request seen so
+// far, which is stored as-is rather than filtered here: web_queries holds what
+// the provider reported, and the fan-out read path drops verbatim repeats. Its
+// `related_queries` is deliberately not read — those are the follow-up questions
+// Perplexity suggests below an answer, not searches it ran.
+function extractWebQueries(answer: Record<string, any>): string[] {
+	for (const key of ["searchQueries", "search_model_queries", "mapSearchQueries"]) {
 		const arr = answer[key];
 		if (Array.isArray(arr)) {
-			const queries = arr.filter((q: any) => typeof q === "string" && q.trim() && q.trim() !== prompt.trim());
+			const queries = arr.filter((q: any) => typeof q === "string" && q.trim());
 			if (queries.length > 0) return queries;
 		}
 	}
@@ -178,7 +180,7 @@ export const cloro: Provider = {
 
 		const textContent = extractTextFromCloro(response);
 		const citations: Citation[] = extractCitationsFromCloro(response);
-		const webQueries = extractWebQueries(answer, prompt);
+		const webQueries = extractWebQueries(answer);
 
 		return {
 			rawOutput: response,
