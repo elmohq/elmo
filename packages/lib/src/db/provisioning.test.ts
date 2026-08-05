@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCloudWorkspaceIdentity, isReservedBrandId, slugify } from "./provisioning";
+import { getCloudWorkspaceIdentity, getCloudWorkspaceName, isReservedBrandId, slugify } from "./provisioning";
 
 describe("slugify", () => {
 	it("lowercases", () => {
@@ -58,5 +58,12 @@ describe("getCloudWorkspaceIdentity", () => {
 
 		expect(underscore.organizationId).not.toBe(hyphen.organizationId);
 		expect(underscore.slug).not.toBe(hyphen.slug);
+	});
+});
+
+describe("getCloudWorkspaceName", () => {
+	it("normalizes named and unnamed cloud users consistently across repair paths", () => {
+		expect(getCloudWorkspaceName("  Alice  ")).toBe("Alice's workspace");
+		expect(getCloudWorkspaceName("   ")).toBe("My workspace");
 	});
 });

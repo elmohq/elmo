@@ -146,6 +146,11 @@ export function getCloudWorkspaceIdentity(input: { userId: string; name: string 
 	};
 }
 
+export function getCloudWorkspaceName(name: string): string {
+	const normalized = name.trim();
+	return normalized ? `${normalized}'s workspace` : "My workspace";
+}
+
 /**
  * Ensure an organization row exists for a brand created outside the normal
  * signup / Auth0 flows — specifically the admin API (`POST /api/v1/brands`),
@@ -222,6 +227,12 @@ export async function provisionUmbrellaOrg(input: { userId: string; name: string
 	});
 
 	return { orgId: identity.organizationId };
+}
+
+export async function provisionUmbrellaOrgForUser(userId: string): Promise<{ orgId: string }> {
+	const [account] = await db.select({ name: user.name }).from(user).where(eq(user.id, userId)).limit(1);
+	if (!account) throw new Error(`Cannot provision a workspace for missing user ${userId}`);
+	return provisionUmbrellaOrg({ userId, name: getCloudWorkspaceName(account.name) });
 }
 
 export async function provisionAdditionalLocalOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {

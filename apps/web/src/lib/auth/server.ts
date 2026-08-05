@@ -11,7 +11,13 @@ import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
 import { createCloudBillingRuntime } from "@workspace/cloud/billing";
 import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
 import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
-import { countUsers, provisionLocalOrg, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
+import {
+	countUsers,
+	getCloudWorkspaceName,
+	provisionLocalOrg,
+	provisionUmbrellaOrg,
+	provisionUmbrellaOrgForUser,
+} from "@workspace/lib/db/provisioning";
 import { evaluateSignupAllowed, getSignupAllowlist } from "./policies";
 
 let cloudBillingRuntime: ReturnType<typeof createCloudBillingRuntime> | undefined;
@@ -64,15 +70,26 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			// hooks don't fire for existing users. The after hook provisions the
 			// user's umbrella org (mirroring local's user.create.after below);
 			// brands attach to it via the create-brand flow (canCreateBrands).
-			const cloudOptions = getCloudAuthOptions();
-			cloudBillingRuntime = createCloudBillingRuntime();
-			const rejectDisposableEmail = cloudOptions.databaseHooks?.user?.create?.before;
-			return {
+				const cloudOptions = getCloudAuthOptions();
+				cloudBillingRuntime = createCloudBillingRuntime();
+				const rejectDisposableEmail = cloudOptions.databaseHooks?.user?.create?.before;
+				const repairCloudSession = cloudOptions.databaseHooks?.session?.create?.after;
+				return {
 				...cloudOptions,
 				additionalPlugins: [...(cloudOptions.additionalPlugins ?? []), cloudBillingRuntime.plugin],
-				databaseHooks: {
-					...cloudOptions.databaseHooks,
-					user: {
+					databaseHooks: {
+						...cloudOptions.databaseHooks,
+						session: {
+							...cloudOptions.databaseHooks?.session,
+							create: {
+								...cloudOptions.databaseHooks?.session?.create,
+								after: async (session, context) => {
+									await repairCloudSession?.(session, context);
+									await provisionUmbrellaOrgForUser(session.userId);
+								},
+							},
+						},
+						user: {
 						...cloudOptions.databaseHooks?.user,
 						create: {
 							...cloudOptions.databaseHooks?.user?.create,
@@ -82,12 +99,13 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 								}
 								await rejectDisposableEmail?.(user, context);
 							},
-							after: async (user) => {
-								await provisionUmbrellaOrg({
-									userId: user.id,
-									name: user.name?.trim() ? `${user.name.trim()}'s workspace` : "My workspace",
-								});
-							},
+								after: async (user) => {
+									try {
+										await provisionUmbrellaOrg({ userId: user.id, name: getCloudWorkspaceName(user.name) });
+									} catch (error) {
+										console.error("[cloud-provisioning] Signup workspace provisioning will retry at sign-in", error);
+									}
+								},
 						},
 					},
 				},

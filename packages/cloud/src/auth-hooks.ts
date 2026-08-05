@@ -3,7 +3,7 @@
  *
  * Public self-serve signup: email/password with required verification,
  * Google OAuth, Resend transactional email, and disposable-domain blocking.
- * Org provisioning stays in the create-brand flow — no user.create.after hook.
+ * Workspace provisioning is injected by the web auth composition layer.
  */
 import { APIError } from "better-auth/api";
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
