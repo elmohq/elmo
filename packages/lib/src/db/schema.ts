@@ -3,6 +3,7 @@ import {
 	bigint,
 	boolean,
 	check,
+	foreignKey,
 	index,
 	integer,
 	json,
@@ -55,9 +56,10 @@ export const brands = pgTable(
 			.$onUpdate(() => new Date())
 			.notNull(),
 	},
-	(table) => ({
-		organizationIdIdx: index("brands_organization_id_idx").on(table.organizationId),
-	}),
+	(table) => [
+		index("brands_organization_id_idx").on(table.organizationId),
+		uniqueIndex("brands_id_organization_id_uidx").on(table.id, table.organizationId),
+	],
 ).enableRLS();
 
 export const prompts = pgTable(
@@ -77,10 +79,11 @@ export const prompts = pgTable(
 			.$onUpdate(() => new Date())
 			.notNull(),
 	},
-	(table) => ({
-		brandIdIdx: index("prompts_brand_id_idx").on(table.brandId),
-		brandIdEnabledIdx: index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
-	}),
+	(table) => [
+		index("prompts_brand_id_idx").on(table.brandId),
+		index("prompts_brand_id_enabled_idx").on(table.brandId, table.enabled),
+		uniqueIndex("prompts_id_brand_id_uidx").on(table.id, table.brandId),
+	],
 ).enableRLS();
 
 export const competitors = pgTable("competitors", {
@@ -476,6 +479,7 @@ export const brandTargetSelections = pgTable(
 	},
 	(table) => [
 		uniqueIndex("brand_target_selections_brand_target_uidx").on(table.brandId, table.targetKey),
+		uniqueIndex("brand_target_selections_identity_uidx").on(table.id, table.brandId, table.targetKey),
 		index("brand_target_selections_brand_enabled_idx").on(table.brandId, table.enabled),
 		check(
 			"brand_target_selections_requested_cadence_check",
@@ -491,12 +495,8 @@ export const promptTargetAssignments = pgTable(
 		brandId: text("brand_id")
 			.notNull()
 			.references(() => brands.id, { onDelete: "cascade" }),
-		promptId: uuid("prompt_id")
-			.notNull()
-			.references(() => prompts.id, { onDelete: "cascade" }),
-		brandTargetSelectionId: uuid("brand_target_selection_id").references(() => brandTargetSelections.id, {
-			onDelete: "set null",
-		}),
+		promptId: uuid("prompt_id").notNull(),
+		brandTargetSelectionId: uuid("brand_target_selection_id"),
 		targetKey: text("target_key").notNull(),
 		source: promptTargetAssignmentSourceEnum().notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
@@ -508,8 +508,23 @@ export const promptTargetAssignments = pgTable(
 	},
 	(table) => [
 		uniqueIndex("prompt_target_assignments_prompt_target_uidx").on(table.promptId, table.targetKey),
+		uniqueIndex("prompt_target_assignments_identity_uidx").on(table.id, table.brandId, table.promptId, table.targetKey),
 		index("prompt_target_assignments_brand_enabled_idx").on(table.brandId, table.enabled),
 		index("prompt_target_assignments_selection_idx").on(table.brandTargetSelectionId),
+		foreignKey({
+			name: "prompt_target_assignments_prompt_brand_fk",
+			columns: [table.promptId, table.brandId],
+			foreignColumns: [prompts.id, prompts.brandId],
+		}).onDelete("cascade"),
+		foreignKey({
+			name: "prompt_target_assignments_selection_identity_fk",
+			columns: [table.brandTargetSelectionId, table.brandId, table.targetKey],
+			foreignColumns: [brandTargetSelections.id, brandTargetSelections.brandId, brandTargetSelections.targetKey],
+		}).onDelete("restrict"),
+		check(
+			"prompt_target_assignments_selection_source_check",
+			sql`(${table.source} = 'brand_selection' AND ${table.brandTargetSelectionId} IS NOT NULL) OR (${table.source} <> 'brand_selection' AND ${table.brandTargetSelectionId} IS NULL)`,
+		),
 	],
 ).enableRLS();
 
@@ -548,9 +563,7 @@ export const trackingSchedules = pgTable(
 		promptId: uuid("prompt_id")
 			.notNull()
 			.references(() => prompts.id, { onDelete: "cascade" }),
-		promptTargetAssignmentId: uuid("prompt_target_assignment_id")
-			.notNull()
-			.references(() => promptTargetAssignments.id, { onDelete: "cascade" }),
+		promptTargetAssignmentId: uuid("prompt_target_assignment_id").notNull(),
 		targetKey: text("target_key").notNull(),
 		cadenceMinutes: integer("cadence_minutes").notNull(),
 		samplesPerOccurrence: smallint("samples_per_occurrence").notNull(),
@@ -568,8 +581,19 @@ export const trackingSchedules = pgTable(
 	(table) => [
 		uniqueIndex("tracking_schedules_prompt_target_uidx").on(table.promptId, table.targetKey),
 		uniqueIndex("tracking_schedules_assignment_uidx").on(table.promptTargetAssignmentId),
+		uniqueIndex("tracking_schedules_identity_uidx").on(table.id, table.brandId, table.promptId, table.targetKey),
 		index("tracking_schedules_due_idx").on(table.active, table.nextDueAt),
 		index("tracking_schedules_brand_generation_idx").on(table.brandId, table.generation),
+		foreignKey({
+			name: "tracking_schedules_assignment_identity_fk",
+			columns: [table.promptTargetAssignmentId, table.brandId, table.promptId, table.targetKey],
+			foreignColumns: [
+				promptTargetAssignments.id,
+				promptTargetAssignments.brandId,
+				promptTargetAssignments.promptId,
+				promptTargetAssignments.targetKey,
+			],
+		}).onDelete("cascade"),
 		check("tracking_schedules_cadence_check", sql`${table.cadenceMinutes} > 0`),
 		check("tracking_schedules_samples_check", sql`${table.samplesPerOccurrence} > 0`),
 		check("tracking_schedules_generation_check", sql`${table.generation} > 0`),
@@ -581,9 +605,10 @@ export const trackingOccurrences = pgTable(
 	"tracking_occurrences",
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
-		scheduleId: uuid("schedule_id")
-			.notNull()
-			.references(() => trackingSchedules.id, { onDelete: "cascade" }),
+		brandId: text("brand_id").notNull(),
+		promptId: uuid("prompt_id").notNull(),
+		targetKey: text("target_key").notNull(),
+		scheduleId: uuid("schedule_id").notNull(),
 		dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
 		generation: integer("generation").notNull(),
 		policyVersion: integer("policy_version").notNull(),
@@ -601,7 +626,19 @@ export const trackingOccurrences = pgTable(
 	},
 	(table) => [
 		uniqueIndex("tracking_occurrences_schedule_due_uidx").on(table.scheduleId, table.dueAt),
+		uniqueIndex("tracking_occurrences_identity_uidx").on(table.id, table.brandId, table.promptId, table.targetKey),
 		index("tracking_occurrences_status_due_idx").on(table.status, table.dueAt),
+		index("tracking_occurrences_brand_due_idx").on(table.brandId, table.dueAt),
+		foreignKey({
+			name: "tracking_occurrences_schedule_identity_fk",
+			columns: [table.scheduleId, table.brandId, table.promptId, table.targetKey],
+			foreignColumns: [
+				trackingSchedules.id,
+				trackingSchedules.brandId,
+				trackingSchedules.promptId,
+				trackingSchedules.targetKey,
+			],
+		}).onDelete("cascade"),
 		check("tracking_occurrences_generation_check", sql`${table.generation} > 0`),
 		check("tracking_occurrences_policy_version_check", sql`${table.policyVersion} > 0`),
 		check("tracking_occurrences_task_count_check", sql`${table.expectedTaskCount} > 0`),
@@ -613,9 +650,9 @@ export const trackingTasks = pgTable(
 	"tracking_tasks",
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
-		occurrenceId: uuid("occurrence_id")
-			.notNull()
-			.references(() => trackingOccurrences.id, { onDelete: "cascade" }),
+		brandId: text("brand_id").notNull(),
+		promptId: uuid("prompt_id").notNull(),
+		occurrenceId: uuid("occurrence_id").notNull(),
 		sampleIndex: smallint("sample_index").notNull(),
 		targetKey: text("target_key").notNull(),
 		status: trackingTaskStatusEnum().default("pending").notNull(),
@@ -636,10 +673,68 @@ export const trackingTasks = pgTable(
 	(table) => [
 		uniqueIndex("tracking_tasks_occurrence_sample_uidx").on(table.occurrenceId, table.sampleIndex),
 		uniqueIndex("tracking_tasks_pg_boss_job_uidx").on(table.pgBossJobId),
+		uniqueIndex("tracking_tasks_identity_uidx").on(table.id, table.brandId, table.promptId, table.targetKey),
 		index("tracking_tasks_claim_idx").on(table.status, table.availableAt),
 		index("tracking_tasks_target_idx").on(table.targetKey),
+		foreignKey({
+			name: "tracking_tasks_occurrence_identity_fk",
+			columns: [table.occurrenceId, table.brandId, table.promptId, table.targetKey],
+			foreignColumns: [
+				trackingOccurrences.id,
+				trackingOccurrences.brandId,
+				trackingOccurrences.promptId,
+				trackingOccurrences.targetKey,
+			],
+		}).onDelete("cascade"),
 		check("tracking_tasks_sample_index_check", sql`${table.sampleIndex} >= 0`),
 		check("tracking_tasks_attempt_count_check", sql`${table.attemptCount} >= 0`),
+	],
+).enableRLS();
+
+/**
+ * Atomic budget counter. A reservation increments usedUnits with a conditional
+ * UPDATE and inserts its provider-attempt row in the same transaction.
+ */
+export const trackingUsageBuckets = pgTable(
+	"tracking_usage_buckets",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "restrict" }),
+		usageClass: trackingUsageClassEnum("usage_class").notNull(),
+		quotaKey: text("quota_key").notNull(),
+		periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+		periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+		limitUnits: integer("limit_units").notNull(),
+		usedUnits: integer("used_units").default(0).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("tracking_usage_buckets_period_uidx").on(
+			table.organizationId,
+			table.usageClass,
+			table.quotaKey,
+			table.periodStart,
+		),
+		uniqueIndex("tracking_usage_buckets_attempt_identity_uidx").on(
+			table.id,
+			table.organizationId,
+			table.usageClass,
+			table.periodStart,
+			table.periodEnd,
+		),
+		index("tracking_usage_buckets_expiry_idx").on(table.organizationId, table.periodEnd),
+		check("tracking_usage_buckets_window_check", sql`${table.periodEnd} > ${table.periodStart}`),
+		check("tracking_usage_buckets_limit_check", sql`${table.limitUnits} >= 0`),
+		check(
+			"tracking_usage_buckets_used_check",
+			sql`${table.usedUnits} >= 0 AND ${table.usedUnits} <= ${table.limitUnits}`,
+		),
 	],
 ).enableRLS();
 
@@ -652,20 +747,13 @@ export const trackingProviderAttempts = pgTable(
 	"tracking_provider_attempts",
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
-		taskId: uuid("task_id")
-			.notNull()
-			.references(() => trackingTasks.id, { onDelete: "cascade" }),
-		organizationId: text("organization_id")
-			.notNull()
-			.references(() => organization.id, { onDelete: "cascade" }),
-		brandId: text("brand_id")
-			.notNull()
-			.references(() => brands.id, { onDelete: "cascade" }),
-		promptId: uuid("prompt_id")
-			.notNull()
-			.references(() => prompts.id, { onDelete: "cascade" }),
+		taskId: uuid("task_id").notNull(),
+		organizationId: text("organization_id").notNull(),
+		brandId: text("brand_id").notNull(),
+		promptId: uuid("prompt_id").notNull(),
 		targetKey: text("target_key").notNull(),
 		usageClass: trackingUsageClassEnum("usage_class").notNull(),
+		usageBucketId: uuid("usage_bucket_id"),
 		attemptNumber: smallint("attempt_number").notNull(),
 		status: trackingAttemptStatusEnum().default("reserved").notNull(),
 		provider: text("provider").notNull(),
@@ -701,8 +789,45 @@ export const trackingProviderAttempts = pgTable(
 		index("tracking_provider_attempts_brand_created_idx").on(table.brandId, table.createdAt),
 		index("tracking_provider_attempts_prompt_created_idx").on(table.promptId, table.createdAt),
 		index("tracking_provider_attempts_provider_request_idx").on(table.provider, table.providerRequestId),
+		index("tracking_provider_attempts_usage_bucket_idx").on(table.usageBucketId),
+		foreignKey({
+			name: "tracking_provider_attempts_task_identity_fk",
+			columns: [table.taskId, table.brandId, table.promptId, table.targetKey],
+			foreignColumns: [trackingTasks.id, trackingTasks.brandId, trackingTasks.promptId, trackingTasks.targetKey],
+		}).onDelete("restrict"),
+		foreignKey({
+			name: "tracking_provider_attempts_brand_organization_fk",
+			columns: [table.brandId, table.organizationId],
+			foreignColumns: [brands.id, brands.organizationId],
+		}).onDelete("restrict"),
+		foreignKey({
+			name: "tracking_provider_attempts_prompt_brand_fk",
+			columns: [table.promptId, table.brandId],
+			foreignColumns: [prompts.id, prompts.brandId],
+		}).onDelete("restrict"),
+		foreignKey({
+			name: "tracking_provider_attempts_usage_bucket_identity_fk",
+			columns: [
+				table.usageBucketId,
+				table.organizationId,
+				table.usageClass,
+				table.quotaPeriodStart,
+				table.quotaPeriodEnd,
+			],
+			foreignColumns: [
+				trackingUsageBuckets.id,
+				trackingUsageBuckets.organizationId,
+				trackingUsageBuckets.usageClass,
+				trackingUsageBuckets.periodStart,
+				trackingUsageBuckets.periodEnd,
+			],
+		}).onDelete("restrict"),
 		check("tracking_provider_attempts_attempt_number_check", sql`${table.attemptNumber} > 0`),
 		check("tracking_provider_attempts_usage_units_check", sql`${table.usageUnits} >= 0`),
+		check(
+			"tracking_provider_attempts_counted_bucket_check",
+			sql`${table.countsTowardLimit} = false OR (${table.usageBucketId} IS NOT NULL AND ${table.quotaPeriodStart} IS NOT NULL AND ${table.quotaPeriodEnd} IS NOT NULL)`,
+		),
 		check(
 			"tracking_provider_attempts_quota_window_check",
 			sql`${table.quotaPeriodEnd} IS NULL OR (${table.quotaPeriodStart} IS NOT NULL AND ${table.quotaPeriodEnd} > ${table.quotaPeriodStart})`,
@@ -743,5 +868,7 @@ export type TrackingOccurrence = typeof trackingOccurrences.$inferSelect;
 export type NewTrackingOccurrence = typeof trackingOccurrences.$inferInsert;
 export type TrackingTask = typeof trackingTasks.$inferSelect;
 export type NewTrackingTask = typeof trackingTasks.$inferInsert;
+export type TrackingUsageBucket = typeof trackingUsageBuckets.$inferSelect;
+export type NewTrackingUsageBucket = typeof trackingUsageBuckets.$inferInsert;
 export type TrackingProviderAttempt = typeof trackingProviderAttempts.$inferSelect;
 export type NewTrackingProviderAttempt = typeof trackingProviderAttempts.$inferInsert;
