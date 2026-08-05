@@ -402,6 +402,49 @@ describe("cloud billing configuration validation", () => {
 			}),
 		).toEqual([]);
 	});
+
+	it("validates Claude add-on capacity during initial Checkout", async () => {
+		const fresh = state({
+			subscription: null,
+			usage: {
+				enabledBrands: 1,
+				enabledPrompts: 10,
+				selectedTargetsByBrand: [{ brandId: "brand_1", targetKeys: ["chatgpt"] }],
+				claudePromptAssignments: 23,
+			},
+		});
+
+		await expect(
+			validateCloudInitialCheckout({
+				organizationId: "org_new",
+				planId: "pro",
+				claudeAddonPromptSlots: 3,
+				store: store(fresh),
+			}),
+		).resolves.toEqual([]);
+		await expect(
+			validateCloudInitialCheckout({
+				organizationId: "org_new",
+				planId: "starter",
+				claudeAddonPromptSlots: 1,
+				store: store(fresh),
+			}),
+		).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ code: "claude-addon-not-available" })]));
+	});
+
+	it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+		"rejects invalid initial Checkout add-on quantity %s",
+		async (claudeAddonPromptSlots) => {
+			await expect(
+				validateCloudInitialCheckout({
+					organizationId: "org_new",
+					planId: "pro",
+					claudeAddonPromptSlots,
+					store: store(state({ subscription: null })),
+				}),
+			).rejects.toMatchObject({ code: "invalid-addon-quantity" });
+		},
+	);
 });
 
 describe("cloud Stripe billing mutations", () => {
@@ -524,6 +567,7 @@ describe("cloud Stripe billing mutations", () => {
 					organizationId: "org_1",
 					planId: "starter",
 					interval: "month",
+					claudeAddonPromptSlots: 0,
 					mutationId: `overlap-${status}`,
 					customerEmail: "owner@example.com",
 					successUrl: "https://app.elmo.test/billing?checkout=success",
@@ -667,7 +711,7 @@ describe("cloud Stripe billing mutations", () => {
 		expect(controlStore.projectMutation).toHaveBeenCalledOnce();
 	});
 
-	it("creates one emailed Stripe customer and durable Checkout session for concurrent initial requests", async () => {
+	it("creates one emailed customer and durable Checkout with the selected Claude add-on", async () => {
 		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
 		const customerSearch = vi.fn(async () => ({ data: [] }));
 		const customerCreate = vi.fn(async (params: Stripe.CustomerCreateParams) => ({
@@ -704,8 +748,9 @@ describe("cloud Stripe billing mutations", () => {
 		);
 		const request = {
 			organizationId: "org_1",
-			planId: "starter" as const,
+			planId: "pro" as const,
 			interval: "month" as const,
+			claudeAddonPromptSlots: 3,
 			customerEmail: "owner@example.com",
 			successUrl: "https://app.elmo.test/billing?checkout=success",
 			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
@@ -739,7 +784,10 @@ describe("cloud Stripe billing mutations", () => {
 				automatic_tax: { enabled: true },
 				customer: "cus_1",
 				client_reference_id: "org_1",
-				line_items: [{ price: "price_elmo_cloud_starter_monthly", quantity: 1 }],
+				line_items: [
+					{ price: "price_elmo_cloud_pro_monthly", quantity: 1 },
+					{ price: "price_elmo_cloud_claude_prompt_monthly", quantity: 3 },
+				],
 			}),
 			{ idempotencyKey: "elmo:org_1:checkout:checkout-one" },
 		);
@@ -783,6 +831,7 @@ describe("cloud Stripe billing mutations", () => {
 			organizationId: "org_1",
 			planId: "starter" as const,
 			interval: "month" as const,
+			claudeAddonPromptSlots: 0,
 			customerEmail: "owner@example.com",
 			successUrl: "https://app.elmo.test/billing?checkout=success",
 			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
@@ -792,9 +841,9 @@ describe("cloud Stripe billing mutations", () => {
 		};
 
 		await startCloudInitialCheckout({ ...request, mutationId: "checkout-expiring" });
-		await expect(
-			startCloudInitialCheckout({ ...request, mutationId: "checkout-retry" }),
-		).rejects.toMatchObject({ code: "billing-change-failed" });
+		await expect(startCloudInitialCheckout({ ...request, mutationId: "checkout-retry" })).rejects.toMatchObject({
+			code: "billing-change-failed",
+		});
 		expect(checkoutRetrieve).toHaveBeenCalledOnce();
 		expect(controlStore.failMutation).toHaveBeenCalledOnce();
 	});
@@ -838,6 +887,7 @@ describe("cloud Stripe billing mutations", () => {
 			organizationId: "org_1",
 			planId: "starter" as const,
 			interval: "month" as const,
+			claudeAddonPromptSlots: 0,
 			mutationId: "checkout-applied",
 			customerEmail: "owner@example.com",
 			successUrl: "https://app.elmo.test/billing?checkout=success",
@@ -892,6 +942,7 @@ describe("cloud Stripe billing mutations", () => {
 				organizationId: "org_1",
 				planId: "starter",
 				interval: "month",
+				claudeAddonPromptSlots: 0,
 				mutationId: "checkout-race",
 				customerEmail: "owner@example.com",
 				successUrl: "https://app.elmo.test/billing?checkout=success",
@@ -924,6 +975,7 @@ describe("cloud Stripe billing mutations", () => {
 				organizationId: "org_1",
 				planId: "starter",
 				interval: "month",
+				claudeAddonPromptSlots: 0,
 				mutationId: "checkout-cross-origin",
 				customerEmail: "owner@example.com",
 				successUrl: "https://app.elmo.test/billing?checkout=success",

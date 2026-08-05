@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
-	changeCloudSubscriptionPlan,
 	CloudBillingControlError,
+	changeCloudSubscriptionPlan,
 	getSerializedCloudBillingView,
 	MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS,
 	setCloudClaudeAddonPromptSlots,
@@ -19,10 +19,7 @@ import { isSafeRelativePath } from "@/lib/return-to";
 
 const selfServePlanSchema = z.enum(SELF_SERVE_CLOUD_PLAN_IDS);
 const intervalSchema = z.enum(["month", "year"]);
-const relativeReturnPathSchema = z
-	.string()
-	.max(2_000)
-	.refine(isSafeRelativePath, "Use an application-relative path");
+const relativeReturnPathSchema = z.string().max(2_000).refine(isSafeRelativePath, "Use an application-relative path");
 
 type BillingAction = "view" | "manage";
 
@@ -99,6 +96,7 @@ export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 			organizationId: z.string().min(1),
 			planId: selfServePlanSchema,
 			interval: intervalSchema,
+			claudeAddonPromptSlots: z.number().int().min(0).max(MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS),
 			mutationId: z.uuid(),
 			successPath: relativeReturnPathSchema,
 			cancelPath: relativeReturnPathSchema,
@@ -117,6 +115,7 @@ export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 				organizationId: data.organizationId,
 				planId: data.planId,
 				interval: data.interval,
+				claudeAddonPromptSlots: data.claudeAddonPromptSlots,
 				mutationId: data.mutationId,
 				customerEmail: session.user.email,
 				successUrl: new URL(data.successPath, appUrl).toString(),

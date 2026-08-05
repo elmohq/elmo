@@ -5,23 +5,24 @@
  * without a brand are retained only for the white-label onboarding path.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
+import { inArray } from "drizzle-orm";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { db } from "@workspace/lib/db/db";
-import { brands } from "@workspace/lib/db/schema";
-import { inArray } from "drizzle-orm";
 
 const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
 		brands: { id: string; name: string }[];
 		unprovisionedOrganizations: { id: string; name: string }[];
 		canCreateBrands: boolean;
+		cloudOnboardingOrganizationId: string | null;
 	}> => {
 		const session = await requireAuthSession();
 		const deployment = getDeployment();
@@ -52,6 +53,10 @@ const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 				? []
 				: organizations.filter((organization) => !provisionedOrganizationIds.has(organization.id)),
 			canCreateBrands: deployment.features.canCreateBrands,
+			cloudOnboardingOrganizationId:
+				deployment.mode === "cloud" && scopedBrands.length === 0 && organizations.length === 1
+					? (organizations[0]?.id ?? null)
+					: null,
 		};
 	},
 );
@@ -70,7 +75,16 @@ function OrgSwitcherSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrgSwitcherSkeleton,
-	loader: async () => getBrandSwitcherData(),
+	loader: async () => {
+		const data = await getBrandSwitcherData();
+		if (data.cloudOnboardingOrganizationId) {
+			throw redirect({
+				to: "/app/new",
+				search: { organization: data.cloudOnboardingOrganizationId },
+			});
+		}
+		return data;
+	},
 	component: BrandSwitcherPage,
 });
 

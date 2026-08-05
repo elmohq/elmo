@@ -51,6 +51,15 @@ export const MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS = Math.max(
 	),
 );
 
+function assertValidClaudeAddonQuantity(quantity: number): void {
+	if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS) {
+		throw new CloudBillingControlError(
+			"invalid-addon-quantity",
+			`Claude add-on quantity must be a whole number between 0 and ${MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS}.`,
+		);
+	}
+}
+
 export interface CloudBillingResourceUsage {
 	enabledBrands: number;
 	enabledPrompts: number;
@@ -132,7 +141,7 @@ export interface CloudBillingControlStore {
 		mutation: CloudBillingMutationRecord,
 		session: { id: string; url: string; expiresAt: Date; stripeCustomerId: string },
 		now: Date,
-		): Promise<CloudBillingMutationRecord>;
+	): Promise<CloudBillingMutationRecord>;
 }
 
 export type CloudBillingViolationCode =
@@ -263,18 +272,19 @@ export function validateCloudBillingConfiguration(input: {
 export async function validateCloudInitialCheckout(input: {
 	organizationId: string;
 	planId: SelfServeCloudPlanId;
+	claudeAddonPromptSlots?: number;
 	store?: CloudBillingControlStore;
 	now?: Date;
 }): Promise<CloudBillingViolation[]> {
+	const claudeAddonPromptSlots = input.claudeAddonPromptSlots ?? 0;
+	assertValidClaudeAddonQuantity(claudeAddonPromptSlots);
 	const state = await (input.store ?? createDrizzleCloudBillingControlStore()).load(
 		input.organizationId,
 		input.now ?? new Date(),
 	);
 	return validateCloudBillingConfiguration({
 		planId: input.planId,
-		// Better Auth creates a fresh base-plan-only Checkout Session. Any add-on
-		// is selected explicitly after the new subscription becomes authoritative.
-		claudeAddonPromptSlots: 0,
+		claudeAddonPromptSlots,
 		usage: state.usage,
 	});
 }
@@ -444,10 +454,7 @@ export function createDrizzleCloudBillingControlStore(database: typeof db = db):
 						.where(
 							and(
 								eq(organization.id, organizationId),
-								or(
-									isNull(organization.stripeCustomerId),
-									eq(organization.stripeCustomerId, prepared.stripeCustomerId),
-								),
+								or(isNull(organization.stripeCustomerId), eq(organization.stripeCustomerId, prepared.stripeCustomerId)),
 							),
 						)
 						.returning({ id: organization.id });
@@ -504,10 +511,7 @@ export function createDrizzleCloudBillingControlStore(database: typeof db = db):
 						updatedAt: now,
 					})
 					.where(
-						and(
-							eq(organizationBillingMutations.id, mutation.id),
-							eq(organizationBillingMutations.status, "pending"),
-						),
+						and(eq(organizationBillingMutations.id, mutation.id), eq(organizationBillingMutations.status, "pending")),
 					)
 					.returning({ id: organizationBillingMutations.id });
 				if (failed) {
@@ -529,10 +533,7 @@ export function createDrizzleCloudBillingControlStore(database: typeof db = db):
 					updatedAt: now,
 				})
 				.where(
-					and(
-						eq(organizationBillingMutations.id, mutation.id),
-						eq(organizationBillingMutations.status, "pending"),
-					),
+					and(eq(organizationBillingMutations.id, mutation.id), eq(organizationBillingMutations.status, "pending")),
 				);
 		},
 
@@ -541,10 +542,7 @@ export function createDrizzleCloudBillingControlStore(database: typeof db = db):
 				.select()
 				.from(organizationBillingMutations)
 				.where(
-					and(
-						eq(organizationBillingMutations.status, "pending"),
-						lte(organizationBillingMutations.nextAttemptAt, now),
-					),
+					and(eq(organizationBillingMutations.status, "pending"), lte(organizationBillingMutations.nextAttemptAt, now)),
 				)
 				.orderBy(asc(organizationBillingMutations.nextAttemptAt), asc(organizationBillingMutations.createdAt))
 				.limit(limit);
@@ -841,7 +839,9 @@ function mutationFailureMessage(error: unknown): string {
 function isDefinitiveStripeRejection(error: unknown): boolean {
 	if (!error || typeof error !== "object") return false;
 	const statusCode = (error as { statusCode?: unknown }).statusCode;
-	return typeof statusCode === "number" && statusCode >= 400 && statusCode < 500 && statusCode !== 409 && statusCode !== 429;
+	return (
+		typeof statusCode === "number" && statusCode >= 400 && statusCode < 500 && statusCode !== 409 && statusCode !== 429
+	);
 }
 
 function nextMutationRetryAt(mutation: CloudBillingMutationRecord, now: Date): Date {
@@ -924,7 +924,12 @@ async function executeSubscriptionBillingMutation(input: {
 				{ idempotencyKey: input.mutation.stripeIdempotencyKey },
 			);
 		}
-		await projectAuthoritativeSubscription({ mutation: input.mutation, subscription: authoritative, store: input.store, now });
+		await projectAuthoritativeSubscription({
+			mutation: input.mutation,
+			subscription: authoritative,
+			store: input.store,
+			now,
+		});
 		return { accepted: true, stripeSubscriptionId: subscriptionId };
 	} catch (error) {
 		const message = mutationFailureMessage(error);
@@ -937,14 +942,17 @@ async function executeSubscriptionBillingMutation(input: {
 	}
 }
 
-const CHECKOUT_COMMAND_VERSION = 1;
+const LEGACY_CHECKOUT_COMMAND_VERSION = 1;
+const CHECKOUT_COMMAND_VERSION = 2;
 const CHECKOUT_SESSION_LIFETIME_MILLISECONDS = 60 * 60_000;
 const CUSTOMER_ORGANIZATION_METADATA_KEY = "organizationId";
 const CUSTOMER_TYPE_METADATA_KEY = "customerType";
 
 interface StoredCheckoutCommand {
-	version: typeof CHECKOUT_COMMAND_VERSION;
+	version: typeof LEGACY_CHECKOUT_COMMAND_VERSION | typeof CHECKOUT_COMMAND_VERSION;
 	priceId: string;
+	addonPriceId: string | null;
+	addonQuantity: number;
 	customerId: string;
 	successUrl: string;
 	cancelUrl: string;
@@ -954,14 +962,29 @@ interface StoredCheckoutCommand {
 function storedCheckoutCommand(mutation: CloudBillingMutationRecord): StoredCheckoutCommand {
 	const command = mutation.stripeUpdateParams;
 	if (
-		command.version !== CHECKOUT_COMMAND_VERSION ||
+		(command.version !== LEGACY_CHECKOUT_COMMAND_VERSION && command.version !== CHECKOUT_COMMAND_VERSION) ||
 		typeof command.priceId !== "string" ||
+		command.priceId.trim().length === 0 ||
 		typeof command.customerId !== "string" ||
+		command.customerId.trim().length === 0 ||
 		typeof command.successUrl !== "string" ||
 		typeof command.cancelUrl !== "string" ||
 		!Number.isSafeInteger(command.expiresAtEpochSeconds)
 	) {
 		throw new CloudBillingControlError("invalid-subscription", "Stored Stripe Checkout command is invalid.");
+	}
+	const addonQuantity = command.version === LEGACY_CHECKOUT_COMMAND_VERSION ? 0 : command.addonQuantity;
+	const addonPriceId = command.version === LEGACY_CHECKOUT_COMMAND_VERSION ? null : command.addonPriceId;
+	if (
+		!Number.isSafeInteger(addonQuantity) ||
+		(addonQuantity as number) < 0 ||
+		(addonQuantity as number) > MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS ||
+		((addonQuantity as number) === 0
+			? addonPriceId !== null
+			: typeof addonPriceId !== "string" || addonPriceId.trim().length === 0) ||
+		addonQuantity !== mutation.target.claudeAddonPromptSlots
+	) {
+		throw new CloudBillingControlError("invalid-subscription", "Stored Stripe Checkout add-on command is invalid.");
 	}
 	let successUrl: URL;
 	let cancelUrl: URL;
@@ -972,11 +995,7 @@ function storedCheckoutCommand(mutation: CloudBillingMutationRecord): StoredChec
 		throw new CloudBillingControlError("invalid-subscription", "Stored Stripe Checkout URL is invalid.");
 	}
 	for (const url of [successUrl, cancelUrl]) {
-		if (
-			(url.protocol !== "https:" && url.protocol !== "http:") ||
-			url.username.length > 0 ||
-			url.password.length > 0
-		) {
+		if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username.length > 0 || url.password.length > 0) {
 			throw new CloudBillingControlError("invalid-subscription", "Stored Stripe Checkout URL is invalid.");
 		}
 	}
@@ -986,7 +1005,11 @@ function storedCheckoutCommand(mutation: CloudBillingMutationRecord): StoredChec
 			"Stored Stripe Checkout URLs must use the same application origin.",
 		);
 	}
-	return command as unknown as StoredCheckoutCommand;
+	return {
+		...(command as Omit<StoredCheckoutCommand, "addonPriceId" | "addonQuantity">),
+		addonPriceId: addonPriceId as string | null,
+		addonQuantity: addonQuantity as number,
+	};
 }
 
 function stripeCustomerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer | null): string | null {
@@ -1134,16 +1157,21 @@ async function executeCheckoutMutation(input: {
 				expand: ["subscription"],
 			});
 		} else {
-				session = await input.stripeClient.checkout.sessions.create(
-					{
-						mode: "subscription",
-						automatic_tax: { enabled: true },
-						customer: command.customerId,
+			session = await input.stripeClient.checkout.sessions.create(
+				{
+					mode: "subscription",
+					automatic_tax: { enabled: true },
+					customer: command.customerId,
 					client_reference_id: input.mutation.organizationId,
 					success_url: command.successUrl,
 					cancel_url: command.cancelUrl,
 					expires_at: command.expiresAtEpochSeconds,
-					line_items: [{ price: command.priceId, quantity: 1 }],
+					line_items: [
+						{ price: command.priceId, quantity: 1 },
+						...(command.addonPriceId && command.addonQuantity > 0
+							? [{ price: command.addonPriceId, quantity: command.addonQuantity }]
+							: []),
+					],
 					metadata: {
 						[CLOUD_BILLING_MUTATION_METADATA_KEY]: input.mutation.id,
 						[CLOUD_STRIPE_PLAN_METADATA_KEY]: input.mutation.target.planId,
@@ -1177,10 +1205,16 @@ async function executeCheckoutMutation(input: {
 		}
 		if (session.status === "expired") {
 			await input.store.failMutation(input.mutation, "Stripe Checkout session expired.", now);
-			throw new CloudBillingControlError("billing-change-failed", "The checkout session expired. Start a new checkout.");
+			throw new CloudBillingControlError(
+				"billing-change-failed",
+				"The checkout session expired. Start a new checkout.",
+			);
 		}
 		if (session.status !== "open" || !session.url) {
-			throw new CloudBillingControlError("invalid-subscription", "Stripe Checkout did not return an open hosted session.");
+			throw new CloudBillingControlError(
+				"invalid-subscription",
+				"Stripe Checkout did not return an open hosted session.",
+			);
 		}
 		const recorded = await input.store.recordCheckoutSession(
 			input.mutation,
@@ -1218,6 +1252,7 @@ export async function startCloudInitialCheckout(input: {
 	organizationId: string;
 	planId: SelfServeCloudPlanId;
 	interval: BillingInterval;
+	claudeAddonPromptSlots: number;
 	mutationId: string;
 	customerEmail: string;
 	successUrl: string;
@@ -1226,6 +1261,7 @@ export async function startCloudInitialCheckout(input: {
 	store?: CloudBillingControlStore;
 	now?: Date;
 }): Promise<{ accepted: true; url: string }> {
+	assertValidClaudeAddonQuantity(input.claudeAddonPromptSlots);
 	const store = input.store ?? createDrizzleCloudBillingControlStore();
 	const now = input.now ?? new Date();
 	const customerEmail = input.customerEmail.trim();
@@ -1242,8 +1278,12 @@ export async function startCloudInitialCheckout(input: {
 				"Resolve the existing Stripe subscription before starting another Checkout.",
 			);
 		}
-		assertConfigurationAllowed({ planId: input.planId, claudeAddonPromptSlots: 0, usage: state.usage });
-		const [customer, price] = await Promise.all([
+		assertConfigurationAllowed({
+			planId: input.planId,
+			claudeAddonPromptSlots: input.claudeAddonPromptSlots,
+			usage: state.usage,
+		});
+		const [customer, price, addonPrice] = await Promise.all([
 			ensureOrganizationStripeCustomer({
 				stripeClient: input.stripeClient,
 				organizationId: input.organizationId,
@@ -1252,15 +1292,24 @@ export async function startCloudInitialCheckout(input: {
 				existingCustomerId: state.organization.stripeCustomerId,
 			}),
 			requireExactPrice(input.stripeClient, selfServePriceExpectation(input.planId, input.interval)),
+			input.claudeAddonPromptSlots > 0
+				? requireExactPrice(input.stripeClient, addonPriceExpectation(input.interval))
+				: Promise.resolve(null),
 		]);
 		const expiresAt = new Date(now.getTime() + CHECKOUT_SESSION_LIFETIME_MILLISECONDS);
 		return {
 			stripeSubscriptionId: null,
 			stripeCustomerId: customer.id,
-			target: { planId: input.planId, interval: input.interval, claudeAddonPromptSlots: 0 },
+			target: {
+				planId: input.planId,
+				interval: input.interval,
+				claudeAddonPromptSlots: input.claudeAddonPromptSlots,
+			},
 			stripeUpdateParams: {
 				version: CHECKOUT_COMMAND_VERSION,
 				priceId: price.id,
+				addonPriceId: addonPrice?.id ?? null,
+				addonQuantity: input.claudeAddonPromptSlots,
 				customerId: customer.id,
 				successUrl: input.successUrl,
 				cancelUrl: input.cancelUrl,
@@ -1274,9 +1323,13 @@ export async function startCloudInitialCheckout(input: {
 		result.mutation.kind === "checkout" &&
 		result.mutation.target.planId === input.planId &&
 		result.mutation.target.interval === input.interval &&
-		result.mutation.target.claudeAddonPromptSlots === 0;
+		result.mutation.target.claudeAddonPromptSlots === input.claudeAddonPromptSlots;
 	const mutation = matchingPendingCheckout ? result.mutation : requirePendingMutation(result);
-	assertRequestedMutation(mutation, "checkout", { planId: input.planId, interval: input.interval });
+	assertRequestedMutation(mutation, "checkout", {
+		planId: input.planId,
+		interval: input.interval,
+		claudeAddonPromptSlots: input.claudeAddonPromptSlots,
+	});
 	if (result.state === "applied") {
 		if (mutation.stripeCheckoutSessionUrl) return { accepted: true, url: mutation.stripeCheckoutSessionUrl };
 		throw new CloudBillingControlError("invalid-subscription", "This checkout has already completed.");
@@ -1343,16 +1396,7 @@ export async function setCloudClaudeAddonPromptSlots(input: {
 	stripeClient: Stripe;
 	store?: CloudBillingControlStore;
 }): Promise<{ accepted: true; stripeSubscriptionId: string }> {
-	if (
-		!Number.isSafeInteger(input.quantity) ||
-		input.quantity < 0 ||
-		input.quantity > MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS
-	) {
-		throw new CloudBillingControlError(
-			"invalid-addon-quantity",
-			`Claude add-on quantity must be a whole number between 0 and ${MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS}.`,
-		);
-	}
+	assertValidClaudeAddonQuantity(input.quantity);
 	const store = input.store ?? createDrizzleCloudBillingControlStore();
 	const result = await store.beginMutation(input.organizationId, input.mutationId, "addon", async (state) => {
 		const projected = requireMutableSubscription(state);

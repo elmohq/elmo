@@ -461,6 +461,23 @@ function WorkspaceBillingPage() {
 			return;
 		}
 		if (canStartCheckout) {
+			const requestedPlan = data.plans.find((plan) => plan.id === planId);
+			if (!requestedPlan) {
+				setError("The selected plan is no longer available.");
+				return;
+			}
+			const checkoutAddonQuantity = requestedPlan.entitlements.claudeTracking.enabled ? addonQuantity : 0;
+			const checkoutAddonMaximum = requestedPlan.entitlements.claudeTracking.enabled
+				? requestedPlan.entitlements.claudeTracking.addon.maximumAdditionalPromptSlots
+				: 0;
+			if (
+				!Number.isInteger(checkoutAddonQuantity) ||
+				checkoutAddonQuantity < 0 ||
+				checkoutAddonQuantity > checkoutAddonMaximum
+			) {
+				setError(`Choose between 0 and ${checkoutAddonMaximum} additional Claude prompts for this plan.`);
+				return;
+			}
 			setPending("Opening secure checkout…");
 			try {
 				const billingUrl = cloudBillingPath(organization, {
@@ -476,6 +493,7 @@ function WorkspaceBillingPage() {
 						organizationId: organization,
 						planId,
 						interval,
+						claudeAddonPromptSlots: checkoutAddonQuantity,
 						mutationId: crypto.randomUUID(),
 						successPath,
 						cancelPath: billingUrl,
@@ -719,6 +737,14 @@ function WorkspaceBillingPage() {
 										data.subscription?.planId === plan.id &&
 										data.subscription.interval === interval;
 									const amount = interval === "year" ? plan.annualAmountCents : plan.monthlyAmountCents;
+									const checkoutAddonMaximum = plan.entitlements.claudeTracking.enabled
+										? plan.entitlements.claudeTracking.addon.maximumAdditionalPromptSlots
+										: 0;
+									const invalidCheckoutAddon =
+										canStartCheckout &&
+										plan.entitlements.claudeTracking.enabled &&
+										(!Number.isInteger(addonQuantity) || addonQuantity < 0 || addonQuantity > checkoutAddonMaximum);
+									const checkoutAddonPrice = CLOUD_CLAUDE_PROMPT_ADDON[interval === "year" ? "annual" : "monthly"];
 									return (
 										<Card key={plan.id} className={selected ? "border-primary" : undefined}>
 											<CardHeader>
@@ -742,10 +768,26 @@ function WorkspaceBillingPage() {
 															: "Claude add-on unavailable"}
 													</li>
 												</ul>
+												{canStartCheckout && plan.entitlements.claudeTracking.enabled && (
+													<div className="space-y-2 rounded-md border p-3">
+														<Label htmlFor={`checkout-claude-addon-${plan.id}`}>Additional Claude prompts</Label>
+														<Input
+															id={`checkout-claude-addon-${plan.id}`}
+															type="number"
+															min={0}
+															max={checkoutAddonMaximum}
+															value={addonQuantity}
+															onChange={(event) => setAddonQuantity(Number(event.target.value))}
+														/>
+														<p className="text-xs text-muted-foreground">
+															{formatMoney(checkoutAddonPrice.unitAmountCents)} each per {interval}
+														</p>
+													</div>
+												)}
 												<Button
 													className="w-full"
 													variant={selected ? "secondary" : "default"}
-													disabled={!canSelectPlan || Boolean(pending) || selected}
+													disabled={!canSelectPlan || Boolean(pending) || selected || invalidCheckoutAddon}
 													onClick={() => startPlan(plan.id)}
 												>
 													{selected
@@ -767,9 +809,10 @@ function WorkspaceBillingPage() {
 					{data.subscription?.planId !== "custom" && displayEntitlements?.claudeTracking.enabled && (
 						<Card>
 							<CardHeader>
-								<CardTitle>Claude native web-search prompts</CardTitle>
+								<CardTitle>Additional Claude prompt slots</CardTitle>
 								<CardDescription>
-									Add prompt slots at {formatMoney(addonPrice.unitAmountCents)} each per {addonPeriodLabel}.
+									Add prompt slots at {formatMoney(addonPrice.unitAmountCents)} each per {addonPeriodLabel}. Each slot
+									can use Claude base-model or native web-search tracking.
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="flex flex-wrap items-end gap-3">
