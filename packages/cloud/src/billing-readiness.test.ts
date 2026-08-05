@@ -18,15 +18,24 @@ describe("cloud billing readiness gate", () => {
 		expect(validate).toHaveBeenCalledOnce();
 	});
 
-	it("keeps cloud traffic closed after catalog validation fails", async () => {
-		const error = new Error("duplicate lookup key");
-		const validate = vi.fn(async () => {
-			throw error;
+	it("keeps cloud traffic closed while cooling down after validation fails", async () => {
+		let currentTime = 1_000;
+		const firstError = new Error("Stripe is temporarily unavailable");
+		const validate = vi.fn().mockRejectedValueOnce(firstError).mockResolvedValueOnce(undefined);
+		const assertReady = createCloudBillingReadinessGate({
+			mode: "cloud",
+			validate,
+			retryAfterMs: 30_000,
+			now: () => currentTime,
 		});
-		const assertReady = createCloudBillingReadinessGate({ mode: "cloud", validate });
 
-		await expect(assertReady()).rejects.toBe(error);
-		await expect(assertReady()).rejects.toBe(error);
+		await expect(assertReady()).rejects.toBe(firstError);
+		await expect(assertReady()).rejects.toBe(firstError);
 		expect(validate).toHaveBeenCalledOnce();
+
+		currentTime += 30_000;
+		await expect(assertReady()).resolves.toBeUndefined();
+		await expect(assertReady()).resolves.toBeUndefined();
+		expect(validate).toHaveBeenCalledTimes(2);
 	});
 });
