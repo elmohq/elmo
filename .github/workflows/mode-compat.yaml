@@ -6,9 +6,9 @@
 # One job, one `pnpm install`, two concerns:
 #   1. Boot smoke  — every non-cloud mode in a single process: env validation +
 #                    deployment-factory resolution + auth initialization. No DB.
-#   2. Migrations  — apply to an empty DB, seed an existing local install, then
-#                    re-apply so a future backfill (e.g. #339 brands->org) that
-#                    breaks on existing data fails here before merge.
+#   2. Migrations  — keep the empty-DB check, then separately replay the exact
+#                    pre-cloud schema boundary with representative local and
+#                    white-label data before applying cloud migrations.
 #
 # Runs on every push/PR (no path filter): the job is cheap — one install, an
 # in-process boot smoke, and ~15s of migration checks — so a mode-boot or
@@ -85,3 +85,11 @@ jobs:
 
       - name: Re-apply migrations against seeded data
         run: pnpm -C packages/lib exec drizzle-kit migrate
+
+      # Replays the exact pre-cloud -> cloud boundary in a separate disposable
+      # database. The script itself refuses to run outside CI or against the
+      # ordinary migration database.
+      - name: Rehearse an existing-install cloud schema upgrade
+        env:
+          UPGRADE_DATABASE_URL: postgres://postgres:postgres@localhost:5432/elmo_cloud_upgrade
+        run: pnpm -C packages/lib exec tsx scripts/verify-cloud-upgrade.ts

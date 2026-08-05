@@ -1,0 +1,73 @@
+---
+title: Cloud rollout and rollback
+description: Safe deployment order for the cloud billing and tracking control planes.
+---
+
+The cloud release uses an expand-first, red-green rollout. Migrations 0012–0014
+add the billing and v2 tracking control planes without changing the legacy
+scheduler contract or synthesizing billing, target-selection, or rollout rows.
+Local and white-label installations therefore keep their existing
+`enabled_models` and `delay_override_hours` behavior.
+
+## Deployment order
+
+1. Back up PostgreSQL and verify restoration before changing production.
+2. Apply all database migrations. Treat 0012–0014 as the expand phase; do not
+   remove legacy columns, queues, or scheduler code.
+3. Deploy the worker version that consumes `dispatch-tracking-v2` and
+   `process-tracking-task-v2`. These consumers are inert for brands without an
+   explicit `brand_scheduler_rollouts` row in `v2` mode.
+4. Prepare Stripe before admitting cloud web traffic:
+   - create the catalog prices with the exact lookup keys, amounts, currencies,
+     and intervals defined by the application;
+   - configure `${APP_URL}/api/auth/stripe/webhook` with
+     `STRIPE_WEBHOOK_SECRET`;
+   - create a dedicated portal configuration with subscription updates
+     disabled and set `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`;
+   - set `STRIPE_SECRET_KEY` and confirm the cloud startup readiness check
+     accepts the price catalog and portal configuration.
+5. Deploy the web/control-plane version. Cloud requests fail closed until the
+   Stripe readiness check succeeds; non-cloud modes do not call that check.
+6. Admit only new cloud signups and brands. New cloud brands receive explicit
+   v2 tracking policy and rollout rows transactionally. Existing brands with no
+   rollout row—including every upgraded local or white-label brand—remain on
+   legacy scheduling.
+
+Verify the first cloud brand end to end before increasing traffic: Checkout and
+webhook projection, resolved entitlements, target and Claude prompt assignments,
+schedule materialization, provider attempts, and usage-bucket accounting.
+
+## Rollback
+
+Stop new cloud signups and Checkout first. For each cloud brand being rolled
+back, transactionally change its rollout mode from `v2` to `legacy` and
+increment its generation before rolling back worker or web containers. The v2
+dispatcher only claims explicit current-generation v2 work, and task execution
+rechecks that policy before a provider call.
+
+```sql
+BEGIN;
+UPDATE brand_scheduler_rollouts
+SET mode = 'legacy',
+    generation = generation + 1,
+    last_rolled_back_at = now(),
+    updated_at = now()
+WHERE brand_id IN ('verified-cloud-brand-id')
+  AND mode = 'v2'
+RETURNING brand_id, mode, generation;
+COMMIT;
+```
+
+Verify every returned brand ID before rolling back containers. Never broaden
+this update to brands that were not part of the cloud rollout.
+
+Keep migrations 0012–0014 applied during rollback. Their tables and nullable
+Stripe columns are compatible with local and white-label code, while reversing
+them would be the destructive part of the release. Stripe retries failed
+webhook delivery, so restore a webhook-capable web version before resuming
+billing traffic.
+
+This release has no contract migration. Do not remove `enabled_models`,
+`delay_override_hours`, the legacy queues, or missing-rollout legacy behavior
+until a separately rehearsed release proves every supported deployment has
+completed its cutover.

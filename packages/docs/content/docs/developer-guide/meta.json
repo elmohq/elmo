@@ -5,6 +5,7 @@
 		"development-setup",
 		"commands",
 		"architecture",
+		"cloud-rollout",
 		"configuration",
 		"telemetry",
 		"ai-policy",
