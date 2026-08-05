@@ -57,13 +57,14 @@ export async function analyzeBrandJob(
 	if (cloudData && (job.retryLimit !== 0 || job.retryCount !== 0)) {
 		throw new Error("Cloud analyze-brand jobs must be first-attempt jobs with retries disabled");
 	}
-	if (cloudData && !(await beginCloudBrandAnalysisProviderCall({ jobId: job.id, data: cloudData }))) {
-		throw new Error("Cloud analyze-brand job has no current pending admission");
-	}
+	const cloudProviderInput = cloudData
+		? await beginCloudBrandAnalysisProviderCall({ jobId: job.id, data: cloudData })
+		: undefined;
+	if (cloudData && !cloudProviderInput) throw new Error("Cloud analyze-brand job has no current pending admission");
 	try {
 		const result = await analyzeBrand({
-			website: cloudData?.website ?? legacyData?.website ?? "",
-			brandName: cloudData?.brandName ?? legacyData?.brandName,
+			website: cloudProviderInput?.website ?? legacyData?.website ?? "",
+			brandName: cloudProviderInput?.brandName ?? legacyData?.brandName,
 			...(cloudData
 				? { maxProviderRetries: 0, maxWebSearchUses: CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES }
 				: { maxCompetitors: legacyData?.maxCompetitors, maxPrompts: legacyData?.maxPrompts }),

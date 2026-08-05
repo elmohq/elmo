@@ -10,6 +10,7 @@ import {
 	stripeWebhookEvents,
 } from "@workspace/lib/db/schema";
 import { and, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { applyCloudDataRetentionProjection } from "./data-retention";
 
 export interface CloudStripeWebhookEnvelope {
 	id: string;
@@ -291,6 +292,8 @@ export function createCloudBillingProjectionWriter(conn: DbTransaction): CloudBi
 						),
 					);
 			}
+
+			await applyCloudDataRetentionProjection(conn, projection);
 
 			await reconcileOrganizationTrackingEntitlementsInTransaction({
 				tx: conn,

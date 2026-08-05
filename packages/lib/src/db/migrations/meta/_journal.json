@@ -134,6 +134,13 @@
       "when": 1785909782956,
       "tag": "0018_bounded_brand_analysis",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785913945368,
+      "tag": "0019_retain_canceled_cloud_data",
+      "breakpoints": true
     }
   ]
 }

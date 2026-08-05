@@ -14,6 +14,7 @@
 import { randomUUID } from "node:crypto";
 import { lockOrganizationCapacity } from "@workspace/lib/cloud/advisory-locks";
 import {
+	CLOUD_BRAND_ANALYSIS_JOB_VERSION,
 	CLOUD_BRAND_ANALYSIS_MAX_ADMITTED_JOBS,
 	CLOUD_BRAND_ANALYSIS_QUEUE,
 	type CloudBrandAnalysisJobData,
@@ -290,13 +291,11 @@ export async function enqueueCloudAnalyzeBrand(input: { organizationId: string; 
 			const jobId = randomUUID();
 			const { generation } = decision;
 			const data: CloudBrandAnalysisJobData = {
-				version: 1,
+				version: CLOUD_BRAND_ANALYSIS_JOB_VERSION,
 				organizationId: input.organizationId,
 				brandId: input.brandId,
 				admissionGeneration: generation,
 				requestFingerprint,
-				website: brand.website,
-				brandName: brand.name,
 			};
 
 			if (current) {

@@ -77,13 +77,13 @@ describe("cloud brand-analysis coordinator", () => {
 		];
 		expect(queue).toBe(CLOUD_BRAND_ANALYSIS_QUEUE);
 		expect(data).toMatchObject({
-			version: 1,
+			version: 2,
 			organizationId: "org-1",
 			brandId: "acme",
-			website: "acme.test",
-			brandName: "Acme",
 			admissionGeneration: 1,
 		});
+		expect(data).not.toHaveProperty("website");
+		expect(data).not.toHaveProperty("brandName");
 		expect(options.retryLimit).toBe(0);
 		expect(options.id).toBe(admission.jobId);
 		expect(data.requestFingerprint).toBe(admission.requestFingerprint);

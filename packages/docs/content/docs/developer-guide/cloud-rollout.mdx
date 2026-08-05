@@ -3,7 +3,7 @@ title: Cloud rollout and rollback
 description: Safe deployment order for the cloud billing and tracking control planes.
 ---
 
-The cloud release uses an expand-first, red-green rollout. Migrations 0012–0016
+The cloud release uses an expand-first, red-green rollout. Migrations 0012–0019
 add the billing and v2 tracking control planes without changing the legacy
 scheduler contract or synthesizing billing, target-selection, or rollout rows.
 Local and white-label installations therefore keep their existing
@@ -12,7 +12,7 @@ Local and white-label installations therefore keep their existing
 ## Deployment order
 
 1. Back up PostgreSQL and verify restoration before changing production.
-2. Apply all database migrations. Treat 0012–0016 as the expand phase; do not
+2. Apply all database migrations. Treat 0012–0019 as the expand phase; do not
    remove legacy columns, queues, or scheduler code.
 3. Deploy the worker version that consumes `reconcile-cloud-billing`,
    `dispatch-tracking-v2`, and `process-tracking-task-v2`. Billing reconciliation
@@ -23,6 +23,16 @@ Local and white-label installations therefore keep their existing
    `v2` mode. The worker drains due organization entitlement cursors before
    dispatch, so future custom contract boundaries rebuild only the affected
    workspaces.
+   The same cloud-only billing maintenance job confirms and purges expired
+   cancellation-retention runs. Do not expose the retention-aware web version
+   before migration 0019 and this worker version are live.
+   Confirm the worker has created and registered the
+   `analyze-brand-cloud-v2` consumer before deploying the web sender. That v2
+   queue stores only organization/brand IDs, admission generation, and a
+   one-way request fingerprint; it resolves the current brand name and website
+   behind the provider-start lock instead of persisting customer content in
+   pg-boss. Local and white-label workers continue using the legacy
+   `analyze-brand` contract.
 4. Prepare Stripe before admitting cloud web traffic:
    - create the catalog prices with the exact lookup keys, amounts, currencies,
      and intervals defined by the application;
@@ -91,6 +101,87 @@ testing, then inspect the Customer's email log and exercise failed payment,
 recovery, scheduled cancellation, reactivation, and final cancellation before
 launch.
 
+## Cancellation retention and purge
+
+An accepted authoritative terminal subscription projection (`canceled` or
+`incomplete_expired`) schedules product data deletion 60 days after Stripe's
+actual `ended_at` timestamp. Reversing a scheduled cancellation while the
+subscription is still active never starts the clock. A later active, past-due,
+or otherwise recoverable subscription cancels the open retention run; the
+original run remains as an audit record and cannot be reopened by a stale
+webhook. If that recovery instead ends as `incomplete_expired`, its terminal
+projection starts a new retention cycle. A failed recovery never makes product
+data permanently ineligible for deletion.
+
+Deletion has two durable safety phases. During the final 24 hours the worker
+rechecks the complete Stripe Customer subscription list under the
+organization's billing/capacity lock and records `confirmed`. Purge cannot run
+until both the 60-day boundary and at least one hour after confirmation. It
+then repeats the Stripe check under the same lock immediately before the
+destructive transaction. An unavailable or ambiguous Stripe response fails
+closed, records `last_error`, and leaves all product data intact for retry.
+A pending durable billing mutation—including an open or completed recovery
+Checkout whose subscription has not yet been projected—also defers both phases
+without contacting Stripe or deleting data. An in-flight brand analysis or
+tracking provider call defers both phases too, so its result cannot race a
+workspace purge.
+
+Use this read-only preview before launch and when investigating a due or failed
+run:
+
+```sql
+SELECT
+  retention.id,
+  retention.organization_id,
+  retention.status,
+  retention.source_subscription_status,
+  retention.source_subscription_ended_at,
+  retention.eligible_at,
+  retention.confirmed_at,
+  retention.purge_after,
+  retention.check_attempt_count,
+  retention.last_checked_at,
+  retention.last_error,
+  billing.status AS current_billing_status,
+  billing.stripe_subscription_id AS current_subscription_id,
+  (SELECT count(*) FROM organization_billing_mutations
+   WHERE organization_billing_mutations.organization_id = retention.organization_id
+     AND organization_billing_mutations.status = 'pending') AS pending_billing_mutations,
+  (SELECT count(*) FROM brand_analysis_admissions
+   WHERE brand_analysis_admissions.organization_id = retention.organization_id
+     AND brand_analysis_admissions.status = 'running') AS running_brand_analyses,
+  (SELECT count(*) FROM tracking_provider_attempts
+   WHERE tracking_provider_attempts.organization_id = retention.organization_id
+     AND tracking_provider_attempts.status = 'started') AS started_provider_attempts,
+  (SELECT count(*) FROM brands WHERE brands.organization_id = retention.organization_id) AS brands,
+  (SELECT count(*) FROM reports WHERE reports.organization_id = retention.organization_id) AS reports,
+  (SELECT count(*) FROM apikey WHERE apikey.reference_id = retention.organization_id) AS api_keys
+FROM organization_data_retention_runs AS retention
+LEFT JOIN organization_billing_subscriptions AS billing
+  ON billing.organization_id = retention.organization_id
+WHERE retention.status IN ('scheduled', 'confirmed')
+   OR retention.last_error IS NOT NULL
+ORDER BY retention.eligible_at;
+```
+
+The purge removes organization API keys and organization-owned reports, then
+all brand analysis, opportunity, competitor, citation, raw answer, prompt,
+target-selection, schedule, occurrence, task, and brand rows. Provider attempts
+are retained only as content-free usage/cost audit: task, brand, prompt,
+prompt-run, provider-request, and unstructured error fields are detached or
+cleared and the attempt is stamped with the retention-run ID. Organization,
+membership, user/account, invitation, Stripe subscription/item/mutation,
+webhook inbox, custom-contract revision, usage-bucket, and retention audit rows
+remain available for accounting and support.
+
+Recovery before purge is automatic after Stripe projects the recovered or
+replacement subscription. Verify that the open run becomes `canceled` and that
+tracking entitlement reconciliation resumes before telling the customer their
+workspace is recovered. A `purged` run is terminal: a later subscription starts
+an empty workspace, and product data can only be recovered from a separately
+validated backup. Do not manually change a run to `confirmed` or `purged`; fix
+the Stripe state or worker error and let the authoritative checks retry.
+
 ## Rollback
 
 Stop new cloud signups and Checkout first. For each cloud brand being rolled
@@ -135,7 +226,7 @@ the `resumeCloudTrackingRollouts` operation after restoring a compatible v2
 worker; that operation increments the generation again and makes the
 organization entitlement cursor immediately due.
 
-Keep migrations 0012–0016 applied during rollback. Their tables and nullable
+Keep migrations 0012–0019 applied during rollback. Their tables and nullable
 Stripe columns are compatible with local and white-label code, while reversing
 them would be the destructive part of the release. Stripe retries failed
 webhook delivery, so restore a webhook-capable web version before resuming

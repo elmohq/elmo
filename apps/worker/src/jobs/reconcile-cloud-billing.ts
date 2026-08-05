@@ -2,6 +2,7 @@ import {
 	CLOUD_BILLING_RECONCILIATION_QUEUE,
 	reconcilePendingCloudBillingMutations,
 } from "@workspace/cloud/billing-control";
+import { reconcileCloudDataRetention } from "@workspace/cloud/data-retention";
 import { createCloudStripeClient } from "@workspace/cloud/stripe-client";
 import { reconcileAuthoritativeCloudSubscriptions } from "@workspace/cloud/subscription-reconciliation";
 import type { Job } from "pg-boss";
@@ -18,6 +19,7 @@ export async function reconcileCloudBillingJob(jobs: Job<ReconcileCloudBillingDa
 		// project a pre-mutation Stripe snapshot after the command succeeds.
 		let mutations: Awaited<ReturnType<typeof reconcilePendingCloudBillingMutations>> | undefined;
 		let subscriptions: Awaited<ReturnType<typeof reconcileAuthoritativeCloudSubscriptions>> | undefined;
+		let retention: Awaited<ReturnType<typeof reconcileCloudDataRetention>> | undefined;
 		const errors: unknown[] = [];
 		try {
 			mutations = await reconcilePendingCloudBillingMutations({ stripeClient });
@@ -29,11 +31,36 @@ export async function reconcileCloudBillingJob(jobs: Job<ReconcileCloudBillingDa
 		} catch (error) {
 			errors.push(error);
 		}
+		if (errors.length === 0) {
+			try {
+				retention = await reconcileCloudDataRetention({ stripeClient });
+				if (retention.errors.length > 0) {
+					errors.push(new AggregateError(retention.errors, `${retention.failed} cloud data-retention check(s) failed`));
+				}
+			} catch (error) {
+				errors.push(error);
+			}
+		}
 		if (
 			(mutations && mutations.applied + mutations.failed + mutations.pending + mutations.deferred > 0) ||
-			(subscriptions && subscriptions.reconciled > 0)
+			(subscriptions && subscriptions.reconciled > 0) ||
+			(retention && retention.due + retention.failed > 0)
 		) {
-			console.log(`[${CLOUD_BILLING_RECONCILIATION_QUEUE}]`, { mutations, subscriptions });
+			console.log(`[${CLOUD_BILLING_RECONCILIATION_QUEUE}]`, {
+				mutations,
+				subscriptions,
+				retention: retention
+					? {
+							due: retention.due,
+							confirmed: retention.confirmed,
+							purged: retention.purged,
+							canceled: retention.canceled,
+							deferred: retention.deferred,
+							superseded: retention.superseded,
+							failed: retention.failed,
+						}
+					: undefined,
+			});
 		}
 		if (errors.length > 0) {
 			throw new AggregateError(errors, `${errors.length} cloud billing reconciliation phase(s) failed`);

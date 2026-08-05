@@ -29,7 +29,7 @@ vi.mock("@workspace/lib/cloud/brand-analysis-admission", () => ({
 		!!value &&
 		typeof value === "object" &&
 		"version" in value &&
-		value.version === 1 &&
+		value.version === 2 &&
 		"organizationId" in value &&
 		typeof value.organizationId === "string" &&
 		"requestFingerprint" in value &&
@@ -68,13 +68,11 @@ function job(
 }
 
 const cloudData = {
-	version: 1 as const,
+	version: 2 as const,
 	organizationId: "org-1",
 	brandId: "acme",
 	admissionGeneration: 1,
 	requestFingerprint: "a".repeat(64),
-	website: "acme.test",
-	brandName: "Acme",
 };
 
 describe("analyze-brand durable cloud projection", () => {
@@ -83,7 +81,7 @@ describe("analyze-brand durable cloud projection", () => {
 		mocks.begin.mockReset();
 		mocks.complete.mockReset();
 		mocks.fail.mockReset();
-		mocks.begin.mockResolvedValue(true);
+		mocks.begin.mockResolvedValue({ website: "acme.test", brandName: "Acme" });
 	});
 
 	it("persists a cloud result before completing the queue job", async () => {

@@ -32,6 +32,7 @@
 		"./cloud/entitlements": "./src/cloud/entitlements.ts",
 		"./cloud/advisory-locks": "./src/cloud/advisory-locks.ts",
 		"./cloud/brand-analysis-admission": "./src/cloud/brand-analysis-admission.ts",
+		"./cloud/data-retention-purge": "./src/cloud/data-retention-purge.ts",
 		"./cloud/entitlement-reconciliation": "./src/cloud/entitlement-reconciliation.ts",
 		"./cloud/custom-entitlements": "./src/cloud/custom-entitlements.ts",
 		"./cloud/api-resources": "./src/cloud/api-resources.ts",

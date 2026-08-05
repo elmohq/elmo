@@ -20,7 +20,7 @@ import {
 const jobId = "11111111-1111-4111-8111-111111111111";
 const brand = { id: "acme", name: "Acme", website: "acme.test", enabled: true };
 const data: CloudBrandAnalysisJobData = {
-	version: 1,
+	version: 2,
 	organizationId: "org-1",
 	brandId: brand.id,
 	admissionGeneration: 1,
@@ -29,16 +29,17 @@ const data: CloudBrandAnalysisJobData = {
 		brandName: brand.name,
 		website: brand.website,
 	}),
-	website: brand.website,
-	brandName: brand.name,
 };
 
-function transaction(authoritativeBrand = brand, updateResult: unknown[] = [{ brandId: brand.id }]) {
+function transaction(
+	authoritativeBrand: typeof brand | null = brand,
+	updateResult: unknown[] = [{ brandId: brand.id }],
+) {
 	const returning = vi.fn(async () => updateResult);
 	const updateWhere = vi.fn(() => ({ returning }));
 	const set = vi.fn(() => ({ where: updateWhere }));
 	const update = vi.fn(() => ({ set }));
-	const forUpdate = vi.fn(async () => [authoritativeBrand]);
+	const forUpdate = vi.fn(async () => (authoritativeBrand ? [authoritativeBrand] : []));
 	const select = vi.fn(() => ({
 		from: () => ({
 			where: () => ({
@@ -58,7 +59,10 @@ describe("cloud brand-analysis provider-start fence", () => {
 			run({ tx: fake.tx, resolved: { mode: "cloud", access: "allowed" } }),
 		);
 
-		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBe(true);
+		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toEqual({
+			website: brand.website,
+			brandName: brand.name,
+		});
 		expect(mocks.withEntitlements).toHaveBeenCalledWith(
 			expect.objectContaining({ mode: "cloud", organizationId: "org-1" }),
 		);
@@ -75,7 +79,7 @@ describe("cloud brand-analysis provider-start fence", () => {
 			run({ tx: fake.tx, resolved: { mode: "cloud", access: "allowed" } }),
 		);
 
-		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBe(false);
+		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBeNull();
 		expect(fake.update).not.toHaveBeenCalled();
 	});
 
@@ -84,14 +88,24 @@ describe("cloud brand-analysis provider-start fence", () => {
 		mocks.withEntitlements.mockImplementationOnce(async ({ run }) =>
 			run({ tx: disabled.tx, resolved: { mode: "cloud", access: "allowed" } }),
 		);
-		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBe(false);
+		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBeNull();
 		expect(disabled.update).not.toHaveBeenCalled();
 
 		const missing = transaction(brand, []);
 		mocks.withEntitlements.mockImplementationOnce(async ({ run }) =>
 			run({ tx: missing.tx, resolved: { mode: "cloud", access: "allowed" } }),
 		);
-		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBe(false);
+		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBeNull();
+	});
+
+	it("does not return customer inputs after retention deletes the brand", async () => {
+		const deleted = transaction(null, []);
+		mocks.withEntitlements.mockImplementationOnce(async ({ run }) =>
+			run({ tx: deleted.tx, resolved: { mode: "cloud", access: "allowed" } }),
+		);
+
+		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toBeNull();
+		expect(deleted.update).not.toHaveBeenCalled();
 	});
 
 	it("does not consume an admission after a downgrade leaves the organization over capacity", async () => {

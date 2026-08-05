@@ -11,6 +11,7 @@
 		"./billing": "./src/billing.ts",
 		"./billing-control": "./src/billing-control.ts",
 		"./billing-readiness": "./src/billing-readiness.ts",
+		"./data-retention": "./src/data-retention.ts",
 		"./stripe-client": "./src/stripe-client.ts",
 		"./subscription-reconciliation": "./src/subscription-reconciliation.ts"
 	},

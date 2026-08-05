@@ -254,6 +254,9 @@ export const reports = pgTable(
 	"reports",
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		// Nullable for deployment modes whose report generator predates
+		// organizations. Cloud-created reports must carry this ownership scope.
+		organizationId: text("organization_id").references(() => organization.id, { onDelete: "restrict" }),
 		brandName: text("brand_name").notNull(),
 		brandWebsite: text("brand_website").notNull(),
 		status: reportStatusEnum().notNull().default("pending"),
@@ -268,6 +271,7 @@ export const reports = pgTable(
 	},
 	(table) => ({
 		createdAtIdx: index("reports_created_at_idx").on(table.createdAt),
+		organizationCreatedAtIdx: index("reports_organization_created_at_idx").on(table.organizationId, table.createdAt),
 	}),
 ).enableRLS();
 
@@ -358,6 +362,13 @@ export const billingSubscriptionItemTypeEnum = pgEnum("billing_subscription_item
 export const billingMutationKindEnum = pgEnum("billing_mutation_kind", ["checkout", "plan", "addon"]);
 
 export const billingMutationStatusEnum = pgEnum("billing_mutation_status", ["pending", "applied", "failed"]);
+
+export const organizationDataRetentionStatusEnum = pgEnum("organization_data_retention_status", [
+	"scheduled",
+	"confirmed",
+	"purged",
+	"canceled",
+]);
 
 export const targetSelectionSourceEnum = pgEnum("target_selection_source", ["plan_default", "user", "operator"]);
 
@@ -589,6 +600,72 @@ export const organizationBillingMutations = pgTable(
 		check("organization_billing_mutations_interval_check", sql`${table.targetBillingInterval} IN ('month', 'year')`),
 		check("organization_billing_mutations_addon_slots_check", sql`${table.targetClaudeAddonPromptSlots} >= 0`),
 		check("organization_billing_mutations_attempt_count_check", sql`${table.attemptCount} >= 0`),
+	],
+).enableRLS();
+
+/**
+ * Append-only terminal-subscription retention cycles. Product deletion is
+ * recorded here instead of on the organization so a later subscription can
+ * start with an empty workspace without erasing an earlier accounting trail.
+ */
+export const organizationDataRetentionRuns = pgTable(
+	"organization_data_retention_runs",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "restrict" }),
+		stripeCustomerId: text("stripe_customer_id").notNull(),
+		stripeSubscriptionId: text("stripe_subscription_id").notNull(),
+		sourceSubscriptionStatus: text("source_subscription_status").notNull(),
+		sourceSubscriptionEndedAt: timestamp("source_subscription_ended_at", { withTimezone: true }).notNull(),
+		eligibleAt: timestamp("eligible_at", { withTimezone: true }).notNull(),
+		sourceSubscriptionSyncedAt: timestamp("source_subscription_synced_at", { withTimezone: true }).notNull(),
+		status: organizationDataRetentionStatusEnum().default("scheduled").notNull(),
+		scheduledAt: timestamp("scheduled_at", { withTimezone: true }).defaultNow().notNull(),
+		confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+		purgeAfter: timestamp("purge_after", { withTimezone: true }),
+		purgedAt: timestamp("purged_at", { withTimezone: true }),
+		canceledAt: timestamp("canceled_at", { withTimezone: true }),
+		cancelReason: text("cancel_reason"),
+		checkAttemptCount: integer("check_attempt_count").default(0).notNull(),
+		lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+		lastError: text("last_error"),
+		purgeSummary: jsonb("purge_summary").$type<Record<string, number>>(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("organization_data_retention_runs_source_uidx").on(
+			table.organizationId,
+			table.stripeSubscriptionId,
+			table.sourceSubscriptionEndedAt,
+		),
+		uniqueIndex("organization_data_retention_runs_open_org_uidx")
+			.on(table.organizationId)
+			.where(sql`${table.status} IN ('scheduled', 'confirmed')`),
+		index("organization_data_retention_runs_due_idx").on(table.status, table.eligibleAt),
+		check(
+			"organization_data_retention_runs_eligibility_check",
+			sql`${table.eligibleAt} = ${table.sourceSubscriptionEndedAt} + INTERVAL '1440 hours'`,
+		),
+		check(
+			"organization_data_retention_runs_source_status_check",
+			sql`${table.sourceSubscriptionStatus} IN ('canceled', 'incomplete_expired')`,
+		),
+		check("organization_data_retention_runs_attempt_count_check", sql`${table.checkAttemptCount} >= 0`),
+		check(
+			"organization_data_retention_runs_state_check",
+			sql`(
+				(${table.status} = 'scheduled' AND ${table.confirmedAt} IS NULL AND ${table.purgeAfter} IS NULL AND ${table.purgedAt} IS NULL AND ${table.canceledAt} IS NULL AND ${table.cancelReason} IS NULL AND ${table.purgeSummary} IS NULL)
+				OR (${table.status} = 'confirmed' AND ${table.confirmedAt} IS NOT NULL AND ${table.purgeAfter} IS NOT NULL AND ${table.purgeAfter} >= ${table.eligibleAt} AND ${table.purgeAfter} > ${table.confirmedAt} AND ${table.purgedAt} IS NULL AND ${table.canceledAt} IS NULL AND ${table.cancelReason} IS NULL AND ${table.purgeSummary} IS NULL)
+				OR (${table.status} = 'purged' AND ${table.confirmedAt} IS NOT NULL AND ${table.purgeAfter} IS NOT NULL AND ${table.purgeAfter} >= ${table.eligibleAt} AND ${table.purgeAfter} > ${table.confirmedAt} AND ${table.purgedAt} IS NOT NULL AND ${table.canceledAt} IS NULL AND ${table.cancelReason} IS NULL AND ${table.purgeSummary} IS NOT NULL)
+				OR (${table.status} = 'canceled' AND ${table.purgedAt} IS NULL AND ${table.canceledAt} IS NOT NULL AND ${table.cancelReason} IS NOT NULL AND ${table.purgeSummary} IS NULL)
+			)`,
+		),
 	],
 ).enableRLS();
 
@@ -904,10 +981,10 @@ export const trackingProviderAttempts = pgTable(
 	"tracking_provider_attempts",
 	{
 		id: uuid("id").defaultRandom().primaryKey().notNull(),
-		taskId: uuid("task_id").notNull(),
+		taskId: uuid("task_id"),
 		organizationId: text("organization_id").notNull(),
-		brandId: text("brand_id").notNull(),
-		promptId: uuid("prompt_id").notNull(),
+		brandId: text("brand_id"),
+		promptId: uuid("prompt_id"),
 		targetKey: text("target_key").notNull(),
 		usageClass: trackingUsageClassEnum("usage_class").notNull(),
 		usageBucketId: uuid("usage_bucket_id"),
@@ -929,6 +1006,9 @@ export const trackingProviderAttempts = pgTable(
 		errorCode: text("error_code"),
 		errorMessage: text("error_message"),
 		promptRunId: uuid("prompt_run_id").references(() => promptRuns.id, { onDelete: "set null" }),
+		retentionRunId: uuid("retention_run_id").references(() => organizationDataRetentionRuns.id, {
+			onDelete: "restrict",
+		}),
 		reservedAt: timestamp("reserved_at", { withTimezone: true }).defaultNow().notNull(),
 		startedAt: timestamp("started_at", { withTimezone: true }),
 		completedAt: timestamp("completed_at", { withTimezone: true }),
@@ -982,6 +1062,13 @@ export const trackingProviderAttempts = pgTable(
 		check("tracking_provider_attempts_attempt_number_check", sql`${table.attemptNumber} > 0`),
 		check("tracking_provider_attempts_usage_units_check", sql`${table.usageUnits} >= 0`),
 		check(
+			"tracking_provider_attempts_retention_state_check",
+			sql`(
+				(${table.retentionRunId} IS NULL AND ${table.taskId} IS NOT NULL AND ${table.brandId} IS NOT NULL AND ${table.promptId} IS NOT NULL)
+				OR (${table.retentionRunId} IS NOT NULL AND ${table.taskId} IS NULL AND ${table.brandId} IS NULL AND ${table.promptId} IS NULL AND ${table.promptRunId} IS NULL)
+			)`,
+		),
+		check(
 			"tracking_provider_attempts_counted_bucket_check",
 			sql`${table.countsTowardLimit} = false OR (${table.usageBucketId} IS NOT NULL AND ${table.quotaPeriodStart} IS NOT NULL AND ${table.quotaPeriodEnd} IS NOT NULL)`,
 		),
@@ -1015,6 +1102,8 @@ export type OrganizationBillingSubscriptionItem = typeof organizationBillingSubs
 export type NewOrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferInsert;
 export type OrganizationBillingMutation = typeof organizationBillingMutations.$inferSelect;
 export type NewOrganizationBillingMutation = typeof organizationBillingMutations.$inferInsert;
+export type OrganizationDataRetentionRun = typeof organizationDataRetentionRuns.$inferSelect;
+export type NewOrganizationDataRetentionRun = typeof organizationDataRetentionRuns.$inferInsert;
 export type OrganizationEntitlementReconciliation = typeof organizationEntitlementReconciliations.$inferSelect;
 export type NewOrganizationEntitlementReconciliation = typeof organizationEntitlementReconciliations.$inferInsert;
 export type BrandTargetSelection = typeof brandTargetSelections.$inferSelect;

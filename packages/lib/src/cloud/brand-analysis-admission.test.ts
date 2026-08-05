@@ -61,16 +61,15 @@ describe("cloud brand-analysis admission", () => {
 
 	it("accepts only the versioned, strict durable job contract", () => {
 		const data = {
-			version: 1 as const,
+			version: 2 as const,
 			organizationId: "org-1",
 			brandId: "acme",
 			admissionGeneration: 1,
 			requestFingerprint: fingerprint,
-			website: "acme.test",
-			brandName: "Acme",
 		};
 		expect(isCloudBrandAnalysisJobData(data)).toBe(true);
 		expect(cloudBrandAnalysisJobDataSchema.safeParse({ ...data, unexpected: true }).success).toBe(false);
+		expect(cloudBrandAnalysisJobDataSchema.safeParse({ ...data, website: "secret.example" }).success).toBe(false);
 		expect(isCloudBrandAnalysisJobData({ ...data, requestFingerprint: "not-a-fingerprint" })).toBe(false);
 		expect(isCloudBrandAnalysisJobData({ ...data, admissionGeneration: 4 })).toBe(false);
 	});

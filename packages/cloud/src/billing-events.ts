@@ -2,6 +2,11 @@ import { CLOUD_PLAN_CATALOG } from "@workspace/config/plans";
 import type Stripe from "stripe";
 import { validateCloudCatalogPrice } from "./billing-catalog";
 import {
+	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
+	CLOUD_STRIPE_CUSTOM_BILLING_SOURCE,
+	CLOUD_STRIPE_PLAN_METADATA_KEY,
+} from "./billing-metadata";
+import {
 	type CloudBillingStore,
 	type CloudBillingSubscriptionItemProjection,
 	type CloudBillingSubscriptionProjection,
@@ -9,10 +14,12 @@ import {
 	createDrizzleCloudBillingStore,
 } from "./billing-store";
 
-export const CLOUD_STRIPE_PLAN_METADATA_KEY = "elmo_plan_id";
-export const CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY = "elmo_billing_source";
-export const CLOUD_STRIPE_CUSTOM_BILLING_SOURCE = "operator";
-export const CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE = "better-auth";
+export {
+	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
+	CLOUD_STRIPE_CUSTOM_BILLING_SOURCE,
+	CLOUD_STRIPE_PLAN_METADATA_KEY,
+	CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE,
+} from "./billing-metadata";
 
 interface SubscriptionEventReference {
 	subscriptionId: string;

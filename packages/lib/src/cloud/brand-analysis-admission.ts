@@ -6,11 +6,14 @@ import { brandAnalysisAdmissions, brands } from "../db/schema";
 import { type OnboardingSuggestion, onboardingSuggestionSchema } from "../onboarding";
 import { assertEnabledBrandCapacity, withOrganizationEntitlementTransaction } from "./capacity";
 
-export const CLOUD_BRAND_ANALYSIS_JOB_VERSION = 1 as const;
-export const CLOUD_BRAND_ANALYSIS_QUEUE = "analyze-brand-cloud-v1";
+export const CLOUD_BRAND_ANALYSIS_JOB_VERSION = 2 as const;
+export const CLOUD_BRAND_ANALYSIS_QUEUE = "analyze-brand-cloud-v2";
 export const CLOUD_BRAND_ANALYSIS_MAX_ADMITTED_JOBS = 3;
 export const CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES = 5;
 
+// Queue payloads intentionally contain no customer-authored name, website, or
+// prompt text. The provider-start fence resolves those inputs from the brand
+// only after it consumes the current durable admission.
 export const cloudBrandAnalysisJobDataSchema = z
 	.object({
 		version: z.literal(CLOUD_BRAND_ANALYSIS_JOB_VERSION),
@@ -18,8 +21,6 @@ export const cloudBrandAnalysisJobDataSchema = z
 		brandId: z.string().min(1),
 		admissionGeneration: z.number().int().positive().max(CLOUD_BRAND_ANALYSIS_MAX_ADMITTED_JOBS).safe(),
 		requestFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-		website: z.string().min(1),
-		brandName: z.string().min(1),
 	})
 	.strict();
 
@@ -103,7 +104,7 @@ export async function beginCloudBrandAnalysisProviderCall(input: {
 	jobId: string;
 	data: CloudBrandAnalysisJobData;
 	now?: Date;
-}): Promise<boolean> {
+}): Promise<{ website: string; brandName: string } | null> {
 	const now = input.now ?? new Date();
 	return withOrganizationEntitlementTransaction({
 		mode: "cloud",
@@ -115,14 +116,14 @@ export async function beginCloudBrandAnalysisProviderCall(input: {
 				.where(and(eq(brands.id, input.data.brandId), eq(brands.organizationId, input.data.organizationId)))
 				.limit(1)
 				.for("update");
-			if (!brand?.enabled) return false;
+			if (!brand?.enabled) return null;
 			await assertEnabledBrandCapacity({ tx, resolved, organizationId: input.data.organizationId });
 			const requestFingerprint = cloudBrandAnalysisRequestFingerprint({
 				brandId: brand.id,
 				brandName: brand.name,
 				website: brand.website,
 			});
-			if (requestFingerprint !== input.data.requestFingerprint) return false;
+			if (requestFingerprint !== input.data.requestFingerprint) return null;
 
 			const [started] = await tx
 				.update(brandAnalysisAdmissions)
@@ -138,7 +139,7 @@ export async function beginCloudBrandAnalysisProviderCall(input: {
 					),
 				)
 				.returning({ brandId: brandAnalysisAdmissions.brandId });
-			return started !== undefined;
+			return started ? { website: brand.website, brandName: brand.name } : null;
 		},
 	});
 }
