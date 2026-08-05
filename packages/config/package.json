@@ -11,7 +11,12 @@
 		"./constants": "./src/constants.ts",
 		"./env": "./src/env.ts",
 		"./env-registry": "./src/env-registry.ts",
-		"./scrape-targets": "./src/scrape-targets.ts"
+		"./scrape-targets": "./src/scrape-targets.ts",
+		"./plans": "./src/plans.ts",
+		"./entitlements": "./src/entitlements.ts"
+	},
+	"dependencies": {
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.2",
