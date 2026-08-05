@@ -71,10 +71,31 @@ export async function requireBrandAccess(userId: string, brandId: string): Promi
 	}
 }
 
+/**
+ * Resolve a brand to its owning organization while enforcing membership.
+ * Callers that need an organization id must use this instead of assuming the
+ * brand id and organization id are equal.
+ */
+export async function requireBrandOrganization(
+	userId: string,
+	brandId: string,
+): Promise<{ id: string; name: string; role: string }> {
+	const [row] = await db
+		.select({ id: organization.id, name: organization.name, role: member.role })
+		.from(brands)
+		.innerJoin(member, and(eq(member.organizationId, brands.organizationId), eq(member.userId, userId)))
+		.innerJoin(organization, eq(organization.id, brands.organizationId))
+		.where(eq(brands.id, brandId))
+		.limit(1);
+	if (!row) throw new Error("Forbidden: No access to this brand");
+	return row;
+}
+
 export async function listUserOrganizations(userId: string): Promise<{ id: string; name: string }[]> {
 	return db
 		.select({ id: organization.id, name: organization.name })
 		.from(member)
 		.innerJoin(organization, eq(member.organizationId, organization.id))
-		.where(eq(member.userId, userId));
+		.where(eq(member.userId, userId))
+		.orderBy(member.createdAt, organization.id);
 }

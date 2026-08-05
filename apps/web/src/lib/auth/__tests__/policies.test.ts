@@ -26,6 +26,7 @@ import {
 	evaluateRequireCanCreateBrands,
 	evaluateRequireOrgAccess,
 	evaluateSignupAllowed,
+	resolveBrandOrganization,
 	type RequestInfo,
 } from "@/lib/auth/policies";
 import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
@@ -473,6 +474,31 @@ describe("evaluateBrandAccess", () => {
 
 	it("denies when the user has no memberships", () => {
 		expect(evaluateBrandAccess([], ORG_A)).toBe("deny");
+	});
+});
+
+describe("resolveBrandOrganization", () => {
+	const ORG_A = "org-a";
+	const ORG_B = "org-b";
+
+	it("uses the sole membership when no workspace is requested", () => {
+		expect(resolveBrandOrganization([ORG_A], undefined)).toEqual({ ok: true, organizationId: ORG_A });
+	});
+
+	it("requires a choice when the user belongs to multiple workspaces", () => {
+		expect(resolveBrandOrganization([ORG_A, ORG_B], undefined)).toEqual({ ok: false, reason: "ambiguous" });
+	});
+
+	it("accepts an explicit workspace membership", () => {
+		expect(resolveBrandOrganization([ORG_A, ORG_B], ORG_B)).toEqual({ ok: true, organizationId: ORG_B });
+	});
+
+	it("rejects an explicit workspace the user does not belong to", () => {
+		expect(resolveBrandOrganization([ORG_A], ORG_B)).toEqual({ ok: false, reason: "forbidden" });
+	});
+
+	it("does not accept a requested workspace when the user has no memberships", () => {
+		expect(resolveBrandOrganization([], ORG_A)).toEqual({ ok: false, reason: "no-organization" });
 	});
 });
 

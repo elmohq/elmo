@@ -1,10 +1,9 @@
 /**
- * /app/new - Create a new brand (local mode only).
+ * /app/new - Create a new brand.
  *
- * Provisions a new organization + admin membership for the current user
- * and seeds the brand row with the supplied name + website. Whitelabel and
- * demo are blocked at both the loader (redirect to /app) and the server
- * function (canCreateBrands policy).
+ * Attaches the brand to an existing workspace and seeds its name and website.
+ * Whitelabel and demo are blocked at both the loader and server-function
+ * policy boundaries.
  */
 import { useState } from "react";
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router";
@@ -14,27 +13,35 @@ import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
 import FullPageCard from "@/components/full-page-card";
 import { trackEvent } from "@/lib/posthog";
-import { createBrandWithOrgFn } from "@/server/brands";
+import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
+import { createBrandInOrgFn } from "@/server/brands";
 import { getDeployment } from "@/lib/config/server";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 
-const getCanCreateBrands = createServerFn({ method: "GET" }).handler(async () => {
-	return { canCreateBrands: getDeployment().features.canCreateBrands };
-});
+const getNewBrandOptions = createServerFn({ method: "GET" }).handler(
+	async (): Promise<{ canCreateBrands: boolean; organizations: { id: string; name: string }[] }> => {
+		if (!getDeployment().features.canCreateBrands) return { canCreateBrands: false, organizations: [] };
+		const session = await requireAuthSession();
+		return { canCreateBrands: true, organizations: await listUserOrganizations(session.user.id) };
+	},
+);
 
 export const Route = createFileRoute("/_authed/app/new")({
 	loader: async () => {
-		const { canCreateBrands } = await getCanCreateBrands();
+		const { canCreateBrands, organizations } = await getNewBrandOptions();
 		if (!canCreateBrands) {
 			throw redirect({ to: "/app" });
 		}
-		return { canCreateBrands };
+		return { organizations };
 	},
 	component: NewBrandPage,
 });
 
 function NewBrandPage() {
+	const { organizations } = Route.useLoaderData();
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
+	const [organizationId, setOrganizationId] = useState(organizations[0]?.id ?? "");
 	const navigate = useNavigate();
 	const router = useRouter();
 
@@ -46,8 +53,8 @@ function NewBrandPage() {
 			const brandName = (formData.get("brandName") as string)?.trim() ?? "";
 			const website = (formData.get("website") as string)?.trim() ?? "";
 
-			const { brandId } = await createBrandWithOrgFn({
-				data: { brandName, website },
+			const { brandId } = await createBrandInOrgFn({
+				data: { brandName, website, organizationId: organizationId || undefined },
 			});
 			trackEvent("brand_created", { has_website: Boolean(website) });
 
@@ -67,6 +74,24 @@ function NewBrandPage() {
 					<Label htmlFor="brandName">Brand name</Label>
 					<Input id="brandName" name="brandName" type="text" placeholder="Acme" required disabled={isLoading} />
 				</div>
+
+				{organizations.length > 1 && (
+					<div className="space-y-2">
+						<Label htmlFor="organization">Workspace</Label>
+						<Select value={organizationId} onValueChange={setOrganizationId} disabled={isLoading}>
+							<SelectTrigger id="organization" className="w-full">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{organizations.map((organization) => (
+									<SelectItem key={organization.id} value={organization.id}>
+										{organization.name}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
 
 				<div className="space-y-2">
 					<Label htmlFor="website">Website</Label>

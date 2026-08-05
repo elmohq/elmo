@@ -1,11 +1,11 @@
 /**
  * /app - Brand switcher page
  *
- * In single-org mode (local/demo): redirects to the default org
- * In multi-org mode (whitelabel): shows brand switcher
+ * Lists brands across every organization the user belongs to. Organizations
+ * without a brand are retained only for the white-label onboarding path.
  */
 
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
@@ -13,11 +13,14 @@ import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
+import { db } from "@workspace/lib/db/db";
+import { brands } from "@workspace/lib/db/schema";
+import { inArray } from "drizzle-orm";
 
-const getOrganizations = createServerFn({ method: "GET" }).handler(
+const getBrandSwitcherData = createServerFn({ method: "GET" }).handler(
 	async (): Promise<{
-		organizations: { id: string; name: string }[];
-		supportsMultiOrg: boolean;
+		brands: { id: string; name: string }[];
+		unprovisionedOrganizations: { id: string; name: string }[];
 		canCreateBrands: boolean;
 	}> => {
 		const session = await requireAuthSession();
@@ -33,9 +36,21 @@ const getOrganizations = createServerFn({ method: "GET" }).handler(
 		}
 
 		const organizations = await listUserOrganizations(session.user.id);
+		const organizationIds = organizations.map((organization) => organization.id);
+		const scopedBrands =
+			organizationIds.length === 0
+				? []
+				: await db
+						.select({ id: brands.id, name: brands.name, organizationId: brands.organizationId })
+						.from(brands)
+						.where(inArray(brands.organizationId, organizationIds));
+		const provisionedOrganizationIds = new Set(scopedBrands.map((brand) => brand.organizationId));
+
 		return {
-			organizations,
-			supportsMultiOrg: deployment.features.supportsMultiOrg,
+			brands: scopedBrands.map((brand) => ({ id: brand.id, name: brand.name })),
+			unprovisionedOrganizations: deployment.features.canCreateBrands
+				? []
+				: organizations.filter((organization) => !provisionedOrganizationIds.has(organization.id)),
 			canCreateBrands: deployment.features.canCreateBrands,
 		};
 	},
@@ -55,33 +70,33 @@ function OrgSwitcherSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrgSwitcherSkeleton,
-	loader: async () => {
-		const result = await getOrganizations();
-
-		// Single-org mode: redirect to the user's one org (created on signup).
-		if (!result.supportsMultiOrg && result.organizations.length > 0) {
-			throw redirect({ to: "/app/$brand", params: { brand: result.organizations[0].id } });
-		}
-
-		return result;
-	},
+	loader: async () => getBrandSwitcherData(),
 	component: BrandSwitcherPage,
 });
 
 function BrandSwitcherPage() {
-	const { organizations, canCreateBrands } = Route.useLoaderData();
+	const { brands: brandList, unprovisionedOrganizations, canCreateBrands } = Route.useLoaderData();
 
 	return (
 		<FullPageCard title="Brand Switcher" subtitle="Select a brand to get started">
 			<div className="flex flex-col space-y-3 min-w-[200px]">
-				{organizations.length > 0 ? (
-					organizations.map((org: { id: string; name: string }) => (
-						<Button key={org.id} asChild variant="secondary">
-							<Link to="/app/$brand" params={{ brand: org.id }}>
-								{org.name}
-							</Link>
-						</Button>
-					))
+				{brandList.length > 0 || unprovisionedOrganizations.length > 0 ? (
+					<>
+						{brandList.map((brand) => (
+							<Button key={brand.id} asChild variant="secondary">
+								<Link to="/app/$brand" params={{ brand: brand.id }}>
+									{brand.name}
+								</Link>
+							</Button>
+						))}
+						{unprovisionedOrganizations.map((organization) => (
+							<Button key={organization.id} asChild variant="outline">
+								<Link to="/app/$brand" params={{ brand: organization.id }}>
+									Set up {organization.name}
+								</Link>
+							</Button>
+						))}
+					</>
 				) : (
 					<p className="text-muted-foreground text-center">No brands available</p>
 				)}

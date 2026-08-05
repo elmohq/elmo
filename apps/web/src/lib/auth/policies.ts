@@ -282,6 +282,31 @@ export function evaluateBrandAccess(
 }
 
 /**
+ * Select the workspace that owns a newly-created brand.
+ *
+ * A single membership is unambiguous. When a user belongs to multiple
+ * workspaces, ownership affects both access and billing, so the caller must
+ * choose explicitly rather than relying on membership ordering.
+ */
+export type BrandOrganizationChoice =
+	| { ok: true; organizationId: string }
+	| { ok: false; reason: "no-organization" | "forbidden" | "ambiguous" };
+
+export function resolveBrandOrganization(
+	memberOrgIds: readonly string[],
+	requestedOrgId: string | undefined,
+): BrandOrganizationChoice {
+	if (memberOrgIds.length === 0) return { ok: false, reason: "no-organization" };
+	if (requestedOrgId) {
+		return memberOrgIds.includes(requestedOrgId)
+			? { ok: true, organizationId: requestedOrgId }
+			: { ok: false, reason: "forbidden" };
+	}
+	if (memberOrgIds.length === 1) return { ok: true, organizationId: memberOrgIds[0] };
+	return { ok: false, reason: "ambiguous" };
+}
+
+/**
  * Evaluate read-only mode enforcement.
  * Used by `readOnlyMiddleware` for server functions.
  */

@@ -41,46 +41,46 @@ const getBrandData = createServerFn({ method: "GET" })
 		}> => {
 			const session = await requireAuthSession();
 
-			// Verify access
-			const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
-			if (!hasAccess) {
-				return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
-			}
-
-			// Get brand metadata (name from org membership — org exists even if not in DB yet)
-			const orgs = await listUserOrganizations(session.user.id);
-			const orgMeta = orgs.find((o) => o.id === data.brandId);
-			const brandName = orgMeta?.name || data.brandId;
-
-			const admin = isAdmin(session);
-			const reportAccess = hasReportAccess(session);
-
-			// Get brand data from DB
 			const brand = await db.query.brands.findFirst({
 				where: eq(brands.id, data.brandId),
 			});
 
-			if (!brand) {
-				return { brand: null, brandName, isAdmin: admin, hasReportAccess: reportAccess, hasAccess: true };
+			if (brand) {
+				const hasAccess = await checkOrgAccess(session.user.id, brand.organizationId);
+				if (!hasAccess) {
+					return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+				}
+
+				const brandPrompts = await db.query.prompts.findMany({
+					where: eq(prompts.brandId, data.brandId),
+				});
+				const brandCompetitors = await db.query.competitors.findMany({
+					where: eq(competitors.brandId, data.brandId),
+				});
+
+				return {
+					brand: { ...brand, prompts: brandPrompts, competitors: brandCompetitors },
+					brandName: brand.name,
+					isAdmin: isAdmin(session),
+					hasReportAccess: hasReportAccess(session),
+					hasAccess: true,
+				};
 			}
 
-			const brandPrompts = await db.query.prompts.findMany({
-				where: eq(prompts.brandId, data.brandId),
-			});
-
-			const brandCompetitors = await db.query.competitors.findMany({
-				where: eq(competitors.brandId, data.brandId),
-			});
+			// White-label provisions Auth0 organizations before their brand rows.
+			// Only this missing-brand path may interpret the URL id as an org id.
+			const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
+			if (!hasAccess) {
+				return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+			}
+			const orgs = await listUserOrganizations(session.user.id);
+			const orgMeta = orgs.find((organization) => organization.id === data.brandId);
 
 			return {
-				brand: {
-					...brand,
-					prompts: brandPrompts,
-					competitors: brandCompetitors,
-				},
-				brandName: brand.name,
-				isAdmin: admin,
-				hasReportAccess: reportAccess,
+				brand: null,
+				brandName: orgMeta?.name ?? data.brandId,
+				isAdmin: isAdmin(session),
+				hasReportAccess: hasReportAccess(session),
 				hasAccess: true,
 			};
 		},

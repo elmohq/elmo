@@ -4,12 +4,12 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess, requireBrandAccess, listUserOrganizations } from "@/lib/auth/helpers";
-import { evaluateRequireCanCreateBrands } from "@/lib/auth/policies";
+import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
-import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
+import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -17,6 +17,12 @@ import { validateWebsiteUrl } from "@/lib/brand-website";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
+
+const BRAND_ORGANIZATION_ERRORS = {
+	"no-organization": "No organization for the current user",
+	forbidden: "Forbidden: No access to this organization",
+	ambiguous: "Choose a workspace for this brand",
+} as const;
 
 /**
  * Deployment-configured models this brand actually runs, after applying
@@ -191,16 +197,16 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	});
 
 /**
- * Create a new organization + admin membership + brand in one shot for the
- * current user. Used by the local-mode multi-brand "create new brand" flow on
- * the brand switcher. Gated by the canCreateBrands deployment feature so
- * whitelabel (orgs come from Auth0) and demo (read-only) reject it.
+ * Attach a new brand to one of the current user's organizations. Brand ids are
+ * independent from organization ids; the organization is the billing and
+ * authorization boundary shared by all of its brands.
  */
-export const createBrandWithOrgFn = createServerFn({ method: "POST" })
+export const createBrandInOrgFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandName: z.string().min(1).max(100),
 			website: z.string().min(1),
+			organizationId: z.string().optional(),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -221,23 +227,26 @@ export const createBrandWithOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
-		const { orgId } = await provisionAdditionalLocalOrg({
-			userId: session.user.id,
-			name: trimmedName,
-		});
+		const userOrganizations = await listUserOrganizations(session.user.id);
+		const choice = resolveBrandOrganization(
+			userOrganizations.map((organization) => organization.id),
+			data.organizationId,
+		);
+		if (!choice.ok) throw new Error(BRAND_ORGANIZATION_ERRORS[choice.reason]);
 
+		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
 
 		await db.insert(brands).values({
-			id: orgId,
-			organizationId: orgId,
+			id: brandId,
+			organizationId: choice.organizationId,
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
 			enabled: true,
 			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 		});
 
-		return { brandId: orgId };
+		return { brandId };
 	});
 
 /**
