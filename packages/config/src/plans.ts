@@ -26,9 +26,11 @@ export type ClaudeTrackingMode = (typeof CLAUDE_TRACKING_MODES)[number];
 
 export const CUSTOM_ENTITLEMENT_OVERRIDE_VERSION = 1 as const;
 export const MINIMUM_CLOUD_CADENCE_MINUTES = Math.ceil(1440 / 7);
+const POSTGRES_INTEGER_MAX = 2_147_483_647;
+const POSTGRES_SMALLINT_MAX = 32_767;
 
-const nonNegativeSlotCountSchema = z.number().int().nonnegative();
-const positiveSlotCountSchema = z.number().int().positive();
+const nonNegativeSlotCountSchema = z.number().int().nonnegative().max(POSTGRES_INTEGER_MAX);
+const positiveSlotCountSchema = z.number().int().positive().max(POSTGRES_INTEGER_MAX);
 
 export const trackingTargetKeySchema = z
 	.string()
@@ -41,8 +43,8 @@ export const cadencePolicySchema = z.discriminatedUnion("mode", [
 	z
 		.object({
 			mode: z.literal("configurable"),
-			minimumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES),
-			maximumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES),
+		minimumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
+		maximumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
 		})
 		.strict()
 		.superRefine((policy, context) => {
@@ -58,8 +60,8 @@ export const cadencePolicySchema = z.discriminatedUnion("mode", [
 
 export const trackingScheduleSchema = z
 	.object({
-		cadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES),
-		samplesPerEvaluation: z.number().int().positive(),
+		cadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
+		samplesPerEvaluation: z.number().int().positive().max(POSTGRES_SMALLINT_MAX),
 		cadencePolicy: cadencePolicySchema,
 	})
 	.strict()
@@ -93,7 +95,7 @@ export const trackingTargetSelectionSchema = z
 		mode: z.enum(["fixed", "configurable"]),
 		minimumSelected: nonNegativeSlotCountSchema,
 		maximumSelected: nonNegativeSlotCountSchema,
-		targets: z.array(trackingTargetPolicySchema),
+		targets: z.array(trackingTargetPolicySchema).max(POSTGRES_SMALLINT_MAX),
 	})
 	.strict()
 	.superRefine((selection, context) => {
@@ -197,16 +199,48 @@ export const planEntitlementDefinitionSchema = z
 	})
 	.strict()
 	.superRefine((entitlements, context) => {
-		if (!entitlements.claudeTracking.enabled) return;
-
-		const maximumClaudePromptSlots =
-			entitlements.claudeTracking.includedPromptSlots + entitlements.claudeTracking.addon.maximumAdditionalPromptSlots;
-		if (maximumClaudePromptSlots > entitlements.promptSlots) {
+		const fastestDailyUnits = entitlements.trackingTargets.targets
+			.map((target) => {
+				const cadence =
+					target.schedule.cadencePolicy.mode === "configurable"
+						? target.schedule.cadencePolicy.minimumCadenceMinutes
+						: target.schedule.cadenceMinutes;
+				return Math.ceil(1440 / cadence) * target.schedule.samplesPerEvaluation;
+			})
+			.sort((left, right) => right - left)
+			.slice(0, entitlements.trackingTargets.maximumSelected);
+		const maximumStandardDailyUnits =
+			entitlements.promptSlots * fastestDailyUnits.reduce((total, units) => total + units, 0);
+		if (maximumStandardDailyUnits > POSTGRES_INTEGER_MAX) {
 			context.addIssue({
 				code: "custom",
-				message: "Claude prompt slots cannot exceed the plan's tracked prompt slots",
-				path: ["claudeTracking", "addon", "maximumAdditionalPromptSlots"],
+				message: "The standard daily run ceiling exceeds the usage counter's supported range",
+				path: ["trackingTargets"],
 			});
+		}
+
+		if (entitlements.claudeTracking.enabled) {
+			const maximumClaudePromptSlots =
+				entitlements.claudeTracking.includedPromptSlots +
+				entitlements.claudeTracking.addon.maximumAdditionalPromptSlots;
+			if (maximumClaudePromptSlots > entitlements.promptSlots) {
+				context.addIssue({
+					code: "custom",
+					message: "Claude prompt slots cannot exceed the plan's tracked prompt slots",
+					path: ["claudeTracking", "addon", "maximumAdditionalPromptSlots"],
+				});
+			}
+			const maximumClaudeDailyUnits =
+				maximumClaudePromptSlots *
+				Math.ceil(1440 / entitlements.claudeTracking.schedule.cadenceMinutes) *
+				entitlements.claudeTracking.schedule.samplesPerEvaluation;
+			if (maximumClaudeDailyUnits > POSTGRES_INTEGER_MAX) {
+				context.addIssue({
+					code: "custom",
+					message: "The Claude daily run ceiling exceeds the usage counter's supported range",
+					path: ["claudeTracking"],
+				});
+			}
 		}
 	});
 

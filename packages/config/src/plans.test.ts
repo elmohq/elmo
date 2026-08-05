@@ -175,4 +175,22 @@ describe("cloud plan catalog", () => {
 		excessClaudeCapacity.entitlements.claudeTracking.addon.maximumAdditionalPromptSlots = 200;
 		expect(organizationEntitlementOverrideSchema.safeParse(excessClaudeCapacity).success).toBe(false);
 	});
+
+	it("rejects custom run ceilings that cannot be represented by durable usage counters", () => {
+		const excessiveReplication = validCustomOverride();
+		const firstTarget = excessiveReplication.entitlements.trackingTargets.targets[0];
+		if (!firstTarget) throw new Error("Expected a target fixture");
+		firstTarget.schedule.samplesPerEvaluation = 32_768;
+		expect(organizationEntitlementOverrideSchema.safeParse(excessiveReplication).success).toBe(false);
+
+		const excessiveDailyUsage = validCustomOverride();
+		excessiveDailyUsage.entitlements.promptSlots = 2_147_483_647;
+		excessiveDailyUsage.entitlements.claudeTracking.includedPromptSlots = 0;
+		excessiveDailyUsage.entitlements.claudeTracking.addon.maximumAdditionalPromptSlots = 0;
+		const result = organizationEntitlementOverrideSchema.safeParse(excessiveDailyUsage);
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues.some((issue) => issue.message.includes("daily run ceiling"))).toBe(true);
+		}
+	});
 });
