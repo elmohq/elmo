@@ -11,7 +11,8 @@
 		"./billing": "./src/billing.ts",
 		"./billing-control": "./src/billing-control.ts",
 		"./billing-readiness": "./src/billing-readiness.ts",
-		"./stripe-client": "./src/stripe-client.ts"
+		"./stripe-client": "./src/stripe-client.ts",
+		"./subscription-reconciliation": "./src/subscription-reconciliation.ts"
 	},
 	"scripts": {
 		"test": "vitest run"
