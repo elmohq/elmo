@@ -4,9 +4,12 @@ import { CLOUD_STRIPE_PLANS, validateCloudStripePriceCatalog } from "./billing-c
 import {
 	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
 	CLOUD_STRIPE_PLAN_METADATA_KEY,
+	CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE,
 	createCloudStripeEventHandler,
 } from "./billing-events";
 import { type CloudBillingStore, createDrizzleCloudBillingStore } from "./billing-store";
+import { validateCloudInitialCheckout } from "./billing-control";
+import { isCloudPlanId, SELF_SERVE_CLOUD_PLAN_IDS, type SelfServeCloudPlanId } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { member, organizationBillingSubscriptions } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -28,6 +31,10 @@ export interface CloudBillingAuthorizationStore {
 	load(organizationId: string, userId: string): Promise<CloudBillingAuthorizationSnapshot | null>;
 }
 
+export interface CloudInitialCheckoutAuthorizer {
+	validate(organizationId: string, planId: SelfServeCloudPlanId): Promise<boolean>;
+}
+
 export interface CreateCloudBillingRuntimeOptions {
 	stripeClient?: Stripe;
 	stripeSecretKey?: string;
@@ -43,8 +50,6 @@ export interface ValidateCloudBillingStartupOptions {
 	stripeSecretKey?: string;
 	billingPortalConfigurationId?: string;
 }
-
-export const CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE = "better-auth";
 
 export function cloudSelfServeSubscriptionMetadata(planId: string): Record<string, string> {
 	return {
@@ -83,16 +88,35 @@ function canManageBilling(role: string): boolean {
  * prevents its generic upgrade and portal endpoints from bypassing Elmo's
  * validated billing controls once an organization is subscribed.
  */
-export function createCloudOrganizationReferenceAuthorizer(store: CloudBillingAuthorizationStore) {
-	return async ({
-		user,
-		referenceId,
-		action,
-	}: {
-		user: { id: string };
-		referenceId: string;
-		action: CloudBillingReferenceAction;
-	}): Promise<boolean> => {
+
+function getRequestedPlan(context: unknown): SelfServeCloudPlanId | null {
+	if (!context || typeof context !== "object" || !("body" in context)) return null;
+	const body = context.body;
+	if (!body || typeof body !== "object" || !("plan" in body) || typeof body.plan !== "string") return null;
+	return isCloudPlanId(body.plan) && SELF_SERVE_CLOUD_PLAN_IDS.includes(body.plan as SelfServeCloudPlanId)
+		? (body.plan as SelfServeCloudPlanId)
+		: null;
+}
+
+export function createCloudOrganizationReferenceAuthorizer(
+	store: CloudBillingAuthorizationStore,
+	initialCheckout: CloudInitialCheckoutAuthorizer = {
+		validate: async (organizationId, planId) =>
+			(await validateCloudInitialCheckout({ organizationId, planId })).length === 0,
+	},
+) {
+	return async (
+		{
+			user,
+			referenceId,
+			action,
+		}: {
+			user: { id: string };
+			referenceId: string;
+			action: CloudBillingReferenceAction;
+		},
+		context?: unknown,
+	): Promise<boolean> => {
 		const snapshot = await store.load(referenceId, user.id);
 		if (!snapshot) return false;
 		if (action === "list-subscription") return true;
@@ -101,12 +125,13 @@ export function createCloudOrganizationReferenceAuthorizer(store: CloudBillingAu
 		// server control uses a separately validated Stripe configuration.
 		if (action === "billing-portal") return false;
 		if (action === "upgrade-subscription") {
-			return (
+			const mayStartCheckout =
 				snapshot.status === null ||
 				snapshot.status === "canceled" ||
 				snapshot.status === "incomplete" ||
-				snapshot.status === "incomplete_expired"
-			);
+				snapshot.status === "incomplete_expired";
+			const planId = getRequestedPlan(context);
+			return mayStartCheckout && planId !== null && initialCheckout.validate(referenceId, planId);
 		}
 		return true;
 	};
@@ -226,6 +251,7 @@ export {
 	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
 	CLOUD_STRIPE_CUSTOM_BILLING_SOURCE,
 	CLOUD_STRIPE_PLAN_METADATA_KEY,
+	CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE,
 	createCloudStripeEventHandler,
 } from "./billing-events";
 export type {

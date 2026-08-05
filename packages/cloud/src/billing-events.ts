@@ -12,6 +12,7 @@ import {
 export const CLOUD_STRIPE_PLAN_METADATA_KEY = "elmo_plan_id";
 export const CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY = "elmo_billing_source";
 export const CLOUD_STRIPE_CUSTOM_BILLING_SOURCE = "operator";
+export const CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE = "better-auth";
 
 interface SubscriptionEventReference {
 	subscriptionId: string;
@@ -321,7 +322,12 @@ export function createCloudStripeEventHandler(options: CreateCloudStripeEventHan
 	return async (event: Stripe.Event): Promise<void> => {
 		const envelope = webhookEnvelope(event);
 		const claimed = await store.claimWebhookEvent(envelope, now());
-		if (claimed.state !== "claimed") return;
+		if (claimed.state !== "claimed") {
+			if (claimed.state === "complete") return;
+			// The holder may have crashed after acquiring its lease. A successful
+			// response would stop Stripe retries and strand the inbox row forever.
+			throw new Error(`Stripe webhook ${event.id} is already processing; retry after its lease expires`);
+		}
 
 		try {
 			const reference = getSubscriptionEventReference(event);

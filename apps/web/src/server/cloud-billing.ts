@@ -6,6 +6,7 @@ import {
 	getSerializedCloudBillingView,
 	MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS,
 	setCloudClaudeAddonPromptSlots,
+	validateCloudInitialCheckout,
 } from "@workspace/cloud/billing-control";
 import { CLOUD_PLAN_CATALOG, SELF_SERVE_CLOUD_PLAN_IDS } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
@@ -121,10 +122,22 @@ export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 			cancelPath: relativeReturnPathSchema,
 		}),
 	)
-	.handler(async ({ data }): Promise<{ url: string }> => {
+	.handler(async ({ data }): Promise<CloudCheckoutResult> => {
 		requireCloudDeployment();
 		const session = await requireAuthSession();
 		await requireWorkspaceBillingAccess(session.user.id, data.organizationId, "manage");
+		const violations = await validateCloudInitialCheckout({
+			organizationId: data.organizationId,
+			planId: data.planId,
+		});
+		if (violations.length > 0) {
+			return {
+				accepted: false,
+				code: "configuration-over-capacity",
+				message: "The workspace configuration exceeds the requested billing plan.",
+				violations,
+			};
+		}
 		requireCloudBillingRuntime();
 		const result = await billingApi().upgradeSubscription({
 			body: {
@@ -138,8 +151,17 @@ export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 			},
 			headers: getRequestHeaders(),
 		});
-		return { url: result.url };
+		return { accepted: true, url: result.url };
 	});
+
+export type CloudCheckoutResult =
+	| { accepted: true; url: string }
+	| {
+			accepted: false;
+			code: "configuration-over-capacity";
+			message: string;
+			violations: CloudBillingControlError["violations"];
+	  };
 
 export type CloudBillingMutationResult =
 	| { accepted: true; stripeSubscriptionId: string }

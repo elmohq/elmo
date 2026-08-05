@@ -311,4 +311,24 @@ describe("cloud Stripe event handler", () => {
 		expect(stripeClient.subscriptions.retrieve).not.toHaveBeenCalled();
 		expect(replaceSubscription).not.toHaveBeenCalled();
 	});
+
+	it("rejects an in-progress duplicate so Stripe retries beyond a lost lease", async () => {
+		const stripeClient = { subscriptions: { retrieve: vi.fn() } } as unknown as Stripe;
+		const { store, replaceSubscription } = mockStore();
+		store.claimWebhookEvent = vi.fn(async (): Promise<CloudStripeWebhookClaimResult> => ({ state: "processing" }));
+		const handler = createCloudStripeEventHandler({ stripeClient, store });
+
+		await expect(
+			handler(
+				stripeEvent(
+					"customer.subscription.updated",
+					subscription([subscriptionItem("si_base", "elmo_cloud_starter_monthly")]),
+				),
+			),
+		).rejects.toThrow(/already processing; retry after its lease expires/);
+		expect(stripeClient.subscriptions.retrieve).not.toHaveBeenCalled();
+		expect(replaceSubscription).not.toHaveBeenCalled();
+		expect(store.finishWebhookEvent).not.toHaveBeenCalled();
+		expect(store.failWebhookEvent).not.toHaveBeenCalled();
+	});
 });

@@ -7,6 +7,7 @@ import {
 	type CloudBillingMutationState,
 	setCloudClaudeAddonPromptSlots,
 	validateCloudBillingConfiguration,
+	validateCloudInitialCheckout,
 } from "./billing-control";
 
 const emptyUsage = {
@@ -55,6 +56,17 @@ function subscription(items: Array<{ id: string; lookupKey: string; quantity?: n
 				price: {
 					id: `price_${item.id}`,
 					lookup_key: item.lookupKey,
+					active: true,
+					currency: "usd",
+					unit_amount: item.lookupKey.includes("claude_prompt")
+						? item.lookupKey.endsWith("annual")
+							? 5_000
+							: 500
+						: item.lookupKey.includes("business")
+							? item.lookupKey.endsWith("annual")
+								? 649_000
+								: 64_900
+							: 29_900,
 					recurring: {
 						interval: item.lookupKey.endsWith("annual") ? "year" : "month",
 						interval_count: 1,
@@ -99,6 +111,43 @@ function stripeClient(stripeSubscription: Stripe.Subscription) {
 }
 
 describe("cloud billing configuration validation", () => {
+	it("allows a truly new empty workspace to start on Starter", async () => {
+		const fresh = state({
+			subscription: null,
+			usage: {
+				enabledBrands: 0,
+				enabledPrompts: 0,
+				selectedTargetsByBrand: [],
+				claudePromptAssignments: 0,
+			},
+		});
+
+		await expect(
+			validateCloudInitialCheckout({
+				organizationId: "org_new",
+				planId: "starter",
+				store: store(fresh),
+			}),
+		).resolves.toEqual([]);
+	});
+
+	it("blocks a canceled Pro-configured workspace from restarting on Starter", async () => {
+		const canceled = state({
+			subscription: { ...state().subscription!, status: "canceled" },
+			usage: { ...emptyUsage, enabledBrands: 2, enabledPrompts: 150 },
+		});
+
+		await expect(
+			validateCloudInitialCheckout({
+				organizationId: "org_1",
+				planId: "starter",
+				store: store(canceled),
+			}),
+		).resolves.toEqual([
+			expect.objectContaining({ code: "brand-capacity" }),
+			expect.objectContaining({ code: "prompt-capacity" }),
+		]);
+	});
 	it("reports every resource that blocks a downgrade", () => {
 		const violations = validateCloudBillingConfiguration({
 			planId: "starter",
@@ -231,6 +280,64 @@ describe("cloud Stripe billing mutations", () => {
 				organizationId: "org_1",
 				quantity: 1,
 				mutationId: "malformed",
+				stripeClient: stripe.client,
+				store: store(state()),
+			}),
+		).rejects.toMatchObject({ code: "invalid-subscription" });
+		expect(stripe.update).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		["unit_amount", 1],
+		["currency", "eur"],
+		["active", false],
+	] as const)("rejects a current Stripe price with tampered %s", async (field, value) => {
+		const current = subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]);
+		Object.assign(current.items.data[0]!.price, { [field]: value });
+		const stripe = stripeClient(current);
+
+		await expect(
+			setCloudClaudeAddonPromptSlots({
+				organizationId: "org_1",
+				quantity: 1,
+				mutationId: `tampered-${field}`,
+				stripeClient: stripe.client,
+				store: store(state()),
+			}),
+		).rejects.toMatchObject({ code: "invalid-subscription" });
+		expect(stripe.update).not.toHaveBeenCalled();
+	});
+
+	it("rejects a tampered current add-on price", async () => {
+		const current = subscription([
+			{ id: "base", lookupKey: "elmo_cloud_pro_monthly" },
+			{ id: "addon", lookupKey: "elmo_cloud_claude_prompt_monthly", quantity: 2 },
+		]);
+		current.items.data[1]!.price.unit_amount = 1;
+		const stripe = stripeClient(current);
+
+		await expect(
+			setCloudClaudeAddonPromptSlots({
+				organizationId: "org_1",
+				quantity: 3,
+				mutationId: "tampered-addon",
+				stripeClient: stripe.client,
+				store: store(state()),
+			}),
+		).rejects.toMatchObject({ code: "invalid-subscription" });
+		expect(stripe.update).not.toHaveBeenCalled();
+	});
+
+	it("rejects an expanded Stripe customer belonging to another workspace", async () => {
+		const current = subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]);
+		current.customer = { id: "cus_other" } as Stripe.Customer;
+		const stripe = stripeClient(current);
+
+		await expect(
+			setCloudClaudeAddonPromptSlots({
+				organizationId: "org_1",
+				quantity: 1,
+				mutationId: "wrong-customer",
 				stripeClient: stripe.client,
 				store: store(state()),
 			}),

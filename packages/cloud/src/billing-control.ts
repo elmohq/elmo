@@ -14,8 +14,11 @@ import {
 import { and, count, eq, gt, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { identifyCloudPrice, type BillingInterval } from "./billing-catalog";
-import { CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY, CLOUD_STRIPE_PLAN_METADATA_KEY } from "./billing-events";
-import { CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE } from "./billing";
+import {
+	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
+	CLOUD_STRIPE_PLAN_METADATA_KEY,
+	CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE,
+} from "./billing-events";
 
 type DbConnection = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -184,6 +187,25 @@ export function validateCloudBillingConfiguration(input: {
 	return violations;
 }
 
+export async function validateCloudInitialCheckout(input: {
+	organizationId: string;
+	planId: SelfServeCloudPlanId;
+	store?: CloudBillingControlStore;
+	now?: Date;
+}): Promise<CloudBillingViolation[]> {
+	const state = await (input.store ?? createDrizzleCloudBillingControlStore()).load(
+		input.organizationId,
+		input.now ?? new Date(),
+	);
+	return validateCloudBillingConfiguration({
+		planId: input.planId,
+		// Better Auth creates a fresh base-plan-only Checkout Session. Any add-on
+		// is selected explicitly after the new subscription becomes authoritative.
+		claudeAddonPromptSlots: 0,
+		usage: state.usage,
+	});
+}
+
 async function loadCloudBillingMutationState(
 	conn: DbConnection,
 	organizationId: string,
@@ -338,6 +360,23 @@ function parseSelfServeItems(subscription: Stripe.Subscription): ParsedSubscript
 				`Stripe price ${item.price.id} does not match its catalog billing interval.`,
 			);
 		}
+		const expectation =
+			identity.kind === "base_plan" && identity.planId
+				? selfServePriceExpectation(identity.planId, identity.interval)
+				: identity.kind === "premium_addon"
+					? addonPriceExpectation(identity.interval)
+					: null;
+		if (
+			!expectation ||
+			item.price.currency !== expectation.currency ||
+			item.price.unit_amount !== expectation.unitAmountCents ||
+			item.price.active === false
+		) {
+			throw new CloudBillingControlError(
+				"invalid-subscription",
+				`Stripe price ${item.price.id} does not match the compiled billing catalog.`,
+			);
+		}
 		if (identity.kind === "base_plan" && identity.planId) {
 			if ((item.quantity ?? 1) !== 1) {
 				throw new CloudBillingControlError("invalid-subscription", "A self-serve base plan must have quantity 1.");
@@ -377,7 +416,8 @@ async function retrieveSelfServeSubscription(
 	const subscription = await stripeClient.subscriptions.retrieve(projected.stripeSubscriptionId, {
 		expand: ["items.data.price"],
 	});
-	if (typeof subscription.customer === "string" && subscription.customer !== projected.stripeCustomerId) {
+	const stripeCustomerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+	if (stripeCustomerId !== projected.stripeCustomerId) {
 		throw new CloudBillingControlError("invalid-subscription", "Stripe customer does not match this workspace.");
 	}
 	if (subscription.metadata[CLOUD_STRIPE_PLAN_METADATA_KEY] === "custom") {

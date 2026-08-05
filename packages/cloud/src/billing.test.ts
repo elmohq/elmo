@@ -56,11 +56,19 @@ describe("cloud Stripe billing runtime", () => {
 			planId: null,
 			status: null,
 		};
-		const authorize = createCloudOrganizationReferenceAuthorizer({ load: async () => snapshot });
+		const validateCheckout = vi.fn(async () => true);
+		const authorize = createCloudOrganizationReferenceAuthorizer(
+			{ load: async () => snapshot },
+			{ validate: validateCheckout },
+		);
 
 		await expect(
-			authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" }),
+			authorize(
+				{ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" },
+				{ body: { plan: "starter" } },
+			),
 		).resolves.toBe(true);
+		expect(validateCheckout).toHaveBeenCalledWith("org_1", "starter");
 		snapshot = { role: "admin", planId: "pro", status: "active" };
 		await expect(
 			authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" }),
@@ -69,6 +77,22 @@ describe("cloud Stripe billing runtime", () => {
 		await expect(authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "billing-portal" })).resolves.toBe(
 			false,
 		);
+	});
+
+	it("does not let the generic upgrade endpoint bypass restart capacity validation", async () => {
+		const validateCheckout = vi.fn(async () => false);
+		const authorize = createCloudOrganizationReferenceAuthorizer(
+			{ load: async () => ({ role: "admin", planId: "pro", status: "canceled" }) },
+			{ validate: validateCheckout },
+		);
+
+		await expect(
+			authorize(
+				{ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" },
+				{ body: { plan: "starter" } },
+			),
+		).resolves.toBe(false);
+		expect(validateCheckout).toHaveBeenCalledWith("org_1", "starter");
 	});
 
 	it("constructs the Better Auth Stripe plugin for the injected client and store", () => {
