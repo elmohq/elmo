@@ -27,7 +27,8 @@
 		"./secrets": "./src/secrets/index.ts",
 		"./providers": "./src/providers/index.ts",
 		"./providers/models": "./src/providers/models.ts",
-		"./providers/types": "./src/providers/types.ts"
+		"./providers/types": "./src/providers/types.ts",
+		"./cloud/entitlements": "./src/cloud/entitlements.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.26",
