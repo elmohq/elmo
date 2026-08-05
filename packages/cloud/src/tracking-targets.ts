@@ -1,7 +1,7 @@
-import { CLOUD_PLAN_CATALOG, STANDARD_TRACKING_TARGETS } from "@workspace/config/plans";
+import { CLAUDE_NATIVE_WEB_TARGET_KEY, CLOUD_PLAN_CATALOG, STANDARD_TRACKING_TARGETS } from "@workspace/config/plans";
 import { getTrackingTargetKey, type ModelConfig } from "@workspace/config/scrape-targets";
 
-export const CLAUDE_NATIVE_WEB_TARGET_KEY = "claude-native-web" as const;
+export { CLAUDE_NATIVE_WEB_TARGET_KEY };
 
 /**
  * Cloud sells logical answer surfaces, while SCRAPE_TARGETS chooses how each
@@ -43,5 +43,4 @@ export function validateCloudTrackingTargets(configs: readonly ModelConfig[]): v
 			`SCRAPE_TARGETS: "${CLAUDE_NATIVE_WEB_TARGET_KEY}" must use claude:anthropic-api with native web search`,
 		);
 	}
-
 }

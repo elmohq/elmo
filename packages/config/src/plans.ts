@@ -19,6 +19,8 @@ export const STANDARD_TRACKING_TARGETS = [
 
 export type StandardTrackingTarget = (typeof STANDARD_TRACKING_TARGETS)[number];
 
+export const CLAUDE_NATIVE_WEB_TARGET_KEY = "claude-native-web" as const;
+
 export const CLAUDE_TRACKING_MODES = ["base-model", "native-web-search"] as const;
 export type ClaudeTrackingMode = (typeof CLAUDE_TRACKING_MODES)[number];
 
@@ -34,12 +36,46 @@ export const trackingTargetKeySchema = z
 	.max(200)
 	.regex(/^[a-z0-9][a-z0-9-]*$/, "Target keys must use lowercase letters, numbers, and hyphens");
 
+export const cadencePolicySchema = z.discriminatedUnion("mode", [
+	z.object({ mode: z.literal("fixed") }).strict(),
+	z
+		.object({
+			mode: z.literal("configurable"),
+			minimumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES),
+			maximumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES),
+		})
+		.strict()
+		.superRefine((policy, context) => {
+			if (policy.minimumCadenceMinutes > policy.maximumCadenceMinutes) {
+				context.addIssue({
+					code: "custom",
+					message: "minimumCadenceMinutes cannot exceed maximumCadenceMinutes",
+					path: ["minimumCadenceMinutes"],
+				});
+			}
+		}),
+]);
+
 export const trackingScheduleSchema = z
 	.object({
 		cadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES),
 		samplesPerEvaluation: z.number().int().positive(),
+		cadencePolicy: cadencePolicySchema,
 	})
-	.strict();
+	.strict()
+	.superRefine((schedule, context) => {
+		if (
+			schedule.cadencePolicy.mode === "configurable" &&
+			(schedule.cadenceMinutes < schedule.cadencePolicy.minimumCadenceMinutes ||
+				schedule.cadenceMinutes > schedule.cadencePolicy.maximumCadenceMinutes)
+		) {
+			context.addIssue({
+				code: "custom",
+				message: "The default cadence must be within its configurable bounds",
+				path: ["cadenceMinutes"],
+			});
+		}
+	});
 
 export type TrackingSchedule = z.infer<typeof trackingScheduleSchema>;
 
@@ -219,7 +255,7 @@ export interface CloudPlanCatalogEntry {
 }
 
 function schedule(cadenceMinutes: number): TrackingSchedule {
-	return { cadenceMinutes, samplesPerEvaluation: 1 };
+	return { cadenceMinutes, samplesPerEvaluation: 1, cadencePolicy: { mode: "fixed" } };
 }
 
 function targetPolicies(targetKeys: readonly StandardTrackingTarget[], cadenceMinutes: number): TrackingTargetPolicy[] {

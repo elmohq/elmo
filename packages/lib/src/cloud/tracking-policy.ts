@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ResolvedCloudPlanEntitlements } from "@workspace/config/entitlements";
+import { CLAUDE_NATIVE_WEB_TARGET_KEY } from "@workspace/config/plans";
 import type { resolveOrganizationEntitlements } from "./entitlements";
 
 export const CLOUD_TRACKING_DISPATCH_QUEUE = "dispatch-tracking-v2";
@@ -7,7 +8,7 @@ export const CLOUD_TRACKING_TASK_QUEUE = "process-tracking-task-v2";
 export const CLOUD_TRACKING_POLICY_SNAPSHOT_VERSION = 1;
 
 type ResolvedEntitlements = Awaited<ReturnType<typeof resolveOrganizationEntitlements>>;
-type AssignmentSource = "brand_selection" | "premium" | "custom";
+export type TrackingAssignmentSource = "brand_selection" | "premium" | "custom";
 export type TrackingUsageClass = "standard" | "premium" | "custom";
 
 export interface RuntimeTrackingPolicy {
@@ -26,16 +27,25 @@ export interface TrackingPolicySnapshot {
 	webSearchEnabled: boolean;
 	cadenceMinutes: number;
 	samplesPerOccurrence: number;
-	assignmentSource: AssignmentSource;
+	assignmentSource: TrackingAssignmentSource;
 }
 
 function dailyRuns(cadenceMinutes: number, samples: number): number {
 	return Math.ceil(1440 / cadenceMinutes) * samples;
 }
 
+function fastestPermittedCadence(schedule: {
+	cadenceMinutes: number;
+	cadencePolicy: { mode: "fixed" } | { mode: "configurable"; minimumCadenceMinutes: number };
+}): number {
+	return schedule.cadencePolicy.mode === "configurable"
+		? schedule.cadencePolicy.minimumCadenceMinutes
+		: schedule.cadenceMinutes;
+}
+
 function standardDailyLimit(entitlements: ResolvedCloudPlanEntitlements): number {
 	const perTarget = entitlements.trackingTargets.targets
-		.map((target) => dailyRuns(target.schedule.cadenceMinutes, target.schedule.samplesPerEvaluation))
+		.map((target) => dailyRuns(fastestPermittedCadence(target.schedule), target.schedule.samplesPerEvaluation))
 		.sort((a, b) => b - a)
 		.slice(0, entitlements.trackingTargets.maximumSelected);
 	return entitlements.promptSlots * perTarget.reduce((sum, value) => sum + value, 0);
@@ -48,7 +58,7 @@ function standardDailyLimit(entitlements: ResolvedCloudPlanEntitlements): number
  */
 export function resolveRuntimeTrackingPolicy(input: {
 	resolved: ResolvedEntitlements;
-	assignmentSource: AssignmentSource;
+	assignmentSource: TrackingAssignmentSource;
 	targetKey: string;
 	cadenceMinutes: number;
 	samplesPerOccurrence: number;
@@ -59,7 +69,7 @@ export function resolveRuntimeTrackingPolicy(input: {
 	const target = entitlements.trackingTargets.targets.find((candidate) => candidate.targetKey === input.targetKey);
 	if (input.assignmentSource === "brand_selection") {
 		if (!target) return null;
-		if (input.cadenceMinutes < target.schedule.cadenceMinutes) return null;
+		if (input.cadenceMinutes < fastestPermittedCadence(target.schedule)) return null;
 		if (input.samplesPerOccurrence > target.schedule.samplesPerEvaluation) return null;
 		return {
 			usageClass: "standard",
@@ -71,11 +81,11 @@ export function resolveRuntimeTrackingPolicy(input: {
 	if (input.assignmentSource === "premium") {
 		const claude = entitlements.claudeTracking;
 		if (
-			input.targetKey !== "claude-native-web" ||
+			input.targetKey !== CLAUDE_NATIVE_WEB_TARGET_KEY ||
 			!claude.enabled ||
 			!claude.allowedModes.includes("native-web-search") ||
 			!claude.schedule ||
-			input.cadenceMinutes < claude.schedule.cadenceMinutes ||
+			input.cadenceMinutes < fastestPermittedCadence(claude.schedule) ||
 			input.samplesPerOccurrence > claude.schedule.samplesPerEvaluation
 		) {
 			return null;
@@ -93,7 +103,7 @@ export function resolveRuntimeTrackingPolicy(input: {
 	// contract's explicitly enabled Claude surface.
 	if (input.resolved.source.kind !== "organization-override") return null;
 	if (target) {
-		if (input.cadenceMinutes < target.schedule.cadenceMinutes) return null;
+		if (input.cadenceMinutes < fastestPermittedCadence(target.schedule)) return null;
 		if (input.samplesPerOccurrence > target.schedule.samplesPerEvaluation) return null;
 		return {
 			usageClass: "custom",
@@ -104,11 +114,11 @@ export function resolveRuntimeTrackingPolicy(input: {
 
 	const claude = entitlements.claudeTracking;
 	if (
-		input.targetKey !== "claude-native-web" ||
+		input.targetKey !== CLAUDE_NATIVE_WEB_TARGET_KEY ||
 		!claude.enabled ||
 		!claude.allowedModes.includes("native-web-search") ||
 		!claude.schedule ||
-		input.cadenceMinutes < claude.schedule.cadenceMinutes ||
+		input.cadenceMinutes < fastestPermittedCadence(claude.schedule) ||
 		input.samplesPerOccurrence > claude.schedule.samplesPerEvaluation
 	) {
 		return null;
@@ -116,7 +126,8 @@ export function resolveRuntimeTrackingPolicy(input: {
 	return {
 		usageClass: "custom",
 		quotaKey: "custom-claude-daily-v1",
-		limitUnits: claude.totalPromptSlots * dailyRuns(claude.schedule.cadenceMinutes, claude.schedule.samplesPerEvaluation),
+		limitUnits:
+			claude.totalPromptSlots * dailyRuns(claude.schedule.cadenceMinutes, claude.schedule.samplesPerEvaluation),
 	};
 }
 
@@ -135,7 +146,9 @@ export function nextFutureDueAt(dueAt: Date, cadenceMinutes: number, now: Date):
 
 /** A deterministic RFC 4122 UUID derived from a durable scheduling identity. */
 export function stableTrackingId(namespace: "occurrence" | "task", ...parts: Array<string | number>): string {
-	const bytes = createHash("sha256").update(["elmo-cloud-tracking-v2", namespace, ...parts].join("\u001f")).digest();
+	const bytes = createHash("sha256")
+		.update(["elmo-cloud-tracking-v2", namespace, ...parts].join("\u001f"))
+		.digest();
 	bytes[6] = (bytes[6] & 0x0f) | 0x50;
 	bytes[8] = (bytes[8] & 0x3f) | 0x80;
 	const hex = bytes.subarray(0, 16).toString("hex");

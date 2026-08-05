@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { type CloudSubscriptionEntitlementSnapshot, resolveEntitlements } from "./entitlements";
 import { CLAUDE_TRACKING_MODES } from "./plans";
 
+const fixedSchedule = (cadenceMinutes: number, samplesPerEvaluation: number) => ({
+	cadenceMinutes,
+	samplesPerEvaluation,
+	cadencePolicy: { mode: "fixed" as const },
+});
+
 function activeSubscription(
 	planId: string,
 	overrides: Partial<CloudSubscriptionEntitlementSnapshot> = {},
@@ -22,11 +28,11 @@ function customOverride() {
 				targets: [
 					{
 						targetKey: "gpt-5-search",
-						schedule: { cadenceMinutes: 240, samplesPerEvaluation: 1 },
+						schedule: fixedSchedule(240, 1),
 					},
 					{
 						targetKey: "customer-api-target",
-						schedule: { cadenceMinutes: 480, samplesPerEvaluation: 4 },
+						schedule: fixedSchedule(480, 4),
 					},
 				],
 			},
@@ -35,7 +41,7 @@ function customOverride() {
 				allowedModes: [...CLAUDE_TRACKING_MODES],
 				includedPromptSlots: 75,
 				addon: { enabled: true, maximumAdditionalPromptSlots: 125 },
-				schedule: { cadenceMinutes: 1440, samplesPerEvaluation: 1 },
+				schedule: fixedSchedule(1440, 1),
 			},
 		},
 	};

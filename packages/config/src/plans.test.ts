@@ -8,6 +8,12 @@ import {
 	STANDARD_TRACKING_TARGETS,
 } from "./plans";
 
+const fixedSchedule = (cadenceMinutes: number, samplesPerEvaluation: number) => ({
+	cadenceMinutes,
+	samplesPerEvaluation,
+	cadencePolicy: { mode: "fixed" as const },
+});
+
 function validCustomOverride() {
 	return {
 		version: 1 as const,
@@ -21,11 +27,19 @@ function validCustomOverride() {
 				targets: [
 					{
 						targetKey: "gpt-5-search",
-						schedule: { cadenceMinutes: 240, samplesPerEvaluation: 2 },
+						schedule: {
+							cadenceMinutes: 240,
+							samplesPerEvaluation: 2,
+							cadencePolicy: {
+								mode: "configurable" as const,
+								minimumCadenceMinutes: 240,
+								maximumCadenceMinutes: 1440,
+							},
+						},
 					},
 					{
 						targetKey: "customer-api-target",
-						schedule: { cadenceMinutes: 720, samplesPerEvaluation: 3 },
+						schedule: fixedSchedule(720, 3),
 					},
 				],
 			},
@@ -34,7 +48,7 @@ function validCustomOverride() {
 				allowedModes: [...CLAUDE_TRACKING_MODES],
 				includedPromptSlots: 100,
 				addon: { enabled: true, maximumAdditionalPromptSlots: 200 },
-				schedule: { cadenceMinutes: 1440, samplesPerEvaluation: 1 },
+				schedule: fixedSchedule(1440, 1),
 			},
 		},
 	};
@@ -69,7 +83,7 @@ describe("cloud plan catalog", () => {
 			targets: [
 				{
 					targetKey: "chatgpt",
-					schedule: { cadenceMinutes: 1440, samplesPerEvaluation: 1 },
+					schedule: fixedSchedule(1440, 1),
 				},
 			],
 		});
@@ -118,8 +132,12 @@ describe("cloud plan catalog", () => {
 		const override = validCustomOverride();
 		const parsed = organizationEntitlementOverrideSchema.parse(override);
 		expect(parsed.entitlements.trackingTargets.targets.map((target) => target.schedule)).toEqual([
-			{ cadenceMinutes: 240, samplesPerEvaluation: 2 },
-			{ cadenceMinutes: 720, samplesPerEvaluation: 3 },
+			{
+				cadenceMinutes: 240,
+				samplesPerEvaluation: 2,
+				cadencePolicy: { mode: "configurable", minimumCadenceMinutes: 240, maximumCadenceMinutes: 1440 },
+			},
+			fixedSchedule(720, 3),
 		]);
 
 		expect(
@@ -133,24 +151,24 @@ describe("cloud plan catalog", () => {
 
 	it("rejects internally inconsistent or faster-than-contract custom policies", () => {
 		const duplicateTargets = validCustomOverride();
-		duplicateTargets.entitlements.trackingTargets.targets = duplicateTargets.entitlements.trackingTargets.targets.map(
-			(target) => ({
-				...target,
-				targetKey: "gpt-5-search",
-			}),
-		);
+		for (const target of duplicateTargets.entitlements.trackingTargets.targets) target.targetKey = "gpt-5-search";
 		expect(organizationEntitlementOverrideSchema.safeParse(duplicateTargets).success).toBe(false);
 
 		const tooFast = validCustomOverride();
-		tooFast.entitlements.trackingTargets.targets = tooFast.entitlements.trackingTargets.targets.map((target, index) =>
-			index === 0
-				? {
-						...target,
-						schedule: { ...target.schedule, cadenceMinutes: MINIMUM_CLOUD_CADENCE_MINUTES - 1 },
-					}
-				: target,
-		);
+		const tooFastTarget = tooFast.entitlements.trackingTargets.targets[0];
+		if (!tooFastTarget) throw new Error("Expected a target fixture");
+		tooFastTarget.schedule.cadenceMinutes = MINIMUM_CLOUD_CADENCE_MINUTES - 1;
 		expect(organizationEntitlementOverrideSchema.safeParse(tooFast).success).toBe(false);
+
+		const invalidCadenceRange = validCustomOverride();
+		const invalidCadenceTarget = invalidCadenceRange.entitlements.trackingTargets.targets[0];
+		if (!invalidCadenceTarget) throw new Error("Expected a target fixture");
+		invalidCadenceTarget.schedule.cadencePolicy = {
+			mode: "configurable",
+			minimumCadenceMinutes: 1440,
+			maximumCadenceMinutes: 240,
+		};
+		expect(organizationEntitlementOverrideSchema.safeParse(invalidCadenceRange).success).toBe(false);
 
 		const excessClaudeCapacity = validCustomOverride();
 		excessClaudeCapacity.entitlements.claudeTracking.includedPromptSlots = 700;
