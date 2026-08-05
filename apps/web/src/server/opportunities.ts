@@ -22,7 +22,7 @@ import { brandOpportunities, brands, competitors } from "@workspace/lib/db/schem
 import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuthSession, requireOrgAccess } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { extractDomain } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
 import {
@@ -474,7 +474,7 @@ export const getOpportunitiesFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
 	.handler(async ({ data }): Promise<OpportunitiesResponse> => {
 		const session = await requireAuthSession();
-		await requireOrgAccess(session.user.id, data.brandId);
+		await requireBrandAccess(session.user.id, data.brandId);
 
 		// Serve the most recent stored report while it's fresh. Every generation is
 		// kept (append-only); we regenerate only when the latest is stale.

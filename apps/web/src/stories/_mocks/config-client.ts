@@ -10,7 +10,6 @@ export type DeploymentMode = "whitelabel" | "local" | "demo" | "cloud";
 export interface FeaturesConfig {
 	readOnly: boolean;
 	showOptimizeButton: boolean;
-	supportsMultiOrg: boolean;
 	canCreateBrands: boolean;
 }
 
@@ -51,7 +50,6 @@ let _config: ClientConfig = {
 	features: {
 		readOnly: false,
 		showOptimizeButton: false,
-		supportsMultiOrg: false,
 		canCreateBrands: false,
 	},
 	branding: {

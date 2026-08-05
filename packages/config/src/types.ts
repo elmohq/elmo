@@ -22,8 +22,6 @@ export interface FeaturesConfig {
 	readOnly: boolean;
 	/** Whether the optimize button should be shown */
 	showOptimizeButton: boolean;
-	/** Whether multi-org brand switching is supported */
-	supportsMultiOrg: boolean;
 	/**
 	 * Whether the user can create new brands from the UI. True in local and
 	 * cloud modes — whitelabel orgs come from Auth0, demo is read-only.
