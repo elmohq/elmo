@@ -133,7 +133,7 @@ describe("cloud terminal-subscription retention decisions", () => {
 		},
 	);
 
-	it("does not treat a newer terminal failed subscription as recovery", () => {
+	it("fails closed when Stripe has a newer terminal subscription than the projected source", () => {
 		const failedRecovery = subscription({
 			id: "sub_new",
 			status: "incomplete_expired",
@@ -146,7 +146,23 @@ describe("cloud terminal-subscription retention decisions", () => {
 				billing: billing(),
 				subscriptions: [subscription({ id: "sub_1", status: "canceled" }), failedRecovery],
 			}),
-		).toEqual({ action: "confirm" });
+		).toEqual({ action: "cancel", reason: "newer-terminal-subscription:sub_new" });
+	});
+
+	it("fails closed when a later terminal subscription has no authoritative end timestamp", () => {
+		const failedRecovery = subscription({
+			id: "sub_new",
+			status: "incomplete_expired",
+			created: Math.floor(new Date("2026-07-01T00:00:00.000Z").getTime() / 1_000),
+			ended_at: null,
+		});
+		expect(
+			decideCloudDataRetention({
+				run: run("confirmed"),
+				billing: billing(),
+				subscriptions: [subscription({ id: "sub_1", status: "canceled" }), failedRecovery],
+			}),
+		).toEqual({ action: "cancel", reason: "ambiguous-terminal-subscription:sub_new" });
 	});
 
 	it("fails closed when the local billing projection changed", () => {

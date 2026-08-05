@@ -217,12 +217,24 @@ export function decideCloudDataRetention(input: {
 		return { action: "cancel", reason: "billing-projection-changed" };
 	}
 
-	const recoverable = input.subscriptions.find((subscription) => !REMOTE_TERMINAL_STATUSES.has(subscription.status));
+	const managed = input.subscriptions.filter((subscription) => hasManagedCloudBillingMetadata(subscription.metadata));
+	const recoverable = managed.find((subscription) => !REMOTE_TERMINAL_STATUSES.has(subscription.status));
 	if (recoverable) {
 		return { action: "cancel", reason: `recoverable-subscription:${recoverable.id}` };
 	}
 
-	const managed = input.subscriptions.filter((subscription) => hasManagedCloudBillingMetadata(subscription.metadata));
+	for (const subscription of managed) {
+		if (subscription.id === run.stripeSubscriptionId || !isTerminalSubscriptionStatus(subscription.status)) continue;
+		const terminalEndedAt = stripeTimestamp(subscription.ended_at);
+		if (terminalEndedAt && terminalEndedAt > run.sourceSubscriptionEndedAt) {
+			return { action: "cancel", reason: `newer-terminal-subscription:${subscription.id}` };
+		}
+		const terminalCreatedAt = stripeTimestamp(subscription.created);
+		if (!terminalEndedAt && (!terminalCreatedAt || terminalCreatedAt > run.sourceSubscriptionEndedAt)) {
+			return { action: "cancel", reason: `ambiguous-terminal-subscription:${subscription.id}` };
+		}
+	}
+
 	const source = managed.find((subscription) => subscription.id === run.stripeSubscriptionId);
 	if (source?.status !== run.sourceSubscriptionStatus || stripeObjectId(source.customer) !== run.stripeCustomerId) {
 		return { action: "cancel", reason: "authoritative-terminal-subscription-missing" };
