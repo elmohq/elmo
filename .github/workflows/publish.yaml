@@ -1,10 +1,6 @@
-# Manual release workflow - triggered via workflow_dispatch
-
-# Prerequisites:
-# 1. Run `pnpm changeset` locally to create changeset files
-# 2. Run `pnpm version-packages` to bump versions and generate changelogs
-# 3. Commit and push the version changes to main
-# 4. Trigger this workflow from GitHub Actions UI
+# Manual release workflow - triggered from the main branch after versions and
+# changelogs have been committed. Releases are serialized and resumable: the
+# source-SHA image tags are immutable checkpoints for a partially completed run.
 
 # Required secrets:
 # - NPM_TOKEN: npm access token with publish permissions
@@ -12,90 +8,283 @@
 # - DOCKERHUB_TOKEN: Docker Hub access token
 #
 # Optional secrets:
-# - DISCORD_WEBHOOK_URL: when set, the new release is announced to this Discord
-#   webhook (e.g. the #releases channel). Skipped when unset.
+# - DISCORD_WEBHOOK_URL: release announcement webhook
 
 name: Release
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: elmo-production-release
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
+env:
+  SCHEMA_COMPATIBILITY: "0020"
+
 jobs:
-  release:
-    name: Release
+  prepare:
+    name: Validate release identity
     runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
-      contents: write
-      id-token: write
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
+      source-sha: ${{ steps.version.outputs.source-sha }}
+      npm-exists: ${{ steps.npm.outputs.exists }}
+      npm-latest-before: ${{ steps.npm.outputs.latest }}
+      web-state: ${{ steps.images.outputs.web-state }}
+      worker-state: ${{ steps.images.outputs.worker-state }}
+      db-migrate-state: ${{ steps.images.outputs.db-migrate-state }}
+      needs-build: ${{ steps.images.outputs.needs-build }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+      - name: Checkout the workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          cache: pnpm
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build packages
-        run: pnpm build
-
-      - name: Get version
-        id: version
-        run: echo "version=$(node -p "require('./apps/cli/package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Publish packages
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: pnpm release
-          createGithubReleases: false
+      - name: Verify main-branch source
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Create aggregated GitHub release
-        if: steps.changesets.outputs.published == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
-          node scripts/generate-release-notes.mjs "$VERSION" > release-notes.md
-          gh release create "v$VERSION" --title "v$VERSION" --notes-file release-notes.md
-
-      - name: Announce release on Discord
-        if: steps.changesets.outputs.published == 'true'
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          VERSION: ${{ steps.version.outputs.version }}
-          REPO: ${{ github.repository }}
-        run: |
-          if [ -z "${DISCORD_WEBHOOK_URL}" ]; then
-            echo "DISCORD_WEBHOOK_URL not set; skipping Discord announcement."
-            exit 0
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Releases must be dispatched from main; got ${GITHUB_REF}." >&2
+            exit 1
           fi
-          release_url="https://github.com/${REPO}/releases/tag/v${VERSION}"
-          payload=$(jq -n --arg content "🚀 **Elmo v${VERSION}** is out! ${release_url}" '{content: $content}')
-          # Non-fatal: a Discord hiccup must not fail an otherwise-successful release.
-          curl -sS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL" \
-            || echo "Discord announcement failed (non-fatal)."
+          if [ "$(git rev-parse HEAD)" != "$SOURCE_SHA" ]; then
+            echo "Checkout does not match the workflow commit ${SOURCE_SHA}." >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$SOURCE_SHA" origin/main; then
+            echo "Release commit ${SOURCE_SHA} is not contained in origin/main." >&2
+            exit 1
+          fi
+
+      - name: Read and validate the release version
+        id: version
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./apps/cli/package.json').version")
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "This production workflow only accepts stable semantic versions; got ${version}." >&2
+            exit 1
+          fi
+          if ! grep -Fqx "## ${version}" apps/cli/CHANGELOG.md; then
+            echo "apps/cli/CHANGELOG.md has no ${version} release section." >&2
+            exit 1
+          fi
+          cli_schema=$(node <<'NODE'
+          const fs = require("node:fs");
+          const source = fs.readFileSync("apps/cli/src/rollback-compatibility.ts", "utf8");
+          const match = source.match(/export const CLOUD_SCHEMA_COMPATIBILITY = "([^"]+)"/);
+          if (!match) throw new Error("Could not read CLOUD_SCHEMA_COMPATIBILITY");
+          process.stdout.write(match[1]);
+          NODE
+          )
+          if [ "$cli_schema" != "$SCHEMA_COMPATIBILITY" ]; then
+            echo "Workflow schema ${SCHEMA_COMPATIBILITY} does not match CLI schema ${cli_schema}." >&2
+            exit 1
+          fi
+          if find .changeset -maxdepth 1 -type f -name '*.md' ! -name README.md -print -quit | grep -q .; then
+            echo "Unconsumed changesets remain; run pnpm version-packages and commit the result first." >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "source-sha=${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect npm and GitHub release state
+        id: npm
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          registry_metadata="$RUNNER_TEMP/npm-package.json"
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            "https://registry.npmjs.org/@elmohq%2fcli" > "$registry_metadata"
+
+          node - "$registry_metadata" "$VERSION" "$GITHUB_OUTPUT" <<'NODE'
+          const fs = require("node:fs");
+          const [metadataPath, version, outputPath] = process.argv.slice(2);
+          const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+          const latest = metadata["dist-tags"]?.latest ?? "";
+          const exists = Object.hasOwn(metadata.versions ?? {}, version);
+
+          const parseStable = (value, label) => {
+            const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value);
+            if (!match) throw new Error(`${label} is not a stable semantic version: ${value}`);
+            return match.slice(1).map(Number);
+          };
+          const compare = (left, right) => {
+            for (let index = 0; index < 3; index += 1) {
+              if (left[index] !== right[index]) return Math.sign(left[index] - right[index]);
+            }
+            return 0;
+          };
+
+          if (latest) {
+            const ordering = compare(parseStable(version, "Release version"), parseStable(latest, "npm latest"));
+            if (ordering < 0) {
+              throw new Error(`Refusing to release ${version} after newer npm version ${latest}`);
+            }
+            if (!exists && ordering === 0) {
+              throw new Error(`npm latest is ${version}, but that version is missing from its version index`);
+            }
+          }
+          fs.appendFileSync(outputPath, `exists=${exists}\nlatest=${latest}\n`);
+          NODE
+          npm_exists=$(node -p \
+            "String(Object.hasOwn(require(process.argv[1]).versions ?? {}, process.argv[2]))" \
+            "$registry_metadata" "$VERSION")
+
+          tag_error="$RUNNER_TEMP/github-tag-error.txt"
+          if tag_sha=$(gh api "repos/${REPO}/commits/v${VERSION}" --jq .sha 2> "$tag_error"); then
+            if [ "$tag_sha" != "$SOURCE_SHA" ]; then
+              echo "v${VERSION} already resolves to ${tag_sha}, not ${SOURCE_SHA}." >&2
+              exit 1
+            fi
+            tag_exists=true
+          elif grep -q "HTTP 404" "$tag_error"; then
+            tag_exists=false
+          else
+            cat "$tag_error" >&2
+            exit 1
+          fi
+
+          if [ "$npm_exists" = "true" ] && [ "$tag_exists" != "true" ]; then
+            echo "@elmohq/cli@${VERSION} exists without an exact v${VERSION} source tag; refusing to infer its source." >&2
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Inspect immutable image state
+        id: images
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          inspect_optional() {
+            local reference=$1
+            local destination=$2
+            local error_file="${destination}.error"
+            if docker buildx imagetools inspect "$reference" --format '{{json .Manifest}}' > "$destination" 2> "$error_file"; then
+              return 0
+            fi
+            if grep -Eqi 'manifest unknown|not found|no such manifest' "$error_file"; then
+              : > "$destination"
+              return 0
+            fi
+            cat "$error_file" >&2
+            return 1
+          }
+
+          validate_manifest() {
+            local repository=$1
+            local manifest_file=$2
+            local reference=$3
+            jq -e '.digest | strings | test("^sha256:[0-9a-f]{64}$")' "$manifest_file" > /dev/null
+            jq -e --arg revision "$SOURCE_SHA" --arg version "$VERSION" '
+              .annotations["org.opencontainers.image.revision"] == $revision and
+              .annotations["org.opencontainers.image.version"] == $version and
+              .annotations["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY
+            ' "$manifest_file" > /dev/null || {
+              echo "${reference} is not bound to ${SOURCE_SHA} and release ${VERSION}." >&2
+              return 1
+            }
+            jq -e '
+              [.manifests[]? | select(.platform.os == "linux")] as $runtime |
+              ($runtime | length) == 2 and
+              ([$runtime[].platform.architecture] | sort) == ["amd64", "arm64"] and
+              (.manifests | length) == 2
+            ' "$manifest_file" > /dev/null || {
+              echo "${reference} does not contain exactly linux/amd64 and linux/arm64." >&2
+              return 1
+            }
+
+            while IFS=$'\t' read -r architecture digest; do
+              local image_file="$RUNNER_TEMP/image-${architecture}-${digest#sha256:}.json"
+              docker buildx imagetools inspect "${repository}@${digest}" --format '{{json .Image}}' > "$image_file"
+              jq -e --arg revision "$SOURCE_SHA" --arg version "$VERSION" '
+                (.config.Labels // {})["org.opencontainers.image.revision"] == $revision and
+                (.config.Labels // {})["org.opencontainers.image.version"] == $version and
+                (.config.Labels // {})["com.elmohq.elmo.release-version"] == $version and
+                (.config.Labels // {})["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY
+              ' "$image_file" > /dev/null || {
+                echo "${reference} ${architecture} image config has the wrong release identity." >&2
+                return 1
+              }
+            done < <(jq -r '.manifests[] | [.platform.architecture, .digest] | @tsv' "$manifest_file")
+          }
+
+          image_state() {
+            local repository=$1
+            local name=$2
+            local checkpoint_ref="${repository}:git-${SOURCE_SHA}"
+            local version_ref="${repository}:${VERSION}"
+            local checkpoint_file="$RUNNER_TEMP/${name}-checkpoint.json"
+            local version_file="$RUNNER_TEMP/${name}-version.json"
+            inspect_optional "$checkpoint_ref" "$checkpoint_file"
+            inspect_optional "$version_ref" "$version_file"
+
+            if [ -s "$checkpoint_file" ]; then
+              validate_manifest "$repository" "$checkpoint_file" "$checkpoint_ref"
+            fi
+            if [ -s "$version_file" ]; then
+              validate_manifest "$repository" "$version_file" "$version_ref"
+              if [ ! -s "$checkpoint_file" ]; then
+                echo "${version_ref} exists without immutable checkpoint ${checkpoint_ref}." >&2
+                return 1
+              fi
+              if [ "$(jq -r .digest "$version_file")" != "$(jq -r .digest "$checkpoint_file")" ]; then
+                echo "${version_ref} does not resolve to checkpoint ${checkpoint_ref}; refusing to overwrite it." >&2
+                return 1
+              fi
+              echo ready
+            elif [ -s "$checkpoint_file" ]; then
+              echo checkpoint
+            else
+              echo build
+            fi
+          }
+
+          web_state=$(image_state elmohq/elmo-web web)
+          worker_state=$(image_state elmohq/elmo-worker worker)
+          db_migrate_state=$(image_state elmohq/elmo-db-migrate db-migrate)
+          needs_build=false
+          if [ "$web_state" = build ] || [ "$worker_state" = build ] || [ "$db_migrate_state" = build ]; then
+            needs_build=true
+          fi
+          {
+            echo "web-state=${web_state}"
+            echo "worker-state=${worker_state}"
+            echo "db-migrate-state=${db_migrate_state}"
+            echo "needs-build=${needs_build}"
+          } >> "$GITHUB_OUTPUT"
 
   docker-build:
     name: Build images (${{ matrix.arch }})
-    needs: release
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -107,115 +296,778 @@ jobs:
             runner: blacksmith-4vcpu-ubuntu-2404-arm
             arch: arm64
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - name: Checkout the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.source-sha }}
+          persist-credentials: false
 
-      - name: Setup Blacksmith Builder
-        uses: useblacksmith/setup-docker-builder@v2
+      - name: Verify build checkout
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        if: needs.prepare.outputs.needs-build == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push web image by digest
+        if: needs.prepare.outputs.web-state == 'build'
         id: build-web
-        uses: useblacksmith/build-push-action@v2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile
           target: web
+          build-args: ELMO_RELEASE_VERSION=${{ needs.prepare.outputs.version }}
+          labels: |
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.source-sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
           platforms: ${{ matrix.platform }}
+          pull: true
+          provenance: false
+          sbom: false
           outputs: type=image,name=elmohq/elmo-web,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=release-web-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=release-web-${{ matrix.arch }}
 
       - name: Build and push worker image by digest
+        if: needs.prepare.outputs.worker-state == 'build'
         id: build-worker
-        uses: useblacksmith/build-push-action@v2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile
           target: worker
+          build-args: ELMO_RELEASE_VERSION=${{ needs.prepare.outputs.version }}
+          labels: |
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.source-sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
           platforms: ${{ matrix.platform }}
+          pull: true
+          provenance: false
+          sbom: false
           outputs: type=image,name=elmohq/elmo-worker,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=release-worker-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=release-worker-${{ matrix.arch }}
 
       - name: Build and push db-migrate image by digest
+        if: needs.prepare.outputs.db-migrate-state == 'build'
         id: build-db-migrate
-        uses: useblacksmith/build-push-action@v2
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           file: docker/Dockerfile
           target: migrate
+          build-args: ELMO_RELEASE_VERSION=${{ needs.prepare.outputs.version }}
+          labels: |
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.source-sha }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
           platforms: ${{ matrix.platform }}
+          pull: true
+          provenance: false
+          sbom: false
           outputs: type=image,name=elmohq/elmo-db-migrate,push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=release-db-migrate-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=release-db-migrate-${{ matrix.arch }}
 
-      - name: Export digests
+      - name: Export image digests
+        if: needs.prepare.outputs.needs-build == 'true'
         env:
+          ARCH: ${{ matrix.arch }}
           WEB_DIGEST: ${{ steps.build-web.outputs.digest }}
+          WEB_STATE: ${{ needs.prepare.outputs.web-state }}
           WORKER_DIGEST: ${{ steps.build-worker.outputs.digest }}
+          WORKER_STATE: ${{ needs.prepare.outputs.worker-state }}
           DB_MIGRATE_DIGEST: ${{ steps.build-db-migrate.outputs.digest }}
+          DB_MIGRATE_STATE: ${{ needs.prepare.outputs.db-migrate-state }}
         run: |
-          mkdir -p /tmp/digests/web /tmp/digests/worker /tmp/digests/db-migrate
-          touch "/tmp/digests/web/${WEB_DIGEST#sha256:}"
-          touch "/tmp/digests/worker/${WORKER_DIGEST#sha256:}"
-          touch "/tmp/digests/db-migrate/${DB_MIGRATE_DIGEST#sha256:}"
+          set -euo pipefail
+          export_digest() {
+            local service=$1
+            local state=$2
+            local digest=$3
+            if [ "$state" != build ]; then
+              return 0
+            fi
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Invalid ${service} digest: ${digest}" >&2
+              return 1
+            fi
+            mkdir -p "$RUNNER_TEMP/digests/${service}"
+            printf '%s\n' "$digest" > "$RUNNER_TEMP/digests/${service}/${ARCH}"
+          }
+          export_digest web "$WEB_STATE" "$WEB_DIGEST"
+          export_digest worker "$WORKER_STATE" "$WORKER_DIGEST"
+          export_digest db-migrate "$DB_MIGRATE_STATE" "$DB_MIGRATE_DIGEST"
 
-      - name: Upload digests
-        uses: actions/upload-artifact@v7
+      - name: Upload image digests
+        if: needs.prepare.outputs.needs-build == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: digests-${{ matrix.arch }}
-          path: /tmp/digests/*
+          name: release-digests-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests
           if-no-files-found: error
           retention-days: 1
 
   docker-manifest:
-    name: Publish multi-arch manifests
-    needs: [release, docker-build]
+    name: Publish immutable version manifests
+    needs: [prepare, docker-build]
     runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: read
+    outputs:
+      web-digest: ${{ steps.publish.outputs.web-digest }}
+      worker-digest: ${{ steps.publish.outputs.worker-digest }}
+      db-migrate-digest: ${{ steps.publish.outputs.db-migrate-digest }}
     steps:
-      - name: Download digests
-        uses: actions/download-artifact@v8
+      - name: Download image digests
+        if: needs.prepare.outputs.needs-build == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          path: /tmp/digests
-          pattern: digests-*
+          path: ${{ runner.temp }}/digests
+          pattern: release-digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Create multi-arch web manifest
-        working-directory: /tmp/digests/web
+      - name: Create and verify release manifests
+        id: publish
         env:
-          VERSION: ${{ needs.release.outputs.version }}
+          DB_MIGRATE_STATE: ${{ needs.prepare.outputs.db-migrate-state }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          WEB_STATE: ${{ needs.prepare.outputs.web-state }}
+          WORKER_STATE: ${{ needs.prepare.outputs.worker-state }}
         run: |
-          docker buildx imagetools create \
-            -t "elmohq/elmo-web:${VERSION}" \
-            -t "elmohq/elmo-web:latest" \
-            $(printf 'elmohq/elmo-web@sha256:%s ' *)
+          set -euo pipefail
 
-      - name: Create multi-arch worker manifest
-        working-directory: /tmp/digests/worker
-        env:
-          VERSION: ${{ needs.release.outputs.version }}
-        run: |
-          docker buildx imagetools create \
-            -t "elmohq/elmo-worker:${VERSION}" \
-            -t "elmohq/elmo-worker:latest" \
-            $(printf 'elmohq/elmo-worker@sha256:%s ' *)
+          inspect_optional() {
+            local reference=$1
+            local destination=$2
+            local error_file="${destination}.error"
+            if docker buildx imagetools inspect "$reference" --format '{{json .Manifest}}' > "$destination" 2> "$error_file"; then
+              return 0
+            fi
+            if grep -Eqi 'manifest unknown|not found|no such manifest' "$error_file"; then
+              : > "$destination"
+              return 0
+            fi
+            cat "$error_file" >&2
+            return 1
+          }
 
-      - name: Create multi-arch db-migrate manifest
-        working-directory: /tmp/digests/db-migrate
+          validate_manifest() {
+            local repository=$1
+            local manifest_file=$2
+            local reference=$3
+            jq -e --arg revision "$SOURCE_SHA" --arg version "$VERSION" '
+              (.digest | strings | test("^sha256:[0-9a-f]{64}$")) and
+              .annotations["org.opencontainers.image.revision"] == $revision and
+              .annotations["org.opencontainers.image.version"] == $version and
+              .annotations["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY and
+              ([.manifests[]? | select(.platform.os == "linux")] | length) == 2 and
+              ([.manifests[]?.platform.architecture] | sort) == ["amd64", "arm64"] and
+              (.manifests | length) == 2
+            ' "$manifest_file" > /dev/null || {
+              echo "${reference} failed release identity or platform validation." >&2
+              return 1
+            }
+
+            while IFS=$'\t' read -r architecture digest; do
+              local image_file="$RUNNER_TEMP/image-${architecture}-${digest#sha256:}.json"
+              docker buildx imagetools inspect "${repository}@${digest}" --format '{{json .Image}}' > "$image_file"
+              jq -e --arg revision "$SOURCE_SHA" --arg version "$VERSION" '
+                (.config.Labels // {})["org.opencontainers.image.revision"] == $revision and
+                (.config.Labels // {})["org.opencontainers.image.version"] == $version and
+                (.config.Labels // {})["com.elmohq.elmo.release-version"] == $version and
+                (.config.Labels // {})["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY
+              ' "$image_file" > /dev/null || {
+                echo "${reference} ${architecture} image config has the wrong release identity." >&2
+                return 1
+              }
+            done < <(jq -r '.manifests[] | [.platform.architecture, .digest] | @tsv' "$manifest_file")
+          }
+
+          publish_service() {
+            local repository=$1
+            local service=$2
+            local prepared_state=$3
+            local checkpoint_ref="${repository}:git-${SOURCE_SHA}"
+            local version_ref="${repository}:${VERSION}"
+            local checkpoint_file="$RUNNER_TEMP/${service}-checkpoint.json"
+            local version_file="$RUNNER_TEMP/${service}-version.json"
+            inspect_optional "$checkpoint_ref" "$checkpoint_file"
+
+            if [ "$prepared_state" = build ] && [ ! -s "$checkpoint_file" ]; then
+              local digest_dir="$RUNNER_TEMP/digests/${service}"
+              if [ ! -d "$digest_dir" ]; then
+                echo "Missing digest directory for ${service}." >&2
+                return 1
+              fi
+              mapfile -t digests < <(find "$digest_dir" -maxdepth 1 -type f -print0 | sort -z | xargs -0 -r cat)
+              if [ "${#digests[@]}" -ne 2 ]; then
+                echo "Expected two ${service} platform digests; found ${#digests[@]}." >&2
+                return 1
+              fi
+              local sources=()
+              local digest
+              for digest in "${digests[@]}"; do
+                if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+                  echo "Invalid ${service} platform digest: ${digest}" >&2
+                  return 1
+                fi
+                sources+=("${repository}@${digest}")
+              done
+              docker buildx imagetools create \
+                --annotation "index:org.opencontainers.image.revision=${SOURCE_SHA}" \
+                --annotation "index:org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+                --annotation "index:org.opencontainers.image.version=${VERSION}" \
+                --annotation "index:com.elmohq.elmo.schema-compatibility=${SCHEMA_COMPATIBILITY}" \
+                --tag "$checkpoint_ref" \
+                "${sources[@]}" >&2
+              inspect_optional "$checkpoint_ref" "$checkpoint_file"
+            fi
+
+            if [ ! -s "$checkpoint_file" ]; then
+              echo "Immutable checkpoint ${checkpoint_ref} is missing." >&2
+              return 1
+            fi
+            validate_manifest "$repository" "$checkpoint_file" "$checkpoint_ref"
+            local checkpoint_digest
+            checkpoint_digest=$(jq -r .digest "$checkpoint_file")
+
+            inspect_optional "$version_ref" "$version_file"
+            if [ -s "$version_file" ]; then
+              validate_manifest "$repository" "$version_file" "$version_ref"
+              if [ "$(jq -r .digest "$version_file")" != "$checkpoint_digest" ]; then
+                echo "${version_ref} has a different digest from ${checkpoint_ref}; refusing to overwrite it." >&2
+                return 1
+              fi
+            else
+              docker buildx imagetools create --tag "$version_ref" "${repository}@${checkpoint_digest}" >&2
+              inspect_optional "$version_ref" "$version_file"
+              validate_manifest "$repository" "$version_file" "$version_ref"
+              if [ "$(jq -r .digest "$version_file")" != "$checkpoint_digest" ]; then
+                echo "Registry did not preserve ${checkpoint_digest} for ${version_ref}." >&2
+                return 1
+              fi
+            fi
+            printf '%s\n' "$checkpoint_digest"
+          }
+
+          web_digest=$(publish_service elmohq/elmo-web web "$WEB_STATE")
+          worker_digest=$(publish_service elmohq/elmo-worker worker "$WORKER_STATE")
+          db_migrate_digest=$(publish_service elmohq/elmo-db-migrate db-migrate "$DB_MIGRATE_STATE")
+          {
+            echo "web-digest=${web_digest}"
+            echo "worker-digest=${worker_digest}"
+            echo "db-migrate-digest=${db_migrate_digest}"
+          } >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Publish packages and release
+    needs: [prepare, docker-manifest]
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.source-sha }}
+          fetch-depth: 0
+
+      - name: Verify release checkout
         env:
-          VERSION: ${{ needs.release.outputs.version }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Reverify version manifests
+        env:
+          DB_MIGRATE_DIGEST: ${{ needs.docker-manifest.outputs.db-migrate-digest }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          WEB_DIGEST: ${{ needs.docker-manifest.outputs.web-digest }}
+          WORKER_DIGEST: ${{ needs.docker-manifest.outputs.worker-digest }}
         run: |
-          docker buildx imagetools create \
-            -t "elmohq/elmo-db-migrate:${VERSION}" \
-            -t "elmohq/elmo-db-migrate:latest" \
-            $(printf 'elmohq/elmo-db-migrate@sha256:%s ' *)
+          set -euo pipefail
+          verify() {
+            local reference=$1
+            local expected_digest=$2
+            local manifest_file="$RUNNER_TEMP/reverify-${reference//[\/:]/-}.json"
+            docker buildx imagetools inspect "$reference" --format '{{json .Manifest}}' > "$manifest_file"
+            jq -e --arg digest "$expected_digest" --arg revision "$SOURCE_SHA" --arg version "$VERSION" '
+              .digest == $digest and
+              .annotations["org.opencontainers.image.revision"] == $revision and
+              .annotations["org.opencontainers.image.version"] == $version and
+              .annotations["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY and
+              ([.manifests[]?.platform.architecture] | sort) == ["amd64", "arm64"] and
+              (.manifests | length) == 2
+            ' "$manifest_file" > /dev/null || {
+              echo "${reference} changed after it was prepared; refusing to publish packages." >&2
+              return 1
+            }
+          }
+          verify "elmohq/elmo-web:${VERSION}" "$WEB_DIGEST"
+          verify "elmohq/elmo-worker:${VERSION}" "$WORKER_DIGEST"
+          verify "elmohq/elmo-db-migrate:${VERSION}" "$DB_MIGRATE_DIGEST"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Record package tarball integrities
+        run: |
+          set -euo pipefail
+          integrity_file="$RUNNER_TEMP/npm-integrities.tsv"
+          : > "$integrity_file"
+          while IFS=$'\t' read -r package_name package_dir package_version; do
+            if [ "$package_version" != "${{ needs.prepare.outputs.version }}" ]; then
+              echo "${package_name} version ${package_version} does not match the release." >&2
+              exit 1
+            fi
+            package_key=$(printf '%s' "$package_name" | sha256sum | cut -d ' ' -f 1)
+            pack_dir="$RUNNER_TEMP/npm-packs/${package_key}"
+            mkdir -p "$pack_dir"
+            pack_json=$(pnpm --dir "$package_dir" pack --pack-destination "$pack_dir" --json)
+            tarball=$(node -e '
+              let input = "";
+              process.stdin.on("data", (chunk) => (input += chunk));
+              process.stdin.on("end", () => process.stdout.write(JSON.parse(input).filename));
+            ' <<< "$pack_json")
+            integrity=$(node - "$tarball" <<'NODE'
+          const crypto = require("node:crypto");
+          const fs = require("node:fs");
+          const bytes = fs.readFileSync(process.argv[2]);
+          process.stdout.write(`sha512-${crypto.createHash("sha512").update(bytes).digest("base64")}`);
+          NODE
+            )
+            printf '%s\t%s\n' "$package_name" "$integrity" >> "$integrity_file"
+          done < <(node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          for (const root of ["apps", "packages"]) {
+            for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+              if (!entry.isDirectory()) continue;
+              const directory = path.join(root, entry.name);
+              const manifestPath = path.join(directory, "package.json");
+              if (!fs.existsSync(manifestPath)) continue;
+              const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+              if (!manifest.private) console.log(`${manifest.name}\t${directory}\t${manifest.version}`);
+            }
+          }
+          NODE
+          )
+          if [ ! -s "$integrity_file" ]; then
+            echo "No public workspace packages were packed." >&2
+            exit 1
+          fi
+
+      - name: Reserve the exact GitHub release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          error_file="$RUNNER_TEMP/github-tag-error.txt"
+          if tag_sha=$(gh api "repos/${REPO}/commits/v${VERSION}" --jq .sha 2> "$error_file"); then
+            if [ "$tag_sha" != "$SOURCE_SHA" ]; then
+              echo "v${VERSION} resolves to ${tag_sha}, not ${SOURCE_SHA}." >&2
+              exit 1
+            fi
+            exit 0
+          fi
+          if ! grep -q "HTTP 404" "$error_file"; then
+            cat "$error_file" >&2
+            exit 1
+          fi
+          gh api --method POST "repos/${REPO}/git/refs" \
+            -f "ref=refs/tags/v${VERSION}" \
+            -f "sha=${SOURCE_SHA}" > /dev/null
+
+      - name: Publish packages
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          publish: pnpm exec changeset publish
+          createGithubReleases: false
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify every published package
+        env:
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          mapfile -t packages < <(node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          for (const root of ["apps", "packages"]) {
+            for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+              if (!entry.isDirectory()) continue;
+              const manifestPath = path.join(root, entry.name, "package.json");
+              if (!fs.existsSync(manifestPath)) continue;
+              const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+              if (!manifest.private) console.log(`${manifest.name}\t${manifest.version}`);
+            }
+          }
+          NODE
+          )
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "No public workspace packages were found." >&2
+            exit 1
+          fi
+
+          for package_entry in "${packages[@]}"; do
+            IFS=$'\t' read -r package_name package_version <<< "$package_entry"
+            if [ "$package_version" != "$VERSION" ]; then
+              echo "${package_name} version ${package_version} does not match release ${VERSION}." >&2
+              exit 1
+            fi
+            encoded_name=$(node -p "encodeURIComponent(process.argv[1])" "$package_name")
+            expected_integrity=$(awk -F '\t' -v package="$package_name" '$1 == package { print $2 }' \
+              "$RUNNER_TEMP/npm-integrities.tsv")
+            if [ -z "$expected_integrity" ]; then
+              echo "No locally packed integrity was recorded for ${package_name}." >&2
+              exit 1
+            fi
+            metadata="$RUNNER_TEMP/npm-${encoded_name}.json"
+            for attempt in $(seq 1 12); do
+              status=$(curl --silent --show-error --retry 2 --retry-all-errors \
+                --output "$metadata" --write-out '%{http_code}' \
+                "https://registry.npmjs.org/${encoded_name}/${VERSION}")
+              if [ "$status" = 200 ]; then
+                break
+              fi
+              if [ "$status" != 404 ] || [ "$attempt" = 12 ]; then
+                echo "npm returned HTTP ${status} for ${package_name}@${VERSION}." >&2
+                exit 1
+              fi
+              sleep 5
+            done
+            node - "$metadata" "$package_name" "$VERSION" "$SOURCE_SHA" "$expected_integrity" <<'NODE'
+          const fs = require("node:fs");
+          const [metadataPath, expectedName, expectedVersion, sourceSha, expectedIntegrity] = process.argv.slice(2);
+          const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+          if (
+            metadata.name !== expectedName ||
+            metadata.version !== expectedVersion ||
+            metadata.dist?.integrity !== expectedIntegrity ||
+            !metadata.dist?.tarball
+          ) {
+            throw new Error(`npm tarball for ${expectedName}@${expectedVersion} does not match the exact release build`);
+          }
+          if (metadata.gitHead && metadata.gitHead !== sourceSha) {
+            throw new Error(`${expectedName}@${expectedVersion} was published from ${metadata.gitHead}, not ${sourceSha}`);
+          }
+          NODE
+
+            latest_metadata="$RUNNER_TEMP/npm-latest-${encoded_name}.json"
+            for attempt in $(seq 1 12); do
+              status=$(curl --silent --show-error --retry 2 --retry-all-errors \
+                --output "$latest_metadata" --write-out '%{http_code}' \
+                "https://registry.npmjs.org/${encoded_name}/latest")
+              if [ "$status" = 200 ] \
+                && node -e 'process.exit(require(process.argv[1]).version === process.argv[2] ? 0 : 1)' \
+                  "$latest_metadata" "$VERSION"; then
+                break
+              fi
+              if [ "$status" != 200 ] && [ "$status" != 404 ]; then
+                echo "npm returned HTTP ${status} for ${package_name}@latest." >&2
+                exit 1
+              fi
+              if [ "$attempt" = 12 ]; then
+                actual=$(node -p "require(process.argv[1]).version ?? 'missing'" "$latest_metadata" 2> /dev/null || echo missing)
+                echo "npm latest for ${package_name} is ${actual}, not ${VERSION}." >&2
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+
+      - name: Validate any existing GitHub release
+        id: release-state
+        env:
+          DB_MIGRATE_DIGEST: ${{ needs.docker-manifest.outputs.db-migrate-digest }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          WEB_DIGEST: ${{ needs.docker-manifest.outputs.web-digest }}
+          WORKER_DIGEST: ${{ needs.docker-manifest.outputs.worker-digest }}
+        run: |
+          set -euo pipefail
+          tag_sha=$(gh api "repos/${REPO}/commits/v${VERSION}" --jq .sha)
+          if [ "$tag_sha" != "$SOURCE_SHA" ]; then
+            echo "v${VERSION} moved to ${tag_sha}; expected ${SOURCE_SHA}." >&2
+            exit 1
+          fi
+
+          release_file="$RUNNER_TEMP/github-release.json"
+          release_error="$RUNNER_TEMP/github-release-error.txt"
+          if gh api "repos/${REPO}/releases/tags/v${VERSION}" > "$release_file" 2> "$release_error"; then
+            jq -e --arg tag "v${VERSION}" '
+              .tag_name == $tag and .draft == false and .prerelease == false
+            ' "$release_file" > /dev/null
+            body=$(jq -r .body "$release_file")
+            for image in \
+              "elmohq/elmo-web@${WEB_DIGEST}" \
+              "elmohq/elmo-worker@${WORKER_DIGEST}" \
+              "elmohq/elmo-db-migrate@${DB_MIGRATE_DIGEST}"; do
+              if ! grep -Fq "$image" <<< "$body"; then
+                echo "Existing v${VERSION} release does not attest ${image}." >&2
+                exit 1
+              fi
+            done
+            while IFS=$'\t' read -r package_name integrity; do
+              if ! grep -Fq "${package_name}@${VERSION}" <<< "$body" \
+                || ! grep -Fq "$integrity" <<< "$body"; then
+                echo "Existing v${VERSION} release does not attest ${package_name} integrity ${integrity}." >&2
+                exit 1
+              fi
+            done < "$RUNNER_TEMP/npm-integrities.tsv"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif grep -q "HTTP 404" "$release_error"; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            cat "$release_error" >&2
+            exit 1
+          fi
+
+      - name: Promote verified manifests to latest
+        id: latest
+        env:
+          DB_MIGRATE_DIGEST: ${{ needs.docker-manifest.outputs.db-migrate-digest }}
+          NPM_LATEST_BEFORE: ${{ needs.prepare.outputs.npm-latest-before }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          WEB_DIGEST: ${{ needs.docker-manifest.outputs.web-digest }}
+          WORKER_DIGEST: ${{ needs.docker-manifest.outputs.worker-digest }}
+        run: |
+          set -euo pipefail
+
+          inspect_optional() {
+            local reference=$1
+            local destination=$2
+            local error_file="${destination}.error"
+            if docker buildx imagetools inspect "$reference" --format '{{json .Manifest}}' > "$destination" 2> "$error_file"; then
+              return 0
+            fi
+            if grep -Eqi 'manifest unknown|not found|no such manifest' "$error_file"; then
+              : > "$destination"
+              return 0
+            fi
+            cat "$error_file" >&2
+            return 1
+          }
+
+          promotion_allowed=true
+          check_latest() {
+            local repository=$1
+            local expected_digest=$2
+            local state_file=$3
+            inspect_optional "${repository}:latest" "$state_file"
+            if [ ! -s "$state_file" ]; then
+              return 0
+            fi
+            if ! jq -e '
+              .annotations["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY and
+              ([.manifests[]?.platform.architecture] | sort) == ["amd64", "arm64"] and
+              (.manifests | length) == 2
+            ' "$state_file" > /dev/null; then
+              echo "::warning::${repository}:latest does not attest schema compatibility ${SCHEMA_COMPATIBILITY}; all latest tags will remain unchanged."
+              promotion_allowed=false
+              return 0
+            fi
+            while IFS=$'\t' read -r architecture digest; do
+              local image_file="${state_file}.${architecture}.json"
+              docker buildx imagetools inspect "${repository}@${digest}" --format '{{json .Image}}' > "$image_file"
+              if ! jq -e '
+                (.config.Labels // {})["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY
+              ' "$image_file" > /dev/null; then
+                echo "::warning::${repository}:latest ${architecture} is not schema-compatible with ${SCHEMA_COMPATIBILITY}; all latest tags will remain unchanged."
+                promotion_allowed=false
+                return 0
+              fi
+            done < <(jq -r '.manifests[] | [.platform.architecture, .digest] | @tsv' "$state_file")
+
+            local current_digest current_version
+            current_digest=$(jq -r .digest "$state_file")
+            current_version=$(jq -r '.annotations["org.opencontainers.image.version"] // empty' "$state_file")
+            if [ "$current_digest" = "$expected_digest" ]; then
+              return 0
+            fi
+            if [ "$current_version" = "$VERSION" ]; then
+              echo "${repository}:latest has release ${VERSION} with unexpected digest ${current_digest}." >&2
+              return 1
+            fi
+            if [ -n "$current_version" ]; then
+              if ! pnpm --dir apps/cli exec semver "$current_version" > /dev/null; then
+                echo "${repository}:latest has invalid release version ${current_version}." >&2
+                return 1
+              fi
+              if pnpm --dir apps/cli exec semver "$current_version" -r ">${VERSION}" > /dev/null; then
+                echo "${repository}:latest is newer (${current_version}) than ${VERSION}." >&2
+                return 1
+              fi
+            fi
+            if [ -z "$current_version" ] && [ -n "$NPM_LATEST_BEFORE" ] \
+              && pnpm --dir apps/cli exec semver "$NPM_LATEST_BEFORE" -r ">${VERSION}" > /dev/null; then
+              echo "Cannot safely replace unlabelled ${repository}:latest after npm ${NPM_LATEST_BEFORE}." >&2
+              return 1
+            fi
+          }
+
+          check_latest elmohq/elmo-web "$WEB_DIGEST" "$RUNNER_TEMP/latest-web.json"
+          check_latest elmohq/elmo-worker "$WORKER_DIGEST" "$RUNNER_TEMP/latest-worker.json"
+          check_latest elmohq/elmo-db-migrate "$DB_MIGRATE_DIGEST" "$RUNNER_TEMP/latest-db-migrate.json"
+
+          if [ "$promotion_allowed" != true ]; then
+            echo "The immutable version tags are published; latest promotion is intentionally skipped across this schema boundary."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "status=skipped-schema-boundary" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=false
+          promote() {
+            local repository=$1
+            local expected_digest=$2
+            local state_file=$3
+            if [ -s "$state_file" ] && [ "$(jq -r .digest "$state_file")" = "$expected_digest" ]; then
+              return 0
+            fi
+            docker buildx imagetools create --tag "${repository}:latest" "${repository}@${expected_digest}"
+            local verified_file="${state_file}.verified"
+            docker buildx imagetools inspect "${repository}:latest" --format '{{json .Manifest}}' > "$verified_file"
+            jq -e --arg digest "$expected_digest" --arg revision "$SOURCE_SHA" --arg version "$VERSION" '
+              .digest == $digest and
+              .annotations["org.opencontainers.image.revision"] == $revision and
+              .annotations["org.opencontainers.image.version"] == $version and
+              .annotations["com.elmohq.elmo.schema-compatibility"] == env.SCHEMA_COMPATIBILITY
+            ' "$verified_file" > /dev/null || {
+              echo "${repository}:latest did not resolve to the verified release manifest." >&2
+              return 1
+            }
+            changed=true
+          }
+
+          promote elmohq/elmo-web "$WEB_DIGEST" "$RUNNER_TEMP/latest-web.json"
+          promote elmohq/elmo-worker "$WORKER_DIGEST" "$RUNNER_TEMP/latest-worker.json"
+          promote elmohq/elmo-db-migrate "$DB_MIGRATE_DIGEST" "$RUNNER_TEMP/latest-db-migrate.json"
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+          if [ "$changed" = true ]; then
+            echo "status=promoted" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=already-current" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or verify the GitHub release
+        if: steps.release-state.outputs.exists != 'true'
+        id: github-release
+        env:
+          DB_MIGRATE_DIGEST: ${{ needs.docker-manifest.outputs.db-migrate-digest }}
+          GH_TOKEN: ${{ github.token }}
+          LATEST_STATUS: ${{ steps.latest.outputs.status }}
+          REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ needs.prepare.outputs.source-sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          WEB_DIGEST: ${{ needs.docker-manifest.outputs.web-digest }}
+          WORKER_DIGEST: ${{ needs.docker-manifest.outputs.worker-digest }}
+        run: |
+          set -euo pipefail
+          tag_sha=$(gh api "repos/${REPO}/commits/v${VERSION}" --jq .sha)
+          if [ "$tag_sha" != "$SOURCE_SHA" ]; then
+            echo "v${VERSION} moved to ${tag_sha}; expected ${SOURCE_SHA}." >&2
+            exit 1
+          fi
+          notes="$RUNNER_TEMP/release-notes.md"
+          node scripts/generate-release-notes.mjs "$VERSION" > "$notes"
+          {
+            echo
+            echo "## Container images"
+            echo
+            echo "- \`elmohq/elmo-web@${WEB_DIGEST}\`"
+            echo "- \`elmohq/elmo-worker@${WORKER_DIGEST}\`"
+            echo "- \`elmohq/elmo-db-migrate@${DB_MIGRATE_DIGEST}\`"
+            echo
+            echo "## npm packages"
+            echo
+            while IFS=$'\t' read -r package_name integrity; do
+              echo "- \`${package_name}@${VERSION}\` — \`${integrity}\`"
+            done < "$RUNNER_TEMP/npm-integrities.tsv"
+            echo
+            echo "Source commit: \`${SOURCE_SHA}\`"
+            echo "Docker latest status: \`${LATEST_STATUS}\`"
+          } >> "$notes"
+          gh release create "v${VERSION}" \
+            --verify-tag \
+            --title "v${VERSION}" \
+            --notes-file "$notes" \
+            --latest
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+      - name: Announce release on Discord
+        if: steps.github-release.outputs.created == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL not set; skipping Discord announcement."
+            exit 0
+          fi
+          release_url="https://github.com/${REPO}/releases/tag/v${VERSION}"
+          payload=$(jq -n --arg content "🚀 **Elmo v${VERSION}** is out! ${release_url}" '{content: $content}')
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data "$payload" \
+            "$DISCORD_WEBHOOK_URL" \
+            || echo "Discord announcement failed (non-fatal)."
