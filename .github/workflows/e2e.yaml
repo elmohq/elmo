@@ -181,3 +181,93 @@ jobs:
             e2e/test-results/
             e2e/test-results-worker/
           retention-days: 7
+
+  # Scheduling-policy verification (issues #340/#347/#348): drives a real
+  # worker over a real database with the no-network stub provider, in local
+  # mode (legacy volume + dueness metering must match the pre-policy behavior
+  # exactly) and in cloud mode (plan cadence/replication, Claude assignment,
+  # cancellation stop, resubscribe revival, usage attribution). This is the
+  # red-green guard that the run policy cannot change what self-hosted and
+  # whitelabel deployments run.
+  scheduling-policy:
+    name: Scheduling Policy Verification
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: elmo
+          POSTGRES_PASSWORD: elmo
+          POSTGRES_DB: elmo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U elmo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://elmo:elmo@localhost:5432/elmo
+      BETTER_AUTH_SECRET: scheduling-policy-ci-secret-0123456789
+      APP_URL: http://localhost:3000
+      DISABLE_TELEMETRY: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm -C packages/lib exec drizzle-kit migrate
+
+      - name: Seed local fixtures
+        run: pnpm -C e2e exec tsx seed.ts
+
+      - name: "Local mode: legacy volume + dueness metering"
+        env:
+          DEPLOYMENT_MODE: local
+          SCRAPE_TARGETS: stub:stub
+        run: |
+          ELMO_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
+            nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-local.log 2>&1 &
+          echo $! > /tmp/worker.pid
+          sleep 15
+          node e2e/scheduling/verify-scheduling.mjs local
+          kill "$(cat /tmp/worker.pid)" || true
+
+      - name: "Cloud mode: plan policy + billing lifecycle"
+        env:
+          DEPLOYMENT_MODE: cloud
+          SCRAPE_TARGETS: chatgpt:stub,perplexity:stub,gemini:stub,copilot:stub,claude:stub,claude:stub:online
+          STRIPE_SECRET_KEY: sk_test_ci
+          STRIPE_WEBHOOK_SECRET: whsec_ci
+          RESEND_API_KEY: re_ci
+          RESEND_FROM_EMAIL: Elmo <ci@example.com>
+          GOOGLE_CLIENT_ID: ci
+          GOOGLE_CLIENT_SECRET: ci
+        run: |
+          nohup pnpm -C apps/worker exec tsx src/index.ts > /tmp/worker-cloud.log 2>&1 &
+          echo $! > /tmp/worker.pid
+          sleep 15
+          node e2e/scheduling/verify-scheduling.mjs cloud
+          kill "$(cat /tmp/worker.pid)" || true
+
+      - name: Dump worker logs
+        if: failure()
+        run: |
+          echo "=== local worker ==="; cat /tmp/worker-local.log 2>/dev/null || true
+          echo "=== cloud worker ==="; cat /tmp/worker-cloud.log 2>/dev/null || true

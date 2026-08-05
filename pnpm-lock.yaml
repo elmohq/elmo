@@ -462,6 +462,9 @@ importers:
       pg:
         specifier: ^8.22.0
         version: 8.22.0
+      pg-boss:
+        specifier: ^12.26.3
+        version: 12.26.3
       tsx:
         specifier: ^4.23.1
         version: 4.23.1
@@ -501,6 +504,12 @@ importers:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
+      '@types/pg':
+        specifier: ^8.20.1
+        version: 8.20.1
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

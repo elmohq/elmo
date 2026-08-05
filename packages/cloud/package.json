@@ -25,6 +25,8 @@
 	"devDependencies": {
 		"@types/disposable-email-domains": "^1.0.6",
 		"@types/node": "^26.1.2",
+		"@types/pg": "^8.20.1",
+		"pg": "^8.22.0",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	}
