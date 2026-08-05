@@ -16,7 +16,7 @@ const customFeatures = [
 	"GPT-5 Search and web-search API targets",
 	"Custom Claude capacity and cadence",
 	"Elmo API access",
-	"Unlimited seats with SSO",
+	"Unlimited seats",
 ];
 
 function planFeatures(plan: PublicCloudPlan): string[] {
