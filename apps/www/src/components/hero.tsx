@@ -1,9 +1,10 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, ArrowRight } from "lucide-react";
 import MuxPlayer from "@mux/mux-player-react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { CLOUD_SIGNUP_URL, LIVE_DEMO_URL, SELF_HOSTED_DOCS_URL } from "@/lib/cloud-links";
+import { externalRel } from "@/lib/external-link";
 import { CustomerLogosInline } from "./customer-logos";
 import { QuickstartBlock } from "./quickstart-block";
-import { externalRel } from "@/lib/external-link";
 
 function PrimaryCTA({
 	to,
@@ -128,15 +129,19 @@ export function Hero() {
 							Know How AI Talks About Your Brand
 						</h1>
 						<p className="mt-6 max-w-[58ch] text-pretty text-base text-zinc-600 md:text-lg">
-							Track your brand's visibility across any AI model. Monitor mentions, analyze citations, and benchmark
-							competitors. Open source and self-hosted, so your data stays yours and you'll never get locked in.
+							Track your brand's visibility across AI answer engines. Monitor mentions, analyze citations, and benchmark
+							competitors in managed Cloud, on your own infrastructure, or in a white-label deployment.
 						</p>
 						<div className="mt-8 flex flex-wrap items-center gap-2">
-							<PrimaryCTA to="/docs">
-								Get Started
+							<PrimaryCTA href={CLOUD_SIGNUP_URL}>
+								Start in Cloud
 								<ArrowRight className="size-3.5" />
 							</PrimaryCTA>
-							<GhostCTA href="https://demo.elmohq.com" external>
+							<GhostCTA to={SELF_HOSTED_DOCS_URL}>
+								Self-host free
+								<ArrowRight className="size-3.5" />
+							</GhostCTA>
+							<GhostCTA href={LIVE_DEMO_URL} external>
 								Live demo
 								<ArrowUpRight className="size-3.5" />
 							</GhostCTA>

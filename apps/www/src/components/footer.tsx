@@ -12,6 +12,7 @@ const cols = [
 		links: [
 			{ label: "Features", href: "/features" },
 			{ label: "Pricing", href: "/pricing" },
+			{ label: "Elmo Cloud", href: "/docs/cloud" },
 			{ label: "Changelog", href: "/changelog" },
 			{ label: "Roadmap", href: "/roadmap" },
 		],

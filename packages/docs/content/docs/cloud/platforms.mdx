@@ -1,0 +1,31 @@
+---
+title: Tracking platforms
+description: The standard Elmo Cloud platform menu and custom tracking targets.
+---
+
+Basic, Pro, and Business choose four standard platforms per brand. Starter tracks ChatGPT only. Every enabled prompt for the brand runs against each selected platform on the plan's fixed cadence.
+
+## Standard platform menu
+
+| Platform | Tracked surface |
+|---|---|
+| ChatGPT | Consumer ChatGPT answer with web access |
+| Google AI Mode | Google's conversational AI search mode |
+| Google AI Overviews | AI summaries shown in Google Search |
+| Microsoft Copilot | Consumer Copilot answer |
+| Perplexity | Perplexity answer and citations |
+| Gemini | Consumer Gemini answer |
+| Qwen | Qwen model through its API, without web search |
+| DeepSeek | DeepSeek model through its API, without web search |
+
+The menu describes the answer surface being measured, not just the underlying language model. Elmo records the complete answer, brand and competitor mentions, and available citations for each run.
+
+## Changing a selection
+
+Open **Settings → LLMs** for a brand, choose the required number of standard platforms, and save. The new schedules replace the old ones together, so a partial selection is never applied.
+
+Historical results stay associated with their original platform. Changing a selection controls future runs and does not rewrite earlier data.
+
+## Custom targets
+
+Custom plans can include targets outside the standard menu, including GPT-5 Search and supported API models with web search. The contract defines the available target, cadence, replication count, and usage ceiling together so the scheduler and billing policy share one configuration.

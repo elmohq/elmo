@@ -1,15 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CTA } from "@/components/cta";
+import { Faq } from "@/components/faq";
+import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 import { Pricing } from "@/components/pricing";
-import { CTA } from "@/components/cta";
-import { Footer } from "@/components/footer";
-import { Faq } from "@/components/faq";
 import { PRICING_FAQS } from "@/lib/faqs";
-import { ogMeta, canonicalUrl, breadcrumbJsonLd, faqJsonLd } from "@/lib/seo";
+import { breadcrumbJsonLd, canonicalUrl, faqJsonLd, ogMeta } from "@/lib/seo";
+import { getPublicCloudCatalog } from "@/server/cloud-plans";
 
-const title = "Pricing — Free & Open-Source AI Visibility · Elmo";
+const title = "Elmo Cloud Pricing — AI Visibility Plans from $29";
 const description =
-	"Elmo is free and open source to self-host. Managed cloud hosting coming soon. White-label available for agencies.";
+	"Compare Elmo Cloud plans from $29/month, self-host Elmo for free, or choose a custom white-label deployment.";
 
 export const Route = createFileRoute("/pricing")({
 	head: () => ({
@@ -27,15 +28,17 @@ export const Route = createFileRoute("/pricing")({
 			faqJsonLd(PRICING_FAQS),
 		],
 	}),
+	loader: () => getPublicCloudCatalog(),
 	component: PricingPage,
 });
 
 function PricingPage() {
+	const catalog = Route.useLoaderData();
 	return (
 		<div className="min-h-screen">
 			<Navbar />
 			<main>
-				<Pricing />
+				<Pricing catalog={catalog} />
 				<Faq items={PRICING_FAQS} eyebrow="/ FAQ" />
 				<CTA />
 			</main>

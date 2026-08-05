@@ -1,0 +1,25 @@
+---
+title: Sampling methodology
+description: Why Elmo repeats AI visibility measurements and how Cloud cadences differ by plan.
+---
+
+AI answers are probabilistic: the same prompt can produce different brands, wording, and citations across repeated runs. A single answer is a snapshot, not a stable measurement of visibility.
+
+The paper [Don't Measure Once: Measuring Visibility in AI Search](https://arxiv.org/abs/2604.07585) shows why repeated observations are needed to describe AI visibility as a distribution rather than a single point.
+
+## Cloud cadences
+
+| Tracking class | Cadence |
+|---|---|
+| Starter standard target | Once daily |
+| Basic, Pro, and Business standard targets | Four times daily |
+| Pro and Business Claude assignments | Once daily |
+| Custom targets | Contract-defined, up to seven times daily for standard sampling |
+
+Four standard samples per day provide four observations for every once-daily observation used by trackers such as Profound and Peec. Custom plans can increase cadence and replication when a research workflow needs a denser distribution.
+
+## What stays comparable
+
+Elmo stores the target, scheduled period, and usage class on each evaluation. Changing platforms or Claude modes does not relabel old results. Dashboard filters let you compare like with like over time.
+
+Scheduler retries do not create unmetered extra samples: an admitted run reserves usage before provider work begins, and duplicate jobs reuse that reservation.

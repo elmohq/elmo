@@ -1,7 +1,8 @@
-import defaultMdxComponents from "fumadocs-ui/mdx";
-import type { MDXComponents } from "mdx/types";
 import { FeedbackBlock } from "@workspace/docs/components/feedback/client";
 import type { ActionResponse, BlockFeedback } from "@workspace/docs/components/feedback/schema";
+import defaultMdxComponents from "fumadocs-ui/mdx";
+import type { MDXComponents } from "mdx/types";
+import { CloudPlanTable } from "@/components/cloud-plan-table";
 import { YouTubeEmbed } from "@/components/youtube-embed";
 
 async function onBlockFeedback(feedback: BlockFeedback): Promise<ActionResponse> {
@@ -21,6 +22,7 @@ export function getMDXComponents(components?: MDXComponents) {
 		FeedbackBlock: (props: { id: string; body?: string; children: React.ReactNode }) => (
 			<FeedbackBlock {...props} onSendAction={onBlockFeedback} />
 		),
+		CloudPlanTable,
 		YouTube: YouTubeEmbed,
 		...components,
 	} satisfies MDXComponents;

@@ -44,7 +44,17 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "Is there a hosted or cloud version of Elmo?",
 		answer:
-			"Managed cloud hosting is coming soon for teams that would rather not run their own infrastructure. Until then, you can self-host Elmo for free or get in touch about early access and managed deployments.",
+			"Yes. Elmo Cloud is the managed SaaS edition, with plans from $29 per month. Elmo operates the infrastructure and provider integrations; you configure the brands, prompts, competitors, and tracking platforms.",
+	},
+	{
+		question: "Does Elmo Cloud have a free trial?",
+		answer:
+			"No. Use the populated live demo to explore the product, or self-host the complete open-source edition for free. Cloud tracking starts after you choose a plan and complete Stripe Checkout.",
+	},
+	{
+		question: "What is included with Elmo Cloud?",
+		answer:
+			"Every Cloud plan includes unlimited seats and API access. Plans set workspace-wide brand and prompt limits, per-brand platform choices, sampling cadence, and—on Pro and Business—a separate pool of daily Claude prompt assignments.",
 	},
 	{
 		question: "Can agencies white-label Elmo?",
@@ -59,7 +69,7 @@ export const PRICING_FAQS: FaqItem[] = [
 	{
 		question: "Do I need a credit card to get started?",
 		answer:
-			"No. Self-hosting Elmo does not require an account or a credit card. Clone the open-source repository, deploy with the CLI, and start tracking your AI visibility.",
+			"Self-hosting Elmo does not require an account or credit card. Elmo Cloud has no trial and requires payment during Stripe Checkout; the live demo and self-hosted edition are the free evaluation paths.",
 	},
 ];
 

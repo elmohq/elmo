@@ -1,0 +1,38 @@
+---
+title: Billing FAQ
+description: Checkout, plan changes, Claude add-ons, invoices, and payment status in Elmo Cloud.
+---
+
+## Is there a free trial?
+
+No. The [live demo](https://demo.elmohq.com) and the complete [self-hosted edition](/docs/getting-started) are the free evaluation paths. A new Cloud workspace starts tracking after Checkout succeeds.
+
+## What does annual billing cost?
+
+Annual billing charges ten months of the monthly plan price, giving you two months free. Claude add-on capacity follows the same interval: $5 per assigned prompt monthly or $50 per assigned prompt annually.
+
+## How do I change plans?
+
+Workspace owners and admins can open **Plan & usage**, choose monthly or annual billing, and select another self-service plan. Elmo checks current usage before asking Stripe to change the subscription. If a downgrade would exceed a limit, the page lists what must be reduced first.
+
+Custom plans are changed through Elmo support because their limits and target policies come from the contract.
+
+## Where are invoices and payment methods?
+
+Use **Manage payment method and invoices in Stripe** on the Plan & usage page. The signed Stripe Customer Portal session contains invoices, payment methods, and cancellation controls for the workspace's customer record.
+
+## What happens after a failed payment?
+
+Tracking remains available during a seven-day payment grace period. Plan & usage shows the deadline and links to Stripe. If the invoice is still unpaid when the grace period ends, tracking pauses until Stripe reports the subscription as usable again.
+
+## What happens when I cancel?
+
+Tracking remains available through the paid billing period, then pauses. The Plan & usage page shows the effective end date. You can choose a new self-service plan later, or contact support for a custom contract.
+
+## Who can manage billing?
+
+Workspace owners and admins can start Checkout, change plans, adjust Claude capacity, and open the Stripe portal. Members can see the current plan and usage but cannot mutate billing.
+
+## Are taxes included in the listed price?
+
+Listed prices exclude any applicable tax. Stripe calculates tax from the billing details supplied during Checkout.

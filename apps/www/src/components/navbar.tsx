@@ -1,5 +1,4 @@
 import { Link, useLoaderData } from "@tanstack/react-router";
-import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import {
 	NavigationMenu,
@@ -8,10 +7,13 @@ import {
 	NavigationMenuList,
 } from "@workspace/ui/components/navigation-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { CLOUD_LOGIN_URL, CLOUD_SIGNUP_URL } from "@/lib/cloud-links";
 import { formatStarCount } from "@/lib/github-stars";
 import { Logo } from "./logo";
 
 const navigationLinks = [
+	{ href: "/pricing", label: "Pricing" },
 	{ href: "/changelog", label: "Changelog" },
 	{ href: "/roadmap", label: "Roadmap" },
 	{ href: "/vision", label: "Vision" },
@@ -128,13 +130,19 @@ export function Navbar() {
 						<Sparkles className="size-3.5 text-blue-600" />
 						Off-Site AEO
 					</Link>
-					<Link
-						to="/docs"
+					<a
+						href={CLOUD_LOGIN_URL}
+						className="hidden h-8 items-center rounded-md px-2 text-sm font-medium text-zinc-600 hover:text-zinc-950 sm:inline-flex"
+					>
+						Sign in
+					</a>
+					<a
+						href={CLOUD_SIGNUP_URL}
 						className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
 					>
-						Get Started
+						Start Cloud
 						<ArrowRight className="size-3.5" />
-					</Link>
+					</a>
 				</div>
 			</div>
 		</header>

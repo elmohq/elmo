@@ -1,10 +1,11 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getPageImage } from "@/lib/og";
-import { SITE_NAME, ogMeta, canonicalUrl, articleJsonLd, breadcrumbJsonLd } from "@/lib/seo";
-import { DocsPageLayout } from "@/components/docs-page-layout";
-import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
 import type { SerializedPageTree } from "fumadocs-core/source/client";
+import type { ClientApiPageProps } from "fumadocs-openapi/ui/create-client";
+import { DocsPageLayout } from "@/components/docs-page-layout";
+import type { PublicCloudCatalog } from "@/lib/cloud-plans";
+import { getPageImage } from "@/lib/og";
+import { articleJsonLd, breadcrumbJsonLd, canonicalUrl, ogMeta, SITE_NAME } from "@/lib/seo";
 
 const DOCS_DIR = "packages/docs/content/docs";
 
@@ -16,6 +17,7 @@ interface DocsLoaderData {
 	description: string;
 	filePath: string;
 	pageTree: SerializedPageTree;
+	cloudCatalog: PublicCloudCatalog;
 }
 
 interface OpenApiLoaderData {
@@ -25,11 +27,12 @@ interface OpenApiLoaderData {
 	description: string;
 	pageTree: SerializedPageTree;
 	apiProps: ClientApiPageProps;
+	cloudCatalog: PublicCloudCatalog;
 }
 
 type LoaderData = DocsLoaderData | OpenApiLoaderData;
 
-export type { DocsLoaderData, OpenApiLoaderData, LoaderData };
+export type { DocsLoaderData, LoaderData, OpenApiLoaderData };
 
 export const Route = createFileRoute("/docs/$")({
 	component: Page,
@@ -86,6 +89,7 @@ export const serverLoader = createServerFn({
 		if (!page) throw notFound();
 
 		const pageTree = await source.serializePageTree(source.getPageTree());
+		const { PUBLIC_CLOUD_CATALOG } = await import("@/lib/cloud-plans");
 
 		if (page.type === "openapi") {
 			return {
@@ -95,6 +99,7 @@ export const serverLoader = createServerFn({
 				description: page.data.description ?? "",
 				pageTree,
 				apiProps: await page.data.getClientAPIPageProps(),
+				cloudCatalog: PUBLIC_CLOUD_CATALOG,
 			};
 		}
 
@@ -113,6 +118,7 @@ export const serverLoader = createServerFn({
 			description: page.data.description ?? "",
 			filePath,
 			pageTree,
+			cloudCatalog: PUBLIC_CLOUD_CATALOG,
 		};
 	});
 
