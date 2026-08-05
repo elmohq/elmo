@@ -9,7 +9,8 @@
 		"./auth-hooks": "./src/auth-hooks.ts",
 		"./billing": "./src/billing.ts",
 		"./billing-control": "./src/billing-control.ts",
-		"./billing-readiness": "./src/billing-readiness.ts"
+		"./billing-readiness": "./src/billing-readiness.ts",
+		"./stripe-client": "./src/stripe-client.ts"
 	},
 	"scripts": {
 		"test": "vitest run"

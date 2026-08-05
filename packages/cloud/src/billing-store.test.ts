@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decideCloudBillingProjectionReplacement } from "./billing-store";
+import { decideCloudBillingProjectionReplacement, nextCloudBillingDelinquentSince } from "./billing-store";
 
 const current = {
 	stripeSubscriptionId: "sub_current",
@@ -46,5 +46,28 @@ describe("cloud billing projection ordering", () => {
 				sourceEventCreatedAt: new Date("2026-08-05T00:00:03Z"),
 			}),
 		).toBe("conflict");
+	});
+});
+
+describe("cloud billing delinquency transitions", () => {
+	const firstPastDueAt = new Date("2026-08-05T00:00:03Z");
+
+	it("starts delinquency at the first past-due source event", () => {
+		expect(
+			nextCloudBillingDelinquentSince(null, { status: "past_due", sourceEventCreatedAt: firstPastDueAt }),
+		).toEqual(firstPastDueAt);
+	});
+
+	it("preserves the original delinquency boundary across later past-due events", () => {
+		expect(
+			nextCloudBillingDelinquentSince(firstPastDueAt, {
+				status: "past_due",
+				sourceEventCreatedAt: new Date("2026-08-06T00:00:03Z"),
+			}),
+		).toEqual(firstPastDueAt);
+	});
+
+	it.each(["active", "trialing", "unpaid", "canceled"])("clears delinquency when status becomes %s", (status) => {
+		expect(nextCloudBillingDelinquentSince(firstPastDueAt, { status, sourceEventCreatedAt: new Date() })).toBeNull();
 	});
 });

@@ -1,7 +1,10 @@
+import { lockOrganizationCapacityAndBilling } from "@workspace/lib/cloud/advisory-locks";
+import { reconcileOrganizationTrackingEntitlementsInTransaction } from "@workspace/lib/cloud/entitlement-reconciliation";
 import { db } from "@workspace/lib/db/db";
 import {
 	member,
 	organization,
+	organizationBillingMutations,
 	organizationBillingSubscriptionItems,
 	organizationBillingSubscriptions,
 	stripeWebhookEvents,
@@ -27,6 +30,8 @@ export interface CloudBillingSubscriptionItemProjection {
 	sourceSnapshot: Record<string, unknown>;
 }
 
+export const CLOUD_BILLING_MUTATION_METADATA_KEY = "elmo_billing_mutation_id";
+
 export interface CloudBillingSubscriptionProjection {
 	organizationId: string;
 	stripeSubscriptionId: string;
@@ -41,7 +46,7 @@ export interface CloudBillingSubscriptionProjection {
 	cancelAt: Date | null;
 	canceledAt: Date | null;
 	endedAt: Date | null;
-	sourceEventId: string;
+	sourceEventId: string | null;
 	sourceEventCreatedAt: Date;
 	sourceSnapshot: Record<string, unknown>;
 	syncedAt: Date;
@@ -77,13 +82,20 @@ export interface CloudBillingStore {
 	): Promise<T>;
 }
 
-type DbConnection = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const PROCESSING_LEASE_MILLISECONDS = 5 * 60 * 1000;
 const ACCESS_GRANTING_STATUSES = new Set(["active", "trialing"]);
 
 function grantsAccess(status: string): boolean {
 	return ACCESS_GRANTING_STATUSES.has(status);
+}
+
+function projectionMutationRecordId(projection: CloudBillingSubscriptionProjection): string | null {
+	const metadata = projection.sourceSnapshot.metadata;
+	if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+	const value = (metadata as Record<string, unknown>)[CLOUD_BILLING_MUTATION_METADATA_KEY];
+	return typeof value === "string" ? value : null;
 }
 
 export interface ExistingCloudBillingProjection {
@@ -110,13 +122,21 @@ export function decideCloudBillingProjectionReplacement(
 	return "apply";
 }
 
-function createProjectionWriter(conn: DbConnection): CloudBillingProjectionWriter {
+export function nextCloudBillingDelinquentSince(
+	current: Date | null | undefined,
+	candidate: Pick<CloudBillingSubscriptionProjection, "status" | "sourceEventCreatedAt">,
+): Date | null {
+	return candidate.status === "past_due" ? (current ?? candidate.sourceEventCreatedAt) : null;
+}
+
+export function createCloudBillingProjectionWriter(conn: DbTransaction): CloudBillingProjectionWriter {
 	return {
 		async replaceSubscription(projection) {
 			const [current] = await conn
 				.select({
 					stripeSubscriptionId: organizationBillingSubscriptions.stripeSubscriptionId,
 					status: organizationBillingSubscriptions.status,
+					delinquentSince: organizationBillingSubscriptions.delinquentSince,
 					sourceEventCreatedAt: organizationBillingSubscriptions.sourceEventCreatedAt,
 				})
 				.from(organizationBillingSubscriptions)
@@ -128,6 +148,7 @@ function createProjectionWriter(conn: DbConnection): CloudBillingProjectionWrite
 			if (replacementDecision === "conflict") {
 				throw new Error(`Stripe customer ${projection.stripeCustomerId} has multiple access-granting subscriptions`);
 			}
+			const delinquentSince = nextCloudBillingDelinquentSince(current?.delinquentSince, projection);
 
 			if (projection.items.length > 0) {
 				const itemIds = projection.items.map((item) => item.stripeSubscriptionItemId);
@@ -162,6 +183,7 @@ function createProjectionWriter(conn: DbConnection): CloudBillingProjectionWrite
 					cancelAt: projection.cancelAt,
 					canceledAt: projection.canceledAt,
 					endedAt: projection.endedAt,
+					delinquentSince,
 					sourceEventId: projection.sourceEventId,
 					sourceEventCreatedAt: projection.sourceEventCreatedAt,
 					sourceSnapshot: projection.sourceSnapshot,
@@ -184,6 +206,7 @@ function createProjectionWriter(conn: DbConnection): CloudBillingProjectionWrite
 						cancelAt: projection.cancelAt,
 						canceledAt: projection.canceledAt,
 						endedAt: projection.endedAt,
+						delinquentSince,
 						sourceEventId: projection.sourceEventId,
 						sourceEventCreatedAt: projection.sourceEventCreatedAt,
 						sourceSnapshot: projection.sourceSnapshot,
@@ -233,6 +256,47 @@ function createProjectionWriter(conn: DbConnection): CloudBillingProjectionWrite
 						},
 					});
 			}
+
+			if (grantsAccess(projection.status)) {
+				const addonPromptSlots =
+					projection.items.find((item) => item.active && item.type === "premium_addon")?.quantity ?? 0;
+				const mutationRecordId = projectionMutationRecordId(projection);
+				await conn
+					.update(organizationBillingMutations)
+					.set({
+						status: "applied",
+						stripeSubscriptionId: projection.stripeSubscriptionId,
+						stripeCustomerId: projection.stripeCustomerId,
+						completedAt: projection.syncedAt,
+						lastError: null,
+						updatedAt: projection.syncedAt,
+					})
+					.where(
+						and(
+							eq(organizationBillingMutations.organizationId, projection.organizationId),
+							eq(organizationBillingMutations.status, "pending"),
+							eq(organizationBillingMutations.targetPlanKey, projection.basePlanKey),
+							eq(organizationBillingMutations.targetBillingInterval, projection.billingInterval),
+							eq(organizationBillingMutations.targetClaudeAddonPromptSlots, addonPromptSlots),
+							or(
+								mutationRecordId
+									? and(
+											eq(organizationBillingMutations.kind, "checkout"),
+											isNull(organizationBillingMutations.stripeSubscriptionId),
+											eq(organizationBillingMutations.id, mutationRecordId),
+										)
+									: undefined,
+								eq(organizationBillingMutations.stripeSubscriptionId, projection.stripeSubscriptionId),
+							),
+						),
+					);
+			}
+
+			await reconcileOrganizationTrackingEntitlementsInTransaction({
+				tx: conn,
+				organizationId: projection.organizationId,
+				now: projection.syncedAt,
+			});
 
 			return { applied: true };
 		},
@@ -358,10 +422,8 @@ export function createDrizzleCloudBillingStore(database: typeof db = db): CloudB
 
 		async withOrganizationProjection(organizationId, operation) {
 			return database.transaction(async (tx) => {
-				await tx.execute(
-					sql`select pg_advisory_xact_lock(hashtextextended(${`elmo-cloud-billing:${organizationId}`}, 0))`,
-				);
-				return operation(createProjectionWriter(tx));
+				await lockOrganizationCapacityAndBilling(tx, organizationId);
+				return operation(createCloudBillingProjectionWriter(tx));
 			});
 		},
 	};

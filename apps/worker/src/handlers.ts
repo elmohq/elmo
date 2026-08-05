@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
 import { getDeployment } from "@workspace/deployment";
 import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
@@ -8,6 +9,7 @@ import { type DispatchTrackingV2Data, dispatchTrackingV2Job } from "./jobs/dispa
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type ProcessTrackingTaskV2Data, processTrackingTaskV2Job } from "./jobs/process-tracking-task-v2";
+import { type ReconcileCloudBillingData, reconcileCloudBillingJob } from "./jobs/reconcile-cloud-billing";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 
@@ -66,6 +68,13 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 	console.log("Registered handler: schedule-maintenance");
 
 	if (process.env.DEPLOYMENT_MODE === "cloud") {
+		await boss.work<ReconcileCloudBillingData>(
+			CLOUD_BILLING_RECONCILIATION_QUEUE,
+			{ localConcurrency: 1 },
+			withSentry(CLOUD_BILLING_RECONCILIATION_QUEUE, reconcileCloudBillingJob),
+		);
+		console.log(`Registered handler: ${CLOUD_BILLING_RECONCILIATION_QUEUE}`);
+
 		await boss.work<DispatchTrackingV2Data>(
 			CLOUD_TRACKING_DISPATCH_QUEUE,
 			{ localConcurrency: 1 },

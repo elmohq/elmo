@@ -3,7 +3,7 @@ title: Cloud rollout and rollback
 description: Safe deployment order for the cloud billing and tracking control planes.
 ---
 
-The cloud release uses an expand-first, red-green rollout. Migrations 0012–0015
+The cloud release uses an expand-first, red-green rollout. Migrations 0012–0016
 add the billing and v2 tracking control planes without changing the legacy
 scheduler contract or synthesizing billing, target-selection, or rollout rows.
 Local and white-label installations therefore keep their existing
@@ -12,13 +12,17 @@ Local and white-label installations therefore keep their existing
 ## Deployment order
 
 1. Back up PostgreSQL and verify restoration before changing production.
-2. Apply all database migrations. Treat 0012–0015 as the expand phase; do not
+2. Apply all database migrations. Treat 0012–0016 as the expand phase; do not
    remove legacy columns, queues, or scheduler code.
-3. Deploy the worker version that consumes `dispatch-tracking-v2` and
-   `process-tracking-task-v2`. These consumers are inert for brands without an
-   explicit `brand_scheduler_rollouts` row in `v2` mode. The worker drains due
-   organization entitlement cursors before dispatch, so future custom contract
-   boundaries rebuild only the affected workspaces.
+3. Deploy the worker version that consumes `reconcile-cloud-billing`,
+   `dispatch-tracking-v2`, and `process-tracking-task-v2`. Billing reconciliation
+   recovers a Stripe command after a process or webhook-delivery failure; a
+   pending command fences tracking until its authoritative Stripe state has
+   been projected or the command has definitively failed. Tracking consumers
+   are inert for brands without an explicit `brand_scheduler_rollouts` row in
+   `v2` mode. The worker drains due organization entitlement cursors before
+   dispatch, so future custom contract boundaries rebuild only the affected
+   workspaces.
 4. Prepare Stripe before admitting cloud web traffic:
    - create the catalog prices with the exact lookup keys, amounts, currencies,
      and intervals defined by the application;
@@ -83,7 +87,7 @@ the `resumeCloudTrackingRollouts` operation after restoring a compatible v2
 worker; that operation increments the generation again and makes the
 organization entitlement cursor immediately due.
 
-Keep migrations 0012–0015 applied during rollback. Their tables and nullable
+Keep migrations 0012–0016 applied during rollback. Their tables and nullable
 Stripe columns are compatible with local and white-label code, while reversing
 them would be the destructive part of the release. Stripe retries failed
 webhook delivery, so restore a webhook-capable web version before resuming

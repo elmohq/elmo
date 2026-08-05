@@ -51,25 +51,20 @@ describe("cloud Stripe billing runtime", () => {
 		expect(store.load).toHaveBeenCalledWith("org_1", "user_1");
 	});
 
-	it("reserves Better Auth upgrades for initial checkout and denies custom self-service", async () => {
+	it("reserves every Better Auth upgrade for Elmo's durable checkout control", async () => {
 		let snapshot: CloudBillingAuthorizationSnapshot | null = {
 			role: "admin",
 			planId: null,
 			status: null,
 		};
-		const validateCheckout = vi.fn(async () => true);
-		const authorize = createCloudOrganizationReferenceAuthorizer(
-			{ load: async () => snapshot },
-			{ validate: validateCheckout },
-		);
+		const authorize = createCloudOrganizationReferenceAuthorizer({ load: async () => snapshot });
 
 		await expect(
 			authorize(
 				{ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" },
 				{ body: { plan: "starter" } },
 			),
-		).resolves.toBe(true);
-		expect(validateCheckout).toHaveBeenCalledWith("org_1", "starter");
+		).resolves.toBe(false);
 		snapshot = { role: "admin", planId: "pro", status: "active" };
 		await expect(
 			authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" }),
@@ -78,22 +73,6 @@ describe("cloud Stripe billing runtime", () => {
 		await expect(authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "billing-portal" })).resolves.toBe(
 			false,
 		);
-	});
-
-	it("does not let the generic upgrade endpoint bypass restart capacity validation", async () => {
-		const validateCheckout = vi.fn(async () => false);
-		const authorize = createCloudOrganizationReferenceAuthorizer(
-			{ load: async () => ({ role: "admin", planId: "pro", status: "canceled" }) },
-			{ validate: validateCheckout },
-		);
-
-		await expect(
-			authorize(
-				{ user: { id: "user_1" }, referenceId: "org_1", action: "upgrade-subscription" },
-				{ body: { plan: "starter" } },
-			),
-		).resolves.toBe(false);
-		expect(validateCheckout).toHaveBeenCalledWith("org_1", "starter");
 	});
 
 	it("constructs the Better Auth Stripe plugin for the injected client and store", () => {

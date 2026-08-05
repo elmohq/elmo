@@ -29,7 +29,7 @@ export interface CreateCloudStripeEventHandlerOptions {
 
 export interface BuildCloudBillingSubscriptionProjectionOptions {
 	organizationId: string;
-	eventId: string;
+	eventId: string | null;
 	eventCreatedAt: Date;
 	deleted: boolean;
 	syncedAt: Date;

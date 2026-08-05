@@ -77,6 +77,7 @@ describe("resolveEntitlements", () => {
 
 	it.each([
 		[undefined, "missing-subscription"],
+		[activeSubscription("pro", { billingMutationPending: true }), "billing-change-pending"],
 		[activeSubscription("starter", { status: "trialing" }), "inactive-subscription"],
 		[activeSubscription("future-plan"), "unknown-plan"],
 	] as const)("fails closed for an unusable cloud subscription", (subscription, reason) => {

@@ -1,5 +1,6 @@
 import { stripe as betterAuthStripe } from "@better-auth/stripe";
 import Stripe from "stripe";
+import { createCloudStripeClient } from "./stripe-client";
 import { CLOUD_STRIPE_PLANS, validateCloudStripePriceCatalog } from "./billing-catalog";
 import {
 	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
@@ -8,8 +9,6 @@ import {
 	createCloudStripeEventHandler,
 } from "./billing-events";
 import { type CloudBillingStore, createDrizzleCloudBillingStore } from "./billing-store";
-import { validateCloudInitialCheckout } from "./billing-control";
-import { isCloudPlanId, SELF_SERVE_CLOUD_PLAN_IDS, type SelfServeCloudPlanId } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
 import { member, organizationBillingSubscriptions } from "@workspace/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -29,10 +28,6 @@ export interface CloudBillingAuthorizationSnapshot {
 
 export interface CloudBillingAuthorizationStore {
 	load(organizationId: string, userId: string): Promise<CloudBillingAuthorizationSnapshot | null>;
-}
-
-export interface CloudInitialCheckoutAuthorizer {
-	validate(organizationId: string, planId: SelfServeCloudPlanId): Promise<boolean>;
 }
 
 export interface CreateCloudBillingRuntimeOptions {
@@ -100,22 +95,7 @@ function canManageBilling(role: string): boolean {
  * validated billing controls once an organization is subscribed.
  */
 
-function getRequestedPlan(context: unknown): SelfServeCloudPlanId | null {
-	if (!context || typeof context !== "object" || !("body" in context)) return null;
-	const body = context.body;
-	if (!body || typeof body !== "object" || !("plan" in body) || typeof body.plan !== "string") return null;
-	return isCloudPlanId(body.plan) && SELF_SERVE_CLOUD_PLAN_IDS.includes(body.plan as SelfServeCloudPlanId)
-		? (body.plan as SelfServeCloudPlanId)
-		: null;
-}
-
-export function createCloudOrganizationReferenceAuthorizer(
-	store: CloudBillingAuthorizationStore,
-	initialCheckout: CloudInitialCheckoutAuthorizer = {
-		validate: async (organizationId, planId) =>
-			(await validateCloudInitialCheckout({ organizationId, planId })).length === 0,
-	},
-) {
+export function createCloudOrganizationReferenceAuthorizer(store: CloudBillingAuthorizationStore) {
 	return async (
 		{
 			user,
@@ -126,7 +106,7 @@ export function createCloudOrganizationReferenceAuthorizer(
 			referenceId: string;
 			action: CloudBillingReferenceAction;
 		},
-		context?: unknown,
+		_context?: unknown,
 	): Promise<boolean> => {
 		const snapshot = await store.load(referenceId, user.id);
 		if (!snapshot) return false;
@@ -135,15 +115,9 @@ export function createCloudOrganizationReferenceAuthorizer(
 		// Better Auth creates an unrestricted default portal session. Elmo's
 		// server control uses a separately validated Stripe configuration.
 		if (action === "billing-portal") return false;
-		if (action === "upgrade-subscription") {
-			const mayStartCheckout =
-				snapshot.status === null ||
-				snapshot.status === "canceled" ||
-				snapshot.status === "incomplete" ||
-				snapshot.status === "incomplete_expired";
-			const planId = getRequestedPlan(context);
-			return mayStartCheckout && planId !== null && initialCheckout.validate(referenceId, planId);
-		}
+		// Elmo's durable checkout and mutation controls are the only write path.
+		// Better Auth remains the webhook/subscription-record integration.
+		if (action === "upgrade-subscription") return false;
 		return true;
 	};
 }
@@ -158,11 +132,7 @@ function requirePortalConfigurationId(value: string | undefined): string {
 	return value;
 }
 
-export function createCloudStripeClient(secretKey = process.env.STRIPE_SECRET_KEY): Stripe {
-	return new Stripe(requireSecret("STRIPE_SECRET_KEY", secretKey), {
-		appInfo: { name: "Elmo Cloud" },
-	});
-}
+export { createCloudStripeClient } from "./stripe-client";
 
 /**
  * Constructs one shared Stripe client, Better Auth plugin, and authoritative

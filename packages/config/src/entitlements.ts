@@ -12,6 +12,7 @@ import type { DeploymentMode } from "./types";
 export interface CloudSubscriptionEntitlementSnapshot {
 	planId: string;
 	status: string;
+	billingMutationPending?: boolean;
 	claudeAddonPromptSlots?: number;
 	entitlementOverride?: unknown;
 }
@@ -56,6 +57,7 @@ export interface ResolvedCloudPlanEntitlements {
 
 export type CloudEntitlementDenialReason =
 	| "missing-subscription"
+	| "billing-change-pending"
 	| "inactive-subscription"
 	| "unknown-plan"
 	| "custom-override-required"
@@ -171,6 +173,7 @@ export function resolveEntitlements(input: ResolveEntitlementsInput): ResolvedEn
 
 	const subscription = input.subscription;
 	if (!subscription) return deny("missing-subscription");
+	if (subscription.billingMutationPending) return deny("billing-change-pending");
 	if (subscription.status !== "active") return deny("inactive-subscription");
 
 	const plan = getCloudPlan(subscription.planId);

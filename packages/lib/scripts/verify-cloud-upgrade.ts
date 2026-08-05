@@ -15,6 +15,7 @@ const CLOUD_MIGRATIONS = [
 	"0013_better_auth_stripe",
 	"0014_enforce_tracking_tenant_budgets",
 	"0015_reconcile_entitlement_transitions",
+	"0016_durable_billing_mutations",
 ] as const;
 
 type Journal = {
@@ -230,12 +231,21 @@ async function assertCloudUpgrade(
 		{ table_name: "organization", is_nullable: "YES" },
 		{ table_name: "user", is_nullable: "YES" },
 	]);
+	const lifecycleColumn = await client.query(`
+		SELECT "is_nullable"
+		FROM "information_schema"."columns"
+		WHERE "table_schema" = 'public'
+			AND "table_name" = 'organization_billing_subscriptions'
+			AND "column_name" = 'delinquent_since'
+	`);
+	assert.deepEqual(lifecycleColumn.rows, [{ is_nullable: "YES" }]);
 
 	const emptyControlPlaneTables = [
 		"subscription",
 		"stripe_webhook_events",
 		"organization_billing_subscriptions",
 		"organization_billing_subscription_items",
+		"organization_billing_mutations",
 		"organization_entitlement_overrides",
 		"organization_entitlement_reconciliations",
 		"brand_scheduler_rollouts",

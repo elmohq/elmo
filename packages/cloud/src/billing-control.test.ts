@@ -3,9 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	changeCloudSubscriptionPlan,
 	CloudBillingControlError,
+	type CloudBillingMutationRecord,
 	type CloudBillingControlStore,
 	type CloudBillingMutationState,
+	type PreparedCloudBillingMutation,
 	setCloudClaudeAddonPromptSlots,
+	startCloudInitialCheckout,
 	validateCloudBillingConfiguration,
 	validateCloudInitialCheckout,
 } from "./billing-control";
@@ -19,6 +22,7 @@ const emptyUsage = {
 
 function state(overrides: Partial<CloudBillingMutationState> = {}): CloudBillingMutationState {
 	return {
+		organization: { name: "Workspace", stripeCustomerId: "cus_1" },
 		subscription: {
 			stripeSubscriptionId: "sub_1",
 			stripeCustomerId: "cus_1",
@@ -38,35 +42,95 @@ function state(overrides: Partial<CloudBillingMutationState> = {}): CloudBilling
 }
 
 function store(snapshot: CloudBillingMutationState): CloudBillingControlStore {
+	let sequence = 0;
+	const mutations: CloudBillingMutationRecord[] = [];
+	const beginMutation: CloudBillingControlStore["beginMutation"] = async (
+		organizationId,
+		mutationId,
+		kind,
+		prepare,
+	) => {
+		const same = mutations.find(
+			(mutation) => mutation.organizationId === organizationId && mutation.mutationId === mutationId,
+		);
+		if (same) return { state: same.status, mutation: same };
+		const other = mutations.find(
+			(mutation) => mutation.organizationId === organizationId && mutation.status === "pending",
+		);
+		if (other) return { state: "other-pending", mutation: other };
+		const prepared: PreparedCloudBillingMutation = await prepare(snapshot);
+		sequence++;
+		const mutation: CloudBillingMutationRecord = {
+			...prepared,
+			id: `mutation_${sequence}`,
+			organizationId,
+			mutationId,
+			kind,
+			status: "pending",
+			stripeIdempotencyKey: `elmo:${organizationId}:${kind}:${mutationId}`,
+			attemptCount: 0,
+			nextAttemptAt: new Date(),
+			lastError: null,
+			stripeCheckoutSessionId: null,
+			stripeCheckoutSessionUrl: null,
+			stripeCheckoutExpiresAt: null,
+		};
+		mutations.push(mutation);
+		return { state: "pending", mutation };
+	};
 	return {
 		load: async () => snapshot,
-		withOrganizationLock: async (_organizationId, operation) => operation(snapshot),
+		beginMutation: vi.fn(beginMutation),
+		projectMutation: vi.fn(async (mutation) => {
+			mutation.status = "applied";
+		}),
+		failMutation: vi.fn(async (mutation, error) => {
+			mutation.status = "failed";
+			mutation.lastError = error;
+		}),
+		deferMutation: vi.fn(async (mutation, error, retryAt) => {
+			mutation.attemptCount++;
+			mutation.lastError = error;
+			mutation.nextAttemptAt = retryAt;
+		}),
+		listPendingMutations: vi.fn(async () => []),
+		recordCheckoutSession: vi.fn(async (mutation, session) => {
+			mutation.stripeCustomerId = session.stripeCustomerId;
+			mutation.stripeCheckoutSessionId = session.id;
+			mutation.stripeCheckoutSessionUrl = session.url;
+			mutation.stripeCheckoutExpiresAt = session.expiresAt;
+			return mutation;
+		}),
 	};
+}
+
+function unitAmountForLookupKey(lookupKey: string): number {
+	const annualMultiplier = lookupKey.endsWith("annual") ? 10 : 1;
+	if (lookupKey.includes("claude_prompt")) return 500 * annualMultiplier;
+	if (lookupKey.includes("business")) return 64_900 * annualMultiplier;
+	if (lookupKey.includes("pro")) return 29_900 * annualMultiplier;
+	if (lookupKey.includes("basic")) return 9_900 * annualMultiplier;
+	return 2_900 * annualMultiplier;
 }
 
 function subscription(items: Array<{ id: string; lookupKey: string; quantity?: number }>): Stripe.Subscription {
 	return {
 		id: "sub_1",
 		customer: "cus_1",
+		status: "active",
 		metadata: { elmo_plan_id: "pro", elmo_billing_source: "better-auth" },
 		items: {
 			data: items.map((item) => ({
 				id: item.id,
 				quantity: item.quantity,
+				current_period_start: 1_785_542_400,
+				current_period_end: 1_788_220_800,
 				price: {
 					id: `price_${item.id}`,
 					lookup_key: item.lookupKey,
 					active: true,
 					currency: "usd",
-					unit_amount: item.lookupKey.includes("claude_prompt")
-						? item.lookupKey.endsWith("annual")
-							? 5_000
-							: 500
-						: item.lookupKey.includes("business")
-							? item.lookupKey.endsWith("annual")
-								? 649_000
-								: 64_900
-							: 29_900,
+					unit_amount: unitAmountForLookupKey(item.lookupKey),
 					recurring: {
 						interval: item.lookupKey.endsWith("annual") ? "year" : "month",
 						interval_count: 1,
@@ -74,27 +138,64 @@ function subscription(items: Array<{ id: string; lookupKey: string; quantity?: n
 				},
 			})),
 		},
+		cancel_at_period_end: false,
+		cancel_at: null,
+		canceled_at: null,
+		ended_at: null,
 	} as unknown as Stripe.Subscription;
 }
 
 function stripeClient(stripeSubscription: Stripe.Subscription) {
-	const update = vi.fn(async () => stripeSubscription);
-	const retrieve = vi.fn(async () => stripeSubscription);
+	let current = stripeSubscription;
+	const update = vi.fn(async (_id: string, params: Stripe.SubscriptionUpdateParams) => {
+		const nextItems = [...current.items.data];
+		for (const updateItem of params.items ?? []) {
+			const existingIndex = updateItem.id ? nextItems.findIndex((item) => item.id === updateItem.id) : -1;
+			if (updateItem.deleted && existingIndex >= 0) {
+				nextItems.splice(existingIndex, 1);
+				continue;
+			}
+			const lookupKey = updateItem.price?.replace(/^price_/, "") ?? null;
+			const interval = lookupKey?.endsWith("annual") ? "year" : "month";
+			const price = {
+				id: updateItem.price ?? nextItems[existingIndex]?.price.id ?? "price_unknown",
+				lookup_key: lookupKey ?? nextItems[existingIndex]?.price.lookup_key ?? null,
+				active: true,
+				currency: "usd",
+				unit_amount: unitAmountForLookupKey(lookupKey ?? "elmo_cloud_pro_monthly"),
+				recurring: { interval, interval_count: 1 },
+			} as Stripe.Price;
+			if (existingIndex >= 0) {
+				nextItems[existingIndex] = {
+					...nextItems[existingIndex]!,
+					price,
+					quantity: updateItem.quantity,
+				};
+			} else {
+				nextItems.push({
+					id: "addon_created",
+					price,
+					quantity: updateItem.quantity,
+					current_period_start: 1_785_542_400,
+					current_period_end: 1_788_220_800,
+				} as Stripe.SubscriptionItem);
+			}
+		}
+		current = {
+			...current,
+			metadata: { ...current.metadata, ...(params.metadata as Record<string, string> | undefined) },
+			items: { ...current.items, data: nextItems },
+		};
+		return current;
+	});
+	const retrieve = vi.fn(async () => current);
 	const list = vi.fn(async (params: Stripe.PriceListParams) => ({
 		data: [
 			{
 				id: `price_${params.lookup_keys?.[0]}`,
 				lookup_key: params.lookup_keys?.[0] ?? null,
 				currency: "usd",
-				unit_amount: params.lookup_keys?.[0]?.includes("claude_prompt")
-					? params.lookup_keys?.[0]?.endsWith("annual")
-						? 5_000
-						: 500
-					: params.lookup_keys?.[0]?.includes("business")
-						? params.lookup_keys?.[0]?.endsWith("annual")
-							? 649_000
-							: 64_900
-						: 29_900,
+				unit_amount: unitAmountForLookupKey(params.lookup_keys?.[0] ?? "elmo_cloud_pro_monthly"),
 				recurring: {
 					interval: params.lookup_keys?.[0]?.endsWith("annual") ? "year" : "month",
 					interval_count: 1,
@@ -208,8 +309,9 @@ describe("cloud Stripe billing mutations", () => {
 					{ id: "base", price: "price_elmo_cloud_business_annual", quantity: 1 },
 					{ id: "addon", price: "price_elmo_cloud_claude_prompt_annual", quantity: 3 },
 				],
-				payment_behavior: "pending_if_incomplete",
+				payment_behavior: "error_if_incomplete",
 				proration_behavior: "always_invoice",
+				expand: ["items.data.price"],
 			}),
 			{ idempotencyKey: "elmo:org_1:plan:0198-transaction" },
 		);
@@ -249,8 +351,9 @@ describe("cloud Stripe billing mutations", () => {
 			"sub_1",
 			expect.objectContaining({
 				items: [{ price: "price_elmo_cloud_claude_prompt_monthly", quantity: 4 }],
-				payment_behavior: "pending_if_incomplete",
+				payment_behavior: "error_if_incomplete",
 				proration_behavior: "always_invoice",
+				expand: ["items.data.price"],
 			}),
 			{ idempotencyKey: "elmo:org_1:addon:addon-change" },
 		);
@@ -343,5 +446,203 @@ describe("cloud Stripe billing mutations", () => {
 			}),
 		).rejects.toMatchObject({ code: "invalid-subscription" });
 		expect(stripe.update).not.toHaveBeenCalled();
+	});
+
+	it("clears the durable fence only for a definitive Stripe rejection", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		stripe.update.mockRejectedValueOnce(Object.assign(new Error("authentication required"), { statusCode: 402 }));
+		const controlStore = store(state());
+
+		await expect(
+			changeCloudSubscriptionPlan({
+				organizationId: "org_1",
+				planId: "business",
+				interval: "month",
+				mutationId: "payment-rejected",
+				stripeClient: stripe.client,
+				store: controlStore,
+			}),
+		).rejects.toMatchObject({ code: "billing-change-failed" });
+		expect(controlStore.failMutation).toHaveBeenCalledOnce();
+		expect(controlStore.deferMutation).not.toHaveBeenCalled();
+	});
+
+	it("keeps the workspace fenced when Stripe's result is unknown", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		const networkError = new Error("connection reset after request");
+		stripe.update.mockRejectedValueOnce(networkError);
+		const controlStore = store(state());
+
+		await expect(
+			changeCloudSubscriptionPlan({
+				organizationId: "org_1",
+				planId: "business",
+				interval: "month",
+				mutationId: "unknown-result",
+				stripeClient: stripe.client,
+				store: controlStore,
+			}),
+		).rejects.toBe(networkError);
+		expect(controlStore.deferMutation).toHaveBeenCalledOnce();
+		expect(controlStore.failMutation).not.toHaveBeenCalled();
+	});
+
+	it("projects an already-applied idempotent update without charging again", async () => {
+		const current = subscription([{ id: "base", lookupKey: "elmo_cloud_business_annual" }]);
+		current.metadata.elmo_plan_id = "business";
+		const stripe = stripeClient(current);
+		const controlStore = store(state());
+
+		await changeCloudSubscriptionPlan({
+			organizationId: "org_1",
+			planId: "business",
+			interval: "year",
+			mutationId: "recover-after-crash",
+			stripeClient: stripe.client,
+			store: controlStore,
+		});
+
+		expect(stripe.update).not.toHaveBeenCalled();
+		expect(controlStore.projectMutation).toHaveBeenCalledOnce();
+	});
+
+	it("creates one durable Checkout session for concurrent initial requests", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		const customerRetrieve = vi.fn(async () => ({
+			id: "cus_1",
+			metadata: { organizationId: "org_1", customerType: "organization" },
+		}));
+		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => ({
+			id: "cs_1",
+			mode: "subscription",
+			status: "open",
+			url: "https://checkout.stripe.com/c/pay/cs_1",
+			customer: params.customer,
+			client_reference_id: params.client_reference_id,
+			metadata: params.metadata,
+			expires_at: params.expires_at,
+		}));
+		const client = {
+			...stripe.client,
+			customers: { retrieve: customerRetrieve },
+			checkout: { sessions: { create: checkoutCreate } },
+		} as unknown as Stripe;
+		const controlStore = store(
+			state({
+				subscription: null,
+				usage: { ...emptyUsage, enabledBrands: 1, enabledPrompts: 10 },
+			}),
+		);
+		const request = {
+			organizationId: "org_1",
+			planId: "starter" as const,
+			interval: "month" as const,
+			successUrl: "https://app.elmo.test/billing?checkout=success",
+			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
+			stripeClient: client,
+			store: controlStore,
+			now: new Date("2026-08-05T00:00:00Z"),
+		};
+
+		await expect(startCloudInitialCheckout({ ...request, mutationId: "checkout-one" })).resolves.toEqual({
+			accepted: true,
+			url: "https://checkout.stripe.com/c/pay/cs_1",
+		});
+		await expect(startCloudInitialCheckout({ ...request, mutationId: "checkout-two" })).resolves.toEqual({
+			accepted: true,
+			url: "https://checkout.stripe.com/c/pay/cs_1",
+		});
+
+		expect(checkoutCreate).toHaveBeenCalledOnce();
+		expect(checkoutCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				mode: "subscription",
+				automatic_tax: { enabled: true },
+				customer: "cus_1",
+				client_reference_id: "org_1",
+				line_items: [{ price: "price_elmo_cloud_starter_monthly", quantity: 1 }],
+			}),
+			{ idempotencyKey: "elmo:org_1:checkout:checkout-one" },
+		);
+	});
+
+	it("returns the Checkout URL when a webhook projects the subscription before the session is recorded", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => ({
+			id: "cs_raced",
+			mode: "subscription",
+			status: "open",
+			url: "https://checkout.stripe.com/c/pay/cs_raced",
+			customer: params.customer,
+			client_reference_id: params.client_reference_id,
+			metadata: params.metadata,
+			expires_at: params.expires_at,
+		}));
+		const client = {
+			...stripe.client,
+			customers: {
+				retrieve: vi.fn(async () => ({
+					id: "cus_1",
+					metadata: { organizationId: "org_1", customerType: "organization" },
+				})),
+			},
+			checkout: { sessions: { create: checkoutCreate } },
+		} as unknown as Stripe;
+		const controlStore = store(
+			state({
+				subscription: null,
+				usage: { ...emptyUsage, enabledBrands: 1, enabledPrompts: 10 },
+			}),
+		);
+		controlStore.recordCheckoutSession = vi.fn(async (mutation) => ({ ...mutation, status: "applied" }));
+
+		await expect(
+			startCloudInitialCheckout({
+				organizationId: "org_1",
+				planId: "starter",
+				interval: "month",
+				mutationId: "checkout-race",
+				successUrl: "https://app.elmo.test/billing?checkout=success",
+				cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
+				stripeClient: client,
+				store: controlStore,
+				now: new Date("2026-08-05T00:00:00Z"),
+			}),
+		).resolves.toEqual({ accepted: true, url: "https://checkout.stripe.com/c/pay/cs_raced" });
+		expect(controlStore.deferMutation).not.toHaveBeenCalled();
+	});
+
+	it("rejects stored Checkout return URLs that do not share the application origin", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		const checkoutCreate = vi.fn();
+		const client = {
+			...stripe.client,
+			customers: {
+				retrieve: vi.fn(async () => ({
+					id: "cus_1",
+					metadata: { organizationId: "org_1", customerType: "organization" },
+				})),
+			},
+			checkout: { sessions: { create: checkoutCreate } },
+		} as unknown as Stripe;
+
+		await expect(
+			startCloudInitialCheckout({
+				organizationId: "org_1",
+				planId: "starter",
+				interval: "month",
+				mutationId: "checkout-cross-origin",
+				successUrl: "https://app.elmo.test/billing?checkout=success",
+				cancelUrl: "https://attacker.test/billing?checkout=cancel",
+				stripeClient: client,
+				store: store(
+					state({
+						subscription: null,
+						usage: { ...emptyUsage, enabledBrands: 1, enabledPrompts: 10 },
+					}),
+				),
+			}),
+		).rejects.toMatchObject({ code: "invalid-subscription" });
+		expect(checkoutCreate).not.toHaveBeenCalled();
 	});
 });

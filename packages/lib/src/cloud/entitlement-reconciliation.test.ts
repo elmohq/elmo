@@ -70,18 +70,31 @@ describe("organization tracking capacity transition", () => {
 		).toEqual({ standardCapacityValid: true, premiumCapacityValid: false });
 	});
 
-	it("treats a pending or inactive billing source as wholly denied", () => {
-		const denied = resolveEntitlements({
+	it("denies capacity while a billing mutation is pending and restores it after completion", () => {
+		const pending = resolveEntitlements({
 			mode: "cloud",
 			subscription: { planId: "pro", status: "active", billingMutationPending: true },
 		});
 		expect(
 			assessOrganizationTrackingCapacity({
-				resolved: denied,
+				resolved: pending,
 				enabledBrands: 0,
 				enabledPrompts: 0,
 				premiumPromptAssignments: 0,
 			}),
 		).toEqual({ standardCapacityValid: false, premiumCapacityValid: false });
+
+		const completed = resolveEntitlements({
+			mode: "cloud",
+			subscription: { planId: "pro", status: "active" },
+		});
+		expect(
+			assessOrganizationTrackingCapacity({
+				resolved: completed,
+				enabledBrands: 0,
+				enabledPrompts: 0,
+				premiumPromptAssignments: 0,
+			}),
+		).toEqual({ standardCapacityValid: true, premiumCapacityValid: true });
 	});
 });

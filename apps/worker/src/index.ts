@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { validateCloudTrackingTargets } from "@workspace/cloud";
+import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
 import { getDeployment } from "@workspace/deployment";
 import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
@@ -69,6 +70,12 @@ async function main() {
 		expireInSeconds: 60 * 30, // 30 minute timeout
 	});
 	if (process.env.DEPLOYMENT_MODE === "cloud") {
+		await boss.createQueue(CLOUD_BILLING_RECONCILIATION_QUEUE, {
+			retryLimit: 3,
+			retryDelay: 60,
+			retryBackoff: true,
+			expireInSeconds: 60 * 5,
+		});
 		await boss.createQueue(CLOUD_TRACKING_DISPATCH_QUEUE, {
 			retryLimit: 3,
 			retryDelay: 30,
@@ -95,6 +102,8 @@ async function main() {
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
 	console.log("Scheduled maintenance job (every 5 minutes)");
 	if (process.env.DEPLOYMENT_MODE === "cloud") {
+		await boss.schedule(CLOUD_BILLING_RECONCILIATION_QUEUE, "* * * * *", { source: "scheduled" }, { tz: "UTC" });
+		console.log("Scheduled cloud billing reconciliation (every minute)");
 		await boss.schedule(CLOUD_TRACKING_DISPATCH_QUEUE, "* * * * *", { source: "scheduled" }, { tz: "UTC" });
 		console.log("Scheduled cloud v2 tracking dispatcher (every minute)");
 	}

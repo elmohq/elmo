@@ -275,6 +275,10 @@ export const billingSubscriptionItemTypeEnum = pgEnum("billing_subscription_item
 	"custom",
 ]);
 
+export const billingMutationKindEnum = pgEnum("billing_mutation_kind", ["checkout", "plan", "addon"]);
+
+export const billingMutationStatusEnum = pgEnum("billing_mutation_status", ["pending", "applied", "failed"]);
+
 export const targetSelectionSourceEnum = pgEnum("target_selection_source", ["plan_default", "user", "operator"]);
 
 export const promptTargetAssignmentSourceEnum = pgEnum("prompt_target_assignment_source", [
@@ -407,6 +411,7 @@ export const organizationBillingSubscriptions = pgTable(
 		cancelAt: timestamp("cancel_at", { withTimezone: true }),
 		canceledAt: timestamp("canceled_at", { withTimezone: true }),
 		endedAt: timestamp("ended_at", { withTimezone: true }),
+		delinquentSince: timestamp("delinquent_since", { withTimezone: true }),
 		sourceEventId: text("source_event_id").references(() => stripeWebhookEvents.id),
 		sourceEventCreatedAt: timestamp("source_event_created_at", { withTimezone: true }),
 		sourceSnapshot: jsonb("source_snapshot").$type<Record<string, unknown>>().notNull(),
@@ -456,6 +461,54 @@ export const organizationBillingSubscriptionItems = pgTable(
 			.on(table.organizationId)
 			.where(sql`${table.active} = true AND ${table.type} = 'premium_addon'`),
 		check("organization_billing_subscription_items_quantity_check", sql`${table.quantity} > 0`),
+	],
+).enableRLS();
+
+/**
+ * Durable self-serve commands. A pending row is an entitlement fence until an
+ * atomic Stripe update has also been projected locally, including after a
+ * process or network failure between those two systems.
+ */
+export const organizationBillingMutations = pgTable(
+	"organization_billing_mutations",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		mutationId: text("mutation_id").notNull(),
+		kind: billingMutationKindEnum().notNull(),
+		status: billingMutationStatusEnum().default("pending").notNull(),
+		stripeSubscriptionId: text("stripe_subscription_id"),
+		stripeCustomerId: text("stripe_customer_id"),
+		stripeIdempotencyKey: text("stripe_idempotency_key").notNull(),
+		targetPlanKey: text("target_plan_key").notNull(),
+		targetBillingInterval: text("target_billing_interval").notNull(),
+		targetClaudeAddonPromptSlots: integer("target_claude_addon_prompt_slots").notNull(),
+		stripeUpdateParams: jsonb("stripe_update_params").$type<Record<string, unknown>>().notNull(),
+		stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+		stripeCheckoutSessionUrl: text("stripe_checkout_session_url"),
+		stripeCheckoutExpiresAt: timestamp("stripe_checkout_expires_at", { withTimezone: true }),
+		attemptCount: integer("attempt_count").default(0).notNull(),
+		nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+		lastError: text("last_error"),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("organization_billing_mutations_org_mutation_uidx").on(table.organizationId, table.mutationId),
+		uniqueIndex("organization_billing_mutations_stripe_idempotency_uidx").on(table.stripeIdempotencyKey),
+		uniqueIndex("organization_billing_mutations_one_pending_uidx")
+			.on(table.organizationId)
+			.where(sql`${table.status} = 'pending'`),
+		index("organization_billing_mutations_recovery_idx").on(table.status, table.nextAttemptAt, table.createdAt),
+		check("organization_billing_mutations_interval_check", sql`${table.targetBillingInterval} IN ('month', 'year')`),
+		check("organization_billing_mutations_addon_slots_check", sql`${table.targetClaudeAddonPromptSlots} >= 0`),
+		check("organization_billing_mutations_attempt_count_check", sql`${table.attemptCount} >= 0`),
 	],
 ).enableRLS();
 
@@ -880,6 +933,8 @@ export type OrganizationBillingSubscription = typeof organizationBillingSubscrip
 export type NewOrganizationBillingSubscription = typeof organizationBillingSubscriptions.$inferInsert;
 export type OrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferSelect;
 export type NewOrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferInsert;
+export type OrganizationBillingMutation = typeof organizationBillingMutations.$inferSelect;
+export type NewOrganizationBillingMutation = typeof organizationBillingMutations.$inferInsert;
 export type OrganizationEntitlementReconciliation = typeof organizationEntitlementReconciliations.$inferSelect;
 export type NewOrganizationEntitlementReconciliation = typeof organizationEntitlementReconciliations.$inferInsert;
 export type BrandTargetSelection = typeof brandTargetSelections.$inferSelect;

@@ -8,6 +8,7 @@ import { and, desc, eq, gt, isNull, lte, or } from "drizzle-orm";
 import { db } from "../db/db";
 import {
 	organizationBillingSubscriptionItems,
+	organizationBillingMutations,
 	organizationBillingSubscriptions,
 	organizationEntitlementOverrides,
 } from "../db/schema";
@@ -62,10 +63,24 @@ export function createOrganizationBillingSnapshotStore(conn: DbConnection = db):
 				)
 				.orderBy(desc(organizationEntitlementOverrides.revision))
 				.limit(1);
+			// Read the fence last. A concurrent command can only become visible
+			// after all source rows above were read, never between a fence read and
+			// an older subscription snapshot that would accidentally grant access.
+			const [pendingMutation] = await conn
+				.select({ id: organizationBillingMutations.id })
+				.from(organizationBillingMutations)
+				.where(
+					and(
+						eq(organizationBillingMutations.organizationId, organizationId),
+						eq(organizationBillingMutations.status, "pending"),
+					),
+				)
+				.limit(1);
 
 			return {
 				planId: subscription.planId,
 				status: subscription.status,
+				billingMutationPending: pendingMutation !== undefined,
 				claudeAddonPromptSlots: premiumItem?.quantity ?? 0,
 				entitlementOverride: override
 					? { version: override.schemaVersion, entitlements: override.entitlements }

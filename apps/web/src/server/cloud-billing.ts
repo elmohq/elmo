@@ -1,12 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import {
 	changeCloudSubscriptionPlan,
 	CloudBillingControlError,
 	getSerializedCloudBillingView,
 	MAX_SELF_SERVE_CLAUDE_ADDON_PROMPT_SLOTS,
 	setCloudClaudeAddonPromptSlots,
-	validateCloudInitialCheckout,
+	startCloudInitialCheckout,
 } from "@workspace/cloud/billing-control";
 import { CLOUD_PLAN_CATALOG, SELF_SERVE_CLOUD_PLAN_IDS } from "@workspace/config/plans";
 import { db } from "@workspace/lib/db/db";
@@ -14,15 +13,16 @@ import { member, organizationBillingSubscriptions } from "@workspace/lib/db/sche
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession } from "@/lib/auth/helpers";
-import { auth, requireCloudBillingRuntime } from "@/lib/auth/server";
+import { requireCloudBillingRuntime } from "@/lib/auth/server";
 import { getDeployment } from "@/lib/config/server";
+import { isSafeRelativePath } from "@/lib/return-to";
 
 const selfServePlanSchema = z.enum(SELF_SERVE_CLOUD_PLAN_IDS);
 const intervalSchema = z.enum(["month", "year"]);
 const relativeReturnPathSchema = z
 	.string()
 	.max(2_000)
-	.refine((value) => value.startsWith("/") && !value.startsWith("//"), "Use an application-relative path");
+	.refine(isSafeRelativePath, "Use an application-relative path");
 
 type BillingAction = "view" | "manage";
 
@@ -93,31 +93,13 @@ export const getWorkspaceBillingFn = createServerFn({ method: "GET" })
 		};
 	});
 
-type StripeBillingApi = typeof auth.api & {
-	upgradeSubscription(input: {
-		body: {
-			plan: string;
-			annual: boolean;
-			referenceId: string;
-			customerType: "organization";
-			successUrl: string;
-			cancelUrl: string;
-			disableRedirect: true;
-		};
-		headers: Headers;
-	}): Promise<{ url: string; redirect: boolean }>;
-};
-
-function billingApi(): StripeBillingApi {
-	return auth.api as StripeBillingApi;
-}
-
 export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			organizationId: z.string().min(1),
 			planId: selfServePlanSchema,
 			interval: intervalSchema,
+			mutationId: z.uuid(),
 			successPath: relativeReturnPathSchema,
 			cancelPath: relativeReturnPathSchema,
 		}),
@@ -125,40 +107,32 @@ export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }): Promise<CloudCheckoutResult> => {
 		requireCloudDeployment();
 		const session = await requireAuthSession();
-		await requireWorkspaceBillingAccess(session.user.id, data.organizationId, "manage");
-		const violations = await validateCloudInitialCheckout({
-			organizationId: data.organizationId,
-			planId: data.planId,
-		});
-		if (violations.length > 0) {
-			return {
-				accepted: false,
-				code: "configuration-over-capacity",
-				message: "The workspace configuration exceeds the requested billing plan.",
-				violations,
-			};
+		try {
+			await requireWorkspaceBillingAccess(session.user.id, data.organizationId, "manage");
+			if (!session.user.emailVerified) throw new Error("Verify your email before starting a subscription.");
+			const appUrl = process.env.APP_URL ?? process.env.VITE_APP_URL;
+			if (!appUrl) throw new Error("APP_URL or VITE_APP_URL must be set");
+			const runtime = requireCloudBillingRuntime();
+			return await startCloudInitialCheckout({
+				organizationId: data.organizationId,
+				planId: data.planId,
+				interval: data.interval,
+				mutationId: data.mutationId,
+				successUrl: new URL(data.successPath, appUrl).toString(),
+				cancelUrl: new URL(data.cancelPath, appUrl).toString(),
+				stripeClient: runtime.stripeClient,
+			});
+		} catch (error) {
+			if (!(error instanceof CloudBillingControlError)) throw error;
+			return { accepted: false, code: error.code, message: error.message, violations: error.violations };
 		}
-		requireCloudBillingRuntime();
-		const result = await billingApi().upgradeSubscription({
-			body: {
-				plan: data.planId,
-				annual: data.interval === "year",
-				referenceId: data.organizationId,
-				customerType: "organization",
-				successUrl: data.successPath,
-				cancelUrl: data.cancelPath,
-				disableRedirect: true,
-			},
-			headers: getRequestHeaders(),
-		});
-		return { accepted: true, url: result.url };
 	});
 
 export type CloudCheckoutResult =
 	| { accepted: true; url: string }
 	| {
 			accepted: false;
-			code: "configuration-over-capacity";
+			code: CloudBillingControlError["code"];
 			message: string;
 			violations: CloudBillingControlError["violations"];
 	  };

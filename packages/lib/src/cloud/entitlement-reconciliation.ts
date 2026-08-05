@@ -10,6 +10,7 @@ import { db } from "../db/db";
 import {
 	brandSchedulerRollouts,
 	brands,
+	organizationBillingMutations,
 	organizationBillingSubscriptionItems,
 	organizationBillingSubscriptions,
 	organizationEntitlementOverrides,
@@ -74,6 +75,16 @@ async function loadOrganizationEntitlementResolution(input: {
 	now: Date;
 	tx: DbTransaction;
 }): Promise<{ resolved: ResolvedEntitlements; sourceToken: string; nextTransitionAt: Date | null }> {
+	const [pendingBillingMutation] = await input.tx
+		.select({ id: organizationBillingMutations.id })
+		.from(organizationBillingMutations)
+		.where(
+			and(
+				eq(organizationBillingMutations.organizationId, input.organizationId),
+				eq(organizationBillingMutations.status, "pending"),
+			),
+		)
+		.limit(1);
 	const [subscription] = await input.tx
 		.select({
 			stripeSubscriptionId: organizationBillingSubscriptions.stripeSubscriptionId,
@@ -111,6 +122,7 @@ async function loadOrganizationEntitlementResolution(input: {
 		? {
 				planId: subscription.planId,
 				status: subscription.status,
+				billingMutationPending: pendingBillingMutation !== undefined,
 				claudeAddonPromptSlots,
 				entitlementOverride: override
 					? { version: override.schemaVersion, entitlements: override.entitlements }
@@ -129,6 +141,7 @@ async function loadOrganizationEntitlementResolution(input: {
 						}
 					: null,
 				claudeAddonPromptSlots,
+				pendingBillingMutationId: pendingBillingMutation?.id ?? null,
 				override: override ? { revision: override.revision, schemaVersion: override.schemaVersion } : null,
 			}),
 		)

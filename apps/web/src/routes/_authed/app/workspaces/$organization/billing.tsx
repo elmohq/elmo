@@ -198,7 +198,14 @@ function WorkspaceBillingPage() {
 					...(returnTo ? { returnTo } : {}),
 				});
 				const checkout = await startCloudCheckoutFn({
-					data: { organizationId: organization, planId, interval, successPath, cancelPath: billingUrl },
+					data: {
+						organizationId: organization,
+						planId,
+						interval,
+						mutationId: crypto.randomUUID(),
+						successPath,
+						cancelPath: billingUrl,
+					},
 				});
 				if (!checkout.accepted) {
 					setPending(null);
