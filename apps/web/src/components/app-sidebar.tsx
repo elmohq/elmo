@@ -1,24 +1,24 @@
+import * as React from "react";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
 import {
+	IconDashboard,
+	IconChartBar,
+	IconSpeakerphone,
+	IconSitemap,
+	IconTarget,
+	IconLink,
 	IconBuilding,
 	IconBuildings,
-	IconChartBar,
-	IconCpu,
-	IconCreditCard,
-	IconDashboard,
-	IconLink,
 	IconListDetails,
-	IconReport,
-	IconSitemap,
-	IconSpeakerphone,
+	IconCpu,
 	IconTable,
-	IconTarget,
+	IconReport,
 	IconTimeline,
 	IconTool,
 	IconUsers,
+	IconCreditCard,
 } from "@tabler/icons-react";
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 import {
 	Sidebar,
@@ -30,12 +30,12 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import type * as React from "react";
+import { NavMain, type NavGroup } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
+import { NavAppInfo } from "@/components/nav-app-info";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
-import { NavAppInfo } from "@/components/nav-app-info";
-import { type NavGroup, NavMain } from "@/components/nav-main";
-import { NavUser } from "@/components/nav-user";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;

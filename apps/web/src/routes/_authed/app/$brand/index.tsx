@@ -5,30 +5,30 @@
  * Displays onboarding wizard if brand is not yet onboarded.
  */
 
+import { useEffect } from "react";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
-	IconActivity,
 	IconArrowRight,
-	IconClock,
 	IconEye,
-	IconInfoCircle,
 	IconList,
+	IconActivity,
+	IconClock,
+	IconInfoCircle,
 	IconRefresh,
 	IconSpeakerphone,
 } from "@tabler/icons-react";
-import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
-import { Button } from "@workspace/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import { useEffect } from "react";
 import PromptWizard from "@/components/prompt-wizard";
-import { TrendChart } from "@/components/trend-chart";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
+import { TrendChart } from "@/components/trend-chart";
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Button } from "@workspace/ui/components/button";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import type { ClientConfig } from "@workspace/config/types";
 import { setPersonProperties } from "@/lib/posthog";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getPromptEditorCapacityFn } from "@/server/prompt-capacity";
 
 function getVisibilityBgColor(value: number): string {

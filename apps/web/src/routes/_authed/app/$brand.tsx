@@ -5,28 +5,28 @@
  * Shows sidebar navigation, header, and optional demo banner.
  * If brand exists in auth but not in DB, shows onboarding.
  */
-import { createFileRoute, notFound, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, notFound } from "@tanstack/react-router";
+import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import {
+	requireAuthSession,
+	isAdmin,
+	hasReportAccess,
+	checkOrgAccess,
+	listUserOrganizations,
+} from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
+import { brands, prompts, competitors } from "@workspace/lib/db/schema";
+import { eq } from "drizzle-orm";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
-import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { eq } from "drizzle-orm";
-import { z } from "zod";
 import { AppSidebar } from "@/components/app-sidebar";
-import BrandOnboarding from "@/components/brand-onboarding";
 import { SiteHeader } from "@/components/site-header";
+import BrandOnboarding from "@/components/brand-onboarding";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
-import {
-	checkOrgAccess,
-	hasReportAccess,
-	isAdmin,
-	listUserOrganizations,
-	requireAuthSession,
-} from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
-import { getAppName } from "@/lib/route-head";
 
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))

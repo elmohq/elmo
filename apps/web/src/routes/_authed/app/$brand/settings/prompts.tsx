@@ -4,15 +4,15 @@
  * Editor to add/edit/remove prompts.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
-import { Skeleton } from "@workspace/ui/components/skeleton";
 import { desc, eq } from "drizzle-orm";
-import { z } from "zod";
 import { PromptsEditor } from "@/components/prompts-editor";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import { getPromptEditorCapacityFn } from "@/server/prompt-capacity";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
