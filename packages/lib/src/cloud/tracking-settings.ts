@@ -231,13 +231,9 @@ export async function reconcileBrandTrackingSettings(input: {
 		.where(eq(promptTargetAssignments.brandId, input.brandId));
 	const managedAssignments = assignments.filter((assignment) => assignment.source !== "custom");
 	const managedAssignmentIds = managedAssignments.map((assignment) => assignment.id);
-	if (managedAssignmentIds.length > 0) {
-		await input.tx
-			.update(trackingSchedules)
-			.set({ active: false, updatedAt: now })
-			.where(inArray(trackingSchedules.promptTargetAssignmentId, managedAssignmentIds));
-	}
-
+	// Capture the pre-reconcile state before the blanket deactivation below.
+	// Otherwise every unchanged schedule appears newly inactive, which bumps its
+	// policy version and resets next_due_at to now on every prompt text/tag edit.
 	const existingSchedules = await input.tx
 		.select()
 		.from(trackingSchedules)
@@ -245,6 +241,12 @@ export async function reconcileBrandTrackingSettings(input: {
 	const existingScheduleByAssignment = new Map(
 		existingSchedules.map((schedule) => [schedule.promptTargetAssignmentId, schedule]),
 	);
+	if (managedAssignmentIds.length > 0) {
+		await input.tx
+			.update(trackingSchedules)
+			.set({ active: false, updatedAt: now })
+			.where(inArray(trackingSchedules.promptTargetAssignmentId, managedAssignmentIds));
+	}
 	const policies = targetPolicyMap(input.resolved);
 	const desiredSchedules = managedAssignments.flatMap((assignment) => {
 		if (!assignment.enabled || !assignment.promptEnabled) return [];
