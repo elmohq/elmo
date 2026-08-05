@@ -154,7 +154,7 @@ function NewBrandPage() {
 					<Input id="brandName" name="brandName" type="text" placeholder="Acme" required disabled={isLoading} />
 				</div>
 
-				{organizations.length > 1 && (
+				{isCloud && organizations.length > 1 && (
 					<div className="space-y-2">
 						<Label htmlFor="organization">Workspace</Label>
 						<Select

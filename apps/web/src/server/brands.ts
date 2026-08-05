@@ -6,6 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createOrganizationBrand } from "@workspace/lib/cloud/capacity";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
+import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
 import {
 	brandTargetSelections,
 	type Brand,
@@ -267,14 +268,28 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error("Brand name must be a non-empty string");
 		}
 
+		const defaultDomains = getDefaultBrandDomains();
+		if (deployment.mode !== "cloud") {
+			const { orgId } = await provisionAdditionalLocalOrg({
+				userId: session.user.id,
+				name: trimmedName,
+			});
+			await db.insert(brands).values({
+				id: orgId,
+				organizationId: orgId,
+				name: trimmedName,
+				website: urlValidation.formattedUrl,
+				enabled: true,
+				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+			});
+			return { brandId: orgId };
+		}
 		const userOrganizations = await listUserOrganizations(session.user.id);
 		const choice = resolveBrandOrganization(
 			userOrganizations.map((organization) => organization.id),
 			data.organizationId,
 		);
 		if (!choice.ok) throw new Error(BRAND_ORGANIZATION_ERRORS[choice.reason]);
-
-		const defaultDomains = getDefaultBrandDomains();
 
 		return createOrganizationBrand({
 			mode: deployment.mode,

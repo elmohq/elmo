@@ -6,7 +6,7 @@
  * idempotent because Better Auth's post-create hook can leave a committed user
  * behind if a later database or network operation fails.
  */
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, or } from "drizzle-orm";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
@@ -89,6 +89,23 @@ const RESERVED_BRAND_IDS = new Set(["new", "workspaces"]);
 
 export function isReservedBrandId(value: string): boolean {
 	return RESERVED_BRAND_IDS.has(value);
+}
+
+async function findUniqueLocalOrganizationId(baseSlug: string): Promise<string> {
+	let candidate = baseSlug;
+	let suffix = 2;
+	for (;;) {
+		const conflict = isReservedBrandId(candidate)
+			? [{ id: candidate }]
+			: await db
+					.select({ id: organization.id })
+					.from(organization)
+					.where(or(eq(organization.id, candidate), eq(organization.slug, candidate)))
+					.limit(1);
+		if (conflict.length === 0) return candidate;
+		candidate = `${baseSlug}-${suffix}`;
+		suffix++;
+	}
 }
 
 /**
@@ -205,4 +222,24 @@ export async function provisionUmbrellaOrg(input: { userId: string; name: string
 	});
 
 	return { orgId: identity.organizationId };
+}
+
+export async function provisionAdditionalLocalOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
+	const orgId = await findUniqueLocalOrganizationId(slugify(input.name));
+	await db.transaction(async (tx) => {
+		await tx.insert(organization).values({
+			id: orgId,
+			name: input.name,
+			slug: orgId,
+			createdAt: new Date(),
+		});
+		await tx.insert(member).values({
+			id: crypto.randomUUID(),
+			organizationId: orgId,
+			userId: input.userId,
+			role: "admin",
+			createdAt: new Date(),
+		});
+	});
+	return { orgId };
 }
