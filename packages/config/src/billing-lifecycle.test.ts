@@ -2,12 +2,22 @@ import { describe, expect, it } from "vitest";
 import {
 	CLOUD_ACTIVE_SUBSCRIPTION_SYNC_GRACE_MS,
 	CLOUD_PAST_DUE_GRACE_MS,
+	canStartCloudSubscriptionCheckout,
 	resolveCloudBillingLifecycle,
 } from "./billing-lifecycle";
 
 const now = new Date("2026-08-05T12:00:00.000Z");
 
 describe("resolveCloudBillingLifecycle", () => {
+	it("allows a new Checkout only after the previous Stripe subscription is terminal", () => {
+		expect(canStartCloudSubscriptionCheckout(null)).toBe(true);
+		expect(canStartCloudSubscriptionCheckout("canceled")).toBe(true);
+		expect(canStartCloudSubscriptionCheckout("incomplete_expired")).toBe(true);
+		for (const status of ["active", "trialing", "past_due", "unpaid", "paused", "incomplete", "billing_conflict"]) {
+			expect(canStartCloudSubscriptionCheckout(status)).toBe(false);
+		}
+	});
+
 	it("allows an active subscription until its bounded synchronization deadline", () => {
 		const currentPeriodEnd = new Date("2026-08-06T12:00:00.000Z");
 		expect(resolveCloudBillingLifecycle({ status: "active", currentPeriodEnd }, now)).toEqual({

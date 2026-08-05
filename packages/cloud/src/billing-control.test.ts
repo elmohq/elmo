@@ -1,11 +1,14 @@
+import { resolveOrganizationEntitlementSource } from "@workspace/lib/cloud/entitlements";
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import {
-	changeCloudSubscriptionPlan,
-	CloudBillingControlError,
-	type CloudBillingMutationRecord,
 	type CloudBillingControlStore,
+	type CloudBillingMutationRecord,
 	type CloudBillingMutationState,
+	type CloudBillingReadStore,
+	type CloudBillingSubscriptionState,
+	changeCloudSubscriptionPlan,
+	getSerializedCloudBillingView,
 	type PreparedCloudBillingMutation,
 	setCloudClaudeAddonPromptSlots,
 	startCloudInitialCheckout,
@@ -33,12 +36,21 @@ function state(overrides: Partial<CloudBillingMutationState> = {}): CloudBilling
 			currentPeriodEnd: new Date("2026-09-01T00:00:00Z"),
 			cancelAtPeriodEnd: false,
 			cancelAt: null,
+			canceledAt: null,
+			endedAt: null,
+			delinquentSince: null,
 			syncedAt: new Date("2026-08-05T00:00:00Z"),
 			claudeAddonPromptSlots: 0,
 		},
 		usage: emptyUsage,
 		...overrides,
 	};
+}
+
+function projectedSubscription(overrides: Partial<CloudBillingSubscriptionState> = {}): CloudBillingSubscriptionState {
+	const current = state().subscription;
+	if (!current) throw new Error("Expected the default billing state to include a subscription");
+	return { ...current, ...overrides };
 }
 
 function store(snapshot: CloudBillingMutationState): CloudBillingControlStore {
@@ -210,6 +222,116 @@ function stripeClient(stripeSubscription: Stripe.Subscription) {
 		list,
 	};
 }
+
+describe("cloud billing read model", () => {
+	it("exposes the persisted delinquency timestamp and canonical grace deadline", async () => {
+		const now = new Date("2026-08-05T00:00:00.000Z");
+		const delinquentSince = new Date("2026-08-01T00:00:00.000Z");
+		const currentSubscription = projectedSubscription({
+			status: "past_due",
+			delinquentSince,
+			cancelAtPeriodEnd: true,
+			cancelAt: new Date("2026-09-01T00:00:00.000Z"),
+		});
+		const current = state({ subscription: currentSubscription });
+		const entitlementResolution = resolveOrganizationEntitlementSource(
+			{
+				subscription: {
+					stripeSubscriptionId: "sub_1",
+					planId: "pro",
+					status: "past_due",
+					currentPeriodEnd: currentSubscription.currentPeriodEnd,
+					delinquentSince,
+				},
+				claudeAddonPromptSlots: 0,
+				pendingBillingMutationId: null,
+				entitlementRevisions: [],
+			},
+			now,
+		);
+		const readStore: CloudBillingReadStore = {
+			load: vi.fn(async () => ({
+				state: current,
+				usageBuckets: [
+					{
+						usageClass: "standard" as const,
+						quotaKey: "tracking",
+						periodStart: new Date("2026-08-01T00:00:00.000Z"),
+						periodEnd: new Date("2026-09-01T00:00:00.000Z"),
+						limitUnits: 100,
+						usedUnits: 10,
+					},
+				],
+				entitlementResolution,
+			})),
+		};
+
+		const view = await getSerializedCloudBillingView({ organizationId: "org_1", now, store: readStore });
+
+		expect(readStore.load).toHaveBeenCalledWith("org_1", now);
+		expect(view.subscription).toMatchObject({
+			status: "past_due",
+			delinquentSince: "2026-08-01T00:00:00.000Z",
+			cancelAtPeriodEnd: true,
+			cancelAt: "2026-09-01T00:00:00.000Z",
+			canceledAt: null,
+			endedAt: null,
+		});
+		expect(view.lifecycle).toEqual({
+			access: "allowed",
+			reason: null,
+			transitionAt: "2026-08-08T00:00:00.000Z",
+		});
+		expect(view.entitlements).toMatchObject({ access: "allowed", source: { kind: "catalog", planId: "pro" } });
+		expect(view.usageBuckets[0]).toMatchObject({
+			periodStart: "2026-08-01T00:00:00.000Z",
+			periodEnd: "2026-09-01T00:00:00.000Z",
+		});
+	});
+
+	it("serializes the cancellation and end timestamps that explain terminal access", async () => {
+		const now = new Date("2026-09-01T00:05:00.000Z");
+		const canceledAt = new Date("2026-08-05T00:00:00.000Z");
+		const endedAt = new Date("2026-09-01T00:00:00.000Z");
+		const current = state({
+			subscription: projectedSubscription({
+				status: "canceled",
+				cancelAtPeriodEnd: true,
+				cancelAt: endedAt,
+				canceledAt,
+				endedAt,
+			}),
+		});
+		const entitlementResolution = resolveOrganizationEntitlementSource(
+			{
+				subscription: {
+					stripeSubscriptionId: "sub_1",
+					planId: "pro",
+					status: "canceled",
+					currentPeriodEnd: endedAt,
+					delinquentSince: null,
+				},
+				claudeAddonPromptSlots: 0,
+				pendingBillingMutationId: null,
+				entitlementRevisions: [],
+			},
+			now,
+		);
+		const readStore: CloudBillingReadStore = {
+			load: async () => ({ state: current, usageBuckets: [], entitlementResolution }),
+		};
+
+		const view = await getSerializedCloudBillingView({ organizationId: "org_1", now, store: readStore });
+
+		expect(view.subscription).toMatchObject({
+			status: "canceled",
+			cancelAt: "2026-09-01T00:00:00.000Z",
+			canceledAt: "2026-08-05T00:00:00.000Z",
+			endedAt: "2026-09-01T00:00:00.000Z",
+		});
+		expect(view.lifecycle).toEqual({ access: "denied", reason: "inactive-subscription", transitionAt: null });
+	});
+});
 
 describe("cloud billing configuration validation", () => {
 	it("allows a truly new empty workspace to start on Starter", async () => {
@@ -392,6 +514,28 @@ describe("cloud Stripe billing mutations", () => {
 		expect(stripe.retrieve).not.toHaveBeenCalled();
 	});
 
+	it.each(["past_due", "unpaid", "incomplete", "billing_conflict"])(
+		"does not overlap a new Checkout with a %s subscription",
+		async (status) => {
+			const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+
+			await expect(
+				startCloudInitialCheckout({
+					organizationId: "org_1",
+					planId: "starter",
+					interval: "month",
+					mutationId: `overlap-${status}`,
+					customerEmail: "owner@example.com",
+					successUrl: "https://app.elmo.test/billing?checkout=success",
+					cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
+					stripeClient: stripe.client,
+					store: store(state({ subscription: projectedSubscription({ status }) })),
+				}),
+			).rejects.toMatchObject({ code: "invalid-subscription" });
+			expect(stripe.list).not.toHaveBeenCalled();
+		},
+	);
+
 	it("rejects malformed base quantities before changing line items", async () => {
 		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly", quantity: 2 }]));
 
@@ -523,11 +667,13 @@ describe("cloud Stripe billing mutations", () => {
 		expect(controlStore.projectMutation).toHaveBeenCalledOnce();
 	});
 
-	it("creates one durable Checkout session for concurrent initial requests", async () => {
+	it("creates one emailed Stripe customer and durable Checkout session for concurrent initial requests", async () => {
 		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
-		const customerRetrieve = vi.fn(async () => ({
+		const customerSearch = vi.fn(async () => ({ data: [] }));
+		const customerCreate = vi.fn(async (params: Stripe.CustomerCreateParams) => ({
 			id: "cus_1",
-			metadata: { organizationId: "org_1", customerType: "organization" },
+			email: params.email,
+			metadata: params.metadata,
 		}));
 		let checkoutSession: Stripe.Checkout.Session | undefined;
 		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => {
@@ -546,11 +692,12 @@ describe("cloud Stripe billing mutations", () => {
 		const checkoutRetrieve = vi.fn(async () => checkoutSession!);
 		const client = {
 			...stripe.client,
-			customers: { retrieve: customerRetrieve },
+			customers: { search: customerSearch, create: customerCreate },
 			checkout: { sessions: { create: checkoutCreate, retrieve: checkoutRetrieve } },
 		} as unknown as Stripe;
 		const controlStore = store(
 			state({
+				organization: { name: "Workspace", stripeCustomerId: null },
 				subscription: null,
 				usage: { ...emptyUsage, enabledBrands: 1, enabledPrompts: 10 },
 			}),
@@ -559,6 +706,7 @@ describe("cloud Stripe billing mutations", () => {
 			organizationId: "org_1",
 			planId: "starter" as const,
 			interval: "month" as const,
+			customerEmail: "owner@example.com",
 			successUrl: "https://app.elmo.test/billing?checkout=success",
 			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
 			stripeClient: client,
@@ -577,6 +725,14 @@ describe("cloud Stripe billing mutations", () => {
 
 		expect(checkoutCreate).toHaveBeenCalledOnce();
 		expect(checkoutRetrieve).toHaveBeenCalledOnce();
+		expect(customerCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: "Workspace",
+				email: "owner@example.com",
+				metadata: { organizationId: "org_1", customerType: "organization" },
+			}),
+			{ idempotencyKey: "elmo:org_1:customer:v1" },
+		);
 		expect(checkoutCreate).toHaveBeenCalledWith(
 			expect.objectContaining({
 				mode: "subscription",
@@ -611,6 +767,7 @@ describe("cloud Stripe billing mutations", () => {
 			customers: {
 				retrieve: vi.fn(async () => ({
 					id: "cus_1",
+					email: "owner@example.com",
 					metadata: { organizationId: "org_1", customerType: "organization" },
 				})),
 			},
@@ -626,6 +783,7 @@ describe("cloud Stripe billing mutations", () => {
 			organizationId: "org_1",
 			planId: "starter" as const,
 			interval: "month" as const,
+			customerEmail: "owner@example.com",
 			successUrl: "https://app.elmo.test/billing?checkout=success",
 			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
 			stripeClient: client,
@@ -658,6 +816,7 @@ describe("cloud Stripe billing mutations", () => {
 			customers: {
 				retrieve: vi.fn(async () => ({
 					id: "cus_1",
+					email: "owner@example.com",
 					metadata: { organizationId: "org_1", customerType: "organization" },
 				})),
 			},
@@ -680,6 +839,7 @@ describe("cloud Stripe billing mutations", () => {
 			planId: "starter" as const,
 			interval: "month" as const,
 			mutationId: "checkout-applied",
+			customerEmail: "owner@example.com",
 			successUrl: "https://app.elmo.test/billing?checkout=success",
 			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
 			stripeClient: client,
@@ -713,6 +873,7 @@ describe("cloud Stripe billing mutations", () => {
 			customers: {
 				retrieve: vi.fn(async () => ({
 					id: "cus_1",
+					email: "owner@example.com",
 					metadata: { organizationId: "org_1", customerType: "organization" },
 				})),
 			},
@@ -732,6 +893,7 @@ describe("cloud Stripe billing mutations", () => {
 				planId: "starter",
 				interval: "month",
 				mutationId: "checkout-race",
+				customerEmail: "owner@example.com",
 				successUrl: "https://app.elmo.test/billing?checkout=success",
 				cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
 				stripeClient: client,
@@ -750,6 +912,7 @@ describe("cloud Stripe billing mutations", () => {
 			customers: {
 				retrieve: vi.fn(async () => ({
 					id: "cus_1",
+					email: "owner@example.com",
 					metadata: { organizationId: "org_1", customerType: "organization" },
 				})),
 			},
@@ -762,6 +925,7 @@ describe("cloud Stripe billing mutations", () => {
 				planId: "starter",
 				interval: "month",
 				mutationId: "checkout-cross-origin",
+				customerEmail: "owner@example.com",
 				successUrl: "https://app.elmo.test/billing?checkout=success",
 				cancelUrl: "https://attacker.test/billing?checkout=cancel",
 				stripeClient: client,

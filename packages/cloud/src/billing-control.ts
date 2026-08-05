@@ -1,17 +1,23 @@
+import { canStartCloudSubscriptionCheckout } from "@workspace/config/billing-lifecycle";
+import type { CloudEntitlementDenialReason, ResolvedCloudPlanEntitlements } from "@workspace/config/entitlements";
 import {
 	CLOUD_CLAUDE_PROMPT_ADDON,
 	CLOUD_PLAN_CATALOG,
 	SELF_SERVE_CLOUD_PLAN_IDS,
 	type SelfServeCloudPlanId,
 } from "@workspace/config/plans";
-import type { ResolvedCloudPlanEntitlements } from "@workspace/config/entitlements";
 import { lockOrganizationCapacityAndBilling } from "@workspace/lib/cloud/advisory-locks";
 import { reconcileOrganizationTrackingEntitlementsInTransaction } from "@workspace/lib/cloud/entitlement-reconciliation";
-import { resolveOrganizationEntitlements } from "@workspace/lib/cloud/entitlements";
+import {
+	createOrganizationEntitlementSourceStore,
+	type OrganizationEntitlementSourceResolution,
+	resolveOrganizationEntitlementSource,
+} from "@workspace/lib/cloud/entitlements";
 import { db } from "@workspace/lib/db/db";
 import {
-	brandTargetSelections,
 	brands,
+	brandTargetSelections,
+	type OrganizationBillingMutation,
 	organization,
 	organizationBillingMutations,
 	organizationBillingSubscriptionItems,
@@ -19,11 +25,10 @@ import {
 	prompts,
 	promptTargetAssignments,
 	trackingUsageBuckets,
-	type OrganizationBillingMutation,
 } from "@workspace/lib/db/schema";
 import { and, asc, count, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
-import { identifyCloudPrice, type BillingInterval } from "./billing-catalog";
+import { type BillingInterval, identifyCloudPrice } from "./billing-catalog";
 import {
 	buildCloudBillingSubscriptionProjection,
 	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
@@ -32,8 +37,8 @@ import {
 } from "./billing-events";
 import {
 	CLOUD_BILLING_MUTATION_METADATA_KEY,
-	createCloudBillingProjectionWriter,
 	type CloudBillingSubscriptionProjection,
+	createCloudBillingProjectionWriter,
 } from "./billing-store";
 
 type DbConnection = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -63,6 +68,9 @@ export interface CloudBillingSubscriptionState {
 	currentPeriodEnd: Date | null;
 	cancelAtPeriodEnd: boolean;
 	cancelAt: Date | null;
+	canceledAt: Date | null;
+	endedAt: Date | null;
+	delinquentSince: Date | null;
 	syncedAt: Date;
 	claudeAddonPromptSlots: number;
 }
@@ -293,6 +301,9 @@ async function loadCloudBillingMutationState(
 			currentPeriodEnd: organizationBillingSubscriptions.currentPeriodEnd,
 			cancelAtPeriodEnd: organizationBillingSubscriptions.cancelAtPeriodEnd,
 			cancelAt: organizationBillingSubscriptions.cancelAt,
+			canceledAt: organizationBillingSubscriptions.canceledAt,
+			endedAt: organizationBillingSubscriptions.endedAt,
+			delinquentSince: organizationBillingSubscriptions.delinquentSince,
 			syncedAt: organizationBillingSubscriptions.syncedAt,
 		})
 		.from(organizationBillingSubscriptions)
@@ -1006,12 +1017,19 @@ async function ensureOrganizationStripeCustomer(input: {
 	stripeClient: Stripe;
 	organizationId: string;
 	organizationName: string;
+	customerEmail: string;
 	existingCustomerId: string | null;
 }): Promise<Stripe.Customer> {
+	const ensureEmail = async (customer: Stripe.Customer): Promise<Stripe.Customer> => {
+		if (customer.email?.trim()) return customer;
+		const updated = await input.stripeClient.customers.update(customer.id, { email: input.customerEmail });
+		assertOrganizationCustomer(updated, input.organizationId);
+		return updated;
+	};
 	if (input.existingCustomerId) {
 		const existing = await input.stripeClient.customers.retrieve(input.existingCustomerId);
 		assertOrganizationCustomer(existing, input.organizationId);
-		return existing as Stripe.Customer;
+		return ensureEmail(existing as Stripe.Customer);
 	}
 
 	const query = `metadata["${CUSTOMER_ORGANIZATION_METADATA_KEY}"]:"${escapeStripeSearchValue(input.organizationId)}" AND metadata["${CUSTOMER_TYPE_METADATA_KEY}"]:"organization"`;
@@ -1038,11 +1056,12 @@ async function ensureOrganizationStripeCustomer(input: {
 	const matched = matchedCustomers[0];
 	if (matched) {
 		assertOrganizationCustomer(matched, input.organizationId);
-		return matched;
+		return ensureEmail(matched);
 	}
 	const created = await input.stripeClient.customers.create(
 		{
 			name: input.organizationName,
+			email: input.customerEmail,
 			metadata: {
 				[CUSTOMER_ORGANIZATION_METADATA_KEY]: input.organizationId,
 				[CUSTOMER_TYPE_METADATA_KEY]: "organization",
@@ -1200,6 +1219,7 @@ export async function startCloudInitialCheckout(input: {
 	planId: SelfServeCloudPlanId;
 	interval: BillingInterval;
 	mutationId: string;
+	customerEmail: string;
 	successUrl: string;
 	cancelUrl: string;
 	stripeClient: Stripe;
@@ -1208,12 +1228,19 @@ export async function startCloudInitialCheckout(input: {
 }): Promise<{ accepted: true; url: string }> {
 	const store = input.store ?? createDrizzleCloudBillingControlStore();
 	const now = input.now ?? new Date();
+	const customerEmail = input.customerEmail.trim();
+	if (!customerEmail) {
+		throw new CloudBillingControlError("invalid-subscription", "A verified billing email is required for Checkout.");
+	}
 	const result = await store.beginMutation(input.organizationId, input.mutationId, "checkout", async (state) => {
 		if (state.subscription?.planId === "custom") {
 			throw new CloudBillingControlError("custom-plan-read-only", "Custom plans are managed by Elmo support.");
 		}
-		if (state.subscription?.status === "active" || state.subscription?.status === "trialing") {
-			throw new CloudBillingControlError("invalid-subscription", "This workspace already has an active subscription.");
+		if (!canStartCloudSubscriptionCheckout(state.subscription?.status)) {
+			throw new CloudBillingControlError(
+				"invalid-subscription",
+				"Resolve the existing Stripe subscription before starting another Checkout.",
+			);
 		}
 		assertConfigurationAllowed({ planId: input.planId, claudeAddonPromptSlots: 0, usage: state.usage });
 		const [customer, price] = await Promise.all([
@@ -1221,6 +1248,7 @@ export async function startCloudInitialCheckout(input: {
 				stripeClient: input.stripeClient,
 				organizationId: input.organizationId,
 				organizationName: state.organization.name,
+				customerEmail,
 				existingCustomerId: state.organization.stripeCustomerId,
 			}),
 			requireExactPrice(input.stripeClient, selfServePriceExpectation(input.planId, input.interval)),
@@ -1407,13 +1435,44 @@ export async function reconcilePendingCloudBillingMutations(input: {
 	return result;
 }
 
+export interface CloudBillingUsageBucket {
+	usageClass: "standard" | "premium" | "custom";
+	quotaKey: string;
+	periodStart: Date;
+	periodEnd: Date;
+	limitUnits: number;
+	usedUnits: number;
+}
+
+export interface CloudBillingReadSnapshot {
+	state: CloudBillingMutationState;
+	usageBuckets: CloudBillingUsageBucket[];
+	entitlementResolution: OrganizationEntitlementSourceResolution;
+}
+
+export interface CloudBillingReadStore {
+	load(organizationId: string, now: Date): Promise<CloudBillingReadSnapshot>;
+}
+
 export interface SerializedCloudBillingView {
 	subscription:
 		| null
-		| (Omit<CloudBillingSubscriptionState, "currentPeriodStart" | "currentPeriodEnd" | "cancelAt" | "syncedAt"> & {
+		| (Omit<
+				CloudBillingSubscriptionState,
+				| "currentPeriodStart"
+				| "currentPeriodEnd"
+				| "cancelAt"
+				| "canceledAt"
+				| "endedAt"
+				| "delinquentSince"
+				| "syncedAt"
+		  > & {
 				currentPeriodStart: string | null;
 				currentPeriodEnd: string | null;
 				cancelAt: string | null;
+				canceledAt: string | null;
+				endedAt: string | null;
+				delinquentSince: string | null;
 				syncedAt: string;
 		  });
 	usage: CloudBillingResourceUsage;
@@ -1425,33 +1484,51 @@ export interface SerializedCloudBillingView {
 		limitUnits: number;
 		usedUnits: number;
 	}>;
-	entitlements: Awaited<ReturnType<typeof resolveOrganizationEntitlements>>;
+	entitlements: OrganizationEntitlementSourceResolution["resolved"];
+	lifecycle: {
+		access: "allowed" | "denied";
+		reason: CloudEntitlementDenialReason | null;
+		transitionAt: string | null;
+	};
+}
+
+export function createDrizzleCloudBillingReadStore(database: typeof db = db): CloudBillingReadStore {
+	return {
+		load: (organizationId, now) =>
+			database.transaction(async (tx) => {
+				await lockOrganizationCapacityAndBilling(tx, organizationId);
+				const state = await loadCloudBillingMutationState(tx, organizationId, now);
+				const usageBuckets = await tx
+					.select({
+						usageClass: trackingUsageBuckets.usageClass,
+						quotaKey: trackingUsageBuckets.quotaKey,
+						periodStart: trackingUsageBuckets.periodStart,
+						periodEnd: trackingUsageBuckets.periodEnd,
+						limitUnits: trackingUsageBuckets.limitUnits,
+						usedUnits: trackingUsageBuckets.usedUnits,
+					})
+					.from(trackingUsageBuckets)
+					.where(and(eq(trackingUsageBuckets.organizationId, organizationId), gt(trackingUsageBuckets.periodEnd, now)));
+				const source = await createOrganizationEntitlementSourceStore(tx).load(organizationId);
+				return {
+					state,
+					usageBuckets,
+					entitlementResolution: resolveOrganizationEntitlementSource(source, now),
+				};
+			}),
+	};
 }
 
 export async function getSerializedCloudBillingView(input: {
 	organizationId: string;
 	now?: Date;
-	store?: CloudBillingControlStore;
+	store?: CloudBillingReadStore;
 }): Promise<SerializedCloudBillingView> {
 	const now = input.now ?? new Date();
-	const store = input.store ?? createDrizzleCloudBillingControlStore();
-	const state = await store.load(input.organizationId, now);
-	const usageBuckets = await db
-		.select({
-			usageClass: trackingUsageBuckets.usageClass,
-			quotaKey: trackingUsageBuckets.quotaKey,
-			periodStart: trackingUsageBuckets.periodStart,
-			periodEnd: trackingUsageBuckets.periodEnd,
-			limitUnits: trackingUsageBuckets.limitUnits,
-			usedUnits: trackingUsageBuckets.usedUnits,
-		})
-		.from(trackingUsageBuckets)
-		.where(and(eq(trackingUsageBuckets.organizationId, input.organizationId), gt(trackingUsageBuckets.periodEnd, now)));
-	const entitlements = await resolveOrganizationEntitlements({
-		mode: "cloud",
-		organizationId: input.organizationId,
-		now,
-	});
+	const snapshot = await (input.store ?? createDrizzleCloudBillingReadStore()).load(input.organizationId, now);
+	const { state, usageBuckets, entitlementResolution } = snapshot;
+	const lifecycleReason =
+		entitlementResolution.resolved.access === "denied" ? entitlementResolution.resolved.reason : null;
 	return {
 		subscription: state.subscription
 			? {
@@ -1459,6 +1536,9 @@ export async function getSerializedCloudBillingView(input: {
 					currentPeriodStart: state.subscription.currentPeriodStart?.toISOString() ?? null,
 					currentPeriodEnd: state.subscription.currentPeriodEnd?.toISOString() ?? null,
 					cancelAt: state.subscription.cancelAt?.toISOString() ?? null,
+					canceledAt: state.subscription.canceledAt?.toISOString() ?? null,
+					endedAt: state.subscription.endedAt?.toISOString() ?? null,
+					delinquentSince: state.subscription.delinquentSince?.toISOString() ?? null,
 					syncedAt: state.subscription.syncedAt.toISOString(),
 				}
 			: null,
@@ -1468,6 +1548,11 @@ export async function getSerializedCloudBillingView(input: {
 			periodStart: bucket.periodStart.toISOString(),
 			periodEnd: bucket.periodEnd.toISOString(),
 		})),
-		entitlements,
+		entitlements: entitlementResolution.resolved,
+		lifecycle: {
+			access: entitlementResolution.resolved.access,
+			reason: lifecycleReason,
+			transitionAt: entitlementResolution.lifecycleTransitionAt?.toISOString() ?? null,
+		},
 	};
 }

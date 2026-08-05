@@ -1,6 +1,8 @@
 import { stripe as betterAuthStripe } from "@better-auth/stripe";
-import Stripe from "stripe";
-import { createCloudStripeClient } from "./stripe-client";
+import { db } from "@workspace/lib/db/db";
+import { member, organizationBillingSubscriptions } from "@workspace/lib/db/schema";
+import { and, eq } from "drizzle-orm";
+import type Stripe from "stripe";
 import { CLOUD_STRIPE_PLANS, validateCloudStripePriceCatalog } from "./billing-catalog";
 import {
 	CLOUD_STRIPE_BILLING_SOURCE_METADATA_KEY,
@@ -9,9 +11,7 @@ import {
 	createCloudStripeEventHandler,
 } from "./billing-events";
 import { type CloudBillingStore, createDrizzleCloudBillingStore } from "./billing-store";
-import { db } from "@workspace/lib/db/db";
-import { member, organizationBillingSubscriptions } from "@workspace/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { createCloudStripeClient } from "./stripe-client";
 
 export type CloudBillingReferenceAction =
 	| "upgrade-subscription"
@@ -209,6 +209,17 @@ export async function validateCloudBillingPortalConfiguration(
 	const configuration = await stripeClient.billingPortal.configurations.retrieve(configurationId);
 	const errors: string[] = [];
 	if (!configuration.active) errors.push("configuration is inactive");
+	if (!configuration.features.payment_method_update.enabled) {
+		errors.push("payment_method_update must be enabled for payment recovery");
+	}
+	if (!configuration.features.invoice_history.enabled) {
+		errors.push("invoice_history must be enabled so customers can pay and inspect invoices");
+	}
+	if (!configuration.features.subscription_cancel.enabled) {
+		errors.push("subscription_cancel must be enabled");
+	} else if (configuration.features.subscription_cancel.mode !== "at_period_end") {
+		errors.push("subscription_cancel must use at_period_end mode");
+	}
 	if (configuration.features.subscription_update.enabled) {
 		errors.push("subscription_update must be disabled so plan and quantity validation cannot be bypassed");
 	}

@@ -29,7 +29,11 @@ Local and white-label installations therefore keep their existing
    - configure `${APP_URL}/api/auth/stripe/webhook` with
      `STRIPE_WEBHOOK_SECRET`;
    - create a dedicated portal configuration with subscription updates
-     disabled and set `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`;
+     disabled, payment-method updates and invoice history enabled, and
+     cancellation enabled at the end of the billing period; then set
+     `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`;
+   - enable Stripe's failed-payment customer emails and Smart Retries as
+     described below;
    - set `STRIPE_SECRET_KEY` and confirm the cloud startup readiness check
      accepts the price catalog and portal configuration.
 5. Deploy the web/control-plane version. Cloud requests fail closed until the
@@ -42,6 +46,50 @@ Local and white-label installations therefore keep their existing
 Verify the first cloud brand end to end before increasing traffic: Checkout and
 webhook projection, resolved entitlements, target and Claude prompt assignments,
 schedule materialization, provider attempts, and usage-bucket accounting.
+
+## Stripe revenue-recovery contract
+
+Stripe owns subscription billing messages and payment recovery. Elmo does not
+send a second set of billing emails through Resend. Configure these settings in
+both the Stripe sandbox and live account before admitting traffic:
+
+1. Make sure every Elmo organization Customer in Stripe has a deliverable
+   billing email. New self-serve Checkout customers receive the verified email
+   of the owner or admin who starts Checkout. Audit or correct any Customer
+   created before that behavior was deployed; Stripe cannot send recovery mail
+   to a Customer without an email.
+2. In **Billing → Revenue recovery → Emails**, enable **Send emails when card
+   payments fail** and use Stripe's hosted recovery page. Stripe sends the
+   failed-payment email and secure payment-update link. Enable payment-
+   confirmation emails as well so 3D Secure or similar customer action does not
+   silently stall payment. See [Stripe customer
+   emails](https://docs.stripe.com/billing/revenue-recovery/customer-emails).
+3. In **Billing → Revenue recovery → Retries**, enable Smart Retries. Elmo gives
+   a `past_due` subscription exactly seven days of access, so set the maximum
+   retry duration to **1 week**, not Stripe's longer default recommendation.
+   Choose a deliberate final state (`unpaid` for portal-based manual recovery,
+   or `canceled` for a fresh Checkout) rather than leaving the subscription
+   indefinitely `past_due`. See [Stripe Smart
+   Retries](https://docs.stripe.com/billing/revenue-recovery/smart-retries).
+4. Use a dedicated Customer Portal configuration with:
+   - payment-method updates enabled;
+   - invoice history enabled;
+   - subscription cancellation enabled with `at_period_end` mode;
+   - subscription plan and quantity updates disabled, because Elmo validates
+     capacity and applies those changes through its durable billing commands.
+
+   Cloud startup rejects a portal configuration that violates these settings.
+   Stripe emits `customer.subscription.updated` when cancellation is scheduled
+   or reversed and `customer.subscription.deleted` when it completes; Elmo
+   projects those events into the billing page and access policy. See [Stripe
+   portal configuration](https://docs.stripe.com/customer-management/configure-portal)
+   and [portal webhook behavior](https://docs.stripe.com/customer-management/integrate-customer-portal).
+
+Stripe normally suppresses automatic customer emails in a sandbox. Use an
+address on a verified email domain or belonging to a Stripe team member when
+testing, then inspect the Customer's email log and exercise failed payment,
+recovery, scheduled cancellation, reactivation, and final cancellation before
+launch.
 
 ## Rollback
 

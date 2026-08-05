@@ -1,11 +1,11 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import {
+	type CloudBillingAuthorizationSnapshot,
 	cloudSelfServeCheckoutSessionParams,
 	cloudSelfServeSubscriptionMetadata,
 	createCloudBillingRuntime,
 	createCloudOrganizationReferenceAuthorizer,
-	type CloudBillingAuthorizationSnapshot,
 	validateCloudBillingPortalConfiguration,
 } from "./billing";
 import type { CloudBillingProjectionWriter, CloudBillingStore, CloudStripeWebhookClaimResult } from "./billing-store";
@@ -21,6 +21,30 @@ function membershipStore(allowed: boolean): CloudBillingStore {
 			_organizationId: string,
 			operation: (writer: CloudBillingProjectionWriter) => Promise<T>,
 		) => operation({ replaceSubscription: async () => ({ applied: true }) }),
+	};
+}
+
+function portalConfiguration(
+	overrides: Partial<{
+		active: boolean;
+		paymentMethodUpdate: boolean;
+		invoiceHistory: boolean;
+		subscriptionCancel: boolean;
+		cancelMode: string;
+		subscriptionUpdate: boolean;
+	}> = {},
+) {
+	return {
+		active: overrides.active ?? true,
+		features: {
+			payment_method_update: { enabled: overrides.paymentMethodUpdate ?? true },
+			invoice_history: { enabled: overrides.invoiceHistory ?? true },
+			subscription_cancel: {
+				enabled: overrides.subscriptionCancel ?? true,
+				mode: overrides.cancelMode ?? "at_period_end",
+			},
+			subscription_update: { enabled: overrides.subscriptionUpdate ?? false },
+		},
 	};
 }
 
@@ -91,14 +115,33 @@ describe("cloud Stripe billing runtime", () => {
 	});
 
 	it("rejects a portal configuration that permits subscription updates", async () => {
-		const retrieve = vi.fn(async () => ({
-			active: true,
-			features: { subscription_update: { enabled: true } },
-		}));
+		const retrieve = vi.fn(async () => portalConfiguration({ subscriptionUpdate: true }));
 		const stripeClient = { billingPortal: { configurations: { retrieve } } } as unknown as Stripe;
 
 		await expect(validateCloudBillingPortalConfiguration(stripeClient, "bpc_unsafe")).rejects.toThrow(
 			/subscription_update must be disabled/,
+		);
+	});
+
+	it("requires the portal recovery actions promised by the billing page", async () => {
+		const retrieve = vi.fn(async () => portalConfiguration());
+		const stripeClient = { billingPortal: { configurations: { retrieve } } } as unknown as Stripe;
+
+		await expect(validateCloudBillingPortalConfiguration(stripeClient, "bpc_safe")).resolves.toBeUndefined();
+
+		retrieve.mockResolvedValueOnce(portalConfiguration({ paymentMethodUpdate: false }));
+		await expect(validateCloudBillingPortalConfiguration(stripeClient, "bpc_no_payment_update")).rejects.toThrow(
+			/payment_method_update must be enabled/,
+		);
+
+		retrieve.mockResolvedValueOnce(portalConfiguration({ invoiceHistory: false }));
+		await expect(validateCloudBillingPortalConfiguration(stripeClient, "bpc_no_invoices")).rejects.toThrow(
+			/invoice_history must be enabled/,
+		);
+
+		retrieve.mockResolvedValueOnce(portalConfiguration({ cancelMode: "immediately" }));
+		await expect(validateCloudBillingPortalConfiguration(stripeClient, "bpc_immediate_cancel")).rejects.toThrow(
+			/subscription_cancel must use at_period_end mode/,
 		);
 	});
 

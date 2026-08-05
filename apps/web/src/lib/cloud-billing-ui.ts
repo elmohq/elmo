@@ -1,3 +1,4 @@
+import { canStartCloudSubscriptionCheckout } from "@workspace/config/billing-lifecycle";
 import type { DeploymentMode } from "@workspace/config/types";
 
 export const CLOUD_BILLING_POLL_INTERVAL_MS = 1_500;
@@ -36,6 +37,148 @@ export function resolveNewBrandWorkspace(input: {
 
 export function isProjectedCloudSubscriptionActive(subscription: { status: string } | null): boolean {
 	return subscription?.status === "active";
+}
+
+export function canStartCloudCheckout(subscription: { status: string } | null): boolean {
+	return canStartCloudSubscriptionCheckout(subscription?.status);
+}
+
+export type CloudBillingNoticeKind =
+	| "billing-change-pending"
+	| "billing-conflict"
+	| "billing-state-invalid"
+	| "cancellation-scheduled"
+	| "checkout-expired"
+	| "payment-grace-expired"
+	| "payment-past-due"
+	| "subscription-ended"
+	| "subscription-inactive";
+
+export interface CloudBillingNotice {
+	kind: CloudBillingNoticeKind;
+	variant: "default" | "destructive";
+	action: "portal" | "support" | "choose-plan" | null;
+	effectiveAt: string | null;
+}
+
+interface CloudBillingNoticeSubscription {
+	status: string;
+	stripeCustomerId: string;
+	cancelAtPeriodEnd: boolean;
+	currentPeriodEnd: string | null;
+	cancelAt: string | null;
+	canceledAt: string | null;
+	endedAt: string | null;
+}
+
+export function resolveCloudBillingNotice(input: {
+	subscription: CloudBillingNoticeSubscription | null;
+	lifecycle: { access: "allowed" | "denied"; reason: string | null; transitionAt: string | null };
+	canManage: boolean;
+	selfServe: boolean;
+}): CloudBillingNotice | null {
+	const subscription = input.subscription;
+	const portalAction = input.canManage && subscription?.stripeCustomerId ? "portal" : null;
+	const choosePlanAction = input.selfServe ? (input.canManage ? "choose-plan" : null) : "support";
+
+	if (subscription?.status === "billing_conflict") {
+		return {
+			kind: "billing-conflict",
+			variant: "destructive",
+			action: "support",
+			effectiveAt: null,
+		};
+	}
+
+	if (input.lifecycle.reason === "billing-change-pending") {
+		return {
+			kind: "billing-change-pending",
+			variant: "default",
+			action: null,
+			effectiveAt: null,
+		};
+	}
+
+	if (input.lifecycle.reason === "stale-subscription" || input.lifecycle.reason === "invalid-subscription-lifecycle") {
+		return {
+			kind: "billing-state-invalid",
+			variant: "destructive",
+			action: "support",
+			effectiveAt: null,
+		};
+	}
+
+	if (subscription?.status === "past_due") {
+		if (input.lifecycle.reason === "payment-grace-expired") {
+			return {
+				kind: "payment-grace-expired",
+				variant: "destructive",
+				action: portalAction,
+				effectiveAt: null,
+			};
+		}
+		if (input.lifecycle.access === "allowed") {
+			return {
+				kind: "payment-past-due",
+				variant: "destructive",
+				action: portalAction,
+				effectiveAt: input.lifecycle.transitionAt,
+			};
+		}
+		return {
+			kind: "billing-state-invalid",
+			variant: "destructive",
+			action: "support",
+			effectiveAt: null,
+		};
+	}
+
+	if (subscription?.status === "incomplete_expired") {
+		return {
+			kind: "checkout-expired",
+			variant: "default",
+			action: choosePlanAction,
+			effectiveAt: null,
+		};
+	}
+
+	if (subscription?.status === "canceled" || subscription?.endedAt) {
+		return {
+			kind: "subscription-ended",
+			variant: "destructive",
+			action: choosePlanAction,
+			effectiveAt: subscription.endedAt ?? subscription.canceledAt ?? subscription.currentPeriodEnd,
+		};
+	}
+
+	if (subscription?.status === "active" && input.lifecycle.access === "denied") {
+		return {
+			kind: "billing-state-invalid",
+			variant: "destructive",
+			action: "support",
+			effectiveAt: null,
+		};
+	}
+
+	if (subscription?.status === "active" && (subscription.cancelAtPeriodEnd || subscription.cancelAt)) {
+		return {
+			kind: "cancellation-scheduled",
+			variant: "default",
+			action: portalAction,
+			effectiveAt: subscription.cancelAt ?? subscription.currentPeriodEnd,
+		};
+	}
+
+	if (subscription && input.lifecycle.access === "denied") {
+		return {
+			kind: "subscription-inactive",
+			variant: "destructive",
+			action: ["incomplete", "paused", "unpaid"].includes(subscription.status) ? portalAction : "support",
+			effectiveAt: subscription.endedAt ?? subscription.canceledAt,
+		};
+	}
+
+	return null;
 }
 
 export function cloudBillingPath(

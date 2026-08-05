@@ -24,9 +24,12 @@ import { AppSidebar } from "@/components/app-sidebar";
 import {
 	CLOUD_BILLING_MAX_POLL_ATTEMPTS,
 	CLOUD_BILLING_POLL_INTERVAL_MS,
+	type CloudBillingNotice,
+	canStartCloudCheckout,
 	cloudBillingPath,
 	isProjectedCloudSubscriptionActive,
 	maximumSelectedTargets,
+	resolveCloudBillingNotice,
 } from "@/lib/cloud-billing-ui";
 import { safeReturnTo } from "@/lib/return-to";
 import {
@@ -65,6 +68,89 @@ function formatMoney(amountCents: number): string {
 	return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(
 		amountCents / 100,
 	);
+}
+
+function formatBillingDate(value: string | null): string | null {
+	if (!value) return null;
+	return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function billingNoticeCopy(
+	notice: CloudBillingNotice,
+	subscriptionStatus?: string,
+): {
+	title: string;
+	description: string;
+	actionLabel?: string;
+} {
+	const date = formatBillingDate(notice.effectiveAt);
+	switch (notice.kind) {
+		case "billing-change-pending":
+			return {
+				title: "Billing change is still syncing",
+				description:
+					"Tracking and further billing changes are paused until Stripe's authoritative subscription update arrives.",
+			};
+		case "billing-conflict":
+			return {
+				title: "Billing is locked for review",
+				description:
+					"Stripe reports multiple live subscriptions for this workspace. Tracking and self-service changes are paused to prevent duplicate billing.",
+				actionLabel: "Contact support",
+			};
+		case "billing-state-invalid":
+			return {
+				title: "Billing status needs support review",
+				description:
+					"Elmo could not verify a usable Stripe subscription before its safety window ended. Tracking is paused; do not start another checkout.",
+				actionLabel: "Contact support",
+			};
+		case "cancellation-scheduled":
+			return {
+				title: "Subscription scheduled to cancel",
+				description: date
+					? `Tracking remains available through the current billing period ending ${date}.`
+					: "Tracking remains available through the current billing period.",
+				actionLabel: "Manage cancellation in Stripe",
+			};
+		case "checkout-expired":
+			return {
+				title: "Checkout expired",
+				description: "No active subscription was created. Choose a plan below to start a new secure Checkout.",
+				actionLabel: "Choose a plan",
+			};
+		case "payment-grace-expired":
+			return {
+				title: "Tracking paused after the payment grace period",
+				description:
+					"Stripe still reports the latest invoice as unpaid. Pay the invoice or update the payment method in Stripe to restore access.",
+				actionLabel: "Resolve payment in Stripe",
+			};
+		case "payment-past-due":
+			return {
+				title: "Payment failed — action required",
+				description: date
+					? `Tracking remains available during Elmo's seven-day grace period, which ends ${date}. Update the payment method in Stripe before then.`
+					: "Tracking is temporarily available during Elmo's payment grace period. Update the payment method in Stripe now.",
+				actionLabel: "Update payment in Stripe",
+			};
+		case "subscription-ended":
+			return {
+				title: "Subscription ended",
+				description: date
+					? `Tracking stopped when the subscription ended on ${date}. ${notice.action === "support" ? "Contact support to restore this custom plan." : "Choose a plan below to restart."}`
+					: notice.action === "support"
+						? "Tracking is stopped. Contact support to restore this custom plan."
+						: "Tracking is stopped. Choose a plan below to restart the workspace.",
+				actionLabel: notice.action === "support" ? "Contact support" : "Choose a plan",
+			};
+		case "subscription-inactive":
+			return {
+				title: "Subscription is not active",
+				description: `Stripe reports this subscription as ${subscriptionStatus?.replaceAll("_", " ") ?? "inactive"}. Tracking and billing changes are paused until it is resolved.`,
+				actionLabel: notice.action === "portal" ? "Open Stripe billing" : "Contact support",
+			};
+	}
 }
 
 function UsageCard({ label, used, limit, detail }: { label: string; used: number; limit: number; detail?: string }) {
@@ -350,6 +436,18 @@ function WorkspaceBillingPage() {
 		: 0;
 	const canManageSelfServe = data.permissions.canManage && data.permissions.selfServe;
 	const subscriptionActive = isProjectedCloudSubscriptionActive(data.subscription);
+	const canStartCheckout = canStartCloudCheckout(data.subscription);
+	const canOpenCheckout = canStartCheckout && data.lifecycle.reason !== "billing-change-pending";
+	const canChangeSubscription = subscriptionActive && data.lifecycle.access === "allowed";
+	const canSelectPlan = canManageSelfServe && (canOpenCheckout || canChangeSubscription);
+	const workspaceAccessAllowed = data.lifecycle.access === "allowed";
+	const lifecycleNotice = resolveCloudBillingNotice({
+		subscription: data.subscription,
+		lifecycle: data.lifecycle,
+		canManage: data.permissions.canManage,
+		selfServe: data.permissions.selfServe,
+	});
+	const lifecycleNoticeCopy = lifecycleNotice ? billingNoticeCopy(lifecycleNotice, data.subscription?.status) : null;
 	const returnTo = search.returnTo ? safeReturnTo(search.returnTo) : null;
 	const addonBillingInterval = data.subscription?.interval === "year" ? "annual" : "monthly";
 	const addonPrice = CLOUD_CLAUDE_PROMPT_ADDON[addonBillingInterval];
@@ -358,7 +456,11 @@ function WorkspaceBillingPage() {
 	const startPlan = async (planId: (typeof data.plans)[number]["id"]) => {
 		setError(null);
 		setViolations([]);
-		if (!subscriptionActive) {
+		if (!canSelectPlan) {
+			setError("Resolve the current billing status before changing plans or starting another checkout.");
+			return;
+		}
+		if (canStartCheckout) {
 			setPending("Opening secure checkout…");
 			try {
 				const billingUrl = cloudBillingPath(organization, {
@@ -414,7 +516,7 @@ function WorkspaceBillingPage() {
 	const updateAddon = async () => {
 		setError(null);
 		setViolations([]);
-		if (!subscriptionActive) {
+		if (!canChangeSubscription) {
 			setError("Activate this workspace subscription before changing Claude prompt capacity.");
 			return;
 		}
@@ -466,7 +568,7 @@ function WorkspaceBillingPage() {
 							<p className="text-muted-foreground">Workspace billing, capacity, and tracking usage.</p>
 						</div>
 						<div className="flex items-center gap-2">
-							<Badge variant={subscriptionActive ? "default" : "secondary"}>
+							<Badge variant={workspaceAccessAllowed ? "default" : "secondary"}>
 								{data.subscription?.planId === "custom" ? "Custom" : (currentPlan?.displayName ?? "No plan")}
 							</Badge>
 							{data.subscription && <Badge variant="outline">{data.subscription.status}</Badge>}
@@ -479,6 +581,35 @@ function WorkspaceBillingPage() {
 							<AlertTitle>{pending}</AlertTitle>
 							<AlertDescription>
 								Stripe has accepted the request. Access updates after its signed webhook is projected here.
+							</AlertDescription>
+						</Alert>
+					)}
+					{lifecycleNotice && lifecycleNoticeCopy && (
+						<Alert variant={lifecycleNotice.variant}>
+							<IconAlertTriangle />
+							<AlertTitle>{lifecycleNoticeCopy.title}</AlertTitle>
+							<AlertDescription className="space-y-3">
+								<p>{lifecycleNoticeCopy.description}</p>
+								{lifecycleNotice.action === "portal" && (
+									<Button size="sm" variant="outline" disabled={Boolean(pending)} onClick={openPortal}>
+										{lifecycleNoticeCopy.actionLabel}
+									</Button>
+								)}
+								{lifecycleNotice.action === "support" && (
+									<Button asChild size="sm" variant="outline">
+										<a href="mailto:support@elmohq.com?subject=Elmo%20Cloud%20billing%20review">
+											{lifecycleNoticeCopy.actionLabel}
+										</a>
+									</Button>
+								)}
+								{lifecycleNotice.action === "choose-plan" && (
+									<Button asChild size="sm" variant="outline">
+										<a href="#plans">{lifecycleNoticeCopy.actionLabel}</a>
+									</Button>
+								)}
+								{lifecycleNotice.action === null &&
+									lifecycleNotice.kind !== "billing-change-pending" &&
+									!data.permissions.canManage && <p>Ask a workspace owner or admin to resolve billing.</p>}
 							</AlertDescription>
 						</Alert>
 					)}
@@ -558,7 +689,7 @@ function WorkspaceBillingPage() {
 							</CardContent>
 						</Card>
 					) : (
-						<section className="space-y-4">
+						<section id="plans" className="scroll-mt-20 space-y-4">
 							<div className="flex flex-wrap items-center justify-between gap-3">
 								<div>
 									<h2 className="text-xl font-semibold">Plans</h2>
@@ -583,7 +714,10 @@ function WorkspaceBillingPage() {
 							</div>
 							<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 								{data.plans.map((plan) => {
-									const selected = data.subscription?.planId === plan.id && data.subscription.interval === interval;
+									const selected =
+										!canStartCheckout &&
+										data.subscription?.planId === plan.id &&
+										data.subscription.interval === interval;
 									const amount = interval === "year" ? plan.annualAmountCents : plan.monthlyAmountCents;
 									return (
 										<Card key={plan.id} className={selected ? "border-primary" : undefined}>
@@ -611,10 +745,16 @@ function WorkspaceBillingPage() {
 												<Button
 													className="w-full"
 													variant={selected ? "secondary" : "default"}
-													disabled={!canManageSelfServe || Boolean(pending) || selected}
+													disabled={!canSelectPlan || Boolean(pending) || selected}
 													onClick={() => startPlan(plan.id)}
 												>
-													{selected ? "Current plan" : data.subscription ? "Change plan" : "Choose plan"}
+													{selected
+														? "Current plan"
+														: !canSelectPlan && canManageSelfServe
+															? "Resolve billing first"
+															: canChangeSubscription
+																? "Change plan"
+																: "Choose plan"}
 												</Button>
 											</CardContent>
 										</Card>
@@ -648,7 +788,7 @@ function WorkspaceBillingPage() {
 								<Button
 									disabled={
 										!canManageSelfServe ||
-										!subscriptionActive ||
+										!canChangeSubscription ||
 										Boolean(pending) ||
 										addonQuantity === data.subscription?.claudeAddonPromptSlots ||
 										!Number.isInteger(addonQuantity) ||
@@ -681,7 +821,7 @@ function WorkspaceBillingPage() {
 					)}
 
 					<div className="flex flex-wrap gap-3 border-t pt-6">
-						{returnTo && subscriptionActive && (
+						{returnTo && workspaceAccessAllowed && (
 							<Button onClick={() => window.location.assign(returnTo)}>Continue setting up your brand</Button>
 						)}
 						{canManageSelfServe && data.subscription?.stripeCustomerId && (

@@ -118,6 +118,7 @@ export const startCloudCheckoutFn = createServerFn({ method: "POST" })
 				planId: data.planId,
 				interval: data.interval,
 				mutationId: data.mutationId,
+				customerEmail: session.user.email,
 				successUrl: new URL(data.successPath, appUrl).toString(),
 				cancelUrl: new URL(data.cancelPath, appUrl).toString(),
 				stripeClient: runtime.stripeClient,

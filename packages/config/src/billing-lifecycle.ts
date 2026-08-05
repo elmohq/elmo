@@ -1,6 +1,13 @@
 export const CLOUD_ACTIVE_SUBSCRIPTION_SYNC_GRACE_MS = 24 * 60 * 60 * 1_000;
 export const CLOUD_PAST_DUE_GRACE_MS = 7 * 24 * 60 * 60 * 1_000;
 
+const CLOUD_RESTARTABLE_SUBSCRIPTION_STATUSES = new Set(["canceled", "incomplete_expired"]);
+
+/** A new Checkout must never overlap a live or recoverable Stripe subscription. */
+export function canStartCloudSubscriptionCheckout(status: string | null | undefined): boolean {
+	return status == null || CLOUD_RESTARTABLE_SUBSCRIPTION_STATUSES.has(status);
+}
+
 export type CloudBillingLifecycleDenialReason =
 	| "inactive-subscription"
 	| "invalid-subscription-lifecycle"
