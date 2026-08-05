@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	assertCustomEntitlementTargetsAvailable,
 	type CustomEntitlementOperatorError,
 	currentEntitlementRevision,
 	type EntitlementOverrideRevision,
@@ -80,6 +81,16 @@ function appendInput(existing: EntitlementOverrideRevision[] = []) {
 }
 
 describe("custom entitlement decisions", () => {
+	it("rejects contract targets the deployed worker cannot execute", () => {
+		expect(() => assertCustomEntitlementTargetsAvailable(payload, new Set(["other-target"]))).toThrowError(
+			expect.objectContaining({
+				code: "invalid-input",
+				message: expect.stringContaining("chatgpt"),
+			}),
+		);
+		expect(() => assertCustomEntitlementTargetsAvailable(payload, new Set(["chatgpt"]))).not.toThrow();
+	});
+
 	it("treats effective windows as half-open intervals", () => {
 		expect(
 			effectiveWindowsOverlap(
@@ -175,6 +186,7 @@ describe("custom entitlement decisions", () => {
 	it("applies the predecessor end and successor insert under one organization lock", async () => {
 		const now = new Date("2026-09-15T00:00:00.000Z");
 		let lockCount = 0;
+		let reconciledAt: Date | null = null;
 		const revisions = [revision({ effectiveUntil: null })];
 		const store: EntitlementOverrideStore = {
 			withOrganizationLock: async (_organizationId, run) => {
@@ -196,6 +208,10 @@ describe("custom entitlement decisions", () => {
 						return true;
 					},
 					rescheduleRevocationIfMatches: async () => false,
+					reconcile: async (_organizationId, at) => {
+						reconciledAt = at;
+					},
+					availableTrackingTargetKeys: async () => new Set(["chatgpt"]),
 				});
 			},
 		};
@@ -217,6 +233,7 @@ describe("custom entitlement decisions", () => {
 		expect(lockCount).toBe(1);
 		expect(applied).toMatchObject({ endedRevision: 1, successor: { revision: 2 }, transitionAt: now });
 		expect(currentEntitlementRevision(revisions, now)?.revision).toBe(2);
+		expect(reconciledAt).toEqual(now);
 	});
 
 	it("keeps the predecessor active until a scheduled replacement boundary", () => {
@@ -364,6 +381,8 @@ describe("custom entitlement decisions", () => {
 					},
 					setRevocationIfUnscheduled: async () => false,
 					rescheduleRevocationIfMatches: async () => false,
+					reconcile: async () => {},
+					availableTrackingTargetKeys: async () => new Set(["chatgpt"]),
 				}),
 		};
 

@@ -14,6 +14,7 @@ const CLOUD_MIGRATIONS = [
 	"0012_cloud_tracking_control_plane",
 	"0013_better_auth_stripe",
 	"0014_enforce_tracking_tenant_budgets",
+	"0015_reconcile_entitlement_transitions",
 ] as const;
 
 type Journal = {
@@ -236,6 +237,7 @@ async function assertCloudUpgrade(
 		"organization_billing_subscriptions",
 		"organization_billing_subscription_items",
 		"organization_entitlement_overrides",
+		"organization_entitlement_reconciliations",
 		"brand_scheduler_rollouts",
 		"brand_target_selections",
 		"prompt_target_assignments",
@@ -249,6 +251,18 @@ async function assertCloudUpgrade(
 		const result = await client.query(`SELECT count(*)::int AS "value" FROM "${table}"`);
 		assert.equal(result.rows[0]?.value, 0, `${table} must remain empty during an existing-install upgrade.`);
 	}
+	const rolloutModes = await client.query(`
+		SELECT "enumlabel"
+		FROM "pg_enum"
+		JOIN "pg_type" ON "pg_type"."oid" = "pg_enum"."enumtypid"
+		WHERE "pg_type"."typname" = 'scheduler_rollout_mode'
+		ORDER BY "pg_enum"."enumsortorder"
+	`);
+	assert.deepEqual(
+		rolloutModes.rows.map((row) => row.enumlabel),
+		["legacy", "shadow", "v2", "paused"],
+		"The fail-closed cloud rollback mode is missing.",
+	);
 }
 
 async function main(): Promise<void> {

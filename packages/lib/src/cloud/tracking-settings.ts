@@ -12,6 +12,7 @@ import {
 	trackingSchedules,
 } from "../db/schema";
 import { assertCapacityChange, CapacityExceededError, withOrganizationEntitlementTransaction } from "./capacity";
+import { markOrganizationEntitlementReconciliationDue } from "./entitlement-reconciliation-cursor";
 import { resolveRuntimeTrackingPolicy } from "./tracking-policy";
 
 export { initializeDefaultBrandTracking } from "./tracking-defaults";
@@ -320,6 +321,11 @@ export async function reconcileBrandTrackingSettings(input: {
 				},
 			});
 	}
+	await markOrganizationEntitlementReconciliationDue({
+		tx: input.tx,
+		organizationId: input.organizationId,
+		reconcileAfter: now,
+	});
 }
 
 export async function updateBrandTrackingTargets(input: {

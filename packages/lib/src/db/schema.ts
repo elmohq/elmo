@@ -283,7 +283,7 @@ export const promptTargetAssignmentSourceEnum = pgEnum("prompt_target_assignment
 	"custom",
 ]);
 
-export const schedulerRolloutModeEnum = pgEnum("scheduler_rollout_mode", ["legacy", "shadow", "v2"]);
+export const schedulerRolloutModeEnum = pgEnum("scheduler_rollout_mode", ["legacy", "shadow", "v2", "paused"]);
 
 export const trackingOccurrenceStatusEnum = pgEnum("tracking_occurrence_status", [
 	"pending",
@@ -457,6 +457,30 @@ export const organizationBillingSubscriptionItems = pgTable(
 			.where(sql`${table.active} = true AND ${table.type} = 'premium_addon'`),
 		check("organization_billing_subscription_items_quantity_check", sql`${table.quantity} > 0`),
 	],
+).enableRLS();
+
+/**
+ * Organization-level cursor for deriving v2 schedules from billing and custom
+ * contract state. A nullable reconcile time means the current source token is
+ * fully applied and has no known future contract boundary.
+ */
+export const organizationEntitlementReconciliations = pgTable(
+	"organization_entitlement_reconciliations",
+	{
+		organizationId: text("organization_id")
+			.primaryKey()
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		appliedSourceToken: text("applied_source_token"),
+		reconcileAfter: timestamp("reconcile_after", { withTimezone: true }),
+		lastReconciledAt: timestamp("last_reconciled_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [index("organization_entitlement_reconciliations_due_idx").on(table.reconcileAfter)],
 ).enableRLS();
 
 export const brandTargetSelections = pgTable(
@@ -856,6 +880,8 @@ export type OrganizationBillingSubscription = typeof organizationBillingSubscrip
 export type NewOrganizationBillingSubscription = typeof organizationBillingSubscriptions.$inferInsert;
 export type OrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferSelect;
 export type NewOrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferInsert;
+export type OrganizationEntitlementReconciliation = typeof organizationEntitlementReconciliations.$inferSelect;
+export type NewOrganizationEntitlementReconciliation = typeof organizationEntitlementReconciliations.$inferInsert;
 export type BrandTargetSelection = typeof brandTargetSelections.$inferSelect;
 export type NewBrandTargetSelection = typeof brandTargetSelections.$inferInsert;
 export type PromptTargetAssignment = typeof promptTargetAssignments.$inferSelect;

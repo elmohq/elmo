@@ -106,6 +106,13 @@
       "when": 1785900958067,
       "tag": "0014_enforce_tracking_tenant_budgets",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1785904295959,
+      "tag": "0015_reconcile_entitlement_transitions",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 import type { ResolvedEntitlements } from "@workspace/config/entitlements";
 import type { db } from "../db/db";
 import { brandSchedulerRollouts, brandTargetSelections } from "../db/schema";
+import { markOrganizationEntitlementReconciliationDue } from "./entitlement-reconciliation-cursor";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; access: "allowed" }>;
@@ -8,6 +9,7 @@ type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; a
 export async function initializeDefaultBrandTracking(input: {
 	tx: DbTransaction;
 	resolved: AllowedCloudEntitlements;
+	organizationId: string;
 	brandId: string;
 	createdByUserId?: string;
 	now?: Date;
@@ -36,4 +38,9 @@ export async function initializeDefaultBrandTracking(input: {
 		.insert(brandSchedulerRollouts)
 		.values({ brandId: input.brandId, mode: "v2", generation: 1, cutoverAt: now })
 		.onConflictDoNothing({ target: brandSchedulerRollouts.brandId });
+	await markOrganizationEntitlementReconciliationDue({
+		tx: input.tx,
+		organizationId: input.organizationId,
+		reconcileAfter: now,
+	});
 }

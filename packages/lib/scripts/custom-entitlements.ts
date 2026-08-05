@@ -20,7 +20,8 @@ the --expected-revision printed by a fresh dry run. Use --env-file PATH to load
 DATABASE_URL before connecting. No command runs migrations or prints the
 database URL or full entitlement payload. The revoke action cancels a future
 revision or revokes the currently active revision; expired and already-revoked
-revisions are immutable.`;
+revisions are immutable. Set and replace also require the worker's exact
+SCRAPE_TARGETS so unavailable contract targets are rejected before apply.`;
 
 const { positionals, values } = parseArgs({
 	allowPositionals: true,

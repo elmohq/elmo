@@ -3,7 +3,7 @@ import { shouldUseLegacyScheduler } from "./legacy-rollout";
 
 describe("legacy scheduler rollout ownership", () => {
 	it.each(["local", "demo", "whitelabel"] as const)("preserves %s scheduling for every rollout value", (mode) => {
-		for (const rollout of [null, "legacy", "shadow", "v2"] as const) {
+		for (const rollout of [null, "legacy", "shadow", "v2", "paused"] as const) {
 			expect(shouldUseLegacyScheduler(mode, rollout)).toBe(true);
 		}
 	});
@@ -14,7 +14,11 @@ describe("legacy scheduler rollout ownership", () => {
 		expect(shouldUseLegacyScheduler("cloud", "shadow")).toBe(true);
 	});
 
-	it("excludes only explicit v2 cloud brands from legacy execution", () => {
+	it("excludes explicit v2 cloud brands from legacy execution", () => {
 		expect(shouldUseLegacyScheduler("cloud", "v2")).toBe(false);
+	});
+
+	it("keeps a paused cloud rollout off both schedulers", () => {
+		expect(shouldUseLegacyScheduler("cloud", "paused")).toBe(false);
 	});
 });

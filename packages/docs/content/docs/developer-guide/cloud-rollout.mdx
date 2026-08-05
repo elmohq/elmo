@@ -3,7 +3,7 @@ title: Cloud rollout and rollback
 description: Safe deployment order for the cloud billing and tracking control planes.
 ---
 
-The cloud release uses an expand-first, red-green rollout. Migrations 0012–0014
+The cloud release uses an expand-first, red-green rollout. Migrations 0012–0015
 add the billing and v2 tracking control planes without changing the legacy
 scheduler contract or synthesizing billing, target-selection, or rollout rows.
 Local and white-label installations therefore keep their existing
@@ -12,11 +12,13 @@ Local and white-label installations therefore keep their existing
 ## Deployment order
 
 1. Back up PostgreSQL and verify restoration before changing production.
-2. Apply all database migrations. Treat 0012–0014 as the expand phase; do not
+2. Apply all database migrations. Treat 0012–0015 as the expand phase; do not
    remove legacy columns, queues, or scheduler code.
 3. Deploy the worker version that consumes `dispatch-tracking-v2` and
    `process-tracking-task-v2`. These consumers are inert for brands without an
-   explicit `brand_scheduler_rollouts` row in `v2` mode.
+   explicit `brand_scheduler_rollouts` row in `v2` mode. The worker drains due
+   organization entitlement cursors before dispatch, so future custom contract
+   boundaries rebuild only the affected workspaces.
 4. Prepare Stripe before admitting cloud web traffic:
    - create the catalog prices with the exact lookup keys, amounts, currencies,
      and intervals defined by the application;
@@ -40,15 +42,29 @@ schedule materialization, provider attempts, and usage-bucket accounting.
 ## Rollback
 
 Stop new cloud signups and Checkout first. For each cloud brand being rolled
-back, transactionally change its rollout mode from `v2` to `legacy` and
-increment its generation before rolling back worker or web containers. The v2
-dispatcher only claims explicit current-generation v2 work, and task execution
-rechecks that policy before a provider call.
+back, transactionally change its rollout mode from `v2` to `paused` and
+increment its generation before rolling back worker or web containers. Paused
+is deliberately owned by neither scheduler: a new cloud brand has no safe
+legacy `enabled_models` projection, and sending it to `legacy` could execute
+every deployment target without cloud metering. The v2 dispatcher only claims
+explicit current-generation v2 work, and task execution rechecks that policy
+before a provider call.
 
 ```sql
 BEGIN;
+UPDATE brands
+SET enabled_models = ARRAY[]::text[],
+    updated_at = now()
+WHERE id IN ('verified-cloud-brand-id')
+  AND organization_id = 'verified-organization-id'
+  AND EXISTS (
+    SELECT 1 FROM brand_scheduler_rollouts rollout
+    WHERE rollout.brand_id = brands.id AND rollout.mode = 'v2'
+  )
+RETURNING id, organization_id, enabled_models;
+
 UPDATE brand_scheduler_rollouts
-SET mode = 'legacy',
+SET mode = 'paused',
     generation = generation + 1,
     last_rolled_back_at = now(),
     updated_at = now()
@@ -58,10 +74,16 @@ RETURNING brand_id, mode, generation;
 COMMIT;
 ```
 
-Verify every returned brand ID before rolling back containers. Never broaden
-this update to brands that were not part of the cloud rollout.
+Verify that both statements return the same complete brand-ID set before
+committing or rolling back containers. The empty `enabled_models` projection
+also prevents provider calls if the previous worker does not recognize
+`paused`. Never broaden this update to brands that were not part of the cloud
+rollout, and never set a cloud-created v2 brand to `legacy`. Resume it only with
+the `resumeCloudTrackingRollouts` operation after restoring a compatible v2
+worker; that operation increments the generation again and makes the
+organization entitlement cursor immediately due.
 
-Keep migrations 0012–0014 applied during rollback. Their tables and nullable
+Keep migrations 0012–0015 applied during rollback. Their tables and nullable
 Stripe columns are compatible with local and white-label code, while reversing
 them would be the destructive part of the release. Stripe retries failed
 webhook delivery, so restore a webhook-capable web version before resuming

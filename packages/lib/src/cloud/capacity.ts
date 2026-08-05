@@ -134,6 +134,7 @@ export async function createOrganizationBrand(input: {
 						await initializeDefaultBrandTracking({
 							tx,
 							resolved,
+							organizationId: input.organizationId,
 							brandId: inserted.id,
 							createdByUserId: input.createdByUserId,
 						});

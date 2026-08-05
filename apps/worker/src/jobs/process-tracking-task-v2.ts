@@ -20,6 +20,7 @@ import {
 	persistModelIteration,
 } from "./process-prompt";
 import { getAttemptRecoveryDisposition, type ProviderAttemptState } from "./tracking-attempt-state";
+import { withProviderStartEntitlementFence } from "./provider-start-fence";
 
 export interface ProcessTrackingTaskV2Data {
 	version: 2;
@@ -45,6 +46,7 @@ interface TaskRow {
 
 interface ReservedTask {
 	taskId: string;
+	organizationId: string;
 	brandId: string;
 	promptId: string;
 	occurrenceId: string;
@@ -362,6 +364,7 @@ async function reserveTask(taskId: string, now: Date): Promise<ReservedTask | nu
 
 		return {
 			taskId,
+			organizationId: row.organization_id,
 			brandId: row.brand_id,
 			promptId: row.prompt_id,
 			occurrenceId: row.occurrence_id,
@@ -418,7 +421,11 @@ async function cancelBeforeProviderCall(reserved: ReservedTask, reason: string):
 
 async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
 	return db.transaction(async (tx) => {
-		const eligibility = await tx.execute(sql`
+		return withProviderStartEntitlementFence({
+			tx,
+			organizationId: reserved.organizationId,
+			authorize: async () => {
+				const eligibility = await tx.execute(sql`
 			SELECT 1
 			FROM tracking_tasks t
 			JOIN tracking_occurrences o ON o.id = t.occurrence_id
@@ -440,9 +447,9 @@ async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
 				AND r.generation = o.generation
 				AND s.generation = o.generation
 				AND s.policy_version = o.policy_version
-		`);
-		if (eligibility.rows.length === 0) return false;
-		const started = await tx.execute(sql`
+				`);
+				if (eligibility.rows.length === 0) return false;
+				const started = await tx.execute(sql`
 			UPDATE tracking_provider_attempts attempt
 			SET status = 'started', started_at = now(), updated_at = now()
 			WHERE attempt.id = ${reserved.attemptId}
@@ -456,8 +463,10 @@ async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
 						AND task.attempt_count = ${reserved.attemptNumber}
 				)
 			RETURNING attempt.id
-		`);
-		return started.rows.length === 1;
+				`);
+				return started.rows.length === 1;
+			},
+		});
 	});
 }
 

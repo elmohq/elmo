@@ -6,12 +6,14 @@ import {
 	stableTrackingId,
 	type TrackingPolicySnapshot,
 } from "@workspace/lib/cloud/tracking-policy";
+import { reconcileDueOrganizationTrackingEntitlements } from "@workspace/lib/cloud/entitlement-reconciliation";
 import { db } from "@workspace/lib/db/db";
 import { trackingOccurrences, trackingSchedules, trackingTasks } from "@workspace/lib/db/schema";
 import { getTrackingTargetKey, parseScrapeTargets } from "@workspace/lib/providers";
 import { sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { trackingTargetDispatchDisposition } from "./tracking-target-dispatch";
 
 export interface DispatchTrackingV2Data {
 	source: "scheduled" | "manual";
@@ -38,6 +40,7 @@ async function materializeDueSchedules(now: Date): Promise<number> {
 	const configs = new Map(
 		parseScrapeTargets(process.env.SCRAPE_TARGETS).map((config) => [getTrackingTargetKey(config), config]),
 	);
+	const availableTargetKeys = new Set(configs.keys());
 
 	return db.transaction(async (tx) => {
 		const result = await tx.execute(sql`
@@ -75,8 +78,14 @@ async function materializeDueSchedules(now: Date): Promise<number> {
 		let materialized = 0;
 		for (const row of result.rows as unknown as DueScheduleRow[]) {
 			const config = configs.get(row.target_key);
-			if (!config) {
-				console.error(`[tracking-v2] schedule ${row.schedule_id} references unknown target ${row.target_key}`);
+			if (trackingTargetDispatchDisposition(availableTargetKeys, row.target_key) === "quarantine" || !config) {
+				await tx
+					.update(trackingSchedules)
+					.set({ active: false, updatedAt: now })
+					.where(sql`${trackingSchedules.id} = ${row.schedule_id}`);
+				console.error(
+					`[tracking-v2] deactivated schedule ${row.schedule_id}: target ${row.target_key} is not configured`,
+				);
 				continue;
 			}
 
@@ -222,11 +231,24 @@ interface ProcessTrackingTaskV2Data {
 export async function dispatchTrackingV2Job(_jobs: Job<DispatchTrackingV2Data>[]): Promise<void> {
 	if (process.env.DEPLOYMENT_MODE !== "cloud") return;
 	const now = new Date();
+	let reconciliationError: unknown;
+	try {
+		const reconciled = await reconcileDueOrganizationTrackingEntitlements({ now });
+		if (reconciled.length > 0) {
+			console.log(`[tracking-v2] reconciled entitlements for ${reconciled.length} organization(s)`);
+		}
+	} catch (error) {
+		// Continue dispatching already-valid organizations, then fail the job so
+		// pg-boss retries any cursor whose reconciliation transaction rolled back.
+		reconciliationError = error;
+		console.error("[tracking-v2] entitlement reconciliation failed", error);
+	}
 	const materialized = await materializeDueSchedules(now);
 	const enqueued = await enqueuePendingTasks();
 	if (materialized > 0 || enqueued > 0) {
 		console.log(`[tracking-v2] materialized ${materialized} occurrence(s), enqueued ${enqueued} task(s)`);
 	}
+	if (reconciliationError) throw reconciliationError;
 }
 
 export { CLOUD_TRACKING_DISPATCH_QUEUE };

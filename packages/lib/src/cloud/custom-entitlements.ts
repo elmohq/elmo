@@ -1,10 +1,13 @@
 import {
+	CLAUDE_NATIVE_WEB_TARGET_KEY,
 	type OrganizationEntitlementOverride as EntitlementPayload,
 	organizationEntitlementOverrideSchema,
 } from "@workspace/config/plans";
+import { getTrackingTargetKey, parseScrapeTargets } from "@workspace/config/scrape-targets";
 import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import { organization, organizationBillingSubscriptions, organizationEntitlementOverrides, user } from "../db/schema";
+import { reconcileOrganizationTrackingEntitlementsInTransaction } from "./entitlement-reconciliation";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -65,6 +68,8 @@ export interface EntitlementOverrideTransactionStore {
 		expectedRevokedAt: Date;
 		revokedAt: Date | null;
 	}): Promise<boolean>;
+	reconcile(organizationId: string, now: Date): Promise<void>;
+	availableTrackingTargetKeys(): Promise<ReadonlySet<string>>;
 }
 
 export interface EntitlementOverrideStore {
@@ -85,6 +90,28 @@ function validDate(value: Date, label: string): Date {
 		throw new CustomEntitlementOperatorError("invalid-input", `${label} must be a valid date`);
 	}
 	return value;
+}
+
+export function assertCustomEntitlementTargetsAvailable(
+	payload: EntitlementPayload,
+	availableTargetKeys: ReadonlySet<string>,
+): void {
+	const required = payload.entitlements.trackingTargets.targets.map((target) => target.targetKey);
+	if (payload.entitlements.claudeTracking.enabled) required.push(CLAUDE_NATIVE_WEB_TARGET_KEY);
+	const missing = [...new Set(required.filter((targetKey) => !availableTargetKeys.has(targetKey)))].sort();
+	if (missing.length > 0) {
+		throw new CustomEntitlementOperatorError(
+			"invalid-input",
+			`Custom entitlement targets are not configured in SCRAPE_TARGETS: ${missing.join(", ")}`,
+		);
+	}
+}
+
+async function validateDraftTargets(
+	transaction: EntitlementOverrideTransactionStore,
+	draft: EntitlementOverrideDraft,
+): Promise<void> {
+	assertCustomEntitlementTargetsAvailable(draft.payload, await transaction.availableTrackingTargetKeys());
 }
 
 export function effectiveWindowsOverlap(
@@ -417,15 +444,17 @@ export async function previewEntitlementOverrideAppend(
 		await assertOrganizationAndActor(transaction, organizationId, actorUserId);
 		const existing = await transaction.list(organizationId);
 		const latestRevision = latestEntitlementRevision(existing);
+		const draft = planEntitlementOverrideAppend({
+			...input,
+			organizationId,
+			actorUserId,
+			reason,
+			existing,
+			expectedLatestRevision: latestRevision,
+		});
+		await validateDraftTargets(transaction, draft);
 		return {
-			draft: planEntitlementOverrideAppend({
-				...input,
-				organizationId,
-				actorUserId,
-				reason,
-				existing,
-				expectedLatestRevision: latestRevision,
-			}),
+			draft,
 			latestRevision,
 		};
 	});
@@ -442,7 +471,10 @@ export async function appendEntitlementOverride(
 		await assertOrganizationAndActor(transaction, organizationId, actorUserId);
 		const existing = await transaction.list(organizationId);
 		const draft = planEntitlementOverrideAppend({ ...input, organizationId, actorUserId, reason, existing });
-		return transaction.insert(draft);
+		await validateDraftTargets(transaction, draft);
+		const inserted = await transaction.insert(draft);
+		await transaction.reconcile(organizationId, new Date());
+		return inserted;
 	});
 }
 
@@ -457,15 +489,17 @@ export async function previewEntitlementOverrideReplacement(
 		await assertOrganizationAndActor(transaction, organizationId, actorUserId);
 		const existing = await transaction.list(organizationId);
 		const latestRevision = latestEntitlementRevision(existing);
+		const plan = planEntitlementOverrideReplacement({
+			...input,
+			organizationId,
+			actorUserId,
+			reason,
+			existing,
+			expectedLatestRevision: latestRevision,
+		});
+		await validateDraftTargets(transaction, plan.successor);
 		return {
-			...planEntitlementOverrideReplacement({
-				...input,
-				organizationId,
-				actorUserId,
-				reason,
-				existing,
-				expectedLatestRevision: latestRevision,
-			}),
+			...plan,
 			latestRevision,
 		};
 	});
@@ -488,6 +522,7 @@ export async function replaceEntitlementOverride(
 			reason,
 			existing,
 		});
+		await validateDraftTargets(transaction, plan.successor);
 		if (
 			!(await transaction.setRevocationIfUnscheduled({
 				organizationId,
@@ -501,6 +536,7 @@ export async function replaceEntitlementOverride(
 			);
 		}
 		const successor = await transaction.insert(plan.successor);
+		await transaction.reconcile(organizationId, input.now);
 		return { endedRevision: plan.target.revision, successor, transitionAt: plan.transitionAt };
 	});
 }
@@ -573,6 +609,7 @@ export async function revokeEntitlementOverride(
 			);
 		}
 		const auditRevision = await transaction.insert(plan.audit);
+		await transaction.reconcile(organizationId, input.now);
 		return {
 			action: plan.action,
 			revokedRevision: plan.target.revision,
@@ -719,6 +756,12 @@ function createTransactionStore(tx: DbTransaction): EntitlementOverrideTransacti
 				)
 				.returning({ revision: organizationEntitlementOverrides.revision });
 			return Boolean(updated);
+		},
+		async reconcile(organizationId, now) {
+			await reconcileOrganizationTrackingEntitlementsInTransaction({ tx, organizationId, now });
+		},
+		async availableTrackingTargetKeys() {
+			return new Set(parseScrapeTargets(process.env.SCRAPE_TARGETS).map(getTrackingTargetKey));
 		},
 	};
 }
