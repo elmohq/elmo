@@ -581,7 +581,7 @@ function requireMutableSubscription(state: CloudBillingMutationState): CloudBill
 	if (subscription.planId === "custom") {
 		throw new CloudBillingControlError("custom-plan-read-only", "Custom plans are managed by Elmo support.");
 	}
-	if (subscription.status !== "active" && subscription.status !== "trialing") {
+	if (subscription.status !== "active") {
 		throw new CloudBillingControlError("subscription-not-active", "Billing changes require an active subscription.");
 	}
 	return subscription;

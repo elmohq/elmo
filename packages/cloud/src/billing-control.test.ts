@@ -375,6 +375,23 @@ describe("cloud Stripe billing mutations", () => {
 		expect(stripe.retrieve).not.toHaveBeenCalled();
 	});
 
+	it("denies billing mutations for an unexpected trial subscription", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		const trialing = state({ subscription: { ...state().subscription!, status: "trialing" } });
+
+		await expect(
+			changeCloudSubscriptionPlan({
+				organizationId: "org_1",
+				planId: "business",
+				interval: "month",
+				mutationId: "trialing",
+				stripeClient: stripe.client,
+				store: store(trialing),
+			}),
+		).rejects.toMatchObject({ code: "subscription-not-active" });
+		expect(stripe.retrieve).not.toHaveBeenCalled();
+	});
+
 	it("rejects malformed base quantities before changing line items", async () => {
 		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly", quantity: 2 }]));
 

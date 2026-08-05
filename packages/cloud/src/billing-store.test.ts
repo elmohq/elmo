@@ -47,6 +47,19 @@ describe("cloud billing projection ordering", () => {
 			}),
 		).toBe("conflict");
 	});
+
+	it("does not treat an unexpected trial as paid access", () => {
+		expect(
+			decideCloudBillingProjectionReplacement(
+				{ ...current, status: "trialing" },
+				{
+					stripeSubscriptionId: "sub_paid",
+					status: "active",
+					sourceEventCreatedAt: new Date("2026-08-05T00:00:03Z"),
+				},
+			),
+		).toBe("apply");
+	});
 });
 
 describe("cloud billing delinquency transitions", () => {

@@ -85,7 +85,7 @@ export interface CloudBillingStore {
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const PROCESSING_LEASE_MILLISECONDS = 5 * 60 * 1000;
-const ACCESS_GRANTING_STATUSES = new Set(["active", "trialing"]);
+const ACCESS_GRANTING_STATUSES = new Set(["active"]);
 
 function grantsAccess(status: string): boolean {
 	return ACCESS_GRANTING_STATUSES.has(status);
