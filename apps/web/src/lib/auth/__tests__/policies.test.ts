@@ -471,8 +471,6 @@ describe("evaluateOrgScope", () => {
 	});
 });
 
-// Umbrella-org model (issue #432): a brand's owning org is resolved via
-// `brands.organizationId`, not assumed equal to the brand id.
 describe("evaluateBrandAccess", () => {
 	const ORG_A = "org-a";
 	const ORG_B = "org-b";
