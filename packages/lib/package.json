@@ -6,6 +6,7 @@
 	"scripts": {
 		"test": "vitest run",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
+		"custom-entitlements": "tsx scripts/custom-entitlements.ts",
 		"generate:auth-schema": "bash scripts/generate-auth-schema.sh"
 	},
 	"exports": {
@@ -29,6 +30,7 @@
 		"./providers/models": "./src/providers/models.ts",
 		"./providers/types": "./src/providers/types.ts",
 		"./cloud/entitlements": "./src/cloud/entitlements.ts",
+		"./cloud/custom-entitlements": "./src/cloud/custom-entitlements.ts",
 		"./cloud/capacity": "./src/cloud/capacity.ts",
 		"./cloud/prompt-mutations": "./src/cloud/prompt-mutations.ts",
 		"./cloud/tracking-policy": "./src/cloud/tracking-policy.ts",
