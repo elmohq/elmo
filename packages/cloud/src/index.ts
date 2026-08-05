@@ -11,4 +11,5 @@
  */
 
 export { createCloudDeployment } from "./deployment";
+export { CLOUD_STRIPE_PLANS, identifyCloudPrice, validateCloudStripePriceCatalog } from "./billing-catalog";
 export { CLAUDE_NATIVE_WEB_TARGET_KEY, validateCloudTrackingTargets } from "./tracking-targets";
