@@ -21,6 +21,7 @@ export const LOCAL_FEATURES: FeaturesConfig = {
 	selfServeSignup: false,
 	billing: false,
 	reportGeneration: true,
+	opportunities: true,
 	teamInvites: false,
 };
 
@@ -32,6 +33,7 @@ export const DEMO_FEATURES: FeaturesConfig = {
 	selfServeSignup: false,
 	billing: false,
 	reportGeneration: true,
+	opportunities: true,
 	teamInvites: false,
 };
 
@@ -43,6 +45,7 @@ export const WHITELABEL_FEATURES: FeaturesConfig = {
 	selfServeSignup: false,
 	billing: false,
 	reportGeneration: true,
+	opportunities: true,
 	teamInvites: false,
 };
 
@@ -54,6 +57,7 @@ export const CLOUD_FEATURES: FeaturesConfig = {
 	selfServeSignup: true,
 	billing: true,
 	reportGeneration: false,
+	opportunities: false,
 	teamInvites: true,
 };
 

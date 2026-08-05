@@ -16,11 +16,12 @@ describe("createCloudDeployment", () => {
 		expect(features.teamInvites).toBe(true);
 	});
 
-	it("disables read-only, the optimize button, and report generation", () => {
+	it("disables read-only, the optimize button, report generation, and opportunities", () => {
 		const { features } = createCloudDeployment({});
 		expect(features.readOnly).toBe(false);
 		expect(features.showOptimizeButton).toBe(false);
 		expect(features.reportGeneration).toBe(false);
+		expect(features.opportunities).toBe(false);
 	});
 
 	it("uses Elmo branding defaults without VITE_APP_* overrides", () => {

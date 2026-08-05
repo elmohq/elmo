@@ -47,6 +47,11 @@ export interface FeaturesConfig {
 	 */
 	reportGeneration: boolean;
 	/**
+	 * Whether AI-generated citation opportunities are available. Gates every
+	 * navigation and server entry point for the feature.
+	 */
+	opportunities: boolean;
+	/**
 	 * Whether org admins can invite teammates by email. True only in cloud —
 	 * local is single-user by design, whitelabel memberships come from Auth0,
 	 * demo is read-only.

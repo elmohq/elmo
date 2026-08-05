@@ -44,6 +44,7 @@ export function createWhitelabelDeployment(options: CreateWhitelabelDeploymentOp
 			selfServeSignup: false,
 			billing: false,
 			reportGeneration: true,
+			opportunities: true,
 			teamInvites: false,
 		},
 		branding: {

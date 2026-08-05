@@ -4,9 +4,9 @@
  * Creates the Deployment for the managed multi-tenant Elmo Cloud offering.
  *
  * Feature flags: self-serve signup ON, multi-org ON, Stripe billing ON,
- * read-only OFF. Report generation is OFF — the one-time report generator is
- * an internal/whitelabel tool and is disabled entirely in cloud (no worker
- * scheduling, no UI entry points).
+ * read-only OFF. Report generation and AI-generated opportunities are OFF —
+ * both are disabled entirely in cloud (no worker scheduling, generation, or UI
+ * entry points).
  *
  * Branding uses the Elmo defaults, so no VITE_APP_* overrides are needed. Only
  * the public app URL is deployment-specific and is read from APP_URL (required
@@ -28,6 +28,7 @@ export function createCloudDeployment(env: Record<string, string | undefined> = 
 			selfServeSignup: true,
 			billing: true,
 			reportGeneration: false,
+			opportunities: false,
 			teamInvites: true,
 		},
 		branding: {

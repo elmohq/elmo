@@ -23,8 +23,10 @@ import { runStructuredCompletionPrompt } from "@workspace/lib/onboarding";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { getDeployment } from "@/lib/config/server";
 import { extractDomain } from "@/lib/domain-categories";
 import { categorizeDomain } from "@/lib/domain-categories.server";
+import { requireOpportunitiesAvailable } from "@/lib/opportunities-availability";
 import {
 	getBrandMentionRateByModel,
 	getPerPromptCitationPages,
@@ -473,6 +475,8 @@ async function generateValidReport(prompt: string): Promise<{ report: RawReport;
 export const getOpportunitiesFn = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string(), timezone: z.string().default("UTC") }))
 	.handler(async ({ data }): Promise<OpportunitiesResponse> => {
+		requireOpportunitiesAvailable(getDeployment().features);
+
 		const session = await requireAuthSession();
 		await requireBrandAccess(session.user.id, data.brandId);
 

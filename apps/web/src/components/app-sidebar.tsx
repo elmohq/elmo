@@ -35,6 +35,7 @@ import { NavUser } from "@/components/nav-user";
 import { NavAppInfo } from "@/components/nav-app-info";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
+import { isOpportunitiesAvailable } from "@/lib/opportunities-availability";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -60,6 +61,7 @@ export function AppSidebar({
 	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
 	// Reports are disabled entirely in cloud; hide the nav entry there.
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
+	const opportunitiesEnabled = isOpportunitiesAvailable(context.clientConfig?.features);
 
 	const showAdminSection = isAdmin || (hasReportAccess && reportsEnabled);
 	const workspaceOrganizationId = organizationId ?? brand?.organizationId;
@@ -99,12 +101,14 @@ export function AppSidebar({
 					url: "/citations",
 					icon: IconLink,
 				},
-				{
+			);
+			if (opportunitiesEnabled) {
+				dashboardItems.push({
 					title: "Opportunities",
 					url: "/opportunities",
 					icon: IconTarget,
-				},
-			);
+				});
+			}
 		}
 
 		groups.push({

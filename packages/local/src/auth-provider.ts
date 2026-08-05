@@ -23,6 +23,7 @@ export function createLocalDeployment(env: Record<string, string | undefined> = 
 			selfServeSignup: false,
 			billing: false,
 			reportGeneration: true,
+			opportunities: true,
 			teamInvites: false,
 		},
 		branding: {

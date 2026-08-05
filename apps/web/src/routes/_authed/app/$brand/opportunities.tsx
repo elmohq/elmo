@@ -10,14 +10,20 @@
  */
 
 import { IconClock, IconLoader2 } from "@tabler/icons-react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { OpportunitiesReport } from "@/components/opportunities-report";
 import { PageHeader } from "@/components/page-header";
 import { useOpportunities } from "@/hooks/use-opportunities";
+import { isOpportunitiesAvailable } from "@/lib/opportunities-availability";
 import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 
 export const Route = createFileRoute("/_authed/app/$brand/opportunities")({
+	beforeLoad: ({ context }) => {
+		if (!isOpportunitiesAvailable(context.clientConfig?.features)) {
+			throw notFound();
+		}
+	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
