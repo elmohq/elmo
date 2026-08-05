@@ -161,6 +161,13 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 			"Comma-separated model:provider[:version][:online] entries. Example: chatgpt:olostep:online,google-ai-mode:olostep:online,copilot:olostep:online",
 	},
 	{
+		name: "CLOUD_TRACKING_COST_ESTIMATES",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description:
+			"JSON object mapping every stable SCRAPE_TARGETS key to an operator-maintained estimated cost per provider call in microusd.",
+	},
+	{
 		name: "OLOSTEP_API_KEY",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
@@ -353,8 +360,8 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 	{
 		name: "SENTRY_DSN",
 		scope: "server",
-		requiredBy: "optional",
-		description: "Sentry DSN for server-side error reporting.",
+		requiredBy: ["cloud"],
+		description: "Sentry DSN for server-side error reporting and cloud provider-spend alerts.",
 	},
 	{
 		name: "SENTRY_ORG",

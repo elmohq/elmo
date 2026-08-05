@@ -1,8 +1,8 @@
 import { bdclient } from "@brightdata/sdk";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import { extractCitationsFromBrightdata, extractTextFromBrightdata, type Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import { type Citation, extractCitationsFromBrightdata, extractTextFromBrightdata } from "../../text-extraction";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 // Google AI Overview isn't a Web Scraper dataset — it's the AI summary block on
 // a normal Google results page, fetched through BrightData's SERP API instead of
@@ -41,12 +41,12 @@ const BRIGHTDATA_REQUEST_URL = "https://api.brightdata.com/request";
  * to the same BRIGHTDATA_API_TOKEN — no dataset id or extra credential. The
  * parsed SERP carries an `ai_overview` object when Google shows one.
  */
-async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+async function runGoogleAiOverview(prompt: string, maxRetries = 2): Promise<ScrapeResult> {
 	const zone = process.env.BRIGHTDATA_SERP_ZONE ?? "sdk_serp";
 	const url = `https://www.google.com/search?q=${encodeURIComponent(prompt)}&brd_json=1&brd_ai_overview=2&gl=us&hl=en`;
 
 	let lastError = "";
-	for (let attempt = 0; attempt < 3; attempt++) {
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		const res = await fetch(BRIGHTDATA_REQUEST_URL, {
 			method: "POST",
 			headers: {
@@ -83,9 +83,9 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 		}
 
 		lastError = `${res.status} ${text.slice(0, 200)}`.trim();
-		await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+		if (attempt < maxRetries) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
 	}
-	throw new Error(`BrightData SERP request failed after 3 attempts — ${lastError}`);
+	throw new Error(`BrightData SERP request failed after ${maxRetries + 1} attempt(s) — ${lastError}`);
 }
 
 function normalizeAnswer(record: Record<string, any>): string {
@@ -169,7 +169,7 @@ export const brightdata: Provider = {
 
 	async run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult> {
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt);
+			return runGoogleAiOverview(prompt, options?.maxRetries);
 		}
 
 		const datasetId = options?.version ?? BD_DATASET_IDS[model];
@@ -271,7 +271,7 @@ async function pollUntilReady(snapshotId: string): Promise<void> {
 			throw new Error(`BrightData snapshot ${snapshotId} ${status}`);
 		}
 
-		const delay = Math.min(BASE_DELAY * Math.pow(2, Math.floor(attempt / 5)), MAX_DELAY);
+		const delay = Math.min(BASE_DELAY * 2 ** Math.floor(attempt / 5), MAX_DELAY);
 		await new Promise((resolve) => setTimeout(resolve, delay));
 	}
 

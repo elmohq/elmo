@@ -6,6 +6,7 @@
 		"commands",
 		"architecture",
 		"cloud-rollout",
+		"provider-spend-operations",
 		"configuration",
 		"telemetry",
 		"ai-policy",

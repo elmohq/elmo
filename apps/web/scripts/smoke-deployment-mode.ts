@@ -21,9 +21,10 @@
  *   pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts            # all modes
  *   pnpm -C apps/web exec tsx scripts/smoke-deployment-mode.ts whitelabel # one mode
  */
+
+import { getEnvValidationState } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
 import { getDeployment, resetDeploymentCache } from "@workspace/deployment";
-import { getEnvValidationState } from "@workspace/config/env";
 
 type SmokeMode = DeploymentMode;
 
@@ -85,6 +86,8 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		RESEND_FROM_EMAIL: "Smoke <smoke@example.com>",
 		GOOGLE_CLIENT_ID: "smoke-google-client-id",
 		GOOGLE_CLIENT_SECRET: "smoke-google-client-secret",
+		CLOUD_TRACKING_COST_ESTIMATES: '{"chatgpt":10000}',
+		SENTRY_DSN: "https://public@example.ingest.sentry.io/1",
 	},
 };
 

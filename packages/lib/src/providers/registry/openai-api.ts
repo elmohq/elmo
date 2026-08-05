@@ -17,6 +17,7 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { parseProviderRequestId, parseProviderUsageInteger } from "../types";
 
 const DEFAULT_RESEARCH_MODEL = "gpt-5-mini";
 
@@ -39,6 +40,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		// which reads process.env internally) so overlay credentials apply here.
 		model: getOpenAIResponsesModel(model),
 		prompt,
+		...(options?.maxRetries !== undefined ? { maxRetries: options.maxRetries } : {}),
 		maxOutputTokens: API_PROVIDER_MAX_OUTPUT_TOKENS["openai-api"],
 		toolChoice: Object.keys(tools).length > 0 ? "auto" : "none",
 		...(Object.keys(tools).length > 0 ? { tools } : {}),
@@ -72,6 +74,9 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		if (typeof q === "string") webQueries.push(q);
 	}
 	if (options?.webSearch && webQueries.length === 0) webQueries.push("unavailable");
+	const webSearchRequests = Array.isArray(result.toolCalls)
+		? result.toolCalls.filter((call) => call.toolName === "web_search").length
+		: undefined;
 
 	return {
 		rawOutput,
@@ -79,6 +84,12 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 		textContent: extractTextFromOpenAI(rawOutput),
 		citations: extractCitationsFromOpenAI(rawOutput),
 		modelVersion: model,
+		providerCall: {
+			providerRequestId: parseProviderRequestId(result.response?.id),
+			inputTokens: parseProviderUsageInteger(result.usage?.inputTokens),
+			outputTokens: parseProviderUsageInteger(result.usage?.outputTokens),
+			webSearchRequests,
+		},
 	};
 }
 

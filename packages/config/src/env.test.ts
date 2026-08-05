@@ -11,6 +11,8 @@ const CLOUD_ONLY_VARS = [
 	"GOOGLE_CLIENT_ID",
 	"GOOGLE_CLIENT_SECRET",
 	"RESEND_FROM_EMAIL",
+	"CLOUD_TRACKING_COST_ESTIMATES",
+	"SENTRY_DSN",
 ];
 // Infra vars every validated mode needs — cloud now among them.
 const CLOUD_SHARED_VARS = ["DATABASE_URL", "BETTER_AUTH_SECRET", "SCRAPE_TARGETS", "DEPLOYMENT_MODE"];
@@ -54,6 +56,8 @@ describe("cloud env requirements", () => {
 			GOOGLE_CLIENT_ID: "test-google-client-id",
 			GOOGLE_CLIENT_SECRET: "test-google-client-secret",
 			RESEND_FROM_EMAIL: "Elmo <notifications@example.com>",
+			CLOUD_TRACKING_COST_ESTIMATES: '{"chatgpt":10000}',
+			SENTRY_DSN: "https://public@example.ingest.sentry.io/1",
 		};
 		const { missing } = validateEnvRequirements(cloudReqs, env);
 		const missingIds = new Set(missing.map((entry) => entry.id));

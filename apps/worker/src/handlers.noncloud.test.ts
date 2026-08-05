@@ -5,6 +5,7 @@ import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@works
 import type { PgBoss } from "pg-boss";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerHandlers } from "./handlers";
+import { CLOUD_PROVIDER_SPEND_REPORT_QUEUE } from "./jobs/provider-spend-report";
 
 const bootEnvironment = vi.hoisted(() => {
 	const names = [
@@ -79,6 +80,7 @@ describe("noncloud worker registration", () => {
 			expect(registeredQueues).not.toContain(CLOUD_BILLING_RECONCILIATION_QUEUE);
 			expect(registeredQueues).not.toContain(CLOUD_TRACKING_DISPATCH_QUEUE);
 			expect(registeredQueues).not.toContain(CLOUD_TRACKING_TASK_QUEUE);
+			expect(registeredQueues).not.toContain(CLOUD_PROVIDER_SPEND_REPORT_QUEUE);
 			expect(registeredQueues.includes("sync-auth0-memberships")).toBe(mode === "whitelabel");
 		},
 	);
@@ -90,6 +92,7 @@ describe("noncloud worker registration", () => {
 
 		const registeredQueues = work.mock.calls.map(([queueName]) => queueName);
 		expect(registeredQueues).toContain(CLOUD_BRAND_ANALYSIS_QUEUE);
+		expect(registeredQueues).toContain(CLOUD_PROVIDER_SPEND_REPORT_QUEUE);
 		expect(registeredQueues).not.toContain("analyze-brand");
 	});
 });

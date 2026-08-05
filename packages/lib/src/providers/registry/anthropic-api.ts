@@ -17,6 +17,7 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { parseProviderRequestId, parseProviderUsageInteger } from "../types";
 
 const DEFAULT_RESEARCH_MODEL = "claude-sonnet-4-6";
 
@@ -29,12 +30,12 @@ function sanitizeForJson(obj: unknown): unknown {
 	return JSON.parse(JSON.stringify(obj));
 }
 
-function getClient(): Anthropic {
-	return new Anthropic({ apiKey: getCredential("ANTHROPIC_API_KEY")! });
+function getClient(maxRetries: number): Anthropic {
+	return new Anthropic({ apiKey: getCredential("ANTHROPIC_API_KEY")!, maxRetries });
 }
 
 async function runAnthropic(prompt: string, model: string, options?: ProviderOptions): Promise<ScrapeResult> {
-	const client = getClient();
+	const client = getClient(options?.maxRetries ?? 2);
 	const tools: Anthropic.Messages.ToolUnion[] = [];
 	if (options?.webSearch) {
 		tools.push({
@@ -51,15 +52,18 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 			messages: [{ role: "user", content: prompt }],
 			...(tools.length > 0 ? { tools } : {}),
 		});
-
 	let response = await makeRequest();
 
-	// Check for web search errors like max_uses_exceeded and retry once
+	// Cloud v2 disables both SDK and tool retries so an invocation maps 1:1 to
+	// its durable attempt. Keep the legacy one-shot tool retry outside cloud.
 	for (const block of response.content) {
 		const b = block as any;
 		if (b.type === "web_search_tool_result" && b.content?.type === "web_search_tool_result_error") {
+			if (options?.maxRetries === 0) {
+				throw new Error(`Anthropic web search error: ${b.content.error_code ?? "unknown"}`);
+			}
 			console.warn(`[anthropic-api] web search error: ${b.content.error_code}, retrying in 10s...`);
-			await new Promise((r) => setTimeout(r, 10_000));
+			await new Promise((resolve) => setTimeout(resolve, 10_000));
 			response = await makeRequest();
 			break;
 		}
@@ -94,6 +98,12 @@ async function runAnthropic(prompt: string, model: string, options?: ProviderOpt
 		textContent,
 		citations,
 		modelVersion: model,
+		providerCall: {
+			providerRequestId: parseProviderRequestId(response.id),
+			inputTokens: parseProviderUsageInteger(response.usage?.input_tokens),
+			outputTokens: parseProviderUsageInteger(response.usage?.output_tokens),
+			webSearchRequests: parseProviderUsageInteger(response.usage?.server_tool_use?.web_search_requests),
+		},
 	};
 }
 

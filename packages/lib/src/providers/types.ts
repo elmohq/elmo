@@ -7,17 +7,35 @@ import type { Citation } from "../text-extraction";
 // from "./types".
 export type { ModelConfig };
 
+export interface ProviderCallMetadata {
+	providerRequestId?: string;
+	inputTokens?: number;
+	outputTokens?: number;
+	webSearchRequests?: number;
+}
+
 export interface ScrapeResult {
 	textContent: string;
 	rawOutput: unknown;
 	webQueries: string[];
 	citations: Citation[];
 	modelVersion?: string;
+	providerCall?: ProviderCallMetadata;
+}
+
+export function parseProviderRequestId(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
+export function parseProviderUsageInteger(value: unknown): number | undefined {
+	return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : undefined;
 }
 
 export interface ProviderOptions {
 	webSearch?: boolean;
 	version?: string;
+	/** Paid-request retries. Cloud v2 sets zero so every execution has its own durable attempt. */
+	maxRetries?: number;
 }
 
 export interface StructuredResearchOptions<T> {

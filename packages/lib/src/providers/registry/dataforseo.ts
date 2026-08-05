@@ -1,5 +1,6 @@
 import * as client from "dataforseo-client";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
+import { getCredential } from "../../secrets";
 import {
 	extractCitationsFromDataforseoLlm,
 	extractCitationsFromGoogle,
@@ -7,7 +8,6 @@ import {
 	extractTextFromGoogle,
 } from "../../text-extraction";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
-import { getCredential } from "../../secrets";
 
 /**
  * Models served via the SERP Google AI Mode endpoint (SerpApi). These always
@@ -121,7 +121,7 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	};
 }
 
-async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
+async function runGoogleAiOverview(prompt: string, maxRetries = 2): Promise<ScrapeResult> {
 	assertPromptLength(prompt);
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
@@ -139,7 +139,7 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	// it, so a transient blip doesn't fail the run (matches the BrightData AI
 	// Overview runner).
 	let lastError = "No response or tasks.";
-	for (let attempt = 0; attempt < 3; attempt++) {
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
 			const response = await api.googleOrganicLiveAdvanced([requestInfo]);
 			const task = response?.tasks?.[0];
@@ -159,7 +159,7 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 		} catch (error) {
 			lastError = error instanceof Error ? error.message : String(error);
 		}
-		if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
+		if (attempt < maxRetries) await new Promise((resolve) => setTimeout(resolve, 1500 * (attempt + 1)));
 	}
 	throw new Error(`DataForSEO API Error: ${lastError}`);
 }
@@ -290,7 +290,7 @@ export const dataforseo: Provider = {
 			return runGoogleAiMode(prompt);
 		}
 		if (model === AI_OVERVIEW_MODEL) {
-			return runGoogleAiOverview(prompt);
+			return runGoogleAiOverview(prompt, options?.maxRetries);
 		}
 		if (LLM_MODELS[model]) {
 			return runLlmResponse(model, prompt, options);

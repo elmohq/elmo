@@ -14,7 +14,8 @@
 		"./scrape-targets": "./src/scrape-targets.ts",
 		"./plans": "./src/plans.ts",
 		"./entitlements": "./src/entitlements.ts",
-		"./billing-lifecycle": "./src/billing-lifecycle.ts"
+		"./billing-lifecycle": "./src/billing-lifecycle.ts",
+		"./provider-costs": "./src/provider-costs.ts"
 	},
 	"dependencies": {
 		"zod": "^4.4.3"

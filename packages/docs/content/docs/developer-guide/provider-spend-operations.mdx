@@ -1,0 +1,104 @@
+---
+title: Cloud provider spend operations
+description: Configure provider-call estimates and operate daily cloud spend reporting.
+---
+
+Cloud tracking records one durable provider attempt before any external I/O.
+The final entitlement fence changes that attempt from `reserved` to `started`
+and stamps `cost_microusd` in the same database statement. The value is the
+operator's estimated incurred spend for that logical provider execution, not
+provider invoice truth. A started request keeps its estimate when it fails or
+its outcome is unknown; a reservation canceled before external I/O has no cost.
+
+Cloud v2 disables provider and transport retries inside a tracking execution.
+pg-boss may retry a failed task, but that retry reserves and starts a separate
+attempt, so estimated cost and retry anomalies remain visible. Local and
+white-label executions keep their existing provider retry behavior and do not
+use the cloud attempt ledger.
+
+## Cost configuration
+
+Set `CLOUD_TRACKING_COST_ESTIMATES` to a JSON object mapping every stable
+`SCRAPE_TARGETS` key to estimated microusd per call. One microusd is one
+millionth of a US dollar. For example, this structurally valid test-only map
+estimates one cent and two cents; it is not pricing guidance:
+
+```dotenv
+SCRAPE_TARGETS=chatgpt=chatgpt:olostep:online,claude-native-web=claude:anthropic-api:claude-sonnet-4-6:online
+CLOUD_TRACKING_COST_ESTIMATES={"chatgpt":10000,"claude-native-web":20000}
+```
+
+The worker rejects missing, negative, fractional, unsafe, or unknown estimates
+and requires exact coverage of `SCRAPE_TARGETS` at boot. Upstream prices remain
+outside the codebase so an operator can update them without a release. Revisit
+the map whenever a provider, model version, token cap, native-search allowance,
+scraper contract, or target routing changes. Estimate the complete bounded
+logical execution, including any fixed scraper fee, allowed search tools, and
+the configured token envelope.
+
+`SENTRY_DSN` is also required in cloud. Route events tagged
+`cloud_spend_alert=organization-anomaly` to the provider-spend on-call policy
+before admitting customers.
+
+## Daily report
+
+The cloud worker runs `report-cloud-provider-spend-v1` at 01:15 UTC with a
+durable schedule key and one throttled UTC-day singleton slot. It derives the
+reporting day from the durable job's creation time, so a delayed consumer does
+not shift an older job onto a newer day. It reports the previous complete UTC
+day:
+
+- forecast is the number of scheduled tracking tasks multiplied by the current
+  target estimate and grouped under the occurrence's immutable provider
+  snapshot;
+- actual estimate is the sum on every attempt whose `started_at` falls in the
+  day, including failed and unknown outcomes;
+- missing costs and started attempts beyond scheduled tasks expose ledger drift
+  and retries;
+- one bounded Sentry summary contains global, provider, target, and plan groups;
+  structured worker logs contain every organization row;
+- an organization gets its own stable Sentry fingerprint when it has a missing
+  cost, more started attempts than scheduled tasks, or actual estimated spend
+  above forecast.
+
+Provider attempts do not snapshot the organization's plan. Plan groups in the
+report are explicitly the current billing/custom-entitlement projection at
+report time, not a historical revenue attribution. Use the organization and
+target identities for invoice investigation when a plan changed during the
+reported day. An override remains in that projection until its effective end or
+revocation timestamp, including a revocation scheduled for the future.
+
+## Launch and incident checks
+
+Before enabling cloud tracking:
+
+1. Update the cost map from current provider contracts and verify the worker
+   reaches `SCRAPE_TARGETS validated` without a coverage error.
+2. Confirm pg-boss has the daily schedule and exactly one registered report
+   consumer.
+3. Trigger a controlled tracked call and confirm its attempt moves through
+   `reserved` to `started` with a non-null cost. Confirm any safely exposed
+   request ID, token count, and search-use count is recorded on success.
+4. Route and test the daily summary and per-organization anomaly fingerprints
+   in Sentry.
+5. Compare the first daily provider totals with provider dashboards or invoices
+   and revise operator estimates when the bounded per-call estimate is
+   materially wrong.
+
+This read-only query is the fastest launch check for any started cloud call
+that escaped cost attribution:
+
+```sql
+SELECT organization_id, target_key, provider, count(*) AS missing_attempts
+FROM tracking_provider_attempts
+WHERE started_at >= date_trunc('day', now() AT TIME ZONE 'UTC') - interval '1 day'
+  AND started_at < date_trunc('day', now() AT TIME ZONE 'UTC')
+  AND cost_microusd IS NULL
+GROUP BY organization_id, target_key, provider
+ORDER BY missing_attempts DESC;
+```
+
+Any returned row is a release-blocking ledger defect. Stop new cloud dispatch,
+preserve the rows for investigation, and fix configuration or the start
+transition before resuming. Do not backfill an invoice amount into
+`cost_microusd`; it is the estimate that was in force when the attempt started.

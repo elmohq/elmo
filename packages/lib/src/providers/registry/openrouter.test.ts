@@ -66,6 +66,21 @@ describe("openrouter run", () => {
 		// Logged, never thrown — the partial answer still flows through.
 		expect(result.textContent).toBe("clipped");
 	});
+
+	it("returns request and token metadata when OpenRouter exposes it", async () => {
+		stubFetch({ id: "gen-123", usage: { prompt_tokens: 29, completion_tokens: 11 } });
+
+		const result = await openrouter.run("chatgpt", "prompt", {
+			webSearch: false,
+			version: "openai/gpt-5-mini",
+		});
+
+		expect(result.providerCall).toEqual({
+			providerRequestId: "gen-123",
+			inputTokens: 29,
+			outputTokens: 11,
+		});
+	});
 });
 
 describe("openrouter structured research", () => {

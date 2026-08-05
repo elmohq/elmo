@@ -10,6 +10,11 @@ import { type DispatchTrackingV2Data, dispatchTrackingV2Job } from "./jobs/dispa
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
 import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
 import { type ProcessTrackingTaskV2Data, processTrackingTaskV2Job } from "./jobs/process-tracking-task-v2";
+import {
+	CLOUD_PROVIDER_SPEND_REPORT_QUEUE,
+	type CloudProviderSpendReportData,
+	reportCloudProviderSpendJob,
+} from "./jobs/provider-spend-report";
 import { type ReconcileCloudBillingData, reconcileCloudBillingJob } from "./jobs/reconcile-cloud-billing";
 import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
 import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
@@ -95,6 +100,16 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 			withSentry(CLOUD_TRACKING_TASK_QUEUE, processTrackingTaskV2Job),
 		);
 		console.log(`Registered handler: ${CLOUD_TRACKING_TASK_QUEUE}`);
+
+		await boss.work<CloudProviderSpendReportData, void, { batchSize: 1; localConcurrency: 1; includeMetadata: true }>(
+			CLOUD_PROVIDER_SPEND_REPORT_QUEUE,
+			{ batchSize: 1, localConcurrency: 1, includeMetadata: true },
+			withSentry<CloudProviderSpendReportData, void, JobWithMetadata<CloudProviderSpendReportData>>(
+				CLOUD_PROVIDER_SPEND_REPORT_QUEUE,
+				reportCloudProviderSpendJob,
+			),
+		);
+		console.log(`Registered handler: ${CLOUD_PROVIDER_SPEND_REPORT_QUEUE}`);
 	}
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {

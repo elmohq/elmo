@@ -1,3 +1,4 @@
+import { getProviderCostEstimate, parseProviderCostEstimates } from "@workspace/config/provider-costs";
 import {
 	createOrganizationEntitlementSourceStore,
 	resolveOrganizationEntitlements,
@@ -19,8 +20,8 @@ import {
 	type ModelIterationEvaluation,
 	persistModelIteration,
 } from "./process-prompt";
-import { getAttemptRecoveryDisposition, type ProviderAttemptState } from "./tracking-attempt-state";
 import { withProviderStartEntitlementFence } from "./provider-start-fence";
+import { getAttemptRecoveryDisposition, type ProviderAttemptState } from "./tracking-attempt-state";
 
 export interface ProcessTrackingTaskV2Data {
 	version: 2;
@@ -213,6 +214,7 @@ async function reserveTask(taskId: string, now: Date): Promise<ReservedTask | nu
 					SET
 						status = 'failed', counts_toward_limit = false, usage_units = 0,
 						usage_bucket_id = NULL, quota_period_start = NULL, quota_period_end = NULL,
+						cost_microusd = NULL,
 						error_code = 'expired-worker-claim-before-provider',
 						error_message = 'Worker execution ended before provider dispatch',
 						completed_at = now(), updated_at = now()
@@ -385,6 +387,7 @@ async function cancelBeforeProviderCall(reserved: ReservedTask, reason: string):
 			SET
 				status = 'canceled', counts_toward_limit = false, usage_units = 0,
 				usage_bucket_id = NULL, quota_period_start = NULL, quota_period_end = NULL,
+				cost_microusd = NULL,
 				error_code = 'ineligible-before-provider', error_message = ${reason},
 				completed_at = now(), updated_at = now()
 			WHERE attempt.id = ${reserved.attemptId}
@@ -419,7 +422,7 @@ async function cancelBeforeProviderCall(reserved: ReservedTask, reason: string):
 	});
 }
 
-async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
+async function startProviderAttempt(reserved: ReservedTask, estimatedCostMicrousd: number): Promise<boolean> {
 	return db.transaction(async (tx) => {
 		return withProviderStartEntitlementFence({
 			tx,
@@ -431,13 +434,15 @@ async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
 					now: new Date(),
 					store: createOrganizationEntitlementSourceStore(tx),
 				});
-				return resolveRuntimeTrackingPolicy({
-					resolved,
-					assignmentSource: reserved.snapshot.assignmentSource,
-					targetKey: reserved.snapshot.targetKey,
-					cadenceMinutes: reserved.snapshot.cadenceMinutes,
-					samplesPerOccurrence: reserved.snapshot.samplesPerOccurrence,
-				}) !== null;
+				return (
+					resolveRuntimeTrackingPolicy({
+						resolved,
+						assignmentSource: reserved.snapshot.assignmentSource,
+						targetKey: reserved.snapshot.targetKey,
+						cadenceMinutes: reserved.snapshot.cadenceMinutes,
+						samplesPerOccurrence: reserved.snapshot.samplesPerOccurrence,
+					}) !== null
+				);
 			},
 			authorize: async () => {
 				const eligibility = await tx.execute(sql`
@@ -466,7 +471,7 @@ async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
 				if (eligibility.rows.length === 0) return false;
 				const started = await tx.execute(sql`
 			UPDATE tracking_provider_attempts attempt
-			SET status = 'started', started_at = now(), updated_at = now()
+			SET status = 'started', cost_microusd = ${estimatedCostMicrousd}, started_at = now(), updated_at = now()
 			WHERE attempt.id = ${reserved.attemptId}
 				AND attempt.task_id = ${reserved.taskId}
 				AND attempt.attempt_number = ${reserved.attemptNumber}
@@ -506,7 +511,15 @@ async function completeTask(reserved: ReservedTask, evaluation: ModelIterationEv
 		const { promptRunId } = await persistModelIteration(evaluation, tx, reserved.taskId);
 		const attempt = await tx.execute(sql`
 			UPDATE tracking_provider_attempts
-			SET status = 'succeeded', prompt_run_id = ${promptRunId}, completed_at = now(), updated_at = now()
+			SET
+				status = 'succeeded',
+				prompt_run_id = ${promptRunId},
+				provider_request_id = ${evaluation.providerCall?.providerRequestId ?? null},
+				input_tokens = ${evaluation.providerCall?.inputTokens ?? null},
+				output_tokens = ${evaluation.providerCall?.outputTokens ?? null},
+				web_search_requests = ${evaluation.providerCall?.webSearchRequests ?? null},
+				completed_at = now(),
+				updated_at = now()
 			WHERE id = ${reserved.attemptId}
 				AND task_id = ${reserved.taskId}
 				AND attempt_number = ${reserved.attemptNumber}
@@ -564,6 +577,7 @@ async function failTask(reserved: ReservedTask, error: unknown): Promise<boolean
 				usage_bucket_id = CASE WHEN ${definitelyNotStarted} THEN NULL ELSE usage_bucket_id END,
 				quota_period_start = CASE WHEN ${definitelyNotStarted} THEN NULL ELSE quota_period_start END,
 				quota_period_end = CASE WHEN ${definitelyNotStarted} THEN NULL ELSE quota_period_end END,
+				cost_microusd = CASE WHEN ${definitelyNotStarted} THEN NULL ELSE cost_microusd END,
 				error_code = ${definitelyNotStarted ? "pre-provider-failure" : "provider-failure"},
 				error_message = ${message}, completed_at = now(), updated_at = now()
 			WHERE id = ${reserved.attemptId}
@@ -596,6 +610,7 @@ async function failTask(reserved: ReservedTask, error: unknown): Promise<boolean
 
 export async function processTrackingTaskV2Job(jobs: Job<ProcessTrackingTaskV2Data>[]): Promise<void> {
 	if (process.env.DEPLOYMENT_MODE !== "cloud") return;
+	const costEstimates = parseProviderCostEstimates(process.env.CLOUD_TRACKING_COST_ESTIMATES);
 	for (const job of jobs) {
 		if (job.data.version !== 2) throw new Error(`Unsupported tracking task payload version: ${job.data.version}`);
 		const reserved = await reserveTask(job.data.taskId, new Date());
@@ -616,7 +631,8 @@ export async function processTrackingTaskV2Job(jobs: Job<ProcessTrackingTaskV2Da
 				webSearch: reserved.snapshot.webSearchEnabled,
 			};
 			const providerImpl = getProvider(config.provider);
-			if (!(await startProviderAttempt(reserved))) {
+			const estimatedCostMicrousd = getProviderCostEstimate(costEstimates, reserved.snapshot.targetKey);
+			if (!(await startProviderAttempt(reserved, estimatedCostMicrousd))) {
 				await cancelBeforeProviderCall(reserved, "Assignment became ineligible before provider dispatch");
 				continue;
 			}
@@ -628,6 +644,7 @@ export async function processTrackingTaskV2Job(jobs: Job<ProcessTrackingTaskV2Da
 				config,
 				providerImpl,
 				runIndex: reserved.sampleIndex + 1,
+				providerMaxRetries: 0,
 			});
 			await completeTask(reserved, evaluation);
 		} catch (error) {

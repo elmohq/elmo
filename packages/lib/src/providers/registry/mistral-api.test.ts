@@ -44,6 +44,26 @@ describe("mistral-api run", () => {
 		expect(calledUrl(fetchMock)).toContain("/v1/chat/completions");
 		expect(sentBody(fetchMock).max_tokens).toBe(CAP);
 	});
+
+	it("returns request and token metadata when Mistral exposes it", async () => {
+		stubFetch({
+			id: "cmpl-123",
+			model: "mistral-medium-latest",
+			choices: [{ message: { content: "answer" } }],
+			usage: { prompt_tokens: 21, completion_tokens: 8 },
+		});
+
+		const result = await mistralApi.run("mistral", "prompt", {
+			webSearch: false,
+			version: "mistral-medium-latest",
+		});
+
+		expect(result.providerCall).toEqual({
+			providerRequestId: "cmpl-123",
+			inputTokens: 21,
+			outputTokens: 8,
+		});
+	});
 });
 
 describe("mistral-api structured research", () => {

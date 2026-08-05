@@ -286,6 +286,9 @@ importers:
       '@workspace/cloud':
         specifier: workspace:*
         version: link:../../packages/cloud
+      '@workspace/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       '@workspace/deployment':
         specifier: workspace:*
         version: link:../../packages/deployment

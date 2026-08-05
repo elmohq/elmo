@@ -9,6 +9,7 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { parseProviderRequestId, parseProviderUsageInteger } from "../types";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -104,7 +105,16 @@ export const mistralApi: Provider = {
 				completion_args: { max_tokens: API_PROVIDER_MAX_OUTPUT_TOKENS["mistral-api"] },
 			});
 			const parsed = parseConversationsResponse(data);
-			return { ...parsed, rawOutput: data, modelVersion: data?.model ?? version };
+			return {
+				...parsed,
+				rawOutput: data,
+				modelVersion: data?.model ?? version,
+				providerCall: {
+					providerRequestId: parseProviderRequestId(data?.id),
+					inputTokens: parseProviderUsageInteger(data?.usage?.prompt_tokens),
+					outputTokens: parseProviderUsageInteger(data?.usage?.completion_tokens),
+				},
+			};
 		}
 
 		const data = await mistralPost("/v1/chat/completions", {
@@ -119,6 +129,11 @@ export const mistralApi: Provider = {
 			webQueries: [],
 			citations: [],
 			modelVersion: data?.model ?? version,
+			providerCall: {
+				providerRequestId: parseProviderRequestId(data?.id),
+				inputTokens: parseProviderUsageInteger(data?.usage?.prompt_tokens),
+				outputTokens: parseProviderUsageInteger(data?.usage?.completion_tokens),
+			},
 		};
 	},
 

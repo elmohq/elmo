@@ -1,8 +1,8 @@
 import Olostep from "olostep";
-import type { Provider, ScrapeResult, ProviderOptions, ModelConfig } from "../types";
-import type { Citation } from "../../text-extraction";
 import { WEB_QUERIES_UNAVAILABLE } from "../../constants";
 import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
 
 const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: string) => string; credits: number }> = {
 	chatgpt: {
@@ -38,14 +38,15 @@ const OLOSTEP_PARSERS: Record<string, { parserId: string; urlTemplate: (q: strin
 };
 
 let _client: Olostep | null = null;
-let _clientApiKey: string | undefined;
-function getClient(): Olostep {
+let _clientIdentity: string | undefined;
+function getClient(maxRetries: number): Olostep {
 	// Re-key the memoized client on the credential so a refreshed overlay
 	// (DB-stored key) takes effect without a process restart.
 	const apiKey = getCredential("OLOSTEP_API_KEY");
-	if (!_client || _clientApiKey !== apiKey) {
-		_client = new Olostep({ apiKey, retry: { maxRetries: 3, initialDelayMs: 2000 } });
-		_clientApiKey = apiKey;
+	const identity = `${apiKey ?? ""}\u0000${maxRetries}`;
+	if (!_client || _clientIdentity !== identity) {
+		_client = new Olostep({ apiKey, retry: { maxRetries, initialDelayMs: 2000 } });
+		_clientIdentity = identity;
 	}
 	return _client;
 }
@@ -126,7 +127,7 @@ export const olostep: Provider = {
 		const parserConfig = OLOSTEP_PARSERS[model];
 		if (!parserConfig) throw new Error(`Olostep does not support model "${model}"`);
 
-		const client = getClient();
+		const client = getClient(_options?.maxRetries ?? 3);
 		const url = parserConfig.urlTemplate(prompt);
 
 		// Use batch API — the /scrapes endpoint doesn't support all parsers

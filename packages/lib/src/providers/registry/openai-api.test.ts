@@ -55,6 +55,29 @@ describe("openai-api run", () => {
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 	});
+
+	it("disables hidden SDK retries and returns typed response usage", async () => {
+		aiMock.generateText.mockResolvedValue({
+			text: "answer",
+			response: { id: "resp_123" },
+			usage: { inputTokens: 31, outputTokens: 9 },
+			toolCalls: [{ toolName: "web_search" }],
+		});
+
+		const result = await openaiApi.run("chatgpt", "prompt", {
+			webSearch: true,
+			version: "gpt-5-mini",
+			maxRetries: 0,
+		});
+
+		expect(sentArgs().maxRetries).toBe(0);
+		expect(result.providerCall).toEqual({
+			providerRequestId: "resp_123",
+			inputTokens: 31,
+			outputTokens: 9,
+			webSearchRequests: 1,
+		});
+	});
 });
 
 describe("openai-api structured research", () => {

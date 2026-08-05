@@ -10,6 +10,7 @@ import type {
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
+import { parseProviderRequestId, parseProviderUsageInteger } from "../types";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_API_URL = `${OPENROUTER_BASE_URL}/chat/completions`;
@@ -183,6 +184,11 @@ export const openrouter: Provider = {
 			webQueries,
 			citations,
 			modelVersion: data?.model ?? modelSlug.replace(":online", ""),
+			providerCall: {
+				providerRequestId: parseProviderRequestId(data?.id),
+				inputTokens: parseProviderUsageInteger(data?.usage?.prompt_tokens),
+				outputTokens: parseProviderUsageInteger(data?.usage?.completion_tokens),
+			},
 		};
 	},
 };

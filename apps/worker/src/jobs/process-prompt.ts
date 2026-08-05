@@ -3,8 +3,8 @@ import { getDefaultDelayHours, RUNS_PER_PROMPT } from "@workspace/lib/constants"
 import { db } from "@workspace/lib/db/db";
 import {
 	type Brand,
-	brands,
 	brandSchedulerRollouts,
+	brands,
 	type Competitor,
 	citations,
 	competitors,
@@ -15,6 +15,7 @@ import {
 	getProvider,
 	type ModelConfig,
 	type Provider,
+	type ProviderCallMetadata,
 	parseScrapeTargets,
 	selectTargetsForBrand,
 } from "@workspace/lib/providers";
@@ -50,6 +51,7 @@ export interface ModelIterationEvaluation {
 	brandMentioned: boolean;
 	competitorsMentioned: string[];
 	citations: Citation[];
+	providerCall?: ProviderCallMetadata;
 }
 
 /**
@@ -245,6 +247,7 @@ export async function evaluateModelIteration({
 	config,
 	providerImpl,
 	runIndex,
+	providerMaxRetries,
 }: {
 	promptId: string;
 	promptValue: string;
@@ -253,6 +256,7 @@ export async function evaluateModelIteration({
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
+	providerMaxRetries?: number;
 }): Promise<ModelIterationEvaluation> {
 	const logPrefix = `[${config.model}_${runIndex}]`;
 
@@ -260,6 +264,7 @@ export async function evaluateModelIteration({
 		const result = await providerImpl.run(config.model, promptValue, {
 			webSearch: config.webSearch,
 			version: config.version,
+			maxRetries: providerMaxRetries,
 		});
 
 		// `webQueries` is stored exactly as the provider reported it — engines do
@@ -267,7 +272,7 @@ export async function evaluateModelIteration({
 		// fan-out page excludes verbatim repeats at read time as a display rule;
 		// providers whose query field is fabricated (DataForSEO) write the
 		// `unavailable` sentinel in their own extractor instead.
-		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion } = result;
+		const { rawOutput, textContent, webQueries, citations: extractedCitations, modelVersion, providerCall } = result;
 		console.log(`${logPrefix} AI call completed, textContent length: ${textContent?.length ?? "null"}`);
 
 		const safeTextContent = typeof textContent === "string" ? textContent : "";
@@ -288,6 +293,7 @@ export async function evaluateModelIteration({
 			brandMentioned,
 			competitorsMentioned,
 			citations: extractedCitations,
+			providerCall,
 		};
 	} catch (error) {
 		// A single run's failure doesn't fail the job (only an all-runs failure

@@ -164,6 +164,20 @@ describe("dataforseo provider", () => {
 		expect(result.citations).toHaveLength(1);
 	});
 
+	it("does not hide a second paid AI Overview call when durable-attempt retries are disabled", async () => {
+		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValue({
+			tasks: [{ status_code: 40602, status_message: "Internal SE Server Error.", result: null }],
+		});
+
+		await expect(
+			dataforseo.run("google-ai-overview", "What is a well-reviewed speaker released last month?", {
+				webSearch: true,
+				maxRetries: 0,
+			}),
+		).rejects.toThrow("DataForSEO API Error: 40602 Internal SE Server Error.");
+		expect(dataforseoClient.googleOrganicLiveAdvanced).toHaveBeenCalledOnce();
+	});
+
 	it("throws after exhausting retries when every AI Overview attempt fails", async () => {
 		vi.useFakeTimers();
 		dataforseoClient.googleOrganicLiveAdvanced.mockResolvedValue({

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ANTHROPIC_WEB_SEARCH_MAX_USES, API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 
-const anthropicClient = vi.hoisted(() => ({ create: vi.fn() }));
+const anthropicClient = vi.hoisted(() => ({ create: vi.fn(), constructorOptions: vi.fn() }));
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
 
 vi.mock("ai", () => ({
@@ -12,6 +12,9 @@ vi.mock("ai", () => ({
 
 vi.mock("@anthropic-ai/sdk", () => ({
 	default: class {
+		constructor(options: unknown) {
+			anthropicClient.constructorOptions(options);
+		}
 		messages = { create: anthropicClient.create };
 	},
 }));
@@ -79,5 +82,52 @@ describe("anthropic-api run", () => {
 		await anthropicApi.run("claude", "prompt", { webSearch: false, version: "claude-sonnet-4-6" });
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
+	});
+
+	it("returns billing metadata exposed by the typed Anthropic response", async () => {
+		anthropicClient.create.mockResolvedValue({
+			id: "msg_123",
+			content: [],
+			model: "claude-sonnet-4-6",
+			usage: {
+				input_tokens: 42,
+				output_tokens: 17,
+				server_tool_use: { web_search_requests: 1 },
+			},
+		});
+
+		const result = await anthropicApi.run("claude", "prompt", {
+			webSearch: true,
+			version: "claude-sonnet-4-6",
+		});
+
+		expect(result.providerCall).toEqual({
+			providerRequestId: "msg_123",
+			inputTokens: 42,
+			outputTokens: 17,
+			webSearchRequests: 1,
+		});
+	});
+
+	it("surfaces a server-tool error without making an unmetered internal retry", async () => {
+		anthropicClient.create.mockResolvedValue({
+			content: [
+				{
+					type: "web_search_tool_result",
+					content: { type: "web_search_tool_result_error", error_code: "max_uses_exceeded" },
+				},
+			],
+			model: "claude-sonnet-4-6",
+		});
+
+		await expect(
+			anthropicApi.run("claude", "prompt", {
+				webSearch: true,
+				version: "claude-sonnet-4-6",
+				maxRetries: 0,
+			}),
+		).rejects.toThrow("max_uses_exceeded");
+		expect(anthropicClient.create).toHaveBeenCalledOnce();
+		expect(anthropicClient.constructorOptions).toHaveBeenCalledWith(expect.objectContaining({ maxRetries: 0 }));
 	});
 });
