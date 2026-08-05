@@ -15,20 +15,21 @@ const managedEnvironment = [
 	"STRIPE_BILLING_PORTAL_CONFIGURATION_ID",
 ] as const;
 const originalEnvironment = Object.fromEntries(managedEnvironment.map((name) => [name, process.env[name]]));
+const mutableEnvironment = process.env as Record<string, string | undefined>;
 
 function setMode(mode: "local" | "demo" | "whitelabel"): void {
-	for (const name of managedEnvironment) delete process.env[name];
-	process.env.DATABASE_URL = "postgres://smoke:smoke@127.0.0.1:5432/smoke";
-	process.env.BETTER_AUTH_SECRET = "noncloud-auth-isolation-secret-000000000";
-	process.env.DEPLOYMENT_MODE = mode;
+	for (const name of managedEnvironment) delete mutableEnvironment[name];
+	mutableEnvironment.DATABASE_URL = "postgres://smoke:smoke@127.0.0.1:5432/smoke";
+	mutableEnvironment.BETTER_AUTH_SECRET = "noncloud-auth-isolation-secret-000000000";
+	mutableEnvironment.DEPLOYMENT_MODE = mode;
 	if (mode === "whitelabel") {
-		process.env.VITE_APP_URL = "https://customer.example";
-		process.env.AUTH0_DOMAIN = "customer.auth0.example";
-		process.env.AUTH0_CLIENT_ID = "customer-client";
-		process.env.AUTH0_CLIENT_SECRET = "customer-secret";
-		process.env.AUTH0_MGMT_API_DOMAIN = "customer.auth0.example";
+		mutableEnvironment.VITE_APP_URL = "https://customer.example";
+		mutableEnvironment.AUTH0_DOMAIN = "customer.auth0.example";
+		mutableEnvironment.AUTH0_CLIENT_ID = "customer-client";
+		mutableEnvironment.AUTH0_CLIENT_SECRET = "customer-secret";
+		mutableEnvironment.AUTH0_MGMT_API_DOMAIN = "customer.auth0.example";
 	} else {
-		process.env.APP_URL = "http://localhost:3000";
+		mutableEnvironment.APP_URL = "http://localhost:3000";
 	}
 }
 
@@ -36,8 +37,8 @@ describe("noncloud auth billing isolation", () => {
 	afterEach(() => {
 		for (const name of managedEnvironment) {
 			const value = originalEnvironment[name];
-			if (value === undefined) delete process.env[name];
-			else process.env[name] = value;
+			if (value === undefined) delete mutableEnvironment[name];
+			else mutableEnvironment[name] = value;
 		}
 		vi.resetModules();
 	});
