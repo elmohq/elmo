@@ -14,7 +14,13 @@ import semver from "semver";
 import { buildComposeYaml, type PostgresMode } from "./compose-builder.js";
 import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
 import { runTargetDatabaseMigration } from "./database-migration.js";
-import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
+import {
+	MIGRATIONS,
+	type MigrationContext,
+	planMigrations,
+	reconcileCurrentConfig,
+	runMigrations,
+} from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 import { DeploymentUpgradeError, executeDeploymentUpgrade } from "./upgrade-execution.js";
 
@@ -1085,6 +1091,7 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	// with no version header (detectedVersion === null) still needs its image
 	// tags re-pinned, so it falls through to the upgrade path below.
 	if (detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
+		await reconcileCurrentConfig(buildMigrationContext(configDir, cliVersion));
 		log.success(`Already at ${cliVersion}.`);
 		const pull = options.yes
 			? true
@@ -1137,7 +1144,10 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	try {
 		await executeDeploymentUpgrade({
 			wasRunning,
-			runConfigMigrations: () => runMigrations(plan, ctx),
+			runConfigMigrations: async () => {
+				await runMigrations(plan, ctx);
+				await reconcileCurrentConfig(ctx);
+			},
 			runDatabaseMigration: async () => {
 				log.step("Applying database migrations...");
 				await runTargetDatabaseMigration({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MIGRATIONS } from "./index.js";
+import { MIGRATIONS, reconcileCurrentConfig } from "./index.js";
 import type { Migration, MigrationContext } from "./types.js";
 
 function inMemoryContext(initial: Record<string, string> = {}): MigrationContext & {
@@ -25,23 +25,29 @@ describe("ELMO_ENCRYPTION_KEY migration", () => {
 		expect(encryptionKeyMigration.to).toBe("0.2.18");
 	});
 
-	it("adds a 32-byte base64 key when absent, leaving other vars untouched", async () => {
-		const ctx = inMemoryContext({ DATABASE_URL: "postgres://x", OTHER: "keep" });
+	it("adds a 32-byte base64 key to local deployments when absent", async () => {
+		const ctx = inMemoryContext({ DEPLOYMENT_MODE: "local", DATABASE_URL: "postgres://x", OTHER: "keep" });
 		await encryptionKeyMigration.run(ctx);
 		const { ELMO_ENCRYPTION_KEY, ...rest } = ctx.env();
-		expect(rest).toEqual({ DATABASE_URL: "postgres://x", OTHER: "keep" });
+		expect(rest).toEqual({ DEPLOYMENT_MODE: "local", DATABASE_URL: "postgres://x", OTHER: "keep" });
 		expect(Buffer.from(ELMO_ENCRYPTION_KEY, "base64").length).toBe(32);
 	});
 
 	it("is a no-op when the key already exists (never clobbers an operator's value)", async () => {
-		const ctx = inMemoryContext({ ELMO_ENCRYPTION_KEY: "existing", OTHER: "keep" });
+		const ctx = inMemoryContext({ DEPLOYMENT_MODE: "local", ELMO_ENCRYPTION_KEY: "existing", OTHER: "keep" });
 		await encryptionKeyMigration.run(ctx);
-		expect(ctx.env()).toEqual({ ELMO_ENCRYPTION_KEY: "existing", OTHER: "keep" });
+		expect(ctx.env()).toEqual({ DEPLOYMENT_MODE: "local", ELMO_ENCRYPTION_KEY: "existing", OTHER: "keep" });
 	});
 
-	it("leaves an explicitly-emptied key alone", async () => {
-		const ctx = inMemoryContext({ ELMO_ENCRYPTION_KEY: "" });
-		await encryptionKeyMigration.run(ctx);
-		expect(ctx.env()).toEqual({ ELMO_ENCRYPTION_KEY: "" });
+	it("repairs a blank required key even when version history is unavailable", async () => {
+		const ctx = inMemoryContext({ DEPLOYMENT_MODE: "local", ELMO_ENCRYPTION_KEY: "  " });
+		await reconcileCurrentConfig(ctx);
+		expect(Buffer.from(ctx.env().ELMO_ENCRYPTION_KEY, "base64").length).toBe(32);
+	});
+
+	it("does not provision hosted deployment modes", async () => {
+		const ctx = inMemoryContext({ DEPLOYMENT_MODE: "whitelabel", OTHER: "keep" });
+		await reconcileCurrentConfig(ctx);
+		expect(ctx.env()).toEqual({ DEPLOYMENT_MODE: "whitelabel", OTHER: "keep" });
 	});
 });

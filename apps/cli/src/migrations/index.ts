@@ -1,8 +1,17 @@
 import { randomBytes } from "node:crypto";
-import type { Migration } from "./types.js";
+import type { Migration, MigrationContext } from "./types.js";
 
 export * from "./planner.js";
 export * from "./types.js";
+
+export async function reconcileCurrentConfig(ctx: MigrationContext): Promise<void> {
+	const env = await ctx.readEnv();
+	if (env.DEPLOYMENT_MODE !== "local" || env.ELMO_ENCRYPTION_KEY?.trim()) return;
+
+	env.ELMO_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+	await ctx.writeEnv(env);
+	ctx.log.info("Added ELMO_ENCRYPTION_KEY — lets you store provider credentials encrypted in the app.");
+}
 
 // Register migrations here when a release needs to change config/env on disk.
 // Most releases need NO entry — docker images roll automatically on `elmo upgrade`.
@@ -32,15 +41,6 @@ export const MIGRATIONS: readonly Migration[] = [
 		from: "0.2.17",
 		to: "0.2.18",
 		description: "add ELMO_ENCRYPTION_KEY for encrypted in-app provider credentials",
-		async run(ctx) {
-			const env = await ctx.readEnv();
-			if (env.ELMO_ENCRYPTION_KEY !== undefined) return;
-			// Standard base64 (not base64url): decoded with Buffer.from(key,
-			// "base64") to exactly 32 bytes. Absent key = storage UI disabled and
-			// env-provided credentials keep working, so this is purely additive.
-			env.ELMO_ENCRYPTION_KEY = randomBytes(32).toString("base64");
-			await ctx.writeEnv(env);
-			ctx.log.info("Added ELMO_ENCRYPTION_KEY — lets you store provider credentials encrypted in the app.");
-		},
+		run: reconcileCurrentConfig,
 	},
 ];
