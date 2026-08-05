@@ -15,7 +15,26 @@ Include your API key in the `Authorization` header:
 Authorization: Bearer YOUR_API_KEY
 ```
 
-API keys are configured server-side via the `ADMIN_API_KEYS` environment variable.
+Authentication depends on the deployment:
+
+- **Cloud:** create an API key from the workspace billing settings. The key belongs to that workspace, can only access its brands and related resources, and requires active plan access. Write requests also enforce the workspace's current brand and tracked-prompt capacity.
+- **Local and whitelabel:** configure one or more instance-wide keys with the `ADMIN_API_KEYS` environment variable. Existing API behavior is unchanged.
+
+Cloud keys return `404 Not Found` for resources owned by another workspace. Capacity and retained-history conflicts return `409 Conflict`; a plan or permission that does not allow the request returns `403 Forbidden`.
+
+## Deployment availability
+
+| Resource operation | Cloud workspace key | Local / whitelabel key |
+| --- | --- | --- |
+| Brands: GET, POST, PATCH | Yes, workspace-scoped | Yes, instance-scoped |
+| Prompts: GET, POST, PATCH | Yes, workspace-scoped | Yes, instance-scoped |
+| Prompt snapshots: GET | Yes, workspace-scoped | Yes, instance-scoped |
+| Competitors: GET, POST, PATCH | Yes, workspace-scoped | Yes, instance-scoped |
+| Prompt DELETE | Returns `409`; use PATCH with `enabled: false` | Yes |
+| Competitor DELETE | Not available (`403`) | Yes |
+| Tools and reports | Not available (`403`) | Yes |
+
+Cloud prompt mutations reconcile the workspace's plan-based tracking targets and cadences. They do not create the legacy per-prompt scheduler used by local and whitelabel deployments.
 
 ## Endpoints
 

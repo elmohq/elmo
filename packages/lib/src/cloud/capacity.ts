@@ -62,7 +62,7 @@ export function assertCapacity(input: {
  */
 export function assertCapacityChange(input: {
 	resolved: ResolvedEntitlements;
-	resource: "prompts" | "claude-prompts";
+	resource: "brands" | "prompts" | "claude-prompts";
 	currentTotal: number;
 	requestedTotal: number;
 }): void {

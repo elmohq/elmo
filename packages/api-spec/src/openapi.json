@@ -2,7 +2,7 @@
 	"openapi": "3.0.3",
 	"info": {
 		"title": "API",
-		"description": "API for managing prompts and generating AI Share of Voice reports.",
+		"description": "API for managing Elmo resources. In cloud deployments, API keys are organization-scoped: brand, prompt, competitor, and prompt snapshot operations can only access the key's organization and writes enforce current plan capacity. Reports and tools are currently available only to instance-scoped local and whitelabel API keys.",
 		"version": "1.0.0",
 		"contact": {
 			"name": "API Support"
@@ -24,7 +24,7 @@
 			"BearerAuth": {
 				"type": "http",
 				"scheme": "bearer",
-				"description": "Bearer API token for access"
+				"description": "Bearer API token. Local and whitelabel deployments use an ADMIN_API_KEYS value with instance-wide access. Cloud deployments use an organization-owned API key with read or write permission and active plan access."
 			}
 		},
 		"schemas": {
@@ -555,6 +555,16 @@
 					}
 				}
 			},
+			"ForbiddenError": {
+				"description": "The API key's deployment, organization, permission, or current plan does not permit this operation",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/Error"
+						}
+					}
+				}
+			},
 			"NotFoundError": {
 				"description": "Resource not found",
 				"content": {
@@ -586,7 +596,7 @@
 				}
 			},
 			"ConflictError": {
-				"description": "Resource already exists",
+				"description": "The request conflicts with resource state, plan capacity, or retention requirements",
 				"content": {
 					"application/json": {
 						"schema": {
@@ -601,7 +611,7 @@
 		"/tools/analyze": {
 			"post": {
 				"summary": "Analyze a website",
-				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts.",
+				"description": "Run brand analysis without persisting anything. Returns suggested additional domains, aliases, competitors, and prompts. This operation is available to instance-scoped local and whitelabel API keys; cloud organization API keys receive 403.",
 				"operationId": "analyzeBrand",
 				"tags": ["Tools"],
 				"requestBody": {
@@ -623,6 +633,7 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"403": { "$ref": "#/components/responses/ForbiddenError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
 			}
@@ -885,6 +896,7 @@
 			},
 			"delete": {
 				"summary": "Delete a competitor",
+				"description": "Delete a competitor. This operation is available to instance-scoped local and whitelabel API keys; cloud organization API keys receive 403.",
 				"operationId": "deleteCompetitor",
 				"tags": ["Competitors"],
 				"parameters": [
@@ -907,6 +919,7 @@
 					},
 					"400": { "$ref": "#/components/responses/ValidationError" },
 					"401": { "$ref": "#/components/responses/UnauthorizedError" },
+					"403": { "$ref": "#/components/responses/ForbiddenError" },
 					"404": { "$ref": "#/components/responses/NotFoundError" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
 				}
@@ -998,7 +1011,7 @@
 			},
 			"post": {
 				"summary": "Create a new prompt",
-				"description": "Create a new prompt for a brand. This will automatically schedule the prompt for execution.",
+				"description": "Create a new prompt for a brand. Tracking is reconciled using the deployment's scheduler and, in cloud, the organization's current plan configuration.",
 				"operationId": "createPrompt",
 				"tags": ["Prompts"],
 				"requestBody": {
@@ -1203,7 +1216,7 @@
 			},
 			"patch": {
 				"summary": "Update a prompt",
-				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` schedules or unschedules the recurring run job.",
+				"description": "Update a prompt's properties. Only provided fields will be updated. Toggling `enabled` reconciles tracking using the deployment's scheduler and, in cloud, the organization's current plan configuration.",
 				"operationId": "updatePrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -1255,7 +1268,7 @@
 			},
 			"delete": {
 				"summary": "Delete a prompt",
-				"description": "Permanently delete a prompt and cancel all related scheduled jobs. This will also cascade delete all associated prompt runs.",
+				"description": "Permanently delete a prompt and cancel its related scheduled jobs in local and whitelabel deployments. Cloud retains prompt tracking and provider audit history, so cloud callers receive 409 and must PATCH enabled=false instead.",
 				"operationId": "deletePrompt",
 				"tags": ["Prompts"],
 				"parameters": [
@@ -1299,8 +1312,14 @@
 					"401": {
 						"$ref": "#/components/responses/UnauthorizedError"
 					},
+					"403": {
+						"$ref": "#/components/responses/ForbiddenError"
+					},
 					"404": {
 						"$ref": "#/components/responses/NotFoundError"
+					},
+					"409": {
+						"$ref": "#/components/responses/ConflictError"
 					},
 					"500": {
 						"$ref": "#/components/responses/InternalServerError"

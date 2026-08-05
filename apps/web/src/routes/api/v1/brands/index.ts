@@ -7,28 +7,47 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { createOrganizationApiBrand, listOrganizationApiBrands } from "@workspace/lib/cloud/api-resources";
 import { db } from "@workspace/lib/db/db";
 import { brands } from "@workspace/lib/db/schema";
 import { count, desc } from "drizzle-orm";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { mapOrganizationResourceError, toOrganizationApiBrandCreate } from "@/lib/api/organization-resources.server";
 import {
+	apiCreateInputToInternal,
+	BrandConflictError,
+	buildBrandResult,
 	createBrand,
 	createBrandInputSchema,
-	apiCreateInputToInternal,
-	buildBrandResult,
-	BrandConflictError,
 	InvalidDomainsError,
 } from "@/server/onboarding-core";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 export const Route = createFileRoute("/api/v1/brands/")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				cloudOrganizationScoped: true,
+				handle: async ({ request, scope }) => {
 					const { searchParams } = new URL(request.url);
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 					const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "20")));
 					const offset = (page - 1) * limit;
+					if (scope.kind === "organization") {
+						const result = await listOrganizationApiBrands({
+							organizationId: scope.organizationId,
+							limit,
+							offset,
+						});
+						return {
+							brands: result.items.map(buildBrandResult),
+							pagination: {
+								page,
+								limit,
+								total: result.total,
+								totalPages: Math.ceil(result.total / limit),
+							},
+						};
+					}
 
 					const [totalCountResult] = await db.select({ count: count() }).from(brands);
 					const totalCount = totalCountResult?.count || 0;
@@ -44,9 +63,12 @@ export const Route = createFileRoute("/api/v1/brands/")({
 			}),
 
 			POST: createApiHandler({
+				cloudOrganizationScoped: true,
 				body: createBrandInputSchema,
 				status: 201,
 				mapError: (err) => {
+					const organizationError = mapOrganizationResourceError(err);
+					if (organizationError) return organizationError;
 					if (err instanceof InvalidDomainsError) {
 						return new ApiError(400, "Validation Error", err.message);
 					}
@@ -54,8 +76,14 @@ export const Route = createFileRoute("/api/v1/brands/")({
 						return new ApiError(409, "Conflict", err.message);
 					}
 				},
-				handle: async ({ body }) => {
+				handle: async ({ body, scope }) => {
 					const internal = apiCreateInputToInternal(body);
+					if (scope.kind === "organization") {
+						const brand = await createOrganizationApiBrand(
+							toOrganizationApiBrandCreate(scope.organizationId, internal),
+						);
+						return buildBrandResult(brand);
+					}
 					return await createBrand(internal);
 				},
 			}),

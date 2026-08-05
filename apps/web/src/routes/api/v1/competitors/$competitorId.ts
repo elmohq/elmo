@@ -3,17 +3,19 @@
  *
  * GET     fetch one competitor
  * PATCH   update name / domains / aliases (replace semantics on arrays)
- * DELETE  remove the competitor (returns the deleted competitor)
+ * DELETE  remove the competitor in noncloud deployments (returns it)
  *
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { getOrganizationApiCompetitor, updateOrganizationApiCompetitor } from "@workspace/lib/cloud/api-resources";
 import { db } from "@workspace/lib/db/db";
 import { competitors } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { mapOrganizationResourceError } from "@/lib/api/organization-resources.server";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -31,8 +33,13 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
+				cloudOrganizationScoped: true,
 				params: competitorParams,
-				handle: async ({ params }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ params, scope }) => {
+					if (scope.kind === "organization") {
+						return getOrganizationApiCompetitor(scope.organizationId, params.competitorId);
+					}
 					const row = await db.query.competitors.findFirst({ where: eq(competitors.id, params.competitorId) });
 					if (!row) {
 						throw new ApiError(404, "Not Found", `Competitor with ID '${params.competitorId}' not found`);
@@ -42,10 +49,21 @@ export const Route = createFileRoute("/api/v1/competitors/$competitorId")({
 			}),
 
 			PATCH: createApiHandler({
+				cloudOrganizationScoped: true,
 				params: competitorParams,
 				body: updateCompetitorBody,
-				handle: async ({ params, body }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ params, body, scope }) => {
 					const { competitorId } = params;
+					if (scope.kind === "organization") {
+						return updateOrganizationApiCompetitor({
+							organizationId: scope.organizationId,
+							competitorId,
+							name: body.name,
+							domains: body.domains === undefined ? undefined : dedupeDomains(body.domains),
+							aliases: body.aliases === undefined ? undefined : dedupeAliases(body.aliases),
+						});
+					}
 
 					const existing = await db.query.competitors.findFirst({ where: eq(competitors.id, competitorId) });
 					if (!existing) {

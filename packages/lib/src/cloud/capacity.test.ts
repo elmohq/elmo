@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { resolveEntitlements } from "@workspace/config/entitlements";
+import { describe, expect, it } from "vitest";
 import {
 	assertCapacity,
 	assertCapacityChange,
@@ -58,8 +58,26 @@ describe("organization capacity", () => {
 		expect(() =>
 			assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 75 }),
 		).not.toThrow();
+		expect(() => assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 76 })).toThrow(
+			new CapacityExceededError("prompts", 50),
+		);
+	});
+
+	it("applies the same safe downgrade rule when a disabled brand is re-enabled", () => {
+		const resolved = resolveEntitlements({
+			mode: "cloud",
+			subscription: {
+				planId: "starter",
+				status: "active",
+				currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+				delinquentSince: null,
+			},
+		});
 		expect(() =>
-			assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 76 }),
-		).toThrow(new CapacityExceededError("prompts", 50));
+			assertCapacityChange({ resolved, resource: "brands", currentTotal: 2, requestedTotal: 1 }),
+		).not.toThrow();
+		expect(() => assertCapacityChange({ resolved, resource: "brands", currentTotal: 2, requestedTotal: 3 })).toThrow(
+			new CapacityExceededError("brands", 1),
+		);
 	});
 });

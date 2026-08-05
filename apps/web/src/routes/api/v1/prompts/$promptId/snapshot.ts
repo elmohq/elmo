@@ -5,17 +5,19 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { getOrganizationPromptSnapshotContext } from "@workspace/lib/cloud/api-resources";
 import { db } from "@workspace/lib/db/db";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { mapOrganizationResourceError } from "@/lib/api/organization-resources.server";
+import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
 import {
 	getPromptCitationUrlStats,
 	getPromptMentionSummary,
 	getPromptTopCompetitorMentions,
 } from "@/lib/postgres-read";
-import { extractDomain, normalizeUrl } from "@/lib/domain-categories";
-import { ApiError, createApiHandler } from "@/lib/api/handler";
 
 function isValidDate(dateStr: string): boolean {
 	const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,8 +30,10 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
+				cloudOrganizationScoped: true,
 				params: z.object({ promptId: z.guid("Invalid prompt ID format") }),
-				handle: async ({ params, request }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ params, request, scope }) => {
 					const { promptId } = params;
 					const { searchParams } = new URL(request.url);
 
@@ -58,27 +62,37 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId/snapshot")({
 					const kCitationsParam = Number.parseInt(searchParams.get("kCitations") || "10", 10);
 					const kCitations = Number.isNaN(kCitationsParam) ? 10 : Math.max(1, Math.min(50, kCitationsParam));
 
-					const promptResult = await db
-						.select({ id: prompts.id, brandId: prompts.brandId, value: prompts.value })
-						.from(prompts)
-						.where(eq(prompts.id, promptId))
-						.limit(1);
-					if (promptResult.length === 0) {
-						throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
-					}
-					const prompt = promptResult[0];
+					let prompt: { id: string; brandId: string; value: string };
+					let brand: { website: string; additionalDomains: string[] };
+					let competitorsList: Array<typeof competitors.$inferSelect>;
+					if (scope.kind === "organization") {
+						const context = await getOrganizationPromptSnapshotContext(scope.organizationId, promptId);
+						prompt = context.prompt;
+						brand = context.brand;
+						competitorsList = context.competitors;
+					} else {
+						const promptResult = await db
+							.select({ id: prompts.id, brandId: prompts.brandId, value: prompts.value })
+							.from(prompts)
+							.where(eq(prompts.id, promptId))
+							.limit(1);
+						if (promptResult.length === 0) {
+							throw new ApiError(404, "Not Found", `Prompt with ID '${promptId}' not found`);
+						}
+						prompt = promptResult[0];
 
-					const [brandInfo, competitorsList] = await Promise.all([
-						db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),
-						db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
-					]);
-					if (brandInfo.length === 0) {
-						throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
+						const [brandInfo, instanceCompetitors] = await Promise.all([
+							db.select().from(brands).where(eq(brands.id, prompt.brandId)).limit(1),
+							db.select().from(competitors).where(eq(competitors.brandId, prompt.brandId)),
+						]);
+						if (brandInfo.length === 0) {
+							throw new ApiError(500, "Internal Server Error", "Brand not found for prompt");
+						}
+						brand = brandInfo[0];
+						competitorsList = instanceCompetitors;
 					}
 					const brandDomains = new Set(
-						[extractDomain(brandInfo[0].website), ...(brandInfo[0].additionalDomains || []).map(extractDomain)].filter(
-							Boolean,
-						),
+						[extractDomain(brand.website), ...(brand.additionalDomains || []).map(extractDomain)].filter(Boolean),
 					);
 					const competitorDomains = new Set(
 						competitorsList.flatMap((c) => (c.domains || []).map(extractDomain)).filter(Boolean),

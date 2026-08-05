@@ -33,6 +33,7 @@
 		"./cloud/advisory-locks": "./src/cloud/advisory-locks.ts",
 		"./cloud/entitlement-reconciliation": "./src/cloud/entitlement-reconciliation.ts",
 		"./cloud/custom-entitlements": "./src/cloud/custom-entitlements.ts",
+		"./cloud/api-resources": "./src/cloud/api-resources.ts",
 		"./cloud/capacity": "./src/cloud/capacity.ts",
 		"./cloud/prompt-mutations": "./src/cloud/prompt-mutations.ts",
 		"./cloud/tracking-policy": "./src/cloud/tracking-policy.ts",

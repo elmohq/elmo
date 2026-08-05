@@ -3,13 +3,15 @@
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { createOrganizationApiPrompt, listOrganizationApiPrompts } from "@workspace/lib/cloud/api-resources";
 import { db } from "@workspace/lib/db/db";
-import { prompts, brands } from "@workspace/lib/db/schema";
-import { eq, count, desc } from "drizzle-orm";
+import { brands, prompts } from "@workspace/lib/db/schema";
+import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
+import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { sanitizeUserTags, computeSystemTags } from "@workspace/lib/tag-utils";
-import { createPromptJobScheduler } from "@/lib/job-scheduler";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { mapOrganizationResourceError } from "@/lib/api/organization-resources.server";
+import { createPromptJobScheduler } from "@/lib/job-scheduler";
 
 const createPromptBody = z.object({
 	brandId: z.string().trim().min(1, "brandId is required"),
@@ -21,12 +23,31 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
-				handle: async ({ request }) => {
+				cloudOrganizationScoped: true,
+				handle: async ({ request, scope }) => {
 					const { searchParams } = new URL(request.url);
 					const brandId = searchParams.get("brandId");
 					const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
-					const limit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
+					const requestedLimit = Math.max(1, parseInt(searchParams.get("limit") || "20"));
+					const limit = scope.kind === "organization" ? Math.min(100, requestedLimit) : requestedLimit;
 					const offset = (page - 1) * limit;
+					if (scope.kind === "organization") {
+						const result = await listOrganizationApiPrompts({
+							organizationId: scope.organizationId,
+							brandId: brandId ?? undefined,
+							limit,
+							offset,
+						});
+						return {
+							prompts: result.items,
+							pagination: {
+								page,
+								limit,
+								total: result.total,
+								totalPages: Math.ceil(result.total / limit),
+							},
+						};
+					}
 
 					const whereConditions = brandId ? eq(prompts.brandId, brandId) : undefined;
 
@@ -59,10 +80,20 @@ export const Route = createFileRoute("/api/v1/prompts/")({
 			}),
 
 			POST: createApiHandler({
+				cloudOrganizationScoped: true,
 				body: createPromptBody,
 				status: 201,
-				handle: async ({ body }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ body, scope }) => {
 					const { brandId, value, tags } = body;
+					if (scope.kind === "organization") {
+						return createOrganizationApiPrompt({
+							organizationId: scope.organizationId,
+							brandId,
+							value,
+							tags: sanitizeUserTags(tags ?? []),
+						});
+					}
 
 					const brandInfo = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
 					if (brandInfo.length === 0) {

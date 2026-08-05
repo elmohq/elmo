@@ -3,18 +3,24 @@
  *
  * GET     fetch one prompt
  * PATCH   update value / enabled / tags
- * DELETE  remove the prompt (cascades to runs + citations)
+ * DELETE  remove the prompt in noncloud deployments; cloud retains audit history
  *
  * Protected by API key authentication.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import {
+	getOrganizationApiPrompt,
+	rejectOrganizationApiPromptDeletion,
+	updateOrganizationApiPrompt,
+} from "@workspace/lib/cloud/api-resources";
 import { db } from "@workspace/lib/db/db";
 import { brands, citations, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
-import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
 import { ApiError, createApiHandler } from "@/lib/api/handler";
+import { mapOrganizationResourceError } from "@/lib/api/organization-resources.server";
+import { createPromptJobScheduler, removePromptJobScheduler } from "@/lib/job-scheduler";
 
 // z.guid(), not z.uuid(): matches the loose 8-4-4-4-12 hex check this API has
 // always used; z.uuid() enforces RFC version bits and rejects existing IDs.
@@ -32,8 +38,13 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 	server: {
 		handlers: {
 			GET: createApiHandler({
+				cloudOrganizationScoped: true,
 				params: promptParams,
-				handle: async ({ params }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ params, scope }) => {
+					if (scope.kind === "organization") {
+						return getOrganizationApiPrompt(scope.organizationId, params.promptId);
+					}
 					const prompt = await db
 						.select({
 							id: prompts.id,
@@ -58,11 +69,22 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			}),
 
 			PATCH: createApiHandler({
+				cloudOrganizationScoped: true,
 				params: promptParams,
 				body: updatePromptBody,
-				handle: async ({ params, body }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ params, body, scope }) => {
 					const { promptId } = params;
 					const { value, enabled, tags } = body;
+					if (scope.kind === "organization") {
+						return updateOrganizationApiPrompt({
+							organizationId: scope.organizationId,
+							promptId,
+							value,
+							enabled,
+							tags: tags === undefined ? undefined : sanitizeUserTags(tags),
+						});
+					}
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
@@ -110,9 +132,14 @@ export const Route = createFileRoute("/api/v1/prompts/$promptId")({
 			}),
 
 			DELETE: createApiHandler({
+				cloudOrganizationScoped: true,
 				params: promptParams,
-				handle: async ({ params }) => {
+				mapError: mapOrganizationResourceError,
+				handle: async ({ params, scope }) => {
 					const { promptId } = params;
+					if (scope.kind === "organization") {
+						return rejectOrganizationApiPromptDeletion(scope.organizationId, promptId);
+					}
 
 					const existingPrompt = await db.select().from(prompts).where(eq(prompts.id, promptId)).limit(1);
 					if (existingPrompt.length === 0) {
