@@ -158,6 +158,13 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		}),
 	)
 	.handler(async ({ data }) => {
+		// This endpoint exists for the white-label path where an Auth0 organization
+		// is provisioned before its same-id brand. Cloud brands must use
+		// createBrandInOrgFn so capacity and v2 tracking defaults are committed in
+		// the same organization-locked transaction.
+		if (getDeployment().mode === "cloud") {
+			throw new Error("Cloud brands must be created through a workspace plan");
+		}
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
 
