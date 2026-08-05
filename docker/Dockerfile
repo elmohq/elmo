@@ -95,7 +95,7 @@ WORKDIR /app
 
 COPY --from=builder /deploy/lib ./
 
-CMD ["pnpm", "exec", "drizzle-kit", "migrate"]
+CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
 
 # Worker stage
 FROM base AS worker
@@ -117,4 +117,4 @@ HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=30 \
   CMD test -f /tmp/elmo-worker-ready && kill -0 1
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["pnpm", "exec", "tsx", "src/index.ts"]
+CMD ["./node_modules/.bin/tsx", "src/index.ts"]
