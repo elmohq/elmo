@@ -1,23 +1,24 @@
-import * as React from "react";
-import { Link, useRouteContext } from "@tanstack/react-router";
-import type { ClientConfig } from "@workspace/config/types";
 import {
-	IconDashboard,
-	IconChartBar,
-	IconSpeakerphone,
-	IconSitemap,
-	IconTarget,
-	IconLink,
 	IconBuilding,
 	IconBuildings,
-	IconListDetails,
+	IconChartBar,
 	IconCpu,
-	IconTable,
+	IconCreditCard,
+	IconDashboard,
+	IconLink,
+	IconListDetails,
 	IconReport,
+	IconSitemap,
+	IconSpeakerphone,
+	IconTable,
+	IconTarget,
 	IconTimeline,
 	IconTool,
 	IconUsers,
 } from "@tabler/icons-react";
+import { Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import type { BrandWithPrompts } from "@workspace/lib/db/schema";
 
 import {
 	Sidebar,
@@ -29,12 +30,12 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@workspace/ui/components/sidebar";
-import { NavMain, type NavGroup } from "@/components/nav-main";
-import { NavUser } from "@/components/nav-user";
-import { NavAppInfo } from "@/components/nav-app-info";
+import type * as React from "react";
 import { DemoModePill } from "@/components/demo-mode-pill";
 import { Logo } from "@/components/logo";
-import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import { NavAppInfo } from "@/components/nav-app-info";
+import { type NavGroup, NavMain } from "@/components/nav-main";
+import { NavUser } from "@/components/nav-user";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	isAdmin?: boolean;
@@ -43,6 +44,8 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 	adminOnly?: boolean;
 	/** Brand data from route loader — avoids a separate client-side fetch */
 	brand?: BrandWithPrompts | null;
+	/** Workspace context for organization-level navigation without a brand route. */
+	organizationId?: string;
 }
 
 export function AppSidebar({
@@ -50,6 +53,7 @@ export function AppSidebar({
 	hasReportAccess = false,
 	adminOnly = false,
 	brand,
+	organizationId,
 	...props
 }: AppSidebarProps) {
 	const { setOpenMobile } = useSidebar();
@@ -58,6 +62,7 @@ export function AppSidebar({
 	const reportsEnabled = context.clientConfig?.features.reportGeneration ?? true;
 
 	const showAdminSection = isAdmin || (hasReportAccess && reportsEnabled);
+	const workspaceOrganizationId = organizationId ?? brand?.organizationId;
 
 	const groups: NavGroup[] = [];
 
@@ -138,6 +143,20 @@ export function AppSidebar({
 				],
 			});
 		}
+	}
+
+	if (context.clientConfig?.features.billing && workspaceOrganizationId) {
+		groups.push({
+			label: "Workspace",
+			items: [
+				{
+					title: "Plan & usage",
+					url: `/app/workspaces/${encodeURIComponent(workspaceOrganizationId)}/billing`,
+					icon: IconCreditCard,
+					absolute: true,
+				},
+			],
+		});
 	}
 
 	// Admin section

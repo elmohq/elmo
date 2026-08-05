@@ -5,9 +5,12 @@ import {
 	type EntitlementOverrideRevision,
 	type EntitlementOverrideStore,
 	effectiveWindowsOverlap,
+	entitlementRevisionWindow,
 	planEntitlementOverrideAppend,
+	planEntitlementOverrideReplacement,
 	planEntitlementOverrideRevocation,
 	previewEntitlementOverrideAppend,
+	replaceEntitlementOverride,
 } from "./custom-entitlements";
 
 const payload = {
@@ -136,6 +139,171 @@ describe("custom entitlement decisions", () => {
 		).toBe(2);
 	});
 
+	it("replaces an active open-ended contract immediately without a gap", () => {
+		const now = new Date("2026-09-15T00:00:00.000Z");
+		const original = revision({ effectiveUntil: null });
+		const plan = planEntitlementOverrideReplacement({
+			organizationId: "org-1",
+			actorUserId: "operator-2",
+			reason: "Expanded signed agreement",
+			predecessorRevision: 1,
+			payload,
+			now,
+			transitionAt: now,
+			expectedLatestRevision: 1,
+			existing: [original],
+		});
+		const predecessor = { ...original, revokedAt: plan.transitionAt };
+		const successor = revision({
+			id: "override-2",
+			revision: plan.successor.revision,
+			payload: plan.successor.payload,
+			effectiveFrom: plan.successor.effectiveFrom,
+			effectiveUntil: plan.successor.effectiveUntil,
+			revokedAt: null,
+			reason: plan.successor.reason,
+			createdByUserId: plan.successor.createdByUserId,
+		});
+
+		expect(currentEntitlementRevision([predecessor, successor], new Date(now.getTime() - 1))?.revision).toBe(1);
+		expect(currentEntitlementRevision([predecessor, successor], now)?.revision).toBe(2);
+		expect(plan.successor.reason).toBe("replace:predecessor=1; Expanded signed agreement");
+		expect(plan.target.payload).toBe(original.payload);
+		expect(plan.successor.payload).toStrictEqual(payload);
+	});
+
+	it("applies the predecessor end and successor insert under one organization lock", async () => {
+		const now = new Date("2026-09-15T00:00:00.000Z");
+		let lockCount = 0;
+		const revisions = [revision({ effectiveUntil: null })];
+		const store: EntitlementOverrideStore = {
+			withOrganizationLock: async (_organizationId, run) => {
+				lockCount++;
+				return run({
+					organizationExists: async () => true,
+					organizationUsesCustomPlan: async () => true,
+					actorExists: async () => true,
+					list: async () => [...revisions],
+					insert: async (draft) => {
+						const inserted = revision({ id: "override-2", createdAt: now, ...draft });
+						revisions.push(inserted);
+						return inserted;
+					},
+					setRevocationIfUnscheduled: async ({ revision: targetRevision, revokedAt }) => {
+						const index = revisions.findIndex((item) => item.revision === targetRevision && item.revokedAt === null);
+						if (index < 0 || !revisions[index]) return false;
+						revisions[index] = { ...revisions[index], revokedAt };
+						return true;
+					},
+					rescheduleRevocationIfMatches: async () => false,
+				});
+			},
+		};
+
+		const applied = await replaceEntitlementOverride(
+			{
+				organizationId: "org-1",
+				actorUserId: "operator-2",
+				reason: "Immediate upgrade",
+				predecessorRevision: 1,
+				payload,
+				now,
+				transitionAt: now,
+				expectedLatestRevision: 1,
+			},
+			store,
+		);
+
+		expect(lockCount).toBe(1);
+		expect(applied).toMatchObject({ endedRevision: 1, successor: { revision: 2 }, transitionAt: now });
+		expect(currentEntitlementRevision(revisions, now)?.revision).toBe(2);
+	});
+
+	it("keeps the predecessor active until a scheduled replacement boundary", () => {
+		const now = new Date("2026-09-15T00:00:00.000Z");
+		const transitionAt = new Date("2026-10-15T00:00:00.000Z");
+		const original = revision({ effectiveUntil: null });
+		const plan = planEntitlementOverrideReplacement({
+			organizationId: "org-1",
+			actorUserId: "operator-2",
+			reason: "Renewal",
+			predecessorRevision: 1,
+			payload,
+			now,
+			transitionAt,
+			expectedLatestRevision: 1,
+			existing: [original],
+		});
+		const predecessor = { ...original, revokedAt: transitionAt };
+		const successor = revision({
+			id: "override-2",
+			revision: 2,
+			effectiveFrom: transitionAt,
+			effectiveUntil: null,
+			reason: plan.successor.reason,
+		});
+		const predecessorWindow = entitlementRevisionWindow(predecessor);
+		const successorWindow = entitlementRevisionWindow(successor);
+
+		expect(currentEntitlementRevision([predecessor, successor], now)?.revision).toBe(1);
+		expect(currentEntitlementRevision([predecessor, successor], new Date(transitionAt.getTime() - 1))?.revision).toBe(
+			1,
+		);
+		expect(currentEntitlementRevision([predecessor, successor], transitionAt)?.revision).toBe(2);
+		expect(predecessorWindow && successorWindow && effectiveWindowsOverlap(predecessorWindow, successorWindow)).toBe(
+			false,
+		);
+	});
+
+	it("cancels a future replacement and restores its predecessor", () => {
+		const now = new Date("2026-09-20T00:00:00.000Z");
+		const transitionAt = new Date("2026-10-15T00:00:00.000Z");
+		const predecessor = revision({ effectiveUntil: null, revokedAt: transitionAt });
+		const successor = revision({
+			id: "override-2",
+			revision: 2,
+			effectiveFrom: transitionAt,
+			effectiveUntil: null,
+			reason: "replace:predecessor=1; Mistaken renewal",
+		});
+		const plan = planEntitlementOverrideRevocation({
+			organizationId: "org-1",
+			actorUserId: "operator-2",
+			reason: "Customer corrected the contract",
+			revision: 2,
+			now,
+			expectedLatestRevision: 2,
+			existing: [predecessor, successor],
+		});
+
+		expect(plan.restorePredecessor).toEqual({
+			revision: 1,
+			expectedRevokedAt: transitionAt,
+			revokedAt: null,
+		});
+		expect(plan.audit.reason).toBe("cancel:revision=2;restore-predecessor=1; Customer corrected the contract");
+		expect(plan.target.payload).toBe(successor.payload);
+		const restored = { ...predecessor, revokedAt: null };
+		const canceled = { ...successor, revokedAt: now };
+		expect(currentEntitlementRevision([restored, canceled], transitionAt)?.revision).toBe(1);
+	});
+
+	it("rejects a stale expected revision for replacement", () => {
+		expect(() =>
+			planEntitlementOverrideReplacement({
+				organizationId: "org-1",
+				actorUserId: "operator-2",
+				reason: "Renewal",
+				predecessorRevision: 1,
+				payload,
+				now: new Date("2026-09-15T00:00:00.000Z"),
+				transitionAt: new Date("2026-09-15T00:00:00.000Z"),
+				expectedLatestRevision: 0,
+				existing: [revision({ effectiveUntil: null })],
+			}),
+		).toThrowError(expect.objectContaining({ code: "revision-conflict" }));
+	});
+
 	it("revokes only an active revision and appends immutable audit metadata", () => {
 		const original = revision({ effectiveUntil: null });
 		const now = new Date("2026-09-15T00:00:00.000Z");
@@ -155,8 +323,10 @@ describe("custom entitlement decisions", () => {
 			payload: original.payload,
 			revokedAt: now,
 			createdByUserId: "operator-2",
-			reason: "Revoked revision 1: Contract terminated",
+			reason: "revoke:revision=1; Contract terminated",
 		});
+		expect(plan.action).toBe("revoke");
+		expect(plan.restorePredecessor).toBeNull();
 		expect(() =>
 			planEntitlementOverrideRevocation({
 				organizationId: "org-1",
@@ -166,6 +336,17 @@ describe("custom entitlement decisions", () => {
 				now: new Date("2027-01-01T00:00:00.000Z"),
 				expectedLatestRevision: 1,
 				existing: [revision()],
+			}),
+		).toThrowError(expect.objectContaining({ code: "revision-not-active" }));
+		expect(() =>
+			planEntitlementOverrideRevocation({
+				organizationId: "org-1",
+				actorUserId: "operator-2",
+				reason: "Duplicate cancellation",
+				revision: 1,
+				now,
+				expectedLatestRevision: 1,
+				existing: [revision({ effectiveUntil: null, revokedAt: new Date("2026-09-10T00:00:00.000Z") })],
 			}),
 		).toThrowError(expect.objectContaining({ code: "revision-not-active" }));
 	});
@@ -181,7 +362,8 @@ describe("custom entitlement decisions", () => {
 					insert: async () => {
 						throw new Error("not reached");
 					},
-					revokeIfActive: async () => false,
+					setRevocationIfUnscheduled: async () => false,
+					rescheduleRevocationIfMatches: async () => false,
 				}),
 		};
 

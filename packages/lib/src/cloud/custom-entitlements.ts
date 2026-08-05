@@ -2,7 +2,7 @@ import {
 	type OrganizationEntitlementOverride as EntitlementPayload,
 	organizationEntitlementOverrideSchema,
 } from "@workspace/config/plans";
-import { and, asc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import { organization, organizationBillingSubscriptions, organizationEntitlementOverrides, user } from "../db/schema";
 
@@ -58,7 +58,13 @@ export interface EntitlementOverrideTransactionStore {
 	actorExists(actorUserId: string): Promise<boolean>;
 	list(organizationId: string): Promise<EntitlementOverrideRevision[]>;
 	insert(draft: EntitlementOverrideDraft): Promise<EntitlementOverrideRevision>;
-	revokeIfActive(input: { organizationId: string; revision: number; now: Date }): Promise<boolean>;
+	setRevocationIfUnscheduled(input: { organizationId: string; revision: number; revokedAt: Date }): Promise<boolean>;
+	rescheduleRevocationIfMatches(input: {
+		organizationId: string;
+		revision: number;
+		expectedRevokedAt: Date;
+		revokedAt: Date | null;
+	}): Promise<boolean>;
 }
 
 export interface EntitlementOverrideStore {
@@ -90,6 +96,28 @@ export function effectiveWindowsOverlap(
 	return leftStartsBeforeRightEnds && rightStartsBeforeLeftEnds;
 }
 
+function earlierDate(left: Date | null, right: Date | null): Date | null {
+	if (left === null) return right;
+	if (right === null) return left;
+	return left < right ? left : right;
+}
+
+export function entitlementRevisionWindow(revision: EntitlementOverrideRevision): {
+	effectiveFrom: Date;
+	effectiveUntil: Date | null;
+} | null {
+	const effectiveUntil = earlierDate(revision.effectiveUntil, revision.revokedAt);
+	if (effectiveUntil !== null && effectiveUntil <= revision.effectiveFrom) return null;
+	return { effectiveFrom: revision.effectiveFrom, effectiveUntil };
+}
+
+export function isEntitlementRevisionEffectiveAt(revision: EntitlementOverrideRevision, at: Date): boolean {
+	const window = entitlementRevisionWindow(revision);
+	return Boolean(
+		window && window.effectiveFrom <= at && (window.effectiveUntil === null || window.effectiveUntil > at),
+	);
+}
+
 export function latestEntitlementRevision(revisions: EntitlementOverrideRevision[]): number {
 	return revisions.reduce((latest, revision) => Math.max(latest, revision.revision), 0);
 }
@@ -100,12 +128,7 @@ export function currentEntitlementRevision(
 ): EntitlementOverrideRevision | null {
 	return (
 		revisions
-			.filter(
-				(revision) =>
-					revision.revokedAt === null &&
-					revision.effectiveFrom <= at &&
-					(revision.effectiveUntil === null || revision.effectiveUntil > at),
-			)
+			.filter((revision) => isEntitlementRevisionEffectiveAt(revision, at))
 			.sort((left, right) => right.revision - left.revision)[0] ?? null
 	);
 }
@@ -151,13 +174,14 @@ export function planEntitlementOverrideAppend(input: {
 	}
 
 	const requestedWindow = { effectiveFrom, effectiveUntil };
-	const overlap = input.existing.find(
-		(revision) => revision.revokedAt === null && effectiveWindowsOverlap(revision, requestedWindow),
-	);
+	const overlap = input.existing.find((revision) => {
+		const existingWindow = entitlementRevisionWindow(revision);
+		return existingWindow !== null && effectiveWindowsOverlap(existingWindow, requestedWindow);
+	});
 	if (overlap) {
 		throw new CustomEntitlementOperatorError(
 			"effective-window-overlap",
-			`The requested effective window overlaps non-revoked revision ${overlap.revision}`,
+			`The requested effective window overlaps effective revision ${overlap.revision}`,
 		);
 	}
 
@@ -173,6 +197,94 @@ export function planEntitlementOverrideAppend(input: {
 	};
 }
 
+const REPLACEMENT_REASON = /^replace:predecessor=(\d+); /;
+
+function replacementReason(predecessorRevision: number, reason: string): string {
+	return `replace:predecessor=${predecessorRevision}; ${reason}`;
+}
+
+function replacementPredecessorRevision(reason: string): number | null {
+	const match = REPLACEMENT_REASON.exec(reason);
+	if (!match?.[1]) return null;
+	const revision = Number(match[1]);
+	return Number.isSafeInteger(revision) && revision > 0 ? revision : null;
+}
+
+export interface EntitlementOverrideReplacementPlan {
+	target: EntitlementOverrideRevision;
+	successor: EntitlementOverrideDraft;
+	transitionAt: Date;
+}
+
+export function planEntitlementOverrideReplacement(input: {
+	organizationId: string;
+	actorUserId: string;
+	reason: string;
+	predecessorRevision: number;
+	payload: unknown;
+	now: Date;
+	transitionAt: Date;
+	effectiveUntil?: Date | null;
+	expectedLatestRevision: number;
+	existing: EntitlementOverrideRevision[];
+}): EntitlementOverrideReplacementPlan {
+	const organizationId = requiredText(input.organizationId, "Organization ID");
+	const actorUserId = requiredText(input.actorUserId, "Actor user ID");
+	const reason = requiredText(input.reason, "Reason");
+	const now = validDate(input.now, "now");
+	const transitionAt = validDate(input.transitionAt, "transitionAt");
+	if (transitionAt < now) {
+		throw new CustomEntitlementOperatorError("invalid-input", "transitionAt cannot be in the past");
+	}
+	if (!Number.isSafeInteger(input.predecessorRevision) || input.predecessorRevision <= 0) {
+		throw new CustomEntitlementOperatorError("invalid-input", "Predecessor revision must be a positive integer");
+	}
+
+	const target = input.existing.find((revision) => revision.revision === input.predecessorRevision);
+	if (
+		!target ||
+		target.revokedAt !== null ||
+		currentEntitlementRevision(input.existing, now)?.revision !== target.revision
+	) {
+		throw new CustomEntitlementOperatorError(
+			"revision-not-active",
+			`Revision ${input.predecessorRevision} is not the active unscheduled contract at ${now.toISOString()}`,
+		);
+	}
+	if (target.effectiveUntil !== null && target.effectiveUntil <= transitionAt) {
+		throw new CustomEntitlementOperatorError(
+			"revision-not-active",
+			`Revision ${target.revision} does not remain active through ${transitionAt.toISOString()}`,
+		);
+	}
+
+	const existingAfterScheduledEnd = input.existing.map((revision) =>
+		revision.revision === target.revision ? { ...revision, revokedAt: transitionAt } : revision,
+	);
+	const successor = planEntitlementOverrideAppend({
+		organizationId,
+		actorUserId,
+		reason: replacementReason(target.revision, reason),
+		payload: input.payload,
+		effectiveFrom: transitionAt,
+		effectiveUntil: input.effectiveUntil,
+		expectedLatestRevision: input.expectedLatestRevision,
+		existing: existingAfterScheduledEnd,
+	});
+	return { target, successor, transitionAt };
+}
+
+export interface EntitlementOverrideRevocationPlan {
+	target: EntitlementOverrideRevision;
+	audit: EntitlementOverrideDraft;
+	action: "cancel" | "revoke";
+	restorePredecessor: {
+		revision: number;
+		expectedRevokedAt: Date;
+		revokedAt: Date | null;
+	} | null;
+}
+
 export function planEntitlementOverrideRevocation(input: {
 	organizationId: string;
 	actorUserId: string;
@@ -181,7 +293,7 @@ export function planEntitlementOverrideRevocation(input: {
 	now: Date;
 	expectedLatestRevision: number;
 	existing: EntitlementOverrideRevision[];
-}): { target: EntitlementOverrideRevision; audit: EntitlementOverrideDraft } {
+}): EntitlementOverrideRevocationPlan {
 	const organizationId = requiredText(input.organizationId, "Organization ID");
 	const createdByUserId = requiredText(input.actorUserId, "Actor user ID");
 	const reason = requiredText(input.reason, "Reason");
@@ -201,20 +313,62 @@ export function planEntitlementOverrideRevocation(input: {
 		);
 	}
 	const target = input.existing.find((revision) => revision.revision === input.revision);
-	if (
-		!target ||
-		target.revokedAt !== null ||
-		target.effectiveFrom > now ||
-		(target.effectiveUntil !== null && target.effectiveUntil <= now)
-	) {
+	if (!target || target.revokedAt !== null || (target.effectiveUntil !== null && target.effectiveUntil <= now)) {
 		throw new CustomEntitlementOperatorError(
 			"revision-not-active",
-			`Revision ${input.revision} is not active at ${now.toISOString()}`,
+			`Revision ${input.revision} is expired, already revoked, or does not exist at ${now.toISOString()}`,
+		);
+	}
+	const isFuture = target.effectiveFrom > now;
+	if (!isFuture && currentEntitlementRevision(input.existing, now)?.revision !== target.revision) {
+		throw new CustomEntitlementOperatorError(
+			"revision-not-active",
+			`Revision ${input.revision} is not the active contract at ${now.toISOString()}`,
 		);
 	}
 
+	let restorePredecessor: EntitlementOverrideRevocationPlan["restorePredecessor"] = null;
+	const predecessorRevision = isFuture ? replacementPredecessorRevision(target.reason) : null;
+	if (predecessorRevision !== null) {
+		const predecessor = input.existing.find((revision) => revision.revision === predecessorRevision);
+		if (
+			!predecessor?.revokedAt ||
+			predecessor.revokedAt.getTime() !== target.effectiveFrom.getTime() ||
+			(predecessor.effectiveUntil !== null && predecessor.effectiveUntil <= target.effectiveFrom)
+		) {
+			throw new CustomEntitlementOperatorError(
+				"invalid-input",
+				`Revision ${target.revision} has inconsistent replacement audit metadata`,
+			);
+		}
+		const nextRevisionStart = input.existing
+			.filter(
+				(revision) =>
+					revision.revision !== target.revision &&
+					revision.revision !== predecessor.revision &&
+					entitlementRevisionWindow(revision) !== null &&
+					revision.effectiveFrom > target.effectiveFrom,
+			)
+			.map((revision) => revision.effectiveFrom)
+			.sort((left, right) => left.getTime() - right.getTime())[0];
+		const restoredRevokedAt =
+			nextRevisionStart && (predecessor.effectiveUntil === null || nextRevisionStart < predecessor.effectiveUntil)
+				? nextRevisionStart
+				: null;
+		restorePredecessor = {
+			revision: predecessor.revision,
+			expectedRevokedAt: target.effectiveFrom,
+			revokedAt: restoredRevokedAt,
+		};
+	}
+
+	const auditAction = isFuture ? "cancel" : "revoke";
+	const restoreAudit = restorePredecessor ? `;restore-predecessor=${restorePredecessor.revision}` : "";
+
 	return {
 		target,
+		restorePredecessor,
+		action: auditAction,
 		// The schema has lifecycle metadata but no mutable revocation-reason
 		// columns. Append an immediately-revoked audit revision so the actor and
 		// reason are durable without changing the target revision's payload.
@@ -225,7 +379,7 @@ export function planEntitlementOverrideRevocation(input: {
 			effectiveFrom: now,
 			effectiveUntil: null,
 			revokedAt: now,
-			reason: `Revoked revision ${target.revision}: ${reason}`,
+			reason: `${auditAction}:revision=${target.revision}${restoreAudit}; ${reason}`,
 			createdByUserId,
 		},
 	};
@@ -292,10 +446,69 @@ export async function appendEntitlementOverride(
 	});
 }
 
+export async function previewEntitlementOverrideReplacement(
+	input: Omit<Parameters<typeof planEntitlementOverrideReplacement>[0], "existing" | "expectedLatestRevision">,
+	store: EntitlementOverrideStore = createEntitlementOverrideStore(),
+): Promise<EntitlementOverrideReplacementPlan & { latestRevision: number }> {
+	const organizationId = requiredText(input.organizationId, "Organization ID");
+	const actorUserId = requiredText(input.actorUserId, "Actor user ID");
+	const reason = requiredText(input.reason, "Reason");
+	return store.withOrganizationLock(organizationId, async (transaction) => {
+		await assertOrganizationAndActor(transaction, organizationId, actorUserId);
+		const existing = await transaction.list(organizationId);
+		const latestRevision = latestEntitlementRevision(existing);
+		return {
+			...planEntitlementOverrideReplacement({
+				...input,
+				organizationId,
+				actorUserId,
+				reason,
+				existing,
+				expectedLatestRevision: latestRevision,
+			}),
+			latestRevision,
+		};
+	});
+}
+
+export async function replaceEntitlementOverride(
+	input: Omit<Parameters<typeof planEntitlementOverrideReplacement>[0], "existing">,
+	store: EntitlementOverrideStore = createEntitlementOverrideStore(),
+): Promise<{ endedRevision: number; successor: EntitlementOverrideRevision; transitionAt: Date }> {
+	const organizationId = requiredText(input.organizationId, "Organization ID");
+	const actorUserId = requiredText(input.actorUserId, "Actor user ID");
+	const reason = requiredText(input.reason, "Reason");
+	return store.withOrganizationLock(organizationId, async (transaction) => {
+		await assertOrganizationAndActor(transaction, organizationId, actorUserId);
+		const existing = await transaction.list(organizationId);
+		const plan = planEntitlementOverrideReplacement({
+			...input,
+			organizationId,
+			actorUserId,
+			reason,
+			existing,
+		});
+		if (
+			!(await transaction.setRevocationIfUnscheduled({
+				organizationId,
+				revision: plan.target.revision,
+				revokedAt: plan.transitionAt,
+			}))
+		) {
+			throw new CustomEntitlementOperatorError(
+				"concurrent-write",
+				`Revision ${plan.target.revision} changed without honoring the organization lock`,
+			);
+		}
+		const successor = await transaction.insert(plan.successor);
+		return { endedRevision: plan.target.revision, successor, transitionAt: plan.transitionAt };
+	});
+}
+
 export async function previewEntitlementOverrideRevocation(
 	input: Omit<Parameters<typeof planEntitlementOverrideRevocation>[0], "existing" | "expectedLatestRevision">,
 	store: EntitlementOverrideStore = createEntitlementOverrideStore(),
-): Promise<{ target: EntitlementOverrideRevision; audit: EntitlementOverrideDraft; latestRevision: number }> {
+): Promise<EntitlementOverrideRevocationPlan & { latestRevision: number }> {
 	const organizationId = requiredText(input.organizationId, "Organization ID");
 	const actorUserId = requiredText(input.actorUserId, "Actor user ID");
 	const reason = requiredText(input.reason, "Reason");
@@ -320,7 +533,12 @@ export async function previewEntitlementOverrideRevocation(
 export async function revokeEntitlementOverride(
 	input: Omit<Parameters<typeof planEntitlementOverrideRevocation>[0], "existing">,
 	store: EntitlementOverrideStore = createEntitlementOverrideStore(),
-): Promise<{ revokedRevision: number; auditRevision: EntitlementOverrideRevision }> {
+): Promise<{
+	action: "cancel" | "revoke";
+	revokedRevision: number;
+	restoredPredecessorRevision: number | null;
+	auditRevision: EntitlementOverrideRevision;
+}> {
 	const organizationId = requiredText(input.organizationId, "Organization ID");
 	const actorUserId = requiredText(input.actorUserId, "Actor user ID");
 	const reason = requiredText(input.reason, "Reason");
@@ -328,14 +546,39 @@ export async function revokeEntitlementOverride(
 		await assertOrganizationAndActor(transaction, organizationId, actorUserId);
 		const existing = await transaction.list(organizationId);
 		const plan = planEntitlementOverrideRevocation({ ...input, organizationId, actorUserId, reason, existing });
-		if (!(await transaction.revokeIfActive({ organizationId, revision: input.revision, now: input.now }))) {
+		if (
+			!(await transaction.setRevocationIfUnscheduled({
+				organizationId,
+				revision: input.revision,
+				revokedAt: input.now,
+			}))
+		) {
 			throw new CustomEntitlementOperatorError(
 				"concurrent-write",
 				`Revision ${input.revision} changed without honoring the organization lock`,
 			);
 		}
+		if (
+			plan.restorePredecessor &&
+			!(await transaction.rescheduleRevocationIfMatches({
+				organizationId,
+				revision: plan.restorePredecessor.revision,
+				expectedRevokedAt: plan.restorePredecessor.expectedRevokedAt,
+				revokedAt: plan.restorePredecessor.revokedAt,
+			}))
+		) {
+			throw new CustomEntitlementOperatorError(
+				"concurrent-write",
+				`Predecessor revision ${plan.restorePredecessor.revision} changed without honoring the organization lock`,
+			);
+		}
 		const auditRevision = await transaction.insert(plan.audit);
-		return { revokedRevision: plan.target.revision, auditRevision };
+		return {
+			action: plan.action,
+			revokedRevision: plan.target.revision,
+			restoredPredecessorRevision: plan.restorePredecessor?.revision ?? null,
+			auditRevision,
+		};
 	});
 }
 
@@ -445,20 +688,33 @@ function createTransactionStore(tx: DbTransaction): EntitlementOverrideTransacti
 				throw new CustomEntitlementOperatorError("concurrent-write", "Entitlement revision was not inserted");
 			return mapRevision(inserted);
 		},
-		async revokeIfActive(input) {
+		async setRevocationIfUnscheduled(input) {
 			const [updated] = await tx
 				.update(organizationEntitlementOverrides)
-				.set({ revokedAt: input.now })
+				.set({ revokedAt: input.revokedAt })
 				.where(
 					and(
 						eq(organizationEntitlementOverrides.organizationId, input.organizationId),
 						eq(organizationEntitlementOverrides.revision, input.revision),
 						isNull(organizationEntitlementOverrides.revokedAt),
-						lte(organizationEntitlementOverrides.effectiveFrom, input.now),
 						or(
 							isNull(organizationEntitlementOverrides.effectiveUntil),
-							gt(organizationEntitlementOverrides.effectiveUntil, input.now),
+							gt(organizationEntitlementOverrides.effectiveUntil, input.revokedAt),
 						),
+					),
+				)
+				.returning({ revision: organizationEntitlementOverrides.revision });
+			return Boolean(updated);
+		},
+		async rescheduleRevocationIfMatches(input) {
+			const [updated] = await tx
+				.update(organizationEntitlementOverrides)
+				.set({ revokedAt: input.revokedAt })
+				.where(
+					and(
+						eq(organizationEntitlementOverrides.organizationId, input.organizationId),
+						eq(organizationEntitlementOverrides.revision, input.revision),
+						eq(organizationEntitlementOverrides.revokedAt, input.expectedRevokedAt),
 					),
 				)
 				.returning({ revision: organizationEntitlementOverrides.revision });

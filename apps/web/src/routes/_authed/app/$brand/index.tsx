@@ -4,30 +4,32 @@
  * Shows visibility charts, citation trends, and stats.
  * Displays onboarding wizard if brand is not yet onboarded.
  */
-import { useEffect } from "react";
-import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
+
 import {
-	IconArrowRight,
-	IconEye,
-	IconList,
 	IconActivity,
+	IconArrowRight,
 	IconClock,
+	IconEye,
 	IconInfoCircle,
+	IconList,
 	IconRefresh,
 	IconSpeakerphone,
 } from "@tabler/icons-react";
+import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useEffect } from "react";
 import PromptWizard from "@/components/prompt-wizard";
+import { TrendChart } from "@/components/trend-chart";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
-import { TrendChart } from "@/components/trend-chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import type { ClientConfig } from "@workspace/config/types";
 import { setPersonProperties } from "@/lib/posthog";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getPromptEditorCapacityFn } from "@/server/prompt-capacity";
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -88,6 +90,9 @@ function formatRunFrequency(hours: number): string {
 }
 
 export const Route = createFileRoute("/_authed/app/$brand/")({
+	loader: async ({ params }) => ({
+		promptCapacity: await getPromptEditorCapacityFn({ data: { brandId: params.brand } }),
+	}),
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -166,6 +171,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 
 function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
+	const { promptCapacity } = Route.useLoaderData();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
 	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
@@ -292,6 +298,7 @@ function DashboardPage() {
 					</p>
 				</div>
 				<PromptWizard
+					capacity={promptCapacity}
 					onComplete={() => {
 						const template = clientConfig?.branding.onboardingRedirectUrlTemplate;
 						if (template) {
@@ -463,10 +470,12 @@ function DashboardPage() {
 									<IconActivity className="h-4 w-4 flex-shrink-0" />
 									<Skeleton className="h-4 w-32" />
 								</div>
-								<div className="flex items-center gap-2">
-									<IconClock className="h-4 w-4 flex-shrink-0" />
-									<Skeleton className="h-4 w-24" />
-								</div>
+								{clientConfig?.mode !== "cloud" && (
+									<div className="flex items-center gap-2">
+										<IconClock className="h-4 w-4 flex-shrink-0" />
+										<Skeleton className="h-4 w-24" />
+									</div>
+								)}
 								<div className="flex items-center gap-2">
 									<IconRefresh className="h-4 w-4 flex-shrink-0" />
 									<Skeleton className="h-4 w-24" />
@@ -486,12 +495,14 @@ function DashboardPage() {
 									value={totalRuns.toLocaleString()}
 									tooltip="Total number of times we have evaluated prompts against LLMs in the last 30 days. Each prompt is evaluated multiple times across different AI models."
 								/>
-								<StatWithTooltip
-									icon={IconClock}
-									label="run frequency"
-									value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
-									tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
-								/>
+								{clientConfig?.mode !== "cloud" && (
+									<StatWithTooltip
+										icon={IconClock}
+										label="run frequency"
+										value={formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24)}
+										tooltip={`Prompts are automatically evaluated every ${formatRunFrequency(brand?.delayOverrideHours ?? clientConfig?.defaultDelayHours ?? 24).replace("~", "")} on average to track changes in AI model responses over time.`}
+									/>
+								)}
 								<StatWithTooltip
 									icon={IconRefresh}
 									label="last updated"

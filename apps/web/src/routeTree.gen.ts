@@ -61,6 +61,7 @@ import { Route as AuthedAppBrandSettingsCompetitorsRouteImport } from "./routes/
 import { Route as AuthedAppBrandSettingsBrandRouteImport } from "./routes/_authed/app/$brand/settings/brand";
 import { Route as AuthedAppBrandPromptsEditRouteImport } from "./routes/_authed/app/$brand/prompts/edit";
 import { Route as AuthedAppBrandPromptsPromptIdRouteImport } from "./routes/_authed/app/$brand/prompts/$promptId";
+import { Route as AuthedAppWorkspacesOrganizationBillingRouteImport } from "./routes/_authed/app/workspaces/$organization/billing";
 
 const AuthedRoute = AuthedRouteImport.update({
 	id: "/_authed",
@@ -149,6 +150,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 const AuthedAppNewRoute = AuthedAppNewRouteImport.update({
 	id: "/new",
 	path: "/new",
+	getParentRoute: () => AuthedAppRoute,
+} as any);
+const AuthedAppWorkspacesOrganizationBillingRoute = AuthedAppWorkspacesOrganizationBillingRouteImport.update({
+	id: "/workspaces/$organization/billing",
+	path: "/workspaces/$organization/billing",
 	getParentRoute: () => AuthedAppRoute,
 } as any);
 const AuthedAppBrandRoute = AuthedAppBrandRouteImport.update({
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
 	"/admin/workflows": typeof AuthedAdminWorkflowsRoute;
 	"/app/$brand": typeof AuthedAppBrandRouteWithChildren;
 	"/app/new": typeof AuthedAppNewRoute;
+	"/app/workspaces/$organization/billing": typeof AuthedAppWorkspacesOrganizationBillingRoute;
 	"/api/auth/$": typeof ApiAuthSplatRoute;
 	"/admin/": typeof AuthedAdminIndexRoute;
 	"/app/": typeof AuthedAppIndexRoute;
@@ -386,6 +393,7 @@ export interface FileRoutesByTo {
 	"/admin/tools": typeof AuthedAdminToolsRoute;
 	"/admin/workflows": typeof AuthedAdminWorkflowsRoute;
 	"/app/new": typeof AuthedAppNewRoute;
+	"/app/workspaces/$organization/billing": typeof AuthedAppWorkspacesOrganizationBillingRoute;
 	"/api/auth/$": typeof ApiAuthSplatRoute;
 	"/admin": typeof AuthedAdminIndexRoute;
 	"/app": typeof AuthedAppIndexRoute;
@@ -441,6 +449,7 @@ export interface FileRoutesById {
 	"/_authed/admin/workflows": typeof AuthedAdminWorkflowsRoute;
 	"/_authed/app/$brand": typeof AuthedAppBrandRouteWithChildren;
 	"/_authed/app/new": typeof AuthedAppNewRoute;
+	"/_authed/app/workspaces/$organization/billing": typeof AuthedAppWorkspacesOrganizationBillingRoute;
 	"/api/auth/$": typeof ApiAuthSplatRoute;
 	"/_authed/admin/": typeof AuthedAdminIndexRoute;
 	"/_authed/app/": typeof AuthedAppIndexRoute;
@@ -496,6 +505,7 @@ export interface FileRouteTypes {
 		| "/admin/workflows"
 		| "/app/$brand"
 		| "/app/new"
+		| "/app/workspaces/$organization/billing"
 		| "/api/auth/$"
 		| "/admin/"
 		| "/app/"
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
 		| "/admin/tools"
 		| "/admin/workflows"
 		| "/app/new"
+		| "/app/workspaces/$organization/billing"
 		| "/api/auth/$"
 		| "/admin"
 		| "/app"
@@ -599,6 +610,7 @@ export interface FileRouteTypes {
 		| "/_authed/admin/workflows"
 		| "/_authed/app/$brand"
 		| "/_authed/app/new"
+		| "/_authed/app/workspaces/$organization/billing"
 		| "/api/auth/$"
 		| "/_authed/admin/"
 		| "/_authed/app/"
@@ -790,6 +802,13 @@ declare module "@tanstack/react-router" {
 			path: "/new";
 			fullPath: "/app/new";
 			preLoaderRoute: typeof AuthedAppNewRouteImport;
+			parentRoute: typeof AuthedAppRoute;
+		};
+		"/_authed/app/workspaces/$organization/billing": {
+			id: "/_authed/app/workspaces/$organization/billing";
+			path: "/workspaces/$organization/billing";
+			fullPath: "/app/workspaces/$organization/billing";
+			preLoaderRoute: typeof AuthedAppWorkspacesOrganizationBillingRouteImport;
 			parentRoute: typeof AuthedAppRoute;
 		};
 		"/_authed/app/$brand": {
@@ -1090,12 +1109,14 @@ const AuthedAppBrandRouteWithChildren = AuthedAppBrandRoute._addFileChildren(Aut
 interface AuthedAppRouteChildren {
 	AuthedAppBrandRoute: typeof AuthedAppBrandRouteWithChildren;
 	AuthedAppNewRoute: typeof AuthedAppNewRoute;
+	AuthedAppWorkspacesOrganizationBillingRoute: typeof AuthedAppWorkspacesOrganizationBillingRoute;
 	AuthedAppIndexRoute: typeof AuthedAppIndexRoute;
 }
 
 const AuthedAppRouteChildren: AuthedAppRouteChildren = {
 	AuthedAppBrandRoute: AuthedAppBrandRouteWithChildren,
 	AuthedAppNewRoute: AuthedAppNewRoute,
+	AuthedAppWorkspacesOrganizationBillingRoute: AuthedAppWorkspacesOrganizationBillingRoute,
 	AuthedAppIndexRoute: AuthedAppIndexRoute,
 };
 

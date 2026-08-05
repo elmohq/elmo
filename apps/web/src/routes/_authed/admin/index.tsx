@@ -1,15 +1,12 @@
 /**
  * /admin - Admin dashboard with brand statistics and charts
  */
-import { useEffect, useState, type ReactNode } from "react";
+
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import type { ClientConfig } from "@workspace/config/types";
-import { getAppName } from "@/lib/route-head";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
 import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
 import {
 	Dialog,
 	DialogContent,
@@ -19,10 +16,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@workspace/ui/components/dialog";
+import { Input } from "@workspace/ui/components/input";
+import { Label } from "@workspace/ui/components/label";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@workspace/ui/components/chart";
-import { Settings, TrendingUp, TrendingDown } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workspace/ui/components/table";
+import { Settings, TrendingDown, TrendingUp } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { getAppName } from "@/lib/route-head";
 import { getAdminStatsFn, updateDelayOverrideFn } from "@/server/admin";
 
 interface BrandStats {
@@ -266,6 +267,8 @@ export const Route = createFileRoute("/_authed/admin/")({
 
 function AdminDashboard() {
 	const defaultDelayHours = useDefaultDelayHours();
+	const context = useRouteContext({ strict: false }) as { clientConfig?: ClientConfig };
+	const showLegacyCadence = context.clientConfig?.mode !== "cloud";
 	const [brands, setBrands] = useState<BrandStats[]>([]);
 	const [brandsOverTime, setBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
 	const [activeBrandsOverTime, setActiveBrandsOverTime] = useState<{ date: string; count: number }[]>([]);
@@ -581,8 +584,8 @@ function AdminDashboard() {
 									<TableHead className="text-right">Runs (7d)</TableHead>
 									<TableHead className="text-right">Runs (30d)</TableHead>
 									<TableHead>Last Run</TableHead>
-									<TableHead>Run Delay</TableHead>
-									<TableHead>Actions</TableHead>
+									{showLegacyCadence && <TableHead>Run Delay</TableHead>}
+									{showLegacyCadence && <TableHead>Actions</TableHead>}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -590,7 +593,7 @@ function AdminDashboard() {
 									const currentDelayHours = brand.delayOverrideHours ?? defaultDelayHours;
 									const currentDelayMs = currentDelayHours * 60 * 60 * 1000;
 									const isOverdue =
-										brand.lastPromptRunAt && brand.activePrompts > 0
+										showLegacyCadence && brand.lastPromptRunAt && brand.activePrompts > 0
 											? new Date().getTime() - new Date(brand.lastPromptRunAt).getTime() > currentDelayMs
 											: false;
 
@@ -634,17 +637,21 @@ function AdminDashboard() {
 													<span className="text-muted-foreground">Never</span>
 												)}
 											</TableCell>
-											<TableCell>
-												<div className="space-y-1">
-													<div className="font-medium">{formatDelayHours(currentDelayHours)}</div>
-													<span className="text-xs text-muted-foreground">
-														{brand.delayOverrideHours !== null ? "Custom" : "Default"}
-													</span>
-												</div>
-											</TableCell>
-											<TableCell>
-												<DelayOverrideDialog brand={brand} onUpdate={fetchBrandStats} />
-											</TableCell>
+											{showLegacyCadence && (
+												<TableCell>
+													<div className="space-y-1">
+														<div className="font-medium">{formatDelayHours(currentDelayHours)}</div>
+														<span className="text-xs text-muted-foreground">
+															{brand.delayOverrideHours !== null ? "Custom" : "Default"}
+														</span>
+													</div>
+												</TableCell>
+											)}
+											{showLegacyCadence && (
+												<TableCell>
+													<DelayOverrideDialog brand={brand} onUpdate={fetchBrandStats} />
+												</TableCell>
+											)}
 										</TableRow>
 									);
 								})}

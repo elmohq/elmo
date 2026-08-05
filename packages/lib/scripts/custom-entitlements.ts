@@ -8,6 +8,8 @@ const HELP = `Manage audited custom cloud entitlement revisions.
 Usage:
   custom-entitlements set --organization-id ID --actor-user-id USER --reason TEXT --input FILE|-
     [--effective-from ISO] [--effective-until ISO] [--expected-revision N --apply]
+  custom-entitlements replace --organization-id ID --actor-user-id USER --reason TEXT --revision N --input FILE|-
+    [--effective-from ISO] [--effective-until ISO] [--expected-revision N --apply]
   custom-entitlements revoke --organization-id ID --actor-user-id USER --reason TEXT --revision N
     [--expected-revision N --apply]
   custom-entitlements current --organization-id ID [--at ISO]
@@ -16,7 +18,9 @@ Usage:
 Mutation commands are dry-run by default. Applying requires both --apply and
 the --expected-revision printed by a fresh dry run. Use --env-file PATH to load
 DATABASE_URL before connecting. No command runs migrations or prints the
-database URL or full entitlement payload.`;
+database URL or full entitlement payload. The revoke action cancels a future
+revision or revokes the currently active revision; expired and already-revoked
+revisions are immutable.`;
 
 const { positionals, values } = parseArgs({
 	allowPositionals: true,
@@ -102,7 +106,14 @@ function contractSummary(revision: {
 }
 
 async function readPayload(path: string): Promise<unknown> {
-	const contents = path === "-" ? await readFile(0, "utf8") : await readFile(path, "utf8");
+	let contents: string;
+	if (path === "-") {
+		process.stdin.setEncoding("utf8");
+		contents = "";
+		for await (const chunk of process.stdin) contents += chunk;
+	} else {
+		contents = await readFile(path, "utf8");
+	}
 	try {
 		return JSON.parse(contents);
 	} catch {
@@ -112,8 +123,8 @@ async function readPayload(path: string): Promise<unknown> {
 
 async function main(): Promise<void> {
 	const action = positionals[0];
-	if (!action || positionals.length !== 1 || !["set", "revoke", "current", "list"].includes(action)) {
-		throw new Error(`Expected exactly one action: set, revoke, current, or list\n\n${HELP}`);
+	if (!action || positionals.length !== 1 || !["set", "replace", "revoke", "current", "list"].includes(action)) {
+		throw new Error(`Expected exactly one action: set, replace, revoke, current, or list\n\n${HELP}`);
 	}
 
 	const operator = await import("../src/cloud/custom-entitlements");
@@ -170,6 +181,67 @@ async function main(): Promise<void> {
 		return;
 	}
 
+	if (action === "replace") {
+		const common = mutationArgs();
+		const payload = await readPayload(required(values.input, "input"));
+		const predecessorRevision = integer(values.revision, "revision", 1);
+		const now = new Date();
+		const transitionAt = date(values["effective-from"], now, "effective-from");
+		const effectiveUntil = values["effective-until"] ? date(values["effective-until"], now, "effective-until") : null;
+		if (!values.apply) {
+			const preview = await operator.previewEntitlementOverrideReplacement({
+				...common,
+				predecessorRevision,
+				payload,
+				now,
+				transitionAt,
+				effectiveUntil,
+			});
+			console.log(
+				JSON.stringify(
+					{
+						action: "replace",
+						mode: "dry-run",
+						organizationId: common.organizationId,
+						endedRevision: preview.target.revision,
+						transitionAt: preview.transitionAt.toISOString(),
+						expectedRevisionForApply: preview.latestRevision,
+						successor: contractSummary(preview.successor),
+					},
+					null,
+					2,
+				),
+			);
+			return;
+		}
+		const applied = await operator.replaceEntitlementOverride({
+			...common,
+			predecessorRevision,
+			payload,
+			now,
+			transitionAt,
+			effectiveUntil,
+			expectedLatestRevision: integer(values["expected-revision"], "expected-revision", 0),
+		});
+		console.log(
+			JSON.stringify(
+				{
+					action: "replace",
+					mode: "applied",
+					organizationId: common.organizationId,
+					actorUserId: common.actorUserId,
+					reason: common.reason,
+					endedRevision: applied.endedRevision,
+					transitionAt: applied.transitionAt.toISOString(),
+					successor: contractSummary(applied.successor),
+				},
+				null,
+				2,
+			),
+		);
+		return;
+	}
+
 	if (action === "revoke") {
 		const common = mutationArgs();
 		const revision = integer(values.revision, "revision", 1);
@@ -179,10 +251,11 @@ async function main(): Promise<void> {
 			console.log(
 				JSON.stringify(
 					{
-						action: "revoke",
+						action: preview.action,
 						mode: "dry-run",
 						organizationId: common.organizationId,
 						revokedRevision: preview.target.revision,
+						restoredPredecessorRevision: preview.restorePredecessor?.revision ?? null,
 						auditRevision: preview.audit.revision,
 						expectedRevisionForApply: preview.latestRevision,
 					},
@@ -201,12 +274,13 @@ async function main(): Promise<void> {
 		console.log(
 			JSON.stringify(
 				{
-					action: "revoke",
+					action: applied.action,
 					mode: "applied",
 					organizationId: common.organizationId,
 					actorUserId: common.actorUserId,
 					reason: common.reason,
 					revokedRevision: applied.revokedRevision,
+					restoredPredecessorRevision: applied.restoredPredecessorRevision,
 					auditRevision: applied.auditRevision.revision,
 				},
 				null,

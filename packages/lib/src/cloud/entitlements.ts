@@ -1,7 +1,7 @@
 import {
-	resolveEntitlements,
 	type CloudSubscriptionEntitlementSnapshot,
 	type ResolvedEntitlements,
+	resolveEntitlements,
 } from "@workspace/config/entitlements";
 import type { DeploymentMode } from "@workspace/config/types";
 import { and, desc, eq, gt, isNull, lte, or } from "drizzle-orm";
@@ -53,7 +53,7 @@ export function createOrganizationBillingSnapshotStore(conn: DbConnection = db):
 					and(
 						eq(organizationEntitlementOverrides.organizationId, organizationId),
 						lte(organizationEntitlementOverrides.effectiveFrom, now),
-						isNull(organizationEntitlementOverrides.revokedAt),
+						or(isNull(organizationEntitlementOverrides.revokedAt), gt(organizationEntitlementOverrides.revokedAt, now)),
 						or(
 							isNull(organizationEntitlementOverrides.effectiveUntil),
 							gt(organizationEntitlementOverrides.effectiveUntil, now),

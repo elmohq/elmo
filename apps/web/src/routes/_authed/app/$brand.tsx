@@ -5,27 +5,28 @@
  * Shows sidebar navigation, header, and optional demo banner.
  * If brand exists in auth but not in DB, shows onboarding.
  */
-import { createFileRoute, Outlet, notFound } from "@tanstack/react-router";
-import { getAppName } from "@/lib/route-head";
+import { createFileRoute, notFound, Outlet } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import {
-	requireAuthSession,
-	isAdmin,
-	hasReportAccess,
-	checkOrgAccess,
-	listUserOrganizations,
-} from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
 import type { BrandWithPrompts } from "@workspace/lib/db/schema";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { SidebarInset, SidebarProvider } from "@workspace/ui/components/sidebar";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SiteHeader } from "@/components/site-header";
 import BrandOnboarding from "@/components/brand-onboarding";
+import { SiteHeader } from "@/components/site-header";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
+import {
+	checkOrgAccess,
+	hasReportAccess,
+	isAdmin,
+	listUserOrganizations,
+	requireAuthSession,
+} from "@/lib/auth/helpers";
+import { getDeployment } from "@/lib/config/server";
+import { getAppName } from "@/lib/route-head";
 
 const getBrandData = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
@@ -38,6 +39,7 @@ const getBrandData = createServerFn({ method: "GET" })
 			isAdmin: boolean;
 			hasReportAccess: boolean;
 			hasAccess: boolean;
+			allowsMissingBrandOnboarding: boolean;
 		}> => {
 			const session = await requireAuthSession();
 
@@ -48,7 +50,14 @@ const getBrandData = createServerFn({ method: "GET" })
 			if (brand) {
 				const hasAccess = await checkOrgAccess(session.user.id, brand.organizationId);
 				if (!hasAccess) {
-					return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+					return {
+						brand: null,
+						brandName: null,
+						isAdmin: false,
+						hasReportAccess: false,
+						hasAccess: false,
+						allowsMissingBrandOnboarding: false,
+					};
 				}
 
 				const brandPrompts = await db.query.prompts.findMany({
@@ -64,6 +73,7 @@ const getBrandData = createServerFn({ method: "GET" })
 					isAdmin: isAdmin(session),
 					hasReportAccess: hasReportAccess(session),
 					hasAccess: true,
+					allowsMissingBrandOnboarding: false,
 				};
 			}
 
@@ -71,7 +81,14 @@ const getBrandData = createServerFn({ method: "GET" })
 			// Only this missing-brand path may interpret the URL id as an org id.
 			const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
 			if (!hasAccess) {
-				return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+				return {
+					brand: null,
+					brandName: null,
+					isAdmin: false,
+					hasReportAccess: false,
+					hasAccess: false,
+					allowsMissingBrandOnboarding: false,
+				};
 			}
 			const orgs = await listUserOrganizations(session.user.id);
 			const orgMeta = orgs.find((organization) => organization.id === data.brandId);
@@ -82,6 +99,7 @@ const getBrandData = createServerFn({ method: "GET" })
 				isAdmin: isAdmin(session),
 				hasReportAccess: hasReportAccess(session),
 				hasAccess: true,
+				allowsMissingBrandOnboarding: getDeployment().mode === "whitelabel",
 			};
 		},
 	);
@@ -138,6 +156,9 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 		const result = await getBrandData({ data: { brandId: params.brand } });
 
 		if (!result.hasAccess) {
+			throw notFound();
+		}
+		if (!result.brand && !result.allowsMissingBrandOnboarding) {
 			throw notFound();
 		}
 

@@ -4,15 +4,16 @@
  * Editor to add/edit/remove prompts.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { db } from "@workspace/lib/db/db";
 import { prompts } from "@workspace/lib/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { PromptsEditor } from "@/components/prompts-editor";
 import { Skeleton } from "@workspace/ui/components/skeleton";
+import { desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { PromptsEditor } from "@/components/prompts-editor";
+import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getPromptEditorCapacityFn } from "@/server/prompt-capacity";
 
 const getPromptsForEditing = createServerFn({ method: "GET" })
 	.validator(z.object({ brandId: z.string() }))
@@ -52,8 +53,11 @@ function PromptsSettingsSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 	loader: async ({ params }) => {
-		const brandPrompts = await getPromptsForEditing({ data: { brandId: params.brand } });
-		return { prompts: brandPrompts };
+		const [brandPrompts, capacity] = await Promise.all([
+			getPromptsForEditing({ data: { brandId: params.brand } }),
+			getPromptEditorCapacityFn({ data: { brandId: params.brand } }),
+		]);
+		return { prompts: brandPrompts, capacity };
 	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
@@ -70,7 +74,7 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/prompts")({
 });
 
 function PromptsSettingsPage() {
-	const { prompts: brandPrompts } = Route.useLoaderData();
+	const { prompts: brandPrompts, capacity } = Route.useLoaderData();
 	const { brand: brandId } = Route.useParams();
 
 	return (
@@ -79,6 +83,7 @@ function PromptsSettingsPage() {
 			brandId={brandId}
 			pageTitle="Prompts"
 			pageDescription="Add, edit, or remove your brand tracking keywords and prompts"
+			capacity={capacity}
 		/>
 	);
 }
