@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import * as Sentry from "@sentry/node";
 import { validateCloudTrackingTargets } from "@workspace/cloud";
 import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
-import { requireEnvVars } from "@workspace/config/env";
 import { parseProviderCostEstimates, validateProviderCostEstimateCoverage } from "@workspace/config/provider-costs";
 import { getDeployment } from "@workspace/deployment";
 import { CLOUD_BRAND_ANALYSIS_QUEUE } from "@workspace/lib/cloud/brand-analysis-admission";
@@ -12,11 +11,12 @@ import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
 import { CLOUD_PROVIDER_SPEND_REPORT_QUEUE, CLOUD_PROVIDER_SPEND_REPORT_SCHEDULE } from "./jobs/provider-spend-report";
+import { validateWorkerStartupEnv } from "./startup-env";
 import { shutdownTelemetry } from "./telemetry";
 
 const WORKER_READY_FILE = "/tmp/elmo-worker-ready";
 
-if (process.env.DEPLOYMENT_MODE === "cloud") requireEnvVars(["SENTRY_DSN"]);
+validateWorkerStartupEnv();
 if (process.env.SENTRY_DSN) {
 	Sentry.init({
 		dsn: process.env.SENTRY_DSN,
