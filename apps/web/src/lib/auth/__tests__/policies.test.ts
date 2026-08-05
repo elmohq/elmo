@@ -29,7 +29,7 @@ import {
 	resolveBrandOrganization,
 	type RequestInfo,
 } from "@/lib/auth/policies";
-import { createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
+import { CLOUD_FEATURES, createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
 
 // ============================================================================
 // Helpers
@@ -319,6 +319,27 @@ describe("evaluateDeploymentPolicy", () => {
 				adminApiKeys: API_KEYS,
 			});
 			expect(result.action).toBe("allow");
+		});
+	});
+
+	// ────────────────────────────────────────────────────────────
+	// Cloud mode: instance-wide admin keys must never cross tenants
+	// ────────────────────────────────────────────────────────────
+	describe("cloud mode", () => {
+		const features = CLOUD_FEATURES;
+
+		it("blocks data API access even with a valid instance admin key", () => {
+			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
+				adminApiKeys: API_KEYS,
+			});
+			expect(result).toMatchObject({ action: "block", status: 403, error: "Forbidden" });
+		});
+
+		it("keeps API documentation public", () => {
+			expect(evaluateDeploymentPolicy(features, req("GET", "/api/v1/docs"))).toEqual({ action: "allow" });
+			expect(evaluateDeploymentPolicy(features, req("GET", "/api/v1/openapi.json"))).toEqual({
+				action: "serve-openapi",
+			});
 		});
 	});
 

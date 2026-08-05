@@ -109,6 +109,19 @@ export function evaluateDeploymentPolicy(
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
+	// ADMIN_API_KEYS intentionally grant instance-wide access for self-hosted
+	// operators. They cannot safely authenticate a multi-tenant cloud request,
+	// so cloud keeps data endpoints closed until organization-scoped API keys
+	// are available. Documentation and the OpenAPI document remain public.
+	if (features.billing && isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "Organization-scoped API keys are required for cloud API access",
+		};
+	}
+
 	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
 		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
 		if (keyResult !== "allow") {
