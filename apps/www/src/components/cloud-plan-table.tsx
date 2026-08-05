@@ -57,7 +57,7 @@ const comparisonRows: ComparisonRow[] = [
 	{
 		label: "Seats",
 		value: () => "Unlimited",
-		custom: "Unlimited + SSO",
+		custom: "Unlimited",
 	},
 ];
 
