@@ -192,7 +192,7 @@ function ChartSection({
 	const brandForProvider: Brand | null = batchChartData?.brand
 		? {
 				id: batchChartData.brand.id,
-				organizationId: batchChartData.brand.id,
+				organizationId: batchChartData.brand.organizationId,
 				name: batchChartData.brand.name,
 				website: "",
 				additionalDomains: [],

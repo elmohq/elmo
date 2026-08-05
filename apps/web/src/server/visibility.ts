@@ -29,6 +29,7 @@ export interface BatchChartDataResponse {
 	chartData: ProcessedBatchChartDataPoint[];
 	brand: {
 		id: string;
+		organizationId: string;
 		name: string;
 	};
 	competitors: Array<{
@@ -93,7 +94,11 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		// Get brand and competitors from PostgreSQL
 		const [brandResult, competitorsResult] = await Promise.all([
-			db.select({ id: brands.id, name: brands.name }).from(brands).where(eq(brands.id, data.brandId)).limit(1),
+			db
+				.select({ id: brands.id, organizationId: brands.organizationId, name: brands.name })
+				.from(brands)
+				.where(eq(brands.id, data.brandId))
+				.limit(1),
 			db
 				.select({ id: competitors.id, name: competitors.name })
 				.from(competitors)
@@ -111,7 +116,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 		if (promptIds.length === 0) {
 			return {
 				chartData: [],
-				brand: { id: brand.id, name: brand.name },
+				brand: { id: brand.id, organizationId: brand.organizationId, name: brand.name },
 				competitors: competitorsResult,
 				dateRange: { fromDate: fromDateStr, toDate: toDateStr },
 			};
@@ -130,7 +135,7 @@ export const getBatchChartDataFn = createServerFn({ method: "GET" })
 
 		return {
 			chartData,
-			brand: { id: brand.id, name: brand.name },
+			brand: { id: brand.id, organizationId: brand.organizationId, name: brand.name },
 			competitors: competitorsResult,
 			dateRange: {
 				fromDate: fromDateStr,
