@@ -2,11 +2,8 @@
 export function safeReturnTo(returnTo: string | undefined): string {
 	if (!returnTo) return "/app";
 	if (returnTo.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
-	try {
-		const url = new URL(returnTo, window.location.origin);
-		if (url.origin !== window.location.origin) return "/app";
-		return `${url.pathname}${url.search}${url.hash}`;
-	} catch {
-		return "/app";
-	}
+	// Keep this helper deterministic during SSR as well as in the browser. App
+	// callers only need relative destinations, so absolute URLs are rejected
+	// even when they happen to name the current origin.
+	return "/app";
 }
