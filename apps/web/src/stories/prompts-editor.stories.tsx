@@ -44,3 +44,10 @@ export const Default: Story = {
 		pageDescription: "Add, edit, or remove your brand tracking keywords and prompts",
 	},
 };
+
+export const CloudOrganizationCapacity: Story = {
+	args: {
+		...Default.args,
+		capacity: { scope: "organization-enabled", limit: 50, usedOutsideEditor: 20 },
+	},
+};

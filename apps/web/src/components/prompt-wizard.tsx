@@ -5,30 +5,37 @@
  * and edits before saving. Replaces the prior 4-step wizard that required
  * DataForSEO + Anthropic in tandem.
  */
-import { useState, useCallback, useEffect, memo, useMemo } from "react";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { Loader2, AlertCircle, Play, Rocket } from "lucide-react";
-import { TagsInput } from "@workspace/ui/components/tags-input";
 import { Separator } from "@workspace/ui/components/separator";
-import { useBrand, brandKeys } from "@/hooks/use-brands";
+import { TagsInput } from "@workspace/ui/components/tags-input";
+import { AlertCircle, Loader2, Play, Rocket } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { type CompetitorEntry, CompetitorsEditor, newCompetitorEntry } from "@/components/competitors-editor";
+import {
+	type EditablePrompt,
+	newPromptEntry,
+	type PromptEditorCapacity,
+	PromptsListEditor,
+} from "@/components/prompts-list-editor";
+import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
+import { trackEvent } from "@/lib/posthog";
 import {
-	startAnalyzeBrandFn,
-	getAnalyzeBrandStatusFn,
 	cancelAnalyzeBrandFn,
+	getAnalyzeBrandStatusFn,
+	startAnalyzeBrandFn,
 	updateOnboardedBrandFn,
 } from "@/server/onboarding";
-import { trackEvent } from "@/lib/posthog";
-import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
-import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
 
 interface PromptWizardProps {
 	onComplete: () => void;
+	capacity?: PromptEditorCapacity;
 }
 
 /** Brand analysis runs in the worker (LLM + web search, ~1 min); the client polls for the result. */
@@ -77,7 +84,7 @@ const EditableTagsInput = memo(
 );
 EditableTagsInput.displayName = "EditableTagsInput";
 
-export default function PromptWizard({ onComplete }: PromptWizardProps) {
+export default function PromptWizard({ onComplete, capacity }: PromptWizardProps) {
 	const { brand } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
@@ -360,7 +367,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 						bottom.
 					</p>
 				</div>
-				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} />
+				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} capacity={capacity} />
 			</div>
 
 			{submitError && (

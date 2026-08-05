@@ -1,9 +1,9 @@
-import { useMemo, useState, useRef } from "react";
-import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
-import { updatePromptsFn } from "@/server/prompts";
-import { trackEvent } from "@/lib/posthog";
-import { PromptsListEditor, type EditablePrompt } from "@/components/prompts-list-editor";
+import { useMemo, useRef, useState } from "react";
+import { type EditablePrompt, type PromptEditorCapacity, PromptsListEditor } from "@/components/prompts-list-editor";
 import { UnsavedChangesBar } from "@/components/unsaved-changes-bar";
+import { useInvalidatePromptsSummary } from "@/hooks/use-prompts-summary";
+import { trackEvent } from "@/lib/posthog";
+import { updatePromptsFn } from "@/server/prompts";
 
 interface PromptRow {
 	id: string;
@@ -18,6 +18,7 @@ interface PromptsEditorProps {
 	brandId: string;
 	pageTitle: string;
 	pageDescription: string;
+	capacity?: PromptEditorCapacity;
 }
 
 /** Same ordering the route loader asks Postgres for, so the list a save leaves
@@ -43,7 +44,7 @@ function sameTags(a: string[], b: string[]) {
 	return [...a].sort().every((t, i) => t === sortedB[i]);
 }
 
-export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription }: PromptsEditorProps) {
+export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescription, capacity }: PromptsEditorProps) {
 	const [baseline, setBaseline] = useState<EditablePrompt[]>(() => toEditablePrompts(initialPrompts));
 	const [prompts, setPrompts] = useState<EditablePrompt[]>(baseline);
 	const [isSaving, setIsSaving] = useState(false);
@@ -149,7 +150,7 @@ export function PromptsEditor({ initialPrompts, brandId, pageTitle, pageDescript
 				</div>
 			</div>
 
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} changedKeys={changedKeys} capacity={capacity} />
 
 			<UnsavedChangesBar
 				isDirty={isDirty}

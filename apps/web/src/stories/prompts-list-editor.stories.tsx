@@ -2,7 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
 import { useState } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import { type EditablePrompt, newPromptEntry, PromptsListEditor } from "@/components/prompts-list-editor";
+import {
+	type EditablePrompt,
+	newPromptEntry,
+	type PromptEditorCapacity,
+	PromptsListEditor,
+} from "@/components/prompts-list-editor";
 
 const meta = {
 	title: "Components/PromptsListEditor",
@@ -11,12 +16,20 @@ const meta = {
 export default meta;
 
 /** The table layout is `hidden md:grid` — widen the canvas past 768px to see it. */
-function Harness({ initial, showSystemTags = true }: { initial: EditablePrompt[]; showSystemTags?: boolean }) {
+function Harness({
+	initial,
+	showSystemTags = true,
+	capacity,
+}: {
+	initial: EditablePrompt[];
+	showSystemTags?: boolean;
+	capacity?: PromptEditorCapacity;
+}) {
 	const [prompts, setPrompts] = useState(initial);
 
 	return (
 		<div className="p-8">
-			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} />
+			<PromptsListEditor prompts={prompts} onChange={setPrompts} showSystemTags={showSystemTags} capacity={capacity} />
 		</div>
 	);
 }
@@ -88,3 +101,37 @@ export const AddMultipleOverCapacity: StoryObj = {
 
 /** At the cap: both toolbar buttons are hidden and the limit message shows. */
 export const AtCapacity = () => <Harness showSystemTags={false} initial={filler(MAX_PROMPTS)} />;
+
+/** Cloud capacity counts enabled prompts across brands and has no 100-row editor ceiling. */
+export const CloudAboveLegacyRowLimit: StoryObj = {
+	render: () => (
+		<Harness
+			showSystemTags={false}
+			initial={filler(MAX_PROMPTS + 1)}
+			capacity={{ scope: "organization-enabled", limit: 150, usedOutsideEditor: 10 }}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText("111/150")).toBeVisible();
+		await expect(canvas.getByRole("button", { name: /add prompt/i })).toBeEnabled();
+	},
+};
+
+/** At the organization limit, another row can be staged but starts disabled. */
+export const CloudAtEnabledCapacity: StoryObj = {
+	render: () => (
+		<Harness
+			showSystemTags={false}
+			initial={entries(["best trail shoes", "best road shoes"])}
+			capacity={{ scope: "organization-enabled", limit: 3, usedOutsideEditor: 1 }}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await expect(canvas.getByText("3/3")).toBeVisible();
+		await userEvent.click(canvas.getByRole("button", { name: /add prompt/i }));
+		const enableSwitches = canvas.getAllByRole("switch", { name: /enable prompt/i });
+		await expect(enableSwitches.at(-1)).toBeDisabled();
+	},
+};

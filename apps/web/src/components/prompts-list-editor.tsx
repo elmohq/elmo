@@ -32,6 +32,21 @@ export interface EditablePrompt {
 	systemTags: string[];
 }
 
+/**
+ * Capacity information is deliberately scoped. Legacy deployments cap the
+ * rows managed by this editor, while cloud plans cap enabled prompts across an
+ * organization. Keeping those shapes distinct prevents a brand-local count
+ * from being presented as organization usage.
+ */
+export type PromptEditorCapacity =
+	| { scope: "editor"; limit: number }
+	| { scope: "organization-enabled"; limit: number; usedOutsideEditor: number };
+
+export const DEFAULT_PROMPT_EDITOR_CAPACITY: PromptEditorCapacity = {
+	scope: "editor",
+	limit: MAX_PROMPTS,
+};
+
 export function newPromptEntry(partial?: Partial<EditablePrompt>): EditablePrompt {
 	return {
 		_key: crypto.randomUUID(),
@@ -51,9 +66,17 @@ interface PromptsListEditorProps {
 	/** `_key`s of rows edited since the last save, flagged with an accent rail
 	 *  so a change is findable in a list of up to {@link MAX_PROMPTS} rows. */
 	changedKeys?: ReadonlySet<string>;
+	/** Defaults to the legacy per-editor row limit. */
+	capacity?: PromptEditorCapacity;
 }
 
-export function PromptsListEditor({ prompts, onChange, showSystemTags = true, changedKeys }: PromptsListEditorProps) {
+export function PromptsListEditor({
+	prompts,
+	onChange,
+	showSystemTags = true,
+	changedKeys,
+	capacity = DEFAULT_PROMPT_EDITOR_CAPACITY,
+}: PromptsListEditorProps) {
 	const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
 
 	const allTagOptions = useMemo(() => {
@@ -65,11 +88,6 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 	const update = (index: number, patch: Partial<EditablePrompt>) => {
 		onChange(prompts.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 	};
-	const add = () => {
-		if (prompts.length >= MAX_PROMPTS) return;
-		onChange([...prompts, newPromptEntry()]);
-	};
-
 	// Bulk paste. The parse is pure and lives in @workspace/lib so the rules
 	// (trim, dedupe, cap) are tested without a DOM, and it runs on every
 	// keystroke only to label the button and warn about what will be dropped.
@@ -80,11 +98,29 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 	// stages a new prompt and they're dropped on save, so counting them against
 	// the cap would refuse prompts the list still has room for.
 	const filledValues = useMemo(() => prompts.map((p) => p.value).filter((v) => v.trim().length > 0), [prompts]);
-	const atCapacity = filledValues.length >= MAX_PROMPTS;
+	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
+	const rowLimit = capacity.scope === "editor" ? capacity.limit : null;
+	const enabledLimit = capacity.scope === "organization-enabled" ? capacity.limit : null;
+	// Enabled blank rows reserve a cloud slot while they are being edited. This
+	// prevents adding a blank row and a bulk paste from both claiming the same
+	// last available slot before the server performs its authoritative check.
+	const enabledRows = prompts.filter((prompt) => prompt.enabled).length;
+	const enabledUsage =
+		capacity.scope === "organization-enabled" ? capacity.usedOutsideEditor + enabledRows : validCount;
+	const enabledRoom = enabledLimit === null ? Number.MAX_SAFE_INTEGER : Math.max(0, enabledLimit - enabledUsage);
+	const atRowCapacity = rowLimit !== null && filledValues.length >= rowLimit;
+	const atEnabledCapacity = enabledLimit !== null && enabledUsage >= enabledLimit;
+
+	const add = () => {
+		if (rowLimit !== null && prompts.length >= rowLimit) return;
+		onChange([...prompts, newPromptEntry({ enabled: !atEnabledCapacity })]);
+	};
+
+	const bulkLimit = capacity.scope === "editor" ? capacity.limit : filledValues.length + Math.max(0, enabledRoom);
 
 	const bulkPreview = useMemo(
-		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: MAX_PROMPTS }),
-		[bulkText, filledValues],
+		() => parseBulkPrompts(bulkText, { existing: filledValues, limit: bulkLimit }),
+		[bulkText, filledValues, bulkLimit],
 	);
 	const bulkNotice = bulkText.trim().length > 0 ? describeSkipped(bulkPreview.skipped) : null;
 
@@ -93,7 +129,9 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 	const overCapacity = bulkPreview.skipped.overCapacity.length;
 	const bulkError =
 		overCapacity > 0
-			? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${MAX_PROMPTS} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+			? capacity.scope === "organization-enabled"
+				? `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over your organization's ${capacity.limit} enabled prompt limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
+				: `This paste is ${overCapacity} prompt${overCapacity === 1 ? "" : "s"} over the ${capacity.limit} limit. Remove ${overCapacity === 1 ? "a line" : "some lines"} to continue.`
 			: null;
 
 	const closeBulk = () => {
@@ -129,7 +167,11 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 	};
 	const clearSelection = () => setSelectedKeys(new Set());
 
-	const validCount = prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
+	const selectedEnableDelta = prompts.reduce(
+		(count, prompt) => (selectedKeys.has(prompt._key) && !prompt.enabled ? count + 1 : count),
+		0,
+	);
+	const selectionExceedsEnabledCapacity = enabledLimit !== null && selectedEnableDelta > enabledRoom;
 
 	// Desktop layout only — column order is [select] [text] [system?] [tags] [switch].
 	// Mobile renders a stacked per-prompt block instead (no selection, no bulk).
@@ -150,6 +192,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 							size="sm"
 							variant="outline"
 							onClick={() => applyEnabledToSelection(true)}
+							disabled={selectionExceedsEnabledCapacity}
 							className="cursor-pointer"
 						>
 							Enable
@@ -253,6 +296,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 										<Switch
 											checked={prompt.enabled}
 											onCheckedChange={(checked) => update(index, { enabled: checked })}
+											disabled={!prompt.enabled && atEnabledCapacity}
 											aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
 										/>
 									</div>
@@ -297,6 +341,7 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 									<Switch
 										checked={prompt.enabled}
 										onCheckedChange={(checked) => update(index, { enabled: checked })}
+										disabled={!prompt.enabled && atEnabledCapacity}
 										aria-label={prompt.enabled ? "Disable prompt" : "Enable prompt"}
 									/>
 								</div>
@@ -306,9 +351,9 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 				</div>
 			)}
 
-			{!atCapacity && (
+			{!atRowCapacity && (
 				<div className="flex flex-wrap items-center gap-2">
-					{prompts.length < MAX_PROMPTS && (
+					{(rowLimit === null || prompts.length < rowLimit) && (
 						<Button
 							variant="outline"
 							size="sm"
@@ -319,19 +364,21 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 							<Plus className="h-4 w-4" /> Add Prompt
 						</Button>
 					)}
-					<Button
-						variant="outline"
-						size="sm"
-						type="button"
-						onClick={() => setBulkOpen((open) => !open)}
-						className="flex items-center gap-2 cursor-pointer"
-					>
-						<ListPlus className="h-4 w-4" /> Add Multiple
-					</Button>
+					{!atEnabledCapacity && (
+						<Button
+							variant="outline"
+							size="sm"
+							type="button"
+							onClick={() => setBulkOpen((open) => !open)}
+							className="flex items-center gap-2 cursor-pointer"
+						>
+							<ListPlus className="h-4 w-4" /> Add Multiple
+						</Button>
+					)}
 				</div>
 			)}
 
-			{bulkOpen && !atCapacity && (
+			{bulkOpen && !atRowCapacity && !atEnabledCapacity && (
 				<div className="space-y-2 rounded-md border bg-muted/40 p-3">
 					<Textarea
 						value={bulkText}
@@ -363,17 +410,26 @@ export function PromptsListEditor({ prompts, onChange, showSystemTags = true, ch
 				</div>
 			)}
 
-			{atCapacity && (
+			{atRowCapacity && capacity.scope === "editor" && (
 				<p className="text-xs text-muted-foreground">
-					Maximum of {MAX_PROMPTS} prompts allowed. Remove a prompt to add a new one.
+					Maximum of {capacity.limit} prompts allowed. Remove a prompt to add a new one.
+				</p>
+			)}
+			{atEnabledCapacity && capacity.scope === "organization-enabled" && (
+				<p className="text-xs text-muted-foreground">
+					Your organization&apos;s plan allows {capacity.limit} enabled prompts. Disable a prompt to enable another.
 				</p>
 			)}
 
 			<p className="text-xs text-muted-foreground">
 				<strong>
-					{validCount}/{MAX_PROMPTS}
+					{capacity.scope === "organization-enabled"
+						? `${enabledUsage}/${capacity.limit}`
+						: `${validCount}/${capacity.limit}`}
 				</strong>{" "}
-				prompts configured
+				{capacity.scope === "organization-enabled"
+					? "enabled prompts used across the organization"
+					: "prompts configured"}
 			</p>
 		</div>
 	);
