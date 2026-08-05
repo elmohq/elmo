@@ -1,8 +1,13 @@
 import { resolveEntitlements } from "@workspace/config/entitlements";
 import { describe, expect, it } from "vitest";
-import { resolveRequestedCadence, TrackingSettingsError, validateRequestedTrackingTargets } from "./tracking-settings";
+import {
+	resolveRequestedCadence,
+	TrackingSettingsError,
+	validateRequestedClaudePromptAssignments,
+	validateRequestedTrackingTargets,
+} from "./tracking-settings";
 
-function allowed(planId: "starter" | "basic") {
+function allowed(planId: "starter" | "basic" | "pro") {
 	const resolved = resolveEntitlements({ mode: "cloud", subscription: { planId, status: "active" } });
 	if (resolved.mode !== "cloud" || resolved.access !== "allowed") throw new Error("Expected an allowed fixture");
 	return resolved;
@@ -19,11 +24,37 @@ describe("tracking settings policy", () => {
 		).toThrow("fixed by the plan");
 	});
 
+	it("requires exactly one allowed Claude mode per selected prompt", () => {
+		expect(
+			validateRequestedClaudePromptAssignments(allowed("pro"), [
+				{ promptId: "prompt-1", mode: "base-model" },
+				{ promptId: "prompt-2", mode: "native-web-search" },
+			]),
+		).toEqual([
+			{ promptId: "prompt-1", mode: "base-model", targetKey: "claude-base-model" },
+			{ promptId: "prompt-2", mode: "native-web-search", targetKey: "claude-native-web" },
+		]);
+		expect(() =>
+			validateRequestedClaudePromptAssignments(allowed("pro"), [
+				{ promptId: "prompt-1", mode: "base-model" },
+				{ promptId: "prompt-1", mode: "native-web-search" },
+			]),
+		).toThrow("selected twice");
+		expect(() =>
+			validateRequestedClaudePromptAssignments(allowed("basic"), [{ promptId: "prompt-1", mode: "base-model" }]),
+		).toThrow("not available");
+	});
+
 	it("enforces configurable target cardinality and membership", () => {
 		expect(
-			validateRequestedTrackingTargets(allowed("basic"), [{ targetKey: "chatgpt" }, { targetKey: "gemini" }]),
-		).toHaveLength(2);
-		expect(() => validateRequestedTrackingTargets(allowed("basic"), [])).toThrow("at least 1");
+			validateRequestedTrackingTargets(allowed("basic"), [
+				{ targetKey: "chatgpt" },
+				{ targetKey: "gemini" },
+				{ targetKey: "perplexity" },
+				{ targetKey: "copilot" },
+			]),
+		).toHaveLength(4);
+		expect(() => validateRequestedTrackingTargets(allowed("basic"), [])).toThrow("at least 4");
 		expect(() =>
 			validateRequestedTrackingTargets(allowed("basic"), [
 				{ targetKey: "chatgpt" },

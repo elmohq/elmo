@@ -1,11 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { ResolvedEntitlements } from "@workspace/config/entitlements";
-import { CLAUDE_NATIVE_WEB_TARGET_KEY, trackingTargetKeySchema } from "@workspace/config/plans";
+import {
+	CLAUDE_TRACKING_MODES,
+	CLAUDE_TRACKING_TARGET_KEYS,
+	type ClaudeTrackingMode,
+	getClaudeTrackingMode,
+	trackingTargetKeySchema,
+} from "@workspace/config/plans";
 import { resolveOrganizationEntitlements } from "@workspace/lib/cloud/entitlements";
 import { updateBrandTrackingTargets, updateClaudePromptAssignments } from "@workspace/lib/cloud/tracking-settings";
 import { db } from "@workspace/lib/db/db";
 import { brands, brandTargetSelections, prompts, promptTargetAssignments } from "@workspace/lib/db/schema";
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, countDistinct, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
@@ -25,7 +31,7 @@ export type CloudTrackingSettingsData = {
 		requestedCadenceMinutes: number | null;
 	}>;
 	prompts: Array<{ id: string; value: string }>;
-	claudePromptIds: string[];
+	claudeAssignments: Array<{ promptId: string; mode: ClaudeTrackingMode }>;
 	claudeUsage: {
 		usedPromptSlots: number;
 		totalPromptSlots: number;
@@ -69,20 +75,23 @@ export const getBrandTrackingSettingsFn = createServerFn({ method: "GET" })
 				.where(and(eq(prompts.brandId, data.brandId), eq(prompts.enabled, true)))
 				.orderBy(asc(prompts.value), asc(prompts.id)),
 			db
-				.select({ promptId: promptTargetAssignments.promptId })
+				.select({
+					promptId: promptTargetAssignments.promptId,
+					targetKey: promptTargetAssignments.targetKey,
+				})
 				.from(promptTargetAssignments)
 				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
 				.where(
 					and(
 						eq(promptTargetAssignments.brandId, data.brandId),
 						eq(promptTargetAssignments.source, "premium"),
-						eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+						inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
 						eq(promptTargetAssignments.enabled, true),
 						eq(prompts.enabled, true),
 					),
 				),
 			db
-				.select({ value: count() })
+				.select({ value: countDistinct(promptTargetAssignments.promptId) })
 				.from(promptTargetAssignments)
 				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
 				.innerJoin(brands, eq(brands.id, prompts.brandId))
@@ -90,19 +99,29 @@ export const getBrandTrackingSettingsFn = createServerFn({ method: "GET" })
 					and(
 						eq(brands.organizationId, organization.id),
 						eq(promptTargetAssignments.source, "premium"),
-						eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+						inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
 						eq(promptTargetAssignments.enabled, true),
 						eq(prompts.enabled, true),
 					),
 				),
 		]);
 
+		const seenClaudePromptIds = new Set<string>();
+		const normalizedClaudeAssignments = claudeAssignments.map((assignment) => {
+			const mode = getClaudeTrackingMode(assignment.targetKey);
+			if (!mode || seenClaudePromptIds.has(assignment.promptId)) {
+				throw new Error("Claude prompt assignments contain conflicting tracking modes.");
+			}
+			seenClaudePromptIds.add(assignment.promptId);
+			return { promptId: assignment.promptId, mode };
+		});
+
 		return {
 			mode: "cloud",
 			resolved,
 			selections,
 			prompts: enabledPrompts,
-			claudePromptIds: claudeAssignments.map((assignment) => assignment.promptId),
+			claudeAssignments: normalizedClaudeAssignments,
 			claudeUsage: {
 				usedPromptSlots: claudeUsage?.value ?? 0,
 				totalPromptSlots: resolved.access === "allowed" ? resolved.entitlements.claudeTracking.totalPromptSlots : 0,
@@ -138,7 +157,16 @@ export const updateBrandTargetsFn = createServerFn({ method: "POST" })
 	});
 
 export const updateClaudePromptAssignmentsFn = createServerFn({ method: "POST" })
-	.validator(brandInputSchema.extend({ promptIds: z.array(z.string().uuid()) }))
+	.validator(
+		brandInputSchema.extend({
+			assignments: z.array(
+				z.object({
+					promptId: z.string().uuid(),
+					mode: z.enum(CLAUDE_TRACKING_MODES),
+				}),
+			),
+		}),
+	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		const organization = await requireBrandOrganization(session.user.id, data.brandId);
@@ -150,7 +178,7 @@ export const updateClaudePromptAssignmentsFn = createServerFn({ method: "POST" }
 			mode: deployment.mode,
 			organizationId: organization.id,
 			brandId: data.brandId,
-			promptIds: data.promptIds,
+			assignments: data.assignments,
 		});
 		return { success: true as const };
 	});

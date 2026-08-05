@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+	CLAUDE_BASE_MODEL_TARGET_KEY,
+	CLAUDE_NATIVE_WEB_TARGET_KEY,
 	CLAUDE_TRACKING_MODES,
 	CLOUD_CLAUDE_PROMPT_ADDON,
 	CLOUD_PLAN_CATALOG,
+	getClaudeTrackingMode,
+	getClaudeTrackingTargetKey,
 	MINIMUM_CLOUD_CADENCE_MINUTES,
 	organizationEntitlementOverrideSchema,
 	STANDARD_TRACKING_TARGETS,
@@ -94,7 +98,11 @@ describe("cloud plan catalog", () => {
 		const entitlements = CLOUD_PLAN_CATALOG.basic.entitlements.value;
 		expect(entitlements.brandSlots).toBe(1);
 		expect(entitlements.promptSlots).toBe(50);
-		expect(entitlements.trackingTargets.maximumSelected).toBe(4);
+		expect(entitlements.trackingTargets).toMatchObject({
+			mode: "configurable",
+			minimumSelected: 4,
+			maximumSelected: 4,
+		});
 		expect(entitlements.trackingTargets.targets.map((target) => target.targetKey)).toEqual([
 			...STANDARD_TRACKING_TARGETS,
 		]);
@@ -105,6 +113,16 @@ describe("cloud plan catalog", () => {
 		expect(entitlements.claudeTracking.enabled).toBe(false);
 	});
 
+	it("requires exactly four standard targets on every selectable launch plan", () => {
+		for (const planId of ["basic", "pro", "business"] as const) {
+			expect(CLOUD_PLAN_CATALOG[planId].entitlements.value.trackingTargets).toMatchObject({
+				mode: "configurable",
+				minimumSelected: 4,
+				maximumSelected: 4,
+			});
+		}
+	});
+
 	it("keeps Claude prompt assignments and paid additions separate from tracked prompt capacity", () => {
 		const pro = CLOUD_PLAN_CATALOG.pro.entitlements.value;
 		const business = CLOUD_PLAN_CATALOG.business.entitlements.value;
@@ -112,7 +130,7 @@ describe("cloud plan catalog", () => {
 		expect(pro).toMatchObject({ brandSlots: 2, promptSlots: 150 });
 		expect(pro.claudeTracking).toMatchObject({
 			enabled: true,
-			allowedModes: ["native-web-search"],
+			allowedModes: ["base-model", "native-web-search"],
 			includedPromptSlots: 20,
 			addon: { enabled: true, maximumAdditionalPromptSlots: 130 },
 			schedule: { cadenceMinutes: 1440, samplesPerEvaluation: 1 },
@@ -126,6 +144,14 @@ describe("cloud plan catalog", () => {
 			monthly: { unitAmountCents: 500 },
 			annual: { unitAmountCents: 5000 },
 		});
+	});
+
+	it("maps each Claude mode to a distinct durable target key", () => {
+		expect(getClaudeTrackingTargetKey("base-model")).toBe(CLAUDE_BASE_MODEL_TARGET_KEY);
+		expect(getClaudeTrackingTargetKey("native-web-search")).toBe(CLAUDE_NATIVE_WEB_TARGET_KEY);
+		expect(getClaudeTrackingMode(CLAUDE_BASE_MODEL_TARGET_KEY)).toBe("base-model");
+		expect(getClaudeTrackingMode(CLAUDE_NATIVE_WEB_TARGET_KEY)).toBe("native-web-search");
+		expect(getClaudeTrackingMode("claude")).toBeNull();
 	});
 
 	it("requires a complete versioned custom contract and permits per-target schedules", () => {

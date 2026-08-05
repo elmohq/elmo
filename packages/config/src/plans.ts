@@ -19,10 +19,28 @@ export const STANDARD_TRACKING_TARGETS = [
 
 export type StandardTrackingTarget = (typeof STANDARD_TRACKING_TARGETS)[number];
 
-export const CLAUDE_NATIVE_WEB_TARGET_KEY = "claude-native-web" as const;
-
 export const CLAUDE_TRACKING_MODES = ["base-model", "native-web-search"] as const;
 export type ClaudeTrackingMode = (typeof CLAUDE_TRACKING_MODES)[number];
+
+export const CLAUDE_BASE_MODEL_TARGET_KEY = "claude-base-model" as const;
+export const CLAUDE_NATIVE_WEB_TARGET_KEY = "claude-native-web" as const;
+export const CLAUDE_TRACKING_TARGET_KEYS = [CLAUDE_BASE_MODEL_TARGET_KEY, CLAUDE_NATIVE_WEB_TARGET_KEY] as const;
+export type ClaudeTrackingTargetKey = (typeof CLAUDE_TRACKING_TARGET_KEYS)[number];
+
+const CLAUDE_TARGET_KEY_BY_MODE = {
+	"base-model": CLAUDE_BASE_MODEL_TARGET_KEY,
+	"native-web-search": CLAUDE_NATIVE_WEB_TARGET_KEY,
+} as const satisfies Record<ClaudeTrackingMode, ClaudeTrackingTargetKey>;
+
+export function getClaudeTrackingTargetKey(mode: ClaudeTrackingMode): ClaudeTrackingTargetKey {
+	return CLAUDE_TARGET_KEY_BY_MODE[mode];
+}
+
+export function getClaudeTrackingMode(targetKey: string): ClaudeTrackingMode | null {
+	if (targetKey === CLAUDE_BASE_MODEL_TARGET_KEY) return "base-model";
+	if (targetKey === CLAUDE_NATIVE_WEB_TARGET_KEY) return "native-web-search";
+	return null;
+}
 
 export const CUSTOM_ENTITLEMENT_OVERRIDE_VERSION = 1 as const;
 export const MINIMUM_CLOUD_CADENCE_MINUTES = Math.ceil(1440 / 7);
@@ -43,8 +61,8 @@ export const cadencePolicySchema = z.discriminatedUnion("mode", [
 	z
 		.object({
 			mode: z.literal("configurable"),
-		minimumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
-		maximumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
+			minimumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
+			maximumCadenceMinutes: z.number().int().min(MINIMUM_CLOUD_CADENCE_MINUTES).max(POSTGRES_INTEGER_MAX),
 		})
 		.strict()
 		.superRefine((policy, context) => {
@@ -309,7 +327,7 @@ function disabledClaudeTracking(): ClaudeTrackingDefinition {
 function enabledClaudeTracking(includedPromptSlots: number, promptSlots: number): ClaudeTrackingDefinition {
 	return {
 		enabled: true,
-		allowedModes: ["native-web-search"],
+		allowedModes: [...CLAUDE_TRACKING_MODES],
 		includedPromptSlots,
 		addon: {
 			enabled: true,
@@ -383,7 +401,7 @@ export const CLOUD_PLAN_CATALOG = {
 				promptSlots: 50,
 				trackingTargets: {
 					mode: "configurable",
-					minimumSelected: 1,
+					minimumSelected: 4,
 					maximumSelected: 4,
 					targets: standardTargetsFourTimesDaily(),
 				},
@@ -402,7 +420,7 @@ export const CLOUD_PLAN_CATALOG = {
 				promptSlots: 150,
 				trackingTargets: {
 					mode: "configurable",
-					minimumSelected: 1,
+					minimumSelected: 4,
 					maximumSelected: 4,
 					targets: standardTargetsFourTimesDaily(),
 				},
@@ -421,7 +439,7 @@ export const CLOUD_PLAN_CATALOG = {
 				promptSlots: 350,
 				trackingTargets: {
 					mode: "configurable",
-					minimumSelected: 1,
+					minimumSelected: 4,
 					maximumSelected: 4,
 					targets: standardTargetsFourTimesDaily(),
 				},

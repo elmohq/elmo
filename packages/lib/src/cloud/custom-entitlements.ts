@@ -1,6 +1,6 @@
 import {
-	CLAUDE_NATIVE_WEB_TARGET_KEY,
 	type OrganizationEntitlementOverride as EntitlementPayload,
+	getClaudeTrackingTargetKey,
 	organizationEntitlementOverrideSchema,
 } from "@workspace/config/plans";
 import { getTrackingTargetKey, parseScrapeTargets } from "@workspace/config/scrape-targets";
@@ -97,7 +97,9 @@ export function assertCustomEntitlementTargetsAvailable(
 	availableTargetKeys: ReadonlySet<string>,
 ): void {
 	const required = payload.entitlements.trackingTargets.targets.map((target) => target.targetKey);
-	if (payload.entitlements.claudeTracking.enabled) required.push(CLAUDE_NATIVE_WEB_TARGET_KEY);
+	if (payload.entitlements.claudeTracking.enabled) {
+		required.push(...payload.entitlements.claudeTracking.allowedModes.map(getClaudeTrackingTargetKey));
+	}
 	const missing = [...new Set(required.filter((targetKey) => !availableTargetKeys.has(targetKey)))].sort();
 	if (missing.length > 0) {
 		throw new CustomEntitlementOperatorError(

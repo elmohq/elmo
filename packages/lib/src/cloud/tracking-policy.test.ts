@@ -40,26 +40,95 @@ test("runtime policy derives a daily standard safety budget from current plan li
 	);
 });
 
-test("premium budget includes purchased Claude prompt slots and rejects invalid surfaces", () => {
+test("both Claude modes share one premium daily budget and reject invalid surfaces", () => {
 	const resolved = resolveEntitlements({
 		mode: "cloud",
 		subscription: { planId: "pro", status: "active", claudeAddonPromptSlots: 5 },
 	});
-	assert.equal(
-		resolveRuntimeTrackingPolicy({
-			resolved,
-			assignmentSource: "premium",
-			targetKey: "claude-native-web",
-			cadenceMinutes: 1440,
-			samplesPerOccurrence: 1,
-		})?.limitUnits,
-		25,
-	);
+	const nativePolicy = resolveRuntimeTrackingPolicy({
+		resolved,
+		assignmentSource: "premium",
+		targetKey: "claude-native-web",
+		cadenceMinutes: 1440,
+		samplesPerOccurrence: 1,
+	});
+	const basePolicy = resolveRuntimeTrackingPolicy({
+		resolved,
+		assignmentSource: "premium",
+		targetKey: "claude-base-model",
+		cadenceMinutes: 1440,
+		samplesPerOccurrence: 1,
+	});
+	assert.deepEqual(nativePolicy, { usageClass: "premium", quotaKey: "claude-daily-v1", limitUnits: 25 });
+	assert.deepEqual(basePolicy, nativePolicy);
 	assert.equal(
 		resolveRuntimeTrackingPolicy({
 			resolved,
 			assignmentSource: "premium",
 			targetKey: "claude",
+			cadenceMinutes: 1440,
+			samplesPerOccurrence: 1,
+		}),
+		null,
+	);
+});
+
+test("custom Claude assignments honor the contract's allowed modes", () => {
+	const resolved = resolveEntitlements({
+		mode: "cloud",
+		subscription: {
+			planId: "custom",
+			status: "active",
+			entitlementOverride: {
+				version: 1,
+				entitlements: {
+					brandSlots: 1,
+					promptSlots: 10,
+					trackingTargets: {
+						mode: "fixed",
+						minimumSelected: 1,
+						maximumSelected: 1,
+						targets: [
+							{
+								targetKey: "chatgpt",
+								schedule: {
+									cadenceMinutes: 1440,
+									samplesPerEvaluation: 1,
+									cadencePolicy: { mode: "fixed" },
+								},
+							},
+						],
+					},
+					claudeTracking: {
+						enabled: true,
+						allowedModes: ["base-model"],
+						includedPromptSlots: 10,
+						addon: { enabled: false, maximumAdditionalPromptSlots: 0 },
+						schedule: {
+							cadenceMinutes: 1440,
+							samplesPerEvaluation: 1,
+							cadencePolicy: { mode: "fixed" },
+						},
+					},
+				},
+			},
+		},
+	});
+	assert.deepEqual(
+		resolveRuntimeTrackingPolicy({
+			resolved,
+			assignmentSource: "custom",
+			targetKey: "claude-base-model",
+			cadenceMinutes: 1440,
+			samplesPerOccurrence: 1,
+		}),
+		{ usageClass: "custom", quotaKey: "custom-claude-daily-v1", limitUnits: 10 },
+	);
+	assert.equal(
+		resolveRuntimeTrackingPolicy({
+			resolved,
+			assignmentSource: "custom",
+			targetKey: "claude-native-web",
 			cadenceMinutes: 1440,
 			samplesPerOccurrence: 1,
 		}),

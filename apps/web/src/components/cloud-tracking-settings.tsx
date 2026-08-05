@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import type { TrackingTargetPolicy } from "@workspace/config/plans";
+import type { ClaudeTrackingMode, TrackingTargetPolicy } from "@workspace/config/plans";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@work
 import { Checkbox } from "@workspace/ui/components/checkbox";
 import { Input } from "@workspace/ui/components/input";
 import { Label } from "@workspace/ui/components/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { useMemo, useState } from "react";
 import { iconForModel, labelForModel } from "@/components/filter-bar";
 import { buildInitialTargetSelections, formatCadenceMinutes } from "@/lib/cloud-tracking-settings";
@@ -17,6 +18,12 @@ import {
 } from "@/server/tracking-settings";
 
 type SelectionState = Map<string, number | null>;
+type ClaudeAssignmentState = Map<string, ClaudeTrackingMode>;
+
+const CLAUDE_MODE_LABELS: Record<ClaudeTrackingMode, string> = {
+	"base-model": "Base model",
+	"native-web-search": "Native web search",
+};
 
 export function CloudTrackingSettings({ brandId, data }: { brandId: string; data: CloudTrackingSettingsData }) {
 	const resolved = data.resolved;
@@ -56,13 +63,17 @@ function AllowedCloudTrackingSettings({
 	const [targetMessage, setTargetMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
 
 	const claude = resolved.entitlements.claudeTracking;
-	const claudeAvailable = claude.enabled && claude.allowedModes.includes("native-web-search");
-	const initialClaudeIds = useMemo(() => new Set(data.claudePromptIds), [data.claudePromptIds]);
-	const [claudePromptIds, setClaudePromptIds] = useState(initialClaudeIds);
+	const claudeAvailable = claude.enabled && claude.allowedModes.length > 0;
+	const defaultClaudeMode = claude.enabled ? claude.allowedModes[0] : undefined;
+	const initialClaudeAssignments = useMemo<ClaudeAssignmentState>(
+		() => new Map(data.claudeAssignments.map((assignment) => [assignment.promptId, assignment.mode])),
+		[data.claudeAssignments],
+	);
+	const [claudeAssignments, setClaudeAssignments] = useState(initialClaudeAssignments);
 	const [savingClaude, setSavingClaude] = useState(false);
 	const [claudeMessage, setClaudeMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
-	const usedOutsideBrand = Math.max(0, data.claudeUsage.usedPromptSlots - data.claudePromptIds.length);
-	const projectedClaudeUsage = usedOutsideBrand + claudePromptIds.size;
+	const usedOutsideBrand = Math.max(0, data.claudeUsage.usedPromptSlots - data.claudeAssignments.length);
+	const projectedClaudeUsage = usedOutsideBrand + claudeAssignments.size;
 
 	const selectedCount = selections.size;
 	const selectionValid =
@@ -114,12 +125,17 @@ function AllowedCloudTrackingSettings({
 	}
 
 	function toggleClaudePrompt(promptId: string, checked: boolean) {
-		setClaudePromptIds((current) => {
-			const next = new Set(current);
-			if (checked) next.add(promptId);
+		setClaudeAssignments((current) => {
+			const next = new Map(current);
+			if (checked && defaultClaudeMode) next.set(promptId, defaultClaudeMode);
 			else next.delete(promptId);
 			return next;
 		});
+		setClaudeMessage(null);
+	}
+
+	function updateClaudeMode(promptId: string, mode: ClaudeTrackingMode) {
+		setClaudeAssignments((current) => new Map(current).set(promptId, mode));
 		setClaudeMessage(null);
 	}
 
@@ -127,7 +143,12 @@ function AllowedCloudTrackingSettings({
 		setClaudeMessage(null);
 		setSavingClaude(true);
 		try {
-			await updateClaudePromptAssignmentsFn({ data: { brandId, promptIds: [...claudePromptIds] } });
+			await updateClaudePromptAssignmentsFn({
+				data: {
+					brandId,
+					assignments: [...claudeAssignments].map(([promptId, mode]) => ({ promptId, mode })),
+				},
+			});
 			setClaudeMessage({ kind: "success", text: "Claude prompt tracking saved." });
 			await router.invalidate();
 		} catch (error) {
@@ -209,7 +230,9 @@ function AllowedCloudTrackingSettings({
 					</div>
 					{!selectionValid && (
 						<p className="text-sm text-destructive">
-							Select between {targetDefinition.minimumSelected} and {targetDefinition.maximumSelected} answer engines.
+							{targetDefinition.minimumSelected === targetDefinition.maximumSelected
+								? `Select exactly ${targetDefinition.minimumSelected} answer engines.`
+								: `Select between ${targetDefinition.minimumSelected} and ${targetDefinition.maximumSelected} answer engines.`}
 						</p>
 					)}
 					{targetMessage && <StatusMessage message={targetMessage} />}
@@ -226,9 +249,9 @@ function AllowedCloudTrackingSettings({
 					<CardHeader>
 						<div className="flex flex-wrap items-start justify-between gap-3">
 							<div>
-								<CardTitle>Claude with native web search</CardTitle>
+								<CardTitle>Claude prompt tracking</CardTitle>
 								<CardDescription>
-									Choose which enabled prompts receive a separate Claude evaluation on its entitled cadence.
+									Choose a base-model or native web-search evaluation for each selected prompt.
 								</CardDescription>
 							</div>
 							<Badge variant="secondary">
@@ -242,20 +265,41 @@ function AllowedCloudTrackingSettings({
 						) : (
 							<div className="max-h-96 divide-y overflow-y-auto rounded-md border">
 								{data.prompts.map((prompt) => {
-									const selected = claudePromptIds.has(prompt.id);
+									const selectedMode = claudeAssignments.get(prompt.id);
+									const selected = selectedMode !== undefined;
 									const atCapacity = projectedClaudeUsage >= data.claudeUsage.totalPromptSlots;
 									const inputId = `claude-prompt-${prompt.id}`;
 									return (
-										<div key={prompt.id} className="flex items-start gap-3 p-3 text-sm">
-											<Checkbox
-												id={inputId}
-												checked={selected}
-												disabled={savingClaude || (!selected && atCapacity)}
-												onCheckedChange={(checked) => toggleClaudePrompt(prompt.id, checked === true)}
-											/>
-											<Label htmlFor={inputId} className="cursor-pointer font-normal leading-5">
-												{prompt.value}
-											</Label>
+										<div key={prompt.id} className="flex flex-wrap items-start justify-between gap-3 p-3 text-sm">
+											<div className="flex min-w-0 flex-1 items-start gap-3">
+												<Checkbox
+													id={inputId}
+													checked={selected}
+													disabled={savingClaude || (!selected && atCapacity)}
+													onCheckedChange={(checked) => toggleClaudePrompt(prompt.id, checked === true)}
+												/>
+												<Label htmlFor={inputId} className="cursor-pointer font-normal leading-5">
+													{prompt.value}
+												</Label>
+											</div>
+											{selectedMode && (
+												<Select
+													value={selectedMode}
+													disabled={savingClaude}
+													onValueChange={(mode) => updateClaudeMode(prompt.id, mode as ClaudeTrackingMode)}
+												>
+													<SelectTrigger size="sm" aria-label={`Claude mode for ${prompt.value}`}>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{claude.allowedModes.map((mode) => (
+															<SelectItem key={mode} value={mode}>
+																{CLAUDE_MODE_LABELS[mode]}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											)}
 										</div>
 									);
 								})}

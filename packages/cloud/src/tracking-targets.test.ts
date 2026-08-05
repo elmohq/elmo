@@ -1,19 +1,23 @@
-import { describe, expect, it } from "vitest";
 import type { ModelConfig } from "@workspace/config/scrape-targets";
-import { CLAUDE_NATIVE_WEB_TARGET_KEY, validateCloudTrackingTargets } from "./tracking-targets";
+import { describe, expect, it } from "vitest";
+import {
+	CLAUDE_BASE_MODEL_TARGET_KEY,
+	CLAUDE_NATIVE_WEB_TARGET_KEY,
+	validateCloudTrackingTargets,
+} from "./tracking-targets";
 
 function validTargets(): ModelConfig[] {
 	return [
-		...[
-			"chatgpt",
-			"google-ai-mode",
-			"google-ai-overview",
-			"copilot",
-			"perplexity",
-			"gemini",
-			"qwen",
-			"deepseek",
-		].map((model) => ({ model, provider: "stub", webSearch: true })),
+		...["chatgpt", "google-ai-mode", "google-ai-overview", "copilot", "perplexity", "gemini", "qwen", "deepseek"].map(
+			(model) => ({ model, provider: "stub", webSearch: true }),
+		),
+		{
+			targetKey: CLAUDE_BASE_MODEL_TARGET_KEY,
+			model: "claude",
+			provider: "anthropic-api",
+			version: "claude-sonnet-4-6",
+			webSearch: false,
+		},
 		{
 			targetKey: CLAUDE_NATIVE_WEB_TARGET_KEY,
 			model: "claude",
@@ -43,8 +47,17 @@ describe("validateCloudTrackingTargets", () => {
 
 	it("requires Claude's direct native web-search execution", () => {
 		const configs = validTargets();
-		const claude = configs.find((target) => target.targetKey === CLAUDE_NATIVE_WEB_TARGET_KEY)!;
+		const claude = configs.find((target) => target.targetKey === CLAUDE_NATIVE_WEB_TARGET_KEY);
+		if (!claude) throw new Error("Expected native Claude target fixture");
 		claude.provider = "openrouter";
 		expect(() => validateCloudTrackingTargets(configs)).toThrow("must use claude:anthropic-api with native web search");
+	});
+
+	it("requires Claude's direct base-model execution without web search", () => {
+		const configs = validTargets();
+		const claude = configs.find((target) => target.targetKey === CLAUDE_BASE_MODEL_TARGET_KEY);
+		if (!claude) throw new Error("Expected base Claude target fixture");
+		claude.webSearch = true;
+		expect(() => validateCloudTrackingTargets(configs)).toThrow("must use claude:anthropic-api without web search");
 	});
 });

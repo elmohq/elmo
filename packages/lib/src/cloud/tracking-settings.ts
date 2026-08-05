@@ -1,5 +1,11 @@
 import type { ResolvedEntitlements } from "@workspace/config/entitlements";
-import { CLAUDE_NATIVE_WEB_TARGET_KEY, type TrackingTargetPolicy } from "@workspace/config/plans";
+import {
+	CLAUDE_TRACKING_TARGET_KEYS,
+	type ClaudeTrackingMode,
+	getClaudeTrackingMode,
+	getClaudeTrackingTargetKey,
+	type TrackingTargetPolicy,
+} from "@workspace/config/plans";
 import type { DeploymentMode } from "@workspace/config/types";
 import { and, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import type { db } from "../db/db";
@@ -23,6 +29,11 @@ type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; a
 export type RequestedTrackingTarget = {
 	targetKey: string;
 	requestedCadenceMinutes?: number | null;
+};
+
+export type RequestedClaudePromptAssignment = {
+	promptId: string;
+	mode: ClaudeTrackingMode;
 };
 
 export class TrackingSettingsError extends Error {
@@ -103,6 +114,24 @@ export function validateRequestedTrackingTargets(
 		}
 	}
 	return normalized;
+}
+
+export function validateRequestedClaudePromptAssignments(
+	resolved: AllowedCloudEntitlements,
+	requested: readonly RequestedClaudePromptAssignment[],
+): Array<RequestedClaudePromptAssignment & { targetKey: (typeof CLAUDE_TRACKING_TARGET_KEYS)[number] }> {
+	const claude = resolved.entitlements.claudeTracking;
+	const seenPromptIds = new Set<string>();
+	return requested.map((assignment) => {
+		if (seenPromptIds.has(assignment.promptId)) {
+			throw new TrackingSettingsError("A Claude prompt was selected twice.");
+		}
+		seenPromptIds.add(assignment.promptId);
+		if (!claude.enabled || !claude.allowedModes.includes(assignment.mode)) {
+			throw new TrackingSettingsError(`Claude ${assignment.mode} tracking is not available on this plan.`);
+		}
+		return { ...assignment, targetKey: getClaudeTrackingTargetKey(assignment.mode) };
+	});
 }
 
 async function assertBrandOrganization(tx: DbTransaction, organizationId: string, brandId: string): Promise<void> {
@@ -249,6 +278,17 @@ export async function reconcileBrandTrackingSettings(input: {
 			.where(inArray(trackingSchedules.promptTargetAssignmentId, managedAssignmentIds));
 	}
 	const policies = targetPolicyMap(input.resolved);
+	const premiumModesPerPrompt = new Map<string, number>();
+	for (const assignment of managedAssignments) {
+		if (
+			assignment.source === "premium" &&
+			assignment.enabled &&
+			assignment.promptEnabled &&
+			getClaudeTrackingMode(assignment.targetKey)
+		) {
+			premiumModesPerPrompt.set(assignment.promptId, (premiumModesPerPrompt.get(assignment.promptId) ?? 0) + 1);
+		}
+	}
 	const desiredSchedules = managedAssignments.flatMap((assignment) => {
 		if (!assignment.enabled || !assignment.promptEnabled) return [];
 
@@ -262,8 +302,10 @@ export async function reconcileBrandTrackingSettings(input: {
 			cadenceMinutes = normalized.effectiveCadenceMinutes;
 			samplesPerOccurrence = policy.schedule.samplesPerEvaluation;
 		} else {
+			if (premiumModesPerPrompt.get(assignment.promptId) !== 1) return [];
 			const claude = input.resolved.entitlements.claudeTracking;
-			if (assignment.targetKey !== CLAUDE_NATIVE_WEB_TARGET_KEY || !claude.enabled || !claude.schedule) {
+			const claudeMode = getClaudeTrackingMode(assignment.targetKey);
+			if (!claudeMode || !claude.enabled || !claude.allowedModes.includes(claudeMode) || !claude.schedule) {
 				return [];
 			}
 			cadenceMinutes = claude.schedule.cadenceMinutes;
@@ -392,7 +434,7 @@ export async function updateClaudePromptAssignments(input: {
 	mode: DeploymentMode;
 	organizationId: string;
 	brandId: string;
-	promptIds: string[];
+	assignments: RequestedClaudePromptAssignment[];
 }): Promise<void> {
 	if (input.mode !== "cloud") throw new TrackingSettingsError("Claude plan settings are only available in cloud mode.");
 	await withOrganizationEntitlementTransaction({
@@ -403,10 +445,8 @@ export async function updateClaudePromptAssignments(input: {
 				throw new TrackingSettingsError("An active cloud plan is required.");
 			}
 			await assertBrandOrganization(tx, input.organizationId, input.brandId);
-			const uniquePromptIds = [...new Set(input.promptIds)];
-			if (uniquePromptIds.length !== input.promptIds.length) {
-				throw new TrackingSettingsError("A Claude prompt was selected twice.");
-			}
+			const normalized = validateRequestedClaudePromptAssignments(resolved, input.assignments);
+			const uniquePromptIds = normalized.map((assignment) => assignment.promptId);
 			const selectedPrompts =
 				uniquePromptIds.length === 0
 					? []
@@ -425,7 +465,7 @@ export async function updateClaudePromptAssignments(input: {
 			}
 
 			const activeOutsideBrand = await tx
-				.select({ id: promptTargetAssignments.id })
+				.select({ promptId: promptTargetAssignments.promptId })
 				.from(promptTargetAssignments)
 				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
 				.innerJoin(brands, eq(brands.id, prompts.brandId))
@@ -434,67 +474,67 @@ export async function updateClaudePromptAssignments(input: {
 						eq(brands.organizationId, input.organizationId),
 						ne(brands.id, input.brandId),
 						eq(promptTargetAssignments.source, "premium"),
-						eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+						inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
 						eq(promptTargetAssignments.enabled, true),
 						eq(prompts.enabled, true),
 					),
 				);
 			const activeInsideBrand = await tx
-				.select({ id: promptTargetAssignments.id })
+				.select({ promptId: promptTargetAssignments.promptId })
 				.from(promptTargetAssignments)
 				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
 				.where(
 					and(
 						eq(promptTargetAssignments.brandId, input.brandId),
 						eq(promptTargetAssignments.source, "premium"),
-						eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+						inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
 						eq(promptTargetAssignments.enabled, true),
 						eq(prompts.enabled, true),
 					),
 				);
+			const activeOutsidePromptIds = new Set(activeOutsideBrand.map((assignment) => assignment.promptId));
+			const activeInsidePromptIds = new Set(activeInsideBrand.map((assignment) => assignment.promptId));
 			assertCapacityChange({
 				resolved,
 				resource: "claude-prompts",
-				currentTotal: activeOutsideBrand.length + activeInsideBrand.length,
-				requestedTotal: activeOutsideBrand.length + uniquePromptIds.length,
+				currentTotal: activeOutsidePromptIds.size + activeInsidePromptIds.size,
+				requestedTotal: activeOutsidePromptIds.size + uniquePromptIds.length,
 			});
 
+			const now = new Date();
 			await tx
 				.update(promptTargetAssignments)
-				.set({ enabled: false, updatedAt: new Date() })
-				.where(
-					and(
-						eq(promptTargetAssignments.brandId, input.brandId),
-						eq(promptTargetAssignments.source, "premium"),
-						...(uniquePromptIds.length > 0 ? [notInArray(promptTargetAssignments.promptId, uniquePromptIds)] : []),
-					),
-				);
-			for (const promptId of uniquePromptIds) {
+				.set({ enabled: false, updatedAt: now })
+				.where(and(eq(promptTargetAssignments.brandId, input.brandId), eq(promptTargetAssignments.source, "premium")));
+			for (const assignment of normalized) {
 				const [conflict] = await tx
 					.select({ source: promptTargetAssignments.source })
 					.from(promptTargetAssignments)
 					.where(
 						and(
-							eq(promptTargetAssignments.promptId, promptId),
-							eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+							eq(promptTargetAssignments.promptId, assignment.promptId),
+							inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
+							ne(promptTargetAssignments.source, "premium"),
 						),
 					)
 					.limit(1);
-				if (conflict && conflict.source !== "premium") {
-					throw new TrackingSettingsError(`Prompt ${promptId} already has an operator-managed Claude assignment.`);
+				if (conflict) {
+					throw new TrackingSettingsError(
+						`Prompt ${assignment.promptId} already has an operator-managed Claude assignment.`,
+					);
 				}
 				await tx
 					.insert(promptTargetAssignments)
 					.values({
 						brandId: input.brandId,
-						promptId,
-						targetKey: CLAUDE_NATIVE_WEB_TARGET_KEY,
+						promptId: assignment.promptId,
+						targetKey: assignment.targetKey,
 						source: "premium",
 						enabled: true,
 					})
 					.onConflictDoUpdate({
 						target: [promptTargetAssignments.promptId, promptTargetAssignments.targetKey],
-						set: { source: "premium", enabled: true, updatedAt: new Date() },
+						set: { source: "premium", enabled: true, updatedAt: now },
 					});
 			}
 			await reconcileBrandTrackingSettings({

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ResolvedCloudPlanEntitlements } from "@workspace/config/entitlements";
-import { CLAUDE_NATIVE_WEB_TARGET_KEY } from "@workspace/config/plans";
+import { getClaudeTrackingMode } from "@workspace/config/plans";
 import type { resolveOrganizationEntitlements } from "./entitlements";
 
 export const CLOUD_TRACKING_DISPATCH_QUEUE = "dispatch-tracking-v2";
@@ -80,10 +80,11 @@ export function resolveRuntimeTrackingPolicy(input: {
 
 	if (input.assignmentSource === "premium") {
 		const claude = entitlements.claudeTracking;
+		const claudeMode = getClaudeTrackingMode(input.targetKey);
 		if (
-			input.targetKey !== CLAUDE_NATIVE_WEB_TARGET_KEY ||
+			!claudeMode ||
 			!claude.enabled ||
-			!claude.allowedModes.includes("native-web-search") ||
+			!claude.allowedModes.includes(claudeMode) ||
 			!claude.schedule ||
 			input.cadenceMinutes < fastestPermittedCadence(claude.schedule) ||
 			input.samplesPerOccurrence > claude.schedule.samplesPerEvaluation
@@ -92,7 +93,7 @@ export function resolveRuntimeTrackingPolicy(input: {
 		}
 		return {
 			usageClass: "premium",
-			quotaKey: "claude-native-web-daily-v1",
+			quotaKey: "claude-daily-v1",
 			limitUnits:
 				claude.totalPromptSlots * dailyRuns(claude.schedule.cadenceMinutes, claude.schedule.samplesPerEvaluation),
 		};
@@ -113,10 +114,11 @@ export function resolveRuntimeTrackingPolicy(input: {
 	}
 
 	const claude = entitlements.claudeTracking;
+	const claudeMode = getClaudeTrackingMode(input.targetKey);
 	if (
-		input.targetKey !== CLAUDE_NATIVE_WEB_TARGET_KEY ||
+		!claudeMode ||
 		!claude.enabled ||
-		!claude.allowedModes.includes("native-web-search") ||
+		!claude.allowedModes.includes(claudeMode) ||
 		!claude.schedule ||
 		input.cadenceMinutes < fastestPermittedCadence(claude.schedule) ||
 		input.samplesPerOccurrence > claude.schedule.samplesPerEvaluation

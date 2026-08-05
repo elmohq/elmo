@@ -91,6 +91,35 @@ describe("custom entitlement decisions", () => {
 		expect(() => assertCustomEntitlementTargetsAvailable(payload, new Set(["chatgpt"]))).not.toThrow();
 	});
 
+	it("requires the execution target for every Claude mode allowed by a custom contract", () => {
+		const claudePayload = {
+			...payload,
+			entitlements: {
+				...payload.entitlements,
+				claudeTracking: {
+					enabled: true as const,
+					allowedModes: ["base-model", "native-web-search"] as Array<"base-model" | "native-web-search">,
+					includedPromptSlots: 20,
+					addon: { enabled: false as const, maximumAdditionalPromptSlots: 0 as const },
+					schedule: {
+						cadenceMinutes: 1440,
+						samplesPerEvaluation: 1,
+						cadencePolicy: { mode: "fixed" as const },
+					},
+				},
+			},
+		};
+		expect(() =>
+			assertCustomEntitlementTargetsAvailable(claudePayload, new Set(["chatgpt", "claude-base-model"])),
+		).toThrow("claude-native-web");
+		expect(() =>
+			assertCustomEntitlementTargetsAvailable(
+				claudePayload,
+				new Set(["chatgpt", "claude-base-model", "claude-native-web"]),
+			),
+		).not.toThrow();
+	});
+
 	it("treats effective windows as half-open intervals", () => {
 		expect(
 			effectiveWindowsOverlap(

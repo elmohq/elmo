@@ -4,8 +4,8 @@ import {
 	type ResolvedEntitlements,
 	resolveEntitlements,
 } from "@workspace/config/entitlements";
-import { CLAUDE_NATIVE_WEB_TARGET_KEY } from "@workspace/config/plans";
-import { and, count, eq, inArray, lte, sql } from "drizzle-orm";
+import { CLAUDE_TRACKING_TARGET_KEYS } from "@workspace/config/plans";
+import { and, count, countDistinct, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import {
 	brandSchedulerRollouts,
@@ -21,8 +21,8 @@ import {
 } from "../db/schema";
 import { lockOrganizationCapacity } from "./advisory-locks";
 import { CapacityExceededError } from "./capacity";
-import { TrackingSettingsError, reconcileBrandTrackingSettings } from "./tracking-settings";
 import { resolveRuntimeTrackingPolicy } from "./tracking-policy";
+import { reconcileBrandTrackingSettings, TrackingSettingsError } from "./tracking-settings";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; access: "allowed" }>;
@@ -235,7 +235,7 @@ async function loadOrganizationCapacityState(
 		.innerJoin(brands, eq(prompts.brandId, brands.id))
 		.where(and(eq(brands.organizationId, organizationId), eq(prompts.enabled, true)));
 	const [{ value: premiumPromptAssignments = 0 } = { value: 0 }] = await tx
-		.select({ value: count() })
+		.select({ value: countDistinct(promptTargetAssignments.promptId) })
 		.from(promptTargetAssignments)
 		.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
 		.innerJoin(brands, eq(brands.id, promptTargetAssignments.brandId))
@@ -243,7 +243,7 @@ async function loadOrganizationCapacityState(
 			and(
 				eq(brands.organizationId, organizationId),
 				eq(promptTargetAssignments.source, "premium"),
-				eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+				inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
 				eq(promptTargetAssignments.enabled, true),
 				eq(prompts.enabled, true),
 			),
