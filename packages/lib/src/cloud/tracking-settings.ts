@@ -24,7 +24,7 @@ import { resolveRuntimeTrackingPolicy } from "./tracking-policy";
 export { initializeDefaultBrandTracking } from "./tracking-defaults";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; access: "allowed" }>;
+export type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; access: "allowed" }>;
 
 export type RequestedTrackingTarget = {
 	targetKey: string;
@@ -370,6 +370,56 @@ export async function reconcileBrandTrackingSettings(input: {
 	});
 }
 
+export async function updateBrandTrackingTargetsInTransaction(input: {
+	tx: DbTransaction;
+	resolved: AllowedCloudEntitlements;
+	organizationId: string;
+	brandId: string;
+	selections: RequestedTrackingTarget[];
+	createdByUserId?: string;
+}): Promise<void> {
+	await assertBrandOrganization(input.tx, input.organizationId, input.brandId);
+	const normalized = validateRequestedTrackingTargets(input.resolved, input.selections);
+	const selectedKeys = normalized.map((selection) => selection.targetKey);
+	await input.tx
+		.update(brandTargetSelections)
+		.set({ enabled: false, updatedAt: new Date() })
+		.where(
+			and(
+				eq(brandTargetSelections.brandId, input.brandId),
+				...(selectedKeys.length > 0 ? [notInArray(brandTargetSelections.targetKey, selectedKeys)] : []),
+			),
+		);
+	for (const selection of normalized) {
+		await input.tx
+			.insert(brandTargetSelections)
+			.values({
+				brandId: input.brandId,
+				targetKey: selection.targetKey,
+				requestedCadenceMinutes: selection.requestedCadenceMinutes,
+				source: "user",
+				enabled: true,
+				createdByUserId: input.createdByUserId,
+			})
+			.onConflictDoUpdate({
+				target: [brandTargetSelections.brandId, brandTargetSelections.targetKey],
+				set: {
+					requestedCadenceMinutes: selection.requestedCadenceMinutes,
+					source: "user",
+					enabled: true,
+					createdByUserId: input.createdByUserId,
+					updatedAt: new Date(),
+				},
+			});
+	}
+	await reconcileBrandTrackingSettings({
+		tx: input.tx,
+		resolved: input.resolved,
+		organizationId: input.organizationId,
+		brandId: input.brandId,
+	});
+}
+
 export async function updateBrandTrackingTargets(input: {
 	mode: DeploymentMode;
 	organizationId: string;
@@ -386,47 +436,119 @@ export async function updateBrandTrackingTargets(input: {
 			if (resolved.mode !== "cloud" || resolved.access !== "allowed") {
 				throw new TrackingSettingsError("An active cloud plan is required.");
 			}
-			await assertBrandOrganization(tx, input.organizationId, input.brandId);
-			const normalized = validateRequestedTrackingTargets(resolved, input.selections);
-			const selectedKeys = normalized.map((selection) => selection.targetKey);
-			await tx
-				.update(brandTargetSelections)
-				.set({ enabled: false, updatedAt: new Date() })
-				.where(
-					and(
-						eq(brandTargetSelections.brandId, input.brandId),
-						...(selectedKeys.length > 0 ? [notInArray(brandTargetSelections.targetKey, selectedKeys)] : []),
-					),
-				);
-			for (const selection of normalized) {
-				await tx
-					.insert(brandTargetSelections)
-					.values({
-						brandId: input.brandId,
-						targetKey: selection.targetKey,
-						requestedCadenceMinutes: selection.requestedCadenceMinutes,
-						source: "user",
-						enabled: true,
-						createdByUserId: input.createdByUserId,
-					})
-					.onConflictDoUpdate({
-						target: [brandTargetSelections.brandId, brandTargetSelections.targetKey],
-						set: {
-							requestedCadenceMinutes: selection.requestedCadenceMinutes,
-							source: "user",
-							enabled: true,
-							createdByUserId: input.createdByUserId,
-							updatedAt: new Date(),
-						},
-					});
-			}
-			await reconcileBrandTrackingSettings({
+			await updateBrandTrackingTargetsInTransaction({
 				tx,
 				resolved,
 				organizationId: input.organizationId,
 				brandId: input.brandId,
+				selections: input.selections,
+				createdByUserId: input.createdByUserId,
 			});
 		},
+	});
+}
+
+export async function updateClaudePromptAssignmentsInTransaction(input: {
+	tx: DbTransaction;
+	resolved: AllowedCloudEntitlements;
+	organizationId: string;
+	brandId: string;
+	assignments: RequestedClaudePromptAssignment[];
+}): Promise<void> {
+	await assertBrandOrganization(input.tx, input.organizationId, input.brandId);
+	const normalized = validateRequestedClaudePromptAssignments(input.resolved, input.assignments);
+	const uniquePromptIds = normalized.map((assignment) => assignment.promptId);
+	const selectedPrompts =
+		uniquePromptIds.length === 0
+			? []
+			: await input.tx
+					.select({ id: prompts.id })
+					.from(prompts)
+					.where(
+						and(eq(prompts.brandId, input.brandId), eq(prompts.enabled, true), inArray(prompts.id, uniquePromptIds)),
+					);
+	if (selectedPrompts.length !== uniquePromptIds.length) {
+		throw new TrackingSettingsError("Claude tracking can only be assigned to enabled prompts in this brand.");
+	}
+
+	const activeOutsideBrand = await input.tx
+		.select({ promptId: promptTargetAssignments.promptId })
+		.from(promptTargetAssignments)
+		.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
+		.innerJoin(brands, eq(brands.id, prompts.brandId))
+		.where(
+			and(
+				eq(brands.organizationId, input.organizationId),
+				ne(brands.id, input.brandId),
+				eq(promptTargetAssignments.source, "premium"),
+				inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
+				eq(promptTargetAssignments.enabled, true),
+				eq(prompts.enabled, true),
+			),
+		);
+	const activeInsideBrand = await input.tx
+		.select({ promptId: promptTargetAssignments.promptId })
+		.from(promptTargetAssignments)
+		.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
+		.where(
+			and(
+				eq(promptTargetAssignments.brandId, input.brandId),
+				eq(promptTargetAssignments.source, "premium"),
+				inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
+				eq(promptTargetAssignments.enabled, true),
+				eq(prompts.enabled, true),
+			),
+		);
+	const activeOutsidePromptIds = new Set(activeOutsideBrand.map((assignment) => assignment.promptId));
+	const activeInsidePromptIds = new Set(activeInsideBrand.map((assignment) => assignment.promptId));
+	assertCapacityChange({
+		resolved: input.resolved,
+		resource: "claude-prompts",
+		currentTotal: activeOutsidePromptIds.size + activeInsidePromptIds.size,
+		requestedTotal: activeOutsidePromptIds.size + uniquePromptIds.length,
+	});
+
+	const now = new Date();
+	await input.tx
+		.update(promptTargetAssignments)
+		.set({ enabled: false, updatedAt: now })
+		.where(and(eq(promptTargetAssignments.brandId, input.brandId), eq(promptTargetAssignments.source, "premium")));
+	for (const assignment of normalized) {
+		const [conflict] = await input.tx
+			.select({ source: promptTargetAssignments.source })
+			.from(promptTargetAssignments)
+			.where(
+				and(
+					eq(promptTargetAssignments.promptId, assignment.promptId),
+					inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
+					ne(promptTargetAssignments.source, "premium"),
+				),
+			)
+			.limit(1);
+		if (conflict) {
+			throw new TrackingSettingsError(
+				`Prompt ${assignment.promptId} already has an operator-managed Claude assignment.`,
+			);
+		}
+		await input.tx
+			.insert(promptTargetAssignments)
+			.values({
+				brandId: input.brandId,
+				promptId: assignment.promptId,
+				targetKey: assignment.targetKey,
+				source: "premium",
+				enabled: true,
+			})
+			.onConflictDoUpdate({
+				target: [promptTargetAssignments.promptId, promptTargetAssignments.targetKey],
+				set: { source: "premium", enabled: true, updatedAt: now },
+			});
+	}
+	await reconcileBrandTrackingSettings({
+		tx: input.tx,
+		resolved: input.resolved,
+		organizationId: input.organizationId,
+		brandId: input.brandId,
 	});
 }
 
@@ -444,104 +566,12 @@ export async function updateClaudePromptAssignments(input: {
 			if (resolved.mode !== "cloud" || resolved.access !== "allowed") {
 				throw new TrackingSettingsError("An active cloud plan is required.");
 			}
-			await assertBrandOrganization(tx, input.organizationId, input.brandId);
-			const normalized = validateRequestedClaudePromptAssignments(resolved, input.assignments);
-			const uniquePromptIds = normalized.map((assignment) => assignment.promptId);
-			const selectedPrompts =
-				uniquePromptIds.length === 0
-					? []
-					: await tx
-							.select({ id: prompts.id })
-							.from(prompts)
-							.where(
-								and(
-									eq(prompts.brandId, input.brandId),
-									eq(prompts.enabled, true),
-									inArray(prompts.id, uniquePromptIds),
-								),
-							);
-			if (selectedPrompts.length !== uniquePromptIds.length) {
-				throw new TrackingSettingsError("Claude tracking can only be assigned to enabled prompts in this brand.");
-			}
-
-			const activeOutsideBrand = await tx
-				.select({ promptId: promptTargetAssignments.promptId })
-				.from(promptTargetAssignments)
-				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
-				.innerJoin(brands, eq(brands.id, prompts.brandId))
-				.where(
-					and(
-						eq(brands.organizationId, input.organizationId),
-						ne(brands.id, input.brandId),
-						eq(promptTargetAssignments.source, "premium"),
-						inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
-						eq(promptTargetAssignments.enabled, true),
-						eq(prompts.enabled, true),
-					),
-				);
-			const activeInsideBrand = await tx
-				.select({ promptId: promptTargetAssignments.promptId })
-				.from(promptTargetAssignments)
-				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
-				.where(
-					and(
-						eq(promptTargetAssignments.brandId, input.brandId),
-						eq(promptTargetAssignments.source, "premium"),
-						inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
-						eq(promptTargetAssignments.enabled, true),
-						eq(prompts.enabled, true),
-					),
-				);
-			const activeOutsidePromptIds = new Set(activeOutsideBrand.map((assignment) => assignment.promptId));
-			const activeInsidePromptIds = new Set(activeInsideBrand.map((assignment) => assignment.promptId));
-			assertCapacityChange({
-				resolved,
-				resource: "claude-prompts",
-				currentTotal: activeOutsidePromptIds.size + activeInsidePromptIds.size,
-				requestedTotal: activeOutsidePromptIds.size + uniquePromptIds.length,
-			});
-
-			const now = new Date();
-			await tx
-				.update(promptTargetAssignments)
-				.set({ enabled: false, updatedAt: now })
-				.where(and(eq(promptTargetAssignments.brandId, input.brandId), eq(promptTargetAssignments.source, "premium")));
-			for (const assignment of normalized) {
-				const [conflict] = await tx
-					.select({ source: promptTargetAssignments.source })
-					.from(promptTargetAssignments)
-					.where(
-						and(
-							eq(promptTargetAssignments.promptId, assignment.promptId),
-							inArray(promptTargetAssignments.targetKey, CLAUDE_TRACKING_TARGET_KEYS),
-							ne(promptTargetAssignments.source, "premium"),
-						),
-					)
-					.limit(1);
-				if (conflict) {
-					throw new TrackingSettingsError(
-						`Prompt ${assignment.promptId} already has an operator-managed Claude assignment.`,
-					);
-				}
-				await tx
-					.insert(promptTargetAssignments)
-					.values({
-						brandId: input.brandId,
-						promptId: assignment.promptId,
-						targetKey: assignment.targetKey,
-						source: "premium",
-						enabled: true,
-					})
-					.onConflictDoUpdate({
-						target: [promptTargetAssignments.promptId, promptTargetAssignments.targetKey],
-						set: { source: "premium", enabled: true, updatedAt: now },
-					});
-			}
-			await reconcileBrandTrackingSettings({
+			await updateClaudePromptAssignmentsInTransaction({
 				tx,
 				resolved,
 				organizationId: input.organizationId,
 				brandId: input.brandId,
+				assignments: input.assignments,
 			});
 		},
 	});

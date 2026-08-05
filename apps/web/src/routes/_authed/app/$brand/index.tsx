@@ -5,31 +5,33 @@
  * Displays onboarding wizard if brand is not yet onboarded.
  */
 
-import { useEffect } from "react";
-import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
 import {
-	IconArrowRight,
-	IconEye,
-	IconList,
 	IconActivity,
+	IconArrowRight,
 	IconClock,
+	IconEye,
 	IconInfoCircle,
+	IconList,
 	IconRefresh,
 	IconSpeakerphone,
 } from "@tabler/icons-react";
+import { createFileRoute, Link, redirect, useRouteContext } from "@tanstack/react-router";
+import type { ClientConfig } from "@workspace/config/types";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
+import { Skeleton } from "@workspace/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { useEffect } from "react";
 import PromptWizard from "@/components/prompt-wizard";
+import { TrendChart } from "@/components/trend-chart";
 import { useBrand } from "@/hooks/use-brands";
 import { useDashboardSummary } from "@/hooks/use-dashboard-summary";
 import { useShareOfVoice } from "@/hooks/use-share-of-voice";
-import { TrendChart } from "@/components/trend-chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
-import { Skeleton } from "@workspace/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
-import type { ClientConfig } from "@workspace/config/types";
+import { getCloudOnboardingGate } from "@/lib/cloud-onboarding";
 import { setPersonProperties } from "@/lib/posthog";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
 import { getPromptEditorCapacityFn } from "@/server/prompt-capacity";
+import { getBrandTrackingSettingsFn, getTrackingSettingsPageModeFn } from "@/server/tracking-settings";
 
 function getVisibilityBgColor(value: number): string {
 	if (value > 75) return "bg-emerald-50 dark:bg-emerald-950/30";
@@ -90,9 +92,23 @@ function formatRunFrequency(hours: number): string {
 }
 
 export const Route = createFileRoute("/_authed/app/$brand/")({
-	loader: async ({ params }) => ({
-		promptCapacity: await getPromptEditorCapacityFn({ data: { brandId: params.brand } }),
-	}),
+	loader: async ({ params }) => {
+		const [promptCapacity, { mode }] = await Promise.all([
+			getPromptEditorCapacityFn({ data: { brandId: params.brand } }),
+			getTrackingSettingsPageModeFn(),
+		]);
+		const cloudTrackingData =
+			mode === "cloud" ? await getBrandTrackingSettingsFn({ data: { brandId: params.brand } }) : null;
+		const gate = getCloudOnboardingGate(cloudTrackingData);
+		if (gate.kind === "billing") {
+			throw redirect({
+				to: "/app/workspaces/$organization/billing",
+				params: { organization: gate.organizationId },
+				search: { returnTo: `/app/${encodeURIComponent(params.brand)}` },
+			});
+		}
+		return { promptCapacity, cloudTrackingData };
+	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -171,7 +187,7 @@ function HeroStat({ value, loading }: { value: number | null; loading: boolean }
 
 function DashboardPage() {
 	const { brand: brandId } = Route.useParams();
-	const { promptCapacity } = Route.useLoaderData();
+	const { cloudTrackingData, promptCapacity } = Route.useLoaderData();
 	const { brand, isLoading: isLoadingBrand } = useBrand();
 	const { dashboardSummary, isLoading: isLoadingSummary } = useDashboardSummary(brand?.id, "1m");
 	const { data: sovData, isLoading: isLoadingSov } = useShareOfVoice(brand?.id, { lookback: "1m" });
@@ -299,6 +315,7 @@ function DashboardPage() {
 				</div>
 				<PromptWizard
 					capacity={promptCapacity}
+					cloudTrackingData={cloudTrackingData}
 					onComplete={() => {
 						const template = clientConfig?.branding.onboardingRedirectUrlTemplate;
 						if (template) {

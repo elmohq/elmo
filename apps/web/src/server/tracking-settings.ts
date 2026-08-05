@@ -25,6 +25,7 @@ const targetSelectionSchema = z.object({
 
 export type CloudTrackingSettingsData = {
 	mode: "cloud";
+	organizationId: string;
 	resolved: Extract<ResolvedEntitlements, { mode: "cloud" }>;
 	selections: Array<{
 		targetKey: string;
@@ -118,6 +119,7 @@ export const getBrandTrackingSettingsFn = createServerFn({ method: "GET" })
 
 		return {
 			mode: "cloud",
+			organizationId: organization.id,
 			resolved,
 			selections,
 			prompts: enabledPrompts,

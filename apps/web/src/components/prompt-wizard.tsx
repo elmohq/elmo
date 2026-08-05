@@ -14,6 +14,7 @@ import { Separator } from "@workspace/ui/components/separator";
 import { TagsInput } from "@workspace/ui/components/tags-input";
 import { AlertCircle, Loader2, Play, Rocket } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { CloudOnboardingClaudePicker, CloudOnboardingTargetPicker } from "@/components/cloud-onboarding-tracking";
 import { type CompetitorEntry, CompetitorsEditor, newCompetitorEntry } from "@/components/competitors-editor";
 import {
 	type EditablePrompt,
@@ -25,6 +26,12 @@ import { brandKeys, useBrand } from "@/hooks/use-brands";
 import { citationKeys } from "@/hooks/use-citations";
 import { dashboardKeys } from "@/hooks/use-dashboard-summary";
 import { promptsSummaryKeys } from "@/hooks/use-prompts-summary";
+import {
+	buildCloudOnboardingTrackingSubmission,
+	type CloudOnboardingTrackingData,
+	createCloudOnboardingTrackingState,
+	getCloudOnboardingTrackingError,
+} from "@/lib/cloud-onboarding";
 import { trackEvent } from "@/lib/posthog";
 import {
 	cancelAnalyzeBrandFn,
@@ -36,6 +43,7 @@ import {
 interface PromptWizardProps {
 	onComplete: () => void;
 	capacity?: PromptEditorCapacity;
+	cloudTrackingData?: CloudOnboardingTrackingData | null;
 }
 
 /** Brand analysis runs in the worker (LLM + web search, ~1 min); the client polls for the result. */
@@ -84,7 +92,7 @@ const EditableTagsInput = memo(
 );
 EditableTagsInput.displayName = "EditableTagsInput";
 
-export default function PromptWizard({ onComplete, capacity }: PromptWizardProps) {
+export default function PromptWizard({ onComplete, capacity, cloudTrackingData }: PromptWizardProps) {
 	const { brand } = useBrand();
 	const queryClient = useQueryClient();
 	const router = useRouter();
@@ -92,6 +100,9 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 	const [error, setError] = useState<string | null>(null);
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+	const [cloudTrackingState, setCloudTrackingState] = useState(() =>
+		cloudTrackingData ? createCloudOnboardingTrackingState(cloudTrackingData) : null,
+	);
 	const [data, setData] = useState<WizardData>({
 		brandName: "",
 		website: "",
@@ -214,12 +225,31 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 		const enabled = data.prompts.filter((p) => p.enabled && p.value.trim().length > 0).length;
 		return { totalNew: enabled };
 	}, [data.prompts]);
+	const cloudTrackingError = useMemo(
+		() =>
+			cloudTrackingData && cloudTrackingState
+				? getCloudOnboardingTrackingError({
+						data: cloudTrackingData,
+						prompts: data.prompts,
+						state: cloudTrackingState,
+					})
+				: null,
+		[cloudTrackingData, cloudTrackingState, data.prompts],
+	);
 
 	const handleSubmit = useCallback(async () => {
 		if (!brand?.id) return;
 		setSubmitError(null);
 		setIsSaving(true);
 		try {
+			const cloudTracking =
+				cloudTrackingData && cloudTrackingState
+					? buildCloudOnboardingTrackingSubmission({
+							data: cloudTrackingData,
+							prompts: data.prompts,
+							state: cloudTrackingState,
+						})
+					: undefined;
 			const competitorsPayload = data.competitors
 				.filter((c) => c.name.trim() && c.domains.some((d) => d.trim()))
 				.map((c) => ({
@@ -230,7 +260,12 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 
 			const promptsPayload = data.prompts
 				.filter((p) => p.enabled && p.value.trim())
-				.map((p) => ({ value: p.value.trim(), tags: p.tags, enabled: true }));
+				.map((p) => ({
+					...(cloudTracking ? { clientId: p._key } : {}),
+					value: p.value.trim(),
+					tags: p.tags,
+					enabled: true,
+				}));
 
 			await updateOnboardedBrandFn({
 				data: {
@@ -241,6 +276,7 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 					aliases: data.aliases,
 					competitors: competitorsPayload,
 					prompts: promptsPayload,
+					cloudTracking,
 				},
 			});
 
@@ -264,7 +300,7 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 		} finally {
 			setIsSaving(false);
 		}
-	}, [brand, data, queryClient, router, onComplete]);
+	}, [brand, cloudTrackingData, cloudTrackingState, data, queryClient, router, onComplete]);
 
 	if (phase === "idle" || phase === "analyzing") {
 		return (
@@ -349,6 +385,19 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 
 			<Separator />
 
+			{cloudTrackingData && cloudTrackingState && (
+				<>
+					<CloudOnboardingTargetPicker
+						data={cloudTrackingData}
+						state={cloudTrackingState}
+						onChange={setCloudTrackingState}
+						disabled={isSaving}
+					/>
+
+					<Separator />
+				</>
+			)}
+
 			<div className="space-y-3">
 				<div>
 					<h2 className="text-2xl font-bold">Competitors</h2>
@@ -370,6 +419,24 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 				<PromptsListEditor prompts={data.prompts} onChange={updatePrompts} showSystemTags={false} capacity={capacity} />
 			</div>
 
+			{cloudTrackingData &&
+				cloudTrackingState &&
+				cloudTrackingData.resolved.access === "allowed" &&
+				cloudTrackingData.resolved.entitlements.claudeTracking.enabled && (
+					<>
+						<Separator />
+						<CloudOnboardingClaudePicker
+							data={cloudTrackingData}
+							prompts={data.prompts}
+							state={cloudTrackingState}
+							onChange={setCloudTrackingState}
+							disabled={isSaving}
+						/>
+					</>
+				)}
+
+			{cloudTrackingError && <p className="text-sm text-destructive">{cloudTrackingError}</p>}
+
 			{submitError && (
 				<div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
 					<AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
@@ -379,7 +446,7 @@ export default function PromptWizard({ onComplete, capacity }: PromptWizardProps
 
 			<Button
 				onClick={handleSubmit}
-				disabled={isSaving || previewCounts.totalNew === 0}
+				disabled={isSaving || previewCounts.totalNew === 0 || cloudTrackingError !== null}
 				className="flex items-center gap-2 cursor-pointer"
 			>
 				{isSaving ? (

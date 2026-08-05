@@ -97,5 +97,9 @@ export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		const organization = await requireBrandOrganization(session.user.id, data.brandId);
-		return saveWizardOnboarding(data, { mode: getDeployment().mode, organizationId: organization.id });
+		return saveWizardOnboarding(data, {
+			mode: getDeployment().mode,
+			organizationId: organization.id,
+			createdByUserId: session.user.id,
+		});
 	});

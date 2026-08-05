@@ -8,9 +8,15 @@
  * lives here.
  */
 
+import { CLAUDE_TRACKING_MODES, trackingTargetKeySchema } from "@workspace/config/plans";
 import type { DeploymentMode } from "@workspace/config/types";
 import { withOrganizationEntitlementTransaction } from "@workspace/lib/cloud/capacity";
 import { saveOrganizationPromptsInTransaction } from "@workspace/lib/cloud/prompt-mutations";
+import {
+	TrackingSettingsError,
+	updateBrandTrackingTargetsInTransaction,
+	updateClaudePromptAssignmentsInTransaction,
+} from "@workspace/lib/cloud/tracking-settings";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
@@ -55,6 +61,25 @@ const promptInputSchema = z.object({
 	enabled: z.boolean().optional().default(true),
 });
 
+const wizardPromptInputSchema = promptInputSchema.extend({
+	clientId: z.string().min(1).max(200).optional(),
+});
+
+const wizardCloudTrackingSchema = z.object({
+	selections: z.array(
+		z.object({
+			targetKey: trackingTargetKeySchema,
+			requestedCadenceMinutes: z.number().int().positive().nullable().optional(),
+		}),
+	),
+	claudeAssignments: z.array(
+		z.object({
+			promptClientId: z.string().min(1).max(200),
+			mode: z.enum(CLAUDE_TRACKING_MODES),
+		}),
+	),
+});
+
 type CompetitorInput = z.infer<typeof competitorInputSchema>;
 type PromptInput = z.infer<typeof promptInputSchema>;
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -92,7 +117,8 @@ export const wizardOnboardingInputSchema = z.object({
 	additionalDomains: z.array(z.string()).optional(),
 	aliases: z.array(z.string()).optional(),
 	competitors: z.array(competitorInputSchema).optional(),
-	prompts: z.array(promptInputSchema).optional(),
+	prompts: z.array(wizardPromptInputSchema).optional(),
+	cloudTracking: wizardCloudTrackingSchema.optional(),
 });
 
 /** Internal shape for createBrand — matches storage (website + additionalDomains). */
@@ -389,20 +415,82 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 // Wizard save — brand fields + new prompts/competitors in one shot
 // ============================================================================
 
+function normalizedPromptValue(value: string): string {
+	return value.trim().toLowerCase();
+}
+
+function resolveOnboardingClaudeAssignments(input: {
+	assignments: NonNullable<WizardOnboardingInput["cloudTracking"]>["claudeAssignments"];
+	submittedPrompts: NonNullable<WizardOnboardingInput["prompts"]>;
+	persistedPrompts: (typeof prompts.$inferSelect)[];
+}) {
+	const submittedByClientId = new Map<string, NonNullable<WizardOnboardingInput["prompts"]>[number]>();
+	const submittedValues = new Set<string>();
+	for (const prompt of input.submittedPrompts) {
+		const valueKey = normalizedPromptValue(prompt.value);
+		if (submittedValues.has(valueKey)) {
+			throw new TrackingSettingsError("The same onboarding prompt was submitted twice.");
+		}
+		submittedValues.add(valueKey);
+		if (!prompt.clientId) continue;
+		if (submittedByClientId.has(prompt.clientId)) {
+			throw new TrackingSettingsError(`Prompt client id ${prompt.clientId} was submitted twice.`);
+		}
+		submittedByClientId.set(prompt.clientId, prompt);
+	}
+
+	const persistedByValue = new Map<string, (typeof prompts.$inferSelect)[]>();
+	for (const prompt of input.persistedPrompts) {
+		const key = normalizedPromptValue(prompt.value);
+		persistedByValue.set(key, [...(persistedByValue.get(key) ?? []), prompt]);
+	}
+
+	return input.assignments.map((assignment) => {
+		const submitted = submittedByClientId.get(assignment.promptClientId);
+		if (!submitted?.enabled) {
+			throw new TrackingSettingsError("Claude tracking can only be assigned to an enabled onboarding prompt.");
+		}
+		const matches = persistedByValue.get(normalizedPromptValue(submitted.value)) ?? [];
+		if (matches.length !== 1 || !matches[0]?.enabled) {
+			throw new TrackingSettingsError("Unable to identify the enabled prompt selected for Claude tracking.");
+		}
+		return { promptId: matches[0].id, mode: assignment.mode };
+	});
+}
+
 export async function saveWizardOnboarding(
 	input: WizardOnboardingInput,
-	context: { mode: DeploymentMode; organizationId: string },
+	context: { mode: DeploymentMode; organizationId: string; createdByUserId?: string },
 ): Promise<BrandResult> {
 	const { brand, promptResult } = await withOrganizationEntitlementTransaction({
 		mode: context.mode,
 		organizationId: context.organizationId,
 		run: async ({ tx, resolved }) => {
+			if (context.mode === "cloud" && !input.cloudTracking) {
+				throw new TrackingSettingsError("Choose this brand's tracking platforms before completing onboarding.");
+			}
+			if (context.mode !== "cloud" && input.cloudTracking) {
+				throw new TrackingSettingsError("Plan tracking settings are only available in cloud mode.");
+			}
 			const [existing] = await tx
 				.select()
 				.from(brands)
 				.where(and(eq(brands.id, input.brandId), eq(brands.organizationId, context.organizationId)))
 				.limit(1);
 			if (!existing) throw new BrandNotFoundError(input.brandId);
+			if (input.cloudTracking) {
+				if (resolved.mode !== "cloud" || resolved.access !== "allowed") {
+					throw new TrackingSettingsError("An active cloud plan is required.");
+				}
+				await updateBrandTrackingTargetsInTransaction({
+					tx,
+					resolved,
+					organizationId: context.organizationId,
+					brandId: input.brandId,
+					selections: input.cloudTracking.selections,
+					createdByUserId: context.createdByUserId,
+				});
+			}
 
 			const formattedWebsite = input.website ? validateAndFormatWebsite(input.website) : existing.website;
 			const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
@@ -445,6 +533,22 @@ export async function saveWizardOnboarding(
 				})),
 				dedupeNewValues: true,
 			});
+			if (input.cloudTracking) {
+				if (resolved.mode !== "cloud" || resolved.access !== "allowed") {
+					throw new TrackingSettingsError("An active cloud plan is required.");
+				}
+				await updateClaudePromptAssignmentsInTransaction({
+					tx,
+					resolved,
+					organizationId: context.organizationId,
+					brandId: input.brandId,
+					assignments: resolveOnboardingClaudeAssignments({
+						assignments: input.cloudTracking.claudeAssignments,
+						submittedPrompts: input.prompts ?? [],
+						persistedPrompts: promptResult.prompts,
+					}),
+				});
+			}
 
 			const [completed] = await tx
 				.update(brands)
