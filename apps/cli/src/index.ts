@@ -11,9 +11,12 @@ import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
+import { buildComposeYaml, type PostgresMode } from "./compose-builder.js";
 import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
+import { runTargetDatabaseMigration } from "./database-migration.js";
 import { MIGRATIONS, type MigrationContext, planMigrations, runMigrations } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
+import { DeploymentUpgradeError, executeDeploymentUpgrade } from "./upgrade-execution.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,8 +41,6 @@ type UpgradeOptions = {
 	dir?: string;
 	yes?: boolean;
 };
-
-type PostgresMode = "docker" | "external";
 
 type EnvMap = Record<string, string>;
 
@@ -1129,56 +1130,73 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 		process.exit(0);
 	}
 
-	// ── Stop the stack so migrations + image swap run on a quiet deployment ─
 	assertDockerRunning();
 	const wasRunning = await stackHasRunningServices(configDir);
-	if (wasRunning) {
-		log.step("Stopping services...");
-		await runDockerCompose(configDir, ["down"]);
-	}
-
-	// ── Run migrations ───────────────────────────────────────────────────
+	const isDev = await composeUsesBuild(composePath);
 	const ctx = buildMigrationContext(configDir, cliVersion);
 	try {
-		await runMigrations(plan, ctx);
+		await executeDeploymentUpgrade({
+			wasRunning,
+			runConfigMigrations: () => runMigrations(plan, ctx),
+			runDatabaseMigration: async () => {
+				log.step("Applying database migrations...");
+				await runTargetDatabaseMigration({
+					configDir,
+					dev: isDev,
+					version: cliVersion,
+					wasRunning,
+					runCompose: (args) => runDockerCompose(configDir, args),
+				});
+			},
+			stopServices: async () => {
+				log.step("Stopping services...");
+				await runDockerCompose(configDir, ["down"]);
+			},
+			applyRelease: async () => {
+				await repinComposeImages(composePath, cliVersion);
+				await refreshRenderedVersion(path.join(configDir, ".env"), cliVersion);
+				log.success(`Pinned config to ${cliVersion}.`);
+
+				if (isDev) {
+					log.info("Dev mode detected — rebuild with `elmo compose build` to apply the new version.");
+				} else {
+					log.step("Pulling images...");
+					await runDockerCompose(configDir, ["pull"]);
+				}
+			},
+			startServices: async () => {
+				log.step("Starting services...");
+				await runDockerCompose(configDir, ["up", "-d"]);
+				const s = p.spinner();
+				s.start("Waiting for services to become healthy...");
+				const ok = await waitForHealthy(configDir, 180_000);
+				if (ok) {
+					s.stop("All services healthy!");
+				} else {
+					s.stop("Health check timed out.");
+					log.warn("Some services did not report healthy status.");
+				}
+			},
+		});
 	} catch (error) {
-		const msg = error instanceof Error ? error.message : String(error);
-		log.error(`Migration failed: ${msg}`);
-		log.info("Your config version was left unchanged. Fix the issue and rerun `elmo upgrade`.");
-		if (wasRunning) {
-			log.info("The stack was stopped for the upgrade. Restart with `elmo compose up -d` after fixing.");
+		if (error instanceof DeploymentUpgradeError) {
+			const label = error.phase === "database-migration" ? "Database migration" : "Upgrade";
+			log.error(`${label} failed: ${error.message}`);
+			if (error.phase === "config-migrations" || error.phase === "database-migration") {
+				log.info("Image tags were left unchanged. Fix the issue and rerun `elmo upgrade`.");
+				log.info(
+					wasRunning
+						? "Existing services are still running on the previous images."
+						: "The stack remains stopped.",
+				);
+			}
+		} else {
+			log.error(`Upgrade failed: ${error instanceof Error ? error.message : String(error)}`);
 		}
 		process.exit(1);
 	}
 
-	// ── Re-pin image tags + refresh the version recorded in the config ───
-	const isDev = await composeUsesBuild(composePath);
-	await repinComposeImages(composePath, cliVersion);
-	await refreshRenderedVersion(path.join(configDir, ".env"), cliVersion);
-	log.success(`Pinned config to ${cliVersion}.`);
-
-	// ── Pull new images (dev builds from source, so nothing to pull) ─────
-	if (isDev) {
-		log.info("Dev mode detected — rebuild with `elmo compose build` to apply the new version.");
-	} else {
-		log.step("Pulling images...");
-		await runDockerCompose(configDir, ["pull"]);
-	}
-
-	// ── Restart only if the stack was running before the upgrade ─────────
-	if (wasRunning) {
-		log.step("Starting services...");
-		await runDockerCompose(configDir, ["up", "-d"]);
-		const s = p.spinner();
-		s.start("Waiting for services to become healthy...");
-		const ok = await waitForHealthy(configDir, 180_000);
-		if (ok) {
-			s.stop("All services healthy!");
-		} else {
-			s.stop("Health check timed out.");
-			log.warn("Some services did not report healthy status.");
-		}
-	} else {
+	if (!wasRunning) {
 		log.info("Stack was stopped before upgrade — leaving it stopped. Start with `elmo compose up -d`.");
 	}
 
@@ -1194,12 +1212,8 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 }
 
 async function stackHasRunningServices(configDir: string): Promise<boolean> {
-	try {
-		const services = await getComposeServices(configDir);
-		return services.some((s) => s.State?.startsWith("running") ?? false);
-	} catch {
-		return false;
-	}
+	const services = await getComposeServices(configDir);
+	return services.some((service) => service.State?.startsWith("running") ?? false);
 }
 
 // Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
@@ -1258,210 +1272,6 @@ function buildMigrationContext(configDir: string, version: string): MigrationCon
 	};
 }
 
-// ── Compose YAML Builder ─────────────────────────────────────────────────────
-
-function buildComposeYaml(options: {
-	dev: boolean;
-	postgresMode: PostgresMode;
-	repoRoot: string;
-	dockerDir?: string;
-	port: number;
-	version: string;
-}): string {
-	const services: string[] = [];
-	const volumes = new Set<string>();
-
-	const dependsOnWeb: string[] = [];
-	const dependsOnWorker: string[] = [];
-
-	const dependencyConditions: Record<string, string> = {
-		postgres: "service_healthy",
-		"db-migrate": "service_completed_successfully",
-	};
-
-	const dockerfilePath = options.dockerDir
-		? path.relative(options.repoRoot, path.join(options.dockerDir, "Dockerfile"))
-		: "docker/Dockerfile";
-
-	if (options.postgresMode === "docker") {
-		services.push(buildPostgresService());
-		services.push(
-			buildDbMigrateService({
-				dev: options.dev,
-				dockerfilePath,
-				repoRoot: options.repoRoot,
-				version: options.version,
-			}),
-		);
-		dependsOnWeb.push("db-migrate");
-		dependsOnWorker.push("db-migrate");
-		volumes.add("postgres_data");
-	}
-
-	services.push(
-		buildWebService({
-			dev: options.dev,
-			dependsOn: dependsOnWeb,
-			dependencyConditions,
-			repoRoot: options.repoRoot,
-			dockerfilePath,
-			port: options.port,
-			version: options.version,
-		}),
-	);
-	services.push(
-		buildWorkerService({
-			dev: options.dev,
-			dependsOn: dependsOnWorker,
-			dependencyConditions,
-			repoRoot: options.repoRoot,
-			dockerfilePath,
-			version: options.version,
-		}),
-	);
-
-	const lines = [renderedByHeader(options.version), "", "name: elmo", "", "services:"];
-	lines.push(...services.map((service) => indentBlock(service, 2)));
-
-	if (volumes.size > 0) {
-		lines.push("", "volumes:");
-		for (const volume of volumes) {
-			lines.push(`  ${volume}:`);
-		}
-	}
-
-	return `${lines.join("\n")}\n`;
-}
-
-function buildPostgresService(): string {
-	return [
-		"postgres:",
-		"  image: postgres:16-alpine",
-		"  environment:",
-		"    POSTGRES_USER: postgres",
-		"    POSTGRES_PASSWORD: postgres",
-		"    POSTGRES_DB: elmo",
-		"  volumes:",
-		"    - postgres_data:/var/lib/postgresql/data",
-		"  ports:",
-		'    - "5432:5432"',
-		"  healthcheck:",
-		'    test: ["CMD-SHELL", "pg_isready -U postgres"]',
-		"    interval: 5s",
-		"    timeout: 5s",
-		"    retries: 5",
-		"    start_period: 30s",
-	].join("\n");
-}
-
-function buildDbMigrateService(options: {
-	dev: boolean;
-	dockerfilePath: string;
-	repoRoot: string;
-	version: string;
-}): string {
-	const lines = ["db-migrate:"];
-	if (options.dev) {
-		lines.push(
-			"  build:",
-			`    context: ${options.repoRoot}`,
-			`    dockerfile: ${options.dockerfilePath}`,
-			"    target: migrate",
-		);
-	} else {
-		lines.push(`  image: elmohq/elmo-db-migrate:${options.version}`);
-	}
-
-	lines.push(
-		"  environment:",
-		"    - DATABASE_URL=postgres://postgres:postgres@postgres:5432/elmo",
-		"  depends_on:",
-		"    postgres:",
-		"      condition: service_healthy",
-	);
-
-	return lines.join("\n");
-}
-
-function buildWebService(options: {
-	dev: boolean;
-	dependsOn: string[];
-	dependencyConditions: Record<string, string>;
-	repoRoot: string;
-	dockerfilePath: string;
-	port: number;
-	version: string;
-}): string {
-	const lines = ["web:"];
-	if (options.dev) {
-		lines.push(
-			"  build:",
-			`    context: ${options.repoRoot}`,
-			`    dockerfile: ${options.dockerfilePath}`,
-			"    target: web",
-			"    args:",
-			"      DEPLOYMENT_MODE: local",
-		);
-	} else {
-		lines.push(`  image: elmohq/elmo-web:${options.version}`);
-	}
-
-	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", `    - "${options.port}:3000"`);
-
-	if (options.dependsOn.length > 0) {
-		lines.push("  depends_on:");
-		for (const service of options.dependsOn) {
-			const condition = options.dependencyConditions[service] ?? "service_started";
-			lines.push(`    ${service}:`, `      condition: ${condition}`);
-		}
-	}
-
-	return lines.join("\n");
-}
-
-function buildWorkerService(options: {
-	dev: boolean;
-	dependsOn: string[];
-	dependencyConditions: Record<string, string>;
-	repoRoot: string;
-	dockerfilePath: string;
-	version: string;
-}): string {
-	const lines = ["worker:"];
-	if (options.dev) {
-		lines.push(
-			"  build:",
-			`    context: ${options.repoRoot}`,
-			`    dockerfile: ${options.dockerfilePath}`,
-			"    target: worker",
-			"    args:",
-			"      DEPLOYMENT_MODE: local",
-		);
-	} else {
-		lines.push(`  image: elmohq/elmo-worker:${options.version}`);
-	}
-
-	lines.push("  env_file:", "    - path: .env", "      required: true");
-
-	if (options.dependsOn.length > 0) {
-		lines.push("  depends_on:");
-		for (const service of options.dependsOn) {
-			const condition = options.dependencyConditions[service] ?? "service_started";
-			lines.push(`    ${service}:`, `      condition: ${condition}`);
-		}
-	}
-
-	return lines.join("\n");
-}
-
-function indentBlock(block: string, spaces: number): string {
-	const indent = " ".repeat(spaces);
-	return block
-		.split("\n")
-		.map((line) => `${indent}${line}`)
-		.join("\n");
-}
-
 // ── Docker Helpers ───────────────────────────────────────────────────────────
 
 async function getComposeServices(configDir: string): Promise<ComposeService[]> {
@@ -1487,8 +1297,7 @@ async function getComposeServices(configDir: string): Promise<ComposeService[]> 
 				.filter((line) => line.trim())
 				.map((line) => JSON.parse(line) as ComposeService);
 		} catch {
-			log.warn("Unable to parse docker compose status.");
-			return [];
+			throw new Error("Unable to parse docker compose status");
 		}
 	}
 }
@@ -1522,11 +1331,20 @@ function sleep(ms: number): Promise<void> {
 function runDockerCompose(configDir: string, args: string[]): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const composeFile = path.join(configDir, "elmo.yaml");
-		const commandArgs = ["compose", "-f", composeFile, ...args];
+		const envFile = path.join(configDir, ".env");
+		const commandArgs = ["compose", "--env-file", envFile, "-f", composeFile, ...args];
 		const child = spawn("docker", commandArgs, {
 			stdio: "inherit",
 		});
+		let settled = false;
+		child.on("error", (error) => {
+			if (settled) return;
+			settled = true;
+			reject(error);
+		});
 		child.on("close", (code) => {
+			if (settled) return;
+			settled = true;
 			if (code === 0) {
 				resolve();
 			} else {
@@ -1539,17 +1357,26 @@ function runDockerCompose(configDir: string, args: string[]): Promise<void> {
 function runDockerComposeCapture(configDir: string, args: string[]): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const composeFile = path.join(configDir, "elmo.yaml");
-		const commandArgs = ["compose", "-f", composeFile, ...args];
+		const envFile = path.join(configDir, ".env");
+		const commandArgs = ["compose", "--env-file", envFile, "-f", composeFile, ...args];
 		const child = spawn("docker", commandArgs);
 		let stdout = "";
 		let stderr = "";
+		let settled = false;
 		child.stdout.on("data", (data: Buffer) => {
 			stdout += data.toString();
 		});
 		child.stderr.on("data", (data: Buffer) => {
 			stderr += data.toString();
 		});
+		child.on("error", (error) => {
+			if (settled) return;
+			settled = true;
+			reject(error);
+		});
 		child.on("close", (code) => {
+			if (settled) return;
+			settled = true;
 			if (code === 0) {
 				resolve(stdout);
 			} else {

@@ -68,7 +68,7 @@ describe("noncloud worker registration", () => {
 		"does not register cloud billing or tracking handlers in %s mode",
 		async (mode) => {
 			setMode(mode);
-			const work = vi.fn(async () => undefined);
+			const work = vi.fn(async (_queueName: string, ..._args: unknown[]) => undefined);
 			await registerHandlers({ work } as unknown as PgBoss);
 
 			const registeredQueues = work.mock.calls.map(([queueName]) => queueName);
