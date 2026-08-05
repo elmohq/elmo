@@ -2,9 +2,10 @@ import type { ResolvedEntitlements } from "@workspace/config/entitlements";
 import type { DeploymentMode } from "@workspace/config/types";
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "../db/db";
-import { brands } from "../db/schema";
 import { slugify } from "../db/provisioning";
+import { brands } from "../db/schema";
 import { createOrganizationBillingSnapshotStore, resolveOrganizationEntitlements } from "./entitlements";
+import { initializeDefaultBrandTracking } from "./tracking-defaults";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -61,7 +62,9 @@ export async function withOrganizationEntitlementTransaction<T>(input: {
 	return db.transaction(async (tx) => {
 		// Capacity is organization-wide, so serialize count+mutation operations for
 		// this workspace. hashtextextended avoids maintaining a lock table.
-		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`elmo-capacity:${input.organizationId}`}, 0))`);
+		await tx.execute(
+			sql`SELECT pg_advisory_xact_lock(hashtextextended(${`elmo-capacity:${input.organizationId}`}, 0))`,
+		);
 		const resolved = await resolveOrganizationEntitlements({
 			mode: input.mode,
 			organizationId: input.organizationId,
@@ -78,6 +81,7 @@ export async function createOrganizationBrand(input: {
 	name: string;
 	website: string;
 	additionalDomains?: string[];
+	createdByUserId?: string;
 }): Promise<{ brandId: string }> {
 	return withOrganizationEntitlementTransaction({
 		mode: input.mode,
@@ -105,7 +109,17 @@ export async function createOrganizationBrand(input: {
 					})
 					.onConflictDoNothing({ target: brands.id })
 					.returning({ id: brands.id });
-				if (inserted) return { brandId: inserted.id };
+				if (inserted) {
+					if (resolved.mode === "cloud" && resolved.access === "allowed") {
+						await initializeDefaultBrandTracking({
+							tx,
+							resolved,
+							brandId: inserted.id,
+							createdByUserId: input.createdByUserId,
+						});
+					}
+					return { brandId: inserted.id };
+				}
 				suffix++;
 			}
 		},

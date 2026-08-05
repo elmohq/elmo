@@ -4,6 +4,7 @@ import { MAX_PROMPTS } from "../constants";
 import { brands, prompts } from "../db/schema";
 import { computeSystemTags, sanitizeUserTags } from "../tag-utils";
 import { assertCapacity, CapacityExceededError, withOrganizationEntitlementTransaction } from "./capacity";
+import { reconcileBrandTrackingSettings } from "./tracking-settings";
 
 export type PromptMutation = {
 	id?: string;
@@ -146,6 +147,15 @@ export async function saveOrganizationPrompts(input: {
 								})),
 							)
 							.returning({ id: prompts.id, enabled: prompts.enabled });
+
+			if (resolved.mode === "cloud" && resolved.access === "allowed") {
+				await reconcileBrandTrackingSettings({
+					tx,
+					resolved,
+					organizationId: input.organizationId,
+					brandId: input.brandId,
+				});
+			}
 
 			return {
 				prompts: await tx.query.prompts.findMany({ where: eq(prompts.brandId, input.brandId) }),

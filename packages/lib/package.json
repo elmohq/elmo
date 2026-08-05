@@ -31,7 +31,8 @@
 		"./cloud/entitlements": "./src/cloud/entitlements.ts",
 		"./cloud/capacity": "./src/cloud/capacity.ts",
 		"./cloud/prompt-mutations": "./src/cloud/prompt-mutations.ts",
-		"./cloud/tracking-policy": "./src/cloud/tracking-policy.ts"
+		"./cloud/tracking-policy": "./src/cloud/tracking-policy.ts",
+		"./cloud/tracking-settings": "./src/cloud/tracking-settings.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.26",
