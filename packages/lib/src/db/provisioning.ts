@@ -1,20 +1,12 @@
 /**
  * User / org / membership provisioning.
  *
- * Single place where "create a new user with an org and admin membership"
- * happens for local mode. Demo deployments reuse a database populated by
- * running the stack in local mode first, so there is no separate demo
- * provisioning path — the public demo box is just a read-only view over
- * that already-bootstrapped data.
- *
- * Everything here is one-shot: the better-auth `user.create.before` hook
- * rejects any signup when a user already exists, so these inserts only
- * ever run once against a given database. The SQL is plain INSERTs (no
- * upsert, no existence checks) to make that intent obvious — a second
- * call is a bug and should fail at the database layer rather than
- * silently rewriting rows.
+ * Single place where signup-created organizations and memberships are
+ * provisioned. Local is intentionally one-shot; cloud provisioning is
+ * idempotent because Better Auth's post-create hook can leave a committed user
+ * behind if a later database or network operation fails.
  */
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "./db";
 import { brands, member, organization, user } from "./schema";
 
@@ -115,25 +107,22 @@ export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	}
 }
 
-/**
- * Find an organization slug that doesn't collide with an existing org,
- * appending -2, -3, … on collision. Used by `provisionUmbrellaOrg`, where the
- * org id itself is a random uuid (decoupled from any brand) but the slug
- * still needs to be unique and human-readable.
- */
-async function findUniqueOrgSlug(baseSlug: string): Promise<string> {
-	let candidate = baseSlug;
-	let suffix = 2;
-	for (;;) {
-		const [conflict] = await db
-			.select({ id: organization.id })
-			.from(organization)
-			.where(eq(organization.slug, candidate))
-			.limit(1);
-		if (!conflict) return candidate;
-		candidate = `${baseSlug}-${suffix}`;
-		suffix++;
-	}
+function encodeIdentifier(value: string): string {
+	return Array.from(new TextEncoder().encode(value), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Stable identity used to make cloud signup provisioning safely retryable. */
+export function getCloudWorkspaceIdentity(input: { userId: string; name: string }): {
+	organizationId: string;
+	membershipId: string;
+	slug: string;
+} {
+	const encodedUserId = encodeIdentifier(input.userId);
+	return {
+		organizationId: `workspace_${encodedUserId}`,
+		membershipId: `workspace_owner_${encodedUserId}`,
+		slug: `${slugify(input.name)}-${encodedUserId}`,
+	};
 }
 
 /**
@@ -180,24 +169,36 @@ export async function ensureOrganization(input: { id: string; name: string }): P
 
 /**
  * Create the single customer ("umbrella") org + admin membership for a new
- * user. The org id is decoupled from any brand (a random id), so brands can be
- * attached later with their own ids. Used by the cloud user.create.after hook.
+ * user. The org id is decoupled from every brand and derived from the immutable
+ * user id so a failed post-signup hook can be retried safely.
  */
 export async function provisionUmbrellaOrg(input: { userId: string; name: string }): Promise<{ orgId: string }> {
-	const orgId = crypto.randomUUID();
-	const baseSlug = slugify(input.name);
-	const slug = await findUniqueOrgSlug(baseSlug);
+	const identity = getCloudWorkspaceIdentity(input);
 
 	await db.transaction(async (tx) => {
-		await tx.insert(organization).values({ id: orgId, name: input.name, slug, createdAt: new Date() });
-		await tx.insert(member).values({
-			id: crypto.randomUUID(),
-			organizationId: orgId,
-			userId: input.userId,
-			role: "admin",
-			createdAt: new Date(),
-		});
+		await tx
+			.insert(organization)
+			.values({ id: identity.organizationId, name: input.name, slug: identity.slug, createdAt: new Date() })
+			.onConflictDoNothing({ target: organization.id });
+
+		const [existingMembership] = await tx
+			.select({ id: member.id })
+			.from(member)
+			.where(and(eq(member.organizationId, identity.organizationId), eq(member.userId, input.userId)))
+			.limit(1);
+		if (!existingMembership) {
+			await tx
+				.insert(member)
+				.values({
+					id: identity.membershipId,
+					organizationId: identity.organizationId,
+					userId: input.userId,
+					role: "admin",
+					createdAt: new Date(),
+				})
+				.onConflictDoNothing({ target: member.id });
+		}
 	});
 
-	return { orgId };
+	return { orgId: identity.organizationId };
 }

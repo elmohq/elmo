@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slugify } from "./provisioning";
+import { getCloudWorkspaceIdentity, slugify } from "./provisioning";
 
 describe("slugify", () => {
 	it("lowercases", () => {
@@ -30,5 +30,24 @@ describe("slugify", () => {
 		// only findUniqueBrandId (which needs a database) applies the reserved-slug
 		// suffix rule.
 		expect(slugify("new")).toBe("new");
+	});
+});
+
+describe("getCloudWorkspaceIdentity", () => {
+	it("is stable across retries and name changes", () => {
+		const original = getCloudWorkspaceIdentity({ userId: "user_123", name: "Alice's workspace" });
+		const renamed = getCloudWorkspaceIdentity({ userId: "user_123", name: "Alice Cooper" });
+
+		expect(renamed.organizationId).toBe(original.organizationId);
+		expect(renamed.membershipId).toBe(original.membershipId);
+		expect(getCloudWorkspaceIdentity({ userId: "user_123", name: "Alice's workspace" })).toEqual(original);
+	});
+
+	it("keeps different user identifiers distinct even when punctuation differs", () => {
+		const underscore = getCloudWorkspaceIdentity({ userId: "user_123", name: "Workspace" });
+		const hyphen = getCloudWorkspaceIdentity({ userId: "user-123", name: "Workspace" });
+
+		expect(underscore.organizationId).not.toBe(hyphen.organizationId);
+		expect(underscore.slug).not.toBe(hyphen.slug);
 	});
 });
