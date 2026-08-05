@@ -8,9 +8,18 @@
  * All drizzle operations are co-located here with the schema to avoid
  * cross-package type mismatches from different drizzle-orm resolutions.
  */
+
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "./db";
-import { eq, and, ne, inArray } from "drizzle-orm";
-import { organization, member, user, account } from "./schema";
+import { account, member, organization, user } from "./schema";
+
+type AuthSyncTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function lockMembershipPair(tx: AuthSyncTransaction, organizationId: string, userId: string): Promise<void> {
+	await tx.execute(
+		sql`select pg_advisory_xact_lock(hashtext('elmo-membership'), hashtext(${organizationId} || chr(31) || ${userId}))`,
+	);
+}
 
 async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<string> {
 	let candidate = baseSlug;
@@ -51,16 +60,26 @@ export async function upsertOrganization(org: { id: string; name: string; slug?:
 }
 
 export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
-	await db
-		.insert(member)
-		.values({
-			id: crypto.randomUUID(),
-			organizationId: orgId,
-			userId,
-			role,
-			createdAt: new Date(),
-		})
-		.onConflictDoNothing({ target: [member.organizationId, member.userId] });
+	await db.transaction(async (tx) => {
+		await lockMembershipPair(tx, orgId, userId);
+		const [existing] = await tx
+			.select({ id: member.id })
+			.from(member)
+			.where(and(eq(member.organizationId, orgId), eq(member.userId, userId)))
+			.limit(1);
+		if (existing) return;
+
+		await tx
+			.insert(member)
+			.values({
+				id: crypto.randomUUID(),
+				organizationId: orgId,
+				userId,
+				role,
+				createdAt: new Date(),
+			})
+			.onConflictDoNothing();
+	});
 }
 
 export interface SyncMembershipsResult {
@@ -87,6 +106,14 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 
 		for (const orgId of orgIds) {
 			if (!existingOrgIds.has(orgId)) {
+				await lockMembershipPair(tx, orgId, userId);
+				const [concurrentMembership] = await tx
+					.select({ id: member.id })
+					.from(member)
+					.where(and(eq(member.organizationId, orgId), eq(member.userId, userId)))
+					.limit(1);
+				if (concurrentMembership) continue;
+
 				const inserted = await tx
 					.insert(member)
 					.values({
@@ -96,7 +123,7 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 						role: "member",
 						createdAt: new Date(),
 					})
-					.onConflictDoNothing({ target: [member.organizationId, member.userId] })
+					.onConflictDoNothing()
 					.returning({ organizationId: member.organizationId });
 				if (inserted.length > 0) added.push(orgId);
 			}
