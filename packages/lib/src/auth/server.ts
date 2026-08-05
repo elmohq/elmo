@@ -7,7 +7,7 @@
  */
 
 import { type SSOOptions, sso } from "@better-auth/sso";
-import { type BetterAuthOptions, betterAuth } from "better-auth";
+import { type BetterAuthOptions, type BetterAuthPlugin, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, customSession, organization } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
@@ -40,6 +40,8 @@ export interface CreateAuthOptions {
 	socialProviders?: BetterAuthOptions["socialProviders"];
 	/** Options for the organization plugin (e.g. sendInvitationEmail in cloud). */
 	organizationOptions?: Parameters<typeof organization>[0];
+	/** Deployment-specific Better Auth plugins (for example cloud billing). */
+	additionalPlugins?: BetterAuthPlugin[];
 }
 
 export function createAuth(options?: CreateAuthOptions) {
@@ -105,6 +107,7 @@ export function createAuth(options?: CreateAuthOptions) {
 
 		plugins: [
 			organization(options?.organizationOptions),
+			...(options?.additionalPlugins ?? []),
 			admin({
 				ac,
 				roles: {
