@@ -8,6 +8,7 @@ import {
 	competitors,
 	promptRuns,
 	prompts,
+	usageEvents,
 	type Brand,
 	type Competitor,
 } from "@workspace/lib/db/schema";
@@ -24,6 +25,7 @@ import {
 	type PromptRunPlan,
 } from "@workspace/lib/run-policy";
 import { getProvider, parseScrapeTargets, type ModelConfig, type Provider } from "@workspace/lib/providers";
+import { estimateRunCostUsd } from "@workspace/lib/usage";
 import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
@@ -269,6 +271,35 @@ async function saveCitations(
 	);
 }
 
+/**
+ * Billing-grade attribution (issue #348): one row per provider call, success
+ * or failure. Never fails the run — attribution must not break tracking.
+ */
+async function recordUsageEvent(input: {
+	organizationId: string;
+	brandId: string;
+	promptId: string;
+	eventType: "prompt_run" | "prompt_run_failed";
+	config: ModelConfig;
+}): Promise<void> {
+	try {
+		const cost = estimateRunCostUsd(input.config.provider, input.config.webSearch);
+		await db.insert(usageEvents).values({
+			organizationId: input.organizationId,
+			brandId: input.brandId,
+			promptId: input.promptId,
+			eventType: input.eventType,
+			provider: input.config.provider,
+			model: input.config.model,
+			webSearchEnabled: input.config.webSearch,
+			units: 1,
+			estimatedCostUsd: cost === null ? null : cost.toFixed(6),
+		});
+	} catch (error) {
+		console.error("Failed to record usage event:", error);
+	}
+}
+
 async function runModelIteration({
 	promptId,
 	promptValue,
@@ -323,6 +354,13 @@ async function runModelIteration({
 		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
 
 		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
+		await recordUsageEvent({
+			organizationId: brand.organizationId,
+			brandId: brand.id,
+			promptId,
+			eventType: "prompt_run",
+			config,
+		});
 	} catch (error) {
 		// A single run's failure doesn't fail the job (only an all-runs failure
 		// does), so report it here to keep per-provider failure rates visible.
@@ -332,6 +370,13 @@ async function runModelIteration({
 			scope.setTag("model", config.model);
 			scope.setContext("run", { promptId, brandId: brand.id, runIndex });
 			Sentry.captureException(error);
+		});
+		await recordUsageEvent({
+			organizationId: brand.organizationId,
+			brandId: brand.id,
+			promptId,
+			eventType: "prompt_run_failed",
+			config,
 		});
 		throw error;
 	}

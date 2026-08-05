@@ -9,6 +9,7 @@ import {
 	jsonb,
 	index,
 	integer,
+	numeric,
 	smallint,
 } from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
@@ -273,6 +274,36 @@ export const organizationSettings = pgTable("organization_settings", {
 }).enableRLS();
 
 export type OrganizationSettings = typeof organizationSettings.$inferSelect;
+
+/**
+ * Billing-grade usage attribution (issue #348): one row per provider call the
+ * worker makes, so every run is attributable to an org with an estimated
+ * cost. Written in every mode (self-hosted operators get the same spend
+ * visibility); estimated costs come from the tunable table in
+ * src/usage/cost.ts and are validated against provider invoices, not treated
+ * as ground truth.
+ */
+export const usageEvents = pgTable(
+	"usage_events",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		organizationId: text("organization_id").notNull(),
+		brandId: text("brand_id").notNull(),
+		promptId: uuid("prompt_id"),
+		eventType: text("event_type").notNull(),
+		provider: text("provider"),
+		model: text("model"),
+		webSearchEnabled: boolean("web_search_enabled").notNull().default(false),
+		units: integer("units").notNull().default(1),
+		estimatedCostUsd: numeric("estimated_cost_usd", { precision: 12, scale: 6 }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => ({
+		orgCreatedIdx: index("usage_events_org_created_idx").on(table.organizationId, table.createdAt),
+	}),
+).enableRLS();
+
+export type UsageEvent = typeof usageEvents.$inferSelect;
 
 // Encrypted overrides for credential environment variables, keyed by the env-var
 // name they stand in for. Separate table, strictest access.

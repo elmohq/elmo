@@ -29,7 +29,8 @@
 		"./providers/models": "./src/providers/models.ts",
 		"./providers/types": "./src/providers/types.ts",
 		"./entitlements": "./src/entitlements/index.ts",
-		"./run-policy": "./src/run-policy/index.ts"
+		"./run-policy": "./src/run-policy/index.ts",
+		"./usage": "./src/usage/cost.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.26",
