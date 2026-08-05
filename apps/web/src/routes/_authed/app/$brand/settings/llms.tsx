@@ -6,16 +6,28 @@
  * from `brand.effectiveModelConfigs` rather than a hardcoded model list so
  * any deployment-configured model shows up automatically.
  */
-import { createFileRoute } from "@tanstack/react-router";
-import { getAppName, getBrandName, buildTitle } from "@/lib/route-head";
-import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+
 import { IconCircleCheck, IconCircleX, IconInfoCircle } from "@tabler/icons-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Card, CardContent, CardHeader } from "@workspace/ui/components/card";
 import { Skeleton } from "@workspace/ui/components/skeleton";
-import { useBrand } from "@/hooks/use-brands";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@workspace/ui/components/tooltip";
+import { CloudTrackingSettings } from "@/components/cloud-tracking-settings";
 import { iconForModel } from "@/components/filter-bar";
+import { useBrand } from "@/hooks/use-brands";
+import { getTrackingSettingsPageKind } from "@/lib/cloud-tracking-settings";
+import { buildTitle, getAppName, getBrandName } from "@/lib/route-head";
+import { getBrandTrackingSettingsFn, getTrackingSettingsPageModeFn } from "@/server/tracking-settings";
 
 export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
+	loader: async ({ params }) => {
+		const deployment = await getTrackingSettingsPageModeFn();
+		if (getTrackingSettingsPageKind(deployment.mode) === "legacy") return { kind: "legacy" as const };
+		return {
+			kind: "cloud" as const,
+			settings: await getBrandTrackingSettingsFn({ data: { brandId: params.brand } }),
+		};
+	},
 	head: ({ matches, match }) => {
 		const appName = getAppName(match);
 		const brandName = getBrandName(matches);
@@ -26,10 +38,20 @@ export const Route = createFileRoute("/_authed/app/$brand/settings/llms")({
 			],
 		};
 	},
+	pendingComponent: LlmsSettingsSkeleton,
 	component: LlmsSettingsPage,
 });
 
 function LlmsSettingsPage() {
+	const loaderData = Route.useLoaderData();
+	const { brand: brandId } = Route.useParams();
+	if (loaderData.kind === "cloud") {
+		return <CloudTrackingSettings brandId={brandId} data={loaderData.settings} />;
+	}
+	return <LegacyLlmsSettings />;
+}
+
+function LegacyLlmsSettings() {
 	const { brand, isLoading } = useBrand();
 	const configs = brand?.effectiveModelConfigs ?? [];
 
@@ -98,6 +120,27 @@ function LlmsSettingsPage() {
 					))}
 				</div>
 			)}
+		</div>
+	);
+}
+
+function LlmsSettingsSkeleton() {
+	return (
+		<div className="space-y-6 max-w-6xl">
+			<div className="space-y-2">
+				<Skeleton className="h-9 w-32" />
+				<Skeleton className="h-5 w-96 max-w-full" />
+			</div>
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{[0, 1, 2].map((i) => (
+					<Card key={i} className="h-40">
+						<CardContent className="space-y-3 pt-6">
+							<Skeleton className="h-5 w-2/3" />
+							<Skeleton className="h-4 w-full" />
+						</CardContent>
+					</Card>
+				))}
+			</div>
 		</div>
 	);
 }
