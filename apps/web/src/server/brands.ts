@@ -6,9 +6,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { createOrganizationBrand } from "@workspace/lib/cloud/capacity";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { type Brand, type BrandWithPrompts, brands, competitors, prompts } from "@workspace/lib/db/schema";
+import {
+	brandTargetSelections,
+	type Brand,
+	type BrandWithPrompts,
+	brands,
+	competitors,
+	prompts,
+	promptTargetAssignments,
+} from "@workspace/lib/db/schema";
 import type { ModelConfig } from "@workspace/lib/providers";
-import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
+import { getTrackingTargetKey, parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
@@ -35,15 +43,40 @@ const BRAND_ORGANIZATION_ERRORS = {
  * `ModelConfig[]` (with provider, version, webSearch) is kept on the same
  * object for pages that render per-model metadata (e.g. settings/llms).
  */
-function computeEffectiveModels(brand: Brand): {
+async function computeEffectiveModels(brand: Brand): Promise<{
 	effectiveModels: string[];
 	effectiveModelConfigs: ModelConfig[];
-} {
+}> {
 	try {
 		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
-		const effective = selectTargetsForBrand(configs, brand.enabledModels);
+		let effective: ModelConfig[];
+		if (getDeployment().mode === "cloud") {
+			const [selections, assignments] = await Promise.all([
+				db
+					.select({ targetKey: brandTargetSelections.targetKey })
+					.from(brandTargetSelections)
+					.where(and(eq(brandTargetSelections.brandId, brand.id), eq(brandTargetSelections.enabled, true))),
+				db
+					.selectDistinct({ targetKey: promptTargetAssignments.targetKey })
+					.from(promptTargetAssignments)
+					.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
+					.where(
+						and(
+							eq(promptTargetAssignments.brandId, brand.id),
+							eq(promptTargetAssignments.enabled, true),
+							eq(prompts.enabled, true),
+						),
+					),
+			]);
+			const enabledTargetKeys = new Set(
+				[...selections, ...assignments].map((selection) => selection.targetKey),
+			);
+			effective = configs.filter((config) => enabledTargetKeys.has(getTrackingTargetKey(config)));
+		} else {
+			effective = selectTargetsForBrand(configs, brand.enabledModels);
+		}
 		return {
-			effectiveModels: effective.map((c) => c.model),
+			effectiveModels: [...new Set(effective.map((config) => config.model))],
 			effectiveModelConfigs: effective,
 		};
 	} catch {
@@ -89,7 +122,7 @@ async function getBrandWithPromptsFromDb(
 			...brand,
 			prompts: brandPrompts,
 			competitors: brandCompetitors,
-			...computeEffectiveModels(brand),
+			...(await computeEffectiveModels(brand)),
 		};
 	} catch (error) {
 		console.error("Error fetching brand with prompts:", error);
