@@ -11,18 +11,12 @@ describe("syncMemberships", () => {
 		database.transaction.mockReset();
 	});
 
-	it("makes concurrent reconciliation idempotent and only reports the inserted membership", async () => {
-		let membershipExists = false;
-		let readers = 0;
+	it("serializes whole-user reconciliation and reports one concurrent insertion", async () => {
+		const memberships = new Set<string>();
 		let lockTail = Promise.resolve();
-		let releaseReaders: (() => void) | undefined;
-		const bothReadersStarted = new Promise<void>((resolve) => {
-			releaseReaders = resolve;
-		});
 
 		database.transaction.mockImplementation(async (run) => {
-			let releaseLock: (() => void) | undefined;
-			let hasMembershipLock = false;
+			let releaseLock = () => {};
 			const tx = {
 				execute: async () => {
 					const previous = lockTail;
@@ -30,29 +24,18 @@ describe("syncMemberships", () => {
 						releaseLock = resolve;
 					});
 					await previous;
-					hasMembershipLock = true;
 				},
 				select: () => ({
 					from: () => ({
-						where: () => {
-							if (hasMembershipLock) {
-								return { limit: async () => (membershipExists ? [{ id: "member-a" }] : []) };
-							}
-							return (async () => {
-								readers++;
-								if (readers === 2) releaseReaders?.();
-								await bothReadersStarted;
-								return [];
-							})();
-						},
+						where: async () => [...memberships].map((organizationId) => ({ id: organizationId, organizationId })),
 					}),
 				}),
 				insert: () => ({
 					values: (row: { organizationId: string }) => ({
 						onConflictDoNothing: () => ({
 							returning: async () => {
-								if (membershipExists) return [];
-								membershipExists = true;
+								if (memberships.has(row.organizationId)) return [];
+								memberships.add(row.organizationId);
 								return [{ organizationId: row.organizationId }];
 							},
 						}),
@@ -63,14 +46,17 @@ describe("syncMemberships", () => {
 			try {
 				return await run(tx);
 			} finally {
-				releaseLock?.();
+				releaseLock();
 			}
 		});
 
-		const results = await Promise.all([syncMemberships("user-a", ["org-a"]), syncMemberships("user-a", ["org-a"])]);
+		const results = await Promise.all([
+			syncMemberships("user-a", ["org-b", "org-a"]),
+			syncMemberships("user-a", ["org-a", "org-b"]),
+		]);
 
-		expect(results.flatMap((result) => result.added)).toEqual(["org-a"]);
+		expect(results.flatMap((result) => result.added).sort()).toEqual(["org-a", "org-b"]);
 		expect(results.every((result) => result.removed.length === 0)).toBe(true);
-		expect(membershipExists).toBe(true);
+		expect([...memberships].sort()).toEqual(["org-a", "org-b"]);
 	});
 });

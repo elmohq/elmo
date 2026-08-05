@@ -15,10 +15,8 @@ import { account, member, organization, user } from "./schema";
 
 type AuthSyncTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function lockMembershipPair(tx: AuthSyncTransaction, organizationId: string, userId: string): Promise<void> {
-	await tx.execute(
-		sql`select pg_advisory_xact_lock(hashtext('elmo-membership'), hashtext(${organizationId} || chr(31) || ${userId}))`,
-	);
+async function lockUserMemberships(tx: AuthSyncTransaction, userId: string): Promise<void> {
+	await tx.execute(sql`select pg_advisory_xact_lock(hashtext('elmo-user-memberships'), hashtext(${userId}))`);
 }
 
 async function uniqueSlug(baseSlug: string, excludeOrgId: string): Promise<string> {
@@ -61,7 +59,7 @@ export async function upsertOrganization(org: { id: string; name: string; slug?:
 
 export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
 	await db.transaction(async (tx) => {
-		await lockMembershipPair(tx, orgId, userId);
+		await lockUserMemberships(tx, userId);
 		const [existing] = await tx
 			.select({ id: member.id })
 			.from(member)
@@ -96,6 +94,7 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 	const removed: string[] = [];
 
 	await db.transaction(async (tx) => {
+		await lockUserMemberships(tx, userId);
 		const existing = await tx
 			.select({ id: member.id, organizationId: member.organizationId })
 			.from(member)
@@ -106,14 +105,6 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 
 		for (const orgId of orgIds) {
 			if (!existingOrgIds.has(orgId)) {
-				await lockMembershipPair(tx, orgId, userId);
-				const [concurrentMembership] = await tx
-					.select({ id: member.id })
-					.from(member)
-					.where(and(eq(member.organizationId, orgId), eq(member.userId, userId)))
-					.limit(1);
-				if (concurrentMembership) continue;
-
 				const inserted = await tx
 					.insert(member)
 					.values({
