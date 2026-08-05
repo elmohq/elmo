@@ -18,6 +18,11 @@ overrides:
   "@brightdata/sdk>undici": "^7.28.0"
   "@vercel/blob>undici": "^6.27.0"
   kysely: "~0.28.14"
+  # Better Auth plugins share structural types from @better-auth/core. Keep its
+  # jose peer graph unified without changing unrelated consumers' major lines.
+  "@better-auth/core>jose": "6.2.6"
+  "better-auth>jose": "6.2.6"
+  crossws: "0.4.9" # satisfies both h3 runtime lines without split websocket peers
   h3: ">=2.0.1-rc.18"
   h3-v2: "npm:h3@>=2.0.1-rc.18"
   picomatch: "^4.0.4"
