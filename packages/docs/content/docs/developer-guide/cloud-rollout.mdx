@@ -10,10 +10,162 @@ rows. Local and white-label installations therefore keep their existing
 `enabled_models` and `delay_override_hours` behavior, but old and new cloud web
 or worker versions must not overlap during the cutover to migration 0020.
 
+## White-label and local upgrades
+
+The production white-label database must use a planned maintenance cutover,
+not a live schema deployment. First deploy and rehearse the white-label-only
+compatibility build whose complete membership reconciliation takes one
+transaction-scoped advisory lock per user and tolerates the unique membership
+index. Both runtime images must carry the
+`com.elmohq.elmo.schema-compatibility=0020` attestation. Its worker must publish
+readiness only after every handler is registered, remove readiness before a
+graceful one-hour drain, and its web and worker images must have working health
+checks. Both images must also carry
+`com.elmohq.elmo.release-role=white-label-rollback-only`, and the rehearsed
+Compose file must set `stop_grace_period: 65m` for both web and worker. Publish
+these images only through the dedicated rollback-only workflow, under
+unmistakable, immutable rollback-only tags; it must not publish
+packages, a product release, a migrator, or a `latest` tag. Run that build on
+the old schema before the maintenance window, record both exact image digests,
+and retain them as the only approved rollback runtime. Never use this
+compatibility worker as a normal target or in cloud mode: it does not consume
+or fence the v2 cloud queues. An ordinary pre-cloud image without these
+properties is not an approved rollback after migration 0012.
+
+Configure both database URLs before rehearsing either the target or
+compatibility runtime. `DATABASE_URL` may use a pooler, but
+`DATABASE_URL_UNPOOLED` must be the provider's direct, session-affine PostgreSQL
+endpoint. The two URLs must address the same logical database and advisory-lock
+scope. A transaction-pooler endpoint—including a pooler host or port 6543—is
+rejected for `DATABASE_URL_UNPOOLED`; do not bypass this check. Make any TLS
+certificate, key, Unix-socket, secret, or config mounts required by that direct
+endpoint available to web, worker, and the exact migrator. The runtime proves
+that both URLs reach the same database before it becomes ready, so an absent or
+incorrect direct URL fails closed.
+
+Before the window, restore a fresh database backup in an isolated environment
+and run this read-only preview. Migration 0012 intentionally keeps the
+highest-privilege membership, then the earliest `created_at` and lowest `id`,
+and deletes every other row for the same organization and user. Confirm the
+preview with the white-label operator before proceeding.
+
+```sql
+WITH ranked_members AS (
+  SELECT
+    id,
+    organization_id,
+    user_id,
+    role,
+    created_at,
+    row_number() OVER (
+      PARTITION BY organization_id, user_id
+      ORDER BY
+        CASE role
+          WHEN 'owner' THEN 0
+          WHEN 'admin' THEN 1
+          WHEN 'member' THEN 2
+          ELSE 3
+        END,
+        created_at ASC,
+        id ASC
+    ) AS duplicate_rank,
+    count(*) OVER (PARTITION BY organization_id, user_id) AS duplicate_count
+  FROM member
+)
+SELECT
+  organization_id,
+  user_id,
+  id,
+  role,
+  created_at,
+  CASE WHEN duplicate_rank = 1 THEN 'retain' ELSE 'delete' END AS migration_action
+FROM ranked_members
+WHERE duplicate_count > 1
+ORDER BY organization_id, user_id, duplicate_rank;
+```
+
+Every final custom or white-label image pipeline must build web, worker, and
+the dedicated `migrate` target from the same source commit and pass
+`--build-arg ELMO_RELEASE_VERSION=<matching CLI version>` to all three builds.
+Before cutover, inspect each result and require both
+`com.elmohq.elmo.schema-compatibility=0020` and
+`com.elmohq.elmo.release-version=<matching CLI version>`. `elmo upgrade` rejects
+a missing or mismatched label, or a migrator from another release, before it
+stops the current runtime. Publish and retain immutable digests even when the
+deployment Compose file uses version tags.
+
+Pre-pull or build all three final images and both compatibility runtime images. Stop the
+compatibility web service and every custom producer first so no new work can be
+enqueued. Then send `SIGTERM` to the compatibility worker with at least a
+65-minute container stop grace period. The compatibility worker stops polling
+before it drains active jobs; do not send `SIGKILL`. After the worker container
+has exited, require this query to return no rows before migration:
+
+```sql
+SELECT name, count(*) AS active_jobs, min(started_on) AS oldest_started_on
+FROM pgboss.job
+WHERE state = 'active'
+GROUP BY name
+ORDER BY name;
+```
+
+If the worker does not exit cleanly within the grace period, or exits nonzero,
+abort the cutover and investigate the active job rather than migrating. Apply
+migrations 0012–0020 while every application process is stopped. Start and
+health-check the final worker before starting web. If the final runtime fails,
+keep the migrations applied and restart only the retained, digest-pinned
+compatibility images; do not restore an ordinary pre-cloud image. Existing
+legacy scheduling continues after restart because these migrations do not
+create cloud rollout rows for existing brands.
+
+For CLI-managed local Docker installations, `elmo upgrade` adds the direct URL
+for its own PostgreSQL service and performs the same prepared maintenance
+boundary automatically. An existing local deployment with an external
+database must configure `DATABASE_URL_UNPOOLED` and explicitly pass
+`--acknowledge-single-deployment` for this one-time boundary; `--yes` does not
+acknowledge that operational claim. White-label and cloud deployments cannot
+use that exception. The upgrade serializes concurrent invocations,
+pre-pulls or builds target images, and records a private resumable checkpoint
+bound to the deployment, database, Docker daemon/context, and Compose project.
+It preserves which web/worker services and PostgreSQL were running, drains
+every currently live worker cleanly, and removes all old web, worker, and base
+migrator containers before crossing the schema boundary. It pins the prepared
+target config, runs the exact checkpointed migrator, recreates every previously
+existing application container from the checkpointed target IDs without
+starting it, then starts only the services that were running before cutover. It
+makes the target worker healthy before exposing web. A headerless legacy config
+is treated as a maintenance upgrade. If the database may have crossed the
+cloud schema boundary, automatic rollback is allowed only to exact
+checkpointed images carrying the 0020 compatibility attestation; those IDs are
+recreated and re-attested before recovery state is removed. Otherwise the
+target config and recovery checkpoint remain in place, and the CLI refuses
+manual Compose start commands until the same CLI version resumes successfully.
+After cutover, retire cached older CLI binaries: `elmo init` is not an upgrade
+mechanism, and only the CLI version recorded by an incomplete recovery may
+resume it. Do not run the database migrator separately from this cutover.
+
 ## Deployment order
 
 1. Back up PostgreSQL and verify restoration before changing production.
-2. Stop routing requests to every old cloud web instance so no process can
+2. Prepare Stripe and every cloud runtime variable before starting a worker or
+   admitting web traffic:
+   - set `DATABASE_URL_UNPOOLED` to the direct endpoint described above and set
+     `ELMO_RUNTIME_FENCE_GENERATION=0020` on every cloud web and worker
+     deployment, including Vercel or another source-based deployment. Cloud
+     startup fails closed when either value is absent;
+   - create the catalog prices with the exact lookup keys, amounts, currencies,
+     and intervals defined by the application;
+   - configure `${APP_URL}/api/auth/stripe/webhook` with
+     `STRIPE_WEBHOOK_SECRET`;
+   - create a dedicated portal configuration with subscription updates
+     disabled, payment-method updates and invoice history enabled, and
+     cancellation enabled at the end of the billing period; then set
+     `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`;
+   - enable Stripe's failed-payment customer emails and Smart Retries as
+     described below;
+   - set `STRIPE_SECRET_KEY` and validate the price catalog and portal
+     configuration. Cloud worker startup rejects a missing Stripe secret.
+3. Stop routing requests to every old cloud web instance so no process can
    create an admission or enqueue new cloud work. Let every old cloud worker
    drain all active billing, tracking, and `analyze-brand-cloud-v2` jobs, then
    stop every old cloud web and worker instance. Verify that no old producer or
@@ -22,9 +174,9 @@ or worker versions must not overlap during the cutover to migration 0020.
    provider lease added by that migration. Local and white-label deployments
    use the legacy queues and may remain online when they do not share these
    cloud processes.
-3. Apply all database migrations through 0020. Do not remove legacy columns,
+4. Apply all database migrations through 0020. Do not remove legacy columns,
    queues, or scheduler code.
-4. Start only the new worker version that consumes `reconcile-cloud-billing`,
+5. Start only the new worker version that consumes `reconcile-cloud-billing`,
    `dispatch-tracking-v2`, and `process-tracking-task-v2`. Billing reconciliation
    recovers a Stripe command after a process or webhook-delivery failure; a
    pending command fences tracking until its authoritative Stripe state has
@@ -45,19 +197,6 @@ or worker versions must not overlap during the cutover to migration 0020.
    behind the provider-start lock instead of persisting customer content in
    pg-boss. Local and white-label workers continue using the legacy
    `analyze-brand` contract.
-5. Prepare Stripe before admitting cloud web traffic:
-   - create the catalog prices with the exact lookup keys, amounts, currencies,
-     and intervals defined by the application;
-   - configure `${APP_URL}/api/auth/stripe/webhook` with
-     `STRIPE_WEBHOOK_SECRET`;
-   - create a dedicated portal configuration with subscription updates
-     disabled, payment-method updates and invoice history enabled, and
-     cancellation enabled at the end of the billing period; then set
-     `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`;
-   - enable Stripe's failed-payment customer emails and Smart Retries as
-     described below;
-   - set `STRIPE_SECRET_KEY` and confirm the cloud startup readiness check
-     accepts the price catalog and portal configuration.
 6. Deploy the new web/control-plane version only after the new worker is the
    exclusive cloud consumer and all of its queues have been verified. Cloud
    requests fail closed until the Stripe readiness check succeeds; non-cloud
@@ -247,11 +386,12 @@ never set a cloud-created v2 brand to `legacy`. Resume it only with the
 that operation increments the generation again and makes the organization
 entitlement cursor immediately due.
 
-Keep migrations 0012–0020 applied during rollback. Their tables and nullable
-Stripe columns are compatible with local and white-label code, while reversing
-them would be the destructive part of the release. Stripe retries failed
-webhook delivery, so restore a webhook-capable web version before resuming
-billing traffic.
+Keep migrations 0012–0020 applied during rollback; reversing them would be the
+destructive part of the release. A white-label rollback must use the rehearsed
+compatibility image described above because an ordinary pre-cloud membership
+writer is not approved after the unique index exists. Stripe retries failed
+webhook delivery, so restore a webhook-capable cloud web version before
+resuming billing traffic.
 
 This release has no contract migration. Do not remove `enabled_models`,
 `delay_override_hours`, the legacy queues, or missing-rollout legacy behavior
