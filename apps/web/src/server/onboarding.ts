@@ -13,13 +13,14 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import {
+	type AnalyzeBrandStatus,
 	cancelAnalyzeBrand,
 	enqueueAnalyzeBrand,
 	getAnalyzeBrandStatus,
-	type AnalyzeBrandStatus,
 } from "@/lib/analyze-brand-job";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { getDeployment } from "@/lib/config/server";
 import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onboarding-core";
 
 /**
@@ -82,6 +83,6 @@ export const updateOnboardedBrandFn = createServerFn({ method: "POST" })
 	.validator(wizardOnboardingInputSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		return saveWizardOnboarding(data);
+		const organization = await requireBrandOrganization(session.user.id, data.brandId);
+		return saveWizardOnboarding(data, { mode: getDeployment().mode, organizationId: organization.id });
 	});

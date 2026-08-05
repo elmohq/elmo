@@ -29,7 +29,8 @@
 		"./providers/models": "./src/providers/models.ts",
 		"./providers/types": "./src/providers/types.ts",
 		"./cloud/entitlements": "./src/cloud/entitlements.ts",
-		"./cloud/capacity": "./src/cloud/capacity.ts"
+		"./cloud/capacity": "./src/cloud/capacity.ts",
+		"./cloud/prompt-mutations": "./src/cloud/prompt-mutations.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.26",

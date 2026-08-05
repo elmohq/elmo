@@ -7,14 +7,17 @@
  * client bundle). Server functions live in onboarding.ts; everything else
  * lives here.
  */
-import { z } from "zod";
-import { eq, count } from "drizzle-orm";
-import { db } from "@workspace/lib/db/db";
-import { brands, prompts, competitors } from "@workspace/lib/db/schema";
-import { ensureOrganization } from "@workspace/lib/db/provisioning";
+
+import type { DeploymentMode } from "@workspace/config/types";
+import { saveOrganizationPrompts } from "@workspace/lib/cloud/prompt-mutations";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
+import { db } from "@workspace/lib/db/db";
+import { ensureOrganization } from "@workspace/lib/db/provisioning";
+import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { dedupeDomains, dedupeAliases } from "@/lib/domain-categories";
+import { count, eq } from "drizzle-orm";
+import { z } from "zod";
+import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
 
 // ============================================================================
@@ -383,7 +386,10 @@ export async function updateBrand(input: UpdateBrandInput): Promise<BrandResult>
 // Wizard save — brand fields + new prompts/competitors in one shot
 // ============================================================================
 
-export async function saveWizardOnboarding(input: WizardOnboardingInput): Promise<BrandResult> {
+export async function saveWizardOnboarding(
+	input: WizardOnboardingInput,
+	context: { mode: DeploymentMode; organizationId: string },
+): Promise<BrandResult> {
 	await updateBrand({
 		brandId: input.brandId,
 		brandName: input.brandName,
@@ -408,17 +414,20 @@ export async function saveWizardOnboarding(input: WizardOnboardingInput): Promis
 		})),
 	});
 
-	await insertPrompts({
+	const promptResult = await saveOrganizationPrompts({
+		mode: context.mode,
+		organizationId: context.organizationId,
 		brandId: input.brandId,
-		brandName: existing.name,
-		website: existing.website,
-		source: (input.prompts ?? []).map((p) => ({
+		mutations: (input.prompts ?? []).map((p) => ({
 			value: p.value,
 			tags: sanitizeUserTags(p.tags ?? []),
 			enabled: p.enabled ?? true,
 		})),
-		dedupeAgainstExisting: true,
+		dedupeNewValues: true,
 	});
+	if (context.mode !== "cloud" && promptResult.activatedPromptIds.length > 0) {
+		await createMultiplePromptJobSchedulers(promptResult.activatedPromptIds);
+	}
 
 	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
 	return buildBrandResult(refreshed!);

@@ -3,36 +3,37 @@
  * Replaces apps/web/src/app/api/prompts/* and brands/[id]/prompts-summary API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
-import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { saveOrganizationPrompts } from "@workspace/lib/cloud/prompt-mutations";
 import { db } from "@workspace/lib/db/db";
-import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
-import { eq, and, desc, gte, count, sql } from "drizzle-orm";
-import {
-	getPromptsSummary,
-	getPromptsFirstEvaluatedAt,
-	getPromptCitationUrlStats,
-	getPromptDailyStats,
-	getPromptCompetitorDailyStats,
-	getPromptWebQueriesForMapping,
-	getPromptWebQueryCounts,
-} from "@/lib/postgres-read";
-import { generateDateRange } from "@/lib/chart-utils";
+import { brands, competitors, promptRuns, prompts, SYSTEM_TAGS } from "@workspace/lib/db/schema";
+import { getEffectiveBrandedStatus } from "@workspace/lib/tag-utils";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { z } from "zod";
+import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
 import type { LookbackPeriod } from "@/lib/chart-utils";
-import { getEffectiveBrandedStatus, computeSystemTags } from "@workspace/lib/tag-utils";
-import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import { generateDateRange } from "@/lib/chart-utils";
+import { getDeployment } from "@/lib/config/server";
 import {
-	extractDomain,
-	normalizeUrl,
+	CITATION_PAGE_TYPES,
 	emptyCategoryCounts,
 	emptyPageTypeCounts,
-	resolvePageType,
+	extractDomain,
 	isGoogleSurfaceUrl,
-	CITATION_PAGE_TYPES,
+	normalizeUrl,
+	resolvePageType,
 } from "@/lib/domain-categories";
 import { classifyUrl } from "@/lib/domain-categories.server";
 import { buildGoogleModule } from "@/lib/google-module";
+import { createMultiplePromptJobSchedulers, removeMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
+import {
+	getPromptCitationUrlStats,
+	getPromptCompetitorDailyStats,
+	getPromptDailyStats,
+	getPromptsFirstEvaluatedAt,
+	getPromptsSummary,
+	getPromptWebQueriesForMapping,
+	getPromptWebQueryCounts,
+} from "@/lib/postgres-read";
 // Server Functions
 // ============================================================================
 
@@ -541,72 +542,43 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 	.validator(
 		z.object({
 			brandId: z.string(),
-			prompts: z
-				.array(
-					z.object({
-						id: z.string().optional(),
-						value: z.string(),
-						enabled: z.boolean().optional().default(true),
-						tags: z.array(z.string()).optional(),
-					}),
-				)
-				.max(MAX_PROMPTS, `A brand may have at most ${MAX_PROMPTS} prompts.`),
+			prompts: z.array(
+				z.object({
+					id: z.string().optional(),
+					value: z.string(),
+					enabled: z.boolean().optional().default(true),
+					tags: z.array(z.string()).optional(),
+				}),
+			),
 		}),
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-
-		const brand = await db.query.brands.findFirst({
-			where: eq(brands.id, data.brandId),
+		const organization = await requireBrandOrganization(session.user.id, data.brandId);
+		const deployment = getDeployment();
+		const result = await saveOrganizationPrompts({
+			mode: deployment.mode,
+			organizationId: organization.id,
+			brandId: data.brandId,
+			mutations: data.prompts.map((prompt) => ({ ...prompt, tags: prompt.tags ?? [] })),
 		});
-		if (!brand) throw new Error("Brand not found");
 
-		const existingIds = new Set(
-			(await db.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, data.brandId))).map((p) => p.id),
-		);
-
-		const saved = await db.transaction(async (tx) => {
-			const toUpdate = data.prompts.filter((p) => p.id);
-			const toInsert = data.prompts.filter((p) => !p.id);
-
-			for (const p of toUpdate) {
-				await tx
-					.update(prompts)
-					.set({
-						value: p.value,
-						enabled: p.enabled,
-						tags: p.tags || [],
-						systemTags: computeSystemTags(p.value, brand.name, brand.website),
-					})
-					.where(and(eq(prompts.id, p.id!), eq(prompts.brandId, data.brandId)));
-			}
-
-			if (toInsert.length > 0) {
-				await tx.insert(prompts).values(
-					toInsert.map((p) => ({
-						brandId: data.brandId,
-						value: p.value,
-						enabled: p.enabled,
-						tags: p.tags || [],
-						systemTags: computeSystemTags(p.value, brand.name, brand.website),
-					})),
+		// Cloud scheduling is materialized from versioned target assignments by
+		// the v2 dispatcher. Legacy deployments keep their existing pg-boss jobs.
+		if (deployment.mode !== "cloud") {
+			if (result.activatedPromptIds.length > 0) {
+				createMultiplePromptJobSchedulers(result.activatedPromptIds).catch((error) =>
+					console.error("Failed to create job schedulers for activated prompts:", error),
 				);
 			}
-
-			return tx.query.prompts.findMany({
-				where: eq(prompts.brandId, data.brandId),
-			});
-		});
-
-		const newPromptIds = saved.filter((p) => !existingIds.has(p.id)).map((p) => p.id);
-		if (newPromptIds.length > 0) {
-			createMultiplePromptJobSchedulers(newPromptIds).catch((err) =>
-				console.error("Failed to create job schedulers for new prompts:", err),
-			);
+			if (result.deactivatedPromptIds.length > 0) {
+				removeMultiplePromptJobSchedulers(result.deactivatedPromptIds).catch((error) =>
+					console.error("Failed to remove job schedulers for deactivated prompts:", error),
+				);
+			}
 		}
 
-		return saved;
+		return result.prompts;
 	});
 
 // ============================================================================
