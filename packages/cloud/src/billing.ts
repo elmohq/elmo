@@ -85,14 +85,10 @@ export function createDrizzleCloudBillingAuthorizationStore(): CloudBillingAutho
 	};
 }
 
-function canManageBilling(role: string): boolean {
-	return role === "admin" || role === "owner";
-}
-
 /**
- * Better Auth remains the initial-checkout transport, while this policy
- * prevents its generic upgrade and portal endpoints from bypassing Elmo's
- * validated billing controls once an organization is subscribed.
+ * Better Auth owns webhook and subscription-record integration. Its generic
+ * write and portal endpoints stay closed so every Stripe mutation uses Elmo's
+ * durable controls and validated portal configuration.
  */
 
 export function createCloudOrganizationReferenceAuthorizer(store: CloudBillingAuthorizationStore) {
@@ -111,14 +107,7 @@ export function createCloudOrganizationReferenceAuthorizer(store: CloudBillingAu
 		const snapshot = await store.load(referenceId, user.id);
 		if (!snapshot) return false;
 		if (action === "list-subscription") return true;
-		if (!canManageBilling(snapshot.role) || snapshot.planId === "custom") return false;
-		// Better Auth creates an unrestricted default portal session. Elmo's
-		// server control uses a separately validated Stripe configuration.
-		if (action === "billing-portal") return false;
-		// Elmo's durable checkout and mutation controls are the only write path.
-		// Better Auth remains the webhook/subscription-record integration.
-		if (action === "upgrade-subscription") return false;
-		return true;
+		return false;
 	};
 }
 

@@ -49,7 +49,7 @@ function portalConfiguration(
 }
 
 describe("cloud Stripe billing runtime", () => {
-	it("allows members to read billing but only admins to manage it", async () => {
+	it("allows members to read billing while reserving every mutation for Elmo's controls", async () => {
 		let snapshot: CloudBillingAuthorizationSnapshot | null = {
 			role: "member",
 			planId: "pro",
@@ -66,12 +66,14 @@ describe("cloud Stripe billing runtime", () => {
 		);
 
 		snapshot = { ...snapshot, role: "admin" };
-		await expect(
-			authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "cancel-subscription" }),
-		).resolves.toBe(true);
-		await expect(authorize({ user: { id: "user_1" }, referenceId: "org_1", action: "billing-portal" })).resolves.toBe(
-			false,
-		);
+		for (const action of [
+			"upgrade-subscription",
+			"cancel-subscription",
+			"restore-subscription",
+			"billing-portal",
+		] as const) {
+			await expect(authorize({ user: { id: "user_1" }, referenceId: "org_1", action })).resolves.toBe(false);
+		}
 		expect(store.load).toHaveBeenCalledWith("org_1", "user_1");
 	});
 
