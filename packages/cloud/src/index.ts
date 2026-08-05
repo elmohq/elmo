@@ -11,3 +11,4 @@
  */
 
 export { createCloudDeployment } from "./deployment";
+export { CLAUDE_NATIVE_WEB_TARGET_KEY, validateCloudTrackingTargets } from "./tracking-targets";

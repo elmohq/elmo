@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { getDeployment } from "@workspace/deployment";
+import { validateCloudTrackingTargets } from "@workspace/cloud";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
@@ -22,7 +23,9 @@ async function main() {
 
 	// Fail fast on misconfigured SCRAPE_TARGETS — surfaces unknown providers,
 	// missing API keys, and per-provider target errors before any job runs.
-	validateScrapeTargets(parseScrapeTargets(process.env.SCRAPE_TARGETS), getProvider);
+	const scrapeTargets = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+	validateScrapeTargets(scrapeTargets, getProvider);
+	if (process.env.DEPLOYMENT_MODE === "cloud") validateCloudTrackingTargets(scrapeTargets);
 	console.log("SCRAPE_TARGETS validated");
 
 	boss.on("error", (error) => {
