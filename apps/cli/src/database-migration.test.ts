@@ -95,6 +95,31 @@ describe("upgrade database migration runner", () => {
 		]);
 	});
 
+	it("uses the pre-pulled migrator without network access during cutover", async () => {
+		const configDir = await temporaryConfigDirectory();
+		const runCompose = vi.fn(async (_args: string[]) => undefined);
+
+		await runTargetDatabaseMigration({
+			configDir,
+			dev: false,
+			version: "1.2.3",
+			wasRunning: true,
+			imagePrepared: true,
+			runCompose,
+		});
+
+		expect(runCompose.mock.calls[0]?.[0]).toEqual([
+			"-f",
+			join(configDir, ".elmo-upgrade-migrate.yaml"),
+			"run",
+			"--rm",
+			"--pull",
+			"never",
+			"--no-TTY",
+			"db-migrate",
+		]);
+	});
+
 	it("adds a self-contained migrator to legacy external development compose files", () => {
 		const developmentBuild = resolveDevelopmentMigrationBuild(legacyExternalDevelopmentCompose);
 		const override = parse(buildUpgradeMigrationOverride({ dev: true, version: "1.2.3", developmentBuild })) as {

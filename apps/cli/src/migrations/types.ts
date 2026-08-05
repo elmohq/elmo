@@ -10,12 +10,13 @@ export interface MigrationContext {
 	configDir: string;
 	log: MigrationLogger;
 	readEnv(): Promise<EnvMap>;
-	writeEnv(env: EnvMap): Promise<void>;
+	setEnv(name: string, value: string): Promise<void>;
 }
 
 export interface Migration {
 	from: string;
 	to: string;
 	description: string;
+	requiresMaintenance?: boolean;
 	run(ctx: MigrationContext): Promise<void>;
 }

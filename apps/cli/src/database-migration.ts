@@ -44,6 +44,7 @@ export async function runTargetDatabaseMigration(input: {
 	dev: boolean;
 	version: string;
 	wasRunning: boolean;
+	imagePrepared?: boolean;
 	runCompose: RunCompose;
 }): Promise<void> {
 	const overridePath = path.join(input.configDir, ".elmo-upgrade-migrate.yaml");
@@ -65,7 +66,13 @@ export async function runTargetDatabaseMigration(input: {
 	try {
 		if (input.dev) await input.runCompose(withOverride(["build", "db-migrate"]));
 		await input.runCompose(
-			withOverride(["run", "--rm", ...(input.dev ? [] : ["--pull", "always"]), "--no-TTY", "db-migrate"]),
+			withOverride([
+				"run",
+				"--rm",
+				...(input.dev ? [] : ["--pull", input.imagePrepared ? "never" : "always"]),
+				"--no-TTY",
+				"db-migrate",
+			]),
 		);
 	} catch (error) {
 		if (!input.wasRunning) {

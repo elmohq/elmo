@@ -12,13 +12,13 @@ function migration(from: string, to: string, run?: () => Promise<void>): Migrati
 }
 
 function fakeContext(): MigrationContext {
-	let env: Record<string, string> = {};
+	const env: Record<string, string> = {};
 	return {
 		configDir: "/fake",
 		log: { info: () => {}, warn: () => {}, step: () => {} },
 		readEnv: async () => ({ ...env }),
-		writeEnv: async (next) => {
-			env = { ...next };
+		setEnv: async (name, value) => {
+			env[name] = value;
 		},
 	};
 }
@@ -117,7 +117,7 @@ describe("runMigrations", () => {
 			configDir: "/fake",
 			log: { info: () => {}, warn: () => {}, step },
 			readEnv: async () => ({}),
-			writeEnv: async () => {},
+			setEnv: async () => {},
 		};
 
 		await runMigrations([migration("0.3.0", "0.4.0")], ctx);

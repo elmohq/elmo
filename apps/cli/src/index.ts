@@ -12,8 +12,9 @@ import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
 import { buildComposeYaml, type PostgresMode } from "./compose-builder.js";
-import { parseRenderedVersion, refreshHeaderVersion, renderedByHeader, repinImages } from "./compose-pin.js";
+import { parseRenderedVersion, renderedByHeader } from "./compose-pin.js";
 import { runTargetDatabaseMigration } from "./database-migration.js";
+import { formatEnvValue, setEnvFileValue } from "./env-file.js";
 import {
 	MIGRATIONS,
 	type MigrationContext,
@@ -23,6 +24,12 @@ import {
 } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 import { DeploymentUpgradeError, executeDeploymentUpgrade } from "./upgrade-execution.js";
+import {
+	applyDeploymentRelease,
+	captureDeploymentConfig,
+	getTargetElmoImages,
+	restoreDeploymentConfig,
+} from "./upgrade-release.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -983,17 +990,9 @@ async function doStart(configDir: string): Promise<void> {
 	assertDockerRunning();
 
 	log.step("Starting Docker Compose stack...");
-	await runDockerCompose(configDir, ["up", "-d"]);
-
-	const s = p.spinner();
-	s.start("Waiting for services to become healthy...");
-	const ok = await waitForHealthy(configDir, 180_000);
-	if (ok) {
-		s.stop("All services healthy!");
-	} else {
-		s.stop("Health check timed out.");
-		p.log.warn("Some services did not report healthy status.");
-	}
+	await startServicesAndWait(configDir, ["web", "worker"]);
+	await assertServicesReady(configDir, ["web", "worker"]);
+	log.success("Web and worker services are healthy.");
 
 	log.info("Examples:");
 	console.log(`  ${pc.bold("elmo compose logs -f")}`);
@@ -1091,7 +1090,7 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	// with no version header (detectedVersion === null) still needs its image
 	// tags re-pinned, so it falls through to the upgrade path below.
 	if (detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
-		await reconcileCurrentConfig(buildMigrationContext(configDir, cliVersion));
+		await reconcileCurrentConfig(buildMigrationContext(configDir));
 		log.success(`Already at ${cliVersion}.`);
 		const pull = options.yes
 			? true
@@ -1099,12 +1098,12 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 		assertNotCancelled(pull);
 		if (pull) {
 			assertDockerRunning();
-			const wasRunning = await stackHasRunningServices(configDir);
+			const runningServices = await getRunningApplicationServices(configDir);
 			log.step("Pulling images...");
 			await runDockerCompose(configDir, ["pull"]);
-			if (wasRunning) {
+			if (runningServices.length > 0) {
 				log.step("Restarting services...");
-				await runDockerCompose(configDir, ["up", "-d"]);
+				await startServicesAndWait(configDir, runningServices);
 			}
 		}
 		p.outro(pc.green("Nothing to upgrade."));
@@ -1129,6 +1128,10 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 			console.log(`  • ${pc.bold(`${m.from} → ${m.to}`)} ${m.description}`);
 		}
 	}
+	const requiresMaintenance = detectedVersion === null || plan.some((migration) => migration.requiresMaintenance);
+	if (requiresMaintenance) {
+		log.warn("This upgrade uses a brief maintenance cutover: target images are prepared before web and worker stop.");
+	}
 
 	const confirm = options.yes ? true : await p.confirm({ message: "Proceed with upgrade?", initialValue: true });
 	assertNotCancelled(confirm);
@@ -1138,15 +1141,29 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	}
 
 	assertDockerRunning();
-	const wasRunning = await stackHasRunningServices(configDir);
+	const runningComposeServices = await getRunningComposeServices(configDir);
+	const runningServices = runningComposeServices.filter((service) => service === "web" || service === "worker");
+	const wasRunning = runningServices.length > 0;
 	const isDev = await composeUsesBuild(composePath);
-	const ctx = buildMigrationContext(configDir, cliVersion);
+	const ctx = buildMigrationContext(configDir);
+	const previousConfig = await captureDeploymentConfig(configDir);
 	try {
 		await executeDeploymentUpgrade({
 			wasRunning,
+			requiresMaintenance,
 			runConfigMigrations: async () => {
 				await runMigrations(plan, ctx);
 				await reconcileCurrentConfig(ctx);
+			},
+			prepareRelease: async () => {
+				if (isDev) {
+					log.step("Building target web and worker images while the current services stay online...");
+					await runDockerCompose(configDir, ["build", "web", "worker"]);
+					return;
+				}
+				const images = getTargetElmoImages(previousConfig.compose.contents, cliVersion);
+				log.step(`Pulling ${images.length} target image${images.length === 1 ? "" : "s"} before cutover...`);
+				await Promise.all(images.map((image) => runDocker(["pull", image])));
 			},
 			runDatabaseMigration: async () => {
 				log.step("Applying database migrations...");
@@ -1154,50 +1171,43 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 					configDir,
 					dev: isDev,
 					version: cliVersion,
-					wasRunning,
+					wasRunning: runningComposeServices.length > 0,
+					imagePrepared: !isDev,
 					runCompose: (args) => runDockerCompose(configDir, args),
 				});
 			},
 			stopServices: async () => {
-				log.step("Stopping services...");
-				await runDockerCompose(configDir, ["down"]);
+				log.step(`Draining ${runningServices.join(" and ")} for the maintenance cutover...`);
+				await runDockerCompose(configDir, ["stop", "--timeout", "45", ...runningServices]);
 			},
 			applyRelease: async () => {
-				await repinComposeImages(composePath, cliVersion);
-				await refreshRenderedVersion(path.join(configDir, ".env"), cliVersion);
+				await applyDeploymentRelease(configDir, previousConfig, cliVersion);
 				log.success(`Pinned config to ${cliVersion}.`);
-
-				if (isDev) {
-					log.info("Dev mode detected — rebuild with `elmo compose build` to apply the new version.");
-				} else {
-					log.step("Pulling images...");
-					await runDockerCompose(configDir, ["pull"]);
-				}
 			},
 			startServices: async () => {
 				log.step("Starting services...");
-				await runDockerCompose(configDir, ["up", "-d"]);
-				const s = p.spinner();
-				s.start("Waiting for services to become healthy...");
-				const ok = await waitForHealthy(configDir, 180_000);
-				if (ok) {
-					s.stop("All services healthy!");
-				} else {
-					s.stop("Health check timed out.");
-					log.warn("Some services did not report healthy status.");
-				}
+				await startServicesAndWait(configDir, runningServices);
+			},
+			verifyServices: () => assertServicesReady(configDir, runningServices),
+			rollbackRelease: async ({ restartServices }) => {
+				await restoreDeploymentConfig(configDir, previousConfig);
+				if (!restartServices) return;
+				log.warn("Target cutover failed; restarting the previous release...");
+				await startServicesAndWait(configDir, runningServices);
+				await assertServicesReady(configDir, runningServices);
 			},
 		});
 	} catch (error) {
 		if (error instanceof DeploymentUpgradeError) {
 			const label = error.phase === "database-migration" ? "Database migration" : "Upgrade";
 			log.error(`${label} failed: ${error.message}`);
-			if (error.phase === "config-migrations" || error.phase === "database-migration") {
-				log.info("Image tags were left unchanged. Fix the issue and rerun `elmo upgrade`.");
+			if (error.rolledBack) log.info("The previous config was restored and any previously running services restarted.");
+			if (error.rollbackCause) {
+				log.error(
+					`Automatic rollback also failed: ${error.rollbackCause instanceof Error ? error.rollbackCause.message : String(error.rollbackCause)}`,
+				);
 				log.info(
-					wasRunning
-						? "Existing services are still running on the previous images."
-						: "The stack remains stopped.",
+					"Keep the maintenance window open and restore the saved deployment config before restarting services.",
 				);
 			}
 		} else {
@@ -1221,9 +1231,14 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
 }
 
-async function stackHasRunningServices(configDir: string): Promise<boolean> {
-	const services = await getComposeServices(configDir);
-	return services.some((service) => service.State?.startsWith("running") ?? false);
+async function getRunningApplicationServices(configDir: string): Promise<string[]> {
+	return (await getRunningComposeServices(configDir)).filter((service) => service === "web" || service === "worker");
+}
+
+async function getRunningComposeServices(configDir: string): Promise<string[]> {
+	return (await getComposeServices(configDir))
+		.filter((service) => service.State?.startsWith("running"))
+		.map((service) => service.Service);
 }
 
 // Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
@@ -1244,23 +1259,7 @@ async function composeUsesBuild(composePath: string): Promise<boolean> {
 	}
 }
 
-// Rewrites `elmohq/elmo-*:<tag>` image tags in place, preserving any manual
-// edits the user made to the compose file, then refreshes the version header.
-async function repinComposeImages(composePath: string, version: string): Promise<void> {
-	const contents = await fs.readFile(composePath, "utf8");
-	await fs.writeFile(composePath, refreshHeaderVersion(repinImages(contents, version), version), "utf8");
-}
-
-async function refreshRenderedVersion(filePath: string, version: string): Promise<void> {
-	try {
-		const contents = await fs.readFile(filePath, "utf8");
-		await fs.writeFile(filePath, refreshHeaderVersion(contents, version), "utf8");
-	} catch {
-		// File is optional (e.g. .env may be absent in some setups).
-	}
-}
-
-function buildMigrationContext(configDir: string, version: string): MigrationContext {
+function buildMigrationContext(configDir: string): MigrationContext {
 	const envPath = path.join(configDir, ".env");
 	return {
 		configDir,
@@ -1276,16 +1275,14 @@ function buildMigrationContext(configDir: string, version: string): MigrationCon
 				return {};
 			}
 		},
-		writeEnv: async (env) => {
-			await fs.writeFile(envPath, buildEnvFile(env, version), "utf8");
-		},
+		setEnv: (name, value) => setEnvFileValue(envPath, name, value),
 	};
 }
 
 // ── Docker Helpers ───────────────────────────────────────────────────────────
 
 async function getComposeServices(configDir: string): Promise<ComposeService[]> {
-	const output = await runDockerComposeCapture(configDir, ["ps", "--format", "json"]);
+	const output = await runDockerComposeCapture(configDir, ["ps", "--all", "--format", "json"]);
 	if (!output.trim()) {
 		return [];
 	}
@@ -1322,20 +1319,37 @@ function isServiceReady(service: ComposeService): boolean {
 	return false;
 }
 
-async function waitForHealthy(configDir: string, timeoutMs: number): Promise<boolean> {
-	const start = Date.now();
-	while (Date.now() - start < timeoutMs) {
-		const services = await getComposeServices(configDir);
-		if (services.length > 0 && services.every(isServiceReady)) {
-			return true;
+async function assertServicesReady(configDir: string, requiredServices: readonly string[]): Promise<void> {
+	const services = await getComposeServices(configDir);
+	for (const required of requiredServices) {
+		const service = services.find((candidate) => candidate.Service === required);
+		if (!service || !isServiceReady(service)) {
+			throw new Error(`Required service ${required} is not healthy`);
 		}
-		await sleep(3000);
 	}
-	return false;
 }
 
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+async function startServicesAndWait(configDir: string, services: readonly string[]): Promise<void> {
+	if (services.length === 0) return;
+	await runDockerCompose(configDir, ["up", "-d", "--wait", "--wait-timeout", "180", ...services]);
+}
+
+function runDocker(args: string[]): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const child = spawn("docker", args, { stdio: "inherit" });
+		let settled = false;
+		child.on("error", (error) => {
+			if (settled) return;
+			settled = true;
+			reject(error);
+		});
+		child.on("close", (code) => {
+			if (settled) return;
+			settled = true;
+			if (code === 0) resolve();
+			else reject(new Error(`docker ${args[0] ?? "command"} exited with code ${code}`));
+		});
+	});
 }
 
 function runDockerCompose(configDir: string, args: string[]): Promise<void> {
@@ -1494,17 +1508,6 @@ function buildEnvFile(env: EnvMap, version: string): string {
 	}
 
 	return `${lines.join("\n")}\n`;
-}
-
-function formatEnvValue(value: string): string {
-	if (value === "") {
-		return '""';
-	}
-	if (/[\s#"']/u.test(value)) {
-		const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-		return `"${escaped}"`;
-	}
-	return value;
 }
 
 async function fileExists(target: string): Promise<boolean> {

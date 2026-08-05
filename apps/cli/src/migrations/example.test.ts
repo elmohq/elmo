@@ -8,47 +8,45 @@ import type { Migration, MigrationContext } from "./types.js";
 function inMemoryContext(initial: Record<string, string> = {}): MigrationContext & {
 	env: () => Record<string, string>;
 } {
-	let env: Record<string, string> = { ...initial };
+	const env: Record<string, string> = { ...initial };
 	return {
 		configDir: "/fake",
 		log: { info: () => {}, warn: () => {}, step: () => {} },
 		readEnv: async () => ({ ...env }),
-		writeEnv: async (next) => {
-			env = { ...next };
+		setEnv: async (name, value) => {
+			env[name] = value;
 		},
 		env: () => ({ ...env }),
 	};
 }
 
-describe("example: env-rename migration", () => {
-	const renameMigration: Migration = {
+describe("example: additive env migration", () => {
+	const copyMigration: Migration = {
 		from: "0.3.0",
 		to: "0.4.0",
 		description: "Rename FOO_KEY → BAR_KEY",
 		async run(ctx) {
 			const env = await ctx.readEnv();
 			if (env.FOO_KEY === undefined || env.BAR_KEY !== undefined) return;
-			env.BAR_KEY = env.FOO_KEY;
-			delete env.FOO_KEY;
-			await ctx.writeEnv(env);
+			await ctx.setEnv("BAR_KEY", env.FOO_KEY);
 		},
 	};
 
-	it("renames the key when only the old one is set", async () => {
+	it("copies the key when only the old one is set", async () => {
 		const ctx = inMemoryContext({ FOO_KEY: "value", OTHER: "keep" });
-		await renameMigration.run(ctx);
-		expect(ctx.env()).toEqual({ BAR_KEY: "value", OTHER: "keep" });
+		await copyMigration.run(ctx);
+		expect(ctx.env()).toEqual({ FOO_KEY: "value", BAR_KEY: "value", OTHER: "keep" });
 	});
 
 	it("is a no-op when the new key already exists", async () => {
 		const ctx = inMemoryContext({ FOO_KEY: "old", BAR_KEY: "new" });
-		await renameMigration.run(ctx);
+		await copyMigration.run(ctx);
 		expect(ctx.env()).toEqual({ FOO_KEY: "old", BAR_KEY: "new" });
 	});
 
 	it("is a no-op when neither key is set", async () => {
 		const ctx = inMemoryContext({ OTHER: "keep" });
-		await renameMigration.run(ctx);
+		await copyMigration.run(ctx);
 		expect(ctx.env()).toEqual({ OTHER: "keep" });
 	});
 });

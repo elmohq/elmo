@@ -5,13 +5,13 @@ import type { Migration, MigrationContext } from "./types.js";
 function inMemoryContext(initial: Record<string, string> = {}): MigrationContext & {
 	env: () => Record<string, string>;
 } {
-	let env: Record<string, string> = { ...initial };
+	const env: Record<string, string> = { ...initial };
 	return {
 		configDir: "/fake",
 		log: { info: () => {}, warn: () => {}, step: () => {} },
 		readEnv: async () => ({ ...env }),
-		writeEnv: async (next) => {
-			env = { ...next };
+		setEnv: async (name, value) => {
+			env[name] = value;
 		},
 		env: () => ({ ...env }),
 	};

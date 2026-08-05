@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import * as Sentry from "@sentry/node";
 import { validateCloudTrackingTargets } from "@workspace/cloud";
 import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
@@ -13,6 +14,8 @@ import { registerHandlers } from "./handlers";
 import { CLOUD_PROVIDER_SPEND_REPORT_QUEUE, CLOUD_PROVIDER_SPEND_REPORT_SCHEDULE } from "./jobs/provider-spend-report";
 import { shutdownTelemetry } from "./telemetry";
 
+const WORKER_READY_FILE = "/tmp/elmo-worker-ready";
+
 if (process.env.DEPLOYMENT_MODE === "cloud") requireEnvVars(["SENTRY_DSN"]);
 if (process.env.SENTRY_DSN) {
 	Sentry.init({
@@ -23,6 +26,7 @@ if (process.env.SENTRY_DSN) {
 }
 
 async function main() {
+	await fs.rm(WORKER_READY_FILE, { force: true });
 	console.log("Starting pg-boss worker...");
 
 	// Awaited so a stored credential counts toward the validation below.
@@ -137,6 +141,7 @@ async function main() {
 
 	// Register job handlers
 	await registerHandlers(boss);
+	await fs.writeFile(WORKER_READY_FILE, `${new Date().toISOString()}\n`, "utf8");
 	console.log("All handlers registered, worker is ready");
 }
 

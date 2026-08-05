@@ -83,6 +83,9 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOST="0.0.0.0"
 
+HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=30 \
+  CMD curl --fail --silent http://127.0.0.1:3000/api/setup-status | grep --quiet '"ready":true'
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", ".output/server/index.mjs"]
 
@@ -92,7 +95,7 @@ WORKDIR /app
 
 COPY --from=builder /deploy/lib ./
 
-CMD ["npx", "drizzle-kit", "migrate"]
+CMD ["pnpm", "exec", "drizzle-kit", "migrate"]
 
 # Worker stage
 FROM base AS worker
@@ -110,5 +113,8 @@ COPY --from=builder --chown=worker:nodejs /deploy/worker ./
 
 USER worker
 
+HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=30 \
+  CMD test -f /tmp/elmo-worker-ready && kill -0 1
+
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["pnpm", "exec", "tsx", "src/index.ts"]

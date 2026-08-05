@@ -111,11 +111,7 @@ function buildDbMigrateService(options: {
 		lines.push(`  image: elmohq/elmo-db-migrate:${options.version}`);
 	}
 
-	lines.push(
-		'  restart: "no"',
-		"  environment:",
-		'    DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"',
-	);
+	lines.push('  restart: "no"', "  environment:", `    DATABASE_URL: "\${DATABASE_URL:?DATABASE_URL is required}"`);
 	if (options.postgresMode === "docker") {
 		lines.push("  depends_on:", "    postgres:", "      condition: service_healthy");
 	}
@@ -172,7 +168,7 @@ function buildWorkerService(options: {
 		lines.push(`  image: elmohq/elmo-worker:${options.version}`);
 	}
 
-	lines.push("  env_file:", "    - path: .env", "      required: true");
+	lines.push("  env_file:", "    - path: .env", "      required: true", "  stop_grace_period: 45s");
 	appendDependencies(lines, options.dependsOn, options.dependencyConditions);
 	return lines.join("\n");
 }
