@@ -12,6 +12,7 @@ import { cleanAndValidateDomain } from "@/lib/domain-categories";
  *  - additionalDomains: each cleaned/validated (hard error listing the invalid
  *    ones), then de-duplicated
  *  - aliases: trimmed, empties dropped, de-duplicated
+ *  - enabled: preserved as the explicit boolean requested by the caller
  *
  * Only keys present on the input are touched, so a partial edit leaves the rest
  * of the brand untouched.
@@ -21,6 +22,7 @@ export interface BrandUpdateInput {
 	website?: string;
 	additionalDomains?: string[];
 	aliases?: string[];
+	enabled?: boolean;
 }
 
 export interface BrandUpdateFields {
@@ -28,6 +30,7 @@ export interface BrandUpdateFields {
 	website?: string;
 	additionalDomains?: string[];
 	aliases?: string[];
+	enabled?: boolean;
 }
 
 export type NormalizeBrandUpdateResult = { ok: true; updates: BrandUpdateFields } | { ok: false; error: string };
@@ -61,6 +64,10 @@ export function normalizeBrandUpdate(input: BrandUpdateInput): NormalizeBrandUpd
 
 	if (input.aliases !== undefined) {
 		updates.aliases = [...new Set(input.aliases.map((a) => a.trim()).filter(Boolean))];
+	}
+
+	if (input.enabled !== undefined) {
+		updates.enabled = input.enabled;
 	}
 
 	return { ok: true, updates };

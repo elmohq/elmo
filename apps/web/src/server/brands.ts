@@ -3,15 +3,22 @@
  * Replaces apps/web/src/app/api/brands/* API routes.
  */
 import { createServerFn } from "@tanstack/react-start";
+import {
+	addOrganizationBrandDomain,
+	addOrganizationCompetitorDomain,
+	createOrganizationCompetitor,
+	replaceOrganizationCompetitors,
+	updateOrganizationBrand,
+} from "@workspace/lib/cloud/api-resources";
 import { createOrganizationBrand } from "@workspace/lib/cloud/capacity";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { provisionAdditionalLocalOrg } from "@workspace/lib/db/provisioning";
 import {
-	brandTargetSelections,
 	type Brand,
 	type BrandWithPrompts,
 	brands,
+	brandTargetSelections,
 	competitors,
 	prompts,
 	promptTargetAssignments,
@@ -20,7 +27,13 @@ import type { ModelConfig } from "@workspace/lib/providers";
 import { getTrackingTargetKey, parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { listUserOrganizations, requireAuthSession, requireBrandAccess, requireOrgAccess } from "@/lib/auth/helpers";
+import {
+	listUserOrganizations,
+	requireAuthSession,
+	requireBrandAccess,
+	requireBrandOrganization,
+	requireOrgAccess,
+} from "@/lib/auth/helpers";
 import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/auth/policies";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { validateWebsiteUrl } from "@/lib/brand-website";
@@ -32,6 +45,18 @@ const BRAND_ORGANIZATION_ERRORS = {
 	forbidden: "Forbidden: No access to this organization",
 	ambiguous: "Choose a workspace for this brand",
 } as const;
+
+async function requireBrandMutationScope(
+	userId: string,
+	brandId: string,
+): Promise<{ kind: "instance" } | { kind: "organization"; organizationId: string }> {
+	if (getDeployment().mode === "cloud") {
+		const organization = await requireBrandOrganization(userId, brandId);
+		return { kind: "organization", organizationId: organization.id };
+	}
+	await requireBrandAccess(userId, brandId);
+	return { kind: "instance" };
+}
 
 /**
  * Deployment-configured models this brand actually runs, after applying
@@ -69,9 +94,7 @@ async function computeEffectiveModels(brand: Brand): Promise<{
 						),
 					),
 			]);
-			const enabledTargetKeys = new Set(
-				[...selections, ...assignments].map((selection) => selection.targetKey),
-			);
+			const enabledTargetKeys = new Set([...selections, ...assignments].map((selection) => selection.targetKey));
 			effective = configs.filter((config) => enabledTargetKeys.has(getTrackingTargetKey(config)));
 		} else {
 			effective = selectTargetsForBrand(configs, brand.enabledModels);
@@ -304,30 +327,39 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 /**
  * Update a brand
  */
+const updateBrandSchema = z.object({
+	brandId: z.string(),
+	name: z.string().optional(),
+	website: z.string().optional(),
+	additionalDomains: z.array(z.string()).optional(),
+	aliases: z.array(z.string()).optional(),
+	enabled: z.boolean().optional(),
+});
+
 export const updateBrandFn = createServerFn({ method: "POST" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			name: z.string().optional(),
-			website: z.string().optional(),
-			additionalDomains: z.array(z.string()).optional(),
-			aliases: z.array(z.string()).optional(),
-		}),
-	)
+	.validator(updateBrandSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const scope = await requireBrandMutationScope(session.user.id, data.brandId);
 
 		const normalized = normalizeBrandUpdate({
 			name: data.name,
 			website: data.website,
 			additionalDomains: data.additionalDomains,
 			aliases: data.aliases,
+			enabled: data.enabled,
 		});
 		if (!normalized.ok) {
 			throw new Error(normalized.error);
 		}
 		const updateData = normalized.updates;
+		if (scope.kind === "organization") {
+			return updateOrganizationBrand({
+				organizationId: scope.organizationId,
+				brandId: data.brandId,
+				...updateData,
+			});
+		}
 
 		const result = await db
 			.update(brands)
@@ -359,22 +391,22 @@ export const getCompetitors = createServerFn({ method: "GET" })
 /**
  * Update competitors for a brand (bulk replace)
  */
-export const updateCompetitors = createServerFn({ method: "POST" })
-	.validator(
+const updateCompetitorsSchema = z.object({
+	brandId: z.string(),
+	competitors: z.array(
 		z.object({
-			brandId: z.string(),
-			competitors: z.array(
-				z.object({
-					name: z.string(),
-					domains: z.array(z.string()).min(1),
-					aliases: z.array(z.string()).optional().default([]),
-				}),
-			),
+			name: z.string(),
+			domains: z.array(z.string()).min(1),
+			aliases: z.array(z.string()).optional().default([]),
 		}),
-	)
+	),
+});
+
+export const updateCompetitors = createServerFn({ method: "POST" })
+	.validator(updateCompetitorsSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const scope = await requireBrandMutationScope(session.user.id, data.brandId);
 
 		// Validate and clean domains
 		const cleanedCompetitors = data.competitors.map((c) => {
@@ -389,6 +421,13 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 				aliases: c.aliases,
 			};
 		});
+		if (scope.kind === "organization") {
+			return replaceOrganizationCompetitors({
+				organizationId: scope.organizationId,
+				brandId: data.brandId,
+				competitors: cleanedCompetitors,
+			});
+		}
 
 		return db.transaction(async (tx) => {
 			await tx.delete(competitors).where(eq(competitors.brandId, data.brandId));
@@ -413,19 +452,26 @@ export const updateCompetitors = createServerFn({ method: "POST" })
 /**
  * Add an additional domain to the brand itself
  */
+const addDomainToBrandSchema = z.object({
+	brandId: z.string(),
+	domain: z.string().min(1),
+});
+
 export const addDomainToBrandFn = createServerFn({ method: "POST" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			domain: z.string().min(1),
-		}),
-	)
+	.validator(addDomainToBrandSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const scope = await requireBrandMutationScope(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
+		if (scope.kind === "organization") {
+			return addOrganizationBrandDomain({
+				organizationId: scope.organizationId,
+				brandId: data.brandId,
+				domain,
+			});
+		}
 
 		const [result] = await db
 			.update(brands)
@@ -448,17 +494,27 @@ export const addDomainToBrandFn = createServerFn({ method: "POST" })
 /**
  * Add a domain to an existing competitor
  */
+const addDomainToCompetitorSchema = z.object({
+	brandId: z.string(),
+	competitorId: z.string(),
+	domain: z.string().min(1),
+});
+
 export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			competitorId: z.string(),
-			domain: z.string().min(1),
-		}),
-	)
+	.validator(addDomainToCompetitorSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const scope = await requireBrandMutationScope(session.user.id, data.brandId);
+		if (scope.kind === "organization") {
+			const domain = cleanAndValidateDomain(data.domain);
+			if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
+			return addOrganizationCompetitorDomain({
+				organizationId: scope.organizationId,
+				brandId: data.brandId,
+				competitorId: data.competitorId,
+				domain,
+			});
+		}
 
 		const existing = await db.query.competitors.findFirst({
 			where: and(eq(competitors.id, data.competitorId), eq(competitors.brandId, data.brandId)),
@@ -482,20 +538,29 @@ export const addDomainToCompetitorFn = createServerFn({ method: "POST" })
 /**
  * Create a new competitor from a domain
  */
+const createCompetitorFromDomainSchema = z.object({
+	brandId: z.string(),
+	name: z.string().min(1),
+	domain: z.string().min(1),
+});
+
 export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
-	.validator(
-		z.object({
-			brandId: z.string(),
-			name: z.string().min(1),
-			domain: z.string().min(1),
-		}),
-	)
+	.validator(createCompetitorFromDomainSchema)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
+		const scope = await requireBrandMutationScope(session.user.id, data.brandId);
 
 		const domain = cleanAndValidateDomain(data.domain);
 		if (!domain) throw new Error(`Invalid domain: ${data.domain}`);
+		if (scope.kind === "organization") {
+			return createOrganizationCompetitor({
+				organizationId: scope.organizationId,
+				brandId: data.brandId,
+				name: data.name.trim(),
+				domains: [domain],
+				aliases: [],
+			});
+		}
 
 		const [currentCount] = await db
 			.select({ count: count() })

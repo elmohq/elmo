@@ -68,6 +68,8 @@ export type UpdateOrganizationApiBrandInput = {
 	enabled?: boolean;
 };
 
+export type UpdateOrganizationBrandInput = UpdateOrganizationApiBrandInput;
+
 export type CreateOrganizationApiPromptInput = {
 	organizationId: string;
 	brandId: string;
@@ -91,12 +93,20 @@ export type CreateOrganizationApiCompetitorInput = {
 	aliases: string[];
 };
 
+export type CreateOrganizationCompetitorInput = CreateOrganizationApiCompetitorInput;
+
 export type UpdateOrganizationApiCompetitorInput = {
 	organizationId: string;
 	competitorId: string;
 	name?: string;
 	domains?: string[];
 	aliases?: string[];
+};
+
+export type ReplaceOrganizationCompetitorsInput = {
+	organizationId: string;
+	brandId: string;
+	competitors: Array<{ name: string; domains: string[]; aliases: string[] }>;
 };
 
 async function findOrganizationBrand(conn: DbConnection, organizationId: string, brandId: string) {
@@ -332,7 +342,7 @@ export async function createOrganizationApiBrand(input: CreateOrganizationApiBra
 	});
 }
 
-export async function updateOrganizationApiBrand(input: UpdateOrganizationApiBrandInput) {
+export async function updateOrganizationBrand(input: UpdateOrganizationBrandInput) {
 	return withOrganizationEntitlementTransaction({
 		mode: "cloud",
 		organizationId: input.organizationId,
@@ -370,6 +380,8 @@ export async function updateOrganizationApiBrand(input: UpdateOrganizationApiBra
 		},
 	});
 }
+
+export const updateOrganizationApiBrand = updateOrganizationBrand;
 
 export async function createOrganizationApiPrompt(input: CreateOrganizationApiPromptInput) {
 	return withOrganizationEntitlementTransaction({
@@ -434,7 +446,77 @@ export async function rejectOrganizationApiPromptDeletion(organizationId: string
 	});
 }
 
-export async function createOrganizationApiCompetitor(input: CreateOrganizationApiCompetitorInput) {
+export async function replaceOrganizationCompetitors(input: ReplaceOrganizationCompetitorsInput) {
+	return withOrganizationEntitlementTransaction({
+		mode: "cloud",
+		organizationId: input.organizationId,
+		run: async ({ tx }) => {
+			const brand = await findOrganizationBrand(tx, input.organizationId, input.brandId);
+			if (!brand) throw new OrganizationResourceNotFoundError("brand", input.brandId);
+			assertOrganizationCompetitorLimit(0, input.competitors.length);
+
+			await tx.delete(competitors).where(eq(competitors.brandId, brand.id));
+			if (input.competitors.length > 0) {
+				await tx.insert(competitors).values(
+					input.competitors.map((competitor) => ({
+						brandId: brand.id,
+						name: competitor.name,
+						domains: competitor.domains,
+						aliases: competitor.aliases,
+					})),
+				);
+			}
+			return tx.query.competitors.findMany({ where: eq(competitors.brandId, brand.id) });
+		},
+	});
+}
+
+export async function addOrganizationBrandDomain(input: { organizationId: string; brandId: string; domain: string }) {
+	return withOrganizationEntitlementTransaction({
+		mode: "cloud",
+		organizationId: input.organizationId,
+		run: async ({ tx }) => {
+			const brand = await findOrganizationBrand(tx, input.organizationId, input.brandId);
+			if (!brand) throw new OrganizationResourceNotFoundError("brand", input.brandId);
+			if (brand.additionalDomains.includes(input.domain)) return brand;
+			const [updated] = await tx
+				.update(brands)
+				.set({ additionalDomains: [...brand.additionalDomains, input.domain], updatedAt: new Date() })
+				.where(and(eq(brands.organizationId, input.organizationId), eq(brands.id, input.brandId)))
+				.returning();
+			if (!updated) throw new OrganizationResourceNotFoundError("brand", input.brandId);
+			return updated;
+		},
+	});
+}
+
+export async function addOrganizationCompetitorDomain(input: {
+	organizationId: string;
+	brandId: string;
+	competitorId: string;
+	domain: string;
+}) {
+	return withOrganizationEntitlementTransaction({
+		mode: "cloud",
+		organizationId: input.organizationId,
+		run: async ({ tx }) => {
+			const competitor = await findOrganizationCompetitor(tx, input.organizationId, input.competitorId);
+			if (!competitor || competitor.brandId !== input.brandId) {
+				throw new OrganizationResourceNotFoundError("competitor", input.competitorId);
+			}
+			if (competitor.domains.includes(input.domain)) return competitor;
+			const [updated] = await tx
+				.update(competitors)
+				.set({ domains: [...competitor.domains, input.domain], updatedAt: new Date() })
+				.where(and(eq(competitors.id, input.competitorId), eq(competitors.brandId, input.brandId)))
+				.returning();
+			if (!updated) throw new OrganizationResourceNotFoundError("competitor", input.competitorId);
+			return updated;
+		},
+	});
+}
+
+export async function createOrganizationCompetitor(input: CreateOrganizationCompetitorInput) {
 	return withOrganizationEntitlementTransaction({
 		mode: "cloud",
 		organizationId: input.organizationId,
@@ -460,6 +542,8 @@ export async function createOrganizationApiCompetitor(input: CreateOrganizationA
 		},
 	});
 }
+
+export const createOrganizationApiCompetitor = createOrganizationCompetitor;
 
 export async function updateOrganizationApiCompetitor(input: UpdateOrganizationApiCompetitorInput) {
 	return withOrganizationEntitlementTransaction({

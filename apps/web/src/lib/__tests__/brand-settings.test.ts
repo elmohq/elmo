@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 
 describe("normalizeBrandUpdate", () => {
@@ -80,6 +80,10 @@ describe("normalizeBrandUpdate", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok) expect(result.updates.aliases).toEqual(["Acme", "Acme Inc"]);
 		});
+	});
+
+	it("preserves an explicit brand enabled state", () => {
+		expect(normalizeBrandUpdate({ enabled: false })).toEqual({ ok: true, updates: { enabled: false } });
 	});
 
 	it("validates all provided fields together", () => {
