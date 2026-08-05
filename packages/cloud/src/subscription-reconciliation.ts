@@ -1,5 +1,5 @@
-import { db } from "@workspace/lib/db/db";
 import { lockOrganizationCapacityAndBilling } from "@workspace/lib/cloud/advisory-locks";
+import { db } from "@workspace/lib/db/db";
 import { organizationBillingSubscriptions } from "@workspace/lib/db/schema";
 import { and, asc, eq, inArray, lte, or } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -10,10 +10,7 @@ import {
 	CLOUD_STRIPE_PLAN_METADATA_KEY,
 	CLOUD_STRIPE_SELF_SERVE_BILLING_SOURCE,
 } from "./billing-events";
-import {
-	type CloudBillingSubscriptionProjection,
-	createCloudBillingProjectionWriter,
-} from "./billing-store";
+import { type CloudBillingSubscriptionProjection, createCloudBillingProjectionWriter } from "./billing-store";
 
 const ROUTINE_REFRESH_MILLISECONDS = 6 * 60 * 60 * 1_000;
 const BOUNDARY_REFRESH_MILLISECONDS = 15 * 60 * 1_000;
@@ -26,6 +23,7 @@ const LIVE_SUBSCRIPTION_STATUSES = new Set<Stripe.Subscription.Status>([
 	"paused",
 	"incomplete",
 ]);
+const TERMINAL_SUBSCRIPTION_STATUSES = new Set<Stripe.Subscription.Status>(["canceled", "incomplete_expired"]);
 // Terminal projections still need polling: Stripe can replace a canceled or
 // expired subscription without another event ever referencing the old local
 // projection. Keeping every Stripe status eligible lets the customer-wide scan
@@ -66,6 +64,22 @@ function isManagedCloudSubscription(subscription: Stripe.Subscription): boolean 
 	);
 }
 
+function subscriptionCustomerId(subscription: Stripe.Subscription): string | null {
+	return typeof subscription.customer === "string" ? subscription.customer : (subscription.customer?.id ?? null);
+}
+
+function terminalEndedAt(subscription: Stripe.Subscription): number {
+	if (
+		!TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status) ||
+		typeof subscription.ended_at !== "number" ||
+		!Number.isSafeInteger(subscription.ended_at) ||
+		subscription.ended_at < 0
+	) {
+		throw new Error(`Managed terminal Stripe subscription ${subscription.id} has no authoritative ended_at timestamp`);
+	}
+	return subscription.ended_at;
+}
+
 export function selectAuthoritativeCloudSubscriptions(input: {
 	currentSubscriptionId: string;
 	subscriptions: readonly Stripe.Subscription[];
@@ -75,13 +89,34 @@ export function selectAuthoritativeCloudSubscriptions(input: {
 	if (!current) {
 		throw new Error(`Stripe no longer returns projected subscription ${input.currentSubscriptionId} for its customer`);
 	}
+	const customerId = subscriptionCustomerId(current);
+	if (!customerId) throw new Error(`Projected Stripe subscription ${current.id} has no customer`);
+	const foreignSubscription = managed.find((subscription) => subscriptionCustomerId(subscription) !== customerId);
+	if (foreignSubscription) {
+		throw new Error(
+			`Stripe customer scan returned managed subscription ${foreignSubscription.id} for another customer`,
+		);
+	}
 
 	const live = managed.filter((subscription) => LIVE_SUBSCRIPTION_STATUSES.has(subscription.status));
 	if (live.length > 1) {
 		return { ordered: [current], conflictIds: live.map((subscription) => subscription.id).sort() };
 	}
 
-	const authoritative = live[0] ?? current;
+	// A replacement Checkout can expire without its webhook reaching us. When no
+	// usable subscription remains, advance to the latest terminal ended_at so its
+	// full retention period is projected. Equal end timestamps share the same
+	// deletion boundary, so the stable ID tie-break prevents scan-order flapping.
+	const authoritative =
+		live[0] ??
+		managed
+			.map((subscription) => ({ subscription, endedAt: terminalEndedAt(subscription) }))
+			.sort(
+				(left, right) =>
+					right.endedAt - left.endedAt ||
+					(left.subscription.id < right.subscription.id ? -1 : left.subscription.id > right.subscription.id ? 1 : 0),
+			)[0]?.subscription;
+	if (!authoritative) throw new Error(`Stripe customer has no authoritative managed subscription`);
 	if (authoritative.id === current.id) return { ordered: [current], conflictIds: [] };
 	return { ordered: [current, authoritative], conflictIds: [] };
 }
@@ -110,11 +145,7 @@ export function createDrizzleCloudSubscriptionReconciliationStore(
 							and(
 								lte(organizationBillingSubscriptions.syncedAt, boundaryBefore),
 								or(
-									inArray(organizationBillingSubscriptions.status, [
-										"past_due",
-										"unpaid",
-										"billing_conflict",
-									]),
+									inArray(organizationBillingSubscriptions.status, ["past_due", "unpaid", "billing_conflict"]),
 									lte(organizationBillingSubscriptions.currentPeriodEnd, boundaryAt),
 								),
 							),
