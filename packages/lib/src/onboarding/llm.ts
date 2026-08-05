@@ -20,7 +20,7 @@
  * preference order if a deployment wants a specific provider/model.
  */
 import type { z } from "zod";
-import { getProvider, parseScrapeTargets, type Provider, type StructuredResearchResult } from "../providers";
+import { getProvider, type Provider, parseScrapeTargets, type StructuredResearchResult } from "../providers";
 
 /**
  * Direct-API providers in the order onboarding prefers them. GPT-5 Mini was
@@ -52,7 +52,10 @@ const ONBOARDING_LLM_TARGET_HELP =
  * to override the model via env or option. Operators who want a different
  * model edit the provider's `DEFAULT_RESEARCH_MODEL` constant in source.
  */
-export function resolveResearchProvider(env: Record<string, string | undefined> = process.env): Provider {
+export function resolveResearchProvider(
+	env: Record<string, string | undefined> = process.env,
+	requirements: { maxWebSearchUses?: boolean } = {},
+): Provider {
 	const explicit = env.ONBOARDING_LLM_TARGET?.trim();
 	if (explicit) {
 		const [parsed] = parseScrapeTargets(explicit);
@@ -68,6 +71,11 @@ export function resolveResearchProvider(env: Record<string, string | undefined> 
 				`ONBOARDING_LLM_TARGET points at "${parsed.provider}", which does not support structured research. ${ONBOARDING_LLM_TARGET_HELP}`,
 			);
 		}
+		if (requirements.maxWebSearchUses && !provider.structuredResearchCapabilities?.maxWebSearchUses) {
+			throw new Error(
+				`ONBOARDING_LLM_TARGET points at "${parsed.provider}", which cannot enforce a native web-search use limit.`,
+			);
+		}
 		return provider;
 	}
 
@@ -75,6 +83,7 @@ export function resolveResearchProvider(env: Record<string, string | undefined> 
 		const provider = getProvider(id);
 		if (!provider.isConfigured()) continue;
 		if (!provider.runStructuredResearch) continue;
+		if (requirements.maxWebSearchUses && !provider.structuredResearchCapabilities?.maxWebSearchUses) continue;
 		return provider;
 	}
 
@@ -86,12 +95,18 @@ export function resolveResearchProvider(env: Record<string, string | undefined> 
  * heavy lifting (web search, structured outputs, retry) lives inside each
  * provider's `runStructuredResearch` impl — we just pick the provider.
  */
-export async function runStructuredResearchPrompt<T>(prompt: string, schema: z.ZodType<T>): Promise<T> {
-	const provider = resolveResearchProvider();
+export async function runStructuredResearchPrompt<T>(
+	prompt: string,
+	schema: z.ZodType<T>,
+	budget?: { maxRetries?: number; maxWebSearchUses?: number },
+): Promise<T> {
+	const provider = resolveResearchProvider(process.env, {
+		maxWebSearchUses: budget?.maxWebSearchUses !== undefined,
+	});
 	if (!provider.runStructuredResearch) {
 		throw new Error(`Provider "${provider.id}" does not implement structured research`);
 	}
-	const result = await provider.runStructuredResearch({ prompt, schema });
+	const result = await provider.runStructuredResearch({ prompt, schema, ...budget });
 	return result.object;
 }
 

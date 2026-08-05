@@ -1,9 +1,10 @@
 import * as Sentry from "@sentry/node";
 import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
 import { getDeployment } from "@workspace/deployment";
+import { CLOUD_BRAND_ANALYSIS_QUEUE } from "@workspace/lib/cloud/brand-analysis-admission";
 import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
-import type { Job, PgBoss } from "pg-boss";
+import type { Job, JobWithMetadata, PgBoss } from "pg-boss";
 import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
 import { type DispatchTrackingV2Data, dispatchTrackingV2Job } from "./jobs/dispatch-tracking-v2";
 import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
@@ -17,7 +18,10 @@ import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/s
  * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
  * Preserves the handler's return value (stored by pg-boss as the job output).
  */
-function withSentry<T, R>(queueName: string, handler: (jobs: Job<T>[]) => Promise<R>): (jobs: Job<T>[]) => Promise<R> {
+function withSentry<T, R, TJob extends Job<T> = Job<T>>(
+	queueName: string,
+	handler: (jobs: TJob[]) => Promise<R>,
+): (jobs: TJob[]) => Promise<R> {
 	return async (jobs) => {
 		try {
 			return await handler(jobs);
@@ -53,12 +57,15 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 
 	// batchSize: 1 keeps the returned suggestion mapped 1:1 to a single job's
 	// output, which the web app reads back via getJobById.
-	await boss.work<AnalyzeBrandData, OnboardingSuggestion>(
-		"analyze-brand",
-		{ batchSize: 1, localConcurrency: 2 },
-		withSentry("analyze-brand", analyzeBrandJob),
+	await boss.work<AnalyzeBrandData, OnboardingSuggestion, { batchSize: 1; localConcurrency: 2; includeMetadata: true }>(
+		getDeployment().mode === "cloud" ? CLOUD_BRAND_ANALYSIS_QUEUE : "analyze-brand",
+		{ batchSize: 1, localConcurrency: 2, includeMetadata: true },
+		withSentry<AnalyzeBrandData, OnboardingSuggestion, JobWithMetadata<AnalyzeBrandData>>(
+			getDeployment().mode === "cloud" ? CLOUD_BRAND_ANALYSIS_QUEUE : "analyze-brand",
+			analyzeBrandJob,
+		),
 	);
-	console.log("Registered handler: analyze-brand");
+	console.log(`Registered handler: ${getDeployment().mode === "cloud" ? CLOUD_BRAND_ANALYSIS_QUEUE : "analyze-brand"}`);
 
 	await boss.work<ScheduleMaintenanceData>(
 		"schedule-maintenance",

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { openrouter } from "./openrouter";
 
@@ -64,5 +65,17 @@ describe("openrouter run", () => {
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
 		// Logged, never thrown — the partial answer still flows through.
 		expect(result.textContent).toBe("clipped");
+	});
+});
+
+describe("openrouter structured research", () => {
+	it("fails closed when a native-search use budget is required", async () => {
+		await expect(
+			openrouter.runStructuredResearch?.({
+				prompt: "prompt",
+				schema: z.object({ ok: z.boolean() }),
+				maxWebSearchUses: 3,
+			}),
+		).rejects.toThrow(/cannot enforce/);
 	});
 });

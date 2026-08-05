@@ -16,10 +16,13 @@ import { z } from "zod";
 import {
 	type AnalyzeBrandStatus,
 	cancelAnalyzeBrand,
+	cancelCloudAnalyzeBrand,
 	enqueueAnalyzeBrand,
+	enqueueCloudAnalyzeBrand,
 	getAnalyzeBrandStatus,
+	getCloudAnalyzeBrandStatus,
 } from "@/lib/analyze-brand-job";
-import { requireAuthSession, requireBrandAccess, requireBrandOrganization } from "@/lib/auth/helpers";
+import { requireAuthSession, requireBrandOrganization } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { saveWizardOnboarding, wizardOnboardingInputSchema } from "@/server/onboarding-core";
 
@@ -45,8 +48,12 @@ export const startAnalyzeBrandFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		await enqueueAnalyzeBrand(data);
+		const organization = await requireBrandOrganization(session.user.id, data.brandId);
+		if (getDeployment().mode === "cloud") {
+			await enqueueCloudAnalyzeBrand({ organizationId: organization.id, brandId: data.brandId });
+		} else {
+			await enqueueAnalyzeBrand(data);
+		}
 		return { ok: true };
 	});
 
@@ -61,8 +68,10 @@ export const getAnalyzeBrandStatusFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }): Promise<AnalyzeBrandStatus> => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		return getAnalyzeBrandStatus(data.brandId);
+		const organization = await requireBrandOrganization(session.user.id, data.brandId);
+		return getDeployment().mode === "cloud"
+			? getCloudAnalyzeBrandStatus({ organizationId: organization.id, brandId: data.brandId })
+			: getAnalyzeBrandStatus(data.brandId);
 	});
 
 /** Cancel the in-flight brand-analysis job for a brand (e.g. user backs out). */
@@ -70,8 +79,12 @@ export const cancelAnalyzeBrandFn = createServerFn({ method: "POST" })
 	.validator(z.object({ brandId: z.string().min(1) }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
-		await requireBrandAccess(session.user.id, data.brandId);
-		await cancelAnalyzeBrand(data.brandId);
+		const organization = await requireBrandOrganization(session.user.id, data.brandId);
+		if (getDeployment().mode === "cloud") {
+			await cancelCloudAnalyzeBrand({ organizationId: organization.id, brandId: data.brandId });
+		} else {
+			await cancelAnalyzeBrand(data.brandId);
+		}
 		return { ok: true };
 	});
 

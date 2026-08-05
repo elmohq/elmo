@@ -1,9 +1,12 @@
 export {
-	analyzeBrand,
 	type AnalyzeBrandOptions,
+	analyzeBrand,
+	type LegacyAnalyzeBrandJobData,
+	legacyAnalyzeBrandJobDataSchema,
 	type OnboardingCompetitor,
 	type OnboardingPrompt,
 	type OnboardingSuggestion,
+	onboardingSuggestionSchema,
 } from "./analyze";
 export { runStructuredCompletionPrompt, runStructuredResearchPrompt } from "./llm";
 export {

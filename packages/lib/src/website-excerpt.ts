@@ -1,5 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
+import { fetchPublicHttp } from "./public-http";
 
 const MAX_EXCERPT_LINES = 200;
 const JINA_TIMEOUT_MS = 30_000;
@@ -89,7 +90,7 @@ async function fromJina(url: string): Promise<string | null> {
  * can't isolate an article.
  */
 async function fromReadability(url: string): Promise<string | null> {
-	const response = await fetch(url, {
+	const response = await fetchPublicHttp(url, {
 		headers: {
 			"User-Agent": BROWSER_UA,
 			Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",

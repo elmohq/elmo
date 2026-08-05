@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS, OPENAI_WEB_SEARCH_MAX_TOOL_CALLS } from "../config";
 
 const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
@@ -53,5 +54,21 @@ describe("openai-api run", () => {
 		await openaiApi.run("chatgpt", "prompt", { webSearch: false, version: "gpt-5-mini" });
 
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("hit the output cap"));
+	});
+});
+
+describe("openai-api structured research", () => {
+	it("passes strict retry and native-search budgets to the AI SDK", async () => {
+		aiMock.generateText.mockResolvedValue({ output: { ok: true } });
+		await openaiApi.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ ok: z.boolean() }),
+			maxRetries: 0,
+			maxWebSearchUses: 3,
+		});
+
+		const args = sentArgs();
+		expect(args.maxRetries).toBe(0);
+		expect(args.providerOptions).toEqual({ openai: { maxToolCalls: 3 } });
 	});
 });

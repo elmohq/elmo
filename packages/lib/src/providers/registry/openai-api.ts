@@ -1,7 +1,7 @@
-import { openai, createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, openai } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
-import { extractTextFromOpenAI, extractCitationsFromOpenAI } from "../../text-extraction";
 import { getCredential } from "../../secrets";
+import { extractCitationsFromOpenAI, extractTextFromOpenAI } from "../../text-extraction";
 import {
 	API_PROVIDER_MAX_OUTPUT_TOKENS,
 	OPENAI_WEB_SEARCH_CONTEXT_SIZE,
@@ -12,8 +12,8 @@ import {
 } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
@@ -85,6 +85,7 @@ async function runOpenAI(prompt: string, model: string, options?: ProviderOption
 export const openaiApi: Provider = {
 	id: "openai-api",
 	name: "OpenAI API",
+	structuredResearchCapabilities: { maxWebSearchUses: true },
 
 	isConfigured() {
 		return !!getCredential("OPENAI_API_KEY");
@@ -99,9 +100,12 @@ export const openaiApi: Provider = {
 		prompt,
 		schema,
 		webSearch = true,
+		maxRetries,
+		maxWebSearchUses = RESEARCH_WEB_SEARCH_MAX_USES,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
 		const result = await generateText({
 			model: getOpenAIResponsesModel(DEFAULT_RESEARCH_MODEL),
+			maxRetries,
 			...(webSearch
 				? {
 						tools: {
@@ -109,7 +113,7 @@ export const openaiApi: Provider = {
 						},
 					}
 				: {}),
-			...(webSearch ? { providerOptions: { openai: { maxToolCalls: RESEARCH_WEB_SEARCH_MAX_USES } } } : {}),
+			...(webSearch ? { providerOptions: { openai: { maxToolCalls: maxWebSearchUses } } } : {}),
 			output: Output.object({ schema }),
 			prompt,
 		});

@@ -1,8 +1,9 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { PgBoss } from "pg-boss";
-import { resetDeploymentCache } from "@workspace/deployment";
 import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
+import { resetDeploymentCache } from "@workspace/deployment";
+import { CLOUD_BRAND_ANALYSIS_QUEUE } from "@workspace/lib/cloud/brand-analysis-admission";
 import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
+import type { PgBoss } from "pg-boss";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerHandlers } from "./handlers";
 
 const bootEnvironment = vi.hoisted(() => {
@@ -29,7 +30,7 @@ const managedEnvironment = [
 ] as const;
 const originalEnvironment = Object.fromEntries(managedEnvironment.map((name) => [name, process.env[name]]));
 
-function setMode(mode: "local" | "demo" | "whitelabel"): void {
+function setMode(mode: "local" | "demo" | "whitelabel" | "cloud"): void {
 	for (const name of managedEnvironment) delete process.env[name];
 	process.env.DEPLOYMENT_MODE = mode;
 	if (mode === "whitelabel") {
@@ -81,4 +82,14 @@ describe("noncloud worker registration", () => {
 			expect(registeredQueues.includes("sync-auth0-memberships")).toBe(mode === "whitelabel");
 		},
 	);
+
+	it("registers only the versioned admission queue for cloud analysis", async () => {
+		setMode("cloud");
+		const work = vi.fn(async (_queueName: string, ..._args: unknown[]) => undefined);
+		await registerHandlers({ work } as unknown as PgBoss);
+
+		const registeredQueues = work.mock.calls.map(([queueName]) => queueName);
+		expect(registeredQueues).toContain(CLOUD_BRAND_ANALYSIS_QUEUE);
+		expect(registeredQueues).not.toContain("analyze-brand");
+	});
 });

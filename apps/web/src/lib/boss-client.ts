@@ -1,3 +1,4 @@
+import { CLOUD_BRAND_ANALYSIS_QUEUE } from "@workspace/lib/cloud/brand-analysis-admission";
 import { PgBoss } from "pg-boss";
 
 let bossInstance: PgBoss | null = null;
@@ -45,8 +46,8 @@ export async function getBoss(): Promise<PgBoss> {
 			retryBackoff: true,
 			expireInSeconds: 60 * 60,
 		});
-		await boss.createQueue("analyze-brand", {
-			retryLimit: 1,
+		await boss.createQueue(process.env.DEPLOYMENT_MODE === "cloud" ? CLOUD_BRAND_ANALYSIS_QUEUE : "analyze-brand", {
+			retryLimit: process.env.DEPLOYMENT_MODE === "cloud" ? 0 : 1,
 			retryDelay: 10,
 			retryBackoff: false,
 			expireInSeconds: 60 * 15,

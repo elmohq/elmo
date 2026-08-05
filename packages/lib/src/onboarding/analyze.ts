@@ -99,6 +99,33 @@ export interface OnboardingSuggestion {
 	suggestedPrompts: OnboardingPrompt[];
 }
 
+/** Validates suggestions crossing durable queue/storage boundaries. */
+export const onboardingSuggestionSchema = z
+	.object({
+		brandName: z.string(),
+		website: z.string(),
+		additionalDomains: z.array(z.string()),
+		aliases: z.array(z.string()),
+		competitors: z.array(
+			z
+				.object({
+					name: z.string(),
+					domains: z.array(z.string()),
+					aliases: z.array(z.string()),
+				})
+				.strict(),
+		),
+		suggestedPrompts: z.array(
+			z
+				.object({
+					prompt: z.string(),
+					tags: z.array(z.string()),
+				})
+				.strict(),
+		),
+	})
+	.strict();
+
 export interface AnalyzeBrandOptions {
 	website: string;
 	brandName?: string;
@@ -106,7 +133,23 @@ export interface AnalyzeBrandOptions {
 	maxCompetitors?: number;
 	/** 0 disables prompt generation entirely. */
 	maxPrompts?: number;
+	/** Strict provider-call retry budget for metered deployments. */
+	maxProviderRetries?: number;
+	/** Strict native web-search tool-use budget for metered deployments. */
+	maxWebSearchUses?: number;
 }
+
+export const legacyAnalyzeBrandJobDataSchema = z
+	.object({
+		brandId: z.string().min(1),
+		website: z.string().min(1),
+		brandName: z.string().optional(),
+		maxCompetitors: z.number().int().nonnegative().optional(),
+		maxPrompts: z.number().int().nonnegative().optional(),
+	})
+	.strict();
+
+export type LegacyAnalyzeBrandJobData = z.infer<typeof legacyAnalyzeBrandJobDataSchema>;
 
 const DEFAULT_MAX_COMPETITORS = 10;
 const DEFAULT_MAX_PROMPTS = 30;
@@ -176,7 +219,10 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 	const start = Date.now();
 	console.log(`[onboarding] analyzeBrand start: ${options.website}`);
 	const ctx = await buildAnalysisContext(options);
-	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema);
+	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema, {
+		maxRetries: options.maxProviderRetries,
+		maxWebSearchUses: options.maxWebSearchUses,
+	});
 	const result = normalizeAnalysisResult(raw, ctx);
 	console.log(
 		`[onboarding] analyzeBrand done: ${options.website} in ${Date.now() - start}ms (brand="${result.brandName}", competitors=${result.competitors.length}, prompts=${result.suggestedPrompts.length})`,

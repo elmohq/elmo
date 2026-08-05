@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { validateCloudTrackingTargets } from "@workspace/cloud";
 import { CLOUD_BILLING_RECONCILIATION_QUEUE } from "@workspace/cloud/billing-control";
 import { getDeployment } from "@workspace/deployment";
+import { CLOUD_BRAND_ANALYSIS_QUEUE } from "@workspace/lib/cloud/brand-analysis-admission";
 import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
@@ -57,8 +58,8 @@ async function main() {
 			expireInSeconds: 60 * 60, // 1 hour timeout for reports
 		});
 	}
-	await boss.createQueue("analyze-brand", {
-		retryLimit: 1,
+	await boss.createQueue(process.env.DEPLOYMENT_MODE === "cloud" ? CLOUD_BRAND_ANALYSIS_QUEUE : "analyze-brand", {
+		retryLimit: process.env.DEPLOYMENT_MODE === "cloud" ? 0 : 1,
 		retryDelay: 10,
 		retryBackoff: false,
 		expireInSeconds: 60 * 15, // 15 minute timeout for onboarding brand analysis

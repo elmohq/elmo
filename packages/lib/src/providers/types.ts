@@ -29,6 +29,14 @@ export interface StructuredResearchOptions<T> {
 	 * supplied entirely in the prompt — no tools, no agent loop.
 	 */
 	webSearch?: boolean;
+	/** Provider-request retries. AI SDK providers default to 2 when omitted. */
+	maxRetries?: number;
+	/**
+	 * Maximum native-search tool uses within this request. Supplying this is a
+	 * strict billing boundary: providers that cannot enforce it must reject the
+	 * request instead of silently treating it as advisory.
+	 */
+	maxWebSearchUses?: number;
 }
 
 export interface StructuredResearchResult<T> {
@@ -42,6 +50,10 @@ export interface Provider {
 	name: string;
 	isConfigured(): boolean;
 	run(model: string, prompt: string, options?: ProviderOptions): Promise<ScrapeResult>;
+	structuredResearchCapabilities?: {
+		/** The provider can enforce StructuredResearchOptions.maxWebSearchUses. */
+		maxWebSearchUses: boolean;
+	};
 	/** Validate a target config. Returns an error message if invalid, null if valid.
 	 *  Omit for providers that accept any model (runtime validation only). */
 	validateTarget?(config: ModelConfig): string | null;

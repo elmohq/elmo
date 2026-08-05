@@ -1,14 +1,14 @@
 import { z } from "zod";
+import { getCredential } from "../../secrets";
+import type { Citation } from "../../text-extraction";
+import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 import type {
 	Provider,
-	ScrapeResult,
 	ProviderOptions,
+	ScrapeResult,
 	StructuredResearchOptions,
 	StructuredResearchResult,
 } from "../types";
-import type { Citation } from "../../text-extraction";
-import { getCredential } from "../../secrets";
-import { API_PROVIDER_MAX_OUTPUT_TOKENS, warnIfOutputCapped } from "../config";
 
 const MISTRAL_BASE_URL = "https://api.mistral.ai";
 const DEFAULT_MODEL = "mistral-medium-latest";
@@ -83,6 +83,7 @@ function parseConversationsResponse(data: any): { textContent: string; citations
 export const mistralApi: Provider = {
 	id: "mistral-api",
 	name: "Mistral API",
+	structuredResearchCapabilities: { maxWebSearchUses: false },
 
 	isConfigured() {
 		return !!getCredential("MISTRAL_API_KEY");
@@ -125,7 +126,11 @@ export const mistralApi: Provider = {
 		prompt,
 		schema,
 		webSearch = true,
+		maxWebSearchUses,
 	}: StructuredResearchOptions<T>): Promise<StructuredResearchResult<T>> {
+		if (webSearch && maxWebSearchUses !== undefined) {
+			throw new Error("Mistral cannot enforce a maximum native web-search tool-use count");
+		}
 		const jsonSchema = z.toJSONSchema(schema as z.ZodType);
 		if (!webSearch) {
 			// Pure completion: plain chat endpoint with server-validated json_schema.

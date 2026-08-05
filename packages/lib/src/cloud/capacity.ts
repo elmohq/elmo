@@ -56,6 +56,25 @@ export function assertCapacity(input: {
 }
 
 /**
+ * Rechecks the organization's current enabled-brand total against its active
+ * contract. Call this inside the organization entitlement transaction before
+ * starting paid work for an existing brand, not only when creating one: a
+ * Stripe downgrade can otherwise leave an over-capacity workspace able to
+ * keep consuming provider spend indefinitely.
+ */
+export async function assertEnabledBrandCapacity(input: {
+	tx: DbTransaction;
+	resolved: ResolvedEntitlements;
+	organizationId: string;
+}): Promise<void> {
+	const [{ value: enabledBrands = 0 } = { value: 0 }] = await input.tx
+		.select({ value: count() })
+		.from(brands)
+		.where(and(eq(brands.organizationId, input.organizationId), eq(brands.enabled, true)));
+	assertCapacity({ resolved: input.resolved, resource: "brands", requestedTotal: enabledBrands });
+}
+
+/**
  * Enforces capacity without trapping a workspace that was put over its limit
  * by an external Stripe change or a contract revision. Above-limit writes may
  * only hold or reduce the current total; they can never increase it.

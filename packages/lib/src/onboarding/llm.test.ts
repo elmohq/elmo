@@ -78,6 +78,21 @@ describe("resolveResearchProvider", () => {
 		expect(provider.id).toBe("openrouter");
 	});
 
+	it("skips providers that cannot enforce a required web-search budget", () => {
+		process.env.OPENROUTER_API_KEY = "b";
+		process.env.ANTHROPIC_API_KEY = "c";
+		const provider = resolveResearchProvider(process.env, { maxWebSearchUses: true });
+		expect(provider.id).toBe("anthropic-api");
+	});
+
+	it("rejects an explicit provider that cannot enforce a required web-search budget", () => {
+		process.env.OPENROUTER_API_KEY = "b";
+		process.env.ONBOARDING_LLM_TARGET = "chatgpt:openrouter:openai/gpt-5-mini";
+		expect(() => resolveResearchProvider(process.env, { maxWebSearchUses: true })).toThrow(
+			/cannot enforce a native web-search use limit/,
+		);
+	});
+
 	it("falls back to Anthropic when OpenAI / OpenRouter aren't configured", () => {
 		process.env.ANTHROPIC_API_KEY = "c";
 		process.env.MISTRAL_API_KEY = "d";

@@ -17,6 +17,7 @@ const CLOUD_MIGRATIONS = [
 	"0015_reconcile_entitlement_transitions",
 	"0016_durable_billing_mutations",
 	"0017_organization_api_keys",
+	"0018_bounded_brand_analysis",
 ] as const;
 
 type Journal = {
@@ -252,6 +253,7 @@ async function assertCloudUpgrade(
 		"organization_entitlement_reconciliations",
 		"brand_scheduler_rollouts",
 		"brand_target_selections",
+		"brand_analysis_admissions",
 		"prompt_target_assignments",
 		"tracking_schedules",
 		"tracking_occurrences",
@@ -263,6 +265,56 @@ async function assertCloudUpgrade(
 		const result = await client.query(`SELECT count(*)::int AS "value" FROM "${table}"`);
 		assert.equal(result.rows[0]?.value, 0, `${table} must remain empty during an existing-install upgrade.`);
 	}
+
+	await client.query(`
+		INSERT INTO "brand_analysis_admissions" (
+			"brand_id", "organization_id", "request_fingerprint", "job_id", "generation", "status"
+		) VALUES (
+			'white-brand', 'white-brand', repeat('a', 64), '50000000-0000-4000-8000-000000000001', 1, 'pending'
+		)
+	`);
+	await assert.rejects(
+		client.query(`
+			INSERT INTO "brand_analysis_admissions" (
+				"brand_id", "organization_id", "request_fingerprint", "job_id", "generation", "status"
+			) VALUES (
+				'local-brand', 'local-brand', repeat('b', 64), '50000000-0000-4000-8000-000000000002', 4, 'pending'
+			)
+		`),
+		/check constraint/i,
+	);
+	await assert.rejects(
+		client.query(`
+			INSERT INTO "brand_analysis_admissions" (
+				"brand_id", "organization_id", "request_fingerprint", "job_id", "generation", "status"
+			) VALUES (
+				'local-brand', 'white-brand', repeat('c', 64), '50000000-0000-4000-8000-000000000003', 1, 'pending'
+			)
+		`),
+		/foreign key constraint/i,
+	);
+	await assert.rejects(
+		client.query(`
+			UPDATE "brand_analysis_admissions"
+			SET "status" = 'completed', "result" = '{}'::jsonb, "completed_at" = now()
+			WHERE "brand_id" = 'white-brand'
+		`),
+		/check constraint/i,
+	);
+	await client.query(`
+		UPDATE "brand_analysis_admissions"
+		SET "status" = 'running', "provider_started_at" = now()
+		WHERE "brand_id" = 'white-brand'
+	`);
+	await client.query(`
+		UPDATE "brand_analysis_admissions"
+		SET "status" = 'completed', "result" = '{}'::jsonb, "completed_at" = now()
+		WHERE "brand_id" = 'white-brand'
+	`);
+	await client.query(`DELETE FROM "brand_analysis_admissions" WHERE "brand_id" = 'white-brand'`);
+	const admissionCount = await client.query(`SELECT count(*)::int AS "value" FROM "brand_analysis_admissions"`);
+	assert.equal(admissionCount.rows[0]?.value, 0, "Brand-analysis constraint rehearsal left control-plane data behind.");
+
 	const rolloutModes = await client.query(`
 		SELECT "enumlabel"
 		FROM "pg_enum"

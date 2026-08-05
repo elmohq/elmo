@@ -127,6 +127,13 @@
       "when": 1785907448011,
       "tag": "0017_organization_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785909782956,
+      "tag": "0018_bounded_brand_analysis",
+      "breakpoints": true
     }
   ]
 }

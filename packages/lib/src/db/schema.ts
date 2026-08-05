@@ -102,6 +102,46 @@ export const brands = pgTable(
 	],
 ).enableRLS();
 
+export const brandAnalysisAdmissions = pgTable(
+	"brand_analysis_admissions",
+	{
+		brandId: text("brand_id").primaryKey().notNull(),
+		organizationId: text("organization_id").notNull(),
+		requestFingerprint: text("request_fingerprint").notNull(),
+		jobId: uuid("job_id").notNull(),
+		generation: integer("generation").notNull(),
+		status: text("status").$type<"pending" | "running" | "completed" | "failed">().notNull(),
+		result: jsonb("result"),
+		lastError: text("last_error"),
+		providerStartedAt: timestamp("provider_started_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		failedAt: timestamp("failed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		foreignKey({
+			name: "brand_analysis_admissions_brand_organization_fk",
+			columns: [table.brandId, table.organizationId],
+			foreignColumns: [brands.id, brands.organizationId],
+		}).onDelete("cascade"),
+		index("brand_analysis_admissions_organization_idx").on(table.organizationId),
+		check("brand_analysis_admissions_generation_check", sql`${table.generation} BETWEEN 1 AND 3`),
+		check(
+			"brand_analysis_admissions_state_check",
+			sql`(
+				(${table.status} = 'pending' AND ${table.result} IS NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NULL)
+				OR (${table.status} = 'running' AND ${table.result} IS NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NOT NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NULL)
+				OR (${table.status} = 'completed' AND ${table.result} IS NOT NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NOT NULL AND ${table.completedAt} IS NOT NULL AND ${table.failedAt} IS NULL)
+				OR (${table.status} = 'failed' AND ${table.result} IS NULL AND ${table.lastError} IS NOT NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NOT NULL)
+			)`,
+		),
+	],
+).enableRLS();
+
 export const prompts = pgTable(
 	"prompts",
 	{

@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { ANTHROPIC_WEB_SEARCH_MAX_USES, API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 
 const anthropicClient = vi.hoisted(() => ({ create: vi.fn() }));
+const aiMock = vi.hoisted(() => ({ generateText: vi.fn() }));
+
+vi.mock("ai", () => ({
+	generateText: aiMock.generateText,
+	Output: { object: vi.fn() },
+}));
 
 vi.mock("@anthropic-ai/sdk", () => ({
 	default: class {
@@ -15,6 +22,22 @@ const CAP = API_PROVIDER_MAX_OUTPUT_TOKENS["anthropic-api"];
 
 beforeEach(() => {
 	anthropicClient.create.mockResolvedValue({ content: [], model: "claude-sonnet-4-6" });
+	aiMock.generateText.mockResolvedValue({ output: { ok: true } });
+});
+
+describe("anthropic-api structured research", () => {
+	it("passes strict retry and native-search budgets to the AI SDK", async () => {
+		await anthropicApi.runStructuredResearch?.({
+			prompt: "prompt",
+			schema: z.object({ ok: z.boolean() }),
+			maxRetries: 0,
+			maxWebSearchUses: 3,
+		});
+
+		const args = aiMock.generateText.mock.calls[0][0] as Record<string, any>;
+		expect(args.maxRetries).toBe(0);
+		expect(args.tools.web_search).toBeDefined();
+	});
 });
 
 afterEach(() => {

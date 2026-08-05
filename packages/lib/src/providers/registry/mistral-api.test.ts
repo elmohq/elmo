@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { API_PROVIDER_MAX_OUTPUT_TOKENS } from "../config";
 import { mistralApi } from "./mistral-api";
 
@@ -42,5 +43,17 @@ describe("mistral-api run", () => {
 
 		expect(calledUrl(fetchMock)).toContain("/v1/chat/completions");
 		expect(sentBody(fetchMock).max_tokens).toBe(CAP);
+	});
+});
+
+describe("mistral-api structured research", () => {
+	it("fails closed when a native-search use budget is required", async () => {
+		await expect(
+			mistralApi.runStructuredResearch?.({
+				prompt: "prompt",
+				schema: z.object({ ok: z.boolean() }),
+				maxWebSearchUses: 3,
+			}),
+		).rejects.toThrow(/cannot enforce/);
 	});
 });

@@ -12,14 +12,30 @@ vi.mock("../website-excerpt", () => ({
 	getWebsiteExcerpt: vi.fn(async () => ""),
 }));
 
-import { runStructuredResearchPrompt } from "./llm";
 import { analyzeBrand } from "./analyze";
+import { runStructuredResearchPrompt } from "./llm";
 
 afterEach(() => {
 	vi.clearAllMocks();
 });
 
 describe("analyzeBrand", () => {
+	it("forwards strict provider budgets for metered analysis", async () => {
+		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
+			brandName: "Acme",
+			additionalDomains: [],
+			aliases: [],
+			competitors: [],
+			suggestedPrompts: [],
+		});
+
+		await analyzeBrand({ website: "acme.com", maxProviderRetries: 0, maxWebSearchUses: 3 });
+		expect(runStructuredResearchPrompt).toHaveBeenCalledWith(expect.any(String), expect.anything(), {
+			maxRetries: 0,
+			maxWebSearchUses: 3,
+		});
+	});
+
 	it("normalizes brand fields, dedupes domains, and filters self-referential competitors", async () => {
 		(runStructuredResearchPrompt as any).mockResolvedValueOnce({
 			brandName: "Acme",

@@ -28,6 +28,7 @@ const CANNED_RESEARCH = {
 export const stub: Provider = {
 	id: "stub",
 	name: "Stub (no network)",
+	structuredResearchCapabilities: { maxWebSearchUses: true },
 
 	isConfigured() {
 		return true;

@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({ fetchPublicHttp: vi.fn() }));
+
+vi.mock("./public-http", () => ({ fetchPublicHttp: mocks.fetchPublicHttp }));
+
 import { getWebsiteExcerpt } from "./website-excerpt";
 
 type FakeResponse = {
@@ -33,6 +38,7 @@ function stubFetch(tiers: { jina?: FakeResponse; direct?: FakeResponse }) {
 		return tiers.direct;
 	});
 	vi.stubGlobal("fetch", fetchMock);
+	mocks.fetchPublicHttp.mockImplementation(fetchMock);
 	return fetchMock;
 }
 
@@ -117,6 +123,7 @@ describe("getWebsiteExcerpt", () => {
 			return response({ contentType: "text/html", body: ARTICLE_HTML }) as unknown;
 		});
 		vi.stubGlobal("fetch", fetchMock);
+		mocks.fetchPublicHttp.mockImplementation(fetchMock);
 
 		expect(await getWebsiteExcerpt("acme.com")).toContain("autonomous mobile robots");
 		expect(fetchMock).toHaveBeenCalledTimes(2);
