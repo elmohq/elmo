@@ -310,7 +310,72 @@ describe("cloud Stripe event handler", () => {
 
 		expect(retrieve).not.toHaveBeenCalled();
 		expect(replaceSubscription).not.toHaveBeenCalled();
-		expect(store.finishWebhookEvent).toHaveBeenCalledWith("evt_1", { attemptCount: 1 }, "ignored", expect.any(Date));
+		expect(store.finishWebhookEvent).toHaveBeenCalledWith(
+			"evt_1",
+			{ attemptCount: 1 },
+			"ignored",
+			expect.any(Date),
+			"no-subscription-reference",
+		);
+	});
+
+	it("durably ignores and reports subscription events for unowned Stripe customers", async () => {
+		const current = subscription([subscriptionItem("si_base", "elmo_cloud_starter_monthly")], {
+			customer: "cus_external",
+		});
+		const stripeClient = {
+			subscriptions: { retrieve: vi.fn(async () => current) },
+		} as unknown as Stripe;
+		const logger = { warn: vi.fn() };
+		const { store, replaceSubscription } = mockStore();
+		store.findOrganizationIdByStripeCustomerId = vi.fn(async () => null);
+
+		await createCloudStripeEventHandler({ stripeClient, store, logger })(
+			stripeEvent("customer.subscription.updated", current, "evt_external"),
+		);
+
+		expect(stripeClient.subscriptions.retrieve).not.toHaveBeenCalled();
+		expect(replaceSubscription).not.toHaveBeenCalled();
+		expect(store.failWebhookEvent).not.toHaveBeenCalled();
+		expect(store.finishWebhookEvent).toHaveBeenCalledWith(
+			"evt_external",
+			{ attemptCount: 1 },
+			"ignored",
+			expect.any(Date),
+			"unowned-stripe-customer",
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			"[cloud-billing] Ignored Stripe subscription event for an unowned customer",
+			{
+				eventId: "evt_external",
+				eventType: "customer.subscription.updated",
+				stripeCustomerId: "cus_external",
+			},
+		);
+	});
+
+	it("keeps managed customer mismatches fail-closed", async () => {
+		const signedSnapshot = subscription([subscriptionItem("si_base", "elmo_cloud_starter_monthly")]);
+		const movedSubscription = subscription([subscriptionItem("si_base", "elmo_cloud_starter_monthly")], {
+			customer: "cus_other",
+		});
+		const stripeClient = {
+			subscriptions: { retrieve: vi.fn(async () => movedSubscription) },
+		} as unknown as Stripe;
+		const { store, replaceSubscription } = mockStore();
+		const handler = createCloudStripeEventHandler({ stripeClient, store });
+
+		await expect(handler(stripeEvent("customer.subscription.updated", signedSnapshot))).rejects.toThrow(
+			/changed customers while its webhook was being reconciled/,
+		);
+		expect(replaceSubscription).not.toHaveBeenCalled();
+		expect(store.failWebhookEvent).toHaveBeenCalledWith(
+			"evt_1",
+			{ attemptCount: 1 },
+			expect.stringMatching(/changed customers while its webhook was being reconciled/),
+			expect.any(Date),
+		);
+		expect(store.finishWebhookEvent).not.toHaveBeenCalled();
 	});
 
 	it("records projection failures and rethrows so Stripe retries the webhook", async () => {

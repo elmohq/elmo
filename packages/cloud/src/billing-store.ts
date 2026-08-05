@@ -75,6 +75,7 @@ export interface CloudBillingStore {
 		claim: CloudStripeWebhookClaim,
 		status: "processed" | "ignored",
 		now: Date,
+		resolution?: string,
 	): Promise<void>;
 	failWebhookEvent(eventId: string, claim: CloudStripeWebhookClaim, error: string, now: Date): Promise<void>;
 	withOrganizationProjection<T>(
@@ -86,7 +87,7 @@ export interface CloudBillingStore {
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const PROCESSING_LEASE_MILLISECONDS = 5 * 60 * 1000;
-const ACCESS_GRANTING_STATUSES = new Set(["active"]);
+const ACCESS_GRANTING_STATUSES = new Set(["active", "past_due"]);
 
 function grantsAccess(status: string): boolean {
 	return ACCESS_GRANTING_STATUSES.has(status);
@@ -258,7 +259,7 @@ export function createCloudBillingProjectionWriter(conn: DbTransaction): CloudBi
 					});
 			}
 
-			if (grantsAccess(projection.status)) {
+			if (projection.status === "active") {
 				const addonPromptSlots =
 					projection.items.find((item) => item.active && item.type === "premium_addon")?.quantity ?? 0;
 				const mutationRecordId = projectionMutationRecordId(projection);
@@ -385,14 +386,14 @@ export function createDrizzleCloudBillingStore(database: typeof db = db): CloudB
 				: { state: "processing" };
 		},
 
-		async finishWebhookEvent(eventId, claim, status, now) {
-			await database
+		async finishWebhookEvent(eventId, claim, status, now, resolution) {
+			const [finished] = await database
 				.update(stripeWebhookEvents)
 				.set({
 					status,
 					processingStartedAt: null,
 					processedAt: now,
-					lastError: null,
+					lastError: status === "ignored" ? (resolution?.slice(0, 10_000) ?? null) : null,
 					updatedAt: now,
 				})
 				.where(
@@ -401,7 +402,9 @@ export function createDrizzleCloudBillingStore(database: typeof db = db): CloudB
 						eq(stripeWebhookEvents.status, "processing"),
 						eq(stripeWebhookEvents.attemptCount, claim.attemptCount),
 					),
-				);
+				)
+				.returning({ id: stripeWebhookEvents.id });
+			if (!finished) throw new Error(`Stripe webhook event ${eventId} lost its completion claim`);
 		},
 
 		async failWebhookEvent(eventId, claim, error, now) {

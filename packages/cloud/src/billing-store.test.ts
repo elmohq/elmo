@@ -38,6 +38,19 @@ describe("cloud billing projection ordering", () => {
 		).toBe("ignore");
 	});
 
+	it("does not let a terminal overlap revoke a subscription in its payment grace period", () => {
+		expect(
+			decideCloudBillingProjectionReplacement(
+				{ ...current, status: "past_due" },
+				{
+					stripeSubscriptionId: "sub_terminal",
+					status: "canceled",
+					sourceEventCreatedAt: new Date("2026-08-05T00:00:03Z"),
+				},
+			),
+		).toBe("ignore");
+	});
+
 	it("surfaces two simultaneous active subscriptions instead of choosing silently", () => {
 		expect(
 			decideCloudBillingProjectionReplacement(current, {
@@ -45,6 +58,23 @@ describe("cloud billing projection ordering", () => {
 				status: "active",
 				sourceEventCreatedAt: new Date("2026-08-05T00:00:03Z"),
 			}),
+		).toBe("conflict");
+	});
+
+	it.each([
+		["active", "past_due"],
+		["past_due", "active"],
+		["past_due", "past_due"],
+	])("surfaces overlapping access-granting subscriptions in %s and %s", (currentStatus, candidateStatus) => {
+		expect(
+			decideCloudBillingProjectionReplacement(
+				{ ...current, status: currentStatus },
+				{
+					stripeSubscriptionId: "sub_other",
+					status: candidateStatus,
+					sourceEventCreatedAt: new Date("2026-08-05T00:00:03Z"),
+				},
+			),
 		).toBe("conflict");
 	});
 
@@ -66,9 +96,9 @@ describe("cloud billing delinquency transitions", () => {
 	const firstPastDueAt = new Date("2026-08-05T00:00:03Z");
 
 	it("starts delinquency at the first past-due source event", () => {
-		expect(
-			nextCloudBillingDelinquentSince(null, { status: "past_due", sourceEventCreatedAt: firstPastDueAt }),
-		).toEqual(firstPastDueAt);
+		expect(nextCloudBillingDelinquentSince(null, { status: "past_due", sourceEventCreatedAt: firstPastDueAt })).toEqual(
+			firstPastDueAt,
+		);
 	});
 
 	it("preserves the original delinquency boundary across later past-due events", () => {

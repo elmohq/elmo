@@ -32,6 +32,7 @@ export interface CreateCloudStripeEventHandlerOptions {
 	stripeClient: Stripe;
 	store?: CloudBillingStore;
 	now?: () => Date;
+	logger?: { warn: (...values: unknown[]) => void };
 }
 
 export interface BuildCloudBillingSubscriptionProjectionOptions {
@@ -317,6 +318,26 @@ function errorMessage(error: unknown): string {
 	return message.slice(0, 10_000);
 }
 
+function boundedLogValue(value: string): string {
+	return value.slice(0, 128);
+}
+
+function warnIgnoredUnownedCustomer(
+	logger: { warn: (...values: unknown[]) => void },
+	event: Stripe.Event,
+	stripeCustomerId: string,
+): void {
+	try {
+		logger.warn("[cloud-billing] Ignored Stripe subscription event for an unowned customer", {
+			eventId: boundedLogValue(event.id),
+			eventType: boundedLogValue(event.type),
+			stripeCustomerId: boundedLogValue(stripeCustomerId),
+		});
+	} catch {
+		// A logging transport must never turn a safely ignored webhook into a retry loop.
+	}
+}
+
 /**
  * Persist and reconcile the authoritative Stripe snapshot. Better Auth invokes
  * this through `onEvent`, whose errors propagate back to Stripe and trigger a
@@ -325,6 +346,7 @@ function errorMessage(error: unknown): string {
 export function createCloudStripeEventHandler(options: CreateCloudStripeEventHandlerOptions) {
 	const store = options.store ?? createDrizzleCloudBillingStore();
 	const now = options.now ?? (() => new Date());
+	const logger = options.logger ?? console;
 
 	return async (event: Stripe.Event): Promise<void> => {
 		const envelope = webhookEnvelope(event);
@@ -339,7 +361,7 @@ export function createCloudStripeEventHandler(options: CreateCloudStripeEventHan
 		try {
 			const reference = getSubscriptionEventReference(event);
 			if (!reference) {
-				await store.finishWebhookEvent(event.id, claimed.claim, "ignored", now());
+				await store.finishWebhookEvent(event.id, claimed.claim, "ignored", now(), "no-subscription-reference");
 				return;
 			}
 
@@ -352,7 +374,9 @@ export function createCloudStripeEventHandler(options: CreateCloudStripeEventHan
 
 			const organizationId = await store.findOrganizationIdByStripeCustomerId(stripeCustomerId);
 			if (!organizationId) {
-				throw new Error(`No organization owns Stripe customer ${stripeCustomerId}`);
+				await store.finishWebhookEvent(event.id, claimed.claim, "ignored", now(), "unowned-stripe-customer");
+				warnIgnoredUnownedCustomer(logger, event, stripeCustomerId);
+				return;
 			}
 
 			await store.withOrganizationProjection(organizationId, async (writer) => {
