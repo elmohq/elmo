@@ -16,7 +16,7 @@ import { useState } from "react";
 import { z } from "zod";
 import FullPageCard from "@/components/full-page-card";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
-import { cloudBillingPath, isProjectedCloudSubscriptionActive, resolveNewBrandWorkspace } from "@/lib/cloud-billing-ui";
+import { cloudBillingPath, resolveNewBrandWorkspace } from "@/lib/cloud-billing-ui";
 import { getDeployment } from "@/lib/config/server";
 import { trackEvent } from "@/lib/posthog";
 import { createBrandInOrgFn } from "@/server/brands";
@@ -59,7 +59,8 @@ export const Route = createFileRoute("/_authed/app/new")({
 			organizations.some((org) => org.id === candidateOrganizationId)
 		) {
 			const billing = await getWorkspaceBillingFn({ data: { organizationId: candidateOrganizationId } });
-			activeCloudOrganizationIds = isProjectedCloudSubscriptionActive(billing.subscription)
+			activeCloudOrganizationIds =
+				billing.entitlements.mode === "cloud" && billing.entitlements.access === "allowed"
 				? new Set([candidateOrganizationId])
 				: new Set();
 		}
