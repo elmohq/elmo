@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatScrapeTarget, type ModelConfig, parseScrapeTargets } from "./scrape-targets";
+import { formatScrapeTarget, getTrackingTargetKey, type ModelConfig, parseScrapeTargets } from "./scrape-targets";
 
 describe("formatScrapeTarget", () => {
 	it("formats model:provider", () => {
@@ -30,6 +30,18 @@ describe("formatScrapeTarget", () => {
 			}),
 		).toBe("claude:openrouter:anthropic/claude-sonnet-4.6:online");
 	});
+
+	it("formats a stable target key independently from the provider model", () => {
+		expect(
+			formatScrapeTarget({
+				targetKey: "claude-native-web",
+				model: "claude",
+				provider: "anthropic-api",
+				version: "claude-sonnet-4-6",
+				webSearch: true,
+			}),
+		).toBe("claude-native-web=claude:anthropic-api:claude-sonnet-4-6:online");
+	});
 });
 
 describe("round-trip", () => {
@@ -41,6 +53,13 @@ describe("round-trip", () => {
 			{ model: "chatgpt", provider: "openai-api", version: "gpt-5-mini", webSearch: false },
 			{ model: "chatgpt", provider: "openrouter", version: "openai/gpt-5-mini:free", webSearch: true },
 			{ model: "google-ai-mode", provider: "dataforseo", version: undefined, webSearch: true },
+			{
+				targetKey: "claude-native-web",
+				model: "claude",
+				provider: "anthropic-api",
+				version: "claude-sonnet-4-6",
+				webSearch: true,
+			},
 		];
 		for (const config of configs) {
 			expect(parseScrapeTargets(formatScrapeTarget(config))).toEqual([config]);
@@ -51,5 +70,17 @@ describe("round-trip", () => {
 		const value =
 			"chatgpt:olostep:online,claude:openrouter:anthropic/claude-sonnet-4.6,mistral:mistral-api:mistral-medium-latest:online,chatgpt:brightdata";
 		expect(parseScrapeTargets(value).map(formatScrapeTarget).join(",")).toBe(value);
+	});
+});
+
+describe("getTrackingTargetKey", () => {
+	it("uses the explicit stable key when present", () => {
+		expect(
+			getTrackingTargetKey({ targetKey: "chatgpt-web", model: "chatgpt", provider: "stub", webSearch: true }),
+		).toBe("chatgpt-web");
+	});
+
+	it("keeps legacy entries addressable by model", () => {
+		expect(getTrackingTargetKey({ model: "chatgpt", provider: "stub", webSearch: true })).toBe("chatgpt");
 	});
 });

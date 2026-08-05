@@ -9,6 +9,18 @@ import type { ModelConfig } from "./types";
 
 describe("parseScrapeTargets", () => {
 	describe("basic parsing", () => {
+		it("parses a stable target key", () => {
+			const result = parseScrapeTargets("claude-native-web=claude:anthropic-api:claude-sonnet-4-6:online");
+			expect(result).toEqual([
+				{
+					targetKey: "claude-native-web",
+					model: "claude",
+					provider: "anthropic-api",
+					version: "claude-sonnet-4-6",
+					webSearch: true,
+				},
+			]);
+		});
 		it("parses model:provider", () => {
 			const result = parseScrapeTargets("chatgpt:olostep");
 			expect(result).toEqual([{ model: "chatgpt", provider: "olostep", version: undefined, webSearch: false }]);
@@ -62,6 +74,11 @@ describe("parseScrapeTargets", () => {
 	});
 
 	describe("error cases", () => {
+		it("rejects malformed target keys", () => {
+			expect(() => parseScrapeTargets("Claude Native=claude:anthropic-api:claude-sonnet-4-6:online")).toThrow(
+				"Invalid SCRAPE_TARGETS target key",
+			);
+		});
 		it("throws on empty string entries (trailing comma)", () => {
 			expect(() => parseScrapeTargets("chatgpt:olostep,")).toThrow("empty entry");
 		});

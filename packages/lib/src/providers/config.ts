@@ -2,7 +2,7 @@ import type { ModelConfig } from "./types";
 
 // SCRAPE_TARGETS parsing/formatting lives in @workspace/config (the env source
 // of truth, shared with the CLI); re-exported here for compatibility.
-export { parseScrapeTargets } from "@workspace/config/scrape-targets";
+export { getTrackingTargetKey, parseScrapeTargets } from "@workspace/config/scrape-targets";
 
 // Per-call output caps for the direct API providers: a worst-case bound on a
 // single tracked run, not a target length — sized well above any answer we

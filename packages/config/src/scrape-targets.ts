@@ -1,7 +1,9 @@
 /**
  * The single module that parses and formats the SCRAPE_TARGETS env var.
  *
- * Format: model:provider[:version][:online]
+ * Format: [target-key=]model:provider[:version][:online]
+ * - target-key: stable logical tracking target used by cloud policy/schedules
+ *   (optional for legacy deployments; defaults to model)
  * - model: AI model to track (chatgpt, google-ai-mode, copilot, etc.)
  * - provider: How to reach it (olostep, brightdata, direct, openrouter, dataforseo)
  * - version: Specific version slug, required for direct/openrouter (may contain colons for OpenRouter variants)
@@ -9,6 +11,7 @@
  */
 
 export interface ModelConfig {
+	targetKey?: string;
 	model: string;
 	provider: string;
 	version?: string;
@@ -34,15 +37,27 @@ export function parseScrapeTargets(envValue?: string): ModelConfig[] {
 	return envValue.split(",").map((raw) => {
 		const trimmed = raw.trim();
 		if (!trimmed) throw new Error("Invalid SCRAPE_TARGETS: empty entry (check for trailing commas)");
-		const parts = trimmed.split(":");
+		const equalsIndex = trimmed.indexOf("=");
+		const targetKey = equalsIndex === -1 ? undefined : trimmed.slice(0, equalsIndex);
+		const target = equalsIndex === -1 ? trimmed : trimmed.slice(equalsIndex + 1);
+		if (targetKey !== undefined && !/^[a-z0-9][a-z0-9-]*$/.test(targetKey)) {
+			throw new Error(
+				`Invalid SCRAPE_TARGETS target key: "${targetKey}" (use lowercase letters, numbers, and hyphens)`,
+			);
+		}
+		const parts = target.split(":");
 		if (parts.length < 2) throw new Error(`Invalid SCRAPE_TARGETS entry: "${trimmed}" (need at least model:provider)`);
 		const model = parts[0];
 		const provider = parts[1];
 		const webSearch = parts[parts.length - 1] === "online";
 		const versionParts = parts.slice(2, webSearch ? -1 : undefined);
 		const version = versionParts.length > 0 ? versionParts.join(":") : undefined;
-		return { model, provider, version, webSearch };
+		return { ...(targetKey && { targetKey }), model, provider, version, webSearch };
 	});
+}
+
+export function getTrackingTargetKey(config: ModelConfig): string {
+	return config.targetKey ?? config.model;
 }
 
 /**
@@ -53,7 +68,8 @@ export function formatScrapeTarget(config: ModelConfig): string {
 	const parts = [config.model, config.provider];
 	if (config.version) parts.push(config.version);
 	if (config.webSearch) parts.push("online");
-	return parts.join(":");
+	const target = parts.join(":");
+	return config.targetKey ? `${config.targetKey}=${target}` : target;
 }
 
 /**
