@@ -6,15 +6,25 @@ import { parseProviderCostEstimates, validateProviderCostEstimateCoverage } from
 import { getDeployment } from "@workspace/deployment";
 import { CLOUD_BRAND_ANALYSIS_QUEUE } from "@workspace/lib/cloud/brand-analysis-admission";
 import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
+import {
+	type DeploymentCutoverParticipant,
+	loadDeploymentRuntimeFenceConfig,
+	startDeploymentCutoverParticipant,
+} from "@workspace/lib/deployment-cutover";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
 import { registerHandlers } from "./handlers";
 import { CLOUD_PROVIDER_SPEND_REPORT_QUEUE, CLOUD_PROVIDER_SPEND_REPORT_SCHEDULE } from "./jobs/provider-spend-report";
+import { drainWorkerGracefully } from "./lifecycle";
 import { validateWorkerStartupEnv } from "./startup-env";
 import { shutdownTelemetry } from "./telemetry";
 
 const WORKER_READY_FILE = "/tmp/elmo-worker-ready";
+let cutoverParticipant: DeploymentCutoverParticipant | undefined;
+let bossStarted = false;
+let fatalFenceExitStarted = false;
+let shutdownPromise: Promise<void> | undefined;
 
 validateWorkerStartupEnv();
 if (process.env.SENTRY_DSN) {
@@ -27,6 +37,18 @@ if (process.env.SENTRY_DSN) {
 
 async function main() {
 	await fs.rm(WORKER_READY_FILE, { force: true });
+	const runtimeFenceConfig = await loadDeploymentRuntimeFenceConfig();
+	if (runtimeFenceConfig) {
+		cutoverParticipant = await startDeploymentCutoverParticipant({
+			...runtimeFenceConfig,
+			applicationName: "elmo-worker-runtime-fence",
+			onFatal: failOnCutoverFenceLoss,
+		});
+	}
+	if (shutdownPromise) {
+		return;
+	}
+	if (runtimeFenceConfig) console.log(`Deployment runtime fence ${runtimeFenceConfig.fenceGeneration} acquired`);
 	console.log("Starting pg-boss worker...");
 
 	// Awaited so a stored credential counts toward the validation below.
@@ -53,6 +75,7 @@ async function main() {
 
 	// Start pg-boss (creates schema if needed)
 	await boss.start();
+	bossStarted = true;
 	console.log("pg-boss started");
 
 	// Create queues if they don't exist (required in pg-boss v12)
@@ -141,30 +164,65 @@ async function main() {
 
 	// Register job handlers
 	await registerHandlers(boss);
+	await cutoverParticipant?.assertHealthy();
+	if (shutdownPromise) return;
 	await fs.writeFile(WORKER_READY_FILE, `${new Date().toISOString()}\n`, "utf8");
+	if (shutdownPromise) {
+		await fs.rm(WORKER_READY_FILE, { force: true });
+		return;
+	}
 	console.log("All handlers registered, worker is ready");
 }
 
-main().catch(async (error) => {
+main().catch((error) => {
+	if (fatalFenceExitStarted || shutdownPromise) return;
+	shutdownPromise = (async () => {
+		Sentry.captureException(error);
+		console.error("Failed to start worker:", error);
+		await drainWorkerGracefully({
+			drainJobs: async () => {
+				if (bossStarted) await boss.stop({ graceful: true, timeout: 60 * 60 * 1000 });
+			},
+			removeReadiness: () => fs.rm(WORKER_READY_FILE, { force: true }),
+			shutdownObservability: async () => {
+				await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
+			},
+		});
+		process.exit(1);
+	})().catch((cleanupError) => {
+		console.error("Worker startup cleanup failed:", cleanupError);
+		process.exit(1);
+	});
+});
+
+function failOnCutoverFenceLoss(error: Error): void {
+	if (fatalFenceExitStarted) return;
+	fatalFenceExitStarted = true;
+	console.error("Deployment runtime fence session was lost; terminating worker immediately:", error);
 	Sentry.captureException(error);
-	console.error("Failed to start worker:", error);
-	await Sentry.flush(2000);
+	void fs.rm(WORKER_READY_FILE, { force: true }).catch(() => undefined);
 	process.exit(1);
-});
+}
 
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-	console.log("Received SIGTERM, shutting down gracefully...");
-	await boss.stop({ graceful: true, timeout: 30000 });
-	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
-	console.log("Worker stopped");
-	process.exit(0);
-});
+function shutDown(signal: "SIGINT" | "SIGTERM"): void {
+	shutdownPromise ??= (async () => {
+		console.log(`Received ${signal}, stopping new claims and draining active jobs...`);
+		await drainWorkerGracefully({
+			drainJobs: async () => {
+				if (bossStarted) await boss.stop({ graceful: true, timeout: 60 * 60 * 1000 });
+			},
+			removeReadiness: () => fs.rm(WORKER_READY_FILE, { force: true }),
+			shutdownObservability: async () => {
+				await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
+			},
+		});
+		console.log("Worker stopped");
+		process.exit(fatalFenceExitStarted ? 1 : 0);
+	})().catch((error) => {
+		console.error("Worker shutdown failed:", error);
+		process.exit(1);
+	});
+}
 
-process.on("SIGINT", async () => {
-	console.log("Received SIGINT, shutting down gracefully...");
-	await boss.stop({ graceful: true, timeout: 30000 });
-	await Promise.all([Sentry.flush(2000), shutdownTelemetry()]);
-	console.log("Worker stopped");
-	process.exit(0);
-});
+process.on("SIGTERM", () => shutDown("SIGTERM"));
+process.on("SIGINT", () => shutDown("SIGINT"));

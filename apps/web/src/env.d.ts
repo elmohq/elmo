@@ -43,6 +43,8 @@ declare global {
 		interface ProcessEnv {
 			readonly DEPLOYMENT_MODE: string;
 			readonly DATABASE_URL: string;
+			readonly DATABASE_URL_UNPOOLED?: string;
+			readonly ELMO_RUNTIME_FENCE_GENERATION?: string;
 			readonly APP_URL?: string;
 			readonly SCRAPE_TARGETS?: string;
 			readonly CLOUD_TRACKING_COST_ESTIMATES?: string;

@@ -2,6 +2,8 @@
   "$schema": "https://turborepo.dev/schema.json",
   "globalEnv": [
     "DATABASE_URL",
+    "DATABASE_URL_UNPOOLED",
+    "ELMO_RUNTIME_FENCE_GENERATION",
     "APP_URL",
     "BETTER_AUTH_SECRET",
     "AUTH0_DOMAIN",

@@ -531,6 +531,9 @@ importers:
 
   packages/config:
     dependencies:
+      pg-connection-string:
+        specifier: 2.14.0
+        version: 2.14.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -658,6 +661,9 @@ importers:
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

@@ -2,11 +2,11 @@ import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { createCloudBillingReadinessGate } from "@workspace/cloud/billing-readiness";
-import { startCredentialRefresh } from "@workspace/lib/secrets";
+import { WebRuntimeDrainingError } from "@/lib/deployment-runtime.server";
+import { initializeWebDeploymentRuntime } from "@/lib/deployment-runtime-bootstrap.server";
 
-// Not awaited: the app has to serve sign-in and settings whether or not the
-// credential store is reachable.
-void startCredentialRefresh();
+const { lifecycle: webDeploymentRuntime, participant: runtimeFenceParticipant } = initializeWebDeploymentRuntime();
+await runtimeFenceParticipant;
 
 const assertCloudBillingReady = createCloudBillingReadinessGate({
 	mode: process.env.DEPLOYMENT_MODE,
@@ -57,12 +57,24 @@ function addSecurityHeaders(response: Response): Response {
 export default createServerEntry(
 	wrapFetchWithSentry({
 		async fetch(request: Request) {
-			// A bad Stripe catalog would make checkout or add-on mutations
-			// non-deterministic, so cloud stays closed until the exact lookup-key
-			// catalog has passed validation. The promise is shared across requests.
-			await assertCloudBillingReady();
-			const response = await handler.fetch(request);
-			return addSecurityHeaders(response);
+			try {
+				return await webDeploymentRuntime.runRequest(async () => {
+					// A bad Stripe catalog would make checkout or add-on mutations
+					// non-deterministic, so cloud stays closed until the exact lookup-key
+					// catalog has passed validation. The promise is shared across requests.
+					await assertCloudBillingReady();
+					const response = await handler.fetch(request);
+					return addSecurityHeaders(response);
+				});
+			} catch (error) {
+				if (!(error instanceof WebRuntimeDrainingError)) throw error;
+				return addSecurityHeaders(
+					new Response("Server is shutting down", {
+						headers: { Connection: "close", "Retry-After": "5" },
+						status: 503,
+					}),
+				);
+			}
 		},
 	}),
 );

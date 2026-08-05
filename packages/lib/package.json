@@ -5,6 +5,7 @@
 	"license": "MIT",
 	"scripts": {
 		"test": "vitest run",
+		"migrate": "tsx scripts/migrate.ts",
 		"compare:onboarding": "tsx scripts/compare-onboarding.ts",
 		"custom-entitlements": "tsx scripts/custom-entitlements.ts",
 		"generate:auth-schema": "bash scripts/generate-auth-schema.sh"
@@ -25,6 +26,8 @@
 		"./bulk-prompts": "./src/bulk-prompts.ts",
 		"./website-excerpt": "./src/website-excerpt.ts",
 		"./report-metrics": "./src/report-metrics.ts",
+		"./deployment-cutover": "./src/deployment-cutover.ts",
+		"./database-connection-identity": "./src/database-connection-identity.ts",
 		"./secrets": "./src/secrets/index.ts",
 		"./providers": "./src/providers/index.ts",
 		"./providers/models": "./src/providers/models.ts",
@@ -66,6 +69,7 @@
 	"devDependencies": {
 		"@types/pg": "^8.20.1",
 		"drizzle-kit": "^0.31.10",
+		"tsx": "^4.23.1",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	}

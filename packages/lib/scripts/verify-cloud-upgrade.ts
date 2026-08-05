@@ -8,10 +8,13 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import pg from "pg";
 import { purgeCloudOrganizationProductDataInTransaction } from "../src/cloud/data-retention-purge";
 import * as schema from "../src/db/schema";
+import { deploymentRuntimeFenceLockId } from "../src/deployment-cutover";
+import { transitionDatabaseRuntimeGeneration } from "./runtime-generation";
 
 const { Client, Pool } = pg;
 const UPGRADE_DATABASE_NAME = "elmo_cloud_upgrade";
 const LEGACY_LAST_MIGRATION = "0011_secrets";
+const LEASE_MIGRATION = "0020_lease_cloud_brand_analysis";
 const CLOUD_MIGRATIONS = [
 	"0012_cloud_tracking_control_plane",
 	"0013_better_auth_stripe",
@@ -21,7 +24,10 @@ const CLOUD_MIGRATIONS = [
 	"0017_organization_api_keys",
 	"0018_bounded_brand_analysis",
 	"0019_retain_canceled_cloud_data",
+	LEASE_MIGRATION,
 ] as const;
+const PRE_LEASE_CLOUD_MIGRATIONS = CLOUD_MIGRATIONS.slice(0, -1);
+const LEASE_MIGRATIONS = [LEASE_MIGRATION] as const;
 
 type Journal = {
 	version: string;
@@ -86,6 +92,127 @@ async function applyMigrations(databaseUrl: string, migrationsFolder: string): P
 		await migrate(drizzle(pool), { migrationsFolder });
 	} finally {
 		await pool.end();
+	}
+}
+
+async function assertRuntimeGenerationCutoverProtocol(databaseUrl: string): Promise<void> {
+	const source = new Client({ application_name: "elmo-upgrade-rehearsal-source", connectionString: databaseUrl });
+	const controller = new Client({
+		application_name: "elmo-upgrade-rehearsal-controller",
+		connectionString: databaseUrl,
+	});
+	const target = new Client({ application_name: "elmo-upgrade-rehearsal-target", connectionString: databaseUrl });
+	const clients = [source, controller, target];
+	const connectedClients: InstanceType<typeof Client>[] = [];
+	const sourceLockId = deploymentRuntimeFenceLockId("pre-0020");
+	const targetLockId = deploymentRuntimeFenceLockId("0020");
+	try {
+		for (const client of clients) {
+			await client.connect();
+			connectedClients.push(client);
+		}
+		assert.equal(
+			(await source.query("SELECT pg_try_advisory_lock_shared($1::bigint) AS acquired", [sourceLockId])).rows[0]
+				?.acquired,
+			true,
+		);
+		assert.equal(
+			(await controller.query("SELECT pg_try_advisory_lock($1::bigint) AS acquired", [sourceLockId])).rows[0]?.acquired,
+			false,
+			"The source runtime fence did not block its exclusive cutover controller.",
+		);
+		assert.equal(
+			(await source.query("SELECT pg_advisory_unlock_shared($1::bigint) AS released", [sourceLockId])).rows[0]
+				?.released,
+			true,
+		);
+		assert.equal(
+			(await controller.query("SELECT pg_try_advisory_lock($1::bigint) AS acquired", [sourceLockId])).rows[0]?.acquired,
+			true,
+		);
+
+		assert.equal(
+			(await target.query("SELECT pg_try_advisory_lock_shared($1::bigint) AS acquired", [targetLockId])).rows[0]
+				?.acquired,
+			true,
+		);
+		assert.deepEqual((await target.query(`SELECT generation FROM elmo_runtime_generation`)).rows, [
+			{ generation: "0020" },
+		]);
+		assert.equal(
+			(await target.query("SELECT pg_advisory_unlock_shared($1::bigint) AS released", [targetLockId])).rows[0]
+				?.released,
+			true,
+		);
+		assert.equal(
+			(await controller.query("SELECT pg_advisory_unlock($1::bigint) AS released", [sourceLockId])).rows[0]?.released,
+			true,
+		);
+
+		assert.equal(
+			(await controller.query("SELECT pg_try_advisory_lock($1::bigint) AS acquired", [targetLockId])).rows[0]?.acquired,
+			true,
+		);
+		assert.equal(
+			await transitionDatabaseRuntimeGeneration(controller, {
+				expectedGeneration: "0020",
+				generation: "pre-0020",
+			}),
+			"changed",
+		);
+		assert.equal(
+			(await controller.query("SELECT pg_advisory_unlock($1::bigint) AS released", [targetLockId])).rows[0]?.released,
+			true,
+		);
+		assert.equal(
+			(await source.query("SELECT pg_try_advisory_lock_shared($1::bigint) AS acquired", [sourceLockId])).rows[0]
+				?.acquired,
+			true,
+		);
+		assert.deepEqual((await source.query(`SELECT generation FROM elmo_runtime_generation`)).rows, [
+			{ generation: "pre-0020" },
+		]);
+		assert.equal(
+			(await source.query("SELECT pg_advisory_unlock_shared($1::bigint) AS released", [sourceLockId])).rows[0]
+				?.released,
+			true,
+		);
+
+		assert.equal(
+			(await controller.query("SELECT pg_try_advisory_lock($1::bigint) AS acquired", [sourceLockId])).rows[0]?.acquired,
+			true,
+		);
+		assert.equal(
+			await transitionDatabaseRuntimeGeneration(controller, {
+				expectedGeneration: "pre-0020",
+				generation: "0020",
+			}),
+			"changed",
+		);
+		assert.equal(
+			(await target.query("SELECT pg_try_advisory_lock_shared($1::bigint) AS acquired", [targetLockId])).rows[0]
+				?.acquired,
+			true,
+		);
+		assert.deepEqual((await target.query(`SELECT generation FROM elmo_runtime_generation`)).rows, [
+			{ generation: "0020" },
+		]);
+		assert.equal(
+			(await target.query("SELECT pg_advisory_unlock_shared($1::bigint) AS released", [targetLockId])).rows[0]
+				?.released,
+			true,
+		);
+		assert.equal(
+			(await controller.query("SELECT pg_advisory_unlock($1::bigint) AS released", [sourceLockId])).rows[0]?.released,
+			true,
+		);
+	} finally {
+		await Promise.all(
+			connectedClients.map(async (client) => {
+				await client.query("SELECT pg_advisory_unlock_all()").catch(() => undefined);
+				await client.end().catch(() => undefined);
+			}),
+		);
 	}
 }
 
@@ -181,6 +308,44 @@ async function readLegacySnapshot(client: InstanceType<typeof Client>) {
 			"citation_index" FROM "citations" ORDER BY "id"`,
 	] as const;
 	return Promise.all(queries.map(async (query) => (await client.query(query)).rows));
+}
+
+async function seedAndAssertRunningAdmissionLeaseBackfill(
+	client: InstanceType<typeof Client>,
+	upgradeUrl: string,
+	leaseFolder: string,
+): Promise<void> {
+	await client.query(`
+		INSERT INTO "brand_analysis_admissions" (
+			"brand_id", "organization_id", "request_fingerprint", "job_id", "generation",
+			"status", "provider_started_at"
+		) VALUES (
+			'white-brand', 'white-brand', repeat('d', 64),
+			'50000000-0000-4000-8000-000000000004', 1, 'running', now() - INTERVAL '5 minutes'
+		)
+	`);
+	await applyMigrations(upgradeUrl, leaseFolder);
+	const runtimeGeneration = await client.query(`
+		SELECT "singleton", "generation"
+		FROM "elmo_runtime_generation"
+		ORDER BY "singleton"
+	`);
+	assert.deepEqual(
+		runtimeGeneration.rows,
+		[{ singleton: true, generation: "0020" }],
+		"The 0020 migration must establish exactly one target runtime-generation epoch row.",
+	);
+	await assertRuntimeGenerationCutoverProtocol(upgradeUrl);
+	const admission = await client.query(`
+		SELECT
+			"status",
+			"provider_lease_expires_at" IS NOT NULL AS "has_lease",
+			"provider_lease_expires_at" > now() AS "lease_is_future"
+		FROM "brand_analysis_admissions"
+		WHERE "brand_id" = 'white-brand'
+	`);
+	assert.deepEqual(admission.rows, [{ status: "running", has_lease: true, lease_is_future: true }]);
+	await client.query(`DELETE FROM "brand_analysis_admissions" WHERE "brand_id" = 'white-brand'`);
 }
 
 async function assertCloudUpgrade(
@@ -307,12 +472,19 @@ async function assertCloudUpgrade(
 	);
 	await client.query(`
 		UPDATE "brand_analysis_admissions"
-		SET "status" = 'running', "provider_started_at" = now()
+		SET
+			"status" = 'running',
+			"provider_started_at" = now(),
+			"provider_lease_expires_at" = now() + INTERVAL '30 minutes'
 		WHERE "brand_id" = 'white-brand'
 	`);
 	await client.query(`
 		UPDATE "brand_analysis_admissions"
-		SET "status" = 'completed', "result" = '{}'::jsonb, "completed_at" = now()
+		SET
+			"status" = 'completed',
+			"result" = '{}'::jsonb,
+			"completed_at" = now(),
+			"provider_lease_expires_at" = NULL
 		WHERE "brand_id" = 'white-brand'
 	`);
 	await client.query(`DELETE FROM "brand_analysis_admissions" WHERE "brand_id" = 'white-brand'`);
@@ -724,7 +896,8 @@ async function main(): Promise<void> {
 	assert.equal(legacyTags.at(-1), LEGACY_LAST_MIGRATION);
 
 	const legacyFolder = await createFilteredMigrationFolder(migrationsFolder, journal, legacyTags);
-	const cloudFolder = await createFilteredMigrationFolder(migrationsFolder, journal, CLOUD_MIGRATIONS);
+	const cloudFolder = await createFilteredMigrationFolder(migrationsFolder, journal, PRE_LEASE_CLOUD_MIGRATIONS);
+	const leaseFolder = await createFilteredMigrationFolder(migrationsFolder, journal, LEASE_MIGRATIONS);
 	try {
 		await recreateUpgradeDatabase(adminUrl);
 		await applyMigrations(upgradeUrl, legacyFolder);
@@ -735,6 +908,15 @@ async function main(): Promise<void> {
 			await seedLegacyInstall(client);
 			const before = await readLegacySnapshot(client);
 			await applyMigrations(upgradeUrl, cloudFolder);
+			const preUpgradeRuntimeGeneration = await client.query(
+				`SELECT to_regclass('public.elmo_runtime_generation')::text AS "runtimeGenerationTable"`,
+			);
+			assert.deepEqual(
+				preUpgradeRuntimeGeneration.rows,
+				[{ runtimeGenerationTable: null }],
+				"The pre-0020 schema must not advertise the target runtime generation before cutover.",
+			);
+			await seedAndAssertRunningAdmissionLeaseBackfill(client, upgradeUrl, leaseFolder);
 			await assertCloudUpgrade(client, before);
 			await assertCloudRetentionPurge(client);
 		} finally {
@@ -744,9 +926,12 @@ async function main(): Promise<void> {
 		await Promise.all([
 			rm(legacyFolder, { recursive: true, force: true }),
 			rm(cloudFolder, { recursive: true, force: true }),
+			rm(leaseFolder, { recursive: true, force: true }),
 		]);
 	}
-	console.log("Cloud upgrade rehearsal passed: legacy data stayed intact and cloud control-plane tables stayed empty.");
+	console.log(
+		"Cloud upgrade rehearsal passed: legacy product data stayed intact, memberships were normalized, and cloud control-plane tables stayed empty.",
+	);
 }
 
 await main();

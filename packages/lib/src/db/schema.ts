@@ -70,6 +70,16 @@ export const apikey = pgTable(
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 
+export const elmoRuntimeGeneration = pgTable(
+	"elmo_runtime_generation",
+	{
+		singleton: boolean("singleton").default(true).primaryKey(),
+		generation: text("generation").notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [check("elmo_runtime_generation_singleton_check", sql`${table.singleton} = true`)],
+);
+
 export const brands = pgTable(
 	"brands",
 	{

@@ -15,9 +15,11 @@
 		"./plans": "./src/plans.ts",
 		"./entitlements": "./src/entitlements.ts",
 		"./billing-lifecycle": "./src/billing-lifecycle.ts",
-		"./provider-costs": "./src/provider-costs.ts"
+		"./provider-costs": "./src/provider-costs.ts",
+		"./database-url": "./src/database-url.ts"
 	},
 	"dependencies": {
+		"pg-connection-string": "2.14.0",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {

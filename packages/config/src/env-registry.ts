@@ -49,6 +49,18 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "PostgreSQL connection string.",
 	},
 	{
+		name: "DATABASE_URL_UNPOOLED",
+		scope: "server",
+		requiredBy: ["whitelabel", "cloud"],
+		description: "Direct, session-affine PostgreSQL connection string used for migrations and deployment fencing.",
+	},
+	{
+		name: "ELMO_RUNTIME_FENCE_GENERATION",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Release runtime generation used to fence incompatible web and worker processes.",
+	},
+	{
 		name: "APP_URL",
 		scope: "server",
 		requiredBy: ["cloud"],

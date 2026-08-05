@@ -1,6 +1,8 @@
 # Elmo 
 # Supports: web app (Nitro server) and worker
 
+ARG ELMO_RELEASE_VERSION
+
 # Base stage with Node.js
 FROM node:24-alpine AS base
 RUN corepack enable pnpm
@@ -64,7 +66,15 @@ RUN pnpm --filter @workspace/lib deploy --legacy /deploy/lib
 FROM base AS web
 WORKDIR /app
 
+ARG ELMO_RELEASE_VERSION
+LABEL com.elmohq.elmo.schema-compatibility="0020"
+LABEL com.elmohq.elmo.release-version="${ELMO_RELEASE_VERSION}"
+LABEL com.elmohq.elmo.runtime-fence-generation="0020"
+
 ENV NODE_ENV=production
+ENV ELMO_RUNTIME_FENCE_GENERATION="0020"
+ENV SERVER_SHUTDOWN_TIMEOUT="3600"
+RUN printf '0020\n' > /app/.elmo-runtime-fence-generation && chmod 0444 /app/.elmo-runtime-fence-generation
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs
@@ -89,19 +99,31 @@ HEALTHCHECK --interval=5s --timeout=5s --start-period=30s --retries=30 \
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", ".output/server/index.mjs"]
 
-# Migration stage — runs drizzle-kit migrate then exits
+# Migration stage — serializes Drizzle migrations with a database-held lock
 FROM base AS migrate
 WORKDIR /app
 
+ARG ELMO_RELEASE_VERSION
+LABEL com.elmohq.elmo.schema-compatibility="0020"
+LABEL com.elmohq.elmo.release-version="${ELMO_RELEASE_VERSION}"
+LABEL com.elmohq.elmo.runtime-fence-generation="0020"
+
 COPY --from=builder /deploy/lib ./
 
-CMD ["./node_modules/.bin/drizzle-kit", "migrate"]
+CMD ["./node_modules/.bin/tsx", "scripts/migrate.ts"]
 
 # Worker stage
 FROM base AS worker
 WORKDIR /app
 
+ARG ELMO_RELEASE_VERSION
+LABEL com.elmohq.elmo.schema-compatibility="0020"
+LABEL com.elmohq.elmo.release-version="${ELMO_RELEASE_VERSION}"
+LABEL com.elmohq.elmo.runtime-fence-generation="0020"
+
 ENV NODE_ENV=production
+ENV ELMO_RUNTIME_FENCE_GENERATION="0020"
+RUN printf '0020\n' > /app/.elmo-runtime-fence-generation && chmod 0444 /app/.elmo-runtime-fence-generation
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 worker

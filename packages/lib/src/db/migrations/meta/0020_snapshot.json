@@ -2993,6 +2993,44 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+    "public.elmo_runtime_generation": {
+      "name": "elmo_runtime_generation",
+      "schema": "",
+      "columns": {
+        "singleton": {
+          "name": "singleton",
+          "type": "boolean",
+          "primaryKey": true,
+          "notNull": true,
+          "default": true
+        },
+        "generation": {
+          "name": "generation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "elmo_runtime_generation_singleton_check": {
+          "name": "elmo_runtime_generation_singleton_check",
+          "value": "\"elmo_runtime_generation\".\"singleton\" = true"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.secrets": {
       "name": "secrets",
       "schema": "",
