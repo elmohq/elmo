@@ -5,7 +5,7 @@
  * Shows sidebar navigation, header, and optional demo banner.
  * If brand exists in auth but not in DB, shows onboarding.
  */
-import { createFileRoute, Outlet, notFound } from "@tanstack/react-router";
+import { createFileRoute, Outlet, notFound, redirect } from "@tanstack/react-router";
 import { getAppName } from "@/lib/route-head";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -25,6 +25,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import BrandOnboarding from "@/components/brand-onboarding";
+import { getOrgBillingState } from "@workspace/lib/entitlements";
 import { validateBrandFilterSearch } from "@/hooks/use-list-filters";
 
 const getBrandData = createServerFn({ method: "GET" })
@@ -38,6 +39,7 @@ const getBrandData = createServerFn({ method: "GET" })
 			isAdmin: boolean;
 			hasReportAccess: boolean;
 			hasAccess: boolean;
+			needsPlan: boolean;
 		}> => {
 			const session = await requireAuthSession();
 
@@ -46,7 +48,14 @@ const getBrandData = createServerFn({ method: "GET" })
 			if (brand) {
 				const hasAccess = await checkOrgAccess(session.user.id, brand.organizationId);
 				if (!hasAccess) {
-					return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+					return {
+						brand: null,
+						brandName: null,
+						isAdmin: false,
+						hasReportAccess: false,
+						hasAccess: false,
+						needsPlan: false,
+					};
 				}
 
 				const brandPrompts = await db.query.prompts.findMany({
@@ -55,6 +64,10 @@ const getBrandData = createServerFn({ method: "GET" })
 				const brandCompetitors = await db.query.competitors.findMany({
 					where: eq(competitors.brandId, data.brandId),
 				});
+
+				// Paywall signal (cloud only): outside cloud this resolves without
+				// touching the database.
+				const { entitlements } = await getOrgBillingState(brand.organizationId);
 
 				return {
 					brand: {
@@ -66,6 +79,7 @@ const getBrandData = createServerFn({ method: "GET" })
 					isAdmin: isAdmin(session),
 					hasReportAccess: hasReportAccess(session),
 					hasAccess: true,
+					needsPlan: entitlements.standing === "none",
 				};
 			}
 
@@ -73,7 +87,14 @@ const getBrandData = createServerFn({ method: "GET" })
 			// (brand.id === org.id). Whitelabel empty-org onboarding depends on this.
 			const hasAccess = await checkOrgAccess(session.user.id, data.brandId);
 			if (!hasAccess) {
-				return { brand: null, brandName: null, isAdmin: false, hasReportAccess: false, hasAccess: false };
+				return {
+					brand: null,
+					brandName: null,
+					isAdmin: false,
+					hasReportAccess: false,
+					hasAccess: false,
+					needsPlan: false,
+				};
 			}
 
 			const orgs = await listUserOrganizations(session.user.id);
@@ -85,6 +106,7 @@ const getBrandData = createServerFn({ method: "GET" })
 				isAdmin: isAdmin(session),
 				hasReportAccess: hasReportAccess(session),
 				hasAccess: true,
+				needsPlan: false,
 			};
 		},
 	);
@@ -137,11 +159,23 @@ export const Route = createFileRoute("/_authed/app/$brand")({
 	// once so every child route inherits them in its search schema. The loader
 	// has no `loaderDeps`, so filter-only navigations never re-run it.
 	validateSearch: validateBrandFilterSearch,
-	loader: async ({ params }) => {
+	loader: async ({
+		params,
+	}): Promise<{
+		brand: BrandWithPrompts | null;
+		brandName: string | null;
+		isAdmin: boolean;
+		hasReportAccess: boolean;
+		needsOnboarding: boolean;
+	}> => {
 		const result = await getBrandData({ data: { brandId: params.brand } });
 
 		if (!result.hasAccess) {
 			throw notFound();
+		}
+
+		if (result.needsPlan) {
+			throw redirect({ to: "/choose-plan" });
 		}
 
 		return {

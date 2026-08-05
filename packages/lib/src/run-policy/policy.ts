@@ -126,6 +126,19 @@ export function resolvePromptRunPlan(input: ResolveRunPlanInput): PromptRunPlan 
 }
 
 /**
+ * Default platform picks for a cloud brand that hasn't chosen yet: the first
+ * available menu platforms up to the plan's pick count. Written explicitly at
+ * brand creation (and applied implicitly by the run policy when picks are
+ * null) so a paying org is never silently untracked.
+ */
+export function defaultPlatformPicks(entitlements: Entitlements, scrapeTargets: ModelConfig[]): string[] {
+	const available = new Set(scrapeTargets.filter((t) => t.model !== CLAUDE_MODEL_NAME).map((t) => t.model));
+	return (entitlements.platformMenu ?? [])
+		.filter((model) => available.has(model))
+		.slice(0, entitlements.platformPicks ?? 0);
+}
+
+/**
  * Key for per-target run history. Claude base and web are the same model with
  * different web_search_enabled, so the flag is part of the identity.
  */

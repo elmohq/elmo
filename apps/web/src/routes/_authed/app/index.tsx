@@ -7,12 +7,13 @@
  * list.
  */
 
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { Button } from "@workspace/ui/components/button";
 import { Skeleton } from "@workspace/ui/components/skeleton";
 import { syncAuth0UserById } from "@workspace/whitelabel/auth-hooks";
 import FullPageCard from "@/components/full-page-card";
+import { getPaywallStateFn } from "@/server/billing";
 import { listUserOrganizations, requireAuthSession } from "@/lib/auth/helpers";
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
@@ -77,7 +78,17 @@ function OrgSwitcherSkeleton() {
 
 export const Route = createFileRoute("/_authed/app/")({
 	pendingComponent: OrgSwitcherSkeleton,
-	loader: async () => getBrandSwitcherData(),
+	loader: async (): Promise<{
+		brands: { id: string; name: string }[];
+		unprovisionedOrgs: { id: string; name: string }[];
+		canCreateBrands: boolean;
+	}> => {
+		const paywall = await getPaywallStateFn();
+		if (paywall.needsPlan) {
+			throw redirect({ to: "/choose-plan" });
+		}
+		return getBrandSwitcherData();
+	},
 	component: BrandSwitcherPage,
 });
 

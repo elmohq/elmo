@@ -1,6 +1,7 @@
 export {
 	CLAUDE_MODEL_NAME,
 	dailyRunCeiling,
+	defaultPlatformPicks,
 	dueToleranceMs,
 	isTargetDue,
 	resolvePromptRunPlan,

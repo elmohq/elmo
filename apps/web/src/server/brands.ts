@@ -10,7 +10,8 @@ import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
 import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
-import { assertCanCreateBrand } from "@workspace/lib/entitlements";
+import { assertCanCreateBrand, assertEnabledModelsAllowed, getOrgEntitlements } from "@workspace/lib/entitlements";
+import { defaultPlatformPicks } from "@workspace/lib/run-policy";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -53,6 +54,21 @@ function computeEffectiveModels(brand: Brand): {
 		// lists than crash the brand fetch.
 		return { effectiveModels: [], effectiveModelConfigs: [] };
 	}
+}
+
+/**
+ * Cloud brands start with their plan's default platform picks written
+ * explicitly, so the run policy, the model filter, and the LLMs settings page
+ * all agree from the first run. Outside cloud (or when nothing is pickable
+ * yet, e.g. an unsubscribed org via the admin API) brands keep the null
+ * "follow deployment configuration" semantics.
+ */
+async function initialEnabledModels(organizationId: string): Promise<string[] | null> {
+	if (getDeployment().mode !== "cloud") return null;
+	const entitlements = await getOrgEntitlements(organizationId);
+	if (entitlements.unlimited) return null;
+	const picks = defaultPlatformPicks(entitlements, parseScrapeTargets(process.env.SCRAPE_TARGETS));
+	return picks.length > 0 ? picks : null;
 }
 
 function getDefaultBrandDomains(): string[] {
@@ -171,6 +187,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 		}
 
 		const defaultDomains = getDefaultBrandDomains();
+		const enabledModels = await initialEnabledModels(data.brandId);
 
 		const result = await db
 			.insert(brands)
@@ -182,6 +199,7 @@ export const createBrandFn = createServerFn({ method: "POST" })
 				name: data.brandName,
 				website: urlValidation.formattedUrl,
 				enabled: true,
+				...(enabledModels && { enabledModels }),
 				...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 			})
 			.onConflictDoNothing()
@@ -250,6 +268,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 
 		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
+		const enabledModels = await initialEnabledModels(orgId);
 
 		await db.insert(brands).values({
 			id: brandId,
@@ -257,6 +276,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
 			enabled: true,
+			...(enabledModels && { enabledModels }),
 			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
 		});
 
@@ -478,4 +498,102 @@ export const createCompetitorFromDomainFn = createServerFn({ method: "POST" })
 			.returning();
 
 		return result;
+	});
+
+// ============================================================================
+// Platform picks (LLMs settings page)
+// ============================================================================
+
+export type ModelPickerState = {
+	/** Models this brand may choose from, with target metadata for display. */
+	available: { model: string; provider: string; version?: string; webSearch: boolean }[];
+	/** The brand's stored picks; null = follow deployment configuration. */
+	enabledModels: string[] | null;
+	/** Cloud plan constraints; null outside cloud (no pick limit). */
+	planLimits: { platformPicks: number; platformMenu: string[] } | null;
+};
+
+export const getModelPickerStateFn = createServerFn({ method: "GET" })
+	.validator(z.object({ brandId: z.string() }))
+	.handler(async ({ data }): Promise<ModelPickerState> => {
+		const session = await requireAuthSession();
+		await requireBrandAccess(session.user.id, data.brandId);
+
+		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+		if (!brand) throw new Error("Brand not found");
+
+		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+		const entitlements = await getOrgEntitlements(brand.organizationId);
+
+		if (entitlements.unlimited) {
+			return {
+				available: configs.map(({ model, provider, version, webSearch }) => ({ model, provider, version, webSearch })),
+				enabledModels: brand.enabledModels,
+				planLimits: null,
+			};
+		}
+
+		// Cloud: offer the plan menu (plus custom extras) that this instance
+		// actually configures. Claude is not a platform pick — it has its own
+		// per-prompt assignment surface.
+		const menu = new Set(entitlements.platformMenu ?? []);
+		const seen = new Set<string>();
+		const available: ModelPickerState["available"] = [];
+		for (const config of configs) {
+			if (!menu.has(config.model) || seen.has(config.model)) continue;
+			seen.add(config.model);
+			available.push({
+				model: config.model,
+				provider: config.provider,
+				version: config.version,
+				webSearch: config.webSearch,
+			});
+		}
+		return {
+			available,
+			enabledModels: brand.enabledModels,
+			planLimits: {
+				platformPicks: entitlements.platformPicks ?? available.length,
+				platformMenu: entitlements.platformMenu ?? [],
+			},
+		};
+	});
+
+export const updateEnabledModelsFn = createServerFn({ method: "POST" })
+	.validator(
+		z.object({
+			brandId: z.string(),
+			/** Explicit picks, or null to follow the deployment configuration. */
+			models: z.array(z.string().min(1)).max(50).nullable(),
+		}),
+	)
+	.handler(async ({ data }) => {
+		const session = await requireAuthSession();
+		await requireBrandAccess(session.user.id, data.brandId);
+
+		const brand = await db.query.brands.findFirst({ where: eq(brands.id, data.brandId) });
+		if (!brand) throw new Error("Brand not found");
+
+		const models = data.models === null ? null : [...new Set(data.models)];
+		const configs = parseScrapeTargets(process.env.SCRAPE_TARGETS);
+
+		if (models !== null) {
+			// Loud validation against the configured targets (same rule the worker
+			// applies), so a typo can't silently stop tracking.
+			selectTargetsForBrand(configs, models);
+			await assertEnabledModelsAllowed(brand.organizationId, models);
+		} else {
+			const entitlements = await getOrgEntitlements(brand.organizationId);
+			if (!entitlements.unlimited) {
+				throw new Error("Choose which platforms to track — your plan defines how many.");
+			}
+		}
+
+		const [updated] = await db
+			.update(brands)
+			.set({ enabledModels: models, updatedAt: new Date() })
+			.where(eq(brands.id, data.brandId))
+			.returning({ id: brands.id, enabledModels: brands.enabledModels });
+		if (!updated) throw new Error("Brand not found");
+		return updated;
 	});
