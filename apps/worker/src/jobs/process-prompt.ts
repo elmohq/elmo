@@ -1,25 +1,25 @@
 import * as Sentry from "@sentry/node";
-import type { Job } from "pg-boss";
+import { getDefaultDelayHours, RUNS_PER_PROMPT } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import {
+	type Brand,
 	brands,
+	type Competitor,
 	citations,
 	competitors,
 	promptRuns,
 	prompts,
-	type Brand,
-	type Competitor,
 } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
 import {
 	getProvider,
-	parseScrapeTargets,
-	selectTargetsForBrand,
 	type ModelConfig,
 	type Provider,
+	parseScrapeTargets,
+	selectTargetsForBrand,
 } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
+import { eq } from "drizzle-orm";
+import type { Job } from "pg-boss";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
@@ -28,10 +28,26 @@ export interface ProcessPromptData {
 	cadenceHours?: number; // Hours until next run (for self-rescheduling)
 }
 
-interface PromptContext {
+export interface PromptContext {
 	prompt: typeof prompts.$inferSelect;
 	brand: Brand;
 	competitors: Competitor[];
+}
+
+type DbConnection = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export interface ModelIterationEvaluation {
+	promptId: string;
+	brandId: string;
+	model: string;
+	provider: string;
+	version: string;
+	webSearchEnabled: boolean;
+	rawOutput: unknown;
+	webQueries: string[];
+	brandMentioned: boolean;
+	competitorsMentioned: string[];
+	citations: Citation[];
 }
 
 /**
@@ -81,7 +97,7 @@ async function getCadenceHours(promptId: string): Promise<number> {
 	return brand.delayOverrideHours ?? defaultDelayHours;
 }
 
-async function getPromptContext(promptId: string): Promise<PromptContext | null> {
+export async function getPromptContext(promptId: string): Promise<PromptContext | null> {
 	const prompt = await db.query.prompts.findFirst({
 		where: eq(prompts.id, promptId),
 	});
@@ -151,6 +167,7 @@ function analyzeMentions(
 }
 
 async function savePromptRun(
+	conn: DbConnection,
 	promptId: string,
 	brandId: string,
 	model: string,
@@ -161,10 +178,12 @@ async function savePromptRun(
 	webQueries: string[],
 	brandMentioned: boolean,
 	competitorsMentioned: string[],
+	promptRunId?: string,
 ): Promise<{ id: string; createdAt: Date }> {
-	const [result] = await db
+	const [result] = await conn
 		.insert(promptRuns)
 		.values({
+			...(promptRunId ? { id: promptRunId } : {}),
 			promptId,
 			brandId,
 			model,
@@ -182,6 +201,7 @@ async function savePromptRun(
 }
 
 async function saveCitations(
+	conn: DbConnection,
 	promptRunId: string,
 	promptId: string,
 	brandId: string,
@@ -191,7 +211,7 @@ async function saveCitations(
 ): Promise<void> {
 	if (extracted.length === 0) return;
 
-	await db.insert(citations).values(
+	await conn.insert(citations).values(
 		extracted.map((c) => ({
 			promptRunId,
 			promptId,
@@ -206,7 +226,7 @@ async function saveCitations(
 	);
 }
 
-async function runModelIteration({
+export async function evaluateModelIteration({
 	promptId,
 	promptValue,
 	brand,
@@ -222,7 +242,7 @@ async function runModelIteration({
 	config: ModelConfig;
 	providerImpl: Provider;
 	runIndex: number;
-}): Promise<void> {
+}): Promise<ModelIterationEvaluation> {
 	const logPrefix = `[${config.model}_${runIndex}]`;
 
 	try {
@@ -245,21 +265,19 @@ async function runModelIteration({
 
 		const recordedVersion = modelVersion ?? config.version ?? config.provider;
 
-		const { id: promptRunId, createdAt } = await savePromptRun(
+		return {
 			promptId,
-			brand.id,
-			config.model,
-			config.provider,
-			recordedVersion,
-			config.webSearch,
+			brandId: brand.id,
+			model: config.model,
+			provider: config.provider,
+			version: recordedVersion,
+			webSearchEnabled: config.webSearch,
 			rawOutput,
 			webQueries,
 			brandMentioned,
 			competitorsMentioned,
-		);
-		console.log(`${logPrefix} Saved prompt run ${promptRunId}`);
-
-		await saveCitations(promptRunId, promptId, brand.id, config.model, extractedCitations, createdAt);
+			citations: extractedCitations,
+		};
 	} catch (error) {
 		// A single run's failure doesn't fail the job (only an all-runs failure
 		// does), so report it here to keep per-provider failure rates visible.
@@ -272,6 +290,44 @@ async function runModelIteration({
 		});
 		throw error;
 	}
+}
+
+export async function persistModelIteration(
+	evaluation: ModelIterationEvaluation,
+	conn: DbConnection,
+	promptRunId?: string,
+): Promise<{ promptRunId: string }> {
+	const saved = await savePromptRun(
+		conn,
+		evaluation.promptId,
+		evaluation.brandId,
+		evaluation.model,
+		evaluation.provider,
+		evaluation.version,
+		evaluation.webSearchEnabled,
+		evaluation.rawOutput,
+		evaluation.webQueries,
+		evaluation.brandMentioned,
+		evaluation.competitorsMentioned,
+		promptRunId,
+	);
+	await saveCitations(
+		conn,
+		saved.id,
+		evaluation.promptId,
+		evaluation.brandId,
+		evaluation.model,
+		evaluation.citations,
+		saved.createdAt,
+	);
+	return { promptRunId: saved.id };
+}
+
+export async function runModelIteration(
+	input: Parameters<typeof evaluateModelIteration>[0],
+): Promise<{ promptRunId: string }> {
+	const evaluation = await evaluateModelIteration(input);
+	return db.transaction(async (tx) => persistModelIteration(evaluation, tx));
 }
 
 /**
@@ -315,7 +371,7 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
 
 		// Run all model iterations in parallel
-		const runPromises: Promise<void>[] = [];
+		const runPromises: Array<Promise<{ promptRunId: string }>> = [];
 
 		for (const config of selectedConfigs) {
 			const providerImpl = getProvider(config.provider);

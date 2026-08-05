@@ -1,12 +1,15 @@
 import * as Sentry from "@sentry/node";
-import type { Job, PgBoss } from "pg-boss";
 import { getDeployment } from "@workspace/deployment";
+import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
 import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
-import { processPromptJob, type ProcessPromptData } from "./jobs/process-prompt";
-import { generateReportJob, type GenerateReportData } from "./jobs/generate-report";
-import { scheduleMaintenanceJob, type ScheduleMaintenanceData } from "./jobs/schedule-maintenance";
-import { syncAuth0MembershipsJob, type SyncAuth0MembershipsData } from "./jobs/sync-auth0-memberships";
-import { analyzeBrandJob, type AnalyzeBrandData } from "./jobs/analyze-brand";
+import type { Job, PgBoss } from "pg-boss";
+import { type AnalyzeBrandData, analyzeBrandJob } from "./jobs/analyze-brand";
+import { type DispatchTrackingV2Data, dispatchTrackingV2Job } from "./jobs/dispatch-tracking-v2";
+import { type GenerateReportData, generateReportJob } from "./jobs/generate-report";
+import { type ProcessPromptData, processPromptJob } from "./jobs/process-prompt";
+import { type ProcessTrackingTaskV2Data, processTrackingTaskV2Job } from "./jobs/process-tracking-task-v2";
+import { type ScheduleMaintenanceData, scheduleMaintenanceJob } from "./jobs/schedule-maintenance";
+import { type SyncAuth0MembershipsData, syncAuth0MembershipsJob } from "./jobs/sync-auth0-memberships";
 
 /**
  * Wraps a pg-boss handler to report errors to Sentry before re-throwing.
@@ -61,6 +64,22 @@ export async function registerHandlers(boss: PgBoss): Promise<void> {
 		withSentry("schedule-maintenance", scheduleMaintenanceJob),
 	);
 	console.log("Registered handler: schedule-maintenance");
+
+	if (process.env.DEPLOYMENT_MODE === "cloud") {
+		await boss.work<DispatchTrackingV2Data>(
+			CLOUD_TRACKING_DISPATCH_QUEUE,
+			{ localConcurrency: 1 },
+			withSentry(CLOUD_TRACKING_DISPATCH_QUEUE, dispatchTrackingV2Job),
+		);
+		console.log(`Registered handler: ${CLOUD_TRACKING_DISPATCH_QUEUE}`);
+
+		await boss.work<ProcessTrackingTaskV2Data>(
+			CLOUD_TRACKING_TASK_QUEUE,
+			{ batchSize: 1, localConcurrency: 10 },
+			withSentry(CLOUD_TRACKING_TASK_QUEUE, processTrackingTaskV2Job),
+		);
+		console.log(`Registered handler: ${CLOUD_TRACKING_TASK_QUEUE}`);
+	}
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.work<SyncAuth0MembershipsData>(

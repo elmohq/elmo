@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
-import { getDeployment } from "@workspace/deployment";
 import { validateCloudTrackingTargets } from "@workspace/cloud";
+import { getDeployment } from "@workspace/deployment";
+import { CLOUD_TRACKING_DISPATCH_QUEUE, CLOUD_TRACKING_TASK_QUEUE } from "@workspace/lib/cloud/tracking-policy";
 import { getProvider, parseScrapeTargets, validateScrapeTargets } from "@workspace/lib/providers";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 import boss from "./boss";
@@ -67,6 +68,20 @@ async function main() {
 		retryBackoff: true,
 		expireInSeconds: 60 * 30, // 30 minute timeout
 	});
+	if (process.env.DEPLOYMENT_MODE === "cloud") {
+		await boss.createQueue(CLOUD_TRACKING_DISPATCH_QUEUE, {
+			retryLimit: 3,
+			retryDelay: 30,
+			retryBackoff: true,
+			expireInSeconds: 60 * 5,
+		});
+		await boss.createQueue(CLOUD_TRACKING_TASK_QUEUE, {
+			retryLimit: 3,
+			retryDelay: 60,
+			retryBackoff: true,
+			expireInSeconds: 60 * 15,
+		});
+	}
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.createQueue("sync-auth0-memberships", {
 			retryLimit: 3,
@@ -79,6 +94,10 @@ async function main() {
 
 	await boss.schedule("schedule-maintenance", "*/5 * * * *", { source: "scheduled" }, { tz: "UTC" });
 	console.log("Scheduled maintenance job (every 5 minutes)");
+	if (process.env.DEPLOYMENT_MODE === "cloud") {
+		await boss.schedule(CLOUD_TRACKING_DISPATCH_QUEUE, "* * * * *", { source: "scheduled" }, { tz: "UTC" });
+		console.log("Scheduled cloud v2 tracking dispatcher (every minute)");
+	}
 
 	if (process.env.DEPLOYMENT_MODE === "whitelabel") {
 		await boss.schedule("sync-auth0-memberships", "*/15 * * * *", { source: "scheduled" }, { tz: "UTC" });
