@@ -8,7 +8,7 @@ import {
 	organizationDataRetentionRuns,
 	trackingProviderAttempts,
 } from "@workspace/lib/db/schema";
-import { and, asc, eq, inArray, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { hasManagedCloudBillingMetadata } from "./billing-metadata";
 import type { CloudBillingSubscriptionProjection } from "./billing-store";
@@ -99,6 +99,41 @@ function isTerminalSubscriptionStatus(status: string): status is CloudDataRetent
 export function nextCloudDataRetentionPurgeAfter(confirmedAt: Date, eligibleAt: Date): Date {
 	const minimumPurgeAfter = new Date(confirmedAt.getTime() + CLOUD_RETENTION_MINIMUM_CONFIRMATION_MS);
 	return minimumPurgeAfter > eligibleAt ? minimumPurgeAfter : eligibleAt;
+}
+
+/**
+ * A live worker renews its durable lease while provider I/O is pending. Expiry
+ * fences a crashed or disconnected worker before retention checks for in-flight
+ * work; a late completion can no longer transition the failed admission.
+ */
+export async function expireStaleCloudBrandAnalysisProviderLeases(
+	tx: DbTransaction,
+	organizationId: string,
+	now: Date,
+): Promise<number> {
+	const expired = await tx
+		.update(brandAnalysisAdmissions)
+		.set({
+			status: "failed",
+			result: null,
+			lastError: "Brand analysis provider lease expired before cancellation retention",
+			providerLeaseExpiresAt: null,
+			completedAt: null,
+			failedAt: now,
+			updatedAt: now,
+		})
+		.where(
+			and(
+				eq(brandAnalysisAdmissions.organizationId, organizationId),
+				eq(brandAnalysisAdmissions.status, "running"),
+				or(
+					isNull(brandAnalysisAdmissions.providerLeaseExpiresAt),
+					lte(brandAnalysisAdmissions.providerLeaseExpiresAt, now),
+				),
+			),
+		)
+		.returning({ id: brandAnalysisAdmissions.jobId });
+	return expired.length;
 }
 
 export { buildRetainedProviderAttemptUpdate } from "@workspace/lib/cloud/data-retention-purge";
@@ -333,6 +368,7 @@ export function createDrizzleCloudDataRetentionStore(database: typeof db = db): 
 						),
 					)
 					.limit(1);
+				await expireStaleCloudBrandAnalysisProviderLeases(tx, candidate.organizationId, now);
 				const [runningBrandAnalysis] = await tx
 					.select({ id: brandAnalysisAdmissions.jobId })
 					.from(brandAnalysisAdmissions)

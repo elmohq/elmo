@@ -3,18 +3,28 @@ title: Cloud rollout and rollback
 description: Safe deployment order for the cloud billing and tracking control planes.
 ---
 
-The cloud release uses an expand-first, red-green rollout. Migrations 0012–0019
-add the billing and v2 tracking control planes without changing the legacy
-scheduler contract or synthesizing billing, target-selection, or rollout rows.
-Local and white-label installations therefore keep their existing
-`enabled_models` and `delay_override_hours` behavior.
+The first cloud release is a coordinated control-plane cutover. Migrations
+0012–0020 add the billing and v2 tracking control planes without changing the
+legacy scheduler contract or synthesizing billing, target-selection, or rollout
+rows. Local and white-label installations therefore keep their existing
+`enabled_models` and `delay_override_hours` behavior, but old and new cloud web
+or worker versions must not overlap during the cutover to migration 0020.
 
 ## Deployment order
 
 1. Back up PostgreSQL and verify restoration before changing production.
-2. Apply all database migrations. Treat 0012–0019 as the expand phase; do not
-   remove legacy columns, queues, or scheduler code.
-3. Deploy the worker version that consumes `reconcile-cloud-billing`,
+2. Stop routing requests to every old cloud web instance so no process can
+   create an admission or enqueue new cloud work. Let every old cloud worker
+   drain all active billing, tracking, and `analyze-brand-cloud-v2` jobs, then
+   stop every old cloud web and worker instance. Verify that no old producer or
+   consumer remains before continuing. This is the one-time compatibility
+   barrier for migration 0020: an old worker cannot maintain the durable
+   provider lease added by that migration. Local and white-label deployments
+   use the legacy queues and may remain online when they do not share these
+   cloud processes.
+3. Apply all database migrations through 0020. Do not remove legacy columns,
+   queues, or scheduler code.
+4. Start only the new worker version that consumes `reconcile-cloud-billing`,
    `dispatch-tracking-v2`, and `process-tracking-task-v2`. Billing reconciliation
    recovers a Stripe command after a process or webhook-delivery failure; a
    pending command fences tracking until its authoritative Stripe state has
@@ -25,7 +35,9 @@ Local and white-label installations therefore keep their existing
    workspaces.
    The same cloud-only billing maintenance job confirms and purges expired
    cancellation-retention runs. Do not expose the retention-aware web version
-   before migration 0019 and this worker version are live.
+   before migrations 0019–0020 and this worker version are live. Migration 0020
+   gives every running brand-analysis provider call a renewable durable lease;
+   the retention worker expires only a lost lease before allowing purge.
    Confirm the worker has created and registered the
    `analyze-brand-cloud-v2` consumer before deploying the web sender. That v2
    queue stores only organization/brand IDs, admission generation, and a
@@ -33,7 +45,7 @@ Local and white-label installations therefore keep their existing
    behind the provider-start lock instead of persisting customer content in
    pg-boss. Local and white-label workers continue using the legacy
    `analyze-brand` contract.
-4. Prepare Stripe before admitting cloud web traffic:
+5. Prepare Stripe before admitting cloud web traffic:
    - create the catalog prices with the exact lookup keys, amounts, currencies,
      and intervals defined by the application;
    - configure `${APP_URL}/api/auth/stripe/webhook` with
@@ -46,9 +58,11 @@ Local and white-label installations therefore keep their existing
      described below;
    - set `STRIPE_SECRET_KEY` and confirm the cloud startup readiness check
      accepts the price catalog and portal configuration.
-5. Deploy the web/control-plane version. Cloud requests fail closed until the
-   Stripe readiness check succeeds; non-cloud modes do not call that check.
-6. Admit only new cloud signups and brands. New cloud brands receive explicit
+6. Deploy the new web/control-plane version only after the new worker is the
+   exclusive cloud consumer and all of its queues have been verified. Cloud
+   requests fail closed until the Stripe readiness check succeeds; non-cloud
+   modes do not call that check.
+7. Admit only new cloud signups and brands. New cloud brands receive explicit
    v2 tracking policy and rollout rows transactionally. Existing brands with no
    rollout row—including every upgraded local or white-label brand—remain on
    legacy scheduling.
@@ -214,19 +228,26 @@ SET mode = 'paused',
 WHERE brand_id IN ('verified-cloud-brand-id')
   AND mode = 'v2'
 RETURNING brand_id, mode, generation;
+```
+
+Keep the transaction open and inspect both result sets. Verify that both
+statements return the same complete brand-ID set. If they do, commit with a
+separate explicit command:
+
+```sql
 COMMIT;
 ```
 
-Verify that both statements return the same complete brand-ID set before
-committing or rolling back containers. The empty `enabled_models` projection
-also prevents provider calls if the previous worker does not recognize
-`paused`. Never broaden this update to brands that were not part of the cloud
-rollout, and never set a cloud-created v2 brand to `legacy`. Resume it only with
-the `resumeCloudTrackingRollouts` operation after restoring a compatible v2
-worker; that operation increments the generation again and makes the
-organization entitlement cursor immediately due.
+Otherwise issue `ROLLBACK;` and correct the verified IDs before retrying. Only
+then roll back containers. The empty `enabled_models` projection also prevents
+provider calls if the previous worker does not recognize `paused`. Never
+broaden this update to brands that were not part of the cloud rollout, and
+never set a cloud-created v2 brand to `legacy`. Resume it only with the
+`resumeCloudTrackingRollouts` operation after restoring a compatible v2 worker;
+that operation increments the generation again and makes the organization
+entitlement cursor immediately due.
 
-Keep migrations 0012–0019 applied during rollback. Their tables and nullable
+Keep migrations 0012–0020 applied during rollback. Their tables and nullable
 Stripe columns are compatible with local and white-label code, while reversing
 them would be the destructive part of the release. Stripe retries failed
 webhook delivery, so restore a webhook-capable web version before resuming

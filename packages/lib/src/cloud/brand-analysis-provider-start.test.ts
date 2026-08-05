@@ -55,11 +55,12 @@ describe("cloud brand-analysis provider-start fence", () => {
 
 	it("consumes the exact pending admission under current cloud entitlements", async () => {
 		const fake = transaction();
+		const now = new Date("2026-08-05T12:00:00.000Z");
 		mocks.withEntitlements.mockImplementation(async ({ run }) =>
 			run({ tx: fake.tx, resolved: { mode: "cloud", access: "allowed" } }),
 		);
 
-		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data })).resolves.toEqual({
+		await expect(beginCloudBrandAnalysisProviderCall({ jobId, data, now })).resolves.toEqual({
 			website: brand.website,
 			brandName: brand.name,
 		});
@@ -69,7 +70,11 @@ describe("cloud brand-analysis provider-start fence", () => {
 		expect(mocks.assertEnabledBrandCapacity).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org-1" }));
 		expect(fake.update).toHaveBeenCalledOnce();
 		expect(fake.set).toHaveBeenCalledWith(
-			expect.objectContaining({ status: "running", providerStartedAt: expect.any(Date) }),
+			expect.objectContaining({
+				status: "running",
+				providerStartedAt: now,
+				providerLeaseExpiresAt: new Date("2026-08-05T12:30:00.000Z"),
+			}),
 		);
 	});
 

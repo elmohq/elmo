@@ -31,15 +31,16 @@ export async function reconcileCloudBillingJob(jobs: Job<ReconcileCloudBillingDa
 		} catch (error) {
 			errors.push(error);
 		}
-		if (errors.length === 0) {
-			try {
-				retention = await reconcileCloudDataRetention({ stripeClient });
-				if (retention.errors.length > 0) {
-					errors.push(new AggregateError(retention.errors, `${retention.failed} cloud data-retention check(s) failed`));
-				}
-			} catch (error) {
-				errors.push(error);
+		// Retention performs its own full Stripe Customer scan and durable pending-
+		// mutation check under the organization lock. An unrelated organization's
+		// reconciliation failure must not prevent those per-organization checks.
+		try {
+			retention = await reconcileCloudDataRetention({ stripeClient });
+			if (retention.errors.length > 0) {
+				errors.push(new AggregateError(retention.errors, `${retention.failed} cloud data-retention check(s) failed`));
 			}
+		} catch (error) {
+			errors.push(error);
 		}
 		if (
 			(mutations && mutations.applied + mutations.failed + mutations.pending + mutations.deferred > 0) ||

@@ -61,7 +61,7 @@ describe("cloud billing maintenance isolation", () => {
 		expect(mocks.reconcileRetention).not.toHaveBeenCalled();
 	});
 
-	it("runs retention only after both authoritative billing phases succeed", async () => {
+	it("runs retention after attempting both authoritative billing phases", async () => {
 		process.env.DEPLOYMENT_MODE = "cloud";
 		mocks.reconcileRetention.mockResolvedValue({
 			due: 2,
@@ -91,12 +91,15 @@ describe("cloud billing maintenance isolation", () => {
 		);
 	});
 
-	it("skips destructive eligibility checks when billing reconciliation fails", async () => {
+	it("continues independent per-organization retention when another billing reconciliation fails", async () => {
 		process.env.DEPLOYMENT_MODE = "cloud";
 		mocks.reconcileSubscriptions.mockRejectedValue(new Error("Stripe reconciliation failed"));
 
 		await expect(reconcileCloudBillingJob([job])).rejects.toThrow("cloud billing reconciliation phase");
-		expect(mocks.reconcileRetention).not.toHaveBeenCalled();
+		expect(mocks.reconcileRetention).toHaveBeenCalledOnce();
+		expect(mocks.reconcileRetention.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.reconcileSubscriptions.mock.invocationCallOrder[0] ?? 0,
+		);
 	});
 
 	it("surfaces retained failure counts for pg-boss retry and operator logs", async () => {

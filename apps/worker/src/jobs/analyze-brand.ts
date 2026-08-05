@@ -2,11 +2,13 @@ import { getDeployment } from "@workspace/deployment";
 import {
 	beginCloudBrandAnalysisProviderCall,
 	CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES,
+	CLOUD_BRAND_ANALYSIS_PROVIDER_HEARTBEAT_MS,
 	type CloudBrandAnalysisJobData,
 	completeCloudBrandAnalysisAdmission,
 	failCloudBrandAnalysisAdmission,
 	hasCloudBrandAnalysisJobMarker,
 	isCloudBrandAnalysisJobData,
+	renewCloudBrandAnalysisProviderLease,
 } from "@workspace/lib/cloud/brand-analysis-admission";
 import {
 	analyzeBrand,
@@ -17,6 +19,43 @@ import {
 import type { JobWithMetadata } from "pg-boss";
 
 export type AnalyzeBrandData = LegacyAnalyzeBrandJobData | CloudBrandAnalysisJobData;
+
+async function withCloudBrandAnalysisProviderLease<T>(input: {
+	jobId: string;
+	data: CloudBrandAnalysisJobData;
+	run: () => Promise<T>;
+}): Promise<T> {
+	let leaseFailure: Error | undefined;
+	let pendingRenewal: Promise<void> | undefined;
+	const timer = setInterval(() => {
+		if (leaseFailure || pendingRenewal) return;
+		pendingRenewal = (async () => {
+			try {
+				if (!(await renewCloudBrandAnalysisProviderLease({ jobId: input.jobId, data: input.data }))) {
+					leaseFailure = new Error("Cloud brand-analysis provider lease was lost");
+				}
+			} catch (error) {
+				leaseFailure =
+					error instanceof Error
+						? error
+						: new Error(`Cloud brand-analysis provider lease renewal failed: ${String(error)}`);
+			}
+		})().finally(() => {
+			pendingRenewal = undefined;
+		});
+	}, CLOUD_BRAND_ANALYSIS_PROVIDER_HEARTBEAT_MS);
+	timer.unref();
+
+	try {
+		const result = await input.run();
+		if (pendingRenewal) await pendingRenewal;
+		if (leaseFailure) throw leaseFailure;
+		return result;
+	} finally {
+		clearInterval(timer);
+		if (pendingRenewal) await pendingRenewal;
+	}
+}
 
 /**
  * Run brand analysis as a background job.
@@ -62,13 +101,17 @@ export async function analyzeBrandJob(
 		: undefined;
 	if (cloudData && !cloudProviderInput) throw new Error("Cloud analyze-brand job has no current pending admission");
 	try {
-		const result = await analyzeBrand({
-			website: cloudProviderInput?.website ?? legacyData?.website ?? "",
-			brandName: cloudProviderInput?.brandName ?? legacyData?.brandName,
-			...(cloudData
-				? { maxProviderRetries: 0, maxWebSearchUses: CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES }
-				: { maxCompetitors: legacyData?.maxCompetitors, maxPrompts: legacyData?.maxPrompts }),
-		});
+		const runAnalysis = () =>
+			analyzeBrand({
+				website: cloudProviderInput?.website ?? legacyData?.website ?? "",
+				brandName: cloudProviderInput?.brandName ?? legacyData?.brandName,
+				...(cloudData
+					? { maxProviderRetries: 0, maxWebSearchUses: CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES }
+					: { maxCompetitors: legacyData?.maxCompetitors, maxPrompts: legacyData?.maxPrompts }),
+			});
+		const result = cloudData
+			? await withCloudBrandAnalysisProviderLease({ jobId: job.id, data: cloudData, run: runAnalysis })
+			: await runAnalysis();
 		if (cloudData) {
 			const persisted = await completeCloudBrandAnalysisAdmission({ jobId: job.id, data: cloudData, result });
 			if (!persisted) throw new Error("Cloud brand-analysis result lost its running admission");

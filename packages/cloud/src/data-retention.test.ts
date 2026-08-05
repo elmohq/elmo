@@ -9,6 +9,7 @@ import {
 	type CloudDataRetentionStore,
 	type CloudDataRetentionTerminalStatus,
 	decideCloudDataRetention,
+	expireStaleCloudBrandAnalysisProviderLeases,
 	nextCloudDataRetentionPurgeAfter,
 	reconcileCloudDataRetention,
 } from "./data-retention";
@@ -199,6 +200,23 @@ describe("cloud terminal-subscription retention decisions", () => {
 			retentionRunId: "run_1",
 			updatedAt: now,
 		});
+	});
+
+	it("durably fences a crashed brand-analysis provider before retention proceeds", async () => {
+		const now = new Date("2026-08-02T00:00:00.000Z");
+		const returning = vi.fn(async () => [{ id: "job_1" }]);
+		const where = vi.fn(() => ({ returning }));
+		const set = vi.fn(() => ({ where }));
+		const update = vi.fn(() => ({ set }));
+
+		await expect(expireStaleCloudBrandAnalysisProviderLeases({ update } as never, "org_1", now)).resolves.toBe(1);
+		expect(set).toHaveBeenCalledWith(
+			expect.objectContaining({
+				status: "failed",
+				providerLeaseExpiresAt: null,
+				failedAt: now,
+			}),
+		);
 	});
 });
 

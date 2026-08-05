@@ -114,6 +114,7 @@ export const brandAnalysisAdmissions = pgTable(
 		result: jsonb("result"),
 		lastError: text("last_error"),
 		providerStartedAt: timestamp("provider_started_at", { withTimezone: true }),
+		providerLeaseExpiresAt: timestamp("provider_lease_expires_at", { withTimezone: true }),
 		completedAt: timestamp("completed_at", { withTimezone: true }),
 		failedAt: timestamp("failed_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -133,11 +134,11 @@ export const brandAnalysisAdmissions = pgTable(
 		check(
 			"brand_analysis_admissions_state_check",
 			sql`(
-				(${table.status} = 'pending' AND ${table.result} IS NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NULL)
-				OR (${table.status} = 'running' AND ${table.result} IS NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NOT NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NULL)
-				OR (${table.status} = 'completed' AND ${table.result} IS NOT NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NOT NULL AND ${table.completedAt} IS NOT NULL AND ${table.failedAt} IS NULL)
-				OR (${table.status} = 'failed' AND ${table.result} IS NULL AND ${table.lastError} IS NOT NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NOT NULL)
-			)`,
+					(${table.status} = 'pending' AND ${table.result} IS NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NULL AND ${table.providerLeaseExpiresAt} IS NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NULL)
+					OR (${table.status} = 'running' AND ${table.result} IS NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NOT NULL AND ${table.providerLeaseExpiresAt} IS NOT NULL AND ${table.providerLeaseExpiresAt} > ${table.providerStartedAt} AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NULL)
+					OR (${table.status} = 'completed' AND ${table.result} IS NOT NULL AND ${table.lastError} IS NULL AND ${table.providerStartedAt} IS NOT NULL AND ${table.providerLeaseExpiresAt} IS NULL AND ${table.completedAt} IS NOT NULL AND ${table.failedAt} IS NULL)
+					OR (${table.status} = 'failed' AND ${table.result} IS NULL AND ${table.lastError} IS NOT NULL AND ${table.providerLeaseExpiresAt} IS NULL AND ${table.completedAt} IS NULL AND ${table.failedAt} IS NOT NULL)
+				)`,
 		),
 	],
 ).enableRLS();

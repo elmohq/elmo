@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/db";
 import { brandAnalysisAdmissions, brands } from "../db/schema";
@@ -10,6 +10,8 @@ export const CLOUD_BRAND_ANALYSIS_JOB_VERSION = 2 as const;
 export const CLOUD_BRAND_ANALYSIS_QUEUE = "analyze-brand-cloud-v2";
 export const CLOUD_BRAND_ANALYSIS_MAX_ADMITTED_JOBS = 3;
 export const CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES = 5;
+export const CLOUD_BRAND_ANALYSIS_PROVIDER_LEASE_MS = 30 * 60 * 1_000;
+export const CLOUD_BRAND_ANALYSIS_PROVIDER_HEARTBEAT_MS = 60 * 1_000;
 
 // Queue payloads intentionally contain no customer-authored name, website, or
 // prompt text. The provider-start fence resolves those inputs from the brand
@@ -79,6 +81,10 @@ export function isCloudBrandAnalysisJobData(value: unknown): value is CloudBrand
 	return cloudBrandAnalysisJobDataSchema.safeParse(value).success;
 }
 
+export function nextCloudBrandAnalysisProviderLeaseExpiresAt(now: Date): Date {
+	return new Date(now.getTime() + CLOUD_BRAND_ANALYSIS_PROVIDER_LEASE_MS);
+}
+
 /**
  * Identifies payloads that claim the metered cloud contract even when their
  * versioned schema is malformed. Workers use this to fail closed instead of
@@ -106,6 +112,7 @@ export async function beginCloudBrandAnalysisProviderCall(input: {
 	now?: Date;
 }): Promise<{ website: string; brandName: string } | null> {
 	const now = input.now ?? new Date();
+	const providerLeaseExpiresAt = nextCloudBrandAnalysisProviderLeaseExpiresAt(now);
 	return withOrganizationEntitlementTransaction({
 		mode: "cloud",
 		organizationId: input.data.organizationId,
@@ -127,7 +134,7 @@ export async function beginCloudBrandAnalysisProviderCall(input: {
 
 			const [started] = await tx
 				.update(brandAnalysisAdmissions)
-				.set({ status: "running", providerStartedAt: now, updatedAt: now })
+				.set({ status: "running", providerStartedAt: now, providerLeaseExpiresAt, updatedAt: now })
 				.where(
 					and(
 						eq(brandAnalysisAdmissions.brandId, input.data.brandId),
@@ -144,6 +151,31 @@ export async function beginCloudBrandAnalysisProviderCall(input: {
 	});
 }
 
+/** Extends only a live, unexpired provider lease for the exact durable job. */
+export async function renewCloudBrandAnalysisProviderLease(input: {
+	jobId: string;
+	data: CloudBrandAnalysisJobData;
+	now?: Date;
+}): Promise<boolean> {
+	const now = input.now ?? new Date();
+	const [renewed] = await db
+		.update(brandAnalysisAdmissions)
+		.set({ providerLeaseExpiresAt: nextCloudBrandAnalysisProviderLeaseExpiresAt(now), updatedAt: now })
+		.where(
+			and(
+				eq(brandAnalysisAdmissions.brandId, input.data.brandId),
+				eq(brandAnalysisAdmissions.organizationId, input.data.organizationId),
+				eq(brandAnalysisAdmissions.jobId, input.jobId),
+				eq(brandAnalysisAdmissions.generation, input.data.admissionGeneration),
+				eq(brandAnalysisAdmissions.requestFingerprint, input.data.requestFingerprint),
+				eq(brandAnalysisAdmissions.status, "running"),
+				gt(brandAnalysisAdmissions.providerLeaseExpiresAt, now),
+			),
+		)
+		.returning({ brandId: brandAnalysisAdmissions.brandId });
+	return renewed !== undefined;
+}
+
 export async function completeCloudBrandAnalysisAdmission(input: {
 	jobId: string;
 	data: CloudBrandAnalysisJobData;
@@ -158,6 +190,7 @@ export async function completeCloudBrandAnalysisAdmission(input: {
 			status: "completed",
 			result,
 			lastError: null,
+			providerLeaseExpiresAt: null,
 			completedAt: now,
 			failedAt: null,
 			updatedAt: now,
@@ -170,6 +203,7 @@ export async function completeCloudBrandAnalysisAdmission(input: {
 				eq(brandAnalysisAdmissions.generation, input.data.admissionGeneration),
 				eq(brandAnalysisAdmissions.requestFingerprint, input.data.requestFingerprint),
 				eq(brandAnalysisAdmissions.status, "running"),
+				gt(brandAnalysisAdmissions.providerLeaseExpiresAt, now),
 			),
 		)
 		.returning({ brandId: brandAnalysisAdmissions.brandId });
@@ -190,6 +224,7 @@ export async function failCloudBrandAnalysisAdmission(input: {
 			status: "failed",
 			result: null,
 			lastError: message || "Brand analysis failed",
+			providerLeaseExpiresAt: null,
 			completedAt: null,
 			failedAt: now,
 			updatedAt: now,

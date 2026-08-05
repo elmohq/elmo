@@ -1,11 +1,12 @@
 import type { JobWithMetadata } from "pg-boss";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	analyzeBrand: vi.fn(),
 	begin: vi.fn(),
 	complete: vi.fn(),
 	fail: vi.fn(),
+	renew: vi.fn(),
 }));
 
 vi.mock("@workspace/lib/onboarding", () => ({
@@ -25,6 +26,7 @@ vi.mock("@workspace/lib/onboarding", () => ({
 }));
 vi.mock("@workspace/lib/cloud/brand-analysis-admission", () => ({
 	CLOUD_BRAND_ANALYSIS_MAX_WEB_SEARCH_USES: 5,
+	CLOUD_BRAND_ANALYSIS_PROVIDER_HEARTBEAT_MS: 60_000,
 	isCloudBrandAnalysisJobData: (value: unknown) =>
 		!!value &&
 		typeof value === "object" &&
@@ -42,6 +44,7 @@ vi.mock("@workspace/lib/cloud/brand-analysis-admission", () => ({
 	beginCloudBrandAnalysisProviderCall: mocks.begin,
 	completeCloudBrandAnalysisAdmission: mocks.complete,
 	failCloudBrandAnalysisAdmission: mocks.fail,
+	renewCloudBrandAnalysisProviderLease: mocks.renew,
 }));
 
 import { type AnalyzeBrandData, analyzeBrandJob } from "./analyze-brand";
@@ -81,8 +84,12 @@ describe("analyze-brand durable cloud projection", () => {
 		mocks.begin.mockReset();
 		mocks.complete.mockReset();
 		mocks.fail.mockReset();
+		mocks.renew.mockReset();
 		mocks.begin.mockResolvedValue({ website: "acme.test", brandName: "Acme" });
+		mocks.renew.mockResolvedValue(true);
 	});
+
+	afterEach(() => vi.useRealTimers());
 
 	it("persists a cloud result before completing the queue job", async () => {
 		mocks.analyzeBrand.mockResolvedValue(suggestion);
@@ -118,6 +125,51 @@ describe("analyze-brand durable cloud projection", () => {
 			data: cloudData,
 			error: providerError,
 		});
+	});
+
+	it("keeps the durable provider lease alive while analysis is running", async () => {
+		vi.useFakeTimers();
+		let finishAnalysis!: (value: typeof suggestion) => void;
+		mocks.analyzeBrand.mockReturnValue(
+			new Promise<typeof suggestion>((resolve) => {
+				finishAnalysis = resolve;
+			}),
+		);
+		mocks.complete.mockResolvedValue(true);
+
+		const pending = analyzeBrandJob([job(cloudData)], "cloud");
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(mocks.renew).toHaveBeenCalledWith({
+			jobId: "11111111-1111-4111-8111-111111111111",
+			data: cloudData,
+		});
+		finishAnalysis(suggestion);
+		await expect(pending).resolves.toEqual(suggestion);
+	});
+
+	it("rejects a late provider result after the durable lease is lost", async () => {
+		vi.useFakeTimers();
+		let finishAnalysis!: (value: typeof suggestion) => void;
+		mocks.analyzeBrand.mockReturnValue(
+			new Promise<typeof suggestion>((resolve) => {
+				finishAnalysis = resolve;
+			}),
+		);
+		mocks.renew.mockResolvedValue(false);
+		mocks.fail.mockResolvedValue(true);
+
+		const pending = analyzeBrandJob([job(cloudData)], "cloud");
+		await vi.advanceTimersByTimeAsync(60_000);
+		finishAnalysis(suggestion);
+		await expect(pending).rejects.toThrow("provider lease was lost");
+		expect(mocks.complete).not.toHaveBeenCalled();
+		expect(mocks.fail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: "11111111-1111-4111-8111-111111111111",
+				data: cloudData,
+				error: expect.objectContaining({ message: "Cloud brand-analysis provider lease was lost" }),
+			}),
+		);
 	});
 
 	it("preserves the noncloud job contract without cloud projections", async () => {
