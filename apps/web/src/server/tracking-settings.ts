@@ -117,7 +117,7 @@ export const getBrandTrackingSettingsFn = createServerFn({ method: "GET" })
 export const updateBrandTargetsFn = createServerFn({ method: "POST" })
 	.validator(
 		brandInputSchema.extend({
-			selections: z.array(targetSelectionSchema).max(100),
+			selections: z.array(targetSelectionSchema),
 		}),
 	)
 	.handler(async ({ data }) => {
@@ -138,7 +138,7 @@ export const updateBrandTargetsFn = createServerFn({ method: "POST" })
 	});
 
 export const updateClaudePromptAssignmentsFn = createServerFn({ method: "POST" })
-	.validator(brandInputSchema.extend({ promptIds: z.array(z.string().uuid()).max(10_000) }))
+	.validator(brandInputSchema.extend({ promptIds: z.array(z.string().uuid()) }))
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		const organization = await requireBrandOrganization(session.user.id, data.brandId);
