@@ -58,6 +58,17 @@ export function cloudSelfServeSubscriptionMetadata(planId: string): Record<strin
 	};
 }
 
+export function cloudSelfServeCheckoutSessionParams(planId: string) {
+	return {
+		params: {
+			automatic_tax: { enabled: true },
+			subscription_data: {
+				metadata: cloudSelfServeSubscriptionMetadata(planId),
+			},
+		} satisfies Stripe.Checkout.SessionCreateParams,
+	};
+}
+
 export function createDrizzleCloudBillingAuthorizationStore(): CloudBillingAuthorizationStore {
 	return {
 		async load(organizationId, userId) {
@@ -187,13 +198,7 @@ export function createCloudBillingRuntime(options: CreateCloudBillingRuntimeOpti
 			plans: CLOUD_STRIPE_PLANS,
 			requireEmailVerification: true,
 			authorizeReference,
-			getCheckoutSessionParams: async ({ plan }) => ({
-				params: {
-					subscription_data: {
-						metadata: cloudSelfServeSubscriptionMetadata(plan.name),
-					},
-				},
-			}),
+			getCheckoutSessionParams: async ({ plan }) => cloudSelfServeCheckoutSessionParams(plan.name),
 		},
 		onEvent: handleEvent,
 	});

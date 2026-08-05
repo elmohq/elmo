@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import {
+	cloudSelfServeCheckoutSessionParams,
 	cloudSelfServeSubscriptionMetadata,
 	createCloudBillingRuntime,
 	createCloudOrganizationReferenceAuthorizer,
@@ -126,6 +127,20 @@ describe("cloud Stripe billing runtime", () => {
 		expect(cloudSelfServeSubscriptionMetadata("pro")).toEqual({
 			elmo_plan_id: "pro",
 			elmo_billing_source: "better-auth",
+		});
+	});
+
+	it("enables Stripe Tax for every self-serve checkout", () => {
+		expect(cloudSelfServeCheckoutSessionParams("business")).toEqual({
+			params: {
+				automatic_tax: { enabled: true },
+				subscription_data: {
+					metadata: {
+						elmo_plan_id: "business",
+						elmo_billing_source: "better-auth",
+					},
+				},
+			},
 		});
 	});
 
