@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import type { Job } from "pg-boss";
+import { getDeployment } from "@workspace/deployment";
 import { db } from "@workspace/lib/db/db";
 import {
 	brands,
@@ -10,22 +11,27 @@ import {
 	type Brand,
 	type Competitor,
 } from "@workspace/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { RUNS_PER_PROMPT, getDefaultDelayHours } from "@workspace/lib/constants";
+import { and, eq, gt, sql } from "drizzle-orm";
+import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { getOrgEntitlements } from "@workspace/lib/entitlements";
 import {
-	getProvider,
-	parseScrapeTargets,
-	selectTargetsForBrand,
-	type ModelConfig,
-	type Provider,
-} from "@workspace/lib/providers";
+	computePoolPositions,
+	dailyRunCeiling,
+	lastRunQueryWindowMs,
+	resolvePromptRunPlan,
+	selectDueTargets,
+	targetKey,
+	type PromptRunPlan,
+} from "@workspace/lib/run-policy";
+import { getProvider, parseScrapeTargets, type ModelConfig, type Provider } from "@workspace/lib/providers";
 import type { Citation } from "@workspace/lib/text-extraction";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
 
 export interface ProcessPromptData {
 	promptId: string;
-	cadenceHours?: number; // Hours until next run (for self-rescheduling)
+	/** Legacy field from pre-policy job payloads; cadence is now resolved fresh each firing. */
+	cadenceHours?: number;
 }
 
 interface PromptContext {
@@ -43,7 +49,7 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
 	try {
 		await boss.send(
 			"process-prompt",
-			{ promptId, cadenceHours },
+			{ promptId },
 			{
 				singletonKey: `prompt-${promptId}`,
 				singletonSeconds: startAfterSeconds, // Prevent duplicates for the cadence period
@@ -59,26 +65,6 @@ async function scheduleNextRun(promptId: string, cadenceHours: number): Promise<
 		console.error(`Failed to schedule next run for prompt ${promptId}:`, error);
 		// Don't throw - we don't want to fail the job just because rescheduling failed
 	}
-}
-
-/**
- * Get the cadence hours for a prompt based on its brand's delay override.
- */
-async function getCadenceHours(promptId: string): Promise<number> {
-	const defaultDelayHours = getDefaultDelayHours();
-	const prompt = await db.query.prompts.findFirst({
-		where: eq(prompts.id, promptId),
-	});
-
-	if (!prompt) return defaultDelayHours;
-
-	const brand = await db.query.brands.findFirst({
-		where: eq(brands.id, prompt.brandId),
-	});
-
-	if (!brand) return defaultDelayHours;
-
-	return brand.delayOverrideHours ?? defaultDelayHours;
 }
 
 async function getPromptContext(promptId: string): Promise<PromptContext | null> {
@@ -109,6 +95,83 @@ async function getPromptContext(promptId: string): Promise<PromptContext | null>
 		brand,
 		competitors: brandCompetitors,
 	};
+}
+
+/**
+ * Resolve the prompt's run plan for this firing: entitlements + pool
+ * positions + per-target cadence. Everything is looked up fresh so plan
+ * changes, cancellations, and platform-pick edits apply on the next firing
+ * without touching queued jobs. Outside cloud this reads nothing extra and
+ * reproduces the legacy behavior exactly (asserted by run-policy tests).
+ */
+async function resolvePlanForPrompt(
+	context: PromptContext,
+	scrapeTargets: ModelConfig[],
+): Promise<{ plan: PromptRunPlan; entitlements: Awaited<ReturnType<typeof getOrgEntitlements>> }> {
+	const { prompt, brand } = context;
+	const mode = getDeployment().mode;
+	const entitlements = await getOrgEntitlements(brand.organizationId);
+
+	let withinPromptPool = true;
+	let withinClaudePool = true;
+	if (!entitlements.unlimited) {
+		const orgPrompts = await db
+			.select({ id: prompts.id, createdAt: prompts.createdAt, claudeMode: prompts.claudeMode })
+			.from(prompts)
+			.innerJoin(brands, eq(prompts.brandId, brands.id))
+			.where(and(eq(brands.organizationId, brand.organizationId), eq(prompts.enabled, true)));
+		const pools = computePoolPositions(orgPrompts, {
+			maxPrompts: entitlements.maxPrompts,
+			claudePool: entitlements.claudePool,
+		});
+		withinPromptPool = pools.withinPromptPool.has(prompt.id);
+		withinClaudePool = pools.withinClaudePool.has(prompt.id);
+	}
+
+	const plan = resolvePromptRunPlan({
+		mode,
+		scrapeTargets,
+		brand: { enabledModels: brand.enabledModels, delayOverrideHours: brand.delayOverrideHours },
+		prompt: { claudeMode: prompt.claudeMode },
+		entitlements,
+		defaultDelayHours: getDefaultDelayHours(),
+		withinPromptPool,
+		withinClaudePool,
+	});
+	return { plan, entitlements };
+}
+
+/** Last successful run per target (model + webSearch) inside the dueness window. */
+async function getLastRunsByTargetKey(promptId: string, maxIntervalHours: number): Promise<Map<string, Date>> {
+	const windowStart = new Date(Date.now() - lastRunQueryWindowMs(maxIntervalHours));
+	const rows = await db
+		.select({
+			model: promptRuns.model,
+			webSearchEnabled: promptRuns.webSearchEnabled,
+			lastRunAt: sql<Date>`MAX(${promptRuns.createdAt})`.as("last_run_at"),
+		})
+		.from(promptRuns)
+		.where(and(eq(promptRuns.promptId, promptId), gt(promptRuns.createdAt, windowStart)))
+		.groupBy(promptRuns.model, promptRuns.webSearchEnabled);
+
+	const map = new Map<string, Date>();
+	for (const row of rows) {
+		map.set(targetKey({ model: row.model, webSearch: row.webSearchEnabled }), new Date(row.lastRunAt));
+	}
+	return map;
+}
+
+/**
+ * Runaway protection (issue #348): how many runs the org has recorded in the
+ * last 24h, compared against its plan-derived ceiling before spending more.
+ */
+async function isOrgOverDailyCeiling(organizationId: string, ceiling: number): Promise<boolean> {
+	const [row] = await db
+		.select({ value: sql<number>`COUNT(*)` })
+		.from(promptRuns)
+		.innerJoin(brands, eq(promptRuns.brandId, brands.id))
+		.where(and(eq(brands.organizationId, organizationId), gt(promptRuns.createdAt, sql`now() - interval '24 hours'`)));
+	return Number(row?.value ?? 0) >= ceiling;
 }
 
 function extractDomainFromUrl(urlOrDomain: string): string {
@@ -284,11 +347,8 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 	// pg-boss v12 passes an array of jobs - process each one
 	for (const job of jobs) {
-		const { promptId, cadenceHours: providedCadence } = job.data;
+		const { promptId } = job.data;
 		console.log(`Processing prompt ${promptId}`);
-
-		// Get cadence hours - use provided value or look it up
-		const cadenceHours = providedCadence ?? (await getCadenceHours(promptId));
 
 		// Get prompt context
 		const context = await getPromptContext(promptId);
@@ -302,31 +362,63 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		// Check if prompt and brand are enabled
 		if (!prompt.enabled || !brand.enabled) {
 			console.log(`Prompt ${promptId} or brand ${brand.id} is disabled, skipping but rescheduling`);
-			// Still reschedule - the prompt might be enabled later
-			await scheduleNextRun(promptId, cadenceHours);
+			// Still reschedule at the brand cadence - the prompt might be enabled later
+			await scheduleNextRun(promptId, brand.delayOverrideHours ?? getDefaultDelayHours());
 			continue;
 		}
 
-		const selectedConfigs = selectTargetsForBrand(scrapeConfigs, brand.enabledModels);
-		if (selectedConfigs.length === 0) {
-			console.log(`Prompt ${promptId} for brand ${brand.id} has no targets (brand.enabledModels=[])`);
+		const { plan, entitlements } = await resolvePlanForPrompt(context, scrapeConfigs);
+		if (plan.targets.length === 0 || plan.rescheduleHours === null) {
+			// Nothing to run and nothing to wait for: unentitled org, no platform
+			// picks, or outside the plan pool. The chain parks here — no
+			// reschedule — and schedule-maintenance revives it within one tick of
+			// the plan producing targets again (resubscribe, upgrade, new picks).
+			console.log(`Prompt ${promptId} has no runnable targets (org ${brand.organizationId}); parking chain`);
+			continue;
 		}
 
-		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
+		const maxIntervalHours = Math.max(...plan.targets.map((t) => t.intervalHours));
+		const lastRuns = await getLastRunsByTargetKey(promptId, maxIntervalHours);
+		const dueTargets = selectDueTargets(plan.targets, lastRuns, new Date());
 
-		// Run all model iterations in parallel
+		if (dueTargets.length === 0) {
+			// Fired early (expedite, duplicate send): everything is fresh. Keep the
+			// chain alive without spending anything.
+			console.log(`Prompt ${promptId}: no targets due yet, rescheduling in ${plan.rescheduleHours}h`);
+			await scheduleNextRun(promptId, plan.rescheduleHours);
+			continue;
+		}
+
+		const ceiling = dailyRunCeiling(entitlements);
+		if (ceiling !== null && (await isOrgOverDailyCeiling(brand.organizationId, ceiling))) {
+			console.warn(`Org ${brand.organizationId} is over its daily run ceiling (${ceiling}); skipping this cycle`);
+			Sentry.withScope((scope) => {
+				scope.setLevel("warning");
+				scope.setTag("scheduler", "org-daily-ceiling");
+				scope.setFingerprint(["org-daily-ceiling", brand.organizationId]);
+				Sentry.captureMessage(`Org ${brand.organizationId} hit its daily run ceiling (${ceiling})`, "warning");
+			});
+			await scheduleNextRun(promptId, plan.rescheduleHours);
+			continue;
+		}
+
+		console.log(
+			`Processing prompt "${prompt.value}" for brand "${brand.name}" — ${dueTargets.length}/${plan.targets.length} targets due`,
+		);
+
+		// Run all due model iterations in parallel
 		const runPromises: Promise<void>[] = [];
 
-		for (const config of selectedConfigs) {
-			const providerImpl = getProvider(config.provider);
-			for (let i = 0; i < RUNS_PER_PROMPT; i++) {
+		for (const target of dueTargets) {
+			const providerImpl = getProvider(target.config.provider);
+			for (let i = 0; i < target.replication; i++) {
 				runPromises.push(
 					runModelIteration({
 						promptId,
 						promptValue: prompt.value,
 						brand,
 						competitorsList,
-						config,
+						config: target.config,
 						providerImpl,
 						runIndex: i + 1,
 					}),
@@ -356,14 +448,14 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 
 		trackWorkerEvent("prompt_processed", {
 			brand_id: brand.id,
-			models: [...new Set(selectedConfigs.map((c) => c.model))],
-			providers: [...new Set(selectedConfigs.map((c) => c.provider))],
+			models: [...new Set(dueTargets.map((t) => t.config.model))],
+			providers: [...new Set(dueTargets.map((t) => t.config.provider))],
 			total_runs: runPromises.length,
 			successful_runs: successCount,
 			failed_runs: failures.length,
 		});
 
 		// Schedule the next run
-		await scheduleNextRun(promptId, cadenceHours);
+		await scheduleNextRun(promptId, plan.rescheduleHours);
 	}
 }
