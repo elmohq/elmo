@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { resolveEntitlements } from "@workspace/config/entitlements";
-import { assertCapacity, CapacityExceededError, EntitlementAccessError, getCapacityLimit } from "./capacity";
+import {
+	assertCapacity,
+	assertCapacityChange,
+	CapacityExceededError,
+	EntitlementAccessError,
+	getCapacityLimit,
+} from "./capacity";
 
 describe("organization capacity", () => {
 	it.each(["local", "demo", "whitelabel"] as const)("keeps %s capacity unlimited", (mode) => {
@@ -29,5 +35,21 @@ describe("organization capacity", () => {
 			subscription: { planId: "pro", status: "past_due" },
 		});
 		expect(() => getCapacityLimit(resolved, "prompts")).toThrow(EntitlementAccessError);
+	});
+
+	it("allows an over-limit workspace to hold or reduce usage but never increase it", () => {
+		const resolved = resolveEntitlements({
+			mode: "cloud",
+			subscription: { planId: "starter", status: "active" },
+		});
+		expect(() =>
+			assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 74 }),
+		).not.toThrow();
+		expect(() =>
+			assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 75 }),
+		).not.toThrow();
+		expect(() =>
+			assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 76 }),
+		).toThrow(new CapacityExceededError("prompts", 50));
 	});
 });

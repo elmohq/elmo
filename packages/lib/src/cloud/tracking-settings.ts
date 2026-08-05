@@ -11,7 +11,7 @@ import {
 	promptTargetAssignments,
 	trackingSchedules,
 } from "../db/schema";
-import { assertCapacity, CapacityExceededError, withOrganizationEntitlementTransaction } from "./capacity";
+import { assertCapacityChange, CapacityExceededError, withOrganizationEntitlementTransaction } from "./capacity";
 import { resolveRuntimeTrackingPolicy } from "./tracking-policy";
 
 export { initializeDefaultBrandTracking } from "./tracking-defaults";
@@ -431,9 +431,23 @@ export async function updateClaudePromptAssignments(input: {
 						eq(prompts.enabled, true),
 					),
 				);
-			assertCapacity({
+			const activeInsideBrand = await tx
+				.select({ id: promptTargetAssignments.id })
+				.from(promptTargetAssignments)
+				.innerJoin(prompts, eq(prompts.id, promptTargetAssignments.promptId))
+				.where(
+					and(
+						eq(promptTargetAssignments.brandId, input.brandId),
+						eq(promptTargetAssignments.source, "premium"),
+						eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+						eq(promptTargetAssignments.enabled, true),
+						eq(prompts.enabled, true),
+					),
+				);
+			assertCapacityChange({
 				resolved,
 				resource: "claude-prompts",
+				currentTotal: activeOutsideBrand.length + activeInsideBrand.length,
 				requestedTotal: activeOutsideBrand.length + uniquePromptIds.length,
 			});
 

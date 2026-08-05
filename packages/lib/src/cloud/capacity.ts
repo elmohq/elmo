@@ -54,6 +54,23 @@ export function assertCapacity(input: {
 	if (limit !== null && input.requestedTotal > limit) throw new CapacityExceededError(input.resource, limit);
 }
 
+/**
+ * Enforces capacity without trapping a workspace that was put over its limit
+ * by an external Stripe change or a contract revision. Above-limit writes may
+ * only hold or reduce the current total; they can never increase it.
+ */
+export function assertCapacityChange(input: {
+	resolved: ResolvedEntitlements;
+	resource: "prompts" | "claude-prompts";
+	currentTotal: number;
+	requestedTotal: number;
+}): void {
+	const limit = getCapacityLimit(input.resolved, input.resource);
+	if (limit !== null && input.requestedTotal > limit && input.requestedTotal > input.currentTotal) {
+		throw new CapacityExceededError(input.resource, limit);
+	}
+}
+
 export async function withOrganizationEntitlementTransaction<T>(input: {
 	mode: DeploymentMode;
 	organizationId: string;

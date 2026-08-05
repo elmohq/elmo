@@ -3,7 +3,7 @@ import { and, count, eq } from "drizzle-orm";
 import { MAX_PROMPTS } from "../constants";
 import { brands, prompts } from "../db/schema";
 import { computeSystemTags, sanitizeUserTags } from "../tag-utils";
-import { assertCapacity, CapacityExceededError, withOrganizationEntitlementTransaction } from "./capacity";
+import { assertCapacityChange, CapacityExceededError, withOrganizationEntitlementTransaction } from "./capacity";
 import { reconcileBrandTrackingSettings } from "./tracking-settings";
 
 export type PromptMutation = {
@@ -110,7 +110,12 @@ export async function saveOrganizationPrompts(input: {
 				existingEnabledById: new Map(existing.map((prompt) => [prompt.id, prompt.enabled])),
 				mutations: normalized,
 			});
-			assertCapacity({ resolved, resource: "prompts", requestedTotal });
+			assertCapacityChange({
+				resolved,
+				resource: "prompts",
+				currentTotal: currentOrganizationEnabled,
+				requestedTotal,
+			});
 
 			const activatedPromptIds: string[] = [];
 			const deactivatedPromptIds: string[] = [];
