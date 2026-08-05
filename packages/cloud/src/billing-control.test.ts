@@ -512,20 +512,25 @@ describe("cloud Stripe billing mutations", () => {
 			id: "cus_1",
 			metadata: { organizationId: "org_1", customerType: "organization" },
 		}));
-		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => ({
-			id: "cs_1",
-			mode: "subscription",
-			status: "open",
-			url: "https://checkout.stripe.com/c/pay/cs_1",
-			customer: params.customer,
-			client_reference_id: params.client_reference_id,
-			metadata: params.metadata,
-			expires_at: params.expires_at,
-		}));
+		let checkoutSession: Stripe.Checkout.Session | undefined;
+		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => {
+			checkoutSession = {
+				id: "cs_1",
+				mode: "subscription",
+				status: "open",
+				url: "https://checkout.stripe.com/c/pay/cs_1",
+				customer: params.customer,
+				client_reference_id: params.client_reference_id,
+				metadata: params.metadata,
+				expires_at: params.expires_at,
+			} as Stripe.Checkout.Session;
+			return checkoutSession;
+		});
+		const checkoutRetrieve = vi.fn(async () => checkoutSession!);
 		const client = {
 			...stripe.client,
 			customers: { retrieve: customerRetrieve },
-			checkout: { sessions: { create: checkoutCreate } },
+			checkout: { sessions: { create: checkoutCreate, retrieve: checkoutRetrieve } },
 		} as unknown as Stripe;
 		const controlStore = store(
 			state({
@@ -554,6 +559,7 @@ describe("cloud Stripe billing mutations", () => {
 		});
 
 		expect(checkoutCreate).toHaveBeenCalledOnce();
+		expect(checkoutRetrieve).toHaveBeenCalledOnce();
 		expect(checkoutCreate).toHaveBeenCalledWith(
 			expect.objectContaining({
 				mode: "subscription",
@@ -564,6 +570,113 @@ describe("cloud Stripe billing mutations", () => {
 			}),
 			{ idempotencyKey: "elmo:org_1:checkout:checkout-one" },
 		);
+	});
+
+	it("reconciles a stored Checkout session instead of returning an expired URL", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		let checkoutSession: Stripe.Checkout.Session | undefined;
+		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => {
+			checkoutSession = {
+				id: "cs_expiring",
+				mode: "subscription",
+				status: "open",
+				url: "https://checkout.stripe.com/c/pay/cs_expiring",
+				customer: params.customer,
+				client_reference_id: params.client_reference_id,
+				metadata: params.metadata,
+				expires_at: params.expires_at,
+			} as Stripe.Checkout.Session;
+			return checkoutSession;
+		});
+		const checkoutRetrieve = vi.fn(async () => ({ ...checkoutSession!, status: "expired" as const }));
+		const client = {
+			...stripe.client,
+			customers: {
+				retrieve: vi.fn(async () => ({
+					id: "cus_1",
+					metadata: { organizationId: "org_1", customerType: "organization" },
+				})),
+			},
+			checkout: { sessions: { create: checkoutCreate, retrieve: checkoutRetrieve } },
+		} as unknown as Stripe;
+		const controlStore = store(
+			state({
+				subscription: null,
+				usage: { ...emptyUsage, enabledBrands: 1, enabledPrompts: 10 },
+			}),
+		);
+		const request = {
+			organizationId: "org_1",
+			planId: "starter" as const,
+			interval: "month" as const,
+			successUrl: "https://app.elmo.test/billing?checkout=success",
+			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
+			stripeClient: client,
+			store: controlStore,
+			now: new Date("2026-08-05T00:00:00Z"),
+		};
+
+		await startCloudInitialCheckout({ ...request, mutationId: "checkout-expiring" });
+		await expect(
+			startCloudInitialCheckout({ ...request, mutationId: "checkout-retry" }),
+		).rejects.toMatchObject({ code: "billing-change-failed" });
+		expect(checkoutRetrieve).toHaveBeenCalledOnce();
+		expect(controlStore.failMutation).toHaveBeenCalledOnce();
+	});
+
+	it("returns the stored Checkout URL when the same command is already applied", async () => {
+		const stripe = stripeClient(subscription([{ id: "base", lookupKey: "elmo_cloud_pro_monthly" }]));
+		const checkoutCreate = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => ({
+			id: "cs_applied",
+			mode: "subscription",
+			status: "open",
+			url: "https://checkout.stripe.com/c/pay/cs_applied",
+			customer: params.customer,
+			client_reference_id: params.client_reference_id,
+			metadata: params.metadata,
+			expires_at: params.expires_at,
+		}));
+		const client = {
+			...stripe.client,
+			customers: {
+				retrieve: vi.fn(async () => ({
+					id: "cus_1",
+					metadata: { organizationId: "org_1", customerType: "organization" },
+				})),
+			},
+			checkout: { sessions: { create: checkoutCreate, retrieve: vi.fn() } },
+		} as unknown as Stripe;
+		const controlStore = store(
+			state({
+				subscription: null,
+				usage: { ...emptyUsage, enabledBrands: 1, enabledPrompts: 10 },
+			}),
+		);
+		const recordCheckoutSession = controlStore.recordCheckoutSession;
+		let recordedMutation: CloudBillingMutationRecord | undefined;
+		controlStore.recordCheckoutSession = vi.fn(async (mutation, session, now) => {
+			recordedMutation = await recordCheckoutSession(mutation, session, now);
+			return recordedMutation;
+		});
+		const request = {
+			organizationId: "org_1",
+			planId: "starter" as const,
+			interval: "month" as const,
+			mutationId: "checkout-applied",
+			successUrl: "https://app.elmo.test/billing?checkout=success",
+			cancelUrl: "https://app.elmo.test/billing?checkout=cancel",
+			stripeClient: client,
+			store: controlStore,
+		};
+
+		await startCloudInitialCheckout(request);
+		if (!recordedMutation) throw new Error("Checkout mutation was not recorded");
+		recordedMutation.status = "applied";
+		await expect(startCloudInitialCheckout(request)).resolves.toEqual({
+			accepted: true,
+			url: "https://checkout.stripe.com/c/pay/cs_applied",
+		});
+		expect(checkoutCreate).toHaveBeenCalledOnce();
 	});
 
 	it("returns the Checkout URL when a webhook projects the subscription before the session is recorded", async () => {

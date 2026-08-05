@@ -21,7 +21,7 @@ import {
 	trackingUsageBuckets,
 	type OrganizationBillingMutation,
 } from "@workspace/lib/db/schema";
-import { and, asc, count, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { identifyCloudPrice, type BillingInterval } from "./billing-catalog";
 import {
@@ -557,7 +557,7 @@ export function createDrizzleCloudBillingControlStore(database: typeof db = db):
 					.where(
 						and(
 							eq(organizationBillingMutations.id, mutation.id),
-							eq(organizationBillingMutations.status, "pending"),
+							inArray(organizationBillingMutations.status, ["pending", "applied"]),
 						),
 					)
 					.returning();
@@ -1241,21 +1241,16 @@ export async function startCloudInitialCheckout(input: {
 		};
 	});
 
-	if (
+	const matchingPendingCheckout =
 		result.state === "other-pending" &&
 		result.mutation.kind === "checkout" &&
 		result.mutation.target.planId === input.planId &&
 		result.mutation.target.interval === input.interval &&
-		result.mutation.stripeCheckoutSessionUrl
-	) {
-		return { accepted: true, url: result.mutation.stripeCheckoutSessionUrl };
-	}
-	const mutation = requirePendingMutation(result);
+		result.mutation.target.claudeAddonPromptSlots === 0;
+	const mutation = matchingPendingCheckout ? result.mutation : requirePendingMutation(result);
 	assertRequestedMutation(mutation, "checkout", { planId: input.planId, interval: input.interval });
-	if (mutation.stripeCheckoutSessionUrl && result.state === "pending") {
-		return { accepted: true, url: mutation.stripeCheckoutSessionUrl };
-	}
 	if (result.state === "applied") {
+		if (mutation.stripeCheckoutSessionUrl) return { accepted: true, url: mutation.stripeCheckoutSessionUrl };
 		throw new CloudBillingControlError("invalid-subscription", "This checkout has already completed.");
 	}
 	const checkout = await executeCheckoutMutation({ mutation, stripeClient: input.stripeClient, store, now });
