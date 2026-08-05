@@ -1,9 +1,10 @@
 import type { ResolvedEntitlements } from "@workspace/config/entitlements";
 import type { DeploymentMode } from "@workspace/config/types";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { db } from "../db/db";
 import { isReservedBrandId, slugify } from "../db/provisioning";
 import { brands } from "../db/schema";
+import { lockOrganizationCapacity } from "./advisory-locks";
 import { createOrganizationBillingSnapshotStore, resolveOrganizationEntitlements } from "./entitlements";
 import { initializeDefaultBrandTracking } from "./tracking-defaults";
 
@@ -79,9 +80,7 @@ export async function withOrganizationEntitlementTransaction<T>(input: {
 	return db.transaction(async (tx) => {
 		// Capacity is organization-wide, so serialize count+mutation operations for
 		// this workspace. hashtextextended avoids maintaining a lock table.
-		await tx.execute(
-			sql`SELECT pg_advisory_xact_lock(hashtextextended(${`elmo-capacity:${input.organizationId}`}, 0))`,
-		);
+		await lockOrganizationCapacity(tx, input.organizationId);
 		const resolved = await resolveOrganizationEntitlements({
 			mode: input.mode,
 			organizationId: input.organizationId,

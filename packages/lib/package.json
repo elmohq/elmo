@@ -30,6 +30,7 @@
 		"./providers/models": "./src/providers/models.ts",
 		"./providers/types": "./src/providers/types.ts",
 		"./cloud/entitlements": "./src/cloud/entitlements.ts",
+		"./cloud/advisory-locks": "./src/cloud/advisory-locks.ts",
 		"./cloud/custom-entitlements": "./src/cloud/custom-entitlements.ts",
 		"./cloud/capacity": "./src/cloud/capacity.ts",
 		"./cloud/prompt-mutations": "./src/cloud/prompt-mutations.ts",
