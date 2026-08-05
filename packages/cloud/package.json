@@ -12,11 +12,13 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@better-auth/stripe": "1.6.25",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",
 		"better-auth": "^1.6.25",
 		"disposable-email-domains": "^1.0.62",
-		"resend": "^6.17.2"
+		"resend": "^6.17.2",
+		"stripe": "22.4.0"
 	},
 	"devDependencies": {
 		"@types/disposable-email-domains": "^1.0.6",
