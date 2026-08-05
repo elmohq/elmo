@@ -2,7 +2,7 @@ import type { ResolvedEntitlements } from "@workspace/config/entitlements";
 import type { DeploymentMode } from "@workspace/config/types";
 import { and, count, eq, sql } from "drizzle-orm";
 import { db } from "../db/db";
-import { slugify } from "../db/provisioning";
+import { isReservedBrandId, slugify } from "../db/provisioning";
 import { brands } from "../db/schema";
 import { createOrganizationBillingSnapshotStore, resolveOrganizationEntitlements } from "./entitlements";
 import { initializeDefaultBrandTracking } from "./tracking-defaults";
@@ -97,6 +97,10 @@ export async function createOrganizationBrand(input: {
 			let suffix = base === "new" ? 2 : 1;
 			for (;;) {
 				const brandId = suffix === 1 ? base : `${base}-${suffix}`;
+				if (isReservedBrandId(brandId)) {
+					suffix++;
+					continue;
+				}
 				const [inserted] = await tx
 					.insert(brands)
 					.values({

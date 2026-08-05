@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCloudWorkspaceIdentity, slugify } from "./provisioning";
+import { getCloudWorkspaceIdentity, isReservedBrandId, slugify } from "./provisioning";
 
 describe("slugify", () => {
 	it("lowercases", () => {
@@ -30,6 +30,15 @@ describe("slugify", () => {
 		// only findUniqueBrandId (which needs a database) applies the reserved-slug
 		// suffix rule.
 		expect(slugify("new")).toBe("new");
+	});
+});
+
+describe("reserved brand ids", () => {
+	it("protects static application routes without changing slugify", () => {
+		expect(isReservedBrandId("new")).toBe(true);
+		expect(isReservedBrandId("workspaces")).toBe(true);
+		expect(isReservedBrandId("acme")).toBe(false);
+		expect(slugify("Workspaces")).toBe("workspaces");
 	});
 });
 

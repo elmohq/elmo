@@ -85,7 +85,11 @@ export function slugify(name: string): string {
  * user-named brand that slugifies to one of these gets a numeric suffix
  * instead so the URL stays unambiguous.
  */
-const RESERVED_ORG_SLUGS = new Set(["new"]);
+const RESERVED_BRAND_IDS = new Set(["new", "workspaces"]);
+
+export function isReservedBrandId(value: string): boolean {
+	return RESERVED_BRAND_IDS.has(value);
+}
 
 /**
  * Find a brand id that doesn't collide with an existing brand row or a
@@ -97,7 +101,7 @@ export async function findUniqueBrandId(baseSlug: string): Promise<string> {
 	let candidate = baseSlug;
 	let suffix = 2;
 	for (;;) {
-		const isReserved = RESERVED_ORG_SLUGS.has(candidate);
+		const isReserved = isReservedBrandId(candidate);
 		const conflict = isReserved
 			? [{ id: candidate }]
 			: await db.select({ id: brands.id }).from(brands).where(eq(brands.id, candidate)).limit(1);
