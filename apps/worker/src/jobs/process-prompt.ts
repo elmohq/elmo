@@ -4,6 +4,7 @@ import { db } from "@workspace/lib/db/db";
 import {
 	type Brand,
 	brands,
+	brandSchedulerRollouts,
 	type Competitor,
 	citations,
 	competitors,
@@ -22,6 +23,7 @@ import { eq } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
 import { trackWorkerEvent } from "../telemetry";
+import { shouldUseLegacyScheduler } from "./legacy-rollout";
 
 export interface ProcessPromptData {
 	promptId: string;
@@ -95,6 +97,15 @@ async function getCadenceHours(promptId: string): Promise<number> {
 	if (!brand) return defaultDelayHours;
 
 	return brand.delayOverrideHours ?? defaultDelayHours;
+}
+
+async function mayRunLegacyPrompt(brandId: string): Promise<boolean> {
+	if (process.env.DEPLOYMENT_MODE !== "cloud") return true;
+	const rollout = await db.query.brandSchedulerRollouts.findFirst({
+		columns: { mode: true },
+		where: eq(brandSchedulerRollouts.brandId, brandId),
+	});
+	return shouldUseLegacyScheduler("cloud", rollout?.mode ?? null);
 }
 
 export async function getPromptContext(promptId: string): Promise<PromptContext | null> {
@@ -369,6 +380,12 @@ export async function processPromptJob(jobs: Job<ProcessPromptData>[]): Promise<
 		}
 
 		console.log(`Processing prompt "${prompt.value}" for brand "${brand.name}"`);
+		// Recheck at the consumer boundary so jobs queued before a v2 cutover
+		// cannot fan out all legacy targets outside v2 quota accounting.
+		if (!(await mayRunLegacyPrompt(brand.id))) {
+			console.log(`Prompt ${promptId} belongs to an explicit v2 brand; skipping legacy execution and reschedule`);
+			continue;
+		}
 
 		// Run all model iterations in parallel
 		const runPromises: Array<Promise<{ promptRunId: string }>> = [];

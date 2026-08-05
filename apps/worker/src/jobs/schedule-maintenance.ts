@@ -1,12 +1,13 @@
 import * as Sentry from "@sentry/node";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
-import { brands, promptRuns, prompts } from "@workspace/lib/db/schema";
+import { brandSchedulerRollouts, brands, promptRuns, prompts } from "@workspace/lib/db/schema";
 import { isPromptOverdue } from "@workspace/lib/overdue";
 import { parseScrapeTargets } from "@workspace/lib/providers";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Job } from "pg-boss";
 import boss from "../boss";
+import { shouldUseLegacyScheduler } from "./legacy-rollout";
 
 export interface ScheduleMaintenanceData {
 	source?: string; // For logging - "scheduled" or "manual"
@@ -50,9 +51,22 @@ export async function scheduleMaintenanceJob(jobs: Job<ScheduleMaintenanceData>[
 
 async function runMaintenanceCheck(): Promise<void> {
 	// Get all enabled brands
-	const enabledBrands = await db.query.brands.findMany({
-		where: eq(brands.enabled, true),
-	});
+	const enabledBrands =
+		process.env.DEPLOYMENT_MODE === "cloud"
+			? (
+					await db
+						.select({
+							id: brands.id,
+							delayOverrideHours: brands.delayOverrideHours,
+							rollout: brandSchedulerRollouts.mode,
+						})
+						.from(brands)
+						.leftJoin(brandSchedulerRollouts, eq(brandSchedulerRollouts.brandId, brands.id))
+						.where(eq(brands.enabled, true))
+				).filter((brand) => shouldUseLegacyScheduler("cloud", brand.rollout))
+			: await db.query.brands.findMany({
+					where: eq(brands.enabled, true),
+				});
 
 	if (enabledBrands.length === 0) {
 		console.log("[schedule-maintenance] No enabled brands found");
