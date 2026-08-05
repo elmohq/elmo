@@ -27,13 +27,15 @@
 		"./secrets": "./src/secrets/index.ts",
 		"./providers": "./src/providers/index.ts",
 		"./providers/models": "./src/providers/models.ts",
-		"./providers/types": "./src/providers/types.ts"
+		"./providers/types": "./src/providers/types.ts",
+		"./entitlements": "./src/entitlements/service.ts"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^4.0.26",
 		"@ai-sdk/openai": "^4.0.26",
 		"@anthropic-ai/sdk": "^0.115.0",
 		"@better-auth/sso": "^1.6.25",
+		"@better-auth/stripe": "^1.6.25",
 		"@brightdata/sdk": "^1.1.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",
@@ -48,8 +50,10 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@better-auth/cli": "^1.4.22",
 		"@types/pg": "^8.20.1",
 		"drizzle-kit": "^0.31.10",
+		"stripe": "^22.4.0",
 		"typescript": "^7.0.2",
 		"vitest": "^4.1.10"
 	}

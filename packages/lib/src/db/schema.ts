@@ -1,4 +1,16 @@
-import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
+import {
+	pgEnum,
+	pgTable,
+	uuid,
+	text,
+	timestamp,
+	boolean,
+	json,
+	jsonb,
+	index,
+	integer,
+	smallint,
+} from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
 import { organization } from "./schema-auth";
@@ -12,6 +24,15 @@ export * from "./schema-auth";
 // ============================================================================
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
+
+/**
+ * Per-prompt Claude tracking assignment (cloud plans; issue #344). NULL = not
+ * assigned. Assigned prompts run Claude once daily — "web" uses Anthropic
+ * native web search (capped), "base" runs the bare model. Counted against the
+ * org's Claude pool (plan included + purchased add-on). Unused outside cloud:
+ * self-hosted deployments track Claude by putting it in SCRAPE_TARGETS instead.
+ */
+export const claudeModeEnum = pgEnum("claude_mode", ["base", "web"]);
 
 export const brands = pgTable(
 	"brands",
@@ -53,6 +74,7 @@ export const prompts = pgTable(
 			.notNull(),
 		value: text("value").notNull(),
 		enabled: boolean("enabled").default(true).notNull(),
+		claudeMode: claudeModeEnum("claude_mode"),
 		tags: text("tags").array().notNull().default([]),
 		systemTags: text("system_tags").array().notNull().default([]),
 		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -225,6 +247,32 @@ export const SYSTEM_TAGS = {
 } as const;
 
 export type SystemTag = (typeof SYSTEM_TAGS)[keyof typeof SYSTEM_TAGS];
+
+/**
+ * Cloud billing/entitlement state we own per organization (as opposed to the
+ * better-auth-managed `subscription` table). One optional row per org:
+ * - entitlementOverrides: sparse custom-plan overrides (see
+ *   entitlementOverridesSchema in @workspace/config/entitlements) — the
+ *   config-only lever for custom plans (issue #344)
+ * - claudeAddonQuantity: purchased extra-Claude-prompts quantity, synced from
+ *   Stripe subscription items by the billing webhook (issue #345)
+ * Absent row = no overrides, no add-on. Unused outside cloud.
+ */
+export const organizationSettings = pgTable("organization_settings", {
+	organizationId: text("organization_id")
+		.primaryKey()
+		.notNull()
+		.references(() => organization.id),
+	entitlementOverrides: jsonb("entitlement_overrides"),
+	claudeAddonQuantity: integer("claude_addon_quantity").notNull().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date())
+		.notNull(),
+}).enableRLS();
+
+export type OrganizationSettings = typeof organizationSettings.$inferSelect;
 
 // Encrypted overrides for credential environment variables, keyed by the env-var
 // name they stand in for. Separate table, strictest access.
