@@ -8,10 +8,13 @@
  * All server functions, middleware, and route handlers import from here.
  */
 import { getCloudAuthOptions } from "@workspace/cloud/auth-hooks";
+import { createCloudBillingRuntime } from "@workspace/cloud/billing";
 import { createAuth, type CreateAuthOptions } from "@workspace/lib/auth/server";
 import { getWhitelabelAuthOptions } from "@workspace/whitelabel/auth-hooks";
 import { countUsers, provisionLocalOrg, provisionUmbrellaOrg } from "@workspace/lib/db/provisioning";
 import { evaluateSignupAllowed, getSignupAllowlist } from "./policies";
+
+let cloudBillingRuntime: ReturnType<typeof createCloudBillingRuntime> | undefined;
 
 /**
  * Local mode hooks: enforce "exactly one user, with an admin org created
@@ -62,9 +65,11 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 			// user's umbrella org (mirroring local's user.create.after below);
 			// brands attach to it via the create-brand flow (canCreateBrands).
 			const cloudOptions = getCloudAuthOptions();
+			cloudBillingRuntime = createCloudBillingRuntime();
 			const rejectDisposableEmail = cloudOptions.databaseHooks?.user?.create?.before;
 			return {
 				...cloudOptions,
+				additionalPlugins: [...(cloudOptions.additionalPlugins ?? []), cloudBillingRuntime.plugin],
 				databaseHooks: {
 					...cloudOptions.databaseHooks,
 					user: {
@@ -94,3 +99,9 @@ function getDeploymentAuthOptions(): CreateAuthOptions | undefined {
 }
 
 export const auth = createAuth(getDeploymentAuthOptions());
+
+/** Shared with billing server functions so auth and mutations use one Stripe client. */
+export function requireCloudBillingRuntime(): NonNullable<typeof cloudBillingRuntime> {
+	if (!cloudBillingRuntime) throw new Error("Cloud billing is not available in this deployment");
+	return cloudBillingRuntime;
+}

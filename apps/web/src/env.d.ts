@@ -79,6 +79,7 @@ declare global {
 			readonly DISABLE_TELEMETRY?: string;
 			readonly STRIPE_SECRET_KEY?: string;
 			readonly STRIPE_WEBHOOK_SECRET?: string;
+			readonly STRIPE_BILLING_PORTAL_CONFIGURATION_ID?: string;
 			readonly RESEND_API_KEY?: string;
 			readonly GOOGLE_CLIENT_ID?: string;
 			readonly GOOGLE_CLIENT_SECRET?: string;

@@ -414,6 +414,12 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		description: "Stripe webhook signing secret (whsec_...) for verifying billing webhooks.",
 	},
 	{
+		name: "STRIPE_BILLING_PORTAL_CONFIGURATION_ID",
+		scope: "server",
+		requiredBy: ["cloud"],
+		description: "Stripe Billing Portal configuration with subscription updates disabled.",
+	},
+	{
 		name: "RESEND_API_KEY",
 		scope: "server",
 		requiredBy: ["cloud"],

@@ -41,6 +41,7 @@
 		"@ai-sdk/openai": "^4.0.26",
 		"@anthropic-ai/sdk": "^0.115.0",
 		"@better-auth/sso": "^1.6.25",
+		"@better-auth/stripe": "1.6.25",
 		"@brightdata/sdk": "^1.1.0",
 		"@mozilla/readability": "^0.6.0",
 		"@workspace/config": "workspace:*",

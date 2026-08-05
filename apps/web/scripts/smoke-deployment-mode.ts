@@ -80,6 +80,7 @@ const MINIMAL_ENV: Record<SmokeMode, Record<string, string>> = {
 		APP_URL: "http://localhost:3000",
 		STRIPE_SECRET_KEY: "sk_test_smoke",
 		STRIPE_WEBHOOK_SECRET: "whsec_smoke",
+		STRIPE_BILLING_PORTAL_CONFIGURATION_ID: "bpc_smoke",
 		RESEND_API_KEY: "re_smoke",
 		RESEND_FROM_EMAIL: "Smoke <smoke@example.com>",
 		GOOGLE_CLIENT_ID: "smoke-google-client-id",

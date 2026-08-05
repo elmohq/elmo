@@ -1,11 +1,20 @@
 import "../instrument.server.mjs";
 import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { createCloudBillingReadinessGate } from "@workspace/cloud/billing-readiness";
 import { startCredentialRefresh } from "@workspace/lib/secrets";
 
 // Not awaited: the app has to serve sign-in and settings whether or not the
 // credential store is reachable.
 void startCredentialRefresh();
+
+const assertCloudBillingReady = createCloudBillingReadinessGate({
+	mode: process.env.DEPLOYMENT_MODE,
+	validate: async () => {
+		const { requireCloudBillingRuntime } = await import("@/lib/auth/server");
+		await requireCloudBillingRuntime().validateStartup();
+	},
+});
 
 // HSTS asserts HTTPS-only for the host that served the response. Whitelabel
 // deployments run on customer-controlled custom domains, where `includeSubDomains`
@@ -48,6 +57,10 @@ function addSecurityHeaders(response: Response): Response {
 export default createServerEntry(
 	wrapFetchWithSentry({
 		async fetch(request: Request) {
+			// A bad Stripe catalog would make checkout or add-on mutations
+			// non-deterministic, so cloud stays closed until the exact lookup-key
+			// catalog has passed validation. The promise is shared across requests.
+			await assertCloudBillingReady();
 			const response = await handler.fetch(request);
 			return addSecurityHeaders(response);
 		},

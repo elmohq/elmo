@@ -14,6 +14,7 @@ The auth and email features in this package need:
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `STRIPE_SECRET_KEY` | Stripe server API key for prices, customers, Checkout, subscriptions, and Billing Portal |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret for the Better Auth Stripe webhook endpoint |
+| `STRIPE_BILLING_PORTAL_CONFIGURATION_ID` | Dedicated Billing Portal configuration with subscription updates disabled |
 
 The canonical list of every cloud-required variable (Stripe, database, etc.) lives in `packages/config/src/env-registry.ts`; env validation fails cloud startup when any of them is missing.
 
@@ -34,7 +35,7 @@ Email templates are code — `packages/cloud/src/email-templates.ts` — not Res
 
 ## Stripe billing setup
 
-Use `createCloudBillingRuntime()` from `@workspace/cloud/billing`, add its `plugin` to Better Auth, and run `validateStartup()` before accepting traffic. Catalog validation resolves every stable lookup key and fails when an active price has the wrong amount, currency, or interval. Configure Stripe to deliver events to `${APP_URL}/api/auth/stripe/webhook` with the signing secret in `STRIPE_WEBHOOK_SECRET`.
+Use `createCloudBillingRuntime()` from `@workspace/cloud/billing`, add its `plugin` to Better Auth, and run `validateStartup()` before accepting traffic. Catalog validation resolves every stable lookup key and fails when an active price has the wrong amount, currency, or interval. Create a dedicated Billing Portal configuration that has subscription updates disabled and set its ID as `STRIPE_BILLING_PORTAL_CONFIGURATION_ID`; startup also rejects an inactive or unsafe configuration. Configure Stripe to deliver events to `${APP_URL}/api/auth/stripe/webhook` with the signing secret in `STRIPE_WEBHOOK_SECRET`.
 
 Webhook delivery is the billing authority. The handler stores every signed event before processing it, retrieves the current subscription from Stripe, and atomically replaces the organization projection. Better Auth subscription callbacks must not write that projection because callback failures are swallowed by the plugin; `onEvent` failures propagate and cause Stripe to retry.
 

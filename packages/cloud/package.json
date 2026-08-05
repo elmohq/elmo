@@ -7,7 +7,9 @@
 	"exports": {
 		".": "./src/index.ts",
 		"./auth-hooks": "./src/auth-hooks.ts",
-		"./billing": "./src/billing.ts"
+		"./billing": "./src/billing.ts",
+		"./billing-control": "./src/billing-control.ts",
+		"./billing-readiness": "./src/billing-readiness.ts"
 	},
 	"scripts": {
 		"test": "vitest run"
