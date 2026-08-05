@@ -12,6 +12,8 @@ The auth and email features in this package need:
 | `RESEND_FROM_EMAIL` | Sender address, e.g. `Elmo <notifications@updates.example.com>` |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID for social sign-in |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `STRIPE_SECRET_KEY` | Stripe server API key for prices, customers, Checkout, subscriptions, and Billing Portal |
+| `STRIPE_WEBHOOK_SECRET` | Signing secret for the Better Auth Stripe webhook endpoint |
 
 The canonical list of every cloud-required variable (Stripe, database, etc.) lives in `packages/config/src/env-registry.ts`; env validation fails cloud startup when any of them is missing.
 
@@ -29,6 +31,14 @@ Email templates are code — `packages/cloud/src/email-templates.ts` — not Res
 2. Authorized redirect URI: `${APP_URL}/api/auth/callback/google`.
 3. Authorized JavaScript origin: `${APP_URL}`.
 4. Set the resulting client ID and secret as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+
+## Stripe billing setup
+
+Use `createCloudBillingRuntime()` from `@workspace/cloud/billing`, add its `plugin` to Better Auth, and run `validateStartup()` before accepting traffic. Catalog validation resolves every stable lookup key and fails when an active price has the wrong amount, currency, or interval. Configure Stripe to deliver events to `${APP_URL}/api/auth/stripe/webhook` with the signing secret in `STRIPE_WEBHOOK_SECRET`.
+
+Webhook delivery is the billing authority. The handler stores every signed event before processing it, retrieves the current subscription from Stripe, and atomically replaces the organization projection. Better Auth subscription callbacks must not write that projection because callback failures are swallowed by the plugin; `onEvent` failures propagate and cause Stripe to retry.
+
+Operator-created custom subscriptions may use prices outside the public catalog only when their Stripe subscription metadata contains both `elmo_plan_id=custom` and `elmo_billing_source=operator`. All line items on such a subscription are projected as custom; an active versioned organization entitlement override is still required before the resolver grants access. Self-serve Checkout overwrites both reserved metadata keys, so client-provided metadata cannot opt into a custom contract.
 
 ## Behavior notes
 
