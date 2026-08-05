@@ -423,11 +423,11 @@ export async function updateClaudePromptAssignments(input: {
 				.innerJoin(brands, eq(brands.id, prompts.brandId))
 				.where(
 					and(
-					eq(brands.organizationId, input.organizationId),
-					ne(brands.id, input.brandId),
-					eq(promptTargetAssignments.source, "premium"),
-					eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
-					eq(promptTargetAssignments.enabled, true),
+						eq(brands.organizationId, input.organizationId),
+						ne(brands.id, input.brandId),
+						eq(promptTargetAssignments.source, "premium"),
+						eq(promptTargetAssignments.targetKey, CLAUDE_NATIVE_WEB_TARGET_KEY),
+						eq(promptTargetAssignments.enabled, true),
 						eq(prompts.enabled, true),
 					),
 				);
