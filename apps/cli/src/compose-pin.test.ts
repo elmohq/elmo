@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRenderedVersion, refreshHeaderVersion, repinImages } from "./compose-pin.js";
+import { parseRenderedVersion, planImageRelease, refreshHeaderVersion } from "./compose-pin.js";
 
 const LEGACY_COMPOSE = `name: elmo
 
@@ -35,32 +35,60 @@ describe("parseRenderedVersion", () => {
 	});
 });
 
-describe("repinImages", () => {
-	it("re-pins every elmohq/elmo-* image to the target version", () => {
-		const out = repinImages(LEGACY_COMPOSE, "0.2.13");
+describe("planImageRelease", () => {
+	it("structurally re-pins every core image to the target version", () => {
+		const out = planImageRelease(LEGACY_COMPOSE, "0.2.13").composeContents;
 		expect(out).toContain("elmohq/elmo-web:0.2.13");
 		expect(out).toContain("elmohq/elmo-worker:0.2.13");
 		expect(out).toContain("elmohq/elmo-db-migrate:0.2.13");
+		expect(out.match(/stop_grace_period: 65m/g)).toHaveLength(2);
 		expect(out).not.toContain(":latest");
 	});
 
 	it("leaves third-party images untouched", () => {
-		const out = repinImages(LEGACY_COMPOSE, "0.2.13");
+		const out = planImageRelease(LEGACY_COMPOSE, "0.2.13").composeContents;
 		expect(out).toContain("postgres:16-alpine");
 	});
 
-	it("replaces official digest pins so the rendered version matches the running release", () => {
-		const out = repinImages("    image: elmohq/elmo-worker@sha256:abc123\n", "0.2.13");
-		expect(out).toBe("    image: elmohq/elmo-worker:0.2.13\n");
+	it("replaces digest and implicit-latest pins", () => {
+		const compose = `services:
+  web:
+    image: elmohq/elmo-web
+  worker:
+    image: elmohq/elmo-worker@sha256:abc123
+`;
+		const plan = planImageRelease(compose, "0.2.13");
+		expect(plan.composeContents).toContain("image: elmohq/elmo-web:0.2.13");
+		expect(plan.composeContents).toContain("image: elmohq/elmo-worker:0.2.13");
+		expect(plan.images.dbMigrate).toBe("elmohq/elmo-db-migrate:0.2.13");
 	});
 
-	it("replaces quoted official pins without changing their quoting", () => {
-		const compose = `    image: "elmohq/elmo-web:old"
-    image: 'elmohq/elmo-worker@sha256:abc123'
+	it("resolves aliases and preserves an explicit custom release pipeline", () => {
+		const compose = `x-web-image: &web-image registry.example/elmo-web:old
+services:
+  web:
+    image: *web-image
+  worker:
+    image: registry.example/elmo-worker:old
+  db-migrate:
+    image: registry.example/elmo-migrate:old
 `;
-		expect(repinImages(compose, "0.2.13")).toBe(`    image: "elmohq/elmo-web:0.2.13"
-    image: 'elmohq/elmo-worker:0.2.13'
-`);
+		const plan = planImageRelease(compose, "0.2.13");
+		expect(plan.composeContents).toContain("image: registry.example/elmo-web:0.2.13");
+		expect(plan.images).toEqual({
+			dbMigrate: "registry.example/elmo-migrate:0.2.13",
+			web: "registry.example/elmo-web:0.2.13",
+			worker: "registry.example/elmo-worker:0.2.13",
+		});
+	});
+
+	it("rejects custom applications without an explicit matching migrator", () => {
+		expect(() =>
+			planImageRelease(
+				"services:\n  web:\n    image: private/web:old\n  worker:\n    image: private/worker:old\n",
+				"0.2.13",
+			),
+		).toThrow(/must define an explicit db-migrate image/);
 	});
 });
 
@@ -85,7 +113,7 @@ describe("refreshHeaderVersion", () => {
 // treat it as "already current" and skip the re-pin on the next run.
 describe("legacy install re-pin round-trip", () => {
 	it("pins images and records the version", () => {
-		const out = refreshHeaderVersion(repinImages(LEGACY_COMPOSE, "0.2.13"), "0.2.13");
+		const out = refreshHeaderVersion(planImageRelease(LEGACY_COMPOSE, "0.2.13").composeContents, "0.2.13");
 		expect(out).not.toContain(":latest");
 		expect(out).toContain("elmohq/elmo-web:0.2.13");
 		expect(out).toContain("postgres:16-alpine");

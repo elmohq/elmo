@@ -1,6 +1,7 @@
 export type DeploymentUpgradePhase =
 	| "config-migrations"
 	| "checkpoint-release"
+	| "cutover-lock"
 	| "database-migration"
 	| "prepare-release"
 	| "stop-services"
@@ -24,6 +25,18 @@ export class DeploymentUpgradeError extends Error {
 	}
 }
 
+export async function completeDeploymentUpgrade(input: {
+	releaseCutoverLock: () => Promise<void>;
+	stopTemporaryDependencies: () => Promise<void>;
+	removeRecoveryState: () => Promise<void>;
+	removeImageBackups: () => Promise<void>;
+}): Promise<void> {
+	await input.releaseCutoverLock();
+	await input.stopTemporaryDependencies();
+	await input.removeRecoveryState();
+	await input.removeImageBackups();
+}
+
 async function runPhase(phase: DeploymentUpgradePhase, action: () => Promise<void>): Promise<void> {
 	try {
 		await action();
@@ -35,8 +48,11 @@ async function runPhase(phase: DeploymentUpgradePhase, action: () => Promise<voi
 export async function executeDeploymentUpgrade(input: {
 	wasRunning: boolean;
 	requiresMaintenance: boolean;
+	cutoverAlreadyStarted?: boolean;
+	assertCanContinue?: () => void;
 	runConfigMigrations: () => Promise<void>;
 	checkpointRelease: () => Promise<void>;
+	acquireCutoverLock: () => Promise<void>;
 	runDatabaseMigration: () => Promise<void>;
 	prepareRelease: () => Promise<void>;
 	stopServices: () => Promise<void>;
@@ -45,23 +61,40 @@ export async function executeDeploymentUpgrade(input: {
 	verifyServices: () => Promise<void>;
 	rollbackRelease: (input: RollbackReleaseInput) => Promise<void>;
 }): Promise<void> {
-	let cutoverStarted = false;
+	let cutoverStarted = input.cutoverAlreadyStarted ?? false;
 	try {
+		input.assertCanContinue?.();
 		await runPhase("config-migrations", input.runConfigMigrations);
+		input.assertCanContinue?.();
 		await runPhase("checkpoint-release", input.checkpointRelease);
+		input.assertCanContinue?.();
 		await runPhase("prepare-release", input.prepareRelease);
+		input.assertCanContinue?.();
+		await runPhase("cutover-lock", input.acquireCutoverLock);
 		if (input.wasRunning && input.requiresMaintenance) {
 			cutoverStarted = true;
+			input.assertCanContinue?.();
 			await runPhase("stop-services", input.stopServices);
 		}
+		if (input.requiresMaintenance) {
+			input.assertCanContinue?.();
+			await runPhase("apply-release", input.applyRelease);
+		}
+		input.assertCanContinue?.();
 		await runPhase("database-migration", input.runDatabaseMigration);
 		if (input.wasRunning && !input.requiresMaintenance) {
 			cutoverStarted = true;
+			input.assertCanContinue?.();
 			await runPhase("stop-services", input.stopServices);
 		}
-		await runPhase("apply-release", input.applyRelease);
+		if (!input.requiresMaintenance) {
+			input.assertCanContinue?.();
+			await runPhase("apply-release", input.applyRelease);
+		}
 		if (input.wasRunning) {
+			input.assertCanContinue?.();
 			await runPhase("start-services", input.startServices);
+			input.assertCanContinue?.();
 			await runPhase("verify-services", input.verifyServices);
 		}
 	} catch (error) {

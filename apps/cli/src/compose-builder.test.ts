@@ -27,8 +27,9 @@ describe("compose database migration wiring", () => {
 		expect(yaml).toContain("    depends_on:\n      postgres:\n        condition: service_healthy");
 		expect(yaml).not.toContain("DATABASE_URL=");
 		expect(yaml).toContain("volumes:\n  postgres_data:");
+		expect(yaml).toContain("  web:\n");
 		expect(yaml).toContain("  worker:\n");
-		expect(yaml).toContain("    stop_grace_period: 45s");
+		expect(yaml.match(/stop_grace_period: 65m/g)).toHaveLength(2);
 	});
 
 	it("gives external development deployments the same migration build target", () => {
@@ -37,6 +38,7 @@ describe("compose database migration wiring", () => {
 		expect(yaml).toContain(
 			"  db-migrate:\n    build:\n      context: /repo\n      dockerfile: docker/Dockerfile\n      target: migrate",
 		);
+		expect(yaml.match(/ELMO_RELEASE_VERSION: 1\.2\.3/g)).toHaveLength(3);
 		expect(yaml).not.toContain("  postgres:\n");
 	});
 });

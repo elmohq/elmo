@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn, spawnSync } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -11,14 +11,53 @@ import { Command } from "commander";
 import { parse as parseDotenv } from "dotenv";
 import pc from "picocolors";
 import semver from "semver";
+import { parse as parseYaml } from "yaml";
 import { buildComposeYaml, type PostgresMode } from "./compose-builder.js";
-import { parseRenderedVersion, renderedByHeader } from "./compose-pin.js";
+import { assertSchemaBoundaryExecutionConfig } from "./compose-execution-safety.js";
+import { type ImageReleasePlan, parseRenderedVersion, planImageRelease, renderedByHeader } from "./compose-pin.js";
 import {
+	ALL_PROFILE_SERVICE_CONFIG_ARGS,
 	applicationStartupOrder,
+	assertApplicationServicesHealthy,
+	assertSafeUpgradeComposeState,
+	assertSafeUpgradeServiceNames,
+	assertServicesQuiescent,
+	composeCommandMayMutateDeployment,
+	parseComposeImageReference,
+	parseComposeServiceNames,
 	runningApplicationServiceNames,
 	runningComposeServiceNames,
 } from "./compose-state.js";
-import { runTargetDatabaseMigration, usesDevelopmentElmoBuild } from "./database-migration.js";
+import { assertSupportedDockerComposeVersion } from "./compose-version.js";
+import {
+	acquireUpgradeCutoverLock as acquireDatabaseCutoverLock,
+	assertUpgradeCutoverLockOwned,
+	createSourceRuntimeFenceIdentity,
+	createUpgradeCutoverLockIdentity,
+	releaseUpgradeCutoverLock as releaseDatabaseCutoverLock,
+} from "./database-cutover-lock.js";
+import {
+	assertSessionAffineDatabaseUrl,
+	isCliManagedLocalPostgresDatabaseUrl,
+	verifyDatabaseConnectionIdentity,
+} from "./database-identity-verification.js";
+import {
+	developmentElmoBuildServiceNames,
+	prepareTargetDevelopmentMigrationImage,
+	runTargetDatabaseMigration,
+	UPGRADE_MIGRATOR_SERVICE_NAME,
+	usesDevelopmentElmoBuild,
+} from "./database-migration.js";
+import {
+	assertNoConflictingUpgradeMigrators,
+	createUpgradeMigratorIdentity,
+	recoverExistingUpgradeMigrator,
+} from "./database-migration-recovery.js";
+import { setDatabaseRuntimeGeneration } from "./database-runtime-generation.js";
+import { assertRecoveryStateOutsideDevelopmentBuildContexts } from "./development-build-safety.js";
+import { resolveDevelopmentBackupImageId } from "./development-image-backup.js";
+import { assertDevelopmentSourceVersion } from "./development-source-version.js";
+import { assertSameDockerEngineIdentity, captureDockerEngineIdentity } from "./docker-engine-identity.js";
 import { formatEnvValue, setEnvFileValue } from "./env-file.js";
 import {
 	MIGRATIONS,
@@ -27,30 +66,46 @@ import {
 	reconcileCurrentConfig,
 	runMigrations,
 } from "./migrations/index.js";
-import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
-import { DeploymentUpgradeError, executeDeploymentUpgrade } from "./upgrade-execution.js";
-import { acquireUpgradeLock } from "./upgrade-lock.js";
-import { requiresMaintenanceUpgrade } from "./upgrade-policy.js";
 import {
+	assertComposeServiceImageIds,
+	attestRollbackSchemaCompatibility,
+	CLOUD_SCHEMA_COMPATIBILITY,
+	captureRollbackRuntimeImages,
+	INCOMPATIBLE_RUNTIME_FENCE_GENERATIONS,
+	type RollbackRuntimeImage,
+	requireSchemaCompatibleImages,
+	requiresHardRecoveryGuidance,
+	requiresTargetRecoveryFence,
+	restoreRollbackRuntimeImages,
+	TargetRecoveryFenceError,
+} from "./rollback-compatibility.js";
+import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
+import { completeDeploymentUpgrade, DeploymentUpgradeError, executeDeploymentUpgrade } from "./upgrade-execution.js";
+import { acquireUpgradeLock, withUpgradeLock } from "./upgrade-lock.js";
+import {
+	crossesCloudSchemaBoundary,
+	legacySingleDeploymentCutoverAllowed,
+	requiresMaintenanceUpgrade,
+} from "./upgrade-policy.js";
+import {
+	advanceUpgradeRecoveryState,
 	type DevelopmentImageBackup,
+	type PreparedTargetImageIds,
 	readUpgradeRecoveryState,
+	reconcilePreparedTargetImageIds,
 	recoveryFilePath,
 	removeUpgradeRecoveryState,
 	type UpgradeRecoveryPhase,
 	writeUpgradeRecoveryState,
 } from "./upgrade-recovery.js";
-import {
-	applyDeploymentRelease,
-	captureDeploymentConfig,
-	getTargetElmoImages,
-	restoreDeploymentConfig,
-} from "./upgrade-release.js";
+import { applyDeploymentRelease, captureDeploymentConfig, restoreDeploymentConfig } from "./upgrade-release.js";
+import { deploymentUpgradeIdentity } from "./upgrade-storage.js";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type ComposeService = {
 	ID?: string;
-	Image?: string;
+	Name?: string;
 	Service: string;
 	State: string;
 	Health?: string;
@@ -68,6 +123,7 @@ type DirOption = {
 };
 
 type UpgradeOptions = {
+	acknowledgeSingleDeployment?: boolean;
 	dir?: string;
 	yes?: boolean;
 };
@@ -81,7 +137,41 @@ const DEFAULT_APP_NAME = "Elmo";
 const DEFAULT_APP_ICON = "/icons/elmo-icon.svg";
 const DEFAULT_APP_PORT = 1515;
 const LOCAL_DATABASE_URL = "postgres://postgres:postgres@postgres:5432/elmo";
+const LEGACY_RUNTIME_QUIESCENCE_MS = 15_000;
 const TELEMETRY_DOC_URL = "https://elmohq.com/docs/developer-guide/telemetry";
+
+const activeDockerChildren = new Map<ChildProcess, Promise<void>>();
+let shutdownSignal: "SIGINT" | "SIGTERM" | undefined;
+
+function trackDockerChild(child: ChildProcess): void {
+	let resolveExit = () => {};
+	const exited = new Promise<void>((resolve) => {
+		resolveExit = resolve;
+	});
+	activeDockerChildren.set(child, exited);
+	child.once("close", () => {
+		activeDockerChildren.delete(child);
+		resolveExit();
+	});
+}
+
+async function waitForDockerChildren(): Promise<void> {
+	while (activeDockerChildren.size > 0) {
+		await Promise.allSettled([...activeDockerChildren.values()]);
+	}
+}
+
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+	process.on(signal, () => {
+		shutdownSignal ??= signal;
+		process.exitCode = signal === "SIGINT" ? 130 : 143;
+		for (const child of activeDockerChildren.keys()) child.kill(signal);
+	});
+}
+
+function assertUpgradeNotInterrupted(): void {
+	if (shutdownSignal) throw new Error(`Upgrade interrupted by ${shutdownSignal}; rerun the same CLI version to resume`);
+}
 
 // ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -114,10 +204,12 @@ const log = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+class CommandCancelledError extends Error {}
+
 function assertNotCancelled<T>(value: T | symbol): asserts value is T {
 	if (p.isCancel(value)) {
 		p.cancel("Setup cancelled.");
-		process.exit(0);
+		throw new CommandCancelledError("Command cancelled");
 	}
 }
 
@@ -177,6 +269,7 @@ async function main() {
 		.command("upgrade")
 		.description("upgrade your Elmo deployment to this CLI's version")
 		.option("--yes", "skip confirmation prompts")
+		.option("--acknowledge-single-deployment", "confirm this local external database is used by no other Elmo runtime")
 		.action(async (_opts: object, cmd: Command) => {
 			await runUpgrade(cmd.optsWithGlobals<UpgradeOptions>(), version);
 		});
@@ -197,13 +290,27 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	p.intro(pc.bold("Setting up Elmo"));
 
 	const cwd = process.cwd();
-
-	// ── Resolve config directory ─────────────────────────────────────────
 	const configDir = options.dir ? path.resolve(cwd, options.dir) : CONFIG_HOME;
+	await ensureDir(configDir);
+	await withUpgradeLock(configDir, async () => {
+		const recovery = await readUpgradeRecoveryState(configDir);
+		if (recovery) {
+			throw new Error(
+				`Cannot replace deployment config while the ${recovery.fromVersion} → ${recovery.targetVersion} upgrade is incomplete. Resume with that CLI version.`,
+			);
+		}
+		await runLockedInit(options, version, cwd, configDir);
+	});
+}
 
+async function runLockedInit(options: InitOptions, version: string, cwd: string, configDir: string): Promise<void> {
 	// ── .env safety check ────────────────────────────────────────────────
 	const existingEnvPath = path.join(configDir, ".env");
-	let preservedDeploymentId: string | undefined;
+	if (await fileExists(path.join(configDir, "elmo.yaml"))) {
+		throw new Error(
+			"An Elmo deployment already exists here. Use `elmo upgrade` or `elmo edit` instead of `elmo init`.",
+		);
+	}
 	if (await fileExists(existingEnvPath)) {
 		const contents = await fs.readFile(existingEnvPath, "utf8");
 		const isElmoEnv = contents.startsWith("# Rendered by elmo") || contents.startsWith("# Generated by elmo");
@@ -217,20 +324,12 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			assertNotCancelled(overwrite);
 			if (!overwrite) {
 				p.cancel("Setup cancelled. Choose a different directory with --dir.");
-				process.exit(0);
+				throw new CommandCancelledError("Command cancelled");
 			}
 		} else {
-			p.log.warn(`An existing Elmo config was found at ${configDir}.`);
-			const overwrite = await p.confirm({
-				message: "Overwrite it with new values? Existing secrets (DATABASE_URL, API keys, etc.) will be replaced.",
-				initialValue: false,
-			});
-			assertNotCancelled(overwrite);
-			if (!overwrite) {
-				p.cancel("Setup cancelled. Use `elmo edit env` to change individual values.");
-				process.exit(0);
-			}
-			preservedDeploymentId = parseDotenv(contents).DEPLOYMENT_ID;
+			throw new Error(
+				"An Elmo deployment already exists here. Use `elmo upgrade` or `elmo edit` instead of `elmo init`.",
+			);
 		}
 	}
 
@@ -242,8 +341,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 		if (options.dockerDir) {
 			dockerDir = path.resolve(cwd, options.dockerDir);
 			if (!(await fileExists(path.join(dockerDir, "Dockerfile")))) {
-				p.log.error(`Dockerfile not found in ${dockerDir}`);
-				process.exit(1);
+				throw new Error(`Dockerfile not found in ${dockerDir}`);
 			}
 		} else {
 			dockerDir = await resolveDockerDirInteractive(cwd);
@@ -263,7 +361,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 			},
 			{
 				value: "external" as const,
-				label: "Use existing Postgres (provide DATABASE_URL)",
+				label: "Use existing Postgres (provide application and direct URLs)",
 			},
 		],
 		initialValue: "docker" as PostgresMode,
@@ -273,7 +371,7 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	const env: EnvMap = {};
 	env.DEPLOYMENT_MODE = "local";
 	env.VITE_DEPLOYMENT_MODE = "local";
-	env.DEPLOYMENT_ID = preservedDeploymentId ?? crypto.randomUUID();
+	env.DEPLOYMENT_ID = crypto.randomUUID();
 	env.BETTER_AUTH_SECRET = generateSecret();
 	// Standard base64 (not base64url): the app decodes this with Buffer.from(key,
 	// "base64") and requires exactly 32 bytes. Enables storing provider
@@ -285,15 +383,33 @@ async function runInit(options: InitOptions, version: string): Promise<void> {
 	env.VITE_APP_ICON = DEFAULT_APP_ICON;
 
 	if (postgresMode === "external") {
-		p.note("Must be an IPv4-compatible direct connection or database pooler.", "DATABASE_URL");
+		p.note("May be a direct connection or database pooler.", "DATABASE_URL");
 		const url = await p.password({
 			message: "DATABASE_URL",
 			validate: (v) => (!v ? "Required" : undefined),
 		});
 		assertNotCancelled(url);
 		env.DATABASE_URL = url;
+		p.note(
+			"Must be a direct, session-affine PostgreSQL endpoint and identify the same database.",
+			"DATABASE_URL_UNPOOLED",
+		);
+		const unpooledUrl = await p.password({
+			message: "DATABASE_URL_UNPOOLED",
+			validate: (value) => {
+				try {
+					assertSessionAffineDatabaseUrl(value);
+					return undefined;
+				} catch (error) {
+					return error instanceof Error ? error.message : "Invalid direct PostgreSQL URL";
+				}
+			},
+		});
+		assertNotCancelled(unpooledUrl);
+		env.DATABASE_URL_UNPOOLED = unpooledUrl;
 	} else {
 		env.DATABASE_URL = LOCAL_DATABASE_URL;
+		env.DATABASE_URL_UNPOOLED = LOCAL_DATABASE_URL;
 	}
 
 	// ── AI providers ─────────────────────────────────────────────────────
@@ -1004,7 +1120,8 @@ function dedupeTargets(targets: string[]): string {
 // ── Start helper (used by init) ──────────────────────────────────────────────
 
 async function doStart(configDir: string): Promise<void> {
-	assertDockerRunning();
+	await assertDockerRunning();
+	await assertDockerComposeSupported();
 
 	log.step("Starting Docker Compose stack...");
 	await startServicesAndWait(configDir, ["web", "worker"]);
@@ -1022,7 +1139,20 @@ async function doStart(configDir: string): Promise<void> {
 
 async function runCompose(args: string[], options: DirOption): Promise<void> {
 	const configDir = await resolveConfigDir(options.dir);
-	assertDockerRunning();
+	if (composeCommandMayMutateDeployment(args)) {
+		await withUpgradeLock(configDir, async () => {
+			const recovery = await readUpgradeRecoveryState(configDir);
+			if (recovery) {
+				throw new Error(
+					`Cannot mutate deployment services while the ${recovery.fromVersion} → ${recovery.targetVersion} upgrade is incomplete. Resume with that CLI version; recovery state is at ${await recoveryFilePath(configDir)}.`,
+				);
+			}
+			await assertDockerRunning();
+			await runDockerCompose(configDir, args);
+		});
+		return;
+	}
+	await assertDockerRunning();
 	await runDockerCompose(configDir, args);
 }
 
@@ -1030,32 +1160,40 @@ async function runCompose(args: string[], options: DirOption): Promise<void> {
 
 async function runEdit(target: string, options: DirOption): Promise<void> {
 	const configDir = await resolveConfigDir(options.dir);
+	await withUpgradeLock(configDir, async () => {
+		const recovery = await readUpgradeRecoveryState(configDir);
+		if (recovery) {
+			throw new Error(
+				`Cannot edit deployment config while the ${recovery.fromVersion} → ${recovery.targetVersion} upgrade is incomplete. Resume with that CLI version.`,
+			);
+		}
 
-	let filePath: string;
-	if (target === "env") {
-		filePath = path.join(configDir, ".env");
-	} else if (target === "compose") {
-		filePath = path.join(configDir, "elmo.yaml");
-	} else {
-		throw new Error(`Unknown edit target: ${target}. Use \`env\` or \`compose\`.`);
-	}
+		let filePath: string;
+		if (target === "env") {
+			filePath = path.join(configDir, ".env");
+		} else if (target === "compose") {
+			filePath = path.join(configDir, "elmo.yaml");
+		} else {
+			throw new Error(`Unknown edit target: ${target}. Use \`env\` or \`compose\`.`);
+		}
 
-	if (!(await fileExists(filePath))) {
-		throw new Error(`File not found: ${filePath}`);
-	}
+		if (!(await fileExists(filePath))) {
+			throw new Error(`File not found: ${filePath}`);
+		}
 
-	const editorEnv = process.env.VISUAL || process.env.EDITOR || "nano";
-	const parts = editorEnv.split(/\s+/).filter(Boolean);
-	const cmd = parts[0] ?? "nano";
-	const args = [...parts.slice(1), filePath];
+		const editorEnv = process.env.VISUAL || process.env.EDITOR || "nano";
+		const parts = editorEnv.split(/\s+/).filter(Boolean);
+		const cmd = parts[0] ?? "nano";
+		const args = [...parts.slice(1), filePath];
 
-	await new Promise<void>((resolve, reject) => {
-		const child = spawn(cmd, args, { stdio: "inherit" });
-		child.on("close", (code) => {
-			if (code === 0) resolve();
-			else reject(new Error(`${cmd} exited with code ${code}`));
+		await new Promise<void>((resolve, reject) => {
+			const child = spawn(cmd, args, { stdio: "inherit" });
+			child.on("close", (code) => {
+				if (code === 0) resolve();
+				else reject(new Error(`${cmd} exited with code ${code}`));
+			});
+			child.on("error", (err) => reject(err));
 		});
-		child.on("error", (err) => reject(err));
 	});
 
 	log.info("Restart the stack with `elmo compose up -d` to apply changes.");
@@ -1082,7 +1220,7 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 		assertNotCancelled(proceed);
 		if (!proceed) {
 			p.cancel("Upgrade cancelled. Upgrade the CLI and rerun `elmo upgrade`.");
-			process.exit(0);
+			return;
 		}
 	}
 
@@ -1090,18 +1228,27 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	const configDir = await resolveConfigDir(options.dir);
 	const releaseUpgradeLock = await acquireUpgradeLock(configDir);
 	try {
-		await runLockedUpgrade(options, cliVersion, configDir);
+		await ensureUpgradeDatabaseConnectionContract(configDir);
+		const deploymentId = await ensureUpgradeDeploymentId(configDir);
+		await runLockedUpgrade(options, cliVersion, configDir, deploymentId);
 	} finally {
+		await waitForDockerChildren();
 		await releaseUpgradeLock();
 	}
 }
 
-async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, configDir: string): Promise<void> {
+async function runLockedUpgrade(
+	options: UpgradeOptions,
+	cliVersion: string,
+	configDir: string,
+	deploymentId: string,
+): Promise<void> {
 	const composePath = path.join(configDir, "elmo.yaml");
+	const { databaseFingerprint } = await deploymentUpgradeIdentity(configDir);
 	const interruptedUpgrade = await readUpgradeRecoveryState(configDir);
 	if (interruptedUpgrade && interruptedUpgrade.targetVersion !== cliVersion) {
 		throw new Error(
-			`An interrupted upgrade targets ${interruptedUpgrade.targetVersion}. Use that CLI version to resume; recovery state is at ${recoveryFilePath(configDir)}.`,
+			`An interrupted upgrade targets ${interruptedUpgrade.targetVersion}. Use that CLI version to resume; recovery state is at ${await recoveryFilePath(configDir)}.`,
 		);
 	}
 	const renderedVersion = await readRenderedVersion(composePath);
@@ -1120,7 +1267,8 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 		log.warn(`Your deployment (${fromVersion}) is newer than this CLI (${cliVersion}).`);
 		log.info("Upgrade the CLI to match, then rerun:");
 		console.log(`  ${pc.bold("npm install -g @elmohq/cli@latest")}`);
-		process.exit(1);
+		if (!process.exitCode) process.exitCode = 1;
+		return;
 	}
 
 	// ── Already current ──────────────────────────────────────────────────
@@ -1130,20 +1278,6 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 	if (!interruptedUpgrade && detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
 		await reconcileCurrentConfig(buildMigrationContext(configDir));
 		log.success(`Already at ${cliVersion}.`);
-		const pull = options.yes
-			? true
-			: await p.confirm({ message: "Pull images for this version anyway?", initialValue: false });
-		assertNotCancelled(pull);
-		if (pull) {
-			assertDockerRunning();
-			const runningServices = await getRunningApplicationServices(configDir);
-			log.step("Pulling images...");
-			await runDockerCompose(configDir, ["pull"]);
-			if (runningServices.length > 0) {
-				log.step("Restarting services...");
-				await startServicesAndWait(configDir, runningServices);
-			}
-		}
 		p.outro(pc.green("Nothing to upgrade."));
 		return;
 	}
@@ -1169,6 +1303,10 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 	const requiresMaintenance =
 		interruptedUpgrade?.requiresMaintenance ??
 		requiresMaintenanceUpgrade({ detectedVersion, targetVersion: cliVersion, plan });
+	const crossesSchemaBoundary = crossesCloudSchemaBoundary({ detectedVersion, targetVersion: cliVersion });
+	if (crossesSchemaBoundary) {
+		assertSchemaBoundaryExecutionConfig(await fs.readFile(composePath, "utf8"));
+	}
 	if (requiresMaintenance) {
 		log.warn("This upgrade uses a brief maintenance cutover: target images are prepared before web and worker stop.");
 	}
@@ -1177,49 +1315,448 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 	assertNotCancelled(confirm);
 	if (!confirm) {
 		p.cancel("Upgrade cancelled.");
-		process.exit(0);
+		return;
 	}
 
-	assertDockerRunning();
-	const observedRunningComposeServices = await getRunningComposeServices(configDir);
+	await assertDockerRunning();
+	await assertDockerComposeSupported();
+	if (crossesSchemaBoundary) {
+		const databaseEnvironment = parseDotenv(await fs.readFile(path.join(configDir, ".env"), "utf8"));
+		assertSchemaBoundaryExecutionConfig(await runDockerComposeCapture(configDir, ["config", "--format", "json"]), {
+			databaseUrl: databaseEnvironment.DATABASE_URL ?? "",
+			unpooledDatabaseUrl: databaseEnvironment.DATABASE_URL_UNPOOLED ?? "",
+			runtimeFenceGeneration: CLOUD_SCHEMA_COMPATIBILITY,
+		});
+	}
+	const dockerEngine = await captureDockerEngineIdentity(runDockerCapture, (args) =>
+		runDockerComposeCapture(configDir, args),
+	);
+	if (interruptedUpgrade) assertSameDockerEngineIdentity(interruptedUpgrade.dockerEngine, dockerEngine);
+	const migrationIdentity = await createUpgradeMigratorIdentity(configDir);
+	const allowCurrentMigrator = interruptedUpgrade?.phase === "migrating-database";
+	await assertNoConflictingUpgradeMigrators({
+		identity: migrationIdentity,
+		allowCurrent: allowCurrentMigrator,
+		capture: runDockerCapture,
+	});
+	assertSafeUpgradeServiceNames(
+		parseComposeServiceNames(await runDockerComposeCapture(configDir, [...ALL_PROFILE_SERVICE_CONFIG_ARGS])),
+	);
+	let observedComposeServices = await getComposeServices(configDir);
+	const recoveringAfterContainerRemoval = interruptedUpgrade?.applicationContainersRemoved === true;
+	assertSafeUpgradeComposeState(
+		observedComposeServices,
+		allowCurrentMigrator ? migrationIdentity.containerName : undefined,
+		recoveringAfterContainerRemoval,
+		[
+			interruptedUpgrade?.cutoverLock?.containerName,
+			...(interruptedUpgrade?.sourceRuntimeFences ?? []).map((lock) => lock.containerName),
+		].filter((name): name is string => Boolean(name)),
+	);
+	if (recoveringAfterContainerRemoval) {
+		const preparedImageIds = interruptedUpgrade.preparedTargetImageIds;
+		if (!preparedImageIds) throw new Error("Interrupted cutover did not checkpoint exact target images");
+		const presentApplicationServices = [
+			...new Set(
+				observedComposeServices
+					.map((service) => service.Service)
+					.filter((service): service is "web" | "worker" => service === "web" || service === "worker"),
+			),
+		];
+		const targetImages = presentApplicationServices.map((service) => ({
+			service,
+			imageId: preparedImageIds[service],
+		}));
+		try {
+			await assertComposeServiceImageIds({
+				images: targetImages,
+				containers: observedComposeServices,
+				capture: runDockerCapture,
+			});
+		} catch (targetError) {
+			const rollbackImages =
+				interruptedUpgrade.phase === "rolling-back" ? interruptedUpgrade.rollbackImages : undefined;
+			const expectedRollbackImages = rollbackImages?.filter((image) =>
+				presentApplicationServices.includes(image.service),
+			);
+			if (!expectedRollbackImages || expectedRollbackImages.length !== presentApplicationServices.length) {
+				throw targetError;
+			}
+			await assertComposeServiceImageIds({
+				images: expectedRollbackImages,
+				containers: observedComposeServices,
+				capture: runDockerCapture,
+			});
+		}
+		const liveApplicationServices = runningApplicationServiceNames(runningComposeServiceNames(observedComposeServices));
+		if (liveApplicationServices.length > 0) {
+			log.warn("Draining application containers that restarted during interrupted-upgrade recovery...");
+			await runDockerCompose(configDir, ["stop", "--timeout", "3900", ...liveApplicationServices]);
+			observedComposeServices = await getComposeServices(configDir);
+			assertServicesQuiescent(observedComposeServices, liveApplicationServices);
+		}
+	}
+	const recoveredMigratorBeforeReplay = allowCurrentMigrator
+		? await recoverExistingUpgradeMigrator({
+				identity: migrationIdentity,
+				expectedImageId:
+					interruptedUpgrade?.preparedTargetImageIds?.dbMigrate ??
+					(() => {
+						throw new Error("Interrupted migration did not checkpoint its exact migrator image");
+					})(),
+				targetVersion: cliVersion,
+				capture: runDockerCapture,
+				run: runDocker,
+			})
+		: false;
+	const observedRunningComposeServices = runningComposeServiceNames(observedComposeServices);
+	const observedApplicationServices = [...new Set(observedComposeServices.map((service) => service.Service))].filter(
+		(service): service is "web" | "worker" => service === "web" || service === "worker",
+	);
+	const existingApplicationServices = interruptedUpgrade?.rollbackImages
+		? interruptedUpgrade.rollbackImages.map((image) => image.service)
+		: observedApplicationServices;
 	const runningServices =
 		interruptedUpgrade?.previousRunningServices ?? runningApplicationServiceNames(observedRunningComposeServices);
 	const anyComposeServiceWasRunning =
 		interruptedUpgrade?.anyComposeServiceWasRunning ?? observedRunningComposeServices.length > 0;
 	const wasRunning = runningServices.length > 0;
+	const rollbackConfiguredImages = interruptedUpgrade
+		? undefined
+		: {
+				web: parseComposeImageReference("web", await runDockerComposeCapture(configDir, ["config", "--images", "web"])),
+				worker: parseComposeImageReference(
+					"worker",
+					await runDockerComposeCapture(configDir, ["config", "--images", "worker"]),
+				),
+			};
+	const rollbackImages =
+		interruptedUpgrade?.rollbackImages ??
+		(rollbackConfiguredImages
+			? await captureRollbackRuntimeImages({
+					services: existingApplicationServices,
+					containers: observedComposeServices,
+					configuredImages: rollbackConfiguredImages,
+					capture: runDockerCapture,
+				})
+			: undefined);
+	const rollbackRuntimeFenceGenerations = new Set(
+		(rollbackImages ?? [])
+			.map((image) => image.runtimeFenceGeneration)
+			.filter((generation): generation is string => Boolean(generation)),
+	);
+	const rollbackRuntimeFenceImageCount = (rollbackImages ?? []).filter((image) => image.runtimeFenceGeneration).length;
+	if (rollbackRuntimeFenceImageCount > 0 && rollbackRuntimeFenceImageCount !== (rollbackImages?.length ?? 0)) {
+		throw new Error("Current web and worker images do not consistently attest runtime fence participation");
+	}
+	if (rollbackRuntimeFenceGenerations.size > 1) {
+		throw new Error("Current web and worker images attest different runtime fence generations");
+	}
+	const checkpointedRuntimeFenceGenerations = new Set(
+		(interruptedUpgrade?.sourceRuntimeFences ?? [])
+			.map((lock) => lock.runtimeFenceGeneration)
+			.filter((generation): generation is string => Boolean(generation)),
+	);
+	const observedSourceRuntimeFenceGeneration =
+		rollbackRuntimeFenceGenerations.size === 1
+			? [...rollbackRuntimeFenceGenerations][0]
+			: checkpointedRuntimeFenceGenerations.size === 1
+				? [...checkpointedRuntimeFenceGenerations][0]
+				: undefined;
+	const deploymentMode = parseDotenv(await fs.readFile(path.join(configDir, ".env"), "utf8")).DEPLOYMENT_MODE;
+	const managedLocalDeployment = await isCliManagedLocalPostgres(configDir);
+	const legacySingleDeploymentAcknowledged =
+		interruptedUpgrade?.legacySingleDeploymentAcknowledged ?? options.acknowledgeSingleDeployment === true;
+	const legacyLocalExternalException = legacySingleDeploymentCutoverAllowed({
+		crossesSchemaBoundary,
+		deploymentMode,
+		managedLocalDeployment,
+		runtimeFenceParticipates: Boolean(observedSourceRuntimeFenceGeneration),
+		singleDeploymentAcknowledged: legacySingleDeploymentAcknowledged,
+	});
+	const incompatibleSourceGenerations = INCOMPATIBLE_RUNTIME_FENCE_GENERATIONS[CLOUD_SCHEMA_COMPATIBILITY];
+	if (
+		crossesSchemaBoundary &&
+		observedSourceRuntimeFenceGeneration &&
+		observedSourceRuntimeFenceGeneration !== CLOUD_SCHEMA_COMPATIBILITY &&
+		!incompatibleSourceGenerations.includes(observedSourceRuntimeFenceGeneration)
+	) {
+		throw new Error(
+			`Source runtime fence generation ${observedSourceRuntimeFenceGeneration} is not a known predecessor of ${CLOUD_SCHEMA_COMPATIBILITY}`,
+		);
+	}
+	const sourceRuntimeFenceGenerations =
+		crossesSchemaBoundary && !managedLocalDeployment && !legacyLocalExternalException
+			? [...incompatibleSourceGenerations]
+			: [];
+	const rollbackSchemaCompatibility =
+		interruptedUpgrade?.rollbackSchemaCompatibility ??
+		(await attestRollbackSchemaCompatibility({
+			servicesToRestart: ["web", "worker"],
+			containers: observedComposeServices,
+			configuredImages: rollbackConfiguredImages,
+			capture: runDockerCapture,
+		}));
+	let databaseBoundaryMayHaveAdvanced = interruptedUpgrade?.databaseBoundaryMayHaveAdvanced ?? false;
 	const isDev = interruptedUpgrade?.isDevelopment ?? (await composeUsesBuild(composePath));
+	if (isDev) {
+		const developmentComposeContents = await fs.readFile(composePath, "utf8");
+		await assertDevelopmentSourceVersion({
+			composeContents: developmentComposeContents,
+			configDir,
+			targetVersion: cliVersion,
+		});
+		await assertRecoveryStateOutsideDevelopmentBuildContexts({
+			composeContents: developmentComposeContents,
+			configDir,
+			recoveryPath: await recoveryFilePath(configDir),
+		});
+	}
 	const ctx = buildMigrationContext(configDir);
 	let previousConfig = interruptedUpgrade?.rollbackConfig ?? (await captureDeploymentConfig(configDir));
+	let preparedImageRelease: ImageReleasePlan | undefined;
+	let preparedTargetImageIds = interruptedUpgrade?.preparedTargetImageIds;
 	let recoveryState = interruptedUpgrade;
-	const markRecoveryPhase = async (phase: UpgradeRecoveryPhase): Promise<void> => {
+	let cutoverLockIdentity = interruptedUpgrade?.cutoverLock;
+	let cutoverLockAcquired = false;
+	let sourceRuntimeFenceIdentities = [...(interruptedUpgrade?.sourceRuntimeFences ?? [])];
+	const acquiredSourceRuntimeFences = new Set<string>();
+	let databaseIdentityVerified = false;
+	const markRecoveryPhase = async (
+		phase: UpgradeRecoveryPhase,
+		facts: {
+			cutoverStarted?: boolean;
+			databaseBoundaryMayHaveAdvanced?: boolean;
+			applicationServicesQuiesced?: boolean;
+			applicationContainersRemoved?: boolean;
+		} = {},
+	): Promise<void> => {
 		if (!recoveryState) return;
-		recoveryState = await writeUpgradeRecoveryState(configDir, { ...recoveryState, phase });
+		recoveryState = await writeUpgradeRecoveryState(
+			configDir,
+			advanceUpgradeRecoveryState(recoveryState, phase, facts),
+		);
+	};
+	const checkpointPreparedTargetImages = async (candidate: PreparedTargetImageIds): Promise<void> => {
+		const expected = recoveryState?.preparedTargetImageIds;
+		if (expected) {
+			preparedTargetImageIds = reconcilePreparedTargetImageIds(expected, candidate);
+			return;
+		}
+		if (!recoveryState) throw new Error("Upgrade recovery checkpoint was not created");
+		recoveryState = await writeUpgradeRecoveryState(configDir, {
+			...recoveryState,
+			preparedTargetImageIds: candidate,
+		});
+		preparedTargetImageIds = candidate;
+	};
+	const verifyPreparedDatabaseIdentity = async (): Promise<void> => {
+		if (databaseIdentityVerified) return;
+		if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+		log.step("Verifying application and direct PostgreSQL endpoints...");
+		await verifyDatabaseConnectionIdentity({
+			configDir,
+			migrationImageId: preparedTargetImageIds.dbMigrate,
+			runCompose: (args) => runDockerCompose(configDir, args),
+		});
+		databaseIdentityVerified = true;
+	};
+	const requireCutoverLockInput = () => {
+		if (!cutoverLockIdentity) throw new Error("Database cutover lock identity was not checkpointed");
+		if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+		return {
+			identity: cutoverLockIdentity,
+			targetVersion: cliVersion,
+			migrationImageId: preparedTargetImageIds.dbMigrate,
+		};
+	};
+	const assertDatabaseCutoverLock = async (): Promise<void> => {
+		await assertUpgradeCutoverLockOwned({
+			...requireCutoverLockInput(),
+			capture: runDockerCapture,
+		});
+	};
+	const requireSourceRuntimeFenceInput = (identity: (typeof sourceRuntimeFenceIdentities)[number]) => {
+		if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+		return {
+			identity,
+			targetVersion: cliVersion,
+			migrationImageId: preparedTargetImageIds.dbMigrate,
+		};
+	};
+	const assertSourceRuntimeFences = async (): Promise<void> => {
+		for (const generation of sourceRuntimeFenceGenerations) {
+			const identity = sourceRuntimeFenceIdentities.find(
+				(candidate) => candidate.runtimeFenceGeneration === generation,
+			);
+			if (!identity) throw new Error(`Source runtime fence ${generation} was not checkpointed`);
+			await assertUpgradeCutoverLockOwned({
+				...requireSourceRuntimeFenceInput(identity),
+				capture: runDockerCapture,
+			});
+		}
+	};
+	const assertAcquiredSourceRuntimeFences = async (): Promise<void> => {
+		for (const identity of sourceRuntimeFenceIdentities) {
+			if (!identity.runtimeFenceGeneration || !acquiredSourceRuntimeFences.has(identity.runtimeFenceGeneration))
+				continue;
+			await assertUpgradeCutoverLockOwned({
+				...requireSourceRuntimeFenceInput(identity),
+				capture: runDockerCapture,
+			});
+		}
+	};
+	const ensureSourceRuntimeFences = async (): Promise<void> => {
+		if (sourceRuntimeFenceGenerations.length === 0) return;
+		if (!recoveryState) throw new Error("Upgrade recovery checkpoint was not created");
+		for (const generation of sourceRuntimeFenceGenerations) {
+			if (acquiredSourceRuntimeFences.has(generation)) continue;
+			let identity = sourceRuntimeFenceIdentities.find((candidate) => candidate.runtimeFenceGeneration === generation);
+			if (!identity) {
+				identity = await createSourceRuntimeFenceIdentity(configDir, generation);
+				sourceRuntimeFenceIdentities = [...sourceRuntimeFenceIdentities, identity];
+				recoveryState = await writeUpgradeRecoveryState(configDir, {
+					...recoveryState,
+					sourceRuntimeFences: sourceRuntimeFenceIdentities,
+				});
+			}
+			log.step(`Fencing remaining ${generation} runtime writers...`);
+			await acquireDatabaseCutoverLock({
+				configDir,
+				...requireSourceRuntimeFenceInput(identity),
+				capture: runDockerCapture,
+				run: runDocker,
+				runCompose: (args) => runDockerCompose(configDir, args),
+			});
+			acquiredSourceRuntimeFences.add(generation);
+		}
+		await assertSourceRuntimeFences();
+	};
+	const ensureExclusiveRuntimeFence = async (generation: string): Promise<void> => {
+		if (!recoveryState) throw new Error("Upgrade recovery checkpoint was not created");
+		if (acquiredSourceRuntimeFences.has(generation)) return;
+		let identity = sourceRuntimeFenceIdentities.find((candidate) => candidate.runtimeFenceGeneration === generation);
+		if (!identity) {
+			identity = await createSourceRuntimeFenceIdentity(configDir, generation);
+			sourceRuntimeFenceIdentities = [...sourceRuntimeFenceIdentities, identity];
+			recoveryState = await writeUpgradeRecoveryState(configDir, {
+				...recoveryState,
+				sourceRuntimeFences: sourceRuntimeFenceIdentities,
+			});
+		}
+		log.step(`Fencing remaining ${generation} runtime writers...`);
+		await acquireDatabaseCutoverLock({
+			configDir,
+			...requireSourceRuntimeFenceInput(identity),
+			capture: runDockerCapture,
+			run: runDocker,
+			runCompose: (args) => runDockerCompose(configDir, args),
+		});
+		acquiredSourceRuntimeFences.add(generation);
+		await assertAcquiredSourceRuntimeFences();
+	};
+	const setRuntimeGeneration = async (
+		generation: string,
+		expectedGeneration: string,
+		allowMissingTable = false,
+	): Promise<void> => {
+		if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+		await assertDatabaseCutoverLock();
+		await assertAcquiredSourceRuntimeFences();
+		await setDatabaseRuntimeGeneration({
+			allowMissingTable,
+			configDir,
+			expectedGeneration,
+			generation,
+			migrationImageId: preparedTargetImageIds.dbMigrate,
+			runCompose: (args) => runDockerCompose(configDir, args),
+		});
+		await assertDatabaseCutoverLock();
+		await assertAcquiredSourceRuntimeFences();
+	};
+	const waitForLegacyRuntimeQuiescence = async (): Promise<void> => {
+		await new Promise<void>((resolve) => setTimeout(resolve, LEGACY_RUNTIME_QUIESCENCE_MS));
+		await assertDatabaseCutoverLock();
+		assertServicesQuiescent(await getComposeServices(configDir), runningServices);
+	};
+	const assertDatabaseFences = async (): Promise<void> => {
+		await assertDatabaseCutoverLock();
+		await assertSourceRuntimeFences();
+	};
+	const releaseDatabaseCutoverLockAfterCompletion = async (allowMissing = false): Promise<void> => {
+		if (!cutoverLockIdentity) {
+			if (allowMissing) return;
+			throw new Error("Database cutover lock identity was not checkpointed");
+		}
+		await releaseDatabaseCutoverLock({
+			...requireCutoverLockInput(),
+			capture: runDockerCapture,
+			run: runDocker,
+			allowMissing,
+		});
+		cutoverLockAcquired = false;
+	};
+	const releaseSourceRuntimeFences = async (allowMissing = false): Promise<void> => {
+		for (const identity of [...sourceRuntimeFenceIdentities].reverse()) {
+			if (
+				!allowMissing &&
+				(!identity.runtimeFenceGeneration || !acquiredSourceRuntimeFences.has(identity.runtimeFenceGeneration))
+			) {
+				continue;
+			}
+			await releaseDatabaseCutoverLock({
+				...requireSourceRuntimeFenceInput(identity),
+				capture: runDockerCapture,
+				run: runDocker,
+				allowMissing,
+			});
+			if (identity.runtimeFenceGeneration) acquiredSourceRuntimeFences.delete(identity.runtimeFenceGeneration);
+		}
+	};
+	const stopTemporaryDatabaseDependencies = async (): Promise<void> => {
+		if (!anyComposeServiceWasRunning) {
+			await runDockerCompose(configDir, ["stop", "--timeout", "3900"]);
+		}
 	};
 	const captureDevelopmentImageBackups = async (): Promise<DevelopmentImageBackup[]> => {
-		const services = await getComposeServices(configDir);
-		const backups = await Promise.all(
-			services
-				.filter((service) => (service.Service === "web" || service.Service === "worker") && service.ID && service.Image)
-				.map(async (service) => {
-					if ((service.Image as string).includes("@") || (service.Image as string).startsWith("sha256:")) {
-						throw new Error(`Cannot preserve development image reference ${service.Image}`);
-					}
-					const imageId = (await runDockerCapture(["inspect", "--format", "{{.Image}}", service.ID as string])).trim();
-					if (!imageId) throw new Error(`Cannot resolve the current ${service.Service} image ID`);
-					return {
-						service: service.Service,
-						imageId,
-						originalReference: service.Image as string,
-						backupReference: `elmo-upgrade-backup:${service.Service}-${crypto.randomUUID()}`,
-					};
-				}),
+		const services = developmentElmoBuildServiceNames(previousConfig.compose.contents);
+		const images = await Promise.all(
+			services.map(async (service) => ({
+				service,
+				reference: parseComposeImageReference(
+					service,
+					await runDockerComposeCapture(configDir, ["config", "--images", service]),
+				),
+			})),
 		);
-		for (const service of runningServices) {
-			if (!backups.some((backup) => backup.service === service)) {
-				throw new Error(`Cannot preserve the current ${service} image for development rollback`);
-			}
-		}
-		return backups;
+		const currentContainers = await getComposeServices(configDir);
+		return Promise.all(
+			images.map(async ({ service, reference }) => {
+				if (reference.includes("@") || reference.startsWith("sha256:")) {
+					throw new Error(`Cannot preserve development image reference ${reference}`);
+				}
+				let currentImageId: string;
+				try {
+					currentImageId = await resolveDevelopmentBackupImageId({
+						service,
+						configuredReference: reference,
+						containers: currentContainers,
+						capture: runDockerCapture,
+					});
+				} catch (error) {
+					throw new Error(
+						`Cannot preserve the current ${service} image; build the current deployment before upgrading`,
+						{ cause: error },
+					);
+				}
+				return {
+					service,
+					imageId: currentImageId,
+					originalReference: reference,
+					backupReference: `elmo-upgrade-backup:${service}-${crypto.randomUUID()}`,
+				};
+			}),
+		);
 	};
 	const restoreDevelopmentImages = async (): Promise<void> => {
 		for (const backup of recoveryState?.developmentImages ?? []) {
@@ -1233,10 +1770,106 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 			),
 		);
 	};
+	const recreateApplicationContainersWithoutStarting = async (
+		images: readonly Pick<RollbackRuntimeImage, "service" | "imageId">[],
+	): Promise<void> => {
+		if (images.length === 0) return;
+		await runDockerCompose(configDir, [
+			"up",
+			"--no-start",
+			"--no-deps",
+			"--pull",
+			"never",
+			"--no-build",
+			"--force-recreate",
+			...applicationStartupOrder(images.map((image) => image.service)),
+		]);
+		await assertComposeServiceImageIds({
+			images,
+			containers: await getComposeServices(configDir),
+			capture: runDockerCapture,
+		});
+	};
+	const targetApplicationImages = (): Pick<RollbackRuntimeImage, "service" | "imageId">[] => {
+		if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+		const targetImageIds = preparedTargetImageIds;
+		return existingApplicationServices.map((service) => ({
+			service,
+			imageId: targetImageIds[service],
+		}));
+	};
+	const drainCurrentlyLiveApplicationContainers = async (): Promise<void> => {
+		const currentContainers = await getComposeServices(configDir);
+		const liveApplications = runningApplicationServiceNames(runningComposeServiceNames(currentContainers));
+		if (liveApplications.length === 0) return;
+		log.warn("Draining application containers before changing the cutover runtime...");
+		await runDockerCompose(configDir, ["stop", "--timeout", "3900", ...liveApplications]);
+		assertServicesQuiescent(await getComposeServices(configDir), liveApplications);
+	};
+	const removePreviousCutoverContainers = async (): Promise<void> => {
+		if (runningServices.length > 0 && !recoveryState?.applicationServicesQuiesced) {
+			throw new Error("Application containers were not durably recorded as quiescent before removal");
+		}
+		await drainCurrentlyLiveApplicationContainers();
+		const currentContainers = await getComposeServices(configDir);
+		const activeBaseMigrator = currentContainers.find(
+			(service) =>
+				service.Service === "db-migrate" &&
+				(runningComposeServiceNames([service]).length > 0 || service.State.trim().toLowerCase().startsWith("created")),
+		);
+		if (activeBaseMigrator) {
+			throw new Error(`Base database migrator remained ${activeBaseMigrator.State} at the cutover boundary`);
+		}
+		const servicesToRemove = [
+			...new Set(
+				currentContainers
+					.map((service) => service.Service)
+					.filter((service) => service === "web" || service === "worker" || service === "db-migrate"),
+			),
+		];
+		if (servicesToRemove.length > 0) {
+			await runDockerCompose(configDir, ["rm", "--force", ...servicesToRemove]);
+		}
+		const remaining = (await getComposeServices(configDir)).filter(
+			(service) => service.Service === "web" || service.Service === "worker" || service.Service === "db-migrate",
+		);
+		if (remaining.length > 0) {
+			throw new Error("Application or base migrator containers remain after the maintenance removal fence");
+		}
+		await markRecoveryPhase(recoveryState?.phase === "rolling-back" ? "rolling-back" : "applying-release", {
+			cutoverStarted: true,
+			applicationContainersRemoved: true,
+		});
+	};
+	const rollbackImagesCoverExistingServices =
+		rollbackImages !== undefined &&
+		existingApplicationServices.every((service) => rollbackImages.some((image) => image.service === service));
+	const targetRecoveryFenceRequired = (): boolean =>
+		requiresTargetRecoveryFence({
+			crossesSchemaBoundary,
+			databaseBoundaryMayHaveAdvanced,
+			rollbackSchemaCompatibility,
+			rollbackImageIdsAvailable: rollbackImagesCoverExistingServices,
+		});
+	const completeUpgrade = async (allowMissingCutoverLock: boolean): Promise<void> => {
+		await completeDeploymentUpgrade({
+			releaseCutoverLock: async () => {
+				if (acquiredSourceRuntimeFences.size > 0) await assertAcquiredSourceRuntimeFences();
+				await releaseSourceRuntimeFences(allowMissingCutoverLock);
+				if (cutoverLockAcquired) await assertDatabaseCutoverLock();
+				await releaseDatabaseCutoverLockAfterCompletion(allowMissingCutoverLock);
+			},
+			stopTemporaryDependencies: stopTemporaryDatabaseDependencies,
+			removeRecoveryState: () => removeUpgradeRecoveryState(configDir),
+			removeImageBackups: removeDevelopmentImageBackups,
+		});
+	};
 	try {
 		await executeDeploymentUpgrade({
 			wasRunning,
 			requiresMaintenance,
+			assertCanContinue: assertUpgradeNotInterrupted,
+			cutoverAlreadyStarted: interruptedUpgrade?.cutoverStarted ?? false,
 			runConfigMigrations: async () => {
 				await runMigrations(plan, ctx);
 				await reconcileCurrentConfig(ctx);
@@ -1248,14 +1881,24 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 					const now = new Date().toISOString();
 					recoveryState = {
 						formatVersion: 1,
+						deploymentId,
+						databaseFingerprint,
 						targetVersion: cliVersion,
 						detectedVersion,
 						fromVersion,
 						requiresMaintenance,
 						isDevelopment: isDev,
+						dockerEngine,
 						previousRunningServices: runningServices,
 						anyComposeServiceWasRunning,
+						rollbackSchemaCompatibility,
 						rollbackConfig: previousConfig,
+						rollbackImages,
+						legacySingleDeploymentAcknowledged,
+						cutoverStarted: false,
+						databaseBoundaryMayHaveAdvanced: false,
+						applicationServicesQuiesced: false,
+						applicationContainersRemoved: false,
 						phase: "config-checkpointed",
 						createdAt: now,
 						updatedAt: now,
@@ -1265,6 +1908,7 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 			},
 			prepareRelease: async () => {
 				await markRecoveryPhase("preparing-release");
+				if (!isDev) preparedImageRelease = planImageRelease(previousConfig.compose.contents, cliVersion);
 				if (isDev) {
 					let developmentImages = recoveryState?.developmentImages;
 					if (!developmentImages) {
@@ -1278,65 +1922,352 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 					for (const backup of developmentImages) {
 						await runDocker(["image", "tag", backup.imageId, backup.backupReference]);
 					}
-					log.step("Building target web and worker images while the current services stay online...");
-					await runDockerCompose(configDir, ["build", "web", "worker"]);
+				}
+				if (recoveryState?.preparedTargetImageIds) {
+					const stored = await requireSchemaCompatibleImages({
+						images: recoveryState.preparedTargetImageIds,
+						expectedReleaseVersion: cliVersion,
+						expectedRuntimeFenceGeneration: CLOUD_SCHEMA_COMPATIBILITY,
+						capture: runDockerCapture,
+					});
+					await checkpointPreparedTargetImages(stored);
+					let targetReferences: Partial<Record<keyof PreparedTargetImageIds, string>>;
+					if (isDev) {
+						targetReferences = {
+							web: parseComposeImageReference(
+								"web",
+								await runDockerComposeCapture(configDir, ["config", "--images", "web"]),
+							),
+							worker: parseComposeImageReference(
+								"worker",
+								await runDockerComposeCapture(configDir, ["config", "--images", "worker"]),
+							),
+							...(developmentElmoBuildServiceNames(previousConfig.compose.contents).includes("db-migrate")
+								? {
+										dbMigrate: parseComposeImageReference(
+											"db-migrate",
+											await runDockerComposeCapture(configDir, ["config", "--images", "db-migrate"]),
+										),
+									}
+								: {}),
+						};
+					} else {
+						if (!preparedImageRelease) throw new Error("Target image release was not planned");
+						targetReferences = preparedImageRelease.images;
+					}
+					for (const service of ["dbMigrate", "web", "worker"] as const) {
+						const reference = targetReferences?.[service];
+						if (reference) await runDocker(["image", "tag", stored[service], reference]);
+					}
+					await verifyPreparedDatabaseIdentity();
+					await markRecoveryPhase("release-prepared");
+					return;
+				}
+				if (isDev) {
+					log.step("Building target web, worker, and migrator images while the current services stay online...");
+					const applicationBuildServices = developmentElmoBuildServiceNames(previousConfig.compose.contents);
+					await runDockerCompose(configDir, [
+						"build",
+						"--build-arg",
+						`ELMO_RELEASE_VERSION=${cliVersion}`,
+						...applicationBuildServices,
+					]);
+					const migrationImage = applicationBuildServices.includes("db-migrate")
+						? parseComposeImageReference(
+								"db-migrate",
+								await runDockerComposeCapture(configDir, ["config", "--images", "db-migrate"]),
+							)
+						: parseComposeImageReference(
+								UPGRADE_MIGRATOR_SERVICE_NAME,
+								await prepareTargetDevelopmentMigrationImage({
+									configDir,
+									version: cliVersion,
+									captureCompose: (args) => runDockerComposeCapture(configDir, args),
+									runCompose: (args) => runDockerCompose(configDir, args),
+								}),
+							);
+					await checkpointPreparedTargetImages(
+						await requireSchemaCompatibleImages({
+							images: {
+								dbMigrate: migrationImage,
+								web: parseComposeImageReference(
+									"web",
+									await runDockerComposeCapture(configDir, ["config", "--images", "web"]),
+								),
+								worker: parseComposeImageReference(
+									"worker",
+									await runDockerComposeCapture(configDir, ["config", "--images", "worker"]),
+								),
+							},
+							expectedReleaseVersion: cliVersion,
+							expectedRuntimeFenceGeneration: CLOUD_SCHEMA_COMPATIBILITY,
+							capture: runDockerCapture,
+						}),
+					);
 				} else {
-					const images = getTargetElmoImages(previousConfig.compose.contents, cliVersion);
+					if (!preparedImageRelease) throw new Error("Target image release was not planned");
+					const images = Object.values(preparedImageRelease.images);
 					log.step(`Pulling ${images.length} target image${images.length === 1 ? "" : "s"} before cutover...`);
 					await Promise.all(images.map((image) => runDocker(["pull", image])));
+					await checkpointPreparedTargetImages(
+						await requireSchemaCompatibleImages({
+							images: preparedImageRelease.images,
+							expectedReleaseVersion: cliVersion,
+							expectedRuntimeFenceGeneration: CLOUD_SCHEMA_COMPATIBILITY,
+							capture: runDockerCapture,
+						}),
+					);
 				}
+				await verifyPreparedDatabaseIdentity();
 				await markRecoveryPhase("release-prepared");
 			},
+			acquireCutoverLock: async () => {
+				if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+				if (!recoveryState) throw new Error("Upgrade recovery checkpoint was not created");
+				if (!cutoverLockIdentity) {
+					cutoverLockIdentity = await createUpgradeCutoverLockIdentity(configDir);
+					recoveryState = await writeUpgradeRecoveryState(configDir, {
+						...recoveryState,
+						cutoverLock: cutoverLockIdentity,
+					});
+				}
+				log.step("Acquiring the database deployment cutover lock...");
+				await acquireDatabaseCutoverLock({
+					configDir,
+					...requireCutoverLockInput(),
+					capture: runDockerCapture,
+					run: runDocker,
+					runCompose: (args) => runDockerCompose(configDir, args),
+				});
+				cutoverLockAcquired = true;
+				await assertDatabaseCutoverLock();
+			},
 			runDatabaseMigration: async () => {
-				await markRecoveryPhase("migrating-database");
+				await ensureSourceRuntimeFences();
+				await assertDatabaseFences();
+				if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
+				const migrationImageId = preparedTargetImageIds.dbMigrate;
+				if (crossesSchemaBoundary) {
+					const boundaryContainers = (await getComposeServices(configDir)).filter(
+						(service) => service.Service === "web" || service.Service === "worker" || service.Service === "db-migrate",
+					);
+					if (boundaryContainers.length > 0) {
+						throw new Error("Refusing schema migration while application or base migrator containers still exist");
+					}
+				}
+				await markRecoveryPhase("migrating-database", {
+					databaseBoundaryMayHaveAdvanced: crossesSchemaBoundary,
+				});
+				if (crossesSchemaBoundary) databaseBoundaryMayHaveAdvanced = true;
 				log.step("Applying database migrations...");
 				await runTargetDatabaseMigration({
 					configDir,
 					dev: isDev,
 					version: cliVersion,
+					migrationImage: migrationImageId,
 					wasRunning: anyComposeServiceWasRunning,
-					imagePrepared: !isDev,
+					preserveDependencies: true,
+					imagePrepared: true,
+					recoverExistingMigration: (identity) =>
+						recoveredMigratorBeforeReplay
+							? Promise.resolve(true)
+							: recoverExistingUpgradeMigrator({
+									identity,
+									expectedImageId: migrationImageId,
+									targetVersion: cliVersion,
+									capture: runDockerCapture,
+									run: runDocker,
+								}),
 					runCompose: (args) => runDockerCompose(configDir, args),
 				});
+				if (crossesSchemaBoundary) {
+					await setRuntimeGeneration(CLOUD_SCHEMA_COMPATIBILITY, "pre-0020");
+				}
+				await assertDatabaseFences();
+				if (requiresMaintenance) {
+					await recreateApplicationContainersWithoutStarting(targetApplicationImages());
+				}
 				await markRecoveryPhase("database-migrated");
 			},
 			stopServices: async () => {
-				await markRecoveryPhase("stopping-services");
-				log.step(`Stopping ${runningServices.join(" and ")} with a 45-second grace period...`);
-				await runDockerCompose(configDir, ["stop", "--timeout", "45", ...runningServices]);
-				await markRecoveryPhase("services-stopped");
+				await assertDatabaseCutoverLock();
+				await markRecoveryPhase("stopping-services", {
+					cutoverStarted: true,
+					databaseBoundaryMayHaveAdvanced: crossesSchemaBoundary,
+				});
+				if (crossesSchemaBoundary) databaseBoundaryMayHaveAdvanced = true;
+				if (recoveryState?.applicationServicesQuiesced) {
+					if (recoveryState.applicationContainersRemoved) {
+						if (legacyLocalExternalException) await waitForLegacyRuntimeQuiescence();
+						await ensureSourceRuntimeFences();
+						await markRecoveryPhase("services-stopped");
+						return;
+					}
+					const remainingContainers = await getComposeServices(configDir);
+					const remainingServices = runningServices.filter((required) =>
+						remainingContainers.some((service) => service.Service === required),
+					);
+					if (remainingServices.length > 0) {
+						assertServicesQuiescent(remainingContainers, remainingServices);
+					}
+					if (legacyLocalExternalException) await waitForLegacyRuntimeQuiescence();
+					await ensureSourceRuntimeFences();
+					await markRecoveryPhase("services-stopped");
+					return;
+				}
+				log.step(`Stopping ${runningServices.join(" and ")}; the worker may drain active jobs for up to one hour...`);
+				await runDockerCompose(
+					configDir,
+					legacyLocalExternalException
+						? ["stop", "--timeout", "3900"]
+						: ["stop", "--timeout", "3900", ...runningServices],
+				);
+				assertServicesQuiescent(await getComposeServices(configDir), runningServices);
+				await assertDatabaseCutoverLock();
+				await markRecoveryPhase("services-stopped", { applicationServicesQuiesced: true });
+				if (legacyLocalExternalException) await waitForLegacyRuntimeQuiescence();
+				await ensureSourceRuntimeFences();
 			},
 			applyRelease: async () => {
-				await markRecoveryPhase("applying-release");
-				await applyDeploymentRelease(configDir, previousConfig, cliVersion);
+				await ensureSourceRuntimeFences();
+				await assertDatabaseFences();
+				await markRecoveryPhase("applying-release", {
+					cutoverStarted: true,
+					databaseBoundaryMayHaveAdvanced: crossesSchemaBoundary,
+				});
+				if (crossesSchemaBoundary) databaseBoundaryMayHaveAdvanced = true;
+				if (!isDev && !preparedImageRelease) throw new Error("Target image release was not prepared");
+				await removePreviousCutoverContainers();
+				await applyDeploymentRelease(
+					configDir,
+					previousConfig,
+					cliVersion,
+					preparedImageRelease?.composeContents ?? previousConfig.compose.contents,
+				);
+				if (!requiresMaintenance) {
+					await recreateApplicationContainersWithoutStarting(targetApplicationImages());
+				}
+				await assertDatabaseFences();
 				await markRecoveryPhase("release-applied");
 				log.success(`Pinned config to ${cliVersion}.`);
 			},
 			startServices: async () => {
+				await assertDatabaseFences();
 				await markRecoveryPhase("starting-services");
 				log.step("Starting services...");
-				await startServicesAndWait(configDir, runningServices);
+				await startServicesAndWait(configDir, runningServices, {
+					preparedImages: true,
+					noDependencies: true,
+					useExistingContainers: true,
+				});
+				await assertDatabaseFences();
 				await markRecoveryPhase("services-started");
 			},
 			verifyServices: async () => {
+				await assertDatabaseFences();
+				if (!preparedTargetImageIds) throw new Error("Target image identities were not checkpointed");
 				await markRecoveryPhase("verifying-services");
 				await assertServicesReady(configDir, runningServices);
+				const targetCompatibility = await attestRollbackSchemaCompatibility({
+					servicesToRestart: runningServices,
+					containers: await getComposeServices(configDir),
+					expectedReleaseVersion: cliVersion,
+					expectedRuntimeFenceGeneration: CLOUD_SCHEMA_COMPATIBILITY,
+					expectedImageIds: {
+						web: preparedTargetImageIds.web,
+						worker: preparedTargetImageIds.worker,
+					},
+					capture: runDockerCapture,
+				});
+				if (targetCompatibility !== CLOUD_SCHEMA_COMPATIBILITY) {
+					throw new Error(`Running target services do not attest schema compatibility ${CLOUD_SCHEMA_COMPATIBILITY}`);
+				}
+				await assertDatabaseFences();
 			},
 			rollbackRelease: async ({ restartServices }) => {
+				if (cutoverLockAcquired) await assertDatabaseCutoverLock();
+				if (acquiredSourceRuntimeFences.size > 0) await assertAcquiredSourceRuntimeFences();
+				if (targetRecoveryFenceRequired()) {
+					if (!shutdownSignal) {
+						await drainCurrentlyLiveApplicationContainers().catch(() => undefined);
+					}
+					throw new TargetRecoveryFenceError(
+						`Database schema ${CLOUD_SCHEMA_COMPATIBILITY} may be applied; the previous runtime lacks the required compatibility attestation, so it was not restored. Resume the target release or use the rehearsed compatibility image.`,
+					);
+				}
+				assertUpgradeNotInterrupted();
 				await markRecoveryPhase("rolling-back").catch(() => undefined);
+				if (recoveryState?.cutoverStarted && !cutoverLockAcquired) {
+					throw new TargetRecoveryFenceError(
+						"The database cutover lock could not be recovered, so the interrupted release was not rolled back.",
+					);
+				}
+				if (recoveryState?.cutoverStarted && !rollbackImagesCoverExistingServices) {
+					throw new TargetRecoveryFenceError(
+						"Exact pre-upgrade application images were not checkpointed, so the previous runtime was not recreated.",
+					);
+				}
+				if (recoveryState?.cutoverStarted && rollbackImages) {
+					await assertDatabaseFences();
+					await restoreRollbackRuntimeImages({
+						images: rollbackImages,
+						capture: runDockerCapture,
+						run: runDocker,
+					});
+					await drainCurrentlyLiveApplicationContainers();
+					await removePreviousCutoverContainers();
+				}
+				if (crossesSchemaBoundary && databaseBoundaryMayHaveAdvanced) {
+					await ensureExclusiveRuntimeFence(CLOUD_SCHEMA_COMPATIBILITY);
+					await setRuntimeGeneration("pre-0020", CLOUD_SCHEMA_COMPATIBILITY, true);
+				}
+				if (cutoverLockAcquired) await assertDatabaseCutoverLock();
+				if (acquiredSourceRuntimeFences.size > 0) await assertAcquiredSourceRuntimeFences();
 				await restoreDeploymentConfig(configDir, previousConfig);
 				if (isDev) await restoreDevelopmentImages();
-				if (restartServices) {
-					log.warn("Target cutover failed; restarting the previous release...");
-					await startServicesAndWait(configDir, runningServices, { forceRecreate: isDev });
-					await assertServicesReady(configDir, runningServices);
+				if (recoveryState?.cutoverStarted && rollbackImages) {
+					await restoreRollbackRuntimeImages({
+						images: rollbackImages,
+						capture: runDockerCapture,
+						run: runDocker,
+					});
+					await recreateApplicationContainersWithoutStarting(rollbackImages);
 				}
-				await removeDevelopmentImageBackups();
-				await removeUpgradeRecoveryState(configDir);
+				if (restartServices) {
+					if (acquiredSourceRuntimeFences.size > 0) await releaseSourceRuntimeFences();
+					else if (sourceRuntimeFenceIdentities.length > 0) await releaseSourceRuntimeFences(true);
+					if (cutoverLockAcquired) await assertDatabaseCutoverLock();
+					log.warn("Target cutover failed; restarting the previous release...");
+					await startServicesAndWait(configDir, runningServices, {
+						preparedImages: true,
+						noDependencies: true,
+						useExistingContainers: true,
+					});
+					await assertServicesReady(configDir, runningServices);
+					if (crossesSchemaBoundary) {
+						const expectedRollbackImageIds = Object.fromEntries(
+							(rollbackImages ?? []).map((image) => [image.service, image.imageId]),
+						);
+						const rollbackAttestation = await attestRollbackSchemaCompatibility({
+							servicesToRestart: runningServices,
+							containers: await getComposeServices(configDir),
+							configuredImages: Object.fromEntries(
+								(rollbackImages ?? []).map((image) => [image.service, image.reference]),
+							),
+							expectedImageIds: expectedRollbackImageIds,
+							capture: runDockerCapture,
+						});
+						if (rollbackAttestation !== CLOUD_SCHEMA_COMPATIBILITY) {
+							throw new TargetRecoveryFenceError(
+								"The recreated rollback runtime did not re-attest schema compatibility; stop it and resume the target release.",
+							);
+						}
+					}
+				}
+				await completeUpgrade(true);
 			},
 		});
-		await removeDevelopmentImageBackups();
-		await removeUpgradeRecoveryState(configDir);
+		await completeUpgrade(false);
 	} catch (error) {
 		if (error instanceof DeploymentUpgradeError) {
 			const label = error.phase === "database-migration" ? "Database migration" : "Upgrade";
@@ -1348,15 +2279,32 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 				log.error(
 					`Automatic rollback also failed: ${error.rollbackCause instanceof Error ? error.rollbackCause.message : String(error.rollbackCause)}`,
 				);
-				log.info(
-					"Keep the maintenance window open and restore the saved deployment config before restarting services.",
-				);
-				log.info(`Recovery state remains at ${recoveryFilePath(configDir)}.`);
+				if (
+					requiresHardRecoveryGuidance({
+						crossesSchemaBoundary,
+						databaseBoundaryMayHaveAdvanced,
+						targetRecoveryFenceRequired: targetRecoveryFenceRequired(),
+						rollbackCause: error.rollbackCause,
+					})
+				) {
+					log.info(
+						"Do not restore or start the old config. Keep the maintenance window open; resume the target release with this CLI version or deploy the rehearsed 0020 compatibility images.",
+					);
+				} else {
+					log.info(
+						"Keep the maintenance window open and restore the saved deployment config before restarting services.",
+					);
+				}
+				log.info(`Recovery state remains at ${await recoveryFilePath(configDir)}.`);
 			}
 		} else {
 			log.error(`Upgrade failed: ${error instanceof Error ? error.message : String(error)}`);
+			if (await readUpgradeRecoveryState(configDir).catch(() => null)) {
+				log.info(`Recovery state remains at ${await recoveryFilePath(configDir)}.`);
+			}
 		}
-		process.exit(1);
+		if (!process.exitCode) process.exitCode = 1;
+		return;
 	}
 
 	if (!wasRunning) {
@@ -1372,10 +2320,6 @@ async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, con
 	});
 
 	p.outro(pc.green(`Upgraded to ${cliVersion}.`));
-}
-
-async function getRunningApplicationServices(configDir: string): Promise<string[]> {
-	return runningApplicationServiceNames(await getRunningComposeServices(configDir));
 }
 
 async function getRunningComposeServices(configDir: string): Promise<string[]> {
@@ -1415,6 +2359,60 @@ function buildMigrationContext(configDir: string): MigrationContext {
 	};
 }
 
+async function ensureUpgradeDatabaseConnectionContract(configDir: string): Promise<void> {
+	const envPath = path.join(configDir, ".env");
+	const env = parseDotenv(await fs.readFile(envPath, "utf8"));
+	if (env.DATABASE_URL_UNPOOLED?.trim()) {
+		assertSessionAffineDatabaseUrl(env.DATABASE_URL_UNPOOLED);
+		return;
+	}
+
+	const managedPostgres = await isCliManagedLocalPostgres(configDir);
+	if (!managedPostgres || !env.DATABASE_URL) {
+		throw new Error(
+			"DATABASE_URL_UNPOOLED is required before upgrading an external or white-label deployment. Configure the provider's direct, session-affine PostgreSQL endpoint; do not use a transaction pooler.",
+		);
+	}
+
+	assertSessionAffineDatabaseUrl(env.DATABASE_URL, "DATABASE_URL");
+	await setEnvFileValue(envPath, "DATABASE_URL_UNPOOLED", env.DATABASE_URL);
+	log.info("Added DATABASE_URL_UNPOOLED for the CLI-managed local PostgreSQL service.");
+}
+
+async function isCliManagedLocalPostgres(configDir: string): Promise<boolean> {
+	const env = parseDotenv(await fs.readFile(path.join(configDir, ".env"), "utf8"));
+	const composeDocument: unknown = parseYaml(await fs.readFile(path.join(configDir, "elmo.yaml"), "utf8"), {
+		merge: true,
+	});
+	const services =
+		typeof composeDocument === "object" && composeDocument !== null && "services" in composeDocument
+			? composeDocument.services
+			: undefined;
+	const postgresService =
+		typeof services === "object" && services !== null && "postgres" in services ? services.postgres : undefined;
+	return (
+		env.DEPLOYMENT_MODE === "local" &&
+		isCliManagedLocalPostgresDatabaseUrl(env.DATABASE_URL) &&
+		typeof postgresService === "object" &&
+		postgresService !== null &&
+		"image" in postgresService &&
+		postgresService.image === "postgres:16-alpine" &&
+		!("build" in postgresService) &&
+		!("entrypoint" in postgresService) &&
+		!("command" in postgresService)
+	);
+}
+
+async function ensureUpgradeDeploymentId(configDir: string): Promise<string> {
+	const envPath = path.join(configDir, ".env");
+	const existing = parseDotenv(await fs.readFile(envPath, "utf8")).DEPLOYMENT_ID?.trim();
+	if (existing) return existing;
+	const deploymentId = crypto.randomUUID();
+	await setEnvFileValue(envPath, "DEPLOYMENT_ID", deploymentId);
+	log.info("Added a stable DEPLOYMENT_ID for resumable upgrade safety.");
+	return deploymentId;
+}
+
 // ── Docker Helpers ───────────────────────────────────────────────────────────
 
 async function getComposeServices(configDir: string): Promise<ComposeService[]> {
@@ -1445,36 +2443,26 @@ async function getComposeServices(configDir: string): Promise<ComposeService[]> 
 	}
 }
 
-function isServiceReady(service: ComposeService): boolean {
-	if (service.Health) {
-		return service.Health === "healthy";
-	}
-	if (service.State?.startsWith("running")) {
-		return true;
-	}
-	return false;
-}
-
 async function assertServicesReady(configDir: string, requiredServices: readonly string[]): Promise<void> {
-	const services = await getComposeServices(configDir);
-	for (const required of requiredServices) {
-		const service = services.find((candidate) => candidate.Service === required);
-		if (!service || !isServiceReady(service)) {
-			throw new Error(`Required service ${required} is not healthy`);
-		}
-	}
+	assertApplicationServicesHealthy(await getComposeServices(configDir), requiredServices);
 }
 
 async function startServicesAndWait(
 	configDir: string,
 	services: readonly string[],
-	options: { forceRecreate?: boolean } = {},
+	options: {
+		noDependencies?: boolean;
+		preparedImages?: boolean;
+		useExistingContainers?: boolean;
+	} = {},
 ): Promise<void> {
 	for (const service of applicationStartupOrder(services)) {
 		await runDockerCompose(configDir, [
 			"up",
 			"-d",
-			...(options.forceRecreate ? ["--force-recreate"] : []),
+			...(options.noDependencies ? ["--no-deps"] : []),
+			...(options.preparedImages ? ["--pull", "never", "--no-build"] : []),
+			...(options.useExistingContainers ? ["--no-recreate"] : []),
 			"--wait",
 			"--wait-timeout",
 			"180",
@@ -1484,8 +2472,10 @@ async function startServicesAndWait(
 }
 
 function runDocker(args: string[]): Promise<void> {
+	assertUpgradeNotInterrupted();
 	return new Promise((resolve, reject) => {
 		const child = spawn("docker", args, { stdio: "inherit" });
+		trackDockerChild(child);
 		let settled = false;
 		child.on("error", (error) => {
 			if (settled) return;
@@ -1502,8 +2492,10 @@ function runDocker(args: string[]): Promise<void> {
 }
 
 function runDockerCapture(args: string[]): Promise<string> {
+	assertUpgradeNotInterrupted();
 	return new Promise((resolve, reject) => {
 		const child = spawn("docker", args);
+		trackDockerChild(child);
 		let stdout = "";
 		let stderr = "";
 		child.stdout.on("data", (chunk: Buffer) => {
@@ -1521,6 +2513,7 @@ function runDockerCapture(args: string[]): Promise<string> {
 }
 
 function runDockerCompose(configDir: string, args: string[]): Promise<void> {
+	assertUpgradeNotInterrupted();
 	return new Promise((resolve, reject) => {
 		const composeFile = path.join(configDir, "elmo.yaml");
 		const envFile = path.join(configDir, ".env");
@@ -1528,6 +2521,7 @@ function runDockerCompose(configDir: string, args: string[]): Promise<void> {
 		const child = spawn("docker", commandArgs, {
 			stdio: "inherit",
 		});
+		trackDockerChild(child);
 		let settled = false;
 		child.on("error", (error) => {
 			if (settled) return;
@@ -1547,11 +2541,13 @@ function runDockerCompose(configDir: string, args: string[]): Promise<void> {
 }
 
 function runDockerComposeCapture(configDir: string, args: string[]): Promise<string> {
+	assertUpgradeNotInterrupted();
 	return new Promise((resolve, reject) => {
 		const composeFile = path.join(configDir, "elmo.yaml");
 		const envFile = path.join(configDir, ".env");
 		const commandArgs = ["compose", "--env-file", envFile, "-f", composeFile, ...args];
 		const child = spawn("docker", commandArgs);
+		trackDockerChild(child);
 		let stdout = "";
 		let stderr = "";
 		let settled = false;
@@ -1578,13 +2574,16 @@ function runDockerComposeCapture(configDir: string, args: string[]): Promise<str
 	});
 }
 
-function assertDockerRunning(): void {
-	const result = spawnSync("docker", ["info"], {
-		stdio: "ignore",
-	});
-	if (result.status !== 0) {
+async function assertDockerRunning(): Promise<void> {
+	try {
+		await runDockerCapture(["info"]);
+	} catch (error) {
 		throw new Error("Docker does not appear to be running. Start Docker and try again.");
 	}
+}
+
+async function assertDockerComposeSupported(): Promise<void> {
+	assertSupportedDockerComposeVersion(await runDockerCapture(["compose", "version", "--short"]));
 }
 
 // ── Docker Dir Resolution ────────────────────────────────────────────────────
@@ -1602,31 +2601,10 @@ async function resolveDockerDirInteractive(cwd: string): Promise<string> {
 
 	const resolved = path.resolve(cwd, dir);
 	if (!(await fileExists(path.join(resolved, "Dockerfile")))) {
-		p.log.error(`Dockerfile not found in ${resolved}. Provide the directory that contains Dockerfile.`);
-		process.exit(1);
+		throw new Error(`Dockerfile not found in ${resolved}. Provide the directory that contains Dockerfile.`);
 	}
 
-	return resolved;
-}
-
-async function resolveDockerDirAuto(cwd: string, explicitDir?: string): Promise<string> {
-	if (explicitDir) {
-		const resolved = path.resolve(cwd, explicitDir);
-		if (!(await fileExists(path.join(resolved, "Dockerfile")))) {
-			throw new Error(`Dockerfile not found in ${resolved}`);
-		}
-		return resolved;
-	}
-
-	// Auto-detect
-	if (await fileExists(path.join(cwd, "docker", "Dockerfile"))) {
-		return path.resolve(cwd, "docker");
-	}
-	if (await fileExists(path.join(cwd, "Dockerfile"))) {
-		return cwd;
-	}
-
-	throw new Error("Could not find Dockerfile. Specify --docker-dir or set ELMO_DOCKER_DIR.");
+	return fs.realpath(resolved);
 }
 
 // ── Config Dir Resolution ────────────────────────────────────────────────────
@@ -1727,7 +2705,8 @@ async function maybeNotifyNewVersion(currentVersion: string): Promise<void> {
 // ── Entry Point ──────────────────────────────────────────────────────────────
 
 main().catch((error) => {
+	if (error instanceof CommandCancelledError) return;
 	const msg = error instanceof Error ? error.message : String(error);
 	console.error(`\n${pc.red("Error:")} ${msg}`);
-	process.exit(1);
+	if (!process.exitCode) process.exitCode = 1;
 });

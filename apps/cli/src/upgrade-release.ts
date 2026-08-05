@@ -1,8 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { parse } from "yaml";
 import { writeTextFileAtomically } from "./atomic-file.js";
-import { refreshHeaderVersion, repinImages } from "./compose-pin.js";
+import { enforceRuntimeDrainContract, planImageRelease, refreshHeaderVersion } from "./compose-pin.js";
 
 export interface ConfigFileSnapshot {
 	contents: string;
@@ -12,10 +11,6 @@ export interface ConfigFileSnapshot {
 export interface DeploymentConfigSnapshot {
 	compose: ConfigFileSnapshot;
 	env: ConfigFileSnapshot;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function readConfigFile(filePath: string): Promise<ConfigFileSnapshot> {
@@ -40,6 +35,7 @@ export async function applyDeploymentRelease(
 	configDir: string,
 	previous: DeploymentConfigSnapshot,
 	version: string,
+	targetComposeContents = previous.compose.contents,
 ): Promise<void> {
 	const currentEnv = await readConfigFile(path.join(configDir, ".env"));
 	await writeTextFileAtomically(
@@ -49,7 +45,7 @@ export async function applyDeploymentRelease(
 	);
 	await writeTextFileAtomically(
 		path.join(configDir, "elmo.yaml"),
-		refreshHeaderVersion(repinImages(previous.compose.contents, version), version),
+		refreshHeaderVersion(enforceRuntimeDrainContract(targetComposeContents), version),
 		previous.compose.mode,
 	);
 }
@@ -60,17 +56,5 @@ export async function restoreDeploymentConfig(configDir: string, previous: Deplo
 }
 
 export function getTargetElmoImages(composeContents: string, version: string): string[] {
-	const document: unknown = parse(composeContents);
-	if (!isRecord(document) || !isRecord(document.services)) {
-		throw new Error("Compose file does not define services");
-	}
-
-	const images = new Set<string>();
-	for (const service of Object.values(document.services)) {
-		if (!isRecord(service) || typeof service.image !== "string") continue;
-		const match = service.image.match(/^(elmohq\/elmo-[a-z-]+)(?::[^@\s]+|@\S+)?$/u);
-		if (match?.[1]) images.add(`${match[1]}:${version}`);
-	}
-	images.add(`elmohq/elmo-db-migrate:${version}`);
-	return [...images].sort();
+	return Object.values(planImageRelease(composeContents, version).images).sort();
 }

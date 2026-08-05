@@ -2,6 +2,7 @@ import { chmod, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { planImageRelease } from "./compose-pin.js";
 import {
 	applyDeploymentRelease,
 	captureDeploymentConfig,
@@ -37,8 +38,14 @@ describe("deployment release files", () => {
 		const snapshot = await captureDeploymentConfig(directory);
 		await writeFile(join(directory, ".env"), "# Rendered by elmo 0.2.18 on staged\nSECRET=old\nADDED=yes\n", "utf8");
 
-		await applyDeploymentRelease(directory, snapshot, "0.2.18");
+		await applyDeploymentRelease(
+			directory,
+			snapshot,
+			"0.2.18",
+			planImageRelease(snapshot.compose.contents, "0.2.18").composeContents,
+		);
 		expect(await readFile(join(directory, "elmo.yaml"), "utf8")).toContain("elmohq/elmo-web:0.2.18");
+		expect(await readFile(join(directory, "elmo.yaml"), "utf8")).toContain("stop_grace_period: 65m");
 		expect(await readFile(join(directory, ".env"), "utf8")).toContain("ADDED=yes");
 		expect((await stat(join(directory, "elmo.yaml"))).mode & 0o777).toBe(0o640);
 
@@ -62,6 +69,23 @@ services:
 			"elmohq/elmo-db-migrate:1.2.3",
 			"elmohq/elmo-web:1.2.3",
 			"elmohq/elmo-worker:1.2.3",
+		]);
+	});
+
+	it("maps private web, worker, and migrator repositories as one release", () => {
+		const compose = `
+services:
+  web:
+    image: registry.example/product-web:old
+  worker:
+    image: registry.example/product-worker:old
+  db-migrate:
+    image: registry.example/product-migrate:old
+`;
+		expect(getTargetElmoImages(compose, "1.2.3")).toEqual([
+			"registry.example/product-migrate:1.2.3",
+			"registry.example/product-web:1.2.3",
+			"registry.example/product-worker:1.2.3",
 		]);
 	});
 

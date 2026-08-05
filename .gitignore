@@ -71,6 +71,7 @@ prompt_runs.meta.json
 # docker
 elmo.yaml
 e2e/artifacts
+**/.elmo-upgrade-in-progress.*
 
 # retroactive cleanup
 # Anchored to the repo root: an unanchored `features/` also matches source

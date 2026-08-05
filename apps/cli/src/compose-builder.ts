@@ -106,12 +106,19 @@ function buildDbMigrateService(options: {
 			`    context: ${options.repoRoot}`,
 			`    dockerfile: ${options.dockerfilePath}`,
 			"    target: migrate",
+			"    args:",
+			`      ELMO_RELEASE_VERSION: ${options.version}`,
 		);
 	} else {
 		lines.push(`  image: elmohq/elmo-db-migrate:${options.version}`);
 	}
 
-	lines.push('  restart: "no"', "  environment:", `    DATABASE_URL: "\${DATABASE_URL:?DATABASE_URL is required}"`);
+	lines.push(
+		'  restart: "no"',
+		"  environment:",
+		`    DATABASE_URL: "\${DATABASE_URL:?DATABASE_URL is required}"`,
+		`    DATABASE_URL_UNPOOLED: "\${DATABASE_URL_UNPOOLED:?DATABASE_URL_UNPOOLED is required}"`,
+	);
 	if (options.postgresMode === "docker") {
 		lines.push("  depends_on:", "    postgres:", "      condition: service_healthy");
 	}
@@ -136,12 +143,20 @@ function buildWebService(options: {
 			"    target: web",
 			"    args:",
 			"      DEPLOYMENT_MODE: local",
+			`      ELMO_RELEASE_VERSION: ${options.version}`,
 		);
 	} else {
 		lines.push(`  image: elmohq/elmo-web:${options.version}`);
 	}
 
-	lines.push("  env_file:", "    - path: .env", "      required: true", "  ports:", `    - "${options.port}:3000"`);
+	lines.push(
+		"  env_file:",
+		"    - path: .env",
+		"      required: true",
+		"  stop_grace_period: 65m",
+		"  ports:",
+		`    - "${options.port}:3000"`,
+	);
 	appendDependencies(lines, options.dependsOn, options.dependencyConditions);
 	return lines.join("\n");
 }
@@ -163,12 +178,13 @@ function buildWorkerService(options: {
 			"    target: worker",
 			"    args:",
 			"      DEPLOYMENT_MODE: local",
+			`      ELMO_RELEASE_VERSION: ${options.version}`,
 		);
 	} else {
 		lines.push(`  image: elmohq/elmo-worker:${options.version}`);
 	}
 
-	lines.push("  env_file:", "    - path: .env", "      required: true", "  stop_grace_period: 45s");
+	lines.push("  env_file:", "    - path: .env", "      required: true", "  stop_grace_period: 65m");
 	appendDependencies(lines, options.dependsOn, options.dependencyConditions);
 	return lines.join("\n");
 }

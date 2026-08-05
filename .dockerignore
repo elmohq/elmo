@@ -42,8 +42,13 @@ build
 **/.env
 .env.*
 **/.env.*
+**/..env.*.tmp
 !.env.example
 !**/.env.example
+
+# CLI upgrade state must never enter a development build context
+**/*elmo-upgrade-state.json*
+**/.elmo-upgrade-*
 
 # Test files
 coverage
