@@ -9,25 +9,30 @@
  * and it will overwrite this file.
  */
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
-export const user = pgTable("user", {
-	id: text("id").primaryKey(),
-	name: text("name").notNull(),
-	email: text("email").notNull().unique(),
-	emailVerified: boolean("email_verified").default(false).notNull(),
-	image: text("image"),
-	createdAt: timestamp("created_at").defaultNow().notNull(),
-	updatedAt: timestamp("updated_at")
-		.defaultNow()
-		.$onUpdate(() => /* @__PURE__ */ new Date())
-		.notNull(),
-	role: text("role"),
-	banned: boolean("banned").default(false),
-	banReason: text("ban_reason"),
-	banExpires: timestamp("ban_expires"),
-	hasReportGeneratorAccess: boolean("has_report_generator_access").default(false),
-});
+export const user = pgTable(
+	"user",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		email: text("email").notNull().unique(),
+		emailVerified: boolean("email_verified").default(false).notNull(),
+		image: text("image"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at")
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull(),
+		role: text("role"),
+		banned: boolean("banned").default(false),
+		banReason: text("ban_reason"),
+		banExpires: timestamp("ban_expires"),
+		hasReportGeneratorAccess: boolean("has_report_generator_access").default(false),
+		stripeCustomerId: text("stripe_customer_id"),
+	},
+	(table) => [uniqueIndex("user_stripeCustomerId_uidx").on(table.stripeCustomerId)],
+);
 
 export const session = pgTable(
 	"session",
@@ -99,8 +104,40 @@ export const organization = pgTable(
 		logo: text("logo"),
 		createdAt: timestamp("created_at").notNull(),
 		metadata: text("metadata"),
+		stripeCustomerId: text("stripe_customer_id"),
 	},
-	(table) => [uniqueIndex("organization_slug_uidx").on(table.slug)],
+	(table) => [
+		uniqueIndex("organization_slug_uidx").on(table.slug),
+		uniqueIndex("organization_stripeCustomerId_uidx").on(table.stripeCustomerId),
+	],
+);
+
+export const subscription = pgTable(
+	"subscription",
+	{
+		id: text("id").primaryKey(),
+		plan: text("plan").notNull(),
+		referenceId: text("reference_id").notNull(),
+		stripeCustomerId: text("stripe_customer_id"),
+		stripeSubscriptionId: text("stripe_subscription_id"),
+		status: text("status").default("incomplete").notNull(),
+		periodStart: timestamp("period_start"),
+		periodEnd: timestamp("period_end"),
+		trialStart: timestamp("trial_start"),
+		trialEnd: timestamp("trial_end"),
+		cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+		cancelAt: timestamp("cancel_at"),
+		canceledAt: timestamp("canceled_at"),
+		endedAt: timestamp("ended_at"),
+		seats: integer("seats"),
+		billingInterval: text("billing_interval"),
+		stripeScheduleId: text("stripe_schedule_id"),
+	},
+	(table) => [
+		index("subscription_referenceId_idx").on(table.referenceId),
+		index("subscription_stripeCustomerId_idx").on(table.stripeCustomerId),
+		uniqueIndex("subscription_stripeSubscriptionId_uidx").on(table.stripeSubscriptionId),
+	],
 );
 
 export const member = pgTable(
@@ -116,7 +153,11 @@ export const member = pgTable(
 		role: text("role").default("member").notNull(),
 		createdAt: timestamp("created_at").notNull(),
 	},
-	(table) => [index("member_organizationId_idx").on(table.organizationId), index("member_userId_idx").on(table.userId)],
+	(table) => [
+		index("member_organizationId_idx").on(table.organizationId),
+		index("member_userId_idx").on(table.userId),
+		uniqueIndex("member_organizationId_userId_uidx").on(table.organizationId, table.userId),
+	],
 );
 
 export const invitation = pgTable(

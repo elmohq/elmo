@@ -1,7 +1,23 @@
-import { pgEnum, pgTable, uuid, text, timestamp, boolean, json, index, integer, smallint } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+	bigint,
+	boolean,
+	check,
+	index,
+	integer,
+	json,
+	jsonb,
+	pgEnum,
+	pgTable,
+	smallint,
+	text,
+	timestamp,
+	uniqueIndex,
+	uuid,
+} from "drizzle-orm/pg-core";
 // `organization` is referenced by the brands FK below; the re-export makes it
 // (and the rest of the auth schema) visible to `import * as schema` consumers.
-import { organization } from "./schema-auth";
+import { organization, user } from "./schema-auth";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
 // Source file is auto-generated; run `pnpm run generate:auth-schema` to refresh.
@@ -237,3 +253,495 @@ export const secrets = pgTable("secrets", {
 		.$onUpdate(() => new Date())
 		.notNull(),
 }).enableRLS();
+
+// ============================================================================
+// Cloud billing and tracking control plane
+// ============================================================================
+
+export const stripeWebhookStatusEnum = pgEnum("stripe_webhook_status", [
+	"pending",
+	"processing",
+	"processed",
+	"ignored",
+	"failed",
+]);
+
+export const billingSubscriptionItemTypeEnum = pgEnum("billing_subscription_item_type", [
+	"base_plan",
+	"premium_addon",
+	"custom",
+]);
+
+export const targetSelectionSourceEnum = pgEnum("target_selection_source", ["plan_default", "user", "operator"]);
+
+export const promptTargetAssignmentSourceEnum = pgEnum("prompt_target_assignment_source", [
+	"brand_selection",
+	"premium",
+	"custom",
+]);
+
+export const schedulerRolloutModeEnum = pgEnum("scheduler_rollout_mode", ["legacy", "shadow", "v2"]);
+
+export const trackingOccurrenceStatusEnum = pgEnum("tracking_occurrence_status", [
+	"pending",
+	"enqueued",
+	"running",
+	"succeeded",
+	"partial",
+	"failed",
+	"canceled",
+	"skipped",
+]);
+
+export const trackingTaskStatusEnum = pgEnum("tracking_task_status", [
+	"pending",
+	"enqueued",
+	"running",
+	"succeeded",
+	"failed",
+	"canceled",
+	"skipped",
+]);
+
+export const trackingAttemptStatusEnum = pgEnum("tracking_attempt_status", [
+	"reserved",
+	"started",
+	"succeeded",
+	"failed",
+	"canceled",
+]);
+
+export const trackingUsageClassEnum = pgEnum("tracking_usage_class", ["standard", "premium", "custom"]);
+
+/**
+ * Append-only revisions of a custom contract's entitlement overrides. The
+ * resolver chooses the greatest currently-effective revision, so a scheduled
+ * or revoked revision never destroys the contract that preceded it.
+ */
+export const organizationEntitlementOverrides = pgTable(
+	"organization_entitlement_overrides",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		revision: integer("revision").notNull(),
+		schemaVersion: integer("schema_version").notNull(),
+		entitlements: jsonb("entitlements").$type<Record<string, unknown>>().notNull(),
+		effectiveFrom: timestamp("effective_from", { withTimezone: true }).defaultNow().notNull(),
+		effectiveUntil: timestamp("effective_until", { withTimezone: true }),
+		revokedAt: timestamp("revoked_at", { withTimezone: true }),
+		reason: text("reason"),
+		createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("organization_entitlement_overrides_org_revision_uidx").on(table.organizationId, table.revision),
+		index("organization_entitlement_overrides_resolution_idx").on(
+			table.organizationId,
+			table.effectiveFrom,
+			table.revokedAt,
+		),
+		check("organization_entitlement_overrides_revision_check", sql`${table.revision} > 0`),
+		check("organization_entitlement_overrides_schema_version_check", sql`${table.schemaVersion} > 0`),
+		check(
+			"organization_entitlement_overrides_effective_window_check",
+			sql`${table.effectiveUntil} IS NULL OR ${table.effectiveUntil} > ${table.effectiveFrom}`,
+		),
+	],
+).enableRLS();
+
+/** Durable, idempotent inbox. Handlers claim rows instead of doing work inline. */
+export const stripeWebhookEvents = pgTable(
+	"stripe_webhook_events",
+	{
+		id: text("id").primaryKey().notNull(),
+		type: text("type").notNull(),
+		apiVersion: text("api_version"),
+		livemode: boolean("livemode").notNull(),
+		stripeCreatedAt: timestamp("stripe_created_at", { withTimezone: true }).notNull(),
+		payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+		status: stripeWebhookStatusEnum().default("pending").notNull(),
+		attemptCount: integer("attempt_count").default(0).notNull(),
+		nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+		processingStartedAt: timestamp("processing_started_at", { withTimezone: true }),
+		processedAt: timestamp("processed_at", { withTimezone: true }),
+		lastError: text("last_error"),
+		receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		index("stripe_webhook_events_claim_idx").on(table.status, table.nextAttemptAt, table.receivedAt),
+		index("stripe_webhook_events_type_created_idx").on(table.type, table.stripeCreatedAt),
+		check("stripe_webhook_events_attempt_count_check", sql`${table.attemptCount} >= 0`),
+	],
+).enableRLS();
+
+/**
+ * Current Stripe subscription projection for an organization. Webhook
+ * processing must retrieve the current Stripe subscription before replacing
+ * this row; source event metadata is retained to make stale delivery visible.
+ */
+export const organizationBillingSubscriptions = pgTable(
+	"organization_billing_subscriptions",
+	{
+		organizationId: text("organization_id")
+			.primaryKey()
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		stripeSubscriptionId: text("stripe_subscription_id").notNull(),
+		stripeCustomerId: text("stripe_customer_id").notNull(),
+		status: text("status").notNull(),
+		basePlanKey: text("base_plan_key"),
+		billingInterval: text("billing_interval"),
+		currency: text("currency"),
+		currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
+		currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+		cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+		cancelAt: timestamp("cancel_at", { withTimezone: true }),
+		canceledAt: timestamp("canceled_at", { withTimezone: true }),
+		endedAt: timestamp("ended_at", { withTimezone: true }),
+		sourceEventId: text("source_event_id").references(() => stripeWebhookEvents.id),
+		sourceEventCreatedAt: timestamp("source_event_created_at", { withTimezone: true }),
+		sourceSnapshot: jsonb("source_snapshot").$type<Record<string, unknown>>().notNull(),
+		syncedAt: timestamp("synced_at", { withTimezone: true }).defaultNow().notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("organization_billing_subscriptions_stripe_subscription_uidx").on(table.stripeSubscriptionId),
+		uniqueIndex("organization_billing_subscriptions_stripe_customer_uidx").on(table.stripeCustomerId),
+		index("organization_billing_subscriptions_status_idx").on(table.status),
+		index("organization_billing_subscriptions_period_end_idx").on(table.currentPeriodEnd),
+	],
+).enableRLS();
+
+/** Active and historical line items from the current subscription snapshot. */
+export const organizationBillingSubscriptionItems = pgTable(
+	"organization_billing_subscription_items",
+	{
+		stripeSubscriptionItemId: text("stripe_subscription_item_id").primaryKey().notNull(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organizationBillingSubscriptions.organizationId, { onDelete: "cascade" }),
+		stripePriceId: text("stripe_price_id").notNull(),
+		stripePriceLookupKey: text("stripe_price_lookup_key"),
+		type: billingSubscriptionItemTypeEnum().notNull(),
+		quantity: integer("quantity").default(1).notNull(),
+		active: boolean("active").default(true).notNull(),
+		sourceEventId: text("source_event_id").references(() => stripeWebhookEvents.id),
+		sourceEventCreatedAt: timestamp("source_event_created_at", { withTimezone: true }),
+		sourceSnapshot: jsonb("source_snapshot").$type<Record<string, unknown>>().notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		index("organization_billing_subscription_items_org_idx").on(table.organizationId),
+		uniqueIndex("organization_billing_subscription_items_active_base_uidx")
+			.on(table.organizationId)
+			.where(sql`${table.active} = true AND ${table.type} = 'base_plan'`),
+		uniqueIndex("organization_billing_subscription_items_active_premium_uidx")
+			.on(table.organizationId)
+			.where(sql`${table.active} = true AND ${table.type} = 'premium_addon'`),
+		check("organization_billing_subscription_items_quantity_check", sql`${table.quantity} > 0`),
+	],
+).enableRLS();
+
+export const brandTargetSelections = pgTable(
+	"brand_target_selections",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		targetKey: text("target_key").notNull(),
+		requestedCadenceMinutes: integer("requested_cadence_minutes"),
+		source: targetSelectionSourceEnum().default("user").notNull(),
+		enabled: boolean("enabled").default(true).notNull(),
+		createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("brand_target_selections_brand_target_uidx").on(table.brandId, table.targetKey),
+		index("brand_target_selections_brand_enabled_idx").on(table.brandId, table.enabled),
+		check(
+			"brand_target_selections_requested_cadence_check",
+			sql`${table.requestedCadenceMinutes} IS NULL OR ${table.requestedCadenceMinutes} > 0`,
+		),
+	],
+).enableRLS();
+
+export const promptTargetAssignments = pgTable(
+	"prompt_target_assignments",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		promptId: uuid("prompt_id")
+			.notNull()
+			.references(() => prompts.id, { onDelete: "cascade" }),
+		brandTargetSelectionId: uuid("brand_target_selection_id").references(() => brandTargetSelections.id, {
+			onDelete: "set null",
+		}),
+		targetKey: text("target_key").notNull(),
+		source: promptTargetAssignmentSourceEnum().notNull(),
+		enabled: boolean("enabled").default(true).notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("prompt_target_assignments_prompt_target_uidx").on(table.promptId, table.targetKey),
+		index("prompt_target_assignments_brand_enabled_idx").on(table.brandId, table.enabled),
+		index("prompt_target_assignments_selection_idx").on(table.brandTargetSelectionId),
+	],
+).enableRLS();
+
+/** Missing rows intentionally mean legacy scheduling. */
+export const brandSchedulerRollouts = pgTable(
+	"brand_scheduler_rollouts",
+	{
+		brandId: text("brand_id")
+			.primaryKey()
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		mode: schedulerRolloutModeEnum().default("legacy").notNull(),
+		generation: integer("generation").default(1).notNull(),
+		shadowStartedAt: timestamp("shadow_started_at", { withTimezone: true }),
+		cutoverAt: timestamp("cutover_at", { withTimezone: true }),
+		lastRolledBackAt: timestamp("last_rolled_back_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		index("brand_scheduler_rollouts_mode_idx").on(table.mode),
+		check("brand_scheduler_rollouts_generation_check", sql`${table.generation} > 0`),
+	],
+).enableRLS();
+
+export const trackingSchedules = pgTable(
+	"tracking_schedules",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		promptId: uuid("prompt_id")
+			.notNull()
+			.references(() => prompts.id, { onDelete: "cascade" }),
+		promptTargetAssignmentId: uuid("prompt_target_assignment_id")
+			.notNull()
+			.references(() => promptTargetAssignments.id, { onDelete: "cascade" }),
+		targetKey: text("target_key").notNull(),
+		cadenceMinutes: integer("cadence_minutes").notNull(),
+		samplesPerOccurrence: smallint("samples_per_occurrence").notNull(),
+		active: boolean("active").default(true).notNull(),
+		nextDueAt: timestamp("next_due_at", { withTimezone: true }),
+		generation: integer("generation").notNull(),
+		policyVersion: integer("policy_version").notNull(),
+		lastMaterializedAt: timestamp("last_materialized_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("tracking_schedules_prompt_target_uidx").on(table.promptId, table.targetKey),
+		uniqueIndex("tracking_schedules_assignment_uidx").on(table.promptTargetAssignmentId),
+		index("tracking_schedules_due_idx").on(table.active, table.nextDueAt),
+		index("tracking_schedules_brand_generation_idx").on(table.brandId, table.generation),
+		check("tracking_schedules_cadence_check", sql`${table.cadenceMinutes} > 0`),
+		check("tracking_schedules_samples_check", sql`${table.samplesPerOccurrence} > 0`),
+		check("tracking_schedules_generation_check", sql`${table.generation} > 0`),
+		check("tracking_schedules_policy_version_check", sql`${table.policyVersion} > 0`),
+	],
+).enableRLS();
+
+export const trackingOccurrences = pgTable(
+	"tracking_occurrences",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		scheduleId: uuid("schedule_id")
+			.notNull()
+			.references(() => trackingSchedules.id, { onDelete: "cascade" }),
+		dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+		generation: integer("generation").notNull(),
+		policyVersion: integer("policy_version").notNull(),
+		policySnapshot: jsonb("policy_snapshot").$type<Record<string, unknown>>().notNull(),
+		status: trackingOccurrenceStatusEnum().default("pending").notNull(),
+		expectedTaskCount: smallint("expected_task_count").notNull(),
+		materializedAt: timestamp("materialized_at", { withTimezone: true }).defaultNow().notNull(),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("tracking_occurrences_schedule_due_uidx").on(table.scheduleId, table.dueAt),
+		index("tracking_occurrences_status_due_idx").on(table.status, table.dueAt),
+		check("tracking_occurrences_generation_check", sql`${table.generation} > 0`),
+		check("tracking_occurrences_policy_version_check", sql`${table.policyVersion} > 0`),
+		check("tracking_occurrences_task_count_check", sql`${table.expectedTaskCount} > 0`),
+	],
+).enableRLS();
+
+/** pg-boss payloads contain only this stable task id. */
+export const trackingTasks = pgTable(
+	"tracking_tasks",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		occurrenceId: uuid("occurrence_id")
+			.notNull()
+			.references(() => trackingOccurrences.id, { onDelete: "cascade" }),
+		sampleIndex: smallint("sample_index").notNull(),
+		targetKey: text("target_key").notNull(),
+		status: trackingTaskStatusEnum().default("pending").notNull(),
+		queueName: text("queue_name"),
+		pgBossJobId: uuid("pg_boss_job_id"),
+		attemptCount: integer("attempt_count").default(0).notNull(),
+		availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
+		claimedAt: timestamp("claimed_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		lastError: text("last_error"),
+		promptRunId: uuid("prompt_run_id").references(() => promptRuns.id, { onDelete: "set null" }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("tracking_tasks_occurrence_sample_uidx").on(table.occurrenceId, table.sampleIndex),
+		uniqueIndex("tracking_tasks_pg_boss_job_uidx").on(table.pgBossJobId),
+		index("tracking_tasks_claim_idx").on(table.status, table.availableAt),
+		index("tracking_tasks_target_idx").on(table.targetKey),
+		check("tracking_tasks_sample_index_check", sql`${table.sampleIndex} >= 0`),
+		check("tracking_tasks_attempt_count_check", sql`${table.attemptCount} >= 0`),
+	],
+).enableRLS();
+
+/**
+ * One durable row per provider request attempt. Reservations are inserted before
+ * network I/O; failed paid requests remain countable and pre-dispatch cancels
+ * can release their reservation without deleting the audit record.
+ */
+export const trackingProviderAttempts = pgTable(
+	"tracking_provider_attempts",
+	{
+		id: uuid("id").defaultRandom().primaryKey().notNull(),
+		taskId: uuid("task_id")
+			.notNull()
+			.references(() => trackingTasks.id, { onDelete: "cascade" }),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		brandId: text("brand_id")
+			.notNull()
+			.references(() => brands.id, { onDelete: "cascade" }),
+		promptId: uuid("prompt_id")
+			.notNull()
+			.references(() => prompts.id, { onDelete: "cascade" }),
+		targetKey: text("target_key").notNull(),
+		usageClass: trackingUsageClassEnum("usage_class").notNull(),
+		attemptNumber: smallint("attempt_number").notNull(),
+		status: trackingAttemptStatusEnum().default("reserved").notNull(),
+		provider: text("provider").notNull(),
+		model: text("model").notNull(),
+		modelVersion: text("model_version"),
+		webSearchEnabled: boolean("web_search_enabled").notNull(),
+		usageUnits: integer("usage_units").default(1).notNull(),
+		countsTowardLimit: boolean("counts_toward_limit").default(true).notNull(),
+		quotaPeriodStart: timestamp("quota_period_start", { withTimezone: true }),
+		quotaPeriodEnd: timestamp("quota_period_end", { withTimezone: true }),
+		providerRequestId: text("provider_request_id"),
+		inputTokens: integer("input_tokens"),
+		outputTokens: integer("output_tokens"),
+		webSearchRequests: integer("web_search_requests"),
+		costMicrousd: bigint("cost_microusd", { mode: "number" }),
+		errorCode: text("error_code"),
+		errorMessage: text("error_message"),
+		promptRunId: uuid("prompt_run_id").references(() => promptRuns.id, { onDelete: "set null" }),
+		reservedAt: timestamp("reserved_at", { withTimezone: true }).defaultNow().notNull(),
+		startedAt: timestamp("started_at", { withTimezone: true }),
+		completedAt: timestamp("completed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull(),
+	},
+	(table) => [
+		uniqueIndex("tracking_provider_attempts_task_attempt_uidx").on(table.taskId, table.attemptNumber),
+		index("tracking_provider_attempts_org_quota_idx")
+			.on(table.organizationId, table.usageClass, table.quotaPeriodStart)
+			.where(sql`${table.countsTowardLimit} = true`),
+		index("tracking_provider_attempts_brand_created_idx").on(table.brandId, table.createdAt),
+		index("tracking_provider_attempts_prompt_created_idx").on(table.promptId, table.createdAt),
+		index("tracking_provider_attempts_provider_request_idx").on(table.provider, table.providerRequestId),
+		check("tracking_provider_attempts_attempt_number_check", sql`${table.attemptNumber} > 0`),
+		check("tracking_provider_attempts_usage_units_check", sql`${table.usageUnits} >= 0`),
+		check(
+			"tracking_provider_attempts_quota_window_check",
+			sql`${table.quotaPeriodEnd} IS NULL OR (${table.quotaPeriodStart} IS NOT NULL AND ${table.quotaPeriodEnd} > ${table.quotaPeriodStart})`,
+		),
+		check(
+			"tracking_provider_attempts_input_tokens_check",
+			sql`${table.inputTokens} IS NULL OR ${table.inputTokens} >= 0`,
+		),
+		check(
+			"tracking_provider_attempts_output_tokens_check",
+			sql`${table.outputTokens} IS NULL OR ${table.outputTokens} >= 0`,
+		),
+		check(
+			"tracking_provider_attempts_web_search_requests_check",
+			sql`${table.webSearchRequests} IS NULL OR ${table.webSearchRequests} >= 0`,
+		),
+		check("tracking_provider_attempts_cost_check", sql`${table.costMicrousd} IS NULL OR ${table.costMicrousd} >= 0`),
+	],
+).enableRLS();
+
+export type OrganizationEntitlementOverride = typeof organizationEntitlementOverrides.$inferSelect;
+export type NewOrganizationEntitlementOverride = typeof organizationEntitlementOverrides.$inferInsert;
+export type StripeWebhookEvent = typeof stripeWebhookEvents.$inferSelect;
+export type NewStripeWebhookEvent = typeof stripeWebhookEvents.$inferInsert;
+export type OrganizationBillingSubscription = typeof organizationBillingSubscriptions.$inferSelect;
+export type NewOrganizationBillingSubscription = typeof organizationBillingSubscriptions.$inferInsert;
+export type OrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferSelect;
+export type NewOrganizationBillingSubscriptionItem = typeof organizationBillingSubscriptionItems.$inferInsert;
+export type BrandTargetSelection = typeof brandTargetSelections.$inferSelect;
+export type NewBrandTargetSelection = typeof brandTargetSelections.$inferInsert;
+export type PromptTargetAssignment = typeof promptTargetAssignments.$inferSelect;
+export type NewPromptTargetAssignment = typeof promptTargetAssignments.$inferInsert;
+export type BrandSchedulerRollout = typeof brandSchedulerRollouts.$inferSelect;
+export type NewBrandSchedulerRollout = typeof brandSchedulerRollouts.$inferInsert;
+export type TrackingSchedule = typeof trackingSchedules.$inferSelect;
+export type NewTrackingSchedule = typeof trackingSchedules.$inferInsert;
+export type TrackingOccurrence = typeof trackingOccurrences.$inferSelect;
+export type NewTrackingOccurrence = typeof trackingOccurrences.$inferInsert;
+export type TrackingTask = typeof trackingTasks.$inferSelect;
+export type NewTrackingTask = typeof trackingTasks.$inferInsert;
+export type TrackingProviderAttempt = typeof trackingProviderAttempts.$inferSelect;
+export type NewTrackingProviderAttempt = typeof trackingProviderAttempts.$inferInsert;
