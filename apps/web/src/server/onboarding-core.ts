@@ -9,13 +9,14 @@
  */
 
 import type { DeploymentMode } from "@workspace/config/types";
-import { saveOrganizationPrompts } from "@workspace/lib/cloud/prompt-mutations";
+import { withOrganizationEntitlementTransaction } from "@workspace/lib/cloud/capacity";
+import { saveOrganizationPromptsInTransaction } from "@workspace/lib/cloud/prompt-mutations";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { db } from "@workspace/lib/db/db";
 import { ensureOrganization } from "@workspace/lib/db/provisioning";
 import { brands, competitors, prompts } from "@workspace/lib/db/schema";
 import { computeSystemTags, sanitizeUserTags } from "@workspace/lib/tag-utils";
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { dedupeAliases, dedupeDomains } from "@/lib/domain-categories";
 import { createMultiplePromptJobSchedulers } from "@/lib/job-scheduler";
@@ -56,6 +57,8 @@ const promptInputSchema = z.object({
 
 type CompetitorInput = z.infer<typeof competitorInputSchema>;
 type PromptInput = z.infer<typeof promptInputSchema>;
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbConnection = typeof db | DbTransaction;
 
 /**
  * POST /api/v1/brands body.
@@ -213,12 +216,12 @@ async function insertCompetitors(args: {
 	brandId: string;
 	websiteHost: string;
 	source: { name: string; domains: string[]; aliases: string[] }[];
+	conn?: DbConnection;
 }): Promise<number> {
 	if (args.source.length === 0) return 0;
+	const conn = args.conn ?? db;
 
-	const existing = await db.query.competitors.findMany({
-		where: eq(competitors.brandId, args.brandId),
-	});
+	const existing = await conn.select().from(competitors).where(eq(competitors.brandId, args.brandId));
 	const existingDomains = new Set(existing.flatMap((c) => c.domains));
 
 	const toInsert: Array<{ brandId: string; name: string; domains: string[]; aliases: string[] }> = [];
@@ -235,7 +238,7 @@ async function insertCompetitors(args: {
 	}
 	if (toInsert.length === 0) return 0;
 
-	const [{ count: currentCount }] = await db
+	const [{ count: currentCount }] = await conn
 		.select({ count: count() })
 		.from(competitors)
 		.where(eq(competitors.brandId, args.brandId));
@@ -245,7 +248,7 @@ async function insertCompetitors(args: {
 		);
 	}
 
-	await db.insert(competitors).values(toInsert);
+	await conn.insert(competitors).values(toInsert);
 	return toInsert.length;
 }
 
@@ -390,45 +393,71 @@ export async function saveWizardOnboarding(
 	input: WizardOnboardingInput,
 	context: { mode: DeploymentMode; organizationId: string },
 ): Promise<BrandResult> {
-	await updateBrand({
-		brandId: input.brandId,
-		brandName: input.brandName,
-		website: input.website,
-		additionalDomains: input.additionalDomains,
-		aliases: input.aliases,
-	});
-
-	await db.update(brands).set({ onboarded: true, updatedAt: new Date() }).where(eq(brands.id, input.brandId));
-
-	const existing = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
-	if (!existing) throw new BrandNotFoundError(input.brandId);
-	const websiteHost = new URL(existing.website).hostname.replace(/^www\./, "");
-
-	await insertCompetitors({
-		brandId: input.brandId,
-		websiteHost,
-		source: (input.competitors ?? []).map((c) => ({
-			name: c.name,
-			domains: c.domains ?? [],
-			aliases: c.aliases ?? [],
-		})),
-	});
-
-	const promptResult = await saveOrganizationPrompts({
+	const { brand, promptResult } = await withOrganizationEntitlementTransaction({
 		mode: context.mode,
 		organizationId: context.organizationId,
-		brandId: input.brandId,
-		mutations: (input.prompts ?? []).map((p) => ({
-			value: p.value,
-			tags: sanitizeUserTags(p.tags ?? []),
-			enabled: p.enabled ?? true,
-		})),
-		dedupeNewValues: true,
+		run: async ({ tx, resolved }) => {
+			const [existing] = await tx
+				.select()
+				.from(brands)
+				.where(and(eq(brands.id, input.brandId), eq(brands.organizationId, context.organizationId)))
+				.limit(1);
+			if (!existing) throw new BrandNotFoundError(input.brandId);
+
+			const formattedWebsite = input.website ? validateAndFormatWebsite(input.website) : existing.website;
+			const websiteHost = new URL(formattedWebsite).hostname.replace(/^www\./, "");
+			const now = new Date();
+			const [updated] = await tx
+				.update(brands)
+				.set({
+					...(input.brandName !== undefined ? { name: input.brandName } : {}),
+					...(input.website !== undefined ? { website: formattedWebsite } : {}),
+					...(input.additionalDomains !== undefined
+						? { additionalDomains: dedupeDomains(input.additionalDomains).filter((d) => d !== websiteHost) }
+						: {}),
+					...(input.aliases !== undefined ? { aliases: dedupeAliases(input.aliases) } : {}),
+					updatedAt: now,
+				})
+				.where(and(eq(brands.id, input.brandId), eq(brands.organizationId, context.organizationId)))
+				.returning();
+			if (!updated) throw new BrandNotFoundError(input.brandId);
+
+			await insertCompetitors({
+				brandId: input.brandId,
+				websiteHost,
+				source: (input.competitors ?? []).map((competitor) => ({
+					name: competitor.name,
+					domains: competitor.domains ?? [],
+					aliases: competitor.aliases ?? [],
+				})),
+				conn: tx,
+			});
+
+			const promptResult = await saveOrganizationPromptsInTransaction({
+				tx,
+				resolved,
+				organizationId: context.organizationId,
+				brandId: input.brandId,
+				mutations: (input.prompts ?? []).map((prompt) => ({
+					value: prompt.value,
+					tags: sanitizeUserTags(prompt.tags ?? []),
+					enabled: prompt.enabled ?? true,
+				})),
+				dedupeNewValues: true,
+			});
+
+			const [completed] = await tx
+				.update(brands)
+				.set({ onboarded: true, updatedAt: new Date() })
+				.where(and(eq(brands.id, input.brandId), eq(brands.organizationId, context.organizationId)))
+				.returning();
+			if (!completed) throw new BrandNotFoundError(input.brandId);
+			return { brand: completed, promptResult };
+		},
 	});
 	if (context.mode !== "cloud" && promptResult.activatedPromptIds.length > 0) {
 		await createMultiplePromptJobSchedulers(promptResult.activatedPromptIds);
 	}
 
-	const refreshed = await db.query.brands.findFirst({ where: eq(brands.id, input.brandId) });
-	return buildBrandResult(refreshed!);
+	return buildBrandResult(brand);
 }
