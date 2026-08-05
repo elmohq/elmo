@@ -222,7 +222,7 @@ export async function provisionUmbrellaOrg(input: { userId: string; name: string
 					role: "admin",
 					createdAt: new Date(),
 				})
-				.onConflictDoNothing({ target: member.id });
+				.onConflictDoNothing({ target: [member.organizationId, member.userId] });
 		}
 	});
 
