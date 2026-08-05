@@ -17,9 +17,9 @@ import {
 } from "@workspace/config/entitlements";
 import { getDeploymentModeFromEnv } from "@workspace/config/env";
 import type { DeploymentMode } from "@workspace/config/types";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/db";
-import { organizationSettings, subscription } from "../db/schema";
+import { brands, organizationSettings, subscription } from "../db/schema";
 
 type SubscriptionRow = typeof subscription.$inferSelect;
 type SettingsRow = typeof organizationSettings.$inferSelect;
@@ -73,6 +73,21 @@ function toEntitlements(
 		overrides: parseEntitlementOverrides(settingsRow?.entitlementOverrides),
 		now,
 	});
+}
+
+/**
+ * The org a brand belongs to, for callers that hold only a brand id and no
+ * user context (the admin surface, /api/v1 key auth, the worker). Access
+ * control is the caller's concern; this is pure tenancy resolution.
+ */
+export async function getBrandOrganizationId(brandId: string): Promise<string> {
+	const [row] = await db
+		.select({ organizationId: brands.organizationId })
+		.from(brands)
+		.where(eq(brands.id, brandId))
+		.limit(1);
+	if (!row) throw new Error(`Brand not found: ${brandId}`);
+	return row.organizationId;
 }
 
 export interface OrgBillingState {

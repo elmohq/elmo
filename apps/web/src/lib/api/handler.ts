@@ -11,6 +11,7 @@
  * A plain-object return value is wrapped in `Response.json()` with `status`
  * (default 200); returning a `Response` passes through untouched.
  */
+import { EntitlementError } from "@workspace/lib/entitlements";
 import type { z } from "zod";
 import { validateApiKeyFromRequest } from "@/lib/auth/policies";
 
@@ -90,6 +91,9 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 		} catch (err) {
 			if (err instanceof ApiError) {
 				return errorResponse(err.status, err.error, err.message);
+			}
+			if (err instanceof EntitlementError) {
+				return errorResponse(err.status, err.status === 402 ? "Payment Required" : "Conflict", err.message);
 			}
 			let mapped: ApiError | undefined;
 			try {

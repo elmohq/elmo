@@ -10,6 +10,7 @@ import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
 import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
+import { assertCanCreateBrand } from "@workspace/lib/entitlements";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -160,6 +161,9 @@ export const createBrandFn = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const session = await requireAuthSession();
 		await requireOrgAccess(session.user.id, data.brandId);
+		// This legacy path fills an empty org's first brand (brandId here IS the
+		// org id), so the brand count gate applies to that org.
+		await assertCanCreateBrand(data.brandId);
 
 		const urlValidation = validateWebsiteUrl(data.website);
 		if (!urlValidation.isValid) {
@@ -242,6 +246,7 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 			throw new Error(BRAND_ORG_ERRORS[choice.reason]);
 		}
 		const orgId = choice.organizationId;
+		await assertCanCreateBrand(orgId);
 
 		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();

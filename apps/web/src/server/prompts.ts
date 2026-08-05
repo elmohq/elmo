@@ -6,6 +6,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuthSession, requireBrandAccess } from "@/lib/auth/helpers";
 import { MAX_PROMPTS } from "@workspace/lib/constants";
+import { assertCanAddPrompts } from "@workspace/lib/entitlements";
 import { db } from "@workspace/lib/db/db";
 import { prompts, promptRuns, brands, competitors, SYSTEM_TAGS } from "@workspace/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
@@ -562,9 +563,24 @@ export const updatePromptsFn = createServerFn({ method: "POST" })
 		});
 		if (!brand) throw new Error("Brand not found");
 
-		const existingIds = new Set(
-			(await db.select({ id: prompts.id }).from(prompts).where(eq(prompts.brandId, data.brandId))).map((p) => p.id),
-		);
+		const existingRows = await db
+			.select({ id: prompts.id, enabled: prompts.enabled })
+			.from(prompts)
+			.where(eq(prompts.brandId, data.brandId));
+		const existingIds = new Set(existingRows.map((p) => p.id));
+
+		// Plan pool accounting: the net number of prompts this save enables
+		// (new enabled rows + disabled→enabled transitions − enabled→disabled).
+		const enabledById = new Map(existingRows.map((p) => [p.id, p.enabled]));
+		let netEnabled = 0;
+		for (const p of data.prompts) {
+			if (!p.id) {
+				if (p.enabled) netEnabled++;
+			} else if (enabledById.has(p.id)) {
+				netEnabled += (p.enabled ? 1 : 0) - (enabledById.get(p.id) ? 1 : 0);
+			}
+		}
+		await assertCanAddPrompts(brand.organizationId, netEnabled);
 
 		const saved = await db.transaction(async (tx) => {
 			const toUpdate = data.prompts.filter((p) => p.id);

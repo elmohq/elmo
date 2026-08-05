@@ -11,6 +11,7 @@ import { eq, sql, desc } from "drizzle-orm";
 import { getAdminRunsOverTime, getAdminBrandRunStats, getAdminActiveBrandsOverTime } from "@/lib/postgres-read";
 import { analyzeBrand } from "@workspace/lib/onboarding";
 import { getDefaultDelayHours } from "@workspace/lib/constants";
+import { assertCadenceConfigurable, getBrandOrganizationId } from "@workspace/lib/entitlements";
 import { getModelOverdueStatus } from "@workspace/lib/overdue";
 import { sendImmediatePromptJob } from "@/lib/job-scheduler";
 import { Client } from "pg";
@@ -173,6 +174,7 @@ export const updateDelayOverrideFn = createServerFn({ method: "POST" })
 	)
 	.handler(async ({ data }) => {
 		await requireAdmin();
+		await assertCadenceConfigurable(await getBrandOrganizationId(data.brandId));
 		const result = await db
 			.update(brands)
 			.set({ delayOverrideHours: data.delayOverrideHours, updatedAt: new Date() })
