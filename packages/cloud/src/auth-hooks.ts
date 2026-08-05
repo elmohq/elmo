@@ -7,6 +7,7 @@
  */
 import { APIError } from "better-auth/api";
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
+import { createStripeBillingPlugin } from "./billing/plugin";
 import { isDisposableEmail } from "./disposable-domains";
 import { sendEmail } from "./email";
 import { invitationEmail, passwordResetEmail, verificationEmail } from "./email-templates";
@@ -48,6 +49,7 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 				},
 			},
 		},
+		extraPlugins: [createStripeBillingPlugin()],
 		organizationOptions: {
 			sendInvitationEmail: async (data) => {
 				await sendEmail(
