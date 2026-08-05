@@ -36,15 +36,25 @@ describe("getCloudAuthOptions", () => {
 		expect(google.clientId).toBe("test-google-client-id");
 	});
 
+	it("registers organization-owned API keys in the cloud auth stack", () => {
+		const options = getCloudAuthOptions();
+		const adminRole = options.organizationOptions?.roles?.admin;
+		const memberRole = options.organizationOptions?.roles?.member;
+		if (!adminRole || !memberRole) throw new Error("expected cloud organization roles");
+		expect(options.additionalPlugins?.map((plugin) => plugin.id)).toContain("api-key");
+		expect(adminRole.authorize({ apiKey: ["create"] }).success).toBe(true);
+		expect(memberRole.authorize({ apiKey: ["create"] }).success).toBe(false);
+	});
+
 	it("rejects disposable-email signups in the user.create.before hook", async () => {
-		const before = getCloudAuthOptions().databaseHooks?.user?.create?.before;
-		expect(before).toBeDefined();
-		await expect(before?.(makeUser("x@mailinator.com"), null)).rejects.toThrow();
+		const beforeCreate = getCloudAuthOptions().databaseHooks?.user?.create?.before;
+		expect(beforeCreate).toBeDefined();
+		await expect(beforeCreate?.(makeUser("x@mailinator.com"), null)).rejects.toThrow();
 	});
 
 	it("allows regular-email signups through the user.create.before hook", async () => {
-		const before = getCloudAuthOptions().databaseHooks?.user?.create?.before;
-		expect(before).toBeDefined();
-		await expect(before?.(makeUser("x@gmail.com"), null)).resolves.toBeUndefined();
+		const beforeCreate = getCloudAuthOptions().databaseHooks?.user?.create?.before;
+		expect(beforeCreate).toBeDefined();
+		await expect(beforeCreate?.(makeUser("x@gmail.com"), null)).resolves.toBeUndefined();
 	});
 });

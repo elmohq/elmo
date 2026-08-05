@@ -6,6 +6,7 @@
 	"main": "./src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
+		"./api-key": "./src/api-key.ts",
 		"./auth-hooks": "./src/auth-hooks.ts",
 		"./billing": "./src/billing.ts",
 		"./billing-control": "./src/billing-control.ts",
@@ -16,6 +17,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@better-auth/api-key": "1.6.25",
 		"@better-auth/stripe": "1.6.25",
 		"@workspace/config": "workspace:*",
 		"@workspace/lib": "workspace:*",

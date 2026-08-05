@@ -70,6 +70,19 @@ export function evaluateDeploymentPolicy(
 	const isServerFunctionRoute = pathname.startsWith("/_server");
 	const isAllowedAuthWrite = DEMO_AUTH_WRITE_ALLOWLIST.has(pathname);
 	const isOrgPluginMutation = pathname.startsWith("/api/auth/organization/") && isWriteMethod;
+	const isApiKeyPluginEndpoint = pathname === "/api/auth/api-key" || pathname.startsWith("/api/auth/api-key/");
+
+	// API keys are managed only through our organization-scoped server
+	// functions. Blocking the plugin's HTTP surface prevents clients from
+	// selecting permissions, rate limits, ownership, or another config.
+	if (isApiKeyPluginEndpoint) {
+		return {
+			action: "block",
+			status: 403,
+			error: "Forbidden",
+			message: "API keys are not managed through the authentication API",
+		};
+	}
 
 	// 0. Better-auth org plugin mutations are blocked everywhere over HTTP.
 	// Orgs are created server-side only — via the provisioning module
@@ -109,20 +122,10 @@ export function evaluateDeploymentPolicy(
 	const isPublicApiV1 = pathname.startsWith("/api/v1/");
 	const isPublicApiV1Doc = pathname === "/api/v1/docs" || pathname === "/api/v1/docs/";
 
-	// ADMIN_API_KEYS intentionally grant instance-wide access for self-hosted
-	// operators. They cannot safely authenticate a multi-tenant cloud request,
-	// so cloud keeps data endpoints closed until organization-scoped API keys
-	// are available. Documentation and the OpenAPI document remain public.
-	if (features.billing && isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
-		return {
-			action: "block",
-			status: 403,
-			error: "Forbidden",
-			message: "Organization-scoped API keys are required for cloud API access",
-		};
-	}
-
-	if (isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
+	// ADMIN_API_KEYS intentionally remain instance-wide in noncloud modes.
+	// Cloud authentication is asynchronous and organization-scoped, so the
+	// route handler owns that boundary after this request-level policy.
+	if (!features.billing && isPublicApiV1 && !isPublicApiV1Doc && !isOpenApi) {
 		const keyResult = evaluateApiKeyAuth(authorizationHeader, options?.adminApiKeys ?? []);
 		if (keyResult !== "allow") {
 			return {
@@ -286,10 +289,7 @@ export function evaluateOrgScope(memberOrgIds: readonly string[], resourceOrgId:
  * null when the brand does not exist — which must deny, never fall through to
  * a brand-id-as-org-id match.
  */
-export function evaluateBrandAccess(
-	memberOrgIds: readonly string[],
-	brandOrgId: string | null,
-): "allow" | "deny" {
+export function evaluateBrandAccess(memberOrgIds: readonly string[], brandOrgId: string | null): "allow" | "deny" {
 	if (brandOrgId === null) return "deny";
 	return memberOrgIds.includes(brandOrgId) ? "allow" : "deny";
 }

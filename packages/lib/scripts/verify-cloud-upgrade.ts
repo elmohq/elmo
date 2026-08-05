@@ -16,6 +16,7 @@ const CLOUD_MIGRATIONS = [
 	"0014_enforce_tracking_tenant_budgets",
 	"0015_reconcile_entitlement_transitions",
 	"0016_durable_billing_mutations",
+	"0017_organization_api_keys",
 ] as const;
 
 type Journal = {
@@ -241,6 +242,7 @@ async function assertCloudUpgrade(
 	assert.deepEqual(lifecycleColumn.rows, [{ is_nullable: "YES" }]);
 
 	const emptyControlPlaneTables = [
+		"apikey",
 		"subscription",
 		"stripe_webhook_events",
 		"organization_billing_subscriptions",

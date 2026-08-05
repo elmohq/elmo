@@ -12,7 +12,11 @@
  * (default 200); returning a `Response` passes through untouched.
  */
 import type { z } from "zod";
-import { validateApiKeyFromRequest } from "@/lib/auth/policies";
+import {
+	type ApiAuthenticationResult,
+	type ApiRequestScope,
+	authenticateApiRequest,
+} from "@/lib/api/authentication.server";
 
 export class ApiError extends Error {
 	constructor(
@@ -39,6 +43,11 @@ export interface ApiHandlerContext<P, B> {
 	params: P;
 	body: B;
 	request: Request;
+	scope: ApiRequestScope;
+}
+
+export function evaluateApiHandlerScope(scope: ApiRequestScope, cloudOrganizationScoped: boolean): "allow" | "deny" {
+	return scope.kind === "organization" && !cloudOrganizationScoped ? "deny" : "allow";
 }
 
 export function createApiHandler<P = Record<string, string>, B = undefined>(opts: {
@@ -50,11 +59,27 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 	status?: number;
 	/** Translate domain errors thrown by `handle` into `ApiError` before the generic 500. */
 	mapError?: (err: unknown) => ApiError | undefined;
+	/**
+	 * Cloud routes stay unavailable until their queries are explicitly scoped
+	 * to the authenticated organization. Set this only when `handle` consumes
+	 * `ctx.scope.organizationId` for every resource read and write.
+	 */
+	cloudOrganizationScoped?: true;
 	handle: (ctx: ApiHandlerContext<P, B>) => Promise<Response | object>;
 }) {
 	return async ({ request, params }: { request: Request; params: Record<string, string> }): Promise<Response> => {
-		if (!validateApiKeyFromRequest(request)) {
-			return errorResponse(401, "Unauthorized", "Valid API key required");
+		let authentication: ApiAuthenticationResult;
+		try {
+			authentication = await authenticateApiRequest(request);
+		} catch (error) {
+			console.error(`[api] ${request.method} ${new URL(request.url).pathname} authentication failed:`, error);
+			return errorResponse(500, "Internal Server Error", "An unexpected error occurred");
+		}
+		if (!authentication.ok) {
+			return errorResponse(authentication.status, authentication.error, authentication.message);
+		}
+		if (evaluateApiHandlerScope(authentication.scope, opts.cloudOrganizationScoped === true) === "deny") {
+			return errorResponse(403, "Forbidden", "This API route has not enabled organization-scoped cloud access");
 		}
 
 		let parsedParams = params as P;
@@ -82,7 +107,12 @@ export function createApiHandler<P = Record<string, string>, B = undefined>(opts
 		}
 
 		try {
-			const result = await opts.handle({ params: parsedParams, body: parsedBody, request });
+			const result = await opts.handle({
+				params: parsedParams,
+				body: parsedBody,
+				request,
+				scope: authentication.scope,
+			});
 			if (result instanceof Response) {
 				return result;
 			}

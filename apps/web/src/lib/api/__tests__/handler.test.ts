@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { ApiError, createApiHandler } from "../handler";
+import { ApiError, createApiHandler, evaluateApiHandlerScope } from "../handler";
 
 const API_KEY = "test-api-key";
 
@@ -211,5 +211,23 @@ describe("createApiHandler", () => {
 			params: { promptId: "not-a-uuid" },
 		});
 		expect(response.status).toBe(401);
+	});
+});
+
+describe("evaluateApiHandlerScope", () => {
+	it("keeps organization-scoped cloud requests denied by default", () => {
+		expect(evaluateApiHandlerScope({ kind: "organization", organizationId: "org-1", apiKeyId: "key-1" }, false)).toBe(
+			"deny",
+		);
+	});
+
+	it("allows organization scope only after an explicit route opt-in", () => {
+		expect(evaluateApiHandlerScope({ kind: "organization", organizationId: "org-1", apiKeyId: "key-1" }, true)).toBe(
+			"allow",
+		);
+	});
+
+	it("preserves instance-wide noncloud access", () => {
+		expect(evaluateApiHandlerScope({ kind: "instance" }, false)).toBe("allow");
 	});
 });

@@ -16,8 +16,8 @@ import {
 	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
-// `organization` is referenced by the brands FK below; the re-export makes it
-// (and the rest of the auth schema) visible to `import * as schema` consumers.
+// Auth tables need local bindings for application FKs; the re-export keeps the
+// full schema visible to `import * as schema` consumers.
 import { organization, user } from "./schema-auth";
 
 // Better-auth tables & relations — re-exported so `import * as schema` sees everything.
@@ -27,6 +27,46 @@ export * from "./schema-auth";
 // ============================================================================
 // Application tables
 // ============================================================================
+
+/**
+ * Better Auth API-key plugin storage. It lives here instead of the generated
+ * auth schema because organization ownership is an application invariant: an
+ * API key is deleted with its workspace and can never reference a user.
+ */
+export const apikey = pgTable(
+	"apikey",
+	{
+		id: text("id").primaryKey(),
+		configId: text("config_id").default("default").notNull(),
+		name: text("name"),
+		start: text("start"),
+		prefix: text("prefix"),
+		key: text("key").notNull(),
+		referenceId: text("reference_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		refillInterval: integer("refill_interval"),
+		refillAmount: integer("refill_amount"),
+		lastRefillAt: timestamp("last_refill_at"),
+		enabled: boolean("enabled").default(true),
+		rateLimitEnabled: boolean("rate_limit_enabled").default(true),
+		rateLimitTimeWindow: integer("rate_limit_time_window").default(60_000),
+		rateLimitMax: integer("rate_limit_max").default(120),
+		requestCount: integer("request_count").default(0),
+		remaining: integer("remaining"),
+		lastRequest: timestamp("last_request"),
+		expiresAt: timestamp("expires_at"),
+		createdAt: timestamp("created_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull(),
+		permissions: text("permissions"),
+		metadata: text("metadata"),
+	},
+	(table) => [
+		index("apikey_config_id_idx").on(table.configId),
+		index("apikey_reference_id_idx").on(table.referenceId),
+		index("apikey_key_idx").on(table.key),
+	],
+);
 
 export const reportStatusEnum = pgEnum("report_status", ["pending", "processing", "completed", "failed"]);
 

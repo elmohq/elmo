@@ -26,10 +26,16 @@ import {
 	evaluateRequireCanCreateBrands,
 	evaluateRequireOrgAccess,
 	evaluateSignupAllowed,
-	resolveBrandOrganization,
 	type RequestInfo,
+	resolveBrandOrganization,
 } from "@/lib/auth/policies";
-import { CLOUD_FEATURES, createMockSession, DEMO_FEATURES, LOCAL_FEATURES, WHITELABEL_FEATURES } from "@/test/mocks/auth";
+import {
+	CLOUD_FEATURES,
+	createMockSession,
+	DEMO_FEATURES,
+	LOCAL_FEATURES,
+	WHITELABEL_FEATURES,
+} from "@/test/mocks/auth";
 
 // ============================================================================
 // Helpers
@@ -323,16 +329,17 @@ describe("evaluateDeploymentPolicy", () => {
 	});
 
 	// ────────────────────────────────────────────────────────────
-	// Cloud mode: instance-wide admin keys must never cross tenants
+	// Cloud mode: handler-level organization authentication owns API access
 	// ────────────────────────────────────────────────────────────
 	describe("cloud mode", () => {
 		const features = CLOUD_FEATURES;
 
-		it("blocks data API access even with a valid instance admin key", () => {
+		it("defers data API authentication to the organization-scoped handler", () => {
 			const result = evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts", `Bearer ${VALID_API_KEY}`), {
 				adminApiKeys: API_KEYS,
 			});
-			expect(result).toMatchObject({ action: "block", status: 403, error: "Forbidden" });
+			expect(result).toEqual({ action: "allow" });
+			expect(evaluateDeploymentPolicy(features, req("GET", "/api/v1/prompts"))).toEqual({ action: "allow" });
 		});
 
 		it("keeps API documentation public", () => {
@@ -341,6 +348,27 @@ describe("evaluateDeploymentPolicy", () => {
 				action: "serve-openapi",
 			});
 		});
+	});
+
+	describe("API-key plugin endpoints", () => {
+		for (const [name, features] of [
+			["local", LOCAL_FEATURES],
+			["demo", DEMO_FEATURES],
+			["whitelabel", WHITELABEL_FEATURES],
+			["cloud", CLOUD_FEATURES],
+		] as const) {
+			it(`blocks direct management in ${name} mode`, () => {
+				expect(evaluateDeploymentPolicy(features, req("POST", "/api/auth/api-key/create"))).toMatchObject({
+					action: "block",
+					status: 403,
+					error: "Forbidden",
+				});
+				expect(evaluateDeploymentPolicy(features, req("GET", "/api/auth/api-key/list"))).toMatchObject({
+					action: "block",
+					status: 403,
+				});
+			});
+		}
 	});
 
 	// ────────────────────────────────────────────────────────────

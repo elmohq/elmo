@@ -1,4 +1,12 @@
-import { IconAlertTriangle, IconCheck, IconCreditCard, IconLoader2 } from "@tabler/icons-react";
+import {
+	IconAlertTriangle,
+	IconCheck,
+	IconCopy,
+	IconCreditCard,
+	IconKey,
+	IconLoader2,
+	IconTrash,
+} from "@tabler/icons-react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CLOUD_CLAUDE_PROMPT_ADDON } from "@workspace/config/plans";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
@@ -21,6 +29,13 @@ import {
 	maximumSelectedTargets,
 } from "@/lib/cloud-billing-ui";
 import { safeReturnTo } from "@/lib/return-to";
+import {
+	type CreatedWorkspaceApiKey,
+	createWorkspaceApiKeyFn,
+	listWorkspaceApiKeysFn,
+	revokeWorkspaceApiKeyFn,
+	type WorkspaceApiKeySummary,
+} from "@/server/api-keys";
 import {
 	changeCloudPlanFn,
 	createCloudBillingPortalFn,
@@ -66,6 +81,163 @@ function UsageCard({ label, used, limit, detail }: { label: string; used: number
 			<CardContent className="space-y-2 px-5">
 				<Progress value={percent} />
 				{detail && <p className="text-xs text-muted-foreground">{detail}</p>}
+			</CardContent>
+		</Card>
+	);
+}
+
+function WorkspaceApiKeysCard({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
+	const [apiKeys, setApiKeys] = useState<WorkspaceApiKeySummary[] | null>(canManage ? null : []);
+	const [name, setName] = useState("");
+	const [created, setCreated] = useState<CreatedWorkspaceApiKey | null>(null);
+	const [busy, setBusy] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!canManage) return;
+		let cancelled = false;
+		setApiKeys(null);
+		setError(null);
+		void listWorkspaceApiKeysFn({ data: { organizationId } })
+			.then((keys) => {
+				if (!cancelled) setApiKeys(keys);
+			})
+			.catch((cause) => {
+				if (!cancelled) {
+					setApiKeys([]);
+					setError(cause instanceof Error ? cause.message : "Could not load API keys");
+				}
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [canManage, organizationId]);
+
+	const createKey = async () => {
+		const normalizedName = name.trim();
+		if (!normalizedName) return;
+		setBusy("create");
+		setError(null);
+		try {
+			const result = await createWorkspaceApiKeyFn({ data: { organizationId, name: normalizedName } });
+			setCreated(result);
+			setApiKeys((current) => [result.apiKey, ...(current ?? [])]);
+			setName("");
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : "Could not create API key");
+		} finally {
+			setBusy(null);
+		}
+	};
+
+	const revokeKey = async (apiKey: WorkspaceApiKeySummary) => {
+		if (!window.confirm(`Revoke the API key “${apiKey.name ?? apiKey.start ?? "Unnamed key"}”?`)) return;
+		setBusy(apiKey.id);
+		setError(null);
+		try {
+			await revokeWorkspaceApiKeyFn({ data: { organizationId, keyId: apiKey.id } });
+			setApiKeys((current) => current?.filter((item) => item.id !== apiKey.id) ?? []);
+			if (created?.apiKey.id === apiKey.id) setCreated(null);
+		} catch (cause) {
+			setError(cause instanceof Error ? cause.message : "Could not revoke API key");
+		} finally {
+			setBusy(null);
+		}
+	};
+
+	return (
+		<Card>
+			<CardHeader>
+				<div className="flex items-center gap-2">
+					<IconKey className="size-5 text-muted-foreground" />
+					<CardTitle>API keys</CardTitle>
+				</div>
+				<CardDescription>
+					Organization-owned keys for the Elmo API. Keys are rate-limited and stop working when workspace access is
+					inactive.
+				</CardDescription>
+			</CardHeader>
+			<CardContent className="space-y-5">
+				{!canManage ? (
+					<p className="text-sm text-muted-foreground">Only workspace owners and admins can view or manage API keys.</p>
+				) : (
+					<>
+						{error && (
+							<Alert variant="destructive">
+								<IconAlertTriangle />
+								<AlertTitle>{error}</AlertTitle>
+							</Alert>
+						)}
+
+						{created && (
+							<Alert>
+								<IconKey />
+								<AlertTitle>Copy this key now</AlertTitle>
+								<AlertDescription className="space-y-3">
+									<p>The secret is shown once and cannot be recovered after you leave this page.</p>
+									<div className="flex gap-2">
+										<Input value={created.secret} readOnly aria-label="New API key" className="font-mono" />
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => navigator.clipboard.writeText(created.secret)}
+										>
+											<IconCopy />
+											Copy
+										</Button>
+									</div>
+								</AlertDescription>
+							</Alert>
+						)}
+
+						<div className="flex flex-wrap items-end gap-3">
+							<div className="min-w-64 flex-1 space-y-2">
+								<Label htmlFor="api-key-name">Key name</Label>
+								<Input
+									id="api-key-name"
+									value={name}
+									maxLength={64}
+									placeholder="Production integration"
+									onChange={(event) => setName(event.target.value)}
+								/>
+							</div>
+							<Button disabled={!name.trim() || busy !== null} onClick={createKey}>
+								{busy === "create" && <IconLoader2 className="animate-spin" />}
+								Create API key
+							</Button>
+						</div>
+
+						<div className="divide-y rounded-lg border">
+							{apiKeys === null ? (
+								<div className="space-y-2 p-4">
+									<Skeleton className="h-5 w-48" />
+									<Skeleton className="h-4 w-72" />
+								</div>
+							) : apiKeys.length === 0 ? (
+								<p className="p-4 text-sm text-muted-foreground">No API keys yet.</p>
+							) : (
+								apiKeys.map((apiKey) => (
+									<div key={apiKey.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+										<div className="min-w-0">
+											<p className="font-medium">{apiKey.name ?? "Unnamed key"}</p>
+											<p className="text-xs text-muted-foreground">
+												<span className="font-mono">{apiKey.start ?? apiKey.prefix ?? "elmo_"}…</span>
+												{" · "}Created {new Date(apiKey.createdAt).toLocaleDateString()}
+												{apiKey.lastRequest
+													? ` · Last used ${new Date(apiKey.lastRequest).toLocaleDateString()}`
+													: " · Never used"}
+											</p>
+										</div>
+										<Button variant="destructive" size="sm" disabled={busy !== null} onClick={() => revokeKey(apiKey)}>
+											{busy === apiKey.id ? <IconLoader2 className="animate-spin" /> : <IconTrash />}
+											Revoke
+										</Button>
+									</div>
+								))
+							)}
+						</div>
+					</>
+				)}
 			</CardContent>
 		</Card>
 	);
@@ -367,6 +539,8 @@ function WorkspaceBillingPage() {
 							</div>
 						</section>
 					)}
+
+					<WorkspaceApiKeysCard organizationId={organization} canManage={data.permissions.canManage} />
 
 					{data.subscription?.planId === "custom" ? (
 						<Card>

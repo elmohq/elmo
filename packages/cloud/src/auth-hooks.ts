@@ -5,8 +5,10 @@
  * Google OAuth, Resend transactional email, and disposable-domain blocking.
  * Workspace provisioning is injected by the web auth composition layer.
  */
-import { APIError } from "better-auth/api";
+
 import type { CreateAuthOptions } from "@workspace/lib/auth/server";
+import { APIError } from "better-auth/api";
+import { cloudApiKeyPlugin, cloudOrganizationAccessControl, cloudOrganizationRoles } from "./api-key";
 import { isDisposableEmail } from "./disposable-domains";
 import { sendEmail } from "./email";
 import { invitationEmail, passwordResetEmail, verificationEmail } from "./email-templates";
@@ -14,6 +16,7 @@ import { invitationEmail, passwordResetEmail, verificationEmail } from "./email-
 export function getCloudAuthOptions(): CreateAuthOptions {
 	const appUrl = process.env.APP_URL!;
 	return {
+		additionalPlugins: [cloudApiKeyPlugin],
 		requireEmailVerification: true,
 		emailVerification: {
 			sendOnSignUp: true,
@@ -49,6 +52,8 @@ export function getCloudAuthOptions(): CreateAuthOptions {
 			},
 		},
 		organizationOptions: {
+			ac: cloudOrganizationAccessControl,
+			roles: cloudOrganizationRoles,
 			sendInvitationEmail: async (data) => {
 				await sendEmail(
 					data.email,
