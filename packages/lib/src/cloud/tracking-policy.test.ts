@@ -26,7 +26,12 @@ test("usage windows are UTC calendar days", () => {
 test("runtime policy derives a daily standard safety budget from current plan limits", () => {
 	const resolved = resolveEntitlements({
 		mode: "cloud",
-		subscription: { planId: "pro", status: "active" },
+		subscription: {
+			planId: "pro",
+			status: "active",
+			currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+			delinquentSince: null,
+		},
 	});
 	assert.deepEqual(
 		resolveRuntimeTrackingPolicy({
@@ -43,7 +48,13 @@ test("runtime policy derives a daily standard safety budget from current plan li
 test("both Claude modes share one premium daily budget and reject invalid surfaces", () => {
 	const resolved = resolveEntitlements({
 		mode: "cloud",
-		subscription: { planId: "pro", status: "active", claudeAddonPromptSlots: 5 },
+		subscription: {
+			planId: "pro",
+			status: "active",
+			currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+			delinquentSince: null,
+			claudeAddonPromptSlots: 5,
+		},
 	});
 	const nativePolicy = resolveRuntimeTrackingPolicy({
 		resolved,
@@ -79,6 +90,8 @@ test("custom Claude assignments honor the contract's allowed modes", () => {
 		subscription: {
 			planId: "custom",
 			status: "active",
+			currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+			delinquentSince: null,
 			entitlementOverride: {
 				version: 1,
 				entitlements: {

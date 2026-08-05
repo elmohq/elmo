@@ -1,19 +1,10 @@
-import { createHash } from "node:crypto";
-import {
-	type CloudSubscriptionEntitlementSnapshot,
-	type ResolvedEntitlements,
-	resolveEntitlements,
-} from "@workspace/config/entitlements";
+import type { ResolvedEntitlements } from "@workspace/config/entitlements";
 import { CLAUDE_TRACKING_TARGET_KEYS } from "@workspace/config/plans";
 import { and, count, countDistinct, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "../db/db";
 import {
 	brandSchedulerRollouts,
 	brands,
-	organizationBillingMutations,
-	organizationBillingSubscriptionItems,
-	organizationBillingSubscriptions,
-	organizationEntitlementOverrides,
 	organizationEntitlementReconciliations,
 	prompts,
 	promptTargetAssignments,
@@ -21,137 +12,18 @@ import {
 } from "../db/schema";
 import { lockOrganizationCapacity } from "./advisory-locks";
 import { CapacityExceededError } from "./capacity";
+import {
+	createOrganizationEntitlementSourceStore,
+	loadOrganizationEntitlementResolution,
+} from "./entitlements";
 import { resolveRuntimeTrackingPolicy } from "./tracking-policy";
 import { reconcileBrandTrackingSettings, TrackingSettingsError } from "./tracking-settings";
 
+export { nextOrganizationEntitlementTransitionAt } from "./entitlements";
+export type { OrganizationEntitlementSourceRevision } from "./entitlements";
+
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type AllowedCloudEntitlements = Extract<ResolvedEntitlements, { mode: "cloud"; access: "allowed" }>;
-
-export interface OrganizationEntitlementSourceRevision {
-	revision: number;
-	schemaVersion: number;
-	entitlements: Record<string, unknown>;
-	effectiveFrom: Date;
-	effectiveUntil: Date | null;
-	revokedAt: Date | null;
-}
-
-function earlierDate(left: Date | null, right: Date | null): Date | null {
-	if (left === null) return right;
-	if (right === null) return left;
-	return left < right ? left : right;
-}
-
-export function nextOrganizationEntitlementTransitionAt(
-	revisions: readonly OrganizationEntitlementSourceRevision[],
-	now: Date,
-): Date | null {
-	const candidates = revisions.flatMap((revision) => {
-		const end = earlierDate(revision.effectiveUntil, revision.revokedAt);
-		if (end !== null && end <= revision.effectiveFrom) return [];
-		if (revision.effectiveFrom > now) return [revision.effectiveFrom];
-		if (end !== null && end > now) return [end];
-		return [];
-	});
-	return candidates.sort((left, right) => left.getTime() - right.getTime())[0] ?? null;
-}
-
-function activeEntitlementRevision(
-	revisions: readonly OrganizationEntitlementSourceRevision[],
-	now: Date,
-): OrganizationEntitlementSourceRevision | undefined {
-	return revisions
-		.filter(
-			(revision) =>
-				revision.effectiveFrom <= now &&
-				(revision.revokedAt === null || revision.revokedAt > now) &&
-				(revision.effectiveUntil === null || revision.effectiveUntil > now),
-		)
-		.sort((left, right) => right.revision - left.revision)[0];
-}
-
-async function loadOrganizationEntitlementResolution(input: {
-	organizationId: string;
-	now: Date;
-	tx: DbTransaction;
-}): Promise<{ resolved: ResolvedEntitlements; sourceToken: string; nextTransitionAt: Date | null }> {
-	const [pendingBillingMutation] = await input.tx
-		.select({ id: organizationBillingMutations.id })
-		.from(organizationBillingMutations)
-		.where(
-			and(
-				eq(organizationBillingMutations.organizationId, input.organizationId),
-				eq(organizationBillingMutations.status, "pending"),
-			),
-		)
-		.limit(1);
-	const [subscription] = await input.tx
-		.select({
-			stripeSubscriptionId: organizationBillingSubscriptions.stripeSubscriptionId,
-			planId: organizationBillingSubscriptions.basePlanKey,
-			status: organizationBillingSubscriptions.status,
-		})
-		.from(organizationBillingSubscriptions)
-		.where(eq(organizationBillingSubscriptions.organizationId, input.organizationId))
-		.limit(1);
-	const [premiumItem] = await input.tx
-		.select({ quantity: organizationBillingSubscriptionItems.quantity })
-		.from(organizationBillingSubscriptionItems)
-		.where(
-			and(
-				eq(organizationBillingSubscriptionItems.organizationId, input.organizationId),
-				eq(organizationBillingSubscriptionItems.type, "premium_addon"),
-				eq(organizationBillingSubscriptionItems.active, true),
-			),
-		)
-		.limit(1);
-	const revisions = await input.tx
-		.select({
-			revision: organizationEntitlementOverrides.revision,
-			schemaVersion: organizationEntitlementOverrides.schemaVersion,
-			entitlements: organizationEntitlementOverrides.entitlements,
-			effectiveFrom: organizationEntitlementOverrides.effectiveFrom,
-			effectiveUntil: organizationEntitlementOverrides.effectiveUntil,
-			revokedAt: organizationEntitlementOverrides.revokedAt,
-		})
-		.from(organizationEntitlementOverrides)
-		.where(eq(organizationEntitlementOverrides.organizationId, input.organizationId));
-	const override = activeEntitlementRevision(revisions, input.now);
-	const claudeAddonPromptSlots = premiumItem?.quantity ?? 0;
-	const snapshot: CloudSubscriptionEntitlementSnapshot | null = subscription?.planId
-		? {
-				planId: subscription.planId,
-				status: subscription.status,
-				billingMutationPending: pendingBillingMutation !== undefined,
-				claudeAddonPromptSlots,
-				entitlementOverride: override
-					? { version: override.schemaVersion, entitlements: override.entitlements }
-					: undefined,
-			}
-		: null;
-	const sourceToken = createHash("sha256")
-		.update(
-			JSON.stringify({
-				version: 1,
-				subscription: subscription
-					? {
-							stripeSubscriptionId: subscription.stripeSubscriptionId,
-							status: subscription.status,
-							basePlanKey: subscription.planId,
-						}
-					: null,
-				claudeAddonPromptSlots,
-				pendingBillingMutationId: pendingBillingMutation?.id ?? null,
-				override: override ? { revision: override.revision, schemaVersion: override.schemaVersion } : null,
-			}),
-		)
-		.digest("hex");
-	return {
-		resolved: resolveEntitlements({ mode: "cloud", subscription: snapshot }),
-		sourceToken,
-		nextTransitionAt: nextOrganizationEntitlementTransitionAt(revisions, input.now),
-	};
-}
 
 export type OrganizationTrackingEntitlementReconciliationResult = {
 	organizationId: string;
@@ -359,7 +231,7 @@ export async function reconcileOrganizationTrackingEntitlementsInTransaction(inp
 	const resolution = await loadOrganizationEntitlementResolution({
 		organizationId: input.organizationId,
 		now,
-		tx: input.tx,
+		store: createOrganizationEntitlementSourceStore(input.tx),
 	});
 	const rolloutBrands = await input.tx
 		.select({ id: brands.id, generation: brandSchedulerRollouts.generation })

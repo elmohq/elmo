@@ -8,7 +8,15 @@ import {
 } from "./tracking-settings";
 
 function allowed(planId: "starter" | "basic" | "pro") {
-	const resolved = resolveEntitlements({ mode: "cloud", subscription: { planId, status: "active" } });
+	const resolved = resolveEntitlements({
+		mode: "cloud",
+		subscription: {
+			planId,
+			status: "active",
+			currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+			delinquentSince: null,
+		},
+	});
 	if (resolved.mode !== "cloud" || resolved.access !== "allowed") throw new Error("Expected an allowed fixture");
 	return resolved;
 }

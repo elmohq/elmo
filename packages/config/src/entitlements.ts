@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+	type CloudBillingLifecycleDenialReason,
+	resolveCloudBillingLifecycle,
+} from "./billing-lifecycle";
+import {
 	type ClaudeTrackingDefinition,
 	type CloudPlanId,
 	getCloudPlan,
@@ -12,6 +16,8 @@ import type { DeploymentMode } from "./types";
 export interface CloudSubscriptionEntitlementSnapshot {
 	planId: string;
 	status: string;
+	currentPeriodEnd: Date | null;
+	delinquentSince: Date | null;
 	billingMutationPending?: boolean;
 	claudeAddonPromptSlots?: number;
 	entitlementOverride?: unknown;
@@ -20,6 +26,7 @@ export interface CloudSubscriptionEntitlementSnapshot {
 export interface ResolveEntitlementsInput {
 	mode: DeploymentMode;
 	subscription?: CloudSubscriptionEntitlementSnapshot | null;
+	now?: Date;
 }
 
 export interface LegacyUnlimitedEntitlements {
@@ -58,7 +65,7 @@ export interface ResolvedCloudPlanEntitlements {
 export type CloudEntitlementDenialReason =
 	| "missing-subscription"
 	| "billing-change-pending"
-	| "inactive-subscription"
+	| CloudBillingLifecycleDenialReason
 	| "unknown-plan"
 	| "custom-override-required"
 	| "invalid-custom-override"
@@ -174,7 +181,8 @@ export function resolveEntitlements(input: ResolveEntitlementsInput): ResolvedEn
 	const subscription = input.subscription;
 	if (!subscription) return deny("missing-subscription");
 	if (subscription.billingMutationPending) return deny("billing-change-pending");
-	if (subscription.status !== "active") return deny("inactive-subscription");
+	const lifecycle = resolveCloudBillingLifecycle(subscription, input.now ?? new Date());
+	if (lifecycle.access === "denied") return deny(lifecycle.reason);
 
 	const plan = getCloudPlan(subscription.planId);
 	if (!plan) return deny("unknown-plan");

@@ -12,7 +12,13 @@ function activeSubscription(
 	planId: string,
 	overrides: Partial<CloudSubscriptionEntitlementSnapshot> = {},
 ): CloudSubscriptionEntitlementSnapshot {
-	return { planId, status: "active", ...overrides };
+	return {
+		planId,
+		status: "active",
+		currentPeriodEnd: new Date("2099-01-01T00:00:00.000Z"),
+		delinquentSince: null,
+		...overrides,
+	};
 }
 
 function customOverride() {

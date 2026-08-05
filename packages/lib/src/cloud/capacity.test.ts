@@ -18,7 +18,12 @@ describe("organization capacity", () => {
 	it("enforces catalog limits at the requested final total", () => {
 		const resolved = resolveEntitlements({
 			mode: "cloud",
-			subscription: { planId: "starter", status: "active" },
+			subscription: {
+				planId: "starter",
+				status: "active",
+				currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+				delinquentSince: null,
+			},
 		});
 		expect(() => assertCapacity({ resolved, resource: "brands", requestedTotal: 1 })).not.toThrow();
 		expect(() => assertCapacity({ resolved, resource: "brands", requestedTotal: 2 })).toThrow(
@@ -32,7 +37,7 @@ describe("organization capacity", () => {
 	it("fails closed before exposing a limit for an inactive subscription", () => {
 		const resolved = resolveEntitlements({
 			mode: "cloud",
-			subscription: { planId: "pro", status: "past_due" },
+			subscription: { planId: "pro", status: "past_due", currentPeriodEnd: null, delinquentSince: null },
 		});
 		expect(() => getCapacityLimit(resolved, "prompts")).toThrow(EntitlementAccessError);
 	});
@@ -40,7 +45,12 @@ describe("organization capacity", () => {
 	it("allows an over-limit workspace to hold or reduce usage but never increase it", () => {
 		const resolved = resolveEntitlements({
 			mode: "cloud",
-			subscription: { planId: "starter", status: "active" },
+			subscription: {
+				planId: "starter",
+				status: "active",
+				currentPeriodEnd: new Date("2099-01-01T00:00:00Z"),
+				delinquentSince: null,
+			},
 		});
 		expect(() =>
 			assertCapacityChange({ resolved, resource: "prompts", currentTotal: 75, requestedTotal: 74 }),

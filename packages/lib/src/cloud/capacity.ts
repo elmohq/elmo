@@ -5,7 +5,7 @@ import { db } from "../db/db";
 import { isReservedBrandId, slugify } from "../db/provisioning";
 import { brands } from "../db/schema";
 import { lockOrganizationCapacity } from "./advisory-locks";
-import { createOrganizationBillingSnapshotStore, resolveOrganizationEntitlements } from "./entitlements";
+import { createOrganizationEntitlementSourceStore, resolveOrganizationEntitlements } from "./entitlements";
 import { initializeDefaultBrandTracking } from "./tracking-defaults";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -84,7 +84,7 @@ export async function withOrganizationEntitlementTransaction<T>(input: {
 		const resolved = await resolveOrganizationEntitlements({
 			mode: input.mode,
 			organizationId: input.organizationId,
-			store: createOrganizationBillingSnapshotStore(tx),
+			store: createOrganizationEntitlementSourceStore(tx),
 		});
 		if (resolved.access === "denied") throw new EntitlementAccessError(resolved.reason);
 		return input.run({ tx, resolved });

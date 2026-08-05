@@ -1,5 +1,5 @@
 import {
-	createOrganizationBillingSnapshotStore,
+	createOrganizationEntitlementSourceStore,
 	resolveOrganizationEntitlements,
 } from "@workspace/lib/cloud/entitlements";
 import {
@@ -274,7 +274,7 @@ async function reserveTask(taskId: string, now: Date): Promise<ReservedTask | nu
 			mode: "cloud",
 			organizationId: row.organization_id,
 			now,
-			store: createOrganizationBillingSnapshotStore(tx),
+			store: createOrganizationEntitlementSourceStore(tx),
 		});
 		const runtimePolicy = resolveRuntimeTrackingPolicy({
 			resolved,
@@ -424,6 +424,21 @@ async function startProviderAttempt(reserved: ReservedTask): Promise<boolean> {
 		return withProviderStartEntitlementFence({
 			tx,
 			organizationId: reserved.organizationId,
+			resolveCurrentEligibility: async () => {
+				const resolved = await resolveOrganizationEntitlements({
+					mode: "cloud",
+					organizationId: reserved.organizationId,
+					now: new Date(),
+					store: createOrganizationEntitlementSourceStore(tx),
+				});
+				return resolveRuntimeTrackingPolicy({
+					resolved,
+					assignmentSource: reserved.snapshot.assignmentSource,
+					targetKey: reserved.snapshot.targetKey,
+					cadenceMinutes: reserved.snapshot.cadenceMinutes,
+					samplesPerOccurrence: reserved.snapshot.samplesPerOccurrence,
+				}) !== null;
+			},
 			authorize: async () => {
 				const eligibility = await tx.execute(sql`
 			SELECT 1
