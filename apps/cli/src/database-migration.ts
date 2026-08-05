@@ -10,6 +10,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+export function usesDevelopmentElmoBuild(composeContents: string): boolean {
+	const document: unknown = parse(composeContents);
+	if (!isRecord(document) || !isRecord(document.services)) {
+		throw new Error("Compose file does not define services");
+	}
+	const services = document.services;
+
+	const modes = ["web", "worker", "db-migrate"].flatMap((serviceName) => {
+		const service = services[serviceName];
+		if (!isRecord(service)) return [];
+		if (service.build !== undefined) return ["build" as const];
+		if (typeof service.image === "string") return ["image" as const];
+		throw new Error(`Elmo Compose service ${serviceName} defines neither build nor image`);
+	});
+	if (modes.includes("build") && modes.includes("image")) {
+		throw new Error("Elmo Compose services cannot mix local builds and published images during upgrade");
+	}
+	return modes.includes("build");
+}
+
 export function resolveDevelopmentMigrationBuild(composeContents: string): Record<string, unknown> {
 	const document: unknown = parse(composeContents);
 	if (!isRecord(document) || !isRecord(document.services)) {

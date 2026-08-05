@@ -15,6 +15,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: false,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -26,7 +27,7 @@ describe("deployment upgrade cutover", () => {
 			}),
 		});
 
-		expect(calls).toEqual(["config", "prepare", "database", "stop", "repin", "restart", "verify"]);
+		expect(calls).toEqual(["config", "checkpoint", "prepare", "database", "stop", "repin", "restart", "verify"]);
 	});
 
 	it("leaves old services and image pins untouched when database migration fails", async () => {
@@ -36,6 +37,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: false,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls, failure),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -51,7 +53,7 @@ describe("deployment upgrade cutover", () => {
 			phase: "database-migration",
 			cause: failure,
 		});
-		expect(calls).toEqual(["config", "prepare", "database", "rollback:false"]);
+		expect(calls).toEqual(["config", "checkpoint", "prepare", "database", "rollback:false"]);
 	});
 
 	it("restores config without restarting services when preparation fails", async () => {
@@ -61,6 +63,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: false,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls),
 			prepareRelease: action("prepare", calls, failure),
 			stopServices: action("stop", calls),
@@ -73,7 +76,7 @@ describe("deployment upgrade cutover", () => {
 		});
 
 		await expect(upgrade).rejects.toMatchObject({ phase: "prepare-release", cause: failure, rolledBack: true });
-		expect(calls).toEqual(["config", "prepare", "rollback:false"]);
+		expect(calls).toEqual(["config", "checkpoint", "prepare", "rollback:false"]);
 	});
 
 	it("restores and restarts the old release when target health verification fails", async () => {
@@ -83,6 +86,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: false,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -95,7 +99,17 @@ describe("deployment upgrade cutover", () => {
 		});
 
 		await expect(upgrade).rejects.toMatchObject({ phase: "verify-services", cause: failure, rolledBack: true });
-		expect(calls).toEqual(["config", "prepare", "database", "stop", "repin", "restart", "verify", "rollback:true"]);
+		expect(calls).toEqual([
+			"config",
+			"checkpoint",
+			"prepare",
+			"database",
+			"stop",
+			"repin",
+			"restart",
+			"verify",
+			"rollback:true",
+		]);
 	});
 
 	it("reports both the cutover and rollback failures", async () => {
@@ -106,6 +120,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: false,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -129,6 +144,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: false,
 			requiresMaintenance: false,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -138,7 +154,7 @@ describe("deployment upgrade cutover", () => {
 			rollbackRelease: action("rollback", calls),
 		});
 
-		expect(calls).toEqual(["config", "prepare", "database", "repin"]);
+		expect(calls).toEqual(["config", "checkpoint", "prepare", "database", "repin"]);
 	});
 
 	it("stops membership writers before a maintenance database migration", async () => {
@@ -147,6 +163,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: true,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -156,7 +173,7 @@ describe("deployment upgrade cutover", () => {
 			rollbackRelease: action("rollback", calls),
 		});
 
-		expect(calls).toEqual(["config", "prepare", "stop", "database", "repin", "restart", "verify"]);
+		expect(calls).toEqual(["config", "checkpoint", "prepare", "stop", "database", "repin", "restart", "verify"]);
 	});
 
 	it("restarts the old release when a maintenance database migration rolls back", async () => {
@@ -166,6 +183,7 @@ describe("deployment upgrade cutover", () => {
 			wasRunning: true,
 			requiresMaintenance: true,
 			runConfigMigrations: action("config", calls),
+			checkpointRelease: action("checkpoint", calls),
 			runDatabaseMigration: action("database", calls, failure),
 			prepareRelease: action("prepare", calls),
 			stopServices: action("stop", calls),
@@ -178,6 +196,6 @@ describe("deployment upgrade cutover", () => {
 		});
 
 		await expect(upgrade).rejects.toMatchObject({ phase: "database-migration", rolledBack: true });
-		expect(calls).toEqual(["config", "prepare", "stop", "database", "rollback:true"]);
+		expect(calls).toEqual(["config", "checkpoint", "prepare", "stop", "database", "rollback:true"]);
 	});
 });

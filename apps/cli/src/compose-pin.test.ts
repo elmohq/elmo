@@ -48,6 +48,20 @@ describe("repinImages", () => {
 		const out = repinImages(LEGACY_COMPOSE, "0.2.13");
 		expect(out).toContain("postgres:16-alpine");
 	});
+
+	it("replaces official digest pins so the rendered version matches the running release", () => {
+		const out = repinImages("    image: elmohq/elmo-worker@sha256:abc123\n", "0.2.13");
+		expect(out).toBe("    image: elmohq/elmo-worker:0.2.13\n");
+	});
+
+	it("replaces quoted official pins without changing their quoting", () => {
+		const compose = `    image: "elmohq/elmo-web:old"
+    image: 'elmohq/elmo-worker@sha256:abc123'
+`;
+		expect(repinImages(compose, "0.2.13")).toBe(`    image: "elmohq/elmo-web:0.2.13"
+    image: 'elmohq/elmo-worker:0.2.13'
+`);
+	});
 });
 
 describe("refreshHeaderVersion", () => {

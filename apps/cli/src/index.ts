@@ -13,7 +13,12 @@ import pc from "picocolors";
 import semver from "semver";
 import { buildComposeYaml, type PostgresMode } from "./compose-builder.js";
 import { parseRenderedVersion, renderedByHeader } from "./compose-pin.js";
-import { runTargetDatabaseMigration } from "./database-migration.js";
+import {
+	applicationStartupOrder,
+	runningApplicationServiceNames,
+	runningComposeServiceNames,
+} from "./compose-state.js";
+import { runTargetDatabaseMigration, usesDevelopmentElmoBuild } from "./database-migration.js";
 import { formatEnvValue, setEnvFileValue } from "./env-file.js";
 import {
 	MIGRATIONS,
@@ -24,6 +29,16 @@ import {
 } from "./migrations/index.js";
 import { submitNewsletterSignup, trackCliEvent } from "./telemetry.js";
 import { DeploymentUpgradeError, executeDeploymentUpgrade } from "./upgrade-execution.js";
+import { acquireUpgradeLock } from "./upgrade-lock.js";
+import { requiresMaintenanceUpgrade } from "./upgrade-policy.js";
+import {
+	type DevelopmentImageBackup,
+	readUpgradeRecoveryState,
+	recoveryFilePath,
+	removeUpgradeRecoveryState,
+	type UpgradeRecoveryPhase,
+	writeUpgradeRecoveryState,
+} from "./upgrade-recovery.js";
 import {
 	applyDeploymentRelease,
 	captureDeploymentConfig,
@@ -34,6 +49,8 @@ import {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type ComposeService = {
+	ID?: string;
+	Image?: string;
 	Service: string;
 	State: string;
 	Health?: string;
@@ -1071,11 +1088,32 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 
 	// ── Resolve config + the version it was last rendered with ───────────
 	const configDir = await resolveConfigDir(options.dir);
+	const releaseUpgradeLock = await acquireUpgradeLock(configDir);
+	try {
+		await runLockedUpgrade(options, cliVersion, configDir);
+	} finally {
+		await releaseUpgradeLock();
+	}
+}
+
+async function runLockedUpgrade(options: UpgradeOptions, cliVersion: string, configDir: string): Promise<void> {
 	const composePath = path.join(configDir, "elmo.yaml");
-	const detectedVersion = await readRenderedVersion(composePath);
-	const fromVersion = detectedVersion ?? cliVersion;
+	const interruptedUpgrade = await readUpgradeRecoveryState(configDir);
+	if (interruptedUpgrade && interruptedUpgrade.targetVersion !== cliVersion) {
+		throw new Error(
+			`An interrupted upgrade targets ${interruptedUpgrade.targetVersion}. Use that CLI version to resume; recovery state is at ${recoveryFilePath(configDir)}.`,
+		);
+	}
+	const renderedVersion = await readRenderedVersion(composePath);
+	const detectedVersion = interruptedUpgrade ? interruptedUpgrade.detectedVersion : renderedVersion;
+	const fromVersion = interruptedUpgrade?.fromVersion ?? detectedVersion ?? cliVersion;
 	if (!semver.valid(fromVersion)) {
 		throw new Error(`Could not determine the installed version from ${composePath}.`);
+	}
+	if (interruptedUpgrade) {
+		log.warn(
+			`Resuming an interrupted ${fromVersion} → ${cliVersion} upgrade from ${interruptedUpgrade.phase}; prior service state is preserved.`,
+		);
 	}
 
 	if (semver.gt(fromVersion, cliVersion)) {
@@ -1089,7 +1127,7 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	// Only a *detected* matching version is "nothing to do". A legacy install
 	// with no version header (detectedVersion === null) still needs its image
 	// tags re-pinned, so it falls through to the upgrade path below.
-	if (detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
+	if (!interruptedUpgrade && detectedVersion !== null && semver.eq(detectedVersion, cliVersion)) {
 		await reconcileCurrentConfig(buildMigrationContext(configDir));
 		log.success(`Already at ${cliVersion}.`);
 		const pull = options.yes
@@ -1128,7 +1166,9 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 			console.log(`  • ${pc.bold(`${m.from} → ${m.to}`)} ${m.description}`);
 		}
 	}
-	const requiresMaintenance = detectedVersion === null || plan.some((migration) => migration.requiresMaintenance);
+	const requiresMaintenance =
+		interruptedUpgrade?.requiresMaintenance ??
+		requiresMaintenanceUpgrade({ detectedVersion, targetVersion: cliVersion, plan });
 	if (requiresMaintenance) {
 		log.warn("This upgrade uses a brief maintenance cutover: target images are prepared before web and worker stop.");
 	}
@@ -1141,12 +1181,58 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 	}
 
 	assertDockerRunning();
-	const runningComposeServices = await getRunningComposeServices(configDir);
-	const runningServices = runningComposeServices.filter((service) => service === "web" || service === "worker");
+	const observedRunningComposeServices = await getRunningComposeServices(configDir);
+	const runningServices =
+		interruptedUpgrade?.previousRunningServices ?? runningApplicationServiceNames(observedRunningComposeServices);
+	const anyComposeServiceWasRunning =
+		interruptedUpgrade?.anyComposeServiceWasRunning ?? observedRunningComposeServices.length > 0;
 	const wasRunning = runningServices.length > 0;
-	const isDev = await composeUsesBuild(composePath);
+	const isDev = interruptedUpgrade?.isDevelopment ?? (await composeUsesBuild(composePath));
 	const ctx = buildMigrationContext(configDir);
-	const previousConfig = await captureDeploymentConfig(configDir);
+	let previousConfig = interruptedUpgrade?.rollbackConfig ?? (await captureDeploymentConfig(configDir));
+	let recoveryState = interruptedUpgrade;
+	const markRecoveryPhase = async (phase: UpgradeRecoveryPhase): Promise<void> => {
+		if (!recoveryState) return;
+		recoveryState = await writeUpgradeRecoveryState(configDir, { ...recoveryState, phase });
+	};
+	const captureDevelopmentImageBackups = async (): Promise<DevelopmentImageBackup[]> => {
+		const services = await getComposeServices(configDir);
+		const backups = await Promise.all(
+			services
+				.filter((service) => (service.Service === "web" || service.Service === "worker") && service.ID && service.Image)
+				.map(async (service) => {
+					if ((service.Image as string).includes("@") || (service.Image as string).startsWith("sha256:")) {
+						throw new Error(`Cannot preserve development image reference ${service.Image}`);
+					}
+					const imageId = (await runDockerCapture(["inspect", "--format", "{{.Image}}", service.ID as string])).trim();
+					if (!imageId) throw new Error(`Cannot resolve the current ${service.Service} image ID`);
+					return {
+						service: service.Service,
+						imageId,
+						originalReference: service.Image as string,
+						backupReference: `elmo-upgrade-backup:${service.Service}-${crypto.randomUUID()}`,
+					};
+				}),
+		);
+		for (const service of runningServices) {
+			if (!backups.some((backup) => backup.service === service)) {
+				throw new Error(`Cannot preserve the current ${service} image for development rollback`);
+			}
+		}
+		return backups;
+	};
+	const restoreDevelopmentImages = async (): Promise<void> => {
+		for (const backup of recoveryState?.developmentImages ?? []) {
+			await runDocker(["image", "tag", backup.backupReference, backup.originalReference]);
+		}
+	};
+	const removeDevelopmentImageBackups = async (): Promise<void> => {
+		await Promise.all(
+			(recoveryState?.developmentImages ?? []).map((backup) =>
+				runDocker(["image", "rm", backup.backupReference]).catch(() => undefined),
+			),
+		);
+	};
 	try {
 		await executeDeploymentUpgrade({
 			wasRunning,
@@ -1155,53 +1241,109 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 				await runMigrations(plan, ctx);
 				await reconcileCurrentConfig(ctx);
 			},
+			checkpointRelease: async () => {
+				if (!recoveryState) {
+					// Compatible config additions must survive rollback once target code can persist data with them.
+					previousConfig = await captureDeploymentConfig(configDir);
+					const now = new Date().toISOString();
+					recoveryState = {
+						formatVersion: 1,
+						targetVersion: cliVersion,
+						detectedVersion,
+						fromVersion,
+						requiresMaintenance,
+						isDevelopment: isDev,
+						previousRunningServices: runningServices,
+						anyComposeServiceWasRunning,
+						rollbackConfig: previousConfig,
+						phase: "config-checkpointed",
+						createdAt: now,
+						updatedAt: now,
+					};
+				}
+				await markRecoveryPhase("config-checkpointed");
+			},
 			prepareRelease: async () => {
+				await markRecoveryPhase("preparing-release");
 				if (isDev) {
+					let developmentImages = recoveryState?.developmentImages;
+					if (!developmentImages) {
+						developmentImages = await captureDevelopmentImageBackups();
+						if (!recoveryState) throw new Error("Upgrade recovery checkpoint was not created");
+						recoveryState = await writeUpgradeRecoveryState(configDir, {
+							...recoveryState,
+							developmentImages,
+						});
+					}
+					for (const backup of developmentImages) {
+						await runDocker(["image", "tag", backup.imageId, backup.backupReference]);
+					}
 					log.step("Building target web and worker images while the current services stay online...");
 					await runDockerCompose(configDir, ["build", "web", "worker"]);
-					return;
+				} else {
+					const images = getTargetElmoImages(previousConfig.compose.contents, cliVersion);
+					log.step(`Pulling ${images.length} target image${images.length === 1 ? "" : "s"} before cutover...`);
+					await Promise.all(images.map((image) => runDocker(["pull", image])));
 				}
-				const images = getTargetElmoImages(previousConfig.compose.contents, cliVersion);
-				log.step(`Pulling ${images.length} target image${images.length === 1 ? "" : "s"} before cutover...`);
-				await Promise.all(images.map((image) => runDocker(["pull", image])));
+				await markRecoveryPhase("release-prepared");
 			},
 			runDatabaseMigration: async () => {
+				await markRecoveryPhase("migrating-database");
 				log.step("Applying database migrations...");
 				await runTargetDatabaseMigration({
 					configDir,
 					dev: isDev,
 					version: cliVersion,
-					wasRunning: runningComposeServices.length > 0,
+					wasRunning: anyComposeServiceWasRunning,
 					imagePrepared: !isDev,
 					runCompose: (args) => runDockerCompose(configDir, args),
 				});
+				await markRecoveryPhase("database-migrated");
 			},
 			stopServices: async () => {
-				log.step(`Draining ${runningServices.join(" and ")} for the maintenance cutover...`);
+				await markRecoveryPhase("stopping-services");
+				log.step(`Stopping ${runningServices.join(" and ")} with a 45-second grace period...`);
 				await runDockerCompose(configDir, ["stop", "--timeout", "45", ...runningServices]);
+				await markRecoveryPhase("services-stopped");
 			},
 			applyRelease: async () => {
+				await markRecoveryPhase("applying-release");
 				await applyDeploymentRelease(configDir, previousConfig, cliVersion);
+				await markRecoveryPhase("release-applied");
 				log.success(`Pinned config to ${cliVersion}.`);
 			},
 			startServices: async () => {
+				await markRecoveryPhase("starting-services");
 				log.step("Starting services...");
 				await startServicesAndWait(configDir, runningServices);
+				await markRecoveryPhase("services-started");
 			},
-			verifyServices: () => assertServicesReady(configDir, runningServices),
-			rollbackRelease: async ({ restartServices }) => {
-				await restoreDeploymentConfig(configDir, previousConfig);
-				if (!restartServices) return;
-				log.warn("Target cutover failed; restarting the previous release...");
-				await startServicesAndWait(configDir, runningServices);
+			verifyServices: async () => {
+				await markRecoveryPhase("verifying-services");
 				await assertServicesReady(configDir, runningServices);
 			},
+			rollbackRelease: async ({ restartServices }) => {
+				await markRecoveryPhase("rolling-back").catch(() => undefined);
+				await restoreDeploymentConfig(configDir, previousConfig);
+				if (isDev) await restoreDevelopmentImages();
+				if (restartServices) {
+					log.warn("Target cutover failed; restarting the previous release...");
+					await startServicesAndWait(configDir, runningServices, { forceRecreate: isDev });
+					await assertServicesReady(configDir, runningServices);
+				}
+				await removeDevelopmentImageBackups();
+				await removeUpgradeRecoveryState(configDir);
+			},
 		});
+		await removeDevelopmentImageBackups();
+		await removeUpgradeRecoveryState(configDir);
 	} catch (error) {
 		if (error instanceof DeploymentUpgradeError) {
 			const label = error.phase === "database-migration" ? "Database migration" : "Upgrade";
 			log.error(`${label} failed: ${error.message}`);
-			if (error.rolledBack) log.info("The previous config was restored and any previously running services restarted.");
+			if (error.rolledBack) {
+				log.info("The previous config was restored; services stopped for cutover were restarted.");
+			}
 			if (error.rollbackCause) {
 				log.error(
 					`Automatic rollback also failed: ${error.rollbackCause instanceof Error ? error.rollbackCause.message : String(error.rollbackCause)}`,
@@ -1209,6 +1351,7 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 				log.info(
 					"Keep the maintenance window open and restore the saved deployment config before restarting services.",
 				);
+				log.info(`Recovery state remains at ${recoveryFilePath(configDir)}.`);
 			}
 		} else {
 			log.error(`Upgrade failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -1232,13 +1375,11 @@ async function runUpgrade(options: UpgradeOptions, cliVersion: string): Promise<
 }
 
 async function getRunningApplicationServices(configDir: string): Promise<string[]> {
-	return (await getRunningComposeServices(configDir)).filter((service) => service === "web" || service === "worker");
+	return runningApplicationServiceNames(await getRunningComposeServices(configDir));
 }
 
 async function getRunningComposeServices(configDir: string): Promise<string[]> {
-	return (await getComposeServices(configDir))
-		.filter((service) => service.State?.startsWith("running"))
-		.map((service) => service.Service);
+	return runningComposeServiceNames(await getComposeServices(configDir));
 }
 
 // Reads the version recorded in a `# Rendered by elmo <version> on ...` header.
@@ -1251,12 +1392,7 @@ async function readRenderedVersion(filePath: string): Promise<string | null> {
 }
 
 async function composeUsesBuild(composePath: string): Promise<boolean> {
-	try {
-		const contents = await fs.readFile(composePath, "utf8");
-		return /^\s*build:/m.test(contents);
-	} catch {
-		return false;
-	}
+	return usesDevelopmentElmoBuild(await fs.readFile(composePath, "utf8"));
 }
 
 function buildMigrationContext(configDir: string): MigrationContext {
@@ -1329,9 +1465,22 @@ async function assertServicesReady(configDir: string, requiredServices: readonly
 	}
 }
 
-async function startServicesAndWait(configDir: string, services: readonly string[]): Promise<void> {
-	if (services.length === 0) return;
-	await runDockerCompose(configDir, ["up", "-d", "--wait", "--wait-timeout", "180", ...services]);
+async function startServicesAndWait(
+	configDir: string,
+	services: readonly string[],
+	options: { forceRecreate?: boolean } = {},
+): Promise<void> {
+	for (const service of applicationStartupOrder(services)) {
+		await runDockerCompose(configDir, [
+			"up",
+			"-d",
+			...(options.forceRecreate ? ["--force-recreate"] : []),
+			"--wait",
+			"--wait-timeout",
+			"180",
+			service,
+		]);
+	}
 }
 
 function runDocker(args: string[]): Promise<void> {
@@ -1348,6 +1497,25 @@ function runDocker(args: string[]): Promise<void> {
 			settled = true;
 			if (code === 0) resolve();
 			else reject(new Error(`docker ${args[0] ?? "command"} exited with code ${code}`));
+		});
+	});
+}
+
+function runDockerCapture(args: string[]): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const child = spawn("docker", args);
+		let stdout = "";
+		let stderr = "";
+		child.stdout.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString();
+		});
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString();
+		});
+		child.on("error", reject);
+		child.on("close", (code) => {
+			if (code === 0) resolve(stdout);
+			else reject(new Error(stderr.trim() || `docker ${args[0] ?? "command"} exited with code ${code}`));
 		});
 	});
 }

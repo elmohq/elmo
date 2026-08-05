@@ -4,7 +4,7 @@ import { parse } from "yaml";
 import { writeTextFileAtomically } from "./atomic-file.js";
 import { refreshHeaderVersion, repinImages } from "./compose-pin.js";
 
-interface ConfigFileSnapshot {
+export interface ConfigFileSnapshot {
 	contents: string;
 	mode: number;
 }
@@ -19,7 +19,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 async function readConfigFile(filePath: string): Promise<ConfigFileSnapshot> {
-	const [contents, stats] = await Promise.all([fs.readFile(filePath, "utf8"), fs.stat(filePath)]);
+	const stats = await fs.lstat(filePath);
+	if (stats.isSymbolicLink()) {
+		throw new Error(`Refusing to upgrade symbolic link ${filePath}; update its managed target directly`);
+	}
+	if (!stats.isFile()) throw new Error(`Deployment config ${filePath} is not a regular file`);
+	const contents = await fs.readFile(filePath, "utf8");
 	return { contents, mode: stats.mode & 0o777 };
 }
 

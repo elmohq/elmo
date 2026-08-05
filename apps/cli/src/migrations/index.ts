@@ -15,8 +15,9 @@ export async function reconcileCurrentConfig(ctx: MigrationContext): Promise<voi
 // Register migrations here when a release needs to change config/env on disk.
 // Most releases need NO entry — docker images roll automatically on `elmo upgrade`.
 //
-// Each entry runs once when a user upgrades through its `from` version. Keep the
-// `run` function pure over the passed-in context so it stays unit-testable.
+// An interrupted upgrade can replay entries before the release header advances.
+// Every `run` function must therefore be idempotent and pure over the passed-in
+// context so it stays safe to resume and unit-testable.
 //
 // Example:
 // {

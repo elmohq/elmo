@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -63,5 +63,15 @@ services:
 			"elmohq/elmo-web:1.2.3",
 			"elmohq/elmo-worker:1.2.3",
 		]);
+	});
+
+	it("rejects managed config symlinks before a cutover snapshot is accepted", async () => {
+		const directory = await deploymentDirectory();
+		const managedEnv = join(directory, "managed.env");
+		await writeFile(managedEnv, "SECRET=managed\n", "utf8");
+		await rm(join(directory, ".env"));
+		await symlink(managedEnv, join(directory, ".env"));
+
+		await expect(captureDeploymentConfig(directory)).rejects.toThrow(/symbolic link/);
 	});
 });

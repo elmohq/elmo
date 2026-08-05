@@ -7,6 +7,7 @@ import {
 	buildUpgradeMigrationOverride,
 	resolveDevelopmentMigrationBuild,
 	runTargetDatabaseMigration,
+	usesDevelopmentElmoBuild,
 } from "./database-migration";
 
 const temporaryDirectories: string[] = [];
@@ -38,6 +39,36 @@ describe("upgrade database migration runner", () => {
 		await Promise.all(
 			temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
 		);
+	});
+
+	it("ignores unrelated build-only sidecars when classifying an image deployment", () => {
+		expect(
+			usesDevelopmentElmoBuild(`
+services:
+  web:
+    image: elmohq/elmo-web:0.2.17
+  worker:
+    image: elmohq/elmo-worker:0.2.17
+  asset-builder:
+    build: ./assets
+`),
+		).toBe(false);
+	});
+
+	it("recognizes a development build on an Elmo service", () => {
+		expect(usesDevelopmentElmoBuild(legacyExternalDevelopmentCompose)).toBe(true);
+	});
+
+	it("rejects a mixed Elmo build and image deployment before cutover", () => {
+		expect(() =>
+			usesDevelopmentElmoBuild(`
+services:
+  web:
+    build: /source/elmo
+  worker:
+    image: elmohq/elmo-worker:0.2.17
+`),
+		).toThrow(/cannot mix local builds and published images/);
 	});
 
 	it("pulls and runs the target migrator through an ephemeral compose override", async () => {

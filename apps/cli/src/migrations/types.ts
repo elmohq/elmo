@@ -18,5 +18,6 @@ export interface Migration {
 	to: string;
 	description: string;
 	requiresMaintenance?: boolean;
+	/** Must be safe to replay after an interrupted CLI process. */
 	run(ctx: MigrationContext): Promise<void>;
 }

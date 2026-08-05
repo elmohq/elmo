@@ -1,5 +1,6 @@
 export type DeploymentUpgradePhase =
 	| "config-migrations"
+	| "checkpoint-release"
 	| "database-migration"
 	| "prepare-release"
 	| "stop-services"
@@ -35,6 +36,7 @@ export async function executeDeploymentUpgrade(input: {
 	wasRunning: boolean;
 	requiresMaintenance: boolean;
 	runConfigMigrations: () => Promise<void>;
+	checkpointRelease: () => Promise<void>;
 	runDatabaseMigration: () => Promise<void>;
 	prepareRelease: () => Promise<void>;
 	stopServices: () => Promise<void>;
@@ -46,6 +48,7 @@ export async function executeDeploymentUpgrade(input: {
 	let cutoverStarted = false;
 	try {
 		await runPhase("config-migrations", input.runConfigMigrations);
+		await runPhase("checkpoint-release", input.checkpointRelease);
 		await runPhase("prepare-release", input.prepareRelease);
 		if (input.wasRunning && input.requiresMaintenance) {
 			cutoverStarted = true;

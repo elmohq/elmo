@@ -39,6 +39,16 @@ describe("ELMO_ENCRYPTION_KEY migration", () => {
 		expect(ctx.env()).toEqual({ DEPLOYMENT_MODE: "local", ELMO_ENCRYPTION_KEY: "existing", OTHER: "keep" });
 	});
 
+	it("preserves the generated key when an interrupted upgrade replays the migration", async () => {
+		const ctx = inMemoryContext({ DEPLOYMENT_MODE: "local" });
+		await encryptionKeyMigration.run(ctx);
+		const firstKey = ctx.env().ELMO_ENCRYPTION_KEY;
+
+		await encryptionKeyMigration.run(ctx);
+
+		expect(ctx.env().ELMO_ENCRYPTION_KEY).toBe(firstKey);
+	});
+
 	it("repairs a blank required key even when version history is unavailable", async () => {
 		const ctx = inMemoryContext({ DEPLOYMENT_MODE: "local", ELMO_ENCRYPTION_KEY: "  " });
 		await reconcileCurrentConfig(ctx);

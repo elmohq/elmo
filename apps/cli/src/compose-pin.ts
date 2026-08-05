@@ -29,8 +29,8 @@ export function refreshHeaderVersion(contents: string, version: string): string 
 	);
 }
 
-// Re-pins `elmohq/elmo-*:<tag>` image tags to `version`, leaving third-party
+// Re-pins official Elmo tags or digests to `version`, leaving third-party
 // images (e.g. postgres) untouched.
 export function repinImages(contents: string, version: string): string {
-	return contents.replace(/(image:\s*elmohq\/elmo-[a-z-]+):\S+/g, `$1:${version}`);
+	return contents.replace(/(image:\s*)(["']?)(elmohq\/elmo-[a-z-]+)(?::[^@"'\s]+|@[^"'\s]+)\2/g, `$1$2$3:${version}$2`);
 }
