@@ -38,7 +38,8 @@
 		"dotenv": "17.4.2",
 		"picocolors": "^1.1.1",
 		"posthog-node": "^5.47.3",
-		"semver": "^7.8.5"
+		"semver": "^7.8.5",
+		"yaml": "^2.8.3"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.2",
