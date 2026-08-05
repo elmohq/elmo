@@ -51,21 +51,16 @@ export async function upsertOrganization(org: { id: string; name: string; slug?:
 }
 
 export async function ensureMembership(userId: string, orgId: string, role = "member"): Promise<void> {
-	const existing = await db
-		.select({ id: member.id })
-		.from(member)
-		.where(and(eq(member.userId, userId), eq(member.organizationId, orgId)))
-		.limit(1);
-
-	if (existing.length > 0) return;
-
-	await db.insert(member).values({
-		id: crypto.randomUUID(),
-		organizationId: orgId,
-		userId,
-		role,
-		createdAt: new Date(),
-	});
+	await db
+		.insert(member)
+		.values({
+			id: crypto.randomUUID(),
+			organizationId: orgId,
+			userId,
+			role,
+			createdAt: new Date(),
+		})
+		.onConflictDoNothing({ target: [member.organizationId, member.userId] });
 }
 
 export interface SyncMembershipsResult {
@@ -92,14 +87,18 @@ export async function syncMemberships(userId: string, orgIds: string[]): Promise
 
 		for (const orgId of orgIds) {
 			if (!existingOrgIds.has(orgId)) {
-				await tx.insert(member).values({
-					id: crypto.randomUUID(),
-					organizationId: orgId,
-					userId,
-					role: "member",
-					createdAt: new Date(),
-				});
-				added.push(orgId);
+				const inserted = await tx
+					.insert(member)
+					.values({
+						id: crypto.randomUUID(),
+						organizationId: orgId,
+						userId,
+						role: "member",
+						createdAt: new Date(),
+					})
+					.onConflictDoNothing({ target: [member.organizationId, member.userId] })
+					.returning({ organizationId: member.organizationId });
+				if (inserted.length > 0) added.push(orgId);
 			}
 		}
 
