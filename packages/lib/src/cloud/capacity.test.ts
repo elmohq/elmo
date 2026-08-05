@@ -1,0 +1,33 @@
+import { describe, expect, it } from "vitest";
+import { resolveEntitlements } from "@workspace/config/entitlements";
+import { assertCapacity, CapacityExceededError, EntitlementAccessError, getCapacityLimit } from "./capacity";
+
+describe("organization capacity", () => {
+	it.each(["local", "demo", "whitelabel"] as const)("keeps %s capacity unlimited", (mode) => {
+		const resolved = resolveEntitlements({ mode });
+		expect(getCapacityLimit(resolved, "brands")).toBeNull();
+		expect(() => assertCapacity({ resolved, resource: "prompts", requestedTotal: 1_000_000 })).not.toThrow();
+	});
+
+	it("enforces catalog limits at the requested final total", () => {
+		const resolved = resolveEntitlements({
+			mode: "cloud",
+			subscription: { planId: "starter", status: "active" },
+		});
+		expect(() => assertCapacity({ resolved, resource: "brands", requestedTotal: 1 })).not.toThrow();
+		expect(() => assertCapacity({ resolved, resource: "brands", requestedTotal: 2 })).toThrow(
+			new CapacityExceededError("brands", 1),
+		);
+		expect(() => assertCapacity({ resolved, resource: "prompts", requestedTotal: 51 })).toThrow(
+			new CapacityExceededError("prompts", 50),
+		);
+	});
+
+	it("fails closed before exposing a limit for an inactive subscription", () => {
+		const resolved = resolveEntitlements({
+			mode: "cloud",
+			subscription: { planId: "pro", status: "past_due" },
+		});
+		expect(() => getCapacityLimit(resolved, "prompts")).toThrow(EntitlementAccessError);
+	});
+});

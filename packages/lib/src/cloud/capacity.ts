@@ -1,0 +1,113 @@
+import type { ResolvedEntitlements } from "@workspace/config/entitlements";
+import type { DeploymentMode } from "@workspace/config/types";
+import { and, count, eq, sql } from "drizzle-orm";
+import { db } from "../db/db";
+import { brands } from "../db/schema";
+import { slugify } from "../db/provisioning";
+import { createOrganizationBillingSnapshotStore, resolveOrganizationEntitlements } from "./entitlements";
+
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export class EntitlementAccessError extends Error {
+	constructor(public readonly reason: string) {
+		super(`Cloud subscription does not permit this operation: ${reason}`);
+		this.name = "EntitlementAccessError";
+	}
+}
+
+export class CapacityExceededError extends Error {
+	constructor(
+		public readonly resource: "brands" | "prompts" | "claude-prompts" | "tracking-targets",
+		public readonly limit: number,
+	) {
+		super(`This workspace's plan allows at most ${limit} ${resource}.`);
+		this.name = "CapacityExceededError";
+	}
+}
+
+export function getCapacityLimit(
+	resolved: ResolvedEntitlements,
+	resource: "brands" | "prompts" | "claude-prompts" | "tracking-targets",
+): number | null {
+	if (resolved.access === "denied") throw new EntitlementAccessError(resolved.reason);
+	if (resolved.mode !== "cloud") return null;
+
+	switch (resource) {
+		case "brands":
+			return resolved.entitlements.brandSlots;
+		case "prompts":
+			return resolved.entitlements.promptSlots;
+		case "claude-prompts":
+			return resolved.entitlements.claudeTracking.totalPromptSlots;
+		case "tracking-targets":
+			return resolved.entitlements.trackingTargets.maximumSelected;
+	}
+}
+
+export function assertCapacity(input: {
+	resolved: ResolvedEntitlements;
+	resource: "brands" | "prompts" | "claude-prompts" | "tracking-targets";
+	requestedTotal: number;
+}): void {
+	const limit = getCapacityLimit(input.resolved, input.resource);
+	if (limit !== null && input.requestedTotal > limit) throw new CapacityExceededError(input.resource, limit);
+}
+
+export async function withOrganizationEntitlementTransaction<T>(input: {
+	mode: DeploymentMode;
+	organizationId: string;
+	run: (context: { tx: DbTransaction; resolved: ResolvedEntitlements }) => Promise<T>;
+}): Promise<T> {
+	return db.transaction(async (tx) => {
+		// Capacity is organization-wide, so serialize count+mutation operations for
+		// this workspace. hashtextextended avoids maintaining a lock table.
+		await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`elmo-capacity:${input.organizationId}`}, 0))`);
+		const resolved = await resolveOrganizationEntitlements({
+			mode: input.mode,
+			organizationId: input.organizationId,
+			store: createOrganizationBillingSnapshotStore(tx),
+		});
+		if (resolved.access === "denied") throw new EntitlementAccessError(resolved.reason);
+		return input.run({ tx, resolved });
+	});
+}
+
+export async function createOrganizationBrand(input: {
+	mode: DeploymentMode;
+	organizationId: string;
+	name: string;
+	website: string;
+	additionalDomains?: string[];
+}): Promise<{ brandId: string }> {
+	return withOrganizationEntitlementTransaction({
+		mode: input.mode,
+		organizationId: input.organizationId,
+		run: async ({ tx, resolved }) => {
+			const [{ value: currentBrands = 0 } = { value: 0 }] = await tx
+				.select({ value: count() })
+				.from(brands)
+				.where(and(eq(brands.organizationId, input.organizationId), eq(brands.enabled, true)));
+			assertCapacity({ resolved, resource: "brands", requestedTotal: currentBrands + 1 });
+
+			const base = slugify(input.name);
+			let suffix = base === "new" ? 2 : 1;
+			for (;;) {
+				const brandId = suffix === 1 ? base : `${base}-${suffix}`;
+				const [inserted] = await tx
+					.insert(brands)
+					.values({
+						id: brandId,
+						organizationId: input.organizationId,
+						name: input.name,
+						website: input.website,
+						enabled: true,
+						...(input.additionalDomains?.length ? { additionalDomains: input.additionalDomains } : {}),
+					})
+					.onConflictDoNothing({ target: brands.id })
+					.returning({ id: brands.id });
+				if (inserted) return { brandId: inserted.id };
+				suffix++;
+			}
+		},
+	});
+}

@@ -9,7 +9,6 @@ import { evaluateRequireCanCreateBrands, resolveBrandOrganization } from "@/lib/
 import { getDeployment } from "@/lib/config/server";
 import { db } from "@workspace/lib/db/db";
 import { brands, prompts, competitors, type BrandWithPrompts, type Brand } from "@workspace/lib/db/schema";
-import { findUniqueBrandId, slugify } from "@workspace/lib/db/provisioning";
 import { eq, and, count, sql, inArray } from "drizzle-orm";
 import { MAX_COMPETITORS } from "@workspace/lib/constants";
 import { cleanAndValidateDomain } from "@/lib/domain-categories";
@@ -17,6 +16,7 @@ import { validateWebsiteUrl } from "@/lib/brand-website";
 import { normalizeBrandUpdate } from "@/lib/brand-settings";
 import { parseScrapeTargets, selectTargetsForBrand } from "@workspace/lib/providers";
 import type { ModelConfig } from "@workspace/lib/providers";
+import { createOrganizationBrand } from "@workspace/lib/cloud/capacity";
 
 const BRAND_ORGANIZATION_ERRORS = {
 	"no-organization": "No organization for the current user",
@@ -234,19 +234,15 @@ export const createBrandInOrgFn = createServerFn({ method: "POST" })
 		);
 		if (!choice.ok) throw new Error(BRAND_ORGANIZATION_ERRORS[choice.reason]);
 
-		const brandId = await findUniqueBrandId(slugify(trimmedName));
 		const defaultDomains = getDefaultBrandDomains();
 
-		await db.insert(brands).values({
-			id: brandId,
+		return createOrganizationBrand({
+			mode: deployment.mode,
 			organizationId: choice.organizationId,
 			name: trimmedName,
 			website: urlValidation.formattedUrl,
-			enabled: true,
-			...(defaultDomains.length > 0 && { additionalDomains: defaultDomains }),
+			additionalDomains: defaultDomains,
 		});
-
-		return { brandId };
 	});
 
 /**
