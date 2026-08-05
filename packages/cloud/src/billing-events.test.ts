@@ -1,3 +1,4 @@
+import { CLOUD_CLAUDE_PROMPT_ADDON, CLOUD_PLAN_CATALOG } from "@workspace/config/plans";
 import type Stripe from "stripe";
 import { describe, expect, it, vi } from "vitest";
 import { buildCloudBillingSubscriptionProjection, createCloudStripeEventHandler } from "./billing-events";
@@ -14,6 +15,10 @@ function subscriptionItem(
 	quantity = 1,
 	interval: "month" | "year" = "month",
 ): Stripe.SubscriptionItem {
+	const catalogAmount = Object.values(CLOUD_PLAN_CATALOG)
+		.flatMap((plan) => (plan.billing.kind === "self-serve" ? [plan.billing.monthly, plan.billing.annual] : []))
+		.concat([CLOUD_CLAUDE_PROMPT_ADDON.monthly, CLOUD_CLAUDE_PROMPT_ADDON.annual])
+		.find((price) => price.lookupKey === lookupKey)?.unitAmountCents;
 	return {
 		id,
 		quantity,
@@ -22,7 +27,9 @@ function subscriptionItem(
 		price: {
 			id: `price_${lookupKey ?? "unknown"}`,
 			lookup_key: lookupKey,
+			active: true,
 			currency: "usd",
+			unit_amount: catalogAmount ?? 1_000,
 			recurring: { interval, interval_count: 1 },
 		},
 	} as unknown as Stripe.SubscriptionItem;
@@ -161,6 +168,36 @@ describe("cloud billing subscription projection", () => {
 				},
 			),
 		).toThrow(/basic does not support the Claude prompt add-on/);
+	});
+
+	it("rejects an active subscription whose recognized price drifts from the compiled catalog", () => {
+		const item = subscriptionItem("si_base", "elmo_cloud_starter_monthly");
+		item.price.unit_amount = 1;
+
+		expect(() =>
+			buildCloudBillingSubscriptionProjection(subscription([item]), {
+				organizationId: "org_1",
+				eventId: "evt_1",
+				eventCreatedAt: new Date(),
+				deleted: false,
+				syncedAt: new Date(),
+			}),
+		).toThrow(/does not match catalog lookup key.*amount 1, expected 2900/);
+	});
+
+	it("allows an inactive matching price to revoke a deleted subscription", () => {
+		const item = subscriptionItem("si_base", "elmo_cloud_starter_monthly");
+		item.price.active = false;
+
+		const result = buildCloudBillingSubscriptionProjection(subscription([item], { status: "canceled" }), {
+			organizationId: "org_1",
+			eventId: "evt_deleted",
+			eventCreatedAt: new Date(),
+			deleted: true,
+			syncedAt: new Date(),
+		});
+
+		expect(result.status).toBe("canceled");
 	});
 
 	it("projects arbitrary prices as custom only with the exact operator metadata", () => {

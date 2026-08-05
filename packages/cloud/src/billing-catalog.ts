@@ -75,8 +75,45 @@ const PRICE_IDENTITY_BY_LOOKUP_KEY = new Map(
 	PRICE_EXPECTATIONS.map(({ lookupKey, kind, planId, interval }) => [lookupKey, { kind, planId, interval }]),
 );
 
+const PRICE_EXPECTATION_BY_LOOKUP_KEY = new Map(
+	PRICE_EXPECTATIONS.map((expectation) => [expectation.lookupKey, expectation]),
+);
+
 export function identifyCloudPrice(lookupKey: string | null | undefined): CloudPriceIdentity | undefined {
 	return lookupKey ? PRICE_IDENTITY_BY_LOOKUP_KEY.get(lookupKey) : undefined;
+}
+
+export function validateCloudCatalogPrice(
+	price: Stripe.Price,
+	options: { requireActive?: boolean } = {},
+): CloudPriceIdentity | undefined {
+	const expectation = price.lookup_key ? PRICE_EXPECTATION_BY_LOOKUP_KEY.get(price.lookup_key) : undefined;
+	if (!expectation) return undefined;
+
+	const errors: string[] = [];
+	if ((options.requireActive ?? true) && !price.active) errors.push("inactive");
+	if (price.currency !== expectation.currency) {
+		errors.push(`currency ${price.currency}, expected ${expectation.currency}`);
+	}
+	if (price.unit_amount !== expectation.unitAmountCents) {
+		errors.push(`amount ${price.unit_amount ?? "null"}, expected ${expectation.unitAmountCents}`);
+	}
+	if (price.recurring?.interval !== expectation.interval || price.recurring.interval_count !== 1) {
+		errors.push(
+			`interval ${price.recurring?.interval_count ?? "none"} ${price.recurring?.interval ?? "non-recurring"}, expected 1 ${expectation.interval}`,
+		);
+	}
+	if (errors.length > 0) {
+		throw new Error(
+			`Stripe price ${price.id} does not match catalog lookup key ${expectation.lookupKey}: ${errors.join("; ")}`,
+		);
+	}
+
+	return {
+		kind: expectation.kind,
+		planId: expectation.planId,
+		interval: expectation.interval,
+	};
 }
 
 /**

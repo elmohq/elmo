@@ -1,6 +1,6 @@
 import { CLOUD_PLAN_CATALOG } from "@workspace/config/plans";
 import type Stripe from "stripe";
-import { identifyCloudPrice } from "./billing-catalog";
+import { validateCloudCatalogPrice } from "./billing-catalog";
 import {
 	type CloudBillingStore,
 	type CloudBillingSubscriptionItemProjection,
@@ -193,7 +193,7 @@ export function buildCloudBillingSubscriptionProjection(
 
 	const examinedItems = subscription.items.data.map((item) => ({
 		item,
-		identity: identifyCloudPrice(item.price.lookup_key),
+		identity: validateCloudCatalogPrice(item.price, { requireActive: !options.deleted }),
 		quantity: validateQuantity(item),
 	}));
 	const recognizedBaseItems = examinedItems.filter(({ identity }) => identity?.kind === "base_plan");
