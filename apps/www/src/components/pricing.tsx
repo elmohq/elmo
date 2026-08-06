@@ -2,6 +2,7 @@ import { Check, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { WaitlistForm } from "./waitlist-form";
 import { ContactForm } from "./contact-form";
+import { CLOUD_ENTRY_PRICE_USD, CLOUD_SIGNUP_URL, PUBLIC_CLOUD_PLANS } from "@/lib/cloud-plans";
 
 interface Plan {
 	id: string;
@@ -11,7 +12,7 @@ interface Plan {
 	price: string;
 	priceLabel: string;
 	features: string[];
-	cta: { type: "link"; text: string; href: string } | { type: "waitlist" } | { type: "contact" };
+	cta: { type: "link"; text: string; href: string } | { type: "external"; text: string; href: string } | { type: "waitlist" } | { type: "contact" };
 }
 
 const plans: Plan[] = [
@@ -37,17 +38,17 @@ const plans: Plan[] = [
 		tag: "02",
 		name: "Cloud",
 		desc: "Managed hosting, no maintenance.",
-		price: "Coming Soon",
-		priceLabel: "",
+		price: `From $${CLOUD_ENTRY_PRICE_USD}`,
+		priceLabel: "/ mo",
 		features: [
-			"Everything in Self-Hosted",
-			"Managed hosting",
-			"Automatic updates",
-			"Priority support",
-			"Daily backups",
-			"Usage analytics",
+			"Managed hosting, automatic updates",
+			"Track ChatGPT, Google, Perplexity & more",
+			"4× daily sampling on standard platforms",
+			"Claude tracking on Pro & Business",
+			"API access on every plan",
+			"Unlimited seats",
 		],
-		cta: { type: "waitlist" },
+		cta: { type: "external", text: "View plans & sign up", href: CLOUD_SIGNUP_URL },
 	},
 	{
 		id: "white-label",
@@ -115,13 +116,89 @@ export function Pricing() {
 										<ArrowRight className="size-3.5" />
 									</Link>
 								)}
+								{plan.cta.type === "external" && (
+									<a
+										href={plan.cta.href}
+										className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
+									>
+										{plan.cta.text}
+										<ArrowRight className="size-3.5" />
+									</a>
+								)}
 								{plan.cta.type === "waitlist" && <WaitlistForm source="pricing" />}
 								{plan.cta.type === "contact" && <ContactForm source="pricing" />}
 							</div>
 						</div>
 					))}
 				</div>
+
+				<CloudPlans />
 			</div>
 		</section>
+	);
+}
+
+function CloudPlans() {
+	return (
+		<div className="mt-16">
+			<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">/ CLOUD PLANS</p>
+			<h3 className="mt-3 max-w-[32ch] text-2xl font-semibold tracking-tight text-zinc-950 md:text-3xl">
+				Self-serve cloud, billed monthly or annually.
+			</h3>
+			<p className="mt-2 max-w-[52ch] text-sm text-zinc-600">
+				Annual billing saves two months. No trial — evaluate with the{" "}
+				<a href="https://demo.elmohq.com" className="text-blue-600 underline">
+					live demo
+				</a>{" "}
+				or self-host for free.
+			</p>
+
+			<div className="mt-8 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-zinc-200 bg-zinc-200 sm:grid-cols-2 lg:grid-cols-5">
+				{PUBLIC_CLOUD_PLANS.map((plan) => (
+					<div key={plan.id} className="flex flex-col bg-white p-5">
+						<h4 className="text-lg font-semibold tracking-tight text-zinc-950">{plan.name}</h4>
+						<div className="mt-2 flex items-baseline gap-1">
+							<span className="text-2xl font-semibold tracking-tight text-zinc-950 tabular-nums">
+								${plan.monthlyPriceUsd}
+							</span>
+							<span className="font-mono text-[10px] uppercase tracking-[0.15em] text-zinc-500">/ mo</span>
+						</div>
+						<p className="mt-1 text-xs text-zinc-500 tabular-nums">${plan.annualPriceUsd}/yr</p>
+						<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+							<li>
+								{plan.maxBrands} brand{plan.maxBrands === 1 ? "" : "s"}
+							</li>
+							<li>{plan.maxPrompts} tracked prompts</li>
+							<li>
+								{plan.platformPicks === 1 ? "ChatGPT only" : `Choose ${plan.platformPicks} platforms`} ·{" "}
+								{plan.standardRunsPerDay}×/day
+							</li>
+							<li>{plan.claudeIncluded > 0 ? `${plan.claudeIncluded} Claude prompts` : "—"}</li>
+						</ul>
+					</div>
+				))}
+				<div className="flex flex-col bg-white p-5">
+					<h4 className="text-lg font-semibold tracking-tight text-zinc-950">Custom</h4>
+					<div className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">Let&apos;s talk</div>
+					<p className="mt-1 text-xs text-zinc-500">Contract billing</p>
+					<ul className="mt-4 space-y-1.5 text-xs text-zinc-700">
+						<li>Custom brand & prompt limits</li>
+						<li>Up to 7×/day sampling</li>
+						<li>GPT-5 Search, web-search API</li>
+						<li>SSO</li>
+					</ul>
+				</div>
+			</div>
+
+			<div className="mt-6 flex flex-wrap gap-3">
+				<a
+					href={CLOUD_SIGNUP_URL}
+					className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-blue-600 px-4 text-sm font-medium leading-none text-white ring-1 ring-blue-600 hover:bg-blue-700"
+				>
+					Sign up
+					<ArrowRight className="size-3.5" />
+				</a>
+			</div>
+		</div>
 	);
 }
