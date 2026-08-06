@@ -77,6 +77,27 @@ describe("getWebsiteExcerpt", () => {
 		expect(String(fetchMock.mock.calls[0][0])).toBe("https://r.jina.ai/https://acme.com");
 	});
 
+	it("prepends a scheme to a bare domain that carries a path", async () => {
+		const fetchMock = stubFetch({ jina: response({ body: "content" }) });
+
+		await getWebsiteExcerpt("nike.com/golf");
+
+		expect(String(fetchMock.mock.calls[0][0])).toBe("https://r.jina.ai/https://nike.com/golf");
+	});
+
+	it("preserves an absolute page URL through both excerpt sources", async () => {
+		const pageUrl = "https://www.nike.com/golf?category=clubs#featured";
+		const fetchMock = stubFetch({
+			jina: response({ ok: false, status: 401 }),
+			direct: response({ contentType: "text/html; charset=utf-8", body: ARTICLE_HTML }),
+		});
+
+		await getWebsiteExcerpt(pageUrl);
+
+		expect(String(fetchMock.mock.calls[0][0])).toBe(`https://r.jina.ai/${pageUrl}`);
+		expect(String(fetchMock.mock.calls[1][0])).toBe(pageUrl);
+	});
+
 	it("sends an Authorization header to Jina when JINA_API_KEY is set", async () => {
 		vi.stubEnv("JINA_API_KEY", "jina_test_key");
 		const fetchMock = stubFetch({ jina: response({ body: "content" }) });

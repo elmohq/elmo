@@ -14,7 +14,14 @@
 import { z } from "zod";
 import { getWebsiteExcerpt } from "../website-excerpt";
 import { runStructuredResearchPrompt } from "./llm";
-import { cleanAndValidateDomain, cleanDomain, inferBrandNameFromDomain, uniqueLowercase, uniqueTrim } from "./utils";
+import {
+	cleanAndValidateDomain,
+	cleanDomain,
+	cleanUrl,
+	inferBrandNameFromDomain,
+	uniqueLowercase,
+	uniqueTrim,
+} from "./utils";
 
 // Tags are free-form and brand-tailored: the LLM invents a small vocabulary
 // (≤5 distinct values) that's actually useful for filtering THIS brand's
@@ -52,7 +59,7 @@ function buildSchema(args: { maxCompetitors: number; maxPrompts: number }) {
 		brandName: z
 			.string()
 			.describe(
-				'Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable: it should literally appear inside the website hostname so that mention-detection works. For example, for nike.com use "Nike" (not "Nike, Inc."). Don\'t include legal entity suffixes like "Inc." or "Ltd."',
+				'Canonical brand name in plaintext (preserve casing, but no markdown — no links, no formatting, just the bare name). The brandName must be searchable, because mention-detection matches it as a substring of AI answers. Don\'t include legal entity suffixes like "Inc." or "Ltd." When the page is a sub-brand, product line, or regional arm of a larger company, name THAT (e.g. "Nike Golf" for nike.com/golf) rather than the parent — otherwise use the name the hostname is built around (for nike.com, "Nike").',
 			),
 		additionalDomains: z
 			.array(z.string())
@@ -100,6 +107,12 @@ export interface OnboardingSuggestion {
 }
 
 export interface AnalyzeBrandOptions {
+	/**
+	 * Brand website — a domain or a full URL. A URL with a path (e.g.
+	 * `https://www.nike.com/golf`) is researched as given, so a sub-brand can be
+	 * analyzed from its own section of a larger site; the identity mentions are
+	 * tracked against is always its hostname.
+	 */
 	website: string;
 	brandName?: string;
 	/** 0 disables competitor generation entirely. */
@@ -118,8 +131,13 @@ const DEFAULT_MAX_PROMPTS = 30;
  * compare-onboarding script so every provider sees identical input.
  */
 export interface AnalysisContext {
+	/** Host-only identity used by downstream mention and citation matching. */
 	website: string;
+	/** Full URL the excerpt was read from and the prompt is written about. */
+	analysisUrl: string;
 	brandNameHint: string;
+	/** Caller-supplied name, when there was one — it outranks the model's answer. */
+	providedBrandName?: string;
 	prompt: string;
 	schema: ReturnType<typeof buildSchema>;
 	maxCompetitors: number;
@@ -127,24 +145,23 @@ export interface AnalysisContext {
 }
 
 export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promise<AnalysisContext> {
-	const {
-		website,
-		brandName: providedBrandName,
-		maxCompetitors = DEFAULT_MAX_COMPETITORS,
-		maxPrompts = DEFAULT_MAX_PROMPTS,
-	} = options;
+	const { website, brandName, maxCompetitors = DEFAULT_MAX_COMPETITORS, maxPrompts = DEFAULT_MAX_PROMPTS } = options;
 
 	const normalizedWebsite = cleanDomain(website);
-	if (!normalizedWebsite) {
+	const analysisUrl = cleanUrl(website);
+	if (!normalizedWebsite || !analysisUrl) {
 		throw new Error(`Could not parse website "${website}"`);
 	}
 
-	const brandNameHint = providedBrandName?.trim() || inferBrandNameFromDomain(normalizedWebsite);
-	const websiteExcerpt = await safeGetExcerpt(normalizedWebsite);
+	const providedBrandName = brandName?.trim() || undefined;
+	const brandNameHint = providedBrandName ?? inferBrandNameFromDomain(normalizedWebsite);
+	const websiteExcerpt = await safeGetExcerpt(analysisUrl);
 
 	const prompt = buildPrompt({
-		website: normalizedWebsite,
+		analysisUrl,
+		trackedDomain: normalizedWebsite,
 		brandNameHint,
+		brandNameWasProvided: providedBrandName !== undefined,
 		websiteExcerpt,
 		includeCompetitors: maxCompetitors > 0,
 		includePrompts: maxPrompts > 0,
@@ -152,7 +169,9 @@ export async function buildAnalysisContext(options: AnalyzeBrandOptions): Promis
 
 	return {
 		website: normalizedWebsite,
+		analysisUrl,
 		brandNameHint,
+		...(providedBrandName !== undefined && { providedBrandName }),
 		prompt,
 		schema: buildSchema({ maxCompetitors, maxPrompts }),
 		maxCompetitors,
@@ -165,6 +184,7 @@ export function normalizeAnalysisResult(raw: RawSuggestion, ctx: AnalysisContext
 		raw,
 		website: ctx.website,
 		brandNameHint: ctx.brandNameHint,
+		...(ctx.providedBrandName !== undefined && { providedBrandName: ctx.providedBrandName }),
 		includeCompetitors: ctx.maxCompetitors > 0,
 		includePrompts: ctx.maxPrompts > 0,
 		maxCompetitors: ctx.maxCompetitors,
@@ -179,7 +199,7 @@ export async function analyzeBrand(options: AnalyzeBrandOptions): Promise<Onboar
 	const raw = await runStructuredResearchPrompt(ctx.prompt, ctx.schema);
 	const result = normalizeAnalysisResult(raw, ctx);
 	console.log(
-		`[onboarding] analyzeBrand done: ${options.website} in ${Date.now() - start}ms (brand="${result.brandName}", competitors=${result.competitors.length}, prompts=${result.suggestedPrompts.length})`,
+		`[onboarding] analyzeBrand done: ${ctx.analysisUrl} in ${Date.now() - start}ms (tracking="${result.website}", brand="${result.brandName}", competitors=${result.competitors.length}, prompts=${result.suggestedPrompts.length})`,
 	);
 	return result;
 }
@@ -214,23 +234,48 @@ async function safeGetExcerpt(website: string): Promise<string> {
 	}
 }
 
+/** A URL pointing at something narrower than the site as a whole. */
+function isSubPage(analysisUrl: string): boolean {
+	try {
+		const url = new URL(analysisUrl);
+		return url.pathname !== "/" || url.search !== "" || url.hash !== "";
+	} catch {
+		return false;
+	}
+}
+
 function buildPrompt(args: {
-	website: string;
+	analysisUrl: string;
+	trackedDomain: string;
 	brandNameHint: string;
+	brandNameWasProvided: boolean;
 	websiteExcerpt: string;
 	includeCompetitors: boolean;
 	includePrompts: boolean;
 }): string {
-	const excerptBlock = args.websiteExcerpt ? `\nText from ${args.website}:\n---\n${args.websiteExcerpt}\n---\n` : "\n";
+	const excerptBlock = args.websiteExcerpt
+		? `\nText from ${args.analysisUrl}:\n---\n${args.websiteExcerpt}\n---\n`
+		: "\n";
+
+	const nameLine = args.brandNameWasProvided
+		? `Brand name (given by the user — keep it; correct only formatting): ${args.brandNameHint}`
+		: `Likely brand name (from domain): ${args.brandNameHint}`;
+
+	// A page below the site root is usually a sub-brand, product line, or
+	// regional arm. Everything should describe that, not the company that
+	// happens to own the domain — the domain only sets what mentions match.
+	const scopeNote = isSubPage(args.analysisUrl)
+		? `\nThis is one page on ${args.trackedDomain}, not the site root. If it covers a sub-brand, product line, or regional arm, scope the brand name, competitors, and prompts to THAT rather than to the parent company.\n`
+		: "";
 
 	const skipNotes: string[] = [];
 	if (!args.includeCompetitors) skipNotes.push("Return an empty array for competitors.");
 	if (!args.includePrompts) skipNotes.push("Return an empty array for suggestedPrompts.");
 
-	return `Analyze the brand at ${args.website}.
+	return `Analyze the brand at ${args.analysisUrl}.
 
-Likely brand name (from domain): ${args.brandNameHint}
-${excerptBlock}
+${nameLine}
+${scopeNote}${excerptBlock}
 Use web search to verify facts. Never invent information — return empty arrays when uncertain.
 
 You MUST return the structured JSON object — even if you can find nothing about this brand. In that case set brandName to the likely name above and return empty arrays for every other field. Refusing to produce JSON, or replying with prose explaining what you don't know, is a failure mode; an object with mostly-empty arrays is the correct answer when information is genuinely unavailable.${skipNotes.length > 0 ? `\n\n${skipNotes.join(" ")}` : ""}`;
@@ -240,14 +285,27 @@ function normalize(args: {
 	raw: RawSuggestion;
 	website: string;
 	brandNameHint: string;
+	providedBrandName?: string;
 	includeCompetitors: boolean;
 	includePrompts: boolean;
 	maxCompetitors: number;
 	maxPrompts: number;
 }): OnboardingSuggestion {
-	const { raw, website, brandNameHint, includeCompetitors, includePrompts, maxCompetitors, maxPrompts } = args;
+	const {
+		raw,
+		website,
+		brandNameHint,
+		providedBrandName,
+		includeCompetitors,
+		includePrompts,
+		maxCompetitors,
+		maxPrompts,
+	} = args;
 
-	const brandName = (raw.brandName || brandNameHint).trim() || brandNameHint;
+	// A caller-supplied name wins: it's what the user asked to track, and for a
+	// sub-brand the model tends to answer with the parent it recognises
+	// ("Nike Golf" → "Nike"), which would silently widen every match.
+	const brandName = providedBrandName ?? ((raw.brandName || brandNameHint).trim() || brandNameHint);
 
 	const ownedDomains = new Set([website]);
 	const additionalDomains = (raw.additionalDomains ?? [])
