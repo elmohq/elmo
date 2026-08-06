@@ -426,7 +426,7 @@ const DATAFORSEO_TARGETS = [
 	{ model: "google-ai-overview", provider: "dataforseo", kind: "scraper" },
 	{ model: "chatgpt", provider: "dataforseo-scraper", kind: "scraper" },
 	{ model: "gemini", provider: "dataforseo-scraper", kind: "scraper" },
-	{ model: "perplexity", provider: "dataforseo", kind: "LLM Responses API" },
+	{ model: "perplexity", provider: "dataforseo", kind: "api" },
 ] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
