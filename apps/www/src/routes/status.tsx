@@ -17,6 +17,7 @@ import {
 	PROVIDER_FILTER_LABELS,
 	PROVIDER_FILTER_ORDER,
 	providerCategory,
+	providerColumnLabel,
 	providerPhrase,
 	rateTier,
 	runStats,
@@ -989,7 +990,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						<div />
 						{renderProviderCells((p) => (
 							<div key={p} className="px-1 pb-1 text-center text-[11px] font-medium text-zinc-500">
-								{PROVIDER_FILTER_LABELS[p] ?? p}
+								{providerColumnLabel(p, grouped)}
 							</div>
 						))}
 						<div />

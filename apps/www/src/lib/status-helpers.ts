@@ -147,6 +147,18 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	"dataforseo-scraper": "DataForSEO Scraper",
 };
 
+// In the grouped matrix the column group header already says which kind of route
+// a column is, so DataForSEO's two columns don't repeat it.
+const GROUPED_COLUMN_LABELS: Record<string, string> = {
+	"dataforseo-api": "DataForSEO",
+	"dataforseo-scraper": "DataForSEO",
+};
+
+export function providerColumnLabel(provider: string, grouped: boolean) {
+	const short = grouped ? GROUPED_COLUMN_LABELS[provider] : undefined;
+	return short ?? PROVIDER_FILTER_LABELS[provider] ?? provider;
+}
+
 // A provider label as it reads mid-sentence. Every scraper and OpenRouter are
 // product names, but "Direct API" is a category and takes an article.
 export function providerPhrase(provider: string): string {
