@@ -8,10 +8,11 @@
  *
  *   local       — bootstrap signup (the one signup a local instance allows)
  *   cloud       — self-serve signup + email verification, then sign-in
+ *   demo        — sign-in only; signup is disabled and every write is refused
  *   whitelabel  — SSO-only, so the session is written directly (see session.ts)
  *
  * Whichever path runs, the user ends up an admin of TEST_BRAND_ID with report
- * generator access, so shared specs see the same surface in all three modes.
+ * generator access, so shared specs see the same surface in every mode.
  */
 import { test as setup } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
@@ -32,6 +33,7 @@ setup("authenticate", async ({ page, baseURL }, testInfo) => {
     // Must come first: local refuses every signup after the first account
     // exists, so writing the row up front would break its bootstrap path.
     await authenticateWithPassword(page.request, mode);
+    // Demo blocks this too — but at the HTTP layer, not in the database.
     await ensureAdminOfSeededBrand();
   }
 
@@ -50,9 +52,9 @@ async function ensureAdminOfSeededBrand(): Promise<string> {
 }
 
 /**
- * local and cloud both expose email/password. Sign in if the account already
- * exists, otherwise register it — in local that is the bootstrap signup, in
- * cloud it is ordinary self-serve signup.
+ * local, cloud, and demo all expose email/password. Sign in if the account
+ * already exists, otherwise register it — in local that is the bootstrap
+ * signup, in cloud it is ordinary self-serve signup.
  *
  * Cloud refuses sign-in until the address is verified, so we mark it verified
  * directly rather than putting a real transactional-email provider in the loop.
@@ -62,6 +64,16 @@ async function ensureAdminOfSeededBrand(): Promise<string> {
 async function authenticateWithPassword(request: APIRequestContext, mode: DeploymentMode): Promise<void> {
   if (mode === "cloud") await markEmailVerified();
   if (await signIn(request)) return;
+
+  if (mode === "demo") {
+    // A demo deployment has no signup at all — it is pointed at a database
+    // some earlier local install bootstrapped, which is what the local phase
+    // does in CI.
+    throw new Error(
+      `[auth.setup] demo: cannot sign in as ${TEST_USER.email}. ` +
+        `Demo has no signup — bootstrap the account by running the local project first.`,
+    );
+  }
 
   const signUp = await request.post("/api/auth/sign-up/email", {
     data: { email: TEST_USER.email, password: TEST_USER.password, name: TEST_USER.name },

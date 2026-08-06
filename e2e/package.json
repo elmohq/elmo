@@ -9,6 +9,7 @@
     "test:e2e": "playwright test --project=local",
     "test:e2e:cloud": "playwright test --project=cloud",
     "test:e2e:whitelabel": "playwright test --project=whitelabel",
+    "test:e2e:demo": "playwright test --project=demo",
     "test:api": "mkdir -p test-results && cd bruno && bru run -r --env local --reporter-junit ../test-results/api-junit.xml --reporter-json ../test-results/api-report.json",
     "seed": "tsx seed.ts"
   },

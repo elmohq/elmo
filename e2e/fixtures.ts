@@ -67,7 +67,7 @@ export const NIKE_COMPETITOR_IDS = {
  * that runs the shared specs plus its own; the stack serves one mode at a time,
  * so CI recreates the web container between them (see e2e/modes/*.yaml).
  */
-export const DEPLOYMENT_MODES = ["local", "cloud", "whitelabel"] as const;
+export const DEPLOYMENT_MODES = ["local", "cloud", "whitelabel", "demo"] as const;
 export type DeploymentMode = (typeof DEPLOYMENT_MODES)[number];
 
 export function isDeploymentMode(value: string): value is DeploymentMode {
@@ -109,4 +109,10 @@ export const CLOUD_SIGNUP = {
   allowedDomain: "e2e-allowed.test",
   blockedDomain: "e2e-blocked.test",
   disposableDomain: "mailinator.com",
+} as const;
+
+/** The shared credentials a demo deployment advertises on its login page. */
+export const DEMO_CREDENTIALS = {
+  email: "demo@elmohq.com",
+  password: "demo",
 } as const;

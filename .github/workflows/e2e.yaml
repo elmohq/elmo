@@ -1,7 +1,7 @@
 # End-to-End Integration Tests
 #
 # Verifies every deployment mode works end-to-end.
-# Walks through the `elmo init --dev` CLI flow in CI mode, then runs in four
+# Walks through the `elmo init --dev` CLI flow in CI mode, then runs in five
 # phases against the Dockerized stack:
 #
 #   1. local — worker down, seed data, run the `local` Playwright project
@@ -12,18 +12,19 @@
 #   3. cloud — worker back down, recreate `web` with e2e/modes/cloud.yaml,
 #      re-seed, run the `cloud` project
 #   4. whitelabel — same with e2e/modes/whitelabel.yaml
+#   5. demo — same with e2e/modes/demo.yaml
 #
 # The mode phases only recreate `web`: DEPLOYMENT_MODE is read at runtime, so
-# one image serves all three. Ordering matters — the fixture suites run while
+# one image serves all of them. Ordering matters — the fixture suites run while
 # the worker is down so its self-healing scheduler can't mutate seeded data,
 # and the local phase runs first because it bootstraps the account the other
 # modes sign in with.
 #
 # This workflow is the SINGLE SOURCE OF TRUTH for E2E test orchestration.
 # Run locally via: pnpm test:e2e-local  (replays this workflow with
-# https://github.com/nektos/act); `pnpm test:e2e`, `pnpm test:e2e:cloud`, and
-# `pnpm test:e2e:whitelabel` run one mode's specs against an already-running
-# stack in that mode.
+# https://github.com/nektos/act); `pnpm test:e2e`, `pnpm test:e2e:cloud`,
+# `pnpm test:e2e:whitelabel`, and `pnpm test:e2e:demo` run one mode's specs
+# against an already-running stack in that mode.
 
 name: E2E Tests
 
@@ -205,6 +206,24 @@ jobs:
         env:
           PLAYWRIGHT_HTML_REPORT: playwright-report-whitelabel
 
+      # Demo has no signup, so it reuses the account the local phase
+      # bootstrapped — the same way the public demo reuses a local install's
+      # database. It writes nothing, so it goes last.
+      - name: Switch web to demo mode
+        env:
+          COMPOSE_FILE: e2e/.elmo/elmo.yaml:e2e/worker-override.yaml:e2e/modes/demo.yaml
+        run: |
+          docker compose up -d --no-build --no-deps --force-recreate web
+          bash e2e/wait-for-web.sh
+
+      - name: Re-seed test data
+        run: cd e2e && npx tsx seed.ts
+
+      - name: Run Playwright E2E tests (demo mode)
+        run: pnpm -C e2e exec playwright test --project=demo
+        env:
+          PLAYWRIGHT_HTML_REPORT: playwright-report-demo
+
       - name: Dump web logs
         if: failure()
         run: docker compose logs web
@@ -227,5 +246,6 @@ jobs:
             e2e/test-results-local/
             e2e/test-results-cloud/
             e2e/test-results-whitelabel/
+            e2e/test-results-demo/
             e2e/test-results-worker/
           retention-days: 7
