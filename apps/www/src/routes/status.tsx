@@ -17,6 +17,7 @@ import {
 	PROVIDER_FILTER_LABELS,
 	PROVIDER_FILTER_ORDER,
 	providerCategory,
+	providerPhrase,
 	rateTier,
 	runStats,
 	unavailableReason,
@@ -673,11 +674,16 @@ function MatrixTip({
 	);
 }
 
+function TipRule() {
+	return <div className="my-2 border-t border-zinc-100" />;
+}
+
 function TipHeader({ title, subtitle }: { title: string; subtitle: string }) {
 	return (
 		<>
 			<div className="font-medium">{title}</div>
 			<div className="text-[11px] text-zinc-500">{subtitle}</div>
+			<TipRule />
 		</>
 	);
 }
@@ -689,7 +695,7 @@ function formatStat(value: number) {
 function TipStats({ stats }: { stats: RunStats }) {
 	if (!stats.metrics)
 		return (
-			<div className="mt-1.5 text-zinc-600">
+			<div className="text-zinc-600">
 				{stats.runs === 0 ? "Nothing has run here yet." : "No successful runs to average."}
 			</div>
 		);
@@ -701,7 +707,7 @@ function TipStats({ stats }: { stats: RunStats }) {
 		["Retries", stats.metrics.retries, formatStat],
 	];
 	return (
-		<div className="mt-1.5 grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 gap-y-0.5">
+		<div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-3 gap-y-0.5">
 			<div />
 			<div className="text-right text-[10px] uppercase tracking-wide text-zinc-400">Avg</div>
 			<div className="text-right text-[10px] uppercase tracking-wide text-zinc-400">Median</div>
@@ -742,13 +748,10 @@ function StatsTip({ title, targets }: { title: string; targets: TargetStatus[] }
 			<TipHeader title={title} subtitle={subtitle} />
 			<TipStats stats={stats} />
 			{stats.metrics && stats.passed < stats.runs && (
-				<div className="mt-2 text-[11px] text-zinc-500">Averages cover the {plural(stats.passed, "run")} that passed.</div>
-			)}
-			{stats.failingNow > 0 && (
-				<div className="mt-2 text-[11px] text-red-500">
-					{stats.targets > 1 ? `${stats.failingNow} of ${stats.targets} targets failing` : "Last check failed"}
-					{stats.lastError ? `: ${stats.lastError.slice(0, 120)}` : ""}
-				</div>
+				<>
+					<TipRule />
+					<div className="text-[11px] text-zinc-500">Averages cover the {plural(stats.passed, "run")} that passed.</div>
+				</>
 			)}
 		</>
 	);
@@ -758,7 +761,7 @@ function UnavailableTip({ model, provider }: { model: string; provider: string }
 	return (
 		<>
 			<TipHeader title="Not available" subtitle={`${formatModel(model)} · ${PROVIDER_FILTER_LABELS[provider]}`} />
-			<div className="mt-1.5 text-zinc-600">{unavailableReason(model, provider)}</div>
+			<div className="text-zinc-600">{unavailableReason(model, provider)}</div>
 		</>
 	);
 }
@@ -772,8 +775,8 @@ function UntrackedTip({ model, provider }: { model: string; provider: string }) 
 	return (
 		<>
 			<TipHeader title="Not supported yet" subtitle={`${modelLabel} · ${providerLabel}`} />
-			<div className="mt-1.5 text-zinc-600">
-				Elmo could reach {modelLabel} through {providerLabel}, but doesn't track it today.
+			<div className="text-zinc-600">
+				Elmo could reach {modelLabel} through {providerPhrase(provider)}, but doesn't track it today.
 			</div>
 			<a
 				href={href}
@@ -958,7 +961,7 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 								))}
 								<div />
 								<MatrixSummaryCell
-									title={`${formatModel(model)} · every provider`}
+									title={`${formatModel(model)} · All Providers`}
 									targets={matrix.rowTargets(model)}
 								/>
 							</Fragment>
@@ -968,12 +971,12 @@ function StatusMatrix({ data }: { data: TargetStatus[] }) {
 						{renderProviderCells((p) => (
 							<MatrixSummaryCell
 								key={p}
-								title={`${PROVIDER_FILTER_LABELS[p]} · every model`}
+								title={`${PROVIDER_FILTER_LABELS[p]} · All Models`}
 								targets={matrix.colTargets(p)}
 							/>
 						))}
 						<div />
-						<MatrixSummaryCell title="Every tracked target" targets={data} solid />
+						<MatrixSummaryCell title="All Models and Providers" targets={data} solid />
 					</div>
 				</div>
 			</CardContent>

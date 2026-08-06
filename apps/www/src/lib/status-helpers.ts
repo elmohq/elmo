@@ -123,15 +123,21 @@ export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	dataforseo: "DataForSEO",
 };
 
+// A provider label as it reads mid-sentence. Every scraper and OpenRouter are
+// product names, but "Direct API" is a category and takes an article.
+export function providerPhrase(provider: string): string {
+	const label = PROVIDER_FILTER_LABELS[provider] ?? provider;
+	return provider === "direct-api" ? `the ${label}` : label;
+}
+
 // Why a combination classified "unavailable" can't exist, phrased for the
 // matrix tooltip.
 export function unavailableReason(model: string, provider: string): string {
 	const modelLabel = formatModel(model);
-	const providerLabel = PROVIDER_FILTER_LABELS[provider] ?? provider;
 	if (MODEL_API_CATEGORIES.includes(provider)) {
-		return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerLabel} can't reach it.`;
+		return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerPhrase(provider)} can't reach it.`;
 	}
-	return `${providerLabel} has no ${modelLabel} collector, so that surface can't be reached through it.`;
+	return `${providerPhrase(provider)} has no ${modelLabel} collector, so that surface can't be reached through it.`;
 }
 
 export function formatLatency(ms: number) {
@@ -222,9 +228,6 @@ export interface RunStats {
 	targets: number;
 	runs: number;
 	passed: number;
-	/** Targets whose most recent run failed. */
-	failingNow: number;
-	lastError: string | null;
 	/** Null when nothing succeeded — the per-run numbers would all be zeros. */
 	metrics: {
 		latency: MetricStats;
@@ -253,17 +256,11 @@ function metricStats(values: number[]): MetricStats {
 export function runStats(targets: TargetStatus[]): RunStats {
 	const runs = targets.flatMap((t) => dedupeEntries(t.entries));
 	const passing = runs.filter((e) => e.status === "pass");
-	const failingLatest = targets
-		.map((t) => latestOf(t.entries))
-		.filter((e): e is StatusEntry => e?.status === "fail")
-		.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
 
 	return {
 		targets: targets.length,
 		runs: runs.length,
 		passed: passing.length,
-		failingNow: failingLatest.length,
-		lastError: failingLatest[0]?.error ?? null,
 		metrics: passing.length
 			? {
 					latency: metricStats(passing.map((e) => e.latency)),
