@@ -213,8 +213,8 @@ function formatStat(value: number) {
 interface Metric {
 	key: keyof NonNullable<RunStats["metrics"]>;
 	label: string;
-	/** Label under the full breakdown, where the value is an average. */
-	inlineLabel: string;
+	/** Only where the grid label's unit would be redundant next to the value. */
+	inlineLabel?: string;
 	color: string;
 	of: (entry: StatusEntry) => number;
 	format: (value: number) => string;
@@ -227,7 +227,6 @@ const METRICS: Metric[] = [
 	{
 		key: "latency",
 		label: "Latency",
-		inlineLabel: "Avg latency",
 		color: "hsl(221, 83%, 53%)",
 		of: (e) => e.latency,
 		format: (v) => formatLatency(Math.round(v)),
@@ -235,7 +234,6 @@ const METRICS: Metric[] = [
 	{
 		key: "citations",
 		label: "Citations",
-		inlineLabel: "Avg citations",
 		color: "hsl(262, 83%, 58%)",
 		of: (e) => e.citations,
 		format: formatStat,
@@ -243,7 +241,6 @@ const METRICS: Metric[] = [
 	{
 		key: "webQueries",
 		label: "Web queries",
-		inlineLabel: "Avg web queries",
 		color: "hsl(174, 72%, 40%)",
 		of: (e) => e.webQueries,
 		format: formatStat,
@@ -251,7 +248,7 @@ const METRICS: Metric[] = [
 	{
 		key: "textLength",
 		label: "Text (chars)",
-		inlineLabel: "Avg text",
+		inlineLabel: "Text",
 		color: "hsl(38, 92%, 50%)",
 		of: (e) => e.textLength,
 		format: formatStat,
@@ -260,7 +257,6 @@ const METRICS: Metric[] = [
 	{
 		key: "retries",
 		label: "Retries",
-		inlineLabel: "Avg retries",
 		color: "hsl(0, 84%, 60%)",
 		of: (e) => e.retries,
 		format: formatStat,
@@ -515,6 +511,7 @@ function StatWithSparkline({
 		}
 	}, [show]);
 
+	const inlineLabel = metric.inlineLabel ?? metric.label;
 	const formatInline = metric.formatInline ?? metric.format;
 	const value = stats ? formatInline(stats.avg) : "—";
 	const sparkData = entries.map(metric.of);
@@ -523,7 +520,7 @@ function StatWithSparkline({
 	if (!stats || sparkData.length === 0) {
 		return (
 			<span>
-				{metric.inlineLabel}: {value}
+				{inlineLabel}: {value}
 			</span>
 		);
 	}
@@ -560,7 +557,7 @@ function StatWithSparkline({
 				onMouseEnter={() => setShow(true)}
 				onMouseLeave={() => setShow(false)}
 			>
-				{metric.inlineLabel}: {value}
+				{inlineLabel}: {value}
 			</button>
 			{show &&
 				createPortal(
@@ -569,8 +566,14 @@ function StatWithSparkline({
 						style={{ left: pos.x, top: pos.y, transform: "translate(-50%, calc(-100% - 6px))" }}
 					>
 						<div className="px-1 font-medium">{metric.label}</div>
-						<div className="px-1 text-[11px] text-zinc-500">
-							min {metric.format(stats.min)} · median {metric.format(stats.median)} · max {metric.format(stats.max)}
+						{/* The pill shows the average, so the tooltip names all four rather than repeating one. */}
+						<div className="mt-0.5 grid grid-cols-2 gap-x-3 px-1 text-[11px] text-zinc-500">
+							{STAT_COLUMNS.map((column) => (
+								<div key={column.label} className="flex justify-between gap-2">
+									<span>{column.label.toLowerCase()}</span>
+									<span className="font-mono tabular-nums text-zinc-600">{metric.format(column.of(stats))}</span>
+								</div>
+							))}
 						</div>
 						<div className="mt-1" style={{ width: 220, height: 90 }}>
 							<ResponsiveContainer width="100%" height="100%">
