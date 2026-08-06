@@ -3,4 +3,4 @@
 "@elmohq/cli": patch
 ---
 
-Add support for DataForSEO's LLM Scraper API. If you were previously using `chatgpt:dataforseo:online` or `gemini:dataforseo:online`, we recommend switching to `chatgpt:dataforseo-scraper:online` and `gemini:dataforseo-scraper:online`.
+DataForSEO now scrapes the real ChatGPT and Gemini interfaces instead of calling their model APIs, with no change needed to existing `SCRAPE_TARGETS`. Pin a model (`chatgpt:dataforseo:gpt-5-mini:online`) to keep using the LLM Responses API.

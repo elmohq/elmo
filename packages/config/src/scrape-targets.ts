@@ -89,10 +89,12 @@ export const STATUS_TARGETS = [
 	"google-ai-mode:dataforseo:online",
 	"google-ai-overview:dataforseo:online",
 	"chatgpt:dataforseo:online",
-	"perplexity:dataforseo:online",
 	"gemini:dataforseo:online",
-	"chatgpt:dataforseo-scraper:online",
-	"gemini:dataforseo-scraper:online",
+	"perplexity:dataforseo:online",
+	// Pinning a model_name routes to LLM Responses instead of the scraper, so
+	// these keep the API side of the provider monitored too.
+	"chatgpt:dataforseo:gpt-5.5:online",
+	"gemini:dataforseo:gemini-2.5-flash:online",
 	"chatgpt:openai-api:gpt-5-mini",
 	"chatgpt:openai-api:gpt-5-mini:online",
 	"claude:anthropic-api:claude-sonnet-4-6",

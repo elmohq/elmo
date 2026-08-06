@@ -54,10 +54,24 @@ export function extractTextFromGoogle(rawOutput: any): string {
 	return extractTextFromDataforseo(rawOutput);
 }
 
+/**
+ * The `dataforseo` provider routes to three different DataForSEO products, so
+ * stored rows under that one provider id carry three shapes. The LLM Scraper is
+ * the one that renders its answer as top-level `markdown` and cites through
+ * top-level `sources`; neither the LLM Responses nor the SERP results have
+ * either field.
+ */
+function isDataforseoScraperResult(result: any): boolean {
+	return typeof result?.markdown === "string" || Array.isArray(result?.sources);
+}
+
 export function extractTextFromDataforseo(rawOutput: any): string {
 	try {
 		const result = rawOutput?.tasks?.[0]?.result?.[0];
 		if (result) {
+			if (isDataforseoScraperResult(result)) {
+				return extractTextFromDataforseoScraper(rawOutput);
+			}
 			const items = result.items || [];
 			// AI Optimization LLM Responses (chatgpt/perplexity/gemini) use
 			// items[].sections[].text; the SERP Google AI Mode shape below uses
@@ -368,8 +382,6 @@ export function extractTextContent(rawOutput: any, providerOrEngine: string): st
 		case "google-ai-mode":
 		case "google-ai-overview":
 			return extractTextFromDataforseo(rawOutput);
-		case "dataforseo-scraper":
-			return extractTextFromDataforseoScraper(rawOutput);
 		case "openrouter":
 			return extractTextFromOpenRouter(rawOutput);
 		case "olostep":
@@ -455,7 +467,11 @@ export function extractCitationsFromDataforseo(rawOutput: any): Citation[] {
 	try {
 		const citations: Citation[] = [];
 		let idx = 0;
-		const items = rawOutput?.tasks?.[0]?.result?.[0]?.items ?? [];
+		const result = rawOutput?.tasks?.[0]?.result?.[0];
+		if (isDataforseoScraperResult(result)) {
+			return extractCitationsFromDataforseoScraper(rawOutput);
+		}
+		const items = result?.items ?? [];
 		// AI Optimization LLM Responses (chatgpt/perplexity/gemini) carry
 		// citations in items[].sections[].annotations[]; delegate when present.
 		if (items.some((item: any) => Array.isArray(item?.sections))) {
@@ -791,8 +807,6 @@ export function extractCitations(rawOutput: any, providerOrEngine: string): Cita
 		case "google-ai-mode":
 		case "google-ai-overview":
 			return extractCitationsFromDataforseo(rawOutput);
-		case "dataforseo-scraper":
-			return extractCitationsFromDataforseoScraper(rawOutput);
 		case "openrouter":
 			return extractCitationsFromOpenRouter(rawOutput);
 		case "olostep":

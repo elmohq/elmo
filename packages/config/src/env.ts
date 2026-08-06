@@ -69,9 +69,7 @@ function buildProviderKeyRequirements(env: EnvMap = process.env): EnvRequirement
 	const requirements: EnvRequirement[] = [];
 	for (const provider of providers) {
 		const keys = ENV_REGISTRY.filter(
-			(spec) =>
-				spec.requiredBy === "dynamic-scrape-targets" &&
-				(Array.isArray(spec.provider) ? spec.provider.includes(provider) : spec.provider === provider),
+			(spec) => spec.requiredBy === "dynamic-scrape-targets" && spec.provider === provider,
 		).map((spec) => spec.name);
 		if (keys.length === 0) continue;
 		requirements.push({

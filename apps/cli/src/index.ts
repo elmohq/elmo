@@ -418,15 +418,15 @@ const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perp
 const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
-// ChatGPT and Gemini go through the LLM Scraper API, which drives the real
-// consumer UIs. Perplexity has no scraper endpoint, and the two Google surfaces
-// are SERP scrapes, so both stay on the plain `dataforseo` provider.
+// DataForSEO scrapes wherever it can — the two Google SERP surfaces plus the
+// LLM Scraper's ChatGPT and Gemini. Perplexity has no scraper, so it's the one
+// surface that goes through the LLM Responses API.
 const DATAFORSEO_TARGETS = [
-	{ model: "google-ai-mode", provider: "dataforseo", kind: "scraper" },
-	{ model: "google-ai-overview", provider: "dataforseo", kind: "scraper" },
-	{ model: "chatgpt", provider: "dataforseo-scraper", kind: "scraper" },
-	{ model: "gemini", provider: "dataforseo-scraper", kind: "scraper" },
-	{ model: "perplexity", provider: "dataforseo", kind: "api" },
+	{ model: "google-ai-mode", kind: "scraper" },
+	{ model: "google-ai-overview", kind: "scraper" },
+	{ model: "chatgpt", kind: "scraper" },
+	{ model: "gemini", kind: "scraper" },
+	{ model: "perplexity", kind: "api" },
 ] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
@@ -894,7 +894,7 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 	const selected = (await p.multiselect({
 		message: "LLM Providers to track via DataForSEO",
 		options: DATAFORSEO_TARGETS.map((t) => ({
-			value: formatScrapeTarget({ model: t.model, provider: t.provider, webSearch: true }),
+			value: formatScrapeTarget({ model: t.model, provider: "dataforseo", webSearch: true }),
 			label: `${t.model} (${t.kind})`,
 		})),
 		required: false,

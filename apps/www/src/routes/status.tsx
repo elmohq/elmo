@@ -1006,8 +1006,8 @@ function StatusPage() {
 
 	const providerOptions = PROVIDER_FILTER_ORDER.filter((c) =>
 		data.some((d) => {
-			const { model, provider } = parseTarget(d.target);
-			return providerCategory(provider, model) === c;
+			const { model, provider, version } = parseTarget(d.target);
+			return providerCategory(provider, model, version) === c;
 		}),
 	).map((c) => ({ value: c, label: PROVIDER_FILTER_LABELS[c] ?? c }));
 	const modelOptions = [...new Set(data.map((d) => parseTarget(d.target).model))]
@@ -1015,8 +1015,9 @@ function StatusPage() {
 		.map((m) => ({ value: m, label: formatModel(m) }));
 
 	const filteredData = data.filter((d) => {
-		const { model, provider } = parseTarget(d.target);
-		const providerOk = selectedProviders.size === 0 || selectedProviders.has(providerCategory(provider, model));
+		const { model, provider, version } = parseTarget(d.target);
+		const providerOk =
+			selectedProviders.size === 0 || selectedProviders.has(providerCategory(provider, model, version));
 		const modelOk = selectedModels.size === 0 || selectedModels.has(model);
 		return providerOk && modelOk;
 	});

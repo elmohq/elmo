@@ -134,24 +134,36 @@ On OpenRouter, `:online` runs the underlying model's own web search where one ex
 `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` enable several surfaces as an alternative to BrightData/Olostep:
 
 ```bash
-chatgpt:dataforseo-scraper:online
-gemini:dataforseo-scraper:online
+chatgpt:dataforseo:online
+gemini:dataforseo:online
 google-ai-mode:dataforseo:online
 google-ai-overview:dataforseo:online
 perplexity:dataforseo:online
 ```
 
-The same credentials serve two different DataForSEO products, split across two provider ids:
+One account reaches three different DataForSEO products, and the target picks between them for you: **DataForSEO always scrapes the live surface where it can.**
 
-**`dataforseo-scraper` — the real consumer UIs (recommended for ChatGPT and Gemini).** Uses DataForSEO's [AI Optimization "LLM Scraper"](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/) API, which drives chatgpt.com and gemini.google.com and returns what a real user sees, including product cards and tables. ChatGPT also reports its query fan-out. Only `chatgpt` and `gemini` are available — DataForSEO has no Perplexity scraper. These runs take roughly a minute since a live session has to complete.
+| Target | Route |
+|---|---|
+| `chatgpt`, `gemini` | [AI Optimization "LLM Scraper"](https://docs.dataforseo.com/v3/ai_optimization-chat_gpt-llm_scraper-live-advanced/) — drives chatgpt.com and gemini.google.com |
+| `google-ai-mode` | SERP Google AI Mode endpoint |
+| `google-ai-overview` | Google Organic SERP endpoint with `load_async_ai_overview` on |
+| `perplexity` | [AI Optimization "LLM Responses"](https://docs.dataforseo.com/v3/ai_optimization-llm_responses-overview/) — no Perplexity scraper exists |
 
-**`dataforseo` — SERP endpoints and model APIs.**
+The scraped ChatGPT and Gemini runs return what a real user sees, including product cards and tables, and ChatGPT reports its query fan-out. They take roughly a minute, since a live session has to finish.
 
-- `google-ai-mode` uses the SERP Google AI Mode endpoint.
-- `google-ai-overview` uses the Google Organic SERP endpoint with `load_async_ai_overview` on, returning the AI Overview block and its cited sources.
-- `chatgpt`, `perplexity`, and `gemini` use the [AI Optimization "LLM Responses"](https://docs.dataforseo.com/v3/ai_optimization-llm_responses-overview/) API. These call the vendors' model APIs rather than the consumer products, so they're much faster and cheaper but don't reflect the real ChatGPT or Gemini experience. Prefer `dataforseo-scraper` for ChatGPT and Gemini; `perplexity:dataforseo:online` is the only way to reach Perplexity here.
+### Pinning a model
 
-Each LLM Responses surface defaults to a sensible model (`gpt-5.5`, `sonar`, `gemini-2.5-flash`). Override the underlying DataForSEO `model_name` via the version slug, e.g. `chatgpt:dataforseo:gpt-5-mini:online`. The scraper takes no version slug — the live UI picks the model. All DataForSEO targets require `:online`.
+Adding a version slug switches ChatGPT or Gemini to the **LLM Responses** API, which calls the vendor's model API instead of the consumer product:
+
+```bash
+chatgpt:dataforseo:gpt-5-mini:online     # LLM Responses, pinned to gpt-5-mini
+gemini:dataforseo:gemini-2.5-flash:online
+```
+
+That route is much faster and cheaper but doesn't reflect the real ChatGPT or Gemini experience — reach for it when you specifically want to track a named model, or to run both side by side as separate targets. It's the only route that can honor a `model_name`, so the scraped and SERP surfaces reject a version slug rather than silently ignoring it.
+
+All DataForSEO targets require `:online`.
 
 DataForSEO prompt text is limited to 500 characters. Country localization is intentionally not exposed in `SCRAPE_TARGETS` yet because support differs by DataForSEO surface and underlying model.
 
@@ -184,7 +196,7 @@ SCRAPE_TARGETS=chatgpt:brightdata:online,google-ai-mode:brightdata:online,claude
 ```bash
 DATAFORSEO_LOGIN=...
 DATAFORSEO_PASSWORD=...
-SCRAPE_TARGETS=chatgpt:dataforseo-scraper:online,gemini:dataforseo-scraper:online,google-ai-mode:dataforseo:online
+SCRAPE_TARGETS=chatgpt:dataforseo:online,gemini:dataforseo:online,google-ai-mode:dataforseo:online
 ```
 
 **No scraper (APIs only).** Cheapest option, but you're tracking model APIs instead of the real consumer surfaces:
@@ -202,8 +214,8 @@ model:provider[:version][:online]
 ```
 
 - `model` — the AI surface being tracked (`chatgpt`, `claude`, `google-ai-mode`, `google-ai-overview`, `gemini`, `perplexity`, `copilot`, `grok`, `kimi`).
-- `provider` — how to reach it (`brightdata`, `oxylabs`, `cloro`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`, `dataforseo-scraper`).
-- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here). Rejected for `dataforseo-scraper`.
+- `provider` — how to reach it (`brightdata`, `oxylabs`, `cloro`, `olostep`, `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`, `dataforseo`).
+- `version` — required for `openai-api`, `anthropic-api`, `mistral-api`, `openrouter`. Optional for scrapers (pass a BrightData dataset id here, or a DataForSEO `model_name` to switch that target to the LLM Responses API).
 - `:online` — append to enable web search. Required for most scraped models since the live UIs always search.
 
 Entries are comma-separated.

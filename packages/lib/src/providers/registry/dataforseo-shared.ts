@@ -2,9 +2,9 @@ import * as client from "dataforseo-client";
 import { getCredential } from "../../secrets";
 
 /**
- * Shared plumbing for the two DataForSEO providers: `dataforseo` (SERP +
- * AI Optimization LLM Responses) and `dataforseo-scraper` (AI Optimization
- * LLM Scraper). Both authenticate with the same account credentials.
+ * Shared plumbing for the DataForSEO provider, which spans three products on
+ * one set of account credentials: the SERP endpoints, AI Optimization "LLM
+ * Scraper", and AI Optimization "LLM Responses".
  */
 
 export const MAX_PROMPT_CHARS = 500;

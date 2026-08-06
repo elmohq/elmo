@@ -32,8 +32,8 @@ const TIER_CHIP: Record<RateTier, { bg: string; border: string }> = {
 export function renderStatusOgImage(data: TargetStatus[]) {
 	const overall = overallStatus(data);
 	const categoryOf = (target: string) => {
-		const { model, provider } = parseTarget(target);
-		return providerCategory(provider, model);
+		const { model, provider, version } = parseTarget(target);
+		return providerCategory(provider, model, version);
 	};
 	const providers = PROVIDER_FILTER_ORDER.filter((c) => data.some((d) => categoryOf(d.target) === c));
 	const providerStats = providers.map((c) => ({

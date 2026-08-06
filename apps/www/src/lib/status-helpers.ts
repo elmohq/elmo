@@ -21,7 +21,12 @@ export function parseTarget(target: string) {
 	const model = parts[0];
 	const provider = parts[1];
 	const rest = parts.slice(2).join(":");
-	return { model, provider, rest };
+	// Same split as parseScrapeTargets: everything between the provider and an
+	// optional trailing "online" is the version slug.
+	const webSearch = parts[parts.length - 1] === "online";
+	const versionParts = parts.slice(2, webSearch ? -1 : undefined);
+	const version = versionParts.length > 0 ? versionParts.join(":") : undefined;
+	return { model, provider, rest, version };
 }
 
 export function formatModel(model: string) {
@@ -48,7 +53,6 @@ export function formatProvider(provider: string) {
 		oxylabs: "Oxylabs",
 		cloro: "Cloro",
 		dataforseo: "DataForSEO",
-		"dataforseo-scraper": "DataForSEO Scraper",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
 		"mistral-api": "Mistral API",
@@ -57,16 +61,20 @@ export function formatProvider(provider: string) {
 	return names[provider] || provider;
 }
 
-// The DataForSEO provider id spans both kinds of route: its AI Optimization
-// "LLM Responses" endpoints call the vendors' model APIs, while its SERP
-// endpoints scrape Google. Split it by model, so the Google surfaces join the
-// LLM Scraper targets in one DataForSEO scraper column.
-const DATAFORSEO_API_MODELS = new Set(["chatgpt", "perplexity", "gemini"]);
+// Surfaces the one `dataforseo` provider reaches by scraping — the two Google
+// SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Mirrors
+// DATAFORSEO_SCRAPED_MODELS in @workspace/lib.
+const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]);
 
 // The three first-party API providers collapse into one "Direct API" filter.
-export function providerCategory(provider: string, model: string) {
+export function providerCategory(provider: string, model: string, version?: string) {
 	if (provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api") return "direct-api";
-	if (provider === "dataforseo") return DATAFORSEO_API_MODELS.has(model) ? "dataforseo-api" : "dataforseo-scraper";
+	// DataForSEO is one provider spanning two kinds of route, and the target
+	// picks between them the same way the provider does: pinning a model_name
+	// forces the LLM Responses API, otherwise it scrapes wherever it can.
+	if (provider === "dataforseo") {
+		return !version && DATAFORSEO_SCRAPED_MODELS.has(model) ? "dataforseo-scraper" : "dataforseo-api";
+	}
 	return provider;
 }
 
@@ -320,8 +328,8 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
 		data.some((d) => {
-			const { model, provider } = parseTarget(d.target);
-			return providerCategory(provider, model) === c;
+			const { model, provider, version } = parseTarget(d.target);
+			return providerCategory(provider, model, version) === c;
 		}),
 	);
 
@@ -335,8 +343,8 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	const byModel = new Map<string, TargetStatus[]>();
 	const byProvider = new Map<string, TargetStatus[]>();
 	for (const d of data) {
-		const { model, provider } = parseTarget(d.target);
-		const pc = providerCategory(provider, model);
+		const { model, provider, version } = parseTarget(d.target);
+		const pc = providerCategory(provider, model, version);
 		add(byCell, `${model} ${pc}`, d);
 		add(byModel, model, d);
 		add(byProvider, pc, d);
