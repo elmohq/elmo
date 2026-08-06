@@ -14,7 +14,7 @@
  */
 import { sql } from "drizzle-orm";
 import { db } from "@workspace/lib/db/db";
-import type { OnboardingSuggestion } from "@workspace/lib/onboarding";
+import { resolveAnalysisUrl, type OnboardingSuggestion } from "@workspace/lib/onboarding";
 import { getBoss } from "@/lib/boss-client";
 import { extractDomain } from "@/lib/domain-categories";
 
@@ -37,13 +37,15 @@ export interface AnalyzeBrandInput {
 	/** Brand id (== org id) the analysis belongs to. Must be access-checked by the caller. */
 	brandId: string;
 	website: string;
+	/** Page to research instead of `website`; the tracked domain still comes from `website`. */
+	analysisUrl?: string;
 	brandName?: string;
 }
 
 interface JobRow {
 	id: string;
 	state: string;
-	data: { website?: string } | null;
+	data: { website?: string; analysisUrl?: string } | null;
 	output: unknown;
 }
 
@@ -62,9 +64,22 @@ async function latestJobForBrand(brandId: string): Promise<JobRow | undefined> {
 const IN_FLIGHT_STATES = new Set(["created", "active", "retry"]);
 
 /**
- * Enqueue a brand analysis, deduped by the brand + domain it runs for.
+ * The page an enqueued job will actually read. Two runs are "the same" only if
+ * they research the same URL — `nike.com/golf` and `nike.com/running` share a
+ * domain but produce completely different suggestions.
+ */
+function analysisKey(input: { website?: string; analysisUrl?: string }): string {
+	const website = input.website ?? "";
+	return (
+		resolveAnalysisUrl({ website, ...(input.analysisUrl && { analysisUrl: input.analysisUrl }) }) ||
+		extractDomain(website)
+	);
+}
+
+/**
+ * Enqueue a brand analysis, deduped by the brand + page it runs for.
  *
- * If an analysis for this domain is already in flight we reuse it instead of
+ * If an analysis for this page is already in flight we reuse it instead of
  * paying for a second run; once a job reaches a terminal state a fresh analysis
  * is allowed again (so "try again" works).
  *
@@ -79,10 +94,10 @@ const IN_FLIGHT_STATES = new Set(["created", "active", "retry"]);
  */
 export async function enqueueAnalyzeBrand(input: AnalyzeBrandInput): Promise<void> {
 	const boss = await getBoss();
-	const domain = extractDomain(input.website);
+	const key = analysisKey(input);
 
 	const latest = await latestJobForBrand(input.brandId);
-	if (latest && IN_FLIGHT_STATES.has(latest.state) && extractDomain(latest.data?.website ?? "") === domain) {
+	if (latest && IN_FLIGHT_STATES.has(latest.state) && analysisKey(latest.data ?? {}) === key) {
 		return;
 	}
 

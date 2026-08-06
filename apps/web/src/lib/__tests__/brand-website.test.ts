@@ -52,6 +52,15 @@ describe("validateWebsiteUrl", () => {
 		});
 	});
 
+	// The tracked website stays the origin even for a sub-brand page; the page
+	// itself is carried separately as the analysis URL.
+	it("stores the origin for a sub-brand page URL", () => {
+		expect(validateWebsiteUrl("https://www.nike.com/golf")).toEqual({
+			isValid: true,
+			formattedUrl: "https://www.nike.com/",
+		});
+	});
+
 	it("preserves subdomains", () => {
 		expect(validateWebsiteUrl("https://blog.example.com/posts/1")).toEqual({
 			isValid: true,

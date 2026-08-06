@@ -24,6 +24,7 @@ import {
 	updateOnboardedBrandFn,
 } from "@/server/onboarding";
 import { trackEvent } from "@/lib/posthog";
+import { extractDomain } from "@/lib/domain-categories";
 import { CompetitorsEditor, newCompetitorEntry, type CompetitorEntry } from "@/components/competitors-editor";
 import { PromptsListEditor, newPromptEntry, type EditablePrompt } from "@/components/prompts-list-editor";
 
@@ -83,6 +84,9 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	const router = useRouter();
 	const [phase, setPhase] = useState<"idle" | "analyzing" | "review">("idle");
 	const [error, setError] = useState<string | null>(null);
+	// Analysis-only: pointing this at a sub-brand page (nike.com/golf) changes
+	// what we research, never the domain mentions are tracked against.
+	const [analysisUrl, setAnalysisUrl] = useState("");
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 	const [data, setData] = useState<WizardData>({
@@ -95,6 +99,7 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	});
 
 	const brandId = brand?.id;
+	const trackedDomain = extractDomain(brand?.website ?? "");
 
 	// Stop polling, drop the cached status so the next run starts clean, and
 	// (best-effort) cancel the worker job. `errorMessage` surfaces a reason
@@ -112,7 +117,8 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 	);
 
 	const { mutate: enqueueAnalysis, isSuccess: analysisEnqueued } = useMutation({
-		mutationFn: (vars: { brandId: string; website: string; brandName?: string }) => startAnalyzeBrandFn({ data: vars }),
+		mutationFn: (vars: { brandId: string; website: string; analysisUrl?: string; brandName?: string }) =>
+			startAnalyzeBrandFn({ data: vars }),
 		onError: (err) => {
 			setError(err instanceof Error ? err.message : "Analysis failed");
 			setPhase("idle");
@@ -133,14 +139,24 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		refetchIntervalInBackground: true,
 	});
 
+	// Default the analysis to the brand's own site; the user can narrow it.
+	useEffect(() => {
+		if (brand?.website) setAnalysisUrl((prev) => prev || brand.website);
+	}, [brand?.website]);
+
 	const handleAnalyze = useCallback(() => {
 		if (!brand?.website || !brand?.id) return;
 		setError(null);
 		// Clear any stale status from a previous run before we start polling.
 		queryClient.removeQueries({ queryKey: analyzeStatusKey(brand.id) });
 		setPhase("analyzing");
-		enqueueAnalysis({ brandId: brand.id, website: brand.website, brandName: brand.name });
-	}, [brand?.website, brand?.id, brand?.name, queryClient, enqueueAnalysis]);
+		enqueueAnalysis({
+			brandId: brand.id,
+			website: brand.website,
+			analysisUrl: analysisUrl.trim() || undefined,
+			brandName: brand.name,
+		});
+	}, [brand?.website, brand?.id, brand?.name, analysisUrl, queryClient, enqueueAnalysis]);
 
 	// React to status transitions while analyzing.
 	const statusData = statusQuery.data;
@@ -263,9 +279,23 @@ export default function PromptWizard({ onComplete }: PromptWizardProps) {
 		return (
 			<div className="max-w-2xl mx-auto space-y-3">
 				<p className="text-sm text-muted-foreground">
-					We'll analyze <strong>{brand?.website}</strong> using web search to suggest competitors, additional
-					domains/aliases, and a starter set of AI prompts to track.
+					We'll read this page and use web search to suggest competitors, additional domains/aliases, and a starter set
+					of AI prompts to track.
 				</p>
+				<div className="space-y-1">
+					<p className="text-xs text-muted-foreground">Page to analyze</p>
+					<Input
+						type="url"
+						value={analysisUrl}
+						onChange={(e) => setAnalysisUrl(e.target.value)}
+						placeholder={brand?.website || "https://example.com"}
+						disabled={phase === "analyzing"}
+					/>
+					<p className="text-xs text-muted-foreground">
+						Point this at a specific page (e.g. <code>https://www.nike.com/golf</code>) to research a sub-brand or
+						product line. Mentions stay tracked against <strong>{trackedDomain}</strong> either way.
+					</p>
+				</div>
 				{error && (
 					<div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
 						<AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />

@@ -157,7 +157,7 @@
 					},
 					"brandWebsite": {
 						"type": "string",
-						"description": "The brand's website URL",
+						"description": "The brand's website. http(s) only. A full page URL (e.g. https://www.nike.com/golf) scopes the analysis to that page, while mentions stay tracked against its domain.",
 						"minLength": 1
 					},
 					"manualPrompts": {

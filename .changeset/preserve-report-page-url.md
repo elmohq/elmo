@@ -1,5 +1,6 @@
 ---
 "@workspace/lib": patch
+"@workspace/web": patch
 ---
 
-Report analysis now uses the full page URL while citation matching remains scoped to the website's domain.
+Brand analysis can now be pointed at a full page URL to research a sub-brand, while mentions stay tracked against the site's domain.
