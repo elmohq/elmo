@@ -23,6 +23,8 @@
     "version-packages": "changeset version && node scripts/sync-root-version.mjs",
     "release": "pnpm build && changeset publish",
     "test:e2e": "pnpm --filter e2e test:e2e",
+    "test:e2e:cloud": "pnpm --filter e2e test:e2e:cloud",
+    "test:e2e:whitelabel": "pnpm --filter e2e test:e2e:whitelabel",
     "test:e2e-local": "bash e2e/run-local.sh",
     "test:api": "pnpm --filter e2e test:api",
     "license-check": "node scripts/check-licenses.mjs"

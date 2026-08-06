@@ -26,7 +26,7 @@
       "entry": ["scripts/test-provider.ts"]
     },
     "e2e": {
-      "entry": ["*.ts"],
+      "entry": ["*.ts", "tests/**/*.setup.ts"],
       "project": ["**/*.ts"]
     }
   }
