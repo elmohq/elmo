@@ -31,12 +31,14 @@ const TIER_CHIP: Record<RateTier, { bg: string; border: string }> = {
 // loads (Titan One 400, Geist Sans 400/500) — so avoid heavier weights.
 export function renderStatusOgImage(data: TargetStatus[]) {
 	const overall = overallStatus(data);
-	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
-	);
+	const categoryOf = (target: string) => {
+		const { model, provider } = parseTarget(target);
+		return providerCategory(provider, model);
+	};
+	const providers = PROVIDER_FILTER_ORDER.filter((c) => data.some((d) => categoryOf(d.target) === c));
 	const providerStats = providers.map((c) => ({
 		label: PROVIDER_FILTER_LABELS[c] ?? c,
-		rate: passRate(data.filter((d) => providerCategory(parseTarget(d.target).provider) === c)),
+		rate: passRate(data.filter((d) => categoryOf(d.target) === c)),
 	}));
 	const modelCount = new Set(data.map((d) => parseTarget(d.target).model)).size;
 

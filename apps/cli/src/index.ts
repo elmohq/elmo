@@ -418,7 +418,16 @@ const OXYLABS_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perp
 const CLORO_MODELS = ["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity", "copilot", "gemini"] as const;
 
 const DEFAULT_SCRAPER_MODELS = ["chatgpt", "google-ai-mode"] as const;
-const DATAFORSEO_MODELS = ["google-ai-mode", "google-ai-overview", "chatgpt", "perplexity", "gemini"] as const;
+// ChatGPT and Gemini go through the LLM Scraper API, which drives the real
+// consumer UIs. Perplexity has no scraper endpoint, and the two Google surfaces
+// are SERP scrapes, so both stay on the plain `dataforseo` provider.
+const DATAFORSEO_TARGETS = [
+	{ model: "google-ai-mode", provider: "dataforseo", kind: "SERP" },
+	{ model: "google-ai-overview", provider: "dataforseo", kind: "SERP" },
+	{ model: "chatgpt", provider: "dataforseo-scraper", kind: "scraper" },
+	{ model: "gemini", provider: "dataforseo-scraper", kind: "scraper" },
+	{ model: "perplexity", provider: "dataforseo", kind: "LLM Responses API" },
+] as const;
 
 const DEFAULT_OPENAI_MODEL = "gpt-5-mini";
 const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
@@ -862,7 +871,7 @@ async function collectOpenRouter(env: EnvMap, targets: string[]): Promise<void> 
 
 async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> {
 	const enable = await p.confirm({
-		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode + LLM Responses)`,
+		message: `Configure ${pc.bold("DataForSEO")}? (Google AI Mode + ChatGPT/Gemini scrapers)`,
 		initialValue: false,
 	});
 	assertNotCancelled(enable);
@@ -884,15 +893,16 @@ async function collectDataForSEO(env: EnvMap, targets: string[]): Promise<void> 
 
 	const selected = (await p.multiselect({
 		message: "LLM Providers to track via DataForSEO",
-		options: DATAFORSEO_MODELS.map((model) => ({ value: model, label: model })),
+		options: DATAFORSEO_TARGETS.map((t) => ({
+			value: formatScrapeTarget({ model: t.model, provider: t.provider, webSearch: true }),
+			label: `${t.model} (${t.kind})`,
+		})),
 		required: false,
-		initialValues: ["google-ai-mode"],
+		initialValues: [formatScrapeTarget({ model: "google-ai-mode", provider: "dataforseo", webSearch: true })],
 	})) as string[] | symbol;
 	assertNotCancelled(selected);
 
-	for (const model of selected) {
-		targets.push(formatScrapeTarget({ model, provider: "dataforseo", webSearch: true }));
-	}
+	targets.push(...selected);
 }
 
 async function finalizeScrapeTargets(

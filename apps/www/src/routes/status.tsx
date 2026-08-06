@@ -775,7 +775,10 @@ function StatusPage() {
 		});
 
 	const providerOptions = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
+		data.some((d) => {
+			const { model, provider } = parseTarget(d.target);
+			return providerCategory(provider, model) === c;
+		}),
 	).map((c) => ({ value: c, label: PROVIDER_FILTER_LABELS[c] ?? c }));
 	const modelOptions = [...new Set(data.map((d) => parseTarget(d.target).model))]
 		.sort((a, b) => formatModel(a).localeCompare(formatModel(b)))
@@ -783,7 +786,7 @@ function StatusPage() {
 
 	const filteredData = data.filter((d) => {
 		const { model, provider } = parseTarget(d.target);
-		const providerOk = selectedProviders.size === 0 || selectedProviders.has(providerCategory(provider));
+		const providerOk = selectedProviders.size === 0 || selectedProviders.has(providerCategory(provider, model));
 		const modelOk = selectedModels.size === 0 || selectedModels.has(model);
 		return providerOk && modelOk;
 	});

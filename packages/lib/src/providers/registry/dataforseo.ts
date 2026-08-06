@@ -7,7 +7,15 @@ import {
 	extractTextFromGoogle,
 } from "../../text-extraction";
 import type { ModelConfig, Provider, ProviderOptions, ScrapeResult } from "../types";
-import { getCredential } from "../../secrets";
+import {
+	assertPromptLength,
+	createDfsAiApi,
+	createDfsSerpApi,
+	DFS_LANGUAGE_CODE,
+	DFS_LOCATION_CODE,
+	isDataforseoConfigured,
+	sanitizeForJson,
+} from "./dataforseo-shared";
 
 /**
  * Models served via the SERP Google AI Mode endpoint (SerpApi). These always
@@ -36,44 +44,11 @@ const LLM_MODELS: Record<string, { defaultModelName: string; call: keyof typeof 
 // gets its own runner rather than joining SERP_MODELS.
 const AI_OVERVIEW_MODEL = "google-ai-overview";
 const SUPPORTED_MODELS = new Set([...SERP_MODELS, AI_OVERVIEW_MODEL, ...Object.keys(LLM_MODELS)]);
-const MAX_PROMPT_CHARS = 500;
 
 interface DataForSeoLlmRequest {
 	user_prompt: string;
 	model_name: string;
 	web_search: boolean;
-}
-
-function sanitizeForJson(obj: unknown): unknown {
-	return JSON.parse(JSON.stringify(obj));
-}
-
-function authFetch(url: string | URL | Request, init?: RequestInit): Promise<Response> {
-	const username = getCredential("DATAFORSEO_LOGIN");
-	const password = getCredential("DATAFORSEO_PASSWORD");
-	if (!username || !password) {
-		throw new Error("DataForSEO requires DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD");
-	}
-	const token = btoa(`${username}:${password}`);
-	return fetch(url, {
-		...init,
-		headers: { ...init?.headers, Authorization: `Basic ${token}`, "Content-Type": "application/json" },
-	});
-}
-
-function createDfsSerpApi() {
-	return new client.SerpApi("https://api.dataforseo.com", { fetch: authFetch });
-}
-
-function createDfsAiApi() {
-	return new client.AiOptimizationApi("https://api.dataforseo.com", { fetch: authFetch });
-}
-
-function assertPromptLength(prompt: string) {
-	const length = Array.from(prompt).length;
-	if (length > MAX_PROMPT_CHARS) {
-		throw new Error(`DataForSEO prompts must be ${MAX_PROMPT_CHARS} characters or fewer (${length} provided)`);
-	}
 }
 
 /** Live LLM Responses call dispatch, keyed by Elmo model id. */
@@ -91,8 +66,8 @@ async function runGoogleAiMode(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleAiModeLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: 2840,
-		language_code: "en",
+		location_code: DFS_LOCATION_CODE,
+		language_code: DFS_LANGUAGE_CODE,
 		depth: 10,
 	});
 
@@ -126,8 +101,8 @@ async function runGoogleAiOverview(prompt: string): Promise<ScrapeResult> {
 	const api = createDfsSerpApi();
 	const requestInfo = new client.SerpGoogleOrganicLiveAdvancedRequestInfo({
 		keyword: prompt,
-		location_code: 2840,
-		language_code: "en",
+		location_code: DFS_LOCATION_CODE,
+		language_code: DFS_LANGUAGE_CODE,
 		depth: 10,
 		// AI Overviews are generated on demand; without this DataForSEO only
 		// returns whatever it had cached, so most runs would come back empty.
@@ -267,9 +242,7 @@ export const dataforseo: Provider = {
 	id: "dataforseo",
 	name: "DataForSEO",
 
-	isConfigured() {
-		return !!getCredential("DATAFORSEO_LOGIN") && !!getCredential("DATAFORSEO_PASSWORD");
-	},
+	isConfigured: isDataforseoConfigured,
 
 	validateTarget(config: ModelConfig) {
 		if (!SUPPORTED_MODELS.has(config.model)) {

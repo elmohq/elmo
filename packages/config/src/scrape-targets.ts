@@ -91,6 +91,8 @@ export const STATUS_TARGETS = [
 	"chatgpt:dataforseo:online",
 	"perplexity:dataforseo:online",
 	"gemini:dataforseo:online",
+	"chatgpt:dataforseo-scraper:online",
+	"gemini:dataforseo-scraper:online",
 	"chatgpt:openai-api:gpt-5-mini",
 	"chatgpt:openai-api:gpt-5-mini:online",
 	"claude:anthropic-api:claude-sonnet-4-6",

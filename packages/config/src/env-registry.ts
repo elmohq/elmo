@@ -27,8 +27,8 @@ export interface EnvVarSpec {
 	 * - "optional": never required at startup
 	 */
 	requiredBy: DeploymentMode[] | "dynamic-scrape-targets" | "optional";
-	/** Only for requiredBy: "dynamic-scrape-targets" — the SCRAPE_TARGETS provider id that needs this key. */
-	provider?: string;
+	/** Only for requiredBy: "dynamic-scrape-targets" — the SCRAPE_TARGETS provider id(s) that need this key. */
+	provider?: string | readonly string[];
 	/**
 	 * Set for vars read only by the marketing site (apps/www). They stay in
 	 * turbo.json globalEnv but are excluded from the apps/web env.d.ts check,
@@ -122,14 +122,14 @@ export const ENV_REGISTRY: EnvVarSpec[] = [
 		name: "DATAFORSEO_LOGIN",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
-		provider: "dataforseo",
+		provider: ["dataforseo", "dataforseo-scraper"],
 		description: "DataForSEO account login.",
 	},
 	{
 		name: "DATAFORSEO_PASSWORD",
 		scope: "server",
 		requiredBy: "dynamic-scrape-targets",
-		provider: "dataforseo",
+		provider: ["dataforseo", "dataforseo-scraper"],
 		description: "DataForSEO account password.",
 	},
 	{

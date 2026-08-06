@@ -48,6 +48,7 @@ export function formatProvider(provider: string) {
 		oxylabs: "Oxylabs",
 		cloro: "Cloro",
 		dataforseo: "DataForSEO",
+		"dataforseo-scraper": "DataForSEO Scraper",
 		"openai-api": "OpenAI API",
 		"anthropic-api": "Anthropic API",
 		"mistral-api": "Mistral API",
@@ -56,33 +57,44 @@ export function formatProvider(provider: string) {
 	return names[provider] || provider;
 }
 
+// The DataForSEO provider id spans both kinds of route: its AI Optimization
+// "LLM Responses" endpoints call the vendors' model APIs, while its SERP
+// endpoints scrape Google. Split it across the two column groups by model.
+const DATAFORSEO_API_MODELS = new Set(["chatgpt", "perplexity", "gemini"]);
+
 // The three first-party API providers collapse into one "Direct API" filter.
-export function providerCategory(provider: string) {
-	return provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api"
-		? "direct-api"
-		: provider;
+export function providerCategory(provider: string, model: string) {
+	if (provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api") return "direct-api";
+	if (provider === "dataforseo") return DATAFORSEO_API_MODELS.has(model) ? "dataforseo-api" : "dataforseo";
+	return provider;
 }
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
-// OpenRouter) call an LLM inference endpoint, while AI Search Scrapers (Olostep,
-// BrightData, Oxylabs, DataForSEO) scrape a live web surface.
-export const MODEL_API_CATEGORIES = ["direct-api", "openrouter"];
+// OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
+// Scrapers (Olostep, BrightData, Oxylabs, Cloro, DataForSEO SERP/Scraper)
+// scrape a live web surface.
+export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
 // Overview are Search features and Copilot is a consumer assistant — none expose
 // an inference endpoint, so a Model API can't reach them at all.
 const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
 
-// Which models each scraper has a collector for. A model missing from a
-// scraper's set can't be reached through it — a hard capability gap, not merely
-// something Elmo hasn't wired up yet. Mirrors the provider registries in
-// @workspace/lib.
-const SCRAPER_MODELS: Record<string, Set<string>> = {
+// Which models each provider category has a collector for. A model missing from
+// a category's set can't be reached through it — a hard capability gap, not
+// merely something Elmo hasn't wired up yet. Mirrors the provider registries in
+// @workspace/lib. Categories absent here (direct-api, openrouter) reach any
+// model that exposes an inference endpoint.
+const PROVIDER_MODELS: Record<string, Set<string>> = {
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
 	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	dataforseo: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity"]),
+	dataforseo: new Set(["google-ai-mode", "google-ai-overview"]),
+	// The LLM Scraper API has no Perplexity endpoint.
+	"dataforseo-scraper": new Set(["chatgpt", "gemini"]),
+	// Claude is reachable via LLM Responses but Elmo doesn't track it there.
+	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
 
 export type CellAvailability = "tracked" | "untracked" | "unavailable";
@@ -92,35 +104,39 @@ export type CellAvailability = "tracked" | "untracked" | "unavailable";
 // "untracked" when it could exist but Elmo doesn't currently run it.
 export function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
 	if (hasTarget) return "tracked";
-	// Model APIs reach only models with an inference endpoint — never the
-	// scrape-only Search/consumer surfaces.
+	// Categories with a fixed collector list reach only those surfaces.
+	const reachable = PROVIDER_MODELS[provider];
+	if (reachable) return reachable.has(model) ? "untracked" : "unavailable";
+	// The unconstrained model APIs reach anything with an inference endpoint —
+	// never the scrape-only Search/consumer surfaces.
 	if (MODEL_API_CATEGORIES.includes(provider)) {
 		return SCRAPE_ONLY_MODELS.has(model) ? "unavailable" : "untracked";
 	}
-	// Scrapers reach only the surfaces they have a collector for.
-	const scrapeable = SCRAPER_MODELS[provider];
-	if (scrapeable && !scrapeable.has(model)) return "unavailable";
 	return "untracked";
 }
 
 export const PROVIDER_FILTER_ORDER = [
 	"direct-api",
 	"openrouter",
+	"dataforseo-api",
 	"olostep",
 	"brightdata",
 	"oxylabs",
 	"cloro",
 	"dataforseo",
+	"dataforseo-scraper",
 ];
 
 export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	"direct-api": "Direct API",
 	openrouter: "OpenRouter",
+	"dataforseo-api": "DataForSEO API",
 	olostep: "Olostep",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
 	cloro: "Cloro",
-	dataforseo: "DataForSEO",
+	dataforseo: "DataForSEO SERP",
+	"dataforseo-scraper": "DataForSEO Scraper",
 };
 
 export function formatLatency(ms: number) {
@@ -227,7 +243,10 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 		formatModel(a).localeCompare(formatModel(b)),
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
+		data.some((d) => {
+			const { model, provider } = parseTarget(d.target);
+			return providerCategory(provider, model) === c;
+		}),
 	);
 
 	const add = (m: Map<string, TargetStatus[]>, key: string, d: TargetStatus) => {
@@ -241,7 +260,7 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	const byProvider = new Map<string, TargetStatus[]>();
 	for (const d of data) {
 		const { model, provider } = parseTarget(d.target);
-		const pc = providerCategory(provider);
+		const pc = providerCategory(provider, model);
 		add(byCell, `${model} ${pc}`, d);
 		add(byModel, model, d);
 		add(byProvider, pc, d);
