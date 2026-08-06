@@ -292,9 +292,10 @@ export interface StatusMatrix {
 }
 
 // A model (rows) by provider-category (columns) grid of uptime, with a `down`
-// flag when any target in a cell is currently failing, plus aggregate health
-// per row, per column, and overall. Cells with no target return null so the
-// grid can render a blank.
+// flag when any target in a cell is currently failing. Cells with no target
+// return null so the grid can render a blank. Each cell carries the targets
+// behind it, and rows and columns expose theirs, so the aggregate health cells
+// and every tooltip re-derive their numbers from one grouping.
 export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	const models = [...new Set(data.map((d) => parseTarget(d.target).model))].sort((a, b) =>
 		formatModel(a).localeCompare(formatModel(b)),
