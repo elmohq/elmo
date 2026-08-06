@@ -21,7 +21,12 @@ export function parseTarget(target: string) {
 	const model = parts[0];
 	const provider = parts[1];
 	const rest = parts.slice(2).join(":");
-	return { model, provider, rest };
+	// Same split as parseScrapeTargets: everything between the provider and an
+	// optional trailing "online" is the version slug.
+	const webSearch = parts[parts.length - 1] === "online";
+	const versionParts = parts.slice(2, webSearch ? -1 : undefined);
+	const version = versionParts.length > 0 ? versionParts.join(":") : undefined;
+	return { model, provider, rest, version };
 }
 
 export function formatModel(model: string) {
@@ -56,33 +61,50 @@ export function formatProvider(provider: string) {
 	return names[provider] || provider;
 }
 
+// Surfaces the one `dataforseo` provider reaches by scraping — the two Google
+// SERP endpoints plus the LLM Scraper's ChatGPT and Gemini. Mirrors
+// DATAFORSEO_SCRAPED_MODELS in @workspace/lib.
+const DATAFORSEO_SCRAPED_MODELS = new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]);
+
 // The three first-party API providers collapse into one "Direct API" filter.
-export function providerCategory(provider: string) {
-	return provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api"
-		? "direct-api"
-		: provider;
+export function providerCategory(provider: string, model: string, version?: string) {
+	if (provider === "openai-api" || provider === "anthropic-api" || provider === "mistral-api") return "direct-api";
+	// DataForSEO is one provider spanning two kinds of route, and the target
+	// picks between them the same way the provider does: pinning a model_name
+	// forces the LLM Responses API, otherwise it scrapes wherever it can.
+	if (provider === "dataforseo") {
+		return !version && DATAFORSEO_SCRAPED_MODELS.has(model) ? "dataforseo-scraper" : "dataforseo-api";
+	}
+	return provider;
 }
 
 // The matrix columns split into two kinds of route: Model APIs (Direct API,
-// OpenRouter) call an LLM inference endpoint, while AI Search Scrapers (Olostep,
-// BrightData, Oxylabs, DataForSEO) scrape a live web surface.
-export const MODEL_API_CATEGORIES = ["direct-api", "openrouter"];
+// OpenRouter, DataForSEO API) call an LLM inference endpoint, while AI Search
+// Scrapers (Olostep, BrightData, Oxylabs, Cloro, DataForSEO Scraper) scrape a
+// live web surface.
+export const MODEL_API_CATEGORIES = ["direct-api", "openrouter", "dataforseo-api"];
 
 // Models that only exist as a scraped web surface. Google's AI Mode and AI
 // Overview are Search features and Copilot is a consumer assistant — none expose
 // an inference endpoint, so a Model API can't reach them at all.
 const SCRAPE_ONLY_MODELS = new Set(["google-ai-mode", "google-ai-overview", "copilot"]);
 
-// Which models each scraper has a collector for. A model missing from a
-// scraper's set can't be reached through it — a hard capability gap, not merely
-// something Elmo hasn't wired up yet. Mirrors the provider registries in
-// @workspace/lib.
-const SCRAPER_MODELS: Record<string, Set<string>> = {
+// Which models each provider category has a collector for. A model missing from
+// a category's set can't be reached through it — a hard capability gap, not
+// merely something Elmo hasn't wired up yet. Mirrors the provider registries in
+// @workspace/lib. Categories absent here (direct-api, openrouter) reach any
+// model that exposes an inference endpoint.
+const PROVIDER_MODELS: Record<string, Set<string>> = {
 	olostep: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	brightdata: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
 	oxylabs: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "perplexity"]),
 	cloro: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "copilot", "perplexity"]),
-	dataforseo: new Set(["chatgpt", "google-ai-mode", "google-ai-overview", "gemini", "perplexity"]),
+	// Google AI Mode and AI Overview come from the SERP endpoints, ChatGPT and
+	// Gemini from the LLM Scraper API — all four scrape a live surface. There is
+	// no Perplexity scraper on either.
+	"dataforseo-scraper": new Set(["google-ai-mode", "google-ai-overview", "chatgpt", "gemini"]),
+	// Claude is reachable via LLM Responses but Elmo doesn't track it there.
+	"dataforseo-api": new Set(["chatgpt", "perplexity", "gemini", "claude"]),
 };
 
 export type CellAvailability = "tracked" | "untracked" | "unavailable";
@@ -92,35 +114,37 @@ export type CellAvailability = "tracked" | "untracked" | "unavailable";
 // "untracked" when it could exist but Elmo doesn't currently run it.
 export function cellAvailability(model: string, provider: string, hasTarget: boolean): CellAvailability {
 	if (hasTarget) return "tracked";
-	// Model APIs reach only models with an inference endpoint — never the
-	// scrape-only Search/consumer surfaces.
+	// Categories with a fixed collector list reach only those surfaces.
+	const reachable = PROVIDER_MODELS[provider];
+	if (reachable) return reachable.has(model) ? "untracked" : "unavailable";
+	// The unconstrained model APIs reach anything with an inference endpoint —
+	// never the scrape-only Search/consumer surfaces.
 	if (MODEL_API_CATEGORIES.includes(provider)) {
 		return SCRAPE_ONLY_MODELS.has(model) ? "unavailable" : "untracked";
 	}
-	// Scrapers reach only the surfaces they have a collector for.
-	const scrapeable = SCRAPER_MODELS[provider];
-	if (scrapeable && !scrapeable.has(model)) return "unavailable";
 	return "untracked";
 }
 
 export const PROVIDER_FILTER_ORDER = [
 	"direct-api",
 	"openrouter",
+	"dataforseo-api",
 	"olostep",
 	"brightdata",
 	"oxylabs",
 	"cloro",
-	"dataforseo",
+	"dataforseo-scraper",
 ];
 
 export const PROVIDER_FILTER_LABELS: Record<string, string> = {
 	"direct-api": "Direct API",
 	openrouter: "OpenRouter",
+	"dataforseo-api": "DataForSEO API",
 	olostep: "Olostep",
 	brightdata: "BrightData",
 	oxylabs: "Oxylabs",
 	cloro: "Cloro",
-	dataforseo: "DataForSEO",
+	"dataforseo-scraper": "DataForSEO Scraper",
 };
 
 // A provider label as it reads mid-sentence. Every scraper and OpenRouter are
@@ -131,13 +155,18 @@ export function providerPhrase(provider: string): string {
 }
 
 // Why a combination classified "unavailable" can't exist, phrased for the
-// matrix tooltip.
+// matrix tooltip. Follows cellAvailability's precedence: a category with a fixed
+// collector list is bounded by that list whichever kind of route it is, so a
+// model API with a short menu (DataForSEO API) reads as a missing endpoint
+// rather than the model lacking one.
 export function unavailableReason(model: string, provider: string): string {
 	const modelLabel = formatModel(model);
-	if (MODEL_API_CATEGORIES.includes(provider)) {
-		return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerPhrase(provider)} can't reach it.`;
+	if (PROVIDER_MODELS[provider]) {
+		return MODEL_API_CATEGORIES.includes(provider)
+			? `${providerPhrase(provider)} has no ${modelLabel} endpoint, so that model can't be reached through it.`
+			: `${providerPhrase(provider)} has no ${modelLabel} collector, so that surface can't be reached through it.`;
 	}
-	return `${providerPhrase(provider)} has no ${modelLabel} collector, so that surface can't be reached through it.`;
+	return `${modelLabel} has no public inference endpoint — it only exists as a live web surface, so ${providerPhrase(provider)} can't reach it.`;
 }
 
 export function formatLatency(ms: number) {
@@ -302,7 +331,10 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 		formatModel(a).localeCompare(formatModel(b)),
 	);
 	const providers = PROVIDER_FILTER_ORDER.filter((c) =>
-		data.some((d) => providerCategory(parseTarget(d.target).provider) === c),
+		data.some((d) => {
+			const { model, provider, version } = parseTarget(d.target);
+			return providerCategory(provider, model, version) === c;
+		}),
 	);
 
 	const add = (m: Map<string, TargetStatus[]>, key: string, d: TargetStatus) => {
@@ -315,8 +347,8 @@ export function buildStatusMatrix(data: TargetStatus[]): StatusMatrix {
 	const byModel = new Map<string, TargetStatus[]>();
 	const byProvider = new Map<string, TargetStatus[]>();
 	for (const d of data) {
-		const { model, provider } = parseTarget(d.target);
-		const pc = providerCategory(provider);
+		const { model, provider, version } = parseTarget(d.target);
+		const pc = providerCategory(provider, model, version);
 		add(byCell, `${model} ${pc}`, d);
 		add(byModel, model, d);
 		add(byProvider, pc, d);
